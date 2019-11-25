@@ -134,11 +134,7 @@ void ASTDumper::visit(AST::EnumerationDefinition& enumerationDefinition)
 
 void ASTDumper::visit(AST::EnumerationMember& enumerationMember)
 {
-    m_out.print(enumerationMember.name());
-    if (enumerationMember.value()) {
-        m_out.print(" = ");
-        visit(*enumerationMember.value());
-    }
+    m_out.print(enumerationMember.name(), " = ", enumerationMember.value());
 }
 
 void ASTDumper::visit(AST::FunctionDefinition& functionDefinition)
@@ -439,6 +435,19 @@ void ASTDumper::visit(AST::Expression& expression)
         || is<AST::CommaExpression>(expression)
         || is<AST::VariableReference>(expression);
 
+    if (auto* annotation = expression.maybeTypeAnnotation()) {
+        if (auto addressSpace = annotation->leftAddressSpace())
+            m_out.print("<LV:", AST::toString(*addressSpace));
+        else if (annotation->isAbstractLeftValue())
+            m_out.print("<ALV");
+        else if (annotation->isRightValue())
+            m_out.print("<RV");
+
+        m_out.print(", ", expression.resolvedType().toString(), ">");
+
+        skipParens = false;
+    }
+
     if (!skipParens)
         m_out.print("(");
     Base::visit(expression);
@@ -500,11 +509,6 @@ void ASTDumper::visit(AST::Return& returnStatement)
         m_out.print(" ");
         visit(*returnStatement.value());
     }
-}
-
-void ASTDumper::visit(AST::Trap&)
-{
-    m_out.print("trap");
 }
 
 void ASTDumper::visit(AST::SwitchStatement& switchStatement)

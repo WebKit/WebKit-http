@@ -1047,7 +1047,7 @@ private:
         if (!cacheEnabled())
             return static_cast<const char*>(nullptr);
         const char* cachePath = Options::diskCachePath();
-        String filename = FileSystem::encodeForFileName(sourceOrigin().string());
+        String filename = FileSystem::encodeForFileName(FileSystem::lastComponentOfPathIgnoringTrailingSlash(sourceOrigin().string()));
         return FileSystem::pathByAppendingComponent(cachePath, makeString(source().toString().hash(), '-', filename, ".bytecode-cache"));
     }
 

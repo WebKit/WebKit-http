@@ -127,6 +127,13 @@ InlineTextItem::InlineTextItem(const InlineBox& inlineBox, unsigned start, unsig
 {
 }
 
+std::unique_ptr<InlineTextItem> InlineTextItem::split(unsigned splitPosition, unsigned length) const
+{
+    RELEASE_ASSERT(splitPosition >= this->start());
+    RELEASE_ASSERT(splitPosition + length <= end());
+    return std::make_unique<InlineTextItem>(inlineBox(), splitPosition, length, isWhitespace(), isCollapsed());
+}
+
 }
 }
 #endif

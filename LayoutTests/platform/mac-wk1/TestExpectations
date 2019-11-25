@@ -209,6 +209,7 @@ http/tests/security/xss-DENIED-xsl-external-entity.xml [ Skip ]
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame.html [ Skip ]
 
 webkit.org/b/187230 editing/mac/pasteboard/can-copy-url-without-title.html [ Skip ]
+webkit.org/b/187230 editing/mac/style/do-not-crash-when-showing-font-panel.html [ Skip ]
 
 ### END OF (1) Failures with bug reports
 ########################################
@@ -735,6 +736,7 @@ webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource.html [ Skip ]
 webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ Skip ]
 
 webkit.org/b/197371 http/wpt/prefetch/link-prefetch-main-resource-redirect.html [ Skip ]
+webkit.org/b/199499 http/wpt/prefetch/link-prefetch-skip-disk-cache.html [ Skip ]
 
 webkit.org/b/199632 http/wpt/prefetch/beforeload.html [ Skip ]
 webkit.org/b/199632 http/wpt/prefetch/beforeload-dynamic.html [ Skip ]
@@ -770,3 +772,5 @@ webkit.org/b/199242 [ Debug ] http/tests/performance/performance-resource-timing
 
 # <rdar://problem/51529033> REGRESSION: [ Catalina WK1 ] compositing/geometry/composited-frame-contents.html is failing
 [ Catalina+ ] compositing/geometry/composited-frame-contents.html  [ ImageOnlyFailure ]
+
+webkit.org/b/200002 [ Mojave+ Debug ] imported/blink/storage/indexeddb/blob-basics-metadata.html [ Timeout ]

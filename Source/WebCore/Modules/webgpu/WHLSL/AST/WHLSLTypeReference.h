@@ -27,10 +27,12 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLNamedType.h"
 #include "WHLSLTypeArgument.h"
 #include "WHLSLUnnamedType.h"
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -42,21 +44,24 @@ namespace AST {
 
 class NamedType;
 
-class TypeReference : public UnnamedType {
-public:
+class TypeReference final : public UnnamedType {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(TypeReference);
     TypeReference(CodeLocation location, String&& name, TypeArguments&& typeArguments)
         : UnnamedType(location)
         , m_name(WTFMove(name))
         , m_typeArguments(WTFMove(typeArguments))
     {
     }
+public:
+    static Ref<TypeReference> create(CodeLocation location, String&& name, TypeArguments&& typeArguments)
+    {
+        return adoptRef(* new TypeReference(location, WTFMove(name), WTFMove(typeArguments)));
+    }
 
     virtual ~TypeReference() = default;
 
-    TypeReference(const TypeReference&) = delete;
-    TypeReference(TypeReference&&) = default;
-
-    static UniqueRef<TypeReference> wrap(CodeLocation, NamedType& resolvedType);
+    static Ref<TypeReference> wrap(CodeLocation, NamedType& resolvedType);
 
     bool isTypeReference() const override { return true; }
 
@@ -86,19 +91,6 @@ public:
         m_resolvedType = &resolvedType;
     }
 
-    UniqueRef<TypeReference> cloneTypeReference() const
-    {
-        auto result = makeUniqueRef<TypeReference>(codeLocation(), String(m_name), AST::clone(m_typeArguments));
-        if (m_resolvedType)
-            result->setResolvedType(*m_resolvedType);
-        return result;
-    }
-
-    UniqueRef<UnnamedType> clone() const override
-    {
-        return cloneTypeReference();
-    }
-
     unsigned hash() const override
     {
         // Currently, we only use this function after the name resolver runs.
@@ -114,6 +106,12 @@ public:
             return false;
 
         return &unifyNode() == &downcast<TypeReference>(other).unifyNode();
+    }
+
+    String toString() const override
+    {
+        ASSERT(m_resolvedType);
+        return m_resolvedType->name();
     }
 
 private:

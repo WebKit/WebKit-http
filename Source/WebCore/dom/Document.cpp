@@ -262,6 +262,7 @@
 #if PLATFORM(IOS_FAMILY)
 #include "ContentChangeObserver.h"
 #include "CSSFontSelector.h"
+#include "DOMTimerHoldingTank.h"
 #include "DeviceMotionClientIOS.h"
 #include "DeviceMotionController.h"
 #include "DeviceOrientationClientIOS.h"
@@ -1886,12 +1887,8 @@ void Document::resolveStyle(ResolveStyleType type)
             element->updateShadowTree();
     }
 
-    // FIXME: We should update style on our ancestor chain before proceeding (especially for seamless),
-    // however doing so currently causes several tests to crash, as Frame::setDocument calls Document::attach
-    // before setting the DOMWindow on the Frame, or the SecurityOrigin on the document. The attach, in turn
-    // resolves style (here) and then when we resolve style on the parent chain, we may end up
-    // re-attaching our containing iframe, which when asked HTMLFrameElementBase::isURLAllowed
-    // hits a null-dereference due to security code always assuming the document has a SecurityOrigin.
+    // FIXME: We should update style on our ancestor chain before proceeding, however doing so at
+    // the time this comment was originally written caused several tests to crash.
 
     {
         ScriptDisallowedScope::InMainThread scriptDisallowedScope;
@@ -2490,6 +2487,7 @@ void Document::prepareForDestruction()
         NavigationDisabler navigationDisabler(m_frame);
         disconnectDescendantFrames();
     }
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!m_frame || !m_frame->tree().childCount());
 
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
@@ -8186,12 +8184,22 @@ void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWo
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+
 ContentChangeObserver& Document::contentChangeObserver()
 {
     if (!m_contentChangeObserver)
         m_contentChangeObserver = std::make_unique<ContentChangeObserver>(*this);
     return *m_contentChangeObserver; 
 }
+
+DOMTimerHoldingTank& Document::domTimerHoldingTank()
+{
+    if (m_domTimerHoldingTank)
+        return *m_domTimerHoldingTank;
+    m_domTimerHoldingTank = std::make_unique<DOMTimerHoldingTank>();
+    return *m_domTimerHoldingTank;
+}
+
 #endif
 
 bool Document::hasEvaluatedUserAgentScripts() const

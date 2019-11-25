@@ -26,8 +26,13 @@
 #pragma once
 
 #include "NetworkSession.h"
+#include "SoupCookiePersistentStorageType.h"
 
 typedef struct _SoupSession SoupSession;
+
+namespace WebCore {
+class SoupNetworkSession;
+}
 
 namespace WebKit {
 
@@ -37,20 +42,23 @@ struct NetworkSessionCreationParameters;
 
 class NetworkSessionSoup final : public NetworkSession {
 public:
-    static Ref<NetworkSession> create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
+    static std::unique_ptr<NetworkSession> create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
     {
-        return adoptRef(*new NetworkSessionSoup(networkProcess, WTFMove(parameters)));
+        return std::make_unique<NetworkSessionSoup>(networkProcess, WTFMove(parameters));
     }
+    NetworkSessionSoup(NetworkProcess&, NetworkSessionCreationParameters&&);
     ~NetworkSessionSoup();
 
+    WebCore::SoupNetworkSession& soupNetworkSession() const { return *m_networkSession; }
     SoupSession* soupSession() const;
 
+    void setCookiePersistentStorage(const String& storagePath, SoupCookiePersistentStorageType);
+
 private:
-    NetworkSessionSoup(NetworkProcess&, NetworkSessionCreationParameters&&);
+    std::unique_ptr<WebSocketTask> createWebSocketTask(NetworkSocketChannel&, const WebCore::ResourceRequest&, const String& protocol) final;
+    void clearCredentials() final;
 
-    std::unique_ptr<WebSocketTask> createWebSocketTask(NetworkSocketChannel&, const WebCore::ResourceRequest&, const String& protocol) override;
-
-    void clearCredentials() override;
+    std::unique_ptr<WebCore::SoupNetworkSession> m_networkSession;
 };
 
 } // namespace WebKit

@@ -37,6 +37,7 @@ perf/accessibility-title-ui-element.html
 fullscreen
 http/tests/fullscreen
 compositing/no-compositing-when-fulll-screen-is-present.html
+webkit.org/b/200308 fast/events/touch/ios/content-observation/non-visible-content-change-in-fullscreen-mode.html [ Skip ]
 
 # WebGPU is not enabled on iOS Simulator.
 webgpu [ Skip ]
@@ -2960,6 +2961,7 @@ webkit.org/b/166062 media/modern-media-controls/placard-support/placard-support-
 media/modern-media-controls/button/button.html [ Skip ]
 media/modern-media-controls/button/button-active-state.html [ Skip ]
 media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Skip ]
+media/modern-media-controls/media-controller/ios/media-controller-allows-click-over-video-with-no-controls.html [ Skip ]
 media/modern-media-controls/media-controller/ios/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen.html [ Skip ]
 media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Skip ]
@@ -3219,15 +3221,12 @@ fast/events/touch/ios/pointer-events-with-modifiers.html [ Skip ]
 webkit.org/b/191707 imported/w3c/web-platform-tests/webrtc/simplecall-no-ssrcs.https.html [ Skip ]
 webkit.org/b/191707 imported/w3c/web-platform-tests/webrtc/simplecall.https.html [ Skip ]
 
-webkit.org/b/191711 quicklook/numbers.html [ ImageOnlyFailure ]
-
 webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
 
 webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
 
 # These tests depend on the implementation of "modern compatibility mode" in WebKitAdditions.
 platform/ipad/fast/css/webkit-overflow-scrolling-parsing-modern-compatibility-mode.html [ Skip ]
-fast/scrolling/ipad/overflow-scrolling-touch-enabled-stacking-modern-compatibility-mode.html [ Skip ]
 
 webkit.org/b/197778 [ Debug ] webgl/2.0.0/conformance2/attribs/gl-vertexattribipointer.html [ Slow ]
 
@@ -3237,8 +3236,6 @@ media/controls-after-reload.html [ Skip ]
 # FIXME: Unskip the following test once we have the fix for <rdar://problem/48322899>.
 editing/selection/ios/select-non-editable-text-using-keyboard.html [ Skip ]
 editing/selection/ios/select-all-non-editable-text-using-keyboard.html [ Skip ]
-
-webkit.org/b/199472 fast/events/ios/keydown-keyup-keypress-keys-in-non-editable-using-chinese-keyboard.html [ Skip ]
 
 # Dark Mode is iOS 13 and later.
 css-dark-mode [ Pass ]
@@ -3254,10 +3251,6 @@ fast/images/animated-heics-verify.html [ Pass ]
 
 # <rdar://problem/40172428> REGRESSION: LayoutTests fast/text/font-collection.html and fast/text/woff2.html are failing
 fast/text/font-collection.html [ ImageOnlyFailure ]
-
-# <rdar://problem/40952038> quicklook/keynote.html and quicklook/pages.html are failing with a 0.09% image diff
-quicklook/keynote.html [ ImageOnlyFailure ]
-quicklook/pages.html [ ImageOnlyFailure ]
 
 # <rdar://problem/41546587> REGRESSION: LayoutTest compositing/contents-scale/non-decomposable-matrix.html is failing
 compositing/contents-scale/non-decomposable-matrix.html [ ImageOnlyFailure ]
@@ -3291,14 +3284,6 @@ media/video-ended-event-negative-playback.html [ Failure ]
 media/video-played-collapse.html [ Failure ]
 media/video-played-ranges-1.html [ Failure ]
 media/video-played-reset.html [ Failure ]
-
-# <rdar://problem/47898237> REGRESSION (iOS 13): Multiple quicklook tests failing
-quicklook/powerpoint-legacy.html [ Failure ]
-quicklook/powerpoint.html [ Failure ]
-
-# Skip tests timing out for <rdar://problem/48616298>
-fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html [ Skip ]
-fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-width.html [ Skip ]
 
 # <rdar://problem/51055223> (iOS 13): jsc-layout-tests.yaml/js/script-tests/intl-numberformat.js.layout is failing
 js/intl-numberformat.html [ Failure ]
@@ -3354,3 +3339,7 @@ fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
 
 # <rdar://problem/52689856> storage/websql/test-authorizer.html is failing
 storage/websql/test-authorizer.html [ Failure ]
+
+# rdar://53551736 (Layout Test editing/pasteboard/paste-and-sanitize.html is a Flaky Failure on iOS 13)
+editing/pasteboard/paste-and-sanitize.html [ Pass Failure ]
+

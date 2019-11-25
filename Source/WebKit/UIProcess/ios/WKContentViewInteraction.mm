@@ -158,7 +158,6 @@ SOFT_LINK_CONSTANT(ManagedConfiguration, MCFeatureDefinitionLookupAllowed, NSStr
 
 #if HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)
 static NSString * const webkitShowLinkPreviewsPreferenceKey = @"WebKitShowLinkPreviews";
-static NSString * const webkitShowLinkPreviewsPreferenceChangedNotification = @"WebKitShowLinkPreviewsPreferenceChanged";
 #endif
 
 #if PLATFORM(WATCHOS)
@@ -167,16 +166,6 @@ static NSString * const webkitShowLinkPreviewsPreferenceChangedNotification = @"
 @end
 
 #endif
-
-// For staging with UIKit, will be removed ASAP.
-@interface WKUIWKTextInteractionAssistant : UIWKTextInteractionAssistant
-@end
-
-@implementation WKUIWKTextInteractionAssistant
-- (void)scrollSelectionToVisible
-{
-}
-@end
 
 namespace WebKit {
 using namespace WebCore;
@@ -699,16 +688,6 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self addGestureRecognizer:_longPressGestureRecognizer.get()];
 }
 
-- (void)_ensureNonBlockingDoubleTapGestureRecognizer
-{
-    if (_nonBlockingDoubleTapGestureRecognizer)
-        return;
-    _nonBlockingDoubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_nonBlockingDoubleTapRecognized:)]);
-    [_nonBlockingDoubleTapGestureRecognizer setNumberOfTapsRequired:2];
-    [_nonBlockingDoubleTapGestureRecognizer setDelegate:self];
-    [_nonBlockingDoubleTapGestureRecognizer setEnabled:NO];
-}
-
 - (void)setupInteraction
 {
     // If the page is not valid yet then delay interaction setup until the process is launched/relaunched.
@@ -755,8 +734,16 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #endif
     [self addGestureRecognizer:_singleTapGestureRecognizer.get()];
 
-    [self _ensureNonBlockingDoubleTapGestureRecognizer];
+    _nonBlockingDoubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_nonBlockingDoubleTapRecognized:)]);
+    [_nonBlockingDoubleTapGestureRecognizer setNumberOfTapsRequired:2];
+    [_nonBlockingDoubleTapGestureRecognizer setDelegate:self];
+    [_nonBlockingDoubleTapGestureRecognizer setEnabled:NO];
     [self addGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
+
+    _doubleTapGestureRecognizerForDoubleClick = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognizedForDoubleClick:)]);
+    [_doubleTapGestureRecognizerForDoubleClick setNumberOfTapsRequired:2];
+    [_doubleTapGestureRecognizerForDoubleClick setDelegate:self];
+    [self addGestureRecognizer:_doubleTapGestureRecognizerForDoubleClick.get()];
 
     [self _createAndConfigureDoubleTapGestureRecognizer];
 
@@ -860,6 +847,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     _outstandingPositionInformationRequest = WTF::nullopt;
 
     _focusRequiresStrongPasswordAssistance = NO;
+    _additionalContextForStrongPasswordAssistance = nil;
     _waitingForEditDragSnapshot = NO;
 
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
@@ -903,6 +891,9 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     [_nonBlockingDoubleTapGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
+
+    [_doubleTapGestureRecognizerForDoubleClick setDelegate:nil];
+    [self removeGestureRecognizer:_doubleTapGestureRecognizerForDoubleClick.get()];
 
     [_twoFingerDoubleTapGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
@@ -980,6 +971,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self removeGestureRecognizer:_highlightLongPressGestureRecognizer.get()];
     [self removeGestureRecognizer:_doubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
+    [self removeGestureRecognizer:_doubleTapGestureRecognizerForDoubleClick.get()];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
@@ -999,6 +991,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self addGestureRecognizer:_highlightLongPressGestureRecognizer.get()];
     [self addGestureRecognizer:_doubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
+    [self addGestureRecognizer:_doubleTapGestureRecognizerForDoubleClick.get()];
     [self addGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
@@ -1268,7 +1261,6 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
     SetForScope<BOOL> resigningFirstResponderScope { _resigningFirstResponder, YES };
 
     [self endEditingAndUpdateFocusAppearanceWithReason:EndEditingReasonResigningFirstResponder];
-    [self _cancelPendingAutocorrectionContextHandler];
 
     // If the user explicitly dismissed the keyboard then we will lose first responder
     // status only to gain it back again. Just don't resign in that case.
@@ -1902,6 +1894,12 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _previewGestureRecognizer.get()))
         return YES;
 
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _nonBlockingDoubleTapGestureRecognizer.get(), _doubleTapGestureRecognizerForDoubleClick.get()))
+        return YES;
+
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _doubleTapGestureRecognizer.get(), _doubleTapGestureRecognizerForDoubleClick.get()))
+        return YES;
+
     return NO;
 }
 
@@ -2000,7 +1998,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if ([self _hasValidOutstandingPositionInformationRequest:request])
         return connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), 1_s, IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
 
-    bool receivedResponse = _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID(), 1_s);
+    bool receivedResponse = _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID(), 1_s, IPC::SendSyncOption::ForceDispatchWhenDestinationIsWaitingForUnboundedSyncReply);
     _hasValidPositionInformation = receivedResponse && _positionInformation.canBeValid;
     
     // FIXME: We need to clean up these handlers in the event that we are not able to collect data, or if the WebProcess crashes.
@@ -2094,6 +2092,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (gestureRecognizer == _highlightLongPressGestureRecognizer
         || gestureRecognizer == _doubleTapGestureRecognizer
         || gestureRecognizer == _nonBlockingDoubleTapGestureRecognizer
+        || gestureRecognizer == _doubleTapGestureRecognizerForDoubleClick
         || gestureRecognizer == _twoFingerDoubleTapGestureRecognizer) {
 
         if (hasFocusedElement(_focusedElementInformation)) {
@@ -2234,6 +2233,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if (_suppressSelectionAssistantReasons)
         return NO;
+    
+    // Don't allow double tap text gestures in noneditable content.
+    if (!self.isFocusingElement && gesture == UIWKGestureDoubleTap)
+        return NO;
 
     WebKit::InteractionInformationRequest request(WebCore::roundedIntPoint(point));
     if (![self ensurePositionInformationIsUpToDate:request])
@@ -2254,10 +2257,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     // If we're currently focusing an editable element, only allow the selection to move within that focused element.
     if (self.isFocusingElement)
         return _positionInformation.nodeAtPositionIsFocusedElement;
-    
-    // Don't allow double tap text gestures in noneditable content.
-    if (gesture == UIWKGestureDoubleTap)
-        return NO;
 
     // If we're selecting something, don't activate highlight.
     if (gesture == UIWKGestureLoupe && [self hasSelectablePositionAtPoint:point])
@@ -2330,6 +2329,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     default:
         break;
     }
+}
+
+- (void)_doubleTapRecognizedForDoubleClick:(UITapGestureRecognizer *)gestureRecognizer
+{
+    _page->handleDoubleTapForDoubleClickAtPoint(WebCore::IntPoint(gestureRecognizer.location), WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart);
 }
 
 - (void)_twoFingerSingleTapGestureRecognized:(UITapGestureRecognizer *)gestureRecognizer
@@ -2535,7 +2539,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 - (void)setUpTextSelectionAssistant
 {
     if (!_textSelectionAssistant)
-        _textSelectionAssistant = adoptNS([[WKUIWKTextInteractionAssistant alloc] initWithView:self]);
+        _textSelectionAssistant = adoptNS([[UIWKTextInteractionAssistant alloc] initWithView:self]);
     else {
         // Reset the gesture recognizers in case editability has changed.
         [_textSelectionAssistant setGestureRecognizers];
@@ -3886,10 +3890,18 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     }
 #endif
 
+    if (!_page->hasRunningProcess()) {
+        completionHandler(WKAutocorrectionContext.emptyAutocorrectionContext);
+        return;
+    }
+
     // FIXME: Remove the synchronous call when <rdar://problem/16207002> is fixed.
     const bool useSyncRequest = true;
 
-    [self _cancelPendingAutocorrectionContextHandler];
+    if (useSyncRequest && _pendingAutocorrectionContextHandler) {
+        completionHandler(WKAutocorrectionContext.emptyAutocorrectionContext);
+        return;
+    }
 
     _pendingAutocorrectionContextHandler = completionHandler;
     _page->requestAutocorrectionContext();
@@ -3897,7 +3909,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     if (useSyncRequest) {
         _page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::HandleAutocorrectionContext>(_page->pageID(), 1_s, IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
         [self _cancelPendingAutocorrectionContextHandler];
-        return;
     }
 }
 
@@ -3908,10 +3919,23 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)_didStartProvisionalLoadForMainFrame
 {
-    // We need to disable the double-tap gesture recognizers that are enabled for double-tap-to-zoom and which
+    // Reset the double tap gesture recognizer to prevent any double click that is in the process of being recognized.
+    [_doubleTapGestureRecognizerForDoubleClick setEnabled:NO];
+    [_doubleTapGestureRecognizerForDoubleClick setEnabled:YES];
+    // We also need to disable the double-tap gesture recognizers that are enabled for double-tap-to-zoom and which
     // are enabled when a single tap is first recognized. This avoids tests running in sequence and simulating taps
     // in the same location to trigger double-tap recognition.
     [self _setDoubleTapGesturesEnabled:NO];
+}
+
+- (void)_didCommitLoadForMainFrame
+{
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    _seenHardwareKeyDownInNonEditableElement = NO;
+#endif
+    [self _elementDidBlur];
+    [self _cancelLongPressGestureRecognizer];
+    [_webView _didCommitLoadForMainFrame];
 }
 
 #if !USE(UIKIT_KEYBOARD_ADDITIONS)
@@ -3966,28 +3990,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     [_doubleTapGestureRecognizer setEnabled:enabled];
     [_nonBlockingDoubleTapGestureRecognizer setEnabled:!enabled];
     [self _resetIsDoubleTapPending];
-}
-
-- (double)_doubleTapForDoubleClickDelay
-{
-    static double doubleTapForDoubleClickDelay = 350;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        [self _ensureNonBlockingDoubleTapGestureRecognizer];
-        doubleTapForDoubleClickDelay = [_nonBlockingDoubleTapGestureRecognizer maximumIntervalBetweenSuccessiveTaps];
-    });
-    return doubleTapForDoubleClickDelay;
-}
-
-- (float)_doubleTapForDoubleClickRadius
-{
-    static float doubleTapForDoubleClickRadius = 45;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        [self _ensureNonBlockingDoubleTapGestureRecognizer];
-        doubleTapForDoubleClickRadius = [_nonBlockingDoubleTapGestureRecognizer allowableMovement];
-    });
-    return doubleTapForDoubleClickRadius;
 }
 
 // MARK: UIWebFormAccessoryDelegate protocol and accessory methods
@@ -4311,6 +4313,9 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 
 - (void)setBaseWritingDirection:(NSWritingDirection)direction forRange:(UITextRange *)range
 {
+    if (!_page->isEditable())
+        return;
+
     if (range && ![range isEqual:self.selectedTextRange]) {
         // We currently only support changing the base writing direction at the selection.
         return;
@@ -4935,6 +4940,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (UITextInputArrowKeyHistory *)_moveToStartOfParagraph:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
 {
+    [self executeEditCommandWithCallback:extending ? @"moveBackwardAndModifySelection" : @"moveBackward"];
     [self executeEditCommandWithCallback:extending ? @"moveToBeginningOfParagraphAndModifySelection" : @"moveToBeginningOfParagraph"];
     return nil;
 }
@@ -4959,6 +4965,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (UITextInputArrowKeyHistory *)_moveToEndOfParagraph:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
 {
+    [self executeEditCommandWithCallback:extending ? @"moveForwardAndModifySelection" : @"moveForward"];
     [self executeEditCommandWithCallback:extending ? @"moveToEndOfParagraphAndModifySelection" : @"moveToEndOfParagraph"];
     return nil;
 }
@@ -5065,6 +5072,14 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (BOOL)isPosition:(UITextPosition *)position atBoundary:(UITextGranularity)granularity inDirection:(UITextDirection)direction
 {
+    if (granularity == UITextGranularityParagraph) {
+        if (direction == UITextStorageDirectionBackward && [position isEqual:self.selectedTextRange.start])
+            return _page->editorState().postLayoutData().selectionStartIsAtParagraphBoundary;
+
+        if (direction == UITextStorageDirectionForward && [position isEqual:self.selectedTextRange.end])
+            return _page->editorState().postLayoutData().selectionEndIsAtParagraphBoundary;
+    }
+
     return NO;
 }
 
@@ -5157,6 +5172,20 @@ static bool mayContainSelectableText(WebKit::InputType type)
     }
 }
 
+static bool shouldShowKeyboardForElement(const WebKit::FocusedElementInformation& information)
+{
+    if (information.inputMode == WebCore::InputMode::None)
+        return false;
+
+    if (information.elementType == WebKit::InputType::Drawing)
+        return false;
+
+    if (mayContainSelectableText(information.elementType))
+        return true;
+
+    return !currentUserInterfaceIdiomIsPad();
+}
+
 static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::FocusedElementInformation& elementInfo, const WebKit::EditorState& editorState)
 {
     WebCore::IntRect elementInteractionRect;
@@ -5203,6 +5232,8 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
 - (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode activityStateChanges:(OptionSet<WebCore::ActivityState::Flag>)activityStateChanges userObject:(NSObject <NSSecureCoding> *)userObject
 {
     SetForScope<BOOL> isChangingFocusForScope { _isChangingFocus, hasFocusedElement(_focusedElementInformation) };
+    SetForScope<BOOL> isFocusingElementWithKeyboardForScope { _isFocusingElementWithKeyboard, shouldShowKeyboardForElement(information) };
+
     auto inputViewUpdateDeferrer = std::exchange(_inputViewUpdateDeferrer, nullptr);
 
     _didAccessoryTabInitiateFocus = _isChangingFocusUsingAccessoryTab;
@@ -5259,8 +5290,13 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
         }
     }();
 
-    if (blurPreviousNode)
+    if (blurPreviousNode) {
+        // Defer view updates until the end of this function to avoid a noticeable flash when switching focus
+        // between elements that require the keyboard.
+        if (!inputViewUpdateDeferrer)
+            inputViewUpdateDeferrer = std::make_unique<WebKit::InputViewUpdateDeferrer>(self);
         [self _elementDidBlur];
+    }
 
 #if HAVE(PENCILKIT)
     if (information.elementType == WebKit::InputType::Drawing)
@@ -5288,8 +5324,14 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     [_webView _resetFocusPreservationCount];
 
     _focusRequiresStrongPasswordAssistance = NO;
+    _additionalContextForStrongPasswordAssistance = nil;
     if ([inputDelegate respondsToSelector:@selector(_webView:focusRequiresStrongPasswordAssistance:)])
         _focusRequiresStrongPasswordAssistance = [inputDelegate _webView:_webView focusRequiresStrongPasswordAssistance:focusedElementInfo.get()];
+
+    if ([inputDelegate respondsToSelector:@selector(_webViewAdditionalContextForStrongPasswordAssistance:)])
+        _additionalContextForStrongPasswordAssistance = [inputDelegate _webViewAdditionalContextForStrongPasswordAssistance:_webView];
+    else
+        _additionalContextForStrongPasswordAssistance = @{ };
 
     bool delegateImplementsWillStartInputSession = [inputDelegate respondsToSelector:@selector(_webView:willStartInputSession:)];
     bool delegateImplementsDidStartInputSession = [inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)];
@@ -5375,8 +5417,17 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     _focusedElementInformation.elementType = WebKit::InputType::None;
     _focusedElementInformation.shouldSynthesizeKeyEventsForEditing = false;
     _focusedElementInformation.shouldAvoidResizingWhenInputViewBoundsChange = false;
+    _focusedElementInformation.shouldAvoidScrollingWhenFocusedContentIsVisible = false;
     _inputPeripheral = nil;
     _focusRequiresStrongPasswordAssistance = NO;
+    _additionalContextForStrongPasswordAssistance = nil;
+
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    // When defocusing an editable element reset a seen keydown before calling -_hideKeyboard so that we
+    // re-evaluate whether we still need a keyboard when UIKit calls us back in -_requiresKeyboardWhenFirstResponder.
+    if (editableChanged)
+        _seenHardwareKeyDownInNonEditableElement = NO;
+#endif
 
     [self _hideKeyboard];
 
@@ -5396,6 +5447,20 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
 
     if (!_isChangingFocus)
         _didAccessoryTabInitiateFocus = NO;
+}
+
+- (BOOL)shouldIgnoreKeyboardWillHideNotification
+{
+    // Ignore keyboard will hide notifications sent during rotation. They're just there for
+    // backwards compatibility reasons and processing the will hide notification would
+    // temporarily screw up the unobscured view area.
+    if (UIPeripheralHost.sharedInstance.rotationState)
+        return YES;
+
+    if (_isChangingFocus && _isFocusingElementWithKeyboard)
+        return YES;
+
+    return NO;
 }
 
 - (void)_hardwareKeyboardAvailabilityChanged
@@ -6305,6 +6370,11 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     return _focusedElementInformation.shouldAvoidResizingWhenInputViewBoundsChange;
 }
 
+- (BOOL)_shouldAvoidScrollingWhenFocusedContentIsVisible
+{
+    return _focusedElementInformation.shouldAvoidScrollingWhenFocusedContentIsVisible;
+}
+
 - (UIView *)containerViewForTargetedPreviews
 {
     return self.unscaledView ?: self;
@@ -6725,7 +6795,7 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         return nil;
 
     if (provideStrongPasswordAssistance)
-        return @{ @"_automaticPasswordKeyboard" : @YES };
+        return @{ @"_automaticPasswordKeyboard" : @YES, @"strongPasswordAdditionalContext" : _additionalContextForStrongPasswordAssistance.get() };
 
     NSURL *platformURL = _focusedElementInformation.representingPageURL;
     if (platformURL)
@@ -7549,11 +7619,6 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
             [previewClickInteraction setDriver:driver];
             [driver setDelegate:(id<_UIClickInteractionDriverDelegate>)previewClickInteraction];
         }
-
-        [self _showLinkPreviewsPreferenceChanged:nil];
-
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_showLinkPreviewsPreferenceChanged:) name:webkitShowLinkPreviewsPreferenceChangedNotification object:nil];
-
         return;
     }
 #endif
@@ -7574,8 +7639,6 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
         [self removeInteraction:_contextMenuInteraction.get()];
         _contextMenuInteraction = nil;
-
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:webkitShowLinkPreviewsPreferenceChangedNotification object:nil];
         return;
     }
 #endif
@@ -7588,19 +7651,12 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
 #if USE(UICONTEXTMENU)
 
-- (void)_showLinkPreviewsPreferenceChanged:(NSNotification *)notification
-{
-    Boolean keyExistsAndHasValidFormat = false;
-    Boolean prefValue = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)webkitShowLinkPreviewsPreferenceKey, kCFPreferencesCurrentApplication, &keyExistsAndHasValidFormat);
-    if (keyExistsAndHasValidFormat)
-        _showLinkPreviews = prefValue;
-    else
-        _showLinkPreviews = YES;
-}
-
 static bool needsDeprecatedPreviewAPI(id<WKUIDelegate> delegate)
 {
     // FIXME: Replace these with booleans in UIDelegate.h.
+    // Note that we explicitly do not test for @selector(_webView:contextMenuDidEndForElement:) since
+    // that's used by MobileSafari to clean up state even though they haven't moved to the new API.
+
     return delegate
     && ![delegate respondsToSelector:@selector(_webView:contextMenuConfigurationForElement:completionHandler:)]
     && ![delegate respondsToSelector:@selector(webView:contextMenuConfigurationForElement:completionHandler:)]
@@ -7608,7 +7664,6 @@ static bool needsDeprecatedPreviewAPI(id<WKUIDelegate> delegate)
     && ![delegate respondsToSelector:@selector(webView:contextMenuForElement:willCommitWithAnimator:)]
     && ![delegate respondsToSelector:@selector(_webView:contextMenuWillPresentForElement:)]
     && ![delegate respondsToSelector:@selector(webView:contextMenuWillPresentForElement:)]
-    && ![delegate respondsToSelector:@selector(_webView:contextMenuDidEndForElement:)]
     && ![delegate respondsToSelector:@selector(webView:contextMenuDidEndForElement:)]
     && ([delegate respondsToSelector:@selector(webView:shouldPreviewElement:)]
         || [delegate respondsToSelector:@selector(webView:previewingViewControllerForElement:defaultActions:)]
@@ -7676,7 +7731,7 @@ static NSArray<UIMenuElement *> *menuElementsFromDefaultActions(const RetainPtr<
     return actions;
 }
 
-static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewViewController, const RetainPtr<NSArray>& defaultElementActions, RetainPtr<_WKActivatedElementInfo> elementInfo, NSString *title)
+static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewViewController, const RetainPtr<NSArray>& defaultElementActions, RetainPtr<_WKActivatedElementInfo> elementInfo, NSString *title = nil)
 {
     auto actions = menuElementsFromLegacyPreview(previewViewController);
     if (!actions)
@@ -7685,18 +7740,30 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
     return [UIMenu menuWithTitle:title children:actions];
 }
 
-static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url, const String& title)
+static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
 {
-    if (isLink && !showLinkPreviews) {
-        if (!url.isEmpty()) {
-            if (WTF::protocolIsJavaScript(url))
-                return WEB_UI_STRING_KEY("JavaScript", "JavaScript Action Sheet Title", "Title for action sheet for JavaScript link");
-            return WTF::userVisibleString(url);
-        }
-    } else if (!isLink && !title.isEmpty())
-        return title;
+    if (!originalMenu)
+        return nil;
 
-    return nil;
+    // Look for a UIAction that has the WKElementActionTypeToggleShowLinkPreviewsIdentifier.
+    NSUInteger result = [originalMenu.children indexOfObjectPassingTest:^BOOL(UIMenuElement *element, NSUInteger index, BOOL *stop) {
+        if (![element isKindOfClass:[UIAction class]])
+            return NO;
+        if ([(UIAction *)element identifier] == WKElementActionTypeToggleShowLinkPreviewsIdentifier) {
+            *stop = YES;
+            return YES;
+        }
+        return NO;
+    }];
+    if (result != NSNotFound)
+        return originalMenu;
+
+    // We didn't find one, so make a new UIMenu with the toggle action.
+    NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray arrayWithCapacity:(originalMenu.children.count + 1)];
+    [menuElements addObjectsFromArray:originalMenu.children];
+    _WKElementAction *toggleAction = [_WKElementAction elementActionWithType:_WKElementActionToggleShowLinkPreviews];
+    [menuElements addObject:[toggleAction uiActionForElementInfo:nil]];
+    return [originalMenu menuByReplacingChildren:menuElements];
 }
 
 - (void)assignLegacyDataForContextMenuInteraction
@@ -7731,6 +7798,7 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
         if ([uiDelegate respondsToSelector:@selector(webView:previewingViewControllerForElement:defaultActions:)]) {
             auto defaultActions = wkLegacyPreviewActionsFromElementActions(defaultActionsFromAssistant.get(), elementInfo.get());
             auto previewElementInfo = adoptNS([[WKPreviewElementInfo alloc] _initWithLinkURL:url]);
+            // FIXME: Clients using this legacy API will always show their previewViewController and ignore _showLinkPreviews.
             previewViewController = [uiDelegate webView:_webView previewingViewControllerForElement:previewElementInfo.get() defaultActions:defaultActions];
         } else if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:defaultActions:elementInfo:)])
             previewViewController = [uiDelegate _webView:_webView previewViewControllerForURL:url defaultActions:defaultActionsFromAssistant.get() elementInfo:elementInfo.get()];
@@ -7750,15 +7818,14 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
                     _contextMenuLegacyPreviewController = dataDetectorsResult.get().previewProvider();
                 if (dataDetectorsResult && dataDetectorsResult.get().actionProvider) {
                     auto menuElements = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
-                    _contextMenuLegacyMenu = dataDetectorsResult.get().actionProvider(menuElements);
+                    _contextMenuLegacyMenu = menuWithShowLinkPreviewAction(dataDetectorsResult.get().actionProvider(menuElements));
                 }
                 END_BLOCK_OBJC_EXCEPTIONS;
             }
             return;
         }
 
-        auto menuTitle = titleForMenu(true, _showLinkPreviews, url, _positionInformation.title);
-        _contextMenuLegacyMenu = menuFromLegacyPreviewOrDefaultActions(previewViewController, defaultActionsFromAssistant, elementInfo, menuTitle);
+        _contextMenuLegacyMenu = menuFromLegacyPreviewOrDefaultActions(previewViewController, defaultActionsFromAssistant, elementInfo);
 
     } else if (_positionInformation.isImage) {
         NSURL *nsURL = (NSURL *)url;
@@ -7785,11 +7852,10 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
             previewViewController = [[WKImagePreviewViewController alloc] initWithCGImage:cgImage defaultActions:defaultActionsFromAssistant.get() elementInfo:elementInfo.get()];
         ALLOW_DEPRECATED_DECLARATIONS_END
 
-        auto menuTitle = titleForMenu(false, _showLinkPreviews, url, _positionInformation.title);
-        _contextMenuLegacyMenu = menuFromLegacyPreviewOrDefaultActions(previewViewController, defaultActionsFromAssistant, elementInfo, menuTitle);
+        _contextMenuLegacyMenu = menuFromLegacyPreviewOrDefaultActions(previewViewController, defaultActionsFromAssistant, elementInfo, _positionInformation.title);
     }
 
-    _contextMenuLegacyPreviewController = _showLinkPreviews ? previewViewController : nullptr;
+    _contextMenuLegacyPreviewController = previewViewController;
 }
 
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction configurationForMenuAtLocation:(CGPoint)location
@@ -7806,6 +7872,10 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
 
     if (!_webView.configuration._longPressActionsEnabled)
         return completion(nil);
+
+    _showLinkPreviews = true;
+    if (NSNumber *value = [[NSUserDefaults standardUserDefaults] objectForKey:webkitShowLinkPreviewsPreferenceKey])
+        _showLinkPreviews = value.boolValue;
 
     const auto position = [interaction locationInView:self];
     WebKit::InteractionInformationRequest request { WebCore::roundedIntPoint(position) };
@@ -7898,6 +7968,35 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
             strongSelf->_contextMenuActionProviderDelegateNeedsOverride = YES;
             continueWithContextMenuConfiguration(configurationFromWKUIDelegate);
             return;
+        }
+
+        if (strongSelf->_positionInformation.isImage) {
+            ASSERT(strongSelf->_positionInformation.image);
+            auto cgImage = strongSelf->_positionInformation.image->makeCGImageCopy();
+
+            strongSelf->_contextMenuActionProviderDelegateNeedsOverride = NO;
+
+            auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithInteractionInformationAtPosition:strongSelf->_positionInformation]);
+
+            UIContextMenuActionProvider actionMenuProvider = [weakSelf, elementInfo] (NSArray<UIMenuElement *> *) -> UIMenu * {
+                auto strongSelf = weakSelf.get();
+                if (!strongSelf)
+                    return nil;
+
+                RetainPtr<NSArray<_WKElementAction *>> defaultActionsFromAssistant = [strongSelf->_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
+                auto actions = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
+                return [UIMenu menuWithTitle:@"" children:actions];
+            };
+
+            UIContextMenuContentPreviewProvider contentPreviewProvider = [weakSelf, cgImage, elementInfo] () -> UIViewController * {
+                auto strongSelf = weakSelf.get();
+                if (!strongSelf)
+                    return nil;
+
+                return [[WKImagePreviewViewController alloc] initWithCGImage:cgImage defaultActions:nil elementInfo:elementInfo.get()];
+            };
+
+            return continueWithContextMenuConfiguration([UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:contentPreviewProvider actionProvider:actionMenuProvider]);
         }
 
         // At this point we have an object we might want to show a context menu for, but the
@@ -8058,7 +8157,9 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     return [self _createTargetedPreviewIfPossible];
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)contextMenuInteractionWillPresent:(UIContextMenuInteraction *)interaction
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     if (!_webView)
         return;
@@ -8079,7 +8180,9 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     return std::exchange(_contextMenuInteractionTargetedPreview, nil).autorelease();
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willCommitWithAnimator:(id<UIContextMenuInteractionCommitAnimating>)animator
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     if (!_webView)
         return;
@@ -8132,7 +8235,9 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     }
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)contextMenuInteractionDidEnd:(UIContextMenuInteraction *)interaction
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     if (!_webView)
         return;

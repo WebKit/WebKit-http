@@ -773,6 +773,10 @@ webkit.org/b/185962 media/video-play-audio-require-user-gesture.html [ Pass Fail
 webkit.org/b/185994 fast/text/user-installed-fonts/shadow-family.html [ Pass ImageOnlyFailure ]
 webkit.org/b/185994 fast/text/user-installed-fonts/shadow-postscript-family.html [ Pass ImageOnlyFailure ]
 
+# Reenabled tests for supported platforms
+[ Mojave+ ] fast/text/user-installed-fonts/extended-character.html [ Pass ]
+[ Mojave+ ] fast/text/user-installed-fonts/extended-character-with-user-font.html [ Pass ]
+
 # <rdar://problem/25010307>
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayError.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
@@ -967,4 +971,4 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 # <rdar://problem/51524958> REGRESSION: [ Catalina WK2 ] http/wpt/webauthn/public-key-credential-create-success-u2f.https.html is failing
 [ Catalina+ ] http/wpt/webauthn/public-key-credential-create-success-u2f.https.html [ Failure ]
 
-webkit.org/b/199651 [ Mojave Debug ] webgpu/whlsl-builtin-vectors-2.html [ Slow ]
+webkit.org/b/199651 [ Mojave Debug ] webgpu/whlsl/builtin-vectors-2.html [ Slow ]

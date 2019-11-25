@@ -329,7 +329,7 @@ static String stringForSSLCipher(SSLCipherSuite cipher)
     , NSURLSessionWebSocketDelegate
 #endif
 > {
-    RefPtr<WebKit::NetworkSessionCocoa> _session;
+    WeakPtr<WebKit::NetworkSessionCocoa> _session;
     bool _withCredentials;
 }
 
@@ -346,7 +346,7 @@ static String stringForSSLCipher(SSLCipherSuite cipher)
     if (!self)
         return nil;
 
-    _session = &session;
+    _session = makeWeakPtr(session);
     _withCredentials = withCredentials;
 
     return self;
@@ -550,13 +550,8 @@ static bool canNSURLSessionTrustEvaluate()
     return [NSURLSession respondsToSelector:@selector(_strictTrustEvaluate: queue: completionHandler:)];
 }
 
-static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NSURLAuthenticationChallenge *challenge, OSStatus trustResult, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
+static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NSURLAuthenticationChallenge *challenge, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
 {
-    if (trustResult == noErr) {
-        completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
-        return;
-    }
-
     session->continueDidReceiveChallenge(challenge, taskIdentifier, networkDataTask, [completionHandler = WTFMove(completionHandler), secTrust = retainPtr(challenge.protectionSpace.serverTrust)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
         // FIXME: UIProcess should send us back non nil credentials but the credential IPC encoder currently only serializes ns credentials for username/password.
         if (disposition == WebKit::AuthenticationChallengeDisposition::UseCredential && !credential.nsCredential()) {
@@ -594,8 +589,14 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NS
 #if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
             if (canNSURLSessionTrustEvaluate()) {
                 auto* networkDataTask = [self existingTask:task];
-                auto decisionHandler = makeBlockPtr([_session = _session.copyRef(), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = RefPtr<NetworkDataTaskCocoa>(networkDataTask)](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
-                    processServerTrustEvaluation(_session.get(), challenge, trustResult, taskIdentifier, networkDataTask.get(), WTFMove(completionHandler));
+                auto decisionHandler = makeBlockPtr([_session = makeWeakPtr(_session.get()), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = RefPtr<NetworkDataTaskCocoa>(networkDataTask)](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
+                    auto task = WTFMove(networkDataTask);
+                    auto* session = _session.get();
+                    if (trustResult == noErr || !session) {
+                        completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+                        return;
+                    }
+                    processServerTrustEvaluation(session, challenge, taskIdentifier, task.get(), WTFMove(completionHandler));
                 });
                 [NSURLSession _strictTrustEvaluate:challenge queue:[NSOperationQueue mainQueue].underlyingQueue completionHandler:decisionHandler.get()];
                 return;
@@ -895,9 +896,9 @@ void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
 }
 #endif
 
-Ref<NetworkSession> NetworkSessionCocoa::create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
+std::unique_ptr<NetworkSession> NetworkSessionCocoa::create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
 {
-    return adoptRef(*new NetworkSessionCocoa(networkProcess, WTFMove(parameters)));
+    return std::make_unique<NetworkSessionCocoa>(networkProcess, WTFMove(parameters));
 }
 
 static NSDictionary *proxyDictionary(const URL& httpProxy, const URL& httpsProxy)
@@ -924,7 +925,7 @@ static NSDictionary *proxyDictionary(const URL& httpProxy, const URL& httpsProxy
 }
 
 NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
-    : NetworkSession(networkProcess, parameters.sessionID, WTFMove(parameters.localStorageDirectory), parameters.localStorageDirectoryExtensionHandle)
+    : NetworkSession(networkProcess, parameters)
     , m_boundInterfaceIdentifier(parameters.boundInterfaceIdentifier)
     , m_sourceApplicationBundleIdentifier(parameters.sourceApplicationBundleIdentifier)
     , m_sourceApplicationSecondaryIdentifier(parameters.sourceApplicationSecondaryIdentifier)
@@ -933,8 +934,6 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     , m_loadThrottleLatency(parameters.loadThrottleLatency)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-
-    relaxAdoptionRequirement();
 
 #if !ASSERT_DISABLED
     sessionsCreated = true;

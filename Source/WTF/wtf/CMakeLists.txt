@@ -44,6 +44,7 @@ set(WTF_PUBLIC_HEADERS
     CryptographicUtilities.h
     CryptographicallyRandomNumber.h
     DataLog.h
+    DataMutex.h
     DateMath.h
     DebugUtilities.h
     DeferrableRefCounted.h
@@ -122,6 +123,7 @@ set(WTF_PUBLIC_HEADERS
     MD5.h
     MachSendRight.h
     MainThread.h
+    MainThreadData.h
     MallocPtr.h
     Markable.h
     MathExtras.h
@@ -188,6 +190,7 @@ set(WTF_PUBLIC_HEADERS
     RefCountedLeakCounter.h
     RefCounter.h
     RefPtr.h
+    ResourceUsage.h
     RetainPtr.h
     RunLoop.h
     RunLoopTimer.h

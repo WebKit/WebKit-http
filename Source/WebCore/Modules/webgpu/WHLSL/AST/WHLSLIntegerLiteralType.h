@@ -28,6 +28,7 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLResolvableType.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,6 +41,7 @@ namespace AST {
 class TypeReference;
 
 class IntegerLiteralType : public ResolvableType {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     IntegerLiteralType(CodeLocation, int value);
 
@@ -66,7 +68,7 @@ private:
     int m_value;
     // This is a unique_ptr to resolve a circular dependency between
     // ConstantExpression -> LiteralType -> TypeReference -> TypeArguments -> ConstantExpression
-    UniqueRef<TypeReference> m_preferredType;
+    Ref<TypeReference> m_preferredType;
 };
 
 } // namespace AST

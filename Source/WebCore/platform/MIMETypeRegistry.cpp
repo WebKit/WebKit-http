@@ -228,8 +228,8 @@ static const HashSet<String, ASCIICaseInsensitiveHash>& supportedImageMIMETypesF
         return supportedImageMIMETypesForEncoding;
     }());
 #else
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> supportedImageMIMETypesForEncoding = std::initializer_list<String> {
-#if USE(CG)
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> supportedImageMIMETypesForEncoding =std::initializer_list<String> {
+#if USE(CG) || USE(DIRECT2D)
         // FIXME: Add Windows support for all the supported UTI's when a way to convert from MIMEType to UTI reliably is found.
         // For now, only support PNG, JPEG and GIF. See <rdar://problem/6095286>.
         "image/png"_s,

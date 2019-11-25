@@ -27,9 +27,11 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLTypeArgument.h"
 #include "WHLSLUnnamedType.h"
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -39,30 +41,29 @@ namespace WHLSL {
 
 namespace AST {
 
-class ArrayType : public UnnamedType {
-public:
-    ArrayType(CodeLocation location, UniqueRef<UnnamedType>&& elementType, unsigned numElements)
+class ArrayType final : public UnnamedType {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(ArrayType);
+    ArrayType(CodeLocation location, Ref<UnnamedType> elementType, unsigned numElements)
         : UnnamedType(location)
         , m_elementType(WTFMove(elementType))
         , m_numElements(numElements)
     {
     }
+public:
+
+    static Ref<ArrayType> create(CodeLocation location, Ref<UnnamedType> elementType, unsigned numElements)
+    {
+        return adoptRef(*new ArrayType(location, WTFMove(elementType), numElements));
+    }
 
     virtual ~ArrayType() = default;
-
-    ArrayType(const ArrayType&) = delete;
-    ArrayType(ArrayType&&) = default;
 
     bool isArrayType() const override { return true; }
 
     const UnnamedType& type() const { return m_elementType; }
     UnnamedType& type() { return m_elementType; }
     unsigned numElements() const { return m_numElements; }
-
-    UniqueRef<UnnamedType> clone() const override
-    {
-        return makeUniqueRef<ArrayType>(codeLocation(), m_elementType->clone(), m_numElements);
-    }
 
     unsigned hash() const override
     {
@@ -78,8 +79,13 @@ public:
             && type() == downcast<ArrayType>(other).type();
     }
 
+    String toString() const override
+    {
+        return makeString(type().toString(), '[', numElements(), ']');
+    }
+
 private:
-    UniqueRef<UnnamedType> m_elementType;
+    Ref<UnnamedType> m_elementType;
     unsigned m_numElements;
 };
 

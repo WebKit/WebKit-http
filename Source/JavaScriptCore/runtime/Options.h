@@ -198,6 +198,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, reportParseTimes, false, Normal, "dumps JS function signature and the time it took to parse") \
     v(bool, reportBytecodeCompileTimes, false, Normal, "dumps JS function signature and the time it took to bytecode compile") \
+    v(bool, countParseTimes, false, Normal, "counts parse times") \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
     v(bool, verboseDFGFailure, false, Normal, nullptr) \
@@ -273,6 +274,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useValueRepElimination, true, Normal, nullptr) \
     v(bool, useArityFixupInlining, true, Normal, nullptr) \
     v(bool, logExecutableAllocation, false, Normal, nullptr) \
+    v(unsigned, maxDFGNodesInBasicBlockForPreciseAnalysis, 20000, Normal, "Disable precise but costly analysis and give conservative results if the number of DFG nodes in a block exceeds this threshold") \
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(3, 2) - 1, Normal, nullptr) \
@@ -479,8 +481,8 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(unsigned, webAssemblyOMGTierUpCount, 5000, Normal, "The countdown before we tier up a function to OMG.") \
     v(unsigned, webAssemblyLoopDecrement, 15, Normal, "The amount the tier up countdown is decremented on each loop backedge.") \
     v(unsigned, webAssemblyFunctionEntryDecrement, 1, Normal, "The amount the tier up countdown is decremented on each function entry.") \
-    \
-    v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
+    /* FIXME: enable fast memories on iOS and pre-allocate them. https://bugs.webkit.org/show_bug.cgi?id=170774 */ \
+    v(bool, useWebAssemblyFastMemory, !isIOS(), Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
     v(bool, logWebAssemblyMemory, false, Normal, nullptr) \
     v(unsigned, webAssemblyFastMemoryRedzonePages, 128, Normal, "WebAssembly fast memories use 4GiB virtual allocations, plus a redzone (counted as multiple of 64KiB WebAssembly pages) at the end to catch reg+imm accesses which exceed 32-bit, anything beyond the redzone is explicitly bounds-checked") \
     v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
@@ -493,6 +495,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useWebAssemblyReferences, false, Normal, "Allow types from the wasm references spec.") \
     v(bool, useWeakRefs, false, Normal, "Expose the WeakRef constructor.") \
     v(bool, useBigInt, false, Normal, "If true, we will enable BigInt support.") \
+    v(bool, useNullishCoalescing, false, Normal, "Enable support for the ?? operator.") \
     v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.") \
     v(bool, forcePolyProto, false, Normal, "If true, create_this will always create an object with a poly proto structure.") \
     v(bool, forceMiniVMMode, false, Normal, "If true, it will force mini VM mode on.") \

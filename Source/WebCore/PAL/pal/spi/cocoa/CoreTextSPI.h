@@ -62,6 +62,15 @@ typedef CF_OPTIONS(CFOptionFlags, CTFontFallbackOption) {
     kCTFontFallbackOptionDefault = kCTFontFallbackOptionSystem | kCTFontFallbackOptionUserInstalled,
 };
 
+typedef CF_ENUM(uint8_t, CTCompositionLanguage)
+{
+    kCTCompositionLanguageUnset,
+    kCTCompositionLanguageNone,
+    kCTCompositionLanguageJapanese,
+    kCTCompositionLanguageSimplifiedChinese,
+    kCTCompositionLanguageTraditionalChinese,
+};
+
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED == 120000)
 extern const CFStringRef kCTTypesetterOptionAllowUnboundedLayout;
 #endif
@@ -106,6 +115,8 @@ CTFontDescriptorRef CTFontDescriptorCreateLastResort();
 
 CFArrayRef CTFontManagerCreateFontDescriptorsFromData(CFDataRef);
 
+void CTParagraphStyleSetCompositionLanguage(CTParagraphStyleRef, CTCompositionLanguage);
+
 extern const CFStringRef kCTFontCSSWeightAttribute;
 extern const CFStringRef kCTFontCSSWidthAttribute;
 extern const CFStringRef kCTFontDescriptorTextStyleAttribute;
@@ -121,6 +132,9 @@ extern const CFStringRef kCTFrameMaximumNumberOfLinesAttributeName;
 bool CTFontDescriptorIsSystemUIFont(CTFontDescriptorRef);
 CTFontRef CTFontCreateForCSS(CFStringRef name, uint16_t weight, CTFontSymbolicTraits, CGFloat size);
 CTFontRef CTFontCreateForCharactersWithLanguage(CTFontRef currentFont, const UTF16Char *characters, CFIndex length, CFStringRef language, CFIndex *coveredLength);
+#if HAVE(CTFONTCREATEFORCHARACTERSWITHLANGUAGEANDOPTION)
+CTFontRef CTFontCreateForCharactersWithLanguageAndOption(CTFontRef currentFont, const UTF16Char *characters, CFIndex length, CFStringRef language, CTFontFallbackOption option, CFIndex *coveredLength);
+#endif
 CTFontRef CTFontCopyPhysicalFont(CTFontRef);
 
 extern const CFStringRef kCTUIFontTextStyleShortHeadline;

@@ -28,10 +28,10 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLStatement.h"
 #include "WHLSLVariableDeclarationsStatement.h"
 #include <memory>
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
@@ -43,6 +43,7 @@ namespace WHLSL {
 namespace AST {
 
 class ForLoop : public Statement {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     ForLoop(CodeLocation location, Variant<UniqueRef<Statement>, UniqueRef<Expression>>&& initialization, std::unique_ptr<Expression>&& condition, std::unique_ptr<Expression>&& increment, UniqueRef<Statement>&& body)
         : Statement(location)

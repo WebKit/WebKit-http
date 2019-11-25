@@ -26,13 +26,13 @@
 #include "IsoPage.h"
 
 #include "PerProcess.h"
-#include "VMHeap.h"
+#include "VMAllocate.h"
 
 namespace bmalloc {
 
 void* IsoPageBase::allocatePageMemory()
 {
-    return VMHeap::get()->tryAllocateLargeChunk(pageSize, pageSize).begin();
+    return tryVMAllocate(pageSize, pageSize, VMTag::IsoHeap);
 }
 
 } // namespace bmalloc

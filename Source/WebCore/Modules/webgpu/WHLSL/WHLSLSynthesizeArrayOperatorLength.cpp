@@ -56,7 +56,7 @@ private:
     Vector<std::reference_wrapper<AST::ArrayType>> m_arrayTypes;
 };
 
-bool synthesizeArrayOperatorLength(Program& program)
+Expected<void, Error> synthesizeArrayOperatorLength(Program& program)
 {
     FindArrayTypes findArrayTypes;
     findArrayTypes.checkErrorAndVisit(program);
@@ -66,14 +66,14 @@ bool synthesizeArrayOperatorLength(Program& program)
 
     for (auto& arrayType : arrayTypes) {
         auto location = arrayType.get().codeLocation();
-        auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), arrayType.get().clone(), String(), nullptr, nullptr);
+        auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), &arrayType.get(), String(), nullptr, nullptr);
         AST::VariableDeclarations parameters;
         parameters.append(WTFMove(variableDeclaration));
         AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, program.intrinsics().uintType()), "operator.length"_str, WTFMove(parameters), nullptr, isOperator));
         if (!program.append(WTFMove(nativeFunctionDeclaration)))
-            return false;
+            return makeUnexpected(Error("Cannot synthesize operator.length for array type."));
     }
-    return true;
+    return { };
 }
 
 } // namespace WHLSL

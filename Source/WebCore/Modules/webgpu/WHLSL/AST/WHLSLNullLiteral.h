@@ -28,8 +28,8 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLNullLiteralType.h"
+#include <wtf/FastMalloc.h>
 
 namespace WebCore {
 
@@ -38,6 +38,7 @@ namespace WHLSL {
 namespace AST {
 
 class NullLiteral : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     NullLiteral(CodeLocation location)
         : Expression(location)
@@ -60,7 +61,7 @@ public:
     {
         auto result = NullLiteral(codeLocation());
         if (auto* resolvedType = m_type.maybeResolvedType())
-            result.m_type.resolve(resolvedType->clone());
+            result.m_type.resolve(const_cast<AST::UnnamedType&>(*resolvedType));
         copyTypeTo(result);
         return result;
     }

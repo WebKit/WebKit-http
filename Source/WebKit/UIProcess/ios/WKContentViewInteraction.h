@@ -216,6 +216,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UILongPressGestureRecognizer> _longPressGestureRecognizer;
     RetainPtr<WKSyntheticTapGestureRecognizer> _doubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _nonBlockingDoubleTapGestureRecognizer;
+    RetainPtr<UITapGestureRecognizer> _doubleTapGestureRecognizerForDoubleClick;
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerSingleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _stylusSingleTapGestureRecognizer;
@@ -345,6 +346,7 @@ struct WKAutoCorrectionData {
     BOOL _resigningFirstResponder;
     BOOL _needsDeferredEndScrollingSelectionUpdate;
     BOOL _isChangingFocus;
+    BOOL _isFocusingElementWithKeyboard;
     BOOL _isBlurringFocusedElement;
 
     BOOL _focusRequiresStrongPasswordAssistance;
@@ -354,6 +356,8 @@ struct WKAutoCorrectionData {
     NSUInteger _ignoreSelectionCommandFadeCount;
     CompletionHandler<void(WebCore::DOMPasteAccessResponse)> _domPasteRequestHandler;
     BlockPtr<void(UIWKAutocorrectionContext *)> _pendingAutocorrectionContextHandler;
+
+    RetainPtr<NSDictionary> _additionalContextForStrongPasswordAssistance;
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::DragDropInteractionState _dragDropInteractionState;
@@ -397,6 +401,7 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) CGPoint lastInteractionLocation;
 @property (nonatomic, readonly) BOOL isEditable;
 @property (nonatomic, readonly) BOOL shouldHideSelectionWhenScrolling;
+@property (nonatomic, readonly) BOOL shouldIgnoreKeyboardWillHideNotification;
 @property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::FocusedElementInformation& focusedElementInformation;
@@ -476,8 +481,6 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_disableInspectorNodeSearch;
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler;
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled;
-- (double)_doubleTapForDoubleClickDelay;
-- (float)_doubleTapForDoubleClickRadius;
 #if ENABLE(DATA_DETECTION)
 - (NSArray *)_dataDetectionResults;
 #endif
@@ -532,9 +535,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_handleAutocorrectionContext:(const WebKit::WebAutocorrectionContext&)context;
 
 - (void)_didStartProvisionalLoadForMainFrame;
+- (void)_didCommitLoadForMainFrame;
 
 @property (nonatomic, readonly) BOOL _shouldUseContextMenus;
 @property (nonatomic, readonly) BOOL _shouldAvoidResizingWhenInputViewBoundsChange;
+@property (nonatomic, readonly) BOOL _shouldAvoidScrollingWhenFocusedContentIsVisible;
 
 @end
 

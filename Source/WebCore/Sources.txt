@@ -1106,6 +1106,7 @@ html/HTMLDListElement.cpp
 html/HTMLDataElement.cpp
 html/HTMLDataListElement.cpp
 html/HTMLDetailsElement.cpp
+html/HTMLDialogElement.cpp
 html/HTMLDirectoryElement.cpp
 html/HTMLDivElement.cpp
 html/HTMLDocument.cpp
@@ -1309,6 +1310,7 @@ html/parser/XSSAuditor.cpp
 html/parser/XSSAuditorDelegate.cpp
 
 html/shadow/AutoFillButtonElement.cpp
+html/shadow/DataListButtonElement.cpp
 html/shadow/DetailsMarkerControl.cpp
 html/shadow/MediaControlElementTypes.cpp
 html/shadow/MediaControlElements.cpp
@@ -1415,6 +1417,9 @@ layout/layouttree/LayoutInlineContainer.cpp
 layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
+layout/tableformatting/TableFormattingContext.cpp
+layout/tableformatting/TableFormattingState.cpp
+layout/tableformatting/TableInvalidation.cpp
 
 loader/AdClickAttribution.cpp
 loader/CanvasActivityRecord.cpp
@@ -2846,6 +2851,7 @@ JSHTMLDListElement.cpp
 JSHTMLDataElement.cpp
 JSHTMLDataListElement.cpp
 JSHTMLDetailsElement.cpp
+JSHTMLDialogElement.cpp
 JSHTMLDirectoryElement.cpp
 JSHTMLDivElement.cpp
 JSHTMLDocument.cpp

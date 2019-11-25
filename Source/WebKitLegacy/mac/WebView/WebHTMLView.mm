@@ -725,7 +725,9 @@ extern "C" NSString *NSTextInputReplacementRangeAttributeName;
 - (void)_recursiveDisplayRectIfNeededIgnoringOpacity:(NSRect)rect isVisibleRect:(BOOL)isVisibleRect rectIsVisibleRectForView:(NSView *)visibleView topView:(BOOL)topView;
 - (void)_recursiveDisplayAllDirtyWithLockFocus:(BOOL)needsLockFocus visRect:(NSRect)visRect;
 #if PLATFORM(MAC)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+- (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews;
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
 - (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews;
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor;
@@ -1670,7 +1672,9 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 // Don't let AppKit even draw subviews. We take care of that.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+- (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
 - (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor
@@ -1679,7 +1683,9 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 {
     [self _setAsideSubviews];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    [super _recursive:recursive displayRectIgnoringOpacity:displayRect inContext:graphicsContext stopAtLayerBackedViews:stopAtLayerBackedViews];
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     [super _recursive:recursive displayRectIgnoringOpacity:displayRect inContext:graphicsContext shouldChangeFontReferenceColor:shouldChangeFontReferenceColor stopAtLayerBackedViews:stopAtLayerBackedViews];
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     [super _recursive:recurse displayRectIgnoringOpacity:displayRect inContext:context shouldChangeFontReferenceColor:shouldChangeFontReferenceColor];
@@ -4266,7 +4272,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 #endif
 
 #if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)dragImage:(NSImage *)dragImage
                at:(NSPoint)at
            offset:(NSSize)offset
@@ -4307,9 +4313,9 @@ IGNORE_WARNINGS_END
     [self release];
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSDragOperation)draggingSourceOperationMaskForLocal:(BOOL)isLocal
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
     
@@ -4320,9 +4326,9 @@ IGNORE_WARNINGS_END
     return (NSDragOperation)page->dragController().sourceDragOperation();
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)draggedImage:(NSImage *)anImage endedAt:(NSPoint)aPoint operation:(NSDragOperation)operation
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
     
@@ -4359,9 +4365,9 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
         && [filename _webkit_hasCaseInsensitiveSuffix:@".jpg"]);
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSArray *)namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     NSFileWrapper *wrapper = nil;
     NSURL *draggingElementURL = nil;
@@ -5018,9 +5024,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     [super flagsChanged:event];
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (id)accessibilityAttributeValue:(NSString*)attributeName
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     if ([attributeName isEqualToString: NSAccessibilityChildrenAttribute]) {
         id accTree = [[self _frame] accessibilityRoot];
@@ -6280,9 +6286,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #if PLATFORM(MAC)
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSArray *)validAttributesForMarkedText
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     static NSArray *validAttributes = [[NSArray alloc] initWithObjects:
         NSUnderlineStyleAttributeName,
@@ -6323,9 +6329,9 @@ IGNORE_WARNINGS_END
 
 #endif // PLATFORM(MAC)
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSUInteger)characterIndexForPoint:(NSPoint)thePoint
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6349,9 +6355,9 @@ IGNORE_WARNINGS_END
     return result;
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSRect)firstRectForCharacterRange:(NSRange)theRange
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6383,9 +6389,9 @@ IGNORE_WARNINGS_END
     return resultRect;
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSRange)selectedRange
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6399,9 +6405,9 @@ IGNORE_WARNINGS_END
     return result;
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSRange)markedRange
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6417,9 +6423,9 @@ IGNORE_WARNINGS_END
 
 #if PLATFORM(MAC)
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)nsRange
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6451,9 +6457,9 @@ IGNORE_WARNINGS_END
 
 #endif
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSInteger)conversationIdentifier
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return (NSInteger)self;
 }
@@ -6473,9 +6479,9 @@ IGNORE_WARNINGS_END
     return result;
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)unmarkText
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6520,9 +6526,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 #endif
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)setMarkedText:(id)string selectedRange:(NSRange)newSelRange
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6578,9 +6584,9 @@ IGNORE_WARNINGS_END
     coreFrame->editor().setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange));
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)doCommandBySelector:(SEL)selector
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     LOG(TextInput, "doCommandBySelector:\"%s\"", sel_getName(selector));
 
@@ -6638,9 +6644,9 @@ IGNORE_WARNINGS_END
     }
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)insertText:(id)string
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
 #if PLATFORM(MAC)
     BOOL isAttributedString = [string isKindOfClass:[NSAttributedString class]];

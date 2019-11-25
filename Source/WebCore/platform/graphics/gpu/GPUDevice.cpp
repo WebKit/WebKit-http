@@ -52,9 +52,9 @@
 
 namespace WebCore {
 
-RefPtr<GPUBuffer> GPUDevice::tryCreateBuffer(const GPUBufferDescriptor& descriptor, GPUBufferMappedOption isMapped, Ref<GPUErrorScopes>&& errorScopes)
+RefPtr<GPUBuffer> GPUDevice::tryCreateBuffer(const GPUBufferDescriptor& descriptor, GPUBufferMappedOption isMapped, GPUErrorScopes& errorScopes)
 {
-    return GPUBuffer::tryCreate(makeRef(*this), descriptor, isMapped, WTFMove(errorScopes));
+    return GPUBuffer::tryCreate(*this, descriptor, isMapped, errorScopes);
 }
 
 RefPtr<GPUTexture> GPUDevice::tryCreateTexture(const GPUTextureDescriptor& descriptor) const
@@ -82,14 +82,14 @@ RefPtr<GPUShaderModule> GPUDevice::tryCreateShaderModule(const GPUShaderModuleDe
     return GPUShaderModule::tryCreate(*this, descriptor);
 }
 
-RefPtr<GPURenderPipeline> GPUDevice::tryCreateRenderPipeline(const GPURenderPipelineDescriptor& descriptor) const
+RefPtr<GPURenderPipeline> GPUDevice::tryCreateRenderPipeline(const GPURenderPipelineDescriptor& descriptor, GPUErrorScopes& errorScopes) const
 {
-    return GPURenderPipeline::tryCreate(*this, descriptor);
+    return GPURenderPipeline::tryCreate(*this, descriptor, errorScopes);
 }
 
-RefPtr<GPUComputePipeline> GPUDevice::tryCreateComputePipeline(const GPUComputePipelineDescriptor& descriptor, Ref<GPUErrorScopes>&& errorScopes) const
+RefPtr<GPUComputePipeline> GPUDevice::tryCreateComputePipeline(const GPUComputePipelineDescriptor& descriptor, GPUErrorScopes& errorScopes) const
 {
-    return GPUComputePipeline::tryCreate(*this, descriptor, WTFMove(errorScopes));
+    return GPUComputePipeline::tryCreate(*this, descriptor, errorScopes);
 }
 
 RefPtr<GPUCommandBuffer> GPUDevice::tryCreateCommandBuffer() const

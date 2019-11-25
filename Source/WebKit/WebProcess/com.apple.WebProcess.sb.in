@@ -481,6 +481,7 @@
 (allow user-preference-read
     (preference-domain
         "kCFPreferencesAnyApplication"
+        "com.apple.Accessibility"
         "com.apple.ATS"
         "com.apple.CoreGraphics"
         "com.apple.DownloadAssessment"
@@ -832,6 +833,7 @@
 (when (defined? 'syscall-unix)
     (deny syscall-unix (with send-signal SIGKILL))
     (allow syscall-unix
+        (syscall-number SYS_abort_with_payload)
         (syscall-number SYS_exit)
         (syscall-number SYS_read)
         (syscall-number SYS_write)
@@ -839,6 +841,7 @@
         (syscall-number SYS_close)
         (syscall-number SYS_unlink)
         (syscall-number SYS_chmod)
+        (syscall-number SYS_chmod_extended)
         (syscall-number SYS_getuid)
         (syscall-number SYS_geteuid)
         (syscall-number SYS_recvfrom)
@@ -882,6 +885,7 @@
         (syscall-number SYS_csops_audittoken)
         (syscall-number SYS_kdebug_trace64)
         (syscall-number SYS_kdebug_trace)
+        (syscall-number SYS_sigaction)
         (syscall-number SYS_sigreturn)
         (syscall-number SYS_pathconf)
         (syscall-number SYS_getrlimit)
@@ -914,6 +918,7 @@
         (syscall-number SYS___pthread_sigmask)
         (syscall-number SYS___disable_threadsignal)
         (syscall-number SYS___semwait_signal)
+        (syscall-number SYS___semwait_signal_nocancel)
         (syscall-number SYS_proc_info)
         (syscall-number SYS_stat64)
         (syscall-number SYS_fstat64)
@@ -927,6 +932,7 @@
         (syscall-number SYS_bsdthread_terminate)
         (syscall-number SYS_workq_kernreturn)
         (syscall-number SYS_thread_selfid)
+        (syscall-number SYS_kevent)
         (syscall-number SYS_kevent_qos)
         (syscall-number SYS_kevent_id)
         (syscall-number SYS___mac_syscall)
@@ -944,6 +950,7 @@
         (syscall-number SYS_fileport_makeport)
         (syscall-number SYS_guarded_open_np)
         (syscall-number SYS_guarded_close_np)
+        (syscall-number SYS_guarded_write_np)
         (syscall-number SYS_change_fdguard_np)
         (syscall-number SYS_proc_rlimit_control)
         (syscall-number SYS_connectx)
@@ -969,6 +976,7 @@
         (syscall-number SYS_terminate_with_payload) ;; <rdar://problem/50026580>
         (syscall-number SYS_quotactl) ;; <rdar://problem/49945031>
         (syscall-number SYS_stat64_extended) ;; <rdar://problem/50473330>
+        (syscall-number SYS_lstat_extended)
         (syscall-number SYS_lstat64_extended)
         (syscall-number SYS_iopolicysys)
         (syscall-number SYS_workq_open)

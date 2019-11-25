@@ -88,6 +88,8 @@
 
 namespace JSC {
 
+std::atomic<unsigned> globalParseCount { 0 };
+
 ALWAYS_INLINE static SourceParseMode getAsynFunctionBodyParseMode(SourceParseMode parseMode)
 {
     if (isAsyncGeneratorWrapperParseMode(parseMode))
@@ -3883,14 +3885,20 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseBinaryExpres
     int operatorStackDepth = 0;
     typename TreeBuilder::BinaryExprContext binaryExprContext(context);
     JSTokenLocation location(tokenLocation());
+    bool hasLogicalOperator = false;
+    bool hasCoalesceOperator = false;
+
     while (true) {
         JSTextPosition exprStart = tokenStartPosition();
         int initialAssignments = m_parserState.assignmentCount;
         JSTokenType leadingTokenTypeForUnaryExpression = m_token.m_type;
         TreeExpression current = parseUnaryExpression(context);
         failIfFalse(current, "Cannot parse expression");
-        
+
         context.appendBinaryExpressionInfo(operandStackDepth, current, exprStart, lastTokenEndPosition(), lastTokenEndPosition(), initialAssignments != m_parserState.assignmentCount);
+        int precedence = isBinaryOperator(m_token.m_type);
+        if (!precedence)
+            break;
 
         // 12.6 https://tc39.github.io/ecma262/#sec-exp-operator
         // ExponentiationExpresion is described as follows.
@@ -3915,9 +3923,14 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseBinaryExpres
         // But it's OK for ** because the operator "**" has the highest operator precedence in the binary operators.
         failIfTrue(match(POW) && isUnaryOpExcludingUpdateOp(leadingTokenTypeForUnaryExpression), "Ambiguous unary expression in the left hand side of the exponentiation expression; parentheses must be used to disambiguate the expression");
 
-        int precedence = isBinaryOperator(m_token.m_type);
-        if (!precedence)
-            break;
+        // Mixing ?? with || or && is currently specified as an early error.
+        // Since ?? is the lowest-precedence binary operator, it suffices to check whether these ever coexist in the operator stack.
+        if (match(AND) || match(OR))
+            hasLogicalOperator = true;
+        else if (match(COALESCE))
+            hasCoalesceOperator = true;
+        failIfTrue(hasLogicalOperator && hasCoalesceOperator, "Coalescing and logical operators used together in the same expression; parentheses must be used to disambiguate");
+
         m_parserState.nonTrivialExpressionCount++;
         m_parserState.nonLHSCount++;
         int operatorToken = m_token.m_type;

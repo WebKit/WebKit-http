@@ -729,6 +729,8 @@ WebView *createWebViewAndOffscreenWindow()
     [WebView registerURLSchemeAsLocal:@"feeds"];
     [WebView registerURLSchemeAsLocal:@"feedsearch"];
 
+    [[webView preferences] _setMediaRecorderEnabled:YES];
+
 #if PLATFORM(MAC)
     [webView setWindowOcclusionDetectionEnabled:NO];
     [WebView _setFontWhitelist:fontWhitelist()];
@@ -977,6 +979,7 @@ static void resetWebPreferencesToConsistentValues()
 
     [preferences setDataTransferItemsEnabled:YES];
     [preferences setCustomPasteboardDataEnabled:YES];
+    [preferences setDialogElementEnabled:YES];
 
     [preferences setWebGL2Enabled:YES];
 

@@ -161,7 +161,7 @@ private:
 #if PLATFORM(IOS_FAMILY)
     void didReceiveMobileDocType(bool) final;
     void setNeedsScrollNotifications(WebCore::Frame&, bool) final;
-    void observedContentChange(WebCore::Frame&) final;
+    void didFinishContentChangeObserving(WebCore::Frame&, WKContentChange) final;
     void notifyRevealedSelectionByScrollingFrame(WebCore::Frame&) final;
     bool isStopping() final;
 
@@ -221,6 +221,8 @@ private:
     bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) final;
 
     void contentRuleListNotification(const URL&, const WebCore::ContentRuleListResults&) final;
+
+    bool testProcessIncomingSyncMessagesWhenWaitingForSyncReply() final;
 
 #if PLATFORM(WIN)
     void setLastSetCursorToCurrentCursor() final { }

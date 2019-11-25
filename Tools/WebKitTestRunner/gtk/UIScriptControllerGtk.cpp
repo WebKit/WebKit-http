@@ -24,26 +24,40 @@
  */
 
 #include "config.h"
-#include "UIScriptController.h"
+#include "UIScriptControllerGtk.h"
 
 #include "PlatformWebView.h"
 #include "TestController.h"
 #include <WebKit/WKViewPrivate.h>
+#include <gtk/gtk.h>
 
 namespace WTR {
 
-void UIScriptController::beginBackSwipe(JSValueRef callback)
+Ref<UIScriptController> UIScriptController::create(UIScriptContext& context)
+{
+    return adoptRef(*new UIScriptControllerGtk(context));
+}
+
+void UIScriptControllerGtk::beginBackSwipe(JSValueRef callback)
 {
     auto* webView = TestController::singleton().mainWebView()->platformView();
 
     WKViewBeginBackSwipeForTesting(webView);
 }
 
-void UIScriptController::completeBackSwipe(JSValueRef callback)
+void UIScriptControllerGtk::completeBackSwipe(JSValueRef callback)
 {
     auto* webView = TestController::singleton().mainWebView()->platformView();
 
     WKViewCompleteBackSwipeForTesting(webView);
+}
+
+bool UIScriptControllerGtk::isShowingDataListSuggestions() const
+{
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    if (auto* popup = g_object_get_data(G_OBJECT(webView), "wk-datalist-popup"))
+        return gtk_widget_get_mapped(GTK_WIDGET(popup));
+    return false;
 }
 
 } // namespace WTR

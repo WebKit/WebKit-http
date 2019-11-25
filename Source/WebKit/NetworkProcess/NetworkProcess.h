@@ -111,12 +111,12 @@ struct WebsiteDataStoreParameters;
 class WebSWOriginStore;
 #endif
 
-namespace CacheStorage {
-class Engine;
+namespace NetworkCache {
+enum class CacheOption : uint8_t;
 }
 
-namespace NetworkCache {
-class Cache;
+namespace CacheStorage {
+class Engine;
 }
 
 class NetworkProcess : public AuxiliaryProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>
@@ -161,15 +161,12 @@ public:
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
 
-    NetworkCache::Cache* cache() { return m_cache.get(); }
-
-    void setSession(const PAL::SessionID&, Ref<NetworkSession>&&);
+    void setSession(const PAL::SessionID&, std::unique_ptr<NetworkSession>&&);
     NetworkSession* networkSession(const PAL::SessionID&) const final;
     NetworkSession* networkSessionByConnection(IPC::Connection&) const;
     void destroySession(const PAL::SessionID&);
 
-    // Needed for test infrastructure
-    HashMap<PAL::SessionID, Ref<NetworkSession>>& networkSessions() { return m_networkSessions; }
+    void forEachNetworkSession(const Function<void(NetworkSession&)>&);
 
     void forEachNetworkStorageSession(const Function<void(WebCore::NetworkStorageSession&)>&);
     WebCore::NetworkStorageSession* storageSession(const PAL::SessionID&) const;
@@ -184,6 +181,7 @@ public:
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
     void processWillSuspendImminently();
+    void processWillSuspendImminentlyForTestingSync(CompletionHandler<void()>&&);
     void prepareToSuspend();
     void cancelPrepareToSuspend();
     void processDidResume();
@@ -343,6 +341,9 @@ public:
     void addKeptAliveLoad(Ref<NetworkResourceLoader>&&);
     void removeKeptAliveLoad(NetworkResourceLoader&);
 
+    const String& diskCacheDirectory() const { return m_diskCacheDirectory; }
+    const OptionSet<NetworkCache::CacheOption>& cacheOptions() const { return m_cacheOptions; }
+    
 private:
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
     std::unique_ptr<WebCore::NetworkStorageSession> platformCreateDefaultStorageSession() const;
@@ -489,15 +490,13 @@ private:
 
     HashMap<PAL::SessionID, Ref<CacheStorage::Engine>> m_cacheEngines;
 
-    RefPtr<NetworkCache::Cache> m_cache;
-
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;
 
     HashSet<PAL::SessionID> m_sessionsControlledByAutomation;
     HashMap<PAL::SessionID, Vector<CacheStorageRootPathCallback>> m_cacheStorageParametersCallbacks;
 
-    HashMap<PAL::SessionID, Ref<NetworkSession>> m_networkSessions;
+    HashMap<PAL::SessionID, std::unique_ptr<NetworkSession>> m_networkSessions;
     HashMap<PAL::SessionID, std::unique_ptr<WebCore::NetworkStorageSession>> m_networkStorageSessions;
     mutable std::unique_ptr<WebCore::NetworkStorageSession> m_defaultNetworkStorageSession;
     NetworkBlobRegistry m_networkBlobRegistry;
@@ -566,6 +565,8 @@ private:
     uint32_t m_downloadMonitorSpeedMultiplier { 1 };
 
     HashMap<IPC::Connection::UniqueID, PAL::SessionID> m_sessionByConnection;
+
+    OptionSet<NetworkCache::CacheOption> m_cacheOptions;
 };
 
 } // namespace WebKit

@@ -28,10 +28,10 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLVariableDeclaration.h"
 #include "WHLSLVariableReference.h"
 #include <memory>
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -50,6 +50,7 @@ namespace AST {
  *  7. Return the result
  */
 class ReadModifyWriteExpression : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static UniqueRef<ReadModifyWriteExpression> create(CodeLocation location, UniqueRef<Expression> lValue)
     {
@@ -118,8 +119,8 @@ private:
     ReadModifyWriteExpression(CodeLocation location, UniqueRef<Expression> leftValue)
         : Expression(location)
         , m_leftValue(WTFMove(leftValue))
-        , m_oldValue(makeUniqueRef<VariableDeclaration>(location, Qualifiers(), WTF::nullopt, String(), nullptr, nullptr))
-        , m_newValue(makeUniqueRef<VariableDeclaration>(location, Qualifiers(), WTF::nullopt, String(), nullptr, nullptr))
+        , m_oldValue(makeUniqueRef<VariableDeclaration>(location, Qualifiers(), nullptr, String(), nullptr, nullptr))
+        , m_newValue(makeUniqueRef<VariableDeclaration>(location, Qualifiers(), nullptr, String(), nullptr, nullptr))
     {
     }
 

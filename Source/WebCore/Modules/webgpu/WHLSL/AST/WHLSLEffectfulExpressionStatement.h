@@ -28,8 +28,8 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLStatement.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -39,6 +39,7 @@ namespace WHLSL {
 namespace AST {
 
 class EffectfulExpressionStatement : public Statement {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     EffectfulExpressionStatement(UniqueRef<Expression>&& effectfulExpression)
         : Statement(effectfulExpression->codeLocation())

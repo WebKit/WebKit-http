@@ -222,6 +222,7 @@ public:
     WEBCORE_EXPORT Node* nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, SecurityOrigin* = nullptr);
     WEBCORE_EXPORT Node* nodeRespondingToDoubleClickEvent(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation);
     WEBCORE_EXPORT Node* nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocation);
+    WEBCORE_EXPORT Node* approximateNodeAtViewportLocationLegacy(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation);
 
     WEBCORE_EXPORT NSArray *wordsInCurrentParagraph() const;
     WEBCORE_EXPORT CGRect renderRectForPoint(CGPoint, bool* isReplaced, float* fontSize) const;
@@ -286,8 +287,10 @@ public:
     void resumeActiveDOMObjectsAndAnimations();
     bool activeDOMObjectsAndAnimationsSuspended() const { return m_activeDOMObjectsAndAnimationsSuspendedCount > 0; }
 
-    bool isURLAllowed(const URL&) const;
     WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
+
+    void didPrewarmLocalStorage();
+    bool mayPrewarmLocalStorage() const;
 
 // ========
 
@@ -348,6 +351,7 @@ private:
     unsigned m_navigationDisableCount { 0 };
     unsigned m_selfOnlyRefCount { 0 };
     bool m_hasHadUserInteraction { false };
+    unsigned m_localStoragePrewarmingCount { 0 };
 
 protected:
     UniqueRef<EventHandler> m_eventHandler;

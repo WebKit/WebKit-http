@@ -27,11 +27,12 @@
 
 #if ENABLE(WEBGPU)
 
+#include "WHLSLCodeLocation.h"
 #include "WHLSLEnumerationMember.h"
-#include "WHLSLLexer.h"
 #include "WHLSLNamedType.h"
 #include "WHLSLUnnamedType.h"
 #include <memory>
+#include <wtf/FastMalloc.h>
 #include <wtf/HashMap.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
@@ -45,8 +46,9 @@ namespace WHLSL {
 namespace AST {
 
 class EnumerationDefinition : public NamedType {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    EnumerationDefinition(CodeLocation location, String&& name, UniqueRef<UnnamedType>&& type)
+    EnumerationDefinition(CodeLocation location, String&& name, Ref<UnnamedType> type)
         : NamedType(location, WTFMove(name))
         , m_type(WTFMove(type))
     {
@@ -84,7 +86,7 @@ public:
     }
 
 private:
-    UniqueRef<UnnamedType> m_type;
+    Ref<UnnamedType> m_type;
     HashMap<String, std::unique_ptr<EnumerationMember>> m_members;
 };
 

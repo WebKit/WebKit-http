@@ -73,8 +73,6 @@ const char* Token::typeName(Type type)
         return "do";
     case Type::Return:
         return "return";
-    case Type::Trap:
-        return "trap";
     case Type::Null:
         return "null";
     case Type::True:
@@ -289,8 +287,6 @@ auto Lexer::recognizeKeyword(unsigned end) -> Optional<Token::Type>
         return Token::Type::Do;
     if (substring == "return")
         return Token::Type::Return;
-    if (substring == "trap")
-        return Token::Type::Trap;
     if (substring == "null")
         return Token::Type::Null;
     if (substring == "true")
@@ -502,16 +498,6 @@ auto Lexer::consumeTokenFromStream() -> Token
     return prepare(m_offset, Token::Type::Invalid);
 }
 
-unsigned Lexer::lineNumberFromOffset(unsigned targetOffset)
-{
-    // Counting from 1 to match most text editors.
-    unsigned lineNumber = 1;
-    for (unsigned offset = 0; offset < targetOffset; ++offset) {
-        if (m_stringView[offset] == '\n')
-            ++lineNumber;
-    }
-    return lineNumber;
-}
 
 // We can take advantage of two properties of Unicode:
 // 1. The consitutent UTF-16 code units for all non-BMP code points are surrogates,
@@ -543,6 +529,31 @@ static inline bool isNewline(UChar codeUnit)
     }
 }
 
+
+auto Lexer::lineAndColumnNumberFromOffset(const StringView& stringView, unsigned targetOffset) -> LineAndColumn
+{
+    // Counting from 1 to match most text editors.
+    unsigned lineNumber = 1;
+    unsigned columnNumber = 1;
+    for (unsigned offset = 0; offset < std::min(stringView.length(), targetOffset); ++offset) {
+        ++columnNumber;
+        if (isNewline(stringView[offset])) {
+            ++lineNumber;
+            columnNumber = 1;
+        }
+    }
+    return { lineNumber, columnNumber };
+}
+
+String Lexer::errorString(const StringView& source, Error error)
+{
+    if (error.codeLocation()) {
+        auto lineAndColumn = lineAndColumnNumberFromOffset(source, error.codeLocation().startOffset());
+        return makeString(lineAndColumn.line, ':', lineAndColumn.column, ": ", error.message());
+    }
+    return error.message();
+}
+
 void Lexer::skipWhitespaceAndComments()
 {
     while (m_offset < m_stringView.length()) {
@@ -562,7 +573,8 @@ void Lexer::skipWhitespaceAndComments()
                         break;
                     }
                 }
-            }
+            } else
+                break;
         } else
             break;
     }

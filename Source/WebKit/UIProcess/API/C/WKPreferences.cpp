@@ -1200,6 +1200,16 @@ bool WKPreferencesGetTextAutosizingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->textAutosizingEnabled();
 }
 
+void WKPreferencesSetTextAutosizingUsesIdempotentMode(WKPreferencesRef preferencesRef, bool textAutosizingUsesIdempotentModeEnabled)
+{
+    toImpl(preferencesRef)->setTextAutosizingUsesIdempotentMode(textAutosizingUsesIdempotentModeEnabled);
+}
+
+bool WKPreferencesGetTextAutosizingUsesIdempotentMode(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->textAutosizingUsesIdempotentMode();
+}
+
 void WKPreferencesSetAggressiveTileRetentionEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setAggressiveTileRetentionEnabled(enabled);
@@ -1718,6 +1728,16 @@ void WKPreferencesSetCustomPasteboardDataEnabled(WKPreferencesRef preferencesRef
 bool WKPreferencesGetCustomPasteboardDataEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->customPasteboardDataEnabled();
+}
+
+void WKPreferencesSetDialogElementEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setDialogElementEnabled(flag);
+}
+
+bool WKPreferencesGetDialogElementEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->dialogElementEnabled();
 }
 
 void WKPreferencesSetWebShareEnabled(WKPreferencesRef preferencesRef, bool flag)

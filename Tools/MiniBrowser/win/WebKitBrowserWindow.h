@@ -29,10 +29,11 @@
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WebKit2_C.h>
 #include <unordered_map>
+#include <wtf/Ref.h>
 
 class WebKitBrowserWindow : public BrowserWindow {
 public:
-    static Ref<BrowserWindow> create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView = false, bool pageLoadTesting = false);
+    static Ref<BrowserWindow> create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView = false);
 
 private:
     WebKitBrowserWindow(WKPageConfigurationRef, HWND mainWnd, HWND urlBarWnd);
@@ -41,6 +42,7 @@ private:
     HWND hwnd() override;
 
     HRESULT loadURL(const BSTR& url) override;
+    void reload() override;
     void navigateForwardOrBackward(UINT menuID) override;
     void navigateToHistory(UINT menuID) override;
     void setPreference(UINT menuID, bool enable) override;
@@ -63,7 +65,7 @@ private:
 
     bool canTrustServerCertificate(WKProtectionSpaceRef);
 
-    static void didFinishNavigation(WKPageRef, WKNavigationRef, WKTypeRef, const void*);
+    static void didChangeTitle(const void*);
     static void didCommitNavigation(WKPageRef, WKNavigationRef, WKTypeRef, const void*);
     static void didReceiveAuthenticationChallenge(WKPageRef, WKAuthenticationChallengeRef, const void*);
     static WKPageRef createNewPage(WKPageRef, WKPageConfigurationRef, WKNavigationActionRef, WKWindowFeaturesRef, const void *);

@@ -29,6 +29,7 @@
 
 #include "NetworkCache.h"
 #include "NetworkProcessCreationParameters.h"
+#include "NetworkSessionSoup.h"
 #include "ResourceCachesToClear.h"
 #include "WebCookieManager.h"
 #include "WebKitCachedResolver.h"
@@ -38,6 +39,7 @@
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/SoupNetworkSession.h>
 #include <libsoup/soup.h>
+#include <wtf/CallbackAggregator.h>
 #include <wtf/FileSystem.h>
 #include <wtf/RAMSize.h>
 #include <wtf/glib/GRefPtr.h>
@@ -97,8 +99,8 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
 {
     auto acceptLanguages = buildAcceptLanguages(languages);
     SoupNetworkSession::setInitialAcceptLanguages(acceptLanguages);
-    forEachNetworkStorageSession([&acceptLanguages](const auto& session) {
-        session.soupNetworkSession().setAcceptLanguages(acceptLanguages);
+    forEachNetworkSession([&acceptLanguages](const auto& session) {
+        static_cast<const NetworkSessionSoup&>(session).soupNetworkSession().setAcceptLanguages(acceptLanguages);
     });
 }
 
@@ -115,13 +117,11 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 
     SoupNetworkSession::clearOldSoupCache(FileSystem::directoryName(m_diskCacheDirectory));
 
-    OptionSet<NetworkCache::Cache::Option> cacheOptions { NetworkCache::Cache::Option::RegisterNotify };
+    OptionSet<NetworkCache::CacheOption> cacheOptions { NetworkCache::CacheOption::RegisterNotify };
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
-        cacheOptions.add(NetworkCache::Cache::Option::SpeculativeRevalidation);
+        cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
 #endif
-
-    m_cache = NetworkCache::Cache::open(*this, m_diskCacheDirectory, cacheOptions);
 
     supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(parameters.cookieAcceptPolicy, OptionalCallbackID());
 
@@ -133,7 +133,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 
 std::unique_ptr<WebCore::NetworkStorageSession> NetworkProcess::platformCreateDefaultStorageSession() const
 {
-    return std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<SoupNetworkSession>(PAL::SessionID::defaultSessionID()));
+    return std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID());
 }
 
 void NetworkProcess::setIgnoreTLSErrors(bool ignoreTLSErrors)
@@ -156,11 +156,11 @@ void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
 
 void NetworkProcess::clearDiskCache(WallTime modifiedSince, CompletionHandler<void()>&& completionHandler)
 {
-    if (!m_cache) {
-        completionHandler();
-        return;
-    }
-    m_cache->clear(modifiedSince, WTFMove(completionHandler));
+    auto aggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    forEachNetworkSession([modifiedSince, &aggregator](NetworkSession& session) {
+        if (auto* cache = session.cache())
+            cache->clear(modifiedSince, [aggregator = aggregator.copyRef()] () { });
+    });
 }
 
 void NetworkProcess::platformTerminate()
@@ -171,8 +171,8 @@ void NetworkProcess::platformTerminate()
 void NetworkProcess::setNetworkProxySettings(const SoupNetworkProxySettings& settings)
 {
     SoupNetworkSession::setProxySettings(settings);
-    forEachNetworkStorageSession([](const auto& session) {
-        session.soupNetworkSession().setupProxy();
+    forEachNetworkSession([](const auto& session) {
+        static_cast<const NetworkSessionSoup&>(session).soupNetworkSession().setupProxy();
     });
 }
 

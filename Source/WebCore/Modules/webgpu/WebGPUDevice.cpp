@@ -87,15 +87,19 @@ WebGPUDevice::WebGPUDevice(Ref<const WebGPUAdapter>&& adapter, Ref<GPUDevice>&& 
 
 Ref<WebGPUBuffer> WebGPUDevice::createBuffer(const GPUBufferDescriptor& descriptor) const
 {
-    auto buffer = m_device->tryCreateBuffer(descriptor, GPUBufferMappedOption::NotMapped, m_errorScopes.copyRef());
+    m_errorScopes->setErrorPrefix("GPUDevice.createBuffer(): ");
+
+    auto buffer = m_device->tryCreateBuffer(descriptor, GPUBufferMappedOption::NotMapped, m_errorScopes);
     return WebGPUBuffer::create(WTFMove(buffer));
 }
 
 Vector<JSC::JSValue> WebGPUDevice::createBufferMapped(JSC::ExecState& state, const GPUBufferDescriptor& descriptor) const
 {
+    m_errorScopes->setErrorPrefix("GPUDevice.createBufferMapped(): ");
+
     JSC::JSValue wrappedArrayBuffer = JSC::jsNull();
 
-    auto buffer = m_device->tryCreateBuffer(descriptor, GPUBufferMappedOption::IsMapped, m_errorScopes.copyRef());
+    auto buffer = m_device->tryCreateBuffer(descriptor, GPUBufferMappedOption::IsMapped, m_errorScopes);
     if (buffer) {
         auto arrayBuffer = buffer->mapOnCreation();
         wrappedArrayBuffer = toJS(&state, JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), arrayBuffer);
@@ -154,21 +158,25 @@ Ref<WebGPUShaderModule> WebGPUDevice::createShaderModule(const WebGPUShaderModul
 
 Ref<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(const WebGPURenderPipelineDescriptor& descriptor) const
 {
-    auto gpuDescriptor = descriptor.tryCreateGPURenderPipelineDescriptor();
+    m_errorScopes->setErrorPrefix("GPUDevice.createRenderPipeline(): ");
+
+    auto gpuDescriptor = descriptor.tryCreateGPURenderPipelineDescriptor(m_errorScopes);
     if (!gpuDescriptor)
         return WebGPURenderPipeline::create(nullptr);
 
-    auto pipeline = m_device->tryCreateRenderPipeline(*gpuDescriptor);
+    auto pipeline = m_device->tryCreateRenderPipeline(*gpuDescriptor, m_errorScopes);
     return WebGPURenderPipeline::create(WTFMove(pipeline));
 }
 
 Ref<WebGPUComputePipeline> WebGPUDevice::createComputePipeline(const WebGPUComputePipelineDescriptor& descriptor) const
 {
+    m_errorScopes->setErrorPrefix("GPUDevice.createComputePipeline(): ");
+
     auto gpuDescriptor = descriptor.tryCreateGPUComputePipelineDescriptor(m_errorScopes);
     if (!gpuDescriptor)
         return WebGPUComputePipeline::create(nullptr);
 
-    auto pipeline = m_device->tryCreateComputePipeline(*gpuDescriptor, m_errorScopes.copyRef());
+    auto pipeline = m_device->tryCreateComputePipeline(*gpuDescriptor, m_errorScopes);
     return WebGPUComputePipeline::create(WTFMove(pipeline));
 }
 

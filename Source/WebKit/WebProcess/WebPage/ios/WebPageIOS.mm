@@ -63,6 +63,7 @@
 #import <WebCore/AutofillElements.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ContentChangeObserver.h>
+#import <WebCore/DOMTimerHoldingTank.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
@@ -130,6 +131,9 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/cocoa/Entitlements.h>
 #import <wtf/text/TextStream.h>
+
+#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - WebPage::" fmt, this, ##__VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - WebPage::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
 using namespace WebCore;
@@ -272,6 +276,17 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
                 postLayoutData.editableRootIsTransparentOrFullyClipped = isTransparentOrFullyClipped(*container);
         }
         computeEditableRootHasContentAndPlainText(selection, postLayoutData);
+        postLayoutData.selectionStartIsAtParagraphBoundary = atBoundaryOfGranularity(selection.visibleStart(), TextGranularity::ParagraphGranularity, SelectionDirection::DirectionBackward);
+        postLayoutData.selectionEndIsAtParagraphBoundary = atBoundaryOfGranularity(selection.visibleEnd(), TextGranularity::ParagraphGranularity, SelectionDirection::DirectionForward);
+    }
+}
+
+void WebPage::platformWillPerformEditingCommand()
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    if (auto* document = frame.document()) {
+        if (auto* holdingTank = document->domTimerHoldingTankIfExists())
+            holdingTank->removeAll();
     }
 }
 
@@ -717,12 +732,11 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
     });
 }
 
-void WebPage::completePendingSyntheticClickForContentChangeObserver()
+void WebPage::didFinishContentChangeObserving(WKContentChange observedContentChange)
 {
-    LOG_WITH_STREAM(ContentObservation, stream << "completePendingSyntheticClickForContentChangeObserver: pending target node(" << m_pendingSyntheticClickNode << ")");
+    LOG_WITH_STREAM(ContentObservation, stream << "didFinishContentChangeObserving: pending target node(" << m_pendingSyntheticClickNode << ")");
     if (!m_pendingSyntheticClickNode)
         return;
-    auto observedContentChange = m_pendingSyntheticClickNode->document().contentChangeObserver().observedContentChange();
     callOnMainThread([protectedThis = makeRefPtr(this), targetNode = Ref<Node>(*m_pendingSyntheticClickNode), originalDocument = makeWeakPtr(m_pendingSyntheticClickNode->document()), observedContentChange, location = m_pendingSyntheticClickLocation, modifiers = m_pendingSyntheticClickModifiers, pointerId = m_pendingSyntheticClickPointerId] {
         if (protectedThis->m_isClosed || !protectedThis->corePage())
             return;
@@ -820,27 +834,16 @@ void WebPage::handleTap(const IntPoint& point, OptionSet<WebEvent::Modifier> mod
         handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers);
 }
 
-bool WebPage::handlePotentialDoubleTapForDoubleClickAtPoint(OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
+void WebPage::handleDoubleTapForDoubleClickAtPoint(const IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
 {
-    if (!m_lastCommittedTapTimestamp || !m_lastCommittedTapLocation)
-        return false;
-
-    auto millisecondsSinceLastTap = (MonotonicTime::now() - *m_lastCommittedTapTimestamp).milliseconds();
-    if (millisecondsSinceLastTap > m_doubleTapForDoubleClickDelay.milliseconds())
-        return false;
-
-    auto distanceBetweenTaps = sqrtf(pow(m_potentialTapLocation.x() - m_lastCommittedTapLocation->x(), 2) + pow(m_potentialTapLocation.y() - m_lastCommittedTapLocation->y(), 2));
-    if (distanceBetweenTaps > m_doubleTapForDoubleClickRadius)
-        return false;
-
     FloatPoint adjustedPoint;
-    auto* nodeRespondingToDoubleClick = m_page->mainFrame().nodeRespondingToDoubleClickEvent(m_potentialTapLocation, adjustedPoint);
+    auto* nodeRespondingToDoubleClick = m_page->mainFrame().nodeRespondingToDoubleClickEvent(point, adjustedPoint);
     if (!nodeRespondingToDoubleClick)
-        return false;
+        return;
 
     auto* frameRespondingToDoubleClick = nodeRespondingToDoubleClick->document().frame();
     if (!frameRespondingToDoubleClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToDoubleClick)->firstLayerTreeTransactionIDAfterDidCommitLoad())
-        return false;
+        return;
 
     bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
     bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
@@ -849,9 +852,8 @@ bool WebPage::handlePotentialDoubleTapForDoubleClickAtPoint(OptionSet<WebEvent::
     auto roundedAdjustedPoint = roundedIntPoint(adjustedPoint);
     nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
     if (m_isClosed)
-        return false;
+        return;
     nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
-    return true;
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -1072,12 +1074,6 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 
 void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId, WebCore::PointerID pointerId)
 {
-    auto currentPotentialTapLocation = m_potentialTapLocation; 
-    auto updateLastCommittedLocationAndTimestamp = [&] {
-        m_lastCommittedTapTimestamp = MonotonicTime::now();
-        m_lastCommittedTapLocation = currentPotentialTapLocation;
-    };
-
     auto invalidTargetForSingleClick = !m_potentialTapNode;
     if (!invalidTargetForSingleClick) {
         bool targetRenders = m_potentialTapNode->renderer();
@@ -1086,10 +1082,8 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
         invalidTargetForSingleClick = !targetRenders && !is<HTMLAreaElement>(m_potentialTapNode.get());
     }
     if (invalidTargetForSingleClick) {
-        // When the node has no click eventlistener, but it may have a dblclick one.
-        handlePotentialDoubleTapForDoubleClickAtPoint(modifiers, lastLayerTreeTransactionId);
         commitPotentialTapFailed();
-        return updateLastCommittedLocationAndTimestamp();
+        return;
     }
 
     FloatPoint adjustedPoint;
@@ -1098,7 +1092,7 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
 
     if (!frameRespondingToClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToClick)->firstLayerTreeTransactionIDAfterDidCommitLoad()) {
         commitPotentialTapFailed();
-        return updateLastCommittedLocationAndTimestamp();
+        return;
     }
 
     if (m_potentialTapNode == nodeRespondingToClick) {
@@ -1109,19 +1103,13 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
             commitPotentialTapFailed();
         } else
 #endif
-        {
-            if (handlePotentialDoubleTapForDoubleClickAtPoint(modifiers, lastLayerTreeTransactionId))
-                commitPotentialTapFailed();
-            else
-                handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers, pointerId);
-        }
+            handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers, pointerId);
     } else
         commitPotentialTapFailed();
 
     m_potentialTapNode = nullptr;
     m_potentialTapLocation = FloatPoint();
     m_potentialTapSecurityOrigin = nullptr;
-    return updateLastCommittedLocationAndTimestamp();
 }
 
 void WebPage::commitPotentialTapFailed()
@@ -1354,6 +1342,7 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
                 if (distanceBetweenPositions(position, result) > 1)
                     result = wordRange->endPosition();
             }
+            flags = WordIsNearTap;
         } else if (atBoundaryOfGranularity(position, WordGranularity, DirectionBackward)) {
             // The position is at the end of a word.
             result = position;
@@ -2529,6 +2518,12 @@ static inline bool isAssistableElement(Element& element)
 
 void WebPage::getPositionInformation(const InteractionInformationRequest& request, CompletionHandler<void(InteractionInformationAtPosition&&)>&& reply)
 {
+    // Avoid UIProcess hangs when the WebContent process is stuck on a sync IPC.
+    if (IPC::UnboundedSynchronousIPCScope::hasOngoingUnboundedSyncIPC()) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "getPositionInformation - Not processing because the process is stuck on unbounded sync IPC");
+        return reply({ });
+    }
+
     m_pendingSynchronousPositionInformationReply = WTFMove(reply);
 
     auto information = positionInformation(request);
@@ -3040,7 +3035,9 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.isAutocorrect = false;
     }
 
-    information.shouldAvoidResizingWhenInputViewBoundsChange = m_focusedElement->document().quirks().shouldAvoidResizingWhenInputViewBoundsChange();
+    auto& quirks = m_focusedElement->document().quirks();
+    information.shouldAvoidResizingWhenInputViewBoundsChange = quirks.shouldAvoidResizingWhenInputViewBoundsChange();
+    information.shouldAvoidScrollingWhenFocusedContentIsVisible = quirks.shouldAvoidScrollingWhenFocusedContentIsVisible();
 }
 
 void WebPage::autofillLoginCredentials(const String& username, const String& password)
@@ -3097,16 +3094,6 @@ void WebPage::setOverrideViewportArguments(const Optional<WebCore::ViewportArgum
     m_page->setOverrideViewportArguments(arguments);
 }
 
-void WebPage::resetTextAutosizing()
-{
-    for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        Document* document = frame->document();
-        if (!document || !document->renderView())
-            continue;
-        document->renderView()->resetTextAutosizing();
-    }
-}
-
 void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation, DynamicViewportSizeUpdateID dynamicViewportSizeUpdateID)
 {
     SetForScope<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
@@ -3152,9 +3139,10 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
 
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
 
+#if ENABLE(TEXT_AUTOSIZING)
     if (setFixedLayoutSize(newLayoutSize))
         resetTextAutosizing();
-
+#endif
     setMaximumUnobscuredSize(maximumUnobscuredSize);
     m_page->setUnobscuredSafeAreaInsets(targetUnobscuredSafeAreaInsets);
 
@@ -3325,6 +3313,55 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
         m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
 }
 
+#if ENABLE(TEXT_AUTOSIZING)
+void WebPage::resetIdempotentTextAutosizingIfNeeded(double previousInitialScale)
+{
+    if (!m_page->settings().textAutosizingEnabled() || !m_page->settings().textAutosizingUsesIdempotentMode())
+        return;
+
+    const float minimumScaleChangeBeforeRecomputingTextAutosizing = 0.01;
+    if (std::abs(previousInitialScale - m_page->initialScale()) < minimumScaleChangeBeforeRecomputingTextAutosizing)
+        return;
+
+    if (m_page->initialScale() >= 1 && previousInitialScale >= 1)
+        return;
+
+    if (!m_page->mainFrame().view())
+        return;
+
+    auto textAutoSizingDelay = [&] {
+        auto& frameView = *m_page->mainFrame().view();
+        auto isVisaullyNonEmpty = frameView.isVisuallyNonEmpty();
+        auto willBeVisuallyNonEmptySoon = !isVisaullyNonEmpty && frameView.qualifiesAsVisuallyNonEmpty();
+        if (willBeVisuallyNonEmptySoon) {
+            // Be a bit more agressive on the first display.
+            const Seconds shortTextAutoSizingDelayOnViewportChange = 20_ms;
+            return shortTextAutoSizingDelayOnViewportChange;
+        } 
+        if (!isVisaullyNonEmpty) {
+            // We don't anticipate any paining after the next upcoming layout.
+            const Seconds longTextAutoSizingDelayOnViewportChange = 100_ms;
+            return longTextAutoSizingDelayOnViewportChange;
+        }
+        const Seconds defaultTextAutoSizingDelayOnViewportChange = 80_ms;
+        return defaultTextAutoSizingDelayOnViewportChange;
+    };
+
+    // We don't need to update text sizing eagerly. There might be multiple incoming dynamic viewport changes.
+    m_textAutoSizingAdjustmentTimer.startOneShot(textAutoSizingDelay());
+}
+
+void WebPage::resetTextAutosizing()
+{
+    for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        Document* document = frame->document();
+        if (!document || !document->renderView())
+            continue;
+        document->renderView()->resetTextAutosizing();
+    }
+}
+#endif
+
 #if ENABLE(VIEWPORT_RESIZING)
 
 void WebPage::scheduleShrinkToFitContent()
@@ -3419,31 +3456,17 @@ bool WebPage::shouldIgnoreMetaViewport() const
     return m_page->settings().shouldIgnoreMetaViewport();
 }
 
-void WebPage::resetIdempotentTextAutosizingIfNeeded(double previousInitialScale)
-{
-    if (!m_page->settings().textAutosizingUsesIdempotentMode())
-        return;
-
-    const float minimumScaleChangeBeforeRecomputingTextAutosizing = 0.01;
-    if (std::abs(previousInitialScale - m_page->initialScale()) < minimumScaleChangeBeforeRecomputingTextAutosizing)
-        return;
-
-    if (m_page->initialScale() >= 1 && previousInitialScale >= 1)
-        return;
-
-    m_page->setNeedsRecalcStyleInAllFrames();
-}
-
 void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale)
 {
-    double previousInitialScale = m_page->initialScale();
     double initialScale = m_viewportConfiguration.initialScale();
+#if ENABLE(TEXT_AUTOSIZING)
+    double previousInitialScale = m_page->initialScale();
     m_page->setInitialScale(initialScale);
     resetIdempotentTextAutosizingIfNeeded(previousInitialScale);
 
     if (setFixedLayoutSize(m_viewportConfiguration.layoutSize()))
         resetTextAutosizing();
-
+#endif
     double scale;
     if (m_userHasChangedPageScaleFactor && zoomToInitialScale == ZoomToInitialScale::No)
         scale = std::max(std::min(pageScaleFactor(), m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
@@ -3999,5 +4022,8 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
 }
 
 } // namespace WebKit
+
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ERROR_IF_ALLOWED
 
 #endif // PLATFORM(IOS_FAMILY)

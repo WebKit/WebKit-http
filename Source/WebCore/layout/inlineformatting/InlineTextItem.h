@@ -27,6 +27,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "InlineBox.h"
 #include "InlineFormattingState.h"
 #include "InlineItem.h"
 
@@ -45,6 +46,10 @@ public:
 
     bool isWhitespace() const { return m_isWhitespace; }
     bool isCollapsed() const { return m_isCollapsed; }
+
+    const InlineBox& inlineBox() const { return downcast<InlineBox>(layoutBox()); }
+
+    std::unique_ptr<InlineTextItem> split(unsigned splitPosition, unsigned length) const;
 
 private:
     unsigned m_start { 0 };

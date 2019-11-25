@@ -32,18 +32,19 @@
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 
-interface ID2D1RenderTarget;
-
 namespace WebCore {
+
+class PlatformContextDirect2D;
 
 struct ImageBufferData {
     IntSize backingStoreSize;
     Checked<unsigned, RecordOverflow> bytesPerRow;
 
     // Only for software ImageBuffers.
-    void* data { nullptr };
+    Vector<char> data;
+    std::unique_ptr<PlatformContextDirect2D> platformContext;
     std::unique_ptr<GraphicsContext> context;
-    ID2D1RenderTarget* m_compatibleTarget { nullptr };
+    COMPtr<IWICBitmap> bitmapSource;
 
     RefPtr<Uint8ClampedArray> getData(AlphaPremultiplication, const IntRect&, const IntSize&, bool accelerateRendering, float resolutionScale) const;
     void putData(const Uint8ClampedArray& source, AlphaPremultiplication sourceFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize&, bool accelerateRendering, float resolutionScale);

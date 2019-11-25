@@ -690,6 +690,11 @@ static void validate(WKWebViewConfiguration *configuration)
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
 
+    if ([_scrollView respondsToSelector:@selector(_setAvoidsJumpOnInterruptedBounce:)]) {
+        [_scrollView setTracksImmediatelyWhileDecelerating:NO];
+        [_scrollView _setAvoidsJumpOnInterruptedBounce:YES];
+    }
+
     if ([_configuration _editableImagesEnabled])
         [_scrollView panGestureRecognizer].allowedTouchTypes = @[ @(UITouchTypeDirect) ];
 
@@ -1461,7 +1466,7 @@ static _WKSelectionAttributes selectionAttributes(const WebKit::EditorState& edi
 
 - (BOOL)_isBackground
 {
-    if ([self _isDisplayingPDF])
+    if (![self usesStandardContentView] && [_customContentView respondsToSelector:@selector(web_isBackground)])
         return [_customContentView web_isBackground];
     return [_contentView isBackground];
 }
@@ -2417,7 +2422,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     focusedElementRectInNewScale.moveBy([_contentView frame].origin);
 
     BOOL selectionRectIsNotNull = !selectionRectInDocumentCoordinates.isZero();
-    if (!forceScroll) {
+    BOOL doNotScrollWhenContentIsAlreadyVisible = !forceScroll || [_contentView _shouldAvoidScrollingWhenFocusedContentIsVisible];
+    if (doNotScrollWhenContentIsAlreadyVisible) {
         CGRect currentlyVisibleRegionInWebViewCoordinates;
         currentlyVisibleRegionInWebViewCoordinates.origin = unobscuredScrollViewRectInWebViewCoordinates.origin;
         currentlyVisibleRegionInWebViewCoordinates.origin.y += visibleOffsetFromTop;
@@ -3329,6 +3335,9 @@ static int32_t activeOrientation(WKWebView *webView)
         SetForScope<BOOL> insetAdjustmentGuard(_currentlyAdjustingScrollViewInsetsForKeyboard, YES);
         [_scrollView _adjustForAutomaticKeyboardInfo:keyboardInfo animated:YES lastAdjustment:&_lastAdjustmentForScroller];
         CGFloat bottomInsetAfterAdjustment = [_scrollView contentInset].bottom;
+        // FIXME: This "total bottom content inset adjustment" mechanism hasn't worked since iOS 11, since -_adjustForAutomaticKeyboardInfo:animated:lastAdjustment:
+        // no longer sets -[UIScrollView contentInset] for apps linked on or after iOS 11. We should consider removing this logic, since the original bug this was
+        // intended to fix, <rdar://problem/23202254>, remains fixed through other means.
         if (bottomInsetBeforeAdjustment != bottomInsetAfterAdjustment)
             _totalScrollViewBottomInsetAdjustmentForKeyboard += bottomInsetAfterAdjustment - bottomInsetBeforeAdjustment;
     }
@@ -3371,10 +3380,7 @@ static int32_t activeOrientation(WKWebView *webView)
 
 - (void)_keyboardWillHide:(NSNotification *)notification
 {
-    // Ignore keyboard will hide notifications sent during rotation. They're just there for
-    // backwards compatibility reasons and processing the will hide notification would
-    // temporarily screw up the unobscured view area.
-    if ([[UIPeripheralHost sharedInstance] rotationState])
+    if ([_contentView shouldIgnoreKeyboardWillHideNotification])
         return;
 
     [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
@@ -3566,9 +3572,9 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
     _impl->setFrameSize(NSSizeToCGSize(size));
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)renewGState
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     _impl->renewGState();
     [super renewGState];
@@ -4062,9 +4068,9 @@ WEBCORE_COMMAND(yankAndSelect)
 }
 
 #if ENABLE(DRAG_SUPPORT)
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)draggedImage:(NSImage *)image endedAt:(NSPoint)endPoint operation:(NSDragOperation)operation
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     _impl->draggedImage(image, NSPointToCGPoint(endPoint), operation);
 }
@@ -4155,9 +4161,9 @@ IGNORE_WARNINGS_END
     return _impl->accessibilityFocusedUIElement();
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (BOOL)accessibilityIsIgnored
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return _impl->accessibilityIsIgnored();
 }
@@ -4167,23 +4173,23 @@ IGNORE_WARNINGS_END
     return _impl->accessibilityHitTest(NSPointToCGPoint(point));
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (id)accessibilityAttributeValue:(NSString *)attribute
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return _impl->accessibilityAttributeValue(attribute);
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (id)accessibilityAttributeValue:(NSString *)attribute forParameter:(id)parameter
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return _impl->accessibilityAttributeValue(attribute, parameter);
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSArray<NSString *> *)accessibilityParameterizedAttributeNames
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     NSArray<NSString *> *names = [super accessibilityParameterizedAttributeNames];
     return [names arrayByAddingObject:@"AXConvertRelativeFrame"];
@@ -4254,9 +4260,9 @@ IGNORE_WARNINGS_END
     _impl->provideDataForPasteboard(pasteboard, type);
 }
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSArray *)namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
-IGNORE_WARNINGS_END
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return _impl->namesOfPromisedFilesDroppedAtDestination(dropDestination);
 }

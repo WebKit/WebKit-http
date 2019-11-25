@@ -48,26 +48,38 @@ public:
     bool needsPerDocumentAutoplayBehavior() const;
     bool shouldAutoplayForArbitraryUserGesture() const;
     bool hasBrokenEncryptedMediaAPISupportQuirk() const;
+    bool shouldStripQuotationMarkInFontFaceSetFamily() const;
 #if ENABLE(TOUCH_EVENTS)
     bool shouldDispatchSimulatedMouseEvents() const;
+    bool shouldDispatchedSimulatedMouseEventsAssumeDefaultPrevented(EventTarget*) const;
     Optional<Event::IsCancelable> simulatedMouseEventTypeForTarget(EventTarget*) const;
 #endif
     bool shouldDisablePointerEventsQuirk() const;
     bool needsInputModeNoneImplicitly(const HTMLElement&) const;
+    bool needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommand() const;
+    bool shouldLightenJapaneseBoldSansSerif() const;
 
     WEBCORE_EXPORT bool shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const;
     WEBCORE_EXPORT bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const;
     WEBCORE_EXPORT bool isTouchBarUpdateSupressedForHiddenContentEditable() const;
     WEBCORE_EXPORT bool isNeverRichlyEditableForTouchBar() const;
     WEBCORE_EXPORT bool shouldAvoidResizingWhenInputViewBoundsChange() const;
+    WEBCORE_EXPORT bool shouldAvoidScrollingWhenFocusedContentIsVisible() const;
 
     WEBCORE_EXPORT bool needsYouTubeMouseOutQuirk() const;
 
     bool needsGMailOverflowScrollQuirk() const;
     bool needsYouTubeOverflowScrollQuirk() const;
 
+    bool shouldOpenAsAboutBlank(const String&) const;
+
 private:
     bool needsQuirks() const;
+
+#if ENABLE(TOUCH_EVENTS)
+    bool isAmazon() const;
+    bool isGoogleMaps() const;
+#endif
 
     WeakPtr<Document> m_document;
 

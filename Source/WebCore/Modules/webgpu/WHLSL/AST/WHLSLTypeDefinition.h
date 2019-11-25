@@ -27,9 +27,10 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLNamedType.h"
 #include "WHLSLUnnamedType.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,8 +41,9 @@ namespace WHLSL {
 namespace AST {
 
 class TypeDefinition : public NamedType {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    TypeDefinition(CodeLocation location, String&& name, UniqueRef<UnnamedType>&& type)
+    TypeDefinition(CodeLocation location, String&& name, Ref<UnnamedType> type)
         : NamedType(location, WTFMove(name))
         , m_type(WTFMove(type))
     {
@@ -67,7 +69,7 @@ public:
     }
 
 private:
-    UniqueRef<UnnamedType> m_type;
+    Ref<UnnamedType> m_type;
 };
 
 } // namespace AST

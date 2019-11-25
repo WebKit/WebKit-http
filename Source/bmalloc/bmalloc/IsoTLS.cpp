@@ -100,7 +100,7 @@ IsoTLS* IsoTLS::ensureEntries(unsigned offset)
         size_t requiredSize = sizeForCapacity(requiredCapacity);
         size_t goodSize = roundUpToMultipleOf(vmPageSize(), requiredSize);
         size_t goodCapacity = capacityForSize(goodSize);
-        void* memory = vmAllocate(goodSize);
+        void* memory = vmAllocate(goodSize, VMTag::IsoHeap);
         IsoTLS* newTLS = new (memory) IsoTLS();
         newTLS->m_capacity = goodCapacity;
         if (tls) {
@@ -114,7 +114,9 @@ IsoTLS* IsoTLS::ensureEntries(unsigned offset)
                     entry->move(src, dst);
                     entry->destruct(src);
                 });
-            vmDeallocate(tls, tls->size());
+            size_t oldSize = tls->size();
+            tls->~IsoTLS();
+            vmDeallocate(tls, oldSize);
         }
         tls = newTLS;
         set(tls);
@@ -141,6 +143,9 @@ void IsoTLS::destructor(void* arg)
             entry->scavenge(data);
             entry->destruct(data);
         });
+    size_t oldSize = tls->size();
+    tls->~IsoTLS();
+    vmDeallocate(tls, oldSize);
 }
 
 size_t IsoTLS::sizeForCapacity(unsigned capacity)

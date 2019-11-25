@@ -59,6 +59,7 @@ class DOMURL;
 class DOMWindow;
 class Document;
 class Element;
+class EventListener;
 class ExtendableEvent;
 class FetchResponse;
 class File;
@@ -330,6 +331,8 @@ public:
     bool isOverwriteModeEnabled();
     void toggleOverwriteModeEnabled();
 
+    bool testProcessIncomingSyncMessagesWhenWaitingForSyncReply();
+
     ExceptionOr<RefPtr<Range>> rangeOfString(const String&, RefPtr<Range>&&, const Vector<String>& findOptions);
     ExceptionOr<unsigned> countMatchesForText(const String&, const Vector<String>& findOptions, const String& markMatches);
     ExceptionOr<unsigned> countFindMatches(const String&, const Vector<String>& findOptions);
@@ -550,6 +553,7 @@ public:
 
     bool elementShouldBufferData(HTMLMediaElement&);
     String elementBufferingPolicy(HTMLMediaElement&);
+    double privatePlayerVolume(const HTMLMediaElement&);
 #endif
 
     bool isSelectPopupVisible(HTMLSelectElement&);
@@ -705,6 +709,7 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    void setMockAudioTrackChannelNumber(MediaStreamTrack&, unsigned short);
     void setCameraMediaStreamTrackOrientation(MediaStreamTrack&, int orientation);
     unsigned long trackAudioSampleCount() const { return m_trackAudioSampleCount; }
     unsigned long trackVideoSampleCount() const { return m_trackVideoSampleCount; }
@@ -836,6 +841,7 @@ public:
     
     struct TextIndicatorInfo {
         RefPtr<DOMRectReadOnly> textBoundingRectInRootViewCoordinates;
+        RefPtr<DOMRectList> textRectsInBoundingRectCoordinates;
         
         TextIndicatorInfo();
         TextIndicatorInfo(const WebCore::TextIndicatorData&);
@@ -844,17 +850,25 @@ public:
         
     struct TextIndicatorOptions {
         bool useBoundingRectAndPaintAllContentForComplexRanges { false };
+        bool computeEstimatedBackgroundColor { false };
+        bool respectTextColor { false };
         
         WebCore::TextIndicatorOptions core()
         {
             WebCore::TextIndicatorOptions options = 0;
             if (useBoundingRectAndPaintAllContentForComplexRanges)
                 options = options | TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
+            if (computeEstimatedBackgroundColor)
+                options = options | TextIndicatorOptionComputeEstimatedBackgroundColor;
+            if (respectTextColor)
+                options = options | TextIndicatorOptionRespectTextColor;
             return options;
         }
     };
 
     TextIndicatorInfo textIndicatorForRange(const Range&, TextIndicatorOptions);
+
+    void addPrefetchLoadEventListener(HTMLLinkElement&, RefPtr<EventListener>&&);
 
 private:
     explicit Internals(Document&);

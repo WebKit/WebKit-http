@@ -89,6 +89,32 @@ static void checkURLArgument(NSURL *url)
     _configuration->setIndexedDBDatabaseDirectory(url.path);
 }
 
+- (NSURL *)networkCacheDirectory
+{
+    return [NSURL fileURLWithPath:_configuration->networkCacheDirectory() isDirectory:YES];
+}
+
+- (void)setNetworkCacheDirectory:(NSURL *)url
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set networkCacheDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    checkURLArgument(url);
+    _configuration->setNetworkCacheDirectory(url.path);
+}
+
+- (NSURL *)deviceIdHashSaltsStorageDirectory
+{
+    return [NSURL fileURLWithPath:_configuration->deviceIdHashSaltsStorageDirectory() isDirectory:YES];
+}
+
+- (void)setDeviceIdHashSaltsStorageDirectory:(NSURL *)url
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set deviceIdHashSaltsStorageDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    checkURLArgument(url);
+    _configuration->setDeviceIdHashSaltsStorageDirectory(url.path);
+}
+
 - (NSURL *)_webSQLDatabaseDirectory
 {
     return [NSURL fileURLWithPath:_configuration->webSQLDatabaseDirectory() isDirectory:YES];
@@ -195,6 +221,57 @@ static void checkURLArgument(NSURL *url)
 - (void)setSourceApplicationSecondaryIdentifier:(NSString *)identifier
 {
     _configuration->setSourceApplicationSecondaryIdentifier(identifier);
+}
+
+- (NSURL *)applicationCacheDirectory
+{
+    return [NSURL fileURLWithPath:_configuration->applicationCacheDirectory() isDirectory:YES];
+}
+
+- (void)setApplicationCacheDirectory:(NSURL *)url
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set applicationCacheDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    checkURLArgument(url);
+    _configuration->setApplicationCacheDirectory(url.path);
+}
+
+- (NSString *)applicationCacheFlatFileSubdirectoryName
+{
+    return _configuration->applicationCacheFlatFileSubdirectoryName();
+}
+
+- (void)setApplicationCacheFlatFileSubdirectoryName:(NSString *)name
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set applicationCacheFlatFileSubdirectoryName on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    _configuration->setApplicationCacheFlatFileSubdirectoryName(name);
+}
+
+- (NSURL *)mediaCacheDirectory
+{
+    return [NSURL fileURLWithPath:_configuration->mediaCacheDirectory() isDirectory:YES];
+}
+
+- (void)setMediaCacheDirectory:(NSURL *)url
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set mediaCacheDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    checkURLArgument(url);
+    _configuration->setMediaCacheDirectory(url.path);
+}
+
+- (NSURL *)mediaKeysStorageDirectory
+{
+    return [NSURL fileURLWithPath:_configuration->mediaKeysStorageDirectory() isDirectory:YES];
+}
+
+- (void)setMediaKeysStorageDirectory:(NSURL *)url
+{
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set mediaKeysStorageDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
+    checkURLArgument(url);
+    _configuration->setMediaKeysStorageDirectory(url.path);
 }
 
 - (BOOL)deviceManagementRestrictionsEnabled

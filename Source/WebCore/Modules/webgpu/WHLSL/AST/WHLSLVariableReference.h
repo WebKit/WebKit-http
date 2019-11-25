@@ -28,8 +28,8 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLVariableDeclaration.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -39,6 +39,7 @@ namespace WHLSL {
 namespace AST {
 
 class VariableReference : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     VariableReference(CodeLocation location, String&& name)
         : Expression(location)

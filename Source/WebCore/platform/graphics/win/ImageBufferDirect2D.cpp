@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,13 +30,17 @@
 
 #include "BitmapImage.h"
 #include "COMPtr.h"
+#include "Direct2DUtilities.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
+#include "ImageDecoderDirect2D.h"
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
+#include "PlatformContextDirect2D.h"
 #include <d2d1.h>
 #include <math.h>
+#include <wincodec.h>
 #include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/MainThread.h>
@@ -72,7 +76,7 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
     return buffer;
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace /*colorSpace*/, RenderingMode renderingMode, const HostWindow*, const GraphicsContext* targetContext, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace /*colorSpace*/, RenderingMode renderingMode, const HostWindow*, const GraphicsContext*, bool& success)
     : m_logicalSize(size)
     , m_resolutionScale(resolutionScale)
 {
@@ -97,20 +101,19 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     if (numBytes.hasOverflowed())
         return;
 
-    auto renderTarget = targetContext ? targetContext->platformContext() : nullptr;
-    if (!renderTarget)
-        renderTarget = GraphicsContext::defaultRenderTarget();
-    RELEASE_ASSERT(renderTarget);
+    m_data.data = Vector<char>(numBytes.unsafeGet(), 0);
 
-    COMPtr<ID2D1BitmapRenderTarget> bitmapContext;
-    D2D1_SIZE_F desiredSize = FloatSize(m_logicalSize);
-    D2D1_SIZE_U pixelSize = IntSize(m_logicalSize);
-    HRESULT hr = renderTarget->CreateCompatibleRenderTarget(&desiredSize, &pixelSize, nullptr, D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_GDI_COMPATIBLE, &bitmapContext);
-    if (!bitmapContext || !SUCCEEDED(hr))
+    m_data.bitmapSource = Direct2D::createDirect2DImageSurfaceWithData(m_data.data.data(), m_size, m_data.bytesPerRow.unsafeGet());
+    if (!m_data.bitmapSource)
         return;
 
-    m_data.context = std::make_unique<GraphicsContext>(bitmapContext.get());
-    m_data.m_compatibleTarget = renderTarget;
+    COMPtr<ID2D1RenderTarget> bitmapContext = Direct2D::createRenderTargetFromWICBitmap(m_data.bitmapSource.get());
+    if (!bitmapContext)
+        return;
+
+    // Note: This places the bitmapcontext into a locked state because of the BeginDraw call in the constructor.
+    m_data.platformContext = std::make_unique<PlatformContextDirect2D>(bitmapContext.get());
+    m_data.context = std::make_unique<GraphicsContext>(m_data.platformContext.get(), GraphicsContext::BitmapRenderingContextType::GPUMemory);
 
     success = true;
 }
@@ -137,23 +140,31 @@ void ImageBuffer::flushContext() const
     context().flush();
 }
 
-static COMPtr<ID2D1Bitmap> createCroppedImageIfNecessary(ID2D1Bitmap* image, const IntSize& bounds)
+static COMPtr<IWICBitmap> createCroppedImageIfNecessary(IWICBitmap* image, const IntSize& bounds)
 {
-    FloatSize imageSize = image ? image->GetSize() : FloatSize();
+    FloatSize imageSize = image ? nativeImageSize(image) : FloatSize();
 
     if (image && (static_cast<size_t>(imageSize.width()) != static_cast<size_t>(bounds.width()) || static_cast<size_t>(imageSize.height()) != static_cast<size_t>(bounds.height()))) {
         D2D_POINT_2U origin = { };
-        D2D1_RECT_U croppedDimenstions = IntRect(IntPoint(), bounds);
-        COMPtr<ID2D1Bitmap> croppedImage;
-        HRESULT hr = croppedImage->CopyFromBitmap(&origin, image, &croppedDimenstions);
-        if (SUCCEEDED(hr))
-            return croppedImage;
+        WICRect croppedDimensions = { 0, 0, bounds.width(), bounds.height() };
+
+        COMPtr<IWICBitmapClipper> bitmapClipper;
+        HRESULT hr = ImageDecoderDirect2D::systemImagingFactory()->CreateBitmapClipper(&bitmapClipper);
+        if (SUCCEEDED(hr)) {
+            hr = bitmapClipper->Initialize(image, &croppedDimensions);
+            if (SUCCEEDED(hr)) {
+                COMPtr<IWICBitmap> croppedBitmap;
+                hr = ImageDecoderDirect2D::systemImagingFactory()->CreateBitmapFromSource(image, WICBitmapNoCache, &croppedBitmap);
+                if (SUCCEEDED(hr))
+                    return croppedBitmap;
+            }
+        }
     }
 
     return image;
 }
 
-static RefPtr<Image> createBitmapImageAfterScalingIfNeeded(COMPtr<ID2D1Bitmap>&& image, IntSize internalSize, IntSize logicalSize, IntSize backingStoreSize, float resolutionScale, PreserveResolution preserveResolution)
+static RefPtr<Image> createBitmapImageAfterScalingIfNeeded(COMPtr<IWICBitmap>&& image, IntSize internalSize, IntSize logicalSize, IntSize backingStoreSize, float resolutionScale, PreserveResolution preserveResolution)
 {
     if (resolutionScale == 1 || preserveResolution == PreserveResolution::Yes)
         image = createCroppedImageIfNecessary(image.get(), internalSize);
@@ -170,7 +181,7 @@ static RefPtr<Image> createBitmapImageAfterScalingIfNeeded(COMPtr<ID2D1Bitmap>&&
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveResolution preserveResolution) const
 {
-    COMPtr<ID2D1Bitmap> image;
+    COMPtr<IWICBitmap> image;
     if (m_resolutionScale == 1 || preserveResolution == PreserveResolution::Yes)
         image = copyNativeImage(copyBehavior);
     else
@@ -194,31 +205,31 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-COMPtr<ID2D1Bitmap> ImageBuffer::sinkIntoNativeImage(std::unique_ptr<ImageBuffer> imageBuffer)
+COMPtr<IWICBitmap> ImageBuffer::sinkIntoNativeImage(std::unique_ptr<ImageBuffer> imageBuffer)
 {
     // FIXME: See if we can reuse the on-hardware image.
     return imageBuffer->copyNativeImage(DontCopyBackingStore);
 }
 
-COMPtr<ID2D1Bitmap> ImageBuffer::copyNativeImage(BackingStoreCopy copyBehavior) const
+COMPtr<IWICBitmap> ImageBuffer::copyNativeImage(BackingStoreCopy copyBehavior) const
 {
-    auto bitmapTarget = reinterpret_cast<ID2D1BitmapRenderTarget*>(context().platformContext());
-
-    COMPtr<ID2D1Bitmap> image;
-    HRESULT hr = bitmapTarget->GetBitmap(&image);
-    ASSERT(SUCCEEDED(hr));
-
     // FIXME: m_data.data is nullptr even when asking to copy backing store leading to test failures.
-    if (copyBehavior == CopyBackingStore && !m_data.data)
+    if (copyBehavior == CopyBackingStore && m_data.data.isEmpty())
         copyBehavior = DontCopyBackingStore;
 
+    Checked<size_t, RecordOverflow> numBytes = Checked<unsigned, RecordOverflow>(m_data.backingStoreSize.height()) * m_data.bytesPerRow;
+    if (numBytes.hasOverflowed())
+        return nullptr;
+
+    HRESULT hr = S_OK;
+    COMPtr<IWICBitmap> image;
     if (!context().isAcceleratedContext()) {
         switch (copyBehavior) {
         case DontCopyBackingStore:
+            hr = ImageDecoderDirect2D::systemImagingFactory()->CreateBitmapFromSource(m_data.bitmapSource.get(), WICBitmapNoCache, &image);
             break;
         case CopyBackingStore:
-            D2D1_RECT_U backingStoreDimenstions = IntRect(IntPoint(), m_data.backingStoreSize);
-            image->CopyFromMemory(&backingStoreDimenstions, m_data.data, 32);
+            hr = ImageDecoderDirect2D::systemImagingFactory()->CreateBitmapFromSource(m_data.bitmapSource.get(), WICBitmapCacheOnDemand, &image);
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -240,30 +251,17 @@ void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, Graphi
 
 void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode)
 {
-    auto bitmapTarget = reinterpret_cast<ID2D1BitmapRenderTarget*>(context().platformContext());
-    auto outputTarget = destContext.platformContext();
-
-    COMPtr<ID2D1Bitmap> image;
-    HRESULT hr = bitmapTarget->GetBitmap(&image);
-    if (!SUCCEEDED(hr))
-        return;
-
-    // If the render targets for the source and destination contexts do not match, move the image over.
-    if (destContext.platformContext() != m_data.m_compatibleTarget) {
-        COMPtr<ID2D1Bitmap> sourceImage = image;
-        image = nullptr;
-
-        auto bitmapProperties = D2D1::BitmapProperties();
-        GraphicsContext::systemFactory()->GetDesktopDpi(&bitmapProperties.dpiX, &bitmapProperties.dpiY);
-        hr = outputTarget->CreateSharedBitmap(__uuidof(ID2D1Bitmap), sourceImage.get(), &bitmapProperties, &image);
-        if (!SUCCEEDED(hr))
-            return;
-    }
-
     FloatRect adjustedSrcRect = srcRect;
     adjustedSrcRect.scale(m_resolutionScale, m_resolutionScale);
 
-    destContext.drawNativeImage(image, image->GetSize(), destRect, adjustedSrcRect, op, blendMode);
+    FloatSize currentImageSize = nativeImageSize(m_data.bitmapSource);
+
+    // You can't convert a IWICBitmap to a ID2D1Bitmap with an active GraphicsContext attached to it.
+    m_data.context->endDraw();
+
+    destContext.drawNativeImage(m_data.bitmapSource, currentImageSize, destRect, adjustedSrcRect, op, blendMode);
+
+    m_data.context->beginDraw();
 
     destContext.flush();
 }

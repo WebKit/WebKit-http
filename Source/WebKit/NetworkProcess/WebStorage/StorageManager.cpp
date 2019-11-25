@@ -65,10 +65,10 @@ public:
 
     bool isEphemeral() const { return !m_localStorageNamespace; }
 
+    void openDatabaseAndImportItemsIfNeeded() const;
+
 private:
     explicit StorageArea(LocalStorageNamespace*, const SecurityOriginData&, unsigned quotaInBytes);
-
-    void openDatabaseAndImportItemsIfNeeded() const;
 
     void dispatchEvents(IPC::Connection::UniqueID sourceConnection, uint64_t sourceStorageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString) const;
 
@@ -537,9 +537,6 @@ void StorageManager::addAllowedSessionStorageNamespaceConnection(uint64_t storag
 void StorageManager::removeAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, IPC::Connection& allowedConnection)
 {
     auto allowedConnectionID = allowedConnection.uniqueID();
-    if (m_connections.remove(allowedConnectionID))
-        allowedConnection.removeWorkQueueMessageReceiver(Messages::StorageManager::messageReceiverName());
-
     m_queue->dispatch([this, protectedThis = makeRef(*this), allowedConnectionID, storageNamespaceID]() mutable {
         ASSERT(m_sessionStorageNamespaces.contains(storageNamespaceID));
         if (auto* sessionStorageNamespace = m_sessionStorageNamespaces.get(storageNamespaceID))
@@ -574,7 +571,7 @@ void StorageManager::cloneSessionStorageNamespace(uint64_t storageNamespaceID, u
 
 void StorageManager::processDidCloseConnection(IPC::Connection& connection)
 {
-    if (m_connections.removeAll(connection.uniqueID()))
+    if (m_connections.remove(connection.uniqueID()))
         connection.removeWorkQueueMessageReceiver(Messages::StorageManager::messageReceiverName());
 
     m_queue->dispatch([this, protectedThis = makeRef(*this), connectionID = connection.uniqueID()]() mutable {
@@ -845,7 +842,14 @@ void StorageManager::destroyStorageMap(IPC::Connection& connection, uint64_t sto
     m_storageAreasByConnection.remove(connectionAndStorageMapIDPair);
 }
 
-void StorageManager::getValues(IPC::Connection& connection, WebCore::SecurityOriginData&& securityOriginData, uint64_t storageMapID, uint64_t storageMapSeed, GetValuesCallback&& completionHandler)
+void StorageManager::prewarm(IPC::Connection& connection, uint64_t storageMapID)
+{
+    ASSERT(!RunLoop::isMain());
+    if (auto* storageArea = findStorageArea(connection, storageMapID))
+        storageArea->openDatabaseAndImportItemsIfNeeded();
+}
+
+void StorageManager::getValues(IPC::Connection& connection, uint64_t storageMapID, uint64_t storageMapSeed, GetValuesCallback&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
     auto* storageArea = findStorageArea(connection, storageMapID);

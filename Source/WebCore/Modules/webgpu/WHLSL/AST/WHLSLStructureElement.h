@@ -27,10 +27,11 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLQualifier.h"
 #include "WHLSLSemantic.h"
 #include "WHLSLType.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -40,8 +41,9 @@ namespace WHLSL {
 namespace AST {
 
 class StructureElement {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    StructureElement(CodeLocation location, Qualifiers&& qualifiers, UniqueRef<UnnamedType>&& type, String&& name, std::unique_ptr<Semantic>&& semantic)
+    StructureElement(CodeLocation location, Qualifiers&& qualifiers, Ref<UnnamedType> type, String&& name, std::unique_ptr<Semantic>&& semantic)
         : m_codeLocation(location)
         , m_qualifiers(WTFMove(qualifiers))
         , m_type(WTFMove(type))
@@ -63,7 +65,7 @@ public:
 private:
     CodeLocation m_codeLocation;
     Qualifiers m_qualifiers;
-    UniqueRef<UnnamedType> m_type;
+    Ref<UnnamedType> m_type;
     String m_name;
     std::unique_ptr<Semantic> m_semantic;
 };

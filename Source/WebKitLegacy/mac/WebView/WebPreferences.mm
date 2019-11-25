@@ -620,6 +620,7 @@ public:
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitDataTransferItemsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitCustomPasteboardDataEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitDialogElementEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
 
@@ -650,13 +651,13 @@ public:
         @YES, WebKitVisualViewportAPIEnabledPreferenceKey,
 #endif
 
-        [NSNumber numberWithBool:NO], WebKitCSSOMViewScrollingAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitCSSOMViewScrollingAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
         [NSNumber numberWithBool:NO], WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey,
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES], WebKitMediaRecorderEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitMediaRecorderEnabledPreferenceKey,
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
@@ -1573,6 +1574,16 @@ public:
 - (NSTimeInterval)_backForwardCacheExpirationInterval
 {
     return (NSTimeInterval)[self _floatValueForKey:WebKitBackForwardCacheExpirationIntervalKey];
+}
+
+- (BOOL)_mediaRecorderEnabled
+{
+    return [self _boolValueForKey:WebKitMediaRecorderEnabledPreferenceKey];
+}
+
+- (void)_setMediaRecorderEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaRecorderEnabledPreferenceKey];
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -3044,6 +3055,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setCustomPasteboardDataEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCustomPasteboardDataEnabledPreferenceKey];
+}
+
+- (BOOL)dialogElementEnabled
+{
+    return [self _boolValueForKey:WebKitDialogElementEnabledPreferenceKey];
+}
+
+- (void)setDialogElementEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDialogElementEnabledPreferenceKey];
 }
 
 - (BOOL)cacheAPIEnabled

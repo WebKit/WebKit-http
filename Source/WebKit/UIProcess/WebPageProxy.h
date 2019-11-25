@@ -502,6 +502,8 @@ public:
     API::IconLoadingClient& iconLoadingClient() { return *m_iconLoadingClient; }
     void setIconLoadingClient(std::unique_ptr<API::IconLoadingClient>&&);
 
+    void setPageLoadStateObserver(std::unique_ptr<PageLoadState::Observer>&&);
+
     void initializeWebPage();
     void setDrawingArea(std::unique_ptr<DrawingAreaProxy>&&);
 
@@ -1225,6 +1227,7 @@ public:
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
     void handleTap(const WebCore::FloatPoint&, OptionSet<WebKit::WebEvent::Modifier>, uint64_t layerTreeTransactionIdAtLastTouchStart);
     void didRecognizeLongPress();
+    void handleDoubleTapForDoubleClickAtPoint(const WebCore::IntPoint&, OptionSet<WebEvent::Modifier>, uint64_t layerTreeTransactionIdAtLastTouchStart);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -1533,6 +1536,7 @@ public:
 #if ENABLE(SPEECH_SYNTHESIS)
     void speechSynthesisVoiceList(CompletionHandler<void(Vector<WebSpeechSynthesisVoice>&&)>&&);
     void speechSynthesisSpeak(const String&, const String&, float volume, float rate, float pitch, MonotonicTime startTime, const String& voiceURI, const String& voiceName, const String& voiceLang, bool localService, bool defaultVoice, CompletionHandler<void()>&&);
+    void speechSynthesisSetFinishedCallback(CompletionHandler<void()>&&);
     void speechSynthesisCancel();
     void speechSynthesisPause(CompletionHandler<void()>&&);
     void speechSynthesisResume(CompletionHandler<void()>&&);
@@ -1560,6 +1564,10 @@ public:
     void requestStorageSpace(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, WTF::CompletionHandler<void(uint64_t)>&&);
 
     URL currentResourceDirectoryURL() const;
+
+#if ENABLE(MEDIA_STREAM)
+    void setMockCaptureDevicesEnabledOverride(Optional<bool>);
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, WebCore::PageIdentifier, Ref<API::PageConfiguration>&&);
@@ -2092,6 +2100,7 @@ private:
 
     struct SpeechSynthesisData;
     SpeechSynthesisData& speechSynthesisData();
+    void resetSpeechSynthesizer();
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -2117,6 +2126,7 @@ private:
     std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
 #endif
     std::unique_ptr<WebPageInjectedBundleClient> m_injectedBundleClient;
+    std::unique_ptr<PageLoadState::Observer> m_pageLoadStateObserver;
 
     std::unique_ptr<WebNavigationState> m_navigationState;
     String m_failingProvisionalLoadURL;
@@ -2529,6 +2539,7 @@ private:
     struct SpeechSynthesisData {
         std::unique_ptr<WebCore::PlatformSpeechSynthesizer> synthesizer;
         RefPtr<WebCore::PlatformSpeechSynthesisUtterance> utterance;
+        CompletionHandler<void()> speakingStartedCompletionHandler;
         CompletionHandler<void()> speakingFinishedCompletionHandler;
         CompletionHandler<void()> speakingPausedCompletionHandler;
         CompletionHandler<void()> speakingResumedCompletionHandler;

@@ -33,18 +33,18 @@
 
 class MainWindow : public RefCounted<MainWindow> {
 public:
-    using BrowserWindowFactory = std::function<Ref<BrowserWindow>(HWND mainWnd, HWND urlBarWnd, bool usesLayeredWebView, bool pageLoadTesting)>;
+    using BrowserWindowFactory = std::function<Ref<BrowserWindow>(HWND mainWnd, HWND urlBarWnd, bool usesLayeredWebView)>;
 
     static Ref<MainWindow> create();
 
     ~MainWindow();
-    bool init(BrowserWindowFactory, HINSTANCE hInstance, bool usesLayeredWebView = false, bool pageLoadTesting = false);
+    bool init(BrowserWindowFactory, HINSTANCE hInstance, bool usesLayeredWebView = false);
 
     void resizeSubViews();
     HWND hwnd() const { return m_hMainWnd; }
     BrowserWindow* browserWindow() const { return m_browserWindow.get(); }
 
-    void loadURL(BSTR url);
+    void loadURL(std::wstring);
     
 private:
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -63,6 +63,7 @@ private:
     HWND m_hURLBarWnd { nullptr };
     HWND m_hBackButtonWnd { nullptr };
     HWND m_hForwardButtonWnd { nullptr };
+    HWND m_hReloadButtonWnd { nullptr };
     HWND m_hCacheWnd { nullptr };
     HGDIOBJ m_hURLBarFont { nullptr };
     RefPtr<BrowserWindow> m_browserWindow;

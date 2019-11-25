@@ -501,8 +501,9 @@ void EventHandler::mouseMoved(WebEvent *event)
         // Run style recalc to be able to capture content changes as the result of the mouse move event.
         document.updateStyleIfNeeded();
         callOnMainThread([protectedFrame = makeRef(m_frame)] {
+            // This is called by WebKitLegacy only.
             if (auto* document = protectedFrame->document())
-                document->page()->chrome().client().observedContentChange(*document->frame());
+                document->page()->chrome().client().didFinishContentChangeObserving(*document->frame(), document->contentChangeObserver().observedContentChange());
         });
     }
 
@@ -698,6 +699,9 @@ bool EventHandler::tryToBeginDragAtPoint(const IntPoint& clientPosition, const I
     bool handledDrag = m_mouseDownMayStartDrag && handleMouseDraggedEvent(hitTestedMouseEvent, DontCheckDragHysteresis);
     // Reset this bit to prevent autoscrolling from updating the selection with the last mouse location.
     m_mouseDownMayStartSelect = false;
+    // Reset this bit to ensure that WebChromeClientIOS::observedContentChange() is called by EventHandler::mousePressed()
+    // when we would process the next tap after a drag interaction.
+    m_mousePressed = false;
     return handledDrag;
 }
 

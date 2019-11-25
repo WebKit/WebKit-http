@@ -29,7 +29,7 @@
 
 #include "WHLSLExpression.h"
 #include "WHLSLFloatLiteralType.h"
-#include "WHLSLLexer.h"
+#include <wtf/FastMalloc.h>
 
 namespace WebCore {
 
@@ -38,6 +38,7 @@ namespace WHLSL {
 namespace AST {
 
 class FloatLiteral : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     FloatLiteral(CodeLocation location, float value)
         : Expression(location)
@@ -64,7 +65,7 @@ public:
         FloatLiteral result(codeLocation(), m_value);
         result.m_type = m_type.clone();
         if (auto* resolvedType = m_type.maybeResolvedType())
-            result.m_type.resolve(resolvedType->clone());
+            result.m_type.resolve(const_cast<AST::UnnamedType&>(*resolvedType));
         copyTypeTo(result);
         return result;
     }

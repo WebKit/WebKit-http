@@ -63,6 +63,7 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
     m_deltaY = 0;
     GdkScrollDirection direction;
     if (!gdk_event_get_scroll_direction(reinterpret_cast<GdkEvent*>(event), &direction)) {
+        direction = GDK_SCROLL_SMOOTH;
         gdouble deltaX, deltaY;
         if (gdk_event_get_scroll_deltas(reinterpret_cast<GdkEvent*>(event), &deltaX, &deltaY)) {
             m_deltaX = -deltaX;
@@ -85,6 +86,8 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
         case GDK_SCROLL_RIGHT:
             m_deltaX = -delta;
             break;
+        case GDK_SCROLL_SMOOTH:
+            break;
         default:
             ASSERT_NOT_REACHED();
         }
@@ -92,11 +95,11 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
     m_wheelTicksX = m_deltaX;
     m_wheelTicksY = m_deltaY;
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(KINETIC_SCROLLING)
     m_phase = gdk_event_is_scroll_stop_event(reinterpret_cast<GdkEvent*>(event)) ?
         PlatformWheelEventPhaseEnded :
         PlatformWheelEventPhaseChanged;
-#endif // ENABLE(ASYNC_SCROLLING)
+#endif // ENABLE(KINETIC_SCROLLING)
 
     gdouble x, y, rootX, rootY;
     gdk_event_get_coords(reinterpret_cast<GdkEvent*>(event), &x, &y);

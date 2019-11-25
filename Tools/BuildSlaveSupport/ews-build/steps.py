@@ -159,6 +159,18 @@ class CleanWorkingDirectory(shell.ShellCommand):
         super(CleanWorkingDirectory, self).__init__(logEnviron=False, **kwargs)
 
 
+class UpdateWorkingDirectory(shell.ShellCommand):
+    name = 'update-working-directory'
+    description = ['update-workring-directory running']
+    descriptionDone = ['Updated working directory']
+    flunkOnFailure = True
+    haltOnFailure = True
+    command = ['perl', 'Tools/Scripts/update-webkit']
+
+    def __init__(self, **kwargs):
+        super(UpdateWorkingDirectory, self).__init__(logEnviron=False, **kwargs)
+
+
 class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     name = 'apply-patch'
     description = ['applying-patch']
@@ -206,6 +218,10 @@ class CheckPatchRelevance(buildstep.BuildStep):
         'Tools',
     ]
 
+    services_paths = [
+        'Tools/BuildSlaveSupport/ews-build',
+    ]
+
     jsc_paths = [
         'JSTests/',
         'Source/JavaScriptCore/',
@@ -234,6 +250,7 @@ class CheckPatchRelevance(buildstep.BuildStep):
 
     group_to_paths_mapping = {
         'bindings': bindings_paths,
+        'services-ews': services_paths,
         'jsc': jsc_paths,
         'webkitpy': webkitpy_paths,
     }
@@ -500,6 +517,9 @@ class CheckStyle(TestWithFailureCount):
     failedTestsFormatString = '%d style error%s'
     command = ['python', 'Tools/Scripts/check-webkit-style']
 
+    def __init__(self, **kwargs):
+        super(CheckStyle, self).__init__(logEnviron=False, **kwargs)
+
     def countFailures(self, cmd):
         log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
 
@@ -567,6 +587,34 @@ class RunWebKitPerlTests(shell.ShellCommand):
 
     def __init__(self, **kwargs):
         super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+
+class RunEWSUnitTests(shell.ShellCommand):
+    name = 'ews-unit-tests'
+    description = ['ews-unit-tests running']
+    command = ['python', 'Tools/BuildSlaveSupport/ews-build/runUnittests.py']
+
+    def __init__(self, **kwargs):
+        super(RunEWSUnitTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Passed EWS unit tests'}
+        return {u'step': u'Failed EWS unit tests'}
+
+
+class RunEWSBuildbotCheckConfig(shell.ShellCommand):
+    name = 'buildbot-check-config'
+    description = ['buildbot-checkconfig running']
+    command = ['buildbot', 'checkconfig']
+
+    def __init__(self, **kwargs):
+        super(RunEWSBuildbotCheckConfig, self).__init__(workdir='build/Tools/BuildSlaveSupport/ews-build', timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Passed buildbot checkconfig'}
+        return {u'step': u'Failed buildbot checkconfig'}
 
 
 class RunWebKitPyTests(shell.ShellCommand):
@@ -962,8 +1010,8 @@ class ReRunWebKitTests(RunWebKitTests):
     name = 're-run-layout-tests'
 
     def evaluateCommand(self, cmd):
-        rc = shell.Test.evaluateCommand(self, cmd)
-        if rc == SUCCESS:
+        rc = self.evaluateResult(cmd)
+        if rc == SUCCESS or rc == WARNINGS:
             message = 'Passed layout tests'
             self.descriptionDone = message
             self.build.results = SUCCESS
@@ -991,7 +1039,7 @@ class RunWebKitTestsWithoutPatch(RunWebKitTests):
 
     def evaluateCommand(self, cmd):
         rc = shell.Test.evaluateCommand(self, cmd)
-        self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree')])
+        self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree'), AnalyzeLayoutTestsResults()])
         return rc
 
     def commandComplete(self, cmd):
@@ -1005,6 +1053,108 @@ class RunWebKitTestsWithoutPatch(RunWebKitTests):
             self.setProperty('clean_tree_results_exceed_failure_limit', clean_tree_results.did_exceed_test_failure_limit)
             self.setProperty('clean_tree_run_failures', clean_tree_results.failing_tests)
         self._parseRunWebKitTestsOutput(logText)
+
+
+class AnalyzeLayoutTestsResults(buildstep.BuildStep):
+    name = 'analyze-layout-tests-results'
+    description = ['analyze-layout-test-results']
+    descriptionDone = ['analyze-layout-tests-results']
+
+    def report_failure(self, new_failures):
+        self.finished(FAILURE)
+        self.build.results = FAILURE
+        pluralSuffix = 's' if len(new_failures) > 1 else ''
+        new_failures_string = ', '.join([failure_name for failure_name in new_failures])
+        message = 'Found {} new Test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
+        self.descriptionDone = message
+        self.build.buildFinished([message], FAILURE)
+        return defer.succeed(None)
+
+    def report_pre_existing_failures(self, clean_tree_failures):
+        self.finished(SUCCESS)
+        self.build.results = SUCCESS
+        self.descriptionDone = 'Passed layout tests'
+        pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
+        clean_tree_failures_string = ', '.join([failure_name for failure_name in clean_tree_failures])
+        message = 'Found {} pre-existing test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
+        self.build.buildFinished([message], SUCCESS)
+        return defer.succeed(None)
+
+    def retry_build(self, message=''):
+        self.finished(RETRY)
+        message = 'Unable to confirm if test failures are introduced by patch, retrying build'
+        self.descriptionDone = message
+        self.build.buildFinished([message], RETRY)
+        return defer.succeed(None)
+
+    def _results_failed_different_tests(self, first_results_failing_tests, second_results_failing_tests):
+        return first_results_failing_tests != second_results_failing_tests
+
+    def _report_flaky_tests(self, flaky_tests):
+        #TODO: implement this
+        pass
+
+    def start(self):
+        first_results_did_exceed_test_failure_limit = self.getProperty('first_results_exceed_failure_limit')
+        first_results_failing_tests = set(self.getProperty('first_run_failures', []))
+        second_results_did_exceed_test_failure_limit = self.getProperty('second_results_exceed_failure_limit')
+        second_results_failing_tests = set(self.getProperty('second_run_failures', []))
+        clean_tree_results_did_exceed_test_failure_limit = self.getProperty('clean_tree_results_exceed_failure_limit')
+        clean_tree_results_failing_tests = set(self.getProperty('clean_tree_run_failures', []))
+
+        if first_results_did_exceed_test_failure_limit and second_results_did_exceed_test_failure_limit:
+            if (len(first_results_failing_tests) - len(clean_tree_results_failing_tests)) <= 5:
+                # If we've made it here, then many tests are failing with the patch applied, but
+                # if the clean tree is also failing many tests, even if it's not quite as many,
+                # then we can't be certain that the discrepancy isn't due to flakiness, and hence we must defer judgement.
+                return self.retry_build()
+            return self.report_failure(first_results_failing_tests)
+
+        if second_results_did_exceed_test_failure_limit:
+            if clean_tree_results_did_exceed_test_failure_limit:
+                return self.retry_build()
+            failures_introduced_by_patch = first_results_failing_tests - clean_tree_results_failing_tests
+            if failures_introduced_by_patch:
+                return self.report_failure(failures_introduced_by_patch)
+            return self.retry_build()
+
+        if first_results_did_exceed_test_failure_limit:
+            if clean_tree_results_did_exceed_test_failure_limit:
+                return self.retry_build()
+            failures_introduced_by_patch = second_results_failing_tests - clean_tree_results_failing_tests
+            if failures_introduced_by_patch:
+                return self.report_failure(failures_introduced_by_patch)
+            return self.retry_build()
+
+        if self._results_failed_different_tests(first_results_failing_tests, second_results_failing_tests):
+            tests_that_only_failed_first = first_results_failing_tests.difference(second_results_failing_tests)
+            self._report_flaky_tests(tests_that_only_failed_first)
+
+            tests_that_only_failed_second = second_results_failing_tests.difference(first_results_failing_tests)
+            self._report_flaky_tests(tests_that_only_failed_second)
+
+            tests_that_consistently_failed = first_results_failing_tests.intersection(second_results_failing_tests)
+            if tests_that_consistently_failed:
+                if clean_tree_results_did_exceed_test_failure_limit:
+                    return self.retry_build()
+                failures_introduced_by_patch = tests_that_consistently_failed - clean_tree_results_failing_tests
+                if failures_introduced_by_patch:
+                    return self.report_failure(failures_introduced_by_patch)
+
+            # At this point we know that at least one test flaked, but no consistent failures
+            # were introduced. This is a bit of a grey-zone.
+            return self.retry_build()
+
+        if clean_tree_results_did_exceed_test_failure_limit:
+            return self.retry_build()
+        failures_introduced_by_patch = first_results_failing_tests - clean_tree_results_failing_tests
+        if failures_introduced_by_patch:
+            return self.report_failure(failures_introduced_by_patch)
+
+        # At this point, we know that the first and second runs had the exact same failures,
+        # and that those failures are all present on the clean tree, so we can say with certainty
+        # that the patch is good.
+        return self.report_pre_existing_failures(clean_tree_results_failing_tests)
 
 
 class RunWebKit1Tests(RunWebKitTests):

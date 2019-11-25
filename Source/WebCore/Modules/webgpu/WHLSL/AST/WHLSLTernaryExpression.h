@@ -28,7 +28,7 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -38,6 +38,7 @@ namespace WHLSL {
 namespace AST {
 
 class TernaryExpression : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     TernaryExpression(CodeLocation location, UniqueRef<Expression>&& predicate, UniqueRef<Expression>&& bodyExpression, UniqueRef<Expression>&& elseExpression)
         : Expression(location)

@@ -44,20 +44,10 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
         return "void"_str;
     if (nativeTypeDeclaration.name() == "bool")
         return "bool"_str;
-    if (nativeTypeDeclaration.name() == "uchar")
-        return "uint8_t"_str;
-    if (nativeTypeDeclaration.name() == "ushort")
-        return "uint16_t"_str;
     if (nativeTypeDeclaration.name() == "uint")
         return "uint32_t"_str;
-    if (nativeTypeDeclaration.name() == "char")
-        return "int8_t"_str;
-    if (nativeTypeDeclaration.name() == "short")
-        return "int16_t"_str;
     if (nativeTypeDeclaration.name() == "int")
         return "int32_t"_str;
-    if (nativeTypeDeclaration.name() == "half")
-        return "half"_str;
     if (nativeTypeDeclaration.name() == "float")
         return "float"_str;
     if (nativeTypeDeclaration.name() == "atomic_int")
@@ -68,28 +58,18 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
         return "sampler"_str;
     if (nativeTypeDeclaration.name() == "vector") {
         ASSERT(nativeTypeDeclaration.typeArguments().size() == 2);
-        ASSERT(WTF::holds_alternative<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
-        auto& typeReference = WTF::get<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
+        ASSERT(WTF::holds_alternative<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
+        auto& typeReference = WTF::get<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
         auto& unifyNode = typeReference->unifyNode();
         auto& namedType = downcast<AST::NamedType>(unifyNode);
         auto& parameterType = downcast<AST::NativeTypeDeclaration>(namedType);
         auto prefix = ([&]() -> String {
             if (parameterType.name() == "bool")
                 return "bool";
-            if (parameterType.name() == "uchar")
-                return "uchar";
-            if (parameterType.name() == "ushort")
-                return "ushort";
             if (parameterType.name() == "uint")
                 return "uint";
-            if (parameterType.name() == "char")
-                return "char";
-            if (parameterType.name() == "short")
-                return "short";
             if (parameterType.name() == "int")
                 return "int";
-            if (parameterType.name() == "half")
-                return "half";
             ASSERT(parameterType.name() == "float");
             return "float";
         })();
@@ -111,15 +91,13 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
     }
     if (nativeTypeDeclaration.name() == "matrix") {
         ASSERT(nativeTypeDeclaration.typeArguments().size() == 3);
-        ASSERT(WTF::holds_alternative<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
-        auto& typeReference = WTF::get<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
+        ASSERT(WTF::holds_alternative<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
+        auto& typeReference = WTF::get<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
         auto& unifyNode = typeReference->unifyNode();
         auto& namedType = downcast<AST::NamedType>(unifyNode);
         auto& parameterType = downcast<AST::NativeTypeDeclaration>(namedType);
         auto prefix = ([&]() -> String {
-            if (parameterType.name() == "half")
-                return "half";
-            ASSERT(parameterType.name() == "float");
+            ASSERT_UNUSED(parameterType, parameterType.name() == "float");
             return "float";
         })();
 
@@ -137,8 +115,8 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
         return makeString("array<", prefix, ", ", columns * rows, ">");
     }
     ASSERT(nativeTypeDeclaration.typeArguments().size() == 1);
-    ASSERT(WTF::holds_alternative<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
-    auto& typeReference = WTF::get<UniqueRef<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
+    ASSERT(WTF::holds_alternative<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]));
+    auto& typeReference = WTF::get<Ref<AST::TypeReference>>(nativeTypeDeclaration.typeArguments()[0]);
     auto prefix = ([&]() -> String {
         if (nativeTypeDeclaration.name() == "Texture1D")
             return "texture1d"_str;
@@ -170,14 +148,6 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
         return "depthcube"_str;
     })();
     auto innerType = ([&]() -> String {
-        if (typeReference->name() == "ushort")
-            return "ushort"_str;
-        if (typeReference->name() == "ushort2")
-            return "ushort"_str;
-        if (typeReference->name() == "ushort3")
-            return "ushort"_str;
-        if (typeReference->name() == "ushort4")
-            return "ushort"_str;
         if (typeReference->name() == "uint")
             return "uint"_str;
         if (typeReference->name() == "uint2")
@@ -186,14 +156,6 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
             return "uint"_str;
         if (typeReference->name() == "uint4")
             return "uint"_str;
-        if (typeReference->name() == "short")
-            return "short"_str;
-        if (typeReference->name() == "short2")
-            return "short"_str;
-        if (typeReference->name() == "short3")
-            return "short"_str;
-        if (typeReference->name() == "short4")
-            return "short"_str;
         if (typeReference->name() == "int")
             return "int"_str;
         if (typeReference->name() == "int2")
@@ -202,14 +164,6 @@ String writeNativeType(AST::NativeTypeDeclaration& nativeTypeDeclaration)
             return "int"_str;
         if (typeReference->name() == "int4")
             return "int"_str;
-        if (typeReference->name() == "half")
-            return "half"_str;
-        if (typeReference->name() == "half2")
-            return "half"_str;
-        if (typeReference->name() == "half3")
-            return "half"_str;
-        if (typeReference->name() == "half4")
-            return "half"_str;
         if (typeReference->name() == "float")
             return "float"_str;
         if (typeReference->name() == "float2")

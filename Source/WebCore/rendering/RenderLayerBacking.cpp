@@ -281,15 +281,35 @@ static void clearBackingSharingLayerProviders(Vector<WeakPtr<RenderLayer>>& shar
 
 void RenderLayerBacking::setBackingSharingLayers(Vector<WeakPtr<RenderLayer>>&& sharingLayers)
 {
+    bool sharingLayersChanged = m_backingSharingLayers != sharingLayers;
+    if (sharingLayersChanged) {
+        // For layers that used to share and no longer do, and are not composited, recompute repaint rects.
+        for (auto& oldSharingLayer : m_backingSharingLayers) {
+            // Layers that go from shared to composited have their repaint rects recomputed in RenderLayerCompositor::updateBacking().
+            // FIXME: Two O(n^2) traversals in this funtion. Probably OK because sharing lists are usually small, but still.
+            if (!sharingLayers.contains(oldSharingLayer) && !oldSharingLayer->isComposited())
+                oldSharingLayer->computeRepaintRectsIncludingDescendants();
+        }
+    }
+
     clearBackingSharingLayerProviders(m_backingSharingLayers);
 
     if (sharingLayers != m_backingSharingLayers)
-        setContentsNeedDisplay(); // This could be optimize to only repaint rects for changed layers.
+        setContentsNeedDisplay(); // This could be optimized to only repaint rects for changed layers.
 
+    auto oldSharingLayers = WTFMove(m_backingSharingLayers);
     m_backingSharingLayers = WTFMove(sharingLayers);
 
     for (auto& layerWeakPtr : m_backingSharingLayers)
         layerWeakPtr->setBackingProviderLayer(&m_owningLayer);
+
+    if (sharingLayersChanged) {
+        // For layers that are newly sharing, recompute repaint rects.
+        for (auto& currentSharingLayer : m_backingSharingLayers) {
+            if (!oldSharingLayers.contains(currentSharingLayer))
+                currentSharingLayer->computeRepaintRectsIncludingDescendants();
+        }
+    }
 }
 
 void RenderLayerBacking::removeBackingSharingLayer(RenderLayer& layer)
@@ -401,7 +421,8 @@ void RenderLayerBacking::adjustTiledBackingCoverage()
 {
     if (m_isFrameLayerWithTiledBacking) {
         auto tileCoverage = computePageTiledBackingCoverage(m_owningLayer);
-        tiledBacking()->setTileCoverage(tileCoverage);
+        if (auto* tiledBacking = this->tiledBacking())
+            tiledBacking->setTileCoverage(tileCoverage);
     }
 
     if (m_owningLayer.hasCompositedScrollableOverflow() && m_scrolledContentsLayer) {
@@ -719,6 +740,37 @@ bool RenderLayerBacking::updateCompositedBounds()
         m_artificiallyInflatedBounds = false;
 
     return setCompositedBounds(layerBounds);
+}
+
+void RenderLayerBacking::updateAllowsBackingStoreDetaching(const LayoutRect& absoluteBounds)
+{
+    auto setAllowsBackingStoreDetaching = [&](bool allowDetaching) {
+        m_graphicsLayer->setAllowsBackingStoreDetaching(allowDetaching);
+        if (m_foregroundLayer)
+            m_foregroundLayer->setAllowsBackingStoreDetaching(allowDetaching);
+        if (m_backgroundLayer)
+            m_backgroundLayer->setAllowsBackingStoreDetaching(allowDetaching);
+        if (m_scrolledContentsLayer)
+            m_scrolledContentsLayer->setAllowsBackingStoreDetaching(allowDetaching);
+    };
+
+    if (!m_owningLayer.behavesAsFixed()) {
+        setAllowsBackingStoreDetaching(true);
+        return;
+    }
+
+    // We'll allow detaching if the layer is outside the layout viewport. Fixed layers inside
+    // the layout viewport can be revealed by async scrolling, so we want to pin their backing store.
+    FrameView& frameView = renderer().view().frameView();
+    LayoutRect fixedLayoutRect;
+    if (frameView.useFixedLayout())
+        fixedLayoutRect = renderer().view().unscaledDocumentRect();
+    else
+        fixedLayoutRect = frameView.rectForFixedPositionLayout();
+
+    bool allowDetaching = !fixedLayoutRect.intersects(absoluteBounds);
+    LOG_WITH_STREAM(Compositing, stream << "RenderLayerBacking (layer " << &m_owningLayer << ") updateAllowsBackingStoreDetaching - absoluteBounds " << absoluteBounds << " layoutViewportRect " << fixedLayoutRect << ", allowDetaching " << allowDetaching);
+    setAllowsBackingStoreDetaching(allowDetaching);
 }
 
 void RenderLayerBacking::updateAfterWidgetResize()
@@ -1690,7 +1742,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
     if (needsHorizontalScrollbarLayer) {
         if (!m_layerForHorizontalScrollbar) {
             m_layerForHorizontalScrollbar = createGraphicsLayer("horizontal scrollbar");
-            m_layerForHorizontalScrollbar->setCanDetachBackingStore(false);
+            m_layerForHorizontalScrollbar->setAllowsBackingStoreDetaching(false);
             horizontalScrollbarLayerChanged = true;
         }
     } else if (m_layerForHorizontalScrollbar) {
@@ -1703,7 +1755,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
     if (needsVerticalScrollbarLayer) {
         if (!m_layerForVerticalScrollbar) {
             m_layerForVerticalScrollbar = createGraphicsLayer("vertical scrollbar");
-            m_layerForVerticalScrollbar->setCanDetachBackingStore(false);
+            m_layerForVerticalScrollbar->setAllowsBackingStoreDetaching(false);
             verticalScrollbarLayerChanged = true;
         }
     } else if (m_layerForVerticalScrollbar) {
@@ -1716,7 +1768,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
     if (needsScrollCornerLayer) {
         if (!m_layerForScrollCorner) {
             m_layerForScrollCorner = createGraphicsLayer("scroll corner");
-            m_layerForScrollCorner->setCanDetachBackingStore(false);
+            m_layerForScrollCorner->setAllowsBackingStoreDetaching(false);
             scrollCornerLayerChanged = true;
         }
     } else if (m_layerForScrollCorner) {
@@ -1994,11 +2046,6 @@ ScrollingNodeID RenderLayerBacking::scrollingNodeIDForChildren() const
     }
 
     return m_positioningNodeID;
-}
-
-void RenderLayerBacking::setIsScrollCoordinatedWithViewportConstrainedRole(bool viewportCoordinated)
-{
-    m_graphicsLayer->setIsViewportConstrained(viewportCoordinated);
 }
 
 float RenderLayerBacking::compositingOpacity(float rendererOpacity) const
@@ -2812,15 +2859,16 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
 {
     auto toIndex = [](TouchAction touchAction) -> unsigned {
         switch (touchAction) {
-        case TouchAction::Manipulation:
-            return 1;
-        case TouchAction::PanX:
-            return 2;
-        case TouchAction::PanY:
-            return 3;
-        case TouchAction::PinchZoom:
-            return 4;
         case TouchAction::None:
+            return 1;
+        case TouchAction::Manipulation:
+            return 2;
+        case TouchAction::PanX:
+            return 3;
+        case TouchAction::PanY:
+            return 4;
+        case TouchAction::PinchZoom:
+            return 5;
         case TouchAction::Auto:
             break;
         }
@@ -2833,6 +2881,7 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
         FloatSize phase;
     };
     static const TouchActionAndRGB actionsAndColors[] = {
+        { TouchAction::Auto, "auto"_s, { } },
         { TouchAction::None, "none"_s, { } },
         { TouchAction::Manipulation, "manip"_s, { } },
         { TouchAction::PanX, "pan-x"_s, { } },

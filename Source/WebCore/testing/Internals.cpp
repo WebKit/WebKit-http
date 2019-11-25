@@ -68,6 +68,8 @@
 #include "Editor.h"
 #include "Element.h"
 #include "EventHandler.h"
+#include "EventListener.h"
+#include "EventNames.h"
 #include "ExtendableEvent.h"
 #include "ExtensionStyleSheets.h"
 #include "FetchResponse.h"
@@ -2271,6 +2273,13 @@ void Internals::setAutomaticLinkDetectionEnabled(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
+}
+
+bool Internals::testProcessIncomingSyncMessagesWhenWaitingForSyncReply()
+{
+    ASSERT(contextDocument());
+    ASSERT(contextDocument()->page());
+    return contextDocument()->page()->chrome().client().testProcessIncomingSyncMessagesWhenWaitingForSyncReply();
 }
 
 void Internals::setAutomaticDashSubstitutionEnabled(bool enabled)
@@ -4495,6 +4504,13 @@ bool Internals::userPrefersReducedMotion() const
     return false;
 }
 
+#if ENABLE(VIDEO)
+double Internals::privatePlayerVolume(const HTMLMediaElement&)
+{
+    return 0;
+}
+#endif
+
 #endif
 
 void Internals::reportBacktrace()
@@ -4689,6 +4705,13 @@ void Internals::setH264HardwareEncoderAllowed(bool allowed)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+void Internals::setMockAudioTrackChannelNumber(MediaStreamTrack& track, unsigned short channelNumber)
+{
+    auto& source = track.source();
+    if (!is<MockRealtimeAudioSource>(source))
+        return;
+    downcast<MockRealtimeAudioSource>(source).setChannelCount(channelNumber);
+}
 
 void Internals::setCameraMediaStreamTrackOrientation(MediaStreamTrack& track, int orientation)
 {
@@ -4985,7 +5008,7 @@ String Internals::ongoingLoadsDescriptions() const
         builder.append('[');
 
         for (auto& info : platformStrategies()->loaderStrategy()->intermediateLoadInformationFromResourceLoadIdentifier(identifier))
-            builder.append(makeString("[", (int)info.type, ",\"", info.request.url().string(), "\",\"", info.request.httpMethod(), "\",", info.response.httpStatusCode(), "]"));
+            builder.flexibleAppend('[', (int)info.type, ",\"", info.request.url().string(), "\",\"", info.request.httpMethod(), "\",", info.response.httpStatusCode(), ']');
 
         builder.append(']');
     }
@@ -5118,6 +5141,7 @@ Internals::TextIndicatorInfo::TextIndicatorInfo()
 
 Internals::TextIndicatorInfo::TextIndicatorInfo(const WebCore::TextIndicatorData& data)
     : textBoundingRectInRootViewCoordinates(DOMRect::create(data.textBoundingRectInRootViewCoordinates))
+    , textRectsInBoundingRectCoordinates(DOMRectList::create(data.textRectsInBoundingRectCoordinates))
 {
 }
     
@@ -5127,6 +5151,12 @@ Internals::TextIndicatorInfo Internals::textIndicatorForRange(const Range& range
 {
     auto indicator = TextIndicator::createWithRange(range, options.core(), TextIndicatorPresentationTransition::None);
     return indicator->data();
+}
+
+void Internals::addPrefetchLoadEventListener(HTMLLinkElement& link, RefPtr<EventListener>&& listener)
+{
+    if (RuntimeEnabledFeatures::sharedFeatures().linkPrefetchEnabled() && equalLettersIgnoringASCIICase(link.rel(), "prefetch"))
+        link.addEventListener(eventNames().loadEvent, listener.releaseNonNull(), false);
 }
 
 } // namespace WebCore

@@ -312,7 +312,7 @@ public:
     void clearCachedCredentials();
     void clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace&&, CompletionHandler<void()>&&);
     void terminateNetworkProcess();
-    void sendNetworkProcessWillSuspendImminently();
+    void sendNetworkProcessWillSuspendImminentlyForTesting();
     void sendNetworkProcessDidResume();
     void terminateServiceWorkerProcesses();
     void disableServiceWorkerProcessTerminationDelay();
@@ -529,6 +529,9 @@ public:
 
     void disableDelayedWebProcessLaunch() { m_isDelayedWebProcessLaunchDisabled = true; }
 
+    void setJavaScriptConfigurationDirectory(String&& directory) { m_javaScriptConfigurationDirectory = directory; }
+    const String& javaScriptConfigurationDirectory() const { return m_javaScriptConfigurationDirectory; }
+    
 private:
     void platformInitialize();
 
@@ -726,6 +729,7 @@ private:
 
     bool m_memoryCacheDisabled { false };
     bool m_javaScriptConfigurationFileEnabled { false };
+    String m_javaScriptConfigurationDirectory;
     bool m_alwaysRunsAtBackgroundPriority;
     bool m_shouldTakeUIBackgroundAssertion;
     bool m_shouldMakeNextWebProcessLaunchFailForTesting { false };

@@ -132,7 +132,7 @@ static bool hasNonInlineOrReplacedElements(const Range& range)
 
 static SnapshotOptions snapshotOptionsForTextIndicatorOptions(TextIndicatorOptions options)
 {
-    SnapshotOptions snapshotOptions = SnapshotOptionsNone;
+    SnapshotOptions snapshotOptions = SnapshotOptionsPaintWithIntegralScaleFactor;
 
     if (!(options & TextIndicatorOptionPaintAllContent)) {
         if (options & TextIndicatorOptionPaintBackgrounds)
@@ -169,7 +169,7 @@ static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapsho
     if (data.options & TextIndicatorOptionIncludeSnapshotWithSelectionHighlight) {
         float snapshotScaleFactor;
         data.contentImageWithHighlight = takeSnapshot(frame, snapshotRect, SnapshotOptionsNone, snapshotScaleFactor, clipRectsInDocumentCoordinates);
-        ASSERT(!data.contentImageWithHighlight || data.contentImageScaleFactor == snapshotScaleFactor);
+        ASSERT(!data.contentImageWithHighlight || data.contentImageScaleFactor >= snapshotScaleFactor);
     }
 
     if (data.options & TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection) {
@@ -226,7 +226,8 @@ static FloatRect absoluteBoundingRectForRange(const Range& range)
 {
     return range.absoluteBoundingRect({
         Range::BoundingRectBehavior::RespectClipping,
-        Range::BoundingRectBehavior::UseVisibleBounds
+        Range::BoundingRectBehavior::UseVisibleBounds,
+        Range::BoundingRectBehavior::IgnoreTinyRects,
     });
 }
 

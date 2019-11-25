@@ -63,6 +63,11 @@ void GPUErrorScopes::generateError(const String& message, GPUErrorFilter filter)
     iterator->error = createError(filter, message);
 }
 
+void GPUErrorScopes::generatePrefixedError(const String& message)
+{
+    generateError(m_prefix + message, GPUErrorFilter::Validation);
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(WEBGPU)

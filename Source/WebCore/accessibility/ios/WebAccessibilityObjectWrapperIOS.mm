@@ -682,13 +682,12 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 {
     if (![self _prepareAccessibilityCall])
         return NO;
-    
-    // Only make the video object interactive if it plays inline and has no native controls.
+
     if (m_object->roleValue() != AccessibilityRole::Video || !is<AccessibilityMediaObject>(m_object))
         return NO;
-    
-    AccessibilityMediaObject* mediaObject = downcast<AccessibilityMediaObject>(m_object);
-    return !mediaObject->isAutoplayEnabled() && mediaObject->isPlayingInline() && !downcast<AccessibilityMediaObject>(m_object)->hasControlsAttributeSet();
+
+    // Convey the video object as interactive if auto-play is not enabled.
+    return !downcast<AccessibilityMediaObject>(*m_object).isAutoplayEnabled();
 }
 
 - (NSString *)interactiveVideoDescription
@@ -2559,6 +2558,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return NO;
 
     return m_object->replaceTextInRange(string, PlainTextRange(range));
+}
+
+- (BOOL)_accessibilityInsertText:(NSString *)text
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+
+    return m_object->insertText(text);
 }
 
 // A convenience method for getting the accessibility objects of a NSRange. Currently used only by DRT.

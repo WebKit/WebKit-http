@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Eric Seidel <eric@webkit.org>
- * Copyright (C) 2008-2009, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -68,6 +68,9 @@
 
 #if USE(DIRECT2D)
 #include "COMPtr.h"
+#include "Direct2DUtilities.h"
+#include "ImageDecoderDirect2D.h"
+#include "PlatformContextDirect2D.h"
 #include <d2d1.h>
 #endif
 
@@ -232,21 +235,19 @@ NativeImagePtr SVGImage::nativeImage(const GraphicsContext* targetContext)
     if (!m_page || !targetContext)
         return nullptr;
 
-    auto platformContext = targetContext->platformContext();
-    ASSERT(platformContext);
+    COMPtr<IWICBitmap> nativeImage;
+    HRESULT hr = ImageDecoderDirect2D::systemImagingFactory()->CreateBitmap(rect().width(), rect().height(), GUID_WICPixelFormat32bppPRGBA, WICBitmapCacheOnLoad, &nativeImage);
+    if (!SUCCEEDED(hr))
+        return nullptr;
 
-    // Draw the SVG into a bitmap.
-    COMPtr<ID2D1BitmapRenderTarget> nativeImageTarget;
-    HRESULT hr = platformContext->CreateCompatibleRenderTarget(IntSize(rect().size()), &nativeImageTarget);
-    ASSERT(SUCCEEDED(hr));
+    COMPtr<ID2D1RenderTarget> nativeImageTarget = Direct2D::createRenderTargetFromWICBitmap(nativeImage.get());
+    if (!nativeImageTarget)
+        return nullptr;
 
-    GraphicsContext localContext(nativeImageTarget.get());
+    PlatformContextDirect2D platformContext(nativeImageTarget.get());
+    GraphicsContext localContext(&platformContext, GraphicsContext::BitmapRenderingContextType::GPUMemory);
 
     draw(localContext, rect(), rect(), CompositeSourceOver, BlendMode::Normal, DecodingMode::Synchronous, ImageOrientationDescription());
-
-    COMPtr<ID2D1Bitmap> nativeImage;
-    hr = nativeImageTarget->GetBitmap(&nativeImage);
-    ASSERT(SUCCEEDED(hr));
 
     return nativeImage;
 }
