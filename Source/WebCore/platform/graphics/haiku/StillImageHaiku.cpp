@@ -55,7 +55,7 @@ void StillImage::destroyDecodedData(bool destroyAll)
     // It appears it would not apply to StillImage.
 }
 
-FloatSize StillImage::size() const
+FloatSize StillImage::size(ImageOrientation) const
 {
     return FloatSize(m_bitmap->Bounds().Width() + 1., m_bitmap->Bounds().Height() + 1.);
 }
@@ -66,13 +66,13 @@ NativeImagePtr StillImage::nativeImageForCurrentFrame(const GraphicsContext*)
 }
 
 ImageDrawResult StillImage::draw(GraphicsContext& context, const FloatRect& destRect,
-                      const FloatRect& sourceRect, CompositeOperator op, BlendMode, DecodingMode, ImageOrientation)
+                      const FloatRect& sourceRect, const WebCore::ImagePaintingOptions& options)
 {
     if (!m_bitmap->IsValid())
         return ImageDrawResult::DidNothing;
-    
+
     context.save();
-    context.setCompositeOperation(op);
+    context.setCompositeOperation(options.compositeOperator());
     context.platformContext()->DrawBitmap(m_bitmap.get(), sourceRect, destRect);
     context.restore();
 

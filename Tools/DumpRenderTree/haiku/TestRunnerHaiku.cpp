@@ -420,11 +420,6 @@ void TestRunner::clearAllDatabases()
     notImplemented();
 }
 
-void TestRunner::setIDBPerOriginQuota(uint64_t quota)
-{
-    notImplemented();
-}
-
 void TestRunner::setDatabaseQuota(unsigned long long quota)
 {
     notImplemented();

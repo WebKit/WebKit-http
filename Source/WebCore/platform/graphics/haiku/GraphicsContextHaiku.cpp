@@ -453,8 +453,7 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
 
 void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect,
     const FloatRect& tileRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
-    BlendMode blendMode)
+    const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions&)
 {
     if (paintingDisabled())
         return;

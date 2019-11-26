@@ -138,20 +138,18 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode)
+void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
 {
-    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode);
+    imageBuffer->draw(destContext, destRect, srcRect, options);
 }
 
 void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,
-                       CompositeOperator op, BlendMode)
+                       const ImagePaintingOptions& options)
 {
     if (!m_data.m_view)
         return;
 
     m_data.m_view->Sync();
-    ImagePaintingOptions options;
-    options.m_compositeOperator = op;
     if (&destContext == &context() && destRect.intersects(srcRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
@@ -163,7 +161,7 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
 void ImageBuffer::drawPattern(GraphicsContext& destContext,
     const FloatRect& destRect, const FloatRect& srcRect,
     const AffineTransform& patternTransform, const FloatPoint& phase,
-    const FloatSize& size, CompositeOperator op, BlendMode)
+    const FloatSize& size, const ImagePaintingOptions& options)
 {
     if (!m_data.m_view)
         return;
@@ -172,9 +170,9 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext,
     if (&destContext == &context() && srcRect.intersects(destRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        copy->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, op);
+        copy->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, options.compositeOperator());
     } else
-        m_data.m_image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, op);
+        m_data.m_image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, options.compositeOperator());
 }
 
 void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)

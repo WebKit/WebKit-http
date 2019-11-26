@@ -48,9 +48,9 @@ public:
     virtual bool currentFrameKnownToBeOpaque() const override;
     virtual void destroyDecodedData(bool = true) override;
 
-    virtual FloatSize size() const override;
+    virtual FloatSize size(ImageOrientation) const override;
     virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext*) override;
-    virtual ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientation) override;
+    virtual ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const ImagePaintingOptions&) override;
 
 private:
     StillImage(NativeImagePtr bitmap);

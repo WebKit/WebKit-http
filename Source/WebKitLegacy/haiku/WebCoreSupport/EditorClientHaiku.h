@@ -48,6 +48,7 @@ namespace WebCore {
 class PlatformKeyboardEvent;
 
 class EditorClientHaiku : public EditorClient, public TextCheckerClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     EditorClientHaiku(BWebPage* page);
 
