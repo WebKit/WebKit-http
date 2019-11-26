@@ -1496,6 +1496,8 @@ void AXObjectCache::handleAttributeChange(const QualifiedName& attrName, Element
         textChanged(element);
     else if (attrName == forAttr && is<HTMLLabelElement>(*element))
         labelChanged(element);
+    else if (attrName == tabindexAttr)
+        childrenChanged(element->parentNode(), element);
 
     if (!attrName.localName().string().startsWith("aria-"))
         return;
@@ -1575,7 +1577,7 @@ void AXObjectCache::recomputeIsIgnored(RenderObject* renderer)
 void AXObjectCache::startCachingComputedObjectAttributesUntilTreeMutates()
 {
     if (!m_computedObjectAttributeCache)
-        m_computedObjectAttributeCache = std::make_unique<AXComputedObjectAttributeCache>();
+        m_computedObjectAttributeCache = makeUnique<AXComputedObjectAttributeCache>();
 }
 
 void AXObjectCache::stopCachingComputedObjectAttributes()

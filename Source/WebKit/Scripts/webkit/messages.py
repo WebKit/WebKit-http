@@ -217,7 +217,12 @@ def forward_declarations_and_headers(receiver):
         'WebCore::SWServerConnectionIdentifier',
         'WebKit::ActivityStateChangeID',
         'WebKit::LayerHostingContextID',
+        'WebKit::TransactionID',
+        'WebKit::StorageAreaIdentifier',
+        'WebKit::StorageAreaImplIdentifier',
+        'WebKit::StorageNamespaceIdentifier',
         'WebKit::UserContentControllerIdentifier',
+        'WebKit::WebPageProxyIdentifier',
     ])
 
     for parameter in receiver.iterparameters():
@@ -434,6 +439,7 @@ def headers_for_type(type):
         'WebCore::KeyframeValueList': ['<WebCore/GraphicsLayer.h>'],
         'WebCore::KeypressCommand': ['<WebCore/KeyboardEvent.h>'],
         'WebCore::LockBackForwardList': ['<WebCore/FrameLoaderTypes.h>'],
+        'WebCore::MessagePortChannelProvider::HasActivity': ['<WebCore/MessagePortChannelProvider.h>'],
         'WebCore::NetworkTransactionInformation': ['<WebCore/NetworkLoadInformation.h>'],
         'WebCore::PasteboardCustomData': ['<WebCore/Pasteboard.h>'],
         'WebCore::PasteboardImage': ['<WebCore/Pasteboard.h>'],

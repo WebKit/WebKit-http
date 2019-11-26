@@ -75,12 +75,20 @@
 - (void)waitForMessage:(NSString *)message;
 - (void)performAfterLoading:(dispatch_block_t)actions;
 - (void)waitForNextPresentationUpdate;
+- (void)forceDarkMode;
 - (NSString *)stylePropertyAtSelectionStart:(NSString *)propertyName;
 - (NSString *)stylePropertyAtSelectionEnd:(NSString *)propertyName;
 - (void)collapseToStart;
 - (void)collapseToEnd;
 - (void)addToTestWindow;
 @end
+
+#if PLATFORM(IOS_FAMILY)
+@interface UIView (WKTestingUIViewUtilities)
+- (UIView *)wkFirstSubviewWithClass:(Class)targetClass;
+- (UIView *)wkFirstSubviewWithBoundsSize:(CGSize)size;
+@end
+#endif
 
 #if PLATFORM(IOS_FAMILY)
 @interface WKContentView : UIView

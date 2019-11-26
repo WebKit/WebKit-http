@@ -63,7 +63,7 @@ Notification::Notification(Document& document, const String& title, const Option
     , m_body(options.body)
     , m_tag(options.tag)
     , m_state(Idle)
-    , m_taskTimer(std::make_unique<Timer>([this] () { show(); }))
+    , m_taskTimer(makeUnique<Timer>([this] () { show(); }))
 {
     if (!options.icon.isEmpty()) {
         auto iconURL = document.completeURL(options.icon);
@@ -166,12 +166,20 @@ void Notification::dispatchErrorEvent()
 
 auto Notification::permission(Document& document) -> Permission
 {
+    auto* page = document.page();
+    if (!page)
+        return Permission::Default;
+
     return NotificationController::from(document.page())->client().checkPermission(&document);
 }
 
 void Notification::requestPermission(Document& document, RefPtr<NotificationPermissionCallback>&& callback)
 {
-    NotificationController::from(document.page())->client().requestPermission(&document, WTFMove(callback));
+    auto* page = document.page();
+    if (!page)
+        return;
+
+    NotificationController::from(page)->client().requestPermission(&document, WTFMove(callback));
 }
 
 } // namespace WebCore

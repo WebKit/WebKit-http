@@ -44,11 +44,11 @@ TransientLocalStorageNamespace::~TransientLocalStorageNamespace()
     ASSERT(!RunLoop::isMain());
 }
 
-StorageArea& TransientLocalStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin)
+StorageArea& TransientLocalStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
-    return *m_storageAreaMap.ensure(securityOrigin, [this, &securityOrigin]() mutable {
-        return std::make_unique<StorageArea>(nullptr, WTFMove(securityOrigin), m_quotaInBytes);
+    return *m_storageAreaMap.ensure(securityOrigin, [&]() mutable {
+        return makeUnique<StorageArea>(nullptr, WTFMove(securityOrigin), m_quotaInBytes, WTFMove(workQueue));
     }).iterator->value.get();
 }
 
@@ -78,6 +78,14 @@ void TransientLocalStorageNamespace::clearAllStorageAreas()
     ASSERT(!RunLoop::isMain());
     for (auto& storageArea : m_storageAreaMap.values())
         storageArea->clear();
+}
+
+Vector<StorageAreaIdentifier> TransientLocalStorageNamespace::storageAreaIdentifiers() const
+{
+    Vector<StorageAreaIdentifier> identifiers;
+    for (auto& storageArea : m_storageAreaMap.values())
+        identifiers.append(storageArea->identifier());
+    return identifiers;
 }
 
 } // namespace WebKit

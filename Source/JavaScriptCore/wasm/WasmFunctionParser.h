@@ -43,16 +43,17 @@ enum class BlockType {
 template<typename Context>
 class FunctionParser : public Parser<void> {
 public:
-    typedef typename Context::ExpressionType ExpressionType;
-    typedef typename Context::ControlType ControlType;
-    typedef typename Context::ExpressionList ExpressionList;
+    using ExpressionType = typename Context::ExpressionType;
+    using ControlType = typename Context::ControlType;
+    using ExpressionList = typename Context::ExpressionList;
+    using Stack = typename Context::Stack;
 
     FunctionParser(Context&, const uint8_t* functionStart, size_t functionLength, const Signature&, const ModuleInformation&);
 
     Result WARN_UNUSED_RETURN parse();
 
     struct ControlEntry {
-        ExpressionList enclosedExpressionStack;
+        Stack enclosedExpressionStack;
         ControlType controlData;
     };
 
@@ -84,7 +85,7 @@ private:
     // FIXME add a macro as above for WASM_TRY_APPEND_TO_CONTROL_STACK https://bugs.webkit.org/show_bug.cgi?id=165862
 
     Context& m_context;
-    ExpressionList m_expressionStack;
+    Stack m_expressionStack;
     Vector<ControlEntry> m_controlStack;
     const Signature& m_signature;
     const ModuleInformation& m_info;
@@ -95,12 +96,14 @@ private:
     Vector<ExpressionType, 8> m_toKillAfterExpression;
 
     unsigned m_unreachableBlocks { 0 };
+    unsigned m_loopIndex { 0 };
 };
 
 template<typename Context>
 FunctionParser<Context>::FunctionParser(Context& context, const uint8_t* functionStart, size_t functionLength, const Signature& signature, const ModuleInformation& info)
     : Parser(functionStart, functionLength)
     , m_context(context)
+    , m_expressionStack(context.createStack())
     , m_signature(signature)
     , m_info(info)
 {
@@ -112,18 +115,19 @@ FunctionParser<Context>::FunctionParser(Context& context, const uint8_t* functio
 template<typename Context>
 auto FunctionParser<Context>::parse() -> Result
 {
-    uint32_t localCount;
+    uint32_t localGroupsCount;
 
     WASM_PARSER_FAIL_IF(!m_context.addArguments(m_signature), "can't add ", m_signature.argumentCount(), " arguments to Function");
-    WASM_PARSER_FAIL_IF(!parseVarUInt32(localCount), "can't get local count");
-    WASM_PARSER_FAIL_IF(localCount > maxFunctionLocals, "Function section's local count is too big ", localCount, " maximum ", maxFunctionLocals);
+    WASM_PARSER_FAIL_IF(!parseVarUInt32(localGroupsCount), "can't get local groups count");
 
-    for (uint32_t i = 0; i < localCount; ++i) {
+    uint64_t totalNumberOfLocals = m_signature.argumentCount();
+    for (uint32_t i = 0; i < localGroupsCount; ++i) {
         uint32_t numberOfLocals;
         Type typeOfLocal;
 
         WASM_PARSER_FAIL_IF(!parseVarUInt32(numberOfLocals), "can't get Function's number of locals in group ", i);
-        WASM_PARSER_FAIL_IF(numberOfLocals > maxFunctionLocals, "Function section's ", i, "th local group count is too big ", numberOfLocals, " maximum ", maxFunctionLocals);
+        totalNumberOfLocals += numberOfLocals;
+        WASM_PARSER_FAIL_IF(totalNumberOfLocals > maxFunctionLocals, "Function's number of locals is too big ", totalNumberOfLocals, " maximum ", maxFunctionLocals);
         WASM_PARSER_FAIL_IF(!parseValueType(typeOfLocal), "can't get Function local's type in group ", i);
         WASM_TRY_ADD_TO_CONTEXT(addLocal(typeOfLocal, numberOfLocals));
     }
@@ -136,7 +140,7 @@ auto FunctionParser<Context>::parse() -> Result
 template<typename Context>
 auto FunctionParser<Context>::parseBody() -> PartialResult
 {
-    m_controlStack.append({ ExpressionList(), m_context.addTopLevel(m_signature.returnType()) });
+    m_controlStack.append({ m_context.createStack(), m_context.addTopLevel(m_signature.returnType()) });
     uint8_t op;
     while (m_controlStack.size()) {
         ASSERT(m_toKillAfterExpression.isEmpty());
@@ -423,7 +427,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         Vector<ExpressionType> args;
         WASM_PARSER_FAIL_IF(!args.tryReserveCapacity(calleeSignature.argumentCount()), "can't allocate enough memory for call's ", calleeSignature.argumentCount(), " arguments");
         for (size_t i = firstArgumentIndex; i < m_expressionStack.size(); ++i)
-            args.uncheckedAppend(m_expressionStack[i]);
+            args.uncheckedAppend(m_expressionStack.at(i));
         m_expressionStack.shrink(firstArgumentIndex);
 
         ExpressionType result = Context::emptyExpression();
@@ -453,7 +457,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         WASM_PARSER_FAIL_IF(!args.tryReserveCapacity(argumentCount), "can't allocate enough memory for ", argumentCount, " call_indirect arguments");
         size_t firstArgumentIndex = m_expressionStack.size() - argumentCount;
         for (size_t i = firstArgumentIndex; i < m_expressionStack.size(); ++i)
-            args.uncheckedAppend(m_expressionStack[i]);
+            args.uncheckedAppend(m_expressionStack.at(i));
         m_expressionStack.shrink(firstArgumentIndex);
 
         ExpressionType result = Context::emptyExpression();
@@ -469,15 +473,17 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         Type inlineSignature;
         WASM_PARSER_FAIL_IF(!parseResultType(inlineSignature), "can't get block's inline signature");
         m_controlStack.append({ WTFMove(m_expressionStack), m_context.addBlock(inlineSignature) });
-        m_expressionStack = ExpressionList();
+        m_expressionStack = m_context.createStack();
         return { };
     }
 
     case Loop: {
         Type inlineSignature;
         WASM_PARSER_FAIL_IF(!parseResultType(inlineSignature), "can't get loop's inline signature");
-        m_controlStack.append({ WTFMove(m_expressionStack), m_context.addLoop(inlineSignature) });
-        m_expressionStack = ExpressionList();
+        auto expressionStack = WTFMove(m_expressionStack);
+        auto loop = m_context.addLoop(inlineSignature, expressionStack, m_loopIndex++);
+        m_controlStack.append({ expressionStack, loop });
+        m_expressionStack = m_context.createStack();
         return { };
     }
 
@@ -489,7 +495,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         WASM_TRY_POP_EXPRESSION_STACK_INTO(condition, "if condition");
         WASM_TRY_ADD_TO_CONTEXT(addIf(condition, inlineSignature, control));
         m_controlStack.append({ WTFMove(m_expressionStack), control });
-        m_expressionStack = ExpressionList();
+        m_expressionStack = m_context.createStack();
         return { };
     }
 

@@ -1016,6 +1016,7 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 # eventSender.mouseDown is not implemented
 fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
+imported/blink/fast/forms/label/label-contains-other-interactive-content.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
 fast/images/image-usemap-parsing.html [ Skip ]
 fast/shadow-dom/fullscreen-in-shadow-full-screen-ancestor.html [ Skip ]
@@ -1133,9 +1134,6 @@ webkit.org/b/165815 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 webkit.org/b/165814 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-anchor-name.html [ Pass Failure ]
 webkit.org/b/161359 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-top.html [ Pass Failure ]
 webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-id-top.html [ Pass Failure ]
-
-webkit.org/b/169523 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Failure ]
-webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]
 
 # rdar://problem/26477855
 http/tests/xmlhttprequest/logout.html [ Failure ]
@@ -1287,22 +1285,6 @@ webkit.org/b/190850 [ Debug ] platform/ios/ios/plugin/youtube-flash-plugin-ifram
 
 webkit.org/b/189641 [ Debug ] webgl/2.0.0/conformance/attribs/gl-vertexattribpointer.html [ Slow ]
 
-# Skip WebAuthN tests for hid authenticators
-http/wpt/webauthn/ctap-hid-failure.https.html [ Skip ]
-http/wpt/webauthn/ctap-hid-success.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-failure-hid.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-success-hid.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-failure-hid.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-success-hid.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-failure-u2f.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-create-success-u2f.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-failure-u2f-silent.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-failure-u2f.https.html [ Skip ]
-http/wpt/webauthn/public-key-credential-get-success-u2f.https.html [ Skip ]
-
 # FIXME: Unskip these tests once we have the fix for <rdar://problem/44930119>.
 fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html [ Skip ]
 fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html [ Skip ]
@@ -1369,3 +1351,8 @@ fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html [ Pass 
 # Skip tests timing out for <rdar://problem/48616298>
 fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html [ Skip ]
 fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-width.html [ Skip ]
+
+# problem with blur handling
+mathml/focus-event-handling.html [ Failure ]
+
+webkit.org/b/201550 http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations.html [ Pass Timeout ]

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,13 +71,15 @@ using namespace Inspector;
 
 InspectorCanvasAgent::InspectorCanvasAgent(PageAgentContext& context)
     : InspectorAgentBase("Canvas"_s, context)
-    , m_frontendDispatcher(std::make_unique<Inspector::CanvasFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<Inspector::CanvasFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::CanvasBackendDispatcher::create(context.backendDispatcher, this))
     , m_injectedScriptManager(context.injectedScriptManager)
     , m_inspectedPage(context.inspectedPage)
     , m_canvasDestroyedTimer(*this, &InspectorCanvasAgent::canvasDestroyedTimerFired)
 {
 }
+
+InspectorCanvasAgent::~InspectorCanvasAgent() = default;
 
 void InspectorCanvasAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
@@ -150,13 +152,13 @@ void InspectorCanvasAgent::requestNode(ErrorString& errorString, const String& c
 
     auto* node = inspectorCanvas->canvasElement();
     if (!node) {
-        errorString = "No node for canvas"_s;
+        errorString = "Missing element of canvas for given canvasId"_s;
         return;
     }
 
     int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&node->document());
     if (!documentNodeId) {
-        errorString = "Document has not been requested"_s;
+        errorString = "Document must have been requested"_s;
         return;
     }
 
@@ -222,7 +224,7 @@ void InspectorCanvasAgent::resolveCanvasContext(ErrorString& errorString, const 
     JSC::JSValue value = contextAsScriptValue(state, inspectorCanvas->context());
     if (!value) {
         ASSERT_NOT_REACHED();
-        errorString = "Unknown context type"_s;
+        errorString = "Internal error: unknown context of canvas for given canvasId"_s;
         return;
     }
 
@@ -264,7 +266,7 @@ void InspectorCanvasAgent::stopRecording(ErrorString& errorString, const String&
         return;
 
     if (!inspectorCanvas->context().callTracingActive()) {
-        errorString = "No active recording for canvas"_s;
+        errorString = "Not recording canvas"_s;
         return;
     }
 
@@ -280,7 +282,7 @@ void InspectorCanvasAgent::requestShaderSource(ErrorString& errorString, const S
 
     auto* shader = inspectorProgram->shaderForType(shaderType);
     if (!shader) {
-        errorString = "No shader for given type."_s;
+        errorString = "Missing shader for given shaderType"_s;
         return;
     }
 
@@ -289,7 +291,7 @@ void InspectorCanvasAgent::requestShaderSource(ErrorString& errorString, const S
     UNUSED_PARAM(programId);
     UNUSED_PARAM(shaderType);
     UNUSED_PARAM(content);
-    errorString = "WebGL is not supported."_s;
+    errorString = "Not supported"_s;
 #endif
 }
 
@@ -302,7 +304,7 @@ void InspectorCanvasAgent::updateShader(ErrorString& errorString, const String& 
 
     auto* shader = inspectorProgram->shaderForType(shaderType);
     if (!shader) {
-        errorString = "No shader for given type."_s;
+        errorString = "Missing shader for given shaderType"_s;
         return;
     }
 
@@ -311,7 +313,7 @@ void InspectorCanvasAgent::updateShader(ErrorString& errorString, const String& 
     contextWebGL.compileShader(shader);
 
     if (!shader->isValid()) {
-        errorString = "Shader compilation failed."_s;
+        errorString = "Failed to update shader"_s;
         return;
     }
 
@@ -320,7 +322,7 @@ void InspectorCanvasAgent::updateShader(ErrorString& errorString, const String& 
     UNUSED_PARAM(programId);
     UNUSED_PARAM(shaderType);
     UNUSED_PARAM(source);
-    errorString = "WebGL is not supported."_s;
+    errorString = "Not supported"_s;
 #endif
 }
 
@@ -335,7 +337,7 @@ void InspectorCanvasAgent::setShaderProgramDisabled(ErrorString& errorString, co
 #else
     UNUSED_PARAM(programId);
     UNUSED_PARAM(disabled);
-    errorString = "WebGL is not supported."_s;
+    errorString = "Not supported"_s;
 #endif
 }
 
@@ -350,7 +352,7 @@ void InspectorCanvasAgent::setShaderProgramHighlighted(ErrorString& errorString,
 #else
     UNUSED_PARAM(programId);
     UNUSED_PARAM(highlighted);
-    errorString = "WebGL is not supported."_s;
+    errorString = "Not supported"_s;
 #endif
 }
 
@@ -436,7 +438,7 @@ void InspectorCanvasAgent::recordCanvasAction(CanvasRenderingContext& canvasRend
     if (!inspectorCanvas->currentFrameHasData()) {
         if (auto* scriptExecutionContext = inspectorCanvas->context().canvasBase().scriptExecutionContext()) {
             auto& queue = MicrotaskQueue::mainThreadQueue();
-            queue.append(std::make_unique<ActiveDOMCallbackMicrotask>(queue, *scriptExecutionContext, [&, protectedInspectorCanvas = inspectorCanvas.copyRef()] {
+            queue.append(makeUnique<ActiveDOMCallbackMicrotask>(queue, *scriptExecutionContext, [&, protectedInspectorCanvas = inspectorCanvas.copyRef()] {
                 if (auto* canvasElement = protectedInspectorCanvas->canvasElement()) {
                     if (canvasElement->isDescendantOf(canvasElement->document()))
                         return;
@@ -530,13 +532,14 @@ void InspectorCanvasAgent::consoleStartRecordingCanvas(CanvasRenderingContext& c
 
     RecordingOptions recordingOptions;
     if (options) {
-        if (JSC::JSValue optionSingleFrame = options->get(&exec, JSC::Identifier::fromString(&exec, "singleFrame")))
+        JSC::VM& vm = exec.vm();
+        if (JSC::JSValue optionSingleFrame = options->get(&exec, JSC::Identifier::fromString(vm, "singleFrame")))
             recordingOptions.frameCount = optionSingleFrame.toBoolean(&exec) ? 1 : 0;
-        if (JSC::JSValue optionFrameCount = options->get(&exec, JSC::Identifier::fromString(&exec, "frameCount")))
+        if (JSC::JSValue optionFrameCount = options->get(&exec, JSC::Identifier::fromString(vm, "frameCount")))
             recordingOptions.frameCount = optionFrameCount.toNumber(&exec);
-        if (JSC::JSValue optionMemoryLimit = options->get(&exec, JSC::Identifier::fromString(&exec, "memoryLimit")))
+        if (JSC::JSValue optionMemoryLimit = options->get(&exec, JSC::Identifier::fromString(vm, "memoryLimit")))
             recordingOptions.memoryLimit = optionMemoryLimit.toNumber(&exec);
-        if (JSC::JSValue optionName = options->get(&exec, JSC::Identifier::fromString(&exec, "name")))
+        if (JSC::JSValue optionName = options->get(&exec, JSC::Identifier::fromString(vm, "name")))
             recordingOptions.name = optionName.toWTFString(&exec);
     }
     startRecording(*inspectorCanvas, Inspector::Protocol::Recording::Initiator::Console, WTFMove(recordingOptions));
@@ -697,14 +700,13 @@ String InspectorCanvasAgent::unbindCanvas(InspectorCanvas& inspectorCanvas)
     return identifier;
 }
 
-RefPtr<InspectorCanvas> InspectorCanvasAgent::assertInspectorCanvas(ErrorString& errorString, const String& identifier)
+RefPtr<InspectorCanvas> InspectorCanvasAgent::assertInspectorCanvas(ErrorString& errorString, const String& canvasId)
 {
-    auto inspectorCanvas = m_identifierToInspectorCanvas.get(identifier);
+    auto inspectorCanvas = m_identifierToInspectorCanvas.get(canvasId);
     if (!inspectorCanvas) {
-        errorString = "No canvas for given identifier."_s;
+        errorString = "Missing canvas for given canvasId"_s;
         return nullptr;
     }
-
     return inspectorCanvas;
 }
 
@@ -714,7 +716,6 @@ RefPtr<InspectorCanvas> InspectorCanvasAgent::findInspectorCanvas(CanvasRenderin
         if (&inspectorCanvas->context() == &context)
             return inspectorCanvas;
     }
-
     return nullptr;
 }
 
@@ -727,14 +728,13 @@ String InspectorCanvasAgent::unbindProgram(InspectorShaderProgram& inspectorProg
     return identifier;
 }
 
-RefPtr<InspectorShaderProgram> InspectorCanvasAgent::assertInspectorProgram(ErrorString& errorString, const String& identifier)
+RefPtr<InspectorShaderProgram> InspectorCanvasAgent::assertInspectorProgram(ErrorString& errorString, const String& programId)
 {
-    auto inspectorProgram = m_identifierToInspectorProgram.get(identifier);
+    auto inspectorProgram = m_identifierToInspectorProgram.get(programId);
     if (!inspectorProgram) {
-        errorString = "No shader program for given identifier."_s;
+        errorString = "Missing program for given programId"_s;
         return nullptr;
     }
-
     return inspectorProgram;
 }
 
@@ -744,7 +744,6 @@ RefPtr<InspectorShaderProgram> InspectorCanvasAgent::findInspectorProgram(WebGLP
         if (&inspectorProgram->program() == &program)
             return inspectorProgram;
     }
-
     return nullptr;
 }
 #endif

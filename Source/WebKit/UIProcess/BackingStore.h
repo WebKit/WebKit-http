@@ -36,6 +36,9 @@
 
 #if USE(DIRECT2D)
 interface ID2D1RenderTarget;
+interface ID3D11Device1;
+interface ID3D11DeviceContext1;
+interface ID3D11Texture2D;
 #endif
 
 #if USE(HAIKU)
@@ -62,7 +65,11 @@ public:
 #if USE(CAIRO)
     typedef cairo_t* PlatformGraphicsContext;
 #elif USE(DIRECT2D)
-    typedef ID2D1RenderTarget* PlatformGraphicsContext;
+    struct DXConnections {
+        ID3D11DeviceContext1* immediateContext { nullptr };
+        ID3D11Texture2D* backBuffer { nullptr };
+    };
+    typedef DXConnections PlatformGraphicsContext;
 #endif
 #if USE(HAIKU)
     typedef BView* PlatformGraphicsContext;
@@ -70,10 +77,6 @@ public:
 
     void paint(PlatformGraphicsContext, const WebCore::IntRect&);
     void incorporateUpdate(const UpdateInfo&);
-
-#if USE(DIRECT2D)
-    ID2D1DCRenderTarget* renderTarget() { return m_backend->renderTarget(); }
-#endif
 
 private:
     void incorporateUpdate(ShareableBitmap*, const UpdateInfo&);

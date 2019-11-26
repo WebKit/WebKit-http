@@ -1,3 +1,307 @@
+2019-09-06  Alex Christensen  <achristensen@webkit.org>
+
+        When disabling legacy private browsing for testing, change the SessionID back to what it was, not the defaultSessionID
+        https://bugs.webkit.org/show_bug.cgi?id=201480
+
+        Reviewed by Youenn Fablet.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-09-06  Rob Buis  <rbuis@igalia.com>
+
+        Add runtime flag for lazy image loading
+        https://bugs.webkit.org/show_bug.cgi?id=199794
+
+        Reviewed by Frédéric Wang.
+
+        Remove parts of r248409 that were meant for WK1 since
+        lazy image loading is WK2 only.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences lazyImageLoadingEnabled]): Deleted.
+        (-[WebPreferences setLazyImageLoadingEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-09-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused SPI that accesses MemoryCache directly
+        https://bugs.webkit.org/show_bug.cgi?id=201468
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebCache.h:
+        * Misc/WebCache.mm:
+        (+[WebCache addImageToCache:forURL:]): Deleted.
+        (+[WebCache addImageToCache:forURL:forFrame:]): Deleted.
+        (+[WebCache removeImageFromCacheForURL:]): Deleted.
+        (+[WebCache removeImageFromCacheForURL:forFrame:]): Deleted.
+
+2019-08-30  Keith Rollin  <krollin@apple.com>
+
+        Remove AppKitCompatibilityDeclarations.h
+        https://bugs.webkit.org/show_bug.cgi?id=201283
+        <rdar://problem/54822042>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The two copies of these files -- on in WTF, one in MiniBrowser -- are
+        empty and can be removed.
+
+        * Misc/WebNSEventExtras.m:
+        * Misc/WebNSViewExtras.m:
+        * WebKitPrefix.h:
+
+2019-08-30  Keith Rollin  <krollin@apple.com>
+
+        Remove extra braces
+        https://bugs.webkit.org/show_bug.cgi?id=201285
+
+        Reviewed by Alexey Proskuryakov.
+
+        Some code evolved such that there was only a single statement under an
+        'if' statement. The braces surrounding the single-line block can now
+        be removed.
+
+        * WebView/WebView.mm:
+        (-[WebView updateMediaTouchBar]):
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Update .xcconfig symbols to reflect the current set of past and future product versions.
+        https://bugs.webkit.org/show_bug.cgi?id=200720
+        <rdar://problem/54305032>
+
+        Reviewed by Alex Christensen.
+
+        Remove version symbols related to old OS's we no longer support,
+        ensure that version symbols are defined for OS's we do support.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Remove support for macOS < 10.13 (part 3)
+        https://bugs.webkit.org/show_bug.cgi?id=201224
+        <rdar://problem/54795934>
+
+        Reviewed by Darin Adler.
+
+        Remove symbols in WebKitTargetConditionals.xcconfig related to macOS
+        10.13, including WK_MACOS_1013 and WK_MACOS_BEFORE_1013, and suffixes
+        like _MACOS_SINCE_1013.
+
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2019-08-29  Dean Jackson  <dino@apple.com>
+
+        GenerateTAPI WebKitLegacy.tbd fails on internal iOS Simulator builds
+        https://bugs.webkit.org/show_bug.cgi?id=201200
+
+        Reverting r249211 after Dan Bernstein pointed out it will cause
+        an error with the public iOS 13 SDK.
+
+        * Misc/WebDownload.h:
+
+2019-08-28  Dean Jackson  <dino@apple.com>
+
+        GenerateTAPI WebKitLegacy.tbd fails on internal iOS Simulator builds
+        https://bugs.webkit.org/show_bug.cgi?id=201200
+
+        Reviewed by Simon Fraser.
+
+        We want to include Foundation/NSURLDownload.h if we're on
+        a newer iOS.
+
+        * Misc/WebDownload.h:
+
+2019-08-28  Keith Rollin  <krollin@apple.com>
+
+        Remove support for macOS < 10.13 (part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=201197
+        <rdar://problem/54759985>
+
+        Reviewed by Darin Adler.
+
+        Update conditionals that reference WK_MACOS_1013 and suffixes like
+        _MACOS_SINCE_1013, assuming that we're always building on 10.13 or
+        later and that these conditionals are always True or False.
+
+        See Bug 200694 for earlier changes in this area.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-08-27  Mark Lam  <mark.lam@apple.com>
+
+        Refactor to use VM& instead of VM* at as many places as possible.
+        https://bugs.webkit.org/show_bug.cgi?id=201172
+
+        Reviewed by Yusuke Suzuki.
+
+        * DOM/DOM.mm:
+        (+[DOMNode _nodeFromJSWrapper:]):
+        * DOM/DOMUtility.mm:
+        (createDOMWrapper):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (identifierFromIdentifierRep):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+        (WebKit::getObjectID):
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        (WebKit::NetscapePluginInstanceProxy::retainLocalObject):
+        (WebKit::NetscapePluginInstanceProxy::releaseLocalObject):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::stringValue const):
+        (WebKit::ProxyInstance::getPropertyNames):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+
+2019-08-23  Chris Dumez  <cdumez@apple.com>
+
+        [geolocation] Rename interfaces and remove [NoInterfaceObject]
+        https://bugs.webkit.org/show_bug.cgi?id=200885
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebGeolocationClient.h:
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (WebGeolocationClient::lastPosition):
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPositionInternal initWithCoreGeolocationPosition:]):
+        (core):
+        (-[WebGeolocationPosition initWithTimestamp:latitude:longitude:accuracy:]):
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+        * WebView/WebGeolocationPositionInternal.h:
+
+2019-08-22  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Disable Content Filtering in the simulator build
+        https://bugs.webkit.org/show_bug.cgi?id=201047
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        [Mail] Tapping top of message scrolls back to copied text instead of top of the message
+        https://bugs.webkit.org/show_bug.cgi?id=200999
+        <rdar://problem/54564878>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::shouldAllowSingleClickToChangeSelection const):
+        Copy the existing behavior from EventHandler.
+        We do not fix the bug in WebKitLegacy for a multitude of reasons, primarily
+        because we do not know of any user impact.
+
+2019-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Put keygen element behind a runtime flag and disable it by default
+        https://bugs.webkit.org/show_bug.cgi?id=200850
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences keygenElementEnabled]):
+        (-[WebPreferences setKeygenElementEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-08-19  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove IDB-specific quota
+        https://bugs.webkit.org/show_bug.cgi?id=196545
+        <rdar://problem/54201783>
+
+        Reviewed by Youenn Fablet.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager setIDBPerOriginQuota:]): Deleted.
+        * Storage/WebDatabaseManagerPrivate.h:
+
+2019-08-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Add makeUnique<T>, which ensures T is fast-allocated, makeUnique / makeUniqueWithoutFastMallocCheck part
+        https://bugs.webkit.org/show_bug.cgi?id=200620
+
+        Reviewed by Geoffrey Garen.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate init]):
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WKPCGetScriptableNPObjectReply):
+        (WKPCBooleanReply):
+        (WKPCBooleanAndDataReply):
+        (WKPCInstantiatePluginReply):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView createPlugin]):
+        * Plugins/WebNetscapePluginEventHandler.mm:
+        (WebNetscapePluginEventHandler::create):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView scheduleTimerWithInterval:repeat:timerFunc:]):
+        * Storage/WebDatabaseManagerClient.mm:
+        (DidModifyOriginData::dispatchToMainThread):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (addRedirectURL):
+        (WebFrameLoaderClient::savePlatformDataToCachedFrame):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorClient::openLocalFrontend):
+        * WebView/WebDeviceOrientationProviderMock.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame _attachScriptDebugger]):
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::create):
+        * WebView/WebTextIterator.mm:
+        (-[WebTextIterator initWithRange:]):
+        * WebView/WebView.mm:
+        (-[WebView _injectOutlookQuirksScript]):
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+        (-[WebView _selectionServiceController]):
+        (-[WebView _setTextIndicator:withLifetime:]):
+        * WebView/WebViewData.mm:
+        (WebViewLayerFlushScheduler::WebViewLayerFlushScheduler):
+        (-[WebViewPrivate init]):
+
+2019-08-17  Darin Adler  <darin@apple.com>
+
+        Tidy up checks to see if a character is in the Latin-1 range by using isLatin1 consistently
+        https://bugs.webkit.org/show_bug.cgi?id=200861
+
+        Reviewed by Ross Kirsling.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (canUseFastRenderer): Use isLatin1.
+
+2019-08-16  Chris Dumez  <cdumez@apple.com>
+
+        LocalStorageDatabaseTracker does not need to subclass ThreadSafeRefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=200825
+
+        Reviewed by Alex Christensen.
+
+        * Misc/WebKitVersionChecks.h:
+        * Storage/WebStorageManager.mm:
+        (WebKitInitializeStorageIfNecessary):
+
 2019-08-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         Split tabIndex computation for DOM and the rest of WebCore

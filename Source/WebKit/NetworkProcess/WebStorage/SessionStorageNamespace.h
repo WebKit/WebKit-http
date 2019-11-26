@@ -26,8 +26,10 @@
 #pragma once
 
 #include "Connection.h"
+#include "StorageAreaIdentifier.h"
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/Forward.h>
+#include <wtf/WorkQueue.h>
 
 namespace WebKit {
 
@@ -42,7 +44,7 @@ public:
 
     bool isEmpty() const { return m_storageAreaMap.isEmpty(); }
 
-    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&);
+    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&, Ref<WorkQueue>&&);
 
     void cloneTo(SessionStorageNamespace& newSessionStorageNamespace);
 
@@ -50,6 +52,8 @@ public:
 
     void clearStorageAreasMatchingOrigin(const WebCore::SecurityOriginData&);
     void clearAllStorageAreas();
+
+    Vector<StorageAreaIdentifier> storageAreaIdentifiers() const;
 
 private:
     unsigned m_quotaInBytes { 0 };

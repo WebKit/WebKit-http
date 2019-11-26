@@ -229,12 +229,11 @@ static const String& blobFilesTableSchemaAlternate()
     return blobFilesTableSchemaString;
 }
 
-SQLiteIDBBackingStore::SQLiteIDBBackingStore(PAL::SessionID sessionID, const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler& fileHandler, uint64_t quota)
+SQLiteIDBBackingStore::SQLiteIDBBackingStore(PAL::SessionID sessionID, const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler& fileHandler)
     : m_sessionID(sessionID)
     , m_identifier(identifier)
     , m_databaseRootDirectory(databaseRootDirectory)
     , m_temporaryFileHandler(fileHandler)
-    , m_quota(quota)
     , m_serializationContext(IDBSerializationContext::getOrCreateIDBSerializationContext(sessionID))
 {
     m_databaseDirectory = fullDatabaseDirectoryWithUpgrade();
@@ -596,7 +595,7 @@ std::unique_ptr<IDBDatabaseInfo> SQLiteIDBBackingStore::createAndPopulateInitial
     }
 
     // This initial database info matches the default values we just put into the metadata database.
-    return std::make_unique<IDBDatabaseInfo>(m_identifier.databaseName(), 0);
+    return makeUnique<IDBDatabaseInfo>(m_identifier.databaseName(), 0);
 }
 
 std::unique_ptr<IDBDatabaseInfo> SQLiteIDBBackingStore::extractExistingDatabaseInfo()
@@ -631,7 +630,7 @@ std::unique_ptr<IDBDatabaseInfo> SQLiteIDBBackingStore::extractExistingDatabaseI
         }
     }
 
-    auto databaseInfo = std::make_unique<IDBDatabaseInfo>(databaseName, databaseVersion);
+    auto databaseInfo = makeUnique<IDBDatabaseInfo>(databaseName, databaseVersion);
 
     {
         SQLiteStatement sql(*m_sqliteDB, "SELECT id, name, keyPath, autoInc, maxIndexID FROM ObjectStoreInfo;"_s);
@@ -766,9 +765,10 @@ String SQLiteIDBBackingStore::databaseNameFromFile(const String& databasePath)
 
 String SQLiteIDBBackingStore::fullDatabaseDirectoryWithUpgrade()
 {
-    String oldOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory, "v0");
+    auto databaseRootDirectory = this->databaseRootDirectoryIsolatedCopy();
+    String oldOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(databaseRootDirectory, "v0");
     String oldDatabaseDirectory = FileSystem::pathByAppendingComponent(oldOriginDirectory, filenameForDatabaseName());
-    String newOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory, "v1");
+    String newOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(databaseRootDirectory, "v1");
     String fileNameHash = SQLiteFileSystem::computeHashForFileName(m_identifier.databaseName());
     Vector<String> directoriesWithSameHash = FileSystem::listDirectory(newOriginDirectory, fileNameHash + "*");
     String newDatabaseDirectory = FileSystem::pathByAppendingComponent(newOriginDirectory, fileNameHash);
@@ -793,7 +793,7 @@ IDBError SQLiteIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info
 
     String dbFilename = fullDatabasePath();
 
-    m_sqliteDB = std::make_unique<SQLiteDatabase>();
+    m_sqliteDB = makeUnique<SQLiteDatabase>();
     if (!m_sqliteDB->open(dbFilename)) {
         LOG_ERROR("Failed to open SQLite database at path '%s'", dbFilename.utf8().data());
         closeSQLiteDB();
@@ -845,47 +845,20 @@ IDBError SQLiteIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info
     return IDBError { };
 }
 
-uint64_t SQLiteIDBBackingStore::quotaForOrigin() const
-{
-    ASSERT(!isMainThread());
-    uint64_t diskFreeSpaceSize = 0;
-    FileSystem::getVolumeFreeSpace(m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory), diskFreeSpaceSize);
-    return std::min(diskFreeSpaceSize / 2, m_quota);
-}
-
-uint64_t SQLiteIDBBackingStore::databasesSizeForFolder(const String& folder)
+uint64_t SQLiteIDBBackingStore::databasesSizeForDirectory(const String& directory)
 {
     uint64_t diskUsage = 0;
-    for (auto& directory : FileSystem::listDirectory(folder, "*")) {
-        for (auto& file : FileSystem::listDirectory(directory, "*.sqlite3"_s))
+    for (auto& dbDirectory : FileSystem::listDirectory(directory, "*")) {
+        for (auto& file : FileSystem::listDirectory(dbDirectory, "*.sqlite3"_s))
             diskUsage += SQLiteFileSystem::getDatabaseFileSize(file);
     }
     return diskUsage;
 }
 
-uint64_t SQLiteIDBBackingStore::databasesSizeForOrigin() const
-{
-    String oldVersionOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory, "v0");
-    String newVersionOriginDirectory = m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory, "v1");
-    return databasesSizeForFolder(oldVersionOriginDirectory) + databasesSizeForFolder(newVersionOriginDirectory);
-}
-
-uint64_t SQLiteIDBBackingStore::maximumSize() const
+uint64_t SQLiteIDBBackingStore::databaseSize() const
 {
     ASSERT(!isMainThread());
-
-    // The maximum size for one database file is the quota for its origin, minus size of all databases within that origin,
-    // and plus current size of the database file.
-    uint64_t databaseFileSize = SQLiteFileSystem::getDatabaseFileSize(fullDatabasePath());
-    uint64_t quota = quotaForOrigin();
-
-    uint64_t diskUsage = databasesSizeForOrigin();
-    ASSERT(diskUsage >= databaseFileSize);
-
-    if (quota < diskUsage)
-        return databaseFileSize;
-
-    return quota - diskUsage + databaseFileSize;
+    return SQLiteFileSystem::getDatabaseFileSize(fullDatabasePath());
 }
 
 IDBError SQLiteIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
@@ -896,27 +869,23 @@ IDBError SQLiteIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
     ASSERT(m_sqliteDB->isOpen());
     ASSERT(m_databaseInfo);
 
-    m_sqliteDB->setMaximumSize(maximumSize());
     auto addResult = m_transactions.add(info.identifier(), nullptr);
     if (!addResult.isNewEntry) {
         LOG_ERROR("Attempt to establish transaction identifier that already exists");
         return IDBError { UnknownError, "Attempt to establish transaction identifier that already exists"_s };
     }
 
-    addResult.iterator->value = std::make_unique<SQLiteIDBTransaction>(*this, info);
+    addResult.iterator->value = makeUnique<SQLiteIDBTransaction>(*this, info);
 
     auto error = addResult.iterator->value->begin(*m_sqliteDB);
     if (error.isNull() && info.mode() == IDBTransactionMode::Versionchange) {
-        m_originalDatabaseInfoBeforeVersionChange = std::make_unique<IDBDatabaseInfo>(*m_databaseInfo);
+        m_originalDatabaseInfoBeforeVersionChange = makeUnique<IDBDatabaseInfo>(*m_databaseInfo);
 
         SQLiteStatement sql(*m_sqliteDB, "UPDATE IDBDatabaseInfo SET value = ? where key = 'DatabaseVersion';"_s);
         if (sql.prepare() != SQLITE_OK
             || sql.bindText(1, String::number(info.newVersion())) != SQLITE_OK
             || sql.step() != SQLITE_DONE) {
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                error = IDBError { QuotaExceededError, "Failed to store new database version in database because no enough space for domain"_s };
-            else
-                error = IDBError { UnknownError, "Failed to store new database version in database"_s };
+            error = IDBError { UnknownError, "Failed to store new database version in database"_s };
         }
     }
 
@@ -999,8 +968,6 @@ IDBError SQLiteIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
             || sql->bindInt64(5, info.maxIndexID()) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not add object store '%s' to ObjectStoreInfo table (%i) - %s", info.name().utf8().data(), m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Could not create object store because no enough space for domain"_s };
             return IDBError { UnknownError, "Could not create object store"_s };
         }
     }
@@ -1011,8 +978,6 @@ IDBError SQLiteIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
             || sql->bindInt64(1, info.identifier()) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not seed initial key generator value for ObjectStoreInfo table (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Could not seed initial key generator value for object store because no enough space for domain"_s };
             return IDBError { UnknownError, "Could not seed initial key generator value for object store"_s };
         }
     }
@@ -1136,8 +1101,6 @@ IDBError SQLiteIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& t
             || sql->bindInt64(2, objectStoreIdentifier) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not update name for object store id %" PRIi64 " in ObjectStoreInfo table (%i) - %s", objectStoreIdentifier, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Could not rename object store because no enough space for domain"_s };
             return IDBError { UnknownError, "Could not rename object store"_s };
         }
     }
@@ -1219,8 +1182,6 @@ IDBError SQLiteIDBBackingStore::createIndex(const IDBResourceIdentifier& transac
         || sql->bindInt(6, info.multiEntry()) != SQLITE_OK
         || sql->step() != SQLITE_DONE) {
         LOG_ERROR("Could not add index '%s' to IndexInfo table (%i) - %s", info.name().utf8().data(), m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-        if (m_sqliteDB->lastError() == SQLITE_FULL)
-            return IDBError { QuotaExceededError, "Unable to create index in database because no enough space for domain"_s };
         return IDBError { UnknownError, "Unable to create index in database"_s };
     }
 
@@ -1369,8 +1330,6 @@ IDBError SQLiteIDBBackingStore::uncheckedPutIndexRecord(int64_t objectStoreID, i
             || sql->bindInt64(5, recordID) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not put index record for index %" PRIi64 " in object store %" PRIi64 " in Records table (%i) - %s", indexID, objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Error putting index record into database because no enough space for domain"_s };
             return IDBError { UnknownError, "Error putting index record into database"_s };
         }
     }
@@ -1456,8 +1415,6 @@ IDBError SQLiteIDBBackingStore::renameIndex(const IDBResourceIdentifier& transac
             || sql->bindInt64(3, indexIdentifier) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not update name for index id (%" PRIi64 ", %" PRIi64 ") in IndexInfo table (%i) - %s", objectStoreIdentifier, indexIdentifier, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Could not rename index because no enough space for domain"_s };
             return IDBError { UnknownError, "Could not rename index"_s };
         }
     }
@@ -1795,8 +1752,6 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
             || sql->bindBlob(3, value.data().data()->data(), value.data().data()->size()) != SQLITE_OK
             || sql->step() != SQLITE_DONE) {
             LOG_ERROR("Could not put record for object store %" PRIi64 " in Records table (%i) - %s", objectStoreInfo.identifier(), m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-            if (m_sqliteDB->lastError() == SQLITE_FULL)
-                return IDBError { QuotaExceededError, "Unable to store record in object store because no enough space for domain"_s };
             return IDBError { UnknownError, "Unable to store record in object store"_s };
         }
 
@@ -1829,8 +1784,6 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
                 || sql->bindText(2, url) != SQLITE_OK
                 || sql->step() != SQLITE_DONE) {
                 LOG_ERROR("Unable to record Blob record in database");
-                if (m_sqliteDB->lastError() == SQLITE_FULL)
-                    return IDBError { QuotaExceededError, "Unable to record Blob record in database because no enough space for domain"_s };
                 return IDBError { UnknownError, "Unable to record Blob record in database"_s };
             }
         }
@@ -1864,8 +1817,6 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
                 || sql->bindText(2, storedFilename) != SQLITE_OK
                 || sql->step() != SQLITE_DONE) {
                 LOG_ERROR("Unable to record Blob file record in database");
-                if (m_sqliteDB->lastError() == SQLITE_FULL)
-                    return IDBError { QuotaExceededError, "Unable to record Blob file in database because no enough space for domain"_s };
                 return IDBError { UnknownError, "Unable to record Blob file record in database"_s };
             }
         }
@@ -2353,21 +2304,78 @@ IDBError SQLiteIDBBackingStore::getCount(const IDBResourceIdentifier& transactio
     ASSERT(m_sqliteDB);
     ASSERT(m_sqliteDB->isOpen());
 
-    outCount = 0;
-
     auto* transaction = m_transactions.get(transactionIdentifier);
     if (!transaction || !transaction->inProgress())
         return IDBError { UnknownError, "Attempt to get count from database without an in-progress transaction"_s };
 
-    auto cursor = transaction->maybeOpenBackingStoreCursor(objectStoreIdentifier, indexIdentifier, range);
-    if (!cursor) {
-        LOG_ERROR("Cannot open cursor to populate indexes in database");
-        return IDBError { UnknownError, "Unable to populate indexes in database"_s };
+    outCount = 0;
+
+    auto lowerKey = range.lowerKey.isNull() ? IDBKeyData::minimum() : range.lowerKey;
+    RefPtr<SharedBuffer> lowerBuffer = serializeIDBKeyData(lowerKey);
+    if (!lowerBuffer) {
+        LOG_ERROR("Unable to serialize lower IDBKey in lookup range");
+        return IDBError { UnknownError, "Unable to serialize lower IDBKey in lookup range for count operation"_s };
     }
 
-    while (cursor->advance(1))
-        ++outCount;
+    auto upperKey = range.upperKey.isNull() ? IDBKeyData::maximum() : range.upperKey;
+    RefPtr<SharedBuffer> upperBuffer = serializeIDBKeyData(upperKey);
+    if (!upperBuffer) {
+        LOG_ERROR("Unable to serialize upper IDBKey in lookup range");
+        return IDBError { UnknownError, "Unable to serialize upper IDBKey in lookup range for count operation"_s };
+    }
 
+    SQLiteStatement* statement = nullptr;
+
+    if (!indexIdentifier) {
+        static const char* const countLowerOpenUpperOpenRecords = "SELECT COUNT(*) FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT);";
+        static const char* const countLowerOpenUpperClosedRecords = "SELECT COUNT(*) FROM Records WHERE objectStoreID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT);";
+        static const char* const countLowerClosedUpperOpenRecords = "SELECT COUNT(*) FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT);";
+        static const char* const countLowerClosedUpperClosedRecords = "SELECT COUNT(*) FROM Records WHERE objectStoreID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT);";
+
+        if (range.lowerOpen && range.upperOpen)
+            statement = cachedStatement(SQL::CountRecordsLowerOpenUpperOpen, countLowerOpenUpperOpenRecords);
+        else if (range.lowerOpen && !range.upperOpen)
+            statement = cachedStatement(SQL::CountRecordsLowerOpenUpperClosed, countLowerOpenUpperClosedRecords);
+        else if (!range.lowerOpen && range.upperOpen)
+            statement = cachedStatement(SQL::CountRecordsLowerClosedUpperOpen, countLowerClosedUpperOpenRecords);
+        else
+            statement = cachedStatement(SQL::CountRecordsLowerClosedUpperClosed, countLowerClosedUpperClosedRecords);
+        
+        if (!statement
+            || statement->bindInt64(1, objectStoreIdentifier) != SQLITE_OK
+            || statement->bindBlob(2, lowerBuffer->data(), lowerBuffer->size()) != SQLITE_OK
+            || statement->bindBlob(3, upperBuffer->data(), upperBuffer->size()) != SQLITE_OK) {
+            LOG_ERROR("Could not count records in object store %" PRIi64 " from Records table (%i) - %s", objectStoreIdentifier, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return IDBError { UnknownError, "Unable to count records in object store due to binding failure"_s };
+        }
+    } else {
+        static const char* const countLowerOpenUpperOpenIndexRecords = "SELECT COUNT(*) FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key < CAST(? AS TEXT);";
+        static const char* const countLowerOpenUpperClosedIndexRecords = "SELECT COUNT(*) FROM IndexRecords WHERE indexID = ? AND key > CAST(? AS TEXT) AND key <= CAST(? AS TEXT);";
+        static const char* const countLowerClosedUpperOpenIndexRecords = "SELECT COUNT(*) FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key < CAST(? AS TEXT);";
+        static const char* const countLowerClosedUpperClosedIndexRecords = "SELECT COUNT(*) FROM IndexRecords WHERE indexID = ? AND key >= CAST(? AS TEXT) AND key <= CAST(? AS TEXT);";
+        
+        if (range.lowerOpen && range.upperOpen)
+            statement = cachedStatement(SQL::CountIndexRecordsLowerOpenUpperOpen, countLowerOpenUpperOpenIndexRecords);
+        else if (range.lowerOpen && !range.upperOpen)
+            statement = cachedStatement(SQL::CountIndexRecordsLowerOpenUpperClosed, countLowerOpenUpperClosedIndexRecords);
+        else if (!range.lowerOpen && range.upperOpen)
+            statement = cachedStatement(SQL::CountIndexRecordsLowerClosedUpperOpen, countLowerClosedUpperOpenIndexRecords);
+        else
+            statement = cachedStatement(SQL::CountIndexRecordsLowerClosedUpperClosed, countLowerClosedUpperClosedIndexRecords);
+
+        if (!statement
+            || statement->bindInt64(1, indexIdentifier) != SQLITE_OK
+            || statement->bindBlob(2, lowerBuffer->data(), lowerBuffer->size()) != SQLITE_OK
+            || statement->bindBlob(3, upperBuffer->data(), upperBuffer->size()) != SQLITE_OK) {
+            LOG_ERROR("Could not count records with index %" PRIi64 " from IndexRecords table (%i) - %s", indexIdentifier, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return IDBError { UnknownError, "Unable to count records for index due to binding failure"_s };
+        }
+    }
+
+    if (statement->step() != SQLITE_ROW)
+        return IDBError { UnknownError, "Unable to count records"_s };
+
+    outCount = statement->getColumnInt(0);
     return IDBError { };
 }
 
@@ -2401,8 +2409,6 @@ IDBError SQLiteIDBBackingStore::uncheckedSetKeyGeneratorValue(int64_t objectStor
         || sql->bindInt64(2, value) != SQLITE_OK
         || sql->step() != SQLITE_DONE) {
         LOG_ERROR("Could not update key generator value (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-        if (m_sqliteDB->lastError() == SQLITE_FULL)
-            return IDBError { QuotaExceededError, "Error storing new key generator value in database because no enough space for domain"_s };
         return IDBError { ConstraintError, "Error storing new key generator value in database" };
     }
 
@@ -2611,7 +2617,7 @@ void SQLiteIDBBackingStore::deleteBackingStore()
 
     SQLiteFileSystem::deleteDatabaseFile(dbFilename);
     SQLiteFileSystem::deleteEmptyDatabaseDirectory(m_databaseDirectory);
-    SQLiteFileSystem::deleteEmptyDatabaseDirectory(m_identifier.databaseDirectoryRelativeToRoot(m_databaseRootDirectory));
+    SQLiteFileSystem::deleteEmptyDatabaseDirectory(m_identifier.databaseDirectoryRelativeToRoot(databaseRootDirectoryIsolatedCopy()));
 }
 
 void SQLiteIDBBackingStore::unregisterCursor(SQLiteIDBCursor& cursor)
@@ -2622,7 +2628,7 @@ void SQLiteIDBBackingStore::unregisterCursor(SQLiteIDBCursor& cursor)
 
 SQLiteStatement* SQLiteIDBBackingStore::cachedStatement(SQLiteIDBBackingStore::SQL sql, const char* statement)
 {
-    if (sql >= SQL::Count) {
+    if (sql >= SQL::Invalid) {
         LOG_ERROR("Invalid SQL statement ID passed to cachedStatement()");
         return nullptr;
     }
@@ -2634,7 +2640,7 @@ SQLiteStatement* SQLiteIDBBackingStore::cachedStatement(SQLiteIDBBackingStore::S
     }
 
     if (m_sqliteDB) {
-        m_cachedStatements[static_cast<size_t>(sql)] = std::make_unique<SQLiteStatement>(*m_sqliteDB, statement);
+        m_cachedStatements[static_cast<size_t>(sql)] = makeUnique<SQLiteStatement>(*m_sqliteDB, statement);
         if (m_cachedStatements[static_cast<size_t>(sql)]->prepare() != SQLITE_OK)
             m_cachedStatements[static_cast<size_t>(sql)] = nullptr;
     }
@@ -2642,9 +2648,14 @@ SQLiteStatement* SQLiteIDBBackingStore::cachedStatement(SQLiteIDBBackingStore::S
     return m_cachedStatements[static_cast<size_t>(sql)].get();
 }
 
+void SQLiteIDBBackingStore::close()
+{
+    closeSQLiteDB();
+}
+
 void SQLiteIDBBackingStore::closeSQLiteDB()
 {
-    for (size_t i = 0; i < static_cast<int>(SQL::Count); ++i)
+    for (size_t i = 0; i < static_cast<int>(SQL::Invalid); ++i)
         m_cachedStatements[i] = nullptr;
 
     if (m_sqliteDB)

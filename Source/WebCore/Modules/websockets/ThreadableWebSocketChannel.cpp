@@ -110,6 +110,8 @@ Optional<ResourceRequest> ThreadableWebSocketChannel::webSocketConnectRequest(Do
     request.setHTTPUserAgent(document.userAgent(validatedURL->url));
     request.setDomainForCachePartition(document.domainForCachePartition());
     request.setAllowCookies(validatedURL->areCookiesAllowed);
+    request.setFirstPartyForCookies(document.firstPartyForCookies());
+    request.setHTTPHeaderField(HTTPHeaderName::Origin, document.securityOrigin().toString());
 
     // Add no-cache headers to avoid compatibility issue.
     // There are some proxies that rewrite "Connection: upgrade"

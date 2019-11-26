@@ -28,39 +28,42 @@
 
 #if ENABLE(WEBGPU)
 
+#include "WHLSLAST.h"
 #include "WHLSLVisitor.h"
 
 namespace WebCore {
 
 namespace WHLSL {
 
-#if !ASSERT_DISABLED
-// If a high-level construct somehow manages to live on when we're lowered, it's a high zombie.
 class HighZombieFinder : public Visitor {
-private:
-    void visit(AST::DotExpression&) override
+public:
+    void visit(AST::ReadModifyWriteExpression& readModifyWrite) override
     {
-        ASSERT_NOT_REACHED();
+        checkErrorAndVisit(readModifyWrite.newValueExpression());
+        checkErrorAndVisit(readModifyWrite.resultExpression());
+
+        RELEASE_ASSERT(!readModifyWrite.leftValue().mayBeEffectful());
     }
 
-    void visit(AST::IndexExpression&) override
+    void visit(AST::DotExpression& dotExpression) override
     {
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT(!dotExpression.base().mayBeEffectful());
     }
 
-    void visit(AST::ReadModifyWriteExpression&) override
+    void visit(AST::IndexExpression& indexExpression) override
     {
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT(!indexExpression.base().mayBeEffectful());
+        RELEASE_ASSERT(!indexExpression.indexExpression().mayBeEffectful());
     }
 };
-#endif
 
 void findHighZombies(Program& program)
 {
-#if ASSERT_DISABLED
     UNUSED_PARAM(program);
-#else
-    HighZombieFinder().Visitor::visit(program);
+
+#if !ASSERT_DISABLED
+    HighZombieFinder finder;
+    finder.Visitor::visit(program);
 #endif
 }
 

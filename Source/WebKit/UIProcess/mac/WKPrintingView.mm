@@ -391,7 +391,7 @@ static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
     if (!RunLoop::isMain())
         _isPrintingFromSecondaryThread = YES;
 
-    if (!_webFrame->page()) {
+    if (_webFrame->pageIsClosed()) {
         *range = NSMakeRange(1, NSIntegerMax);
         return YES;
     }
@@ -504,6 +504,9 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
 - (void)_drawPreview:(NSRect)nsRect
 {
     ASSERT(RunLoop::isMain());
+    
+    if (!_webFrame || !_webFrame->page())
+        return;
 
     WebCore::IntRect scaledPrintingRect(nsRect);
     scaledPrintingRect.scale(1 / _totalScaleFactorForPrinting);
@@ -519,9 +522,6 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
                 _latestExpectedPreviewCallback = existingCallback;
             } else {
                 // Preview isn't available yet, request it asynchronously.
-                if (!_webFrame->page())
-                    return;
-
                 // Return to printing mode if we're already back to screen (e.g. due to window resizing).
                 _webFrame->page()->beginPrinting(_webFrame.get(), WebKit::PrintInfo([_printOperation printInfo]));
 

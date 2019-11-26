@@ -123,7 +123,7 @@ UniqueIDBDatabase& IDBServer::getOrCreateUniqueIDBDatabase(const IDBDatabaseIden
 
     auto uniqueIDBDatabase = m_uniqueIDBDatabaseMap.add(identifier, nullptr);
     if (uniqueIDBDatabase.isNewEntry)
-        uniqueIDBDatabase.iterator->value = std::make_unique<UniqueIDBDatabase>(*this, identifier);
+        uniqueIDBDatabase.iterator->value = makeUnique<UniqueIDBDatabase>(*this, identifier);
 
     return *uniqueIDBDatabase.iterator->value;
 }
@@ -132,10 +132,11 @@ std::unique_ptr<IDBBackingStore> IDBServer::createBackingStore(const IDBDatabase
 {
     ASSERT(!isMainThread());
 
-    if (m_databaseDirectoryPath.isEmpty())
+    auto databaseDirectoryPath = this->databaseDirectoryPathIsolatedCopy();
+    if (databaseDirectoryPath.isEmpty())
         return MemoryIDBBackingStore::create(m_sessionID, identifier);
 
-    return std::make_unique<SQLiteIDBBackingStore>(m_sessionID, identifier, m_databaseDirectoryPath, m_backingStoreTemporaryFileHandler, m_perOriginQuota);
+    return makeUnique<SQLiteIDBBackingStore>(m_sessionID, identifier, databaseDirectoryPath, m_backingStoreTemporaryFileHandler);
 }
 
 void IDBServer::openDatabase(const IDBRequestData& requestData)
@@ -466,7 +467,8 @@ void IDBServer::getAllDatabaseNames(uint64_t serverConnectionIdentifier, const S
 
 void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
 {
-    String oldDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath, "v0");
+    auto databaseDirectoryPath = this->databaseDirectoryPathIsolatedCopy();
+    String oldDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, databaseDirectoryPath, "v0");
     Vector<String> files = FileSystem::listDirectory(oldDirectory, "*"_s);
     Vector<String> databases;
     for (auto& file : files) {
@@ -474,7 +476,7 @@ void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, 
         databases.append(SQLiteIDBBackingStore::databaseNameFromEncodedFilename(encodedName));
     }
 
-    String directory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath, "v1");
+    String directory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, databaseDirectoryPath, "v1");
     files = FileSystem::listDirectory(directory, "*"_s);
     for (auto& file : files) {
         auto databaseName = SQLiteIDBBackingStore::databaseNameFromFile(SQLiteIDBBackingStore::fullDatabasePathForDirectory(file));
@@ -639,7 +641,7 @@ static void removeAllDatabasesForOriginPath(const String& originPath, WallTime m
 
 void IDBServer::removeDatabasesModifiedSinceForVersion(WallTime modifiedSince, const String& version)
 {
-    String versionPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, version);
+    String versionPath = FileSystem::pathByAppendingComponent(databaseDirectoryPathIsolatedCopy(), version);
     for (auto& originPath : FileSystem::listDirectory(versionPath, "*")) {
         String databaseIdentifier = FileSystem::lastComponentOfPathIgnoringTrailingSlash(originPath);
         if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
@@ -649,7 +651,7 @@ void IDBServer::removeDatabasesModifiedSinceForVersion(WallTime modifiedSince, c
 
 void IDBServer::performCloseAndDeleteDatabasesModifiedSince(WallTime modifiedSince, uint64_t callbackID)
 {
-    if (!m_databaseDirectoryPath.isEmpty()) {
+    if (!databaseDirectoryPathIsolatedCopy().isEmpty()) {
         removeDatabasesModifiedSinceForVersion(modifiedSince, "v0");
         removeDatabasesModifiedSinceForVersion(modifiedSince, "v1");
     }
@@ -659,7 +661,7 @@ void IDBServer::performCloseAndDeleteDatabasesModifiedSince(WallTime modifiedSin
 
 void IDBServer::removeDatabasesWithOriginsForVersion(const Vector<SecurityOriginData> &origins, const String& version)
 {
-    String versionPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, version);
+    String versionPath = FileSystem::pathByAppendingComponent(databaseDirectoryPathIsolatedCopy(), version);
     for (const auto& origin : origins) {
         String originPath = FileSystem::pathByAppendingComponent(versionPath, origin.databaseIdentifier());
         removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
@@ -673,7 +675,7 @@ void IDBServer::removeDatabasesWithOriginsForVersion(const Vector<SecurityOrigin
     
 void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>& origins, uint64_t callbackID)
 {
-    if (!m_databaseDirectoryPath.isEmpty()) {
+    if (!databaseDirectoryPathIsolatedCopy().isEmpty()) {
         removeDatabasesWithOriginsForVersion(origins, "v0");
         removeDatabasesWithOriginsForVersion(origins, "v1");
     }
@@ -689,14 +691,6 @@ void IDBServer::didPerformCloseAndDeleteDatabases(uint64_t callbackID)
     auto callback = m_deleteDatabaseCompletionHandlers.take(callbackID);
     ASSERT(callback);
     callback();
-}
-
-void IDBServer::setPerOriginQuota(uint64_t quota)
-{
-    m_perOriginQuota = quota;
-
-    for (auto& database : m_uniqueIDBDatabaseMap.values())
-        database->setQuota(quota);
 }
 
 IDBServer::QuotaUser::QuotaUser(IDBServer& server, StorageQuotaManager* manager, ClientOrigin&& origin)
@@ -738,6 +732,21 @@ void IDBServer::QuotaUser::resetSpaceUsed()
     m_manager->addUser(*this);
 }
 
+void IDBServer::QuotaUser::increaseSpaceUsed(uint64_t size)
+{
+    if (!m_isInitialized)
+        return;
+    ASSERT(m_spaceUsed + size > m_spaceUsed);
+    m_spaceUsed += size;
+}
+void IDBServer::QuotaUser::decreaseSpaceUsed(uint64_t size)
+{
+    if (!m_isInitialized)
+        return;
+    ASSERT(m_spaceUsed >= size);
+    m_spaceUsed -= size;
+}
+
 void IDBServer::QuotaUser::whenInitialized(CompletionHandler<void()>&& callback)
 {
     if (m_isInitialized) {
@@ -761,7 +770,7 @@ void IDBServer::QuotaUser::initializeSpaceUsed(uint64_t spaceUsed)
 IDBServer::QuotaUser& IDBServer::ensureQuotaUser(const ClientOrigin& origin)
 {
     return *m_quotaUsers.ensure(origin, [this, &origin] {
-        return std::make_unique<QuotaUser>(*this, m_quotaManagerGetter(m_sessionID, origin), ClientOrigin { origin });
+        return makeUnique<QuotaUser>(*this, m_quotaManagerGetter(m_sessionID, origin), ClientOrigin { origin });
     }).iterator->value;
 }
 
@@ -775,9 +784,10 @@ void IDBServer::computeSpaceUsedForOrigin(const ClientOrigin& origin)
 {
     ASSERT(!isMainThread());
 
-    auto oldVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, m_databaseDirectoryPath, "v0");
-    auto newVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, m_databaseDirectoryPath, "v1");
-    auto size = SQLiteIDBBackingStore::databasesSizeForFolder(oldVersionOriginDirectory) + SQLiteIDBBackingStore::databasesSizeForFolder(newVersionOriginDirectory);
+    auto databaseDirectoryPath = this->databaseDirectoryPathIsolatedCopy();
+    auto oldVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, databaseDirectoryPath, "v0");
+    auto newVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, databaseDirectoryPath, "v1");
+    auto size = SQLiteIDBBackingStore::databasesSizeForDirectory(oldVersionOriginDirectory) + SQLiteIDBBackingStore::databasesSizeForDirectory(newVersionOriginDirectory);
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::finishComputingSpaceUsedForOrigin, origin, size));
 }
@@ -804,9 +814,14 @@ void IDBServer::resetSpaceUsed(const ClientOrigin& origin)
         user->resetSpaceUsed();
 }
 
-void IDBServer::setSpaceUsed(const ClientOrigin& origin, uint64_t taskSize)
+void IDBServer::increaseSpaceUsed(const ClientOrigin& origin, uint64_t size)
 {
-    ensureQuotaUser(origin).setSpaceUsed(taskSize);
+    ensureQuotaUser(origin).increaseSpaceUsed(size);
+}
+
+void IDBServer::decreaseSpaceUsed(const ClientOrigin& origin, uint64_t size)
+{
+    ensureQuotaUser(origin).decreaseSpaceUsed(size);
 }
 
 void IDBServer::increasePotentialSpaceUsed(const ClientOrigin& origin, uint64_t taskSize)
@@ -821,10 +836,11 @@ void IDBServer::decreasePotentialSpaceUsed(const ClientOrigin& origin, uint64_t 
 
 void IDBServer::upgradeFilesIfNecessary()
 {
-    if (m_databaseDirectoryPath.isEmpty() || !FileSystem::fileExists(m_databaseDirectoryPath))
+    auto databaseDirectoryPath = this->databaseDirectoryPathIsolatedCopy();
+    if (databaseDirectoryPath.isEmpty() || !FileSystem::fileExists(databaseDirectoryPath))
         return;
 
-    String newVersionDirectory = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, "v1");
+    String newVersionDirectory = FileSystem::pathByAppendingComponent(databaseDirectoryPath, "v1");
     if (!FileSystem::fileExists(newVersionDirectory))
         FileSystem::makeAllDirectories(newVersionDirectory);
 }

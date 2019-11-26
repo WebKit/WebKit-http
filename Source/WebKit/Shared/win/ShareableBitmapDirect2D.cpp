@@ -28,6 +28,8 @@
 #include "config.h"
 #include "ShareableBitmap.h"
 
+#include "Decoder.h"
+#include "Encoder.h"
 #include <WebCore/BitmapImage.h>
 #include <WebCore/DIBPixelData.h>
 #include <WebCore/Direct2DOperations.h>
@@ -35,6 +37,9 @@
 #include <WebCore/GraphicsContextImplDirect2D.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/PlatformContextDirect2D.h>
+#include <d2d1_1.h>
+#include <d3d11_1.h>
+#include <dxgi1_2.h>
 #include <wincodec.h>
 #include <wtf/ProcessID.h>
 
@@ -42,11 +47,9 @@
 namespace WebKit {
 using namespace WebCore;
 
-static const auto bitmapFormat = GUID_WICPixelFormat32bppPBGRA;
-
 static unsigned strideForWidth(unsigned width)
 {
-    static unsigned bitsPerPixel = Direct2D::bitsPerPixel(bitmapFormat);
+    static unsigned bitsPerPixel = Direct2D::bitsPerPixel(Direct2D::wicBitmapFormat());
     return bitsPerPixel * width / 8;
 }
 
@@ -60,17 +63,48 @@ unsigned ShareableBitmap::calculateBytesPerPixel(const Configuration&)
     return 4;
 }
 
-static inline COMPtr<IWICBitmap> createSurfaceFromData(void* data, const WebCore::IntSize& size)
+void ShareableBitmap::createSharedResource()
 {
-    const unsigned stride = strideForWidth(size.width());
-    return Direct2D::createDirect2DImageSurfaceWithData(data, size, stride);
+    // Don't create a shared resource if the configuration instructs us to use an existing one.
+    if (m_configuration.sharedResourceHandle)
+        return;
+
+    m_surface = Direct2D::createDXGISurfaceOfSize(m_size, nullptr, true);
+
+    COMPtr<IDXGIResource1> resourceData;
+    HRESULT hr = m_surface->QueryInterface(__uuidof(IDXGIResource), reinterpret_cast<void**>(&resourceData));
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    hr = resourceData->CreateSharedHandle(nullptr, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, nullptr, &m_configuration.sharedResourceHandle);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+}
+
+void ShareableBitmap::disposeSharedResource()
+{
+    if (m_surfaceMutex)
+        m_surfaceMutex->ReleaseSync(1);
+    if (m_configuration.sharedResourceHandle)
+        ::CloseHandle(m_configuration.sharedResourceHandle);
+}
+
+void ShareableBitmap::leakSharedResource()
+{
+    m_configuration.sharedResourceHandle = nullptr;
 }
 
 std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
-    m_bitmap = createDirect2DSurface();
-    COMPtr<ID2D1RenderTarget> bitmapContext = Direct2D::createRenderTargetFromWICBitmap(m_bitmap.get());
-    return std::make_unique<GraphicsContext>(GraphicsContextImplDirect2D::createFactory(bitmapContext.get()));
+    // Lock the surface to the current device while rendering.
+    HRESULT hr = m_surface->QueryInterface(&m_surfaceMutex);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+    hr = m_surfaceMutex->AcquireSync(0, INFINITE);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    auto surfaceContext = Direct2D::createSurfaceRenderTarget(m_surface.get());
+    if (!surfaceContext)
+        return nullptr;
+
+    return makeUnique<GraphicsContext>(GraphicsContextImplDirect2D::createFactory(surfaceContext.get()));
 }
 
 void ShareableBitmap::paint(GraphicsContext& context, const IntPoint& dstPoint, const IntRect& srcRect)
@@ -80,7 +114,13 @@ void ShareableBitmap::paint(GraphicsContext& context, const IntPoint& dstPoint, 
 
 void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const IntPoint& dstPoint, const IntRect& srcRect)
 {
-    auto surface = createDirect2DSurface();
+    auto surface = createDirect2DSurface(nullptr, context.platformContext()->renderTarget());
+
+#ifndef _NDEBUG
+    auto bitmapSize = surface->GetPixelSize();
+    ASSERT(bitmapSize.width == m_size.width());
+    ASSERT(bitmapSize.height == m_size.height());
+#endif
 
     FloatRect destRect(dstPoint, srcRect.size());
     FloatRect srcRectScaled(srcRect);
@@ -90,44 +130,45 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     auto& state = context.state();
     auto& platformContext = *context.platformContext();
 
-    Direct2D::drawNativeImage(platformContext, surface.get(), m_size, destRect, srcRectScaled, state.compositeOperator, state.blendMode, ImageOrientation(), state.imageInterpolationQuality, state.alpha, Direct2D::ShadowState(state));
+    ImagePaintingOptions options { state.compositeOperator, state.blendMode, ImageOrientation(), state.imageInterpolationQuality };
+    Direct2D::drawNativeImage(platformContext, surface.get(), m_size, destRect, srcRectScaled, options, state.alpha, Direct2D::ShadowState(state));
 }
 
-COMPtr<IWICBitmap> ShareableBitmap::createDirect2DSurface()
+COMPtr<ID2D1Bitmap> ShareableBitmap::createDirect2DSurface(ID3D11Device1* directXDevice, ID2D1RenderTarget* renderTarget)
 {
-    m_bitmap = createSurfaceFromData(data(), m_size);
-    return m_bitmap;
+    if (!directXDevice)
+        directXDevice = Direct2D::defaultDirectXDevice();
+
+    COMPtr<ID3D11Texture2D> texture;
+    HRESULT hr = directXDevice->OpenSharedResource1(m_configuration.sharedResourceHandle, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&texture));
+    if (!SUCCEEDED(hr))
+        return nullptr;
+
+    hr = texture->QueryInterface(&m_surface);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    // Lock the surface to the current device while rendering.
+    hr = m_surface->QueryInterface(&m_surfaceMutex);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+    hr = m_surfaceMutex->AcquireSync(1, INFINITE);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    auto bitmapProperties = Direct2D::bitmapProperties();
+    hr = renderTarget->CreateSharedBitmap(__uuidof(IDXGISurface1), reinterpret_cast<void*>(m_surface.get()), &bitmapProperties, &bitmap);
+    if (!SUCCEEDED(hr))
+        return nullptr;
+
+    return bitmap;
 }
 
 RefPtr<Image> ShareableBitmap::createImage()
 {
-    auto surface = createDirect2DSurface();
+    auto surface = createDirect2DSurface(nullptr, GraphicsContext::defaultRenderTarget());
     if (!surface)
         return nullptr;
 
     return BitmapImage::create(WTFMove(surface));
-}
-
-void ShareableBitmap::sync(GraphicsContext& graphicsContext)
-{
-    ASSERT(m_bitmap);
-
-    graphicsContext.endDraw();
-
-    WICRect rcLock = { 0, 0, m_size.width(), m_size.height() };
-
-    COMPtr<IWICBitmapLock> bitmapDataLock;
-    HRESULT hr = m_bitmap->Lock(&rcLock, WICBitmapLockRead, &bitmapDataLock);
-    if (SUCCEEDED(hr)) {
-        UINT bufferSize = 0;
-        WICInProcPointer dataPtr = nullptr;
-        hr = bitmapDataLock->GetDataPointer(&bufferSize, &dataPtr);
-        if (SUCCEEDED(hr))
-            memcpy(data(), reinterpret_cast<char*>(dataPtr), bufferSize);
-    }
-
-    // Once we are done modifying the data, unlock the bitmap
-    bitmapDataLock = nullptr;
 }
 
 } // namespace WebKit

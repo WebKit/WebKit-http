@@ -824,7 +824,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
             });
         }
 
-        if (attributeName && isNonShadowEditable) {
+        if (attributeName) {
             subMenus.copy.appendItem(WI.UIString("Attribute"), () => {
                 let text = attributeName;
                 let attributeValue = this.representedObject.getAttribute(attributeName);
@@ -855,16 +855,18 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
         for (let subMenu of Object.values(subMenus))
             contextMenu.pushItem(subMenu);
 
-        if (this.selected && this.treeOutline && this.treeOutline.selectedTreeElements.length > 1) {
-            let forceHidden = !this.treeOutline.selectedTreeElements.every((treeElement) => treeElement.isNodeHidden);
-            let label = forceHidden ? WI.UIString("Hide Elements") : WI.UIString("Show Elements");
-            contextMenu.appendItem(label, () => {
-                this.treeOutline.toggleSelectedElementsVisibility(forceHidden);
-            });
-        } else {
-            contextMenu.appendItem(WI.UIString("Toggle Visibility"), () => {
-                this.toggleElementVisibility();
-            });
+        if (this.treeOutline.editable) {
+            if (this.selected && this.treeOutline && this.treeOutline.selectedTreeElements.length > 1) {
+                let forceHidden = !this.treeOutline.selectedTreeElements.every((treeElement) => treeElement.isNodeHidden);
+                let label = forceHidden ? WI.UIString("Hide Elements") : WI.UIString("Show Elements");
+                contextMenu.appendItem(label, () => {
+                    this.treeOutline.toggleSelectedElementsVisibility(forceHidden);
+                });
+            } else if (isEditableNode) {
+                contextMenu.appendItem(WI.UIString("Toggle Visibility"), () => {
+                    this.toggleElementVisibility();
+                });
+            }
         }
     }
 
@@ -1628,7 +1630,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
             visibleChildren.push(beforePseudoElement);
 
         if (node.childNodeCount && node.children)
-            visibleChildren = visibleChildren.concat(node.children);
+            visibleChildren.pushAll(node.children);
 
         var afterPseudoElement = node.afterPseudoElement();
         if (afterPseudoElement)

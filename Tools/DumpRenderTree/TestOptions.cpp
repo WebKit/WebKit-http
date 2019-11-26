@@ -79,8 +79,12 @@ TestOptions::TestOptions(const std::string& pathOrURL, const std::string& absolu
             useAcceleratedDrawing = parseBooleanTestHeaderValue(value);
         else if (key == "enableIntersectionObserver")
             enableIntersectionObserver = parseBooleanTestHeaderValue(value);
+        else if (key == "useEphemeralSession")
+            useEphemeralSession = parseBooleanTestHeaderValue(value);
         else if (key == "enableMenuItemElement")
             enableMenuItemElement = parseBooleanTestHeaderValue(value);
+        else if (key == "enableKeygenElement")
+            enableKeygenElement = parseBooleanTestHeaderValue(value);
         else if (key == "enableModernMediaControls")
             enableModernMediaControls = parseBooleanTestHeaderValue(value);
         else if (key == "enablePointerLock")
@@ -117,8 +121,6 @@ TestOptions::TestOptions(const std::string& pathOrURL, const std::string& absolu
             enableResizeObserver = parseBooleanTestHeaderValue(value);
         else if (key == "experimental:CoreMathMLEnabled")
             enableCoreMathML = parseBooleanTestHeaderValue(value);
-        else if (key == "experimental:LazyImageLoadingEnabled")
-            enableLazyImageLoading = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

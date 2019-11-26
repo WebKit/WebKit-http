@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2015 Canon Inc. All rights reserved.
@@ -125,10 +125,6 @@ void JSFunction::finishCreation(VM& vm)
     Base::finishCreation(vm);
     ASSERT(jsDynamicCast<JSFunction*>(vm, this));
     ASSERT(type() == JSFunctionType);
-    if (isAnonymousBuiltinFunction()) {
-        // This is anonymous builtin function.
-        rareData(vm)->setHasReifiedName();
-    }
 }
 
 void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length, const String& name)
@@ -139,14 +135,14 @@ void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length
     m_executable.set(vm, this, executable);
     // Some NativeExecutable functions, like JSBoundFunction, decide to lazily allocate their name string.
     if (!name.isNull())
-        putDirect(vm, vm.propertyNames->name, jsString(&vm, name), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+        putDirect(vm, vm.propertyNames->name, jsString(vm, name), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(length), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 FunctionRareData* JSFunction::allocateRareData(VM& vm)
 {
     ASSERT(!m_rareData);
-    FunctionRareData* rareData = FunctionRareData::create(vm);
+    FunctionRareData* rareData = FunctionRareData::create(vm, this);
 
     // A DFG compilation thread may be trying to read the rare data
     // We want to ensure that it sees it properly allocated
@@ -186,7 +182,7 @@ FunctionRareData* JSFunction::allocateAndInitializeRareData(ExecState* exec, siz
     ASSERT(canUseAllocationProfile());
     VM& vm = exec->vm();
     JSObject* prototype = prototypeForConstruction(vm, exec);
-    FunctionRareData* rareData = FunctionRareData::create(vm);
+    FunctionRareData* rareData = FunctionRareData::create(vm, this);
     rareData->initializeObjectAllocationProfile(vm, globalObject(vm), prototype, inlineCapacity, this);
 
     // A DFG compilation thread may be trying to read the rare data
@@ -334,7 +330,7 @@ public:
 
         JSCell* callee = visitor->callee().asCell();
 
-        if (callee && callee->inherits<JSBoundFunction>(*callee->vm()))
+        if (callee && callee->inherits<JSBoundFunction>(callee->vm()))
             return StackVisitor::Continue;
 
         if (!m_hasFoundFrame && (callee != m_targetCallee))
@@ -752,7 +748,7 @@ void JSFunction::reifyName(VM& vm, ExecState* exec, String name)
         name = makeString("set ", name);
 
     rareData->setHasReifiedName();
-    putDirect(vm, propID, jsString(exec, name), initialAttributes);
+    putDirect(vm, propID, jsString(vm, name), initialAttributes);
 }
 
 JSFunction::PropertyStatus JSFunction::reifyLazyPropertyIfNeeded(VM& vm, ExecState* exec, PropertyName propertyName)
@@ -819,7 +815,7 @@ JSFunction::PropertyStatus JSFunction::reifyLazyBoundNameIfNeeded(VM& vm, ExecSt
         String name = makeString("bound ", static_cast<NativeExecutable*>(m_executable.get())->name());
         unsigned initialAttributes = PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly;
         rareData->setHasReifiedName();
-        putDirect(vm, nameIdent, jsString(exec, name), initialAttributes);
+        putDirect(vm, nameIdent, jsString(vm, name), initialAttributes);
     }
     return PropertyStatus::Reified;
 }
@@ -828,7 +824,7 @@ JSFunction::PropertyStatus JSFunction::reifyLazyBoundNameIfNeeded(VM& vm, ExecSt
 void JSFunction::assertTypeInfoFlagInvariants()
 {
     // If you change this, you'll need to update speculationFromClassInfo.
-    const ClassInfo* info = classInfo(*vm());
+    const ClassInfo* info = classInfo(vm());
     if (!(inlineTypeFlags() & ImplementsDefaultHasInstance))
         RELEASE_ASSERT(info == JSBoundFunction::info());
     else

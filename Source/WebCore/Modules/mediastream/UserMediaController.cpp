@@ -58,7 +58,7 @@ UserMediaController::~UserMediaController()
 
 void provideUserMediaTo(Page* page, UserMediaClient* client)
 {
-    UserMediaController::provideTo(page, UserMediaController::supplementName(), std::make_unique<UserMediaController>(client));
+    UserMediaController::provideTo(page, UserMediaController::supplementName(), makeUnique<UserMediaController>(client));
 }
 
 static inline bool isSecure(DocumentLoader& documentLoader)
@@ -85,7 +85,7 @@ static inline bool isAllowedByFeaturePolicy(const FeaturePolicy& featurePolicy, 
     return true;
 }
 
-static UserMediaController::GetUserMediaAccess isAllowedToUse(Document& document, Document& topDocument, OptionSet<UserMediaController::CaptureType> types)
+static UserMediaController::GetUserMediaAccess isAllowedToUse(const Document& document, const Document& topDocument, OptionSet<UserMediaController::CaptureType> types)
 {
     if (&document == &topDocument)
         return UserMediaController::GetUserMediaAccess::CanCall;
@@ -106,7 +106,7 @@ static UserMediaController::GetUserMediaAccess isAllowedToUse(Document& document
     return UserMediaController::GetUserMediaAccess::BlockedByFeaturePolicy;
 }
 
-UserMediaController::GetUserMediaAccess UserMediaController::canCallGetUserMedia(Document& document, OptionSet<UserMediaController::CaptureType> types)
+UserMediaController::GetUserMediaAccess UserMediaController::canCallGetUserMedia(const Document& document, OptionSet<UserMediaController::CaptureType> types) const
 {
     ASSERT(!types.isEmpty());
 

@@ -43,6 +43,7 @@ public:
     void doAfterNextStablePresentationUpdate(JSValueRef) override;
     void ensurePositionInformationIsUpToDateAt(long x, long y, JSValueRef) override;
     void doAfterVisibleContentRectUpdate(JSValueRef) override;
+    void doAfterDoubleTapDelay(JSValueRef) override;
     void zoomToScale(double scale, JSValueRef) override;
     void retrieveSpeakSelectionContent(JSValueRef) override;
     JSRetainPtr<JSStringRef> accessibilitySpeakSelectionContent() const override;
@@ -52,7 +53,8 @@ public:
     void liftUpAtPoint(long x, long y, long touchCount, JSValueRef) override;
     void singleTapAtPoint(long x, long y, JSValueRef) override;
     void singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef) override;
-    void doubleTapAtPoint(long x, long y, JSValueRef) override;
+    void twoFingerSingleTapAtPoint(long x, long y, JSValueRef callback) override;
+    void doubleTapAtPoint(long x, long y, float delay, JSValueRef) override;
     void stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef) override;
     void stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef) override;
     void stylusUpAtPoint(long x, long y, JSValueRef) override;
@@ -139,6 +141,9 @@ public:
     void setDidDismissPopoverCallback(JSValueRef) override;
     void setDidEndScrollingCallback(JSValueRef) override;
     void clearAllCallbacks() override;
+
+private:
+    void waitForSingleTapToReset() const;
 };
 
 }

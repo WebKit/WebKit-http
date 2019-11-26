@@ -53,6 +53,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/UniqueArray.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -374,13 +375,6 @@ void TestRunner::disallowIncreaseForApplicationCacheQuota()
     m_disallowIncreaseForApplicationCacheQuota = true;
 }
 
-void TestRunner::setIDBPerOriginQuota(uint64_t quota)
-{
-    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetIDBPerOriginQuota"));
-    WKRetainPtr<WKUInt64Ref> messageBody = adoptWK(WKUInt64Create(quota));
-    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
-}
-
 static inline JSValueRef stringArrayToJS(JSContextRef context, WKArrayRef strings)
 {
     const size_t count = WKArrayGetSize(strings);
@@ -537,10 +531,10 @@ void TestRunner::setJavaScriptCanAccessClipboard(bool enabled)
     WKBundleSetJavaScriptCanAccessClipboard(injectedBundle.bundle(), injectedBundle.pageGroup(), enabled);
 }
 
-void TestRunner::setPrivateBrowsingEnabled(bool enabled)
+void TestRunner::setPrivateBrowsingEnabled_DEPRECATED(bool enabled)
 {
     auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleSetPrivateBrowsingEnabled(injectedBundle.bundle(), injectedBundle.pageGroup(), enabled);
+    WKBundleSetPrivateBrowsingEnabled(injectedBundle.bundle(), injectedBundle.pageGroup(), injectedBundle.page()->page(), enabled);
 }
 
 void TestRunner::setPopupBlockingEnabled(bool enabled)
@@ -1912,16 +1906,9 @@ void TestRunner::statisticsDidRunTelemetryCallback(unsigned totalPrevalentResour
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::singleton().page()->page());
     JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
     
-    StringBuilder stringBuilder;
-    stringBuilder.appendLiteral("{ \"totalPrevalentResources\" : ");
-    stringBuilder.appendNumber(totalPrevalentResources);
-    stringBuilder.appendLiteral(", \"totalPrevalentResourcesWithUserInteraction\" : ");
-    stringBuilder.appendNumber(totalPrevalentResourcesWithUserInteraction);
-    stringBuilder.appendLiteral(", \"top3SubframeUnderTopFrameOrigins\" : ");
-    stringBuilder.appendNumber(top3SubframeUnderTopFrameOrigins);
-    stringBuilder.appendLiteral(" }");
+    String string = makeString("{ \"totalPrevalentResources\" : ", totalPrevalentResources, ", \"totalPrevalentResourcesWithUserInteraction\" : ", totalPrevalentResourcesWithUserInteraction, ", \"top3SubframeUnderTopFrameOrigins\" : ", top3SubframeUnderTopFrameOrigins, " }");
     
-    JSValueRef result = JSValueMakeFromJSONString(context, adopt(JSStringCreateWithUTF8CString(stringBuilder.toString().utf8().data())).get());
+    JSValueRef result = JSValueMakeFromJSONString(context, adopt(JSStringCreateWithUTF8CString(string.utf8().data())).get());
 
     callTestRunnerCallback(StatisticsDidRunTelemetryCallbackID, 1, &result);
 }
@@ -2398,7 +2385,7 @@ void TestRunner::setOpenPanelFiles(JSValueRef filesValue)
 
         auto file = adopt(JSValueToStringCopy(context, fileValue, nullptr));
         size_t fileBufferSize = JSStringGetMaximumUTF8CStringSize(file.get()) + 1;
-        auto fileBuffer = std::make_unique<char[]>(fileBufferSize);
+        auto fileBuffer = makeUniqueArray<char>(fileBufferSize);
         JSStringGetUTF8CString(file.get(), fileBuffer.get(), fileBufferSize);
 
         WKArrayAppendItem(fileURLs.get(), adoptWK(WKURLCreateWithBaseURL(m_testURL.get(), fileBuffer.get())).get());
@@ -2720,6 +2707,71 @@ void TestRunner::setWebAuthenticationMockConfiguration(JSValueRef configurationV
 
         configurationKeys.append(adoptWK(WKStringCreateWithUTF8CString("Hid")));
         configurationValues.append(adoptWK(WKDictionaryCreate(rawHidKeys.data(), rawHidValues.data(), rawHidKeys.size())));
+    }
+
+    JSRetainPtr<JSStringRef> nfcPropertyName(Adopt, JSStringCreateWithUTF8CString("nfc"));
+    JSValueRef nfcValue = JSObjectGetProperty(context, configuration, nfcPropertyName.get(), 0);
+    if (!JSValueIsUndefined(context, nfcValue) && !JSValueIsNull(context, nfcValue)) {
+        if (!JSValueIsObject(context, nfcValue))
+            return;
+        JSObjectRef nfc = JSValueToObject(context, nfcValue, 0);
+
+        JSRetainPtr<JSStringRef> errorPropertyName(Adopt, JSStringCreateWithUTF8CString("error"));
+        JSValueRef errorValue = JSObjectGetProperty(context, nfc, errorPropertyName.get(), 0);
+        if (!JSValueIsString(context, errorValue))
+            return;
+
+        Vector<WKRetainPtr<WKStringRef>> nfcKeys;
+        Vector<WKRetainPtr<WKTypeRef>> nfcValues;
+        nfcKeys.append(adoptWK(WKStringCreateWithUTF8CString("Error")));
+        nfcValues.append(toWK(adopt(JSValueToStringCopy(context, errorValue, 0)).get()));
+
+        JSRetainPtr<JSStringRef> payloadBase64PropertyName(Adopt, JSStringCreateWithUTF8CString("payloadBase64"));
+        JSValueRef payloadBase64Value = JSObjectGetProperty(context, nfc, payloadBase64PropertyName.get(), 0);
+        if (!JSValueIsUndefined(context, payloadBase64Value) && !JSValueIsNull(context, payloadBase64Value)) {
+            if (!JSValueIsArray(context, payloadBase64Value))
+                return;
+
+            JSObjectRef payloadBase64 = JSValueToObject(context, payloadBase64Value, nullptr);
+            static auto lengthProperty = adopt(JSStringCreateWithUTF8CString("length"));
+            JSValueRef payloadBase64LengthValue = JSObjectGetProperty(context, payloadBase64, lengthProperty.get(), nullptr);
+            if (!JSValueIsNumber(context, payloadBase64LengthValue))
+                return;
+
+            auto payloadBase64s = adoptWK(WKMutableArrayCreate());
+            auto payloadBase64Length = static_cast<size_t>(JSValueToNumber(context, payloadBase64LengthValue, nullptr));
+            for (size_t i = 0; i < payloadBase64Length; ++i) {
+                JSValueRef payloadBase64Value = JSObjectGetPropertyAtIndex(context, payloadBase64, i, nullptr);
+                if (!JSValueIsString(context, payloadBase64Value))
+                    continue;
+                WKArrayAppendItem(payloadBase64s.get(), toWK(adopt(JSValueToStringCopy(context, payloadBase64Value, 0)).get()).get());
+            }
+
+            nfcKeys.append(adoptWK(WKStringCreateWithUTF8CString("PayloadBase64")));
+            nfcValues.append(payloadBase64s);
+        }
+
+        JSRetainPtr<JSStringRef> multipleTagsPropertyName(Adopt, JSStringCreateWithUTF8CString("multipleTags"));
+        JSValueRef multipleTagsValue = JSObjectGetProperty(context, nfc, multipleTagsPropertyName.get(), 0);
+        if (!JSValueIsUndefined(context, multipleTagsValue) && !JSValueIsNull(context, multipleTagsValue)) {
+            if (!JSValueIsBoolean(context, multipleTagsValue))
+                return;
+            bool multipleTags = JSValueToBoolean(context, multipleTagsValue);
+            nfcKeys.append(adoptWK(WKStringCreateWithUTF8CString("MultipleTags")));
+            nfcValues.append(adoptWK(WKBooleanCreate(multipleTags)).get());
+        }
+
+        Vector<WKStringRef> rawNfcKeys;
+        Vector<WKTypeRef> rawNfcValues;
+        rawNfcKeys.resize(nfcKeys.size());
+        rawNfcValues.resize(nfcValues.size());
+        for (size_t i = 0; i < nfcKeys.size(); ++i) {
+            rawNfcKeys[i] = nfcKeys[i].get();
+            rawNfcValues[i] = nfcValues[i].get();
+        }
+
+        configurationKeys.append(adoptWK(WKStringCreateWithUTF8CString("Nfc")));
+        configurationValues.append(adoptWK(WKDictionaryCreate(rawNfcKeys.data(), rawNfcValues.data(), rawNfcKeys.size())));
     }
 
     Vector<WKStringRef> rawConfigurationKeys;

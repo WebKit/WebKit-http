@@ -85,7 +85,7 @@ public:
     ~ResourceUsageOverlayPainter() = default;
 
 private:
-    void paintContents(const GraphicsLayer*, GraphicsContext& context, OptionSet<GraphicsLayerPaintingPhase>, const FloatRect& clip, GraphicsLayerPaintBehavior) override
+    void paintContents(const GraphicsLayer*, GraphicsContext& context, const FloatRect& clip, GraphicsLayerPaintBehavior) override
     {
         GraphicsContextStateSaver stateSaver(context);
         context.fillRect(clip, Color(0.0f, 0.0f, 0.0f, 0.8f));
@@ -133,7 +133,7 @@ private:
 
 void ResourceUsageOverlay::platformInitialize()
 {
-    m_overlayPainter = std::make_unique<ResourceUsageOverlayPainter>(*this);
+    m_overlayPainter = makeUnique<ResourceUsageOverlayPainter>(*this);
     m_paintLayer = GraphicsLayer::create(overlay().page()->chrome().client().graphicsLayerFactory(), *m_overlayPainter);
     m_paintLayer->setAnchorPoint(FloatPoint3D());
     m_paintLayer->setSize({ normalWidth, normalHeight });

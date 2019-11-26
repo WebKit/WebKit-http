@@ -105,7 +105,7 @@ void CachedImage::setBodyDataFrom(const CachedResource& resource)
         m_imageObserver->cachedImages().add(this);
 
     if (m_image && is<SVGImage>(*m_image))
-        m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
+        m_svgImageCache = makeUnique<SVGImageCache>(&downcast<SVGImage>(*m_image));
 }
 
 void CachedImage::didAddClient(CachedResourceClient& client)
@@ -280,13 +280,10 @@ FloatSize CachedImage::imageSizeForRenderer(const RenderElement* renderer, SizeT
     if (!m_image)
         return { };
 
-    if (is<BitmapImage>(*m_image) && renderer && renderer->imageOrientation() == ImageOrientation::FromImage)
-        return downcast<BitmapImage>(*m_image).sizeRespectingOrientation();
-
     if (is<SVGImage>(*m_image) && sizeType == UsedSize)
         return m_svgImageCache->imageSizeForRenderer(renderer);
 
-    return m_image->size();
+    return m_image->size(renderer ? renderer->imageOrientation() : ImageOrientation(ImageOrientation::FromImage));
 }
 
 LayoutSize CachedImage::imageSizeForRenderer(const RenderElement* renderer, float multiplier, SizeType sizeType) const
@@ -357,7 +354,7 @@ inline void CachedImage::createImage()
 
     if (m_image) {
         if (is<SVGImage>(*m_image))
-            m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
+            m_svgImageCache = makeUnique<SVGImageCache>(&downcast<SVGImage>(*m_image));
 
         // Send queued container size requests.
         if (m_image->usesContainerSize()) {

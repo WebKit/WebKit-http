@@ -97,6 +97,7 @@ extern const unsigned opcodeLengths[];
     macro(OpToNumber) \
     macro(OpToObject) \
     macro(OpGetArgument) \
+    macro(OpGetInternalField) \
     macro(OpToThis) \
     macro(OpCall) \
     macro(OpTailCall) \

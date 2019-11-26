@@ -32,7 +32,9 @@ struct TestOptions {
     bool enableWebAnimationsCSSIntegration { true };
     bool useAcceleratedDrawing { false };
     bool enableIntersectionObserver { false };
+    bool useEphemeralSession { false };
     bool enableMenuItemElement { false };
+    bool enableKeygenElement { false };
     bool enableModernMediaControls { true };
     bool enablePointerLock { false };
     bool enableDragDestinationActionLoad { false };
@@ -48,7 +50,6 @@ struct TestOptions {
     bool adClickAttributionEnabled { false };
     bool enableResizeObserver { false };
     bool enableCoreMathML { false };
-    bool enableLazyImageLoading { false };
     std::string jscOptions;
     std::string additionalSupportedImageTypes;
 

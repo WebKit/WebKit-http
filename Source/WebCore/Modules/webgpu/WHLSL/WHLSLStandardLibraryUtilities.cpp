@@ -66,34 +66,25 @@ private:
         Visitor::visit(callExpression);
     }
 
-    void visit(AST::PropertyAccessExpression& propertyAccessExpression) override
-    {
-        m_functionNames.add(propertyAccessExpression.getterFunctionName());
-        m_functionNames.add(propertyAccessExpression.setterFunctionName());
-        m_functionNames.add(propertyAccessExpression.anderFunctionName());
-        Visitor::visit(propertyAccessExpression);
-    }
-
     HashSet<String> m_functionNames;
 };
 
-void includeStandardLibrary(Program& program, Parser& parser, bool parseFullStandardLibrary)
+Expected<void, Error> includeStandardLibrary(Program& program, Parser& parser, bool parseFullStandardLibrary)
 {
     static NeverDestroyed<String> standardLibrary(decompressAndDecodeStandardLibrary());
     if (parseFullStandardLibrary) {
-        auto parseResult = parser.parse(program, standardLibrary.get(), ParsingMode::StandardLibrary);
-        if (!parseResult) {
-            dataLogLn("failed to parse the (full) standard library: ", Lexer::errorString(StringView(standardLibrary), parseResult.error()));
-            ASSERT_NOT_REACHED();
-        }
-        return;
+        auto parseResult = parser.parse(program, standardLibrary.get(), ParsingMode::StandardLibrary, AST::NameSpace::StandardLibrary);
+        if (!parseResult)
+            return makeUnexpected(parseResult.error());
+        return { };
     }
 
     static NeverDestroyed<HashMap<String, SubstringLocation>> standardLibraryFunctionMap(computeStandardLibraryFunctionMap());
 
     auto stringView = StringView(standardLibrary.get()).substring(0, firstFunctionOffsetInStandardLibrary());
-    auto parseResult = parser.parse(program, stringView, ParsingMode::StandardLibrary);
-    ASSERT_UNUSED(parseResult, parseResult);
+    auto parseResult = parser.parse(program, stringView, ParsingMode::StandardLibrary, AST::NameSpace::StandardLibrary);
+    if (!parseResult)
+        return makeUnexpected(parseResult.error());
 
     NameFinder nameFinder;
     nameFinder.Visitor::visit(program);
@@ -102,6 +93,10 @@ void includeStandardLibrary(Program& program, Parser& parser, bool parseFullStan
     // The name of a call to a cast operator is the name of the type, so we can't match them up correctly.
     // Instead, just include all casting operators.
     functionNames.add("operator cast"_str);
+    // We need to make sure that an author can't write a function with the same signature as anything in the standard library.
+    // If they do so, we need to make sure it collides, so we include all potential duplicates here, and the "checkDuplicateFunctions" pass enforces it.
+    for (auto& functionDefinition : program.functionDefinitions())
+        functionNames.add(functionDefinition->name());
     while (!functionNames.isEmpty()) {
         auto nativeFunctionDeclarationsCount = program.nativeFunctionDeclarations().size();
         auto functionDefinitionsCount = program.functionDefinitions().size();
@@ -118,12 +113,9 @@ void includeStandardLibrary(Program& program, Parser& parser, bool parseFullStan
                 dataLogLn("---------------------------");
             }
             auto start = program.functionDefinitions().size();
-            auto parseResult = parser.parse(program, stringView, ParsingMode::StandardLibrary);
-            if (!parseResult) {
-                dataLogLn("failed to parse the (partial) standard library: ", Lexer::errorString(stringView, parseResult.error()));
-                ASSERT_NOT_REACHED();
-                return;
-            }
+            auto parseResult = parser.parse(program, stringView, ParsingMode::StandardLibrary, AST::NameSpace::StandardLibrary);
+            if (!parseResult)
+                return makeUnexpected(parseResult.error());
             if (verbose) {
                 if (program.functionDefinitions().size() != start)
                     dataLogLn("non native stdlib function: '", name, "'");
@@ -136,6 +128,7 @@ void includeStandardLibrary(Program& program, Parser& parser, bool parseFullStan
             nameFinder.Visitor::visit(program.functionDefinitions()[functionDefinitionsCount]);
         functionNames = nameFinder.takeFunctionNames();
     }
+    return { };
 }
 
 } // namespace WHLSL

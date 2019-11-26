@@ -36,6 +36,7 @@
 #include "DFGWorklist.h"
 #include "HeapIterationScope.h"
 #include "InjectedScript.h"
+#include "InjectedScriptHost.h"
 #include "InjectedScriptManager.h"
 #include "InspectorFrontendRouter.h"
 #include "JSLock.h"
@@ -135,7 +136,7 @@ void InspectorRuntimeAgent::awaitPromise(const String& promiseObjectId, const bo
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(promiseObjectId);
     if (injectedScript.hasNoValue()) {
-        callback->sendFailure("Could not find InjectedScript for promiseObjectId"_s);
+        callback->sendFailure("Missing injected script for given promiseObjectId"_s);
         return;
     }
 
@@ -151,7 +152,7 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = "Could not find InjectedScript for objectId"_s;
+        errorString = "Missing injected script for given objectId"_s;
         return;
     }
 
@@ -177,7 +178,7 @@ void InspectorRuntimeAgent::getPreview(ErrorString& errorString, const String& o
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = "Could not find InjectedScript for objectId"_s;
+        errorString = "Missing injected script for given objectId"_s;
         return;
     }
 
@@ -194,7 +195,7 @@ void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = "Could not find InjectedScript for objectId"_s;
+        errorString = "Missing injected script for given objectId"_s;
         return;
     }
 
@@ -212,7 +213,7 @@ void InspectorRuntimeAgent::getDisplayableProperties(ErrorString& errorString, c
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = "Could not find InjectedScript for objectId"_s;
+        errorString = "Missing injected script for given objectId"_s;
         return;
     }
 
@@ -230,7 +231,7 @@ void InspectorRuntimeAgent::getCollectionEntries(ErrorString& errorString, const
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = "Could not find InjectedScript for objectId"_s;
+        errorString = "Missing injected script for given objectId"_s;
         return;
     }
 
@@ -248,7 +249,7 @@ void InspectorRuntimeAgent::saveResult(ErrorString& errorString, const JSON::Obj
     if (callArgument.getString("objectId"_s, objectId)) {
         injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
         if (injectedScript.hasNoValue()) {
-            errorString = "Could not find InjectedScript for objectId"_s;
+            errorString = "Missing injected script for given objectId"_s;
             return;
         }
     } else {
@@ -286,7 +287,7 @@ void InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets(ErrorString& er
 
     typeDescriptions = JSON::ArrayOf<Protocol::Runtime::TypeDescription>::create();
     if (!m_vm.typeProfiler()) {
-        errorString = "The VM does not currently have Type Information."_s;
+        errorString = "VM has no type information"_s;
         return;
     }
 
@@ -297,7 +298,7 @@ void InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets(ErrorString& er
         RefPtr<JSON::Value> value = locations.get(i);
         RefPtr<JSON::Object> location;
         if (!value->asObject(location)) {
-            errorString = "Array of TypeLocation objects has an object that does not have type of TypeLocation."_s;
+            errorString = "Unexpected non-object item in locations"_s;
             return;
         }
 
@@ -405,7 +406,7 @@ void InspectorRuntimeAgent::setControlFlowProfilerEnabledState(bool isControlFlo
 void InspectorRuntimeAgent::getBasicBlocks(ErrorString& errorString, const String& sourceIDAsString, RefPtr<JSON::ArrayOf<Protocol::Runtime::BasicBlock>>& basicBlocks)
 {
     if (!m_vm.controlFlowProfiler()) {
-        errorString = "The VM does not currently have a Control Flow Profiler."_s;
+        errorString = "VM has no control flow information"_s;
         return;
     }
 

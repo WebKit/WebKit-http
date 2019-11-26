@@ -1,9 +1,3 @@
-// WebKit changes: this file is the same as "IndexedDB/support.js" found in W3C web-platform-tests repo,
-// except for the following lines that activate private browsing
-if (window.testRunner)
-    testRunner.setPrivateBrowsingEnabled(true);
-//End of WebKit changes
-
 var databaseName = "database";
 var databaseVersion = 1;
 

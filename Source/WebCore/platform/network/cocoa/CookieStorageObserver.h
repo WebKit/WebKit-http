@@ -28,16 +28,19 @@
 #include <pal/spi/cf/CFNetworkSPI.h>
 #include <wtf/Function.h>
 #include <wtf/RetainPtr.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/WeakPtr.h>
 
 OBJC_CLASS NSHTTPCookieStorage;
 OBJC_CLASS WebCookieObserverAdapter;
 
 namespace WebCore {
 
-class WEBCORE_EXPORT CookieStorageObserver : public ThreadSafeRefCounted<CookieStorageObserver> {
+// Use eager initialization for the WeakPtrFactory since we call makeWeakPtr() from a non-main thread.
+class WEBCORE_EXPORT CookieStorageObserver : public CanMakeWeakPtr<CookieStorageObserver, WeakPtrFactoryInitialization::Eager> {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(CookieStorageObserver);
 public:
-    static Ref<CookieStorageObserver> create(NSHTTPCookieStorage *);
+    explicit CookieStorageObserver(NSHTTPCookieStorage *);
     ~CookieStorageObserver();
 
     void startObserving(Function<void()>&& callback);
@@ -46,8 +49,6 @@ public:
     void cookiesDidChange();
 
 private:
-    CookieStorageObserver(NSHTTPCookieStorage *);
-
     RetainPtr<NSHTTPCookieStorage> m_cookieStorage;
     bool m_hasRegisteredInternalsForNotifications { false };
     RetainPtr<WebCookieObserverAdapter> m_observerAdapter;

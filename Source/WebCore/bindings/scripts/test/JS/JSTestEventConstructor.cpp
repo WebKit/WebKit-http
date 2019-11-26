@@ -30,7 +30,7 @@
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
 #include "ScriptExecutionContext.h"
-#include <JavaScriptCore/HeapSnapshotBuilder.h>
+#include <JavaScriptCore/HeapAnalyzer.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
@@ -55,7 +55,7 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
     if (isNullOrUndefined)
         bubblesValue = jsUndefined();
     else {
-        bubblesValue = object->get(&state, Identifier::fromString(&state, "bubbles"));
+        bubblesValue = object->get(&state, Identifier::fromString(vm, "bubbles"));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     if (!bubblesValue.isUndefined()) {
@@ -67,7 +67,7 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
     if (isNullOrUndefined)
         cancelableValue = jsUndefined();
     else {
-        cancelableValue = object->get(&state, Identifier::fromString(&state, "cancelable"));
+        cancelableValue = object->get(&state, Identifier::fromString(vm, "cancelable"));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     if (!cancelableValue.isUndefined()) {
@@ -79,7 +79,7 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
     if (isNullOrUndefined)
         composedValue = jsUndefined();
     else {
-        composedValue = object->get(&state, Identifier::fromString(&state, "composed"));
+        composedValue = object->get(&state, Identifier::fromString(vm, "composed"));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     if (!composedValue.isUndefined()) {
@@ -91,7 +91,7 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
     if (isNullOrUndefined)
         attr2Value = jsUndefined();
     else {
-        attr2Value = object->get(&state, Identifier::fromString(&state, "attr2"));
+        attr2Value = object->get(&state, Identifier::fromString(vm, "attr2"));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     if (!attr2Value.isUndefined()) {
@@ -104,7 +104,7 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
     if (isNullOrUndefined)
         attr3Value = jsUndefined();
     else {
-        attr3Value = object->get(&state, Identifier::fromString(&state, "attr3"));
+        attr3Value = object->get(&state, Identifier::fromString(vm, "attr3"));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     if (!attr3Value.isUndefined()) {
@@ -178,7 +178,7 @@ template<> JSValue JSTestEventConstructorConstructor::prototypeForStructure(JSC:
 template<> void JSTestEventConstructorConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSTestEventConstructor::prototype(vm, globalObject), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("TestEventConstructor"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(vm, String("TestEventConstructor"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(1), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
 }
 
@@ -308,13 +308,13 @@ EncodedJSValue jsTestEventConstructorAttr3(ExecState* state, EncodedJSValue this
 
 #endif
 
-void JSTestEventConstructor::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+void JSTestEventConstructor::analyzeHeap(JSCell* cell, HeapAnalyzer& analyzer)
 {
     auto* thisObject = jsCast<JSTestEventConstructor*>(cell);
-    builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
+    analyzer.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
-    Base::heapSnapshot(cell, builder);
+        analyzer.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
+    Base::analyzeHeap(cell, analyzer);
 }
 
 #if ENABLE(BINDING_INTEGRITY)

@@ -181,7 +181,7 @@ void InspectorPageAgent::resourceContent(ErrorString& errorString, Frame* frame,
     }
 
     if (!success)
-        errorString = "No resource with given URL found"_s;
+        errorString = "Missing resource for given url"_s;
 }
 
 String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResource)
@@ -327,13 +327,13 @@ DocumentLoader* InspectorPageAgent::assertDocumentLoader(ErrorString& errorStrin
     FrameLoader& frameLoader = frame->loader();
     DocumentLoader* documentLoader = frameLoader.documentLoader();
     if (!documentLoader)
-        errorString = "No documentLoader for given frame found"_s;
+        errorString = "Missing document loader for given frame"_s;
     return documentLoader;
 }
 
 InspectorPageAgent::InspectorPageAgent(PageAgentContext& context, InspectorClient* client, InspectorOverlay* overlay)
     : InspectorAgentBase("Page"_s, context)
-    , m_frontendDispatcher(std::make_unique<Inspector::PageFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<Inspector::PageFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::PageBackendDispatcher::create(context.backendDispatcher, this))
     , m_inspectedPage(context.inspectedPage)
     , m_client(client)
@@ -341,8 +341,25 @@ InspectorPageAgent::InspectorPageAgent(PageAgentContext& context, InspectorClien
 {
 }
 
+InspectorPageAgent::~InspectorPageAgent() = default;
+
 void InspectorPageAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
+}
+
+void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
+{
+    ErrorString unused;
+    disable(unused);
+}
+
+void InspectorPageAgent::enable(ErrorString& errorString)
+{
+    if (m_instrumentingAgents.inspectorPageAgent() == this) {
+        errorString = "Page domain already enabled"_s;
+        return;
+    }
+
     m_instrumentingAgents.setInspectorPageAgent(this);
 
     auto stopwatch = m_environment.executionStopwatch();
@@ -354,8 +371,10 @@ void InspectorPageAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*,
 #endif
 }
 
-void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
+void InspectorPageAgent::disable(ErrorString&)
 {
+    m_instrumentingAgents.setInspectorPageAgent(nullptr);
+
     ErrorString unused;
     setShowPaintRects(unused, false);
     setShowRulers(unused, false);
@@ -371,8 +390,6 @@ void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReas
 #undef DISABLE_INSPECTOR_OVERRIDE_SETTING
 
     m_client->setMockCaptureDevicesEnabledOverride(WTF::nullopt);
-
-    m_instrumentingAgents.setInspectorPageAgent(nullptr);
 }
 
 double InspectorPageAgent::timestamp()
@@ -419,13 +436,13 @@ static inline Optional<bool> asOptionalBool(const bool* value)
 void InspectorPageAgent::overrideSetting(ErrorString& errorString, const String& settingString, const bool* value)
 {
     if (settingString.isEmpty()) {
-        errorString = "Preference is empty"_s;
+        errorString = "settingString is empty"_s;
         return;
     }
 
     auto setting = Inspector::Protocol::InspectorHelpers::parseEnumValueFromString<Inspector::Protocol::Page::Setting>(settingString);
     if (!setting) {
-        errorString = makeString("Unknown setting: "_s, settingString);
+        errorString = makeString("Unknown settingString: "_s, settingString);
         return;
     }
 
@@ -709,7 +726,7 @@ Frame* InspectorPageAgent::assertFrame(ErrorString& errorString, const String& f
 {
     Frame* frame = frameForId(frameId);
     if (!frame)
-        errorString = "No frame for given id found"_s;
+        errorString = "Missing frame for given frameId"_s;
     return frame;
 }
 
@@ -946,7 +963,7 @@ void InspectorPageAgent::archive(ErrorString& errorString, String* data)
     *data = base64Encode(CFDataGetBytePtr(buffer.get()), CFDataGetLength(buffer.get()));
 #else
     UNUSED_PARAM(data);
-    errorString = "No support for creating archives"_s;
+    errorString = "Not supported"_s;
 #endif
 }
 

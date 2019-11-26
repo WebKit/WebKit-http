@@ -158,6 +158,12 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
     auto& frameLoaderClient = resourceLoader.frameLoader()->client();
 
     WebResourceLoader::TrackingParameters trackingParameters;
+    if (auto* webFrameLoaderClient = toWebFrameLoaderClient(frameLoaderClient))
+        trackingParameters.webPageProxyID = webFrameLoaderClient->webPageProxyID().valueOr(WebPageProxyIdentifier { });
+#if ENABLE(SERVICE_WORKER)
+    else if (is<ServiceWorkerFrameLoaderClient>(frameLoaderClient))
+        trackingParameters.webPageProxyID = downcast<ServiceWorkerFrameLoaderClient>(frameLoaderClient).webPageProxyID();
+#endif
     trackingParameters.pageID = frameLoaderClient.pageID().valueOr(PageIdentifier { });
     trackingParameters.frameID = frameLoaderClient.frameID().valueOr(FrameIdentifier { });
     trackingParameters.resourceID = identifier;
@@ -268,6 +274,7 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
 
     NetworkResourceLoadParameters loadParameters { sessionID };
     loadParameters.identifier = identifier;
+    loadParameters.webPageProxyID = trackingParameters.webPageProxyID;
     loadParameters.webPageID = trackingParameters.pageID;
     loadParameters.webFrameID = trackingParameters.frameID;
     loadParameters.parentPID = presentingApplicationPID();
@@ -321,6 +328,8 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
         if (!origin.isNull())
             loadParameters.sourceOrigin = SecurityOrigin::createFromString(origin);
     }
+    if (document)
+        loadParameters.topOrigin = &document->topOrigin();
 
     if (loadParameters.options.mode != FetchOptions::Mode::Navigate) {
         ASSERT(loadParameters.sourceOrigin);
@@ -519,7 +528,8 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
     WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
     WebPage* webPage = webFrame ? webFrame->page() : nullptr;
 
-    auto pageID = webPage ? webPage->pageID() : PageIdentifier { };
+    auto webPageProxyID = webPage ? webPage->webPageProxyIdentifier() : WebPageProxyIdentifier { };
+    auto pageID = webPage ? webPage->identifier() : PageIdentifier { };
     auto frameID = webFrame ? webFrame->frameID() : FrameIdentifier { };
     auto sessionID = webPage ? webPage->sessionID() : PAL::SessionID::defaultSessionID();
 
@@ -540,6 +550,7 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
 
     NetworkResourceLoadParameters loadParameters { sessionID };
     loadParameters.identifier = resourceLoadIdentifier;
+    loadParameters.webPageProxyID = webPageProxyID;
     loadParameters.webPageID = pageID;
     loadParameters.webFrameID = frameID;
     loadParameters.parentPID = presentingApplicationPID();
@@ -553,6 +564,7 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
 
     loadParameters.options = options;
     loadParameters.sourceOrigin = &document->securityOrigin();
+    loadParameters.topOrigin = &document->topOrigin();
     if (!document->shouldBypassMainWorldContentSecurityPolicy()) {
         if (auto* contentSecurityPolicy = document->contentSecurityPolicy())
             loadParameters.cspResponseHeaders = contentSecurityPolicy->responseHeaders();
@@ -580,9 +592,9 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
         WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessPool::ClearWebProcessHasUploads { Process::identifier() }, 0);
 }
 
-void WebLoaderStrategy::pageLoadCompleted(PageIdentifier webPageID)
+void WebLoaderStrategy::pageLoadCompleted(Page& page)
 {
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PageLoadCompleted(webPageID), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PageLoadCompleted(WebPage::fromCorePage(page).identifier()), 0);
 }
 
 static uint64_t generateLoadIdentifier()
@@ -609,6 +621,7 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
     loadParameters.identifier = generateLoadIdentifier();
     loadParameters.request = request;
     loadParameters.sourceOrigin = &document->securityOrigin();
+    loadParameters.topOrigin = &document->topOrigin();
     loadParameters.parentPID = presentingApplicationPID();
     loadParameters.storedCredentialsPolicy = options.credentials == FetchOptions::Credentials::Omit ? StoredCredentialsPolicy::DoNotUse : StoredCredentialsPolicy::Use;
     loadParameters.options = options;
@@ -666,7 +679,8 @@ void WebLoaderStrategy::preconnectTo(FrameLoader& frameLoader, const URL& url, S
 
     NetworkResourceLoadParameters parameters { webPage->sessionID() };
     parameters.request = ResourceRequest { url };
-    parameters.webPageID = webPage->pageID();
+    parameters.webPageProxyID = webPage->webPageProxyIdentifier();
+    parameters.webPageID = webPage->identifier();
     parameters.webFrameID = webFrame->frameID();
     parameters.parentPID = presentingApplicationPID();
     parameters.storedCredentialsPolicy = storedCredentialsPolicy;
@@ -745,6 +759,7 @@ bool WebLoaderStrategy::havePerformedSecurityChecks(const ResourceResponse& resp
     case ResourceResponse::Source::MemoryCache:
     case ResourceResponse::Source::MemoryCacheAfterValidation:
     case ResourceResponse::Source::ServiceWorker:
+    case ResourceResponse::Source::InspectorOverride:
         return false;
     case ResourceResponse::Source::DiskCache:
     case ResourceResponse::Source::DiskCacheAfterValidation:

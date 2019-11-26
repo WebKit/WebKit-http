@@ -37,6 +37,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebDatabaseProvider.h"
 #include "WebDocumentLoader.h"
+#include "WebFrameLoaderClient.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
@@ -46,7 +47,6 @@
 #include "WebSocketProvider.h"
 #include <WebCore/EditorClient.h>
 #include <WebCore/EmptyClients.h>
-#include <WebCore/EmptyFrameLoaderClient.h>
 #include <WebCore/LibWebRTCProvider.h>
 #include <WebCore/MessageWithMessagePorts.h>
 #include <WebCore/PageConfiguration.h>
@@ -71,44 +71,25 @@ using namespace WebCore;
 static const Seconds asyncWorkerTerminationTimeout { 10_s };
 static const Seconds syncWorkerTerminationTimeout { 100_ms }; // Only used by layout tests.
 
-class ServiceWorkerFrameLoaderClient final : public EmptyFrameLoaderClient {
-public:
-    ServiceWorkerFrameLoaderClient(WebSWContextManagerConnection& connection, PAL::SessionID sessionID, WebCore::PageIdentifier pageID, FrameIdentifier frameID, const String& userAgent)
-        : m_connection(connection)
-        , m_sessionID(sessionID)
-        , m_pageID(pageID)
-        , m_frameID(frameID)
-        , m_userAgent(userAgent)
-    {
-    }
+ServiceWorkerFrameLoaderClient::ServiceWorkerFrameLoaderClient(WebSWContextManagerConnection& connection, SessionID sessionID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, FrameIdentifier frameID, const String& userAgent)
+    : m_connection(connection)
+    , m_sessionID(sessionID)
+    , m_webPageProxyID(webPageProxyID)
+    , m_pageID(pageID)
+    , m_frameID(frameID)
+    , m_userAgent(userAgent)
+{
+}
 
-    void setUserAgent(String&& userAgent) { m_userAgent = WTFMove(userAgent); }
+Ref<DocumentLoader> ServiceWorkerFrameLoaderClient::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
+{
+    return WebDocumentLoader::create(request, substituteData);
+}
 
-private:
-    Ref<DocumentLoader> createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData) final
-    {
-        return WebDocumentLoader::create(request, substituteData);
-    }
-
-    void frameLoaderDestroyed() final { m_connection.removeFrameLoaderClient(*this); }
-
-    bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) final { return true; }
-
-    PAL::SessionID sessionID() const final { return m_sessionID; }
-    Optional<WebCore::PageIdentifier> pageID() const final { return m_pageID; }
-    Optional<WebCore::FrameIdentifier> frameID() const final { return m_frameID; }
-    String userAgent(const URL&) final { return m_userAgent; }
-
-    WebSWContextManagerConnection& m_connection;
-    PAL::SessionID m_sessionID;
-    PageIdentifier m_pageID;
-    FrameIdentifier m_frameID;
-    String m_userAgent;
-};
-
-WebSWContextManagerConnection::WebSWContextManagerConnection(Ref<IPC::Connection>&& connection, uint64_t pageGroupID, PageIdentifier pageID, const WebPreferencesStore& store)
+WebSWContextManagerConnection::WebSWContextManagerConnection(Ref<IPC::Connection>&& connection, uint64_t pageGroupID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, const WebPreferencesStore& store)
     : m_connectionToNetworkProcess(WTFMove(connection))
     , m_pageGroupID(pageGroupID)
+    , m_webPageProxyID(webPageProxyID)
     , m_pageID(pageID)
 #if PLATFORM(COCOA)
     , m_userAgent(standardUserAgentWithApplicationName({ }))
@@ -132,6 +113,7 @@ void WebSWContextManagerConnection::updatePreferencesStore(const WebPreferencesS
     RuntimeEnabledFeatures::sharedFeatures().setRestrictedHTTPResponseAccess(store.getBoolValueForKey(WebPreferencesKey::restrictedHTTPResponseAccessKey()));
     RuntimeEnabledFeatures::sharedFeatures().setServerTimingEnabled(store.getBoolValueForKey(WebPreferencesKey::serverTimingEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(store.getBoolValueForKey(WebPreferencesKey::isSecureContextAttributeEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setSecureContextChecksEnabled(store.getBoolValueForKey(WebPreferencesKey::secureContextChecksEnabledKey()));
 
     m_storageBlockingPolicy = static_cast<SecurityOrigin::StorageBlockingPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::storageBlockingPolicyKey()));
 }
@@ -154,7 +136,7 @@ void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerCont
     // FIXME: This method should be moved directly to WebCore::SWContextManager::Connection
     // If it weren't for ServiceWorkerFrameLoaderClient's dependence on WebDocumentLoader, this could already happen.
     // FIXME: Weird to pass m_previousServiceWorkerID as a FrameIdentifier.
-    auto frameLoaderClient = std::make_unique<ServiceWorkerFrameLoaderClient>(*this, sessionID, m_pageID, frameIdentifierFromID(++m_previousServiceWorkerID), effectiveUserAgent);
+    auto frameLoaderClient = makeUnique<ServiceWorkerFrameLoaderClient>(*this, sessionID, m_webPageProxyID, m_pageID, frameIdentifierFromID(++m_previousServiceWorkerID), effectiveUserAgent);
     pageConfiguration.loaderClientForMainFrame = frameLoaderClient.get();
     m_loaders.add(WTFMove(frameLoaderClient));
 
@@ -175,12 +157,14 @@ void WebSWContextManagerConnection::removeFrameLoaderClient(ServiceWorkerFrameLo
     ASSERT_UNUSED(result, result);
 }
 
-void WebSWContextManagerConnection::serviceWorkerStartedWithMessage(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& exceptionMessage)
+void WebSWContextManagerConnection::serviceWorkerStarted(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool doesHandleFetch)
 {
-    if (exceptionMessage.isEmpty())
-        m_connectionToNetworkProcess->send(Messages::WebSWServerToContextConnection::ScriptContextStarted(jobDataIdentifier, serviceWorkerIdentifier), 0);
-    else
-        m_connectionToNetworkProcess->send(Messages::WebSWServerToContextConnection::ScriptContextFailedToStart(jobDataIdentifier, serviceWorkerIdentifier, exceptionMessage), 0);
+    m_connectionToNetworkProcess->send(Messages::WebSWServerToContextConnection::ScriptContextStarted { jobDataIdentifier, serviceWorkerIdentifier, doesHandleFetch }, 0);
+}
+
+void WebSWContextManagerConnection::serviceWorkerFailedToStart(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& exceptionMessage)
+{
+    m_connectionToNetworkProcess->send(Messages::WebSWServerToContextConnection::ScriptContextFailedToStart { jobDataIdentifier, serviceWorkerIdentifier, exceptionMessage }, 0);
 }
 
 static inline bool isValidFetch(const ResourceRequest& request, const FetchOptions& options, const URL& serviceWorkerURL, const String& referrer)
@@ -261,6 +245,11 @@ void WebSWContextManagerConnection::fireActivateEvent(ServiceWorkerIdentifier id
     SWContextManager::singleton().fireActivateEvent(identifier);
 }
 
+void WebSWContextManagerConnection::softUpdate(WebCore::ServiceWorkerIdentifier identifier)
+{
+    SWContextManager::singleton().softUpdate(identifier);
+}
+
 void WebSWContextManagerConnection::terminateWorker(ServiceWorkerIdentifier identifier)
 {
     SWContextManager::singleton().terminateWorker(identifier, asyncWorkerTerminationTimeout, nullptr);
@@ -273,9 +262,7 @@ void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier 
 
 void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
-    // FIXME: Temporarily pipe the SW postMessage messages via the UIProcess since this is where the MessagePort registry lives
-    // and this avoids races.
-    WebProcess::singleton().send(Messages::WebProcessPool::PostMessageToServiceWorkerClient(destinationIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin), 0);
+    m_connectionToNetworkProcess->send(Messages::NetworkProcess::PostMessageToServiceWorkerClient(destinationIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin), 0);
 }
 
 void WebSWContextManagerConnection::didFinishInstall(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)

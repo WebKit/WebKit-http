@@ -25,6 +25,9 @@
 
 #pragma once
 
+#include "AuthenticationChallengeDisposition.h"
+#include "AuthenticationChallengeProxy.h"
+#include "AuthenticationDecisionListener.h"
 #include <wtf/CompletionHandler.h>
 
 namespace WebCore {
@@ -41,6 +44,11 @@ public:
     virtual void requestStorageSpace(const WebCore::SecurityOriginData& topOrigin, const WebCore::SecurityOriginData& frameOrigin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& completionHandler)
     {
         completionHandler({ });
+    }
+
+    virtual void didReceiveAuthenticationChallenge(Ref<AuthenticationChallengeProxy>&& challenge)
+    {
+        challenge->listener().completeChallenge(AuthenticationChallengeDisposition::PerformDefaultHandling);
     }
 };
 

@@ -115,10 +115,18 @@ WebFrameLoaderClient::~WebFrameLoaderClient()
 {
 }
 
+Optional<WebPageProxyIdentifier> WebFrameLoaderClient::webPageProxyID() const
+{
+    if (m_frame && m_frame->page())
+        return m_frame->page()->webPageProxyIdentifier();
+
+    return WTF::nullopt;
+}
+
 Optional<PageIdentifier> WebFrameLoaderClient::pageID() const
 {
     if (m_frame && m_frame->page())
-        return m_frame->page()->pageID();
+        return m_frame->page()->identifier();
 
     return WTF::nullopt;
 }
@@ -555,7 +563,7 @@ void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& e
     if (!webPage)
         return;
 
-    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailProvisionalLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID().toUInt64(), m_frame->frameID().toUInt64());
+    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailProvisionalLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->identifier().toUInt64(), m_frame->frameID().toUInt64());
 
     RefPtr<API::Object> userData;
 
@@ -591,7 +599,7 @@ void WebFrameLoaderClient::dispatchDidFailLoad(const ResourceError& error)
     if (!webPage)
         return;
 
-    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID().toUInt64(), m_frame->frameID().toUInt64());
+    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->identifier().toUInt64(), m_frame->frameID().toUInt64());
 
     RefPtr<API::Object> userData;
 
@@ -915,9 +923,11 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     if (requester.frameID() && WebProcess::singleton().webFrame(requester.frameID()))
         originatingFrameInfoData.frameID = requester.frameID();
 
-    Optional<PageIdentifier> originatingPageID;
-    if (requester.pageID() && WebProcess::singleton().webPage(requester.pageID()))
-        originatingPageID = requester.pageID();
+    Optional<WebPageProxyIdentifier> originatingPageID;
+    if (requester.pageID()) {
+        if (auto* webPage = WebProcess::singleton().webPage(requester.pageID()))
+            originatingPageID = webPage->webPageProxyIdentifier();
+    }
 
     NavigationActionData navigationActionData;
     navigationActionData.navigationType = action->navigationType();

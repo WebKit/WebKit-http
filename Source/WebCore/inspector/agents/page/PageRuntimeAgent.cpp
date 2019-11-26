@@ -57,12 +57,14 @@ using namespace Inspector;
 
 PageRuntimeAgent::PageRuntimeAgent(PageAgentContext& context)
     : InspectorRuntimeAgent(context)
-    , m_frontendDispatcher(std::make_unique<Inspector::RuntimeFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<Inspector::RuntimeFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::RuntimeBackendDispatcher::create(context.backendDispatcher, this))
     , m_instrumentingAgents(context.instrumentingAgents)
     , m_inspectedPage(context.inspectedPage)
 {
 }
+
+PageRuntimeAgent::~PageRuntimeAgent() = default;
 
 void PageRuntimeAgent::enable(ErrorString& errorString)
 {
@@ -85,7 +87,11 @@ void PageRuntimeAgent::disable(ErrorString& errorString)
 
 void PageRuntimeAgent::didCreateMainWorldContext(Frame& frame)
 {
-    auto frameId = m_instrumentingAgents.inspectorPageAgent()->frameId(&frame);
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent)
+        return;
+
+    auto frameId = pageAgent->frameId(&frame);
     auto* scriptState = mainWorldExecState(&frame);
     notifyContextCreated(frameId, scriptState, nullptr, true);
 }
@@ -96,13 +102,13 @@ InjectedScript PageRuntimeAgent::injectedScriptForEval(ErrorString& errorString,
         JSC::ExecState* scriptState = mainWorldExecState(&m_inspectedPage.mainFrame());
         InjectedScript result = injectedScriptManager().injectedScriptFor(scriptState);
         if (result.hasNoValue())
-            errorString = "Internal error: main world execution context not found."_s;
+            errorString = "Internal error: main world execution context not found"_s;
         return result;
     }
 
     InjectedScript injectedScript = injectedScriptManager().injectedScriptForId(*executionContextId);
     if (injectedScript.hasNoValue())
-        errorString = "Execution context with given id not found."_s;
+        errorString = "Missing injected script for given executionContextId"_s;
     return injectedScript;
 }
 
@@ -118,11 +124,16 @@ void PageRuntimeAgent::unmuteConsole()
 
 void PageRuntimeAgent::reportExecutionContextCreation()
 {
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent)
+        return;
+
     Vector<std::pair<JSC::ExecState*, SecurityOrigin*>> isolatedContexts;
     for (Frame* frame = &m_inspectedPage.mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->script().canExecuteScripts(NotAboutToExecuteScript))
             continue;
-        String frameId = m_instrumentingAgents.inspectorPageAgent()->frameId(frame);
+
+        String frameId = pageAgent->frameId(frame);
 
         JSC::ExecState* scriptState = mainWorldExecState(frame);
         notifyContextCreated(frameId, scriptState, nullptr, true);

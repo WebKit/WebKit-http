@@ -39,11 +39,7 @@ debug("Testing disk cache");
 testCookies(true, function () {
     debug("Testing memory cache");
     testCookies(false, function () {
-        debug("Testing memory cache in private browsing");
-        testRunner.setPrivateBrowsingEnabled(true);
-        testCookies(false, function () {
-            finishJSTest();
-        });
+        finishJSTest();
     });
 });
 

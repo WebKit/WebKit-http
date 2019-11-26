@@ -60,16 +60,16 @@ StorageManager::~StorageManager()
     ASSERT(!RunLoop::isMain());
 }
 
-void StorageManager::createSessionStorageNamespace(uint64_t storageNamespaceID, unsigned quotaInBytes)
+void StorageManager::createSessionStorageNamespace(StorageNamespaceIdentifier storageNamespaceID, unsigned quotaInBytes)
 {
     ASSERT(!RunLoop::isMain());
 
     m_sessionStorageNamespaces.ensure(storageNamespaceID, [quotaInBytes] {
-        return std::make_unique<SessionStorageNamespace>(quotaInBytes);
+        return makeUnique<SessionStorageNamespace>(quotaInBytes);
     });
 }
 
-void StorageManager::destroySessionStorageNamespace(uint64_t storageNamespaceID)
+void StorageManager::destroySessionStorageNamespace(StorageNamespaceIdentifier storageNamespaceID)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -78,7 +78,7 @@ void StorageManager::destroySessionStorageNamespace(uint64_t storageNamespaceID)
         m_sessionStorageNamespaces.remove(storageNamespaceID);
 }
 
-void StorageManager::cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID)
+void StorageManager::cloneSessionStorageNamespace(StorageNamespaceIdentifier storageNamespaceID, StorageNamespaceIdentifier newStorageNamespaceID)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -92,7 +92,7 @@ void StorageManager::cloneSessionStorageNamespace(uint64_t storageNamespaceID, u
     sessionStorageNamespace->cloneTo(*newSessionStorageNamespace);
 }
 
-HashSet<WebCore::SecurityOriginData> StorageManager::getSessionStorageOriginsCrossThreadCopy() const
+HashSet<SecurityOriginData> StorageManager::getSessionStorageOriginsCrossThreadCopy() const
 {
     ASSERT(!RunLoop::isMain());
 
@@ -113,7 +113,7 @@ void StorageManager::deleteSessionStorageOrigins()
         sessionStorageNamespace->clearAllStorageAreas();
 }
 
-void StorageManager::deleteSessionStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>& origins)
+void StorageManager::deleteSessionStorageEntriesForOrigins(const Vector<SecurityOriginData>& origins)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -123,7 +123,7 @@ void StorageManager::deleteSessionStorageEntriesForOrigins(const Vector<WebCore:
     }
 }
 
-HashSet<WebCore::SecurityOriginData> StorageManager::getLocalStorageOriginsCrossThreadCopy() const
+HashSet<SecurityOriginData> StorageManager::getLocalStorageOriginsCrossThreadCopy() const
 {
     ASSERT(!RunLoop::isMain());
 
@@ -176,7 +176,7 @@ void StorageManager::deleteLocalStorageOriginsModifiedSince(WallTime time)
     }
 }
 
-void StorageManager::deleteLocalStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>& origins)
+void StorageManager::deleteLocalStorageEntriesForOrigins(const Vector<SecurityOriginData>& origins)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -192,39 +192,39 @@ void StorageManager::deleteLocalStorageEntriesForOrigins(const Vector<WebCore::S
     }
 }
 
-StorageArea* StorageManager::createLocalStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&& origin)
+StorageArea* StorageManager::createLocalStorageArea(StorageNamespaceIdentifier storageNamespaceID, SecurityOriginData&& origin, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
 
     if (auto* localStorageNamespace = getOrCreateLocalStorageNamespace(storageNamespaceID))
-        return &localStorageNamespace->getOrCreateStorageArea(WTFMove(origin), m_localStorageDatabaseTracker ? LocalStorageNamespace::IsEphemeral::No : LocalStorageNamespace::IsEphemeral::Yes);
+        return &localStorageNamespace->getOrCreateStorageArea(WTFMove(origin), m_localStorageDatabaseTracker ? LocalStorageNamespace::IsEphemeral::No : LocalStorageNamespace::IsEphemeral::Yes, WTFMove(workQueue));
 
     return nullptr;
 }
 
-StorageArea* StorageManager::createTransientLocalStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&& topLevelOrigin, WebCore::SecurityOriginData&& origin)
+StorageArea* StorageManager::createTransientLocalStorageArea(StorageNamespaceIdentifier storageNamespaceID, SecurityOriginData&& topLevelOrigin, SecurityOriginData&& origin, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
-    ASSERT((HashMap<uint64_t, RefPtr<TransientLocalStorageNamespace>>::isValidKey(storageNamespaceID)));
+    ASSERT((HashMap<StorageNamespaceIdentifier, RefPtr<TransientLocalStorageNamespace>>::isValidKey(storageNamespaceID)));
 
     if (auto* transientLocalStorageNamespace = getOrCreateTransientLocalStorageNamespace(storageNamespaceID, WTFMove(topLevelOrigin)))
-        return &transientLocalStorageNamespace->getOrCreateStorageArea(WTFMove(origin));
+        return &transientLocalStorageNamespace->getOrCreateStorageArea(WTFMove(origin), WTFMove(workQueue));
     
     return nullptr;
 }
 
-StorageArea* StorageManager::createSessionStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&& origin)
+StorageArea* StorageManager::createSessionStorageArea(StorageNamespaceIdentifier storageNamespaceID, SecurityOriginData&& origin, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
-    ASSERT((HashMap<uint64_t, RefPtr<SessionStorageNamespace>>::isValidKey(storageNamespaceID)));
+    ASSERT((HashMap<StorageNamespaceIdentifier, RefPtr<SessionStorageNamespace>>::isValidKey(storageNamespaceID)));
 
     if (auto* sessionStorageNamespace = getOrCreateSessionStorageNamespace(storageNamespaceID))
-        return &sessionStorageNamespace->getOrCreateStorageArea(WTFMove(origin));
+        return &sessionStorageNamespace->getOrCreateStorageArea(WTFMove(origin), WTFMove(workQueue));
     
     return nullptr;
 }
 
-LocalStorageNamespace* StorageManager::getOrCreateLocalStorageNamespace(uint64_t storageNamespaceID)
+LocalStorageNamespace* StorageManager::getOrCreateLocalStorageNamespace(StorageNamespaceIdentifier storageNamespaceID)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -232,11 +232,11 @@ LocalStorageNamespace* StorageManager::getOrCreateLocalStorageNamespace(uint64_t
         return nullptr;
 
     return m_localStorageNamespaces.ensure(storageNamespaceID, [this, storageNamespaceID]() {
-        return std::make_unique<LocalStorageNamespace>(*this, storageNamespaceID);
+        return makeUnique<LocalStorageNamespace>(*this, storageNamespaceID);
     }).iterator->value.get();
 }
 
-TransientLocalStorageNamespace* StorageManager::getOrCreateTransientLocalStorageNamespace(uint64_t storageNamespaceID, WebCore::SecurityOriginData&& topLevelOrigin)
+TransientLocalStorageNamespace* StorageManager::getOrCreateTransientLocalStorageNamespace(StorageNamespaceIdentifier storageNamespaceID, SecurityOriginData&& topLevelOrigin)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -244,11 +244,11 @@ TransientLocalStorageNamespace* StorageManager::getOrCreateTransientLocalStorage
         return nullptr;
 
     return m_transientLocalStorageNamespaces.ensure({ storageNamespaceID, WTFMove(topLevelOrigin) }, [] {
-        return std::make_unique<TransientLocalStorageNamespace>();
+        return makeUnique<TransientLocalStorageNamespace>();
     }).iterator->value.get();
 }
 
-SessionStorageNamespace* StorageManager::getOrCreateSessionStorageNamespace(uint64_t storageNamespaceID)
+SessionStorageNamespace* StorageManager::getOrCreateSessionStorageNamespace(StorageNamespaceIdentifier storageNamespaceID)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -257,7 +257,7 @@ SessionStorageNamespace* StorageManager::getOrCreateSessionStorageNamespace(uint
 
     return m_sessionStorageNamespaces.ensure(storageNamespaceID, [] {
         // We currently have no limit on session storage.
-        return std::make_unique<SessionStorageNamespace>(std::numeric_limits<unsigned>::max());
+        return makeUnique<SessionStorageNamespace>(std::numeric_limits<unsigned>::max());
     }).iterator->value.get();
 }
 
@@ -268,6 +268,29 @@ void StorageManager::clearStorageNamespaces()
     m_localStorageNamespaces.clear();
     m_transientLocalStorageNamespaces.clear();
     m_sessionStorageNamespaces.clear();
+}
+
+Vector<StorageAreaIdentifier> StorageManager::allStorageAreaIdentifiers() const
+{
+    ASSERT(!RunLoop::isMain());
+
+    Vector<StorageAreaIdentifier> identifiers;
+    for (const auto& localStorageNamespace : m_localStorageNamespaces.values()) {
+        for (auto key : localStorageNamespace->storageAreaIdentifiers())
+            identifiers.append(key);
+    }
+
+    for (const auto& trasientLocalStorageNamespace : m_transientLocalStorageNamespaces.values()) {
+        for (auto key : trasientLocalStorageNamespace->storageAreaIdentifiers())
+            identifiers.append(key);
+    }
+
+    for (const auto& sessionStorageNamespace : m_sessionStorageNamespaces.values()) {
+        for (auto key : sessionStorageNamespace->storageAreaIdentifiers())
+            identifiers.append(key);
+    }
+
+    return identifiers;
 }
 
 } // namespace WebKit

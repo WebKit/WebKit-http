@@ -199,6 +199,11 @@ void GraphicsLayer::clearClient()
     m_client = &EmptyGraphicsLayerClient::singleton();
 }
 
+String GraphicsLayer::debugName() const
+{
+    return name();
+}
+
 void GraphicsLayer::setClient(GraphicsLayerClient& client)
 {
     m_client = &client;
@@ -343,7 +348,7 @@ void GraphicsLayer::setTransform(const TransformationMatrix& matrix)
     if (m_transform)
         *m_transform = matrix;
     else
-        m_transform = std::make_unique<TransformationMatrix>(matrix);
+        m_transform = makeUnique<TransformationMatrix>(matrix);
 }
 
 const TransformationMatrix& GraphicsLayer::childrenTransform() const
@@ -356,7 +361,7 @@ void GraphicsLayer::setChildrenTransform(const TransformationMatrix& matrix)
     if (m_childrenTransform)
         *m_childrenTransform = matrix;
     else
-        m_childrenTransform = std::make_unique<TransformationMatrix>(matrix);
+        m_childrenTransform = makeUnique<TransformationMatrix>(matrix);
 }
 
 void GraphicsLayer::setMaskLayer(RefPtr<GraphicsLayer>&& layer)
@@ -508,7 +513,7 @@ void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const F
     FloatRect clipRect(clip);
     clipRect.move(offset);
 
-    client().paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
+    client().paintContents(this, context, clipRect, layerPaintBehavior);
 }
 
 FloatRect GraphicsLayer::adjustCoverageRectForMovement(const FloatRect& coverageRect, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect)

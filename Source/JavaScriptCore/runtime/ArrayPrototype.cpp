@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *  Copyright (C) 2003 Peter Kelly (pmk@post.com)
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
@@ -196,15 +196,15 @@ ALWAYS_INLINE bool speciesWatchpointIsValid(ExecState* exec, JSObject* thisObjec
     JSGlobalObject* globalObject = thisObject->globalObject(vm);
     ArrayPrototype* arrayPrototype = globalObject->arrayPrototype();
 
-    if (globalObject->arraySpeciesWatchpoint().stateOnJSThread() == ClearWatchpoint) {
+    if (globalObject->arraySpeciesWatchpointSet().stateOnJSThread() == ClearWatchpoint) {
         dataLogLnIf(ArrayPrototypeInternal::verbose, "Initializing Array species watchpoints for Array.prototype: ", pointerDump(arrayPrototype), " with structure: ", pointerDump(arrayPrototype->structure(vm)), "\nand Array: ", pointerDump(globalObject->arrayConstructor()), " with structure: ", pointerDump(globalObject->arrayConstructor()->structure(vm)));
         globalObject->tryInstallArraySpeciesWatchpoint(exec);
-        ASSERT(globalObject->arraySpeciesWatchpoint().stateOnJSThread() != ClearWatchpoint);
+        ASSERT(globalObject->arraySpeciesWatchpointSet().stateOnJSThread() != ClearWatchpoint);
     }
 
     return !thisObject->hasCustomProperties(vm)
         && arrayPrototype == thisObject->getPrototypeDirect(vm)
-        && globalObject->arraySpeciesWatchpoint().stateOnJSThread() == IsWatched;
+        && globalObject->arraySpeciesWatchpointSet().stateOnJSThread() == IsWatched;
 }
 
 enum class SpeciesConstructResult {
@@ -533,19 +533,19 @@ inline JSValue fastJoin(ExecState& state, JSObject* thisObject, StringView separ
             goto generalCase;
         switch (separator.length()) {
         case 0:
-            RELEASE_AND_RETURN(scope, jsEmptyString(&state));
+            RELEASE_AND_RETURN(scope, jsEmptyString(vm));
         case 1: {
             if (length <= 1)
-                RELEASE_AND_RETURN(scope, jsEmptyString(&state));
+                RELEASE_AND_RETURN(scope, jsEmptyString(vm));
             if (separator.is8Bit())
                 RELEASE_AND_RETURN(scope, repeatCharacter(state, separator.characters8()[0], length - 1));
             RELEASE_AND_RETURN(scope, repeatCharacter(state, separator.characters16()[0], length - 1));
         default:
-            JSString* result = jsEmptyString(&state);
+            JSString* result = jsEmptyString(vm);
             if (length <= 1)
                 return result;
 
-            JSString* operand = jsString(&vm, separator.toString());
+            JSString* operand = jsString(vm, separator.toString());
             RETURN_IF_EXCEPTION(scope, { });
             unsigned count = length - 1;
             for (;;) {
@@ -576,6 +576,21 @@ generalCase:
     RELEASE_AND_RETURN(scope, joiner.join(state));
 }
 
+inline bool canUseDefaultArrayJoinForToString(VM& vm, JSObject* thisObject)
+{
+    JSGlobalObject* globalObject = thisObject->globalObject();
+
+    if (globalObject->arrayJoinWatchpointSet().stateOnJSThread() != IsWatched)
+        return false;
+
+    Structure* structure = thisObject->structure(vm);
+
+    // This is the fast case. Many arrays will be an original array.
+    // We are doing very simple check here. If we do more complicated checks like looking into getDirect "join" of thisObject,
+    // it would be possible that just looking into "join" function will show the same performance.
+    return globalObject->isOriginalArrayStructure(structure);
+}
+
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -585,26 +600,28 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState* exec)
     // 1. Let array be the result of calling ToObject on the this value.
     JSObject* thisObject = thisValue.toObject(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    
-    // 2. Let func be the result of calling the [[Get]] internal method of array with argument "join".
-    JSValue function = JSValue(thisObject).get(exec, vm.propertyNames->join);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    // 3. If IsCallable(func) is false, then let func be the standard built-in method Object.prototype.toString (15.2.4.2).
-    bool customJoinCase = false;
-    if (!function.isCell())
-        customJoinCase = true;
-    CallData callData;
-    CallType callType = getCallData(vm, function, callData);
-    if (callType == CallType::None)
-        customJoinCase = true;
+    if (!canUseDefaultArrayJoinForToString(vm, thisObject)) {
+        // 2. Let func be the result of calling the [[Get]] internal method of array with argument "join".
+        JSValue function = JSValue(thisObject).get(exec, vm.propertyNames->join);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    if (UNLIKELY(customJoinCase))
-        RELEASE_AND_RETURN(scope, JSValue::encode(jsMakeNontrivialString(exec, "[object ", thisObject->methodTable(vm)->className(thisObject, vm), "]")));
+        // 3. If IsCallable(func) is false, then let func be the standard built-in method Object.prototype.toString (15.2.4.2).
+        bool customJoinCase = false;
+        if (!function.isCell())
+            customJoinCase = true;
+        CallData callData;
+        CallType callType = getCallData(vm, function, callData);
+        if (callType == CallType::None)
+            customJoinCase = true;
 
-    // 4. Return the result of calling the [[Call]] internal method of func providing array as the this value and an empty arguments list.
-    if (!isJSArray(thisObject) || callType != CallType::Host || callData.native.function != arrayProtoFuncJoin)
-        RELEASE_AND_RETURN(scope, JSValue::encode(call(exec, function, callType, callData, thisObject, *vm.emptyList)));
+        if (UNLIKELY(customJoinCase))
+            RELEASE_AND_RETURN(scope, JSValue::encode(jsMakeNontrivialString(exec, "[object ", thisObject->methodTable(vm)->className(thisObject, vm), "]")));
+
+        // 4. Return the result of calling the [[Call]] internal method of func providing array as the this value and an empty arguments list.
+        if (!isJSArray(thisObject) || callType != CallType::Host || callData.native.function != arrayProtoFuncJoin)
+            RELEASE_AND_RETURN(scope, JSValue::encode(call(exec, function, callType, callData, thisObject, *vm.emptyList)));
+    }
 
     ASSERT(isJSArray(thisValue));
     JSArray* thisArray = asArray(thisValue);
@@ -682,7 +699,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToLocaleString(ExecState* exec)
         JSValue element = thisObject->getIndex(exec, i);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         if (element.isUndefinedOrNull())
-            element = jsEmptyString(exec);
+            element = jsEmptyString(vm);
         else {
             JSValue conversionFunction = element.get(exec, vm.propertyNames->toLocaleString);
             RETURN_IF_EXCEPTION(scope, encodedJSValue());
@@ -711,7 +728,7 @@ static JSValue slowJoin(ExecState& exec, JSObject* thisObject, JSString* separat
 
     // 5. If len is zero, return the empty String.
     if (!length)
-        return jsEmptyString(&exec);
+        return jsEmptyString(vm);
 
     // 6. Let element0 be Get(O, "0").
     JSValue element0 = thisObject->getIndex(&exec, 0);
@@ -720,7 +737,7 @@ static JSValue slowJoin(ExecState& exec, JSObject* thisObject, JSString* separat
     // 7. If element0 is undefined or null, let R be the empty String; otherwise, let R be ? ToString(element0).
     JSString* r = nullptr;
     if (element0.isUndefinedOrNull())
-        r = jsEmptyString(&exec);
+        r = jsEmptyString(vm);
     else
         r = element0.toString(&exec);
     RETURN_IF_EXCEPTION(scope, { });
@@ -730,7 +747,7 @@ static JSValue slowJoin(ExecState& exec, JSObject* thisObject, JSString* separat
     // 9.e Increase k by 1..
     for (uint64_t k = 1; k < length; ++k) {
         // b. Let element be ? Get(O, ! ToString(k)).
-        JSValue element = thisObject->get(&exec, Identifier::fromString(&exec, AtomString::number(k)));
+        JSValue element = thisObject->get(&exec, Identifier::fromString(vm, AtomString::number(k)));
         RETURN_IF_EXCEPTION(scope, { });
 
         // c. If element is undefined or null, let next be the empty String; otherwise, let next be ? ToString(element).
@@ -738,7 +755,7 @@ static JSValue slowJoin(ExecState& exec, JSObject* thisObject, JSString* separat
         if (element.isUndefinedOrNull()) {
             if (!separator->length())
                 continue;
-            next = jsEmptyString(&exec);
+            next = jsEmptyString(vm);
         } else
             next = element.toString(&exec);
         RETURN_IF_EXCEPTION(scope, { });
@@ -780,7 +797,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncJoin(ExecState* exec)
         if (UNLIKELY(length > std::numeric_limits<unsigned>::max() || !canUseFastJoin(thisObject))) {
             uint64_t length64 = static_cast<uint64_t>(length);
             ASSERT(static_cast<double>(length64) == length);
-            JSString* jsSeparator = jsSingleCharacterString(exec, comma);
+            JSString* jsSeparator = jsSingleCharacterString(vm, comma);
             RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
             RELEASE_AND_RETURN(scope, JSValue::encode(slowJoin(*exec, thisObject, jsSeparator, length64)));
@@ -871,7 +888,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncPush(ExecState* exec)
             thisObj->methodTable(vm)->putByIndex(thisObj, exec, length + n, exec->uncheckedArgument(n), true);
         else {
             PutPropertySlot slot(thisObj);
-            Identifier propertyName = Identifier::fromString(exec, JSValue(static_cast<int64_t>(length) + static_cast<int64_t>(n)).toWTFString(exec));
+            Identifier propertyName = Identifier::fromString(vm, JSValue(static_cast<int64_t>(length) + static_cast<int64_t>(n)).toWTFString(exec));
             thisObj->methodTable(vm)->put(thisObj, exec, propertyName, exec->uncheckedArgument(n), slot);
         }
         RETURN_IF_EXCEPTION(scope, encodedJSValue());

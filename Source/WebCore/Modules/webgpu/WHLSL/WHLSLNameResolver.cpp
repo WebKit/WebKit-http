@@ -57,6 +57,7 @@ NameResolver::NameResolver(NameContext& nameContext)
 NameResolver::NameResolver(NameResolver& parentResolver, NameContext& nameContext)
     : m_nameContext(nameContext)
     , m_parentNameResolver(&parentResolver)
+    , m_currentNameSpace(parentResolver.m_currentNameSpace)
 {
 }
 
@@ -80,14 +81,10 @@ void NameResolver::visit(AST::TypeReference& typeReference)
     if (typeReference.maybeResolvedType()) // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198161 Shouldn't we know by now whether the type has been resolved or not?
         return;
 
-    auto* candidates = m_nameContext.getTypes(typeReference.name());
-    if (candidates == nullptr) {
-        setError(Error("Cannot find type reference.", typeReference.codeLocation()));
-        return;
-    }
-    for (auto& candidate : *candidates)
+    auto candidates = m_nameContext.getTypes(typeReference.name(), m_currentNameSpace);
+    for (auto& candidate : candidates)
         Visitor::visit(candidate);
-    if (auto result = resolveTypeOverloadImpl(*candidates, typeReference.typeArguments()))
+    if (auto result = resolveTypeOverloadImpl(candidates, typeReference.typeArguments()))
         typeReference.setResolvedType(*result);
     else {
         setError(Error("Cannot resolve type arguments.", typeReference.codeLocation()));
@@ -189,21 +186,25 @@ void NameResolver::visit(AST::VariableReference& variableReference)
 void NameResolver::visit(AST::DotExpression& dotExpression)
 {
     if (is<AST::VariableReference>(dotExpression.base())) {
-        auto baseName = downcast<AST::VariableReference>(dotExpression.base()).name();
-        if (auto enumerationTypes = m_nameContext.getTypes(baseName)) {
-            ASSERT(enumerationTypes->size() == 1);
-            AST::NamedType& type = (*enumerationTypes)[0];
-            if (is<AST::EnumerationDefinition>(type)) {
-                AST::EnumerationDefinition& enumerationDefinition = downcast<AST::EnumerationDefinition>(type);
-                auto memberName = dotExpression.fieldName();
-                if (auto* member = enumerationDefinition.memberByName(memberName)) {
-                    auto enumerationMemberLiteral = AST::EnumerationMemberLiteral::wrap(dotExpression.codeLocation(), WTFMove(baseName), WTFMove(memberName), enumerationDefinition, *member);
-                    AST::replaceWith<AST::EnumerationMemberLiteral>(dotExpression, WTFMove(enumerationMemberLiteral));
+        auto& variableReference = downcast<AST::VariableReference>(dotExpression.base());
+        if (!m_nameContext.getVariable(variableReference.name())) {
+            auto baseName = variableReference.name();
+            auto enumerationTypes = m_nameContext.getTypes(baseName, m_currentNameSpace);
+            if (enumerationTypes.size() == 1) {
+                AST::NamedType& type = enumerationTypes[0];
+                if (is<AST::EnumerationDefinition>(type)) {
+                    AST::EnumerationDefinition& enumerationDefinition = downcast<AST::EnumerationDefinition>(type);
+                    auto memberName = dotExpression.fieldName();
+                    if (auto* member = enumerationDefinition.memberByName(memberName)) {
+                        auto enumerationMemberLiteral = AST::EnumerationMemberLiteral::wrap(dotExpression.codeLocation(), WTFMove(baseName), WTFMove(memberName), enumerationDefinition, *member);
+                        AST::replaceWith<AST::EnumerationMemberLiteral>(dotExpression, WTFMove(enumerationMemberLiteral));
+                        return;
+                    }
+                    setError(Error("No enum member matches the used name.", dotExpression.codeLocation()));
                     return;
                 }
-                setError(Error("No enum member matches the used name.", dotExpression.codeLocation()));
-                return;
-            }
+            } else
+                ASSERT(enumerationTypes.isEmpty());
         }
     }
 
@@ -215,9 +216,10 @@ void NameResolver::visit(AST::EnumerationMemberLiteral& enumerationMemberLiteral
     if (enumerationMemberLiteral.enumerationMember())
         return;
 
-    if (auto enumerationTypes = m_nameContext.getTypes(enumerationMemberLiteral.left())) {
-        ASSERT(enumerationTypes->size() == 1);
-        AST::NamedType& type = (*enumerationTypes)[0];
+    auto enumerationTypes = m_nameContext.getTypes(enumerationMemberLiteral.left(), m_currentNameSpace);
+    if (enumerationTypes.size() == 1) {
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=199335 This needs to work with typedef'ed enums.
+        AST::NamedType& type = enumerationTypes[0];
         if (is<AST::EnumerationDefinition>(type)) {
             AST::EnumerationDefinition& enumerationDefinition = downcast<AST::EnumerationDefinition>(type);
             if (auto* member = enumerationDefinition.memberByName(enumerationMemberLiteral.right())) {
@@ -226,7 +228,7 @@ void NameResolver::visit(AST::EnumerationMemberLiteral& enumerationMemberLiteral
             }
         }
     }
-    
+
     setError(Error("Cannot resolve enumeration member literal.", enumerationMemberLiteral.codeLocation()));
 }
 
@@ -242,21 +244,25 @@ void NameResolver::visit(AST::NativeFunctionDeclaration& nativeFunctionDeclarati
 Expected<void, Error> resolveNamesInTypes(Program& program, NameResolver& nameResolver)
 {
     for (auto& typeDefinition : program.typeDefinitions()) {
+        nameResolver.setCurrentNameSpace(typeDefinition.get().nameSpace());
         nameResolver.checkErrorAndVisit(typeDefinition);
         if (nameResolver.hasError())
             return nameResolver.result();
     }
     for (auto& structureDefinition : program.structureDefinitions()) {
+        nameResolver.setCurrentNameSpace(structureDefinition.get().nameSpace());
         nameResolver.checkErrorAndVisit(structureDefinition);
         if (nameResolver.hasError())
             return nameResolver.result();
     }
     for (auto& enumerationDefinition : program.enumerationDefinitions()) {
+        nameResolver.setCurrentNameSpace(enumerationDefinition.get().nameSpace());
         nameResolver.checkErrorAndVisit(enumerationDefinition);
         if (nameResolver.hasError())
             return nameResolver.result();
     }
     for (auto& nativeTypeDeclaration : program.nativeTypeDeclarations()) {
+        nameResolver.setCurrentNameSpace(nativeTypeDeclaration.get().nameSpace());
         nameResolver.checkErrorAndVisit(nativeTypeDeclaration);
         if (nameResolver.hasError())
             return nameResolver.result();
@@ -267,11 +273,13 @@ Expected<void, Error> resolveNamesInTypes(Program& program, NameResolver& nameRe
 Expected<void, Error> resolveTypeNamesInFunctions(Program& program, NameResolver& nameResolver)
 {
     for (auto& functionDefinition : program.functionDefinitions()) {
+        nameResolver.setCurrentNameSpace(functionDefinition.get().nameSpace());
         nameResolver.checkErrorAndVisit(functionDefinition);
         if (nameResolver.hasError())
             return nameResolver.result();
     }
     for (auto& nativeFunctionDeclaration : program.nativeFunctionDeclarations()) {
+        nameResolver.setCurrentNameSpace(nativeFunctionDeclaration.get().nameSpace());
         nameResolver.checkErrorAndVisit(nativeFunctionDeclaration);
         if (nameResolver.hasError())
             return nameResolver.result();

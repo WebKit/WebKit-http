@@ -126,6 +126,9 @@ void WebPageProxy::createSandboxExtensionsIfNeeded(const Vector<String>& files, 
     if (files.size() == 1) {
         BOOL isDirectory;
         if ([[NSFileManager defaultManager] fileExistsAtPath:files[0] isDirectory:&isDirectory] && !isDirectory) {
+#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_PID)
+            if (!SandboxExtension::createHandleForReadByPid("/", processIdentifier(), fileReadHandle))
+#endif
             SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, fileReadHandle);
             willAcquireUniversalFileReadSandboxExtension(m_process);
         }
@@ -207,7 +210,7 @@ void WebPageProxy::performDictionaryLookupAtLocation(const WebCore::FloatPoint& 
     if (!hasRunningProcess())
         return;
     
-    process().send(Messages::WebPage::PerformDictionaryLookupAtLocation(point), m_pageID);
+    process().send(Messages::WebPage::PerformDictionaryLookupAtLocation(point), m_webPageID);
 }
 
 void WebPageProxy::performDictionaryLookupOfCurrentSelection()
@@ -215,7 +218,7 @@ void WebPageProxy::performDictionaryLookupOfCurrentSelection()
     if (!hasRunningProcess())
         return;
     
-    process().send(Messages::WebPage::PerformDictionaryLookupOfCurrentSelection(), m_pageID);
+    process().send(Messages::WebPage::PerformDictionaryLookupOfCurrentSelection(), m_webPageID);
 }
     
 #if ENABLE(APPLE_PAY)
@@ -245,12 +248,12 @@ const String& WebPageProxy::paymentCoordinatorSourceApplicationSecondaryIdentifi
 
 void WebPageProxy::paymentCoordinatorAddMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference& messageReceiverName, IPC::MessageReceiver& messageReceiver)
 {
-    process().addMessageReceiver(messageReceiverName, m_pageID, messageReceiver);
+    process().addMessageReceiver(messageReceiverName, m_webPageID, messageReceiver);
 }
 
 void WebPageProxy::paymentCoordinatorRemoveMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference& messageReceiverName)
 {
-    process().removeMessageReceiver(messageReceiverName, m_pageID);
+    process().removeMessageReceiver(messageReceiverName, m_webPageID);
 }
 
 #endif
@@ -282,17 +285,17 @@ void WebPageProxy::didResumeSpeaking(WebCore::PlatformSpeechSynthesisUtterance&)
 
 void WebPageProxy::speakingErrorOccurred(WebCore::PlatformSpeechSynthesisUtterance&)
 {
-    process().send(Messages::WebPage::SpeakingErrorOccurred(), m_pageID);
+    process().send(Messages::WebPage::SpeakingErrorOccurred(), m_webPageID);
 }
 
 void WebPageProxy::boundaryEventOccurred(WebCore::PlatformSpeechSynthesisUtterance&, WebCore::SpeechBoundary speechBoundary, unsigned charIndex)
 {
-    process().send(Messages::WebPage::BoundaryEventOccurred(speechBoundary == WebCore::SpeechBoundary::SpeechWordBoundary, charIndex), m_pageID);
+    process().send(Messages::WebPage::BoundaryEventOccurred(speechBoundary == WebCore::SpeechBoundary::SpeechWordBoundary, charIndex), m_webPageID);
 }
 
 void WebPageProxy::voicesDidChange()
 {
-    process().send(Messages::WebPage::VoicesDidChange(), m_pageID);
+    process().send(Messages::WebPage::VoicesDidChange(), m_webPageID);
 }
 #endif // ENABLE(SPEECH_SYNTHESIS)
 

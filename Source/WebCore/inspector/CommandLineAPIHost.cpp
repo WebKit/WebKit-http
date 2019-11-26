@@ -61,7 +61,7 @@ Ref<CommandLineAPIHost> CommandLineAPIHost::create()
 }
 
 CommandLineAPIHost::CommandLineAPIHost()
-    : m_inspectedObject(std::make_unique<InspectableObject>())
+    : m_inspectedObject(makeUnique<InspectableObject>())
 {
 }
 
@@ -136,8 +136,8 @@ void CommandLineAPIHost::clearConsoleMessages()
     if (!consoleAgent)
         return;
 
-    ErrorString unused;
-    consoleAgent->clearMessages(unused);
+    ErrorString ignored;
+    consoleAgent->clearMessages(ignored);
 }
 
 void CommandLineAPIHost::copyText(const String& text)
@@ -196,7 +196,7 @@ JSValue CommandLineAPIHost::wrapper(ExecState* exec, JSDOMGlobalObject* globalOb
 void CommandLineAPIHost::clearAllWrappers()
 {
     m_wrappers.clearAllWrappers();
-    m_inspectedObject = std::make_unique<InspectableObject>();
+    m_inspectedObject = makeUnique<InspectableObject>();
 }
 
 } // namespace WebCore

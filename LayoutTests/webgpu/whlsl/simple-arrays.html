@@ -59,7 +59,7 @@ compute void computeShader(device int[] buffer : register(u0), float3 threadID :
 }
 `;
 async function start(device) {
-    const shaderModule = device.createShaderModule({code: shaderSource, isWHLSL: true});
+    const shaderModule = device.createShaderModule({code: shaderSource});
     const computeStage = {module: shaderModule, entryPoint: "computeShader"};
 
     const bindGroupLayoutDescriptor = {bindings: [{binding: 0, visibility: 7, type: "storage-buffer"}]};
@@ -72,14 +72,14 @@ async function start(device) {
 
     const size = Int32Array.BYTES_PER_ELEMENT * 1;
 
-    const bufferDescriptor = {size, usage: GPUBufferUsage.MAP_WRITE | GPUBufferUsage.TRANSFER_SRC};
+    const bufferDescriptor = {size, usage: GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC};
     const buffer = device.createBuffer(bufferDescriptor);
     const bufferArrayBuffer = await buffer.mapWriteAsync();
     const bufferFloat32Array = new Int32Array(bufferArrayBuffer);
     bufferFloat32Array[0] = 0;
     buffer.unmap();
 
-    const resultsBufferDescriptor = {size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.TRANSFER_DST | GPUBufferUsage.MAP_READ};
+    const resultsBufferDescriptor = {size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ};
     const resultsBuffer = device.createBuffer(resultsBufferDescriptor);
 
     const bufferBinding = {buffer: resultsBuffer, size};

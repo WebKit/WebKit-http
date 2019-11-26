@@ -500,13 +500,13 @@ class TestWithFailureCount(shell.Test):
     def getResultSummary(self):
         status = self.name
 
-        if self.results != SUCCESS and self.failedTestCount:
-            status = self.failedTestsFormatString % (self.failedTestCount, self.failedTestPluralSuffix)
-
         if self.results != SUCCESS:
-            status += u' ({})'.format(Results[self.results])
+            if self.failedTestCount:
+                status = self.failedTestsFormatString % (self.failedTestCount, self.failedTestPluralSuffix)
+            else:
+                status += u' ({})'.format(Results[self.results])
 
-        return {u'step': status}
+        return {u'step': unicode(status)}
 
 
 class CheckStyle(TestWithFailureCount):
@@ -904,6 +904,9 @@ class RunWebKitTests(shell.Test):
         appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
         additionalArguments = self.getProperty('additionalArguments')
 
+        if self.getProperty('use-dump-render-tree', False):
+            self.setCommand(self.command + ['--dump-render-tree'])
+
         self.setCommand(self.command + ['--results-directory', self.resultDirectory])
         self.setCommand(self.command + ['--debug-rwt-logging'])
 
@@ -1065,7 +1068,7 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         self.build.results = FAILURE
         pluralSuffix = 's' if len(new_failures) > 1 else ''
         new_failures_string = ', '.join([failure_name for failure_name in new_failures])
-        message = 'Found {} new Test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
+        message = 'Found {} new test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
         self.descriptionDone = message
         self.build.buildFinished([message], FAILURE)
         return defer.succeed(None)
@@ -1159,8 +1162,7 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
 
 class RunWebKit1Tests(RunWebKitTests):
     def start(self):
-        self.setCommand(self.command + ['--dump-render-tree'])
-
+        self.setProperty('use-dump-render-tree', True)
         return RunWebKitTests.start(self)
 
 
@@ -1386,7 +1388,7 @@ class AnalyzeAPITestsResults(buildstep.BuildStep):
             self.finished(FAILURE)
             self.build.results = FAILURE
             pluralSuffix = 's' if len(new_failures) > 1 else ''
-            message = 'Found {} new API Test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
+            message = 'Found {} new API test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
             self.descriptionDone = message
             self.build.buildFinished([message], FAILURE)
         else:
@@ -1489,9 +1491,18 @@ class ExtractTestResults(master.MasterShellCommand):
     def resultsDownloadURL(self):
         return self.zipFile.replace('public_html/', '/')
 
+    def getLastBuildStepByName(self, name):
+        for step in reversed(self.build.executedSteps):
+            if name in step.name:
+                return step
+        return None
+
     def addCustomURLs(self):
-        self.addURL('view layout test results', self.resultDirectoryURL() + 'results.html')
-        self.addURL('download layout test results', self.resultsDownloadURL())
+        step = self.getLastBuildStepByName(RunWebKitTests.name)
+        if not step:
+            step = self
+        step.addURL('view layout test results', self.resultDirectoryURL() + 'results.html')
+        step.addURL('download layout test results', self.resultsDownloadURL())
 
     def finished(self, result):
         self.addCustomURLs()
@@ -1571,3 +1582,21 @@ class PrintConfiguration(steps.ShellSequence):
             xcode_version = match.group(1).strip()
             configuration += u', Xcode: {}'.format(xcode_version)
         return {u'step': configuration}
+
+
+class ApplyWatchList(shell.ShellCommand):
+    name = 'apply-watch-list'
+    description = ['applying watchilist']
+    descriptionDone = ['Applied WatchList']
+    bug_id = WithProperties('%(bug_id)s')
+    command = ['python', 'Tools/Scripts/webkit-patch', 'apply-watchlist-local', bug_id]
+    haltOnFailure = True
+    flunkOnFailure = True
+
+    def __init__(self, **kwargs):
+        shell.ShellCommand.__init__(self, timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to apply watchlist'}
+        return super(ApplyWatchList, self).getResultSummary()

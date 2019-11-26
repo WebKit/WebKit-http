@@ -1,3 +1,3227 @@
+2019-09-09  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Layout Test http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=198810
+
+        Reviewed by Dewei Zhu.
+
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html:
+        Removed the timeout value given these tests should report the exception immediately.
+
+2019-09-09  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in http/tests/workers/service/basic-register.html
+        https://bugs.webkit.org/show_bug.cgi?id=201590
+
+        Reviewed by Youenn Fablet.
+
+        Split the layout test in 2 to test both the default and the ephemeral session without relying on the
+        testRunner.setPrivateBrowsingEnabled_DEPRECATED() hack.
+
+        * http/tests/workers/service/basic-register-expected.txt:
+        * http/tests/workers/service/basic-register-private-expected.txt: Copied from LayoutTests/http/tests/workers/service/basic-register-expected.txt.
+        * http/tests/workers/service/basic-register-private.html: Added.
+        * http/tests/workers/service/resources/basic-register.js:
+        (async.test):
+
+2019-09-09  Rob Buis  <rbuis@igalia.com>
+
+        [GTK][WPE] Remove attributes deprecated from MathML3
+        https://bugs.webkit.org/show_bug.cgi?id=197492
+
+        Reviewed by Frédéric Wang.
+
+        Disable the MathML Core flag for tests assuming MathML3 behavior.
+
+        * mathml/presentation/attributes-background-color-expected.html:
+        * mathml/presentation/attributes-background-color.html:
+        * mathml/presentation/attributes-mathvariant.html:
+        * mathml/presentation/direction-overall.html:
+        * mathml/presentation/mstyle-css-attributes.html:
+
+2019-09-08  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Add back a version of the property resolver
+        https://bugs.webkit.org/show_bug.cgi?id=201251
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl/property-evaluation-order-expected.txt: Added.
+        * webgpu/whlsl/property-evaluation-order.html: Added.
+
+2019-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Add support for postMessage buffering between the service worker and window
+        https://bugs.webkit.org/show_bug.cgi?id=201169
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        Unskip test that is no longer timing out.
+
+        * resources/testharnessreport.js:
+        (self.testRunner.add_completion_callback):
+        Use testRunner.forceImmediateCompletion() instead of notifyDone() for WPT tests.
+        testRunner.notifyDone() does not work in case of load error or when the load
+        does not finish. The WPT test was timing out because the load does not finish for
+        testing purposes.
+
+2019-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Rewrite http/tests/workers/service/serviceworker-private-browsing.https.html as an API test
+        https://bugs.webkit.org/show_bug.cgi?id=201574
+
+        Reviewed by Alex Christensen.
+
+        Drop legacy test which was replaced by an API test.
+
+        * http/tests/workers/service/serviceworker-private-browsing-worker.js: Removed.
+        * http/tests/workers/service/serviceworker-private-browsing.https-expected.txt: Removed.
+        * http/tests/workers/service/serviceworker-private-browsing.https.html: Removed.
+
+2019-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Rewrite storage/domstorage/localstorage/private-browsing-affects-storage.html as an API test
+        https://bugs.webkit.org/show_bug.cgi?id=201547
+
+        Reviewed by Alex Christensen.
+
+        Drop outdated test.
+
+        * storage/domstorage/localstorage/private-browsing-affects-storage.html: Removed.
+        * storage/domstorage/localstorage/resources/private-browsing-1.html: Removed.
+        * storage/domstorage/localstorage/resources/private-browsing-2.html: Removed.
+
+2019-09-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r249353.
+
+        The test for this change is a flaky failure.
+
+        Reverted changeset:
+
+        "Add support for postMessage buffering between the service
+        worker and window"
+        https://bugs.webkit.org/show_bug.cgi?id=201169
+        https://trac.webkit.org/changeset/249353
+
+2019-09-07  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate WKContextGetWebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=200050
+
+        Reviewed by Geoff Garen.
+
+        Rebase some accessibility tests that were printing the SessionID since we're using SessionID 2 for testing now.
+
+        * accessibility/mac/document-attributes-expected.txt:
+        * platform/mac/accessibility/parent-delete-expected.txt:
+
+2019-09-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS Formatter: the closing } of nested @media aren't indented
+        https://bugs.webkit.org/show_bug.cgi?id=201560
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/formatting/resources/css-tests/media-query.css:
+        * inspector/formatting/resources/css-tests/media-query-expected.css:
+
+2019-09-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Incorrect selection rect revealed after pasting images in a contenteditable element
+        https://bugs.webkit.org/show_bug.cgi?id=201549
+        <rdar://problem/50956429>
+
+        Reviewed by Simon Fraser.
+
+        Add a couple of new layout tests.
+
+        * editing/pasteboard/do-not-reveal-selection-after-programmatic-scroll-expected.txt: Added.
+        * editing/pasteboard/do-not-reveal-selection-after-programmatic-scroll.html: Added.
+
+        This test verifies that we don't try to scroll to reveal the caret after pasting, if the scroll position was
+        changed before the images finished loading.
+
+        * editing/pasteboard/reveal-selection-after-pasting-images-expected.txt: Added.
+        * editing/pasteboard/reveal-selection-after-pasting-images.html: Added.
+        * platform/ios/editing/pasteboard/reveal-selection-after-pasting-images-expected.txt: Added.
+
+        This test verifies that we reveal the caret after loading multiple pasted images in a selection, and dispatch a
+        scroll event in the process.
+
+2019-09-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Update several interface and enum names to match spec
+        https://bugs.webkit.org/show_bug.cgi?id=201564
+
+        Reviewed by Dean Jackson.
+
+        Rename GPUShaderStageBit -> GPUShaderStage.
+        Rename GPUColorWriteBits -> GPUColorWrite.
+        Rename TRANSFER_SRC/DST -> COPY_SRC/DST.
+
+        * webgpu/bind-groups.html:
+        * webgpu/blend-color-triangle-strip.html:
+        * webgpu/blit-commands.html:
+        * webgpu/buffer-errors.html:
+        * webgpu/color-write-mask-triangle-strip.html:
+        * webgpu/pipeline-layouts.html:
+        * webgpu/render-pipelines.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/textures-textureviews.html:
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations.html:
+        * webgpu/whlsl/buffer-fragment.html:
+        * webgpu/whlsl/buffer-length.html:
+        * webgpu/whlsl/buffer-vertex.html:
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables.html:
+        * webgpu/whlsl/compute.html:
+        * webgpu/whlsl/dereference-pointer-should-type-check.html:
+        * webgpu/whlsl/device-proper-type-checker.html:
+        * webgpu/whlsl/do-while-loop-break.html:
+        * webgpu/whlsl/do-while-loop-continue.html:
+        * webgpu/whlsl/do-while-loop.html:
+        * webgpu/whlsl/dont-crash-parsing-enum.html:
+        * webgpu/whlsl/dot-expressions.html:
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime.html:
+        * webgpu/whlsl/huge-array.html:
+        * webgpu/whlsl/js/test-harness.js:
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype._clearResults):
+        (Harness.prototype._setUpArguments):
+        * webgpu/whlsl/loops-break.html:
+        * webgpu/whlsl/loops-continue.html:
+        * webgpu/whlsl/loops.html:
+        * webgpu/whlsl/make-array-reference.html:
+        * webgpu/whlsl/matrix-2.html:
+        * webgpu/whlsl/matrix-alignment.html:
+        * webgpu/whlsl/matrix-memory-layout.html:
+        * webgpu/whlsl/matrix.html:
+        * webgpu/whlsl/nested-dot-expression-rvalue.html:
+        * webgpu/whlsl/nested-loop.html:
+        * webgpu/whlsl/oob-access.html:
+        * webgpu/whlsl/read-modify-write-high-zombies.html:
+        * webgpu/whlsl/return-local-variable.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-10.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-11.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-12.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-13.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-14.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-15.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-16.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-17.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-18.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-19.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-2.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-20.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-21.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-22.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-23.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-24.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-25.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-26.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-27.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-3.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-4.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-5.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-6.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-7.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-8.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-9.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules.html:
+        * webgpu/whlsl/simple-arrays.html:
+        * webgpu/whlsl/store-to-property-updates-properly.html:
+        * webgpu/whlsl/textures-load.html:
+        * webgpu/whlsl/textures-sample-bias.html:
+        * webgpu/whlsl/textures-sample-grad.html:
+        * webgpu/whlsl/textures-sample-level.html:
+        * webgpu/whlsl/textures-sample.html:
+        * webgpu/whlsl/two-dimensional-array.html:
+        * webgpu/whlsl/while-loop-break.html:
+        * webgpu/whlsl/while-loop-continue.html:
+        * webgpu/whlsl/whlsl.html:
+        * webgpu/whlsl/zero-initialize-values-2.html:
+        * webgpu/whlsl/zero-initialize-values.html:
+
+2019-09-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION: http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations.html is frequently timing out on iOS EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=201550
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations: Mark the test as flaky to speed up EWS while we investigate the root cause.
+
+2019-09-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r249367): m_decodingPromises grows indefinitely until ImageLoader destruction
+        https://bugs.webkit.org/show_bug.cgi?id=201402
+
+        Reviewed by Youenn Fablet and Daniel Bates.
+
+        * fast/images/decode-resolve-reject-no-leak-expected.txt: Added.
+        * fast/images/decode-resolve-reject-no-leak.html: Added.
+
+2019-09-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Prefer null namespace 'href' over 'xlink:href' on SVG elements
+        https://bugs.webkit.org/show_bug.cgi?id=195802
+
+        Reviewed by Youenn Fablet.
+
+        * svg/custom/href-xlink-href-gradient-element-expected.svg: Added.
+        * svg/custom/href-xlink-href-gradient-element.svg: Added.
+        * svg/custom/href-xlink-href-use-element-expected.svg: Added.
+        * svg/custom/href-xlink-href-use-element.svg: Added.
+
+2019-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Tail Deleted Frames shown in Web Inspector are sometimes incorrect (Shadow Chicken)
+        https://bugs.webkit.org/show_bug.cgi?id=201366
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/tail-deleted-frames-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-from-vm-entry-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-from-vm-entry.html: Removed.
+        * inspector/debugger/tail-deleted-frames-this-value-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-this-value.html: Removed.
+        * inspector/debugger/tail-deleted-frames.html: Removed.
+        Remove legacy tests that are difficult to read.
+
+        * inspector/debugger/tail-deleted-frames/resources/stack-trace-utilities.js: Added.
+        (TestPage.registerInitializer.window.getAsyncStackTrace):
+        (TestPage.registerInitializer.async.logThisObject):
+        (TestPage.registerInitializer.async.logScope):
+        (TestPage.registerInitializer.async.logCallFrame):
+        (TestPage.registerInitializer):
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-frames.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-native-tail-deleted-calls.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-tail-deleted-frames.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-scopes.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-this-value.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-vm-entry.js: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-frames-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-frames.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-tail-deleted-frames-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-tail-deleted-frames.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-scopes-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-scopes.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-this-value-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-this-value.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-vm-entry-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-vm-entry.html: Added.
+        Include modern tests that are easier to read.
+
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-native-tail-deleted-calls-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-native-tail-deleted-calls.html: Added.
+        Include a test that is known to produce bad output, since we have reproductive steps.
+
+        * platform/mac/TestExpectations:
+        Updated pathes.
+
+2019-09-06  Darryl Pogue  <darryl@dpogue.ca>
+
+        REGRESSION(iOS 12): Keyboard dismissal leaves WKWebView viewport-fit=cover content offscreen
+        https://bugs.webkit.org/show_bug.cgi?id=192564
+
+        Reviewed by Tim Horton.
+
+        Added tests to verify scrolling properly adapts to the keyboard insets on iOS.
+
+        * fast/scrolling/ios/scrollview-adjusts-to-keyboard-insets-expected.txt: Added.
+        * fast/scrolling/ios/scrollview-adjusts-to-keyboard-insets.html: Added.
+
+2019-09-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed, fix typo in r249216
+
+        Also change the <desc> element to be <text> element so the purpose of 
+        the test is visible once it is opened.
+
+        * svg/custom/href-svg-namespace-animate-target-expected.svg:
+        * svg/custom/href-svg-namespace-animate-target.svg:
+
+2019-09-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r249566.
+
+        Causes inspector layout test crashes under GuardMalloc
+
+        Reverted changeset:
+
+        "Tail Deleted Frames shown in Web Inspector are sometimes
+        incorrect (Shadow Chicken)"
+        https://bugs.webkit.org/show_bug.cgi?id=201366
+        https://trac.webkit.org/changeset/249566
+
+2019-09-06  Rob Buis  <rbuis@igalia.com>
+
+        Implement MathML DOM
+        https://bugs.webkit.org/show_bug.cgi?id=200470
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend existing tests to also test focus for MathML. Add a standalone test for MathML
+        based on svg/custom/tabindex-order.html. Add a test for mouse clicks and focus handling
+        based on svg/custom/focus-event-handling.xhtml.
+
+        * fast/dom/tabindex-defaults-expected.txt:
+        * fast/dom/tabindex-defaults.html:
+        * mathml/focus-event-handling-expected.txt: Added.
+        * mathml/focus-event-handling.html: Added.
+        * mathml/tabindex-order-expected.txt: Added.
+        * mathml/tabindex-order.html: Added.
+        * platform/ios-wk2/TestExpectations:
+
+2019-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Crashes when intercept response is a 404
+        https://bugs.webkit.org/show_bug.cgi?id=201514
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/inspector/network/local-resource-override-basic-expected.txt:
+        * http/tests/inspector/network/local-resource-override-basic.html:
+        Add a test for a 404 response override.
+
+2019-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Tail Deleted Frames shown in Web Inspector are sometimes incorrect (Shadow Chicken)
+        https://bugs.webkit.org/show_bug.cgi?id=201366
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/tail-deleted-frames-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-from-vm-entry-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-from-vm-entry.html: Removed.
+        * inspector/debugger/tail-deleted-frames-this-value-expected.txt: Removed.
+        * inspector/debugger/tail-deleted-frames-this-value.html: Removed.
+        * inspector/debugger/tail-deleted-frames.html: Removed.
+        Remove legacy tests that are difficult to read.
+
+        * inspector/debugger/tail-deleted-frames/resources/stack-trace-utilities.js: Added.
+        (TestPage.registerInitializer.window.getAsyncStackTrace):
+        (TestPage.registerInitializer.async.logThisObject):
+        (TestPage.registerInitializer.async.logScope):
+        (TestPage.registerInitializer.async.logCallFrame):
+        (TestPage.registerInitializer):
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-frames.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-native-tail-deleted-calls.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-intermediate-tail-deleted-frames.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-scopes.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-this-value.js: Added.
+        * inspector/debugger/tail-deleted-frames/resources/tail-deleted-frames-vm-entry.js: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-frames-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-frames.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-tail-deleted-frames-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-tail-deleted-frames.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-scopes-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-scopes.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-this-value-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-this-value.html: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-vm-entry-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-vm-entry.html: Added.
+        Include modern tests that are easier to read.
+
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-native-tail-deleted-calls-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-intermediate-native-tail-deleted-calls.html: Added.
+        Include a test that is known to produce bad output, since we have reproductive steps.
+
+        * platform/mac/TestExpectations:
+        Updated pathes.
+
+2019-09-06  Andres Gonzalez  <andresg_22@apple.com>
+
+        AccessibilityRenderObject::setSelectedTextRange fails to set the selection passed an empty line.
+        https://bugs.webkit.org/show_bug.cgi?id=201518
+        <rdar://problem/54835122>
+
+        Reviewed by Ryosuke Niwa.
+
+        Extended this test to set the selection range passed an empty line.
+        * accessibility/set-selected-text-range-after-newline-expected.txt:
+        * accessibility/set-selected-text-range-after-newline.html:
+
+2019-09-05  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in js-test.js
+        https://bugs.webkit.org/show_bug.cgi?id=201522
+
+        Reviewed by Alex Christensen.
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in js-test.js.
+        Instead, use the new useEphemeralSession WKTR flag added in r249542.
+
+        * resources/js-test.js:
+        * storage/indexeddb/aborted-versionchange-closes-private.html:
+        * storage/indexeddb/basics-private.html:
+        * storage/indexeddb/clone-exception-private.html:
+        * storage/indexeddb/closed-cursor-private.html:
+        * storage/indexeddb/connection-leak-private.html:
+        * storage/indexeddb/create-and-remove-object-store-private.html:
+        * storage/indexeddb/create-object-store-options-private.html:
+        * storage/indexeddb/createIndex-after-failure-private.html:
+        * storage/indexeddb/createObjectStore-name-argument-required-private.html:
+        * storage/indexeddb/createObjectStore-null-name-private.html:
+        * storage/indexeddb/cursor-added-bug-private.html:
+        * storage/indexeddb/cursor-advance-private.html:
+        * storage/indexeddb/cursor-basics-private.html:
+        * storage/indexeddb/cursor-cast-private.html:
+        * storage/indexeddb/cursor-continue-dir-private.html:
+        * storage/indexeddb/cursor-continue-private.html:
+        * storage/indexeddb/cursor-continue-validity-private.html:
+        * storage/indexeddb/cursor-delete-private.html:
+        * storage/indexeddb/cursor-finished-private.html:
+        * storage/indexeddb/cursor-inconsistency-private.html:
+        * storage/indexeddb/cursor-index-delete-private.html:
+        * storage/indexeddb/cursor-key-order-private.html:
+        * storage/indexeddb/cursor-leak-private.html:
+        * storage/indexeddb/cursor-overloads-private.html:
+        * storage/indexeddb/cursor-prev-no-duplicate-private.html:
+        * storage/indexeddb/cursor-primary-key-order-private.html:
+        * storage/indexeddb/cursor-properties-private.html:
+        * storage/indexeddb/cursor-request-cycle-private.html:
+        * storage/indexeddb/cursor-reverse-bug-private.html:
+        * storage/indexeddb/cursor-skip-deleted-private.html:
+        * storage/indexeddb/cursor-update-private.html:
+        * storage/indexeddb/cursor-update-value-argument-required-private.html:
+        * storage/indexeddb/cursor-value-private.html:
+        * storage/indexeddb/database-basics-private.html:
+        * storage/indexeddb/database-close-private.html:
+        * storage/indexeddb/database-closepending-flag-private.html:
+        * storage/indexeddb/database-deletepending-flag-private.html:
+        * storage/indexeddb/database-name-undefined-private.html:
+        * storage/indexeddb/database-odd-names-private.html:
+        * storage/indexeddb/database-quota-private.html:
+        * storage/indexeddb/database-wrapper-private.html:
+        * storage/indexeddb/delete-closed-database-object-private.html:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-private.html:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-private.html:
+        * storage/indexeddb/delete-range-private.html:
+        * storage/indexeddb/deleteIndex-bug110792-private.html:
+        * storage/indexeddb/deleteIndex-private.html:
+        * storage/indexeddb/deleteObjectStore-name-argument-required-private.html:
+        * storage/indexeddb/deleteObjectStore-null-name-private.html:
+        * storage/indexeddb/deleted-objects-private.html:
+        * storage/indexeddb/deletedatabase-blocked-private.html:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private.html:
+        * storage/indexeddb/deletedatabase-not-blocked-private.html:
+        * storage/indexeddb/deletedatabase-transaction-private.html:
+        * storage/indexeddb/dont-commit-on-blocked-private.html:
+        * storage/indexeddb/dont-wedge-private.html:
+        * storage/indexeddb/duplicates-private.html:
+        * storage/indexeddb/error-causes-abort-by-default-private.html:
+        * storage/indexeddb/events-private.html:
+        * storage/indexeddb/exception-in-event-aborts-private.html:
+        * storage/indexeddb/exceptions-private.html:
+        * storage/indexeddb/factory-cmp-private.html:
+        * storage/indexeddb/factory-deletedatabase-private.html:
+        * storage/indexeddb/get-keyrange-private.html:
+        * storage/indexeddb/index-basics-private.html:
+        * storage/indexeddb/index-count-private.html:
+        * storage/indexeddb/index-cursor-private.html:
+        * storage/indexeddb/index-duplicate-keypaths-private.html:
+        * storage/indexeddb/index-get-key-argument-required-private.html:
+        * storage/indexeddb/index-multientry-private.html:
+        * storage/indexeddb/index-population-private.html:
+        * storage/indexeddb/index-unique-private.html:
+        * storage/indexeddb/interfaces-private.html:
+        * storage/indexeddb/intversion-abort-in-initial-upgradeneeded-private.html:
+        * storage/indexeddb/intversion-bad-parameters-private.html:
+        * storage/indexeddb/intversion-blocked-private.html:
+        * storage/indexeddb/intversion-close-between-events-private.html:
+        * storage/indexeddb/intversion-close-in-oncomplete-private.html:
+        * storage/indexeddb/intversion-close-in-upgradeneeded-private.html:
+        * storage/indexeddb/intversion-encoding-private.html:
+        * storage/indexeddb/intversion-gated-on-delete-private.html:
+        * storage/indexeddb/intversion-long-queue-private.html:
+        * storage/indexeddb/intversion-omit-parameter-private.html:
+        * storage/indexeddb/intversion-open-in-upgradeneeded-private.html:
+        * storage/indexeddb/intversion-open-with-version-private.html:
+        * storage/indexeddb/intversion-pending-version-changes-ascending-private.html:
+        * storage/indexeddb/intversion-pending-version-changes-descending-private.html:
+        * storage/indexeddb/intversion-pending-version-changes-same-private.html:
+        * storage/indexeddb/intversion-persistence-private.html:
+        * storage/indexeddb/intversion-revert-on-abort-private.html:
+        * storage/indexeddb/intversion-two-opens-no-versions-private.html:
+        * storage/indexeddb/intversion-upgrades-private.html:
+        * storage/indexeddb/invalid-keys-private.html:
+        * storage/indexeddb/key-generator-private.html:
+        * storage/indexeddb/key-sort-order-across-types-private.html:
+        * storage/indexeddb/key-sort-order-date-private.html:
+        * storage/indexeddb/key-type-array-private.html:
+        * storage/indexeddb/key-type-binary-private.html:
+        * storage/indexeddb/key-type-infinity-private.html:
+        * storage/indexeddb/keypath-arrays-private.html:
+        * storage/indexeddb/keypath-basics-private.html:
+        * storage/indexeddb/keypath-edges-private.html:
+        * storage/indexeddb/keypath-fetch-key-private.html:
+        * storage/indexeddb/keypath-intrinsic-properties-private.html:
+        * storage/indexeddb/keyrange-private.html:
+        * storage/indexeddb/keyrange-required-arguments-private.html:
+        * storage/indexeddb/lazy-index-population-private.html:
+        * storage/indexeddb/lazy-index-types-private.html:
+        * storage/indexeddb/legacy-constants-private.html:
+        * storage/indexeddb/list-ordering-private.html:
+        * storage/indexeddb/metadata-private.html:
+        * storage/indexeddb/metadata-race-private.html:
+        * storage/indexeddb/modern/abort-objectstore-info-private.html:
+        * storage/indexeddb/modern/abort-requests-cancelled-private.html:
+        * storage/indexeddb/modern/aborted-put-private.html:
+        * storage/indexeddb/modern/autoincrement-abort-private.html:
+        * storage/indexeddb/modern/basic-add-private.html:
+        * storage/indexeddb/modern/basic-put-private.html:
+        * storage/indexeddb/modern/binary-keys-1-private.html:
+        * storage/indexeddb/modern/blocked-open-db-requests-private.html:
+        * storage/indexeddb/modern/create-index-failures-private.html:
+        * storage/indexeddb/modern/createobjectstore-basic-private.html:
+        * storage/indexeddb/modern/createobjectstore-failures-private.html:
+        * storage/indexeddb/modern/cursor-1-private.html:
+        * storage/indexeddb/modern/cursor-2-private.html:
+        * storage/indexeddb/modern/cursor-3-private.html:
+        * storage/indexeddb/modern/cursor-4-private.html:
+        * storage/indexeddb/modern/cursor-5-private.html:
+        * storage/indexeddb/modern/cursor-6-private.html:
+        * storage/indexeddb/modern/cursor-7-private.html:
+        * storage/indexeddb/modern/cursor-8-private.html:
+        * storage/indexeddb/modern/date-basic-private.html:
+        * storage/indexeddb/modern/deletedatabase-1-private.html:
+        * storage/indexeddb/modern/deletedatabase-2-private.html:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-private.html:
+        * storage/indexeddb/modern/deletedatabase-request-event-private.html:
+        * storage/indexeddb/modern/deletedatabase-request-private.html:
+        * storage/indexeddb/modern/deleteindex-1-private.html:
+        * storage/indexeddb/modern/deleteindex-2-private.html:
+        * storage/indexeddb/modern/deleteindex-3-private.html:
+        * storage/indexeddb/modern/deleteindex-4-private.html:
+        * storage/indexeddb/modern/deleteobjectstore-1-private.html:
+        * storage/indexeddb/modern/double-abort-private.html:
+        * storage/indexeddb/modern/double-open-private.html:
+        * storage/indexeddb/modern/gc-closes-database-private.html:
+        * storage/indexeddb/modern/get-index-failures-private.html:
+        * storage/indexeddb/modern/get-keyrange-private.html:
+        * storage/indexeddb/modern/idbcursor-continue-primary-key-1-private.html:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-private.html:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-private.html:
+        * storage/indexeddb/modern/idbindex-getall-1-private.html:
+        * storage/indexeddb/modern/idbindex-getallkeys-1-private.html:
+        * storage/indexeddb/modern/idbindex-properties-basic-private.html:
+        * storage/indexeddb/modern/idbkey-array-equality-private.html:
+        * storage/indexeddb/modern/idbobjectstore-clear-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-clear-2-private.html:
+        * storage/indexeddb/modern/idbobjectstore-count-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-count-failures-private.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-2-private.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-failures-private.html:
+        * storage/indexeddb/modern/idbobjectstore-get-failures-private.html:
+        * storage/indexeddb/modern/idbobjectstore-getall-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-getallkeys-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-getkey-1-private.html:
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-private.html:
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html:
+        * storage/indexeddb/modern/idbtransaction-objectstores-1-private.html:
+        * storage/indexeddb/modern/index-1-private.html:
+        * storage/indexeddb/modern/index-2-private.html:
+        * storage/indexeddb/modern/index-3-private.html:
+        * storage/indexeddb/modern/index-4-private.html:
+        * storage/indexeddb/modern/index-5-private.html:
+        * storage/indexeddb/modern/index-cursor-1-private.html:
+        * storage/indexeddb/modern/index-cursor-2-private.html:
+        * storage/indexeddb/modern/index-cursor-3-private.html:
+        * storage/indexeddb/modern/index-get-count-basic-private.html:
+        * storage/indexeddb/modern/index-get-count-failures-private.html:
+        * storage/indexeddb/modern/index-rename-1-private.html:
+        * storage/indexeddb/modern/keypath-basic-private.html:
+        * storage/indexeddb/modern/memory-index-not-deleted-with-objectstore-private.html:
+        * storage/indexeddb/modern/multiple-objectstore-index-cursor-collision-private.html:
+        * storage/indexeddb/modern/objectstore-attributes-private.html:
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures-private.html:
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures-private.html:
+        * storage/indexeddb/modern/objectstore-rename-1-private.html:
+        * storage/indexeddb/modern/opencursor-failures-private.html:
+        * storage/indexeddb/modern/opendatabase-request-event-private.html:
+        * storage/indexeddb/modern/opendatabase-request-private.html:
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange-private.html:
+        * storage/indexeddb/modern/opendatabase-versions-private.html:
+        * storage/indexeddb/modern/request-readystate-private.html:
+        * storage/indexeddb/modern/single-entry-index-invalid-key-crash-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-1-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-2-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-3-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-4-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-5-private.html:
+        * storage/indexeddb/modern/transaction-scheduler-6-private.html:
+        * storage/indexeddb/modern/transactions-stop-on-navigation-private.html:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-private.html:
+        * storage/indexeddb/modern/versionchange-event-private.html:
+        * storage/indexeddb/mozilla/add-twice-failure-private.html:
+        * storage/indexeddb/mozilla/autoincrement-indexes-private.html:
+        * storage/indexeddb/mozilla/bad-keypath-private.html:
+        * storage/indexeddb/mozilla/clear-private.html:
+        * storage/indexeddb/mozilla/create-index-unique-private.html:
+        * storage/indexeddb/mozilla/create-index-with-integer-keys-private.html:
+        * storage/indexeddb/mozilla/create-objectstore-basics-private.html:
+        * storage/indexeddb/mozilla/create-objectstore-null-name-private.html:
+        * storage/indexeddb/mozilla/cursor-mutation-objectstore-only-private.html:
+        * storage/indexeddb/mozilla/cursor-mutation-private.html:
+        * storage/indexeddb/mozilla/cursor-update-updates-indexes-private.html:
+        * storage/indexeddb/mozilla/cursors-private.html:
+        * storage/indexeddb/mozilla/delete-result-private.html:
+        * storage/indexeddb/mozilla/event-source-private.html:
+        * storage/indexeddb/mozilla/global-data-private.html:
+        * storage/indexeddb/mozilla/index-prev-no-duplicate-private.html:
+        * storage/indexeddb/mozilla/indexes-private.html:
+        * storage/indexeddb/mozilla/key-requirements-delete-null-key-private.html:
+        * storage/indexeddb/mozilla/key-requirements-inline-and-passed-private.html:
+        * storage/indexeddb/mozilla/key-requirements-private.html:
+        * storage/indexeddb/mozilla/key-requirements-put-no-key-private.html:
+        * storage/indexeddb/mozilla/key-requirements-put-null-key-private.html:
+        * storage/indexeddb/mozilla/object-cursors-private.html:
+        * storage/indexeddb/mozilla/object-identity-private.html:
+        * storage/indexeddb/mozilla/object-store-inline-autoincrement-key-added-on-put-private.html:
+        * storage/indexeddb/mozilla/object-store-remove-values-private.html:
+        * storage/indexeddb/mozilla/objectstorenames-private.html:
+        * storage/indexeddb/mozilla/odd-result-order-private.html:
+        * storage/indexeddb/mozilla/open-database-null-name-private.html:
+        * storage/indexeddb/mozilla/put-get-values-private.html:
+        * storage/indexeddb/mozilla/readonly-transactions-private.html:
+        * storage/indexeddb/mozilla/readwrite-transactions-private.html:
+        * storage/indexeddb/mozilla/readyState-private.html:
+        * storage/indexeddb/mozilla/remove-index-private.html:
+        * storage/indexeddb/mozilla/remove-objectstore-private.html:
+        * storage/indexeddb/mozilla/versionchange-abort-private.html:
+        * storage/indexeddb/mutating-cursor-private.html:
+        * storage/indexeddb/object-lookups-in-versionchange-private.html:
+        * storage/indexeddb/objectStore-required-arguments-private.html:
+        * storage/indexeddb/objectstore-autoincrement-private.html:
+        * storage/indexeddb/objectstore-basics-private.html:
+        * storage/indexeddb/objectstore-clear-private.html:
+        * storage/indexeddb/objectstore-count-private.html:
+        * storage/indexeddb/objectstore-cursor-private.html:
+        * storage/indexeddb/objectstore-removeobjectstore-private.html:
+        * storage/indexeddb/odd-strings-private.html:
+        * storage/indexeddb/open-bad-versions-private.html:
+        * storage/indexeddb/open-cursor-private.html:
+        * storage/indexeddb/open-during-transaction-private.html:
+        * storage/indexeddb/open-ordering-private.html:
+        * storage/indexeddb/opencursor-key-private.html:
+        * storage/indexeddb/optional-arguments-private.html:
+        * storage/indexeddb/pending-activity-private.html:
+        * storage/indexeddb/pending-version-change-on-exit-private.html:
+        * storage/indexeddb/pending-version-change-stuck-private.html:
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html:
+        * storage/indexeddb/persistence-private.html:
+        * storage/indexeddb/prefetch-bugfix-108071-private.html:
+        * storage/indexeddb/prefetch-invalidation-private.html:
+        * storage/indexeddb/prefetch-race-private.html:
+        * storage/indexeddb/primary-key-unique-to-objectstore-private.html:
+        * storage/indexeddb/queued-commands-private.html:
+        * storage/indexeddb/readonly-private.html:
+        * storage/indexeddb/readonly-properties-private.html:
+        * storage/indexeddb/removed-private.html:
+        * storage/indexeddb/request-continue-abort-private.html:
+        * storage/indexeddb/request-event-propagation-private.html:
+        * storage/indexeddb/request-leak-private.html:
+        * storage/indexeddb/request-result-cache-private.html:
+        * storage/indexeddb/set_version_blocked-private.html:
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-private.html:
+        * storage/indexeddb/setversion-not-blocked-private.html:
+        * storage/indexeddb/structured-clone-private.html:
+        * storage/indexeddb/transaction-abort-private.html:
+        * storage/indexeddb/transaction-active-flag-private.html:
+        * storage/indexeddb/transaction-after-close-private.html:
+        * storage/indexeddb/transaction-and-objectstore-calls-private.html:
+        * storage/indexeddb/transaction-basics-private.html:
+        * storage/indexeddb/transaction-complete-with-js-recursion-cross-frame-private.html:
+        * storage/indexeddb/transaction-complete-with-js-recursion-private.html:
+        * storage/indexeddb/transaction-complete-workers-private.html:
+        * storage/indexeddb/transaction-coordination-across-databases-private.html:
+        * storage/indexeddb/transaction-coordination-within-database-private.html:
+        * storage/indexeddb/transaction-crash-in-tasks-private.html:
+        * storage/indexeddb/transaction-crash-on-abort-private.html:
+        * storage/indexeddb/transaction-error-private.html:
+        * storage/indexeddb/transaction-event-propagation-private.html:
+        * storage/indexeddb/transaction-ordering-private.html:
+        * storage/indexeddb/transaction-overlapping-private.html:
+        * storage/indexeddb/transaction-read-only-private.html:
+        * storage/indexeddb/transaction-readwrite-exclusive-private.html:
+        * storage/indexeddb/transaction-rollback-private.html:
+        * storage/indexeddb/transaction-scope-sequencing-private.html:
+        * storage/indexeddb/transaction-storeNames-required-private.html:
+        * storage/indexeddb/unblocked-version-changes-private.html:
+        * storage/indexeddb/unprefix-private.html:
+        * storage/indexeddb/value-undefined-private.html:
+        * storage/indexeddb/values-odd-types-private.html:
+        * storage/indexeddb/version-change-abort-private.html:
+        * storage/indexeddb/version-change-event-basic-private.html:
+        * storage/indexeddb/version-change-event-private.html:
+        * storage/indexeddb/version-change-exclusive-private.html:
+        * storage/indexeddb/versionchangerequest-activedomobject-private.html:
+
+2019-09-05  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in http/tests/cache/disk-cache/disk-cache-vary-cookie.html
+        https://bugs.webkit.org/show_bug.cgi?id=201524
+
+        Reviewed by Alex Christensen.
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() as it does not do the right thing for WebKit2.
+        Instead, use the new useEphemeralSession WKTR flag added in r249542.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie-private-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie-private.html: Copied from LayoutTests/http/tests/cache/disk-cache/disk-cache-vary-cookie.html.
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie.html:
+
+2019-09-05  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in plugins/private-browsing-mode.html
+        https://bugs.webkit.org/show_bug.cgi?id=201523
+
+        Reviewed by Alex Christensen.
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in plugins/private-browsing-mode.html
+        since it does not do the right thing for WebKit2. Instead, use the new useEphemeralSession
+        WKTR flag.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * plugins/non-private-browsing-mode-expected.txt: Added.
+        * plugins/non-private-browsing-mode.html: Added.
+        * plugins/private-browsing-mode-expected.txt:
+        * plugins/private-browsing-mode.html:
+
+2019-09-05  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Fix new test results after adding console warnings
+        https://bugs.webkit.org/show_bug.cgi?id=201526
+
+        Unreviewed test expectation updates.
+
+        * webgpu/buffer-errors-expected.txt:
+        * webgpu/map-read-buffers-expected.txt:
+        * webgpu/map-write-buffers-expected.txt:
+        * webgpu/render-pipelines.html: Fix WHLSL compile error.
+        * webgpu/uncaptured-errors-expected.txt: Added.
+        * webgpu/whlsl/use-undefined-variable-2-expected.txt:
+        * webgpu/whlsl/use-undefined-variable-expected.txt:
+
+2019-09-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=181837
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+        * platform/mac/TestExpectations: Ditto.
+
+2019-09-05  Russell Epstein  <repstein@apple.com>
+
+        Layout Test media/audio-concurrent-supported.html is a flaky failure.
+        rdar://55081191
+
+        Unreviewed Test Gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-09-05  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add proper layout test support for ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=201475
+
+        Reviewed by Antti Koivisto.
+
+        Update existing layout tests to either switch to the new mechanism when trivial or to rename
+        setPrivateBrowsingEnabled() to setPrivateBrowsingEnabled_DEPRECATED() when it is not.
+
+        * crypto/subtle/rsa-indexeddb-non-exportable-private.html:
+        * crypto/subtle/rsa-indexeddb-private.html:
+        * http/tests/adClickAttribution/conversion-disabled-in-ephemeral-session.html:
+        * http/tests/adClickAttribution/resources/util.js:
+        (tearDownAndFinish):
+        * http/tests/adClickAttribution/store-disabled-in-ephemeral-session.html:
+        * http/tests/cache-storage/cache-persistency.https.html:
+        * http/tests/cache-storage/cache-representation.https.html:
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie.html:
+        * http/tests/cookies/private-cookie-storage.html:
+        * http/tests/media/now-playing-info-private-browsing.html:
+        * http/tests/security/appcache-in-private-browsing.html:
+        * http/tests/security/appcache-switching-private-browsing.html:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.php:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.php:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.php:
+        * http/tests/security/cookies/resources/first-party-cookie-allow.xsl:
+        * http/tests/security/cookies/resources/third-party-cookie-blocking.xsl:
+        * http/tests/security/cookies/third-party-cookie-blocking-main-frame.html:
+        * http/tests/security/cookies/third-party-cookie-blocking-redirect.html:
+        * http/tests/security/cookies/third-party-cookie-blocking-user-action.html:
+        * http/tests/security/cookies/third-party-cookie-blocking.html:
+        * http/tests/security/cross-frame-access-private-browsing.html:
+        * http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html:
+        * http/tests/security/cross-origin-plugin-private-browsing-toggled.html:
+        * http/tests/security/private-browsing-http-auth.html:
+        * http/tests/security/storage-blocking-loosened-private-browsing-plugin.html:
+        * http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html:
+        * http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html:
+        * http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html:
+        * http/tests/storageAccess/has-storage-access-true-if-feature-off.html:
+        * http/tests/workers/service/resources/basic-register.js:
+        (async.test):
+        * http/tests/workers/service/serviceworker-private-browsing.https.html:
+        * http/wpt/fetch/dnt-header-after-redirection.html:
+        * platform/wk2/TestExpectations:
+        * plugins/private-browsing-mode-2.html:
+        * plugins/private-browsing-mode.html:
+        * resources/js-test.js:
+        * storage/domstorage/localstorage/private-browsing-affects-storage.html:
+        * storage/domstorage/localstorage/resources/private-browsing-1.html:
+        * storage/domstorage/localstorage/resources/private-browsing-2.html:
+        * storage/indexeddb/open-db-private-browsing.html:
+        * storage/indexeddb/resources/open-db-private-browsing.js:
+        * storage/websql/private-browsing-noread-nowrite.html:
+        * storage/websql/private-browsing-open-disabled.html:
+
+2019-09-05  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUUncapturedErrorEvent
+        https://bugs.webkit.org/show_bug.cgi?id=199676
+
+        Reviewed by Dean Jackson.
+
+        Add a test to ensure GPUUncapturedErrorEvents work.
+
+        * webgpu/uncaptured-errors.html: Added.
+
+2019-09-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [iOS] Layout Test imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=201509
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations: Mark test as failing.
+
+2019-09-05  Antti Koivisto  <antti@apple.com>
+
+        Generate event region for both the main graphics layer and the scrolled contents layer
+        https://bugs.webkit.org/show_bug.cgi?id=201487
+
+        Reviewed by Simon Fraser.
+
+        * pointerevents/ios/touch-action-region-backing-sharing-expected.txt:
+        * pointerevents/ios/touch-action-region-overflow-expected.txt:
+
+2019-09-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (iOS 13): Bulleted list copied from Notes to Mail results in Times New Roman
+        https://bugs.webkit.org/show_bug.cgi?id=201490
+
+        Reviewed by Daniel Bates.
+
+        Added a test to make sure -webkit-standard font family name isn't stripped away when sanitization is not in effect.
+
+        * editing/pasteboard/paste-cocoa-writer-markup-with-webkit-standard-font-family-expected.txt: Added.
+        * editing/pasteboard/paste-cocoa-writer-markup-with-webkit-standard-font-family.html: Added.
+
+2019-09-05  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: children cache are not re-computed if tab index is removed
+        https://bugs.webkit.org/show_bug.cgi?id=201502
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/tabindex-removed-expected.txt: Added.
+        * accessibility/tabindex-removed.html: Added.
+
+2019-09-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [AppleWin] fast/block/float/float-with-anonymous-previous-sibling.html is failing as flaky ImageOnlyFailure
+        https://bugs.webkit.org/show_bug.cgi?id=201491
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations: Marked it.
+
+2019-09-04  Timothy Hatcher  <timothy@apple.com>
+
+        Mail appears to be double inverting code copied from Notes, Xcode, or Terminal.
+        https://bugs.webkit.org/show_bug.cgi?id=201368
+        rdar://problem/40529867
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+        * editing/pasteboard/paste-dark-mode-color-filtered-expected.txt: Added.
+        * editing/pasteboard/paste-dark-mode-color-filtered.html: Added.
+        * platform/ios-12/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-09-06  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (iOS 13): If an overflow:hidden with a non-zero scroll position is toggled to overflow:scroll, some other scroll causes its scroll position to get reset
+        https://bugs.webkit.org/show_bug.cgi?id=201528
+        rdar://problem/55044885
+
+        Reviewed by Frédéric Wang.
+
+        * scrollingcoordinator/ios/scroller-initial-scroll-position-expected.html: Added.
+        * scrollingcoordinator/ios/scroller-initial-scroll-position.html: Added.
+
+2019-09-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make Promise implementation faster
+        https://bugs.webkit.org/show_bug.cgi?id=200898
+
+        Reviewed by Saam Barati.
+
+        * inspector/canvas/recording-bitmaprenderer-frameCount-expected.txt:
+        * inspector/canvas/recording-bitmaprenderer-full-expected.txt:
+        * inspector/canvas/recording-bitmaprenderer-memoryLimit-expected.txt:
+        * inspector/console/message-stack-trace-expected.txt:
+        * inspector/console/queryHolders-expected.txt:
+        * js/Promise-types-expected.txt:
+        * js/dom/Promise-resolve-with-itself-expected.txt:
+        * js/dom/Promise-resolve-with-itself.html:
+        * js/script-tests/Promise-types.js:
+
+2019-09-04  Tim Horton  <timothy_horton@apple.com>
+
+        Line artifacts in note body after viewing note with <attachment>s
+        https://bugs.webkit.org/show_bug.cgi?id=201474
+        <rdar://problem/51306108>
+
+        Reviewed by Simon Fraser.
+
+        * fast/attachment/attachment-border-should-stay-inside-attachment-expected.html: Added.
+        * fast/attachment/attachment-border-should-stay-inside-attachment.html: Added.
+        Add a test that ensures that <attachment> stays inside its bounds.
+
+2019-09-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Local Overrides - Provide substitution content for resource loads (URL based)
+        https://bugs.webkit.org/show_bug.cgi?id=201262
+        <rdar://problem/13108764>
+
+        Reviewed by Devin Rousso.
+
+        * http/tests/inspector/network/local-resource-override-basic-expected.txt: Added.
+        * http/tests/inspector/network/local-resource-override-basic.html: Added.
+        * http/tests/inspector/network/local-resource-override-main-resource-expected.txt: Added.
+        * http/tests/inspector/network/local-resource-override-main-resource.html: Added.
+        * http/tests/inspector/network/local-resource-override-script-tag-expected.txt: Added.
+        * http/tests/inspector/network/local-resource-override-script-tag.html: Added.
+        * http/tests/inspector/network/resource-response-inspector-override-expected.txt: Added.
+        * http/tests/inspector/network/resource-response-inspector-override.html: Added.
+        * http/tests/inspector/network/resources/override.js: Added.
+        * http/tests/inspector/network/resources/override.txt: Added.
+        * inspector/network/local-resource-override-continue-response-expected.txt: Added.
+        * inspector/network/local-resource-override-continue-response.html: Added.
+        Tests for overrides.
+
+        * inspector/unit-tests/url-utilities-expected.txt:
+        * inspector/unit-tests/url-utilities.html:
+        Test WI.urlWithoutFragment.
+
+        * platform/mac-wk1/TestExpectations:
+        WebKitLegacy does not support overrides.
+
+2019-09-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Address review comments after r249364
+        https://bugs.webkit.org/show_bug.cgi?id=201432
+
+        Reviewed by Simon Fraser.
+
+        Fix the <img> CSS width properties by adding the "px" units. 
+
+        * fast/images/exif-orientation-background-expected.html:
+        * fast/images/exif-orientation-canvas-expected.html:
+        * fast/images/exif-orientation-canvas.html:
+        * fast/images/exif-orientation-composited-expected.html:
+        * fast/images/exif-orientation-composited.html:
+        Remove the CSS border to enable the composited image code path.
+
+        * fast/images/exif-orientation-content-expected.html:
+        * fast/images/exif-orientation-element-expected.html:
+        * fast/images/exif-orientation-element.html:
+        * fast/images/exif-orientation-image-document-expected.html:
+        * fast/images/exif-orientation-image-document.html:
+        * fast/images/exif-orientation-image-object-expected.html:
+        * fast/images/exif-orientation-image-object.html:
+        * fast/images/exif-orientation-svg-feimage-expected.html:
+        * fast/images/exif-orientation-svg-feimage.html:
+        * fast/images/exif-orientation-svg-image-expected.html:
+        * fast/images/exif-orientation-svg-image.html:
+
+2019-09-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r249364): Layout Test webgpu/texture-triangle-strip.html is Failing
+        https://bugs.webkit.org/show_bug.cgi?id=201425
+
+        Reviewed by Myles C. Maxfield.
+
+        The orientation of webgpu/resources/blue-checkered.png is OriginRightTop.
+        Because r249364 made the image orientation respected everywhere including
+        the canvas drawImage(), the expected result does not match the output of
+        the test anymore.
+
+        The fix is to change the the expected result to match the image drawing
+        when the image orientation is respected.
+
+        * webgpu/js/webgpu-functions.js:
+        (drawGreenAndBlueCheckerboardInSoftware):
+
+2019-09-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Implement SampleLevel(), SampleBias(), and SampleGrad()
+        https://bugs.webkit.org/show_bug.cgi?id=201385
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/whlsl/textures-sample-bias-expected.html: Added.
+        * webgpu/whlsl/textures-sample-bias.html: Added.
+        * webgpu/whlsl/textures-sample-grad-expected.html: Added.
+        * webgpu/whlsl/textures-sample-grad.html: Added.
+        * webgpu/whlsl/textures-sample-level-expected.html: Added.
+        * webgpu/whlsl/textures-sample-level.html: Added.
+
+2019-09-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: implement blackboxing of script resources
+        https://bugs.webkit.org/show_bug.cgi?id=17240
+        <rdar://problem/5732847>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/debugger/setShouldBlackboxURL.html: Added.
+        * inspector/debugger/setShouldBlackboxURL-expected.txt: Added.
+
+        * inspector/model/remote-object-api-expected.txt:
+        Update output since `WI.TestHarness.prototype.expectException` now logs the `.constructor.name`.
+
+2019-09-03  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r249132): [macOS WK2] Layout Test inspector/layers/layerTreeDidChange.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=201435
+
+        Reviewed by Joseph Pecoraro.
+
+        r249132 changed the `InspectorLayerTreeAgent` to reset the flag that controls whether the
+        frontend should be notified about layer changes when `disable` is called, which happens when
+        Web Inspector disconnects.
+
+        Sometimes, a layer change event can be "in flight" when this happens, meaning that the Web
+        Inspector frontend can receive a layer change event before it requests the new layer data.
+
+        This is normally handled by the Web Inspector UI, as the associated DOM node would no longer
+        exist, so the UI paths would early return.
+
+        * inspector/layers/layerTreeDidChange.html:
+        Only listen for layer change events once we've triggered a guaranteed layer update, as any
+        "in flight" events from previous tests could be incorrectly logged as part of this test.
+
+2019-09-03  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r249078): Flaky crash in com.apple.JavaScriptCore: Inspector::InjectedScriptModule::ensureInjected
+        https://bugs.webkit.org/show_bug.cgi?id=201201
+        <rdar://problem/54771560>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/debugger/tail-deleted-frames-this-value.html:
+        * inspector/debugger/tail-deleted-frames-this-value-expected.txt:
+        * inspector/debugger/resources/tail-deleted-frames-this-value.js:
+        * inspector/timeline/line-column-expected.txt:
+
+2019-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Cancelled transitions on Google image search leave content with opacity 0 sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=201482
+        rdar://problem/54921036
+
+        Reviewed by Tim Horton.
+
+        * legacy-animation-engine/compositing/transitions/add-remove-transition-expected.html: Added.
+        * legacy-animation-engine/compositing/transitions/add-remove-transition.html: Added.
+
+2019-09-03  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Enable WebAuthn by default for MobileSafari and SafariViewService
+        https://bugs.webkit.org/show_bug.cgi?id=201369
+        <rdar://problem/54903724>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-get-success-nfc.https.html:
+        Imporves the test a bit.
+
+2019-09-03  Antoine Quint  <graouts@apple.com>
+
+        [iOS] Treat a two-finger single tap as if the user tapped with the Cmd key pressed
+        https://bugs.webkit.org/show_bug.cgi?id=201420
+        <rdar://problem/53207786>
+
+        Reviewed by Simon Fraser.
+
+        Add a new event that checks that a two-finger single tap on a clickable element yields a "click" event with the metaKey flag set to true.
+
+        * fast/events/ios/click-event-two-finger-single-tap-meta-key-expected.txt: Added.
+        * fast/events/ios/click-event-two-finger-single-tap-meta-key.html: Added.
+
+2019-09-03  Rob Buis  <rbuis@igalia.com>
+
+        Remove support for load/error on link=prefetch
+        https://bugs.webkit.org/show_bug.cgi?id=201348
+
+        Reviewed by Youenn Fablet.
+
+        Adjust beforeload tests to also test load/error events.
+
+        * http/tests/cache/link-prefetch-main-resource-iframe.html:
+        * http/tests/cache/link-prefetch-main-resource.html:
+        * http/wpt/prefetch/beforeload-dynamic-expected.txt: Removed.
+        * http/wpt/prefetch/beforeload-expected.txt: Removed.
+        * http/wpt/prefetch/load-events-dynamic-expected.txt: Added.
+        * http/wpt/prefetch/load-events-dynamic.html: Renamed from LayoutTests/http/wpt/prefetch/beforeload-dynamic.html.
+        * http/wpt/prefetch/load-events-expected.txt: Added.
+        * http/wpt/prefetch/load-events.html: Renamed from LayoutTests/http/wpt/prefetch/beforeload.html.
+        * http/wpt/prefetch/resources/navigate-skip-disk-cache.html:
+        * http/wpt/prefetch/resources/navigate.html:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-09-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [SVG] fragment-only url 'url(#fragment)' should be resolved against the current document with regardless to HTML <base> element
+        https://bugs.webkit.org/show_bug.cgi?id=189499
+        <rdar://problem/44466206>
+
+        Reviewed by Said Abou-Hallawa.
+
+        These test cases are imported from Blink's commit, and modified for WebKit.
+        <https://chromium.googlesource.com/chromium/src/+/e7d7225c33aa7fc42ee390125b01df9167fad106%5E%21/>
+
+        * TestExpectations:
+        * css3/filters/effect-reference-local-url-with-base-expected.html: Added.
+        * css3/filters/effect-reference-local-url-with-base.html: Added.
+        * css3/filters/effect-reference.html:
+        * css3/masking/clip-path-reference-local-url-with-base-expected.html: Added.
+        * css3/masking/clip-path-reference-local-url-with-base.html: Added.
+        * http/tests/svg/local-url-with-valid-base-and-resource-expected.html: Added.
+        * http/tests/svg/local-url-with-valid-base-and-resource.html: Added.
+        * http/tests/svg/resources/red100x100.svg: Added.
+        * platform/gtk/TestExpectations: Marked svg/custom/local-url-reference-marker.html as ImageOnlyFailure for Bug 113849.
+        * platform/wpe/TestExpectations: Ditto.
+        * svg/animations/local-url-target-reference-expected.html: Added.
+        * svg/animations/local-url-target-reference.html: Added.
+        * svg/custom/linking-base-external-reference-expected.txt: Removed. This was a test for old spec.
+        * svg/custom/linking-base-external-reference.xhtml: Ditto.
+        * svg/custom/local-url-reference-clip-path-expected.html: Added.
+        * svg/custom/local-url-reference-clip-path.html: Added.
+        * svg/custom/local-url-reference-fill-expected.html: Added.
+        * svg/custom/local-url-reference-fill.html: Added.
+        * svg/custom/local-url-reference-filter-expected.html: Added.
+        * svg/custom/local-url-reference-filter.html: Added.
+        * svg/custom/local-url-reference-marker-expected.html: Added.
+        * svg/custom/local-url-reference-marker.html: Added.
+        * svg/custom/local-url-reference-mask-expected.html: Added.
+        * svg/custom/local-url-reference-mask.html: Added.
+        * svg/custom/local-url-reference-pattern-expected.html: Added.
+        * svg/custom/local-url-reference-pattern.html: Added.
+        * svg/custom/local-url-reference-radial-gradient-expected.html: Added.
+        * svg/custom/local-url-reference-radial-gradient.html: Added.
+        * svg/custom/local-url-reference-srcdoc-expected.html: Added.
+        * svg/custom/local-url-reference-srcdoc.html: Added.
+        * svg/custom/local-url-reference-stroke-expected.html: Added.
+        * svg/custom/local-url-reference-stroke.html: Added.
+        * svg/custom/local-url-reference-use-expected.html: Added.
+        * svg/custom/local-url-reference-use.html: Added.
+        * svg/text/textpath-local-url-reference-expected.html: Added.
+        * svg/text/textpath-local-url-reference.html: Added.
+
+2019-09-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Resources don't work when only a subset of a bind group is referenced by a shader
+        https://bugs.webkit.org/show_bug.cgi?id=201383
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/whlsl/compute.html:
+        * webgpu/whlsl/sparse-bind-group-2-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group-2.html: Added.
+        * webgpu/whlsl/sparse-bind-group-3-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group-3.html: Added.
+        * webgpu/whlsl/sparse-bind-group-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group.html: Added.
+
+2019-09-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r249369.
+        https://bugs.webkit.org/show_bug.cgi?id=201394
+
+        broke WHLSL tests (Requested by litherum on #webkit).
+
+        Reverted changeset:
+
+        "[WHLSL] Resources don't work when only a subset of a bind
+        group is referenced by a shader"
+        https://bugs.webkit.org/show_bug.cgi?id=201383
+        https://trac.webkit.org/changeset/249369
+
+2019-09-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Resources don't work when only a subset of a bind group is referenced by a shader
+        https://bugs.webkit.org/show_bug.cgi?id=201383
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/whlsl/compute.html:
+        * webgpu/whlsl/sparse-bind-group-2-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group-2.html: Added.
+        * webgpu/whlsl/sparse-bind-group-3-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group-3.html: Added.
+        * webgpu/whlsl/sparse-bind-group-expected.txt: Added.
+        * webgpu/whlsl/sparse-bind-group.html: Added.
+
+2019-09-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Long presses that interrupt accelerated scrolling dispatch clicks on apps linked against iOS 12 or earlier
+        https://bugs.webkit.org/show_bug.cgi?id=201346
+        <rdar://problem/54885784>
+
+        Reviewed by Dean Jackson.
+
+        Add a couple of new layout tests to verify that using a long press gesture to interrupt momentum scrolling in a
+        web view that uses API to disable link previews does not result in a click.
+
+        * fast/scrolling/ios/click-events-after-long-press-during-momentum-scroll-in-main-frame-expected.txt: Added.
+        * fast/scrolling/ios/click-events-after-long-press-during-momentum-scroll-in-main-frame.html: Added.
+        * fast/scrolling/ios/click-events-after-long-press-during-momentum-scroll-in-overflow-expected.txt: Added.
+        * fast/scrolling/ios/click-events-after-long-press-during-momentum-scroll-in-overflow.html: Added.
+
+2019-09-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        HTMLImageElement::decode() should return a resolved promise for decoding non bitmap images
+        https://bugs.webkit.org/show_bug.cgi?id=201243
+
+        Reviewed by Youenn Fablet.
+
+        * fast/images/decode-non-bitmap-image-resolve-expected.txt: Added.
+        * fast/images/decode-non-bitmap-image-resolve.html: Added.
+        * fast/images/resources/green-100x100.svg: Added.
+
+2019-08-31  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        EXIF orientation should be respected when rendering images
+        https://bugs.webkit.org/show_bug.cgi?id=201123
+
+        Reviewed by Simon Fraser.
+
+        Existing tests are made ref-tests. New tests were added to cover more
+        cases for drawing images.
+
+        * fast/images/exif-orientation-background-expected.html: Added.
+        * fast/images/exif-orientation-background.html: Added.
+        * fast/images/exif-orientation-canvas-expected.html: Added.
+        * fast/images/exif-orientation-canvas.html: Added.
+        * fast/images/exif-orientation-composited-expected.html: Added.
+        * fast/images/exif-orientation-composited-expected.txt: Removed.
+        * fast/images/exif-orientation-composited.html:
+        * fast/images/exif-orientation-content-expected.html: Added.
+        * fast/images/exif-orientation-content.html: Added.
+        * fast/images/exif-orientation-css-expected.txt: Removed.
+        * fast/images/exif-orientation-css.html: Removed.
+        * fast/images/exif-orientation-element-expected.html: Added.
+        * fast/images/exif-orientation-element-object-fit-expected.html: Added.
+        * fast/images/exif-orientation-element-object-fit.html: Added.
+        * fast/images/exif-orientation-element.html: Added.
+        * fast/images/exif-orientation-expected.txt: Removed.
+        * fast/images/exif-orientation-image-document-expected.html: Added.
+        * fast/images/exif-orientation-image-document-expected.txt: Removed.
+        * fast/images/exif-orientation-image-document.html:
+        * fast/images/exif-orientation-image-object-expected.html: Added.
+        * fast/images/exif-orientation-image-object.html: Added.
+        * fast/images/exif-orientation-svg-feimage-expected.html: Added.
+        * fast/images/exif-orientation-svg-feimage.html: Added.
+        * fast/images/exif-orientation-svg-image-expected.html: Added.
+        * fast/images/exif-orientation-svg-image.html: Added.
+        * fast/images/exif-orientation.html: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/mac/fast/images/exif-orientation-composited-expected.png: Removed.
+        * platform/win/TestExpectations:
+
+2019-08-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Add a test to ensure that a tap in editable content shows the callout bar if the selection did not change
+        https://bugs.webkit.org/show_bug.cgi?id=200082
+
+        Reviewed by Dean Jackson.
+
+        Adds a layout test to cover the UIKit change in <rdar://problem/53106460>.
+
+        * editing/selection/ios/show-callout-bar-after-tap-expected.txt: Added.
+        * editing/selection/ios/show-callout-bar-after-tap.html: Added.
+
+2019-08-31  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: responseXML returns null if the Content-Type is valid (end in +xml) in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=46146
+
+        Reviewed by Youenn Fablet.
+
+        Adjust test to match the specification: make response MIME type fallback to
+        text/xml in case mimeType could not be extracted.
+
+        Behavior matches Firefox.
+
+        * http/tests/xmlhttprequest/supported-xml-content-types-expected.txt:
+        * http/tests/xmlhttprequest/supported-xml-content-types.html:
+
+2019-08-31  Frederic Wang  <fwang@igalia.com>
+
+        Fix interpretation of fraction shifts
+        https://bugs.webkit.org/show_bug.cgi?id=201242
+
+        Reviewed by Rob Buis.
+
+        * TestExpectations: Skip mathml/presentation/stretchy-depth-height-symmetric.html since it
+        cannot work in a reliable way and should be rewritten. Equivalent checks seem essentially
+        covered by WPT test mathml/presentation-markup/operators/mo-axis-height-1.html.
+        See bug 201356.
+        * platform/win/mathml/presentation/roots-expected.txt: Update windows expectation.
+
+2019-08-30  Chris Dumez  <cdumez@apple.com>
+
+        Add support for postMessage buffering between the service worker and window
+        https://bugs.webkit.org/show_bug.cgi?id=201169
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        Unskip test that is no longer timing out.
+
+        * resources/testharnessreport.js:
+        (self.testRunner.add_completion_callback):
+        Use testRunner.forceImmediateCompletion() instead of notifyDone() for WPT tests.
+        testRunner.notifyDone() does not work in case of load error or when the load
+        does not finish. The WPT test was timing out because the load does not finish for
+        testing purposes.
+
+2019-08-30  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Remove getters/setters/anders
+        https://bugs.webkit.org/show_bug.cgi?id=201008
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl/address-of-swizzle-expected.txt: Added.
+        * webgpu/whlsl/address-of-swizzle.html: Added.
+        * webgpu/whlsl/array-oob-alias-expected.txt: Copied from LayoutTests/webgpu/whlsl/structure-field-access-on-null-expected.txt.
+        * webgpu/whlsl/array-oob-alias.html: Copied from LayoutTests/webgpu/whlsl/structure-field-access-on-null.html.
+        * webgpu/whlsl/bad-ander-expected.txt: Removed.
+        * webgpu/whlsl/bad-ander.html: Removed.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html:
+        * webgpu/whlsl/increment-setter.html:
+        * webgpu/whlsl/index-ander-expected.txt: Removed.
+        * webgpu/whlsl/index-ander.html: Removed.
+        * webgpu/whlsl/index-setter-getter-expected.txt: Removed.
+        * webgpu/whlsl/index-setter-getter.html: Removed.
+        * webgpu/whlsl/make-array-reference.html:
+        * webgpu/whlsl/matrix-index-assign-expected.txt: Added.
+        * webgpu/whlsl/matrix-index-assign.html: Added.
+        * webgpu/whlsl/matrix-index-order-expected.txt: Added.
+        * webgpu/whlsl/matrix-index-order.html: Added.
+        * webgpu/whlsl/matrix-memory-layout.html:
+        * webgpu/whlsl/matrix.html:
+        * webgpu/whlsl/null-arg-expected.txt:
+        * webgpu/whlsl/null-arg.html:
+        * webgpu/whlsl/null-dereference-expected.txt: Removed.
+        * webgpu/whlsl/null-dereference.html: Removed.
+        * webgpu/whlsl/oob-access-2-expected.txt: Added.
+        * webgpu/whlsl/oob-access-2.html: Added.
+        * webgpu/whlsl/oob-access.html:
+        * webgpu/whlsl/operator-syntax-expected.txt: Added.
+        * webgpu/whlsl/operator-syntax.html: Added.
+        * webgpu/whlsl/operator-vector-assign.html:
+        * webgpu/whlsl/operator-vector-load.html:
+        * webgpu/whlsl/override-subscript-expected.txt: Removed.
+        * webgpu/whlsl/override-subscript.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-abstract-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-abstract-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-3-levels-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-3-levels.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/ander.html: Removed.
+        * webgpu/whlsl/propertyresolver/getter-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/getter.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-abstract-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-abstract-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-3-levels-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-3-levels.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-ander.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-getter-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-getter.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-3-levels-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/indexer-setter.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-3-levels-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-3-levels.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-lvalue-expected.html: Removed.
+        * webgpu/whlsl/propertyresolver/setter-lvalue.html: Removed.
+        * webgpu/whlsl/setter-spec-tests.html:
+        * webgpu/whlsl/simple-getter-setter-expected.txt:
+        * webgpu/whlsl/simple-getter-setter.html:
+        * webgpu/whlsl/structure-field-access-on-null-expected.txt: Removed.
+        * webgpu/whlsl/structure-field-access-on-null.html: Removed.
+        * webgpu/whlsl/test-harness-test.html:
+
+2019-08-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r249338.
+
+        Caused 500+ layout test failures on WK1
+
+        Reverted changeset:
+
+        "Add support for postMessage buffering between the service
+        worker and window"
+        https://bugs.webkit.org/show_bug.cgi?id=201169
+        https://trac.webkit.org/changeset/249338
+
+2019-08-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Caret does not appear in text field inside a transformed, overflow: hidden container
+        https://bugs.webkit.org/show_bug.cgi?id=201317
+        <rdar://problem/54859264>
+
+        Reviewed by Simon Fraser.
+
+        Add a new layout test that covers this scenario. See WebCore ChangeLog for additional detail.
+
+        * editing/selection/ios/show-selection-in-transformed-container-2-expected.txt: Added.
+        * editing/selection/ios/show-selection-in-transformed-container-2.html: Added.
+
+2019-08-30  Chris Dumez  <cdumez@apple.com>
+
+        Add support for postMessage buffering between the service worker and window
+        https://bugs.webkit.org/show_bug.cgi?id=201169
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        Unskip test that is no longer timing out.
+
+        * resources/testharnessreport.js:
+        (self.testRunner.add_completion_callback):
+        Use testRunner.forceImmediateCompletion() instead of notifyDone() for WPT tests.
+        testRunner.notifyDone() does not work in case of load error or when the load
+        does not finish. The WPT test was timing out because the load does not finish for
+        testing purposes.
+
+2019-08-30  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failure after r249305
+
+        * inspector/dom-debugger/dom-breakpoints-expected.txt:
+
+2019-08-30  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Gracefully fail on invalid non-first initialization segment
+        https://bugs.webkit.org/show_bug.cgi?id=201322
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-08-30  Joonghun Park  <jh718.park@samsung.com>
+
+        Import css/css-text/tab-size/tab-size.html wpt test
+        https://bugs.webkit.org/show_bug.cgi?id=201328
+
+        Unreviewed. No behavioral changes.
+
+        The css/css-text/tab-size/tab-size.html wpt test was ported from
+        the original test LayoutTests/css3/tab-size.html.
+
+        So we import that wpt test and remove the original test from LayoutTests.
+
+        * css3/tab-size.html: Removed.
+
+2019-08-30  Sihui Liu  <sihui_liu@apple.com>
+
+        [wk2] LayoutTest imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=169621
+
+        Reviewed by Alex Christensen.
+
+        Update test expectations to PASS.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: async event listener stack traces should be available in Workers
+        https://bugs.webkit.org/show_bug.cgi?id=200903
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/worker/dom-debugger-event-interval-breakpoints-expected.txt:
+        * inspector/worker/dom-debugger-event-listener-breakpoints-expected.txt:
+        * inspector/worker/dom-debugger-event-timeout-breakpoints-expected.txt:
+        * inspector/worker/dom-debugger-url-breakpoints-expected.txt:
+        * inspector/worker/resources/worker-dom-debugger.js:
+
+2019-08-29  Timothy Hatcher  <timothy@apple.com>
+
+        Copying and pasting two paragraphs with a newline between them results in stray paragraph with newline inside.
+        https://bugs.webkit.org/show_bug.cgi?id=201306
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/pasteboard/paste-without-nesting-expected.txt: Updated results.
+        * editing/pasteboard/paste-without-nesting.html: Added new test case.
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: support event breakpoints in Worker contexts
+        https://bugs.webkit.org/show_bug.cgi?id=200651
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/worker/dom-debugger-dom-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-dom-breakpoints-expected.txt: Added.
+        * inspector/worker/dom-debugger-event-animation-frame-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-event-animation-frame-breakpoints-expected.txt: Added.
+        * inspector/worker/dom-debugger-event-interval-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-event-interval-breakpoints-expected.txt: Added.
+        * inspector/worker/dom-debugger-event-listener-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-event-listener-breakpoints-expected.txt: Added.
+        * inspector/worker/dom-debugger-event-timeout-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-event-timeout-breakpoints-expected.txt: Added.
+        * inspector/worker/dom-debugger-url-breakpoints.html: Added.
+        * inspector/worker/dom-debugger-url-breakpoints-expected.txt: Added.
+
+        * inspector/debugger/resources/log-active-stack-trace.js: Added.
+        (TestPage.registerInitializer.window.logStackTrace): Added.
+        (TestPage.registerInitializer.window.logActiveStackTrace):
+
+        * inspector/worker/resources/dom-debugger-utilities.js: Added.
+        (TestPage.registerInitializer.InspectorTest.Worker.DOMDebugger.createWorkerTarget):
+        * inspector/worker/resources/worker-dom-debugger.js: Added.
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace uses of `Array.prototype.concat` with `Array.prototype.push`
+        https://bugs.webkit.org/show_bug.cgi?id=201082
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/array-utilities.html:
+        * inspector/unit-tests/array-utilities-expected.txt:
+        Add tests for added utility `Array.prototype.pushIterable`.
+
+2019-08-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 13] Caret does not appear in text field if the body element is translated completely out of the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=201287
+        <rdar://problem/54780864>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test that covers this scenario. See WebKit ChangeLog for additional detail.
+
+        * editing/selection/ios/show-selection-in-transformed-container-expected.txt: Added.
+        * editing/selection/ios/show-selection-in-transformed-container.html: Added.
+
+2019-08-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Flaky Test: svg/custom/tabindex-order.html
+        https://bugs.webkit.org/show_bug.cgi?id=201294
+
+        Reviewed by Chris Dumez.
+
+        Make the backward sequential navigation case more robust against platform differences.
+
+        * svg/custom/tabindex-order.html:
+
+2019-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Skip fetch event dispatching if no fetch event handler is added at script evaluation time
+        https://bugs.webkit.org/show_bug.cgi?id=201174
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/skipFetchEvent-worker.js: Added.
+        (async.doTest):
+        * http/wpt/service-workers/skipFetchEvent.https-expected.txt: Added.
+        * http/wpt/service-workers/skipFetchEvent.https.html: Added.
+
+2019-08-29  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=201276
+
+        * fast/borders/empty-outline-border-assert-expected.txt:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/dom/Window/window-lookup-precedence-expected.txt: Added.
+        * platform/gtk/fast/forms/label/labelable-elements-expected.txt: Added.
+        * platform/gtk/http/tests/media/hls/video-controls-live-stream-expected.txt:
+        * platform/gtk/http/tests/security/mixedContent/websocket/insecure-websocket-in-iframe-expected.txt: Added.
+        * platform/gtk/http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/custom-elements/builtin-coverage-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/dom/nodes/Node-cloneNode-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-showModal-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/closing-handshake/003-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/cookies/004-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/unload-a-document/002-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/unload-a-document/004-expected.txt: Added.
+        * platform/ios-wk2/fast/borders/empty-outline-border-assert-expected.txt: Removed.
+        * platform/mac-wk2/fast/borders/empty-outline-border-assert-expected.txt: Removed.
+
+2019-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Use WebPageProxy callbacks in case of authentication challenge received from Service Worker
+        https://bugs.webkit.org/show_bug.cgi?id=201177
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/service-workers/server-trust-evaluation.https.html:
+
+2019-08-29  Rob Buis  <rbuis@igalia.com>
+
+        Address some MathML FIXMEs 
+        https://bugs.webkit.org/show_bug.cgi?id=201293
+
+        Reviewed by Frédéric Wang.
+
+        Also test newly exposed data and time elements.
+
+        * mathml/presentation/foreign-element-in-token-expected.txt:
+        * mathml/presentation/foreign-element-in-token.html:
+        * platform/ios-wk2/mathml/presentation/foreign-element-in-token-expected.txt:
+        * platform/mac-wk2/mathml/presentation/foreign-element-in-token-expected.txt:
+
+2019-08-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make tabIndex IDL attribute reflect its content attribute
+        https://bugs.webkit.org/show_bug.cgi?id=199606
+        <rdar://problem/52811448>
+
+        Reviewed by Chris Dumez.
+
+        Added test cases and assertions.
+
+        * fast/dom/tabindex-defaults-expected.txt:
+        * fast/dom/tabindex-defaults.html: Added test cases for iframe, frame, object, video, summary, and SVG elements.
+        Also blur the active element to avoid any race conditions.
+        * plugins/focus-expected.txt:
+        * plugins/focus.html:
+        * svg/custom/tabindex-order-expected.txt:
+        * svg/custom/tabindex-order.html: Made the sequential navigation code not rely on tabIndex IDL attribute.
+
+2019-08-28  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failure after r249173
+
+        * inspector/timeline/line-column-expected.txt:
+
+2019-08-28  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        XLinkNames namespace is required before the 'href' attribute of SVG animate elements
+        https://bugs.webkit.org/show_bug.cgi?id=201227
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/custom/href-svg-namespace-animate-target-expected.svg: Added.
+        * svg/custom/href-svg-namespace-animate-target.svg: Added.
+
+2019-08-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Matrices need to have correct alignment
+        https://bugs.webkit.org/show_bug.cgi?id=201212
+
+        Reviewed by Robin Morisset.
+
+        Test the alignment and size of float matrices.
+
+        Intentionally don't test bool matrices, because they can't be placed in buffers,
+        meaning their size and alignment is unobservable.
+
+        * webgpu/whlsl/matrix-alignment-expected.txt: Added.
+        * webgpu/whlsl/matrix-alignment.html: Added.
+
+2019-08-28  Rob Buis  <rbuis@igalia.com>
+
+        Implement HTMLOrForeignElement
+        https://bugs.webkit.org/show_bug.cgi?id=201219
+
+        Reviewed by Ryosuke Niwa.
+
+        Adjust test expectations to new HTMLOrForeignElement interface.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-wk2/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac/inspector/model/remote-object-dom-expected.txt:
+
+2019-08-28  Chris Dumez  <cdumez@apple.com>
+
+        geolocation.watchPosition() / getCurrentPosition() should return PERMISSION_DENIED when context is not secure
+        https://bugs.webkit.org/show_bug.cgi?id=201221
+
+        Reviewed by Ryosuke Niwa.
+
+        Update layout tests to reflect behavior change.
+
+        * fast/dom/Geolocation/dataURL-getCurrentPosition-expected.txt:
+        * fast/dom/Geolocation/dataURL-getCurrentPosition.html:
+        * fast/dom/Geolocation/dataURL-watchPosition-expected.txt:
+        * fast/dom/Geolocation/dataURL-watchPosition.html:
+        * http/tests/security/resources/checkThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod.js:
+        (didReceiveError):
+        (checkThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod):
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition-expected.txt:
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition.html:
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition-expected.txt:
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition.html:
+
+2019-08-28  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] WebKitMediaSrc rework
+        https://bugs.webkit.org/show_bug.cgi?id=199719
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Updated expectations.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek-expected.txt: Added.
+
+2019-08-28  Jer Noble  <jer.noble@apple.com>
+
+        Flaky Test: fullscreen/full-screen-request-removed-with-raf.html
+        https://bugs.webkit.org/show_bug.cgi?id=201188
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fullscreen/full-screen-request-removed-with-raf.html:
+
+2019-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unable to enter text in https://eat.fi
+        https://bugs.webkit.org/show_bug.cgi?id=193046
+
+        Reviewed by Ryosuke Niwa.
+
+        Add new test imported for blink.
+
+        * imported/blink/fast/forms/label/label-contains-other-interactive-content-expected.txt: Added.
+        * imported/blink/fast/forms/label/label-contains-other-interactive-content.html: Added.
+        * platform/ios-wk2/TestExpectations: Skip the new test because it requires eventSender.mouseDown/Up/MoveTo()
+
+2019-08-28  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG2: Add length, item getter and item setter to all SVG lists
+        https://bugs.webkit.org/show_bug.cgi?id=199526
+
+        Reviewed by Simon Fraser.
+
+        * svg/custom/polyline-points-crash-expected.txt:
+        * svg/dom/SVGLengthList-basics-expected.txt:
+        * svg/dom/SVGLengthList-length-indexed-access-expected.txt: Added.
+        * svg/dom/SVGLengthList-length-indexed-access.xhtml: Added.
+        * svg/dom/SVGNumberList-basics-expected.txt:
+        * svg/dom/SVGPathSegList-length-indexed-access-expected.txt: Added.
+        * svg/dom/SVGPathSegList-length-indexed-access.xhtml: Added.
+        * svg/dom/SVGPointList-basics-expected.txt:
+        * svg/dom/SVGTransformList-basics-expected.txt:
+
+2019-08-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Make FrameLoader::open() set outgoing referrer properly
+        https://bugs.webkit.org/show_bug.cgi?id=167050
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/navigation/page-cache-fragment-referrer-expected.html: Added.
+        * http/tests/navigation/page-cache-fragment-referrer.html: Added.
+        * http/tests/navigation/resources/referrer.php: Added.
+
+2019-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace uses of added utility `Array.prototype.keySet` with an actual `Set`
+        https://bugs.webkit.org/show_bug.cgi?id=201194
+
+        Reviewed by Ross Kirsling.
+
+        * inspector/unit-tests/array-utilities.html:
+        * inspector/unit-tests/array-utilities-expected.txt:
+
+2019-08-27  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUErrors for and relax GPUBuffer validation rules
+        https://bugs.webkit.org/show_bug.cgi?id=200852
+
+        Reviewed by Dean Jackson.
+
+        Add a test to ensure GPUBuffer errors are generated properly.
+
+        * webgpu/buffer-errors-expected.txt: Added.
+        * webgpu/buffer-errors.html: Added.
+
+2019-08-27  Russell Epstein  <repstein@apple.com>
+
+        Test Gardening for scrollingcoordinator/ios/scroll-position-after-reattach.html
+        rdar://52961406
+
+        Unreviewed Test Gardening.
+
+        * platform/ios/TestExpectations:
+
+2019-08-27  Megan Gardner  <megan_gardner@apple.com>
+
+        Update Test Expectations for iPad for fast/scrolling/ios/autoscroll-input-when-very-zoomed.html
+        https://bugs.webkit.org/show_bug.cgi?id=201163
+        <rdar://problem/54727027>
+
+        Reviewed by Simon Fraser.
+
+        Altering test slightly to have a reasonable test expecation on iPad. 
+
+        * platform/ipad/fast/scrolling/ios/autoscroll-input-when-very-zoomed-expected.txt: Added.
+
+2019-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: don't attach properties to `injectedScript` for the CommandLineAPI
+        https://bugs.webkit.org/show_bug.cgi?id=201193
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/cross-domain-inspected-node-access-expected.txt:
+        * inspector/console/command-line-api-expected.txt:
+
+2019-08-27  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Drawing an animated image to a canvas via drawImage should draw the first frame
+        https://bugs.webkit.org/show_bug.cgi?id=74779
+        <rdar://problem/42282454>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Adds a test that checks that when drawing an animated image into a canvas
+        it draws the first frame and that the animation doesn't reset or pause.
+
+        Also enable the new internal setting setAnimatedImageDebugCanvasDrawingEnabled()
+        for the tests that rely on canvas.drawImage() drawing the current frame instead
+        of the first one.
+
+        * fast/canvas/drawImage-animated-gif-draws-first-frame-and-no-reset-image-expected.txt: Added.
+        * fast/canvas/drawImage-animated-gif-draws-first-frame-and-no-reset-image.html: Added.
+        The above test checks that when drawing an animated image to a canvas it draws the first frame
+        and that the playing image doesn't get reseted and finish playing.
+        * fast/canvas/resources/animated-red-green-blue-yellow-cyan-black-repeat-1.gif: Added.
+        * fast/images/animated-gif-restored-from-bfcache.html: Enable internals.settings.setAnimatedImageDebugCanvasDrawingEnabled().
+        * fast/images/animated-image-different-dest-size.html: Ditto.
+        * fast/images/animated-image-loop-count.html: Ditto.
+        * fast/images/animated-image-mp4.html: Ditto.
+        * fast/images/decode-animated-image.html: Ditto.
+        * fast/images/decode-render-animated-image.html: Ditto.
+        * fast/images/ordered-animated-image-frames.html: Ditto.
+        * fast/images/reset-image-animation.html: Ditto.
+        * fast/images/slower-animation-than-decoding-image.html: Ditto.
+        * fast/images/slower-decoding-than-animation-image.html: Ditto.
+
+2019-08-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, remove failure expectations for tests that are now passing.
+
+        * platform/ios-12/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2019-08-27  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebCore::jsNotificationConstructorPermission
+        https://bugs.webkit.org/show_bug.cgi?id=201186
+        <rdar://problem/53962833>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * http/tests/notifications/request-in-detached-frame-expected.txt: Added.
+        * http/tests/notifications/request-in-detached-frame.html: Added.
+        * http/tests/notifications/resources/request-in-detached-frame-subframe.html: Added.
+
+2019-08-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, land expectation for rdar://54317204.
+
+        * platform/mac/TestExpectations:
+
+2019-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/scrolling/ios/click-events-during-momentum-scroll-in-overflow-after-tap-on-body.html times out on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=201182
+        <rdar://problem/54562829>
+
+        Reviewed by Tim Horton.
+
+        This test verifies that if the user taps outside of a scrollable container that is decelerating, the page will
+        observe a click event. This test currently behaves as expected on iPhone, but on iPad, the tap which is
+        intended to be outside the scrollable area ends up inside it, so a click event is never dispatched. Instead of
+        hard-coding the tap location, address this test failure by targetting a separate element outside of the
+        scrollable area.
+
+        * fast/scrolling/ios/click-events-during-momentum-scroll-in-overflow-after-tap-on-body.html:
+
+2019-08-26  Jer Noble  <jer.noble@apple.com>
+
+        Removing fullscreen element in rAF() callback after requestFullscreen() can leave fullscreen in inconsistent state.
+        https://bugs.webkit.org/show_bug.cgi?id=201101
+        <rdar://problem/54164587>
+
+        Reviewed by Eric Carlson.
+
+        * fullscreen/full-screen-request-removed-with-raf-expected.txt: Added.
+        * fullscreen/full-screen-request-removed-with-raf.html: Added.
+
+2019-08-27  Peng Liu  <peng.liu6@apple.com>
+
+        webkitpresentationmodechanged is fired twice when exiting picture in picture
+        https://bugs.webkit.org/show_bug.cgi?id=193765
+
+        Reviewed by Jer Noble.
+
+        * media/presentationmodechanged-fired-once-expected.txt: Added.
+        * media/presentationmodechanged-fired-once.html: Added.
+
+2019-08-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Origin header not included in WebSocket handshake request when using platform WebSocket API
+        https://bugs.webkit.org/show_bug.cgi?id=200535
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline tests that are passing now for GTK and WPE.
+
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/opening-handshake/003-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/opening-handshake/003-sets-origin.worker-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/websockets/opening-handshake/005-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/websockets/opening-handshake/003-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/websockets/opening-handshake/003-sets-origin.worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/websockets/opening-handshake/005-expected.txt:
+
+2019-08-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Rewrite all tests to use WHLSL and delete the isWHLSL flag
+        https://bugs.webkit.org/show_bug.cgi?id=201162
+
+        Reviewed by Saam Barati.
+
+        * webgpu/bind-groups.html:
+        * webgpu/blend-color-triangle-strip.html:
+        * webgpu/blend-triangle-strip.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/color-write-mask-triangle-strip.html:
+        * webgpu/compute-pipeline-errors.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/draw-indexed-triangles.html:
+        * webgpu/msl-harness-test-expected.txt: Removed.
+        * webgpu/msl-harness-test.html: Removed.
+        * webgpu/render-command-encoding.html:
+        * webgpu/render-pipeline-errors.html:
+        * webgpu/render-pipelines.html:
+        * webgpu/shader-modules.html:
+        * webgpu/simple-triangle-strip.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+        * webgpu/viewport-scissor-rect-triangle-strip.html:
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations.html:
+        * webgpu/whlsl/buffer-fragment.html:
+        * webgpu/whlsl/buffer-length.html:
+        * webgpu/whlsl/buffer-vertex.html:
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables.html:
+        * webgpu/whlsl/compute.html:
+        * webgpu/whlsl/dereference-pointer-should-type-check.html:
+        * webgpu/whlsl/device-proper-type-checker.html:
+        * webgpu/whlsl/do-while-loop-break.html:
+        * webgpu/whlsl/do-while-loop-continue.html:
+        * webgpu/whlsl/do-while-loop.html:
+        * webgpu/whlsl/dont-crash-parsing-enum.html:
+        * webgpu/whlsl/dot-expressions.html:
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3.html:
+        * webgpu/whlsl/ensure-proper-variable-lifetime.html:
+        * webgpu/whlsl/huge-array.html:
+        * webgpu/whlsl/js/test-harness.js:
+        (convertTypeToArrayType):
+        (Data):
+        (Harness):
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype.callVoidFunction):
+        (Harness.prototype.async.checkCompileFail):
+        (Harness.prototype._setUpArguments):
+        (Harness.prototype.async._callFunction):
+        (Harness.prototype.set isWHLSL): Deleted.
+        (Harness.prototype.get isWHLSL): Deleted.
+        * webgpu/whlsl/loops-break.html:
+        * webgpu/whlsl/loops-continue.html:
+        * webgpu/whlsl/loops.html:
+        * webgpu/whlsl/make-array-reference.html:
+        * webgpu/whlsl/matrix-2.html:
+        * webgpu/whlsl/matrix-memory-layout.html:
+        * webgpu/whlsl/matrix.html:
+        * webgpu/whlsl/nested-dot-expression-rvalue.html:
+        * webgpu/whlsl/nested-loop.html:
+        * webgpu/whlsl/null-dereference.html:
+        * webgpu/whlsl/oob-access.html:
+        * webgpu/whlsl/propertyresolver/ander-abstract-lvalue.html:
+        * webgpu/whlsl/propertyresolver/ander-lvalue-3-levels.html:
+        * webgpu/whlsl/propertyresolver/ander-lvalue.html:
+        * webgpu/whlsl/propertyresolver/ander.html:
+        * webgpu/whlsl/propertyresolver/getter.html:
+        * webgpu/whlsl/propertyresolver/indexer-ander-abstract-lvalue.html:
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-3-levels.html:
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue.html:
+        * webgpu/whlsl/propertyresolver/indexer-ander.html:
+        * webgpu/whlsl/propertyresolver/indexer-getter.html:
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html:
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue.html:
+        * webgpu/whlsl/propertyresolver/indexer-setter-lvalue.html:
+        * webgpu/whlsl/propertyresolver/indexer-setter.html:
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-3-levels.html:
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue.html:
+        * webgpu/whlsl/propertyresolver/setter-lvalue.html:
+        * webgpu/whlsl/read-modify-write-high-zombies.html:
+        * webgpu/whlsl/read-modify-write.html:
+        * webgpu/whlsl/return-local-variable.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-10.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-11.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-12.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-13.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-14.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-15.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-16.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-17.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-18.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-19.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-2.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-20.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-21.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-22.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-23.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-24.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-25.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-26.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-27.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-3.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-4.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-5.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-6.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-7.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-8.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-9.html:
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules.html:
+        * webgpu/whlsl/simple-arrays.html:
+        * webgpu/whlsl/store-to-property-updates-properly.html:
+        * webgpu/whlsl/textures-getdimensions.html:
+        * webgpu/whlsl/textures-load.html:
+        * webgpu/whlsl/textures-sample.html:
+        * webgpu/whlsl/two-dimensional-array.html:
+        * webgpu/whlsl/use-undefined-variable-2.html:
+        * webgpu/whlsl/use-undefined-variable.html:
+        * webgpu/whlsl/while-loop-break.html:
+        * webgpu/whlsl/while-loop-continue.html:
+        * webgpu/whlsl/whlsl.html:
+        * webgpu/whlsl/zero-initialize-values-2.html:
+        * webgpu/whlsl/zero-initialize-values.html:
+
+2019-08-26  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failure after r249127
+
+        * inspector/debugger/tail-deleted-frames-this-value.html:
+
+2019-08-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: unify agent command error messages
+        https://bugs.webkit.org/show_bug.cgi?id=200950
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/getSerializedCertificate-expected.txt:
+        * http/tests/websocket/tests/hybi/inspector/resolveWebSocket-expected.txt:
+        * inspector/audit/setup-expected.txt:
+        * inspector/audit/teardown-expected.txt:
+        * inspector/canvas/css-canvas-clients-expected.txt:
+        * inspector/canvas/recording-expected.txt:
+        * inspector/canvas/requestContent-2d-expected.txt:
+        * inspector/canvas/requestNode-expected.txt:
+        * inspector/canvas/requestShaderSource-expected.txt:
+        * inspector/canvas/resolveCanvasContext-2d-expected.txt:
+        * inspector/canvas/setShaderProgramDisabled-expected.txt:
+        * inspector/canvas/setShaderProgramHighlighted-expected.txt:
+        * inspector/canvas/updateShader-expected.txt:
+        * inspector/console/webcore-logging-expected.txt:
+        * inspector/css/add-rule-expected.txt:
+        * inspector/debugger/continueUntilNextRunLoop-expected.txt:
+        * inspector/debugger/evaluateOnCallFrame-errors-expected.txt:
+        * inspector/debugger/setBreakpoint-expected.txt:
+        * inspector/dom-debugger/dom-breakpoints-expected.txt:
+        * inspector/dom/breakpoint-for-event-listener-expected.txt:
+        * inspector/dom/highlightQuad-expected.txt:
+        * inspector/dom/insertAdjacentHTML-expected.txt:
+        * inspector/dom/request-child-nodes-depth-expected.txt:
+        * inspector/dom/setEventListenerDisabled-expected.txt:
+        * inspector/protocol/backend-dispatcher-argument-errors-expected.txt:
+        * inspector/runtime/awaitPromise-expected.txt:
+        * inspector/runtime/getPreview-expected.txt:
+        * inspector/timeline/setInstruments-errors-expected.txt:
+
+2019-08-26  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, add extra test failure logging after r200971
+
+        * inspector/debugger/tail-deleted-frames-this-value.html:
+        Also log the actual value (in addition to the expected one) in assertion messages.
+
+2019-08-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove UIHelper.activateElementAtHumanSpeed
+        https://bugs.webkit.org/show_bug.cgi?id=201147
+
+        Reviewed by Tim Horton.
+
+        This was used in layout tests that simulate repeated taps to work around <webkit.org/b/201129>, and should no
+        longer be needed after <https://trac.webkit.org/changeset/249112/webkit>. Instead, we can just use UIHelper's
+        activateElement as intended in cases where successive taps in the test does not result in a double-click; for
+        the cases where we need to avoid triggering double clicks when tapping (e.g. in several payment tests), use a
+        new script controller hook to wait for the double tap gesture delay before continuing.
+
+        * fast/forms/ios/file-upload-panel.html:
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+
+        Rebaseline more line numbers.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation.html:
+
+        Refactor this test so that the links are laid out in two (or more) columns to avoid firing the double click
+        gesture recognizer instead of the synthetic click gesture.
+
+        * http/tests/resources/payment-request.js:
+        (activateThen):
+
+        Instead of using activateElementAtHumanSpeed, wait for the platform double tap delay first, and then simulate
+        a click using activateElement.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForDoubleTapDelay):
+
+        Add a new UIHelper method to wait for the platform double tap delay. See Tools ChangeLog for more details.
+
+        (window.UIHelper):
+        (window.UIHelper.activateElementAtHumanSpeed.return.new.Promise): Deleted.
+        (window.UIHelper.activateElementAtHumanSpeed): Deleted.
+
+2019-08-26  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failure after r200971
+
+        * inspector/timeline/line-column-expected.txt:
+
+        * inspector/debugger/tail-deleted-frames-this-value.html:
+        Add messages to all `InspectorTest.assert` so we can know which one is firing on the bots.
+
+2019-08-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, unmark two datalist tests as timing out on iOS 13 after r249112
+
+        * platform/ios/TestExpectations:
+
+2019-08-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (iOS 13): Tests that simulate multiple back-to-back single taps fail or time out
+        https://bugs.webkit.org/show_bug.cgi?id=201129
+        <rdar://problem/51857277>
+
+        Reviewed by Tim Horton.
+
+        Adjusts a few layout tests after changes to UIScriptController::doubleTapAtPoint and
+        UIScriptController::singleTapAtPoint.
+
+        * editing/selection/ios/change-selection-by-tapping.html:
+
+        Tweak this test to tap the page 12 times instead of 20 (which seems to cause occasional timeouts locally, when
+        running all layout tests with a dozen active simulators).
+
+        * fast/events/ios/double-tap-zoom.html:
+        * fast/events/ios/viewport-device-width-allows-double-tap-zoom-out.html:
+        * fast/events/ios/viewport-shrink-to-fit-allows-double-tap.html:
+
+        Augment a few call sites of `doubleTapAtPoint` with a 0 delay. Ideally, these should just use ui-helper.js, but
+        we can refactor these tests as a part of folding basic-gestures.js into ui-helper.js.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt:
+
+        Rebaseline these layout tests, due to change in line numbers.
+
+        * platform/ipad/TestExpectations:
+
+        Unskip these tests on iPad, now that they should pass.
+
+        * pointerevents/utils.js:
+        (const.ui.new.UIController.prototype.doubleTapToZoom):
+        * resources/basic-gestures.js:
+        (return.new.Promise.):
+        (return.new.Promise):
+
+        Adjust some more call sites of `doubleTapAtPoint`. Ideally, these should use just `ui-helper.js` too.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.doubleTapAt.return.new.Promise):
+        (window.UIHelper.doubleTapAt):
+        (window.UIHelper.humanSpeedDoubleTapAt):
+        (window.UIHelper.humanSpeedZoomByDoubleTappingAt):
+
+        Add a delay parameter to `doubleTapAt` to specify a delay after each simulated tap. By default, this is 0, but
+        the `humanSpeed*` helpers add a delay of 120 milliseconds. Additionally, these helpers were previously calling
+        `singleTapAtPoint` twice, with a timeout in between to add a delay. Instead, call `doubleTapAtPoint` with a
+        nonzero delay; otherwise, we'll end up waiting in `singleTapAtPoint` for the gesture subgraph containing both
+        the double tap gestures and the synthetic single tap gesture to reset, which causes these two single taps to no
+        longer be recognized as a double tap gesture.
+
+        (window.UIHelper.zoomByDoubleTappingAt):
+
+2019-08-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Support HID authenticators on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=201084
+        <rdar://problem/51908390>
+
+        Reviewed by Youenn Fablet.
+
+        * platform/ios-wk2/TestExpectations:
+        Unskips HID tests for iOS.
+
+2019-08-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test gardening
+
+        * platform/mac-wk2/TestExpectations:
+        Skip WebAuthn tests for HighSierra and Mojave.
+
+2019-08-26  Russell Epstein  <repstein@apple.com>
+
+        Unreviewed, rolling out r248961.
+
+        Same patch was re-landed after being rolled out. Patch is
+        causing Catalina/iOS 13 test failures. Rolling out.
+
+        Reverted changeset:
+
+        "Verify Prefetch and credential behavior"
+        https://bugs.webkit.org/show_bug.cgi?id=200000
+        https://trac.webkit.org/changeset/248961
+
+2019-08-26  Russell Epstein  <repstein@apple.com>
+
+        rdar://51857070 (iPad: Many fast/text-autosizing layout tests are consistently failing)
+
+        Unreviewed Test Gardening.
+        Tests are no longer failing. Removing test expectations.
+
+        * platform/ipad/TestExpectations:
+
+2019-08-26  Youenn Fablet  <youenn@apple.com>
+
+        Add a WebsiteDataStore delegate to handle AuthenticationChallenge that do not come from pages
+        https://bugs.webkit.org/show_bug.cgi?id=196870
+
+        Reviewed by Alex Christensen.
+
+        Add tests to validate that the delegate decision is respected for beacons and service worker loads.
+
+        * http/wpt/beacon/cors/crossorigin-arraybufferview-no-preflight-expected.txt:
+        * http/wpt/beacon/cors/crossorigin-arraybufferview-no-preflight.html:
+        * http/wpt/beacon/resources/beacon-preflight.py:
+        (main):
+        * http/wpt/service-workers/resources/lengthy-pass.py:
+        (main):
+        * http/wpt/service-workers/server-trust-evaluation.https-expected.txt: Added.
+        * http/wpt/service-workers/server-trust-evaluation.https.html: Added.
+        * http/wpt/service-workers/server-trust-worker.js: Added.
+        * http/tests/ssl/certificate-validation.html: Remove unneeded setting call
+        since we deny server trust requests if SSL certificates are not all allowed.
+
+2019-08-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Page crashes under CGPathAddUnevenCornersRoundedRect
+        https://bugs.webkit.org/show_bug.cgi?id=201117
+
+        Reviewed by Dean Jackson.
+
+        * fast/borders/renderable-uneven-rounded-rects-expected.txt: Added.
+        * fast/borders/renderable-uneven-rounded-rects.html: Added.
+
+2019-08-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Copy Rule" menu item does not propagate comments properly
+        https://bugs.webkit.org/show_bug.cgi?id=201095
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/css/generateCSSRuleString.html:
+        * inspector/css/generateCSSRuleString-expected.txt:
+
+2019-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create additional command line api functions for other console methods
+        https://bugs.webkit.org/show_bug.cgi?id=200971
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/cross-domain-inspected-node-access-expected.txt:
+        * inspector/console/command-line-api-expected.txt:
+
+2019-08-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] [WebKit2] Tapping on the “I’m” text suggestion after typing “i’” does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=201085
+        <rdar://problem/53056118>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to verify that "I’" can be autocorrected to "I’m".
+
+        * fast/events/ios/autocorrect-with-apostrophe-expected.txt: Added.
+        * fast/events/ios/autocorrect-with-apostrophe.html: Added.
+
+2019-08-23  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r248974): fast/events/ios/key-command-delete-to-end-of-paragraph.html is timing out on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=201091
+        <rdar://problem/54647731>
+
+        Reviewed by Megan Gardner.
+
+        * fast/events/ios/key-command-delete-to-end-of-paragraph.html:
+        The test as-written doesn't actually wait for the tap to complete before
+        continuing on with the test - it starts immediately when the focus event
+        fires. This results in the selection being changed by the single click
+        handler *after* focusing the field.
+
+        Rewrite the test to await completion of the tap before moving forward
+        instead of waiting for focus.
+
+2019-08-23  Chris Dumez  <cdumez@apple.com>
+
+        [geolocation] Rename interfaces and remove [NoInterfaceObject]
+        https://bugs.webkit.org/show_bug.cgi?id=200885
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/dom/Geolocation/exposed-geolocation-interfaces-expected.txt: Added.
+        * fast/dom/Geolocation/exposed-geolocation-interfaces.html: Added.
+        * fast/dom/Geolocation/position-string-expected.txt:
+        * fast/dom/Geolocation/position-string.html:
+
+2019-08-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r249001.
+
+        Caused one layout test to fail on all configurations and
+        another to time out on Catalina / iOS 13.
+
+        Reverted changeset:
+
+        "Add a WebsiteDataStore delegate to handle
+        AuthenticationChallenge that do not come from pages"
+        https://bugs.webkit.org/show_bug.cgi?id=196870
+        https://trac.webkit.org/changeset/249001
+
+2019-08-23  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: fast/events/pointer/ios/drag-gives-pointerdown-pointermove-pointerup.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=201075
+        <rdar://problem/54491246>
+
+        Reviewed by Daniel Bates.
+
+        This test was written very early on in the process of implementing Pointer Events and assumed events would keep
+        firing when scrolling occured. We need to add "touch-action: none" to ensure we get pointermove and pointerup
+        events. We also need to ensure that the interaction occurs over content otherwise events won't fire. Finally, we
+        pretty up the test a bit.
+
+        * fast/events/pointer/ios/drag-gives-pointerdown-pointermove-pointerup-expected.txt:
+        * fast/events/pointer/ios/drag-gives-pointerdown-pointermove-pointerup.html:
+
+2019-08-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Support NFC authenticators for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=188624
+        <rdar://problem/43354214>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/webauthn/ctap-nfc-failure.https-expected.txt: Added.
+        * http/wpt/webauthn/ctap-nfc-failure.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-nfc.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-nfc.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        This patch replaces the "local" keyword with "hid".
+        * http/wpt/webauthn/public-key-credential-create-success-nfc.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-nfc.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-nfc.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-nfc.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-nfc.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-nfc.https.html: Added.
+        * http/wpt/webauthn/resources/util.js:
+        * platform/ios-simulator-wk2/TestExpectations:
+        Skip NFC tests for simulators.
+
+2019-08-23  Russell Epstein  <repstein@apple.com>
+
+        Unreviewed, rolling out r249031.
+
+        Causes multiple test failures on iOS simulator
+
+        Reverted changeset:
+
+        "[iOS] Should show input view when became first responder if
+        keyboard was showing when the view was resigned"
+        https://bugs.webkit.org/show_bug.cgi?id=200902
+        https://trac.webkit.org/changeset/249031
+
+2019-08-23  Megan Gardner  <megan_gardner@apple.com>
+
+        Revert delete-in-input-in-iframe.html and typing-in-input-in-iframe.html to original behaviour after r248977 and make associated test autoscroll-input-when-very-zoomed.html more stable
+        https://bugs.webkit.org/show_bug.cgi?id=201058
+
+        Reviewed by Simon Fraser.
+
+        delete-in-input-in-iframe and typing-in-input-in-iframe were changed when scrolling was made to work differently in r244141.
+        They actually did find a bug, and that bug was fixed in r248977, so we put the tests back to test that scolls do not happen.
+        Also update autoscroll-input-when-very-zoomed which was added to test r248977 to be more robust.
+
+        * fast/forms/ios/delete-in-input-in-iframe-expected.txt:
+        * fast/forms/ios/delete-in-input-in-iframe.html:
+        * fast/forms/ios/typing-in-input-in-iframe-expected.txt:
+        * fast/forms/ios/typing-in-input-in-iframe.html:
+        * fast/scrolling/ios/autoscroll-input-when-very-zoomed.html:
+
+2019-08-22  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [SVG] -webkit-clip-path treats url(abc#xyz) as url(#xyz) because it checks only URL fragment part
+        https://bugs.webkit.org/show_bug.cgi?id=201030
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/clip-path/clip-path-invalid-reference-001-expected.svg: Added.
+        * svg/clip-path/clip-path-invalid-reference-001.svg: Added.
+        * svg/clip-path/clip-path-invalid-reference-002-expected.svg: Added.
+        * svg/clip-path/clip-path-invalid-reference-002.svg: Added.
+
+2019-08-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Should show input view when became first responder if keyboard was showing when the view was resigned
+        https://bugs.webkit.org/show_bug.cgi?id=200902
+        <rdar://problem/54231756>
+
+        Reviewed by Wenson Hsieh.
+
+        Add tests to ensure that we show the keyboard when becoming first responder if the view resigned with the
+        keyboard on screen. Also add a test to ensure that we keep our current behavior and do NOT show the keyboard
+        for an autofocused text field when the view becomes first responder.
+
+        * fast/events/ios/resources/check-keyboard-on-screen.js: Added.
+        (async.checkKeyboardOnScreen):
+        (async.checkKeyboardNotOnScreen):
+        * fast/events/ios/should-not-show-keyboard-for-autofocused-field-when-becoming-first-responder-after-navigation-expected.txt: Added.
+        * fast/events/ios/should-not-show-keyboard-for-autofocused-field-when-becoming-first-responder-after-navigation.html: Added.
+        * fast/events/ios/show-keyboard-when-becoming-first-responder-despite-inputmode-none-expected.txt: Added.
+        * fast/events/ios/show-keyboard-when-becoming-first-responder-despite-inputmode-none.html: Added.
+        * fast/events/ios/show-keyboard-when-becoming-first-responder-expected.txt: Added.
+        * fast/events/ios/show-keyboard-when-becoming-first-responder.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForKeyboardToShow.return.new.Promise): Added.
+        (window.UIHelper.waitForKeyboardToShow): Added.
+        (window.UIHelper.becomeFirstResponder): Added.
+
+2019-08-22  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r248974): fast/events/ios/select-all-with-existing-selection.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=201050
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/ios/select-all-with-existing-selection.html:
+        The test as-written doesn't actually wait for the tap to complete before
+        continuing on with the test - it starts immediately when the focus event
+        fires. This results in the selection being changed by the single click
+        handler *after* focusing the field.
+
+        Rewrite the test to await completion of the tap before moving forward
+        instead of waiting for focus.
+
+2019-08-22  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Crash may happen when an SVG <feImage> element references the root <svg> element
+        https://bugs.webkit.org/show_bug.cgi?id=201014
+
+        Reviewed by Ryosuke Niwa.
+
+        Ensure the cyclic reference between the <feImage> renderer and its
+        ancestor <svg> root renderer is broken.
+
+        * svg/filters/filter-image-ref-root-expected.txt: Added.
+        * svg/filters/filter-image-ref-root.html: Added.
+
+2019-08-22  Tim Horton  <timothy_horton@apple.com>
+
+        Rebaseline some editing tests after r248974
+        https://bugs.webkit.org/show_bug.cgi?id=200999
+        <rdar://problem/54564878>
+
+        * platform/ios/editing/deleting/smart-delete-003-expected.txt:
+        * platform/ios/editing/deleting/smart-delete-004-expected.txt:
+        * platform/ios/editing/pasteboard/smart-paste-008-expected.txt:
+
+2019-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Typing Korean in title field after typing in the body inserts extraneous characters on blog.naver.com
+        https://bugs.webkit.org/show_bug.cgi?id=201023
+        <rdar://problem/54294794>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test to verify that we suppress text interactions when focusing an editable element inside an
+        empty, borderless subframe.
+
+        * editing/selection/ios/do-not-show-selection-in-empty-borderless-subframe-expected.txt: Added.
+        * editing/selection/ios/do-not-show-selection-in-empty-borderless-subframe.html: Added.
+
+2019-08-22  Youenn Fablet  <youenn@apple.com>
+
+        Add a WebsiteDataStore delegate to handle AuthenticationChallenge that do not come from pages
+        https://bugs.webkit.org/show_bug.cgi?id=196870
+
+        Reviewed by Alex Christensen.
+
+        Add tests to validate that the delegate decision is respected for beacons and service worker loads.
+
+        * http/wpt/beacon/cors/crossorigin-arraybufferview-no-preflight-expected.txt:
+        * http/wpt/beacon/cors/crossorigin-arraybufferview-no-preflight.html:
+        * http/wpt/beacon/resources/beacon-preflight.py:
+        (main):
+        * http/wpt/service-workers/resources/lengthy-pass.py:
+        (main):
+        * http/wpt/service-workers/server-trust-evaluation.https-expected.txt: Added.
+        * http/wpt/service-workers/server-trust-evaluation.https.html: Added.
+        * http/wpt/service-workers/server-trust-worker.js: Added.
+
+2019-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Layout Test perf/clone-with-focus.html is a Flaky Failure
+        https://bugs.webkit.org/show_bug.cgi?id=201012
+
+        Reviewed by Antti Koivisto.
+
+        The flakiness was observed when the time to clone elements without focus is 0ms
+        but the time to clone elements with focus is 1ms or greater.
+
+        The test tries to make sure the time to clone elements with foucs is less than 2x
+        of the time to clone elements without focus. When the time to clone without focus
+        is 0ms, any difference is always more than 2x larger.
+
+        Fixed the test by increasing the number of elements until the time to clone without
+        focus takes at least 5ms.
+
+        * perf/clone-with-focus.html:
+
+2019-08-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Vertex shader and fragment shader need to be able to come from two different programs
+        https://bugs.webkit.org/show_bug.cgi?id=195446
+
+        Reviewed by Saam Barati.
+
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-10-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-10.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-11-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-11.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-12-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-12.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-13-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-13.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-14-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-14.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-15-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-15.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-16-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-16.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-17-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-17.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-18-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-18.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-19-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-19.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-2-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-2.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-20-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-20.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-21-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-21.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-22-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-22.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-23-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-23.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-24-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-24.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-25-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-25.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-26-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-26.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-27-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-27.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-3-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-3.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-4-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-4.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-5-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-5.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-6-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-6.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-7-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-7.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-8-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-8.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-9-expected.txt: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-9.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules-expected.html: Added.
+        * webgpu/whlsl/separate-shader-modules/separate-shader-modules.html: Added.
+
+2019-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        SVG element should become focusable when focus and key event listeners are added
+        https://bugs.webkit.org/show_bug.cgi?id=200997
+
+        Reviewed by Said Abou-Hallawa.
+
+        Updated existing tests to set tabIndex where appropriate, and added SVG elements
+        without tabindex content attribute to tabindex-order.html so that the test would
+        skip those elements when sequentially focus navigating across them.
+
+        * svg/custom/add-event-listener-shadow-tree-element.html:
+        * svg/custom/resources/focus-event-handling-keyboard.js:
+        * svg/custom/resources/focus-event-handling.js:
+        * svg/custom/tabindex-order-expected.txt:
+        * svg/custom/tabindex-order.html: Added test cases without tabindex.
+
+2019-08-21  Megan Gardner  <megan_gardner@apple.com>
+
+        Do not adjust viewport if editing selection is already visible
+        https://bugs.webkit.org/show_bug.cgi?id=200907
+        <rdar://problem/53903417>
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/autoscroll-input-when-very-zoomed-expected.txt: Added.
+        * fast/scrolling/ios/autoscroll-input-when-very-zoomed.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.immediateZoomToScale):
+
+2019-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        [Mail] Tapping top of message scrolls back to copied text instead of top of the message
+        https://bugs.webkit.org/show_bug.cgi?id=200999
+        <rdar://problem/54564878>
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/selection/ios/change-selection-by-tapping-with-existing-selection-expected.txt: Added.
+        * editing/selection/ios/change-selection-by-tapping-with-existing-selection.html: Added.
+
+2019-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Disabling text autosizing should prevent text autosizing
+        https://bugs.webkit.org/show_bug.cgi?id=200955
+        <rdar://problem/48095374>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text-autosizing/ios/text-size-adjust-inline-style.html:
+        The comment was incorrect because we call WKPreferencesSetTextAutosizingEnabled(preferences, false) in TestController::platformResetPreferencesToConsistentValues.
+        In order to test the effect of text autosizing in this test, we need to explicitly turn it on.  The disabling of text autosizing didn't do anything before this
+        patch, so it wasn't needed before now.
+
+2019-08-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, land test expectations for rdar://54561673.
+
+        * platform/ios/TestExpectations:
+        * platform/ios-12/TestExpectations:
+
+2019-08-21  Rob Buis  <rbuis@igalia.com>
+
+        Verify Prefetch and credential behavior
+        https://bugs.webkit.org/show_bug.cgi?id=200000
+
+        Reviewed by Youenn Fablet.
+
+        Add a test to verify that navigating to a prefetched main resource
+        that sets Vary: Cookie does send cookies.
+
+        * http/wpt/prefetch/link-prefetch-cross-origin-vary-cookie-expected.txt: Added.
+        * http/wpt/prefetch/link-prefetch-cross-origin-vary-cookie.html: Added.
+        * http/wpt/prefetch/resources/main-resource-cross-origin-set-cookie.py: Added.
+        (main):
+        * http/wpt/prefetch/resources/main-resource-cross-origin-vary-cookie.py: Added.
+        (main):
+        * http/wpt/prefetch/resources/navigate-cross-origin-vary-cookie.html: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Put keygen element behind a runtime flag and disable it by default
+        https://bugs.webkit.org/show_bug.cgi?id=200850
+
+        Reviewed by Antti Koivisto.
+
+        Deployed enableKeygenElement test runner option to keep the layout tests running.
+
+        * accessibility/content-changed-notification-causes-crash.html:
+        * accessibility/contenteditable-table-check-causes-crash.html:
+        * accessibility/duplicate-axrenderobject-crash.html:
+        * fast/block/float/float-not-removed-from-first-letter.html:
+        * fast/block/float/split-inline-sibling-of-float-crash.html:
+        * fast/css/pseudo-required-optional-unapplied.html:
+        * fast/dom/HTMLFormElement/associated-elements-after-index-assertion-fail1.html:
+        * fast/dom/HTMLKeygenElement/keygen-keytype.html:
+        * fast/dom/HTMLKeygenElement/keygen.html:
+        * fast/dom/adopt-node-crash-2.html:
+        * fast/dom/attribute-set-before-element-in-tree.html:
+        * fast/dom/domstring-attribute-reflection.html:
+        * fast/dom/set-custom-validity-with-too-few-arguments.html:
+        * fast/dom/tabindex-defaults.html:
+        * fast/dom/wrapper-classes.html:
+        * fast/dynamic/insertAdjacentHTML-allowed-parents.html:
+        * fast/flexbox/crash-button-keygen.html:
+        * fast/forms/ValidityState-001.html:
+        * fast/forms/autofocus-keygen.html:
+        * fast/forms/checkValidity-001.html:
+        * fast/forms/fieldset/fieldset-elements-htmlcollection.html:
+        * fast/forms/fieldset/fieldset-elements.html:
+        * fast/forms/form-associated-element-crash3.html:
+        * fast/forms/form-attribute.html:
+        * fast/forms/form-collection-elements-order.html:
+        * fast/forms/form-collection-elements.html:
+        * fast/forms/form-collection-radio-node-list.html:
+        * fast/forms/label/labelable-elements.html:
+        * fast/forms/label/labels-add-htmlFor-label.html:
+        * fast/forms/label/labels-add-parent-label.html:
+        * fast/forms/label/labels-change-htmlFor-attribute.html:
+        * fast/forms/label/labels-multiple-sibling-labels.html:
+        * fast/forms/label/labels-parent-and-sibling-labels.html:
+        * fast/forms/label/labels-remove-htmlFor-attribute.html:
+        * fast/forms/label/labels-remove-htmlFor-label.html:
+        * fast/forms/label/labels-remove-parent-label.html:
+        * fast/forms/label/labels-set-htmlFor-attribute.html:
+        * fast/forms/large-parts.html:
+        * fast/forms/scrollheight-with-mutation-crash.html:
+        * fast/forms/setCustomValidity-arguments.html:
+        * fast/forms/setCustomValidity-existence.html:
+        * fast/forms/setCustomValidity-null-parameter.html:
+        * fast/forms/state-restore-skip-stateless.html:
+        * fast/forms/update-form-owner-in-moved-subtree-assertion-failure.html:
+        * fast/forms/validationMessage.html:
+        * fast/forms/willvalidate.html:
+        * fast/html/clone-keygen.html:
+        * fast/html/keygen.html:
+        * fast/html/marquee-reparent-check.html:
+        * fast/invalid/residual-style-expected.html:
+        * fast/invalid/residual-style.html:
+        * fast/multicol/span/positioned-child-not-removed-crash.html:
+        * fast/ruby/float-object-doesnt-crash.html:
+        * fast/shadow-dom/keygen-shadow-manipulation.html:
+        * fast/table/crash-splitColumn-2.html:
+        * fast/table/multiple-captions-crash3-expected.html:
+        * fast/table/multiple-captions-crash3.html:
+        * http/tests/misc/resources/check-keygen-post.php:
+        * http/tests/misc/submit-post-keygen.html:
+        * imported/blink/fast/dom/shadow/shadowdom-for-keygen-only-shadow-expected.html:
+        * imported/blink/fast/dom/shadow/shadowdom-for-keygen-only-shadow.html:
+        * imported/blink/fast/text/international-iteration-simple-text.html:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt: Rebaselined
+        now that the test case for keygen is passing.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt: Ditto.
+        * svg/dom/css-animate-input-foucs-crash.html:
+
+2019-08-21  Russell Epstein  <repstein@apple.com>
+
+        Unreviewed, rolling out r248942.
+
+        Causes multiple layout test crashes on MacOS Bots
+
+        Reverted changeset:
+
+        "Verify Prefetch and credential behavior"
+        https://bugs.webkit.org/show_bug.cgi?id=200000
+        https://trac.webkit.org/changeset/248942
+
+2019-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Page: re-add enable/disable after r248454
+        https://bugs.webkit.org/show_bug.cgi?id=200947
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/page/loading-iframe-document-node.html:
+        * inspector/css/getMatchedStylesForNode.html:
+        * inspector/css/getMatchedStylesForNode-expected.txt:
+        * inspector/page/archive.html:
+        * inspector/page/frameScheduledNavigation.html:
+        * inspector/page/frameScheduledNavigation-async-delegates.html:
+        * inspector/page/frameStartedLoading.html:
+        * inspector/page/media-query-list-listener-exception.html:
+        * inspector/timeline/line-column.html:
+
+2019-08-21  Rob Buis  <rbuis@igalia.com>
+
+        Verify Prefetch and credential behavior
+        https://bugs.webkit.org/show_bug.cgi?id=200000
+
+        Reviewed by Youenn Fablet.
+
+        Add a test to verify that navigating to a prefetched main resource
+        that sets Vary: Cookie does send cookies.
+
+        * http/wpt/prefetch/link-prefetch-cross-origin-vary-cookie-expected.txt: Added.
+        * http/wpt/prefetch/link-prefetch-cross-origin-vary-cookie.html: Added.
+        * http/wpt/prefetch/resources/main-resource-cross-origin-set-cookie.py: Added.
+        (main):
+        * http/wpt/prefetch/resources/main-resource-cross-origin-vary-cookie.py: Added.
+        (main):
+        * http/wpt/prefetch/resources/navigate-cross-origin-vary-cookie.html: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Implement `queryHolders` Command Line API
+        https://bugs.webkit.org/show_bug.cgi?id=200458
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/console/queryHolders.html: Added.
+        * inspector/console/queryHolders-expected.txt: Added.
+        * http/tests/inspector/dom/cross-domain-inspected-node-access-expected.txt:
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2019-08-20  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] We need to null check when emitting native code for operator&.<field-name>
+        https://bugs.webkit.org/show_bug.cgi?id=200846
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl/structure-field-access-on-null-expected.txt: Added.
+        * webgpu/whlsl/structure-field-access-on-null.html: Added.
+
+2019-08-20  Russell Epstein  <repstein@apple.com>
+
+        Updating Expectations for Multiple Newly Passing Tests.
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-12/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2019-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The default tab index of output and fieldset should be -1
+        https://bugs.webkit.org/show_bug.cgi?id=200834
+
+        Reviewed by Alex Christensen.
+
+        Added test cases for output, fieldset, and keygen.
+
+        * fast/dom/tabindex-defaults-expected.txt:
+        * fast/dom/tabindex-defaults.html:
+
+2019-08-20  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] isConsideredClickable should be able to process elements with no renderers
+        https://bugs.webkit.org/show_bug.cgi?id=200926
+        <rdar://problem/54519579>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/going-from-hidden-to-visible-and-to-hidden-crash-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/going-from-hidden-to-visible-and-to-hidden-crash.html: Added.
+
+2019-08-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Clicking the search icon on ae.com hangs the web content process
+        https://bugs.webkit.org/show_bug.cgi?id=200889
+        <rdar://problem/54359330>
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/selection/modify-backward-inline-block-containers-expected.txt: Added.
+        * editing/selection/modify-backward-inline-block-containers.html: Added.
+
+        Add a layout test to ensure that the selection may be moved through empty inline-block containers that span the
+        width of the page.
+
+        * fast/events/focus-anchor-with-tabindex-hang-expected.txt: Added.
+        * fast/events/focus-anchor-with-tabindex-hang.html: Added.
+
+        Add a layout test to ensure that clicking an empty span under a focusable anchor element moves focus to the
+        anchor element instead of hanging the web content process or hitting a debug assertion.
+
+2019-08-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Web Inspector: Support for JavaScript BigInt
+        https://bugs.webkit.org/show_bug.cgi?id=180731
+
+        Unreviewed test gardening.
+
+        * inspector/timeline/line-column-expected.txt: Rebaseline test.
+
+2019-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Support for JavaScript BigInt
+        https://bugs.webkit.org/show_bug.cgi?id=180731
+        <rdar://problem/36298748>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        * inspector/model/resources/remote-object-utilities.js:
+        Include simple tests for a BigInt value and preview.
+
+2019-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Use URL constructor to better handle all kinds of URLs
+        https://bugs.webkit.org/show_bug.cgi?id=165155
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/url-utilities.html:
+        * inspector/unit-tests/url-utilities-expected.txt:
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: add a global breakpoint for pausing in the next microtask
+        https://bugs.webkit.org/show_bug.cgi?id=200652
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/debugger/setPauseOnMicrotasks.html: Added.
+        * inspector/debugger/setPauseOnMicrotasks-expected.txt: Added.
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: have more aggressive checks for dataURLs provided to `console.screenshot`
+        https://bugs.webkit.org/show_bug.cgi?id=200747
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/console/console-screenshot.html:
+        * inspector/console/console-screenshot-expected.txt:
+
+2019-08-19  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Date.prototype.toJSON throws if toISOString returns an object
+        https://bugs.webkit.org/show_bug.cgi?id=198495
+
+        Reviewed by Ross Kirsling.
+
+        TypeError shouldn't be thrown if result of toISOString call is an object.
+        (step 4 of https://tc39.es/ecma262/#sec-date.prototype.tojson)
+
+        * js/dom/JSON-stringify-expected.txt:
+        * js/resources/JSON-stringify.js:
+
+2019-08-19  Russell Epstein  <repstein@apple.com>
+
+        rdar://52961406 (scrollingcoordinator/ios/scroll-position-after-reattach.html is a flaky image failure on iOS)
+
+        Unreviewed Test Gardening.
+
+        * platform/ios/TestExpectations: Updated test expectations to [ Pass Failure ]
+
+2019-08-19  Russell Epstein  <repstein@apple.com>
+
+        rdar://54481698 (Layout Test platform/ios/ios/fast/text/opticalFont.html is Failing)
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-12/platform/ios/ios/fast/text/opticalFont-expected.txt: Copied from LayoutTests/platform/ios/platform/ios/ios/fast/text/opticalFont-expected.txt.
+        * platform/ios/platform/ios/ios/fast/text/opticalFont-expected.txt: Rebaseline.
+
+2019-08-19  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Removing the capture element prevents future pointer events from being dispatched on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=200887
+        <rdar://problem/54104147>
+
+        Reviewed by Dean Jackson.
+
+        * pointerevents/mouse/pointer-capture-element-removal-expected.txt: Added.
+        * pointerevents/mouse/pointer-capture-element-removal.html: Added.
+
+2019-08-19  Youenn Fablet  <youenn@apple.com>
+
+        enumerateDevices should return the same JS objects if called twice
+        https://bugs.webkit.org/show_bug.cgi?id=200767
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/device-change-event-2.html:
+
+2019-08-18  Cathie Chen  <cathiechen@igalia.com>
+
+        Crash in Document::deliverResizeObservations
+        https://bugs.webkit.org/show_bug.cgi?id=200635
+
+        Reviewed by Simon Fraser.
+
+        Test deleting the next/previous sibling of observer list in callbacks, and the order of notifications.
+
+        * resize-observer/delete-observers-in-callbacks-expected.txt: Added.
+        * resize-observer/delete-observers-in-callbacks.html: Added.
+
+2019-08-17  Antti Koivisto  <antti@apple.com>
+
+        Content in <iframe> should override "touch-action" set in embedding document
+        https://bugs.webkit.org/show_bug.cgi?id=200204
+        <rdar://problem/54355249>
+
+        Reviewed by Antoine Quint.
+
+        * pointerevents/ios/touch-action-none-with-frame-inside-expected.txt: Added.
+        * pointerevents/ios/touch-action-none-with-frame-inside.html: Added.
+
+2019-08-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r248772.
+        https://bugs.webkit.org/show_bug.cgi?id=200853
+
+        Causes timeouts in some WebGL tests (Requested by anttik on
+        #webkit).
+
+        Reverted changeset:
+
+        "Content in <iframe> should override "touch-action" set in
+        embedding document"
+        https://bugs.webkit.org/show_bug.cgi?id=200204
+        https://trac.webkit.org/changeset/248772
+
+2019-08-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] Emoji with variation selectors are rendered in text style, not emoji style
+        https://bugs.webkit.org/show_bug.cgi?id=200830
+        <rdar://problem/53076002>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/emoji-variation-selector-expected-mismatch.html: Added.
+        * fast/text/emoji-variation-selector.html: Added.
+        * platform/win/TestExpectations: Mark as failing on Windows, because it doesn't support variation selectors.
+
+2019-08-16  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Make "operator cast" constructors native
+        https://bugs.webkit.org/show_bug.cgi?id=200748
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl/matrix-constructors-expected.txt: Added.
+        * webgpu/whlsl/matrix-constructors.html: Added.
+        * webgpu/whlsl/vector-constructors-expected.txt: Added.
+        * webgpu/whlsl/vector-constructors.html: Added.
+
+2019-08-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Enums should be shadowed by local variables
+        https://bugs.webkit.org/show_bug.cgi?id=200847
+
+        Reviewed by Saam Barati.
+
+        * webgpu/whlsl/structure-field-enumeration-element-clash-expected.txt: Added.
+        * webgpu/whlsl/structure-field-enumeration-element-clash.html: Added.
+
+2019-08-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Add test for the interaction between setters and increments
+        https://bugs.webkit.org/show_bug.cgi?id=200848
+
+        Reviewed by Saam Barati.
+
+        As discovered by Robin in https://github.com/gpuweb/WHLSL/issues/308
+
+        * webgpu/whlsl/increment-setter-expected.txt: Added.
+        * webgpu/whlsl/increment-setter.html: Added.
+
+2019-08-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ContentChangeObserver] Keep track of all the visibility candidates.
+        https://bugs.webkit.org/show_bug.cgi?id=200777
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/ios/content-observation/going-from-hidden-to-visible-and-to-hidden2-expected.txt: Update baseline.
+
+2019-08-16  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Add comparison operators for vectors and matrices
+        https://bugs.webkit.org/show_bug.cgi?id=200823
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl/matrix-compare-expected.txt: Added.
+        * webgpu/whlsl/matrix-compare.html: Added.
+        * webgpu/whlsl/vector-compare-expected.txt: Added.
+        * webgpu/whlsl/vector-compare.html: Added.
+
 2019-08-16  Saam Barati  <sbarati@apple.com>
 
         [WHLSL] Make operator== native and add bool matrices

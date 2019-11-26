@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2009 Joseph Pecoraro
  *
@@ -283,7 +283,7 @@ String InspectorDOMAgent::toErrorString(Exception&& exception)
 InspectorDOMAgent::InspectorDOMAgent(PageAgentContext& context, InspectorOverlay* overlay)
     : InspectorAgentBase("DOM"_s, context)
     , m_injectedScriptManager(context.injectedScriptManager)
-    , m_frontendDispatcher(std::make_unique<Inspector::DOMFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<Inspector::DOMFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::DOMBackendDispatcher::create(context.backendDispatcher, this))
     , m_inspectedPage(context.inspectedPage)
     , m_overlay(overlay)
@@ -293,16 +293,12 @@ InspectorDOMAgent::InspectorDOMAgent(PageAgentContext& context, InspectorOverlay
 {
 }
 
-InspectorDOMAgent::~InspectorDOMAgent()
-{
-    reset();
-    ASSERT(!m_searchingForNode);
-}
+InspectorDOMAgent::~InspectorDOMAgent() = default;
 
 void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_history = std::make_unique<InspectorHistory>();
-    m_domEditor = std::make_unique<DOMEditor>(*m_history);
+    m_history = makeUnique<InspectorHistory>();
+    m_domEditor = makeUnique<DOMEditor>(*m_history);
 
     m_instrumentingAgents.setInspectorDOMAgent(this);
     m_document = m_inspectedPage.mainFrame().document();
@@ -324,9 +320,9 @@ void InspectorDOMAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReaso
     m_mousedOverNode = nullptr;
     m_inspectedNode = nullptr;
 
-    ErrorString unused;
-    setSearchingForNode(unused, false, nullptr, false);
-    hideHighlight(unused);
+    ErrorString ignored;
+    setSearchingForNode(ignored, false, nullptr, false);
+    hideHighlight(ignored);
 
     m_instrumentingAgents.setInspectorDOMAgent(nullptr);
     m_documentRequested = false;
@@ -430,7 +426,7 @@ Node* InspectorDOMAgent::assertNode(ErrorString& errorString, int nodeId)
 {
     Node* node = nodeForId(nodeId);
     if (!node) {
-        errorString = "Could not find node with given id"_s;
+        errorString = "Missing node for given nodeId"_s;
         return nullptr;
     }
     return node;
@@ -441,8 +437,8 @@ Document* InspectorDOMAgent::assertDocument(ErrorString& errorString, int nodeId
     Node* node = assertNode(errorString, nodeId);
     if (!node)
         return nullptr;
-    if (!is<Document>(*node)) {
-        errorString = "Document is not available"_s;
+    if (!is<Document>(node)) {
+        errorString = "Node for given nodeId is not a document"_s;
         return nullptr;
     }
     return downcast<Document>(node);
@@ -453,8 +449,8 @@ Element* InspectorDOMAgent::assertElement(ErrorString& errorString, int nodeId)
     Node* node = assertNode(errorString, nodeId);
     if (!node)
         return nullptr;
-    if (!is<Element>(*node)) {
-        errorString = "Node is not an Element"_s;
+    if (!is<Element>(node)) {
+        errorString = "Node for given nodeId is not an element"_s;
         return nullptr;
     }
     return downcast<Element>(node);
@@ -466,11 +462,11 @@ Node* InspectorDOMAgent::assertEditableNode(ErrorString& errorString, int nodeId
     if (!node)
         return nullptr;
     if (node->isInUserAgentShadowTree()) {
-        errorString = "Cannot edit nodes in user agent shadow trees"_s;
+        errorString = "Node for given nodeId is in a shadow tree"_s;
         return nullptr;
     }
     if (node->isPseudoElement()) {
-        errorString = "Cannot edit pseudo elements"_s;
+        errorString = "Node for given nodeId is a pseudo-element"_s;
         return nullptr;
     }
     return node;
@@ -478,18 +474,14 @@ Node* InspectorDOMAgent::assertEditableNode(ErrorString& errorString, int nodeId
 
 Element* InspectorDOMAgent::assertEditableElement(ErrorString& errorString, int nodeId)
 {
-    Element* element = assertElement(errorString, nodeId);
-    if (!element)
+    Node* node = assertEditableNode(errorString, nodeId);
+    if (!node)
         return nullptr;
-    if (element->isInUserAgentShadowTree()) {
-        errorString = "Cannot edit elements in user agent shadow trees"_s;
-        return nullptr;
-    }
-    if (element->isPseudoElement()) {
-        errorString = "Cannot edit pseudo elements"_s;
+    if (!is<Element>(node)) {
+        errorString = "Node for given nodeId is not an element"_s;
         return nullptr;
     }
-    return element;
+    return downcast<Element>(node);
 }
 
 void InspectorDOMAgent::getDocument(ErrorString& errorString, RefPtr<Inspector::Protocol::DOM::Node>& root)
@@ -497,7 +489,7 @@ void InspectorDOMAgent::getDocument(ErrorString& errorString, RefPtr<Inspector::
     m_documentRequested = true;
 
     if (!m_document) {
-        errorString = "Document is not available"_s;
+        errorString = "Internal error: missing document"_s;
         return;
     }
 
@@ -555,7 +547,7 @@ int InspectorDOMAgent::pushNodeToFrontend(ErrorString& errorString, int document
     if (!document)
         return 0;
     if (&nodeToPush->document() != document) {
-        errorString = "Node is not part of the document with given id"_s;
+        errorString = "nodeToPush is not part of the document with given documentNodeId"_s;
         return 0;
     }
 
@@ -581,7 +573,7 @@ void InspectorDOMAgent::requestChildNodes(ErrorString& errorString, int nodeId, 
     else if (*depth > 0)
         sanitizedDepth = *depth;
     else {
-        errorString = "Please provide a positive integer as a depth or -1 for entire subtree"_s;
+        errorString = "Unexpected value below -1 for given depth"_s;
         return;
     }
 
@@ -601,7 +593,7 @@ void InspectorDOMAgent::querySelector(ErrorString& errorString, int nodeId, cons
 
     auto queryResult = downcast<ContainerNode>(*node).querySelector(selectors);
     if (queryResult.hasException()) {
-        errorString = "DOM Error while querying"_s;
+        errorString = "DOM Error while querying with given selectors"_s;
         return;
     }
 
@@ -621,7 +613,7 @@ void InspectorDOMAgent::querySelectorAll(ErrorString& errorString, int nodeId, c
 
     auto queryResult = downcast<ContainerNode>(*node).querySelectorAll(selectors);
     if (queryResult.hasException()) {
-        errorString = "DOM Error while querying"_s;
+        errorString = "DOM Error while querying with given selectors"_s;
         return;
     }
 
@@ -653,7 +645,7 @@ int InspectorDOMAgent::pushNodePathToFrontend(Node* nodeToPush)
         Node* parent = innerParentNode(node);
         if (!parent) {
             // Node being pushed is detached -> push subtree root.
-            auto newMap = std::make_unique<NodeToIdMap>();
+            auto newMap = makeUnique<NodeToIdMap>();
             danglingMap = newMap.get();
             m_danglingNodeToIdMaps.append(newMap.release());
             auto children = JSON::ArrayOf<Inspector::Protocol::DOM::Node>::create();
@@ -707,7 +699,7 @@ void InspectorDOMAgent::setAttributesAsText(ErrorString& errorString, int elemen
 
     Node* child = parsedElement->firstChild();
     if (!child) {
-        errorString = "Could not parse value as attributes"_s;
+        errorString = "Could not parse given text"_s;
         return;
     }
 
@@ -810,7 +802,7 @@ void InspectorDOMAgent::setOuterHTML(ErrorString& errorString, int nodeId, const
 
     Document& document = node->document();
     if (!document.isHTMLDocument() && !document.isXMLDocument()) {
-        errorString = "Not an HTML/XML document"_s;
+        errorString = "Document of node for given nodeId is not HTML/XML"_s;
         return;
     }
 
@@ -837,7 +829,7 @@ void InspectorDOMAgent::insertAdjacentHTML(ErrorString& errorString, int nodeId,
         return;
 
     if (!is<Element>(node)) {
-        errorString = "Can only call insertAdjacentHTML on Elements."_s;
+        errorString = "Node for given nodeId is not an element"_s;
         return;
     }
 
@@ -851,7 +843,7 @@ void InspectorDOMAgent::setNodeValue(ErrorString& errorString, int nodeId, const
         return;
 
     if (!is<Text>(*node)) {
-        errorString = "Can only set value of text nodes"_s;
+        errorString = "Node for given nodeId is not text"_s;
         return;
     }
 
@@ -965,7 +957,7 @@ void InspectorDOMAgent::setEventListenerDisabled(ErrorString& errorString, int e
 {
     auto it = m_eventListenerEntries.find(eventListenerId);
     if (it == m_eventListenerEntries.end()) {
-        errorString = "No event listener for given identifier."_s;
+        errorString = "Missing event listener for given eventListenerId"_s;
         return;
     }
 
@@ -976,7 +968,7 @@ void InspectorDOMAgent::setBreakpointForEventListener(ErrorString& errorString, 
 {
     auto it = m_eventListenerEntries.find(eventListenerId);
     if (it == m_eventListenerEntries.end()) {
-        errorString = "No event listener for given identifier."_s;
+        errorString = "Missing event listener for given eventListenerId"_s;
         return;
     }
 
@@ -987,7 +979,7 @@ void InspectorDOMAgent::removeBreakpointForEventListener(ErrorString& errorStrin
 {
     auto it = m_eventListenerEntries.find(eventListenerId);
     if (it == m_eventListenerEntries.end()) {
-        errorString = "No event listener for given identifier."_s;
+        errorString = "Missing event listener for given eventListenerId"_s;
         return;
     }
 
@@ -1011,12 +1003,12 @@ void InspectorDOMAgent::performSearch(ErrorString& errorString, const String& qu
     if (nodeIds) {
         for (auto& nodeValue : *nodeIds) {
             if (!nodeValue) {
-                errorString = "Invalid nodeIds item."_s;
+                errorString = "Unexpected non-integer item in given nodeIds"_s;
                 return;
             }
             int nodeId = 0;
             if (!nodeValue->asInteger(nodeId)) {
-                errorString = "Invalid nodeIds item type. Expecting integer types."_s;
+                errorString = "Unexpected non-integer item in given nodeIds"_s;
                 return;
             }
             Node* node = assertNode(errorString, nodeId);
@@ -1046,13 +1038,13 @@ void InspectorDOMAgent::getSearchResults(ErrorString& errorString, const String&
 {
     SearchResults::iterator it = m_searchResults.find(searchId);
     if (it == m_searchResults.end()) {
-        errorString = "No search session with given id found"_s;
+        errorString = "Missing search result for given searchId"_s;
         return;
     }
 
     int size = it->value.size();
     if (fromIndex < 0 || toIndex > size || fromIndex >= toIndex) {
-        errorString = "Invalid search result range"_s;
+        errorString = "Invalid search result range for given fromIndex and toIndex"_s;
         return;
     }
 
@@ -1092,9 +1084,9 @@ bool InspectorDOMAgent::handleTouchEvent(Node& node)
 
 void InspectorDOMAgent::inspect(Node* inspectedNode)
 {
-    ErrorString unused;
+    ErrorString ignored;
     RefPtr<Node> node = inspectedNode;
-    setSearchingForNode(unused, false, nullptr, false);
+    setSearchingForNode(ignored, false, nullptr, false);
 
     if (node->nodeType() != Node::ELEMENT_NODE && node->nodeType() != Node::DOCUMENT_NODE)
         node = node->parentNode();
@@ -1177,7 +1169,7 @@ std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspector
         return nullptr;
     }
 
-    auto highlightConfig = std::make_unique<HighlightConfig>();
+    auto highlightConfig = makeUnique<HighlightConfig>();
     bool showInfo = false; // Default: false (do not show a tooltip).
     highlightInspectorObject->getBoolean("showInfo", showInfo);
     highlightConfig->showInfo = showInfo;
@@ -1196,15 +1188,15 @@ void InspectorDOMAgent::setInspectModeEnabled(ErrorString& errorString, bool ena
 
 void InspectorDOMAgent::highlightRect(ErrorString&, int x, int y, int width, int height, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
-    auto quad = std::make_unique<FloatQuad>(FloatRect(x, y, width, height));
+    auto quad = makeUnique<FloatQuad>(FloatRect(x, y, width, height));
     innerHighlightQuad(WTFMove(quad), color, outlineColor, usePageCoordinates);
 }
 
 void InspectorDOMAgent::highlightQuad(ErrorString& errorString, const JSON::Array& quadArray, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
-    auto quad = std::make_unique<FloatQuad>();
+    auto quad = makeUnique<FloatQuad>();
     if (!parseQuad(quadArray, quad.get())) {
-        errorString = "Invalid Quad format"_s;
+        errorString = "Unexpected invalid quadArray"_s;
         return;
     }
     innerHighlightQuad(WTFMove(quad), color, outlineColor, usePageCoordinates);
@@ -1212,7 +1204,7 @@ void InspectorDOMAgent::highlightQuad(ErrorString& errorString, const JSON::Arra
 
 void InspectorDOMAgent::innerHighlightQuad(std::unique_ptr<FloatQuad> quad, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
-    auto highlightConfig = std::make_unique<HighlightConfig>();
+    auto highlightConfig = makeUnique<HighlightConfig>();
     highlightConfig->content = parseColor(color);
     highlightConfig->contentOutline = parseColor(outlineColor);
     highlightConfig->usePageCoordinates = usePageCoordinates ? *usePageCoordinates : false;
@@ -1224,25 +1216,29 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const JSON::
     RefPtr<Document> document;
 
     if (frameId) {
-        Frame* frame = m_instrumentingAgents.inspectorPageAgent()->frameForId(*frameId);
-        if (!frame) {
-            errorString = "No frame for given id found"_s;
+        auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+        if (!pageAgent) {
+            errorString = "Page domain must be enabled"_s;
             return;
         }
+
+        auto* frame = pageAgent->assertFrame(errorString, *frameId);
+        if (!frame)
+            return;
 
         document = frame->document();
     } else
         document = m_document;
 
     if (!document) {
-        errorString = "Document could not be found"_s;
+        errorString = "Missing document of frame for given frameId"_s;
         return;
     }
 
     auto queryResult = document->querySelectorAll(selectorString);
     // FIXME: <https://webkit.org/b/146161> Web Inspector: DOM.highlightSelector should work for "a:visited"
     if (queryResult.hasException()) {
-        errorString = "DOM Error while querying"_s;
+        errorString = "DOM Error while querying with given selectorString"_s;
         return;
     }
 
@@ -1261,7 +1257,7 @@ void InspectorDOMAgent::highlightNode(ErrorString& errorString, const JSON::Obje
     else if (objectId) {
         node = nodeForObjectId(*objectId);
         if (!node)
-            errorString = "Node for given objectId not found"_s;
+            errorString = "Missing node for given objectId"_s;
     } else
         errorString = "Either nodeId or objectId must be specified"_s;
 
@@ -1280,13 +1276,13 @@ void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const JSON::
     Vector<Ref<Node>> nodes;
     for (auto& nodeValue : nodeIds) {
         if (!nodeValue) {
-            errorString = "Invalid nodeIds item."_s;
+            errorString = "Unexpected non-integer item in given nodeIds"_s;
             return;
         }
 
         int nodeId = 0;
         if (!nodeValue->asInteger(nodeId)) {
-            errorString = "Invalid nodeIds item type. Expecting integer types."_s;
+            errorString = "Unexpected non-integer item in given nodeIds"_s;
             return;
         }
 
@@ -1311,12 +1307,18 @@ void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const JSON::
 
 void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const JSON::Object* color, const JSON::Object* outlineColor)
 {
-    Frame* frame = m_instrumentingAgents.inspectorPageAgent()->assertFrame(errorString, frameId);
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent) {
+        errorString = "Page domain must be enabled"_s;
+        return;
+    }
+
+    auto* frame = pageAgent->assertFrame(errorString, frameId);
     if (!frame)
         return;
 
     if (frame->ownerElement()) {
-        auto highlightConfig = std::make_unique<HighlightConfig>();
+        auto highlightConfig = makeUnique<HighlightConfig>();
         highlightConfig->showInfo = true; // Always show tooltips for frames.
         highlightConfig->content = parseColor(color);
         highlightConfig->contentOutline = parseColor(outlineColor);
@@ -1345,7 +1347,7 @@ void InspectorDOMAgent::moveTo(ErrorString& errorString, int nodeId, int targetE
         if (!anchorNode)
             return;
         if (anchorNode->parentNode() != targetElement) {
-            errorString = "Anchor node must be child of the target element"_s;
+            errorString = "Given anchorNodeId must be a child of given targetElementId"_s;
             return;
         }
     }
@@ -1381,7 +1383,7 @@ void InspectorDOMAgent::focus(ErrorString& errorString, int nodeId)
     if (!element)
         return;
     if (!element->isFocusable()) {
-        errorString = "Element is not focusable"_s;
+        errorString = "Element for given nodeId is not focusable"_s;
         return;
     }
     element->focus();
@@ -1389,16 +1391,19 @@ void InspectorDOMAgent::focus(ErrorString& errorString, int nodeId)
 
 void InspectorDOMAgent::setInspectedNode(ErrorString& errorString, int nodeId)
 {
-    Node* node = nodeForId(nodeId);
-    if (!node || node->isInUserAgentShadowTree()) {
-        errorString = "No node with given id found"_s;
+    Node* node = assertNode(errorString, nodeId);
+    if (!node)
+        return;
+
+    if (node->isInUserAgentShadowTree()) {
+        errorString = "Node for given nodeId is in a shadow tree"_s;
         return;
     }
 
     m_inspectedNode = node;
 
     if (auto& commandLineAPIHost = static_cast<WebInjectedScriptManager&>(m_injectedScriptManager).commandLineAPIHost())
-        commandLineAPIHost->addInspectedObject(std::make_unique<InspectableNode>(node));
+        commandLineAPIHost->addInspectedObject(makeUnique<InspectableNode>(node));
 
     m_suppressEventListenerChangedEvent = false;
 }
@@ -1406,14 +1411,12 @@ void InspectorDOMAgent::setInspectedNode(ErrorString& errorString, int nodeId)
 void InspectorDOMAgent::resolveNode(ErrorString& errorString, int nodeId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
 {
     String objectGroupName = objectGroup ? *objectGroup : emptyString();
-    Node* node = nodeForId(nodeId);
-    if (!node) {
-        errorString = "No node with given id found"_s;
+    Node* node = assertNode(errorString, nodeId);
+    if (!node)
         return;
-    }
     RefPtr<Inspector::Protocol::Runtime::RemoteObject> object = resolveNode(node, objectGroupName);
     if (!object) {
-        errorString = "Node with given id does not belong to the document"_s;
+        errorString = "Missing injected script for given nodeId"_s;
         return;
     }
     result = object;
@@ -1551,8 +1554,11 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
             value->setChildren(WTFMove(children));
     }
 
-    if (auto* frameView = node->document().view())
-        value->setFrameId(m_instrumentingAgents.inspectorPageAgent()->frameId(&frameView->frame()));
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (pageAgent) {
+        if (auto* frameView = node->document().view())
+            value->setFrameId(pageAgent->frameId(&frameView->frame()));
+    }
 
     if (is<Element>(*node)) {
         Element& element = downcast<Element>(*node);
@@ -1588,7 +1594,8 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
         }
     } else if (is<Document>(*node)) {
         Document& document = downcast<Document>(*node);
-        value->setFrameId(m_instrumentingAgents.inspectorPageAgent()->frameId(document.frame()));
+        if (pageAgent)
+            value->setFrameId(pageAgent->frameId(document.frame()));
         value->setDocumentURL(documentURLString(&document));
         value->setBaseURL(documentBaseURLString(&document));
         value->setXmlVersion(document.xmlVersion());
@@ -1690,19 +1697,20 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
         }
 
         if (handlerObject && exec) {
-            JSC::JSFunction* handlerFunction = JSC::jsDynamicCast<JSC::JSFunction*>(exec->vm(), handlerObject);
+            JSC::VM& vm = exec->vm();
+            JSC::JSFunction* handlerFunction = JSC::jsDynamicCast<JSC::JSFunction*>(vm, handlerObject);
 
             if (!handlerFunction) {
-                auto scope = DECLARE_CATCH_SCOPE(exec->vm());
+                auto scope = DECLARE_CATCH_SCOPE(vm);
 
                 // If the handler is not actually a function, see if it implements the EventListener interface and use that.
-                auto handleEventValue = handlerObject->get(exec, JSC::Identifier::fromString(exec, "handleEvent"));
+                auto handleEventValue = handlerObject->get(exec, JSC::Identifier::fromString(vm, "handleEvent"));
 
                 if (UNLIKELY(scope.exception()))
                     scope.clearException();
 
                 if (handleEventValue)
-                    handlerFunction = JSC::jsDynamicCast<JSC::JSFunction*>(exec->vm(), handleEventValue);
+                    handlerFunction = JSC::jsDynamicCast<JSC::JSFunction*>(vm, handleEventValue);
             }
 
             if (handlerFunction && !handlerFunction->isHostOrBuiltinFunction()) {
@@ -1711,7 +1719,7 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
                 if (handlerFunction != handlerObject)
                     handlerName = JSC::JSObject::calculatedClassName(handlerObject);
                 if (handlerName.isEmpty() || handlerName == "Object"_s)
-                    handlerName = handlerFunction->calculatedDisplayName(exec->vm());
+                    handlerName = handlerFunction->calculatedDisplayName(vm);
 
                 if (auto executable = handlerFunction->jsExecutable()) {
                     lineNumber = executable->firstLine() - 1;
@@ -2314,7 +2322,7 @@ void InspectorDOMAgent::didInvalidateStyleAttr(Element& element)
         return;
 
     if (!m_revalidateStyleAttrTask)
-        m_revalidateStyleAttrTask = std::make_unique<RevalidateStyleAttributeTask>(this);
+        m_revalidateStyleAttrTask = makeUnique<RevalidateStyleAttributeTask>(this);
     m_revalidateStyleAttrTask->scheduleFor(&element);
 }
 
@@ -2573,7 +2581,7 @@ void InspectorDOMAgent::pushNodeByPathToFrontend(ErrorString& errorString, const
     if (Node* node = nodeForPath(path))
         *nodeId = pushNodePathToFrontend(node);
     else
-        errorString = "No node with given path found"_s;
+        errorString = "Missing node for given path"_s;
 }
 
 RefPtr<Inspector::Protocol::Runtime::RemoteObject> InspectorDOMAgent::resolveNode(Node* node, const String& objectGroup)
@@ -2597,7 +2605,7 @@ Node* InspectorDOMAgent::scriptValueAsNode(JSC::JSValue value)
 {
     if (!value || !value.isObject())
         return nullptr;
-    return JSNode::toWrapped(*value.getObject()->vm(), value.getObject());
+    return JSNode::toWrapped(value.getObject()->vm(), value.getObject());
 }
 
 JSC::JSValue InspectorDOMAgent::nodeAsScriptValue(JSC::ExecState& state, Node* node)

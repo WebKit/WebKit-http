@@ -28,6 +28,9 @@
 
 #if ENABLE(WEBGPU)
 
+#include "DOMWindow.h"
+#include "Document.h"
+#include "EventNames.h"
 #include "Exception.h"
 #include "GPUBindGroup.h"
 #include "GPUBindGroupBinding.h"
@@ -36,12 +39,14 @@
 #include "GPUBufferBinding.h"
 #include "GPUBufferDescriptor.h"
 #include "GPUCommandBuffer.h"
-#include "GPUPipelineStageDescriptor.h"
+#include "GPUComputePipelineDescriptor.h"
+#include "GPUProgrammableStageDescriptor.h"
 #include "GPURenderPipelineDescriptor.h"
 #include "GPUSampler.h"
 #include "GPUSamplerDescriptor.h"
 #include "GPUShaderModuleDescriptor.h"
 #include "GPUTextureDescriptor.h"
+#include "GPUUncapturedErrorEvent.h"
 #include "JSDOMConvertBufferSource.h"
 #include "JSGPUOutOfMemoryError.h"
 #include "JSGPUValidationError.h"
@@ -57,7 +62,7 @@
 #include "WebGPUComputePipelineDescriptor.h"
 #include "WebGPUPipelineLayout.h"
 #include "WebGPUPipelineLayoutDescriptor.h"
-#include "WebGPUPipelineStageDescriptor.h"
+#include "WebGPUProgrammableStageDescriptor.h"
 #include "WebGPUQueue.h"
 #include "WebGPURenderPipeline.h"
 #include "WebGPURenderPipelineDescriptor.h"
@@ -66,23 +71,35 @@
 #include "WebGPUShaderModuleDescriptor.h"
 #include "WebGPUSwapChain.h"
 #include "WebGPUTexture.h"
+#include <JavaScriptCore/ConsoleMessage.h>
+#include <memory>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/MainThread.h>
 #include <wtf/Optional.h>
+#include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-RefPtr<WebGPUDevice> WebGPUDevice::tryCreate(Ref<const WebGPUAdapter>&& adapter)
+WTF_MAKE_ISO_ALLOCATED_IMPL(WebGPUDevice);
+
+RefPtr<WebGPUDevice> WebGPUDevice::tryCreate(ScriptExecutionContext& context, Ref<const WebGPUAdapter>&& adapter)
 {
     if (auto device = GPUDevice::tryCreate(adapter->options()))
-        return adoptRef(new WebGPUDevice(WTFMove(adapter), device.releaseNonNull()));
+        return adoptRef(new WebGPUDevice(context, WTFMove(adapter), device.releaseNonNull()));
     return nullptr;
 }
 
-WebGPUDevice::WebGPUDevice(Ref<const WebGPUAdapter>&& adapter, Ref<GPUDevice>&& device)
-    : m_adapter(WTFMove(adapter))
+WebGPUDevice::WebGPUDevice(ScriptExecutionContext& context, Ref<const WebGPUAdapter>&& adapter, Ref<GPUDevice>&& device)
+    : m_scriptExecutionContext(context)
+    , m_adapter(WTFMove(adapter))
     , m_device(WTFMove(device))
-    , m_errorScopes(GPUErrorScopes::create())
+    , m_errorScopes(GPUErrorScopes::create([this, weakThis = makeWeakPtr(this)] (GPUError&& error) {
+        if (weakThis)
+            dispatchUncapturedError(WTFMove(error));
+    }))
 {
+    ASSERT(m_scriptExecutionContext.isDocument());
 }
 
 Ref<WebGPUBuffer> WebGPUDevice::createBuffer(const GPUBufferDescriptor& descriptor) const
@@ -90,7 +107,7 @@ Ref<WebGPUBuffer> WebGPUDevice::createBuffer(const GPUBufferDescriptor& descript
     m_errorScopes->setErrorPrefix("GPUDevice.createBuffer(): ");
 
     auto buffer = m_device->tryCreateBuffer(descriptor, GPUBufferMappedOption::NotMapped, m_errorScopes);
-    return WebGPUBuffer::create(WTFMove(buffer));
+    return WebGPUBuffer::create(WTFMove(buffer), m_errorScopes);
 }
 
 Vector<JSC::JSValue> WebGPUDevice::createBufferMapped(JSC::ExecState& state, const GPUBufferDescriptor& descriptor) const
@@ -105,7 +122,7 @@ Vector<JSC::JSValue> WebGPUDevice::createBufferMapped(JSC::ExecState& state, con
         wrappedArrayBuffer = toJS(&state, JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), arrayBuffer);
     }
 
-    auto webBuffer = WebGPUBuffer::create(WTFMove(buffer));
+    auto webBuffer = WebGPUBuffer::create(WTFMove(buffer), m_errorScopes);
     auto wrappedWebBuffer = toJS(&state, JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), webBuffer);
 
     return { wrappedWebBuffer, wrappedArrayBuffer };
@@ -152,7 +169,7 @@ Ref<WebGPUBindGroup> WebGPUDevice::createBindGroup(const WebGPUBindGroupDescript
 Ref<WebGPUShaderModule> WebGPUDevice::createShaderModule(const WebGPUShaderModuleDescriptor& descriptor) const
 {
     // FIXME: What can be validated here?
-    auto module = m_device->tryCreateShaderModule(GPUShaderModuleDescriptor { descriptor.code, descriptor.isWHLSL });
+    auto module = m_device->tryCreateShaderModule(GPUShaderModuleDescriptor { descriptor.code });
     return WebGPUShaderModule::create(WTFMove(module));
 }
 
@@ -202,6 +219,31 @@ void WebGPUDevice::popErrorScope(ErrorPromise&& promise)
         promise.resolve(error);
     else
         promise.reject(Exception { OperationError, "GPUDevice::popErrorScope(): " + failMessage });
+}
+
+// Errors reported via the validation error event should also appear in the console as warnings.
+static void printValidationErrorToConsole(GPUError& error, ScriptExecutionContext& context)
+{
+    if (!WTF::holds_alternative<RefPtr<GPUValidationError>>(error))
+        return;
+
+    auto validationError = WTF::get<RefPtr<GPUValidationError>>(error);
+    if (!validationError)
+        return;
+
+    auto message = validationError->message();
+    auto consoleMessage = makeUnique<Inspector::ConsoleMessage>(MessageSource::Rendering, MessageType::Log, MessageLevel::Warning, message);
+
+    downcast<Document>(context).addConsoleMessage(WTFMove(consoleMessage));
+}
+
+void WebGPUDevice::dispatchUncapturedError(GPUError&& error)
+{
+    printValidationErrorToConsole(error, m_scriptExecutionContext);
+
+    callOnMainThread([error = WTFMove(error), this, protectedThis = makeRef(*this)] () mutable {
+        dispatchEvent(GPUUncapturedErrorEvent::create(eventNames().uncapturederrorEvent, WTFMove(error)));
+    });
 }
 
 } // namespace WebCore

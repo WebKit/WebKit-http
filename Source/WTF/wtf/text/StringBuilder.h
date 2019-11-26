@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -175,7 +175,7 @@ public:
                 return;
             }
 
-            if (!(c & ~0xff)) {
+            if (isLatin1(c)) {
                 m_bufferCharacters8[length] = static_cast<LChar>(c);
                 m_length++;
                 return;
@@ -235,8 +235,7 @@ public:
     WTF_EXPORT_PRIVATE void appendFixedWidthNumber(float, unsigned decimalPlaces);
     WTF_EXPORT_PRIVATE void appendFixedWidthNumber(double, unsigned decimalPlaces);
 
-    // FIXME: Rename to append(...) after renaming any overloads of append that take more than one argument.
-    template<typename... StringTypes> void flexibleAppend(StringTypes...);
+    template<typename... StringTypes> void append(StringTypes...);
 
     String toString()
     {
@@ -358,17 +357,16 @@ private:
     void allocateBuffer(const UChar* currentCharacters, unsigned requiredLength);
     void allocateBufferUpConvert(const LChar* currentCharacters, unsigned requiredLength);
     template<typename CharacterType> void reallocateBuffer(unsigned requiredLength);
-    template<typename CharacterType> ALWAYS_INLINE CharacterType* appendUninitialized(unsigned additionalLength);
-    template<typename CharacterType> ALWAYS_INLINE CharacterType* appendUninitializedWithoutOverflowCheck(CheckedInt32 requiredLength);
-    template<typename CharacterType> CharacterType* appendUninitializedSlow(unsigned requiredLength);
-    
-    WTF_EXPORT_PRIVATE UChar* appendUninitializedWithoutOverflowCheckForUChar(CheckedInt32 requiredLength);
-    WTF_EXPORT_PRIVATE LChar* appendUninitializedWithoutOverflowCheckForLChar(CheckedInt32 requiredLength);
-    
+    template<typename CharacterType> ALWAYS_INLINE CharacterType* extendBufferForAppending(unsigned additionalLength);
+    template<typename CharacterType> ALWAYS_INLINE CharacterType* extendBufferForAppendingWithoutOverflowCheck(CheckedInt32 requiredLength);
+    template<typename CharacterType> CharacterType* extendBufferForAppendingSlowCase(unsigned requiredLength);
+    WTF_EXPORT_PRIVATE LChar* extendBufferForAppending8(CheckedInt32 requiredLength);
+    WTF_EXPORT_PRIVATE UChar* extendBufferForAppending16(CheckedInt32 requiredLength);
+
     template<typename CharacterType> ALWAYS_INLINE CharacterType* getBufferCharacters();
     WTF_EXPORT_PRIVATE void reifyString() const;
 
-    template<typename... StringTypeAdapters> void flexibleAppendFromAdapters(StringTypeAdapters...);
+    template<typename... StringTypeAdapters> void appendFromAdapters(StringTypeAdapters...);
 
     mutable String m_string;
     RefPtr<StringImpl> m_buffer;
@@ -399,35 +397,30 @@ ALWAYS_INLINE UChar* StringBuilder::getBufferCharacters<UChar>()
 }
 
 template<typename... StringTypeAdapters>
-void StringBuilder::flexibleAppendFromAdapters(StringTypeAdapters... adapters)
+void StringBuilder::appendFromAdapters(StringTypeAdapters... adapters)
 {
     auto requiredLength = checkedSum<int32_t>(m_length, adapters.length()...);
-    if (requiredLength.hasOverflowed()) {
-        didOverflow();
-        return;
-    }
-
     if (m_is8Bit && are8Bit(adapters...)) {
-        LChar* dest = appendUninitializedWithoutOverflowCheckForLChar(requiredLength);
-        if (!dest) {
+        LChar* destination = extendBufferForAppending8(requiredLength);
+        if (!destination) {
             ASSERT(hasOverflowed());
             return;
         }
-        stringTypeAdapterAccumulator(dest, adapters...);
+        stringTypeAdapterAccumulator(destination, adapters...);
     } else {
-        UChar* dest = appendUninitializedWithoutOverflowCheckForUChar(requiredLength);
-        if (!dest) {
+        UChar* destination = extendBufferForAppending16(requiredLength);
+        if (!destination) {
             ASSERT(hasOverflowed());
             return;
         }
-        stringTypeAdapterAccumulator(dest, adapters...);
+        stringTypeAdapterAccumulator(destination, adapters...);
     }
 }
 
 template<typename... StringTypes>
-void StringBuilder::flexibleAppend(StringTypes... strings)
+void StringBuilder::append(StringTypes... strings)
 {
-    flexibleAppendFromAdapters(StringTypeAdapter<StringTypes>(strings)...);
+    appendFromAdapters(StringTypeAdapter<StringTypes>(strings)...);
 }
 
 template<typename CharacterType>

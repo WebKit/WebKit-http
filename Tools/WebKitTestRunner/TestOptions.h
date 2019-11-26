@@ -69,7 +69,9 @@ struct TestOptions {
     bool useCharacterSelectionGranularity { false };
     bool enableAttachmentElement { false };
     bool enableIntersectionObserver { false };
+    bool useEphemeralSession { false };
     bool enableMenuItemElement { false };
+    bool enableKeygenElement { false };
     bool enableModernMediaControls { true };
     bool enablePointerLock { false };
     bool enableWebAuthentication { true };
@@ -94,6 +96,7 @@ struct TestOptions {
     bool enableAppNap { false };
     bool enablePageCache { false };
     bool enableLazyImageLoading { false };
+    bool allowsLinkPreview { true };
 
     double contentInsetTop { 0 };
 
@@ -122,7 +125,9 @@ struct TestOptions {
             || useCharacterSelectionGranularity != options.useCharacterSelectionGranularity
             || enableAttachmentElement != options.enableAttachmentElement
             || enableIntersectionObserver != options.enableIntersectionObserver
+            || useEphemeralSession != options.useEphemeralSession
             || enableMenuItemElement != options.enableMenuItemElement
+            || enableKeygenElement != options.enableKeygenElement
             || enableModernMediaControls != options.enableModernMediaControls
             || enablePointerLock != options.enablePointerLock
             || enableWebAuthentication != options.enableWebAuthentication
@@ -149,7 +154,9 @@ struct TestOptions {
             || contentInsetTop != options.contentInsetTop
             || contentMode != options.contentMode
             || enableAppNap != options.enableAppNap
-            || enablePageCache != options.enablePageCache)
+            || enablePageCache != options.enablePageCache
+            || enableLazyImageLoading != options.enableLazyImageLoading
+            || allowsLinkPreview != options.allowsLinkPreview)
             return false;
 
         if (!contextOptions.hasSameInitializationOptions(options.contextOptions))

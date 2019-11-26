@@ -102,6 +102,7 @@ typedef const struct OpaqueWKGeolocationManager* WKGeolocationManagerRef;
 typedef const struct OpaqueWKGeolocationPermissionRequest* WKGeolocationPermissionRequestRef;
 typedef const struct OpaqueWKGeolocationPosition* WKGeolocationPositionRef;
 typedef const struct OpaqueWKGrammarDetail* WKGrammarDetailRef;
+typedef const struct OpaqueWKHTTPCookieStore* WKHTTPCookieStoreRef;
 typedef const struct OpaqueWKHitTestResult* WKHitTestResultRef;
 typedef const struct OpaqueWKIconDatabase* WKIconDatabaseRef;
 typedef const struct OpaqueWKInspector* WKInspectorRef;
@@ -140,6 +141,7 @@ typedef const struct OpaqueWKUserMediaPermissionCheck* WKUserMediaPermissionChec
 typedef const struct OpaqueWKUserMediaPermissionRequest* WKUserMediaPermissionRequestRef;
 typedef const struct OpaqueWKUserScript* WKUserScriptRef;
 typedef const struct OpaqueWKViewportAttributes* WKViewportAttributesRef;
+typedef const struct OpaqueWKWebsiteDataConfigurationStore* WKWebsiteDataStoreConfigurationRef;
 typedef const struct OpaqueWKWebsiteDataStore* WKWebsiteDataStoreRef;
 typedef const struct OpaqueWKWebsitePolicies* WKWebsitePoliciesRef;
 typedef const struct OpaqueWKWindowFeatures* WKWindowFeaturesRef;

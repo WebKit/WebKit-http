@@ -40,10 +40,12 @@ namespace Inspector {
 InspectorAgent::InspectorAgent(AgentContext& context)
     : InspectorAgentBase("Inspector"_s)
     , m_environment(context.environment)
-    , m_frontendDispatcher(std::make_unique<InspectorFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<InspectorFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(InspectorBackendDispatcher::create(context.backendDispatcher, this))
 {
 }
+
+InspectorAgent::~InspectorAgent() = default;
 
 void InspectorAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
@@ -53,8 +55,8 @@ void InspectorAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
     m_pendingEvaluateTestCommands.clear();
 
-    ErrorString unused;
-    disable(unused);
+    ErrorString ignored;
+    disable(ignored);
 }
 
 void InspectorAgent::enable(ErrorString&)

@@ -163,6 +163,7 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @protocol UIWKInteractionViewProtocol
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler;
 - (void)requestAutocorrectionContextWithCompletionHandler:(void (^)(UIWKAutocorrectionContext *autocorrectionContext))completionHandler;
+@property (nonatomic, readonly) NSString *selectedText;
 @end
 
 IGNORE_WARNINGS_BEGIN("deprecated-implementations")
@@ -252,6 +253,10 @@ typedef NS_ENUM(NSUInteger, _UIClickInteractionEvent) {
 
 @protocol UITextInputInternal
 - (CGRect)_selectionClipRect;
+@end
+
+@interface UIResponder (Internal)
+- (void)_share:(id)sender;
 @end
 
 #endif // PLATFORM(IOS_FAMILY)

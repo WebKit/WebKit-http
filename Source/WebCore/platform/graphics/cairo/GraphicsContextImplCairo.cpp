@@ -45,7 +45,7 @@ GraphicsContext::GraphicsContextImplFactory GraphicsContextImplCairo::createFact
     return GraphicsContext::GraphicsContextImplFactory(
         [&platformContext](GraphicsContext& context)
         {
-            return std::make_unique<GraphicsContextImplCairo>(context, platformContext);
+            return makeUnique<GraphicsContextImplCairo>(context, platformContext);
         });
 }
 
@@ -54,14 +54,14 @@ GraphicsContext::GraphicsContextImplFactory GraphicsContextImplCairo::createFact
     return GraphicsContext::GraphicsContextImplFactory(
         [cairoContext](GraphicsContext& context)
         {
-            return std::make_unique<GraphicsContextImplCairo>(context, cairoContext);
+            return makeUnique<GraphicsContextImplCairo>(context, cairoContext);
         });
 }
 
 GraphicsContextImplCairo::GraphicsContextImplCairo(GraphicsContext& context, PlatformContextCairo& platformContext)
     : GraphicsContextImpl(context, FloatRect { }, AffineTransform { })
     , m_platformContext(platformContext)
-    , m_private(std::make_unique<GraphicsContextPlatformPrivate>(m_platformContext))
+    , m_private(makeUnique<GraphicsContextPlatformPrivate>(m_platformContext))
 {
     m_platformContext.setGraphicsContextPrivate(m_private.get());
     m_private->syncContext(m_platformContext.cr());
@@ -69,9 +69,9 @@ GraphicsContextImplCairo::GraphicsContextImplCairo(GraphicsContext& context, Pla
 
 GraphicsContextImplCairo::GraphicsContextImplCairo(GraphicsContext& context, cairo_t* cairoContext)
     : GraphicsContextImpl(context, FloatRect { }, AffineTransform { })
-    , m_ownedPlatformContext(std::make_unique<PlatformContextCairo>(cairoContext))
+    , m_ownedPlatformContext(makeUnique<PlatformContextCairo>(cairoContext))
     , m_platformContext(*m_ownedPlatformContext)
-    , m_private(std::make_unique<GraphicsContextPlatformPrivate>(m_platformContext))
+    , m_private(makeUnique<GraphicsContextPlatformPrivate>(m_platformContext))
 {
     m_platformContext.setGraphicsContextPrivate(m_private.get());
     m_private->syncContext(m_platformContext.cr());
@@ -276,17 +276,17 @@ ImageDrawResult GraphicsContextImplCairo::drawTiledImage(Image& image, const Flo
     return GraphicsContextImpl::drawTiledImageImpl(graphicsContext(), image, destination, source, tileScaleFactor, hRule, vRule, imagePaintingOptions);
 }
 
-void GraphicsContextImplCairo::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation)
+void GraphicsContextImplCairo::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
 {
     UNUSED_PARAM(imageSize);
     auto& state = graphicsContext().state();
-    Cairo::drawNativeImage(m_platformContext, image.get(), destRect, srcRect, compositeOperator, blendMode, orientation, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state));
+    Cairo::drawNativeImage(m_platformContext, image.get(), destRect, srcRect, { options, state.imageInterpolationQuality }, state.alpha, Cairo::ShadowState(state));
 }
 
-void GraphicsContextImplCairo::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize&, CompositeOperator compositeOperator, BlendMode blendMode)
+void GraphicsContextImplCairo::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize&, const ImagePaintingOptions& options)
 {
     if (auto surface = image.nativeImageForCurrentFrame())
-        Cairo::drawPattern(m_platformContext, surface.get(), IntSize(image.size()), destRect, tileRect, patternTransform, phase, compositeOperator, blendMode);
+        Cairo::drawPattern(m_platformContext, surface.get(), IntSize(image.size()), destRect, tileRect, patternTransform, phase, options);
 }
 
 void GraphicsContextImplCairo::drawRect(const FloatRect& rect, float borderThickness)

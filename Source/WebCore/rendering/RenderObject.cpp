@@ -1893,13 +1893,35 @@ const RenderObject::RenderObjectRareData& RenderObject::rareData() const
 RenderObject::RenderObjectRareData& RenderObject::ensureRareData()
 {
     setHasRareData(true);
-    return *rareDataMap().ensure(this, [] { return std::make_unique<RenderObjectRareData>(); }).iterator->value;
+    return *rareDataMap().ensure(this, [] { return makeUnique<RenderObjectRareData>(); }).iterator->value;
 }
 
 void RenderObject::removeRareData()
 {
     rareDataMap().remove(this);
     setHasRareData(false);
+}
+
+bool RenderObject::hasNonEmptyVisibleRectRespectingParentFrames() const
+{
+    auto enclosingFrameRenderer = [] (const RenderObject& renderer) {
+        auto* ownerElement = renderer.document().ownerElement();
+        return ownerElement ? ownerElement->renderer() : nullptr;
+    };
+
+    auto hasEmptyVisibleRect = [] (const RenderObject& renderer) {
+        VisibleRectContext context { false, false, { VisibleRectContextOption::UseEdgeInclusiveIntersection, VisibleRectContextOption::ApplyCompositedClips }};
+        auto& box = renderer.enclosingBoxModelObject();
+        auto clippedBounds = box.computeVisibleRectInContainer(box.borderBoundingBox(), &box.view(), context);
+        return !clippedBounds || clippedBounds->isEmpty();
+    };
+
+    for (auto* renderer = this; renderer; renderer = enclosingFrameRenderer(*renderer)) {
+        if (hasEmptyVisibleRect(*renderer))
+            return true;
+    }
+
+    return false;
 }
 
 #if ENABLE(TREE_DEBUGGING)

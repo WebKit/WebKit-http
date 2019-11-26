@@ -795,7 +795,6 @@ static void enableExperimentalFeatures(IWebPreferences* preferences)
     prefsPrivate->setResizeObserverEnabled(TRUE);
     prefsPrivate->setWebAnimationsEnabled(TRUE);
     prefsPrivate->setServerTimingEnabled(TRUE);
-    prefsPrivate->setLazyImageLoadingEnabled(TRUE);
     // FIXME: WebGL2
     // FIXME: WebRTC
 }
@@ -905,9 +904,11 @@ static void setWebPreferencesForTestOptions(IWebPreferences* preferences, const 
 
     prefsPrivate->setWebAnimationsCSSIntegrationEnabled(options.enableWebAnimationsCSSIntegration);
     prefsPrivate->setMenuItemElementEnabled(options.enableMenuItemElement);
+    prefsPrivate->setKeygenElementEnabled(options.enableKeygenElement);
     prefsPrivate->setModernMediaControlsEnabled(options.enableModernMediaControls);
     prefsPrivate->setIsSecureContextAttributeEnabled(options.enableIsSecureContextAttribute);
     prefsPrivate->setInspectorAdditionsEnabled(options.enableInspectorAdditions);
+    preferences->setPrivateBrowsingEnabled(options.useEphemeralSession);
 }
 
 static String applicationId()

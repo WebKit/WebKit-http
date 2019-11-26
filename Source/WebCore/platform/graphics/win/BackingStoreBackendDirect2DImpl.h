@@ -30,7 +30,8 @@
 #include "BackingStoreBackendDirect2D.h"
 #include <pal/HysteresisActivity.h>
 
-interface IWICBitmap;
+interface ID2D1BitmapBrush;
+interface IDXGISurface1;
 
 namespace WebCore {
 
@@ -38,13 +39,17 @@ class IntSize;
 
 class BackingStoreBackendDirect2DImpl final : public BackingStoreBackendDirect2D {
 public:
-    WEBCORE_EXPORT BackingStoreBackendDirect2DImpl(const IntSize&, float deviceScaleFactor);
+    WEBCORE_EXPORT BackingStoreBackendDirect2DImpl(const IntSize&, float deviceScaleFactor, ID3D11Device1*);
     virtual ~BackingStoreBackendDirect2DImpl();
 
 private:
     void scroll(const IntRect&, const IntSize&) override;
+    ID2D1BitmapBrush* bitmapBrush() override;
 
+    IntSize m_scrollSurfaceSize;
     COMPtr<ID2D1Bitmap> m_scrollSurface;
+    COMPtr<IDXGISurface1> m_dxScrollSurface;
+    COMPtr<ID2D1BitmapBrush> m_bitmapBrush;
 
     PAL::HysteresisActivity m_scrolledHysteresis;
 };

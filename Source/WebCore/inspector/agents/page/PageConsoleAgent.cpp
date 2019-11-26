@@ -52,6 +52,8 @@ PageConsoleAgent::PageConsoleAgent(PageAgentContext& context)
 {
 }
 
+PageConsoleAgent::~PageConsoleAgent() = default;
+
 void PageConsoleAgent::clearMessages(ErrorString& errorString)
 {
     if (auto* domAgent = m_instrumentingAgents.inspectorDOMAgent())
@@ -120,7 +122,7 @@ void PageConsoleAgent::setLoggingChannelLevel(ErrorString& errorString, const St
 {
     auto configuration = channelConfigurationForString(channelLevel);
     if (!configuration) {
-        errorString = "Invalid logging level"_s;
+        errorString = makeString("Unknown channelLevel: "_s, channelLevel);
         return;
     }
 

@@ -37,6 +37,9 @@
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
 #include "SandboxExtension.h"
+#if HAVE(SEC_KEY_PROXY)
+#include "SecKeyProxyStore.h"
+#endif
 #include "ShouldGrandfatherStatistics.h"
 #include "StorageAccessStatus.h"
 #include "WebCompiledContentRuleList.h"
@@ -76,7 +79,6 @@ static uint64_t generateCallbackID()
 NetworkProcessProxy::NetworkProcessProxy(WebProcessPool& processPool)
     : AuxiliaryProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_processPool(processPool)
-    , m_numPendingConnectionRequests(0)
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     , m_customProtocolManagerProxy(*this)
 #endif
@@ -101,8 +103,8 @@ NetworkProcessProxy::~NetworkProcessProxy()
     if (m_downloadProxyMap)
         m_downloadProxyMap->invalidate();
 
-    for (auto& reply : m_pendingConnectionReplies)
-        reply.second({ });
+    for (auto& request : m_connectionRequests.values())
+        request.reply({ });
 }
 
 void NetworkProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -132,23 +134,45 @@ void NetworkProcessProxy::processWillShutDown(IPC::Connection& connection)
 
 void NetworkProcessProxy::getNetworkProcessConnection(WebProcessProxy& webProcessProxy, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&& reply)
 {
-    m_pendingConnectionReplies.append(std::make_pair(makeWeakPtr(webProcessProxy), WTFMove(reply)));
-
-    if (state() == State::Launching) {
-        m_numPendingConnectionRequests++;
+    m_connectionRequests.add(++m_connectionRequestIdentifier, ConnectionRequest { makeWeakPtr(webProcessProxy), WTFMove(reply) });
+    if (state() == State::Launching)
         return;
-    }
+    openNetworkProcessConnection(m_connectionRequestIdentifier, webProcessProxy);
+}
 
+void NetworkProcessProxy::openNetworkProcessConnection(uint64_t connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
+{
     bool isServiceWorkerProcess = false;
     RegistrableDomain registrableDomain;
 #if ENABLE(SERVICE_WORKER)
-    if (is<ServiceWorkerProcessProxy>(webProcessProxy)) {
+    if (webProcessProxy.isRunningServiceWorkers()) {
         isServiceWorkerProcess = true;
-        registrableDomain = downcast<ServiceWorkerProcessProxy>(webProcessProxy).registrableDomain();
+        registrableDomain = webProcessProxy.registrableDomain();
     }
 #endif
 
-    connection()->send(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess(isServiceWorkerProcess, registrableDomain), 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    connection()->sendWithAsyncReply(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), isServiceWorkerProcess, registrableDomain }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
+        if (!weakThis)
+            return;
+
+        if (!connectionIdentifier) {
+            // Network process probably crashed, the connection request should have been moved.
+            ASSERT(m_connectionRequests.isEmpty());
+            return;
+        }
+
+        ASSERT(m_connectionRequests.contains(connectionRequestIdentifier));
+        auto request = m_connectionRequests.take(connectionRequestIdentifier);
+
+#if USE(UNIX_DOMAIN_SOCKETS) || OS(WINDOWS)
+        request.reply(*connectionIdentifier);
+#elif OS(DARWIN)
+        MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier->port()));
+        request.reply(IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND });
+#else
+        notImplemented();
+#endif
+    }, 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void NetworkProcessProxy::synthesizeAppIsBackground(bool background)
@@ -164,7 +188,7 @@ void NetworkProcessProxy::synthesizeAppIsBackground(bool background)
 DownloadProxy& NetworkProcessProxy::createDownloadProxy(const ResourceRequest& resourceRequest)
 {
     if (!m_downloadProxyMap)
-        m_downloadProxyMap = std::make_unique<DownloadProxyMap>(*this);
+        m_downloadProxyMap = makeUnique<DownloadProxyMap>(*this);
 
     return m_downloadProxyMap->createDownloadProxy(m_processPool, resourceRequest);
 }
@@ -227,18 +251,18 @@ void NetworkProcessProxy::networkProcessCrashed()
 {
     clearCallbackStates();
 
-    Vector<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>> pendingReplies;
-    pendingReplies.reserveInitialCapacity(m_pendingConnectionReplies.size());
-    for (auto& reply : m_pendingConnectionReplies) {
-        if (reply.first)
-            pendingReplies.append(std::make_pair(makeRefPtr(reply.first.get()), WTFMove(reply.second)));
+    Vector<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>> pendingRequests;
+    pendingRequests.reserveInitialCapacity(m_connectionRequests.size());
+    for (auto& request : m_connectionRequests.values()) {
+        if (request.webProcess)
+            pendingRequests.uncheckedAppend(std::make_pair(makeRefPtr(request.webProcess.get()), WTFMove(request.reply)));
         else
-            reply.second({ });
+            request.reply({ });
     }
-    m_pendingConnectionReplies.clear();
+    m_connectionRequests.clear();
 
     // Tell the network process manager to forget about this network process proxy. This will cause us to be deleted.
-    m_processPool.networkProcessCrashed(*this, WTFMove(pendingReplies));
+    m_processPool.networkProcessCrashed(*this, WTFMove(pendingRequests));
 }
 
 void NetworkProcessProxy::clearCallbackStates()
@@ -295,38 +319,56 @@ void NetworkProcessProxy::didReceiveInvalidMessage(IPC::Connection&, IPC::String
 {
 }
 
-void NetworkProcessProxy::didCreateNetworkConnectionToWebProcess(const IPC::Attachment& connectionIdentifier)
+void NetworkProcessProxy::processAuthenticationChallenge(PAL::SessionID sessionID, Ref<AuthenticationChallengeProxy>&& authenticationChallenge)
 {
-    ASSERT(!m_pendingConnectionReplies.isEmpty());
-
-    // Grab the first pending connection reply.
-    auto reply = m_pendingConnectionReplies.takeFirst().second;
-
-#if USE(UNIX_DOMAIN_SOCKETS) || OS(WINDOWS)
-    reply(connectionIdentifier);
-#elif OS(DARWIN)
-    MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier.port()));
-    reply(IPC::Attachment(connectionIdentifier.port(), MACH_MSG_TYPE_MOVE_SEND));
-#else
-    notImplemented();
-#endif
-}
-
-void NetworkProcessProxy::didReceiveAuthenticationChallenge(PageIdentifier pageID, FrameIdentifier frameID, WebCore::AuthenticationChallenge&& coreChallenge, uint64_t challengeID)
-{
-#if ENABLE(SERVICE_WORKER)
-    if (auto* serviceWorkerProcessProxy = m_processPool.serviceWorkerProcessProxyFromPageID(pageID)) {
-        auto authenticationChallenge = AuthenticationChallengeProxy::create(WTFMove(coreChallenge), challengeID, makeRef(*connection()), nullptr);
-        serviceWorkerProcessProxy->didReceiveAuthenticationChallenge(pageID, frameID, WTFMove(authenticationChallenge));
+    auto* store = websiteDataStoreFromSessionID(sessionID);
+    if (!store || authenticationChallenge->core().protectionSpace().authenticationScheme() != ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
+        authenticationChallenge->listener().completeChallenge(AuthenticationChallengeDisposition::PerformDefaultHandling);
         return;
     }
+    store->client().didReceiveAuthenticationChallenge(WTFMove(authenticationChallenge));
+}
+
+void NetworkProcessProxy::didReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebPageProxyIdentifier pageID, const Optional<SecurityOriginData>& topOrigin, WebCore::AuthenticationChallenge&& coreChallenge, uint64_t challengeID)
+{
+#if HAVE(SEC_KEY_PROXY)
+    WeakPtr<SecKeyProxyStore> secKeyProxyStore;
+    if (coreChallenge.protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeClientCertificateRequested) {
+        if (auto* store = websiteDataStoreFromSessionID(sessionID)) {
+            auto newSecKeyProxyStore = SecKeyProxyStore::create();
+            secKeyProxyStore = makeWeakPtr(newSecKeyProxyStore.get());
+            store->addSecKeyProxyStore(WTFMove(newSecKeyProxyStore));
+        }
+    }
+    auto authenticationChallenge = AuthenticationChallengeProxy::create(WTFMove(coreChallenge), challengeID, makeRef(*connection()), WTFMove(secKeyProxyStore));
+#else
+    auto authenticationChallenge = AuthenticationChallengeProxy::create(WTFMove(coreChallenge), challengeID, makeRef(*connection()), nullptr);
 #endif
 
-    WebPageProxy* page = WebProcessProxy::webPage(pageID);
-    MESSAGE_CHECK(page);
+    WebPageProxy* page = nullptr;
+    if (pageID)
+        page = WebProcessProxy::webPage(pageID);
 
-    auto authenticationChallenge = AuthenticationChallengeProxy::create(WTFMove(coreChallenge), challengeID, makeRef(*connection()), page->secKeyProxyStore(coreChallenge));
-    page->didReceiveAuthenticationChallengeProxy(frameID, WTFMove(authenticationChallenge));
+    if (page) {
+        page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge));
+        return;
+    }
+
+    if (!topOrigin || !m_processPool.isServiceWorkerPageID(pageID)) {
+        processAuthenticationChallenge(sessionID, WTFMove(authenticationChallenge));
+        return;
+    }
+
+    WebPageProxy::forMostVisibleWebPageIfAny(sessionID, *topOrigin, [this, weakThis = makeWeakPtr(this), sessionID, authenticationChallenge = WTFMove(authenticationChallenge)](auto* page) mutable {
+        if (!weakThis)
+            return;
+
+        if (page) {
+            page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge));
+            return;
+        }
+        processAuthenticationChallenge(sessionID, WTFMove(authenticationChallenge));
+    });
 }
 
 void NetworkProcessProxy::didFetchWebsiteData(uint64_t callbackID, const WebsiteData& websiteData)
@@ -356,10 +398,13 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
         return;
     }
 
-    for (unsigned i = 0; i < m_numPendingConnectionRequests; ++i)
-        connection()->send(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess(false, { }), 0);
-    
-    m_numPendingConnectionRequests = 0;
+    auto connectionRequests = WTFMove(m_connectionRequests);
+    for (auto& connectionRequest : connectionRequests.values()) {
+        if (connectionRequest.webProcess)
+            getNetworkProcessConnection(*connectionRequest.webProcess, WTFMove(connectionRequest.reply));
+        else
+            connectionRequest.reply({ });
+    }
 
 #if PLATFORM(COCOA)
     if (m_processPool.processSuppressionEnabled())
@@ -372,7 +417,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
 #endif
 }
 
-void NetworkProcessProxy::logDiagnosticMessage(PageIdentifier pageID, const String& message, const String& description, WebCore::ShouldSample shouldSample)
+void NetworkProcessProxy::logDiagnosticMessage(WebPageProxyIdentifier pageID, const String& message, const String& description, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -383,7 +428,7 @@ void NetworkProcessProxy::logDiagnosticMessage(PageIdentifier pageID, const Stri
     page->logDiagnosticMessage(message, description, shouldSample);
 }
 
-void NetworkProcessProxy::logDiagnosticMessageWithResult(PageIdentifier pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
+void NetworkProcessProxy::logDiagnosticMessageWithResult(WebPageProxyIdentifier pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -394,7 +439,7 @@ void NetworkProcessProxy::logDiagnosticMessageWithResult(PageIdentifier pageID, 
     page->logDiagnosticMessageWithResult(message, description, result, shouldSample);
 }
 
-void NetworkProcessProxy::logDiagnosticMessageWithValue(PageIdentifier pageID, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample shouldSample)
+void NetworkProcessProxy::logDiagnosticMessageWithValue(WebPageProxyIdentifier pageID, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -737,9 +782,9 @@ void NetworkProcessProxy::setGrandfathered(PAL::SessionID sessionID, const Regis
     sendWithAsyncReply(Messages::NetworkProcess::SetGrandfathered(sessionID, resourceDomain, isGrandfathered), WTFMove(completionHandler));
 }
 
-void NetworkProcessProxy::requestStorageAccessConfirm(PageIdentifier pageID, FrameIdentifier frameID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void(bool)>&& completionHandler)
+void NetworkProcessProxy::requestStorageAccessConfirm(WebPageProxyIdentifier pageID, FrameIdentifier frameID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void(bool)>&& completionHandler)
 {
-    WebPageProxy* page = WebProcessProxy::webPage(pageID);
+    auto* page = WebProcessProxy::webPage(pageID);
     if (!page) {
         completionHandler(false);
         return;
@@ -909,15 +954,15 @@ void NetworkProcessProxy::notifyResourceLoadStatisticsTelemetryFinished(unsigned
     WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Dictionary::create(messageBody).ptr());
 }
 
-void NetworkProcessProxy::didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, OptionSet<WebCore::CrossSiteNavigationDataTransfer::Flag> navigationDataTransfer, PageIdentifier pageID)
+void NetworkProcessProxy::didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, OptionSet<WebCore::CrossSiteNavigationDataTransfer::Flag> navigationDataTransfer, WebPageProxyIdentifier webPageProxyID, PageIdentifier webPageID)
 {
     if (!canSendMessage())
         return;
 
-    send(Messages::NetworkProcess::DidCommitCrossSiteLoadWithDataTransfer(sessionID, fromDomain, toDomain, navigationDataTransfer, pageID), 0);
+    send(Messages::NetworkProcess::DidCommitCrossSiteLoadWithDataTransfer(sessionID, fromDomain, toDomain, navigationDataTransfer, webPageProxyID, webPageID), 0);
 }
 
-void NetworkProcessProxy::didCommitCrossSiteLoadWithDataTransferFromPrevalentResource(PageIdentifier pageID)
+void NetworkProcessProxy::didCommitCrossSiteLoadWithDataTransferFromPrevalentResource(WebPageProxyIdentifier pageID)
 {
     if (!canSendMessage())
         return;
@@ -1104,7 +1149,7 @@ void NetworkProcessProxy::retrieveCacheStorageParameters(PAL::SessionID sessionI
     auto* store = websiteDataStoreFromSessionID(sessionID);
 
     if (!store) {
-        RELEASE_LOG_ERROR(CacheStorage, "%p - NetworkProcessProxy is unable to retrieve CacheStorage parameters from the given session ID %" PRIu64, this, sessionID.sessionID());
+        RELEASE_LOG_ERROR(CacheStorage, "%p - NetworkProcessProxy is unable to retrieve CacheStorage parameters from the given session ID %" PRIu64, this, sessionID.toUInt64());
         send(Messages::NetworkProcess::SetCacheStorageParameters { sessionID, { }, { } }, 0);
         return;
     }
@@ -1211,7 +1256,7 @@ void NetworkProcessProxy::requestStorageSpace(PAL::SessionID sessionID, const We
 void NetworkProcessProxy::takeUploadAssertion()
 {
     ASSERT(!m_uploadAssertion);
-    m_uploadAssertion = std::make_unique<ProcessAssertion>(processIdentifier(), "WebKit uploads"_s, AssertionState::UnboundedNetworking);
+    m_uploadAssertion = makeUnique<ProcessAssertion>(processIdentifier(), "WebKit uploads"_s, AssertionState::UnboundedNetworking);
 }
 
 void NetworkProcessProxy::clearUploadAssertion()
@@ -1220,9 +1265,9 @@ void NetworkProcessProxy::clearUploadAssertion()
     m_uploadAssertion = nullptr;
 }
 
-void NetworkProcessProxy::testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebCore::PageIdentifier webPageID, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&& reply)
+void NetworkProcessProxy::testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebPageProxyIdentifier pageID, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&& reply)
 {
-    auto* page = WebProcessProxy::webPage(webPageID);
+    auto* page = WebProcessProxy::webPage(pageID);
     if (!page)
         return reply(false);
 

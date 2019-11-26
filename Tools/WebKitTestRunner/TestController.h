@@ -88,6 +88,7 @@ private:
 class TestController {
 public:
     static TestController& singleton();
+    static WKWebsiteDataStoreRef websiteDataStore();
 
     static const unsigned viewWidth;
     static const unsigned viewHeight;
@@ -274,8 +275,6 @@ public:
     uint64_t domCacheSize(WKStringRef origin);
 
     void setAllowStorageQuotaIncrease(bool);
-
-    void setIDBPerOriginQuota(uint64_t);
 
     bool didReceiveServerRedirectForProvisionalNavigation() const { return m_didReceiveServerRedirectForProvisionalNavigation; }
     void clearDidReceiveServerRedirectForProvisionalNavigation() { m_didReceiveServerRedirectForProvisionalNavigation = false; }
@@ -593,6 +592,7 @@ private:
 
     uint64_t m_serverTrustEvaluationCallbackCallsCount { 0 };
     bool m_shouldDismissJavaScriptAlertsAsynchronously { false };
+    bool m_allowsAnySSLCertificate { true };
 };
 
 struct TestCommand {

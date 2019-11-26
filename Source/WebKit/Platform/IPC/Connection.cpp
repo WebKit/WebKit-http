@@ -267,6 +267,7 @@ Connection::Connection(Identifier identifier, bool isServer, Client& client)
     , m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount(0)
     , m_didReceiveInvalidMessage(false)
     , m_shouldWaitForSyncReplies(true)
+    , m_shouldWaitForMessages(true)
 {
     ASSERT(RunLoop::isMain());
     allConnections().add(m_uniqueID, this);
@@ -343,7 +344,7 @@ void Connection::dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceive
         return;
     }
 
-    auto replyEncoder = std::make_unique<Encoder>("IPC", "SyncMessageReply", syncRequestID);
+    auto replyEncoder = makeUnique<Encoder>("IPC", "SyncMessageReply", syncRequestID);
 
     // Hand off both the decoder and encoder to the work queue message receiver.
     workQueueMessageReceiver.didReceiveSyncMessage(*this, decoder, replyEncoder);
@@ -388,7 +389,7 @@ void Connection::markCurrentlyDispatchedMessageAsInvalid()
 
 std::unique_ptr<Encoder> Connection::createSyncMessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, uint64_t& syncRequestID)
 {
-    auto encoder = std::make_unique<Encoder>(messageReceiverName, messageName, destinationID);
+    auto encoder = makeUnique<Encoder>(messageReceiverName, messageName, destinationID);
     encoder->setIsSyncMessage(true);
 
     // Encode the sync request ID.
@@ -486,6 +487,11 @@ std::unique_ptr<Decoder> Connection::waitForMessage(StringReference messageRecei
         // We don't support having multiple clients waiting for messages.
         ASSERT(!m_waitingForMessage);
         if (m_waitingForMessage)
+            return nullptr;
+
+        // If the connection is already invalidated, don't even start waiting.
+        // Once m_waitingForMessage is set, messageWaitingInterrupted will cover this instead.
+        if (!m_shouldWaitForMessages)
             return nullptr;
 
         m_waitingForMessage = &waitingForMessage;
@@ -756,7 +762,7 @@ void Connection::enableIncomingMessagesThrottling()
     if (m_incomingMessagesThrottler)
         return;
 
-    m_incomingMessagesThrottler = std::make_unique<MessagesThrottler>(*this, &Connection::dispatchIncomingMessages);
+    m_incomingMessagesThrottler = makeUnique<MessagesThrottler>(*this, &Connection::dispatchIncomingMessages);
 }
 
 void Connection::postConnectionDidCloseOnConnectionWorkQueue()
@@ -783,6 +789,10 @@ void Connection::connectionDidClose()
 
     {
         std::lock_guard<Lock> lock(m_waitForMessageMutex);
+
+        ASSERT(m_shouldWaitForMessages);
+        m_shouldWaitForMessages = false;
+
         if (m_waitingForMessage)
             m_waitingForMessage->messageWaitingInterrupted = true;
     }
@@ -843,7 +853,7 @@ void Connection::dispatchSyncMessage(Decoder& decoder)
         return;
     }
 
-    auto replyEncoder = std::make_unique<Encoder>("IPC", "SyncMessageReply", syncRequestID);
+    auto replyEncoder = makeUnique<Encoder>("IPC", "SyncMessageReply", syncRequestID);
 
     if (decoder.messageReceiverName() == "IPC" && decoder.messageName() == "WrappedAsyncMessageForTesting") {
         if (!m_fullySynchronousModeIsAllowedForTesting) {

@@ -62,7 +62,7 @@
 #include <WebCore/GCController.h>
 #include <WebCore/GeolocationClient.h>
 #include <WebCore/GeolocationController.h>
-#include <WebCore/GeolocationPosition.h>
+#include <WebCore/GeolocationPositionData.h>
 #include <WebCore/JSDOMConvertBufferSource.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/JSDOMWindow.h>
@@ -104,7 +104,7 @@ RefPtr<InjectedBundle> InjectedBundle::create(WebProcessCreationParameters& para
 InjectedBundle::InjectedBundle(const WebProcessCreationParameters& parameters)
     : m_path(parameters.injectedBundlePath)
     , m_platformBundle(0)
-    , m_client(std::make_unique<API::InjectedBundle::Client>())
+    , m_client(makeUnique<API::InjectedBundle::Client>())
 {
 }
 
@@ -115,7 +115,7 @@ InjectedBundle::~InjectedBundle()
 void InjectedBundle::setClient(std::unique_ptr<API::InjectedBundle::Client>&& client)
 {
     if (!client)
-        m_client = std::make_unique<API::InjectedBundle::Client>();
+        m_client = makeUnique<API::InjectedBundle::Client>();
     else
         m_client = WTFMove(client);
 }
@@ -157,25 +157,25 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     if (preference == "WebKitTabToLinksPreferenceKey") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::tabsToLinksKey(), enabled);
         for (auto* page : pages)
-            WebPage::fromCorePage(page)->setTabToLinksEnabled(enabled);
+            WebPage::fromCorePage(*page).setTabToLinksEnabled(enabled);
     }
 
     if (preference == "WebKit2AsynchronousPluginInitializationEnabled") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledKey(), enabled);
         for (auto* page : pages)
-            WebPage::fromCorePage(page)->setAsynchronousPluginInitializationEnabled(enabled);
+            WebPage::fromCorePage(*page).setAsynchronousPluginInitializationEnabled(enabled);
     }
 
     if (preference == "WebKit2AsynchronousPluginInitializationEnabledForAllPlugins") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledForAllPluginsKey(), enabled);
         for (auto* page : pages)
-            WebPage::fromCorePage(page)->setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
+            WebPage::fromCorePage(*page).setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
     }
 
     if (preference == "WebKit2ArtificialPluginInitializationDelayEnabled") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::artificialPluginInitializationDelayEnabledKey(), enabled);
         for (auto* page : pages)
-            WebPage::fromCorePage(page)->setArtificialPluginInitializationDelayEnabled(enabled);
+            WebPage::fromCorePage(*page).setArtificialPluginInitializationDelayEnabled(enabled);
     }
 
 #if ENABLE(SERVICE_CONTROLS)
@@ -346,16 +346,27 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
         (*iter)->settings().setJavaScriptCanAccessClipboard(enabled);
 }
 
-void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, WebPage* page, bool enabled)
 {
     ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-    if (enabled)
+
+    PAL::SessionID newSessionID = PAL::SessionID::legacyPrivateSessionID();
+    if (enabled) {
+        auto currentSessionID = page->corePage()->sessionID();
+        if (currentSessionID == PAL::SessionID::legacyPrivateSessionID())
+            return;
+        m_initialSessionID = currentSessionID;
         WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
+    } else {
+        if (!m_initialSessionID)
+            return;
+        newSessionID = *std::exchange(m_initialSessionID, WTF::nullopt);
+    }
 
-    PageGroup::pageGroup(pageGroup->identifier())->enableLegacyPrivateBrowsingForTesting(enabled);
+    PageGroup::pageGroup(pageGroup->identifier())->setSessionIDForTesting(newSessionID);
 
-    auto webStorageNameSpaceProvider = WebStorageNamespaceProvider::getOrCreate(pageGroup->pageGroupID());
-    webStorageNameSpaceProvider->enableLegacyPrivateBrowsingForTesting(enabled);
+    auto webStorageNameSpaceProvider = WebStorageNamespaceProvider::getOrCreate(*pageGroup);
+    webStorageNameSpaceProvider->setSessionIDForTesting(newSessionID);
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

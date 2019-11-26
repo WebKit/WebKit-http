@@ -99,6 +99,9 @@ $(PROJECT_DIR)/Modules/gamepad/GamepadEvent.idl
 $(PROJECT_DIR)/Modules/gamepad/NavigatorGamepad.idl
 $(PROJECT_DIR)/Modules/geolocation/Coordinates.idl
 $(PROJECT_DIR)/Modules/geolocation/Geolocation.idl
+$(PROJECT_DIR)/Modules/geolocation/GeolocationCoordinates.idl
+$(PROJECT_DIR)/Modules/geolocation/GeolocationPosition.idl
+$(PROJECT_DIR)/Modules/geolocation/GeolocationPositionError.idl
 $(PROJECT_DIR)/Modules/geolocation/Geoposition.idl
 $(PROJECT_DIR)/Modules/geolocation/NavigatorGeolocation.idl
 $(PROJECT_DIR)/Modules/geolocation/PositionCallback.idl
@@ -327,6 +330,7 @@ $(PROJECT_DIR)/Modules/webgpu/GPUBufferUsage.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUCanvasContext.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUColor.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUColorStateDescriptor.idl
+$(PROJECT_DIR)/Modules/webgpu/GPUColorWrite.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUColorWriteBits.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUCompareFunction.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUDepthStencilStateDescriptor.idl
@@ -338,11 +342,13 @@ $(PROJECT_DIR)/Modules/webgpu/GPUOrigin3D.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUOutOfMemoryError.idl
 $(PROJECT_DIR)/Modules/webgpu/GPURequestAdapterOptions.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUSamplerDescriptor.idl
+$(PROJECT_DIR)/Modules/webgpu/GPUShaderStage.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUShaderStageBit.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUStoreOp.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUTextureDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUTextureFormat.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUTextureUsage.idl
+$(PROJECT_DIR)/Modules/webgpu/GPUUncapturedErrorEvent.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUValidationError.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUVertexAttributeDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/GPUVertexBufferDescriptor.idl
@@ -365,11 +371,13 @@ $(PROJECT_DIR)/Modules/webgpu/WebGPUComputePipeline.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUComputePipelineDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUDevice.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUDeviceErrorScopes.idl
+$(PROJECT_DIR)/Modules/webgpu/WebGPUDeviceEventHandler.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUPipelineDescriptorBase.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUPipelineLayout.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUPipelineLayoutDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUPipelineStageDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUProgrammablePassEncoder.idl
+$(PROJECT_DIR)/Modules/webgpu/WebGPUProgrammableStageDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUQueue.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPURenderPassDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPURenderPassEncoder.idl
@@ -709,6 +717,7 @@ $(PROJECT_DIR)/html/HTMLObjectElement.idl
 $(PROJECT_DIR)/html/HTMLOptGroupElement.idl
 $(PROJECT_DIR)/html/HTMLOptionElement.idl
 $(PROJECT_DIR)/html/HTMLOptionsCollection.idl
+$(PROJECT_DIR)/html/HTMLOrForeignElement.idl
 $(PROJECT_DIR)/html/HTMLOutputElement.idl
 $(PROJECT_DIR)/html/HTMLParagraphElement.idl
 $(PROJECT_DIR)/html/HTMLParamElement.idl
@@ -850,6 +859,8 @@ $(PROJECT_DIR)/inspector/InspectorAuditResourcesObject.idl
 $(PROJECT_DIR)/inspector/InspectorFrontendHost.idl
 $(PROJECT_DIR)/loader/appcache/DOMApplicationCache.idl
 $(PROJECT_DIR)/make-hash-tools.pl
+$(PROJECT_DIR)/mathml/MathMLElement.idl
+$(PROJECT_DIR)/mathml/MathMLMathElement.idl
 $(PROJECT_DIR)/mathml/mathattrs.in
 $(PROJECT_DIR)/mathml/mathtags.in
 $(PROJECT_DIR)/page/BarProp.idl

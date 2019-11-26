@@ -25,9 +25,11 @@
 
 #pragma once
 
+#include "StorageAreaIdentifier.h"
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
+#include <wtf/WorkQueue.h>
 
 namespace WebKit {
 
@@ -40,11 +42,13 @@ public:
     TransientLocalStorageNamespace();
     ~TransientLocalStorageNamespace();
 
-    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&);
+    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&, Ref<WorkQueue>&&);
     Vector<WebCore::SecurityOriginData> origins() const;
 
     void clearStorageAreasMatchingOrigin(const WebCore::SecurityOriginData&);
     void clearAllStorageAreas();
+
+    Vector<StorageAreaIdentifier> storageAreaIdentifiers() const;
 
 private:
     const unsigned m_quotaInBytes { 0 };

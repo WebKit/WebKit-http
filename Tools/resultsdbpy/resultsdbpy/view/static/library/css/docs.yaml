@@ -663,6 +663,10 @@
                             <label>Disabled</label>
                         </div>
                         <div class="input">
+                            <input type="text" required disabled value="I am disabled"/>
+                            <label>Disabled with existing value</label>
+                        </div>
+                        <div class="input">
                             <input class="invalid" type="text" required value="use invalid mixin to force invalid style"/>
                             <label>Invalid</label>
                         </div>
@@ -1401,7 +1405,9 @@
                     html: |-
                         <div class="lengend">
                             <div class="item">
-                                <div class="dot success"></div>
+                                <div class="dot success">
+                                    <div class="text">✓</div>
+                                </div>
                                 <div class="label">Tests Pass</div>
                             </div>
                             <div class="item">
@@ -1418,7 +1424,9 @@
                     html: |-
                         <div class="lengend horizontal">
                             <div class="item">
-                                <div class="dot success"></div>
+                                <div class="dot success">
+                                    <div class="text">✓</div>
+                                </div>
                                 <div class="label">Tests Pass</div>
                             </div>
                             <div class="item">
@@ -1435,7 +1443,9 @@
                     html: |-
                         <div class="lengend timeline">
                             <div class="item">
-                                <div class="dot success"></div>
+                                <div class="dot success">
+                                    <div class="text">✓</div>
+                                </div>
                                 <div class="label">Tests Pass</div>
                             </div>
                             <div class="item">

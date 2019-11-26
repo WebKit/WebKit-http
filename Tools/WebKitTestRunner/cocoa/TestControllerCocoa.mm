@@ -35,7 +35,7 @@
 #import <Foundation/Foundation.h>
 #import <Security/SecItem.h>
 #import <WebKit/WKContextConfigurationRef.h>
-#import <WebKit/WKCookieManager.h>
+#import <WebKit/WKContextPrivate.h>
 #import <WebKit/WKPreferencesRefPrivate.h>
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKStringCF.h>
@@ -64,13 +64,13 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration = [[WKWebViewConfiguration alloc] init];
 
     globalWebViewConfiguration.processPool = (__bridge WKProcessPool *)context;
-    globalWebViewConfiguration.websiteDataStore = (__bridge WKWebsiteDataStore *)WKContextGetWebsiteDataStore(context);
+    globalWebViewConfiguration.websiteDataStore = (__bridge WKWebsiteDataStore *)TestController::websiteDataStore();
     globalWebViewConfiguration._allowUniversalAccessFromFileURLs = YES;
     globalWebViewConfiguration._applePayEnabled = YES;
 
-    WKCookieManagerSetStorageAccessAPIEnabled(WKContextGetCookieManager(context), true);
+    WKContextSetStorageAccessAPIEnabled(context, true);
 
-    WKWebsiteDataStore* poolWebsiteDataStore = (__bridge WKWebsiteDataStore *)WKContextGetWebsiteDataStore((__bridge WKContextRef)globalWebViewConfiguration.processPool);
+    WKWebsiteDataStore* poolWebsiteDataStore = (__bridge WKWebsiteDataStore *)TestController::websiteDataStore();
     if (libraryPath) {
         String cacheStorageDirectory = String(libraryPath) + '/' + "CacheStorage";
         [poolWebsiteDataStore _setCacheStorageDirectory: cacheStorageDirectory];
@@ -159,6 +159,9 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
 
     if (options.enableUndoManagerAPI)
         [copiedConfiguration _setUndoManagerAPIEnabled:YES];
+        
+    if (options.useEphemeralSession)
+        [copiedConfiguration setWebsiteDataStore:[WKWebsiteDataStore nonPersistentDataStore]];
 
     configureContentMode(copiedConfiguration.get(), options);
 
@@ -168,7 +171,7 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
         [copiedConfiguration _setApplicationManifest:[_WKApplicationManifest applicationManifestFromJSON:text manifestURL:nil documentURL:nil]];
     }
 
-    m_mainWebView = std::make_unique<PlatformWebView>(copiedConfiguration.get(), options);
+    m_mainWebView = makeUnique<PlatformWebView>(copiedConfiguration.get(), options);
     finishCreatingPlatformWebView(m_mainWebView.get(), options);
 
     if (options.punchOutWhiteBackgroundsInDarkMode)
@@ -176,6 +179,8 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
 
     if (options.editable)
         m_mainWebView->setEditable(true);
+
+    m_mainWebView->platformView().allowsLinkPreview = options.allowsLinkPreview;
 }
 
 PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parentView, WKPageConfigurationRef, const TestOptions& options)
@@ -226,7 +231,7 @@ void TestController::setDefaultCalendarType(NSString *identifier)
 {
     m_overriddenCalendarIdentifier = identifier;
     if (!m_calendarSwizzler)
-        m_calendarSwizzler = std::make_unique<ClassMethodSwizzler>([NSCalendar class], @selector(currentCalendar), reinterpret_cast<IMP>(swizzledCalendar));
+        m_calendarSwizzler = makeUnique<ClassMethodSwizzler>([NSCalendar class], @selector(currentCalendar), reinterpret_cast<IMP>(swizzledCalendar));
 }
 
 void TestController::resetContentExtensions()
@@ -395,6 +400,13 @@ bool TestController::keyExistsInKeychain(const String& attrLabel, const String& 
 void TestController::setAllowStorageQuotaIncrease(bool value)
 {
     [globalWebsiteDataStoreDelegateClient setAllowRaisingQuota: value];
+}
+
+void TestController::setAllowsAnySSLCertificate(bool allows)
+{
+    m_allowsAnySSLCertificate = allows;
+    WKContextSetAllowsAnySSLCertificateForWebSocketTesting(platformContext(), allows);
+    [globalWebsiteDataStoreDelegateClient setAllowAnySSLCertificate: allows];
 }
 
 bool TestController::canDoServerTrustEvaluationInNetworkProcess() const

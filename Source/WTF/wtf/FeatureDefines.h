@@ -192,7 +192,7 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 
 #if !defined(HAVE_UISCENE)
-#if (__IPHONE_OS_VERSION_MIN_REQUIRED >= 130000) || (PLATFORM(APPLETV) && __TV_OS_VERSION_MIN_REQUIRED >= 130000) || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED >= 60000)
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED >= 130000) || PLATFORM(APPLETV) || PLATFORM(WATCHOS)
 #define HAVE_UISCENE 1
 #endif
 #endif
@@ -203,10 +203,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_MEDIA_SOURCE)
 #define ENABLE_MEDIA_SOURCE 0
-#endif
-
-#if !defined(HAVE_PASSKIT_GRANULAR_ERRORS)
-#define HAVE_PASSKIT_GRANULAR_ERRORS 1
 #endif
 
 #if !defined(HAVE_PASSKIT_API_TYPE)
@@ -293,10 +289,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_MEDIA_SOURCE)
 #define ENABLE_MEDIA_SOURCE 1
-#endif
-
-#if !defined(HAVE_PASSKIT_GRANULAR_ERRORS)
-#define HAVE_PASSKIT_GRANULAR_ERRORS 1
 #endif
 
 #if !defined(HAVE_PASSKIT_API_TYPE)

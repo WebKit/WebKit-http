@@ -76,7 +76,7 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformHandlesToObjects(ObjCObjectGra
         RetainPtr<id> transformObject(id object) const override
         {
             if (auto* handle = dynamic_objc_cast<WKBrowsingContextHandle>(object)) {
-                if (auto* webPageProxy = m_webProcessProxy.webPage(handle.pageID)) {
+                if (auto* webPageProxy = m_webProcessProxy.webPage(handle.pageProxyID)) {
                     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
                     return [WKBrowsingContextController _browsingContextControllerForPageRef:toAPI(webPageProxy)];
                     ALLOW_DEPRECATED_DECLARATIONS_END
@@ -205,7 +205,7 @@ void WebProcessProxy::processWasUnexpectedlyUnsuspended(CompletionHandler<void()
     auto backgroundActivityTimeoutHandler = [activityToken = m_throttler.backgroundActivityToken(), weakThis = makeWeakPtr(this)] {
         RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::processWasUnexpectedlyUnsuspended() - lambda, background activity timed out", weakThis.get());
     };
-    m_unexpectedActivityTimer = std::make_unique<WebCore::DeferrableOneShotTimer>(WTFMove(backgroundActivityTimeoutHandler), unexpectedActivityDuration);
+    m_unexpectedActivityTimer = makeUnique<WebCore::DeferrableOneShotTimer>(WTFMove(backgroundActivityTimeoutHandler), unexpectedActivityDuration);
     completion();
 }
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -150,7 +150,7 @@ protected:
         if (m_relativePriority)
             Thread::current().changePriority(m_relativePriority);
         
-        m_compilationScope = std::make_unique<CompilationScope>();
+        m_compilationScope = makeUnique<CompilationScope>();
     }
     
     void threadIsStopping(const AbstractLocker&) override
@@ -214,7 +214,7 @@ void Worklist::finishCreation(unsigned numberOfThreads, int relativePriority)
 
 void Worklist::createNewThread(const AbstractLocker& locker, int relativePriority)
 {
-    std::unique_ptr<ThreadData> data = std::make_unique<ThreadData>(this);
+    std::unique_ptr<ThreadData> data = makeUnique<ThreadData>(this);
     data->m_thread = adoptRef(new ThreadBody(locker, *this, *data, m_lock, m_planEnqueued.copyRef(), relativePriority));
     m_threads.append(WTFMove(data));
 }
@@ -380,7 +380,7 @@ void Worklist::resumeAllThreads()
 
 void Worklist::visitWeakReferences(SlotVisitor& visitor)
 {
-    VM* vm = visitor.heap()->vm();
+    VM* vm = &visitor.heap()->vm();
     {
         LockHolder locker(*m_lock);
         for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {

@@ -296,9 +296,9 @@ public:
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoToStringFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoValuesFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_evalFunction;
-    LazyProperty<JSGlobalObject, JSFunction> m_initializePromiseFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_iteratorProtocolFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_promiseResolveFunction;
+    WriteBarrier<JSFunction> m_promiseProtoThenFunction;
     WriteBarrier<JSFunction> m_objectProtoValueOfFunction;
     WriteBarrier<JSFunction> m_numberProtoToStringFunction;
     WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
@@ -425,6 +425,8 @@ public:
 
     String m_name;
 
+    Strong<JSObject> m_unhandledRejectionCallback;
+
     Debugger* m_debugger;
 
     VM& m_vm;
@@ -452,31 +454,34 @@ public:
 
     JSCallee* stackOverflowFrameCallee() const { return m_stackOverflowFrameCallee.get(); }
 
-    InlineWatchpointSet& arrayIteratorProtocolWatchpoint() { return m_arrayIteratorProtocolWatchpoint; }
-    InlineWatchpointSet& mapIteratorProtocolWatchpoint() { return m_mapIteratorProtocolWatchpoint; }
-    InlineWatchpointSet& setIteratorProtocolWatchpoint() { return m_setIteratorProtocolWatchpoint; }
-    InlineWatchpointSet& stringIteratorProtocolWatchpoint() { return m_stringIteratorProtocolWatchpoint; }
-    InlineWatchpointSet& mapSetWatchpoint() { return m_mapSetWatchpoint; }
-    InlineWatchpointSet& setAddWatchpoint() { return m_setAddWatchpoint; }
-    InlineWatchpointSet& arraySpeciesWatchpoint() { return m_arraySpeciesWatchpoint; }
-    InlineWatchpointSet& numberToStringWatchpoint()
+    InlineWatchpointSet& arrayIteratorProtocolWatchpointSet() { return m_arrayIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& mapIteratorProtocolWatchpointSet() { return m_mapIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& setIteratorProtocolWatchpointSet() { return m_setIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& stringIteratorProtocolWatchpointSet() { return m_stringIteratorProtocolWatchpointSet; }
+    InlineWatchpointSet& mapSetWatchpointSet() { return m_mapSetWatchpointSet; }
+    InlineWatchpointSet& setAddWatchpointSet() { return m_setAddWatchpointSet; }
+    InlineWatchpointSet& arraySpeciesWatchpointSet() { return m_arraySpeciesWatchpointSet; }
+    InlineWatchpointSet& arrayJoinWatchpointSet() { return m_arrayJoinWatchpointSet; }
+    InlineWatchpointSet& numberToStringWatchpointSet()
     {
         RELEASE_ASSERT(VM::canUseJIT());
-        return m_numberToStringWatchpoint;
+        return m_numberToStringWatchpointSet;
     }
     // If this hasn't been invalidated, it means the array iterator protocol
     // is not observable to user code yet.
-    InlineWatchpointSet m_arrayIteratorProtocolWatchpoint;
-    InlineWatchpointSet m_mapIteratorProtocolWatchpoint;
-    InlineWatchpointSet m_setIteratorProtocolWatchpoint;
-    InlineWatchpointSet m_stringIteratorProtocolWatchpoint;
-    InlineWatchpointSet m_mapSetWatchpoint;
-    InlineWatchpointSet m_setAddWatchpoint;
-    InlineWatchpointSet m_arraySpeciesWatchpoint;
-    InlineWatchpointSet m_numberToStringWatchpoint;
+    InlineWatchpointSet m_arrayIteratorProtocolWatchpointSet;
+    InlineWatchpointSet m_mapIteratorProtocolWatchpointSet;
+    InlineWatchpointSet m_setIteratorProtocolWatchpointSet;
+    InlineWatchpointSet m_stringIteratorProtocolWatchpointSet;
+    InlineWatchpointSet m_mapSetWatchpointSet;
+    InlineWatchpointSet m_setAddWatchpointSet;
+    InlineWatchpointSet m_arraySpeciesWatchpointSet;
+    InlineWatchpointSet m_arrayJoinWatchpointSet;
+    InlineWatchpointSet m_numberToStringWatchpointSet;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayConstructorSpeciesWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayPrototypeConstructorWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayPrototypeJoinWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayIteratorPrototypeNext;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSymbolIteratorWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapIteratorPrototypeNextWatchpoint;
@@ -521,7 +526,7 @@ public:
     {
         if (m_rareData)
             return;
-        m_rareData = std::make_unique<JSGlobalObjectRareData>();
+        m_rareData = makeUnique<JSGlobalObjectRareData>();
     }
         
 public:
@@ -606,9 +611,9 @@ public:
     JSFunction* throwTypeErrorFunction() const { return m_throwTypeErrorFunction.get(); }
     JSFunction* arrayProtoToStringFunction() const { return m_arrayProtoToStringFunction.get(this); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(this); }
-    JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(this); }
     JSFunction* iteratorProtocolFunction() const { return m_iteratorProtocolFunction.get(this); }
     JSFunction* promiseResolveFunction() const { return m_promiseResolveFunction.get(this); }
+    JSFunction* promiseProtoThenFunction() const { return m_promiseProtoThenFunction.get(); }
     JSFunction* objectProtoValueOfFunction() const { return m_objectProtoValueOfFunction.get(); }
     JSFunction* numberProtoToStringFunction() const { return m_numberProtoToStringFunction.get(); }
     JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
@@ -803,6 +808,9 @@ public:
 
     void setName(const String&);
     const String& name() const { return m_name; }
+
+    void setUnhandledRejectionCallback(VM& vm, JSObject* function) { m_unhandledRejectionCallback.set(vm, function); }
+    JSObject* unhandledRejectionCallback() const { return m_unhandledRejectionCallback.get(); }
 
     JSObject* arrayBufferConstructor() const { return m_arrayBufferStructure.constructor(this); }
 

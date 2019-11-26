@@ -108,8 +108,6 @@ static const char* stringForRareDataUseType(NodeRareData::UseType useType)
         return "MutationObserver";
     case NodeRareData::UseType::TabIndex:
         return "TabIndex";
-    case NodeRareData::UseType::StyleFlags:
-        return "StyleFlags";
     case NodeRareData::UseType::MinimumSize:
         return "MinimumSize";
     case NodeRareData::UseType::ScrollingPosition:
@@ -396,15 +394,18 @@ void Node::willBeDeletedFrom(Document& document)
 
 void Node::materializeRareData()
 {
-    NodeRareData* data;
     if (is<Element>(*this))
-        data = std::make_unique<ElementRareData>(downcast<RenderElement>(m_data.m_renderer)).release();
+        m_rareData = std::unique_ptr<NodeRareData, NodeRareDataDeleter>(new ElementRareData);
     else
-        data = std::make_unique<NodeRareData>(m_data.m_renderer).release();
-    ASSERT(data);
+        m_rareData = std::unique_ptr<NodeRareData, NodeRareDataDeleter>(new NodeRareData);
+}
 
-    m_data.m_rareData = data;
-    setFlag(HasRareDataFlag);
+inline void Node::NodeRareDataDeleter::operator()(NodeRareData* rareData) const
+{
+    if (rareData->isElementRareData())
+        delete static_cast<ElementRareData*>(rareData);
+    else
+        delete static_cast<NodeRareData*>(rareData);
 }
 
 void Node::clearRareData()
@@ -412,13 +413,7 @@ void Node::clearRareData()
     ASSERT(hasRareData());
     ASSERT(!transientMutationObserverRegistry() || transientMutationObserverRegistry()->isEmpty());
 
-    RenderObject* renderer = m_data.m_rareData->renderer();
-    if (isElementNode())
-        delete static_cast<ElementRareData*>(m_data.m_rareData);
-    else
-        delete static_cast<NodeRareData*>(m_data.m_rareData);
-    m_data.m_renderer = renderer;
-    clearFlag(HasRareDataFlag);
+    m_rareData = nullptr;
 }
 
 bool Node::isNode() const
@@ -2215,7 +2210,7 @@ EventTargetData& Node::ensureEventTargetData()
 
     auto locker = holdLock(s_eventTargetDataMapLock);
     setHasEventTargetData(true);
-    return *eventTargetDataMap().add(this, std::make_unique<EventTargetData>()).iterator->value;
+    return *eventTargetDataMap().add(this, makeUnique<EventTargetData>()).iterator->value;
 }
 
 void Node::clearEventTargetData()
@@ -2287,7 +2282,7 @@ void Node::registerMutationObserver(MutationObserver& observer, MutationObserver
     }
 
     if (!registration) {
-        registry.append(std::make_unique<MutationObserverRegistration>(observer, *this, options, attributeFilter));
+        registry.append(makeUnique<MutationObserverRegistration>(observer, *this, options, attributeFilter));
         registration = registry.last().get();
     }
 

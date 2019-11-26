@@ -59,10 +59,12 @@ class InspectorPageAgent;
 class InspectorTimelineAgent;
 class InspectorWorkerAgent;
 class Page;
+class PageDOMDebuggerAgent;
 class PageDebuggerAgent;
 class PageHeapAgent;
 class PageRuntimeAgent;
 class WebConsoleAgent;
+class WebDebuggerAgent;
 
 class InstrumentingAgents : public RefCounted<InstrumentingAgents> {
     WTF_MAKE_NONCOPYABLE(InstrumentingAgents);
@@ -129,8 +131,8 @@ public:
     InspectorApplicationCacheAgent* inspectorApplicationCacheAgent() const { return m_inspectorApplicationCacheAgent; }
     void setInspectorApplicationCacheAgent(InspectorApplicationCacheAgent* agent) { m_inspectorApplicationCacheAgent = agent; }
 
-    Inspector::InspectorDebuggerAgent* inspectorDebuggerAgent() const { return m_inspectorDebuggerAgent; }
-    void setInspectorDebuggerAgent(Inspector::InspectorDebuggerAgent* agent) { m_inspectorDebuggerAgent = agent; }
+    WebDebuggerAgent* webDebuggerAgent() const { return m_webDebuggerAgent; }
+    void setWebDebuggerAgent(WebDebuggerAgent* agent) { m_webDebuggerAgent = agent; }
 
     PageDebuggerAgent* pageDebuggerAgent() const { return m_pageDebuggerAgent; }
     void setPageDebuggerAgent(PageDebuggerAgent* agent) { m_pageDebuggerAgent = agent; }
@@ -140,6 +142,9 @@ public:
 
     InspectorDOMDebuggerAgent* inspectorDOMDebuggerAgent() const { return m_inspectorDOMDebuggerAgent; }
     void setInspectorDOMDebuggerAgent(InspectorDOMDebuggerAgent* agent) { m_inspectorDOMDebuggerAgent = agent; }
+
+    PageDOMDebuggerAgent* pageDOMDebuggerAgent() const { return m_pageDOMDebuggerAgent; }
+    void setPageDOMDebuggerAgent(PageDOMDebuggerAgent* agent) { m_pageDOMDebuggerAgent = agent; }
 
     InspectorLayerTreeAgent* inspectorLayerTreeAgent() const { return m_inspectorLayerTreeAgent; }
     void setInspectorLayerTreeAgent(InspectorLayerTreeAgent* agent) { m_inspectorLayerTreeAgent = agent; }
@@ -171,10 +176,11 @@ private:
 #endif
     InspectorDatabaseAgent* m_inspectorDatabaseAgent { nullptr };
     InspectorApplicationCacheAgent* m_inspectorApplicationCacheAgent { nullptr };
-    Inspector::InspectorDebuggerAgent* m_inspectorDebuggerAgent { nullptr };
+    WebDebuggerAgent* m_webDebuggerAgent { nullptr };
     PageDebuggerAgent* m_pageDebuggerAgent { nullptr };
     PageHeapAgent* m_pageHeapAgent { nullptr };
     InspectorDOMDebuggerAgent* m_inspectorDOMDebuggerAgent { nullptr };
+    PageDOMDebuggerAgent* m_pageDOMDebuggerAgent { nullptr };
     InspectorCanvasAgent* m_inspectorCanvasAgent { nullptr };
 };
 

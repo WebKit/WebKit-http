@@ -46,19 +46,19 @@ EditableImageController::EditableImageController(WebPageProxy& webPageProxy)
     : m_webPageProxy(makeWeakPtr(webPageProxy))
 {
     if (auto* webPageProxy = m_webPageProxy.get())
-        webPageProxy->process().addMessageReceiver(Messages::EditableImageController::messageReceiverName(), webPageProxy->pageID(), *this);
+        webPageProxy->process().addMessageReceiver(Messages::EditableImageController::messageReceiverName(), webPageProxy->webPageID(), *this);
 }
 
 EditableImageController::~EditableImageController()
 {
     if (auto* webPageProxy = m_webPageProxy.get())
-        webPageProxy->process().removeMessageReceiver(Messages::EditableImageController::messageReceiverName(), webPageProxy->pageID());
+        webPageProxy->process().removeMessageReceiver(Messages::EditableImageController::messageReceiverName(), webPageProxy->webPageID());
 }
 
 EditableImage& EditableImageController::ensureEditableImage(WebCore::GraphicsLayer::EmbeddedViewID embeddedViewID)
 {
     auto result = m_editableImages.ensure(embeddedViewID, [&] {
-        std::unique_ptr<EditableImage> image = std::make_unique<EditableImage>();
+        std::unique_ptr<EditableImage> image = makeUnique<EditableImage>();
         image->drawingView = m_webPageProxy->pageClient().createDrawingView(embeddedViewID);
         return image;
     });

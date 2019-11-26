@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,6 +85,7 @@ void IsoHeap<Type>::initialize()
     // when IsoHeap::isInitialized returns true, we need to store the value to m_impl *after*
     // all the initialization finishes.
     auto* heap = new IsoHeapImpl<Config>();
+    heap->addToAllIsoHeaps();
     setAllocatorOffset(heap->allocatorOffset());
     setDeallocatorOffset(heap->deallocatorOffset());
     auto* atomic = reinterpret_cast<std::atomic<IsoHeapImpl<Config>*>*>(&m_impl);
@@ -123,8 +124,9 @@ public: \
     \
     void* operator new[](size_t size) = delete; \
     void operator delete[](void* p) = delete; \
+using webkitFastMalloced = int; \
 private: \
-typedef int __makeBisoMallocedInlineMacroSemicolonifier
+using __makeBisoMallocedInlineMacroSemicolonifier = int
 
 #define MAKE_BISO_MALLOCED_IMPL(isoType) \
 ::bmalloc::api::IsoHeap<isoType>& isoType::bisoHeap() \

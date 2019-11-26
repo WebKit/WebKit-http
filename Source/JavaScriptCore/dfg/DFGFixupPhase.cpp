@@ -1483,13 +1483,15 @@ private:
         }
             
         case GetClosureVar:
-        case GetFromArguments: {
+        case GetFromArguments:
+        case GetInternalField: {
             fixEdge<KnownCellUse>(node->child1());
             break;
         }
 
         case PutClosureVar:
-        case PutToArguments: {
+        case PutToArguments:
+        case PutInternalField: {
             fixEdge<KnownCellUse>(node->child1());
             speculateForBarrier(node->child2());
             break;
@@ -1643,6 +1645,7 @@ private:
         case CheckStructure:
         case CheckCell:
         case CreateThis:
+        case CreatePromise:
         case GetButterfly: {
             fixEdge<CellUse>(node->child1());
             break;
@@ -2404,6 +2407,7 @@ private:
         case ForwardVarargs:
         case ProfileControlFlow:
         case NewObject:
+        case NewPromise:
         case NewRegexp:
         case DeleteById:
         case DeleteByVal:
@@ -2820,6 +2824,15 @@ private:
 
     void fixupToNumber(Node* node)
     {
+        // At first, attempt to fold Boolean or Int32 to Int32.
+        if (node->child1()->shouldSpeculateInt32OrBoolean()) {
+            if (isInt32Speculation(node->getHeapPrediction())) {
+                fixIntOrBooleanEdge(node->child1());
+                node->convertToIdentity();
+                return;
+            }
+        }
+
         // If the prediction of the child is Number, we attempt to convert ToNumber to Identity.
         if (node->child1()->shouldSpeculateNumber()) {
             if (isInt32Speculation(node->getHeapPrediction())) {

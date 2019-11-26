@@ -32,10 +32,12 @@ namespace Inspector {
 
 InspectorTargetAgent::InspectorTargetAgent(FrontendRouter& frontendRouter, BackendDispatcher& backendDispatcher)
     : InspectorAgentBase("Target"_s)
-    , m_frontendDispatcher(std::make_unique<TargetFrontendDispatcher>(frontendRouter))
+    , m_frontendDispatcher(makeUnique<TargetFrontendDispatcher>(frontendRouter))
     , m_backendDispatcher(TargetBackendDispatcher::create(backendDispatcher, this))
 {
 }
+
+InspectorTargetAgent::~InspectorTargetAgent() = default;
 
 void InspectorTargetAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
@@ -61,7 +63,7 @@ void InspectorTargetAgent::sendMessageToTarget(ErrorString& errorString, const S
 {
     InspectorTarget* target = m_targets.get(targetId);
     if (!target) {
-        errorString = "Target not found."_s;
+        errorString = "Missing target for given targetId"_s;
         return;
     }
 

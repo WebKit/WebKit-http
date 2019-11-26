@@ -119,6 +119,7 @@ enum class RequestState {
 
 enum class IndirectCompositingReason {
     None,
+    Clipping,
     Stacking,
     OverflowScrollPositioning,
     Overlap,
@@ -140,6 +141,8 @@ class RenderLayer final : public ScrollableArea {
 public:
     friend class RenderReplica;
     friend class RenderLayerFilters;
+    friend class RenderLayerBacking;
+    friend class RenderLayerCompositor;
 
     explicit RenderLayer(RenderLayerModelObject&);
     virtual ~RenderLayer();
@@ -493,7 +496,7 @@ public:
     // Returns true when the layer could do touch scrolling, but doesn't look at whether there is actually scrollable overflow.
     bool canUseCompositedScrolling() const;
     // Returns true when there is actually scrollable overflow (requires layout to be up-to-date).
-    bool hasCompositedScrollableOverflow() const;
+    bool hasCompositedScrollableOverflow() const { return m_hasCompositedScrollableOverflow; }
 
     int verticalScrollbarWidth(OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize) const;
     int horizontalScrollbarHeight(OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize) const;
@@ -529,19 +532,8 @@ public:
 
     bool canRender3DTransforms() const;
 
-    enum UpdateLayerPositionsFlag {
-        CheckForRepaint                     = 1 << 0,
-        NeedsFullRepaintInBacking           = 1 << 1,
-        ContainingClippingLayerChangedSize  = 1 << 2,
-        UpdatePagination                    = 1 << 3,
-        SeenFixedLayer                      = 1 << 4,
-        SeenTransformedLayer                = 1 << 5,
-        Seen3DTransformedLayer              = 1 << 6,
-        SeenCompositedScrollingLayer        = 1 << 7,
-    };
-    static constexpr OptionSet<UpdateLayerPositionsFlag> updateLayerPositionsDefaultFlags() { return { CheckForRepaint }; }
-
-    void updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, OptionSet<UpdateLayerPositionsFlag>);
+    void updateLayerPositionsAfterStyleChange();
+    void updateLayerPositionsAfterLayout(bool isRelayoutingSubtree, bool didFullRepaint);
 
     void updateLayerPositionsAfterOverflowScroll();
     void updateLayerPositionsAfterDocumentScroll();
@@ -559,6 +551,7 @@ public:
     
 #if ENABLE(CSS_COMPOSITING)
     void updateBlendMode();
+    void willRemoveChildWithBlendMode();
 #endif
 
     const LayoutSize& offsetForInFlowPosition() const { return m_offsetForInFlowPosition; }
@@ -642,9 +635,10 @@ public:
     void setFilterBackendNeedsRepaintingInRect(const LayoutRect&);
     bool hasAncestorWithFilterOutsets() const;
 
-    bool canUseConvertToLayerCoords() const
+    bool canUseOffsetFromAncestor() const
     {
-        // These RenderObject have an impact on their layers' without them knowing about it.
+        // FIXME: This really needs to know if there are transforms on this layer and any of the layers
+        // between it and the ancestor in question.
         return !renderer().hasTransform() && !renderer().isSVGRoot();
     }
 
@@ -792,6 +786,7 @@ public:
     FloatPoint perspectiveOrigin() const;
     bool preserves3D() const { return renderer().style().transformStyle3D() == TransformStyle3D::Preserve3D; }
     bool has3DTransform() const { return m_transform && !m_transform->isAffine(); }
+    bool hasTransformedAncestor() const { return m_hasTransformedAncestor; }
 
     void filterNeedsRepaint();
     bool hasFilter() const { return renderer().hasFilter(); }
@@ -903,7 +898,7 @@ public:
     void simulateFrequentPaint() { SinglePaintFrequencyTracking { m_paintFrequencyTracker }; }
     bool paintingFrequently() const { return m_paintFrequencyTracker.paintingFrequently(); }
 
-    WEBCORE_EXPORT bool isTransparentOrFullyClippedRespectingParentFrames() const;
+    WEBCORE_EXPORT bool isTransparentRespectingParentFrames() const;
 
     void invalidateEventRegion();
 
@@ -986,10 +981,22 @@ private:
     void updateScrollbarsAfterStyleChange(const RenderStyle* oldStyle);
     void updateScrollbarsAfterLayout();
 
+    enum UpdateLayerPositionsFlag {
+        CheckForRepaint                     = 1 << 0,
+        NeedsFullRepaintInBacking           = 1 << 1,
+        ContainingClippingLayerChangedSize  = 1 << 2,
+        UpdatePagination                    = 1 << 3,
+        SeenFixedLayer                      = 1 << 4,
+        SeenTransformedLayer                = 1 << 5,
+        Seen3DTransformedLayer              = 1 << 6,
+        SeenCompositedScrollingLayer        = 1 << 7,
+    };
+    static OptionSet<UpdateLayerPositionsFlag> flagsForUpdateLayerPositions(RenderLayer& startingLayer);
+
     // Returns true if the position changed.
     bool updateLayerPosition(OptionSet<UpdateLayerPositionsFlag>* = nullptr);
 
-    void updateLayerPositions(RenderGeometryMap* = nullptr, OptionSet<UpdateLayerPositionsFlag> = updateLayerPositionsDefaultFlags());
+    void updateLayerPositions(RenderGeometryMap*, OptionSet<UpdateLayerPositionsFlag>);
 
     enum UpdateLayerPositionsAfterScrollFlag {
         IsOverflowScroll                        = 1 << 0,
@@ -1123,8 +1130,6 @@ private:
     void setAncestorChainHasVisibleDescendant();
 
     bool has3DTransformedDescendant() const { return m_has3DTransformedDescendant; }
-
-    bool hasTransformedAncestor() const { return m_hasTransformedAncestor; }
     bool has3DTransformedAncestor() const { return m_has3DTransformedAncestor; }
 
     void dirty3DTransformedDescendantStatus();
@@ -1170,10 +1175,6 @@ private:
     
     void setIndirectCompositingReason(IndirectCompositingReason reason) { m_indirectCompositingReason = static_cast<unsigned>(reason); }
     bool mustCompositeForIndirectReasons() const { return m_indirectCompositingReason; }
-
-    friend class RenderLayerBacking;
-    friend class RenderLayerCompositor;
-    friend class RenderLayerModelObject;
 
     LayoutUnit overflowTop() const;
     LayoutUnit overflowBottom() const;
@@ -1233,12 +1234,13 @@ private:
     bool m_hasCompositingDescendant : 1; // In the z-order tree.
 
     bool m_hasCompositedScrollingAncestor : 1; // In the layer-order tree.
+    bool m_hasCompositedScrollableOverflow : 1;
 
     bool m_hasTransformedAncestor : 1;
     bool m_has3DTransformedAncestor : 1;
 
-    unsigned m_indirectCompositingReason : 3;
-    unsigned m_viewportConstrainedNotCompositedReason : 2;
+    unsigned m_indirectCompositingReason : 4; // IndirectCompositingReason
+    unsigned m_viewportConstrainedNotCompositedReason : 2; // ViewportConstrainedNotCompositedReason
 
 #if PLATFORM(IOS_FAMILY)
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1256,7 +1258,7 @@ private:
 #endif
 
 #if ENABLE(CSS_COMPOSITING)
-    unsigned m_blendMode : 5;
+    unsigned m_blendMode : 5; // BlendMode
     bool m_hasNotIsolatedCompositedBlendingDescendants : 1;
     bool m_hasNotIsolatedBlendingDescendants : 1;
     bool m_hasNotIsolatedBlendingDescendantsStatusDirty : 1;

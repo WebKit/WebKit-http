@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-class ScriptExecutionContext;
+class Document;
 class WebGPUDevice;
 
 class WebGPUAdapter : public RefCounted<WebGPUAdapter> {
@@ -43,7 +43,7 @@ public:
     static Ref<WebGPUAdapter> create(Optional<GPURequestAdapterOptions>&&);
 
     using DeviceRequestPromise = DOMPromiseDeferred<IDLInterface<WebGPUDevice>>;
-    void requestDevice(DeviceRequestPromise&&) const;
+    void requestDevice(Document&, DeviceRequestPromise&&) const;
     
     const Optional<GPURequestAdapterOptions>& options() const { return m_options; }
 

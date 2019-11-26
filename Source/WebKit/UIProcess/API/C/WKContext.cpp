@@ -40,6 +40,7 @@
 #include "WKContextConfigurationRef.h"
 #include "WKRetainPtr.h"
 #include "WKString.h"
+#include "WKWebsiteDataStoreRef.h"
 #include "WebCertificateInfo.h"
 #include "WebContextInjectedBundleClient.h"
 #include "WebPageProxy.h"
@@ -68,13 +69,13 @@ WKTypeID WKContextGetTypeID()
 
 WKContextRef WKContextCreate()
 {
-    auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
+    auto configuration = API::ProcessPoolConfiguration::create();
     return WebKit::toAPI(&WebKit::WebProcessPool::create(configuration).leakRef());
 }
 
 WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef pathRef)
 {
-    auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
+    auto configuration = API::ProcessPoolConfiguration::create();
     configuration->setInjectedBundlePath(WebKit::toWTFString(pathRef));
 
     return WebKit::toAPI(&WebKit::WebProcessPool::create(configuration).leakRef());
@@ -95,7 +96,7 @@ void WKContextSetClient(WKContextRef contextRef, const WKContextClientBase* wkCl
 
 void WKContextSetInjectedBundleClient(WKContextRef contextRef, const WKContextInjectedBundleClientBase* wkClient)
 {
-    WebKit::toImpl(contextRef)->setInjectedBundleClient(std::make_unique<WebKit::WebContextInjectedBundleClient>(wkClient));
+    WebKit::toImpl(contextRef)->setInjectedBundleClient(makeUnique<WebKit::WebContextInjectedBundleClient>(wkClient));
 }
 
 void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryClientBase* wkClient)
@@ -156,7 +157,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
     };
 
     WebKit::WebProcessPool& processPool = *WebKit::toImpl(contextRef);
-    processPool.setHistoryClient(std::make_unique<HistoryClient>(wkClient));
+    processPool.setHistoryClient(makeUnique<HistoryClient>(wkClient));
 
     bool addsVisitedLinks = processPool.historyClient().addsVisitedLinks();
 
@@ -266,7 +267,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
         }
     };
 
-    WebKit::toImpl(contextRef)->setDownloadClient(std::make_unique<DownloadClient>(wkClient));
+    WebKit::toImpl(contextRef)->setDownloadClient(makeUnique<DownloadClient>(wkClient));
 }
 
 void WKContextSetConnectionClient(WKContextRef contextRef, const WKContextConnectionClientBase* wkClient)
@@ -417,6 +418,11 @@ bool WKContextGetUsesSingleWebProcess(WKContextRef contextRef)
     return WebKit::toImpl(contextRef)->configuration().usesSingleWebProcess();
 }
 
+void WKContextSetStorageAccessAPIEnabled(WKContextRef contextRef, bool enabled)
+{
+    WebKit::toImpl(contextRef)->setStorageAccessAPIEnabled(enabled);
+}
+
 void WKContextSetCustomWebContentServiceBundleIdentifier(WKContextRef contextRef, WKStringRef name)
 {
     WebKit::toImpl(contextRef)->setCustomWebContentServiceBundleIdentifier(WebKit::toImpl(name)->string());
@@ -437,21 +443,14 @@ WKCookieManagerRef WKContextGetCookieManager(WKContextRef contextRef)
     return WebKit::toAPI(WebKit::toImpl(contextRef)->supplement<WebKit::WebCookieManagerProxy>());
 }
 
-WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef context)
+WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef)
 {
-    auto* dataStore = WebKit::toImpl(context)->websiteDataStore();
-    if (!dataStore) {
-        auto defaultDataStore = API::WebsiteDataStore::defaultDataStore();
-        WebKit::toImpl(context)->setPrimaryDataStore(defaultDataStore.get());
-        dataStore = defaultDataStore.ptr();
-    }
-
-    return WebKit::toAPI(dataStore);
+    return WKWebsiteDataStoreGetDefaultDataStore();
 }
 
 WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef context)
 {
-    return reinterpret_cast<WKApplicationCacheManagerRef>(WKContextGetWebsiteDataStore(context));
+    return reinterpret_cast<WKApplicationCacheManagerRef>(WKWebsiteDataStoreGetDefaultDataStore());
 }
 
 WKGeolocationManagerRef WKContextGetGeolocationManager(WKContextRef contextRef)
@@ -466,7 +465,7 @@ WKIconDatabaseRef WKContextGetIconDatabase(WKContextRef)
 
 WKKeyValueStorageManagerRef WKContextGetKeyValueStorageManager(WKContextRef context)
 {
-    return reinterpret_cast<WKKeyValueStorageManagerRef>(WKContextGetWebsiteDataStore(context));
+    return reinterpret_cast<WKKeyValueStorageManagerRef>(WKWebsiteDataStoreGetDefaultDataStore());
 }
 
 WKMediaSessionFocusManagerRef WKContextGetMediaSessionFocusManager(WKContextRef context)
@@ -486,7 +485,7 @@ WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef
 
 WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef context)
 {
-    return reinterpret_cast<WKResourceCacheManagerRef>(WKContextGetWebsiteDataStore(context));
+    return reinterpret_cast<WKResourceCacheManagerRef>(WKWebsiteDataStoreGetDefaultDataStore());
 }
 
 void WKContextStartMemorySampler(WKContextRef contextRef, WKDoubleRef interval)
@@ -658,11 +657,6 @@ void WKContextClearSupportedPlugins(WKContextRef contextRef)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     WebKit::toImpl(contextRef)->clearSupportedPlugins();
 #endif
-}
-
-void WKContextSetIDBPerOriginQuota(WKContextRef contextRef, uint64_t quota)
-{
-    WebKit::toImpl(contextRef)->setIDBPerOriginQuota(quota);
 }
 
 void WKContextClearCurrentModifierStateForTesting(WKContextRef contextRef)

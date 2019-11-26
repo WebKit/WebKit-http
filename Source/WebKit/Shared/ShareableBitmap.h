@@ -44,7 +44,11 @@
 #endif
 
 #if USE(DIRECT2D)
-interface IWICBitmap;
+interface ID2D1Bitmap;
+interface ID2D1RenderTarget;
+interface ID3D11Device1;
+interface IDXGIKeyedMutex;
+interface IDXGISurface1;
 
 #include <WebCore/COMPtr.h>
 #endif
@@ -62,6 +66,9 @@ public:
         bool isOpaque { false };
 #if PLATFORM(COCOA)
         ColorSpaceData colorSpace;
+#endif
+#if USE(DIRECT2D)
+        mutable HANDLE sharedResourceHandle { nullptr };
 #endif
 
         void encode(IPC::Encoder&) const;
@@ -139,8 +146,11 @@ public:
     // This is only safe to use when we know that the contents of the shareable bitmap won't change.
     RefPtr<WebCore::StillImage> createBitmapSurface();
 #elif USE(DIRECT2D)
-    COMPtr<IWICBitmap> createDirect2DSurface();
-    void sync(WebCore::GraphicsContext&);
+    COMPtr<ID2D1Bitmap> createDirect2DSurface(ID3D11Device1*, ID2D1RenderTarget*);
+    IDXGISurface1* dxSurface() { return m_surface.get(); }
+    void createSharedResource();
+    void disposeSharedResource();
+    void leakSharedResource();
 #endif
 
 private:
@@ -170,14 +180,15 @@ private:
     Configuration m_configuration;
 
 #if USE(DIRECT2D)
-    COMPtr<IWICBitmap> m_bitmap;
+    COMPtr<IDXGISurface1> m_surface;
+    COMPtr<IDXGIKeyedMutex> m_surfaceMutex;
 #endif
 
     // If the shareable bitmap is backed by shared memory, this points to the shared memory object.
     RefPtr<SharedMemory> m_sharedMemory;
 
     // If the shareable bitmap is backed by fastMalloced memory, this points to the data.
-    void* m_data;
+    void* m_data { nullptr };
 };
 
 } // namespace WebKit

@@ -42,7 +42,9 @@ class StorageNamespace : public RefCounted<StorageNamespace> {
 public:
     virtual ~StorageNamespace() = default;
     virtual Ref<StorageArea> storageArea(const SecurityOriginData&) = 0;
-    virtual Ref<StorageNamespace> copy(Page* newPage) = 0;
+
+    // FIXME: This is only valid for session storage and should probably be moved to a subclass.
+    virtual Ref<StorageNamespace> copy(Page& newPage) = 0;
 
     virtual PAL::SessionID sessionID() const = 0;
     virtual void setSessionIDForTesting(PAL::SessionID) = 0;

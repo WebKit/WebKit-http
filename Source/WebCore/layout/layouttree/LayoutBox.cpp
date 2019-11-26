@@ -43,9 +43,10 @@ Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFl
     , m_elementAttributes(attributes)
     , m_baseTypeFlags(baseTypeFlags)
     , m_hasRareData(false)
+    , m_isAnonymous(false)
 {
     if (isReplaced())
-        ensureRareData().replaced = std::make_unique<Replaced>(*this);
+        ensureRareData().replaced = makeUnique<Replaced>(*this);
 }
 
 Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style)
@@ -88,6 +89,9 @@ bool Box::establishesBlockFormattingContext() const
         return true;
 
     if (isBlockLevelBox() && !isOverflowVisible())
+        return true;
+
+    if (isTableWrapperBox())
         return true;
 
     return false;
@@ -175,7 +179,7 @@ bool Box::hasFloatClear() const
 
 bool Box::isFloatAvoider() const
 {
-    return establishesBlockFormattingContext() || isFloatingPositioned();
+    return establishesBlockFormattingContext() || establishesTableFormattingContext() || isFloatingPositioned() || hasFloatClear();
 }
 
 const Container* Box::containingBlock() const
@@ -184,7 +188,7 @@ const Container* Box::containingBlock() const
     ASSERT(!Phase::isInTreeBuilding());
     // The containing block in which the root element lives is a rectangle called the initial containing block.
     // For other elements, if the element's position is 'relative' or 'static', the containing block is formed by the
-    // content edge of the nearest block container ancestor box.
+    // content edge of the nearest block container ancestor box or which establishes a formatting context.
     // If the element has 'position: fixed', the containing block is established by the viewport
     // If the element has 'position: absolute', the containing block is established by the nearest ancestor with a
     // 'position' of 'absolute', 'relative' or 'fixed'.
@@ -192,9 +196,13 @@ const Container* Box::containingBlock() const
         return nullptr;
 
     if (!isPositioned() || isInFlowPositioned()) {
-        auto* nearestBlockContainer = parent();
-        for (; nearestBlockContainer->parent() && !nearestBlockContainer->isBlockContainerBox(); nearestBlockContainer = nearestBlockContainer->parent()) { }
-        return nearestBlockContainer;
+        for (auto* nearestBlockContainerOrFormattingContextRoot = parent(); nearestBlockContainerOrFormattingContextRoot; nearestBlockContainerOrFormattingContextRoot = nearestBlockContainerOrFormattingContextRoot->parent()) {
+            if (nearestBlockContainerOrFormattingContextRoot->isBlockContainerBox() || nearestBlockContainerOrFormattingContextRoot->establishesFormattingContext())
+                return nearestBlockContainerOrFormattingContextRoot; 
+        }
+        // We should always manage to find the ICB.
+        ASSERT_NOT_REACHED();
+        return nullptr;
     }
 
     if (isFixedPositioned()) {
@@ -275,7 +283,7 @@ bool Box::isBlockLevelBox() const
 {
     // Block level elements generate block level boxes.
     auto display = m_style.display();
-    return display == DisplayType::Block || display == DisplayType::ListItem || (display == DisplayType::Table && !isTableWrapperBox());
+    return display == DisplayType::Block || display == DisplayType::ListItem || display == DisplayType::Table;
 }
 
 bool Box::isInlineLevelBox() const
@@ -366,8 +374,8 @@ bool Box::isPaddingApplicable() const
         return false;
 
     auto elementType = m_elementAttributes.value().elementType;
-    return elementType != ElementType::TableRowGroup
-        && elementType != ElementType::TableHeaderGroup
+    return elementType != ElementType::TableHeaderGroup
+        && elementType != ElementType::TableBodyGroup
         && elementType != ElementType::TableFooterGroup
         && elementType != ElementType::TableRow
         && elementType != ElementType::TableColumnGroup
@@ -447,7 +455,7 @@ const Box::BoxRareData& Box::rareData() const
 Box::BoxRareData& Box::ensureRareData()
 {
     setHasRareData(true);
-    return *rareDataMap().ensure(this, [] { return std::make_unique<BoxRareData>(); }).iterator->value;
+    return *rareDataMap().ensure(this, [] { return makeUnique<BoxRareData>(); }).iterator->value;
 }
 
 void Box::removeRareData()

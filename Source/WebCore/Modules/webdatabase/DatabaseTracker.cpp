@@ -276,7 +276,7 @@ unsigned long long DatabaseTracker::maximumSize(Database& database)
 
     unsigned long long quota = quotaNoLock(origin);
     unsigned long long diskUsage = usage(origin);
-    unsigned long long databaseFileSize = SQLiteFileSystem::getDatabaseFileSize(database.fileName());
+    unsigned long long databaseFileSize = SQLiteFileSystem::getDatabaseFileSize(database.fileNameIsolatedCopy());
     ASSERT(databaseFileSize <= diskUsage);
 
     if (diskUsage > quota)
@@ -308,12 +308,7 @@ String DatabaseTracker::originPath(const SecurityOriginData& origin) const
 
 static String generateDatabaseFileName()
 {
-    StringBuilder stringBuilder;
-
-    stringBuilder.append(createCanonicalUUIDString());
-    stringBuilder.appendLiteral(".db");
-
-    return stringBuilder.toString();
+    return makeString(createCanonicalUUIDString(), ".db");
 }
 
 String DatabaseTracker::fullPathForDatabaseNoLock(const SecurityOriginData& origin, const String& name, bool createIfNotExists)
@@ -523,7 +518,7 @@ void DatabaseTracker::setDatabaseDetails(const SecurityOriginData& origin, const
 void DatabaseTracker::doneCreatingDatabase(Database& database)
 {
     LockHolder lockDatabase(m_databaseGuard);
-    doneCreatingDatabase(database.securityOrigin(), database.stringIdentifier());
+    doneCreatingDatabase(database.securityOrigin(), database.stringIdentifierIsolatedCopy());
 }
 
 Vector<Ref<Database>> DatabaseTracker::openDatabases()
@@ -549,7 +544,7 @@ void DatabaseTracker::addOpenDatabase(Database& database)
     LockHolder openDatabaseMapLock(m_openDatabaseMapGuard);
 
     if (!m_openDatabaseMap)
-        m_openDatabaseMap = std::make_unique<DatabaseOriginMap>();
+        m_openDatabaseMap = makeUnique<DatabaseOriginMap>();
 
     auto origin = database.securityOrigin();
 
@@ -559,7 +554,7 @@ void DatabaseTracker::addOpenDatabase(Database& database)
         m_openDatabaseMap->add(origin.isolatedCopy(), nameMap);
     }
 
-    String name = database.stringIdentifier();
+    String name = database.stringIdentifierIsolatedCopy();
     auto* databaseSet = nameMap->get(name);
     if (!databaseSet) {
         databaseSet = new DatabaseSet;
@@ -568,7 +563,7 @@ void DatabaseTracker::addOpenDatabase(Database& database)
 
     databaseSet->add(&database);
 
-    LOG(StorageAPI, "Added open Database %s (%p)\n", database.stringIdentifier().utf8().data(), &database);
+    LOG(StorageAPI, "Added open Database %s (%p)\n", database.stringIdentifierIsolatedCopy().utf8().data(), &database);
 }
 
 void DatabaseTracker::removeOpenDatabase(Database& database)
@@ -586,7 +581,7 @@ void DatabaseTracker::removeOpenDatabase(Database& database)
         return;
     }
 
-    String name = database.stringIdentifier();
+    String name = database.stringIdentifierIsolatedCopy();
     auto* databaseSet = nameMap->get(name);
     if (!databaseSet) {
         ASSERT_NOT_REACHED();
@@ -595,7 +590,7 @@ void DatabaseTracker::removeOpenDatabase(Database& database)
 
     databaseSet->remove(&database);
 
-    LOG(StorageAPI, "Removed open Database %s (%p)\n", database.stringIdentifier().utf8().data(), &database);
+    LOG(StorageAPI, "Removed open Database %s (%p)\n", database.stringIdentifierIsolatedCopy().utf8().data(), &database);
 
     if (!databaseSet->isEmpty())
         return;
@@ -956,7 +951,7 @@ void DatabaseTracker::recordCreatingDatabase(const SecurityOriginData& origin, c
     // We don't use HashMap::ensure here to avoid making an isolated copy of the origin every time.
     auto* nameSet = m_beingCreated.get(origin);
     if (!nameSet) {
-        auto ownedSet = std::make_unique<HashCountedSet<String>>();
+        auto ownedSet = makeUnique<HashCountedSet<String>>();
         nameSet = ownedSet.get();
         m_beingCreated.add(origin.isolatedCopy(), WTFMove(ownedSet));
     }
@@ -1002,7 +997,7 @@ void DatabaseTracker::recordDeletingDatabase(const SecurityOriginData& origin, c
     // We don't use HashMap::ensure here to avoid making an isolated copy of the origin every time.
     auto* nameSet = m_beingDeleted.get(origin);
     if (!nameSet) {
-        auto ownedSet = std::make_unique<HashSet<String>>();
+        auto ownedSet = makeUnique<HashSet<String>>();
         nameSet = ownedSet.get();
         m_beingDeleted.add(origin.isolatedCopy(), WTFMove(ownedSet));
     }
@@ -1215,7 +1210,7 @@ void DatabaseTracker::removeDeletedOpenedDatabases()
                             continue;
                         
                         // If this database has been deleted or if its database file no longer matches the current version, this database is no longer valid and it should be marked as deleted.
-                        if (databaseFileName.isNull() || databaseFileName != FileSystem::pathGetFileName(db->fileName())) {
+                        if (databaseFileName.isNull() || databaseFileName != FileSystem::pathGetFileName(db->fileNameIsolatedCopy())) {
                             deletedDatabases.append(db);
                             foundDeletedDatabase = true;
                         }

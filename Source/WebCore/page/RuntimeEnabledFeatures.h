@@ -204,6 +204,9 @@ public:
     void setDialogElementEnabled(bool isEnabled) { m_dialogElementEnabled = isEnabled; }
     bool dialogElementEnabled() const { return m_dialogElementEnabled; }
 
+    void setKeygenElementEnabled(bool isEnabled) { m_keygenElementEnabled = isEnabled; }
+    bool keygenElementEnabled() const { return m_keygenElementEnabled; }
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
     bool attachmentElementEnabled() const { return m_isAttachmentElementEnabled; }
@@ -377,6 +380,9 @@ public:
     void setIsNSURLSessionWebSocketEnabled(bool isEnabled) { m_isNSURLSessionWebSocketEnabled = isEnabled; }
 #endif
 
+    bool secureContextChecksEnabled() const { return m_secureContextChecksEnabled; }
+    void setSecureContextChecksEnabled(bool isEnabled) { m_secureContextChecksEnabled = isEnabled; }
+
 private:
     // Never instantiate.
     RuntimeEnabledFeatures();
@@ -427,6 +433,7 @@ private:
     bool m_syntheticEditingCommandsEnabled { true };
     bool m_dialogElementEnabled { false };
     bool m_webSQLEnabled { true };
+    bool m_keygenElementEnabled { false };
     bool m_pageAtRuleSupportEnabled { false };
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
@@ -566,6 +573,7 @@ private:
 #endif
 
     bool m_lazyImageLoadingEnabled { false };
+    bool m_secureContextChecksEnabled { true };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

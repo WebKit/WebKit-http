@@ -46,7 +46,7 @@ GraphicsContext::GraphicsContextImplFactory GraphicsContextImplDirect2D::createF
     return GraphicsContext::GraphicsContextImplFactory(
         [&platformContext](GraphicsContext& context)
         {
-            return std::make_unique<GraphicsContextImplDirect2D>(context, platformContext);
+            return makeUnique<GraphicsContextImplDirect2D>(context, platformContext);
         });
 }
 
@@ -55,14 +55,14 @@ GraphicsContext::GraphicsContextImplFactory GraphicsContextImplDirect2D::createF
     return GraphicsContext::GraphicsContextImplFactory(
         [renderTarget](GraphicsContext& context)
         {
-            return std::make_unique<GraphicsContextImplDirect2D>(context, renderTarget);
+            return makeUnique<GraphicsContextImplDirect2D>(context, renderTarget);
         });
 }
 
 GraphicsContextImplDirect2D::GraphicsContextImplDirect2D(GraphicsContext& context, PlatformContextDirect2D& platformContext)
     : GraphicsContextImpl(context, FloatRect { }, AffineTransform { })
     , m_platformContext(platformContext)
-    , m_private(std::make_unique<GraphicsContextPlatformPrivate>(m_platformContext, GraphicsContext::BitmapRenderingContextType::GPUMemory))
+    , m_private(makeUnique<GraphicsContextPlatformPrivate>(m_platformContext, GraphicsContext::BitmapRenderingContextType::GPUMemory))
 {
     m_platformContext.setGraphicsContextPrivate(m_private.get());
     m_private->syncContext(m_platformContext);
@@ -70,9 +70,9 @@ GraphicsContextImplDirect2D::GraphicsContextImplDirect2D(GraphicsContext& contex
 
 GraphicsContextImplDirect2D::GraphicsContextImplDirect2D(GraphicsContext& context, ID2D1RenderTarget* renderTarget)
     : GraphicsContextImpl(context, FloatRect { }, AffineTransform { })
-    , m_ownedPlatformContext(std::make_unique<PlatformContextDirect2D>(renderTarget))
+    , m_ownedPlatformContext(makeUnique<PlatformContextDirect2D>(renderTarget))
     , m_platformContext(*m_ownedPlatformContext)
-    , m_private(std::make_unique<GraphicsContextPlatformPrivate>(m_platformContext, GraphicsContext::BitmapRenderingContextType::GPUMemory))
+    , m_private(makeUnique<GraphicsContextPlatformPrivate>(m_platformContext, GraphicsContext::BitmapRenderingContextType::GPUMemory))
 {
     m_platformContext.setGraphicsContextPrivate(m_private.get());
     m_private->syncContext(m_platformContext);
@@ -283,16 +283,17 @@ ImageDrawResult GraphicsContextImplDirect2D::drawTiledImage(Image& image, const 
     return GraphicsContextImpl::drawTiledImageImpl(graphicsContext(), image, destination, source, tileScaleFactor, hRule, vRule, imagePaintingOptions);
 }
 
-void GraphicsContextImplDirect2D::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation)
+void GraphicsContextImplDirect2D::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
 {
     auto& state = graphicsContext().state();
-    Direct2D::drawNativeImage(m_platformContext, image.get(), imageSize, destRect, srcRect, compositeOperator, blendMode, orientation, state.imageInterpolationQuality, state.alpha, Direct2D::ShadowState(state));
+    Direct2D::drawNativeImage(m_platformContext, image.get(), imageSize, destRect, srcRect, options, state.alpha, Direct2D::ShadowState(state));
 }
 
-void GraphicsContextImplDirect2D::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize&, CompositeOperator compositeOperator, BlendMode blendMode)
+void GraphicsContextImplDirect2D::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize&, const ImagePaintingOptions& options)
 {
-    if (auto surface = image.nativeImageForCurrentFrame())
-        Direct2D::drawPattern(m_platformContext, surface.get(), IntSize(image.size()), destRect, tileRect, patternTransform, phase, compositeOperator, blendMode);
+    auto* context = &graphicsContext();
+    if (auto surface = image.nativeImageForCurrentFrame(context))
+        Direct2D::drawPattern(m_platformContext, WTFMove(surface), IntSize(image.size()), destRect, tileRect, patternTransform, phase, options.compositeOperator(), options.blendMode());
 }
 
 void GraphicsContextImplDirect2D::drawRect(const FloatRect& rect, float borderThickness)
@@ -421,8 +422,8 @@ void GraphicsContextImplDirect2D::clipToImageBuffer(ImageBuffer& buffer, const F
     if (!image)
         return;
 
-
-    if (auto surface = image->nativeImageForCurrentFrame())
+    auto* context = &graphicsContext();
+    if (auto surface = image->nativeImageForCurrentFrame(context))
         notImplemented();
 }
 

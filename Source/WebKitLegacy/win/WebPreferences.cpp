@@ -343,8 +343,6 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitCoreMathMLEnabledPreferenceKey), kCFBooleanFalse);
 
-    CFDictionaryAddValue(defaults, CFSTR(WebKitLazyImageLoadingEnabledPreferenceKey), kCFBooleanFalse);
-
     defaultSettings = defaults;
 #endif
 }
@@ -2092,6 +2090,20 @@ HRESULT WebPreferences::setMenuItemElementEnabled(BOOL enabled)
     return S_OK;
 }
 
+HRESULT WebPreferences::keygenElementEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitKeygenElementEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setKeygenElementEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitKeygenElementEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
 HRESULT WebPreferences::crossOriginWindowPolicySupportEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
@@ -2346,19 +2358,5 @@ HRESULT WebPreferences::resizeObserverEnabled(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setResizeObserverEnabled(BOOL enabled)
 {
     setBoolValue(WebKitResizeObserverEnabledPreferenceKey, enabled);
-    return S_OK;
-}
-
-HRESULT WebPreferences::lazyImageLoadingEnabled(_Out_ BOOL* enabled)
-{
-    if (!enabled)
-        return E_POINTER;
-    *enabled = boolValueForKey(WebKitLazyImageLoadingEnabledPreferenceKey);
-    return S_OK;
-}
-
-HRESULT WebPreferences::setLazyImageLoadingEnabled(BOOL enabled)
-{
-    setBoolValue(WebKitLazyImageLoadingEnabledPreferenceKey, enabled);
     return S_OK;
 }

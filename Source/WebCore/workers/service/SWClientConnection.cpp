@@ -47,8 +47,6 @@ SWClientConnection::~SWClientConnection() = default;
 
 void SWClientConnection::scheduleJob(DocumentOrWorkerIdentifier contextIdentifier, const ServiceWorkerJobData& jobData)
 {
-    ASSERT(isMainThread());
-
     auto addResult = m_scheduledJobSources.add(jobData.identifier().jobIdentifier, contextIdentifier);
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
@@ -62,7 +60,7 @@ void SWClientConnection::failedFetchingScript(ServiceWorkerJobIdentifier jobIden
     finishFetchingScriptInServer({ { serverConnectionIdentifier(), jobIdentifier }, registrationKey, { }, { }, { },  error });
 }
 
-bool SWClientConnection::postTaskForJob(ServiceWorkerJobIdentifier jobIdentifier, IsJobComplete isJobComplete, WTF::Function<void(ServiceWorkerJob&)>&& task)
+bool SWClientConnection::postTaskForJob(ServiceWorkerJobIdentifier jobIdentifier, IsJobComplete isJobComplete, Function<void(ServiceWorkerJob&)>&& task)
 {
     ASSERT(isMainThread());
 
@@ -125,10 +123,8 @@ void SWClientConnection::postMessageToServiceWorkerClient(DocumentIdentifier des
     if (!destinationDocument)
         return;
 
-    destinationDocument->postTask([message = WTFMove(message), sourceData = WTFMove(sourceData), sourceOrigin = WTFMove(sourceOrigin)](auto& context) mutable {
-        if (auto* container = context.serviceWorkerContainer())
-            container->postMessage(WTFMove(message), WTFMove(sourceData), WTFMove(sourceOrigin));
-    });
+    if (auto* container = destinationDocument->ensureServiceWorkerContainer())
+        container->postMessage(WTFMove(message), WTFMove(sourceData), WTFMove(sourceOrigin));
 }
 
 void SWClientConnection::updateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const Optional<ServiceWorkerData>& serviceWorkerData)

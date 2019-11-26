@@ -43,11 +43,11 @@ SessionStorageNamespace::~SessionStorageNamespace()
     ASSERT(!RunLoop::isMain());
 }
 
-StorageArea& SessionStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin)
+StorageArea& SessionStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
-    return *m_storageAreaMap.ensure(securityOrigin, [this, &securityOrigin]() mutable {
-        return std::make_unique<StorageArea>(nullptr, WTFMove(securityOrigin), m_quotaInBytes);
+    return *m_storageAreaMap.ensure(securityOrigin, [&]() mutable {
+        return makeUnique<StorageArea>(nullptr, WTFMove(securityOrigin), m_quotaInBytes, WTFMove(workQueue));
     }).iterator->value.get();
 }
 
@@ -86,6 +86,14 @@ void SessionStorageNamespace::clearAllStorageAreas()
     ASSERT(!RunLoop::isMain());
     for (auto& storageArea : m_storageAreaMap.values())
         storageArea->clear();
+}
+
+Vector<StorageAreaIdentifier> SessionStorageNamespace::storageAreaIdentifiers() const
+{
+    Vector<StorageAreaIdentifier> identifiers;
+    for (auto& storageArea : m_storageAreaMap.values())
+        identifiers.append(storageArea->identifier());
+    return identifiers;
 }
 
 } // namespace WebKit

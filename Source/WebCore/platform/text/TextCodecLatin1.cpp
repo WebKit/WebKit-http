@@ -93,7 +93,7 @@ void TextCodecLatin1::registerEncodingNames(EncodingNameRegistrar registrar)
 void TextCodecLatin1::registerCodecs(TextCodecRegistrar registrar)
 {
     registrar("windows-1252", [] {
-        return std::make_unique<TextCodecLatin1>();
+        return makeUnique<TextCodecLatin1>();
     });
 }
 
@@ -134,7 +134,7 @@ String TextCodecLatin1::decode(const char* bytes, size_t length, bool, bool, boo
             *destination = *source;
         } else {
 useLookupTable:
-            if (latin1ConversionTable[*source] > 0xff)
+            if (!isLatin1(latin1ConversionTable[*source]))
                 goto upConvertTo16Bit;
 
             *destination = latin1ConversionTable[*source];

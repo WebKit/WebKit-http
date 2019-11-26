@@ -100,7 +100,7 @@ void MockCDMFactory::setSupportedDataTypes(Vector<String>&& types)
 
 std::unique_ptr<CDMPrivate> MockCDMFactory::createCDM(const String&)
 {
-    return std::make_unique<MockCDM>(makeWeakPtr(*this));
+    return makeUnique<MockCDM>(makeWeakPtr(*this));
 }
 
 MockCDM::MockCDM(WeakPtr<MockCDMFactory> factory)
@@ -226,6 +226,8 @@ Optional<String> MockCDM::sanitizeSessionId(const String& sessionId) const
     return WTF::nullopt;
 }
 
+ProxyCDMMock::~ProxyCDMMock() = default;
+
 MockCDMInstance::MockCDMInstance(WeakPtr<MockCDM> cdm)
     : m_cdm(cdm)
 {
@@ -292,6 +294,11 @@ const String& MockCDMInstance::keySystem() const
 RefPtr<CDMInstanceSession> MockCDMInstance::createSession()
 {
     return adoptRef(new MockCDMInstanceSession(makeWeakPtr(*this)));
+}
+
+RefPtr<ProxyCDM> MockCDMInstance::proxyCDM() const
+{
+    return adoptRef(new ProxyCDMMock());
 }
 
 MockCDMInstanceSession::MockCDMInstanceSession(WeakPtr<MockCDMInstance>&& instance)

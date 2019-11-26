@@ -546,21 +546,26 @@ macro loadConstantOrVariablePayloadUnchecked(size, index, payload)
         payload)
 end
 
-macro writeBarrierOnOperand(size, get, cellFieldName)
-    get(cellFieldName, t1)
-    loadConstantOrVariablePayload(size, t1, CellTag, t2, .writeBarrierDone)
+macro writeBarrierOnCellWithReload(cell, reloadAfterSlowPath)
     skipIfIsRememberedOrInEden(
-        t2, 
+        cell,
         macro()
             push cfr, PC
             # We make two extra slots because cCall2 will poke.
             subp 8, sp
-            move t2, a1 # t2 can be a0 on x86
+            move cell, a1 # cell can be a0
             move cfr, a0
             cCall2Void(_llint_write_barrier_slow)
             addp 8, sp
             pop PC, cfr
+            reloadAfterSlowPath()
         end)
+end
+
+macro writeBarrierOnOperand(size, get, cellFieldName)
+    get(cellFieldName, t1)
+    loadConstantOrVariablePayload(size, t1, CellTag, t2, .writeBarrierDone)
+    writeBarrierOnCellWithReload(t2, macro() end)
 .writeBarrierDone:
 end
 
@@ -580,18 +585,7 @@ macro writeBarrierOnGlobal(size, get, valueFieldName, loadMacro)
 
     loadMacro(t3)
 
-    skipIfIsRememberedOrInEden(
-        t3,
-        macro()
-            push cfr, PC
-            # We make two extra slots because cCall2 will poke.
-            subp 8, sp
-            move cfr, a0
-            move t3, a1
-            cCall2Void(_llint_write_barrier_slow)
-            addp 8, sp
-            pop PC, cfr
-        end)
+    writeBarrierOnCellWithReload(t3, macro() end)
 .writeBarrierDone:
 end
 
@@ -875,8 +869,7 @@ equalNullComparisonOp(op_neq_null, OpNeqNull,
 
 llintOpWithReturn(op_is_undefined_or_null, OpIsUndefinedOrNull, macro (size, get, dispatch, return)
     get(m_operand, t0)
-    assertNotConstant(size, t0)
-    loadi TagOffset[cfr, t0, 8], t1
+    loadConstantOrVariableTag(size, t0, t1)
     ori 1, t1
     cieq t1, NullTag, t1
     return(BooleanTag, t1)
@@ -2525,6 +2518,28 @@ llintOpWithReturn(op_get_rest_length, OpGetRestLength, macro (size, get, dispatc
     move 0, t0
 .finish:
     return(Int32Tag, t0)
+end)
+
+
+llintOpWithProfile(op_get_internal_field, OpGetInternalField, macro (size, get, dispatch, return)
+    get(m_base, t0)
+    loadi PayloadOffset[cfr, t0, 8], t0
+    getu(size, OpGetInternalField, m_index, t1)
+    loadi JSInternalFieldObjectImpl_internalFields + TagOffset[t0, t1, SlotSize], t2
+    loadi JSInternalFieldObjectImpl_internalFields + PayloadOffset[t0, t1, SlotSize], t3
+    return(t2, t3)
+end)
+
+llintOp(op_put_internal_field, OpPutInternalField, macro (size, get, dispatch)
+    get(m_base, t0)
+    loadi PayloadOffset[cfr, t0, 8], t0
+    get(m_value, t1)
+    loadConstantOrVariable(size, t1, t2, t3)
+    getu(size, OpPutInternalField, m_index, t1)
+    storei t2, JSInternalFieldObjectImpl_internalFields + TagOffset[t0, t1, SlotSize]
+    storei t3, JSInternalFieldObjectImpl_internalFields + PayloadOffset[t0, t1, SlotSize]
+    writeBarrierOnOperand(size, get, m_base)
+    dispatch()
 end)
 
 

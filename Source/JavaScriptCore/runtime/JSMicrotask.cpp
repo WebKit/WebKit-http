@@ -27,6 +27,7 @@
 #include "JSMicrotask.h"
 
 #include "CatchScope.h"
+#include "Debugger.h"
 #include "Error.h"
 #include "Exception.h"
 #include "JSCInlines.h"
@@ -39,10 +40,13 @@ namespace JSC {
 
 class JSMicrotask final : public Microtask {
 public:
-    JSMicrotask(VM& vm, JSValue job, JSArray* arguments)
+    static constexpr unsigned maxArguments = 3;
+    JSMicrotask(VM& vm, JSValue job, JSValue argument0, JSValue argument1, JSValue argument2)
     {
         m_job.set(vm, job);
-        m_arguments.set(vm, arguments);
+        m_arguments[0].set(vm, argument0);
+        m_arguments[1].set(vm, argument1);
+        m_arguments[2].set(vm, argument2);
     }
 
     JSMicrotask(VM& vm, JSValue job)
@@ -54,7 +58,7 @@ private:
     void run(ExecState*) override;
 
     Strong<Unknown> m_job;
-    Strong<JSArray> m_arguments;
+    Strong<Unknown> m_arguments[maxArguments];
 };
 
 Ref<Microtask> createJSMicrotask(VM& vm, JSValue job)
@@ -62,9 +66,9 @@ Ref<Microtask> createJSMicrotask(VM& vm, JSValue job)
     return adoptRef(*new JSMicrotask(vm, job));
 }
 
-Ref<Microtask> createJSMicrotask(VM& vm, JSValue job, JSArray* arguments)
+Ref<Microtask> createJSMicrotask(VM& vm, JSValue job, JSValue argument0, JSValue argument1, JSValue argument2)
 {
-    return adoptRef(*new JSMicrotask(vm, job, arguments));
+    return adoptRef(*new JSMicrotask(vm, job, argument0, argument1, argument2));
 }
 
 void JSMicrotask::run(ExecState* exec)
@@ -77,15 +81,18 @@ void JSMicrotask::run(ExecState* exec)
     ASSERT(handlerCallType != CallType::None);
 
     MarkedArgumentBuffer handlerArguments;
-    if (m_arguments) {
-        for (unsigned index = 0, length = m_arguments->length(); index < length; ++index) {
-            JSValue arg = m_arguments->JSArray::get(exec, index);
-            CLEAR_AND_RETURN_IF_EXCEPTION(scope, handlerArguments.overflowCheckNotNeeded());
-            handlerArguments.append(arg);
-        }
-        if (UNLIKELY(handlerArguments.hasOverflowed()))
-            return;
+    for (unsigned index = 0; index < maxArguments; ++index) {
+        JSValue arg = m_arguments[index].get();
+        if (!arg)
+            break;
+        handlerArguments.append(arg);
     }
+    if (UNLIKELY(handlerArguments.hasOverflowed()))
+        return;
+
+    if (UNLIKELY(exec->lexicalGlobalObject()->hasDebugger()))
+        exec->lexicalGlobalObject()->debugger()->willRunMicrotask();
+
     profiledCall(exec, ProfilingReason::Microtask, m_job.get(), handlerCallType, handlerCallData, jsUndefined(), handlerArguments);
     scope.clearException();
 }

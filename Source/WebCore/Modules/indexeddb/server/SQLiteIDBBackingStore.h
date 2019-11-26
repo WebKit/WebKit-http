@@ -49,7 +49,7 @@ class SQLiteIDBCursor;
 class SQLiteIDBBackingStore : public IDBBackingStore {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    SQLiteIDBBackingStore(PAL::SessionID, const IDBDatabaseIdentifier&, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler&, uint64_t quota);
+    SQLiteIDBBackingStore(PAL::SessionID, const IDBDatabaseIdentifier&, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler&);
     
     ~SQLiteIDBBackingStore() final;
 
@@ -82,9 +82,6 @@ public:
     IDBObjectStoreInfo* infoForObjectStore(uint64_t objectStoreIdentifier) final;
     void deleteBackingStore() final;
 
-    void setQuota(uint64_t quota) final { m_quota = quota; }
-    uint64_t databasesSizeForOrigin() const final;
-
     bool supportsSimultaneousTransactions() final { return false; }
     bool isEphemeral() final { return false; }
 
@@ -95,7 +92,7 @@ public:
     IDBError getBlobRecordsForObjectStoreRecord(int64_t objectStoreRecord, Vector<String>& blobURLs, Vector<String>& blobFilePaths);
 
     static String databaseNameFromEncodedFilename(const String&);
-    static uint64_t databasesSizeForFolder(const String& folder);
+    static uint64_t databasesSizeForDirectory(const String& directory);
 
     String databaseDirectory() const { return m_databaseDirectory; };
     static String fullDatabasePathForDirectory(const String&);
@@ -109,9 +106,8 @@ private:
     String filenameForDatabaseName() const;
     String fullDatabasePath() const;
     String fullDatabaseDirectoryWithUpgrade();
-
-    uint64_t quotaForOrigin() const;
-    uint64_t maximumSize() const;
+    
+    String databaseRootDirectoryIsolatedCopy() const { return m_databaseRootDirectory.isolatedCopy(); }
 
     bool ensureValidRecordsTable();
     bool ensureValidIndexRecordsTable();
@@ -137,6 +133,9 @@ private:
     IDBError getAllIndexRecords(const IDBResourceIdentifier& transactionIdentifier, const IDBGetAllRecordsData&, IDBGetAllResult& outValue);
 
     void closeSQLiteDB();
+    void close() final;
+    
+    uint64_t databaseSize() const final;
 
     enum class SQL : size_t {
         CreateObjectStoreInfo,
@@ -183,13 +182,21 @@ private:
         GetKeyRecordsLowerOpenUpperClosed,
         GetKeyRecordsLowerClosedUpperOpen,
         GetKeyRecordsLowerClosedUpperClosed,
-        Count
+        CountRecordsLowerOpenUpperOpen,
+        CountRecordsLowerOpenUpperClosed,
+        CountRecordsLowerClosedUpperOpen,
+        CountRecordsLowerClosedUpperClosed,
+        CountIndexRecordsLowerOpenUpperOpen,
+        CountIndexRecordsLowerOpenUpperClosed,
+        CountIndexRecordsLowerClosedUpperOpen,
+        CountIndexRecordsLowerClosedUpperClosed,
+        Invalid,
     };
 
     SQLiteStatement* cachedStatement(SQL, const char*);
     SQLiteStatement* cachedStatementForGetAllObjectStoreRecords(const IDBGetAllRecordsData&);
 
-    std::unique_ptr<SQLiteStatement> m_cachedStatements[static_cast<int>(SQL::Count)];
+    std::unique_ptr<SQLiteStatement> m_cachedStatements[static_cast<int>(SQL::Invalid)];
 
     PAL::SessionID m_sessionID;
     IDBDatabaseIdentifier m_identifier;
@@ -205,8 +212,6 @@ private:
     String m_databaseDirectory;
 
     IDBBackingStoreTemporaryFileHandler& m_temporaryFileHandler;
-    
-    uint64_t m_quota;
 
     Ref<IDBSerializationContext> m_serializationContext;
 };

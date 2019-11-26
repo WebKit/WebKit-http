@@ -769,6 +769,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
             setFloating(false);
             clearPositionedState();
         }
+
         if (newStyle.hasPseudoStyle(PseudoId::FirstLine) || oldStyle->hasPseudoStyle(PseudoId::FirstLine))
             invalidateCachedFirstLineStyle();
 
@@ -777,6 +778,15 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         setHasOverflowClip(false);
         setHasTransformRelatedProperty(false);
         setHasReflection(false);
+    }
+
+    bool hadOutline = oldStyle && oldStyle->hasOutline();
+    bool hasOutline = newStyle.hasOutline();
+    if (hadOutline != hasOutline) {
+        if (hasOutline)
+            view().incrementRendersWithOutline();
+        else
+            view().decrementRendersWithOutline();
     }
 
     bool newStyleSlowScroll = false;
@@ -851,6 +861,7 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
     if (oldStyle && !areCursorsEqual(oldStyle, &style()))
         frame().eventHandler().scheduleCursorUpdate();
 #endif
+
     bool hadOutlineAuto = oldStyle && oldStyle->outlineStyleIsAuto() == OutlineIsAuto::On;
     bool hasOutlineAuto = outlineStyleForRepaint().outlineStyleIsAuto() == OutlineIsAuto::On;
     if (hasOutlineAuto != hadOutlineAuto) {
@@ -933,6 +944,9 @@ void RenderElement::willBeDestroyed()
 
     if (hasCounterNodeMap())
         RenderCounter::destroyCounterNodes(*this);
+
+    if (style().hasOutline())
+        view().decrementRendersWithOutline();
 
     RenderObject::willBeDestroyed();
 
@@ -2039,16 +2053,7 @@ bool RenderElement::checkForRepaintDuringLayout() const
 
 ImageOrientation RenderElement::imageOrientation() const
 {
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
-    // This can only be enabled for ports which honor the orientation flag in their drawing code.
-    if (document().isImageDocument())
-        return ImageOrientation::FromImage;
-#endif
-    // Respect the image's orientation if it's being used as a full-page image or it's
-    // an <img> and the setting to respect it everywhere is set.
-    if (settings().shouldRespectImageOrientation() && is<HTMLImageElement>(element()))
-        return ImageOrientation::FromImage;
-    return style().imageOrientation();
+    return ImageOrientation::FromImage;
 }
 
 void RenderElement::adjustFragmentedFlowStateOnContainingBlockChangeIfNeeded()

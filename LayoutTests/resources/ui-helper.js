@@ -50,7 +50,7 @@ window.UIHelper = class UIHelper {
         });
     }
 
-    static doubleTapAt(x, y)
+    static doubleTapAt(x, y, delay = 0)
     {
         console.assert(this.isIOSFamily());
 
@@ -68,7 +68,7 @@ window.UIHelper = class UIHelper {
 
         return new Promise((resolve) => {
             testRunner.runUIScript(`
-                uiController.doubleTapAtPoint(${x}, ${y}, function() {
+                uiController.doubleTapAtPoint(${x}, ${y}, ${delay}, function() {
                     uiController.uiScriptComplete();
                 });`, resolve);
         });
@@ -91,12 +91,7 @@ window.UIHelper = class UIHelper {
             return Promise.resolve();
         }
 
-        return new Promise(async (resolve) => {
-            await UIHelper.tapAt(x, y);
-            await new Promise(resolveAfterDelay => setTimeout(resolveAfterDelay, 120));
-            await UIHelper.tapAt(x, y);
-            resolve();
-        });
+        return UIHelper.doubleTapAt(x, y, 0.12);
     }
 
     static humanSpeedZoomByDoubleTappingAt(x, y)
@@ -117,17 +112,12 @@ window.UIHelper = class UIHelper {
         }
 
         return new Promise(async (resolve) => {
-            await UIHelper.tapAt(x, y);
-            await new Promise(resolveAfterDelay => setTimeout(resolveAfterDelay, 120));
-            await new Promise((resolveAfterZoom) => {
-                testRunner.runUIScript(`
-                    uiController.didEndZoomingCallback = () => {
-                        uiController.didEndZoomingCallback = null;
-                        uiController.uiScriptComplete(uiController.zoomScale);
-                    };
-                    uiController.singleTapAtPoint(${x}, ${y}, () => {});`, resolveAfterZoom);
-            });
-            resolve();
+            testRunner.runUIScript(`
+                uiController.didEndZoomingCallback = () => {
+                    uiController.didEndZoomingCallback = null;
+                    uiController.uiScriptComplete(uiController.zoomScale);
+                };
+                uiController.doubleTapAtPoint(${x}, ${y}, 0.12, () => { });`, resolve);
         });
     }
 
@@ -153,7 +143,7 @@ window.UIHelper = class UIHelper {
                     uiController.didEndZoomingCallback = null;
                     uiController.uiScriptComplete(uiController.zoomScale);
                 };
-                uiController.doubleTapAtPoint(${x}, ${y}, () => {});`, resolve);
+                uiController.doubleTapAtPoint(${x}, ${y}, 0, () => { });`, resolve);
         });
     }
 
@@ -179,27 +169,6 @@ window.UIHelper = class UIHelper {
         const x = element.offsetLeft + element.offsetWidth / 2;
         const y = element.offsetTop + element.offsetHeight / 2;
         return UIHelper.activateAt(x, y);
-    }
-
-    static activateElementAtHumanSpeed(element)
-    {
-        const x = element.offsetLeft + element.offsetWidth / 2;
-        const y = element.offsetTop + element.offsetHeight / 2;
-
-        if (!this.isWebKit2() || !this.isIOSFamily()) {
-            eventSender.mouseMoveTo(x, y);
-            eventSender.mouseDown();
-            eventSender.mouseUp();
-            return Promise.resolve();
-        }
-
-        return new Promise(async (resolve) => {
-            await new Promise(resolveAfterDelay => setTimeout(resolveAfterDelay, 350));
-            testRunner.runUIScript(`
-                uiController.singleTapAtPoint(${x}, ${y}, function() {
-                    uiController.uiScriptComplete();
-                });`, resolve);
-        });
     }
 
     static async doubleActivateAt(x, y)
@@ -708,6 +677,12 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
     }
 
+    static immediateZoomToScale(scale)
+    {
+        const uiScript = `uiController.immediateZoomToScale(${scale})`;
+        return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
+    }
+
     static typeCharacter(characterString)
     {
         if (!this.isWebKit2() || !this.isIOSFamily()) {
@@ -1036,5 +1011,11 @@ window.UIHelper = class UIHelper {
                 });
             })();`, resolve);
         });
+    }
+
+    static waitForDoubleTapDelay()
+    {
+        const uiScript = `uiController.doAfterDoubleTapDelay(() => uiController.uiScriptComplete(""))`;
+        return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
     }
 }

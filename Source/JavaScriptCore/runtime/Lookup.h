@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -361,9 +361,10 @@ inline void reifyStaticProperty(VM& vm, const ClassInfo* classInfo, const Proper
     }
     
     if (value.attributes() & PropertyAttribute::ClassStructure) {
-        LazyClassStructure* structure = bitwise_cast<LazyClassStructure*>(
+        LazyClassStructure* lazyStructure = bitwise_cast<LazyClassStructure*>(
             bitwise_cast<char*>(&thisObj) + value.lazyClassStructureOffset());
-        structure->get(jsCast<JSGlobalObject*>(&thisObj));
+        JSObject* constructor = lazyStructure->constructor(jsCast<JSGlobalObject*>(&thisObj));
+        thisObj.putDirect(vm, propertyName, constructor, attributesForStructure(value.attributes()));
         return;
     }
     
@@ -399,7 +400,7 @@ inline void reifyStaticProperties(VM& vm, const ClassInfo* classInfo, const Hash
     for (auto& value : values) {
         if (!value.m_key)
             continue;
-        auto key = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(value.m_key), strlen(value.m_key));
+        auto key = Identifier::fromString(vm, reinterpret_cast<const LChar*>(value.m_key), strlen(value.m_key));
         reifyStaticProperty(vm, classInfo, key, value, thisObj);
     }
 }

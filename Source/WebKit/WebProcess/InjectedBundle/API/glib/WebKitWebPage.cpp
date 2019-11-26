@@ -129,7 +129,7 @@ static WebKitFrame* webkitFrameGetOrCreate(WebFrame* webFrame)
     if (wrapperPtr)
         return wrapperPtr->webkitFrame();
 
-    std::unique_ptr<WebKitFrameWrapper> wrapper = std::make_unique<WebKitFrameWrapper>(*webFrame);
+    std::unique_ptr<WebKitFrameWrapper> wrapper = makeUnique<WebKitFrameWrapper>(*webFrame);
     wrapperPtr = wrapper.get();
     webFrameMap().set(webFrame, WTFMove(wrapper));
     return wrapperPtr->webkitFrame();
@@ -249,7 +249,7 @@ private:
         }
 
         webkitURIRequestGetResourceRequest(request.get(), resourceRequest);
-        resourceRequest.setInitiatingPageID(page.pageID());
+        resourceRequest.setInitiatingPageID(page.webPageProxyIdentifier().toUInt64());
 
         API::Dictionary::MapType message;
         message.set(String::fromUTF8("Page"), &page);
@@ -679,11 +679,11 @@ WebKitWebPage* webkitWebPageCreate(WebPage* webPage)
     WebKitWebPage* page = WEBKIT_WEB_PAGE(g_object_new(WEBKIT_TYPE_WEB_PAGE, NULL));
     page->priv->webPage = webPage;
 
-    webPage->setInjectedBundleResourceLoadClient(std::make_unique<PageResourceLoadClient>(page));
-    webPage->setInjectedBundlePageLoaderClient(std::make_unique<PageLoaderClient>(page));
-    webPage->setInjectedBundleContextMenuClient(std::make_unique<PageContextMenuClient>(page));
-    webPage->setInjectedBundleUIClient(std::make_unique<PageUIClient>(page));
-    webPage->setInjectedBundleFormClient(std::make_unique<PageFormClient>(page));
+    webPage->setInjectedBundleResourceLoadClient(makeUnique<PageResourceLoadClient>(page));
+    webPage->setInjectedBundlePageLoaderClient(makeUnique<PageLoaderClient>(page));
+    webPage->setInjectedBundleContextMenuClient(makeUnique<PageContextMenuClient>(page));
+    webPage->setInjectedBundleUIClient(makeUnique<PageUIClient>(page));
+    webPage->setInjectedBundleFormClient(makeUnique<PageFormClient>(page));
 
     return page;
 }
@@ -764,7 +764,7 @@ guint64 webkit_web_page_get_id(WebKitWebPage* webPage)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_PAGE(webPage), 0);
 
-    return webPage->priv->webPage->pageID().toUInt64();
+    return webPage->priv->webPage->identifier().toUInt64();
 }
 
 /**

@@ -48,7 +48,7 @@ static uint64_t maxGeneratedKeyValue = 0x20000000000000;
 
 std::unique_ptr<MemoryIDBBackingStore> MemoryIDBBackingStore::create(PAL::SessionID sessionID, const IDBDatabaseIdentifier& identifier)
 {
-    return std::make_unique<MemoryIDBBackingStore>(sessionID, identifier);
+    return makeUnique<MemoryIDBBackingStore>(sessionID, identifier);
 }
 
 MemoryIDBBackingStore::MemoryIDBBackingStore(PAL::SessionID sessionID, const IDBDatabaseIdentifier& identifier)
@@ -62,7 +62,7 @@ MemoryIDBBackingStore::~MemoryIDBBackingStore() = default;
 IDBError MemoryIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info)
 {
     if (!m_databaseInfo)
-        m_databaseInfo = std::make_unique<IDBDatabaseInfo>(m_identifier.databaseName(), 0);
+        m_databaseInfo = makeUnique<IDBDatabaseInfo>(m_identifier.databaseName(), 0);
 
     info = *m_databaseInfo;
     return IDBError { };
@@ -73,7 +73,7 @@ void MemoryIDBBackingStore::setDatabaseInfo(const IDBDatabaseInfo& info)
     // It is not valid to directly set database info on a backing store that hasn't already set its own database info.
     ASSERT(m_databaseInfo);
 
-    m_databaseInfo = std::make_unique<IDBDatabaseInfo>(info);
+    m_databaseInfo = makeUnique<IDBDatabaseInfo>(info);
 }
 
 IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
@@ -595,10 +595,14 @@ void MemoryIDBBackingStore::deleteBackingStore()
     // The in-memory IDB backing store doesn't need to do any cleanup when it is deleted.
 }
 
-uint64_t MemoryIDBBackingStore::databasesSizeForOrigin() const
+uint64_t MemoryIDBBackingStore::databaseSize() const
 {
     // FIXME: Implement this.
     return 0;
+}
+
+void MemoryIDBBackingStore::close()
+{
 }
 
 } // namespace IDBServer

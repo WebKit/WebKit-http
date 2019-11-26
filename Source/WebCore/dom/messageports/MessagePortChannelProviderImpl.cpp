@@ -27,14 +27,21 @@
 #include "MessagePortChannelProviderImpl.h"
 
 #include "MessagePort.h"
-#include <wtf/CompletionHandler.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
 
+static inline MessagePortChannelRegistry::CheckProcessLocalPortForActivityCallback checkActivityCallback()
+{
+    return [](auto& messagePortIdentifier, auto, auto&& callback) {
+        ASSERT(isMainThread());
+        callback(MessagePort::isExistingMessagePortLocallyReachable(messagePortIdentifier) ? MessagePortChannelProvider::HasActivity::Yes : MessagePortChannelProvider::HasActivity::No);
+    };
+}
+
 MessagePortChannelProviderImpl::MessagePortChannelProviderImpl()
-    : m_registry(*this)
+    : m_registry(checkActivityCallback())
 {
 }
 
@@ -79,18 +86,18 @@ void MessagePortChannelProviderImpl::messagePortClosed(const MessagePortIdentifi
     });
 }
 
-void MessagePortChannelProviderImpl::postMessageToRemote(MessageWithMessagePorts&& message, const MessagePortIdentifier& remoteTarget)
+void MessagePortChannelProviderImpl::postMessageToRemote(const MessageWithMessagePorts& message, const MessagePortIdentifier& remoteTarget)
 {
-    performActionOnMainThread([registry = &m_registry, message = WTFMove(message), remoteTarget]() mutable {
+    performActionOnMainThread([registry = &m_registry, message = MessageWithMessagePorts { message }, remoteTarget]() mutable {
         if (registry->didPostMessageToRemote(WTFMove(message), remoteTarget))
             MessagePort::notifyMessageAvailable(remoteTarget);
     });
 }
 
-void MessagePortChannelProviderImpl::takeAllMessagesForPort(const MessagePortIdentifier& port, Function<void(Vector<MessageWithMessagePorts>&&, Function<void()>&&)>&& outerCallback)
+void MessagePortChannelProviderImpl::takeAllMessagesForPort(const MessagePortIdentifier& port, CompletionHandler<void(Vector<MessageWithMessagePorts>&&, Function<void()>&&)>&& outerCallback)
 {
     // It is the responsibility of outerCallback to get itself to the appropriate thread (e.g. WebWorker thread)
-    auto callback = [outerCallback = WTFMove(outerCallback)](Vector<MessageWithMessagePorts>&& messages, Function<void()>&& messageDeliveryCallback) {
+    auto callback = [outerCallback = WTFMove(outerCallback)](Vector<MessageWithMessagePorts>&& messages, Function<void()>&& messageDeliveryCallback) mutable {
         ASSERT(isMainThread());
         outerCallback(WTFMove(messages), WTFMove(messageDeliveryCallback));
     };
@@ -100,7 +107,7 @@ void MessagePortChannelProviderImpl::takeAllMessagesForPort(const MessagePortIde
     });
 }
 
-void MessagePortChannelProviderImpl::checkRemotePortForActivity(const MessagePortIdentifier& remoteTarget, Function<void(HasActivity)>&& outerCallback)
+void MessagePortChannelProviderImpl::checkRemotePortForActivity(const MessagePortIdentifier& remoteTarget, CompletionHandler<void(HasActivity)>&& outerCallback)
 {
     auto callback = Function<void(HasActivity)> { [outerCallback = WTFMove(outerCallback)](HasActivity hasActivity) mutable {
         ASSERT(isMainThread());
@@ -111,13 +118,5 @@ void MessagePortChannelProviderImpl::checkRemotePortForActivity(const MessagePor
         registry->checkRemotePortForActivity(remoteTarget, WTFMove(callback));
     });
 }
-
-void MessagePortChannelProviderImpl::checkProcessLocalPortForActivity(const MessagePortIdentifier& identifier, ProcessIdentifier, CompletionHandler<void(HasActivity)>&& callback)
-{
-    ASSERT(isMainThread());
-
-    callback(MessagePort::isExistingMessagePortLocallyReachable(identifier) ? HasActivity::Yes : HasActivity::No);
-}
-
 
 } // namespace WebCore

@@ -684,6 +684,8 @@ public:
     virtual Optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
     virtual Optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
 
+    WEBCORE_EXPORT bool hasNonEmptyVisibleRectRespectingParentFrames() const;
+
     virtual unsigned int length() const { return 1; }
 
     bool isFloatingOrOutOfFlowPositioned() const { return (isFloating() || isOutOfFlowPositioned()); }
@@ -1102,6 +1104,8 @@ inline bool RenderObject::needsSimplifiedNormalFlowLayoutOnly() const
     return m_bitfields.needsSimplifiedNormalFlowLayout() && !m_bitfields.needsLayout() && !m_bitfields.normalChildNeedsLayout()
         && !m_bitfields.posChildNeedsLayout() && !m_bitfields.needsPositionedMovementLayout();
 }
+
+inline void Node::setRenderer(RenderObject* renderer) { m_rendererWithStyleFlags.setPointer(renderer); }
 
 #if ENABLE(TREE_DEBUGGING)
 void printRenderTreeForLiveDocuments();

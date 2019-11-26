@@ -38,6 +38,7 @@ namespace WebCore {
 
 namespace Layout {
 
+class FloatingContext;
 class FormattingState;
 class LayoutState;
 
@@ -47,11 +48,6 @@ class FloatingState : public RefCounted<FloatingState> {
 public:
     static Ref<FloatingState> create(LayoutState& layoutState, const Box& formattingContextRoot) { return adoptRef(*new FloatingState(layoutState, formattingContextRoot)); }
 
-    void append(const Box& layoutBox);
-    void remove(const Box& layoutBox);
-
-    bool isEmpty() const { return m_floats.isEmpty(); }
-
     const Box& root() const { return *m_formattingContextRoot; }
 
     Optional<PositionInContextRoot> top(const Box& formattingContextRoot) const;
@@ -59,15 +55,9 @@ public:
     Optional<PositionInContextRoot> rightBottom(const Box& formattingContextRoot) const;
     Optional<PositionInContextRoot> bottom(const Box& formattingContextRoot) const;
 
-    struct Constraints {
-        Optional<PointInContextRoot> left;
-        Optional<PointInContextRoot> right;
-    };
-    Constraints constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const;
-
     class FloatItem {
     public:
-        FloatItem(const Box&, const FloatingState&);
+        FloatItem(const Box&, Display::Box absoluteDisplayBox);
 
         bool operator==(const Box& layoutBox) const { return m_layoutBox.get() == &layoutBox; }
 
@@ -75,6 +65,7 @@ public:
         bool isDescendantOfFormattingRoot(const Box&) const;
 
         Display::Rect rectWithMargin() const { return m_absoluteDisplayBox.rectWithMargin(); }
+        UsedHorizontalMargin horizontalMargin() const { return m_absoluteDisplayBox.horizontalMargin(); }
         PositionInContextRoot bottom() const { return { m_absoluteDisplayBox.bottom() }; }
 
     private:
@@ -83,11 +74,14 @@ public:
     };
     using FloatList = Vector<FloatItem>;
     const FloatList& floats() const { return m_floats; }
-    const FloatItem* last() const { return isEmpty() ? nullptr : &m_floats.last(); }
+    const FloatItem* last() const { return floats().isEmpty() ? nullptr : &m_floats.last(); }
 
 private:
     friend class FloatingContext;
     FloatingState(LayoutState&, const Box& formattingContextRoot);
+
+    void append(FloatItem);
+    void remove(const Box& layoutBox);
 
     LayoutState& layoutState() const { return m_layoutState; }
 

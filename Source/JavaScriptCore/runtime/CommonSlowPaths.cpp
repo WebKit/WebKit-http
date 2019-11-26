@@ -51,7 +51,10 @@
 #include "JSFixedArray.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSImmutableButterfly.h"
+#include "JSInternalPromise.h"
+#include "JSInternalPromiseConstructor.h"
 #include "JSLexicalEnvironment.h"
+#include "JSPromiseConstructor.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSString.h"
 #include "JSWithScope.h"
@@ -72,7 +75,7 @@ namespace JSC {
 
 #define BEGIN_NO_SET_PC() \
     VM& vm = exec->vm();      \
-    NativeCallFrameTracer tracer(&vm, exec); \
+    NativeCallFrameTracer tracer(vm, exec); \
     auto throwScope = DECLARE_THROW_SCOPE(vm); \
     UNUSED_PARAM(throwScope)
 
@@ -180,7 +183,7 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
     if (UNLIKELY(slotsToAdd < 0)) {
         CodeBlock* codeBlock = CommonSlowPaths::codeBlockFromCallFrameCallee(exec, CodeForCall);
         exec->convertToStackOverflowFrame(vm, codeBlock);
-        NativeCallFrameTracer tracer(&vm, exec);
+        NativeCallFrameTracer tracer(vm, exec);
         ErrorHandlingScope errorScope(vm);
         throwScope.release();
         throwArityCheckStackOverflowError(exec, throwScope);
@@ -196,7 +199,7 @@ SLOW_PATH_DECL(slow_path_construct_arityCheck)
     if (UNLIKELY(slotsToAdd < 0)) {
         CodeBlock* codeBlock = CommonSlowPaths::codeBlockFromCallFrameCallee(exec, CodeForConstruct);
         exec->convertToStackOverflowFrame(vm, codeBlock);
-        NativeCallFrameTracer tracer(&vm, exec);
+        NativeCallFrameTracer tracer(vm, exec);
         ErrorHandlingScope errorScope(vm);
         throwArityCheckStackOverflowError(exec, throwScope);
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
@@ -233,8 +236,8 @@ SLOW_PATH_DECL(slow_path_create_this)
     auto bytecode = pc->as<OpCreateThis>();
     JSObject* result;
     JSObject* constructorAsObject = asObject(GET(bytecode.m_callee).jsValue());
-    if (constructorAsObject->type() == JSFunctionType && jsCast<JSFunction*>(constructorAsObject)->canUseAllocationProfile()) {
-        JSFunction* constructor = jsCast<JSFunction*>(constructorAsObject);
+    JSFunction* constructor = jsDynamicCast<JSFunction*>(vm, constructorAsObject);
+    if (constructor && constructor->canUseAllocationProfile()) {
         WriteBarrier<JSCell>& cachedCallee = bytecode.metadata(exec).m_cachedCallee;
         if (!cachedCallee)
             cachedCallee.set(vm, exec->codeBlock(), constructor);
@@ -262,6 +265,47 @@ SLOW_PATH_DECL(slow_path_create_this)
         else
             result = constructEmptyObject(exec);
     }
+    RETURN(result);
+}
+
+SLOW_PATH_DECL(slow_path_create_promise)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpCreatePromise>();
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    JSObject* constructorAsObject = asObject(GET(bytecode.m_callee).jsValue());
+
+    JSPromise* result = nullptr;
+    if (bytecode.m_isInternalPromise) {
+        Structure* structure = InternalFunction::createSubclassStructure(exec, globalObject->internalPromiseConstructor(), constructorAsObject, globalObject->internalPromiseStructure());
+        CHECK_EXCEPTION();
+        result = JSInternalPromise::create(vm, structure);
+    } else {
+        Structure* structure = InternalFunction::createSubclassStructure(exec, globalObject->promiseConstructor(), constructorAsObject, globalObject->promiseStructure());
+        CHECK_EXCEPTION();
+        result = JSPromise::create(vm, structure);
+    }
+
+    JSFunction* constructor = jsDynamicCast<JSFunction*>(vm, constructorAsObject);
+    if (constructor && constructor->canUseAllocationProfile()) {
+        WriteBarrier<JSCell>& cachedCallee = bytecode.metadata(exec).m_cachedCallee;
+        if (!cachedCallee)
+            cachedCallee.set(vm, exec->codeBlock(), constructor);
+        else if (cachedCallee.unvalidatedGet() != JSCell::seenMultipleCalleeObjects() && cachedCallee.get() != constructor)
+            cachedCallee.setWithoutWriteBarrier(JSCell::seenMultipleCalleeObjects());
+    }
+    RETURN(result);
+}
+
+SLOW_PATH_DECL(slow_path_new_promise)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpNewPromise>();
+    JSPromise* result = nullptr;
+    if (bytecode.m_isInternalPromise)
+        result = JSInternalPromise::create(vm, exec->lexicalGlobalObject()->internalPromiseStructure());
+    else
+        result = JSPromise::create(vm, exec->lexicalGlobalObject()->promiseStructure());
     RETURN(result);
 }
 
@@ -1012,7 +1056,7 @@ SLOW_PATH_DECL(slow_path_to_index_string)
     auto bytecode = pc->as<OpToIndexString>();
     JSValue indexValue = GET(bytecode.m_index).jsValue();
     ASSERT(indexValue.isUInt32AsAnyInt());
-    RETURN(jsString(exec, Identifier::from(exec, indexValue.asUInt32AsAnyInt()).string()));
+    RETURN(jsString(vm, Identifier::from(vm, indexValue.asUInt32AsAnyInt()).string()));
 }
 
 SLOW_PATH_DECL(slow_path_profile_type_clear_log)

@@ -111,14 +111,9 @@ messages -> WebProcess LegacyReceiver {
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    EstablishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebCore::PageIdentifier pageID, struct WebKit::WebPreferencesStore store, PAL::SessionID initialSessionID)
+    EstablishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebKit::WebPageProxyIdentifier webPageProxyID, WebCore::PageIdentifier pageID, struct WebKit::WebPreferencesStore store, PAL::SessionID initialSessionID)
     RegisterServiceWorkerClients()
 #endif
-
-    DidTakeAllMessagesForPort(Vector<WebCore::MessageWithMessagePorts> messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier)
-    DidCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity)
-    CheckProcessLocalPortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
-    MessagesAvailableForPort(struct WebCore::MessagePortIdentifier port)
 
     SetHasSuspendedPageProxy(bool hasSuspendedPageProxy);
     SetIsInProcessCache(bool isInProcessCache)

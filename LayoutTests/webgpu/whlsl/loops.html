@@ -33,14 +33,14 @@ fragment float4 fragmentShader(float shade : attribute(0)) : SV_Target 0 {
 const canvas = document.getElementById("canvas");
 
 async function start(device) {
-    const shaderModule = device.createShaderModule({code: shaderSource, isWHLSL: true});
+    const shaderModule = device.createShaderModule({code: shaderSource});
     const vertexStage = {module: shaderModule, entryPoint: "vertexShader"};
     const fragmentStage = {module: shaderModule, entryPoint: "fragmentShader"};
     const primitiveTopology = "triangle-strip";
     const rasterizationState = {frontFace: "cw", cullMode: "none"};
     const alphaBlend = {};
     const colorBlend = {};
-    const colorStates = [{format: "rgba8unorm", alphaBlend, colorBlend, writeMask: 15}]; // GPUColorWriteBits.ALL
+    const colorStates = [{format: "rgba8unorm", alphaBlend, colorBlend, writeMask: 15}]; // GPUColorWrite.ALL
     const depthStencilState = null;
 
     const attribute0 = {shaderLocation: 0, format: "float4", offset: 0};

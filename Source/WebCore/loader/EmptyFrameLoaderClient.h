@@ -23,7 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include "FrameLoaderClient.h"
+#include "ResourceError.h"
+#include <pal/SessionID.h>
+
+#if USE(QUICK_LOOK)
+#include "PreviewLoaderClient.h"
+#endif
 
 namespace WebCore {
 
@@ -193,7 +201,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     Ref<FrameNetworkingContext> createNetworkingContext() final;
 
-    bool isEmptyFrameLoaderClient() final { return true; }
+    bool isEmptyFrameLoaderClient() const final { return true; }
     void prefetchDNS(const String&) final { }
 
 #if USE(QUICK_LOOK)
@@ -205,4 +213,8 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 #endif
 };
 
-}
+} // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::EmptyFrameLoaderClient)
+    static bool isType(const WebCore::FrameLoaderClient& frameLoaderClient) { return frameLoaderClient.isEmptyFrameLoaderClient(); }
+SPECIALIZE_TYPE_TRAITS_END()

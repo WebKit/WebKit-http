@@ -85,7 +85,7 @@
 // Enable the Objective-C API for platforms with a modern runtime. This has to match exactly what we
 // have in JSBase.h.
 #if !defined(JSC_OBJC_API_ENABLED)
-#if (defined(__clang__) && defined(__APPLE__) && ((defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && !defined(__i386__)) || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)))
+#if (defined(__clang__) && defined(__APPLE__) && (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)))
 #define JSC_OBJC_API_ENABLED 1
 #else
 #define JSC_OBJC_API_ENABLED 0
@@ -123,6 +123,7 @@ class JSCustomGetterSetterFunction;
 class JSDestructibleObjectHeapCellType;
 class JSGlobalObject;
 class JSObject;
+class JSPromise;
 class JSPropertyNameEnumerator;
 class JSRunLoopTimer;
 class JSStringHeapCellType;
@@ -352,12 +353,12 @@ public:
     ALWAYS_INLINE CompleteSubspace& gigacageAuxiliarySpace(Gigacage::Kind kind)
     {
         switch (kind) {
-        case Gigacage::ReservedForFlagsAndNotABasePtr:
-            RELEASE_ASSERT_NOT_REACHED();
         case Gigacage::Primitive:
             return primitiveGigacageAuxiliarySpace;
         case Gigacage::JSValue:
             return jsValueGigacageAuxiliarySpace;
+        case Gigacage::NumberOfKinds:
+            break;
         }
         RELEASE_ASSERT_NOT_REACHED();
         return primitiveGigacageAuxiliarySpace;
@@ -673,7 +674,7 @@ public:
     std::unique_ptr<JITThunks> jitStubs;
     MacroAssemblerCodeRef<JITThunkPtrTag> getCTIStub(ThunkGenerator generator)
     {
-        return jitStubs->ctiStub(this, generator);
+        return jitStubs->ctiStub(*this, generator);
     }
 
 #endif // ENABLE(JIT)
@@ -922,6 +923,8 @@ public:
     void notifyNeedTermination() { m_traps.fireTrap(VMTraps::NeedTermination); }
     void notifyNeedWatchdogCheck() { m_traps.fireTrap(VMTraps::NeedWatchdogCheck); }
 
+    void promiseRejected(JSPromise*);
+
 #if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
     StackTrace* nativeStackTraceOfLastThrow() const { return m_nativeStackTraceOfLastThrow.get(); }
     Thread* throwingThread() const { return m_throwingThread.get(); }
@@ -1008,6 +1011,9 @@ private:
     static void primitiveGigacageDisabledCallback(void*);
     void primitiveGigacageDisabled();
 
+    void callPromiseRejectionCallback(Strong<JSPromise>&);
+    void didExhaustMicrotaskQueue();
+
 #if ENABLE(GC_VALIDATION)
     const ClassInfo* m_initializingObjectClass;
 #endif
@@ -1063,6 +1069,9 @@ private:
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 
+    // FIXME: We should remove handled promises from this list at GC flip. <https://webkit.org/b/201005>
+    Vector<Strong<JSPromise>> m_aboutToBeNotifiedRejectedPromises;
+
     WTF::Function<void(VM&)> m_onEachMicrotaskTick;
     uintptr_t m_currentWeakRefVersion { 0 };
 
@@ -1099,14 +1108,14 @@ inline void VM::setInitializingObjectClass(const ClassInfo* initializingObjectCl
 
 inline Heap* WeakSet::heap() const
 {
-    return &m_vm->heap;
+    return &m_vm.heap;
 }
 
 #if !ENABLE(C_LOOP)
 extern "C" void sanitizeStackForVMImpl(VM*);
 #endif
 
-JS_EXPORT_PRIVATE void sanitizeStackForVM(VM*);
-void logSanitizeStack(VM*);
+JS_EXPORT_PRIVATE void sanitizeStackForVM(VM&);
+void logSanitizeStack(VM&);
 
 } // namespace JSC

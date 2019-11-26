@@ -57,9 +57,12 @@ void writeHTMLToPasteboard(NSString *html)
 }
 #endif
 
-static RetainPtr<TestWKWebView> createWebViewWithCustomPasteboardDataSetting(bool enabled)
+static RetainPtr<TestWKWebView> createWebViewWithCustomPasteboardDataSetting(bool enabled, bool colorFilterEnabled = false)
 {
-    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration _setColorFilterEnabled:colorFilterEnabled];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400) configuration:webViewConfiguration.get()]);
     auto preferences = (__bridge WKPreferencesRef)[[webView configuration] preferences];
     WKPreferencesSetDataTransferItemsEnabled(preferences, true);
     WKPreferencesSetCustomPasteboardDataEnabled(preferences, enabled);
@@ -356,5 +359,67 @@ TEST(PasteHTML, StripsSystemFontNames)
     EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"getComputedStyle(document.querySelector('.s4')).fontFamily"],
         [webView stringByEvaluatingJavaScript:@"getComputedStyle(document.body).fontFamily"]);
 }
+
+TEST(PasteHTML, DoesNotAddStandardFontFamily)
+{
+    writeHTMLToPasteboard([NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"cocoa-writer-markup-with-lists" ofType:@"html" inDirectory:@"TestWebKitAPI.resources"] encoding:NSUTF8StringEncoding error:NULL]);
+
+    auto webView = createWebViewWithCustomPasteboardDataSetting(true);
+    [webView synchronouslyLoadTestPageNamed:@"paste-rtfd"];
+    [webView stringByEvaluatingJavaScript:@"document.body.style.fontFamily = 'Arial'"];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("[\"text/html\"]", [webView stringByEvaluatingJavaScript:@"JSON.stringify(clipboardData.types)"]);
+    [webView stringByEvaluatingJavaScript:@"window.htmlInDataTransfer = clipboardData.values[0]"];
+    [webView stringByEvaluatingJavaScript:@"window.pastedHTML = editor.innerHTML"];
+
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('Hello')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('font-weight: bold')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"!pastedHTML.includes('-webkit-standard')"].boolValue);
+
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('Hello')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('font-weight: bold')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"!htmlInDataTransfer.includes('-webkit-standard')"].boolValue);
+
+    EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"getComputedStyle(document.querySelector('.s2')).fontFamily"],
+        [webView stringByEvaluatingJavaScript:@"getComputedStyle(document.body).fontFamily"]);
+    EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"getComputedStyle(document.querySelector('.s4')).fontFamily"],
+        [webView stringByEvaluatingJavaScript:@"getComputedStyle(document.body).fontFamily"]);
+}
+
+#if ENABLE(DARK_MODE_CSS) && HAVE(OS_DARK_MODE_SUPPORT)
+
+TEST(PasteHTML, TransformColorsOfDarkContent)
+{
+    auto webView = createWebViewWithCustomPasteboardDataSetting(true, true);
+    [webView forceDarkMode];
+
+    [webView synchronouslyLoadTestPageNamed:@"rich-color-filtered"];
+
+    writeHTMLToPasteboard(@"<span style=\"color: rgb(238, 238, 238); background-color: rgb(51, 51, 51)\">Hello</span>");
+
+    [webView stringByEvaluatingJavaScript:@"selectRichText()"];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"rich.querySelector('span').style.color"], @"rgb(21, 21, 21)");
+    EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"rich.querySelector('span').style.backgroundColor"], @"rgb(255, 255, 255)");
+}
+
+TEST(PasteHTML, DoesNotTransformColorsOfLightContent)
+{
+    auto webView = createWebViewWithCustomPasteboardDataSetting(true, true);
+    [webView forceDarkMode];
+
+    [webView synchronouslyLoadTestPageNamed:@"rich-color-filtered"];
+
+    writeHTMLToPasteboard(@"<span style=\"color: rgb(101, 101, 101)\">Hello</span>");
+
+    [webView stringByEvaluatingJavaScript:@"selectRichText()"];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ([webView stringByEvaluatingJavaScript:@"rich.querySelector('span').style.color"], @"rgb(101, 101, 101)");
+}
+
+#endif // ENABLE(DARK_MODE_CSS) && HAVE(OS_DARK_MODE_SUPPORT)
 
 #endif // PLATFORM(COCOA)

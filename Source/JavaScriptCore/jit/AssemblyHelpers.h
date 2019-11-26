@@ -62,7 +62,7 @@ public:
     }
 
     CodeBlock* codeBlock() { return m_codeBlock; }
-    VM& vm() { return *m_codeBlock->vm(); }
+    VM& vm() { return m_codeBlock->vm(); }
     AssemblerType_T& assembler() { return m_assembler; }
 
     void checkStackPointerAlignment()
@@ -482,7 +482,7 @@ public:
     }
 
 #if CPU(X86_64) || CPU(X86)
-    static size_t prologueStackPointerDelta()
+    static constexpr size_t prologueStackPointerDelta()
     {
         // Prologue only saves the framePointerRegister
         return sizeof(void*);
@@ -522,7 +522,7 @@ public:
 #endif // CPU(X86_64) || CPU(X86)
 
 #if CPU(ARM_THUMB2) || CPU(ARM64)
-    static size_t prologueStackPointerDelta()
+    static constexpr size_t prologueStackPointerDelta()
     {
         // Prologue saves the framePointerRegister and linkRegister
         return 2 * sizeof(void*);
@@ -563,7 +563,7 @@ public:
 #endif
 
 #if CPU(MIPS)
-    static size_t prologueStackPointerDelta()
+    static constexpr size_t prologueStackPointerDelta()
     {
         // Prologue saves the framePointerRegister and returnAddressRegister
         return 2 * sizeof(void*);
@@ -1588,14 +1588,14 @@ public:
     {
 #if GIGACAGE_ENABLED
         if (Gigacage::isEnabled(kind)) {
-            if (kind != Gigacage::Primitive || Gigacage::isDisablingPrimitiveGigacageDisabled())
+            if (kind != Gigacage::Primitive || Gigacage::isDisablingPrimitiveGigacageForbidden())
                 cageWithoutUntagging(kind, storage);
             else {
 #if CPU(ARM64E)
                 if (length == scratch)
                     scratch = getCachedMemoryTempRegisterIDAndInvalidate();
 #endif
-                loadPtr(&Gigacage::basePtr(kind), scratch);
+                loadPtr(Gigacage::addressOfBasePtr(kind), scratch);
                 Jump done = branchTest64(Zero, scratch);
 #if CPU(ARM64E)
                 GPRReg tempReg = getCachedDataTempRegisterIDAndInvalidate();

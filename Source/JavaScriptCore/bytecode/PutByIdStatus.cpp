@@ -49,7 +49,7 @@ bool PutByIdStatus::appendVariant(const PutByIdVariant& variant)
 
 PutByIdStatus PutByIdStatus::computeFromLLInt(CodeBlock* profiledBlock, unsigned bytecodeIndex, UniquedStringImpl* uid)
 {
-    VM& vm = *profiledBlock->vm();
+    VM& vm = profiledBlock->vm();
     
     auto instruction = profiledBlock->instructions().at(bytecodeIndex);
     auto bytecode = instruction->as<OpPutById>();
@@ -202,7 +202,7 @@ PutByIdStatus PutByIdStatus::computeForStubInfo(
                     
                 case ComplexGetStatus::Inlineable: {
                     std::unique_ptr<CallLinkStatus> callLinkStatus =
-                        std::make_unique<CallLinkStatus>();
+                        makeUnique<CallLinkStatus>();
                     if (CallLinkInfo* callLinkInfo = access.as<GetterSetterAccessCase>().callLinkInfo()) {
                         *callLinkStatus = CallLinkStatus::computeFor(
                             locker, profiledBlock, *callLinkInfo, callExitSiteData);

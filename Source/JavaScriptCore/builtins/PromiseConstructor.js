@@ -28,7 +28,7 @@ function all(iterable)
     "use strict";
 
     if (!@isObject(this))
-        @throwTypeError("|this| is not a object");
+        @throwTypeError("|this| is not an object");
 
     var promiseCapability = @newPromiseCapability(this);
 
@@ -84,7 +84,7 @@ function allSettled(iterable)
     "use strict";
 
     if (!@isObject(this))
-        @throwTypeError("|this| is not a object");
+        @throwTypeError("|this| is not an object");
 
     var promiseCapability = @newPromiseCapability(this);
 
@@ -168,7 +168,7 @@ function race(iterable)
     "use strict";
 
     if (!@isObject(this))
-        @throwTypeError("|this| is not a object");
+        @throwTypeError("|this| is not an object");
 
     var promiseCapability = @newPromiseCapability(this);
 
@@ -193,7 +193,7 @@ function reject(reason)
     "use strict";
 
     if (!@isObject(this))
-        @throwTypeError("|this| is not a object");
+        @throwTypeError("|this| is not an object");
 
     var promiseCapability = @newPromiseCapability(this);
 
@@ -207,7 +207,7 @@ function resolve(value)
     "use strict";
 
     if (!@isObject(this))
-        @throwTypeError("|this| is not a object");
+        @throwTypeError("|this| is not an object");
 
     if (@isPromise(value)) {
         var valueConstructor = value.constructor;
@@ -220,4 +220,60 @@ function resolve(value)
     promiseCapability.@resolve.@call(@undefined, value);
 
     return promiseCapability.@promise;
+}
+
+@nakedConstructor
+function Promise(executor)
+{
+    "use strict";
+
+    if (typeof executor !== "function")
+        @throwTypeError("Promise constructor takes a function argument");
+
+    var promise = @createPromise(new.target, /* isInternalPromise */ false);
+    var capturedPromise = promise;
+
+    function @resolve(resolution) {
+        return @resolvePromiseWithFirstResolvingFunctionCallCheck(capturedPromise, resolution);
+    }
+
+    function @reject(reason) {
+        return @rejectPromiseWithFirstResolvingFunctionCallCheck(capturedPromise, reason);
+    }
+
+    try {
+        executor(@resolve, @reject);
+    } catch (error) {
+        @reject(error);
+    }
+
+    return promise;
+}
+
+@nakedConstructor
+function InternalPromise(executor)
+{
+    "use strict";
+
+    if (typeof executor !== "function")
+        @throwTypeError("InternalPromise constructor takes a function argument");
+
+    var promise = @createPromise(new.target, /* isInternalPromise */ true);
+    var capturedPromise = promise;
+
+    function @resolve(resolution) {
+        return @resolvePromiseWithFirstResolvingFunctionCallCheck(capturedPromise, resolution);
+    }
+
+    function @reject(reason) {
+        return @rejectPromiseWithFirstResolvingFunctionCallCheck(capturedPromise, reason);
+    }
+
+    try {
+        executor(@resolve, @reject);
+    } catch (error) {
+        @reject(error);
+    }
+
+    return promise;
 }

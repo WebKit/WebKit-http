@@ -60,7 +60,7 @@ void HTTPCookieStore::deleteCookieFromDefaultUIProcessCookieStore(const WebCore:
 void HTTPCookieStore::startObservingChangesToDefaultUIProcessCookieStore(Function<void()>&& function)
 {
     stopObservingChangesToDefaultUIProcessCookieStore();
-    m_defaultUIProcessObserver = WebCore::CookieStorageObserver::create([NSHTTPCookieStorage sharedHTTPCookieStorage]);
+    m_defaultUIProcessObserver = makeUnique<WebCore::CookieStorageObserver>([NSHTTPCookieStorage sharedHTTPCookieStorage]);
     m_defaultUIProcessObserver->startObserving(WTFMove(function));
 }
 
@@ -68,6 +68,32 @@ void HTTPCookieStore::stopObservingChangesToDefaultUIProcessCookieStore()
 {
     if (auto observer = std::exchange(m_defaultUIProcessObserver, nullptr))
         observer->stopObserving();
+}
+
+void HTTPCookieStore::deleteCookiesInDefaultUIProcessCookieStore()
+{
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] removeCookiesSinceDate:[NSDate distantPast]];
+}
+
+static NSHTTPCookieAcceptPolicy toNSHTTPCookieAcceptPolicy(WebKit::HTTPCookieAcceptPolicy policy)
+{
+    switch (policy) {
+    case WebKit::HTTPCookieAcceptPolicy::AlwaysAccept:
+        return NSHTTPCookieAcceptPolicyAlways;
+    case WebKit::HTTPCookieAcceptPolicy::Never:
+        return NSHTTPCookieAcceptPolicyNever;
+    case WebKit::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain:
+        return NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
+    case WebKit::HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain:
+        return (NSHTTPCookieAcceptPolicy)NSHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain;
+    }
+    ASSERT_NOT_REACHED();
+    return NSHTTPCookieAcceptPolicyAlways;
+}
+
+void HTTPCookieStore::setHTTPCookieAcceptPolicyInDefaultUIProcessCookieStore(WebKit::HTTPCookieAcceptPolicy policy)
+{
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:toNSHTTPCookieAcceptPolicy(policy)];
 }
 
 } // namespace API

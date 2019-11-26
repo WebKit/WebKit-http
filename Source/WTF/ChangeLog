@@ -1,3 +1,593 @@
+2019-09-07  David Quesada  <david_quesada@apple.com>
+
+        REGRESSION(r248533): Unable to use WTF::RefCounted when building in a debug configuration against a non-debug WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=201585
+        rdar://problem/55153369
+
+        Reviewed by Chris Dumez.
+
+        Export WTF::RefCountedBase::areThreadingChecksEnabledGlobally regardless of whether or not assertions
+        are enabled for the WTF being built. This allows WebKit-based projects to use RefCounted for their own
+        objects in a debug configuration without requiring a debug build of WebKit.
+
+        * wtf/RefCounted.cpp:
+        * wtf/RefCounted.h:
+
+2019-09-07  Mark Lam  <mark.lam@apple.com>
+
+        performJITMemcpy() source buffer should not be in the Gigacage.
+        https://bugs.webkit.org/show_bug.cgi?id=201577
+        <rdar://problem/55142606>
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Gigacage.h:
+        (Gigacage::contains):
+
+2019-09-06  Mark Lam  <mark.lam@apple.com>
+
+        Harden protection of the Gigacage Config parameters.
+        https://bugs.webkit.org/show_bug.cgi?id=201570
+        <rdar://problem/55134229>
+
+        Reviewed by Saam Barati.
+
+        Just renaming some function names here.
+
+        * wtf/Gigacage.h:
+        (Gigacage::forbidDisablingPrimitiveGigacage):
+        (Gigacage::isDisablingPrimitiveGigacageForbidden):
+        (Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled): Deleted.
+        (Gigacage::isDisablingPrimitiveGigacageDisabled): Deleted.
+
+2019-09-05  Mark Lam  <mark.lam@apple.com>
+
+        Refactor the Gigacage code to require less pointer casting.
+        https://bugs.webkit.org/show_bug.cgi?id=201521
+
+        Reviewed by Saam Barati.
+
+        Remove some unneeded stubs in WTF Gigacage.h.
+
+        * wtf/Gigacage.cpp:
+        * wtf/Gigacage.h:
+        (Gigacage::name):
+        (Gigacage::isEnabled):
+        (Gigacage::basePtr): Deleted.
+        (Gigacage::basePtrs): Deleted.
+
+2019-08-30  Alex Christensen  <achristensen@webkit.org>
+
+        Remove HAVE_CFNETWORK_WITH_AUTO_ADDED_HTTP_HEADER_SUPPRESSION_SUPPORT conditional
+        https://bugs.webkit.org/show_bug.cgi?id=201280
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/Platform.h:
+
+2019-08-30  Alex Christensen  <achristensen@webkit.org>
+
+        Remove HAVE_CFNETWORK_WITH_IGNORE_HSTS conditional
+        https://bugs.webkit.org/show_bug.cgi?id=201279
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+
+2019-08-30  Alex Christensen  <achristensen@webkit.org>
+
+        Fix non-iOS iOS-family and catalyst builds after r249019
+        https://bugs.webkit.org/show_bug.cgi?id=200945
+
+        * wtf/Platform.h:
+        State that they have tls_protocol_version_t
+
+2019-08-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system tracing points for compositing updates, and touch-event dispatching
+        https://bugs.webkit.org/show_bug.cgi?id=201327
+
+        Reviewed by Alex Christensen.
+
+        * wtf/SystemTracing.h:
+
+2019-08-30  Keith Rollin  <krollin@apple.com>
+
+        Remove AppKitCompatibilityDeclarations.h
+        https://bugs.webkit.org/show_bug.cgi?id=201283
+        <rdar://problem/54822042>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The two copies of these files -- on in WTF, one in MiniBrowser -- are
+        empty and can be removed.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/mac/AppKitCompatibilityDeclarations.h: Removed.
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Remove HAVE_PASSKIT_GRANULAR_ERRORS conditional
+        https://bugs.webkit.org/show_bug.cgi?id=201278
+        <rdar://problem/54821052>
+
+        Reviewed by Alex Christensen.
+
+        HAVE_PASSKIT_GRANULAR_ERRORS is always True, so remove the conditional
+        tests, keeping the True branches and removing the False branches.
+
+        * wtf/FeatureDefines.h:
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Update .xcconfig symbols to reflect the current set of past and future product versions.
+        https://bugs.webkit.org/show_bug.cgi?id=200720
+        <rdar://problem/54305032>
+
+        Reviewed by Alex Christensen.
+
+        Remove version symbols related to old OS's we no longer support,
+        ensure that version symbols are defined for OS's we do support.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Remove 32-bit macOS support
+        https://bugs.webkit.org/show_bug.cgi?id=201282
+        <rdar://problem/54821667>
+
+        Reviewed by Anders Carlsson.
+
+        WebKit doesn’t support 32-bit Mac any more, so remove checks and code
+        for that platform.
+
+        * wtf/Platform.h:
+
+2019-08-29  Chris Dumez  <cdumez@apple.com>
+
+        CompletionHandler default constructor does not initialize `m_wasConstructedOnMainThread`
+        https://bugs.webkit.org/show_bug.cgi?id=201249
+
+        Reviewed by Joseph Pecoraro and Alex Christensen.
+
+        * wtf/CompletionHandler.h:
+        (WTF::CompletionHandler<Out):
+
+2019-08-29  Chris Dumez  <cdumez@apple.com>
+
+        Crash when mach_port_deallocate() returns KERN_INVALID_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=201248
+        <rdar://problem/54813890>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/cocoa/MachSendRight.cpp:
+        (WTF::deallocateSendRightSafely):
+
+2019-08-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Regression(r248533) Assertion hit in isMainThread() for some clients using WTF because the main thread is not initialized
+        https://bugs.webkit.org/show_bug.cgi?id=201083
+        <rdar://problem/54651993>
+
+        Unreviewed build fox for Windows.
+
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::isMainThreadInitialized): Added.
+
+2019-08-23  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, build fix after r249059
+
+        * wtf/Platform.h:
+        Make HAVE_NEAR_FIELD available only on iOS 13+ and macOS Catalina+.
+
+2019-08-23  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r248533) Assertion hit in isMainThread() for some clients using WTF because the main thread is not initialized
+        https://bugs.webkit.org/show_bug.cgi?id=201083
+
+        Reviewed by Alex Christensen.
+
+        An assertion is hit in isMainThread() for some clients using WTF because the main thread is not initialized, since r248533.
+        Clients can work around this by calling WTF::initializeMainThread() before using WTF but it seems unfortunate to force them
+        to do so. I propose we disable the assertion until the main thread is initialized.
+
+        * wtf/MainThread.h:
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::RefCountedBase):
+        (WTF::RefCountedBase::applyRefDerefThreadingCheck const):
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::isMainThreadInitialized):
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::isMainThreadInitialized):
+
+2019-08-21  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Support NFC authenticators for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=188624
+        <rdar://problem/43354214>
+
+        Reviewed by Chris Dumez.
+
+        * wtf/Platform.h:
+        Add a feature flag for NearField.
+
+2019-08-22  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Disable Content Filtering in the simulator build
+        https://bugs.webkit.org/show_bug.cgi?id=201047
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2019-08-22  Keith Rollin  <krollin@apple.com>
+
+        Remove support for tvOS < 13.0
+        https://bugs.webkit.org/show_bug.cgi?id=200963
+        <rdar://problem/54541355>
+
+        Reviewed by Tim Horton.
+
+        Update conditionals that reference __TV_OS_VERSION_MIN_REQUIRED and
+        __TV_OS_VERSION_MAX_ALLOWED, assuming that they both have values >=
+        130000. This means that expressions like "__TV_OS_VERSION_MIN_REQUIRED
+        < 130000" are always False and "__TV_OS_VERSION_MIN_REQUIRED >=
+        130000" are always True.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2019-08-22  Kate Cheney  <katherine_cheney@apple.com>
+
+        Logging in FileSystem::deleteFile should avoid logging unsurprising errors
+        https://bugs.webkit.org/show_bug.cgi?id=200831
+
+        Reviewed by Chris Dumez.
+
+        To avoid overlogging unnecessary information, added a check to avoid logging
+        ENOENT (file not found) errors.
+
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::deleteFile):
+
+2019-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Disable legacy TLS versions and add a temporary default to re-enable it
+        https://bugs.webkit.org/show_bug.cgi?id=200945
+
+        Reviewed by Brady Eidson.
+
+        * wtf/Platform.h:
+
+2019-08-22  Darin Adler  <darin@apple.com>
+
+        Rename StringBuilder functions to avoid unclear "append uninitialized" terminology
+        https://bugs.webkit.org/show_bug.cgi?id=201020
+
+        Reviewed by Alex Christensen.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::allocateBuffer): Use std::memcpy instead of just memcpy.
+        (WTF::StringBuilder::extendBufferForAppending): Renamed.
+        (WTF::StringBuilder::extendBufferForAppendingWithoutOverflowCheck): Ditto.
+        (WTF::StringBuilder::extendBufferForAppending8): Ditto.
+        (WTF::StringBuilder::extendBufferForAppending16): Ditto.
+        (WTF::StringBuilder::extendBufferForAppendingSlowPath): Ditto.
+        (WTF::StringBuilder::appendCharacters): Updated for new names.
+        * wtf/text/StringBuilder.h: Updated for new names.
+
+2019-08-17  Darin Adler  <darin@apple.com>
+
+        Use makeString and multi-argument StringBuilder::append instead of less efficient multiple appends
+        https://bugs.webkit.org/show_bug.cgi?id=200862
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/DateMath.cpp:
+        (WTF::makeRFC2822DateString): Use one append instead of multiple.
+        * wtf/JSONValues.cpp:
+        (WTF::appendDoubleQuotedString): Ditto.
+
+2019-08-21  Mark Lam  <mark.lam@apple.com>
+
+        Fix infinite recursion in WTFCrashWithInfo() after r248930.
+        https://bugs.webkit.org/show_bug.cgi?id=201022
+
+        Reviewed by Saam Barati.
+
+        * wtf/Assertions.cpp:
+        (WTFCrashWithInfoImpl):
+        (WTFCrashWithInfo): Deleted.
+        * wtf/Assertions.h:
+        (WTFCrashWithInfo):
+
+2019-08-21  Chris Dumez  <cdumez@apple.com>
+
+        registrableDomainsToRemoveWebsiteDataFor() does not need to return a HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=200985
+
+        Reviewed by John Wilander.
+
+        Allow calling crossThreadCopy() on a std::pair<>.
+
+        * wtf/CrossThreadCopier.h:
+
+2019-08-21  Keith Rollin  <krollin@apple.com>
+
+        Remove support for watchOS < 6.0
+        https://bugs.webkit.org/show_bug.cgi?id=200937
+        <rdar://problem/54524009>
+
+        Reviewed by Darin Adler.
+
+        Update conditionals that reference __WATCH_OS_VERSION_MIN_REQUIRED and
+        __WATCH_OS_VERSION_MAX_ALLOWED, assuming that they both have values >=
+        60000. This means that expressions like
+        "__WATCH_OS_VERSION_MIN_REQUIRED < 60000" are always False and
+        "__WATCH_OS_VERSION_MIN_REQUIRED >= 60000" are always True.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2019-08-20  Mark Lam  <mark.lam@apple.com>
+
+        Make it easier to pass pointers to WTFCrashWithInfo.
+        https://bugs.webkit.org/show_bug.cgi?id=200960
+
+        Reviewed by Saam Barati and Yusuke Suzuki.
+
+        Now, we don't have to explicitly cast them to uint64_ts first.  The template
+        wrappers will take care of it for us.
+
+        * wtf/Assertions.h:
+        (wtfCrashArg):
+        (WTFCrashWithInfo):
+        (WTF::isIntegralOrPointerType):
+        (WTF::isIntegralType): Deleted.
+
+2019-08-20  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Followup to r248903. It's not valid to remove
+        hasOverflowed() checks from appendCharacters.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendCharacters):
+
+2019-08-20  Darin Adler  <darin@apple.com>
+
+        Variadic StringBuilder::append does not handle upconverting from 8-bit to 16-bit correctly
+        https://bugs.webkit.org/show_bug.cgi?id=200921
+
+        Reviewed by Saam Barati.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendUninitialized8): Renamed from
+        appendUninitializedWithoutOverflowCheckForLChar and moved the length overflow
+        check in here to cut down on unnecessary inlining and code size.
+        (WTF::StringBuilder::appendUninitialized16): Renamed from
+        appendUninitializedWithoutOverflowCheckForUChar, moved the length overflow check
+        in here, and moved the necessary upconversion code from the const UChar* overload of
+        the appendCharacters function.
+        (WTF::StringBuilder::appendCharacters): Removed unneeded "length has already overflowed"
+        check at the start of the function since the code in the function already handles that
+        case correctly. Refactored the const UChar* overload to use the new appendCharacters16
+        function so it can share more code with StringBuilder::appendFromAdapters.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::appendFromAdapters): Updated the function names for the
+        two appendUninitialized functions, which now do a bit more than before. Removed the
+        overflow check since the appendUninitialized8/16 functions now handle that; better to
+        not make the inlined code larger to handle a failure case.
+
+2019-08-19  Sam Weinig  <weinig@apple.com>
+
+        [WHLSL] Make generated Metal code should be indented properly to ease reading while debugging
+        https://bugs.webkit.org/show_bug.cgi?id=200870
+
+        Reviewed by Saam Barati.
+
+        Adds simple Indentation class to allow programatic indenting compatible with StringTypeAdapter
+        aware functions/class (e.g. makeString and StringBuilder). Templatized on the number of spaces
+        to indent.
+        
+        Also adds IndentationScope, which uses RAII to increment/decrement the indentation value.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::Indentation::operator++):
+        (WTF::Indentation::operator--):
+        (WTF::IndentationScope::IndentationScope):
+        (WTF::IndentationScope::~IndentationScope):
+
+2019-08-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed build fix for macOS 10.14 after r248832.
+
+        * wtf/Platform.h:
+
+2019-08-19  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Add makeUnique<T>, which ensures T is fast-allocated, actual static_assert part
+        https://bugs.webkit.org/show_bug.cgi?id=200620
+
+        Reviewed by Geoff Garen.
+
+        This is the last part of the split patch from https://bugs.webkit.org/show_bug.cgi?id=200620.
+        Expose T::webkitFastMalloced type to perform static_assert in makeUnique.
+        makeUnique and makeUniqueRef start performing static_assert check to ensure that the type T is FastMalloced / IsoHeaped.
+
+        * wtf/FastMalloc.h:
+        * wtf/StdLibExtras.h:
+        (WTF::makeUnique):
+        * wtf/UniqueRef.h:
+        (WTF::makeUniqueRef):
+
+2019-08-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Add makeUnique<T>, which ensures T is fast-allocated, makeUnique / makeUniqueWithoutFastMallocCheck part
+        https://bugs.webkit.org/show_bug.cgi?id=200620
+
+        Reviewed by Geoff Garen.
+
+        This patch is second part of bug 200620 patch. I split I split it into three pieces to make roll-out easy.
+        his part, we convert std::make_unique to WTF::makeUnique or WTF::makeUniqueWithoutFastMallocCheck.
+        In the third patch, we will add a static_assert to makeUnique, which ensures the given class T is FastMalloced or IsoHeaped.
+
+        This patch adds `WTF::makeUnique<T>` and `WTF::makeUniqueWithoutFastMallocCheck<T>` as drop-in replacement for `std::make_unique<T>`.
+        `WTF::makeUnique<T>` has one additional `static_assert` check which ensures `T` FastMalloc / IsoHeap annotated. If it is not, the
+        compile error happens.
+
+        In this patch, I tried using this everywhere in WebKit as much as possible. And we found that surprisingly many classes are missing
+        FastMalloc annotation and allocated from system-malloc. Using WTF::makeUnique enforces classes / structs to use FastMalloc.
+
+        WTF::makeUniqueWithoutFastMallocCheck is offered for the corner cases. This is identical to std::make_unique. We use this for classes
+        that are offered by non-WebKit code base, like, zlib. This clear name can make us easily find this allocation is intentionally done
+        by system-malloc.
+
+        We do not take the following direction, `WTF::makeUnique` automatically allocates FastMalloc even if FastMalloc annotation is not attached.
+        Since default deleter is performing `delete` and this is not what we want for FastMalloced ones, we need to return
+        std::unique_ptr<T, FastFreeDeleter> for T if T does not have FastMalloc-annotation. Automatically doing this sounds a bit dangerous.
+
+            auto pointer = WTF::makeUnique<T>();
+            // Super dangerous, but sometimes it is required...
+            auto* rawPointer = pointer.release();
+            // Passing rawPointer to somewhere, and
+            delete rawPointer;
+
+        The above one becomes invalid because pointer may start requiring non `delete` destroying function.
+        In the above case, the correct way becomes the following.
+
+            rawPointer->~T();
+            fastFree(rawPointer);
+
+        This looks non-intuitive. And having two ways to destroying objects (`delete` or the above one) can be error-prone.
+        If we have WTF_MAKE_FAST_ALLOCATED for T, we do not need to care about this. "new" and "delete" operators are defined, and C++ way works.
+        The simple invariant, "makeUnique just does `new` internally. And `delete` operator does `delete`. default deleter is just doing `delete`", is kept.
+
+        While we need to annotate many classes with WTF_MAKE_FAST_ALLOCATED, it is one time cost when we add a class.
+        And, by introducing `WTF::makeUnique<>`, we no longer forget adding this.
+
+            makeUnique(...)
+            static_assert(T is FastMalloced or IsoHeaped);
+            return make_unique<T>(...)
+
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/ConcurrentVector.h:
+        * wtf/CrossThreadTaskHandler.cpp:
+        (WTF::CrossThreadTaskHandler::taskRunLoop):
+        * wtf/FilePrintStream.cpp:
+        (WTF::FilePrintStream::open):
+        * wtf/Function.h:
+        (WTF::Function<Out):
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+        * wtf/StdLibExtras.h:
+        (WTF::makeUnique):
+        (WTF::makeUniqueWithoutFastMallocCheck):
+        * wtf/StreamBuffer.h:
+        (WTF::StreamBuffer::append):
+        * wtf/UniqueRef.h:
+        (WTF::makeUniqueRefWithoutFastMallocCheck):
+        (WTF::makeUniqueRef):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::GraphemeClusters::Iterator::Iterator):
+
+2019-08-18  Per Arne Vollan  <pvollan@apple.com>
+
+        [Mac] Use the PID of the WebContent process when issuing local file read sandbox extensions
+        https://bugs.webkit.org/show_bug.cgi?id=200543
+        <rdar://problem/49394015>
+
+        Reviewed by Brent Fulgham.
+
+        Add new SPI.
+        
+        * wtf/Platform.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2019-08-17  Darin Adler  <darin@apple.com>
+
+        Tidy up checks to see if a character is in the Latin-1 range by using isLatin1 consistently
+        https://bugs.webkit.org/show_bug.cgi?id=200861
+
+        Reviewed by Ross Kirsling.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendCharacters): Use isLatin1 and also call append rather than
+        calling appendCharacters, since it's the same thing, inlined, and removes the need for
+        a local variable. Also tweaked the idiom of the code using memcpy.
+        (WTF::StringBuilder::canShrink const): Reworded a comment.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append): Use isLatin1.
+
+        * wtf/text/StringCommon.h:
+        (WTF::isLatin1): Moved this function template here so it can be used here.
+        (WTF::find): Use isLatin1.
+
+        * wtf/text/StringImpl.h:
+        (WTF::isLatin1): Deleted. Moved to StringCommon.h.
+        (WTF::reverseFind): Use isLatin1.
+        (WTF::isSpaceOrNewline): Ditto.
+
+2019-08-17  Eric Liang  <ericliang@apple.com>
+
+        Added HAVE_ACCESSIBILITY_BUNDLES_PATH
+        https://bugs.webkit.org/show_bug.cgi?id=200367
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+
+2019-08-17  Sam Weinig  <weinig@apple.com>
+
+        Rename StringBuilder::flexibleAppend(...) to StringBuilder::append(...)
+        https://bugs.webkit.org/show_bug.cgi?id=200756
+
+        Reviewed by Darin Adler.
+
+        Now that there are no remaining multi-parameter or behavior changing overloads
+        of StringBuilder::append(...), we can rename StringBuilder::flexibleAppend(...)
+        to StringBuilder::append(...).
+        
+        This change leaves the existing single parameter overloads StringBuilder::append(...)
+        for now, and since they have specify specific types, they will continue to be prefered
+        in overload resolution. Once we have concluded the variadic StringBuilder::append(...)
+        can provide the same performance as the single parameter variant, we can remove the
+        single parameter variant.
+
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::pathByAppendingComponents):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::appendFromAdapters):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::flexibleAppendFromAdapters): Deleted.
+        (WTF::StringBuilder::flexibleAppend): Deleted.
+        Update for rename from StringBuilder::flexibleAppend(...) to StringBuilder::append(...).
+
+2019-08-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't use union to store NodeRareData* and RenderObject*
+        https://bugs.webkit.org/show_bug.cgi?id=200744
+
+        Reviewed by Antti Koivisto.
+
+        Moved the static assert which requires the type of the object to which the pointer type points
+        into setPointer so that we can use CompactPointerTuple<T*, U> as a member variable
+        with just a forward declaration of T.
+
+        * wtf/CompactPointerTuple.h:
+        (WTF::CompactPointerTuple::setPointer):
+
 2019-08-15  Zalan Bujtas  <zalan@apple.com>
 
         [ContentChangeObserver] Keep track of all the visibility candidates.

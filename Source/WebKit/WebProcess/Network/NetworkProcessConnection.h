@@ -29,6 +29,7 @@
 #include "Connection.h"
 #include "ShareableResource.h"
 #include "WebIDBConnectionToServer.h"
+#include <WebCore/MessagePortChannelProvider.h>
 #include <WebCore/ServiceWorkerTypes.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -45,6 +46,8 @@ namespace WebCore {
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
+struct MessagePortIdentifier;
+struct MessageWithMessagePorts;
 }
 
 namespace WebKit {
@@ -68,7 +71,7 @@ public:
     void writeBlobsToTemporaryFiles(PAL::SessionID, const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&&);
 
 #if ENABLE(INDEXED_DATABASE)
-    WebIDBConnectionToServer* existingIDBConnectionToServerForIdentifier(uint64_t identifier) const { return m_webIDBConnectionsByIdentifier.get(identifier); };
+    WebIDBConnectionToServer* existingIDBConnectionToServer(PAL::SessionID sessionID) const { return m_webIDBConnectionsBySession.get(sessionID.toUInt64()); };
     WebIDBConnectionToServer& idbConnectionToServerForSession(PAL::SessionID);
 #endif
 
@@ -93,6 +96,9 @@ private:
     void didFinishPreconnection(uint64_t preconnectionIdentifier, WebCore::ResourceError&&);
     void setOnLineState(bool isOnLine);
 
+    void checkProcessLocalPortForActivity(const WebCore::MessagePortIdentifier&, CompletionHandler<void(WebCore::MessagePortChannelProvider::HasActivity)>&&);
+    void messagesAvailableForPort(const WebCore::MessagePortIdentifier&);
+
 #if ENABLE(SHAREABLE_RESOURCE)
     // Message handlers.
     void didCacheResource(const WebCore::ResourceRequest&, const ShareableResource::Handle&, PAL::SessionID);
@@ -102,8 +108,7 @@ private:
     Ref<IPC::Connection> m_connection;
 
 #if ENABLE(INDEXED_DATABASE)
-    HashMap<PAL::SessionID, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsBySession;
-    HashMap<uint64_t, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsByIdentifier;
+    HashMap<uint64_t, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsBySession;
 #endif
 
 #if ENABLE(SERVICE_WORKER)

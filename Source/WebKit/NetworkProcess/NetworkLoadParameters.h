@@ -26,11 +26,13 @@
 #pragma once
 
 #include "NetworkActivityTracker.h"
+#include "WebPageProxyIdentifier.h"
 #include <WebCore/BlobDataFileReference.h>
 #include <WebCore/FrameIdentifier.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/SecurityOrigin.h>
 #include <pal/SessionID.h>
 #include <wtf/ProcessID.h>
 
@@ -46,8 +48,10 @@ public:
     }
 
     PAL::SessionID sessionID;
+    WebPageProxyIdentifier webPageProxyID;
     WebCore::PageIdentifier webPageID;
     WebCore::FrameIdentifier webFrameID;
+    RefPtr<WebCore::SecurityOrigin> topOrigin;
     WTF::ProcessID parentPID { 0 };
     WebCore::ResourceRequest request;
     WebCore::ContentSniffingPolicy contentSniffingPolicy { WebCore::ContentSniffingPolicy::SniffContent };

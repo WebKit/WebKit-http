@@ -31,6 +31,8 @@
 
 namespace WebCore {
 
+class HTMLCanvasElement;
+
 class GPUBasedCanvasRenderingContext : public CanvasRenderingContext, public ActiveDOMObject {
     WTF_MAKE_ISO_NONALLOCATABLE(GPUBasedCanvasRenderingContext);
 public:
@@ -51,11 +53,10 @@ public:
     virtual void markLayerComposited() = 0;
 
 protected:
-    GPUBasedCanvasRenderingContext(CanvasBase& canvas)
-        : CanvasRenderingContext(canvas)
-        , ActiveDOMObject(canvas.scriptExecutionContext())
-    {
-    }
+    explicit GPUBasedCanvasRenderingContext(CanvasBase&);
+
+    HTMLCanvasElement* htmlCanvas() const;
+    void notifyCanvasContentChanged();
 };
     
 } // namespace WebCore

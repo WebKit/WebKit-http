@@ -273,7 +273,6 @@ void SWServerJobQueue::runRegisterJob(const ServiceWorkerJobData& job)
 
     // If registration is not null (in our parlance "empty"), then:
     if (auto* registration = m_server.getRegistration(m_registrationKey)) {
-        registration->setIsUninstalling(false);
         auto* newestWorker = registration->getNewestWorker();
         if (newestWorker && equalIgnoringFragmentIdentifier(job.scriptURL, newestWorker->scriptURL()) && job.registrationOptions.updateViaCache == registration->updateViaCache()) {
             RELEASE_LOG(ServiceWorker, "%p - SWServerJobQueue::runRegisterJob: Found directly reusable registration %llu for job %s (DONE)", this, registration->identifier().toUInt64(), job.identifier().loggingString().utf8().data());
@@ -286,7 +285,7 @@ void SWServerJobQueue::runRegisterJob(const ServiceWorkerJobData& job)
             registration->setUpdateViaCache(job.registrationOptions.updateViaCache);
         RELEASE_LOG(ServiceWorker, "%p - SWServerJobQueue::runRegisterJob: Found registration %llu for job %s but it needs updating", this, registration->identifier().toUInt64(), job.identifier().loggingString().utf8().data());
     } else {
-        auto newRegistration = std::make_unique<SWServerRegistration>(m_server, m_registrationKey, job.registrationOptions.updateViaCache, job.scopeURL, job.scriptURL);
+        auto newRegistration = makeUnique<SWServerRegistration>(m_server, m_registrationKey, job.registrationOptions.updateViaCache, job.scopeURL, job.scriptURL);
         m_server.addRegistration(WTFMove(newRegistration));
 
         RELEASE_LOG(ServiceWorker, "%p - SWServerJobQueue::runRegisterJob: No existing registration for job %s, constructing a new one.", this, job.identifier().loggingString().utf8().data());
@@ -306,15 +305,15 @@ void SWServerJobQueue::runUnregisterJob(const ServiceWorkerJobData& job)
     auto* registration = m_server.getRegistration(m_registrationKey);
 
     // If registration is null, then:
-    if (!registration || registration->isUninstalling()) {
+    if (!registration) {
         // Invoke Resolve Job Promise with job and false.
         m_server.resolveUnregistrationJob(job, m_registrationKey, false);
         finishCurrentJob();
         return;
     }
-
-    // Set registration's uninstalling flag.
-    registration->setIsUninstalling(true);
+    
+    // Remove scope to registration map[job’s scope url].
+    m_server.removeFromScopeToRegistrationMap(m_registrationKey);
 
     // Invoke Resolve Job Promise with job and true.
     m_server.resolveUnregistrationJob(job, m_registrationKey, true);
@@ -333,8 +332,6 @@ void SWServerJobQueue::runUpdateJob(const ServiceWorkerJobData& job)
     // If registration is null (in our parlance "empty") or registration's uninstalling flag is set, then:
     if (!registration)
         return rejectCurrentJob(ExceptionData { TypeError, "Cannot update a null/nonexistent service worker registration"_s });
-    if (registration->isUninstalling())
-        return rejectCurrentJob(ExceptionData { TypeError, "Cannot update a service worker registration that is uninstalling"_s });
 
     // Let newestWorker be the result of running Get Newest Worker algorithm passing registration as the argument.
     auto* newestWorker = registration->getNewestWorker();
@@ -350,7 +347,7 @@ void SWServerJobQueue::runUpdateJob(const ServiceWorkerJobData& job)
     // - newestWorker is not null, and registration's last update check time is not null and the time difference in seconds calculated by the
     //   current time minus registration's last update check time is greater than 86400.
     if (registration->updateViaCache() != ServiceWorkerUpdateViaCache::All
-        || (newestWorker && registration->lastUpdateTime() && (WallTime::now() - registration->lastUpdateTime()) > 86400_s)) {
+        || (newestWorker && registration->isStale())) {
         cachePolicy = FetchOptions::Cache::NoCache;
     }
     m_server.startScriptFetch(job, cachePolicy);

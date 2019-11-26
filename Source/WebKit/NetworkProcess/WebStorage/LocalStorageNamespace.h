@@ -25,10 +25,13 @@
 
 #pragma once
 
+#include "StorageAreaIdentifier.h"
+#include "StorageNamespaceIdentifier.h"
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/WorkQueue.h>
 
 namespace WebKit {
 
@@ -39,18 +42,20 @@ class LocalStorageNamespace : public CanMakeWeakPtr<LocalStorageNamespace> {
     WTF_MAKE_NONCOPYABLE(LocalStorageNamespace);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    LocalStorageNamespace(StorageManager&, uint64_t storageManagerID);
+    LocalStorageNamespace(StorageManager&, StorageNamespaceIdentifier);
     ~LocalStorageNamespace();
 
     StorageManager* storageManager() const { return &m_storageManager; }
 
     enum class IsEphemeral : bool { No, Yes };
-    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&, IsEphemeral);
+    StorageArea& getOrCreateStorageArea(WebCore::SecurityOriginData&&, IsEphemeral, Ref<WorkQueue>&&);
 
     void clearStorageAreasMatchingOrigin(const WebCore::SecurityOriginData&);
     void clearAllStorageAreas();
 
     Vector<WebCore::SecurityOriginData> ephemeralOrigins() const;
+
+    Vector<StorageAreaIdentifier> storageAreaIdentifiers() const;
 
 private:
     StorageManager& m_storageManager;

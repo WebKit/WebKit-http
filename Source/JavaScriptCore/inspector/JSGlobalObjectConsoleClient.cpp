@@ -67,7 +67,12 @@ void JSGlobalObjectConsoleClient::messageWithTypeAndLevel(MessageType type, Mess
 
     String message;
     arguments->getFirstArgumentAsString(message);
-    m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, type, level, message, WTFMove(arguments), exec));
+    m_consoleAgent->addMessageToConsole(makeUnique<ConsoleMessage>(MessageSource::ConsoleAPI, type, level, message, WTFMove(arguments), exec));
+
+    if (type == MessageType::Assert) {
+        if (m_debuggerAgent)
+            m_debuggerAgent->handleConsoleAssert(message);
+    }
 }
 
 void JSGlobalObjectConsoleClient::count(ExecState* exec, const String& label)
@@ -91,7 +96,7 @@ void JSGlobalObjectConsoleClient::profile(JSC::ExecState*, const String& title)
             if (existingTitle == title) {
                 // FIXME: Send an enum to the frontend for localization?
                 String warning = title.isEmpty() ? "Unnamed Profile already exists"_s : makeString("Profile \"", title, "\" already exists");
-                m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Profile, MessageLevel::Warning, warning));
+                m_consoleAgent->addMessageToConsole(makeUnique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Profile, MessageLevel::Warning, warning));
                 return;
             }
         }
@@ -119,33 +124,33 @@ void JSGlobalObjectConsoleClient::profileEnd(JSC::ExecState*, const String& titl
 
     // FIXME: Send an enum to the frontend for localization?
     String warning = title.isEmpty() ? "No profiles exist"_s : makeString("Profile \"", title, "\" does not exist");
-    m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));
+    m_consoleAgent->addMessageToConsole(makeUnique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));
 }
 
 void JSGlobalObjectConsoleClient::startConsoleProfile()
 {
-    ErrorString unused;
+    ErrorString ignored;
 
     if (m_debuggerAgent) {
         m_profileRestoreBreakpointActiveValue = m_debuggerAgent->breakpointsActive();
-        m_debuggerAgent->setBreakpointsActive(unused, false);
+        m_debuggerAgent->setBreakpointsActive(ignored, false);
     }
 
     if (m_scriptProfilerAgent) {
         const bool includeSamples = true;
-        m_scriptProfilerAgent->startTracking(unused, &includeSamples);
+        m_scriptProfilerAgent->startTracking(ignored, &includeSamples);
     }
 }
 
 void JSGlobalObjectConsoleClient::stopConsoleProfile()
 {
-    ErrorString unused;
+    ErrorString ignored;
 
     if (m_scriptProfilerAgent)
-        m_scriptProfilerAgent->stopTracking(unused);
+        m_scriptProfilerAgent->stopTracking(ignored);
 
     if (m_debuggerAgent)
-        m_debuggerAgent->setBreakpointsActive(unused, m_profileRestoreBreakpointActiveValue);
+        m_debuggerAgent->setBreakpointsActive(ignored, m_profileRestoreBreakpointActiveValue);
 }
 
 void JSGlobalObjectConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String& title)
@@ -185,7 +190,7 @@ void JSGlobalObjectConsoleClient::screenshot(ExecState*, Ref<ScriptArguments>&&)
 void JSGlobalObjectConsoleClient::warnUnimplemented(const String& method)
 {
     String message = method + " is currently ignored in JavaScript context inspection.";
-    m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Warning, message));
+    m_consoleAgent->addMessageToConsole(makeUnique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Warning, message));
 }
 
 } // namespace Inspector

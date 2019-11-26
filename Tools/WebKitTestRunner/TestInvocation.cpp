@@ -33,9 +33,9 @@
 #include "UIScriptController.h"
 #include "WebCoreTestSupport.h"
 #include <WebKit/WKContextPrivate.h>
-#include <WebKit/WKCookieManager.h>
 #include <WebKit/WKData.h>
 #include <WebKit/WKDictionary.h>
+#include <WebKit/WKHTTPCookieStoreRef.h>
 #include <WebKit/WKInspector.h>
 #include <WebKit/WKPagePrivate.h>
 #include <WebKit/WKRetainPtr.h>
@@ -164,7 +164,7 @@ void TestInvocation::invoke()
 
     TestController::singleton().setShouldLogHistoryClientCallbacks(shouldLogHistoryClientCallbacks());
 
-    WKCookieManagerSetHTTPCookieAcceptPolicy(WKContextGetCookieManager(TestController::singleton().context()), kWKHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain, nullptr, nullptr);
+    WKHTTPCookieStoreSetHTTPCookieAcceptPolicy(WKWebsiteDataStoreGetHTTPCookieStore(TestController::websiteDataStore()), kWKHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain, nullptr, nullptr);
 
     // FIXME: We should clear out visited links here.
 
@@ -912,7 +912,7 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
 
     if (WKStringIsEqualToUTF8CString(messageName, "SetStorageAccessAPIEnabled")) {
         WKBooleanRef accept = static_cast<WKBooleanRef>(messageBody);
-        WKCookieManagerSetStorageAccessAPIEnabled(WKContextGetCookieManager(TestController::singleton().context()), WKBooleanGetValue(accept));
+        WKContextSetStorageAccessAPIEnabled(TestController::singleton().context(), WKBooleanGetValue(accept));
         return nullptr;
     }
 
@@ -933,7 +933,7 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
     }
     
     if (WKStringIsEqualToUTF8CString(messageName, "DeleteAllIndexedDatabases")) {
-        WKWebsiteDataStoreRemoveAllIndexedDatabases(WKContextGetWebsiteDataStore(TestController::singleton().context()), nullptr, { });
+        WKWebsiteDataStoreRemoveAllIndexedDatabases(TestController::websiteDataStore(), nullptr, { });
         return nullptr;
     }
 
@@ -1514,13 +1514,6 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         return nullptr;
     }
 
-    if (WKStringIsEqualToUTF8CString(messageName, "SetIDBPerOriginQuota")) {
-        ASSERT(WKGetTypeID(messageBody) == WKUInt64GetTypeID());
-        WKUInt64Ref quota = static_cast<WKUInt64Ref>(messageBody);
-        TestController::singleton().setIDBPerOriginQuota(WKUInt64GetValue(quota));
-        return nullptr;
-    }
-
     if (WKStringIsEqualToUTF8CString(messageName, "InjectUserScript")) {
         ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
         WKStringRef script = static_cast<WKStringRef>(messageBody);
@@ -1690,7 +1683,7 @@ void TestInvocation::runUISideScript(WKStringRef script, unsigned scriptCallback
     m_pendingUIScriptInvocationData = nullptr;
 
     if (!m_UIScriptContext)
-        m_UIScriptContext = std::make_unique<UIScriptContext>(*this);
+        m_UIScriptContext = makeUnique<UIScriptContext>(*this);
     
     m_UIScriptContext->runUIScript(toWTFString(script), scriptCallbackID);
 }

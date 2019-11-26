@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,7 +66,7 @@ void StructureStubInfo::initGetByIdSelf(CodeBlock* codeBlock, Structure* baseObj
     cacheType = CacheType::GetByIdSelf;
     
     u.byIdSelf.baseObjectStructure.set(
-        *codeBlock->vm(), codeBlock, baseObjectStructure);
+        codeBlock->vm(), codeBlock, baseObjectStructure);
     u.byIdSelf.offset = offset;
 }
 
@@ -85,7 +85,7 @@ void StructureStubInfo::initPutByIdReplace(CodeBlock* codeBlock, Structure* base
     cacheType = CacheType::PutByIdReplace;
     
     u.byIdSelf.baseObjectStructure.set(
-        *codeBlock->vm(), codeBlock, baseObjectStructure);
+        codeBlock->vm(), codeBlock, baseObjectStructure);
     u.byIdSelf.offset = offset;
 }
 
@@ -94,7 +94,7 @@ void StructureStubInfo::initInByIdSelf(CodeBlock* codeBlock, Structure* baseObje
     cacheType = CacheType::InByIdSelf;
 
     u.byIdSelf.baseObjectStructure.set(
-        *codeBlock->vm(), codeBlock, baseObjectStructure);
+        codeBlock->vm(), codeBlock, baseObjectStructure);
     u.byIdSelf.offset = offset;
 }
 
@@ -137,7 +137,7 @@ void StructureStubInfo::aboutToDie()
 AccessGenerationResult StructureStubInfo::addAccessCase(
     const GCSafeConcurrentJSLocker& locker, CodeBlock* codeBlock, const Identifier& ident, std::unique_ptr<AccessCase> accessCase)
 {
-    VM& vm = *codeBlock->vm();
+    VM& vm = codeBlock->vm();
     ASSERT(vm.heap.isDeferred());
     AccessGenerationResult result = ([&] () -> AccessGenerationResult {
         if (StructureStubInfoInternal::verbose)
@@ -162,7 +162,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
                 return result;
             }
         } else {
-            std::unique_ptr<PolymorphicAccess> access = std::make_unique<PolymorphicAccess>();
+            std::unique_ptr<PolymorphicAccess> access = makeUnique<PolymorphicAccess>();
             
             Vector<std::unique_ptr<AccessCase>, 2> accessCases;
             
@@ -274,7 +274,7 @@ void StructureStubInfo::reset(CodeBlock* codeBlock)
 
 void StructureStubInfo::visitWeakReferences(CodeBlock* codeBlock)
 {
-    VM& vm = *codeBlock->vm();
+    VM& vm = codeBlock->vm();
     
     bufferedStructures.genericFilter(
         [&] (Structure* structure) -> bool {

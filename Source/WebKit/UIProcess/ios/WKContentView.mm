@@ -167,7 +167,7 @@ static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
     _page->setDelegatesScrolling(true);
 
 #if ENABLE(FULLSCREEN_API)
-    _page->setFullscreenClient(std::make_unique<WebKit::FullscreenClient>(_webView));
+    _page->setFullscreenClient(makeUnique<WebKit::FullscreenClient>(_webView));
 #endif
 
     WebKit::WebProcessPool::statistics().wkViewCount++;
@@ -239,7 +239,7 @@ static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
 
     WebKit::InitializeWebKit2();
 
-    _pageClient = std::make_unique<WebKit::PageClientImpl>(self, webView);
+    _pageClient = makeUnique<WebKit::PageClientImpl>(self, webView);
     _webView = webView;
 
     return [self _commonInitializationWithProcessPool:processPool configuration:WTFMove(configuration)];
@@ -541,7 +541,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy:(WebKit::WebProcessProxy&)process
 {
-    return std::make_unique<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page, process);
+    return makeUnique<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page, process);
 }
 
 - (void)_processDidExit
@@ -554,6 +554,8 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
     [self _removeVisibilityPropagationView];
 #endif
+
+    _isPrintingToPDF = NO;
 }
 
 - (void)_processWillSwap
@@ -689,8 +691,6 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
 #pragma mark Printing
 
-#if !PLATFORM(MACCATALYST)
-
 @interface WKContentView (_WKWebViewPrintFormatter) <_WKWebViewPrintProvider>
 @end
 
@@ -699,7 +699,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 - (NSUInteger)_wk_pageCountForPrintFormatter:(_WKWebViewPrintFormatter *)printFormatter
 {
     if (_isPrintingToPDF)
-        return 0;
+        [self _waitForDrawToPDFCallback];
 
     WebCore::FrameIdentifier frameID;
     if (_WKFrameHandle *handle = printFormatter.frameToPrint)
@@ -742,21 +742,24 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     });
 }
 
+- (BOOL)_waitForDrawToPDFCallback
+{
+    if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DrawToPDFCallback>(_page->webPageID(), Seconds::infinity()))
+        return false;
+    ASSERT(!_isPrintingToPDF);
+    return true;
+}
+
 - (CGPDFDocumentRef)_wk_printedDocument
 {
     if (_isPrintingToPDF) {
-        if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DrawToPDFCallback>(_page->pageID(), Seconds::infinity())) {
-            ASSERT_NOT_REACHED();
+        if (![self _waitForDrawToPDFCallback])
             return nullptr;
-        }
-        ASSERT(!_isPrintingToPDF);
     }
 
     return _printedDocument.get();
 }
 
 @end
-
-#endif // !PLATFORM(MACCATALYST)
 
 #endif // PLATFORM(IOS_FAMILY)

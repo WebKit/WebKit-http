@@ -201,7 +201,7 @@ void NetworkLoad::didReceiveChallenge(AuthenticationChallenge&& challenge, Chall
     if (auto* pendingDownload = m_task->pendingDownload())
         m_networkProcess->authenticationManager().didReceiveAuthenticationChallenge(*pendingDownload, challenge, WTFMove(completionHandler));
     else
-        m_networkProcess->authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, challenge, WTFMove(completionHandler));
+        m_networkProcess->authenticationManager().didReceiveAuthenticationChallenge(m_task->sessionID(), m_parameters.webPageProxyID, m_parameters.topOrigin ? &m_parameters.topOrigin->data() : nullptr, challenge, WTFMove(completionHandler));
 }
 
 void NetworkLoad::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
@@ -215,7 +215,7 @@ void NetworkLoad::didReceiveResponse(ResourceResponse&& response, ResponseComple
     }
 
     if (m_loadThrottleLatency > 0_s) {
-        m_throttle = std::make_unique<Throttle>(*this, m_loadThrottleLatency, WTFMove(response), WTFMove(completionHandler));
+        m_throttle = makeUnique<Throttle>(*this, m_loadThrottleLatency, WTFMove(response), WTFMove(completionHandler));
         return;
     }
 

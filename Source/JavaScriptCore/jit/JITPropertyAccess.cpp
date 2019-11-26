@@ -37,6 +37,7 @@
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
+#include "JSPromise.h"
 #include "LinkBuffer.h"
 #include "OpcodeInlines.h"
 #include "ResultType.h"
@@ -1212,7 +1213,7 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
         ownerNotCell = branchIfNotCell(regT0);
 
-    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), regT0, regT1);
+    Jump ownerIsRememberedOrInEden = barrierBranch(vm(), regT0, regT1);
     callOperation(operationWriteBarrierSlowPath, regT0);
     ownerIsRememberedOrInEden.link(this);
 
@@ -1235,6 +1236,36 @@ void JIT::emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode mode)
         valueNotCell.link(this);
 }
 
+void JIT::emit_op_get_internal_field(const Instruction* currentInstruction)
+{
+    auto bytecode = currentInstruction->as<OpGetInternalField>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    unsigned index = bytecode.m_index;
+    ASSERT(index < JSPromise::numberOfInternalFields);
+
+    emitGetVirtualRegister(base, regT1);
+    loadPtr(Address(regT1, JSInternalFieldObjectImpl<>::offsetOfInternalField(index)), regT0);
+
+    emitValueProfilingSite(metadata);
+    emitPutVirtualRegister(dst);
+}
+
+void JIT::emit_op_put_internal_field(const Instruction* currentInstruction)
+{
+    auto bytecode = currentInstruction->as<OpPutInternalField>();
+    int base = bytecode.m_base.offset();
+    int value = bytecode.m_value.offset();
+    unsigned index = bytecode.m_index;
+    ASSERT(index < JSPromise::numberOfInternalFields);
+
+    emitGetVirtualRegister(base, regT0);
+    emitGetVirtualRegister(value, regT1);
+    storePtr(regT1, Address(regT0, JSInternalFieldObjectImpl<>::offsetOfInternalField(index)));
+    emitWriteBarrier(base, value, ShouldFilterValue);
+}
+
 #else // USE(JSVALUE64)
 
 void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode)
@@ -1250,7 +1281,7 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
         ownerNotCell = branchIfNotCell(regT0);
 
-    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), regT1, regT2);
+    Jump ownerIsRememberedOrInEden = barrierBranch(vm(), regT1, regT2);
     callOperation(operationWriteBarrierSlowPath, regT1);
     ownerIsRememberedOrInEden.link(this);
 
@@ -1278,7 +1309,7 @@ void JIT::emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode mode)
 
 void JIT::emitWriteBarrier(JSCell* owner)
 {
-    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), owner, regT0);
+    Jump ownerIsRememberedOrInEden = barrierBranch(vm(), owner, regT0);
     callOperation(operationWriteBarrierSlowPath, owner);
     ownerIsRememberedOrInEden.link(this);
 }

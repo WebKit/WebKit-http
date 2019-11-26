@@ -36,8 +36,8 @@
 namespace WebCore {
 
 struct SameSizeAsNodeRareData {
-    unsigned m_bitfields : 20;
-    void* m_pointer[3];
+    unsigned m_frameCountAndIsElementRareDataFlag;
+    void* m_pointer[2];
 };
 
 COMPILE_ASSERT(sizeof(NodeRareData) == sizeof(SameSizeAsNodeRareData), NodeRareDataShouldStaySmall);

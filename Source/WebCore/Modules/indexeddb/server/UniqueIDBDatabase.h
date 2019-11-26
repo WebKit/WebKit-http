@@ -118,8 +118,6 @@ public:
 
     uint64_t spaceUsed() const;
 
-    void setQuota(uint64_t);
-
     void finishActiveTransactions();
 
 private:
@@ -251,7 +249,7 @@ private:
 
     void requestSpace(uint64_t taskSize, const char* errorMessage, CompletionHandler<void(Optional<IDBError>&&)>&&);
     void waitForRequestSpaceCompletion(CompletionHandler<void(Optional<IDBError>&&)>&&);
-    void updateSpaceUsedIfNeeded(uint64_t callbackIdentifier);
+    void updateSpaceUsedIfNeeded(Optional<uint64_t> optionalCallbackIdentifier = WTF::nullopt);
 
     Ref<IDBServer> m_server;
     IDBDatabaseIdentifier m_identifier;
@@ -305,7 +303,8 @@ private:
     HashSet<IDBResourceIdentifier> m_cursorPrefetches;
 
     HashMap<uint64_t, uint64_t> m_pendingSpaceIncreasingTasks;
-    uint64_t m_databasesSizeForOrigin { 0 };
+    uint64_t m_currentDatabaseSize { 0 };
+    uint64_t m_newDatabaseSize { 0 };
 };
 
 } // namespace IDBServer

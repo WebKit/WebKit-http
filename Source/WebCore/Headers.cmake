@@ -25,15 +25,15 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/fetch/FetchLoader.h
     Modules/fetch/FetchLoaderClient.h
 
-    Modules/geolocation/Coordinates.h
     Modules/geolocation/Geolocation.h
     Modules/geolocation/GeolocationClient.h
     Modules/geolocation/GeolocationController.h
+    Modules/geolocation/GeolocationCoordinates.h
     Modules/geolocation/GeolocationError.h
     Modules/geolocation/GeolocationPosition.h
-    Modules/geolocation/Geoposition.h
+    Modules/geolocation/GeolocationPositionData.h
+    Modules/geolocation/GeolocationPositionError.h
     Modules/geolocation/PositionCallback.h
-    Modules/geolocation/PositionError.h
     Modules/geolocation/PositionErrorCallback.h
     Modules/geolocation/PositionOptions.h
 
@@ -90,7 +90,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     Modules/mediastream/DoubleRange.h
     Modules/mediastream/LongRange.h
-    Modules/mediastream/MediaDevicesEnumerationRequest.h
     Modules/mediastream/MediaStreamTrack.h
     Modules/mediastream/MediaTrackConstraints.h
     Modules/mediastream/RTCController.h
@@ -520,6 +519,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     fileapi/FileList.h
     fileapi/FileReaderLoader.h
     fileapi/FileReaderLoaderClient.h
+    fileapi/NetworkSendQueue.h
 
     history/BackForwardClient.h
     history/BackForwardController.h
@@ -656,6 +656,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     inspector/InspectorFrontendClient.h
     inspector/InspectorFrontendClientLocal.h
     inspector/InspectorFrontendHost.h
+    inspector/InspectorInstrumentationPublic.h
+    inspector/InspectorInstrumentationWebKit.h
     inspector/InspectorOverlay.h
     inspector/InspectorWebAgentBase.h
     inspector/PageScriptDebugServer.h
@@ -1065,6 +1067,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/ImageFrame.h
     platform/graphics/ImageObserver.h
     platform/graphics/ImageOrientation.h
+    platform/graphics/ImagePaintingOptions.h
     platform/graphics/ImageSource.h
     platform/graphics/ImageTypes.h
     platform/graphics/InbandTextTrackPrivate.h

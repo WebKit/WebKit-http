@@ -51,27 +51,33 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
         this._breakpointsEnabledSetting = new WI.Setting("breakpoints-enabled", true);
-        this._allExceptionsBreakpointEnabledSetting = new WI.Setting("break-on-all-exceptions", false);
-        this._uncaughtExceptionsBreakpointEnabledSetting = new WI.Setting("break-on-uncaught-exceptions", false);
-        this._assertionFailuresBreakpointEnabledSetting = new WI.Setting("break-on-assertion-failures", false);
         this._asyncStackTraceDepthSetting = new WI.Setting("async-stack-trace-depth", 200);
 
-        let specialBreakpointLocation = new WI.SourceCodeLocation(null, Infinity, Infinity);
+        const specialBreakpointLocation = new WI.SourceCodeLocation(null, Infinity, Infinity);
 
+        this._allExceptionsBreakpointEnabledSetting = new WI.Setting("break-on-all-exceptions", false);
         this._allExceptionsBreakpoint = new WI.Breakpoint(specialBreakpointLocation, {
             disabled: !this._allExceptionsBreakpointEnabledSetting.value,
         });
         this._allExceptionsBreakpoint.resolved = true;
 
+        this._uncaughtExceptionsBreakpointEnabledSetting = new WI.Setting("break-on-uncaught-exceptions", false);
         this._uncaughtExceptionsBreakpoint = new WI.Breakpoint(specialBreakpointLocation, {
             disabled: !this._uncaughtExceptionsBreakpointEnabledSetting.value,
         });
         this._uncaughtExceptionsBreakpoint.resolved = true;
 
+        this._assertionFailuresBreakpointEnabledSetting = new WI.Setting("break-on-assertion-failures", false);
         this._assertionFailuresBreakpoint = new WI.Breakpoint(specialBreakpointLocation, {
             disabled: !this._assertionFailuresBreakpointEnabledSetting.value,
         });
         this._assertionFailuresBreakpoint.resolved = true;
+
+        this._allMicrotasksBreakpointEnabledSetting = new WI.Setting("break-on-all-microtasks", false);
+        this._allMicrotasksBreakpoint = new WI.Breakpoint(specialBreakpointLocation, {
+            disabled: !this._allMicrotasksBreakpointEnabledSetting.value,
+        });
+        this._allMicrotasksBreakpoint.resolved = true;
 
         this._breakpoints = [];
         this._breakpointContentIdentifierMap = new Multimap;
@@ -82,6 +88,8 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         this._updateBreakOnExceptionsState();
 
         this._nextBreakpointActionIdentifier = 1;
+
+        this._blackboxURLsSetting = new WI.Setting("debugger-blackbox-urls", []);
 
         this._activeCallFrame = null;
 
@@ -141,11 +149,21 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
 
         // COMPATIBILITY (iOS 10): DebuggerAgent.setPauseOnAssertions did not exist yet.
         if (target.DebuggerAgent.setPauseOnAssertions)
-            target.DebuggerAgent.setPauseOnAssertions(this._assertionFailuresBreakpointEnabledSetting.value);
+            target.DebuggerAgent.setPauseOnAssertions(!this._assertionFailuresBreakpoint.disabled);
+
+        // COMPATIBILITY (iOS 13): DebuggerAgent.setPauseOnMicrotasks did not exist yet.
+        if (target.DebuggerAgent.setPauseOnMicrotasks)
+            target.DebuggerAgent.setPauseOnMicrotasks(!this._allMicrotasksBreakpoint.disabled);
 
         // COMPATIBILITY (iOS 10): Debugger.setAsyncStackTraceDepth did not exist yet.
         if (target.DebuggerAgent.setAsyncStackTraceDepth)
             target.DebuggerAgent.setAsyncStackTraceDepth(this._asyncStackTraceDepthSetting.value);
+
+        // COMPATIBILITY (iOS 13): Debugger.setShouldBlackboxURL did not exist yet.
+        if (target.DebuggerAgent.setShouldBlackboxURL) {
+            for (let url of this._blackboxURLsSetting.value)
+                target.DebuggerAgent.setShouldBlackboxURL(url, true);
+        }
 
         if (WI.isEngineeringBuild) {
             // COMPATIBILITY (iOS 12): DebuggerAgent.setPauseForInternalScripts did not exist yet.
@@ -166,6 +184,55 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
             this._setBreakpoint(breakpoint, target);
         }
         this._restoringBreakpoints = false;
+    }
+
+    // Static
+
+    static supportsBlackboxingScripts()
+    {
+        return !!InspectorBackend.domains.Debugger.setShouldBlackboxURL;
+    }
+
+    static pauseReasonFromPayload(payload)
+    {
+        switch (payload) {
+        case InspectorBackend.domains.Debugger.PausedReason.AnimationFrame:
+            return WI.DebuggerManager.PauseReason.AnimationFrame;
+        case InspectorBackend.domains.Debugger.PausedReason.Assert:
+            return WI.DebuggerManager.PauseReason.Assertion;
+        case InspectorBackend.domains.Debugger.PausedReason.BlackboxedScript:
+            return WI.DebuggerManager.PauseReason.BlackboxedScript;
+        case InspectorBackend.domains.Debugger.PausedReason.Breakpoint:
+            return WI.DebuggerManager.PauseReason.Breakpoint;
+        case InspectorBackend.domains.Debugger.PausedReason.CSPViolation:
+            return WI.DebuggerManager.PauseReason.CSPViolation;
+        case InspectorBackend.domains.Debugger.PausedReason.DOM:
+            return WI.DebuggerManager.PauseReason.DOM;
+        case InspectorBackend.domains.Debugger.PausedReason.DebuggerStatement:
+            return WI.DebuggerManager.PauseReason.DebuggerStatement;
+        case InspectorBackend.domains.Debugger.PausedReason.EventListener:
+            return WI.DebuggerManager.PauseReason.EventListener;
+        case InspectorBackend.domains.Debugger.PausedReason.Exception:
+            return WI.DebuggerManager.PauseReason.Exception;
+        case InspectorBackend.domains.Debugger.PausedReason.Fetch:
+            return WI.DebuggerManager.PauseReason.Fetch;
+        case InspectorBackend.domains.Debugger.PausedReason.Interval:
+            return WI.DebuggerManager.PauseReason.Interval;
+        case InspectorBackend.domains.Debugger.PausedReason.Listener:
+            return WI.DebuggerManager.PauseReason.Listener;
+        case InspectorBackend.domains.Debugger.PausedReason.Microtask:
+            return WI.DebuggerManager.PauseReason.Microtask;
+        case InspectorBackend.domains.Debugger.PausedReason.PauseOnNextStatement:
+            return WI.DebuggerManager.PauseReason.PauseOnNextStatement;
+        case InspectorBackend.domains.Debugger.PausedReason.Timeout:
+            return WI.DebuggerManager.PauseReason.Timeout;
+        case InspectorBackend.domains.Debugger.PausedReason.Timer:
+            return WI.DebuggerManager.PauseReason.Timer;
+        case InspectorBackend.domains.Debugger.PausedReason.XHR:
+            return WI.DebuggerManager.PauseReason.XHR;
+        default:
+            return WI.DebuggerManager.PauseReason.Other;
+        }
     }
 
     // Public
@@ -209,6 +276,7 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
     get allExceptionsBreakpoint() { return this._allExceptionsBreakpoint; }
     get uncaughtExceptionsBreakpoint() { return this._uncaughtExceptionsBreakpoint; }
     get assertionFailuresBreakpoint() { return this._assertionFailuresBreakpoint; }
+    get allMicrotasksBreakpoint() { return this._allMicrotasksBreakpoint; }
     get breakpoints() { return this._breakpoints; }
 
     breakpointForIdentifier(id)
@@ -261,7 +329,8 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
     isBreakpointSpecial(breakpoint)
     {
         return !this.isBreakpointRemovable(breakpoint)
-            || breakpoint === this._assertionFailuresBreakpoint;
+            || breakpoint === this._assertionFailuresBreakpoint
+            || breakpoint === this._allMicrotasksBreakpoint;
     }
 
     isBreakpointEditable(breakpoint)
@@ -335,6 +404,30 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         }
 
         return knownScripts;
+    }
+
+    isScriptBlackboxed(sourceCode)
+    {
+        return this._blackboxURLsSetting.value.includes(sourceCode.contentIdentifier);
+    }
+
+    setShouldBlackboxScript(sourceCode, shouldBlackbox)
+    {
+        console.assert(DebuggerManager.supportsBlackboxingScripts());
+        console.assert(sourceCode instanceof WI.SourceCode);
+        console.assert(sourceCode.contentIdentifier);
+        console.assert(!isWebKitInjectedScript(sourceCode.contentIdentifier));
+
+        this._blackboxURLsSetting.value.toggleIncludes(sourceCode.contentIdentifier, shouldBlackbox);
+        this._blackboxURLsSetting.save();
+
+        for (let target of WI.targets) {
+            // COMPATIBILITY (iOS 13): Debugger.setShouldBlackboxURL did not exist yet.
+            if (target.DebuggerAgent.setShouldBlackboxURL)
+                target.DebuggerAgent.setShouldBlackboxURL(sourceCode.contentIdentifier, !!shouldBlackbox);
+        }
+
+        this.dispatchEventToListeners(DebuggerManager.Event.BlackboxedURLsChanged);
     }
 
     get asyncStackTraceDepth()
@@ -605,7 +698,7 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         let targetData = this._targetDebuggerDataMap.get(target);
 
         let callFrames = [];
-        let pauseReason = this._pauseReasonFromPayload(reason);
+        let pauseReason = DebuggerManager.pauseReasonFromPayload(reason);
         let pauseData = data || null;
 
         for (var i = 0; i < callFramesPayload.length; ++i) {
@@ -831,45 +924,6 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         return new WI.ScopeChainNode(type, [object], payload.name, payload.location, payload.empty);
     }
 
-    _pauseReasonFromPayload(payload)
-    {
-        // FIXME: Handle other backend pause reasons.
-        switch (payload) {
-        case DebuggerAgent.PausedReason.AnimationFrame:
-            return WI.DebuggerManager.PauseReason.AnimationFrame;
-        case DebuggerAgent.PausedReason.Assert:
-            return WI.DebuggerManager.PauseReason.Assertion;
-        case DebuggerAgent.PausedReason.Breakpoint:
-            return WI.DebuggerManager.PauseReason.Breakpoint;
-        case DebuggerAgent.PausedReason.CSPViolation:
-            return WI.DebuggerManager.PauseReason.CSPViolation;
-        case DebuggerAgent.PausedReason.DOM:
-            return WI.DebuggerManager.PauseReason.DOM;
-        case DebuggerAgent.PausedReason.DebuggerStatement:
-            return WI.DebuggerManager.PauseReason.DebuggerStatement;
-        case DebuggerAgent.PausedReason.EventListener:
-            return WI.DebuggerManager.PauseReason.EventListener;
-        case DebuggerAgent.PausedReason.Exception:
-            return WI.DebuggerManager.PauseReason.Exception;
-        case DebuggerAgent.PausedReason.Fetch:
-            return WI.DebuggerManager.PauseReason.Fetch;
-        case DebuggerAgent.PausedReason.Interval:
-            return WI.DebuggerManager.PauseReason.Interval;
-        case DebuggerAgent.PausedReason.Listener:
-            return WI.DebuggerManager.PauseReason.Listener;
-        case DebuggerAgent.PausedReason.PauseOnNextStatement:
-            return WI.DebuggerManager.PauseReason.PauseOnNextStatement;
-        case DebuggerAgent.PausedReason.Timeout:
-            return WI.DebuggerManager.PauseReason.Timeout;
-        case DebuggerAgent.PausedReason.Timer:
-            return WI.DebuggerManager.PauseReason.Timer;
-        case DebuggerAgent.PausedReason.XHR:
-            return WI.DebuggerManager.PauseReason.XHR;
-        default:
-            return WI.DebuggerManager.PauseReason.Other;
-        }
-    }
-
     _debuggerBreakpointActionType(type)
     {
         switch (type) {
@@ -1043,8 +1097,8 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
     _breakpointDisabledStateDidChange(event)
     {
         let breakpoint = event.target;
-
-        if (breakpoint === this._allExceptionsBreakpoint) {
+        switch (breakpoint) {
+        case this._allExceptionsBreakpoint:
             if (!breakpoint.disabled && !this.breakpointsDisabledTemporarily)
                 this.breakpointsEnabled = true;
             this._allExceptionsBreakpointEnabledSetting.value = !breakpoint.disabled;
@@ -1052,9 +1106,8 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
             for (let target of WI.targets)
                 target.DebuggerAgent.setPauseOnExceptions(this._breakOnExceptionsState);
             return;
-        }
 
-        if (breakpoint === this._uncaughtExceptionsBreakpoint) {
+        case this._uncaughtExceptionsBreakpoint:
             if (!breakpoint.disabled && !this.breakpointsDisabledTemporarily)
                 this.breakpointsEnabled = true;
             this._uncaughtExceptionsBreakpointEnabledSetting.value = !breakpoint.disabled;
@@ -1062,14 +1115,21 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
             for (let target of WI.targets)
                 target.DebuggerAgent.setPauseOnExceptions(this._breakOnExceptionsState);
             return;
-        }
 
-        if (breakpoint === this._assertionFailuresBreakpoint) {
+        case this._assertionFailuresBreakpoint:
             if (!breakpoint.disabled && !this.breakpointsDisabledTemporarily)
                 this.breakpointsEnabled = true;
             this._assertionFailuresBreakpointEnabledSetting.value = !breakpoint.disabled;
             for (let target of WI.targets)
-                target.DebuggerAgent.setPauseOnAssertions(this._assertionFailuresBreakpointEnabledSetting.value);
+                target.DebuggerAgent.setPauseOnAssertions(!breakpoint.disabled);
+            return;
+
+        case this._allMicrotasksBreakpoint:
+            if (!breakpoint.disabled && !this.breakpointsDisabledTemporarily)
+                this.breakpointsEnabled = true;
+            this._allMicrotasksBreakpointEnabledSetting.value = !breakpoint.disabled;
+            for (let target of WI.targets)
+                target.DebuggerAgent.setPauseOnMicrotasks(!breakpoint.disabled);
             return;
         }
 
@@ -1370,11 +1430,13 @@ WI.DebuggerManager.Event = {
     BreakpointsEnabledDidChange: "debugger-manager-breakpoints-enabled-did-change",
     ProbeSetAdded: "debugger-manager-probe-set-added",
     ProbeSetRemoved: "debugger-manager-probe-set-removed",
+    BlackboxedURLsChanged: "blackboxed-urls-changed",
 };
 
 WI.DebuggerManager.PauseReason = {
     AnimationFrame: "animation-frame",
     Assertion: "assertion",
+    BlackboxedScript: "blackboxed-script",
     Breakpoint: "breakpoint",
     CSPViolation: "CSP-violation",
     DebuggerStatement: "debugger-statement",
@@ -1383,6 +1445,7 @@ WI.DebuggerManager.PauseReason = {
     Fetch: "fetch",
     Interval: "interval",
     Listener: "listener",
+    Microtask: "microtask",
     PauseOnNextStatement: "pause-on-next-statement",
     Timeout: "timeout",
     XHR: "xhr",

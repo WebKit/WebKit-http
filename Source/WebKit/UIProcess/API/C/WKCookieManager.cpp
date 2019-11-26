@@ -28,64 +28,50 @@
 
 #include "APIArray.h"
 #include "WKAPICast.h"
-#include "WebCookieManagerProxy.h"
 
 using namespace WebKit;
 
 WKTypeID WKCookieManagerGetTypeID()
 {
-    return toAPI(WebCookieManagerProxy::APIType);
+    return 0;
 }
 
-void WKCookieManagerSetClient(WKCookieManagerRef cookieManagerRef, const WKCookieManagerClientBase* wkClient)
+void WKCookieManagerSetClient(WKCookieManagerRef, const WKCookieManagerClientBase*)
 {
-    toImpl(cookieManagerRef)->initializeClient(wkClient);
 }
 
-void WKCookieManagerGetHostnamesWithCookies(WKCookieManagerRef cookieManagerRef, void* context, WKCookieManagerGetCookieHostnamesFunction callback)
+void WKCookieManagerGetHostnamesWithCookies(WKCookieManagerRef, void*, WKCookieManagerGetCookieHostnamesFunction)
 {
-    toImpl(cookieManagerRef)->getHostnamesWithCookies(PAL::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
 }
 
-void WKCookieManagerDeleteCookiesForHostname(WKCookieManagerRef cookieManagerRef, WKStringRef hostname)
+void WKCookieManagerDeleteCookiesForHostname(WKCookieManagerRef, WKStringRef)
 {
-    toImpl(cookieManagerRef)->deleteCookiesForHostnames(PAL::SessionID::defaultSessionID(), { toImpl(hostname)->string() });
 }
 
-void WKCookieManagerDeleteAllCookies(WKCookieManagerRef cookieManagerRef)
+void WKCookieManagerDeleteAllCookies(WKCookieManagerRef)
 {
-    toImpl(cookieManagerRef)->deleteAllCookies(PAL::SessionID::defaultSessionID());
 }
 
-void WKCookieManagerDeleteAllCookiesModifiedAfterDate(WKCookieManagerRef cookieManagerRef, double date)
+void WKCookieManagerDeleteAllCookiesModifiedAfterDate(WKCookieManagerRef, double)
 {
-    toImpl(cookieManagerRef)->deleteAllCookiesModifiedSince(PAL::SessionID::defaultSessionID(), WallTime::fromRawSeconds(date), [](CallbackBase::Error){});
 }
 
-void WKCookieManagerSetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, WKHTTPCookieAcceptPolicy policy, void* context, WKCookieManagerSetHTTPCookieAcceptPolicyFunction callback)
+void WKCookieManagerSetHTTPCookieAcceptPolicy(WKCookieManagerRef, WKHTTPCookieAcceptPolicy, void*, WKCookieManagerSetHTTPCookieAcceptPolicyFunction)
 {
-    toImpl(cookieManager)->setHTTPCookieAcceptPolicy(PAL::SessionID::defaultSessionID(), toHTTPCookieAcceptPolicy(policy), [context, callback](CallbackBase::Error error) {
-        if (callback)
-            callback(error != CallbackBase::Error::None ? toAPI(API::Error::create().ptr()) : nullptr, context);
-    });
 }
 
-void WKCookieManagerGetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetHTTPCookieAcceptPolicyFunction callback)
+void WKCookieManagerGetHTTPCookieAcceptPolicy(WKCookieManagerRef, void*, WKCookieManagerGetHTTPCookieAcceptPolicyFunction)
 {
-    toImpl(cookieManager)->getHTTPCookieAcceptPolicy(PAL::SessionID::defaultSessionID(), toGenericCallbackFunction<WKHTTPCookieAcceptPolicy, HTTPCookieAcceptPolicy>(context, callback));
 }
 
-void WKCookieManagerSetStorageAccessAPIEnabled(WKCookieManagerRef cookieManager, bool enabled)
+void WKCookieManagerSetStorageAccessAPIEnabled(WKCookieManagerRef, bool)
 {
-    toImpl(cookieManager)->setStorageAccessAPIEnabled(enabled);
 }
 
-void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)
+void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef)
 {
-    toImpl(cookieManager)->startObservingCookieChanges(PAL::SessionID::defaultSessionID());
 }
 
-void WKCookieManagerStopObservingCookieChanges(WKCookieManagerRef cookieManager)
+void WKCookieManagerStopObservingCookieChanges(WKCookieManagerRef)
 {
-    toImpl(cookieManager)->stopObservingCookieChanges(PAL::SessionID::defaultSessionID());
 }

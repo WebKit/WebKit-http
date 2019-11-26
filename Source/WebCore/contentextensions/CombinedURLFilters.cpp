@@ -119,9 +119,7 @@ static void recursivePrint(const PrefixTreeVertex& vertex, const HashMap<const P
         StringBuilder builder;
         for (unsigned i = 0; i < depth * 2; ++i)
             builder.append(' ');
-        builder.appendLiteral("vertex edge: ");
-        builder.append(edge.term->toString());
-        builder.append('\n');
+        builder.append("vertex edge: ", edge.term->toString(), '\n');
         dataLogF("%s", builder.toString().utf8().data());
         ASSERT(edge.child);
         recursivePrint(*edge.child.get(), actions, depth + 1);
@@ -135,7 +133,7 @@ void CombinedURLFilters::print() const
 #endif
 
 CombinedURLFilters::CombinedURLFilters()
-    : m_prefixTreeRoot(std::make_unique<PrefixTreeVertex>())
+    : m_prefixTreeRoot(makeUnique<PrefixTreeVertex>())
 {
 }
 
@@ -209,7 +207,7 @@ void CombinedURLFilters::addPattern(uint64_t actionId, const Vector<Term>& patte
         if (nextEntryIndex != WTF::notFound)
             lastPrefixTree = lastPrefixTree->edges[nextEntryIndex].child.get();
         else {
-            lastPrefixTree->edges.append(PrefixTreeEdge({m_alphabet.interned(term), std::make_unique<PrefixTreeVertex>()}));
+            lastPrefixTree->edges.append(PrefixTreeEdge({m_alphabet.interned(term), makeUnique<PrefixTreeVertex>()}));
             lastPrefixTree = lastPrefixTree->edges.last().child.get();
         }
     }

@@ -70,17 +70,17 @@ struct _WebKitGeolocationPosition {
         position.accuracy = accuracy;
     }
 
-    explicit _WebKitGeolocationPosition(GeolocationPosition&& corePosition)
+    explicit _WebKitGeolocationPosition(GeolocationPositionData&& corePosition)
         : position(WTFMove(corePosition))
     {
     }
 
-    explicit _WebKitGeolocationPosition(const GeolocationPosition& other)
+    explicit _WebKitGeolocationPosition(const GeolocationPositionData& other)
     {
         position = other;
     }
 
-    GeolocationPosition position;
+    GeolocationPositionData position;
 };
 
 /**
@@ -249,10 +249,10 @@ static void webkitGeolocationManagerStart(WebKitGeolocationManager* manager)
     }
 
     if (!manager->priv->geoclueProvider) {
-        manager->priv->geoclueProvider = std::make_unique<GeoclueGeolocationProvider>();
+        manager->priv->geoclueProvider = makeUnique<GeoclueGeolocationProvider>();
         manager->priv->geoclueProvider->setEnableHighAccuracy(manager->priv->highAccuracyEnabled);
     }
-    manager->priv->geoclueProvider->start([manager](GeolocationPosition&& corePosition, Optional<CString> error) {
+    manager->priv->geoclueProvider->start([manager](GeolocationPositionData&& corePosition, Optional<CString> error) {
         if (error) {
             webkit_geolocation_manager_failed(manager, error->data());
             return;
@@ -312,7 +312,7 @@ WebKitGeolocationManager* webkitGeolocationManagerCreate(WebGeolocationManagerPr
 {
     auto* manager = WEBKIT_GEOLOCATION_MANAGER(g_object_new(WEBKIT_TYPE_GEOLOCATION_MANAGER, nullptr));
     manager->priv->manager = proxy;
-    proxy->setProvider(std::make_unique<GeolocationProvider>(manager));
+    proxy->setProvider(makeUnique<GeolocationProvider>(manager));
     return manager;
 }
 
@@ -413,7 +413,7 @@ void webkit_geolocation_manager_update_position(WebKitGeolocationManager* manage
     g_return_if_fail(WEBKIT_IS_GEOLOCATION_MANAGER(manager));
     g_return_if_fail(position);
 
-    GeolocationPosition corePosition = position->position;
+    auto corePosition = position->position;
     auto wkPosition = WebGeolocationPosition::create(WTFMove(corePosition));
     manager->priv->manager->providerDidChangePosition(wkPosition.ptr());
 }

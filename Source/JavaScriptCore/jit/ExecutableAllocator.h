@@ -31,6 +31,7 @@
 #include <stddef.h> // for ptrdiff_t
 #include <limits>
 #include <wtf/Assertions.h>
+#include <wtf/Gigacage.h>
 #include <wtf/Lock.h>
 #include <wtf/MetaAllocatorHandle.h>
 #include <wtf/MetaAllocator.h>
@@ -122,8 +123,9 @@ extern JS_EXPORT_PRIVATE bool useFastPermisionsJITCopy;
 
 #endif // ENABLE(SEPARATED_WX_HEAP)
 
-static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
+static ALWAYS_INLINE void* performJITMemcpy(void *dst, const void *src, size_t n)
 {
+    RELEASE_ASSERT(!Gigacage::contains(src));
 #if CPU(ARM64)
     static constexpr size_t instructionSize = sizeof(unsigned);
     RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(dst) == dst);

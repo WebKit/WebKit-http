@@ -440,18 +440,22 @@ macro cagedPrimitive(ptr, length, scratch, scratch2)
         const source = ptr
     end
     if GIGACAGE_ENABLED
-        cage(_g_gigacageBasePtrs + Gigacage::BasePtrs::primitive, constexpr Gigacage::primitiveGigacageMask, source, scratch)
+        cage(_g_gigacageConfig + Gigacage::Config::basePtrs + GigacagePrimitiveBasePtrOffset, constexpr Gigacage::primitiveGigacageMask, source, scratch)
         if ARM64E
             const numberOfPACBits = constexpr MacroAssembler::numberOfPACBits
             bfiq scratch2, 0, 64 - numberOfPACBits, ptr
-            untagArrayPtr length, ptr
         end
+    end
+    if ARM64E
+        untagArrayPtr length, ptr
     end
 end
 
 macro loadCagedJSValue(source, dest, scratchOrLength)
     loadp source, dest
-    cage(_g_gigacageBasePtrs + Gigacage::BasePtrs::jsValue, constexpr Gigacage::jsValueGigacageMask, dest, scratchOrLength)
+    if GIGACAGE_ENABLED
+        cage(_g_gigacageConfig + Gigacage::Config::basePtrs + GigacageJSValueBasePtrOffset, constexpr Gigacage::jsValueGigacageMask, dest, scratchOrLength)
+    end
 end
 
 macro loadVariable(get, fieldName, valueReg)
@@ -508,19 +512,30 @@ macro loadConstantOrVariableCell(size, index, value, slow)
     btqnz value, tagMask, slow
 end
 
-macro writeBarrierOnOperandWithReload(size, get, cellFieldName, reloadAfterSlowPath)
-    get(cellFieldName, t1)
-    loadConstantOrVariableCell(size, t1, t2, .writeBarrierDone)
+macro writeBarrierOnCellWithReload(cell, reloadAfterSlowPath)
     skipIfIsRememberedOrInEden(
-        t2,
+        cell,
         macro()
             push PB, PC
-            move t2, a1 # t2 can be a0 (not on 64 bits, but better safe than sorry)
+            move cell, a1 # cell can be a0
             move cfr, a0
             cCall2Void(_llint_write_barrier_slow)
             pop PC, PB
             reloadAfterSlowPath()
         end)
+end
+
+macro writeBarrierOnCellAndValueWithReload(cell, value, reloadAfterSlowPath)
+    btqnz value, tagMask, .writeBarrierDone
+    btqz value, .writeBarrierDone
+    writeBarrierOnCellWithReload(cell, reloadAfterSlowPath)
+.writeBarrierDone:
+end
+
+macro writeBarrierOnOperandWithReload(size, get, cellFieldName, reloadAfterSlowPath)
+    get(cellFieldName, t1)
+    loadConstantOrVariableCell(size, t1, t2, .writeBarrierDone)
+    writeBarrierOnCellWithReload(t2, reloadAfterSlowPath)
 .writeBarrierDone:
 end
 
@@ -543,15 +558,7 @@ macro writeBarrierOnGlobal(size, get, valueFieldName, loadMacro)
     btpz t0, .writeBarrierDone
 
     loadMacro(t3)
-    skipIfIsRememberedOrInEden(
-        t3,
-        macro()
-            push PB, PC
-            move cfr, a0
-            move t3, a1
-            cCall2Void(_llint_write_barrier_slow)
-            pop PC, PB
-        end)
+    writeBarrierOnCellWithReload(t3, macro() end)
 .writeBarrierDone:
 end
 
@@ -827,8 +834,8 @@ equalNullComparisonOp(op_neq_null, OpNeqNull,
 
 
 llintOpWithReturn(op_is_undefined_or_null, OpIsUndefinedOrNull, macro (size, get, dispatch, return)
-    get(m_operand, t0)
-    loadq [cfr, t0, 8], t0
+    get(m_operand, t1)
+    loadConstantOrVariable(size, t1, t0)
     andq ~TagBitUndefined, t0
     cqeq t0, ValueNull, t0
     orq ValueFalse, t0
@@ -2578,6 +2585,24 @@ llintOpWithReturn(op_get_rest_length, OpGetRestLength, macro (size, get, dispatc
 .boxUp:
     orq tagTypeNumber, t0
     return(t0)
+end)
+
+
+llintOpWithProfile(op_get_internal_field, OpGetInternalField, macro (size, get, dispatch, return)
+    loadVariable(get, m_base, t1)
+    getu(size, OpGetInternalField, m_index, t2)
+    loadq JSInternalFieldObjectImpl_internalFields[t1, t2, SlotSize], t0
+    return(t0)
+end)
+
+llintOp(op_put_internal_field, OpPutInternalField, macro (size, get, dispatch)
+    loadVariable(get, m_base, t0)
+    get(m_value, t1)
+    loadConstantOrVariable(size, t1, t2)
+    getu(size, OpPutInternalField, m_index, t1)
+    storeq t2, JSInternalFieldObjectImpl_internalFields[t0, t1, SlotSize]
+    writeBarrierOnCellAndValueWithReload(t0, t2, macro() end)
+    dispatch()
 end)
 
 

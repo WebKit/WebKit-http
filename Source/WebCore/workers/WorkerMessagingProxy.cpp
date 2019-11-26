@@ -55,7 +55,7 @@ WorkerGlobalScopeProxy& WorkerGlobalScopeProxy::create(Worker& worker)
 
 WorkerMessagingProxy::WorkerMessagingProxy(Worker& workerObject)
     : m_scriptExecutionContext(workerObject.scriptExecutionContext())
-    , m_inspectorProxy(std::make_unique<WorkerInspectorProxy>(workerObject.identifier()))
+    , m_inspectorProxy(makeUnique<WorkerInspectorProxy>(workerObject.identifier()))
     , m_workerObject(&workerObject)
 {
     ASSERT((is<Document>(*m_scriptExecutionContext) && isMainThread())
@@ -91,7 +91,7 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     auto thread = DedicatedWorkerThread::create(scriptURL, name, identifier, userAgent, isOnline, sourceCode, *this, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), timeOrigin, proxy, socketProvider, runtimeFlags, sessionID);
 
     workerThreadCreated(thread.get());
-    thread->start(nullptr);
+    thread->start();
 
     m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.ptr(), scriptURL);
 }
@@ -125,7 +125,7 @@ void WorkerMessagingProxy::postMessageToWorkerGlobalScope(MessageWithMessagePort
         ++m_unconfirmedMessageCount;
         m_workerThread->runLoop().postTask(WTFMove(task));
     } else
-        m_queuedEarlyTasks.append(std::make_unique<ScriptExecutionContext::Task>(WTFMove(task)));
+        m_queuedEarlyTasks.append(makeUnique<ScriptExecutionContext::Task>(WTFMove(task)));
 }
 
 void WorkerMessagingProxy::postTaskToLoader(ScriptExecutionContext::Task&& task)

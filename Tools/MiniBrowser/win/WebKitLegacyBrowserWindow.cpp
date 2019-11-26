@@ -57,16 +57,14 @@ float deviceScaleFactorForWindow(HWND);
 
 static const int maxHistorySize = 10;
 
-typedef _com_ptr_t<_com_IIID<IWebMutableURLRequest, &__uuidof(IWebMutableURLRequest)>> IWebMutableURLRequestPtr;
-
-Ref<BrowserWindow> WebKitLegacyBrowserWindow::create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView)
+Ref<BrowserWindow> WebKitLegacyBrowserWindow::create(BrowserWindowClient& client, HWND mainWnd, bool useLayeredWebView)
 {
-    return adoptRef(*new WebKitLegacyBrowserWindow(mainWnd, urlBarWnd, useLayeredWebView));
+    return adoptRef(*new WebKitLegacyBrowserWindow(client, mainWnd, useLayeredWebView));
 }
 
-WebKitLegacyBrowserWindow::WebKitLegacyBrowserWindow(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView)
-    : m_hMainWnd(mainWnd)
-    , m_hURLBarWnd(urlBarWnd)
+WebKitLegacyBrowserWindow::WebKitLegacyBrowserWindow(BrowserWindowClient& client, HWND mainWnd, bool useLayeredWebView)
+    : m_client(client)
+    , m_hMainWnd(mainWnd)
     , m_useLayeredWebView(useLayeredWebView)
 {
 }
@@ -106,6 +104,16 @@ HRESULT WebKitLegacyBrowserWindow::init()
     if (FAILED(hr))
         return hr;
 
+    IWebNotificationCenterPtr notificationCenter;
+    hr = WebKitCreateInstance(CLSID_WebNotificationCenter, 0, __uuidof(notificationCenter), reinterpret_cast<void**>(&notificationCenter.GetInterfacePtr()));
+    if (FAILED(hr))
+        return hr;
+
+    IWebNotificationCenterPtr defaultNotificationCenter;
+    hr = notificationCenter->defaultCenter(&defaultNotificationCenter.GetInterfacePtr());
+    if (FAILED(hr))
+        return hr;
+
     if (!seedInitialDefaultPreferences())
         return E_FAIL;
 
@@ -115,13 +123,21 @@ HRESULT WebKitLegacyBrowserWindow::init()
     if (!setCacheFolder())
         return E_FAIL;
 
-    auto webHost = new MiniBrowserWebHost(this, m_hURLBarWnd);
+    auto webHost = new MiniBrowserWebHost(this);
 
     hr = setFrameLoadDelegate(webHost);
     if (FAILED(hr))
         return hr;
 
     hr = setFrameLoadDelegatePrivate(webHost);
+    if (FAILED(hr))
+        return hr;
+
+    hr = defaultNotificationCenter->addObserver(webHost, _bstr_t(WebViewProgressEstimateChangedNotification), nullptr);
+    if (FAILED(hr))
+        return hr;
+
+    hr = defaultNotificationCenter->addObserver(webHost, _bstr_t(WebViewProgressFinishedNotification), nullptr);
     if (FAILED(hr))
         return hr;
 
@@ -452,7 +468,7 @@ void WebKitLegacyBrowserWindow::navigateToHistory(UINT menuID)
     _bstr_t frameURL;
     desiredHistoryItem->URLString(frameURL.GetAddress());
 
-    ::SendMessage(m_hURLBarWnd, (UINT)WM_SETTEXT, 0, (LPARAM)frameURL.GetBSTR());
+    m_client.activeURLChanged(frameURL.GetBSTR());
 }
 
 bool WebKitLegacyBrowserWindow::goBack()

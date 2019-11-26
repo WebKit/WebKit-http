@@ -109,7 +109,7 @@ PASS: DOM node should have no breakpoints.
 
 -- Running test case: SetBreakpointWithInvalidNodeId
 Attempting to set breakpoint.
-Protocol result: Could not find node with given id
+Protocol result: Missing node for given nodeId
 PASS: Protocol should return an error.
 -- Running test teardown.
 
@@ -121,7 +121,7 @@ PASS: Protocol should return an error.
 
 -- Running test case: RemoveBreakpointWithInvalidNodeId
 Attempting to remove breakpoint.
-Protocol result: Could not find node with given id
+Protocol result: Missing node for given nodeId
 PASS: Protocol should return an error.
 -- Running test teardown.
 

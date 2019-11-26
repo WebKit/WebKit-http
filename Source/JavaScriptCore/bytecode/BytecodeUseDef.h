@@ -79,6 +79,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     case op_loop_hint:
     case op_jmp:
     case op_new_object:
+    case op_new_promise:
     case op_enter:
     case op_argument_count:
     case op_catch:
@@ -192,6 +193,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     USES(OpMov, src)
     USES(OpNewArrayWithSize, length)
     USES(OpCreateThis, callee)
+    USES(OpCreatePromise, callee)
     USES(OpDelById, base)
     USES(OpNewFunc, scope)
     USES(OpNewAsyncGeneratorFunc, scope)
@@ -251,6 +253,9 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     USES(OpSwitchString, scrutinee)
     USES(OpSwitchChar, scrutinee)
     USES(OpSwitchImm, scrutinee)
+
+    USES(OpGetInternalField, base)
+    USES(OpPutInternalField, base, value)
 
     USES(OpYield, generator, argument)
 
@@ -340,6 +345,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     case op_put_setter_by_val:
     case op_put_by_val:
     case op_put_by_val_direct:
+    case op_put_internal_field:
     case op_define_data_property:
     case op_define_accessor_property:
     case op_profile_type:
@@ -378,6 +384,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     DEFS(OpStrcat, dst)
     DEFS(OpToPrimitive, dst)
     DEFS(OpCreateThis, dst)
+    DEFS(OpCreatePromise, dst)
     DEFS(OpNewArray, dst)
     DEFS(OpNewArrayWithSpread, dst)
     DEFS(OpSpread, dst)
@@ -457,6 +464,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     DEFS(OpNot, dst)
     DEFS(OpMov, dst)
     DEFS(OpNewObject, dst)
+    DEFS(OpNewPromise, dst)
     DEFS(OpToThis, srcDst)
     DEFS(OpGetScope, dst)
     DEFS(OpCreateDirectArguments, dst)
@@ -469,6 +477,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     DEFS(OpGetArgument, dst)
     DEFS(OpCreateRest, dst)
     DEFS(OpGetRestLength, dst)
+    DEFS(OpGetInternalField, dst)
 
     DEFS(OpCatch, exception, thrownValue)
 

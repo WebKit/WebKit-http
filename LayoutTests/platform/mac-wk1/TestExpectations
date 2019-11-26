@@ -396,6 +396,7 @@ webgl/1.0.3/151055_asan.html [ Failure ]
 inspector/script-profiler/event-type-API.html [ Skip ]
 
 # WK1 Inspector running in the same VM as the inspected page skews heap snapshot results.
+inspector/console/queryHolders.html [ Skip ]
 inspector/heap/getPreview.html [ Skip ]
 inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
@@ -493,6 +494,13 @@ http/tests/inspector/network/resource-request-headers.html [ Failure ]
 http/tests/inspector/network/resource-sizes-network.html [ Failure ]
 http/tests/inspector/network/resource-sizes-memory-cache.html [ Failure ]
 http/tests/inspector/network/har/har-page.html [ Failure ]
+
+# Local Overrides not available in WebKit1
+http/tests/inspector/network/local-resource-override-basic.html [ Failure ]
+http/tests/inspector/network/local-resource-override-main-resource.html [ Failure ]
+http/tests/inspector/network/local-resource-override-script-tag.html [ Failure ]
+http/tests/inspector/network/resource-response-inspector-override.html [ Failure ]
+inspector/network/local-resource-override-continue-response.html [ Skip ]
 
 webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 
@@ -738,8 +746,8 @@ webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ S
 webkit.org/b/197371 http/wpt/prefetch/link-prefetch-main-resource-redirect.html [ Skip ]
 webkit.org/b/199499 http/wpt/prefetch/link-prefetch-skip-disk-cache.html [ Skip ]
 
-webkit.org/b/199632 http/wpt/prefetch/beforeload.html [ Skip ]
-webkit.org/b/199632 http/wpt/prefetch/beforeload-dynamic.html [ Skip ]
+webkit.org/b/199632 http/wpt/prefetch/load-events.html [ Skip ]
+webkit.org/b/199632 http/wpt/prefetch/load-events-dynamic.html [ Skip ]
 
 webkit.org/b/198177 pointerevents/mouse/compatibility-mouse-events-prevention-mouse-pressed.html [ Skip ]
 

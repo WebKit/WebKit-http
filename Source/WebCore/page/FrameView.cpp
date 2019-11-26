@@ -40,6 +40,7 @@
 #include "DeprecatedGlobalSettings.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
+#include "Editor.h"
 #include "EventHandler.h"
 #include "EventNames.h"
 #include "FloatRect.h"
@@ -144,18 +145,6 @@ static constexpr unsigned defaultSignificantRenderedTextCharacterThreshold = 300
 static constexpr float defaultSignificantRenderedTextMeanLength = 50;
 static constexpr unsigned mainArticleSignificantRenderedTextCharacterThreshold = 1500;
 static constexpr float mainArticleSignificantRenderedTextMeanLength = 25;
-
-static OptionSet<RenderLayer::UpdateLayerPositionsFlag> updateLayerPositionFlags(RenderLayer* layer, bool isRelayoutingSubtree, bool didFullRepaint)
-{
-    auto flags = RenderLayer::updateLayerPositionsDefaultFlags();
-    if (didFullRepaint) {
-        flags.remove(RenderLayer::CheckForRepaint);
-        flags.add(RenderLayer::NeedsFullRepaintInBacking);
-    }
-    if (isRelayoutingSubtree && layer->enclosingPaginationLayer(RenderLayer::IncludeCompositedPaginatedLayers))
-        flags.add(RenderLayer::UpdatePagination);
-    return flags;
-}
 
 Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
 {
@@ -1245,7 +1234,7 @@ void FrameView::didLayout(WeakPtr<RenderElement> layoutRoot)
 {
     renderView()->releaseProtectedRenderWidgets();
     auto* layoutRootEnclosingLayer = layoutRoot->enclosingLayer();
-    layoutRootEnclosingLayer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layoutRootEnclosingLayer, !is<RenderView>(*layoutRoot), layoutContext().needsFullRepaint()));
+    layoutRootEnclosingLayer->updateLayerPositionsAfterLayout(!is<RenderView>(*layoutRoot), layoutContext().needsFullRepaint());
 
     updateCompositingLayersAfterLayout();
 
@@ -1291,7 +1280,7 @@ RenderBox* FrameView::embeddedContentBox() const
 void FrameView::addEmbeddedObjectToUpdate(RenderEmbeddedObject& embeddedObject)
 {
     if (!m_embeddedObjectsToUpdate)
-        m_embeddedObjectsToUpdate = std::make_unique<ListHashSet<RenderEmbeddedObject*>>();
+        m_embeddedObjectsToUpdate = makeUnique<ListHashSet<RenderEmbeddedObject*>>();
 
     HTMLFrameOwnerElement& element = embeddedObject.frameOwnerElement();
     if (is<HTMLObjectElement>(element) || is<HTMLEmbedElement>(element)) {
@@ -1427,7 +1416,7 @@ void FrameView::addSlowRepaintObject(RenderElement& renderer)
     bool hadSlowRepaintObjects = hasSlowRepaintObjects();
 
     if (!m_slowRepaintObjects)
-        m_slowRepaintObjects = std::make_unique<HashSet<const RenderElement*>>();
+        m_slowRepaintObjects = makeUnique<HashSet<const RenderElement*>>();
 
     m_slowRepaintObjects->add(&renderer);
     if (hadSlowRepaintObjects)
@@ -1462,7 +1451,7 @@ void FrameView::removeSlowRepaintObject(RenderElement& renderer)
 void FrameView::addViewportConstrainedObject(RenderLayerModelObject* object)
 {
     if (!m_viewportConstrainedObjects)
-        m_viewportConstrainedObjects = std::make_unique<ViewportConstrainedObjectSet>();
+        m_viewportConstrainedObjects = makeUnique<ViewportConstrainedObjectSet>();
 
     if (!m_viewportConstrainedObjects->contains(object)) {
         m_viewportConstrainedObjects->add(object);
@@ -2435,6 +2424,11 @@ void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const S
     LOG_WITH_STREAM(Scrolling, stream << "FrameView " << this << " scrollPositionChanged from " << oldPosition << " to " << newPosition << " (scale " << frameScaleFactor() << " )");
     updateLayoutViewport();
     viewportContentsChanged();
+
+    if (auto* renderView = this->renderView()) {
+        if (auto* layer = renderView->layer())
+            frame().editor().renderLayerDidScroll(*layer);
+    }
 }
 
 void FrameView::applyRecursivelyWithVisibleRect(const WTF::Function<void (FrameView& frameView, const IntRect& visibleRect)>& apply)
@@ -4866,7 +4860,7 @@ String FrameView::trackedRepaintRectsAsText() const
 bool FrameView::addScrollableArea(ScrollableArea* scrollableArea)
 {
     if (!m_scrollableAreas)
-        m_scrollableAreas = std::make_unique<ScrollableAreaSet>();
+        m_scrollableAreas = makeUnique<ScrollableAreaSet>();
     
     if (m_scrollableAreas->add(scrollableArea).isNewEntry) {
         scrollableAreaSetChanged();

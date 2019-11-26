@@ -185,7 +185,7 @@ auto SectionParser::parseResizableLimits(uint32_t& initial, Optional<uint32_t>& 
     if (flags) {
         uint32_t maximumInt;
         WASM_PARSER_FAIL_IF(!parseVarUInt32(maximumInt), "can't parse resizable limits maximum page count");
-        WASM_PARSER_FAIL_IF(initial > maximumInt, "resizable limits has a initial page count of ", initial, " which is greater than its maximum ", maximumInt);
+        WASM_PARSER_FAIL_IF(initial > maximumInt, "resizable limits has an initial page count of ", initial, " which is greater than its maximum ", maximumInt);
         maximum = maximumInt;
     }
 
@@ -414,6 +414,7 @@ auto SectionParser::parseElement() -> PartialResult
 // This function will be changed to be RELEASE_ASSERT_NOT_REACHED once we switch our parsing infrastructure to the streaming parser.
 auto SectionParser::parseCode() -> PartialResult
 {
+    m_info->codeSectionSize = length();
     uint32_t count;
     WASM_PARSER_FAIL_IF(!parseVarUInt32(count), "can't get Code section's count");
     WASM_PARSER_FAIL_IF(count == std::numeric_limits<uint32_t>::max(), "Code section's count is too big ", count);

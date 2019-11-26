@@ -60,6 +60,7 @@
     <link rel="stylesheet" href="Views/CheckboxNavigationItem.css">
     <link rel="stylesheet" href="Views/CircleChart.css">
     <link rel="stylesheet" href="Views/ClusterContentView.css">
+    <link rel="stylesheet" href="Views/CodeMirrorLocalOverrideURLMode.css">
     <link rel="stylesheet" href="Views/CodeMirrorOverrides.css">
     <link rel="stylesheet" href="Views/CodeMirrorRegexMode.css">
     <link rel="stylesheet" href="Views/CollectionContentView.css">
@@ -123,12 +124,16 @@
     <link rel="stylesheet" href="Views/InlineSwatch.css">
     <link rel="stylesheet" href="Views/InputPopover.css">
     <link rel="stylesheet" href="Views/IssueTreeElement.css">
-    <link rel="stylesheet" href="Views/JSONContentView.css">
     <link rel="stylesheet" href="Views/LayerDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/LayerTreeDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/Layers3DContentView.css">
     <link rel="stylesheet" href="Views/LayoutTimelineOverviewGraph.css">
     <link rel="stylesheet" href="Views/LayoutTimelineView.css">
+    <link rel="stylesheet" href="Views/LocalRemoteObjectContentView.css">
+    <link rel="stylesheet" href="Views/LocalResourceOverrideLabelView.css">
+    <link rel="stylesheet" href="Views/LocalResourceOverridePopover.css">
+    <link rel="stylesheet" href="Views/LocalResourceOverrideTreeElement.css">
+    <link rel="stylesheet" href="Views/LocalResourceOverrideWarningView.css">
     <link rel="stylesheet" href="Views/LogContentView.css">
     <link rel="stylesheet" href="Views/LogIcon.css">
     <link rel="stylesheet" href="Views/MediaTimelineOverviewGraph.css">
@@ -182,7 +187,6 @@
     <link rel="stylesheet" href="Views/ResourceTreeElement.css">
     <link rel="stylesheet" href="Views/ScopeBar.css">
     <link rel="stylesheet" href="Views/ScopeChainDetailsSidebarPanel.css">
-    <link rel="stylesheet" href="Views/ScopeRadioButtonNavigationItem.css">
     <link rel="stylesheet" href="Views/ScriptContentView.css">
     <link rel="stylesheet" href="Views/ScriptDetailsTimelineView.css">
     <link rel="stylesheet" href="Views/ScriptTimelineOverviewGraph.css">
@@ -198,6 +202,7 @@
     <link rel="stylesheet" href="Views/Slider.css">
     <link rel="stylesheet" href="Views/SoftContextMenu.css">
     <link rel="stylesheet" href="Views/SourceCodeTextEditor.css">
+    <link rel="stylesheet" href="Views/SourceCodeTreeElement.css">
     <link rel="stylesheet" href="Views/SourcesNavigationSidebarPanel.css">
     <link rel="stylesheet" href="Views/SpreadsheetCSSStyleDeclarationEditor.css">
     <link rel="stylesheet" href="Views/SpreadsheetCSSStyleDeclarationSection.css">
@@ -291,6 +296,7 @@
     <script src="Base/EventListener.js"></script>
     <script src="Base/EventListenerSet.js"></script>
     <script src="Base/FileUtilities.js"></script>
+    <script src="Base/HTTPUtilities.js"></script>
     <script src="Base/ImageUtilities.js"></script>
     <script src="Base/LoadLocalizedStrings.js"></script>
     <script src="Base/MIMETypeUtilities.js"></script>
@@ -412,6 +418,7 @@
     <script src="Models/LayoutTimelineRecord.js"></script>
     <script src="Models/LazySourceCodeLocation.js"></script>
     <script src="Models/LineWidget.js"></script>
+    <script src="Models/LocalResourceOverride.js"></script>
     <script src="Models/LogObject.js"></script>
     <script src="Models/LoggingChannel.js"></script>
     <script src="Models/MediaInstrument.js"></script>
@@ -581,6 +588,7 @@
 
     <script src="Views/AuditTestContentView.js"></script>
     <script src="Views/CollectionContentView.js"></script>
+    <script src="Views/LocalRemoteObjectContentView.js"></script>
 
     <script src="Views/ActivateButtonNavigationItem.js"></script>
     <script src="Views/ActivateButtonToolbarItem.js"></script>
@@ -618,6 +626,7 @@
     <script src="Views/CodeMirrorAdditions.js"></script>
     <script src="Views/CodeMirrorEditor.js"></script>
     <script src="Views/CodeMirrorFormatters.js"></script>
+    <script src="Views/CodeMirrorLocalOverrideURLMode.js"></script>
     <script src="Views/CodeMirrorRegexMode.js"></script>
     <script src="Views/CodeMirrorTextMarkers.js"></script>
     <script src="Views/ColorPicker.js"></script>
@@ -706,7 +715,6 @@
     <script src="Views/InlineSwatch.js"></script>
     <script src="Views/InputPopover.js"></script>
     <script src="Views/IssueTreeElement.js"></script>
-    <script src="Views/JSONContentView.js"></script>
     <script src="Views/LayerDetailsSidebarPanel.js"></script>
     <script src="Views/LayerTreeDataGridNode.js"></script>
     <script src="Views/LayerTreeDetailsSidebarPanel.js"></script>
@@ -715,6 +723,12 @@
     <script src="Views/LayoutTimelineDataGridNode.js"></script>
     <script src="Views/LayoutTimelineOverviewGraph.js"></script>
     <script src="Views/LayoutTimelineView.js"></script>
+    <script src="Views/LocalDOMContentView.js"></script>
+    <script src="Views/LocalJSONContentView.js"></script>
+    <script src="Views/LocalResourceOverrideLabelView.js"></script>
+    <script src="Views/LocalResourceOverridePopover.js"></script>
+    <script src="Views/LocalResourceOverrideTreeElement.js"></script>
+    <script src="Views/LocalResourceOverrideWarningView.js"></script>
     <script src="Views/LogContentView.js"></script>
     <script src="Views/MediaTimelineDataGridNode.js"></script>
     <script src="Views/MediaTimelineOverviewGraph.js"></script>
@@ -737,6 +751,7 @@
     <script src="Views/ObjectTreeSetIndexTreeElement.js"></script>
     <script src="Views/ObjectTreeView.js"></script>
     <script src="Views/OpenResourceDialog.js"></script>
+    <script src="Views/OriginTreeElement.js"></script>
     <script src="Views/OverviewTimelineView.js"></script>
     <script src="Views/ProbeDetailsSidebarPanel.js"></script>
     <script src="Views/ProbeSetDataGrid.js"></script>
@@ -776,7 +791,6 @@
     <script src="Views/ScopeBar.js"></script>
     <script src="Views/ScopeBarItem.js"></script>
     <script src="Views/ScopeChainDetailsSidebarPanel.js"></script>
-    <script src="Views/ScopeRadioButtonNavigationItem.js"></script>
     <script src="Views/ScriptClusterTimelineView.js"></script>
     <script src="Views/ScriptContentView.js"></script>
     <script src="Views/ScriptDetailsTimelineView.js"></script>
@@ -792,7 +806,6 @@
     <script src="Views/ShaderProgramContentView.js"></script>
     <script src="Views/ShaderProgramTreeElement.js"></script>
     <script src="Views/Sidebar.js"></script>
-    <script src="Views/SidebarNavigationBar.js"></script>
     <script src="Views/Slider.js"></script>
     <script src="Views/SoftContextMenu.js"></script>
     <script src="Views/SourceCodeTextEditor.js"></script>
@@ -810,7 +823,6 @@
     <script src="Views/StyleOriginView.js"></script>
 
     <script src="Views/SpringEditor.js"></script>
-    <script src="Views/SVGImageResourceClusterContentView.js"></script>
     <script src="Views/StackTraceView.js"></script>
     <script src="Views/StackedAreaChart.js"></script>
     <script src="Views/StackedColumnChart.js"></script>

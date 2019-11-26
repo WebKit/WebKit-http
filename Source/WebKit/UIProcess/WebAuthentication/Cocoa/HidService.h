@@ -25,19 +25,18 @@
 
 #pragma once
 
-#if ENABLE(WEB_AUTHN) && PLATFORM(MAC)
+#if ENABLE(WEB_AUTHN)
 
-#include "AuthenticatorTransportService.h"
-#include <IOKit/hid/IOHIDManager.h>
+#include "FidoService.h"
+#include <pal/spi/cocoa/IOKitSPI.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebKit {
 
-class CtapHidDriver;
 class HidConnection;
 
-class HidService : public AuthenticatorTransportService {
+class HidService : public FidoService {
 public:
     explicit HidService(Observer&);
     ~HidService();
@@ -51,13 +50,9 @@ private:
     virtual void platformStartDiscovery();
     virtual UniqueRef<HidConnection> createHidConnection(IOHIDDeviceRef) const;
 
-    void continueAddDeviceAfterGetInfo(CtapHidDriver* deviceRef, Vector<uint8_t>&& info);
-
     RetainPtr<IOHIDManagerRef> m_manager;
-    // Keeping drivers alive when they are initializing authenticators.
-    HashSet<std::unique_ptr<CtapHidDriver>> m_drivers;
 };
 
 } // namespace WebKit
 
-#endif // ENABLE(WEB_AUTHN) && PLATFORM(MAC)
+#endif // ENABLE(WEB_AUTHN)

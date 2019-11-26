@@ -45,6 +45,7 @@
 #include <WebCore/GraphicsContextImplDirect2D.h>
 #include <WebCore/PlatformContextDirect2D.h>
 #include <d2d1.h>
+#include <d3d11_1.h>
 #endif
 
 
@@ -236,6 +237,12 @@ void DrawingAreaCoordinatedGraphics::updatePreferences(const WebPreferencesStore
     settings.setAcceleratedCompositingForFixedPositionEnabled(settings.acceleratedCompositingEnabled());
 
     m_alwaysUseCompositing = settings.acceleratedCompositingEnabled() && settings.forceCompositingMode();
+}
+
+void DrawingAreaCoordinatedGraphics::enablePainting()
+{
+    m_isPaintingEnabled = true;
+
     if (m_alwaysUseCompositing && !m_layerTreeHost)
         enterAcceleratedCompositingMode(nullptr);
 }
@@ -538,7 +545,7 @@ void DrawingAreaCoordinatedGraphics::enterAcceleratedCompositingMode(GraphicsLay
 
     // In order to ensure that we get a unique DisplayRefreshMonitor per-DrawingArea (necessary because ThreadedDisplayRefreshMonitor
     // is driven by the ThreadedCompositor of the drawing area), give each page a unique DisplayID derived from WebPage's unique ID.
-    m_webPage.windowScreenDidChange(std::numeric_limits<uint32_t>::max() - m_webPage.pageID().toUInt64());
+    m_webPage.windowScreenDidChange(std::numeric_limits<uint32_t>::max() - m_webPage.identifier().toUInt64());
 
     ASSERT(!m_layerTreeHost);
     if (m_previousLayerTreeHost) {
@@ -550,7 +557,7 @@ void DrawingAreaCoordinatedGraphics::enterAcceleratedCompositingMode(GraphicsLay
             m_layerTreeHost->setLayerFlushSchedulingEnabled(true);
     } else {
 #if USE(COORDINATED_GRAPHICS)
-        m_layerTreeHost = std::make_unique<LayerTreeHost>(m_webPage);
+        m_layerTreeHost = makeUnique<LayerTreeHost>(m_webPage);
 #else
         m_layerTreeHost = nullptr;
         return;
@@ -754,7 +761,7 @@ void DrawingAreaCoordinatedGraphics::display(UpdateInfo& updateInfo)
     }
 
 #if USE(DIRECT2D)
-    bitmap->sync(*graphicsContext);
+    bitmap->leakSharedResource(); // It will be destroyed in the UIProcess.
 #endif
 
     // Layout can trigger more calls to setNeedsDisplay and we don't want to process them

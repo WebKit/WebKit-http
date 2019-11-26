@@ -202,10 +202,22 @@ bool IOSApplication::isMobileMail()
     return isMobileMail;
 }
 
+bool IOSApplication::isMailCompositionService()
+{
+    static bool isMailCompositionService = applicationBundleIsEqualTo("com.apple.MailCompositionService"_s);
+    return isMailCompositionService;
+}
+
 bool IOSApplication::isMobileSafari()
 {
     static bool isMobileSafari = applicationBundleIsEqualTo("com.apple.mobilesafari"_s);
     return isMobileSafari;
+}
+
+bool IOSApplication::isSafariViewService()
+{
+    static bool isSafariViewService = applicationBundleIsEqualTo("com.apple.SafariViewService"_s);
+    return isSafariViewService;
 }
 
 bool IOSApplication::isIMDb()

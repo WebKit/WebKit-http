@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 Caio Lima <ticaiolima@gmail.com>
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,7 +72,6 @@ public:
     void setSign(bool sign) { m_sign = sign; }
     bool sign() const { return m_sign; }
 
-    void setLength(unsigned length) { m_length = length; }
     unsigned length() const { return m_length; }
 
     enum class ErrorParseMode {
@@ -85,6 +85,8 @@ public:
     static JSBigInt* parseInt(ExecState*, VM&, StringView, uint8_t radix, ErrorParseMode = ErrorParseMode::ThrowExceptions, ParseIntSign = ParseIntSign::Unsigned);
     static JSBigInt* parseInt(ExecState*, StringView, ErrorParseMode = ErrorParseMode::ThrowExceptions);
     static JSBigInt* stringToBigInt(ExecState*, StringView);
+
+    static String tryGetString(VM&, JSBigInt*, unsigned radix);
 
     Optional<uint8_t> singleDigitValueForString();
     String toString(ExecState*, unsigned radix);
@@ -200,8 +202,8 @@ private:
     static Digit digitDiv(Digit high, Digit low, Digit divisor, Digit& remainder);
     static Digit digitPow(Digit base, Digit exponent);
 
-    static String toStringBasePowerOfTwo(ExecState*, JSBigInt*, unsigned radix);
-    static String toStringGeneric(ExecState*, JSBigInt*, unsigned radix);
+    static String toStringBasePowerOfTwo(VM&, ExecState*, JSBigInt*, unsigned radix);
+    static String toStringGeneric(VM&, ExecState*, JSBigInt*, unsigned radix);
 
     inline bool isZero() const
     {
@@ -244,8 +246,8 @@ private:
 
     Digit digit(unsigned);
     void setDigit(unsigned, Digit);
-        
-    unsigned m_length;
+
+    const unsigned m_length;
     bool m_sign { false };
 };
 

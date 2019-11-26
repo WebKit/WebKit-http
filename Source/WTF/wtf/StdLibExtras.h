@@ -565,6 +565,24 @@ constexpr size_t clz(uint32_t value, ZeroStatus mightBeZero = ZeroStatus::MayBeZ
 
 } // namespace std
 
+namespace WTF {
+
+template<class T, class... Args>
+ALWAYS_INLINE decltype(auto) makeUnique(Args&&... args)
+{
+    static_assert(std::is_same<typename T::webkitFastMalloced, int>::value, "T is FastMalloced");
+    return std::make_unique<T>(std::forward<Args>(args)...);
+}
+
+template<class T, class... Args>
+ALWAYS_INLINE decltype(auto) makeUniqueWithoutFastMallocCheck(Args&&... args)
+{
+    return std::make_unique<T>(std::forward<Args>(args)...);
+}
+
+
+} // namespace WTF
+
 #define WTFMove(value) std::move<WTF::CheckMoveParameter>(value)
 
 using WTF::KB;
@@ -585,3 +603,5 @@ using WTF::mergeDeduplicatedSorted;
 using WTF::roundUpToMultipleOf;
 using WTF::safeCast;
 using WTF::tryBinarySearch;
+using WTF::makeUnique;
+using WTF::makeUniqueWithoutFastMallocCheck;

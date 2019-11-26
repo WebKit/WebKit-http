@@ -39,9 +39,9 @@ import ews.config as config
 class StatusBubble(View):
     # These queue names are from shortname in https://trac.webkit.org/browser/webkit/trunk/Tools/BuildSlaveSupport/ews-build/config.json
     # FIXME: Auto-generate this list https://bugs.webkit.org/show_bug.cgi?id=195640
-    ALL_QUEUES = ['ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
-                  'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'jsc', 'style', 'webkitperl', 'webkitpy', 'win', 'services']
-    ENABLED_QUEUES = ['ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
+    ALL_QUEUES = ['style', 'ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
+                  'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'jsc', 'webkitperl', 'webkitpy', 'win', 'services']
+    ENABLED_QUEUES = ['style', 'ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
                       'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'webkitperl', 'webkitpy', 'services']
     # FIXME: Auto-generate the queue's trigger relationship
     QUEUE_TRIGGERS = {
@@ -53,13 +53,26 @@ class StatusBubble(View):
         'mac-debug-wk1': 'mac-debug',
     }
 
-    STEPS_TO_HIDE = ['Killed old processes', 'Configured build', '^OS:.*Xcode:', '(skipped)']
+    STEPS_TO_HIDE = ['^Archived built product$', '^Uploaded built product$', '^Transferred archive to S3$',
+                     '^Archived test results$', '^Uploaded test results$', '^Extracted test results$',
+                     '^Downloaded built product$', '^Extracted built product$',
+                     '^Cleaned and updated working directory$', '^Checked out required revision$', '^Updated working directory$',
+                     '^Validated patch$', '^Killed old processes$', '^Configured build$', '^OS:.*Xcode:', '(skipped)',
+                     '^Printed configuration$', '^Checked patch relevance$']
     DAYS_TO_CHECK = 3
+    BUILDER_ICON = u'\U0001f6e0'
+    TESTER_ICON = u'\U0001f9ea'
 
-    def _build_bubble(self, patch, queue):
+    def _build_bubble(self, patch, queue, hide_icons=False):
         bubble = {
             'name': queue,
         }
+        if hide_icons == False:
+            if self._is_tester_queue(queue):
+                bubble['name'] = StatusBubble.TESTER_ICON + '  ' + bubble['name']
+            if self._is_builder_queue(queue):
+                bubble['name'] = StatusBubble.BUILDER_ICON + '  ' + bubble['name']
+
         build, is_parent_build = self.get_latest_build_for_queue(patch, queue, self._get_parent_queue(queue))
         if not self._should_show_bubble_for_build(build):
             return None
@@ -119,7 +132,7 @@ class StatusBubble(View):
             bubble['state'] = 'provisional-fail'
             bubble['details_message'] = 'Build is being retried. Recent messages:\n\n' + self._steps_messages(build)
         elif build.result == Buildbot.CANCELLED:
-            bubble['state'] = 'provisional-fail'
+            bubble['state'] = 'fail'
             bubble['details_message'] = 'Build was cancelled. Recent messages:\n\n' + self._steps_messages(build)
         else:
             bubble['state'] = 'error'
@@ -135,6 +148,14 @@ class StatusBubble(View):
                 bubble['details_message'] += '\n\n' + timestamp
 
         return bubble
+
+    def _is_tester_queue(self, queue):
+        icon = Buildbot.icons_for_queues_mapping.get(queue)
+        return icon in ['testOnly', 'buildAndTest']
+
+    def _is_builder_queue(self, queue):
+        icon = Buildbot.icons_for_queues_mapping.get(queue)
+        return icon in ['buildOnly', 'buildAndTest']
 
     def _get_parent_queue(self, queue):
         return StatusBubble.QUEUE_TRIGGERS.get(queue)
@@ -226,7 +247,7 @@ class StatusBubble(View):
         processed_patches = set([build.patch for build in recent_builds])
         return len(previously_sent_patches - processed_patches) + 1
 
-    def _build_bubbles_for_patch(self, patch):
+    def _build_bubbles_for_patch(self, patch, hide_icons=False):
         show_submit_to_ews = True
         failed_to_apply = False  # TODO: https://bugs.webkit.org/show_bug.cgi?id=194598
         bubbles = []
@@ -238,7 +259,7 @@ class StatusBubble(View):
             if not self._should_show_bubble_for_queue(queue):
                 continue
 
-            bubble = self._build_bubble(patch, queue)
+            bubble = self._build_bubble(patch, queue, hide_icons)
             if bubble:
                 show_submit_to_ews = False
                 bubbles.append(bubble)
@@ -247,9 +268,10 @@ class StatusBubble(View):
 
     @xframe_options_exempt
     def get(self, request, patch_id):
+        hide_icons = request.GET.get('hide_icons', False)
         patch_id = int(patch_id)
         patch = Patch.get_patch(patch_id)
-        bubbles, show_submit_to_ews, show_failure_to_apply = self._build_bubbles_for_patch(patch)
+        bubbles, show_submit_to_ews, show_failure_to_apply = self._build_bubbles_for_patch(patch, hide_icons)
 
         template_values = {
             'bubbles': bubbles,

@@ -1373,7 +1373,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         PatternTerm* term = op.m_term;
         UChar32 ch = term->patternCharacter;
 
-        if ((ch > 0xff) && (m_charSize == Char8)) {
+        if (!isLatin1(ch) && (m_charSize == Char8)) {
             // Have a 16 bit pattern character and an 8 bit string - short circuit
             op.m_jumps.append(jump());
             return;
@@ -1428,7 +1428,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
 
             UChar32 currentCharacter = nextTerm->patternCharacter;
 
-            if ((currentCharacter > 0xff) && (m_charSize == Char8)) {
+            if (!isLatin1(currentCharacter) && (m_charSize == Char8)) {
                 // Have a 16 bit pattern character and an 8 bit string - short circuit
                 op.m_jumps.append(jump());
                 return;
@@ -1623,7 +1623,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         move(TrustedImm32(0), countRegister);
 
         // Unless have a 16 bit pattern character and an 8 bit string - short circuit
-        if (!((ch > 0xff) && (m_charSize == Char8))) {
+        if (!(!isLatin1(ch) && (m_charSize == Char8))) {
             JumpList failures;
             Label loop(this);
             failures.append(atEndOfInput());
@@ -1696,7 +1696,7 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
         loadFromFrame(term->frameLocation + BackTrackInfoPatternCharacter::matchAmountIndex(), countRegister);
 
         // Unless have a 16 bit pattern character and an 8 bit string - short circuit
-        if (!((ch > 0xff) && (m_charSize == Char8))) {
+        if (!(!isLatin1(ch) && (m_charSize == Char8))) {
             JumpList nonGreedyFailures;
             nonGreedyFailures.append(atEndOfInput());
             if (term->quantityMaxCount != quantifyInfinite)
@@ -2508,14 +2508,11 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
                 const RegisterID indexTemporary = regT0;
                 ASSERT(term->quantityMaxCount == 1);
 
-                // Runtime ASSERT to make sure that the nested alternative handled the
-                // "no input consumed" check.
-                if (!ASSERT_DISABLED && term->quantityType != QuantifierFixedCount && !term->parentheses.disjunction->m_minimumSize) {
-                    Jump pastBreakpoint;
-                    pastBreakpoint = branch32(NotEqual, index, Address(stackPointerRegister, term->frameLocation * sizeof(void*)));
-                    abortWithReason(YARRNoInputConsumed);
-                    pastBreakpoint.link(this);
-                }
+                // If the nested alternative matched without consuming any characters, punt this back to the interpreter.
+                // FIXME: <https://bugs.webkit.org/show_bug.cgi?id=200786> Add ability for the YARR JIT to properly
+                // handle nested expressions that can match without consuming characters
+                if (term->quantityType != QuantifierFixedCount && !term->parentheses.disjunction->m_minimumSize)
+                    m_abortExecution.append(branch32(Equal, index, Address(stackPointerRegister, term->frameLocation * sizeof(void*))));
 
                 // If the parenthese are capturing, store the ending index value to the
                 // captures array, offsetting as necessary.
@@ -2562,16 +2559,13 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
             }
             case OpParenthesesSubpatternTerminalEnd: {
                 YarrOp& beginOp = m_ops[op.m_previousOp];
-                if (!ASSERT_DISABLED) {
-                    PatternTerm* term = op.m_term;
-                    
-                    // Runtime ASSERT to make sure that the nested alternative handled the
-                    // "no input consumed" check.
-                    Jump pastBreakpoint;
-                    pastBreakpoint = branch32(NotEqual, index, Address(stackPointerRegister, term->frameLocation * sizeof(void*)));
-                    abortWithReason(YARRNoInputConsumed);
-                    pastBreakpoint.link(this);
-                }
+                PatternTerm* term = op.m_term;
+
+                // If the nested alternative matched without consuming any characters, punt this back to the interpreter.
+                // FIXME: <https://bugs.webkit.org/show_bug.cgi?id=200786> Add ability for the YARR JIT to properly
+                // handle nested expressions that can match without consuming characters
+                if (term->quantityType != QuantifierFixedCount && !term->parentheses.disjunction->m_minimumSize)
+                    m_abortExecution.append(branch32(Equal, index, Address(stackPointerRegister, term->frameLocation * sizeof(void*))));
 
                 // We know that the match is non-zero, we can accept it and
                 // loop back up to the head of the subpattern.
@@ -2654,14 +2648,11 @@ class YarrGenerator : public YarrJITInfo, private MacroAssembler {
                 PatternTerm* term = op.m_term;
                 unsigned parenthesesFrameLocation = term->frameLocation;
 
-                // Runtime ASSERT to make sure that the nested alternative handled the
-                // "no input consumed" check.
-                if (!ASSERT_DISABLED && term->quantityType != QuantifierFixedCount && !term->parentheses.disjunction->m_minimumSize) {
-                    Jump pastBreakpoint;
-                    pastBreakpoint = branch32(NotEqual, index, Address(stackPointerRegister, parenthesesFrameLocation * sizeof(void*)));
-                    abortWithReason(YARRNoInputConsumed);
-                    pastBreakpoint.link(this);
-                }
+                // If the nested alternative matched without consuming any characters, punt this back to the interpreter.
+                // FIXME: <https://bugs.webkit.org/show_bug.cgi?id=200786> Add ability for the YARR JIT to properly
+                // handle nested expressions that can match without consuming characters
+                if (term->quantityType != QuantifierFixedCount && !term->parentheses.disjunction->m_minimumSize)
+                    m_abortExecution.append(branch32(Equal, index, Address(stackPointerRegister, parenthesesFrameLocation * sizeof(void*))));
 
                 const RegisterID countTemporary = regT1;
 
@@ -3899,7 +3890,7 @@ public:
         }
 
         if (UNLIKELY(Options::dumpDisassembly() || Options::dumpRegExpDisassembly()))
-            m_disassembler = std::make_unique<YarrDisassembler>(this);
+            m_disassembler = makeUnique<YarrDisassembler>(this);
 
         if (m_disassembler)
             m_disassembler->setStartOfCode(label());

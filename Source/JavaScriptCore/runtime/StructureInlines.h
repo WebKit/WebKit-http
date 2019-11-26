@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "Structure.h"
 #include "StructureChain.h"
 #include "StructureRareDataInlines.h"
+#include <wtf/Threading.h>
 
 namespace JSC {
 
@@ -108,7 +109,7 @@ inline Structure* Structure::storedPrototypeStructure() const
 
 ALWAYS_INLINE JSValue Structure::storedPrototype(const JSObject* object) const
 {
-    ASSERT(object->structure() == this);
+    ASSERT(isCompilationThread() || Thread::mayBeGCThread() || object->structure() == this);
     if (hasMonoProto())
         return storedPrototype();
     return object->getDirect(knownPolyProtoOffset);
@@ -116,7 +117,7 @@ ALWAYS_INLINE JSValue Structure::storedPrototype(const JSObject* object) const
 
 ALWAYS_INLINE JSObject* Structure::storedPrototypeObject(const JSObject* object) const
 {
-    ASSERT(object->structure() == this);
+    ASSERT(isCompilationThread() || Thread::mayBeGCThread() || object->structure() == this);
     if (hasMonoProto())
         return storedPrototypeObject();
     JSValue proto = object->getDirect(knownPolyProtoOffset);
@@ -329,7 +330,7 @@ inline void Structure::didReplaceProperty(PropertyOffset offset)
     WatchpointSet* set = map->get(offset);
     if (LIKELY(!set))
         return;
-    set->fireAll(*vm(), "Property did get replaced");
+    set->fireAll(vm(), "Property did get replaced");
 }
 
 inline WatchpointSet* Structure::propertyReplacementWatchpointSet(PropertyOffset offset)
@@ -559,7 +560,7 @@ ALWAYS_INLINE bool Structure::shouldConvertToPolyProto(const Structure* a, const
     if (a->storedPrototype() == b->storedPrototype())
         return false;
 
-    VM& vm = *a->vm();
+    VM& vm = a->vm();
     JSObject* aObj = a->storedPrototypeObject();
     JSObject* bObj = b->storedPrototypeObject();
     while (aObj && bObj) {

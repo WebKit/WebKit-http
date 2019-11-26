@@ -602,7 +602,7 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
     _page = WebKit::toImpl(pageRef);
 
-    _pageLoadStateObserver = std::make_unique<WebKit::PageLoadStateObserver>(self);
+    _pageLoadStateObserver = makeUnique<WebKit::PageLoadStateObserver>(self);
     _page->pageLoadState().addObserver(*_pageLoadStateObserver);
 
     ASSERT(!browsingContextControllerMap().contains(_page.get()));
@@ -720,7 +720,7 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
 - (WKBrowsingContextHandle *)handle
 {
-    return [[[WKBrowsingContextHandle alloc] _initWithPageID:_page->pageID()] autorelease];
+    return [[[WKBrowsingContextHandle alloc] _initWithPageProxy:*_page] autorelease];
 }
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry

@@ -39,9 +39,9 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(FloatingState);
 
-FloatingState::FloatItem::FloatItem(const Box& layoutBox, const FloatingState& floatingState)
+FloatingState::FloatItem::FloatItem(const Box& layoutBox, Display::Box absoluteDisplayBox)
     : m_layoutBox(makeWeakPtr(layoutBox))
-    , m_absoluteDisplayBox(FormattingContext::mapBoxToAncestor(floatingState.layoutState(), layoutBox, downcast<Container>(floatingState.root())))
+    , m_absoluteDisplayBox(absoluteDisplayBox)
 {
 }
 
@@ -50,21 +50,6 @@ FloatingState::FloatingState(LayoutState& layoutState, const Box& formattingCont
     , m_formattingContextRoot(makeWeakPtr(formattingContextRoot))
 {
 }
-
-#ifndef NDEBUG
-static bool belongsToThisFloatingContext(const Box& layoutBox, const Box& floatingStateRoot)
-{
-    auto& formattingContextRoot = layoutBox.formattingContextRoot();
-    if (&formattingContextRoot == &floatingStateRoot)
-        return true;
-
-    // Maybe the layout box belongs to an inline formatting context that inherits the floating state from the parent (block) formatting context. 
-    if (!formattingContextRoot.establishesInlineFormattingContext())
-        return false;
-
-    return &formattingContextRoot.formattingContextRoot() == &floatingStateRoot;
-}
-#endif
 
 void FloatingState::remove(const Box& layoutBox)
 {
@@ -77,86 +62,33 @@ void FloatingState::remove(const Box& layoutBox)
     ASSERT_NOT_REACHED();
 }
 
-void FloatingState::append(const Box& layoutBox)
+void FloatingState::append(FloatItem floatItem)
 {
     ASSERT(is<Container>(*m_formattingContextRoot));
-    ASSERT(belongsToThisFloatingContext(layoutBox, *m_formattingContextRoot));
-    ASSERT(is<Container>(*m_formattingContextRoot));
 
-    auto newFloatItem = FloatItem { layoutBox, *this };
     if (m_floats.isEmpty())
-        return m_floats.append(newFloatItem);
+        return m_floats.append(floatItem);
 
-    auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
-    auto isLeftPositioned = layoutBox.isLeftFloatingPositioned();
+    auto isLeftPositioned = floatItem.isLeftPositioned();
     // When adding a new float item to the list, we have to ensure that it is definitely the left(right)-most item.
     // Normally it is, but negative horizontal margins can push the float box beyond another float box.
     // Float items in m_floats list should stay in horizontal position order (left/right edge) on the same vertical position.
-    auto hasNegativeHorizontalMargin = (isLeftPositioned && displayBox.marginStart() < 0) || (!isLeftPositioned && displayBox.marginEnd() < 0);
+    auto horizontalMargin = floatItem.horizontalMargin();
+    auto hasNegativeHorizontalMargin = (isLeftPositioned && horizontalMargin.start < 0) || (!isLeftPositioned && horizontalMargin.end < 0);
     if (!hasNegativeHorizontalMargin)
-        return m_floats.append(newFloatItem);
+        return m_floats.append(floatItem);
 
     for (int i = m_floats.size() - 1; i >= 0; --i) {
         auto& floatItem = m_floats[i];
         if (isLeftPositioned != floatItem.isLeftPositioned())
             continue;
-        if (newFloatItem.rectWithMargin().top() < floatItem.rectWithMargin().bottom())
+        if (floatItem.rectWithMargin().top() < floatItem.rectWithMargin().bottom())
             continue;
-        if ((isLeftPositioned && newFloatItem.rectWithMargin().right() >= floatItem.rectWithMargin().right())
-            || (!isLeftPositioned && newFloatItem.rectWithMargin().left() <= floatItem.rectWithMargin().left()))
-            return m_floats.insert(i + 1, newFloatItem);
+        if ((isLeftPositioned && floatItem.rectWithMargin().right() >= floatItem.rectWithMargin().right())
+            || (!isLeftPositioned && floatItem.rectWithMargin().left() <= floatItem.rectWithMargin().left()))
+            return m_floats.insert(i + 1, floatItem);
     }
-    return m_floats.insert(0, newFloatItem);
-}
-
-FloatingState::Constraints FloatingState::constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const
-{
-    if (isEmpty())
-        return { };
-
-    // 1. Convert vertical position if this floating context is inherited.
-    // 2. Find the inner left/right floats at verticalPosition.
-    // 3. Convert left/right positions back to formattingContextRoot's cooridnate system.
-    auto coordinateMappingIsRequired = &root() != &formattingContextRoot;
-    auto adjustedPosition = Point { 0, verticalPosition };
-    LayoutSize adjustingDelta;
-
-    if (coordinateMappingIsRequired) {
-        adjustedPosition = FormattingContext::mapPointToAncestor(m_layoutState, adjustedPosition, downcast<Container>(formattingContextRoot), downcast<Container>(root()));
-        adjustingDelta = { adjustedPosition.x, adjustedPosition.y - verticalPosition };
-    }
-
-    Constraints constraints;
-    for (int index = m_floats.size() - 1; index >= 0; --index) {
-        auto& floatItem = m_floats[index];
-
-        if (constraints.left && floatItem.isLeftPositioned())
-            continue;
-
-        if (constraints.right && !floatItem.isLeftPositioned())
-            continue;
-
-        auto rect = floatItem.rectWithMargin();
-        if (!(rect.top() <= adjustedPosition.y && adjustedPosition.y < rect.bottom()))
-            continue;
-
-        if (floatItem.isLeftPositioned())
-            constraints.left = PointInContextRoot { rect.right(), rect.bottom() };
-        else
-            constraints.right = PointInContextRoot { rect.left(), rect.bottom() };
-
-        if (constraints.left && constraints.right)
-            break;
-    }
-
-    if (coordinateMappingIsRequired) {
-        if (constraints.left)
-            constraints.left->move(-adjustingDelta);
-
-        if (constraints.right)
-            constraints.right->move(-adjustingDelta);
-    }
-    return constraints;
+    return m_floats.insert(0, floatItem);
 }
 
 Optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
 #include "InspectorEnvironment.h"
+#include "JSBigInt.h"
 #include "JSCInlines.h"
 #include "VM.h"
 #include <wtf/Stopwatch.h>
@@ -42,11 +43,13 @@ namespace Inspector {
 InspectorHeapAgent::InspectorHeapAgent(AgentContext& context)
     : InspectorAgentBase("Heap"_s)
     , m_injectedScriptManager(context.injectedScriptManager)
-    , m_frontendDispatcher(std::make_unique<HeapFrontendDispatcher>(context.frontendRouter))
+    , m_frontendDispatcher(makeUnique<HeapFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(HeapBackendDispatcher::create(context.backendDispatcher, this))
     , m_environment(context.environment)
 {
 }
+
+InspectorHeapAgent::~InspectorHeapAgent() = default;
 
 void InspectorHeapAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
@@ -61,7 +64,7 @@ void InspectorHeapAgent::willDestroyFrontendAndBackend(DisconnectReason)
 void InspectorHeapAgent::enable(ErrorString& errorString)
 {
     if (m_enabled) {
-        errorString = "HeapAgent already enabled"_s;
+        errorString = "Heap domain already enabled"_s;
         return;
     }
 
@@ -73,7 +76,7 @@ void InspectorHeapAgent::enable(ErrorString& errorString)
 void InspectorHeapAgent::disable(ErrorString& errorString)
 {
     if (!m_enabled) {
-        errorString = "HeapAgent already disabled"_s;
+        errorString = "Heap domain already disabled"_s;
         return;
     }
 
@@ -89,7 +92,7 @@ void InspectorHeapAgent::gc(ErrorString&)
 {
     VM& vm = m_environment.vm();
     JSLockHolder lock(vm);
-    sanitizeStackForVM(&vm);
+    sanitizeStackForVM(vm);
     vm.heap.collectNow(Sync, CollectionScope::Full);
 }
 
@@ -183,6 +186,12 @@ void InspectorHeapAgent::getPreview(ErrorString& errorString, int heapObjectId, 
         return;
     }
 
+    // BigInt preview.
+    if (cell->isBigInt()) {
+        resultString = JSBigInt::tryGetString(vm, asBigInt(cell), 10);
+        return;
+    }
+
     // FIXME: Provide preview information for Internal Objects? CodeBlock, Executable, etc.
 
     Structure* structure = cell->structure(vm);
@@ -228,13 +237,13 @@ void InspectorHeapAgent::getRemoteObject(ErrorString& errorString, int heapObjec
     JSCell* cell = optionalNode->cell;
     Structure* structure = cell->structure(vm);
     if (!structure) {
-        errorString = "Unable to get object details"_s;
+        errorString = "Unable to get object details - Structure"_s;
         return;
     }
 
     JSGlobalObject* globalObject = structure->globalObject();
     if (!globalObject) {
-        errorString = "Unable to get object details"_s;
+        errorString = "Unable to get object details - GlobalObject"_s;
         return;
     }
 

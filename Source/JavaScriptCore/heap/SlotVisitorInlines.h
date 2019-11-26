@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,14 +48,14 @@ ALWAYS_INLINE void SlotVisitor::appendUnbarriered(JSCell* cell)
     Dependency dependency;
     if (UNLIKELY(cell->isLargeAllocation())) {
         if (LIKELY(cell->largeAllocation().isMarked())) {
-            if (LIKELY(!m_heapSnapshotBuilder))
+            if (LIKELY(!m_heapAnalyzer))
                 return;
         }
     } else {
         MarkedBlock& block = cell->markedBlock();
         dependency = block.aboutToMark(m_markingVersion);
         if (LIKELY(block.isMarked(cell, dependency))) {
-            if (LIKELY(!m_heapSnapshotBuilder))
+            if (LIKELY(!m_heapAnalyzer))
                 return;
         }
     }
@@ -176,12 +176,12 @@ inline Heap* SlotVisitor::heap() const
 
 inline VM& SlotVisitor::vm()
 {
-    return *m_heap.vm();
+    return m_heap.vm();
 }
 
 inline const VM& SlotVisitor::vm() const
 {
-    return *m_heap.vm();
+    return m_heap.vm();
 }
 
 template<typename Func>

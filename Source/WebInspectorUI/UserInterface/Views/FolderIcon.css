@@ -26,3 +26,13 @@
 .folder-icon .icon {
     content: image-set(url(../Images/FolderGeneric.png) 1x, url(../Images/FolderGeneric@2x.png) 2x);
 }
+
+.origin-icon .icon {
+    content: url(../Images/Origin.svg);
+}
+
+@media (prefers-color-scheme: dark) {
+    .origin-icon .icon {
+        filter: brightness(0.9);
+    }
+}

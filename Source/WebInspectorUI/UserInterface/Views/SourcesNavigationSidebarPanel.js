@@ -130,6 +130,19 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._callStackContainer.classList.add("call-stack-container");
         this._callStackContainer.appendChild(this._callStackSection.element);
 
+        this._localResourceOverridesTreeOutline = this.createContentTreeOutline({suppressFiltering: true});
+        this._localResourceOverridesTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._handleTreeSelectionDidChange, this);
+
+        let localResourceOverridesRow = new WI.DetailsSectionRow;
+        localResourceOverridesRow.element.appendChild(this._localResourceOverridesTreeOutline.element);
+
+        let localResourceOverridesGroup = new WI.DetailsSectionGroup([localResourceOverridesRow]);
+        this._localResourceOverridesSection = new WI.DetailsSection("local-overrides", WI.UIString("Local Overrides"), [localResourceOverridesGroup]);
+
+        this._localResourceOverridesContainer = document.createElement("div");
+        this._localResourceOverridesContainer.classList.add("local-overrides-container");
+        this._localResourceOverridesContainer.appendChild(this._localResourceOverridesSection.element);
+
         this._mainTargetTreeElement = null;
         this._activeCallFrameTreeElement = null;
 
@@ -138,30 +151,23 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._breakpointsTreeOutline.addEventListener(WI.TreeOutline.Event.ElementAdded, this._handleBreakpointElementAddedOrRemoved, this);
         this._breakpointsTreeOutline.addEventListener(WI.TreeOutline.Event.ElementRemoved, this._handleBreakpointElementAddedOrRemoved, this);
         this._breakpointsTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._handleTreeSelectionDidChange, this);
-        this._breakpointsTreeOutline.ondelete = (treeElement) => {
-            console.assert(treeElement.selected);
+        this._breakpointsTreeOutline.ondelete = (selectedTreeElement) => {
+            console.assert(selectedTreeElement.selected);
 
-            if (treeElement.representedObject === SourcesNavigationSidebarPanel.__windowEventTargetRepresentedObject) {
+            if (!WI.debuggerManager.isBreakpointRemovable(selectedTreeElement.representedObject)) {
+                let treeElementToSelect = selectedTreeElement.nextSelectableSibling;
+                if (treeElementToSelect) {
+                    const omitFocus = true;
+                    const selectedByUser = true;
+                    treeElementToSelect.select(omitFocus, selectedByUser);
+                }
+            } else if (selectedTreeElement instanceof WI.ResourceTreeElement || selectedTreeElement instanceof WI.ScriptTreeElement) {
+                let breakpoints = this._breakpointsBeneathTreeElement(selectedTreeElement);
+                this._removeAllBreakpoints(breakpoints);
+            } else if (selectedTreeElement.representedObject === SourcesNavigationSidebarPanel.__windowEventTargetRepresentedObject) {
                 let eventBreakpointsOnWindow = WI.domManager.eventListenerBreakpoints.filter((eventBreakpoint) => eventBreakpoint.eventListener.onWindow);
                 for (let eventBreakpoint of eventBreakpointsOnWindow)
                     WI.domManager.removeBreakpointForEventListener(eventBreakpoint.eventListener);
-                return true;
-            }
-
-            console.assert(treeElement instanceof WI.ResourceTreeElement || treeElement instanceof WI.ScriptTreeElement);
-            if (!(treeElement instanceof WI.ResourceTreeElement) && !(treeElement instanceof WI.ScriptTreeElement))
-                return false;
-
-            let wasTopResourceTreeElement = treeElement.previousSibling === this._assertionsBreakpointTreeElement || treeElement.previousSibling === this._allUncaughtExceptionsBreakpointTreeElement;
-            let nextSibling = treeElement.nextSibling;
-
-            let breakpoints = this._breakpointsBeneathTreeElement(treeElement);
-            this._removeAllBreakpoints(breakpoints);
-
-            if (wasTopResourceTreeElement && nextSibling) {
-                const omitFocus = true;
-                const selectedByUser = true;
-                nextSibling.select(omitFocus, selectedByUser);
             }
 
             return true;
@@ -210,28 +216,17 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this.contentView.addSubview(this._resourcesNavigationBar);
         this.contentView.element.insertBefore(this._resourcesNavigationBar.element, this._breakpointsContainer.nextSibling);
 
-        this._resourcesNavigationBar.addNavigationItem(new WI.FlexibleSpaceNavigationItem);
+        this._resourceGroupingModeScopeBarItems = {};
+        let createResourceGroupingModeScopeBarItem = (mode, label) => {
+            this._resourceGroupingModeScopeBarItems[mode] = new WI.ScopeBarItem("sources-resource-grouping-mode-" + mode, label, {exclusive: true});
+            this._resourceGroupingModeScopeBarItems[mode][SourcesNavigationSidebarPanel.ResourceGroupingModeSymbol] = mode;
+        };
+        createResourceGroupingModeScopeBarItem(WI.Resource.GroupingMode.Type, WI.UIString("By Type"));
+        createResourceGroupingModeScopeBarItem(WI.Resource.GroupingMode.Path, WI.UIString("By Path"));
 
-        const resourceTypeScopeItemPrefix = "sources-resource-type-";
-        let resourceTypeScopeBarItems = [];
-        resourceTypeScopeBarItems.push(new WI.ScopeBarItem(resourceTypeScopeItemPrefix + "all", WI.UIString("All Resources"), {exclusive: true}));
-        for (let value of Object.values(WI.Resource.Type)) {
-            let scopeBarItem = new WI.ScopeBarItem(resourceTypeScopeItemPrefix + value, WI.Resource.displayNameForType(value, true));
-            scopeBarItem[WI.SourcesNavigationSidebarPanel.ResourceTypeSymbol] = value;
-            resourceTypeScopeBarItems.push(scopeBarItem);
-        }
-
-        const shouldGroupNonExclusiveItems = true;
-        this._resourceTypeScopeBar = new WI.ScopeBar("sources-resource-type-scope-bar", resourceTypeScopeBarItems, resourceTypeScopeBarItems[0], shouldGroupNonExclusiveItems);
-        this._resourceTypeScopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._handleResourceTypeScopeBarSelectionChanged, this);
-        this._resourcesNavigationBar.addNavigationItem(this._resourceTypeScopeBar);
-
-        this._resourcesNavigationBar.addNavigationItem(new WI.FlexibleSpaceNavigationItem);
-
-        let resourceGroupingModeNavigationItem = new WI.ButtonNavigationItem("grouping-mode", WI.UIString("Grouping Mode"), "Images/Gear.svg", 15, 15);
-        resourceGroupingModeNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
-        WI.addMouseDownContextMenuHandlers(resourceGroupingModeNavigationItem.element, this._populateResourceGroupingModeContextMenu.bind(this));
-        this._resourcesNavigationBar.addNavigationItem(resourceGroupingModeNavigationItem);
+        this._resourceGroupingModeScopeBar = new WI.ScopeBar("sources-resource-grouping-mode-scope-bar", Object.values(this._resourceGroupingModeScopeBarItems), this._resourceGroupingModeScopeBarItems[WI.settings.resourceGroupingMode.value]);
+        this._resourceGroupingModeScopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._handleResourceGroupingModeScopeBarSelectionChanged, this);
+        this._resourcesNavigationBar.addNavigationItem(this._resourceGroupingModeScopeBar);
 
         let resourcesContainer = document.createElement("div");
         resourcesContainer.classList.add("resources-container");
@@ -255,6 +250,20 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         const activatedByDefault = false;
         this.filterBar.addFilterBarButton("sources-only-show-resources-with-issues", this._filterByResourcesWithIssues.bind(this), activatedByDefault, WI.UIString("Only show resources with issues"), WI.UIString("Show all resources"), "Images/Errors.svg", 15, 15);
 
+        const resourceTypeScopeItemPrefix = "sources-resource-type-";
+        let resourceTypeScopeBarItems = [];
+        resourceTypeScopeBarItems.push(new WI.ScopeBarItem(resourceTypeScopeItemPrefix + "all", WI.UIString("All")));
+        for (let value of Object.values(WI.Resource.Type)) {
+            let scopeBarItem = new WI.ScopeBarItem(resourceTypeScopeItemPrefix + value, WI.Resource.displayNameForType(value, true));
+            scopeBarItem[SourcesNavigationSidebarPanel.ResourceTypeSymbol] = value;
+            resourceTypeScopeBarItems.push(scopeBarItem);
+        }
+
+        const shouldGroupNonExclusiveItems = true;
+        this._resourceTypeScopeBar = new WI.ScopeBar("sources-resource-type-scope-bar", resourceTypeScopeBarItems, resourceTypeScopeBarItems[0], shouldGroupNonExclusiveItems);
+        this._resourceTypeScopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._handleResourceTypeScopeBarSelectionChanged, this);
+        this.filterBar.addFilterNavigationItem(this._resourceTypeScopeBar);
+
         WI.settings.resourceGroupingMode.addEventListener(WI.Setting.Event.Changed, this._handleResourceGroupingModeChanged, this);
 
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._handleFrameMainResourceDidChange, this);
@@ -262,6 +271,11 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         WI.Target.addEventListener(WI.Target.Event.ResourceAdded, this._handleResourceAdded, this);
 
         WI.networkManager.addEventListener(WI.NetworkManager.Event.FrameWasAdded, this._handleFrameWasAdded, this);
+
+        if (WI.NetworkManager.supportsLocalResourceOverrides()) {
+            WI.networkManager.addEventListener(WI.NetworkManager.Event.LocalResourceOverrideAdded, this._handleLocalResourceOverrideAdded, this);
+            WI.networkManager.addEventListener(WI.NetworkManager.Event.LocalResourceOverrideRemoved, this._handleLocalResourceOverrideRemoved, this);
+        }
 
         WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.BreakpointAdded, this._handleDebuggerBreakpointAdded, this);
         WI.domDebuggerManager.addEventListener(WI.DOMDebuggerManager.Event.DOMBreakpointAdded, this._handleDebuggerBreakpointAdded, this);
@@ -317,12 +331,21 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         if (InspectorBackend.domains.Debugger.setPauseOnAssertions && WI.settings.showAssertionFailuresBreakpoint.value)
             WI.debuggerManager.addBreakpoint(WI.debuggerManager.assertionFailuresBreakpoint);
 
+        // COMPATIBILITY (iOS 13): DebuggerAgent.setPauseOnMicrotasks did not exist yet.
+        if (InspectorBackend.domains.Debugger.setPauseOnMicrotasks && WI.settings.showAllMicrotasksBreakpoint.value)
+            WI.debuggerManager.addBreakpoint(WI.debuggerManager.allMicrotasksBreakpoint);
+
         for (let target of WI.targets)
             this._addTarget(target);
 
         this._updateCallStackTreeOutline();
 
         this._handleResourceGroupingModeChanged();
+
+        if (WI.NetworkManager.supportsLocalResourceOverrides()) {
+            for (let localResourceOverride of WI.networkManager.localResourceOverrides)
+                this._addLocalResourceOverride(localResourceOverride);
+        }
 
         if (WI.domDebuggerManager.supported) {
             if (WI.settings.showAllAnimationFramesBreakpoint.value)
@@ -419,6 +442,14 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
     {
         // A custom implementation is needed for this since the frames are populated lazily.
 
+        if (representedObject instanceof WI.LocalResourceOverride)
+            return this._localResourceOverridesTreeOutline.findTreeElement(localResource);
+
+        if (representedObject instanceof WI.LocalResource) {
+            let localResourceOverride = WI.networkManager.localResourceOverrideForURL(representedObject.url);
+            return this._localResourceOverridesTreeOutline.findTreeElement(localResourceOverride);
+        }
+
         if (!this._mainFrameTreeElement && (representedObject instanceof WI.Resource || representedObject instanceof WI.Frame || representedObject instanceof WI.Collection)) {
             // All resources are under the main frame, so we need to return early if we don't have the main frame yet.
             return null;
@@ -514,7 +545,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
 
         treeOutline.addEventListener(WI.TreeOutline.Event.ElementRevealed, (event) => {
             let treeElement = event.data.element;
-            let detailsSections = [this._pauseReasonSection, this._callStackSection, this._breakpointsSection];
+            let detailsSections = [this._pauseReasonSection, this._callStackSection, this._breakpointsSection, this._localResourceOverridesSection];
             let detailsSection = detailsSections.find((detailsSection) => detailsSection.element.contains(treeElement.listItemElement));
             if (!detailsSection)
                 return;
@@ -542,7 +573,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
     {
         console.assert(this._resourceTypeScopeBar.selectedItems.length === 1);
         let selectedScopeBarItem = this._resourceTypeScopeBar.selectedItems[0];
-        return selectedScopeBarItem && !selectedScopeBarItem.exclusive;
+        return selectedScopeBarItem && selectedScopeBarItem !== this._resourceTypeScopeBar.defaultItem;
     }
 
     matchTreeElementAgainstCustomFilters(treeElement, flags)
@@ -554,12 +585,12 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         console.assert(this._resourceTypeScopeBar.selectedItems.length === 1);
         let selectedScopeBarItem = this._resourceTypeScopeBar.selectedItems[0];
 
-        // Show everything if there is no selection or "All Resources" is selected (the exclusive item).
-        if (!selectedScopeBarItem || selectedScopeBarItem.exclusive)
+        // Show everything if there is no selection or "All Resources" is selected (the default item).
+        if (!selectedScopeBarItem || selectedScopeBarItem === this._resourceTypeScopeBar.defaultItem)
             return true;
 
         // Folders are hidden on the first pass, but visible childen under the folder will force the folder visible again.
-        if (treeElement instanceof WI.FolderTreeElement)
+        if (treeElement instanceof WI.FolderTreeElement || treeElement instanceof WI.OriginTreeElement)
             return false;
 
         if (treeElement instanceof WI.IssueTreeElement)
@@ -593,17 +624,74 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
 
     willDismissPopover(popover)
     {
+        if (popover instanceof WI.LocalResourceOverridePopover) {
+            this._willDismissLocalOverridePopover(popover);
+            return;
+        }
+
+        if (popover instanceof WI.EventBreakpointPopover) {
+            this._willDismissEventBreakpointPopover(popover);
+            return;
+        }
+
+        if (popover instanceof WI.URLBreakpointPopover) {
+            this._willDismissURLBreakpointPopover(popover);
+            return;
+        }
+
+        console.assert();
+    }
+
+    // Private
+
+    _willDismissLocalOverridePopover(popover)
+    {
+        let serializedData = popover.serializedData;
+        if (!serializedData) {
+            InspectorFrontendHost.beep();
+            return;
+        }
+
+        let {url, mimeType, statusCode, statusText, headers} = serializedData;
+
+        // Do not conflict with an existing override.
+        let existingOverride = WI.networkManager.localResourceOverrideForURL(url);
+        if (existingOverride) {
+            InspectorFrontendHost.beep();
+            return;
+        }
+
+        let localResourceOverride = WI.LocalResourceOverride.create({
+            url,
+            mimeType,
+            statusCode,
+            statusText,
+            headers,
+            content: "",
+            base64Encoded: false,
+        });
+
+        WI.networkManager.addLocalResourceOverride(localResourceOverride);
+        WI.showLocalResourceOverride(localResourceOverride);
+    }
+
+    _willDismissEventBreakpointPopover(popover)
+    {
         let breakpoint = popover.breakpoint;
         if (!breakpoint)
             return;
 
-        if (breakpoint instanceof WI.EventBreakpoint)
-            WI.domDebuggerManager.addEventBreakpoint(breakpoint);
-        else if (breakpoint instanceof WI.URLBreakpoint)
-            WI.domDebuggerManager.addURLBreakpoint(breakpoint);
+        WI.domDebuggerManager.addEventBreakpoint(breakpoint);
     }
 
-    // Private
+    _willDismissURLBreakpointPopover(popover)
+    {
+        let breakpoint = popover.breakpoint;
+        if (!breakpoint)
+            return;
+
+        WI.domDebuggerManager.addURLBreakpoint(breakpoint);
+    }
 
     _filterByResourcesWithIssues(treeElement)
     {
@@ -628,6 +716,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             (treeElement) => treeElement instanceof WI.CSSStyleSheetTreeElement && treeElement.representedObject.isInspectorStyleSheet(),
             (treeElement) => treeElement === this._mainFrameTreeElement,
             (treeElement) => treeElement instanceof WI.FrameTreeElement,
+            (treeElement) => treeElement instanceof WI.OriginTreeElement,
             (treeElement) => {
                 return treeElement !== this._extensionScriptsFolderTreeElement
                     && treeElement !== this._extraScriptsFolderTreeElement
@@ -671,7 +760,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             this._originTreeElementMap.clear();
 
             let origin = mainFrame.urlComponents.origin;
-            this._mainFrameTreeElement = new WI.FolderTreeElement(origin);
+            this._mainFrameTreeElement = new WI.OriginTreeElement(origin, mainFrame, {hasChildren: true});
             this._originTreeElementMap.set(origin, this._mainFrameTreeElement);
             break;
         }
@@ -744,20 +833,20 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             if (!parentTreeElement) {
                 let origin = resource.urlComponents.origin;
                 if (origin) {
-                    let frameTreeElement = this._originTreeElementMap.get(origin);
-                    if (!frameTreeElement) {
-                        frameTreeElement = new WI.FolderTreeElement(origin);
-                        this._originTreeElementMap.set(origin, frameTreeElement);
+                    let originTreeElement = this._originTreeElementMap.get(origin);
+                    if (!originTreeElement) {
+                        originTreeElement = new WI.OriginTreeElement(origin, resource.parentFrame, {hasChildren: true});
+                        this._originTreeElementMap.set(origin, originTreeElement);
 
-                        let index = insertionIndexForObjectInListSortedByFunction(frameTreeElement, this._resourcesTreeOutline.children, this._boundCompareTreeElements);
-                        this._resourcesTreeOutline.insertChild(frameTreeElement, index);
+                        let index = insertionIndexForObjectInListSortedByFunction(originTreeElement, this._resourcesTreeOutline.children, this._boundCompareTreeElements);
+                        this._resourcesTreeOutline.insertChild(originTreeElement, index);
                     }
 
                     let subpath = resource.urlComponents.path;
                     if (subpath && subpath[0] === "/")
                         subpath = subpath.substring(1);
 
-                    parentTreeElement = frameTreeElement.createFoldersAsNeededForSubpath(subpath, this._boundCompareTreeElements);
+                    parentTreeElement = originTreeElement.createFoldersAsNeededForSubpath(subpath, this._boundCompareTreeElements);
                 } else
                     parentTreeElement = this._resourcesTreeOutline;
             }
@@ -903,6 +992,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
                 (treeElement) => treeElement.representedObject === WI.debuggerManager.uncaughtExceptionsBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.debuggerManager.assertionFailuresBreakpoint,
                 (treeElement) => treeElement instanceof WI.BreakpointTreeElement || treeElement instanceof WI.ResourceTreeElement || treeElement instanceof WI.ScriptTreeElement,
+                (treeElement) => treeElement.representedObject === WI.debuggerManager.allMicrotasksBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.domDebuggerManager.allAnimationFramesBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.domDebuggerManager.allTimeoutsBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.domDebuggerManager.allIntervalsBreakpoint,
@@ -977,6 +1067,9 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         } else if (breakpoint === WI.debuggerManager.assertionFailuresBreakpoint) {
             options.className = "breakpoint-assertion-icon";
             options.title = WI.repeatedUIString.assertionFailures();
+        } else if (breakpoint === WI.debuggerManager.allMicrotasksBreakpoint) {
+            options.className = "breakpoint-microtask-icon";
+            options.title = WI.UIString("All Microtasks");
         } else if (breakpoint instanceof WI.DOMBreakpoint) {
             if (!breakpoint.domNodeIdentifier)
                 return null;
@@ -1133,6 +1226,43 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             this._addIssue(issue, sourceCode);
     }
 
+    _addLocalResourceOverride(localResourceOverride)
+    {
+        console.assert(WI.NetworkManager.supportsLocalResourceOverrides());
+
+        if (this._localResourceOverridesTreeOutline.findTreeElement(localResourceOverride))
+            return;
+
+        let parentTreeElement = this._localResourceOverridesTreeOutline;
+        let resourceTreeElement = new WI.LocalResourceOverrideTreeElement(localResourceOverride.localResource, localResourceOverride);
+        let index = insertionIndexForObjectInListSortedByFunction(resourceTreeElement, parentTreeElement.children, this._boundCompareTreeElements);
+        parentTreeElement.insertChild(resourceTreeElement, index);
+
+        if (!this._localResourceOverridesContainer.parentNode)
+            this.contentView.element.insertBefore(this._localResourceOverridesContainer, this._resourcesNavigationBar.element);
+    }
+
+    _removeLocalResourceOverride(localResourceOverride)
+    {
+        console.assert(WI.NetworkManager.supportsLocalResourceOverrides());
+
+        let resourceTreeElement = this._localResourceOverridesTreeOutline.findTreeElement(localResourceOverride);
+        if (!resourceTreeElement)
+            return;
+
+        let wasSelected = resourceTreeElement.selected;
+
+        let parentTreeElement = this._localResourceOverridesTreeOutline;
+        parentTreeElement.removeChild(resourceTreeElement);
+
+        if (!parentTreeElement.children.length) {
+            this._localResourceOverridesContainer.remove();
+
+            if (wasSelected && WI.networkManager.mainFrame && WI.networkManager.mainFrame.mainResource)
+                WI.showRepresentedObject(WI.networkManager.mainFrame.mainResource);
+        }
+    }
+
     _updateTemporarilyDisabledBreakpointsButtons()
     {
         let breakpointsDisabledTemporarily = WI.debuggerManager.breakpointsDisabledTemporarily;
@@ -1167,7 +1297,10 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._pauseReasonTreeOutline = null;
 
         this._updatePauseReasonGotoArrow();
-        return this._updatePauseReasonSection();
+
+        let target = WI.debuggerManager.activeCallFrame.target;
+        let targetData = WI.debuggerManager.dataForTarget(target);
+        return this._updatePauseReasonSection(target, targetData.pauseReason, targetData.pauseData);
     }
 
     _updatePauseReasonGotoArrow()
@@ -1189,12 +1322,8 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._pauseReasonLinkContainerElement.appendChild(linkElement);
     }
 
-    _updatePauseReasonSection()
+    _updatePauseReasonSection(target, pauseReason, pauseData)
     {
-        let target = WI.debuggerManager.activeCallFrame.target;
-        let targetData = WI.debuggerManager.dataForTarget(target);
-        let {pauseReason, pauseData} = targetData;
-
         switch (pauseReason) {
         case WI.DebuggerManager.PauseReason.AnimationFrame: {
             this._pauseReasonTreeOutline = this.createContentTreeOutline({suppressFiltering: true});
@@ -1221,6 +1350,20 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
                 this._pauseReasonTextRow.text = WI.UIString("Assertion Failed");
             this._pauseReasonGroup.rows = [this._pauseReasonTextRow];
             return true;
+
+        case WI.DebuggerManager.PauseReason.BlackboxedScript: {
+            console.assert(pauseData);
+            if (pauseData)
+                this._updatePauseReasonSection(target, WI.DebuggerManager.pauseReasonFromPayload(pauseData.originalReason), pauseData.originalData);
+
+            // Don't use `_pauseReasonTextRow` as it may have already been set.
+            let blackboxReasonTextRow = new WI.DetailsSectionTextRow(WI.UIString("Deferred pause from blackboxed script"));
+            blackboxReasonTextRow.__blackboxReason = true;
+
+            let existingRows = this._pauseReasonGroup.rows.filter((row) => !row.__blackboxReason);
+            this._pauseReasonGroup.rows = [blackboxReasonTextRow, ...existingRows];
+            return true;
+        }
 
         case WI.DebuggerManager.PauseReason.Breakpoint: {
             console.assert(pauseData, "Expected breakpoint identifier, but found none.");
@@ -1394,6 +1537,11 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             return true;
         }
 
+        case WI.DebuggerManager.PauseReason.Microtask:
+            this._pauseReasonTextRow.text = WI.UIString("Microtask Fired");
+            this._pauseReasonGroup.rows = [this._pauseReasonTextRow];
+            return true;
+
         case WI.DebuggerManager.PauseReason.PauseOnNextStatement:
             this._pauseReasonTextRow.text = WI.UIString("Immediate Pause Requested");
             this._pauseReasonGroup.rows = [this._pauseReasonTextRow];
@@ -1489,20 +1637,16 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         return false;
     }
 
+    _handleResourceGroupingModeScopeBarSelectionChanged(event)
+    {
+        console.assert(this._resourceGroupingModeScopeBar.selectedItems.length === 1);
+        let selectedScopeBarItem = this._resourceGroupingModeScopeBar.selectedItems[0];
+        WI.settings.resourceGroupingMode.value = selectedScopeBarItem[SourcesNavigationSidebarPanel.ResourceGroupingModeSymbol] || WI.Resource.GroupingMode.Type;
+    }
+
     _handleResourceTypeScopeBarSelectionChanged(event)
     {
         this.updateFilter();
-    }
-
-    _populateResourceGroupingModeContextMenu(contextMenu)
-    {
-        function addOption(mode, label) {
-            contextMenu.appendCheckboxItem(label, () => {
-                WI.settings.resourceGroupingMode.value = mode;
-            }, WI.settings.resourceGroupingMode.value === mode);
-        }
-        addOption(WI.Resource.GroupingMode.Path, WI.UIString("Group by Path"));
-        addOption(WI.Resource.GroupingMode.Type, WI.UIString("Group by Type"));
     }
 
     _handleTreeSelectionDidChange(event)
@@ -1523,7 +1667,13 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         if (treeElement.representedObject === SourcesNavigationSidebarPanel.__windowEventTargetRepresentedObject)
             return;
 
+        if (treeElement instanceof WI.LocalResourceOverrideTreeElement) {
+            WI.showRepresentedObject(treeElement.representedObject.localResource);
+            return;
+        }
+
         if (treeElement instanceof WI.FolderTreeElement
+            || treeElement instanceof WI.OriginTreeElement
             || treeElement instanceof WI.ResourceTreeElement
             || treeElement instanceof WI.ScriptTreeElement
             || treeElement instanceof WI.CSSStyleSheetTreeElement) {
@@ -1579,6 +1729,10 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             setting = WI.settings.showAssertionFailuresBreakpoint;
             break;
 
+        case WI.debuggerManager.allMicrotasksBreakpoint:
+            setting = WI.settings.showAllMicrotasksBreakpoint;
+            break;
+
         case WI.domDebuggerManager.allAnimationFramesBreakpoint:
             setting = WI.settings.showAllAnimationFramesBreakpoint;
             break;
@@ -1602,6 +1756,21 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
 
         if (setting)
             setting.value = !!treeElement.parent;
+
+        if (event.type === WI.TreeOutline.Event.ElementRemoved) {
+            let selectedTreeElement = this._breakpointsTreeOutline.selectedTreeElement;
+            console.assert(selectedTreeElement);
+            if (selectedTreeElement.representedObject === WI.debuggerManager.assertionFailuresBreakpoint || !WI.debuggerManager.isBreakpointRemovable(selectedTreeElement.representedObject)) {
+                const skipUnrevealed = true;
+                const dontPopulate = true;
+                let treeElementToSelect = selectedTreeElement.traverseNextTreeElement(skipUnrevealed, dontPopulate);
+                if (treeElementToSelect) {
+                    const omitFocus = true;
+                    const selectedByUser = true;
+                    treeElementToSelect.select(omitFocus, selectedByUser);
+                }
+            }
+        }
     }
 
     _populateCreateBreakpointContextMenu(contextMenu)
@@ -1620,6 +1789,22 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             }, assertionFailuresBreakpointShown);
         }
 
+        contextMenu.appendSeparator();
+
+        // COMPATIBILITY (iOS 13): DebuggerAgent.setPauseOnMicrotasks did not exist yet.
+        if (InspectorBackend.domains.Debugger.setPauseOnMicrotasks) {
+            let allMicrotasksBreakpointShown = WI.settings.showAllMicrotasksBreakpoint.value;
+
+            contextMenu.appendCheckboxItem(WI.UIString("All Microtasks"), () => {
+                if (allMicrotasksBreakpointShown)
+                    WI.debuggerManager.removeBreakpoint(WI.debuggerManager.allMicrotasksBreakpoint);
+                else {
+                    WI.debuggerManager.allMicrotasksBreakpoint.disabled = false;
+                    WI.debuggerManager.addBreakpoint(WI.debuggerManager.allMicrotasksBreakpoint);
+                }
+            }, allMicrotasksBreakpointShown);
+        }
+
         if (WI.DOMDebuggerManager.supportsEventBreakpoints() || WI.DOMDebuggerManager.supportsEventListenerBreakpoints()) {
             function addToggleForSpecialEventBreakpoint(breakpoint, label, checked) {
                 contextMenu.appendCheckboxItem(label, () => {
@@ -1631,8 +1816,6 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
                     }
                 }, checked);
             }
-
-            contextMenu.appendSeparator();
 
             addToggleForSpecialEventBreakpoint(WI.domDebuggerManager.allAnimationFramesBreakpoint, WI.UIString("All Animation Frames"), WI.settings.showAllAnimationFramesBreakpoint.value);
             addToggleForSpecialEventBreakpoint(WI.domDebuggerManager.allTimeoutsBreakpoint, WI.UIString("All Timeouts"), WI.settings.showAllTimeoutsBreakpoint.value);
@@ -1647,11 +1830,11 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
                 let popover = new WI.EventBreakpointPopover(this);
                 popover.show(this._createBreakpointButton.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X]);
             });
-
-            contextMenu.appendSeparator();
         }
 
         if (WI.DOMDebuggerManager.supportsURLBreakpoints() || WI.DOMDebuggerManager.supportsXHRBreakpoints()) {
+            contextMenu.appendSeparator();
+
             let allRequestsBreakpointShown = WI.settings.showAllRequestsBreakpoint.value;
             contextMenu.appendCheckboxItem(WI.repeatedUIString.allRequests(), () => {
                 if (allRequestsBreakpointShown)
@@ -1665,6 +1848,14 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
             contextMenu.appendItem(WI.DOMDebuggerManager.supportsURLBreakpoints() ? WI.UIString("URL Breakpoint\u2026") : WI.UIString("XHR Breakpoint\u2026"), () => {
                 let popover = new WI.URLBreakpointPopover(this);
                 popover.show(this._createBreakpointButton.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X]);
+            });
+        }
+
+        if (WI.NetworkManager.supportsLocalResourceOverrides()) {
+            contextMenu.appendSeparator();
+            contextMenu.appendItem(WI.UIString("Local Override\u2026"), () => {
+                let popover = new WI.LocalResourceOverridePopover(this);
+                popover.show(null, this._createBreakpointButton.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X]);
             });
         }
     }
@@ -1714,6 +1905,11 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._anonymousScriptsFolderTreeElement = null;
 
         this._originTreeElementMap.clear();
+
+        let resourceGroupingModeScopeBarItem = this._resourceGroupingModeScopeBarItems[WI.settings.resourceGroupingMode.value];
+        console.assert(resourceGroupingModeScopeBarItem);
+        if (resourceGroupingModeScopeBarItem)
+            resourceGroupingModeScopeBarItem.selected = true;
 
         this._resourcesTreeOutline.removeChildren();
 
@@ -1769,6 +1965,16 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this._addResourcesRecursivelyForFrame(frame);
     }
 
+    _handleLocalResourceOverrideAdded(event)
+    {
+        this._addLocalResourceOverride(event.data.localResourceOverride);
+    }
+
+    _handleLocalResourceOverrideRemoved(event)
+    {
+        this._removeLocalResourceOverride(event.data.localResourceOverride);
+    }
+
     _handleDebuggerBreakpointAdded(event)
     {
         this._addBreakpoint(event.data.breakpoint);
@@ -1801,7 +2007,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         let parentTreeElement = scriptTreeElement.parent;
         parentTreeElement.removeChild(scriptTreeElement);
 
-        if (parentTreeElement instanceof WI.FolderTreeElement) {
+        if (parentTreeElement instanceof WI.FolderTreeElement || parentTreeElement instanceof WI.OriginTreeElement) {
             parentTreeElement.representedObject.remove(script);
 
             if (!parentTreeElement.children.length)
@@ -2104,3 +2310,4 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
 };
 
 WI.SourcesNavigationSidebarPanel.ResourceTypeSymbol = Symbol("resource-type");
+WI.SourcesNavigationSidebarPanel.ResourceGroupingModeSymbol = Symbol("resource-grouping-mode");

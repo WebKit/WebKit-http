@@ -3242,6 +3242,7 @@ editing/selection/ios/select-all-non-editable-text-using-keyboard.html [ Skip ]
 # Dark Mode is iOS 13 and later.
 css-dark-mode [ Pass ]
 css-dark-mode/older-systems [ Skip ]
+editing/pasteboard/paste-dark-mode-color-filtered.html [ Pass ]
 
 fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html [ Pass ]
 fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html [ Pass ]
@@ -3332,10 +3333,6 @@ fast/viewport/ios/use-minimum-device-width-for-page-without-viewport-meta.html [
 platform/ipad/fast/viewport/viewport-overriden-by-minimum-effective-width-if-ignore-meta-viewport.html [ Timeout ]
 platform/ipad/fast/viewport/viewport-unchanged-by-minimum-effective-width-if-not-ignore-meta-viewport.html [ Timeout ]
 
-# <rdar://problem/52699129> fast/forms/datalist/datalist-show-hide.html and fast/forms/datalist/datalist-textinput-suggestions-order.html are timing out on iOS 13
-fast/forms/datalist/datalist-show-hide.html [ Timeout ]
-fast/forms/datalist/datalist-textinput-suggestions-order.html [ Timeout ]
-
 # <rdar://problem/52594556> REGRESSION: Layout test fast/text/international/system-language/han-quotes.html is failing
 fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
 
@@ -3345,21 +3342,13 @@ storage/websql/test-authorizer.html [ Failure ]
 # rdar://53551736 (Layout Test editing/pasteboard/paste-and-sanitize.html is a Flaky Failure on iOS 13)
 editing/pasteboard/paste-and-sanitize.html [ Pass Failure ]
 
-# rdar://53866783 (REGRESSION: Layout Test fast/shadow-dom/click-text-inside-linked-slot.html is Failing)
-fast/shadow-dom/click-text-inside-linked-slot.html [ Pass Failure ]
-
-# rdar://53946482 (REGRESSION: Multiple Layout Tests (*-using-open-panel.html) are Timing Out)
-fast/files/apply-blob-url-to-xhr-using-open-panel.html [ Pass Timeout ]
-fast/files/file-reader-abort-using-open-panel.html [ Pass Timeout ]
-http/tests/local/formdata/send-form-data-with-empty-file-filename-using-open-panel.html [ Pass Timeout ]
-http/tests/local/fileapi/file-last-modified-using-open-panel.html [ Pass Timeout ]
-
-# rdar://53957264 (REGRESSION: Layout Tests http/tests/misc/iframe-beforeunload-dialog-not-matching-ancestor-securityorigin.html and http/tests/misc/iframe-beforeunload-dialog-block-modals.html Timing Out)
-http/tests/misc/iframe-beforeunload-dialog-not-matching-ancestor-securityorigin.html [ Pass Timeout ]
-http/tests/misc/iframe-beforeunload-dialog-block-modals.html [ Pass Timeout ]
-
-# rdar://54049321 (REGRESSION: editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html Failing)
-editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html [ Failure ]
-
 # Skip until we have the fixes for <rdar://problem/53613454> and <rdar://problem/54001139>.
 fast/events/ios/multiple-key-press-and-release-ordering.html [ Skip ]
+
+# rdar://54561673 (REGRESSION: Layout test http/tests/security/frameNavigation/sandbox-ALLOWED-top-navigation-with-user-gesture-2.html is a flaky timeout)
+http/tests/security/frameNavigation/sandbox-ALLOWED-top-navigation-with-user-gesture-2.html [ Pass Timeout ]
+
+# rdar://55081191 (Layout Test media/audio-concurrent-supported.html is a flaky failure (184612))
+media/audio-concurrent-supported.html [ Pass Failure ]
+
+webkit.org/b/181837 [ Release ] imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html [ Pass Failure ]

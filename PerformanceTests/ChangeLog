@@ -1,3 +1,78 @@
+2019-09-09  Jon Lee  <jonlee@apple.com>
+
+        Upload triangles tests for 3D suite in MotionMark
+        https://bugs.webkit.org/show_bug.cgi?id=201606
+
+        Reviewed by Simon Fraser.
+
+        * MotionMark/resources/debug-runner/motionmark.css:
+        * MotionMark/resources/debug-runner/tests.js:
+        * MotionMark/tests/3d/resources/webgl.js:
+        * MotionMark/tests/3d/resources/webgpu.js: Added.
+        * MotionMark/tests/3d/triangles-webgl.html: Renamed from Websites/browserbench.org/MotionMark1.1/tests/3d/webgl.html.
+        * MotionMark/tests/3d/triangles-webgpu.html: Copied from PerformanceTests/MotionMark/tests/3d/webgl.html.
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Update .xcconfig symbols to reflect the current set of past and future product versions.
+        https://bugs.webkit.org/show_bug.cgi?id=200720
+        <rdar://problem/54305032>
+
+        Reviewed by Alex Christensen.
+
+        Remove version symbols related to old OS's we no longer support,
+        ensure that version symbols are defined for OS's we do support.
+
+        * MediaTime/Configurations/Base.xcconfig:
+        * MediaTime/Configurations/DebugRelease.xcconfig:
+
+2019-08-21  Sihui Liu  <sihui_liu@apple.com>
+
+        Add some IDB performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=200906
+
+        Reviewed by Geoffrey Garen.
+
+        Add test coverage for IDB performance, and organize IDB tests into two categories.
+
+        * IndexedDB/basic/index-count-key.html: Added.
+        * IndexedDB/basic/index-count.html: Added.
+        * IndexedDB/basic/index-cursor-advance.html: Added.
+        * IndexedDB/basic/index-cursor-continue.html: Added.
+        * IndexedDB/basic/index-cursor-continuePrimaryKey.html: Added.
+        * IndexedDB/basic/index-cursor-delete.html: Added.
+        * IndexedDB/basic/index-cursor-update.html: Added.
+        * IndexedDB/basic/index-get.html: Added.
+        * IndexedDB/basic/index-multientry.html: Renamed from PerformanceTests/IndexedDB/index-multientry.html.
+        * IndexedDB/basic/objectstore-add.html: Added.
+        * IndexedDB/basic/objectstore-clear.html: Added.
+        * IndexedDB/basic/objectstore-count.html: Added.
+        * IndexedDB/basic/objectstore-cursor-advance.html: Added.
+        * IndexedDB/basic/objectstore-cursor-continue.html: Added.
+        * IndexedDB/basic/objectstore-cursor-delete.html: Added.
+        * IndexedDB/basic/objectstore-cursor-update.html: Added.
+        * IndexedDB/basic/objectstore-cursor.html: Renamed from PerformanceTests/IndexedDB/objectstore-cursor.html.
+        * IndexedDB/basic/objectstore-delete.html: Renamed from PerformanceTests/IndexedDB/index-get.html.
+        * IndexedDB/basic/objectstore-get.html: Added.
+        * IndexedDB/basic/objectstore-put.html: Renamed from PerformanceTests/IndexedDB/objectstore-get.html.
+        * IndexedDB/stress/large-array-keys.html: Renamed from PerformanceTests/IndexedDB/large-array-keys.html.
+        * IndexedDB/stress/large-binary-keys.html: Renamed from PerformanceTests/IndexedDB/large-binary-keys.html.
+        * IndexedDB/stress/large-number-of-inserts-responsiveness.html: Renamed from PerformanceTests/IndexedDB/large-number-of-inserts-responsiveness.html.
+        * IndexedDB/stress/large-number-of-inserts.html: Renamed from PerformanceTests/IndexedDB/large-number-of-inserts.html.
+        * IndexedDB/stress/large-string-keys.html: Renamed from PerformanceTests/IndexedDB/large-string-keys.html.
+        * Skipped:
+
+2019-08-19  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove IDB-specific quota
+        https://bugs.webkit.org/show_bug.cgi?id=196545
+        <rdar://problem/54201783>
+
+        Reviewed by Youenn Fablet.
+
+        * IndexedDB/large-binary-keys.html:
+        * IndexedDB/large-string-keys.html:
+
 2019-08-14  Keith Rollin  <krollin@apple.com>
 
         Remove support for macOS < 10.13

@@ -37,7 +37,6 @@
 #include "ProvisionalPageProxy.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
-#include "UIMessagePortChannelProvider.h"
 #include "UserData.h"
 #include "WebBackForwardListItem.h"
 #include "WebInspectorUtilities.h"
@@ -50,6 +49,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxyMessages.h"
+#include "WebSWContextManagerConnectionMessages.h"
 #include "WebUserContentControllerProxy.h"
 #include "WebsiteData.h"
 #include "WebsiteDataFetchOption.h"
@@ -110,11 +110,6 @@ WebProcessProxy* WebProcessProxy::processForIdentifier(ProcessIdentifier identif
     return allProcesses().get(identifier);
 }
 
-PageIdentifier WebProcessProxy::generatePageID()
-{
-    return PageIdentifier::generate();
-}
-
 static WebProcessProxy::WebPageProxyMap& globalPageMap()
 {
     ASSERT(isMainThreadOrCheckDisabled());
@@ -139,6 +134,15 @@ Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, Websit
     return proxy;
 }
 
+Ref<WebProcessProxy> WebProcessProxy::createForServiceWorkers(WebProcessPool& processPool, RegistrableDomain&& registrableDomain, WebsiteDataStore& websiteDataStore)
+{
+    auto proxy = adoptRef(*new WebProcessProxy(processPool, &websiteDataStore, IsPrewarmed::No));
+    proxy->m_registrableDomain = WTFMove(registrableDomain);
+    proxy->m_serviceWorkerInformation = ServiceWorkerInformation { WebPageProxyIdentifier::generate(), PageIdentifier::generate() };
+    proxy->connect();
+    return proxy;
+}
+
 WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore, IsPrewarmed isPrewarmed)
     : AuxiliaryProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_responsivenessTimer(*this)
@@ -151,7 +155,7 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* 
     , m_visiblePageCounter([this](RefCounterEvent) { updateBackgroundResponsivenessTimer(); })
     , m_websiteDataStore(websiteDataStore)
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
-    , m_userMediaCaptureManagerProxy(std::make_unique<UserMediaCaptureManagerProxy>(*this))
+    , m_userMediaCaptureManagerProxy(makeUnique<UserMediaCaptureManagerProxy>(*this))
 #endif
     , m_isPrewarmed(isPrewarmed == IsPrewarmed::Yes)
 {
@@ -190,9 +194,6 @@ WebProcessProxy::~WebProcessProxy()
 
     while (m_numberOfTimesSuddenTerminationWasDisabled-- > 0)
         WebCore::enableSuddenTermination();
-
-    for (auto& callback : m_localPortActivityCompletionHandlers.values())
-        callback(MessagePortChannelProvider::HasActivity::No);
 
 #if PLATFORM(MAC)
     HighPerformanceGPUManager::singleton().removeProcessRequiringHighPerformance(this);
@@ -286,6 +287,11 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
         processPool().setShouldMakeNextWebProcessLaunchFailForTesting(false);
         launchOptions.shouldMakeProcessLaunchFailForTesting = true;
     }
+
+    if (m_serviceWorkerInformation) {
+        launchOptions.extraInitializationData.add("service-worker-process"_s, "1"_s);
+        launchOptions.extraInitializationData.add("registrable-domain"_s, m_registrableDomain->string());
+    }
 }
 
 #if !PLATFORM(GTK) && !PLATFORM(WPE)
@@ -350,13 +356,10 @@ void WebProcessProxy::shutDown()
 
     m_userInitiatedActionMap.clear();
 
-    for (auto& port : m_processEntangledPorts)
-        UIMessagePortChannelProvider::singleton().registry().didCloseMessagePort(port);
-
     m_processPool->disconnectProcess(this);
 }
 
-WebPageProxy* WebProcessProxy::webPage(PageIdentifier pageID)
+WebPageProxy* WebProcessProxy::webPage(WebPageProxyIdentifier pageID)
 {
     return globalPageMap().get(pageID);
 }
@@ -389,8 +392,7 @@ void WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Object* message
 
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
 {
-    auto pageID = generatePageID();
-    Ref<WebPageProxy> webPage = WebPageProxy::create(pageClient, *this, pageID, WTFMove(pageConfiguration));
+    Ref<WebPageProxy> webPage = WebPageProxy::create(pageClient, *this, WTFMove(pageConfiguration));
 
     addExistingWebPage(webPage.get(), BeginsUsingDataStore::Yes);
 
@@ -399,16 +401,16 @@ Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API
 
 void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, BeginsUsingDataStore beginsUsingDataStore)
 {
-    ASSERT(!m_pageMap.contains(webPage.pageID()));
-    ASSERT(!globalPageMap().contains(webPage.pageID()));
+    ASSERT(!m_pageMap.contains(webPage.identifier()));
+    ASSERT(!globalPageMap().contains(webPage.identifier()));
     RELEASE_ASSERT(!m_isInProcessCache);
     ASSERT(!m_websiteDataStore || m_websiteDataStore == &webPage.websiteDataStore());
 
     if (beginsUsingDataStore == BeginsUsingDataStore::Yes)
-        m_processPool->pageBeginUsingWebsiteDataStore(webPage.pageID(), webPage.websiteDataStore());
+        m_processPool->pageBeginUsingWebsiteDataStore(webPage.identifier(), webPage.websiteDataStore());
 
-    m_pageMap.set(webPage.pageID(), &webPage);
-    globalPageMap().set(webPage.pageID(), &webPage);
+    m_pageMap.set(webPage.identifier(), &webPage);
+    globalPageMap().set(webPage.identifier(), &webPage);
 
     updateRegistrationWithDataStore();
     updateBackgroundResponsivenessTimer();
@@ -427,15 +429,15 @@ void WebProcessProxy::markIsNoLongerInPrewarmedPool()
 
 void WebProcessProxy::removeWebPage(WebPageProxy& webPage, EndsUsingDataStore endsUsingDataStore)
 {
-    auto* removedPage = m_pageMap.take(webPage.pageID());
+    auto* removedPage = m_pageMap.take(webPage.identifier());
     ASSERT_UNUSED(removedPage, removedPage == &webPage);
-    removedPage = globalPageMap().take(webPage.pageID());
+    removedPage = globalPageMap().take(webPage.identifier());
     ASSERT_UNUSED(removedPage, removedPage == &webPage);
 
     if (endsUsingDataStore == EndsUsingDataStore::Yes)
-        m_processPool->pageEndUsingWebsiteDataStore(webPage.pageID(), webPage.websiteDataStore());
+        m_processPool->pageEndUsingWebsiteDataStore(webPage.identifier(), webPage.websiteDataStore());
 
-    removeVisitedLinkStoreUser(webPage.visitedLinkStore(), webPage.pageID());
+    removeVisitedLinkStoreUser(webPage.visitedLinkStore(), webPage.identifier());
     updateRegistrationWithDataStore();
 
     updateBackgroundResponsivenessTimer();
@@ -443,10 +445,10 @@ void WebProcessProxy::removeWebPage(WebPageProxy& webPage, EndsUsingDataStore en
     maybeShutDown();
 }
 
-void WebProcessProxy::addVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore, PageIdentifier pageID)
+void WebProcessProxy::addVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore, WebPageProxyIdentifier pageID)
 {
     auto& users = m_visitedLinkStoresWithUsers.ensure(&visitedLinkStore, [] {
-        return HashSet<PageIdentifier> { };
+        return HashSet<WebPageProxyIdentifier> { };
     }).iterator->value;
 
     ASSERT(!users.contains(pageID));
@@ -456,7 +458,7 @@ void WebProcessProxy::addVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore
         visitedLinkStore.addProcess(*this);
 }
 
-void WebProcessProxy::removeVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore, PageIdentifier pageID)
+void WebProcessProxy::removeVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore, WebPageProxyIdentifier pageID)
 {
     auto it = m_visitedLinkStoresWithUsers.find(&visitedLinkStore);
     if (it == m_visitedLinkStoresWithUsers.end())
@@ -558,7 +560,7 @@ bool WebProcessProxy::checkURLReceivedFromWebProcess(const URL& url)
     }
 
     // A Web process that was never asked to load a file URL should not ever ask us to do anything with a file URL.
-    WTFLogAlways("Received an unexpected URL from the web process: '%s'\n", url.string().utf8().data());
+    RELEASE_LOG_ERROR(Loading, "Received an unexpected URL from the web process");
     return false;
 }
 
@@ -569,10 +571,10 @@ bool WebProcessProxy::fullKeyboardAccessEnabled()
 }
 #endif
 
-bool WebProcessProxy::hasProvisionalPageWithID(PageIdentifier pageID) const
+bool WebProcessProxy::hasProvisionalPageWithID(WebPageProxyIdentifier pageID) const
 {
     for (auto* provisionalPage : m_provisionalPages) {
-        if (provisionalPage->page().pageID() == pageID)
+        if (provisionalPage->page().identifier() == pageID)
             return true;
     }
     return false;
@@ -586,7 +588,7 @@ bool WebProcessProxy::isAllowedToUpdateBackForwardItem(WebBackForwardListItem& i
     if (hasProvisionalPageWithID(item.pageID()))
         return true;
 
-    if (item.suspendedPage() && item.suspendedPage()->page().pageID() == item.pageID() && &item.suspendedPage()->process() == this)
+    if (item.suspendedPage() && item.suspendedPage()->page().identifier() == item.pageID() && &item.suspendedPage()->process() == this)
         return true;
 
     return false;
@@ -764,9 +766,9 @@ void WebProcessProxy::didBecomeUnresponsive()
     for (auto& callback : isResponsiveCallbacks)
         callback(isWebProcessResponsive);
 
-    // If the service worker process becomes unresponsive, kill it ourselves since there are no native clients to do it.
-    if (isServiceWorkerProcess()) {
-        RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didBecomeUnresponsive() Terminating Service Worker process with pid %d because it is unresponsive", this, processIdentifier());
+    // If the web process becomes unresponsive and only runs service workers, kill it ourselves since there are no native clients to do it.
+    if (isRunningServiceWorkers() && m_pageMap.isEmpty()) {
+        RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didBecomeUnresponsive() Terminating service worker-only web process with pid %d because it is unresponsive", this, processIdentifier());
         terminate();
     }
 }
@@ -899,7 +901,7 @@ void WebProcessProxy::didDestroyUserGestureToken(uint64_t identifier)
 
 bool WebProcessProxy::canBeAddedToWebProcessCache() const
 {
-    if (isServiceWorkerProcess())
+    if (isRunningServiceWorkers())
         return false;
 
     if (WebKit::isInspectorProcessPool(processPool()))
@@ -1116,7 +1118,7 @@ RefPtr<API::Object> WebProcessProxy::transformHandlesToObjects(API::Object* obje
 
             case API::Object::Type::PageHandle:
                 ASSERT(static_cast<API::PageHandle&>(object).isAutoconverting());
-                return m_webProcessProxy.webPage(static_cast<API::PageHandle&>(object).pageID());
+                return m_webProcessProxy.webPage(static_cast<API::PageHandle&>(object).pageProxyID());
 
 #if PLATFORM(COCOA)
             case API::Object::Type::ObjCObjectGraph:
@@ -1159,7 +1161,7 @@ RefPtr<API::Object> WebProcessProxy::transformObjectsToHandles(API::Object* obje
                 return API::FrameHandle::createAutoconverting(static_cast<const WebFrameProxy&>(object).frameID());
 
             case API::Object::Type::Page:
-                return API::PageHandle::createAutoconverting(static_cast<const WebPageProxy&>(object).pageID());
+                return API::PageHandle::createAutoconverting(static_cast<const WebPageProxy&>(object).identifier(), static_cast<const WebPageProxy&>(object).webPageID());
 
             case API::Object::Type::PageGroup:
                 return API::PageGroupHandle::create(WebPageGroupData(static_cast<const WebPageGroup&>(object).data()));
@@ -1215,7 +1217,7 @@ void WebProcessProxy::didCancelProcessSuspension()
 void WebProcessProxy::didSetAssertionState(AssertionState state)
 {
 #if PLATFORM(IOS_FAMILY)
-    if (isServiceWorkerProcess())
+    if (isRunningServiceWorkers())
         return;
 
     ASSERT(!m_backgroundToken || !m_foregroundToken);
@@ -1391,10 +1393,7 @@ void WebProcessProxy::didExceedCPULimit()
     if (hasVisiblePage)
         return;
 
-    if (isServiceWorkerProcess())
-        RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() Terminating Service Worker process with pid %d that has exceeded the background CPU limit", this, processIdentifier());
-    else
-        RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() Terminating background WebProcess with pid %d that has exceeded the background CPU limit", this, processIdentifier());
+    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() Terminating background WebProcess with pid %d that has exceeded the background CPU limit", this, processIdentifier());
     logDiagnosticMessageForResourceLimitTermination(DiagnosticLoggingKeys::exceededBackgroundCPULimitKey());
     requestTermination(ProcessTerminationReason::ExceededCPULimit);
 }
@@ -1411,98 +1410,6 @@ const HashSet<String>& WebProcessProxy::platformPathsWithAssumedReadAccess()
     return platformPathsWithAssumedReadAccess;
 }
 #endif
-
-void WebProcessProxy::createNewMessagePortChannel(const MessagePortIdentifier& port1, const MessagePortIdentifier& port2)
-{
-    m_processEntangledPorts.add(port1);
-    m_processEntangledPorts.add(port2);
-    UIMessagePortChannelProvider::singleton().registry().didCreateMessagePortChannel(port1, port2);
-}
-
-void WebProcessProxy::entangleLocalPortInThisProcessToRemote(const MessagePortIdentifier& local, const MessagePortIdentifier& remote)
-{
-    m_processEntangledPorts.add(local);
-    UIMessagePortChannelProvider::singleton().registry().didEntangleLocalToRemote(local, remote, coreProcessIdentifier());
-
-    auto* channel = UIMessagePortChannelProvider::singleton().registry().existingChannelContainingPort(local);
-    if (channel && channel->hasAnyMessagesPendingOrInFlight())
-        send(Messages::WebProcess::MessagesAvailableForPort(local), 0);
-}
-
-void WebProcessProxy::messagePortDisentangled(const MessagePortIdentifier& port)
-{
-    auto result = m_processEntangledPorts.remove(port);
-    ASSERT_UNUSED(result, result);
-
-    UIMessagePortChannelProvider::singleton().registry().didDisentangleMessagePort(port);
-}
-
-void WebProcessProxy::messagePortClosed(const MessagePortIdentifier& port)
-{
-    UIMessagePortChannelProvider::singleton().registry().didCloseMessagePort(port);
-}
-
-void WebProcessProxy::takeAllMessagesForPort(const MessagePortIdentifier& port, uint64_t messagesCallbackIdentifier)
-{
-    UIMessagePortChannelProvider::singleton().registry().takeAllMessagesForPort(port, [this, protectedThis = makeRef(*this), messagesCallbackIdentifier](Vector<MessageWithMessagePorts>&& messages, Function<void()>&& deliveryCallback) {
-
-        static uint64_t currentMessageBatchIdentifier;
-        auto result = m_messageBatchDeliveryCompletionHandlers.ensure(++currentMessageBatchIdentifier, [deliveryCallback = WTFMove(deliveryCallback)]() mutable {
-            return WTFMove(deliveryCallback);
-        });
-        ASSERT_UNUSED(result, result.isNewEntry);
-
-        send(Messages::WebProcess::DidTakeAllMessagesForPort(WTFMove(messages), messagesCallbackIdentifier, currentMessageBatchIdentifier), 0);
-    });
-}
-
-void WebProcessProxy::didDeliverMessagePortMessages(uint64_t messageBatchIdentifier)
-{
-    auto callback = m_messageBatchDeliveryCompletionHandlers.take(messageBatchIdentifier);
-    ASSERT(callback);
-    callback();
-}
-
-void WebProcessProxy::postMessageToRemote(MessageWithMessagePorts&& message, const MessagePortIdentifier& port)
-{
-    if (UIMessagePortChannelProvider::singleton().registry().didPostMessageToRemote(WTFMove(message), port)) {
-        // Look up the process for that port
-        auto* channel = UIMessagePortChannelProvider::singleton().registry().existingChannelContainingPort(port);
-        ASSERT(channel);
-        auto processIdentifier = channel->processForPort(port);
-        if (processIdentifier) {
-            if (auto* process = WebProcessProxy::processForIdentifier(*processIdentifier))
-                process->send(Messages::WebProcess::MessagesAvailableForPort(port), 0);
-        }
-    }
-}
-
-void WebProcessProxy::checkRemotePortForActivity(const WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
-{
-    UIMessagePortChannelProvider::singleton().registry().checkRemotePortForActivity(port, [this, protectedThis = makeRef(*this), callbackIdentifier](MessagePortChannelProvider::HasActivity hasActivity) {
-        send(Messages::WebProcess::DidCheckRemotePortForActivity(callbackIdentifier, hasActivity == MessagePortChannelProvider::HasActivity::Yes), 0);
-    });
-}
-
-void WebProcessProxy::checkProcessLocalPortForActivity(const MessagePortIdentifier& port, CompletionHandler<void(MessagePortChannelProvider::HasActivity)>&& callback)
-{
-    static uint64_t currentCallbackIdentifier;
-    auto result = m_localPortActivityCompletionHandlers.ensure(++currentCallbackIdentifier, [callback = WTFMove(callback)]() mutable {
-        return WTFMove(callback);
-    });
-    ASSERT_UNUSED(result, result.isNewEntry);
-
-    send(Messages::WebProcess::CheckProcessLocalPortForActivity(port, currentCallbackIdentifier), 0);
-}
-
-void WebProcessProxy::didCheckProcessLocalPortForActivity(uint64_t callbackIdentifier, bool isLocallyReachable)
-{
-    auto callback = m_localPortActivityCompletionHandlers.take(callbackIdentifier);
-    if (!callback)
-        return;
-
-    callback(isLocallyReachable ? MessagePortChannelProvider::HasActivity::Yes : MessagePortChannelProvider::HasActivity::No);
-}
 
 void WebProcessProxy::didCollectPrewarmInformation(const WebCore::RegistrableDomain& domain, const WebCore::PrewarmInformation& prewarmInformation)
 {
@@ -1583,6 +1490,25 @@ void WebProcessProxy::releaseBackgroundActivityTokenForFullscreenInput()
     RELEASE_LOG(ProcessSuspension, "UIProcess is releasing a background assertion because it has dismissed fullscreen UI for form controls.");
 }
 
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+void WebProcessProxy::establishServiceWorkerContext(const WebPreferencesStore& store, PAL::SessionID sessionID)
+{
+    send(Messages::WebProcess::EstablishWorkerContextConnectionToNetworkProcess { processPool().defaultPageGroup().pageGroupID(), m_serviceWorkerInformation->serviceWorkerPageProxyID, m_serviceWorkerInformation->serviceWorkerPageID, store, sessionID }, 0);
+}
+
+void WebProcessProxy::setServiceWorkerUserAgent(const String& userAgent)
+{
+    ASSERT(m_serviceWorkerInformation);
+    send(Messages::WebSWContextManagerConnection::SetUserAgent { userAgent }, 0);
+}
+
+void WebProcessProxy::updateServiceWorkerPreferencesStore(const WebPreferencesStore& store)
+{
+    ASSERT(m_serviceWorkerInformation);
+    send(Messages::WebSWContextManagerConnection::UpdatePreferencesStore { store }, 0);
+}
 #endif
 
 } // namespace WebKit

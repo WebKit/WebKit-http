@@ -471,11 +471,6 @@ static void recomputeDependentOptions()
         Options::maximumEvalCacheableSourceLength() = 150000;
         Options::useConcurrentJIT() = false;
     }
-    if (Options::useMaximalFlushInsertionPhase()) {
-        Options::useOSREntryToDFG() = false;
-        Options::useOSREntryToFTL() = false;
-    }
-    
 #if ENABLE(SEPARATED_WX_HEAP)
     // Override globally for now. Longer term we'll just make the default
     // be to have this option enabled, and have platforms that don't support
@@ -866,8 +861,7 @@ void Options::dumpOption(StringBuilder& builder, DumpLevel level, Options::ID id
 
     if (header)
         builder.append(header);
-    builder.append(option.name());
-    builder.append('=');
+    builder.append(option.name(), '=');
     option.dump(builder);
 
     if (wasOverridden && (dumpDefaultsOption == DumpDefaults)) {
@@ -876,10 +870,8 @@ void Options::dumpOption(StringBuilder& builder, DumpLevel level, Options::ID id
         builder.appendLiteral(")");
     }
 
-    if (needsDescription) {
-        builder.appendLiteral("   ... ");
-        builder.append(option.description());
-    }
+    if (needsDescription)
+        builder.append("   ... ", option.description());
 
     builder.append(footer);
 }

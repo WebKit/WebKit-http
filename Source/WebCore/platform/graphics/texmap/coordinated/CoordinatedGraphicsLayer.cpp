@@ -988,7 +988,7 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
 
     // Ensure the TiledBackingStore object, and enforce a complete repaint if it's not been present yet.
     if (!layerState.mainBackingStore) {
-        layerState.mainBackingStore = std::make_unique<TiledBackingStore>(impl, effectiveContentsScale());
+        layerState.mainBackingStore = makeUnique<TiledBackingStore>(impl, effectiveContentsScale());
         m_pendingVisibleRectAdjustment = true;
     }
 
@@ -1308,6 +1308,13 @@ bool CoordinatedGraphicsLayer::usesContentsLayer() const
 {
     return m_nicosia.contentLayer || m_compositedImage;
 }
+
+#if USE(NICOSIA)
+PlatformLayer* CoordinatedGraphicsLayer::platformLayer() const
+{
+    return m_nicosia.layer.get();
+}
+#endif
 
 } // namespace WebCore
 

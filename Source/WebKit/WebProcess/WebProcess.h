@@ -33,9 +33,11 @@
 #include "PluginProcessConnectionManager.h"
 #include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
+#include "StorageAreaIdentifier.h"
 #include "TextCheckerState.h"
 #include "ViewUpdateDispatcher.h"
 #include "WebInspectorInterruptDispatcher.h"
+#include "WebPageProxyIdentifier.h"
 #include "WebProcessCreationParameters.h"
 #include "WebSQLiteDatabaseTracker.h"
 #include "WebSocketChannelManager.h"
@@ -148,7 +150,7 @@ public:
     template <typename T>
     void addSupplement()
     {
-        m_supplements.add(T::supplementName(), std::make_unique<T>(*this));
+        m_supplements.add(T::supplementName(), makeUnique<T>(*this));
     }
 
     WebConnectionToUIProcess* webConnectionToUIProcess() const { return m_webConnection.get(); }
@@ -214,7 +216,7 @@ public:
 
     void registerStorageAreaMap(StorageAreaMap&);
     void unregisterStorageAreaMap(StorageAreaMap&);
-    StorageAreaMap* storageAreaMap(uint64_t identifier) const;
+    StorageAreaMap* storageAreaMap(StorageAreaIdentifier) const;
 
 #if PLATFORM(COCOA)
     RetainPtr<CFDataRef> sourceApplicationAuditData() const;
@@ -285,6 +287,8 @@ public:
 
     bool areAllPagesThrottleable() const;
 
+    void messagesAvailableForPort(const WebCore::MessagePortIdentifier&);
+
 private:
     WebProcess();
     ~WebProcess();
@@ -354,11 +358,6 @@ private:
     void mainThreadPing();
     void backgroundResponsivenessPing();
 
-    void didTakeAllMessagesForPort(Vector<WebCore::MessageWithMessagePorts>&& messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier);
-    void checkProcessLocalPortForActivity(const WebCore::MessagePortIdentifier&, uint64_t callbackIdentifier);
-    void didCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity);
-    void messagesAvailableForPort(const WebCore::MessagePortIdentifier&);
-
 #if ENABLE(GAMEPAD)
     void setInitialGamepads(const Vector<GamepadData>&);
     void gamepadConnected(const GamepadData&);
@@ -366,7 +365,7 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebCore::PageIdentifier, const WebPreferencesStore&, PAL::SessionID);
+    void establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebPageProxyIdentifier, WebCore::PageIdentifier, const WebPreferencesStore&, PAL::SessionID);
     void registerServiceWorkerClients();
 #endif
 
@@ -572,7 +571,7 @@ private:
     float m_backlightLevel { 0 };
 #endif
 
-    HashMap<uint64_t, StorageAreaMap*> m_storageAreaMaps;
+    HashMap<StorageAreaIdentifier, StorageAreaMap*> m_storageAreaMaps;
 };
 
 } // namespace WebKit

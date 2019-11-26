@@ -2,7 +2,7 @@
 <html>
 <meta charset=utf-8>
 <meta name="timeout" content="long">
-<title>Test structs.</title>
+<title>null.</title>
 <script src="js/test-harness.js"></script>
 <script src="../js/webgpu-functions.js"></script>
 <script src="../../resources/testharness.js"></script>
@@ -10,9 +10,9 @@
 <script>
 const whlslTests = {};
 
-whlslTests.passNullToPtrMonomorphic = async () =>
+whlslTests.nullIsError = async () =>
 {
-    let program = `
+    await checkFail(`
         int foo(thread int* ptr)
         {
             return *ptr;
@@ -21,11 +21,23 @@ whlslTests.passNullToPtrMonomorphic = async () =>
         {
             return foo(null);
         }
-    `;
-    assert_equals(await callIntFunction(program, "bar", []), 0);
+    `);
+
+    await checkFail(`
+        void bar()
+        {
+            thread int* x;
+        }
+    `);
+
+    await checkFail(`
+        void bar()
+        {
+            thread int[] x;
+        }
+    `);
 }
 
 runTests(whlslTests);
 </script>
 </html>
-

@@ -49,6 +49,7 @@
 #include "ServiceWorkerJobData.h"
 #include "ServiceWorkerProvider.h"
 #include "ServiceWorkerThread.h"
+#include "WorkerSWClientConnection.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Scope.h>
@@ -59,13 +60,23 @@
 
 namespace WebCore {
 
+static inline SWClientConnection& mainThreadConnection(PAL::SessionID sessionID)
+{
+    return ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(sessionID);
+}
+
 WTF_MAKE_ISO_ALLOCATED_IMPL(ServiceWorkerContainer);
 
 ServiceWorkerContainer::ServiceWorkerContainer(ScriptExecutionContext* context, NavigatorBase& navigator)
     : ActiveDOMObject(context)
     , m_navigator(navigator)
+    , m_messageQueue(*this)
 {
     suspendIfNeeded();
+    
+    // We should queue messages until the DOMContentLoaded event has fired or startMessages() has been called.
+    if (is<Document>(context) && downcast<Document>(*context).parsing())
+        m_messageQueue.suspend();
 }
 
 ServiceWorkerContainer::~ServiceWorkerContainer()
@@ -88,26 +99,18 @@ void ServiceWorkerContainer::derefEventTarget()
 auto ServiceWorkerContainer::ready() -> ReadyPromise&
 {
     if (!m_readyPromise) {
-        m_readyPromise = std::make_unique<ReadyPromise>();
+        m_readyPromise = makeUnique<ReadyPromise>();
 
-        if (m_isStopped || !scriptExecutionContext()->sessionID().isValid())
+        if (m_isStopped)
             return *m_readyPromise;
 
         auto& context = *scriptExecutionContext();
-        auto contextIdentifier = this->contextIdentifier();
-        callOnMainThread([connection = makeRef(ensureSWClientConnection()), topOrigin = context.topOrigin().isolatedCopy(), clientURL = context.url().isolatedCopy(), contextIdentifier]() mutable {
-            connection->whenRegistrationReady(topOrigin, clientURL, [contextIdentifier](auto&& registrationData) {
-                ScriptExecutionContext::postTaskTo(contextIdentifier, [registrationData = crossThreadCopy(registrationData)](auto& context) mutable {
-                    auto* serviceWorkerContainer = context.serviceWorkerContainer();
-                    if (!serviceWorkerContainer)
-                        return;
-                    if (serviceWorkerContainer->m_isStopped || !context.sessionID().isValid())
-                        return;
+        ensureSWClientConnection().whenRegistrationReady(context.topOrigin().data(), context.url(), [this, protectedThis = makeRef(*this)](auto&& registrationData) mutable {
+            if (m_isStopped)
+                return;
 
-                    auto registration = ServiceWorkerRegistration::getOrCreate(context, *serviceWorkerContainer, WTFMove(registrationData));
-                    serviceWorkerContainer->m_readyPromise->resolve(WTFMove(registration));
-                });
-            });
+            auto registration = ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(registrationData));
+            m_readyPromise->resolve(WTFMove(registration));
         });
     }
     return *m_readyPromise;
@@ -180,7 +183,7 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
     jobData.type = ServiceWorkerJobType::Register;
     jobData.registrationOptions = options;
 
-    scheduleJob(std::make_unique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
+    scheduleJob(makeUnique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
 void ServiceWorkerContainer::removeRegistration(const URL& scopeURL, Ref<DeferredPromise>&& promise)
@@ -206,7 +209,7 @@ void ServiceWorkerContainer::removeRegistration(const URL& scopeURL, Ref<Deferre
 
     CONTAINER_RELEASE_LOG_IF_ALLOWED("removeRegistration: Unregistering service worker. Job ID: %" PRIu64, jobData.identifier().jobIdentifier.toUInt64());
 
-    scheduleJob(std::make_unique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
+    scheduleJob(makeUnique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
 void ServiceWorkerContainer::updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, RefPtr<DeferredPromise>&& promise)
@@ -232,7 +235,7 @@ void ServiceWorkerContainer::updateRegistration(const URL& scopeURL, const URL& 
 
     CONTAINER_RELEASE_LOG_IF_ALLOWED("removeRegistration: Updating service worker. Job ID: %" PRIu64, jobData.identifier().jobIdentifier.toUInt64());
 
-    scheduleJob(std::make_unique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
+    scheduleJob(makeUnique<ServiceWorkerJob>(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
 void ServiceWorkerContainer::scheduleJob(std::unique_ptr<ServiceWorkerJob>&& job)
@@ -249,67 +252,33 @@ void ServiceWorkerContainer::scheduleJob(std::unique_ptr<ServiceWorkerJob>&& job
     ASSERT(!m_jobMap.contains(jobIdentifier));
     m_jobMap.add(jobIdentifier, OngoingJob { WTFMove(job), makePendingActivity(*this) });
 
-    callOnMainThread([connection = m_swConnection, contextIdentifier = this->contextIdentifier(), jobData = jobData.isolatedCopy()] {
-        connection->scheduleJob(contextIdentifier, jobData);
-    });
+    m_swConnection->scheduleJob(contextIdentifier(), jobData);
 }
 
 void ServiceWorkerContainer::getRegistration(const String& clientURL, Ref<DeferredPromise>&& promise)
 {
-    auto* context = scriptExecutionContext();
-    if (m_isStopped || !context->sessionID().isValid()) {
+    if (m_isStopped) {
         promise->reject(Exception { InvalidStateError });
         return;
     }
 
-    URL parsedURL = context->completeURL(clientURL);
-    if (!protocolHostAndPortAreEqual(parsedURL, context->url())) {
+    auto& context = *scriptExecutionContext();
+    URL parsedURL = context.completeURL(clientURL);
+    if (!protocolHostAndPortAreEqual(parsedURL, context.url())) {
         promise->reject(Exception { SecurityError, "Origin of clientURL is not client's origin"_s });
         return;
     }
 
-    uint64_t pendingPromiseIdentifier = ++m_lastPendingPromiseIdentifier;
-    auto pendingPromise = std::make_unique<PendingPromise>(WTFMove(promise), makePendingActivity(*this));
-    m_pendingPromises.add(pendingPromiseIdentifier, WTFMove(pendingPromise));
+    ensureSWClientConnection().matchRegistration(SecurityOriginData { context.topOrigin().data() }, parsedURL, [this, protectedThis = makeRef(*this), promise = WTFMove(promise)](auto&& result) mutable {
+        if (m_isStopped)
+            return;
 
-    auto contextIdentifier = this->contextIdentifier();
-    callOnMainThread([connection = makeRef(ensureSWClientConnection()), topOrigin = context->topOrigin().data().isolatedCopy(), parsedURL = parsedURL.isolatedCopy(), contextIdentifier, pendingPromiseIdentifier]() mutable {
-        connection->matchRegistration(WTFMove(topOrigin), parsedURL, [contextIdentifier, pendingPromiseIdentifier] (auto&& result) mutable {
-            ScriptExecutionContext::postTaskTo(contextIdentifier, [pendingPromiseIdentifier, result = crossThreadCopy(result)](auto& context) mutable {
-                auto* serviceWorkerContainer = context.serviceWorkerContainer();
-                if (!serviceWorkerContainer)
-                    return;
-                if (serviceWorkerContainer->m_isStopped || !context.sessionID().isValid())
-                    return;
-
-                serviceWorkerContainer->didFinishGetRegistrationRequest(pendingPromiseIdentifier, WTFMove(result));
-            });
-        });
+        if (!result) {
+            promise->resolve();
+            return;
+        }
+        promise->resolve<IDLInterface<ServiceWorkerRegistration>>(ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(result.value())));
     });
-}
-
-void ServiceWorkerContainer::didFinishGetRegistrationRequest(uint64_t pendingPromiseIdentifier, Optional<ServiceWorkerRegistrationData>&& result)
-{
-#ifndef NDEBUG
-    ASSERT(m_creationThread.ptr() == &Thread::current());
-#endif
-
-    auto pendingPromise = m_pendingPromises.take(pendingPromiseIdentifier);
-    if (!pendingPromise)
-        return;
-
-    if (m_isStopped || !scriptExecutionContext()->sessionID().isValid()) {
-        pendingPromise->promise->reject(Exception { InvalidStateError });
-        return;
-    }
-
-    if (!result) {
-        pendingPromise->promise->resolve();
-        return;
-    }
-
-    auto registration = ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(result.value()));
-    pendingPromise->promise->resolve<IDLInterface<ServiceWorkerRegistration>>(WTFMove(registration));
 }
 
 void ServiceWorkerContainer::updateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const Optional<ServiceWorkerData>& serviceWorkerData)
@@ -327,57 +296,26 @@ void ServiceWorkerContainer::updateRegistrationState(ServiceWorkerRegistrationId
 
 void ServiceWorkerContainer::getRegistrations(Ref<DeferredPromise>&& promise)
 {
-    auto* context = scriptExecutionContext();
-    if (m_isStopped || !context->sessionID().isValid()) {
+    if (m_isStopped) {
         promise->reject(Exception { InvalidStateError });
         return;
     }
 
-    uint64_t pendingPromiseIdentifier = ++m_lastPendingPromiseIdentifier;
-    auto pendingPromise = std::make_unique<PendingPromise>(WTFMove(promise), makePendingActivity(*this));
-    m_pendingPromises.add(pendingPromiseIdentifier, WTFMove(pendingPromise));
+    auto& context = *scriptExecutionContext();
+    ensureSWClientConnection().getRegistrations(SecurityOriginData { context.topOrigin().data() }, context.url(), [this, protectedThis = makeRef(*this), promise = WTFMove(promise)] (auto&& registrationDatas) mutable {
+        if (m_isStopped)
+            return;
 
-    auto contextIdentifier = this->contextIdentifier();
-    auto contextURL = context->url();
-    callOnMainThread([connection = makeRef(ensureSWClientConnection()), topOrigin = context->topOrigin().data().isolatedCopy(), contextURL = contextURL.isolatedCopy(), contextIdentifier, pendingPromiseIdentifier]() mutable {
-        connection->getRegistrations(WTFMove(topOrigin), contextURL, [contextIdentifier, pendingPromiseIdentifier] (auto&& registrationDatas) mutable {
-            ScriptExecutionContext::postTaskTo(contextIdentifier, [pendingPromiseIdentifier, registrationDatas = crossThreadCopy(registrationDatas)](auto& context) mutable {
-                auto* serviceWorkerContainer = context.serviceWorkerContainer();
-                if (!serviceWorkerContainer)
-                    return;
-                if (serviceWorkerContainer->m_isStopped || !context.sessionID().isValid())
-                    return;
-
-                serviceWorkerContainer->didFinishGetRegistrationsRequest(pendingPromiseIdentifier, WTFMove(registrationDatas));
-            });
+        auto registrations = WTF::map(WTFMove(registrationDatas), [&](auto&& registrationData) {
+            return ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(registrationData));
         });
+        promise->resolve<IDLSequence<IDLInterface<ServiceWorkerRegistration>>>(WTFMove(registrations));
     });
-}
-
-void ServiceWorkerContainer::didFinishGetRegistrationsRequest(uint64_t pendingPromiseIdentifier, Vector<ServiceWorkerRegistrationData>&& registrationDatas)
-{
-#ifndef NDEBUG
-    ASSERT(m_creationThread.ptr() == &Thread::current());
-#endif
-
-    auto pendingPromise = m_pendingPromises.take(pendingPromiseIdentifier);
-    if (!pendingPromise)
-        return;
-
-    if (m_isStopped || !scriptExecutionContext()->sessionID().isValid()) {
-        pendingPromise->promise->reject(Exception { InvalidStateError });
-        return;
-    }
-
-    auto registrations = WTF::map(WTFMove(registrationDatas), [&] (auto&& registrationData) {
-        return ServiceWorkerRegistration::getOrCreate(*this->scriptExecutionContext(), *this, WTFMove(registrationData));
-    });
-
-    pendingPromise->promise->resolve<IDLSequence<IDLInterface<ServiceWorkerRegistration>>>(WTFMove(registrations));
 }
 
 void ServiceWorkerContainer::startMessages()
 {
+    m_messageQueue.resume();
 }
 
 void ServiceWorkerContainer::jobFailedWithException(ServiceWorkerJob& job, const Exception& exception)
@@ -475,13 +413,14 @@ void ServiceWorkerContainer::postMessage(MessageWithMessagePorts&& message, Serv
     MessageEventSource source = RefPtr<ServiceWorker> { ServiceWorker::getOrCreate(context, WTFMove(sourceData)) };
 
     auto messageEvent = MessageEvent::create(MessagePort::entanglePorts(context, WTFMove(message.transferredPorts)), message.message.releaseNonNull(), sourceOrigin, { }, WTFMove(source));
-    dispatchEvent(messageEvent);
+    
+    m_messageQueue.enqueueEvent(WTFMove(messageEvent));
 }
 
 void ServiceWorkerContainer::notifyRegistrationIsSettled(const ServiceWorkerRegistrationKey& registrationKey)
 {
-    callOnMainThread([connection = m_swConnection, registrationKey = registrationKey.isolatedCopy()] {
-        connection->didResolveRegistrationPromise(registrationKey);
+    callOnMainThread([sessionID = scriptExecutionContext()->sessionID(), registrationKey = registrationKey.isolatedCopy()] {
+        mainThreadConnection(sessionID).didResolveRegistrationPromise(registrationKey);
     });
 }
 
@@ -537,8 +476,8 @@ void ServiceWorkerContainer::jobFinishedLoadingScript(ServiceWorkerJob& job, con
 
     CONTAINER_RELEASE_LOG_IF_ALLOWED("jobFinishedLoadingScript: Successfuly finished fetching script for job %" PRIu64, job.identifier().toUInt64());
 
-    callOnMainThread([connection = m_swConnection, jobDataIdentifier = job.data().identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), script = script.isolatedCopy(), contentSecurityPolicy = contentSecurityPolicy.isolatedCopy(), referrerPolicy = referrerPolicy.isolatedCopy()] {
-        connection->finishFetchingScriptInServer({ jobDataIdentifier, registrationKey, script, contentSecurityPolicy, referrerPolicy, { } });
+    callOnMainThread([sessionID = scriptExecutionContext()->sessionID(), jobDataIdentifier = job.data().identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), script = script.isolatedCopy(), contentSecurityPolicy = contentSecurityPolicy.isolatedCopy(), referrerPolicy = referrerPolicy.isolatedCopy()] {
+        mainThreadConnection(sessionID).finishFetchingScriptInServer({ jobDataIdentifier, registrationKey, script, contentSecurityPolicy, referrerPolicy, { } });
     });
 }
 
@@ -560,8 +499,8 @@ void ServiceWorkerContainer::jobFailedLoadingScript(ServiceWorkerJob& job, const
 
 void ServiceWorkerContainer::notifyFailedFetchingScript(ServiceWorkerJob& job, const ResourceError& error)
 {
-    callOnMainThread([connection = m_swConnection, jobIdentifier = job.identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), error = error.isolatedCopy()] {
-        connection->failedFetchingScript(jobIdentifier, registrationKey, error);
+    callOnMainThread([sessionID = scriptExecutionContext()->sessionID(), jobIdentifier = job.identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), error = error.isolatedCopy()] {
+        mainThreadConnection(sessionID).failedFetchingScript(jobIdentifier, registrationKey, error);
     });
 }
 
@@ -585,15 +524,26 @@ bool ServiceWorkerContainer::canSuspendForDocumentSuspension() const
     return !hasPendingActivity();
 }
 
+void ServiceWorkerContainer::suspend(ReasonForSuspension)
+{
+    m_messageQueue.suspend();
+}
+
+void ServiceWorkerContainer::resume()
+{
+    m_messageQueue.resume();
+}
+
 SWClientConnection& ServiceWorkerContainer::ensureSWClientConnection()
 {
     ASSERT(scriptExecutionContext());
     ASSERT(scriptExecutionContext()->sessionID().isValid());
     if (!m_swConnection) {
-        ASSERT(scriptExecutionContext());
-        callOnMainThreadAndWait([this, sessionID = scriptExecutionContext()->sessionID()]() {
-            m_swConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(sessionID);
-        });
+        auto& context = *scriptExecutionContext();
+        if (is<WorkerGlobalScope>(context))
+            m_swConnection = &downcast<WorkerGlobalScope>(context).swClientConnection();
+        else
+            m_swConnection = &mainThreadConnection(context.sessionID());
     }
     return *m_swConnection;
 }
@@ -634,8 +584,8 @@ void ServiceWorkerContainer::stop()
 {
     m_isStopped = true;
     removeAllEventListeners();
-    m_pendingPromises.clear();
     m_readyPromise = nullptr;
+    m_messageQueue.close();
     auto jobMap = WTFMove(m_jobMap);
     for (auto& ongoingJob : jobMap.values()) {
         if (ongoingJob.job->cancelPendingLoad())
@@ -678,6 +628,16 @@ bool ServiceWorkerContainer::isAlwaysOnLoggingAllowed() const
 
     // FIXME: No logging inside service workers for now.
     return false;
+}
+
+bool ServiceWorkerContainer::addEventListener(const AtomString& eventType, Ref<EventListener>&& eventListener, const AddEventListenerOptions& options)
+{
+    // Setting the onmessage EventHandler attribute on the ServiceWorkerContainer should start the messages
+    // automatically.
+    if (eventListener->isAttribute() && eventType == eventNames().messageEvent)
+        startMessages();
+
+    return EventTargetWithInlineData::addEventListener(eventType, WTFMove(eventListener), options);
 }
 
 } // namespace WebCore

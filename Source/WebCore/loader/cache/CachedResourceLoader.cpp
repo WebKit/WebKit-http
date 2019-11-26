@@ -55,6 +55,7 @@
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTTPHeaderField.h"
+#include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
 #include "LocalizedStrings.h"
 #include "Logging.h"
@@ -791,13 +792,16 @@ ResourceErrorOr<CachedResourceHandle<CachedResource>> CachedResourceLoader::requ
     // Entry point to https://fetch.spec.whatwg.org/#main-fetch.
     std::unique_ptr<ResourceRequest> originalRequest;
     if (CachedResource::shouldUsePingLoad(type) || request.options().destination == FetchOptions::Destination::EmptyString) {
-        originalRequest = std::make_unique<ResourceRequest>(request.resourceRequest());
+        originalRequest = makeUnique<ResourceRequest>(request.resourceRequest());
         originalRequest->clearHTTPReferrer();
         originalRequest->clearHTTPOrigin();
     }
 
     if (Document* document = this->document())
         request.upgradeInsecureRequestIfNeeded(*document);
+
+    if (InspectorInstrumentation::willInterceptRequest(frame(), request.resourceRequest()))
+        request.setCachingPolicy(CachingPolicy::DisallowCaching);
 
     request.updateReferrerPolicy(document() ? document()->referrerPolicy() : ReferrerPolicy::NoReferrerWhenDowngrade);
     URL url = request.resourceRequest().url();
@@ -1379,6 +1383,9 @@ void CachedResourceLoader::decrementRequestCount(const CachedResource& resource)
 
 ResourceErrorOr<CachedResourceHandle<CachedResource>> CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequest&& request)
 {
+    if (InspectorInstrumentation::willInterceptRequest(frame(), request.resourceRequest()))
+        return makeUnexpected(ResourceError { errorDomainWebKitInternal, 0, request.resourceRequest().url(), "Inspector intercept"_s });
+
     if (request.charset().isEmpty() && (type == CachedResource::Type::Script || type == CachedResource::Type::CSSStyleSheet))
         request.setCharset(m_document->charset());
 
@@ -1391,7 +1398,7 @@ ResourceErrorOr<CachedResourceHandle<CachedResource>> CachedResourceLoader::prel
         resourceValue->increasePreloadCount();
 
         if (!m_preloads)
-            m_preloads = std::make_unique<ListHashSet<CachedResource*>>();
+            m_preloads = makeUnique<ListHashSet<CachedResource*>>();
         m_preloads->add(resourceValue.get());
     }
     return resource;
@@ -1433,7 +1440,7 @@ void CachedResourceLoader::clearPreloads(ClearPreloadsMode mode)
         ASSERT(resource);
         if (mode == ClearPreloadsMode::ClearSpeculativePreloads && resource->isLinkPreload()) {
             if (!remainingLinkPreloads)
-                remainingLinkPreloads = std::make_unique<ListHashSet<CachedResource*>>();
+                remainingLinkPreloads = makeUnique<ListHashSet<CachedResource*>>();
             remainingLinkPreloads->add(resource);
             continue;
         }

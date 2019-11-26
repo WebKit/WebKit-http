@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,16 +59,16 @@ namespace JSC {
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
     macro(promise) \
+    macro(promiseOrCapability) \
     macro(Object) \
     macro(Number) \
     macro(Array) \
     macro(ArrayBuffer) \
     macro(RegExp) \
-    macro(Promise) \
-    macro(InternalPromise) \
     macro(trunc) \
     macro(create) \
     macro(defineProperty) \
+    macro(defaultPromiseThen) \
     macro(getPrototypeOf) \
     macro(getOwnPropertyNames) \
     macro(ownKeys) \
@@ -82,15 +82,10 @@ namespace JSC {
     macro(homeObject) \
     macro(enqueueJob) \
     macro(hostPromiseRejectionTracker) \
-    macro(promiseIsHandled) \
-    macro(promiseState) \
-    macro(promiseReactions) \
-    macro(promiseResult) \
     macro(onFulfilled) \
     macro(onRejected) \
     macro(push) \
     macro(repeatCharacter) \
-    macro(capabilities) \
     macro(starDefault) \
     macro(InspectorInstrumentation) \
     macro(get) \
@@ -121,7 +116,6 @@ namespace JSC {
     macro(asyncGeneratorQueueFirst) \
     macro(asyncGeneratorQueueLast) \
     macro(asyncGeneratorQueueItemNext) \
-    macro(asyncGeneratorQueueItemPrevious) \
     macro(generatorResumeMode) \
     macro(dateTimeFormat) \
     macro(intlSubstituteValue) \
@@ -198,7 +192,7 @@ class BuiltinNames {
     WTF_MAKE_NONCOPYABLE(BuiltinNames); WTF_MAKE_FAST_ALLOCATED;
     
 public:
-    BuiltinNames(VM*, CommonIdentifiers*);
+    BuiltinNames(VM&, CommonIdentifiers*);
 
     SymbolImpl* lookUpPrivateName(const Identifier&) const;
     Identifier getPublicName(VM&, SymbolImpl*) const;
@@ -237,10 +231,10 @@ inline SymbolImpl* BuiltinNames::lookUpPrivateName(const Identifier& ident) cons
 inline Identifier BuiltinNames::getPublicName(VM& vm, SymbolImpl* symbol) const
 {
     if (symbol->isPrivate())
-        return Identifier::fromString(&vm, symbol);
+        return Identifier::fromString(vm, symbol);
     // We have special handling for well-known symbols.
     ASSERT(symbol->startsWith("Symbol."));
-    return Identifier::fromString(&vm, makeString(String(symbol->substring(strlen("Symbol."))), "Symbol"));
+    return Identifier::fromString(vm, makeString(String(symbol->substring(strlen("Symbol."))), "Symbol"));
 }
 
 inline void BuiltinNames::checkPublicToPrivateMapConsistency(UniquedStringImpl* publicName, UniquedStringImpl* privateName)

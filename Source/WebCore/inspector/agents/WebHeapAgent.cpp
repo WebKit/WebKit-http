@@ -97,14 +97,11 @@ void SendGarbageCollectionEventsTask::timerFired()
 WebHeapAgent::WebHeapAgent(WebAgentContext& context)
     : InspectorHeapAgent(context)
     , m_instrumentingAgents(context.instrumentingAgents)
-    , m_sendGarbageCollectionEventsTask(std::make_unique<SendGarbageCollectionEventsTask>(*this))
+    , m_sendGarbageCollectionEventsTask(makeUnique<SendGarbageCollectionEventsTask>(*this))
 {
 }
 
-WebHeapAgent::~WebHeapAgent()
-{
-    m_sendGarbageCollectionEventsTask->reset();
-}
+WebHeapAgent::~WebHeapAgent() = default;
 
 void WebHeapAgent::enable(ErrorString& errorString)
 {

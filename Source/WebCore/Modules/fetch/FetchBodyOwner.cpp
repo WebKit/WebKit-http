@@ -124,7 +124,9 @@ void FetchBodyOwner::blob(Ref<DeferredPromise>&& promise)
     }
 
     if (isBodyNullOrOpaque()) {
-        promise->resolve<IDLInterface<Blob>>(Blob::create(promise->sessionID(), Vector<uint8_t> { }, Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType))));
+        promise->resolveCallbackValueWithNewlyCreated<IDLInterface<Blob>>([this](auto& context) {
+            return Blob::create(context.sessionID(), Vector<uint8_t> { }, Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType)));
+        });
         return;
     }
     if (isDisturbedOrLocked()) {
@@ -244,7 +246,7 @@ void FetchBodyOwner::loadBlob(const Blob& blob, FetchBodyConsumer* consumer)
     }
 
     m_blobLoader.emplace(*this);
-    m_blobLoader->loader = std::make_unique<FetchLoader>(*m_blobLoader, consumer);
+    m_blobLoader->loader = makeUnique<FetchLoader>(*m_blobLoader, consumer);
 
     m_blobLoader->loader->start(*scriptExecutionContext(), blob);
     if (!m_blobLoader->loader->isStarted()) {

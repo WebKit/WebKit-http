@@ -1,3 +1,23 @@
+2019-09-04  Aakash Jain  <aakash_jain@apple.com>
+
+        EWS bubbles should indicate builder vs tester
+        https://bugs.webkit.org/show_bug.cgi?id=201253
+
+        Reviewed by Jonathan Bedard.
+
+        * code-review.js: Do not display the icons in status-bubbles on this page.
+        * template/en/default/attachment/edit.html.tmpl: Ditto.
+        * template/en/default/attachment/reviewform.html.tmpl: Ditto.
+
+2019-08-29  Aakash Jain  <aakash_jain@apple.com>
+
+        [EWS] Increase status-bubble iframe width on bugzilla comment review page
+        https://bugs.webkit.org/show_bug.cgi?id=201304
+
+        Reviewed by Jonathan Bedard.
+
+        * template/en/default/attachment/reviewform.html.tmpl: Increased the width from 400 to 700 pixels.
+
 2019-07-19  Aakash Jain  <aakash_jain@apple.com>
 
         [ews-app] EWS status-bubbles are sometimes multi-row with scroll-bar

@@ -88,7 +88,7 @@ public:
     void setHasPendingEvents(bool);
 
     void scriptContextFailedToStart(const Optional<ServiceWorkerJobDataIdentifier>&, const String& message);
-    void scriptContextStarted(const Optional<ServiceWorkerJobDataIdentifier>&);
+    void scriptContextStarted(const Optional<ServiceWorkerJobDataIdentifier>&, bool doesHandleFetch);
     void didFinishInstall(const Optional<ServiceWorkerJobDataIdentifier>&, bool wasSuccessful);
     void didFinishActivation();
     void contextTerminated();
@@ -112,6 +112,10 @@ public:
     WEBCORE_EXPORT SWServerToContextConnection* contextConnection();
     String userAgent() const;
 
+    bool shouldSkipFetchEvent() const { return m_shouldSkipHandleFetch; }
+    
+    SWServerRegistration* registration() const;
+
 private:
     SWServerWorker(SWServer&, SWServerRegistration&, const URL&, const String& script, const ContentSecurityPolicyResponseHeaders&, String&& referrerPolicy, WorkerType, ServiceWorkerIdentifier, HashMap<URL, ServiceWorkerContextData::ImportedScript>&&);
 
@@ -119,6 +123,7 @@ private:
 
     WeakPtr<SWServer> m_server;
     ServiceWorkerRegistrationKey m_registrationKey;
+    WeakPtr<SWServerRegistration> m_registration;
     ServiceWorkerData m_data;
     String m_script;
     ContentSecurityPolicyResponseHeaders m_contentSecurityPolicy;
@@ -130,6 +135,7 @@ private:
     bool m_isSkipWaitingFlagSet { false };
     Vector<Function<void(bool)>> m_whenActivatedHandlers;
     HashMap<URL, ServiceWorkerContextData::ImportedScript> m_scriptResourceMap;
+    bool m_shouldSkipHandleFetch;
 };
 
 } // namespace WebCore

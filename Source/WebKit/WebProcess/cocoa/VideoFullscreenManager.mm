@@ -117,7 +117,7 @@ VideoFullscreenManager::VideoFullscreenManager(WebPage& page, PlaybackSessionMan
     : m_page(&page)
     , m_playbackSessionManager(playbackSessionManager)
 {
-    WebProcess::singleton().addMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), page.pageID(), *this);
+    WebProcess::singleton().addMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), page.identifier(), *this);
 }
 
 VideoFullscreenManager::~VideoFullscreenManager()
@@ -134,13 +134,13 @@ VideoFullscreenManager::~VideoFullscreenManager()
     m_clientCounts.clear();
     
     if (m_page)
-        WebProcess::singleton().removeMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), m_page->pageID());
+        WebProcess::singleton().removeMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), m_page->identifier());
 }
 
 void VideoFullscreenManager::invalidate()
 {
     ASSERT(m_page);
-    WebProcess::singleton().removeMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), m_page->pageID());
+    WebProcess::singleton().removeMessageReceiver(Messages::VideoFullscreenManager::messageReceiverName(), m_page->identifier());
     m_page = nullptr;
 }
 
@@ -260,9 +260,9 @@ void VideoFullscreenManager::enterVideoFullscreenForVideoElement(HTMLVideoElemen
     if (oldMode == HTMLMediaElementEnums::VideoFullscreenModeNone && mode != HTMLMediaElementEnums::VideoFullscreenModeNone)
         model->setVideoLayerFrame(videoLayerFrame);
 
-    if (interface->isAnimating())
+    if (interface->animationState() != VideoFullscreenInterfaceContext::AnimationType::None)
         return;
-    interface->setIsAnimating(true);
+    interface->setAnimationState(VideoFullscreenInterfaceContext::AnimationType::IntoFullscreen);
 
     bool allowsPictureInPicture = videoElement.webkitSupportsPresentationMode(HTMLVideoElement::VideoPresentationMode::PictureInPicture);
 
@@ -296,10 +296,9 @@ void VideoFullscreenManager::exitVideoFullscreenForVideoElement(WebCore::HTMLVid
 
     interface.setTargetIsFullscreen(false);
 
-    if (interface.isAnimating())
+    if (interface.animationState() == VideoFullscreenInterfaceContext::AnimationType::FromFullscreen)
         return;
-
-    interface.setIsAnimating(true);
+    interface.setAnimationState(VideoFullscreenInterfaceContext::AnimationType::FromFullscreen);
     m_page->send(Messages::VideoFullscreenManagerProxy::ExitFullscreen(contextId, inlineVideoFrame(videoElement)));
 }
 
@@ -438,7 +437,7 @@ void VideoFullscreenManager::didEnterFullscreen(uint64_t contextId)
 
     auto [model, interface] = ensureModelAndInterface(contextId);
 
-    interface->setIsAnimating(false);
+    interface->setAnimationState(VideoFullscreenInterfaceContext::AnimationType::None);
     interface->setIsFullscreen(false);
 
     RefPtr<HTMLVideoElement> videoElement = model->videoElement();
@@ -501,7 +500,7 @@ void VideoFullscreenManager::didCleanupFullscreen(uint64_t contextId)
         interface->setLayerHostingContext(nullptr);
     }
 
-    interface->setIsAnimating(false);
+    interface->setAnimationState(VideoFullscreenInterfaceContext::AnimationType::None);
     interface->setIsFullscreen(false);
     HTMLMediaElementEnums::VideoFullscreenMode mode = interface->fullscreenMode();
     bool standby = interface->fullscreenStandby();

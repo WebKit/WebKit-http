@@ -25,29 +25,76 @@ import {DOM, REF} from '/library/js/Ref.js';
 import {QueryModifier} from '/assets/js/common.js';
 import {Configuration} from '/assets/js/configuration.js'
 
-function Drawer(controls = []) {
-    const COLLAPSED = false;
-    const EXTENDED = true;
-    var drawerState = COLLAPSED;
+function setEnableRecursive(element, state) {
+    element.disabled = !state;
+    if (!state)
+        element.classList.add("disabled");
+    else
+        element.classList.remove("disabled");
+
+    for (let node of element.children)
+        setEnableRecursive(node, state);
+}
+
+function Drawer(controls = [], onCollapseChange) {
+    const HIDDEN = false;
+    const VISIBLE = true;
+    let drawerState = VISIBLE;
+    let main = null;
+
+    const sidebarControl = document.getElementsByClassName('mobile-sidebar-control')[0];
+    sidebarControl.classList.add('display');
 
     const drawerRef = REF.createRef({
         state: drawerState,
         onStateUpdate: (element, state) => {
-            if (state)
-                element.classList.add("display");
-            else
-                element.classList.remove("display");
+            if (state) {
+                element.classList.remove("hidden");
+                if (main)
+                    main.classList.remove("hidden");
+            } else {
+                element.classList.add("hidden");
+                if (main)
+                    main.classList.add("hidden");
+            }
+
+            for (let node of element.children) {
+                if (node.classList.contains("list"))
+                    setEnableRecursive(node, state);
+            }
+            
+            if (onCollapseChange)
+                onCollapseChange();
+        },
+        onElementMount: (element) => {
+            let candidates = document.getElementsByClassName("main");
+            if (candidates.length)
+                main = candidates[0];
+
+            sidebarControl.onclick = () => {
+                if (element.style.display)
+                    element.style.display = null;
+                else {
+                    for (let node of element.children) {
+                        if (node.classList.contains("list"))
+                            setEnableRecursive(node, true);
+                    }
+                    element.style.display = 'block';
+                }
+            }
         }
     });
+
     const drawerControllerRef = REF.createRef({
         state: drawerState,
         onStateUpdate: (element, state) => {
             if (state) {
-                element.classList.remove("collapsed");
-                element.classList.add("extended");
-            } else {
-                element.classList.remove("extended");
-                element.classList.add("collapsed");
+                element.innerHTML = 'Collapse &gt';
+                element.style.textAlign = 'center';
+            }
+            else{
+                element.innerHTML = '&lt';
+                element.style.textAlign = 'left';
             }
         },
         onElementMount: (element) => {
@@ -59,14 +106,14 @@ function Drawer(controls = []) {
         }
     });
 
-    return `<div class="drawer left under-topbar-with-actions" ref="${drawerRef}">
+    return `<div class="sidebar right under-topbar-with-actions unselectable" ref="${drawerRef}">
+            <button class="button desktop-control" ref="${drawerControllerRef}" style="width:96%; margin: 10px 2% 10px 2%;"></button>
             ${controls.map(control => {
                 return `<div class="list">
                         <div class="item">${control}</div>
                     </div>`;
                 }).join('')}
-        </div>
-        <button class="drawer-control collapsed" ref="${drawerControllerRef}"><div></div></button>`;
+        </div>`;
 }
 
 function BranchSelector(callback) {
@@ -95,6 +142,7 @@ function BranchSelector(callback) {
                     return `<option selected value="${branch}">${branch}</option>`;
                 return `<option value="${branch}">${branch}</option>`;
             }).join('');
+            element.parentElement.parentElement.parentElement.style.display = state.length > 1 ? null : 'none';
         },
     });
 
@@ -123,9 +171,7 @@ function BranchSelector(callback) {
         </div>`;
 }
 
-function LimitSlider(callback, max = 1000, defaultValue = 100) {
-    const maxRange = 1000;
-    const scale = (Math.log(max) - Math.log(1)) / maxRange;
+function LimitSlider(callback, max = 10000, defaultValue = 1000) {
     const limitModifier = new QueryModifier('limit');
     const startingValue = limitModifier.current().length ? limitModifier.current()[limitModifier.current().length -1]:defaultValue;
 
@@ -147,17 +193,17 @@ function LimitSlider(callback, max = 1000, defaultValue = 100) {
         state: startingValue,
         onElementMount: (element) => {
             element.oninput = () => {
-                const newLimit = Math.ceil(Math.exp(Math.log(1) + scale * element.value));
+                const newLimit = Math.ceil(element.value);
                 limitModifier.replace(newLimit);
                 numberRef.setState(newLimit);
                 callback();
             }
         },
-        onStateUpdate: (element, state) => {element.value = (Math.log(state) - Math.log(1)) / scale;}
+        onStateUpdate: (element, state) => {element.value = state;}
     });
     return `<div class="input">
             <label style="color:var(--boldInverseColor)">Limit:</label>
-            <input type="range" min="0" max="${maxRange}" ref="${sliderRef}" style="background:var(--boldInverseColor)"></input>
+            <input type="range" min="0" max="${max}" ref="${sliderRef}" style="background:var(--boldInverseColor)"></input>
             <input type="number" min="1" ref="${numberRef}" pattern="^[0-9]"></input>
         </div>`
 }
@@ -226,7 +272,7 @@ function ConfigurationSelectors(callback) {
                     }
                 });
 
-                DOM.inject(element, `<a style="cursor: pointer;" class="text medium" ref="${expander}">+</a>
+                DOM.inject(element, `<a class="link-button text medium" ref="${expander}">+</a>
                     ${details.name} <br>
                     ${options.map(option => {
                         let isChecked = false;
@@ -275,7 +321,7 @@ function ConfigurationSelectors(callback) {
             ref.setState(configurations);
         });
 
-        return `<div ref="${ref}"></div>`;
+        return `<div style="font-size: var(--smallSize);" ref="${ref}"></div>`;
     }).join('')
 }
 

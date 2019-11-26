@@ -99,18 +99,21 @@ void NetworkDataTask::scheduleFailure(FailureType type)
 
 void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
 {
-    ASSERT(m_client);
     if (response.isHTTP09()) {
         auto url = response.url();
         Optional<uint16_t> port = url.port();
         if (port && !WTF::isDefaultPortForProtocol(port.value(), url.protocol())) {
             completionHandler(PolicyAction::Ignore);
             cancel();
-            m_client->didCompleteWithError({ String(), 0, url, "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9." });
+            if (m_client)
+                m_client->didCompleteWithError({ String(), 0, url, "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9." });
             return;
         }
     }
-    m_client->didReceiveResponse(WTFMove(response), WTFMove(completionHandler));
+    if (m_client)
+        m_client->didReceiveResponse(WTFMove(response), WTFMove(completionHandler));
+    else
+        completionHandler(PolicyAction::Ignore);
 }
 
 bool NetworkDataTask::shouldCaptureExtraNetworkLoadMetrics() const
@@ -148,6 +151,11 @@ void NetworkDataTask::failureTimerFired()
 String NetworkDataTask::description() const
 {
     return emptyString();
+}
+
+PAL::SessionID NetworkDataTask::sessionID() const
+{
+    return m_session->sessionID();
 }
 
 } // namespace WebKit

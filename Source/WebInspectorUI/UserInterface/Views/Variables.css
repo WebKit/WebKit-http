@@ -50,6 +50,9 @@
     --background-color-content: white;
     --background-color-code: white;
 
+    --background-color-alternate: hsla(0, 0%, var(--foreground-lightness), 0.05);
+    --background-color-selected: hsla(0, 0%, var(--foreground-lightness), 0.1);
+
     /* Gray background with lighter foreground. In dark mode this is lighter. */
     --gray-background-color: hsl(0, 0%, 66%);
     --gray-foreground-color: white;
@@ -85,10 +88,15 @@
     --panel-background-color: hsl(0, 0%, 93%);
     --panel-background-color-light: hsl(0, 0%, 96%);
 
+    --warning-color: hsl(50, 100%, 94%);
     --warning-background-color: hsl(43, 97%, 84%);
     --warning-background-color-secondary: hsl(51, 87%, 93%);
+
     --error-background-color: hsl(11, 100%, 80%);
     --error-background-color-secondary: hsl(15, 100%, 90%);
+
+    --yellow-highlight-background-color: var(--warning-color);
+    --yellow-highlight-text-color: var(--text-color);
 
     --console-secondary-text-color: hsla(0, 0%, 0%, 0.33);
     --console-prompt-min-height: 30px;
@@ -103,6 +111,7 @@
     --value-changed-highlight: hsla(83, 100%, 48%, 0.4);
 
     --syntax-highlight-number-color: hsl(248, 100%, 40%);
+    --syntax-highlight-bigint-color: hsl(192, 100%, 38%);
     --syntax-highlight-boolean-color: hsl(309, 85%, 35%);
     --syntax-highlight-string-color: hsl(1, 79%, 42%);
     --syntax-highlight-link-color: hsl(240, 100%, 52%);
@@ -166,8 +175,8 @@
     --network-request-color: hsl(118, 56%, 65%);
     --network-response-color: hsl(202, 61%, 59%);
 
-    --even-zebra-stripe-row-background-color: white;
-    --odd-zebra-stripe-row-background-color: hsl(0, 0%, 95%);
+    --even-zebra-stripe-row-background-color: hsl(0, 0%, 95%);
+    --odd-zebra-stripe-row-background-color: white;
     --transparent-stripe-background-gradient: linear-gradient(to bottom, transparent, transparent 50%, hsla(0, 0%, 0%, 0.03) 50%, hsla(0, 0%, 0%, 0.03)) top left / 100% 40px;
 
     --toolbar-height: 36px;
@@ -201,7 +210,6 @@ body.window-inactive * {
 }
 
 @media (prefers-color-scheme: dark) {
-
     :root {
         color: var(--text-color);
 
@@ -231,9 +239,6 @@ body.window-inactive * {
         --gray-background-color: hsl(0, 0%, 50%);
 
         --link-text-color: var(--text-color-secondary);
-
-        --background-color-alternate: hsla(0, 0%, var(--foreground-lightness), 0.05);
-        --background-color-selected: hsla(0, 0%, var(--foreground-lightness), 0.1);
 
         --color-button: hsl(0, 0%, 99%);
         --color-button-active: var(--text-color-active);
@@ -282,13 +287,13 @@ body.window-inactive * {
         --value-visual-highlight: var(--yellow-highlight-background-color);
 
         --syntax-highlight-number-color: hsl(276, 100%, 85%);
+        --syntax-highlight-bigint-color: hsl(195, 100%, 85%);
         --syntax-highlight-boolean-color: hsl(299, 71%, 80%);
         --syntax-highlight-string-color: hsl(28, 84%, 63%);
         --syntax-highlight-link-color: hsl(223, 100%, 77%);
         --syntax-highlight-regexp-color: hsl(20, 100%, 64%);
         --syntax-highlight-symbol-color: hsl(172, 45%, 65%);
         --syntax-highlight-comment-color: hsl(119, 40%, 72%);
-        --syntax-highlight-regex-group-color: var(--text-color-gray-medium);
 
         --console-secondary-text-color: hsla(0, 0%, 100%, 0.45);
 
@@ -311,8 +316,8 @@ body.window-inactive * {
         --cpu-medium-color: hsl(46, 91%, 62%);
         --cpu-high-color: hsl(6, 79%, 57%);
 
-        --even-zebra-stripe-row-background-color: var(--background-color);
-        --odd-zebra-stripe-row-background-color: var(--background-color-secondary);
+        --even-zebra-stripe-row-background-color: var(--background-color-secondary);
+        --odd-zebra-stripe-row-background-color: var(--background-color);
         --transparent-stripe-background-gradient: linear-gradient(to bottom, transparent, transparent 50%, hsla(0, 0%, 100%, 0.03) 50%, hsla(0, 0%, 100%, 0.03)) top left / 100% 40px;
 
         --search-highlight-text-color: hsl(60, 100%, 50%);

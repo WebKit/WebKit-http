@@ -625,8 +625,14 @@ static bool endsOfNodeAreVisuallyDistinctPositions(Node* node)
     if (is<HTMLTableElement>(*node))
         return false;
     
+    if (!node->renderer()->isReplaced() || !canHaveChildrenForEditing(*node) || !downcast<RenderBox>(*node->renderer()).height())
+        return false;
+
     // There is a VisiblePosition inside an empty inline-block container.
-    return node->renderer()->isReplaced() && canHaveChildrenForEditing(*node) && downcast<RenderBox>(*node->renderer()).height() && !node->firstChild();
+    if (!node->hasChildNodes())
+        return true;
+
+    return !Position::hasRenderedNonAnonymousDescendantsWithHeight(downcast<RenderElement>(*node->renderer()));
 }
 
 static Node* enclosingVisualBoundary(Node* node)
@@ -867,7 +873,10 @@ Position Position::downstream(EditingBoundaryCrossingRule rule) const
             unsigned textOffset = currentPosition.offsetInLeafNode();
             auto lastTextBox = textRenderer.lastTextBox();
             for (auto* box = textRenderer.firstTextBox(); box; box = box->nextTextBox()) {
-                if (textOffset <= box->end()) {
+                if (!box->len() && textOffset == box->start())
+                    return currentPosition;
+            
+                if (textOffset < box->end()) {
                     if (textOffset >= box->start())
                         return currentPosition;
                     continue;

@@ -161,7 +161,7 @@ static NEVER_INLINE HashMap<AtomStringImpl*, CSSPropertyID> createAttributeNameT
 SVGElement::SVGElement(const QualifiedName& tagName, Document& document)
     : StyledElement(tagName, document, CreateSVGElement)
     , SVGLangSpace(this)
-    , m_propertyAnimatorFactory(std::make_unique<SVGPropertyAnimatorFactory>())
+    , m_propertyAnimatorFactory(makeUnique<SVGPropertyAnimatorFactory>())
 {
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
@@ -196,7 +196,7 @@ void SVGElement::willRecalcStyle(Style::Change change)
 SVGElementRareData& SVGElement::ensureSVGRareData()
 {
     if (!m_svgRareData)
-        m_svgRareData = std::make_unique<SVGElementRareData>();
+        m_svgRareData = makeUnique<SVGElementRareData>();
     return *m_svgRareData;
 }
 
@@ -983,26 +983,6 @@ void SVGElement::updateRelativeLengthsInformation(bool hasRelativeLengths, SVGEl
     }
 }
 
-bool SVGElement::hasFocusEventListeners() const
-{
-    Element* eventTarget = const_cast<SVGElement*>(this);
-    return eventTarget->hasEventListeners(eventNames().focusinEvent)
-        || eventTarget->hasEventListeners(eventNames().focusoutEvent)
-        || eventTarget->hasEventListeners(eventNames().focusEvent)
-        || eventTarget->hasEventListeners(eventNames().blurEvent);
-}
-
-bool SVGElement::isMouseFocusable() const
-{
-    if (!isFocusable())
-        return false;
-    Element* eventTarget = const_cast<SVGElement*>(this);
-    return hasFocusEventListeners()
-        || eventTarget->hasEventListeners(eventNames().keydownEvent)
-        || eventTarget->hasEventListeners(eventNames().keyupEvent)
-        || eventTarget->hasEventListeners(eventNames().keypressEvent);
-}
-    
 void SVGElement::accessKeyAction(bool sendMouseEvents)
 {
     dispatchSimulatedClick(0, sendMouseEvents ? SendMouseUpDownEvents : SendNoEvents);

@@ -2811,11 +2811,9 @@ fast/history/location-replace-hash.html [ Skip ]
 fast/history/saves-state-after-fragment-nav.html [ Skip ]
 
 fast/images/image-controls-basic.html [ Failure ]
-fast/images/exif-orientation-composited.html [ Failure ]
 webkit.org/b/140516 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]  # Crashing
 fast/images/pdf-as-image-with-annotations.html [ ImageOnlyFailure ]
 fast/images/support-broken-image-delegate.html [ Failure ]
-fast/images/exif-orientation.html [ Failure ]
 
 fast/inline/positionedLifetime.html [ Failure ]
 
@@ -4425,11 +4423,16 @@ webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ S
 webkit.org/b/197371 http/wpt/prefetch/link-prefetch-main-resource-redirect.html [ Skip ]
 webkit.org/b/199499 http/wpt/prefetch/link-prefetch-skip-disk-cache.html [ Skip ]
 
-webkit.org/b/199632 http/wpt/prefetch/beforeload.html [ Skip ]
-webkit.org/b/199632 http/wpt/prefetch/beforeload-dynamic.html [ Skip ]
+webkit.org/b/199632 http/wpt/prefetch/load-events.html [ Skip ]
+webkit.org/b/199632 http/wpt/prefetch/load-events-dynamic.html [ Skip ]
 
 webkit.org/b/198112 http/tests/security/showModalDialog-sync-cross-origin-page-load2.html [ Skip ]
 
 webkit.org/b/198679 fast/events/fire-mousedown-while-pressing-mouse-button.html [ Failure ]
 
 imported/w3c/web-platform-tests/wasm [ Skip ]
+
+# Variation selectors are not implemented on Windows.
+webkit.org/b/220830 fast/text/emoji-variation-selector.html [ ImageOnlyFailure ]
+
+webkit.org/b/201491 fast/block/float/float-with-anonymous-previous-sibling.html [ Pass ImageOnlyFailure ]

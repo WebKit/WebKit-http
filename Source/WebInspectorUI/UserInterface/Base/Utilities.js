@@ -690,15 +690,13 @@ Object.defineProperty(Array.prototype, "insertAtIndex",
     }
 });
 
-Object.defineProperty(Array.prototype, "keySet",
+Object.defineProperty(Array.prototype, "pushAll",
 {
-    value()
+    value(iterable)
     {
-        let keys = Object.create(null);
-        for (var i = 0; i < this.length; ++i)
-            keys[this[i]] = true;
-        return keys;
-    }
+        for (let item of iterable)
+            this.push(item);
+    },
 });
 
 Object.defineProperty(Array.prototype, "partition",

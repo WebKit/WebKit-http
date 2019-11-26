@@ -113,9 +113,13 @@ WI.Setting = class Setting extends WI.Object
 
         this._value = value;
 
+        this.save();
+    }
+
+    save()
+    {
         if (!window.InspectorTest && window.localStorage) {
             try {
-                // Use Object.shallowEqual to properly compare objects.
                 if (Object.shallowEqual(this._value, this._defaultValue))
                     delete window.localStorage[this._localStorageKey];
                 else
@@ -162,7 +166,8 @@ WI.settings = {
     showAllAnimationFramesBreakpoint: new WI.Setting("show-all-animation-frames-breakpoint", false),
     showAllIntervalsBreakpoint: new WI.Setting("show-all-inteverals-breakpoint", false),
     showAllListenersBreakpoint: new WI.Setting("show-all-listeners-breakpoint", false),
-    showAllRequestsBreakpoint: new WI.Setting("show-all-requests-breakpoint", true),
+    showAllMicrotasksBreakpoint: new WI.Setting("show-all-microtasks-breakpoint", false),
+    showAllRequestsBreakpoint: new WI.Setting("show-all-requests-breakpoint", false),
     showAllTimeoutsBreakpoint: new WI.Setting("show-all-timeouts-breakpoint", false),
     showAssertionFailuresBreakpoint: new WI.Setting("show-assertion-failures-breakpoint", true),
     showCanvasPath: new WI.Setting("show-canvas-path", false),
@@ -188,6 +193,7 @@ WI.settings = {
     experimentalEnableStylesJumpToEffective: new WI.Setting("experimental-styles-jump-to-effective", false),
 
     // Protocol
+    protocolLogAsText: new WI.Setting("protocol-log-as-text", false),
     protocolAutoLogMessages: new WI.Setting("protocol-auto-log-messages", false),
     protocolAutoLogTimeStats: new WI.Setting("protocol-auto-log-time-stats", false),
     protocolFilterMultiplexingBackendMessages: new WI.Setting("protocol-filter-multiplexing-backend-messages", true),

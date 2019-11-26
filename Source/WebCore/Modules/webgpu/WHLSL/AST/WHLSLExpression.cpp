@@ -72,9 +72,6 @@ void Expression::destroy(Expression& expression)
     case Expression::Kind::MakePointer:
         delete &downcast<MakePointerExpression>(expression);
         break;
-    case Expression::Kind::NullLiteral:
-        delete &downcast<NullLiteral>(expression);
-        break;
     case Expression::Kind::Dot:
         delete &downcast<DotExpression>(expression);
         break;
@@ -138,9 +135,6 @@ void Expression::destruct(Expression& expression)
     case Expression::Kind::MakePointer:
         downcast<MakePointerExpression>(expression).~MakePointerExpression();
         break;
-    case Expression::Kind::NullLiteral:
-        downcast<NullLiteral>(expression).~NullLiteral();
-        break;
     case Expression::Kind::Dot:
         downcast<DotExpression>(expression).~DotExpression();
         break;
@@ -168,31 +162,46 @@ void Expression::destruct(Expression& expression)
     }
 }
 
-String PropertyAccessExpression::getterFunctionName() const
+bool Expression::mayBeEffectful() const
 {
-    if (is<DotExpression>(*this))
-        return downcast<DotExpression>(*this).getterFunctionName();
-    if (is<IndexExpression>(*this))
-        return downcast<IndexExpression>(*this).getterFunctionName();
-    RELEASE_ASSERT_NOT_REACHED();
-}
+    auto& expression = const_cast<Expression&>(*this);
 
-String PropertyAccessExpression::setterFunctionName() const
-{
-    if (is<DotExpression>(*this))
-        return downcast<DotExpression>(*this).setterFunctionName();
-    if (is<IndexExpression>(*this))
-        return downcast<IndexExpression>(*this).setterFunctionName();
-    RELEASE_ASSERT_NOT_REACHED();
-}
+    switch (expression.kind()) {
+    case Expression::Kind::BooleanLiteral:
+    case Expression::Kind::FloatLiteral:
+    case Expression::Kind::IntegerLiteral:
+    case Expression::Kind::UnsignedIntegerLiteral:
+    case Expression::Kind::EnumerationMemberLiteral:
+    case Expression::Kind::GlobalVariableReference:
+    case Expression::Kind::VariableReference:
+        return false;
 
-String PropertyAccessExpression::anderFunctionName() const
-{
-    if (is<DotExpression>(*this))
-        return downcast<DotExpression>(*this).anderFunctionName();
-    if (is<IndexExpression>(*this))
-        return downcast<IndexExpression>(*this).anderFunctionName();
-    RELEASE_ASSERT_NOT_REACHED();
+    case Expression::Kind::Dereference:
+        return downcast<DereferenceExpression>(expression).pointer().mayBeEffectful();
+
+    case Expression::Kind::Logical:
+        return downcast<LogicalExpression>(expression).left().mayBeEffectful() || downcast<LogicalExpression>(expression).right().mayBeEffectful();
+
+    case Expression::Kind::LogicalNot:
+        return downcast<LogicalNotExpression>(expression).operand().mayBeEffectful();
+
+    case Expression::Kind::MakeArrayReference:
+        return downcast<MakeArrayReferenceExpression>(expression).leftValue().mayBeEffectful();
+
+    case Expression::Kind::MakePointer:
+        return downcast<MakePointerExpression>(expression).leftValue().mayBeEffectful();
+
+    case Expression::Kind::Dot:
+        return downcast<DotExpression>(expression).base().mayBeEffectful();
+
+    case Expression::Kind::Index:
+        return downcast<IndexExpression>(expression).base().mayBeEffectful() || downcast<IndexExpression>(expression).indexExpression().mayBeEffectful();
+
+    default:
+        break;
+    }
+
+    return true;
 }
 
 } // namespace AST

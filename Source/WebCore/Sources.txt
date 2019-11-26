@@ -67,10 +67,10 @@ Modules/fetch/FetchRequest.cpp
 Modules/fetch/FetchResponse.cpp
 Modules/fetch/WorkerGlobalScopeFetch.cpp
 
-Modules/geolocation/Coordinates.cpp
 Modules/geolocation/GeoNotifier.cpp
 Modules/geolocation/Geolocation.cpp
 Modules/geolocation/GeolocationController.cpp
+Modules/geolocation/GeolocationCoordinates.cpp
 Modules/geolocation/NavigatorGeolocation.cpp
 
 Modules/indexeddb/DOMWindowIndexedDatabase.cpp
@@ -160,8 +160,6 @@ Modules/mediasource/VideoPlaybackQuality.cpp
 Modules/mediastream/CanvasCaptureMediaStreamTrack.cpp
 Modules/mediastream/MediaDeviceInfo.cpp
 Modules/mediastream/MediaDevices.cpp
-Modules/mediastream/MediaDevicesEnumerationRequest.cpp
-Modules/mediastream/MediaDevicesRequest.cpp
 Modules/mediastream/MediaStream.cpp
 Modules/mediastream/MediaStreamTrack.cpp
 Modules/mediastream/MediaStreamTrackEvent.cpp
@@ -305,6 +303,7 @@ Modules/websockets/WebSocketHandshake.cpp
 Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webgpu/GPUCanvasContext.cpp
+Modules/webgpu/GPUUncapturedErrorEvent.cpp
 Modules/webgpu/NavigatorGPU.cpp
 Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp
 Modules/webgpu/WHLSL/WHLSLStandardLibraryUtilities.cpp
@@ -318,10 +317,8 @@ Modules/webgpu/WHLSL/WHLSLChecker.cpp
 Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp
 Modules/webgpu/WHLSL/WHLSLCheckDuplicateFunctions.cpp
 Modules/webgpu/WHLSL/WHLSLRecursiveTypeChecker.cpp
-Modules/webgpu/WHLSL/WHLSLSynthesizeArrayOperatorLength.cpp
 Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp
 Modules/webgpu/WHLSL/WHLSLSynthesizeEnumerationFunctions.cpp
-Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp
 Modules/webgpu/WHLSL/WHLSLIntrinsics.cpp
 Modules/webgpu/WHLSL/WHLSLStatementBehaviorChecker.cpp
 Modules/webgpu/WHLSL/WHLSLNameContext.cpp
@@ -333,6 +330,7 @@ Modules/webgpu/WHLSL/WHLSLVisitor.cpp
 Modules/webgpu/WHLSL/WHLSLSemanticMatcher.cpp
 Modules/webgpu/WHLSL/WHLSLLiteralTypeChecker.cpp
 Modules/webgpu/WHLSL/WHLSLHighZombieFinder.cpp
+Modules/webgpu/WHLSL/WHLSLProgram.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLTypeNamer.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLMetalCodeGenerator.cpp
@@ -349,7 +347,6 @@ Modules/webgpu/WHLSL/AST/WHLSLSpecializationConstantSemantic.cpp
 Modules/webgpu/WHLSL/AST/WHLSLStageInOutSemantic.cpp
 Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.cpp
-Modules/webgpu/WHLSL/AST/WHLSLNullLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLStatement.cpp
 Modules/webgpu/WHLSL/AST/WHLSLType.cpp
@@ -375,7 +372,7 @@ Modules/webgpu/WebGPUDeviceErrorScopes.cpp
 Modules/webgpu/WebGPUQueue.cpp
 Modules/webgpu/WebGPUPipelineLayout.cpp
 Modules/webgpu/WebGPUPipelineLayoutDescriptor.cpp
-Modules/webgpu/WebGPUPipelineStageDescriptor.cpp
+Modules/webgpu/WebGPUProgrammableStageDescriptor.cpp
 Modules/webgpu/WebGPUProgrammablePassEncoder.cpp
 Modules/webgpu/WebGPURenderPassDescriptor.cpp
 Modules/webgpu/WebGPURenderPassEncoder.cpp
@@ -976,6 +973,7 @@ dom/messageports/MessagePortChannelProvider.cpp
 dom/messageports/MessagePortChannelProviderImpl.cpp
 dom/messageports/MessagePortChannelRegistry.cpp
 dom/messageports/MessageWithMessagePorts.cpp
+dom/messageports/WorkerMessagePortChannelProvider.cpp
 
 domjit/DOMJITHelpers.cpp
 domjit/JSDocumentDOMJIT.cpp
@@ -1059,6 +1057,7 @@ fileapi/FileList.cpp
 fileapi/FileReader.cpp
 fileapi/FileReaderLoader.cpp
 fileapi/FileReaderSync.cpp
+fileapi/NetworkSendQueue.cpp
 fileapi/ThreadableBlobRegistry.cpp
 
 history/BackForwardController.cpp
@@ -1243,6 +1242,7 @@ html/canvas/EXTFragDepth.cpp
 html/canvas/EXTShaderTextureLOD.cpp
 html/canvas/EXTsRGB.cpp
 html/canvas/EXTTextureFilterAnisotropic.cpp
+html/canvas/GPUBasedCanvasRenderingContext.cpp
 html/canvas/ImageBitmapRenderingContext.cpp
 html/canvas/OESElementIndexUint.cpp
 html/canvas/OESStandardDerivatives.cpp
@@ -1339,6 +1339,8 @@ inspector/InspectorFrontendHost.cpp
 inspector/InspectorHistory.cpp
 inspector/InspectorInstrumentation.cpp
 inspector/InspectorInstrumentationCookie.cpp
+inspector/InspectorInstrumentationPublic.cpp
+inspector/InspectorInstrumentationWebKit.cpp
 inspector/InspectorNodeFinder.cpp
 inspector/InspectorOverlay.cpp
 inspector/InspectorShaderProgram.cpp
@@ -1373,6 +1375,7 @@ inspector/agents/WebHeapAgent.cpp
 
 inspector/agents/page/PageAuditAgent.cpp
 inspector/agents/page/PageConsoleAgent.cpp
+inspector/agents/page/PageDOMDebuggerAgent.cpp
 inspector/agents/page/PageDebuggerAgent.cpp
 inspector/agents/page/PageHeapAgent.cpp
 inspector/agents/page/PageNetworkAgent.cpp
@@ -1381,6 +1384,7 @@ inspector/agents/page/PageRuntimeAgent.cpp
 inspector/agents/worker/ServiceWorkerAgent.cpp
 inspector/agents/worker/WorkerAuditAgent.cpp
 inspector/agents/worker/WorkerConsoleAgent.cpp
+inspector/agents/worker/WorkerDOMDebuggerAgent.cpp
 inspector/agents/worker/WorkerDebuggerAgent.cpp
 inspector/agents/worker/WorkerNetworkAgent.cpp
 inspector/agents/worker/WorkerRuntimeAgent.cpp
@@ -1418,6 +1422,7 @@ layout/layouttree/LayoutContainer.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 layout/tableformatting/TableFormattingContext.cpp
+layout/tableformatting/TableFormattingContextGeometry.cpp
 layout/tableformatting/TableFormattingState.cpp
 layout/tableformatting/TableGrid.cpp
 layout/tableformatting/TableInvalidation.cpp
@@ -2153,6 +2158,7 @@ rendering/TrailingFloatsRootInlineBox.cpp
 
 rendering/line/LineBreaker.cpp
 rendering/line/LineInfo.cpp
+rendering/line/LineLayoutInterfaceTextBoxes.cpp
 rendering/line/LineWidth.cpp
 rendering/line/TrailingObjects.cpp
 
@@ -2485,6 +2491,7 @@ workers/service/ServiceWorkerRegistrationData.cpp
 workers/service/ServiceWorkerRegistrationKey.cpp
 workers/service/ServiceWorkerRegistrationOptions.cpp
 workers/service/ServiceWorkerWindowClient.cpp
+workers/service/WorkerSWClientConnection.cpp
 
 workers/service/context/ServiceWorkerDebuggable.cpp
 workers/service/context/ServiceWorkerFetch.cpp
@@ -2559,8 +2566,9 @@ StylePropertyShorthandFunctions.cpp
 UserAgentStyleSheetsData.cpp
 WebCoreJSBuiltinInternals.cpp
 WebCoreJSBuiltins.cpp
-JSSVGElementWrapperFactory.cpp
 JSHTMLElementWrapperFactory.cpp
+JSMathMLElementWrapperFactory.cpp
+JSSVGElementWrapperFactory.cpp
 
 // IDL bindings
 // FIXME: We should probably move these into ${DerivedSources}/bindings/js/ so they get bundled with the custom bindings.
@@ -2673,7 +2681,6 @@ JSCompositeOperation.cpp
 JSCompositeOperationOrAuto.cpp
 JSComputedEffectTiming.cpp
 JSConvolverNode.cpp
-JSCoordinates.cpp
 JSCountQueuingStrategy.cpp
 JSCredentialCreationOptions.cpp
 JSCredentialRequestOptions.cpp
@@ -2806,7 +2813,7 @@ JSFontFaceSet.cpp
 JSGPUCanvasContext.cpp
 JSGPUColor.cpp
 JSGPUColorStateDescriptor.cpp
-JSGPUColorWriteBits.cpp
+JSGPUColorWrite.cpp
 JSGPUBindGroupLayoutBinding.cpp
 JSGPUBindGroupLayoutDescriptor.cpp
 JSGPUBlendDescriptor.cpp
@@ -2821,18 +2828,21 @@ JSGPUOrigin3D.cpp
 JSGPUOutOfMemoryError.cpp
 JSGPURequestAdapterOptions.cpp
 JSGPUSamplerDescriptor.cpp
-JSGPUShaderStageBit.cpp
+JSGPUShaderStage.cpp
 JSGPUStoreOp.cpp
 JSGPUTextureDescriptor.cpp
 JSGPUTextureFormat.cpp
 JSGPUTextureUsage.cpp
+JSGPUUncapturedErrorEvent.cpp
 JSGPUValidationError.cpp
 JSGPUVertexAttributeDescriptor.cpp
 JSGPUVertexBufferDescriptor.cpp
 JSGPUVertexInputDescriptor.cpp
 JSGainNode.cpp
 JSGeolocation.cpp
-JSGeoposition.cpp
+JSGeolocationCoordinates.cpp
+JSGeolocationPosition.cpp
+JSGeolocationPositionError.cpp
 JSGlobalCrypto.cpp
 JSGlobalEventHandlers.cpp
 JSGlobalPerformance.cpp
@@ -2887,6 +2897,7 @@ JSHTMLMenuItemElement.cpp
 JSHTMLMetaElement.cpp
 JSHTMLMeterElement.cpp
 JSHTMLModElement.cpp
+JSHTMLOrForeignElement.cpp
 JSHTMLOListElement.cpp
 JSHTMLObjectElement.cpp
 JSHTMLOptGroupElement.cpp
@@ -2923,6 +2934,8 @@ JSHashChangeEvent.cpp
 JSHistory.cpp
 JSHkdfParams.cpp
 JSHmacKeyParams.cpp
+JSMathMLElement.cpp
+JSMathMLMathElement.cpp
 JSIDBCursor.cpp
 JSIDBCursorDirection.cpp
 JSIDBCursorWithValue.cpp
@@ -3073,7 +3086,6 @@ JSPlaybackDirection.cpp
 JSPointerEvent.cpp
 JSPopStateEvent.cpp
 JSPositionCallback.cpp
-JSPositionError.cpp
 JSPositionErrorCallback.cpp
 JSPositionOptions.cpp
 JSProcessingInstruction.cpp
@@ -3381,11 +3393,12 @@ JSWebGPUComputePipeline.cpp
 JSWebGPUComputePipelineDescriptor.cpp
 JSWebGPUDevice.cpp
 JSWebGPUDeviceErrorScopes.cpp
+JSWebGPUDeviceEventHandler.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
 JSWebGPUPipelineLayout.cpp
 JSWebGPUPipelineLayoutDescriptor.cpp
-JSWebGPUPipelineStageDescriptor.cpp
+JSWebGPUProgrammableStageDescriptor.cpp
 JSWebGPUProgrammablePassEncoder.cpp
 JSWebGPURenderPassDescriptor.cpp
 JSWebGPURenderPassEncoder.cpp

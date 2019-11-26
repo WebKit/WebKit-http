@@ -111,7 +111,7 @@ void InjectedBundle::initialize(WKBundleRef bundle, WKTypeRef initializationUser
 void InjectedBundle::didCreatePage(WKBundlePageRef page)
 {
     bool isMainPage = m_pages.isEmpty();
-    m_pages.append(std::make_unique<InjectedBundlePage>(page));
+    m_pages.append(makeUnique<InjectedBundlePage>(page));
 
     setUpInjectedBundleClients(page);
 
@@ -164,7 +164,11 @@ void InjectedBundle::setUpInjectedBundleClients(WKBundlePageRef page)
 InjectedBundlePage* InjectedBundle::page() const
 {
     // It might be better to have the UI process send over a reference to the main
-    // page instead of just assuming it's the first one.
+    // page instead of just assuming it's the first non-suspended one.
+    for (auto& page : m_pages) {
+        if (!WKBundlePageIsSuspended(page->page()))
+            return page.get();
+    }
     return m_pages[0].get();
 }
 
@@ -493,7 +497,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings, BegingTestingMode te
     // Don't change experimental or internal features here; those should be set in TestController::resetPreferencesToConsistentValues().
     WKBundleSetAllowUniversalAccessFromFileURLs(m_bundle, m_pageGroup, true);
     WKBundleSetJavaScriptCanAccessClipboard(m_bundle, m_pageGroup, true);
-    WKBundleSetPrivateBrowsingEnabled(m_bundle, m_pageGroup, false);
+    WKBundleSetPrivateBrowsingEnabled(m_bundle, m_pageGroup, page()->page(), false);
     WKBundleSetAuthorAndUserStylesEnabled(m_bundle, m_pageGroup, true);
     WKBundleSetFrameFlatteningEnabled(m_bundle, m_pageGroup, false);
     WKBundleSetMinimumLogicalFontSize(m_bundle, m_pageGroup, 9);

@@ -35,74 +35,64 @@
 #include <WebCore/GraphicsContextImplDirect2D.h>
 #include <WebCore/PlatformContextDirect2D.h>
 #include <d2d1.h>
+#include <d3d11_1.h>
+#include <dxgi.h>
 
 namespace WebKit {
 using namespace WebCore;
 
 std::unique_ptr<BackingStoreBackendDirect2D> BackingStore::createBackend()
 {
-    return std::make_unique<BackingStoreBackendDirect2DImpl>(m_size, m_deviceScaleFactor);
+    return makeUnique<BackingStoreBackendDirect2DImpl>(m_size, m_deviceScaleFactor, m_webPageProxy.device());
 }
 
-void BackingStore::paint(ID2D1RenderTarget* renderTarget, const IntRect& rect)
+void BackingStore::paint(DXConnections dxConnections, const IntRect& rect)
 {
-    renderTarget->BeginDraw();
-
     ASSERT(m_backend);
+    ASSERT(m_backend->size() == m_size);
 
-    auto bitmapBrushProperties = D2D1::BitmapBrushProperties();
-    auto brushProperties = D2D1::BrushProperties();
+    COMPtr<ID3D11Resource> backBuffer;
+    HRESULT hr = dxConnections.backBuffer->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&backBuffer));
+    RELEASE_ASSERT(SUCCEEDED(hr));
 
-    COMPtr<ID2D1BitmapBrush> patternBrush;
-    HRESULT hr = renderTarget->CreateBitmapBrush(m_backend->surface(), &bitmapBrushProperties, &brushProperties, &patternBrush);
-    ASSERT(SUCCEEDED(hr));
-    if (!SUCCEEDED(hr))
-        return;
+    COMPtr<ID3D11Resource> backingStore;
+    hr = m_backend->dxSurface()->QueryInterface(__uuidof(ID3D11Resource), reinterpret_cast<void**>(&backingStore));
+    RELEASE_ASSERT(SUCCEEDED(hr));
 
-    D2D1_RECT_F destRect(rect);
-    renderTarget->FillRectangle(&destRect, patternBrush.get());
-    renderTarget->EndDraw();
+    CD3D11_BOX srcBox(rect.x(), rect.y(), 0, rect.x() + rect.width(), rect.y() + rect.height(), 1);
+    dxConnections.immediateContext->CopySubresourceRegion1(backBuffer.get(), 0, rect.x(), rect.y(), 0, backingStore.get(), 0, &srcBox, D3D11_COPY_DISCARD);
 }
 
 void BackingStore::incorporateUpdate(ShareableBitmap* bitmap, const UpdateInfo& updateInfo)
 {
-    WTFLogAlways("BackingStore::incorporateUpdate");
     if (!m_backend)
         m_backend = createBackend();
 
     scroll(updateInfo.scrollRect, updateInfo.scrollOffset);
 
-    // Paint all update rects.
-    IntPoint updateRectLocation = updateInfo.updateRectBounds.location();
+    IntPoint updateRectBoundsLocation = updateInfo.updateRectBounds.location();
 
-    COMPtr<ID2D1BitmapRenderTarget> bitmapRenderTarget;
-    HRESULT hr = m_backend->renderTarget()->CreateCompatibleRenderTarget(&bitmapRenderTarget);
-    GraphicsContext graphicsContext(GraphicsContextImplDirect2D::createFactory(bitmapRenderTarget.get()));
+    COMPtr<ID2D1Bitmap> deviceUpdateBitmap = bitmap->createDirect2DSurface(m_webPageProxy.device(), m_backend->renderTarget());
+    if (!deviceUpdateBitmap)
+        return;
 
-    // When m_webPageProxy.drawsBackground() is false, bitmap contains transparent parts as a background of the webpage.
-    // For such case, bitmap must be drawn using CompositeCopy to overwrite the existing surface.
-    graphicsContext.setCompositeOperation(WebCore::CompositeCopy);
+#ifndef _NDEBUG
+    auto deviceBitmapSize = deviceUpdateBitmap->GetPixelSize();
+    ASSERT(deviceBitmapSize.width == updateInfo.updateRectBounds.width());
+    ASSERT(deviceBitmapSize.height == updateInfo.updateRectBounds.height());
+#endif
 
     for (const auto& updateRect : updateInfo.updateRects) {
-        IntRect srcRect = updateRect;
-        srcRect.move(-updateRectLocation.x(), -updateRectLocation.y());
-        bitmap->paint(graphicsContext, deviceScaleFactor(), updateRect.location(), srcRect);
+        auto currentRectLocation = IntSize(updateRect.x() - updateRectBoundsLocation.x(), updateRect.y() - updateRectBoundsLocation.y());
+        auto destRectLocation = IntSize(updateRect.x(), updateRect.y());
+        Direct2D::copyRectFromOneSurfaceToAnother(deviceUpdateBitmap.get(), m_backend->surface(), currentRectLocation, updateRect, destRectLocation);
     }
-
-    COMPtr<ID2D1Bitmap> output;
-    hr = bitmapRenderTarget->GetBitmap(&output);
-    D2D1_POINT_2U destPoint = D2D1::Point2U();
-    auto size = Direct2D::bitmapSize(output.get());
-    D2D1_RECT_U destRect = D2D1::RectU(0, 0, size.width(), size.height());
-    hr = m_backend->surface()->CopyFromBitmap(&destPoint, output.get(), &destRect);
 }
 
 void BackingStore::scroll(const IntRect& scrollRect, const IntSize& scrollOffset)
 {
     if (scrollOffset.isZero())
         return;
-
-    WTFLogAlways("BackingStore::scroll");
 
     ASSERT(m_backend);
     m_backend->scroll(scrollRect, scrollOffset);

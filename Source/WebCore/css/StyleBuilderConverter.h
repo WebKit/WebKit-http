@@ -348,9 +348,9 @@ inline Length StyleBuilderConverter::convertTo100PercentMinusLength(const Length
     // Turn this into a calc expression: calc(100% - length)
     Vector<std::unique_ptr<CalcExpressionNode>> lengths;
     lengths.reserveInitialCapacity(2);
-    lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(Length(100, Percent)));
-    lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(length));
-    auto op = std::make_unique<CalcExpressionOperation>(WTFMove(lengths), CalcOperator::Subtract);
+    lengths.uncheckedAppend(makeUnique<CalcExpressionLength>(Length(100, Percent)));
+    lengths.uncheckedAppend(makeUnique<CalcExpressionLength>(length));
+    auto op = makeUnique<CalcExpressionOperation>(WTFMove(lengths), CalcOperator::Subtract);
     return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
 }
 
@@ -590,9 +590,9 @@ inline RefPtr<ClipPathOperation> StyleBuilderConverter::convertClipPath(StyleRes
         auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
         if (primitiveValue.primitiveType() == CSSPrimitiveValue::CSS_URI) {
             String cssURLValue = primitiveValue.stringValue();
-            URL url = styleResolver.document().completeURL(cssURLValue);
+            String fragment = SVGURIReference::fragmentIdentifierFromIRIString(cssURLValue, styleResolver.document());
             // FIXME: It doesn't work with external SVG references (see https://bugs.webkit.org/show_bug.cgi?id=126133)
-            return ReferenceClipPathOperation::create(cssURLValue, url.fragmentIdentifier());
+            return ReferenceClipPathOperation::create(cssURLValue, fragment);
         }
         ASSERT(primitiveValue.valueID() == CSSValueNone);
         return nullptr;

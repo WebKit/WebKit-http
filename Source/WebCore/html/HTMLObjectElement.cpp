@@ -86,6 +86,11 @@ RenderWidget* HTMLObjectElement::renderWidgetLoadingPlugin() const
     return renderWidget(); // This will return 0 if the renderer is not a RenderWidget.
 }
 
+int HTMLObjectElement::defaultTabIndex() const
+{
+    return 0;
+}
+
 bool HTMLObjectElement::isPresentationAttribute(const QualifiedName& name) const
 {
     if (name == borderAttr)
@@ -323,6 +328,11 @@ void HTMLObjectElement::childrenChanged(const ChildChange& change)
 bool HTMLObjectElement::isURLAttribute(const Attribute& attribute) const
 {
     return attribute.name() == dataAttr || attribute.name() == codebaseAttr || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#') || HTMLPlugInImageElement::isURLAttribute(attribute);
+}
+
+bool HTMLObjectElement::isInteractiveContent() const
+{
+    return hasAttributeWithoutSynchronization(usemapAttr);
 }
 
 const AtomString& HTMLObjectElement::imageSourceURL() const

@@ -44,7 +44,7 @@ class HTMLImageElement : public HTMLElement, public FormNamedItem {
     friend class HTMLFormElement;
 public:
     static Ref<HTMLImageElement> create(Document&);
-    static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement* = nullptr, bool createdByParser = false);
     static Ref<HTMLImageElement> createForJSConstructor(Document&, Optional<unsigned> width, Optional<unsigned> height);
 
     virtual ~HTMLImageElement();
@@ -104,6 +104,7 @@ public:
 #endif
 
     bool hasPendingActivity() const { return m_imageLoader.hasPendingActivity(); }
+    size_t pendingDecodePromisesCountForTesting() const { return m_imageLoader.pendingDecodePromisesCountForTesting(); }
 
     bool canContainRangeEndPoint() const override { return false; }
 
@@ -123,8 +124,10 @@ public:
 
     void defaultEventHandler(Event&) final;
 
+    bool createdByParser() const { return m_createdByParser; }
+
 protected:
-    HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
+    HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = nullptr, bool createdByParser = false);
 
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
@@ -156,6 +159,8 @@ private:
     HTMLImageElement& asHTMLElement() final { return *this; }
     const HTMLImageElement& asHTMLElement() const final { return *this; }
 
+    bool isInteractiveContent() const final;
+
     void selectImageSource();
 
     ImageCandidate bestFitSourceFromPictureElement();
@@ -183,6 +188,7 @@ private:
     float m_imageDevicePixelRatio;
     bool m_experimentalImageMenuEnabled;
     bool m_hadNameBeforeAttributeChanged { false }; // FIXME: We only need this because parseAttribute() can't see the old value.
+    bool m_createdByParser { false };
 
     RefPtr<EditableImageReference> m_editableImage;
     WeakPtr<HTMLPictureElement> m_pictureElement;

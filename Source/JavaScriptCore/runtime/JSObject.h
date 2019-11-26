@@ -111,7 +111,7 @@ public:
 
     JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*, VM&);
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
-    JS_EXPORT_PRIVATE static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
+    JS_EXPORT_PRIVATE static void analyzeHeap(JSCell*, HeapAnalyzer&);
 
     JS_EXPORT_PRIVATE static String className(const JSObject*, VM&);
     JS_EXPORT_PRIVATE static String calculatedClassName(JSObject*);
@@ -198,11 +198,12 @@ public:
     // This performs the ECMAScript Set() operation.
     ALWAYS_INLINE bool putByIndexInline(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
     {
+        VM& vm = exec->vm();
         if (canSetIndexQuickly(propertyName, value)) {
-            setIndexQuickly(exec->vm(), propertyName, value);
+            setIndexQuickly(vm, propertyName, value);
             return true;
         }
-        return methodTable(exec->vm())->putByIndex(this, exec, propertyName, value, shouldThrow);
+        return methodTable(vm)->putByIndex(this, exec, propertyName, value, shouldThrow);
     }
         
     // This is similar to the putDirect* methods:
@@ -1549,7 +1550,7 @@ inline size_t offsetInButterfly(PropertyOffset offset)
 
 inline size_t JSObject::butterflyPreCapacity()
 {
-    VM& vm = *this->vm();
+    VM& vm = this->vm();
     if (UNLIKELY(hasIndexingHeader(vm)))
         return butterfly()->indexingHeader()->preCapacity(structure(vm));
     return 0;
@@ -1557,7 +1558,7 @@ inline size_t JSObject::butterflyPreCapacity()
 
 inline size_t JSObject::butterflyTotalSize()
 {
-    VM& vm = *this->vm();
+    VM& vm = this->vm();
     Structure* structure = this->structure(vm);
     Butterfly* butterfly = this->butterfly();
     size_t preCapacity;
@@ -1606,12 +1607,12 @@ COMPILE_ASSERT(!(sizeof(JSObject) % sizeof(WriteBarrierBase<Unknown>)), JSObject
 template<unsigned charactersCount>
 ALWAYS_INLINE Identifier makeIdentifier(VM& vm, const char (&characters)[charactersCount])
 {
-    return Identifier::fromString(&vm, characters);
+    return Identifier::fromString(vm, characters);
 }
 
 ALWAYS_INLINE Identifier makeIdentifier(VM& vm, const char* name)
 {
-    return Identifier::fromString(&vm, name);
+    return Identifier::fromString(vm, name);
 }
 
 ALWAYS_INLINE Identifier makeIdentifier(VM&, const Identifier& name)

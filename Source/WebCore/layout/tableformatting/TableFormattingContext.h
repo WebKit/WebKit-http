@@ -40,21 +40,46 @@ class TableFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(TableFormattingContext);
 public:
     TableFormattingContext(const Box& formattingContextRoot, TableFormattingState&);
-    void layout() const override;
+    void layout() override;
 
 private:
-    IntrinsicWidthConstraints computedIntrinsicWidthConstraints() const override;
+    class Geometry : public FormattingContext::Geometry {
+    public:
+        Geometry(const TableFormattingContext&);
 
-    void ensureTableGrid() const;
-    void computePreferredWidthForColumns() const;
-    void computeTableWidth() const;
-    void distributeAvailabeWidth() const;
-    void computeTableHeight() const;
-    void distributeAvailableHeight() const;
+        HeightAndMargin tableCellHeightAndMargin(const Box&) const;
+
+    private:
+        const TableFormattingContext& formattingContext() const { return downcast<TableFormattingContext>(FormattingContext::Geometry::formattingContext()); }
+    };
+    TableFormattingContext::Geometry geometry() const { return Geometry(*this); }
+
+    IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
+    LayoutUnit computedTableWidth();
+    void layoutTableCellBox(const Box& cellLayoutBox, const TableGrid::Column&);
+    void positionTableCells();
+    void setComputedGeometryForRows();
+    void setComputedGeometryForSections();
+
+    void ensureTableGrid();
+    void computePreferredWidthForColumns();
+    void distributeAvailableWidth(LayoutUnit extraHorizontalSpace);
+    enum class WidthConstraintsType { Minimum, Maximum };
+    void useAsContentLogicalWidth(WidthConstraintsType);
+
+    void initializeDisplayBoxToBlank(Display::Box&) const;
 
     TableFormattingState& formattingState() const { return downcast<TableFormattingState>(FormattingContext::formattingState()); }
 };
 
+inline TableFormattingContext::Geometry::Geometry(const TableFormattingContext& tableFormattingContext)
+    : FormattingContext::Geometry(tableFormattingContext)
+{
+}
+
 }
 }
+
+SPECIALIZE_TYPE_TRAITS_LAYOUT_FORMATTING_CONTEXT(TableFormattingContext, isTableFormattingContext())
+
 #endif

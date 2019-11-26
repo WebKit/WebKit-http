@@ -157,6 +157,7 @@ class MediaPlaybackTarget;
 class MediaPlaybackTargetClient;
 class MediaQueryList;
 class MediaQueryMatcher;
+class MessagePortChannelProvider;
 class MouseEventWithHitTestResults;
 class NodeFilter;
 class NodeIterator;
@@ -1284,7 +1285,7 @@ public:
 
     std::unique_ptr<DocumentParserYieldToken> createParserYieldToken()
     {
-        return std::make_unique<DocumentParserYieldToken>(*this);
+        return makeUnique<DocumentParserYieldToken>(*this);
     }
 
     bool hasActiveParserYieldToken() const { return m_parserYieldTokenCount; }
@@ -1490,8 +1491,8 @@ public:
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    bool hasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
-    void setHasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
+    WEBCORE_EXPORT bool hasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
+    WEBCORE_EXPORT void setHasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
     WEBCORE_EXPORT void wasLoadedWithDataTransferFromPrevalentResource();
     void downgradeReferrerToRegistrableDomain();
 #endif
@@ -1528,6 +1529,8 @@ public:
 #if !ASSERT_DISABLED
     bool inHitTesting() const { return m_inHitTesting; }
 #endif
+
+    MessagePortChannelProvider& messagePortChannelProvider();
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };

@@ -856,7 +856,7 @@ WatchpointSet* Structure::ensurePropertyReplacementWatchpointSet(VM& vm, Propert
     StructureRareData* rareData = this->rareData();
     if (!rareData->m_replacementWatchpointSets) {
         rareData->m_replacementWatchpointSets =
-            std::make_unique<StructureRareData::PropertyWatchpointMap>();
+            makeUnique<StructureRareData::PropertyWatchpointMap>();
         WTF::storeStoreFence();
     }
     auto result = rareData->m_replacementWatchpointSets->add(offset, nullptr);
@@ -1026,9 +1026,9 @@ void Structure::didTransitionFromThisStructure(DeferredStructureTransitionWatchp
 
     if (deferred) {
         ASSERT(deferred->structure() == this);
-        m_transitionWatchpointSet.fireAll(*vm(), deferred);
+        m_transitionWatchpointSet.fireAll(vm(), deferred);
     } else
-        m_transitionWatchpointSet.fireAll(*vm(), StructureFireDetail(this));
+        m_transitionWatchpointSet.fireAll(vm(), StructureFireDetail(this));
 }
 
 void Structure::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -1053,7 +1053,7 @@ void Structure::visitChildren(JSCell* cell, SlotVisitor& visitor)
         // NOTE: This can interleave in pin(), in which case it may see a null property table.
         // That's fine, because then the barrier will fire and we will scan this again.
         visitor.append(thisObject->m_propertyTableUnsafe);
-    } else if (visitor.isBuildingHeapSnapshot())
+    } else if (visitor.isAnalyzingHeap())
         visitor.append(thisObject->m_propertyTableUnsafe);
     else if (thisObject->m_propertyTableUnsafe)
         thisObject->m_propertyTableUnsafe.clear();

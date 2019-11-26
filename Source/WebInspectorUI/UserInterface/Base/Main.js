@@ -1331,6 +1331,14 @@ WI.showRepresentedObject = function(representedObject, cookie, options = {})
     tabContentView.showRepresentedObject(representedObject, cookie);
 };
 
+WI.showLocalResourceOverride = function(localResourceOverride)
+{
+    console.assert(localResourceOverride instanceof WI.LocalResourceOverride);
+    const cookie = null;
+    const options = {ignoreNetworkTab: true, ignoreSearchTab: true};
+    WI.showRepresentedObject(localResourceOverride, cookie, options);
+};
+
 WI.showMainFrameDOMTree = function(nodeToSelect, options = {})
 {
     console.assert(WI.networkManager.mainFrame);
@@ -1405,7 +1413,7 @@ WI.showOriginalOrFormattedSourceCodeTextRange = function(sourceCodeTextRange, op
 
 WI.showResourceRequest = function(resource, options = {})
 {
-    WI.showRepresentedObject(resource, {[WI.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WI.ResourceClusterContentView.CustomRequestIdentifier}, options);
+    WI.showRepresentedObject(resource, {[WI.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WI.ResourceClusterContentView.Identifier.Request}, options);
 };
 
 WI.debuggerToggleBreakpoints = function(event)
@@ -2707,6 +2715,18 @@ WI.resolvedLayoutDirection = function()
     if (!WI.isDebugUIEnabled() || layoutDirection === WI.LayoutDirection.System)
         layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
     return layoutDirection;
+};
+
+WI.resolveLayoutDirectionForElement = function(element)
+{
+    let layoutDirection = WI.resolvedLayoutDirection();
+
+    // Global LTR never includes RTL containers. Return early.
+    if (layoutDirection === WI.LayoutDirection.LTR)
+        return layoutDirection;
+
+    let style = getComputedStyle(element);
+    return style.direction;
 };
 
 WI.setLayoutDirection = function(value)

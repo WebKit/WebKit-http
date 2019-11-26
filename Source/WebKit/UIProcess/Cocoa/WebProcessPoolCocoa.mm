@@ -135,7 +135,7 @@ void WebProcessPool::platformInitialize()
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitSuppressMemoryPressureHandler"])
         installMemoryPressureHandler();
 
-    setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
+    setLegacyCustomProtocolManagerClient(makeUnique<LegacyCustomProtocolManagerClient>());
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -280,6 +280,8 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
             parameters.defaultDataStoreParameters.networkSessionParameters.httpsProxy = URL(URL(), [defaults stringForKey:(NSString *)WebKit2HTTPSProxyDefaultsKey]);
         }
     }
+
+    parameters.defaultDataStoreParameters.networkSessionParameters.enableLegacyTLS = [defaults boolForKey:@"WebKitEnableLegacyTLS"];
 
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
@@ -514,7 +516,7 @@ void WebProcessPool::startDisplayLink(IPC::Connection& connection, unsigned obse
             return;
         }
     }
-    auto displayLink = std::make_unique<DisplayLink>(displayID);
+    auto displayLink = makeUnique<DisplayLink>(displayID);
     displayLink->addObserver(connection, observerID);
     m_displayLinks.append(WTFMove(displayLink));
 }
@@ -540,12 +542,6 @@ void WebProcessPool::stopDisplayLinks(IPC::Connection& connection)
 void WebProcessPool::setCookieStoragePartitioningEnabled(bool enabled)
 {
     m_cookieStoragePartitioningEnabled = enabled;
-}
-
-void WebProcessPool::setStorageAccessAPIEnabled(bool enabled)
-{
-    m_storageAccessAPIEnabled = enabled;
-    sendToNetworkingProcess(Messages::NetworkProcess::SetStorageAccessAPIEnabled(enabled));
 }
 
 void WebProcessPool::clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace&& protectionSpace)

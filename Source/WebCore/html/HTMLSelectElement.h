@@ -111,7 +111,8 @@ protected:
 
 private:
     const AtomString& formControlType() const final;
-    
+
+    int defaultTabIndex() const final;
     bool isKeyboardFocusable(KeyboardEvent*) const final;
     bool isMouseFocusable() const final;
 
@@ -122,6 +123,8 @@ private:
 
     bool isEnumeratable() const final { return true; }
     bool supportLabels() const final { return true; }
+
+    bool isInteractiveContent() const final { return true; }
 
     FormControlState saveFormControlState() const final;
     void restoreFormControlState(const FormControlState&) final;

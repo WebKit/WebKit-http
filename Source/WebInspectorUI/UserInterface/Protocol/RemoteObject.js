@@ -59,13 +59,22 @@ WI.RemoteObject = class RemoteObject
                 this._description = "class " + className;
             }
         } else {
-            // Primitive or null.
+            // Primitive, BigInt, or null.
             console.assert(type !== "object" || value === null);
             console.assert(!preview);
 
             this._description = description || (value + "");
             this._hasChildren = false;
             this._value = value;
+
+            if (type === "bigint") {
+                console.assert(value === undefined);
+                console.assert(description.endsWith("n"));
+                if (window.BigInt)
+                    this._value = BigInt(description.substring(0, description.length - 1));
+                else
+                    this._value = `${description} [BigInt Not Enabled in Web Inspector]`;
+            }
         }
     }
 
@@ -79,6 +88,13 @@ WI.RemoteObject = class RemoteObject
     static fromPrimitiveValue(value)
     {
         return new WI.RemoteObject(undefined, undefined, typeof value, undefined, value, undefined, undefined, undefined, undefined);
+    }
+
+    static createBigIntFromDescriptionString(description)
+    {
+        console.assert(description.endsWith("n"));
+
+        return new WI.RemoteObject(undefined, undefined, "bigint", undefined, undefined, description, undefined, undefined, undefined);
     }
 
     static fromPayload(payload, target)
@@ -612,14 +628,11 @@ WI.RemoteObject = class RemoteObject
             return;
         }
 
-        let descriptors = properties.map((payload) => {
-            return WI.PropertyDescriptor.fromPayload(payload, false, this._target);
-        });
+        let descriptors = properties.map((payload) => WI.PropertyDescriptor.fromPayload(payload, false, this._target));
 
         if (internalProperties) {
-            descriptors = descriptors.concat(internalProperties.map((payload) => {
-                return WI.PropertyDescriptor.fromPayload(payload, true, this._target);
-            }));
+            for (let payload of internalProperties)
+                descriptors.push(WI.PropertyDescriptor.fromPayload(payload, true, this._target));
         }
 
         callback(descriptors);

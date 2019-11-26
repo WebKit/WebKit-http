@@ -196,7 +196,7 @@ private:
 WebKitWebExtension* webkitWebExtensionCreate(InjectedBundle* bundle)
 {
     WebKitWebExtension* extension = WEBKIT_WEB_EXTENSION(g_object_new(WEBKIT_TYPE_WEB_EXTENSION, NULL));
-    bundle->setClient(std::make_unique<WebExtensionInjectedBundleClient>(extension));
+    bundle->setClient(makeUnique<WebExtensionInjectedBundleClient>(extension));
     return extension;
 }
 
@@ -224,7 +224,7 @@ WebKitWebPage* webkit_web_extension_get_page(WebKitWebExtension* extension, guin
     WebKitWebExtensionPrivate* priv = extension->priv;
     WebPageMap::const_iterator end = priv->pages.end();
     for (WebPageMap::const_iterator it = priv->pages.begin(); it != end; ++it)
-        if (it->key->pageID().toUInt64() == pageID)
+        if (it->key->identifier().toUInt64() == pageID)
             return it->value.get();
 
     return 0;

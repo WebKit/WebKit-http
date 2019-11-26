@@ -527,14 +527,16 @@ InspectorIndexedDBAgent::InspectorIndexedDBAgent(PageAgentContext& context)
 {
 }
 
+InspectorIndexedDBAgent::~InspectorIndexedDBAgent() = default;
+
 void InspectorIndexedDBAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
 }
 
 void InspectorIndexedDBAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    ErrorString unused;
-    disable(unused);
+    ErrorString ignored;
+    disable(ignored);
 }
 
 void InspectorIndexedDBAgent::enable(ErrorString&)
@@ -549,7 +551,7 @@ static ErrorStringOr<Document*> documentFromFrame(Frame* frame)
 {
     Document* document = frame ? frame->document() : nullptr;
     if (!document)
-        return makeUnexpected("No document for given frame found"_s);
+        return makeUnexpected("Missing document for given frame"_s);
     
     return document;
 }
@@ -558,11 +560,11 @@ static ErrorStringOr<IDBFactory*> IDBFactoryFromDocument(Document* document)
 {
     DOMWindow* domWindow = document->domWindow();
     if (!domWindow)
-        return makeUnexpected("No IndexedDB factory for given frame found"_s);
+        return makeUnexpected("Missing window for given document"_s);
 
     IDBFactory* idbFactory = DOMWindowIndexedDatabase::indexedDB(*domWindow);
     if (!idbFactory)
-        makeUnexpected("No IndexedDB factory for given frame found"_s);
+        makeUnexpected("Missing IndexedDB factory of window for given document"_s);
     
     return idbFactory;
 }
@@ -631,7 +633,7 @@ void InspectorIndexedDBAgent::requestData(const String& securityOrigin, const St
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(mainWorldExecState(frame));
     RefPtr<IDBKeyRange> idbKeyRange = keyRange ? idbKeyRangeFromKeyRange(keyRange) : nullptr;
     if (keyRange && !idbKeyRange) {
-        callback->sendFailure("Can not parse key range."_s);
+        callback->sendFailure("Could not parse key range."_s);
         return;
     }
 

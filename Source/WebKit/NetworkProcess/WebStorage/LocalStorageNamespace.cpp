@@ -35,7 +35,7 @@ namespace WebKit {
 using namespace WebCore;
 
 // We should investigate a way to share it with WebCore.
-LocalStorageNamespace::LocalStorageNamespace(StorageManager& storageManager, uint64_t storageNamespaceID)
+LocalStorageNamespace::LocalStorageNamespace(StorageManager& storageManager, StorageNamespaceIdentifier storageNamespaceID)
     : m_storageManager(storageManager)
     , m_quotaInBytes(StorageManager::localStorageDatabaseQuotaInBytes)
 {
@@ -47,11 +47,11 @@ LocalStorageNamespace::~LocalStorageNamespace()
     ASSERT(!RunLoop::isMain());
 }
 
-StorageArea& LocalStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin, IsEphemeral isEphemeral)
+StorageArea& LocalStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin, IsEphemeral isEphemeral, Ref<WorkQueue>&& workQueue)
 {
     ASSERT(!RunLoop::isMain());
     return *m_storageAreaMap.ensure(securityOrigin, [&]() mutable {
-        return std::make_unique<StorageArea>(isEphemeral == IsEphemeral::Yes ? nullptr : this, WTFMove(securityOrigin), m_quotaInBytes);
+        return makeUnique<StorageArea>(isEphemeral == IsEphemeral::Yes ? nullptr : this, WTFMove(securityOrigin), m_quotaInBytes, WTFMove(workQueue));
     }).iterator->value.get();
 }
 
@@ -79,6 +79,14 @@ Vector<SecurityOriginData> LocalStorageNamespace::ephemeralOrigins() const
             origins.append(storageArea->securityOrigin());
     }
     return origins;
+}
+
+Vector<StorageAreaIdentifier> LocalStorageNamespace::storageAreaIdentifiers() const
+{
+    Vector<StorageAreaIdentifier> identifiers;
+    for (auto& storageArea : m_storageAreaMap.values())
+        identifiers.append(storageArea->identifier());
+    return identifiers;
 }
 
 } // namespace WebKit

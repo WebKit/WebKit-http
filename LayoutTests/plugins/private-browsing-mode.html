@@ -1,9 +1,8 @@
+<!-- webkit-test-runner [ useEphemeralSession=true ] -->
 <head>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 </head>
 <body onload="runTest()">
-<p id="description"></p>
-<div id="console"></div>
 <script>
 function runTest() 
 {
@@ -12,27 +11,13 @@ function runTest()
         return;
     }
     
-    plugin1 = document.createElement("embed");
-    plugin1.type = "application/x-webkit-test-netscape";
-    plugin1.setAttribute('test', 'private-browsing');
-    document.body.appendChild(plugin1);
+    plugin = document.createElement("embed");
+    plugin.type = "application/x-webkit-test-netscape";
+    plugin.setAttribute('test', 'private-browsing');
+    document.body.appendChild(plugin);
     
-    shouldBe("plugin1.privateBrowsingEnabled", "false");
-    shouldBe("plugin1.cachedPrivateBrowsingEnabled", "false");
-
-    // Now enable private browsing
-    testRunner.setPrivateBrowsingEnabled(true);
-
-    shouldBe("plugin1.privateBrowsingEnabled", "true");
-    shouldBe("plugin1.cachedPrivateBrowsingEnabled", "true");
-    
-    plugin2 = document.createElement("embed");
-    plugin2.type = "application/x-webkit-test-netscape";
-    plugin2.setAttribute('test', 'private-browsing');
-    document.body.appendChild(plugin2);
-    
-    shouldBe("plugin2.privateBrowsingEnabled", "true");
-    shouldBe("plugin2.cachedPrivateBrowsingEnabled", "true");
+    shouldBe("plugin.privateBrowsingEnabled", "true");
+    shouldBe("plugin.cachedPrivateBrowsingEnabled", "true");
     
 }
 </script>

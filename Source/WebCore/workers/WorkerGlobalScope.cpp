@@ -35,6 +35,7 @@
 #include "InspectorInstrumentation.h"
 #include "Microtasks.h"
 #include "Performance.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
@@ -46,6 +47,7 @@
 #include "WorkerLocation.h"
 #include "WorkerNavigator.h"
 #include "WorkerReportingProxy.h"
+#include "WorkerSWClientConnection.h"
 #include "WorkerScriptLoader.h"
 #include "WorkerThread.h"
 #include <JavaScriptCore/ScriptArguments.h>
@@ -62,9 +64,9 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
     , m_identifier(identifier)
     , m_userAgent(userAgent)
     , m_thread(thread)
-    , m_script(std::make_unique<WorkerScriptController>(this))
-    , m_inspectorController(std::make_unique<WorkerInspectorController>(*this))
-    , m_microtaskQueue(std::make_unique<MicrotaskQueue>(m_script->vm()))
+    , m_script(makeUnique<WorkerScriptController>(this))
+    , m_inspectorController(makeUnique<WorkerInspectorController>(*this))
+    , m_microtaskQueue(makeUnique<MicrotaskQueue>(m_script->vm()))
     , m_isOnline(isOnline)
     , m_shouldBypassMainWorldContentSecurityPolicy(shouldBypassMainWorldContentSecurityPolicy)
     , m_eventQueue(*this)
@@ -86,7 +88,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
         origin->grantStorageAccessFromFileURLsQuirk();
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(WTFMove(origin)));
-    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(URL { m_url }, *this));
+    setContentSecurityPolicy(makeUnique<ContentSecurityPolicy>(URL { m_url }, *this));
 }
 
 WorkerGlobalScope::~WorkerGlobalScope()
@@ -139,6 +141,9 @@ void WorkerGlobalScope::removeAllEventListeners()
 
 bool WorkerGlobalScope::isSecureContext() const
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().secureContextChecksEnabled())
+        return true;
+
     return securityOrigin() && securityOrigin()->isPotentiallyTrustworthy();
 }
 
@@ -362,9 +367,9 @@ void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, con
 
     std::unique_ptr<Inspector::ConsoleMessage> message;
     if (callStack)
-        message = std::make_unique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, callStack.releaseNonNull(), requestIdentifier);
+        message = makeUnique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, callStack.releaseNonNull(), requestIdentifier);
     else
-        message = std::make_unique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, sourceURL, lineNumber, columnNumber, state, requestIdentifier);
+        message = makeUnique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, sourceURL, lineNumber, columnNumber, state, requestIdentifier);
     InspectorInstrumentation::addMessageToConsole(*this, WTFMove(message));
 }
 
@@ -458,6 +463,22 @@ WorkerCacheStorageConnection& WorkerGlobalScope::cacheStorageConnection()
         m_cacheStorageConnection = WorkerCacheStorageConnection::create(*this);
     return *m_cacheStorageConnection;
 }
+
+MessagePortChannelProvider& WorkerGlobalScope::messagePortChannelProvider()
+{
+    if (!m_messagePortChannelProvider)
+        m_messagePortChannelProvider = makeUnique<WorkerMessagePortChannelProvider>(*this);
+    return *m_messagePortChannelProvider;
+}
+
+#if ENABLE(SERVICE_WORKER)
+WorkerSWClientConnection& WorkerGlobalScope::swClientConnection()
+{
+    if (!m_swClientConnection)
+        m_swClientConnection = WorkerSWClientConnection::create(*this);
+    return *m_swClientConnection;
+}
+#endif
 
 void WorkerGlobalScope::createImageBitmap(ImageBitmap::Source&& source, ImageBitmapOptions&& options, ImageBitmap::Promise&& promise)
 {

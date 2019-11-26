@@ -118,18 +118,25 @@ function XScrollableCanvasProvider(exporter, ...childrenFunctions) {
         presenterRef.setState({resize:true});
     });
     const resizeContainerWidth = width => {containerRef.setState({width: width})};
+    const getScrollableBoundingClientRect = () => scrollRef.element.getBoundingClientRect();
     const presenterRef = REF.createRef({
         state: {scrollLeft: 0},
         onElementMount: (element) => {
-            element.style.width = `${element.parentElement.parentElement.offsetWidth}px`;
-            resizeEventStream.add(element.offsetWidth);
+            const scrollableWidth =  getScrollableBoundingClientRect().width;
+            element.style.width = `${scrollableWidth}px`;
+            resizeEventStream.add(scrollableWidth);
         },
         onStateUpdate: (element, stateDiff, state) => {
             if (stateDiff.resize) {
-                element.style.width = `${element.parentElement.parentElement.offsetWidth}px`;
-                resizeEventStream.add(element.offsetWidth);
+                const scrollableWidth =  getScrollableBoundingClientRect().width;
+                element.style.width = `${scrollableWidth}px`;
+                resizeEventStream.add(scrollableWidth);
             }
         }
+    });
+    const layoutSizeMayChange = new EventStream();
+    layoutSizeMayChange.action(() => {
+        presenterRef.setState({resize:true});
     });
     // Provide parent functions/event to children to use
 
@@ -138,14 +145,30 @@ function XScrollableCanvasProvider(exporter, ...childrenFunctions) {
             <div ref="${presenterRef}" style="position: -webkit-sticky; position:sticky; top:0; left: 0">${
                 ListProvider((updateChildrenFunctions) => {
                     if (exporter) {
-                        exporter((children) => {
-                            updateChildrenFunctions(children);
-                            // this make sure the newly added children receive current state
-                            resizeEventStream.replayLast();
-                            scrollEventStream.replayLast();
-                        });
+                        exporter(
+                            /**
+                            * Update Children
+                            * @param children {Array} r An array of the children
+                            */
+                            (children) => {
+                                updateChildrenFunctions(children);
+                                // Propigate the current state to new children
+                                resizeEventStream.replayLast();
+                                scrollEventStream.replayLast();
+                            },
+                            /**
+                            * Notify Re-render
+                            * @param width {number} r if undefined, it will auto detact the width change
+                            */
+                            (width) => {
+                                if (typeof width === "number" && width >= 0)
+                                    resizeEventStream.add(width);
+                                else
+                                    layoutSizeMayChange.add();
+                            }
+                        );
                     }
-                }, [resizeContainerWidth, scrollEventStream, resizeEventStream], ...childrenFunctions)
+                }, [resizeContainerWidth, scrollEventStream, resizeEventStream, layoutSizeMayChange], ...childrenFunctions)
             }</div>
         </div>
     </div>`;
@@ -215,7 +238,8 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
     let fontFamily = computedStyle.getPropertyValue('font-family');
     let defaultDotColor = computedStyle.getPropertyValue('--greenLight').trim();
     let defaultEmptyLineColor = computedStyle.getPropertyValue('--grey').trim();
-    let defaultFontSize = parseInt(computedStyle.getPropertyValue('--tinySize'));
+    let defaultInnerLableColor = computedStyle.getPropertyValue('--white').trim();
+    let defaultFontSize = 10;
 
     // Get configuration
     // Default order is left is biggest
@@ -223,28 +247,49 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
     const getScale = typeof option.getScaleFunc === "function" ? option.getScaleFunc : (a) => a;
     const comp = typeof option.compareFunc === "function" ? option.compareFunc : (a, b) => a - b;
     const onDotClick = typeof option.onDotClick === "function" ? option.onDotClick : null;
-    const onDotHover = typeof option.onDotHover === "function" ? option.onDotHover : null;
+    const onDotEnter = typeof option.onDotEnter === "function" ? option.onDotEnter : null;
+    const onDotLeave = typeof option.onDotLeave === "function" ? option.onDotLeave : null;
     const tagHeight = defaultFontSize;
     const height = option.height ? option.height : 2 * radius + tagHeight;
     const colorBatchRender = new ColorBatchRender();
+    let drawLabelsSeqs = [];
 
     // Draw dot api can be used in user defined render function
-    const drawDot = (context, x, y, isEmpty, tag = null, useRadius, color, emptylineColor) => {
+    const drawDot = (context, x, y, isEmpty, tag = null, innerLabel, useRadius, color, innerLabelColor, emptylineColor) => {
         useRadius = useRadius ? useRadius : radius;
         color = color ? color : defaultDotColor;
         emptylineColor = emptylineColor ? emptylineColor : defaultEmptyLineColor;
+        innerLabelColor = innerLabelColor ? innerLabelColor : defaultInnerLableColor;
+        const fontSize = useRadius * 1.5;
+        const baselineY = y + useRadius;
         if (!isEmpty) {
             // Draw the dot
             colorBatchRender.lazyCreateColorSeqs(color, (context) => {
                 context.beginPath();
+                drawLabelsSeqs = [];
             }, (context, color) => {
                 context.fillStyle = color;
                 context.fill();
+                context.font = `${fontSize}px ${fontFamily}`;
+                context.textBaseline = "top";
+                context.textAlign = "center";
+                context.fontWeight = 400;
+                context.fillStyle = innerLabelColor;
+                drawLabelsSeqs.forEach(seq => seq());
             });
             colorBatchRender.addSeq(color, (context, color) => {
-                context.arc(x + dotMargin + radius, y, radius, 0, 2 * Math.PI);
+                context.arc(x + dotMargin + useRadius, baselineY, useRadius, 0, 2 * Math.PI);
+                if (typeof innerLabel === "number" || typeof innerLabel === "string") {
+                    drawLabelsSeqs.push(() => {
+                        // Draw the inner label
+                        const innerLabelSize = context.measureText(innerLabel);
+                        const fontHeight = innerLabelSize.fontBoundingBoxAscent + innerLabelSize.fontBoundingBoxDescent;
+                        const actualHeight = innerLabelSize.actualBoundingBoxAscent + innerLabelSize.actualBoundingBoxDescent;
+                        const realStartGap = innerLabelSize.fontBoundingBoxAscent - innerLabelSize.actualBoundingBoxAscent;
+                        context.fillText(innerLabel, x + dotMargin + useRadius, y - realStartGap + useRadius - (actualHeight < fontHeight ?  actualHeight : fontHeight) / 2);
+                    });
+                }
             });
-
         } else {
             // Draw the empty
             colorBatchRender.lazyCreateColorSeqs(emptylineColor, (context) => {
@@ -254,19 +299,21 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
                 context.stroke();
             });
             colorBatchRender.addSeq(emptylineColor, (context) => {
-                context.moveTo(x + dotMargin, y);
-                context.lineTo(x + dotMargin + 2 * radius, y);
+                context.moveTo(x + dotMargin, baselineY);
+                context.lineTo(x + dotMargin + 2 * useRadius, baselineY);
                 context.lineWidth = 1;
             });
         }
 
         // Draw the tag
         if (typeof tag === "number" || typeof tag === "string") {
-            context.font = `${fontFamily} ${defaultFontSize}px`;
+            context.font = `${defaultFontSize}px ${fontFamily}`;
             context.fillStyle = color;
-            const tagSize = context.measureText(tag);
-            context.fillText(tag, x + dotMargin + radius - tagSize.width / 2, radius * 2 + tagSize.emHeightAscent);
+            context.textAlign = "center";
+            context.textBaseline = "top";
+            context.fillText(tag, x + dotMargin + radius, baselineY + useRadius);
         }
+        
     };
     const render = typeof option.renderFactory === "function" ? option.renderFactory(drawDot) : (dot, context, x, y) => drawDot(context, x, y, !dot);
     const sortData = option.sortData === true ? option.sortData : false;
@@ -348,20 +395,38 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
         for (let i = startScalesIndex; i <= endScalesIndex; i++) {
             let x = i * dotWidth - scrollLeft;
             if (currentDotIndex < dots.length && comp(scales[i], getScale(dots[currentDotIndex])) === 0) {
-                render(dots[currentDotIndex], context, x, radius);
+                render(dots[currentDotIndex], context, x, 0);
                 dots[currentDotIndex]._dotCenter = {x: x + dotMargin + radius, y: radius};
                 dots[currentDotIndex]._cachedScrollLeft = scrollLeft;
                 inCacheDots.push(dots[currentDotIndex]);
                 currentDotIndex += 1;
             } else
-                render(null, context, x, radius);
+                render(null, context, x, 0);
         }
         colorBatchRender.batchRender(context);
     };
 
     return ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize) => {
+        const mouseMove = (e) => {
+            let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, canvasRef.element);
+            if (dots.length) {
+                if (onDotEnter) {
+                    dots[0].tipPoints = [
+                        {x: dots[0]._dotCenter.x, y: dots[0]._dotCenter.y - 3 * radius / 2},
+                        {x: dots[0]._dotCenter.x, y: dots[0]._dotCenter.y + radius / 2},
+                    ];
+                    onDotEnter(dots[0], e, canvasRef.element.getBoundingClientRect());
+                }
+                canvasRef.element.style.cursor = "pointer";
+            } else {
+                if (onDotLeave)
+                    onDotLeave(e, canvasRef.element.getBoundingClientRect());
+                canvasRef.element.style.cursor = "default";
+            }
+        }
         const onScrollAction = (e) => {
             canvasRef.setState({scrollLeft: e.target.scrollLeft / getDevicePixelRatio()});
+            mouseMove(e);
         };
         const onResizeAction = (width) => {
             canvasRef.setState({width: width});
@@ -386,17 +451,10 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
                     });
                 }
 
-                if (onDotClick || onDotHover) {
-                    element.addEventListener('mousemove', (e) => {
-                        let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, element);
-                        if (dots.length) {
-                            if (onDotHover)
-                                onDotHover(dots[0], e);
-                            element.style.cursor = "pointer";
-                        } else
-                            element.style.cursor = "default";
-                    });
-                }
+                if (onDotClick || onDotEnter || onDotLeave)
+                    element.addEventListener('mousemove', mouseMove);
+                if (onDotLeave)
+                    element.addEventListener('mouseleave', (e) => onDotLeave(e, element.getBoundingClientRect()));
 
                 createInsertionObservers(element, (entries) => {
                     canvasRef.setState({onScreen: entries[0].isIntersecting});
@@ -440,9 +498,10 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
     });
 }
 
-Timeline.ExpandableSeriesComponent = (mainSeries, subSerieses, exporter) => {
+Timeline.ExpandableSeriesComponent = (mainSeries, options, subSerieses, exporter) => {
+    let layoutSizeMayChangeEvent = null;
     const ref = REF.createRef({
-        state: {expanded: false},
+        state: {expanded: options.expanded ? options.expanded : false},
         onStateUpdate: (element, stateDiff) => {
             if (stateDiff.expanded === false) {
                 element.children[0].style.display = 'none';
@@ -453,15 +512,18 @@ Timeline.ExpandableSeriesComponent = (mainSeries, subSerieses, exporter) => {
                 element.children[1].style.display = 'none';
                 element.children[2].style.display = 'block';
             }
+            // Notify inside of the provider that we may changed the layout size because of expanded / unexpanded.
+            layoutSizeMayChangeEvent.add();
         }
     });
     if (exporter)
         exporter((expanded) => ref.setState({expanded: expanded}));
-    return ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize) => {
+    return ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize, layoutSizeMayChange) => {
+        layoutSizeMayChangeEvent = layoutSizeMayChange;
         return `<div class="groupSeries" ref="${ref}">
             <div class="series" style="display:none;"></div>
-            <div>${mainSeries(updateContainerWidth, onContainerScroll, onResize)}</div>
-            <div style="display:none">${subSerieses.map((subSeries) => subSeries(updateContainerWidth, onContainerScroll, onResize)).join("")}</div>
+            <div>${mainSeries(updateContainerWidth, onContainerScroll, onResize, layoutSizeMayChange)}</div>
+            <div style="display:none">${subSerieses.map((subSeries) => subSeries(updateContainerWidth, onContainerScroll, onResize, layoutSizeMayChange)).join("")}</div>
         </div>`;
     });
 }
@@ -470,9 +532,9 @@ Timeline.HeaderComponent = (label) => {
     return `<div class="series">${label}</div>`;
 }
 
-Timeline.ExpandableHeaderComponent = (mainLabel, subLabels, exporter) => {
+Timeline.ExpandableHeaderComponent = (mainLabel, options, subLabels, exporter) => {
     const ref = REF.createRef({
-        state: {expanded: false},
+        state: {expanded: options.expanded ? options.expanded : false},
         onStateUpdate: (element, stateDiff) => {
             if (stateDiff.expanded === false)
                 element.children[1].style.display = "none";
@@ -496,9 +558,9 @@ Timeline.SeriesWithHeaderComponent = (header, series) => {
     return {header, series};
 }
 
-Timeline.ExpandableSeriesWithHeaderExpanderComponent = (mainSeriesWithLable, ...subSeriesWithLable) => {
+Timeline.ExpandableSeriesWithHeaderExpanderComponent = (mainSeriesWithLable, options, ...subSeriesWithLable) => {
     const ref = REF.createRef({
-        state: {expanded: false},
+        state: {expanded: options.expanded ? options.expanded : false},
         onStateUpdate: (element, stateDiff) => {
             if (stateDiff.expanded === false)
                 element.innerText = "+";
@@ -523,8 +585,8 @@ Timeline.ExpandableSeriesWithHeaderExpanderComponent = (mainSeriesWithLable, ...
         })
     }));
     return {
-        header: Timeline.ExpandableHeaderComponent(`<a href="javascript:void(0)" ref="${ref}">+</a>` + mainLabel, subLabels, composer),
-        series: Timeline.ExpandableSeriesComponent(mainSeries, subSerieses, composer),
+        header: Timeline.ExpandableHeaderComponent(`<a class="link-button" href="javascript:void(0)" ref="${ref}">+</a>` + mainLabel, options, subLabels, composer),
+        series: Timeline.ExpandableSeriesComponent(mainSeries, options, subSerieses, composer),
     }
 }
 
@@ -533,7 +595,8 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     const getScaleKey = typeof option.getScaleFunc === "function" ? option.getScaleFunc : (a) => a;
     const comp = typeof option.compareFunc === "function" ? option.compareFunc : (a, b) => a - b;
     const onScaleClick = typeof option.onScaleClick === "function" ? option.onScaleClick : null;
-    const onScaleHover = typeof option.onScaleHover === "function" ? option.onScaleHover : null;
+    const onScaleEnter = typeof option.onScaleEnter === "function" ? option.onScaleEnter : null;
+    const onScaleLeave = typeof option.onScaleLeave === "function" ? option.onScaleLeave : null;
     const sortData = option.sortData === true ? option.sortData : false;
     const getLabel = typeof option.getLabelFunc === "function" ? option.getLabelFunc : (a) => a;
     const isTop = typeof option.isTop === "boolean" ? option.isTop : false;
@@ -626,8 +689,9 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     const getMouseEventTirggerScales = (e, scrollLeft, element) => {
         const {x, y} = getMousePosInCanvas(e, element);
         return onScreenScales.filter(scale => {
-            const width = scale.label.toString().length * fontSizeNumber / 2;
-            const height = scale.label.toString().length * fontSizeNumber / 2 * sqrt3;
+            const labelLength = getLabel(scale.label).length;
+            const width = labelLength * fontSizeNumber / 2;
+            const height = labelLength * fontSizeNumber / 2 * sqrt3;
             const point1 = {
                 x: scale._tagTop.x - scrollLeft - (isTop ? fontSizeNumber / 2 * sqrt3 : 0),
                 y: scale._tagTop.y + (fontSizeNumber / 2 + scaleTagLineHeight) * (isTop ? -1 : 1),
@@ -725,8 +789,30 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
 
     return {
         series: ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize) => {
+            const mouseMove = (e) => {
+                let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, canvasRef.element);
+                if (scales.length) {
+                    if (onScaleEnter) {
+                        const labelLength = getLabel(scales[0].label).length;
+                        scales[0].tipPoints = [{
+                            x: scales[0]._tagTop.x - canvasRef.state.scrollLeft,
+                            y: scales[0]._tagTop.y + scaleTagLineHeight * (isTop ? -1 : 0),
+                        }, {
+                            x: scales[0]._tagTop.x - canvasRef.state.scrollLeft + labelLength * fontSizeNumber / 3 - scaleTagLineHeight * (isTop ? 1 : .25),
+                            y: scales[0]._tagTop.y + (labelLength * fontSizeNumber / 2 * sqrt3) * (isTop ? -1 : 1) + scaleTagLineHeight * (isTop ? 1 : 0),
+                        }];
+                        onScaleEnter(scales[0], e, canvasRef.element.getBoundingClientRect());
+                    }
+                    canvasRef.element.style.cursor = "pointer";
+                } else {
+                    if (onScaleEnter)
+                        onScaleLeave(e, canvasRef.element.getBoundingClientRect());
+                    canvasRef.element.style.cursor = "default";
+                }
+            }
             const onScrollAction = (e) => {
                 canvasRef.setState({scrollLeft: e.target.scrollLeft / getDevicePixelRatio()});
+                mouseMove(e);
             };
             const onResizeAction = (width) => {
                 canvasRef.setState({width: width});
@@ -750,18 +836,10 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
                         });
                     }
 
-                    if (onScaleClick || onScaleHover) {
-                        element.addEventListener('mousemove', (e) => {
-                            let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, element);
-                            if (scales.length) {
-                                if (onScaleHover)
-                                    onScaleHover(scales[0], e);
-                                element.style.cursor = "pointer";
-                            } else {
-                                element.style.cursor = "default";
-                            }
-                        });
-                    }
+                    if (onScaleClick || onScaleEnter || onScaleLeave)
+                        element.addEventListener('mousemove', mouseMove);
+                    if (onScaleLeave)
+                        element.addEventListener('mouseleave', (e) => onScaleLeave(e, element.getBoundingClientRect()));
                 },
                 onElementUnmount: (element) => {
                     onContainerScroll.stopAction(onScrollAction);
@@ -819,13 +897,13 @@ Timeline.CanvasContainer = (exporter, ...children) => {
         return {headers, serieses};
     };
     const {headers, serieses} = upackChildren(children);
-    let composer = FP.composer(FP.currying((updateHeaders, updateSerieses) => {
+    let composer = FP.composer(FP.currying((updateHeaders, updateSerieses, notifyRerender) => {
         if (exporter)
             exporter((newChildren) => {
                 const {headers, serieses} = upackChildren(newChildren);
                 updateHeaders(headers);
                 updateSerieses(serieses);
-            });
+            }, notifyRerender);
     }));
     return (
         `<div class="timeline">

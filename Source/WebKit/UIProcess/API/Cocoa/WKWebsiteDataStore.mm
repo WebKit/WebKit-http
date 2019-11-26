@@ -27,9 +27,11 @@
 #import "WKWebsiteDataStoreInternal.h"
 
 #import "APIString.h"
+#import "AuthenticationChallengeDispositionCocoa.h"
 #import "CompletionHandlerCallChecker.h"
 #import "WKHTTPCookieStoreInternal.h"
 #import "WKNSArray.h"
+#import "WKNSURLAuthenticationChallenge.h"
 #import "WKWebViewInternal.h"
 #import "WKWebsiteDataRecordInternal.h"
 #import "WebPageProxy.h"
@@ -38,7 +40,8 @@
 #import "WebsiteDataFetchOption.h"
 #import "_WKWebsiteDataStoreConfiguration.h"
 #import "_WKWebsiteDataStoreDelegate.h"
-#import <WebKit/ServiceWorkerProcessProxy.h>
+#import <WebCore/Credential.h>
+#import <WebCore/RegistrationDatabase.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/URL.h>
 #import <wtf/WeakObjCPtr.h>
@@ -48,6 +51,7 @@ public:
     explicit WebsiteDataStoreClient(id <_WKWebsiteDataStoreDelegate> delegate)
         : m_delegate(delegate)
         , m_hasRequestStorageSpaceSelector([m_delegate.get() respondsToSelector:@selector(requestStorageSpace: frameOrigin: quota: currentSize: spaceRequired: decisionHandler:)])
+        , m_hasAuthenticationChallengeSelector([m_delegate.get() respondsToSelector:@selector(didReceiveAuthenticationChallenge: completionHandler:)])
     {
     }
 
@@ -73,8 +77,28 @@ private:
         [m_delegate.getAutoreleased() requestStorageSpace:mainFrameURL frameOrigin:frameURL quota:quota currentSize:currentSize spaceRequired:spaceRequired decisionHandler:decisionHandler.get()];
     }
 
+    void didReceiveAuthenticationChallenge(Ref<WebKit::AuthenticationChallengeProxy>&& challenge) final
+    {
+        if (!m_hasAuthenticationChallengeSelector || !m_delegate) {
+            challenge->listener().completeChallenge(WebKit::AuthenticationChallengeDisposition::PerformDefaultHandling);
+            return;
+        }
+
+        auto nsURLChallenge = wrapper(challenge);
+        auto checker = WebKit::CompletionHandlerCallChecker::create(m_delegate.getAutoreleased(), @selector(didReceiveAuthenticationChallenge: completionHandler:));
+        auto completionHandler = makeBlockPtr([challenge = WTFMove(challenge), checker = WTFMove(checker)](NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) mutable {
+            if (checker->completionHandlerHasBeenCalled())
+                return;
+            checker->didCallCompletionHandler();
+            challenge->listener().completeChallenge(WebKit::toAuthenticationChallengeDisposition(disposition), WebCore::Credential(credential));
+        });
+
+        [m_delegate.getAutoreleased() didReceiveAuthenticationChallenge:nsURLChallenge completionHandler:completionHandler.get()];
+    }
+
     WeakObjCPtr<id <_WKWebsiteDataStoreDelegate> > m_delegate;
     bool m_hasRequestStorageSpaceSelector { false };
+    bool m_hasAuthenticationChallengeSelector { false };
 };
 
 @implementation WKWebsiteDataStore
@@ -485,7 +509,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    _websiteDataStore->websiteDataStore().getAllStorageAccessEntries(webPageProxy->pageID(), [completionHandler = makeBlockPtr(completionHandler)](auto domains) {
+    _websiteDataStore->websiteDataStore().getAllStorageAccessEntries(webPageProxy->identifier(), [completionHandler = makeBlockPtr(completionHandler)](auto domains) {
         Vector<RefPtr<API::Object>> apiDomains;
         apiDomains.reserveInitialCapacity(domains.size());
         for (auto& domain : domains)
@@ -554,7 +578,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (bool)_hasRegisteredServiceWorker
 {
-    return WebKit::ServiceWorkerProcessProxy::hasRegisteredServiceWorkers(_websiteDataStore->websiteDataStore().serviceWorkerRegistrationDirectory());
+    return FileSystem::fileExists(WebCore::serviceWorkerRegistrationDatabaseFilename(_websiteDataStore->websiteDataStore().serviceWorkerRegistrationDirectory()));
 }
 
 - (id <_WKWebsiteDataStoreDelegate>)_delegate

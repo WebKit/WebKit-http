@@ -64,7 +64,6 @@ public:
         LogicalNot,
         MakeArrayReference,
         MakePointer,
-        NullLiteral,
         ReadModifyWrite,
         Ternary,
         UnsignedIntegerLiteral,
@@ -119,9 +118,9 @@ public:
     {
         if (auto* resolvedType = const_cast<Expression*>(this)->maybeResolvedType())
             other.setType(*resolvedType);
-        if (auto* typeAnnotation = maybeTypeAnnotation())
-            other.setTypeAnnotation(TypeAnnotation(*typeAnnotation));
     }
+
+    bool mayBeEffectful() const;
 
     Kind kind() const  { return m_kind; }
     bool isAssignmentExpression() const { return kind() == Kind::Assignment; }
@@ -138,7 +137,6 @@ public:
     bool isLogicalNotExpression() const { return kind() == Kind::LogicalNot; }
     bool isMakeArrayReferenceExpression() const { return kind() == Kind::MakeArrayReference; }
     bool isMakePointerExpression() const { return kind() == Kind::MakePointer; }
-    bool isNullLiteral() const { return kind() == Kind::NullLiteral; }
     bool isPropertyAccessExpression() const { return isDotExpression() || isIndexExpression(); }
     bool isReadModifyWriteExpression() const { return kind() == Kind::ReadModifyWrite; }
     bool isTernaryExpression() const { return kind() == Kind::Ternary; }

@@ -267,12 +267,7 @@ RefPtr<Element> Element::focusDelegate()
 
 int Element::tabIndexForBindings() const
 {
-    auto defaultIndex = defaultTabIndex();
-    ASSERT(!defaultIndex || defaultIndex == -1);
-    // FIXME: supportsFocus() check shouldn't be here.
-    if (!defaultIndex || supportsFocus())
-        return tabIndexSetExplicitly().valueOr(0);
-    return defaultIndex;
+    return valueOrCompute(tabIndexSetExplicitly(), [&] { return defaultTabIndex(); });
 }
 
 void Element::setTabIndexForBindings(int value)
@@ -489,7 +484,7 @@ NamedNodeMap& Element::attributes() const
     if (NamedNodeMap* attributeMap = rareData.attributeMap())
         return *attributeMap;
 
-    rareData.setAttributeMap(std::make_unique<NamedNodeMap>(const_cast<Element&>(*this)));
+    rareData.setAttributeMap(makeUnique<NamedNodeMap>(const_cast<Element&>(*this)));
     return *rareData.attributeMap();
 }
 
@@ -2319,7 +2314,7 @@ void Element::setIsDefinedCustomElement(JSCustomElementInterface& elementInterfa
     setFlag(IsCustomElement);
     auto& data = ensureElementRareData();
     if (!data.customElementReactionQueue())
-        data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
+        data.setCustomElementReactionQueue(makeUnique<CustomElementReactionQueue>(elementInterface));
     invalidateStyleForSubtree();
     InspectorInstrumentation::didChangeCustomElementState(*this);
 }
@@ -2356,7 +2351,7 @@ void Element::enqueueToUpgrade(JSCustomElementInterface& elementInterface)
     auto& data = ensureElementRareData();
     bool alreadyScheduledToUpgrade = data.customElementReactionQueue();
     if (!alreadyScheduledToUpgrade)
-        data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
+        data.setCustomElementReactionQueue(makeUnique<CustomElementReactionQueue>(elementInterface));
     data.customElementReactionQueue()->enqueueElementUpgrade(*this, alreadyScheduledToUpgrade);
 }
 
@@ -3219,51 +3214,6 @@ bool Element::needsStyleInvalidation() const
     return true;
 }
 
-void Element::setStyleAffectedByEmpty()
-{
-    ensureElementRareData().setStyleAffectedByEmpty(true);
-}
-
-void Element::setStyleAffectedByFocusWithin()
-{
-    ensureElementRareData().setStyleAffectedByFocusWithin(true);
-}
-
-void Element::setStyleAffectedByActive()
-{
-    ensureElementRareData().setStyleAffectedByActive(true);
-}
-
-void Element::setChildrenAffectedByDrag()
-{
-    ensureElementRareData().setChildrenAffectedByDrag(true);
-}
-
-void Element::setChildrenAffectedByForwardPositionalRules()
-{
-    ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
-}
-
-void Element::setDescendantsAffectedByForwardPositionalRules()
-{
-    ensureElementRareData().setDescendantsAffectedByForwardPositionalRules(true);
-}
-
-void Element::setChildrenAffectedByBackwardPositionalRules()
-{
-    ensureElementRareData().setChildrenAffectedByBackwardPositionalRules(true);
-}
-
-void Element::setDescendantsAffectedByBackwardPositionalRules()
-{
-    ensureElementRareData().setDescendantsAffectedByBackwardPositionalRules(true);
-}
-
-void Element::setChildrenAffectedByPropertyBasedBackwardPositionalRules()
-{
-    ensureElementRareData().setChildrenAffectedByPropertyBasedBackwardPositionalRules(true);
-}
-
 void Element::setChildIndex(unsigned index)
 {
     ElementRareData& rareData = ensureElementRareData();
@@ -3272,72 +3222,16 @@ void Element::setChildIndex(unsigned index)
 
 bool Element::hasFlagsSetDuringStylingOfChildren() const
 {
-    if (childrenAffectedByHover() || childrenAffectedByFirstChildRules() || childrenAffectedByLastChildRules())
-        return true;
-
-    if (!hasRareData())
-        return false;
-    return rareDataStyleAffectedByActive()
-        || rareDataChildrenAffectedByDrag()
-        || rareDataChildrenAffectedByForwardPositionalRules()
-        || rareDataDescendantsAffectedByForwardPositionalRules()
-        || rareDataChildrenAffectedByBackwardPositionalRules()
-        || rareDataDescendantsAffectedByBackwardPositionalRules()
-        || rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules();
-}
-
-bool Element::rareDataStyleAffectedByEmpty() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->styleAffectedByEmpty();
-}
-
-bool Element::rareDataStyleAffectedByFocusWithin() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->styleAffectedByFocusWithin();
-}
-
-bool Element::rareDataStyleAffectedByActive() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->styleAffectedByActive();
-}
-
-bool Element::rareDataChildrenAffectedByDrag() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->childrenAffectedByDrag();
-}
-
-bool Element::rareDataChildrenAffectedByForwardPositionalRules() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->childrenAffectedByForwardPositionalRules();
-}
-
-bool Element::rareDataDescendantsAffectedByForwardPositionalRules() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->descendantsAffectedByForwardPositionalRules();
-}
-
-bool Element::rareDataChildrenAffectedByBackwardPositionalRules() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->childrenAffectedByBackwardPositionalRules();
-}
-
-bool Element::rareDataDescendantsAffectedByBackwardPositionalRules() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->descendantsAffectedByBackwardPositionalRules();
-}
-
-bool Element::rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules() const
-{
-    ASSERT(hasRareData());
-    return elementRareData()->childrenAffectedByPropertyBasedBackwardPositionalRules();
+    return styleAffectedByActive()
+        || childrenAffectedByHover()
+        || childrenAffectedByFirstChildRules()
+        || childrenAffectedByLastChildRules()
+        || childrenAffectedByDrag()
+        || childrenAffectedByForwardPositionalRules()
+        || descendantsAffectedByForwardPositionalRules()
+        || childrenAffectedByBackwardPositionalRules()
+        || descendantsAffectedByBackwardPositionalRules()
+        || childrenAffectedByPropertyBasedBackwardPositionalRules();
 }
 
 unsigned Element::rareDataChildIndex() const
@@ -3492,7 +3386,7 @@ DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
-        data.setClassList(std::make_unique<DOMTokenList>(*this, HTMLNames::classAttr));
+        data.setClassList(makeUnique<DOMTokenList>(*this, HTMLNames::classAttr));
     return *data.classList();
 }
 
@@ -3500,7 +3394,7 @@ DatasetDOMStringMap& Element::dataset()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.dataset())
-        data.setDataset(std::make_unique<DatasetDOMStringMap>(*this));
+        data.setDataset(makeUnique<DatasetDOMStringMap>(*this));
     return *data.dataset();
 }
 
@@ -3644,7 +3538,7 @@ IntersectionObserverData& Element::ensureIntersectionObserverData()
 {
     auto& rareData = ensureElementRareData();
     if (!rareData.intersectionObserverData())
-        rareData.setIntersectionObserverData(std::make_unique<IntersectionObserverData>());
+        rareData.setIntersectionObserverData(makeUnique<IntersectionObserverData>());
     return *rareData.intersectionObserverData();
 }
 
@@ -3670,7 +3564,7 @@ ResizeObserverData& Element::ensureResizeObserverData()
 {
     auto& rareData = ensureElementRareData();
     if (!rareData.resizeObserverData())
-        rareData.setResizeObserverData(std::make_unique<ResizeObserverData>());
+        rareData.setResizeObserverData(makeUnique<ResizeObserverData>());
     return *rareData.resizeObserverData();
 }
 
@@ -3970,6 +3864,9 @@ void Element::resetComputedStyle()
 
 void Element::resetStyleRelations()
 {
+    // FIXME: Make this code more consistent.
+    clearFlag(StyleAffectedByFocusWithinFlag);
+    clearStyleFlags();
     if (!hasRareData())
         return;
     elementRareData()->resetStyleRelations();

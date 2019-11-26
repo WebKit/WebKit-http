@@ -858,18 +858,9 @@ test/built-ins/Date/proto-from-ctor-realm-two.js:
 test/built-ins/Date/proto-from-ctor-realm-zero.js:
   default: 'TypeError: Type error'
   strict mode: 'TypeError: Type error'
-test/built-ins/Date/prototype/toJSON/invoke-result.js:
-  default: 'TypeError: toISOString did not return a primitive value'
-  strict mode: 'TypeError: toISOString did not return a primitive value'
 test/built-ins/Date/prototype/toJSON/to-object.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Date/prototype/toJSON/to-primitive-symbol.js:
-  default: 'TypeError: toISOString did not return a primitive value'
-  strict mode: 'TypeError: toISOString did not return a primitive value'
-test/built-ins/Date/prototype/toJSON/to-primitive-value-of.js:
-  default: 'TypeError: toISOString did not return a primitive value'
-  strict mode: 'TypeError: toISOString did not return a primitive value'
 test/built-ins/Error/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(Â«ErrorÂ», Â«ErrorÂ») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«ErrorÂ», Â«ErrorÂ») to be true'
@@ -1221,9 +1212,6 @@ test/built-ins/JSON/parse/reviver-array-length-get-err.js:
 test/built-ins/Map/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(Â«[object Map]Â», Â«[object Map]Â») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«[object Map]Â», Â«[object Map]Â») to be true'
-test/built-ins/Math/round/S15.8.2.15_A7.js:
-  default: "Test262Error: #4: '1 / Math.round(0.49999999999999994) !== 1 / 0'"
-  strict mode: "Test262Error: #4: '1 / Math.round(0.49999999999999994) !== 1 / 0'"
 test/built-ins/Number/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(Â«0Â», Â«0Â») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«0Â», Â«0Â») to be true'
@@ -1330,9 +1318,6 @@ test/built-ins/Proxy/construct/return-not-object-throws-undefined-realm.js:
 test/built-ins/Proxy/construct/trap-is-not-callable-realm.js:
   default: 'Test262Error: Expected a TypeError but got a TypeError'
   strict mode: 'Test262Error: Expected a TypeError but got a TypeError'
-test/built-ins/Proxy/create-handler-is-revoked-proxy.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/RegExp/named-groups/groups-object-subclass-sans.js:
   default: 'Test262Error: Expected SameValue(Â«bÂ», Â«$<a>Â») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«bÂ», Â«$<a>Â») to be true'
@@ -2252,15 +2237,6 @@ test/language/block-scope/syntax/redeclaration/var-redeclaration-attempt-after-f
   default: 'Test262: This statement should not be evaluated.'
 test/language/block-scope/syntax/redeclaration/var-redeclaration-attempt-after-generator.js:
   default: 'Test262: This statement should not be evaluated.'
-test/language/comments/hashbang/eval-indirect.js:
-  default: "SyntaxError: Invalid character: '#'"
-  strict mode: "SyntaxError: Invalid character: '#'"
-test/language/comments/hashbang/eval.js:
-  default: "SyntaxError: Invalid character: '#'"
-  strict mode: "SyntaxError: Invalid character: '#'"
-test/language/comments/hashbang/no-line-separator.js:
-  default: "SyntaxError: Invalid character: '#'"
-  strict mode: "SyntaxError: Invalid character: '#'"
 test/language/computed-property-names/class/static/method-number.js:
   default: "Test262Error: `compareArray(Object.getOwnPropertyNames(C), ['1', '2', 'length', 'prototype', 'name', 'a', 'c'])` returns `true`"
   strict mode: "Test262Error: `compareArray(Object.getOwnPropertyNames(C), ['1', '2', 'length', 'prototype', 'name', 'a', 'c'])` returns `true`"

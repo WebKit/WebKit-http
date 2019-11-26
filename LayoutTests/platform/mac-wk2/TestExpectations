@@ -477,21 +477,16 @@ webkit.org/b/71298 accessibility/mac/iframe-with-title-correct-hierarchy.html
 ### START OF (5) Features that are not supported when NetworkProcess is enabled (i.e. they only work on Mountain Lion, and not on newer OS versions).
 
 # https://bugs.webkit.org/show_bug.cgi?id=115274
-# PPT: testRunner.setPrivateBrowsingEnabled doesn't work with NetworkProcess
+# PPT: testRunner.setPrivateBrowsingEnabled_DEPRECATED() doesn't work with NetworkProcess
 http/tests/security/appcache-in-private-browsing.html [ Skip ]
 http/tests/security/appcache-switching-private-browsing.html [ Skip ]
 http/tests/security/cookies/first-party-cookie-allow-xslt.xml [ Skip ]
-http/tests/security/cookies/third-party-cookie-blocking-main-frame.html [ Skip ]
-http/tests/security/cookies/third-party-cookie-blocking-user-action.html [ Skip ]
 http/tests/security/cookies/third-party-cookie-blocking-xslt.xml [ Skip ]
-http/tests/security/cookies/third-party-cookie-blocking.html [ Skip ]
-http/tests/security/cross-frame-access-private-browsing.html [ Skip ]
 http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Skip ]
 http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Skip ]
 http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Skip ]
 http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Skip ]
 plugins/private-browsing-mode-2.html [ Skip ]
-plugins/private-browsing-mode.html [ Skip ]
 storage/websql/private-browsing-noread-nowrite.html [ Skip ]
 
 # There is no network load scheduling or prioritization with NetworkProcess.
@@ -658,9 +653,6 @@ webkit.org/b/168336 [ Debug ] imported/w3c/web-platform-tests/streams/readable-s
 
 # Skipped because Mac doesn't have a key to show the context menu
 fast/events/context-activated-by-key-event.html [ Skip ]
-
-webkit.org/b/169621 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Pass Failure ]
-webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
 
@@ -914,6 +906,13 @@ http/wpt/webauthn/public-key-credential-get-success-local.https.html [ Skip ]
 http/wpt/credential-management/credentialscontainer-store-basics.https.html [ Skip ]
 http/wpt/webauthn/idl.https.html [ Skip ]
 
+# NFC support require Catalina+, therefore skip them for HighSierra and Mojave.
+[ HighSierra Mojave ] http/wpt/webauthn/ctap-nfc-failure.https.html [ Skip ]
+[ HighSierra Mojave ] http/wpt/webauthn/public-key-credential-create-failure-nfc.https.html [ Skip ]
+[ HighSierra Mojave ] http/wpt/webauthn/public-key-credential-create-success-nfc.https.html [ Skip ]
+[ HighSierra Mojave ] http/wpt/webauthn/public-key-credential-get-failure-nfc.https.html [ Skip ]
+[ HighSierra Mojave ] http/wpt/webauthn/public-key-credential-get-success-nfc.https.html [ Skip ]
+
 webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass Timeout ] 
 
 webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
@@ -921,8 +920,6 @@ webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-a
 webkit.org/b/194826 http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
 
 webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
-
-webkit.org/b/196376 storage/domstorage/localstorage/private-browsing-affects-storage.html [ Pass ]
 
 webkit.org/b/196400 fast/mediastream/MediaStreamTrack-getSettings.html [ Pass Failure ]
 

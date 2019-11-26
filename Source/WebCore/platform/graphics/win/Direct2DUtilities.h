@@ -32,12 +32,23 @@
 #include "COMPtr.h"
 #include "GraphicsTypes.h"
 #include "IntSize.h"
+#include "PlatformExportMacros.h"
 
 interface ID2D1Bitmap;
+interface ID2D1BitmapRenderTarget;
 interface ID2D1DCRenderTarget;
 interface ID2D1RenderTarget;
+interface ID3D11Device1;
+interface ID3D11DeviceContext1;
+interface IDXGIDevice;
+interface IDXGIFactory2;
+interface IDXGISurface1;
 interface IWICBitmapSource;
 interface IWICBitmap;
+
+struct D2D1_BITMAP_PROPERTIES;
+struct D2D1_PIXEL_FORMAT;
+struct D2D1_RENDER_TARGET_PROPERTIES;
 
 namespace WebCore {
 
@@ -48,6 +59,14 @@ class IntSize;
 
 namespace Direct2D {
 
+GUID wicBitmapFormat();
+D2D1_PIXEL_FORMAT pixelFormat(); // BGRA
+D2D1_PIXEL_FORMAT pixelFormatForSoftwareManipulation(); // RGBA
+D2D1_BITMAP_PROPERTIES bitmapProperties();
+D2D1_RENDER_TARGET_PROPERTIES renderTargetProperties();
+
+void inPlaceSwizzle(uint8_t* byteData, unsigned length, bool applyPremultiplication = false);
+
 IntSize bitmapSize(IWICBitmapSource*);
 FloatSize bitmapSize(ID2D1Bitmap*);
 FloatPoint bitmapResolution(IWICBitmapSource*);
@@ -57,9 +76,21 @@ COMPtr<ID2D1Bitmap> createBitmap(ID2D1RenderTarget*, const IntSize&);
 COMPtr<IWICBitmap> createWicBitmap(const IntSize&);
 COMPtr<IWICBitmap> createDirect2DImageSurfaceWithData(void* data, const IntSize&, unsigned stride);
 COMPtr<ID2D1RenderTarget> createRenderTargetFromWICBitmap(IWICBitmap*);
+COMPtr<ID2D1BitmapRenderTarget> createBitmapRenderTargetOfSize(const IntSize&, ID2D1RenderTarget* = nullptr, float deviceScaleFactor = 1.0);
+COMPtr<ID2D1BitmapRenderTarget> createBitmapRenderTarget(ID2D1RenderTarget* = nullptr);
 COMPtr<ID2D1DCRenderTarget> createGDIRenderTarget();
+COMPtr<IDXGISurface1> createDXGISurfaceOfSize(const IntSize&, ID3D11Device1*, bool crossProcess);
+COMPtr<ID2D1RenderTarget> createSurfaceRenderTarget(IDXGISurface1*);
 
 void copyRectFromOneSurfaceToAnother(ID2D1Bitmap* from, ID2D1Bitmap* to, const IntSize& sourceOffset, const IntRect&, const IntSize& destOffset = IntSize());
+
+WEBCORE_EXPORT ID3D11DeviceContext1* dxgiImmediateContext();
+WEBCORE_EXPORT ID3D11Device1* defaultDirectXDevice();
+WEBCORE_EXPORT bool createDeviceAndContext(COMPtr<ID3D11Device1>&, COMPtr<ID3D11DeviceContext1>&);
+WEBCORE_EXPORT COMPtr<IDXGIDevice> toDXGIDevice(const COMPtr<ID3D11Device1>&);
+WEBCORE_EXPORT COMPtr<IDXGIFactory2> factoryForDXGIDevice(const COMPtr<IDXGIDevice>&);
+
+void writeDiagnosticPNGToPath(ID2D1RenderTarget*, ID2D1Bitmap*, LPCWSTR fileName);
 
 } // namespace Direct2D
 

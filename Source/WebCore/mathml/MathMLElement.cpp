@@ -34,10 +34,13 @@
 #include "EventHandler.h"
 #include "FrameLoader.h"
 #include "HTMLAnchorElement.h"
+#include "HTMLElement.h"
+#include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "MathMLNames.h"
 #include "MouseEvent.h"
 #include "RenderTableCell.h"
+#include "Settings.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringConcatenateNumbers.h>
 
@@ -87,8 +90,20 @@ void MathMLElement::parseAttribute(const QualifiedName& name, const AtomString& 
     } else if (name == columnspanAttr) {
         if (is<RenderTableCell>(renderer()) && hasTagName(mtdTag))
             downcast<RenderTableCell>(renderer())->colSpanOrRowSpanChanged();
-    } else
+    } else if (name == HTMLNames::tabindexAttr) {
+        if (value.isEmpty())
+            clearTabIndexExplicitlyIfNeeded();
+        else if (auto optionalTabIndex = parseHTMLInteger(value))
+            setTabIndexExplicitly(optionalTabIndex.value());
+    } else {
+        auto& eventName = HTMLElement::eventNameForEventHandlerAttribute(name);
+        if (!eventName.isNull()) {
+            setAttributeEventListener(eventName, name, value);
+            return;
+        }
+
         StyledElement::parseAttribute(name, value);
+    }
 }
 
 bool MathMLElement::isPresentationAttribute(const QualifiedName& name) const
@@ -125,25 +140,31 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
         addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, convertMathSizeIfNeeded(value));
     else if (name == mathcolorAttr)
         addPropertyToPresentationAttributeStyle(style, CSSPropertyColor, value);
-    // FIXME: The following are deprecated attributes that should lose if there is a conflict with a non-deprecated attribute.
-    else if (name == fontsizeAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, value);
-    else if (name == backgroundAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyBackgroundColor, value);
-    else if (name == colorAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyColor, value);
-    else if (name == fontstyleAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyFontStyle, value);
-    else if (name == fontweightAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyFontWeight, value);
-    else if (name == fontfamilyAttr)
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyFontFamily, value);
     else if (name == dirAttr) {
-        if (hasTagName(mathTag) || hasTagName(mrowTag) || hasTagName(mstyleTag) || isMathMLToken())
+        if (document().settings().coreMathMLEnabled() || hasTagName(mathTag) || hasTagName(mrowTag) || hasTagName(mstyleTag) || isMathMLToken())
             addPropertyToPresentationAttributeStyle(style, CSSPropertyDirection, value);
-    }  else {
-        ASSERT(!isPresentationAttribute(name));
-        StyledElement::collectStyleForPresentationAttribute(name, value, style);
+    } else {
+        if (document().settings().coreMathMLEnabled()) {
+            StyledElement::collectStyleForPresentationAttribute(name, value, style);
+            return;
+        }
+        // FIXME: The following are deprecated attributes that should lose if there is a conflict with a non-deprecated attribute.
+        if (name == fontsizeAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontSize, value);
+        else if (name == backgroundAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBackgroundColor, value);
+        else if (name == colorAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyColor, value);
+        else if (name == fontstyleAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontStyle, value);
+        else if (name == fontweightAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontWeight, value);
+        else if (name == fontfamilyAttr)
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyFontFamily, value);
+        else {
+            ASSERT(!isPresentationAttribute(name));
+            StyledElement::collectStyleForPresentationAttribute(name, value, style);
+        }
     }
 }
 
@@ -219,12 +240,6 @@ bool MathMLElement::supportsFocus() const
         return StyledElement::supportsFocus();
     // If not a link we should still be able to focus the element if it has tabIndex.
     return isLink() || StyledElement::supportsFocus();
-}
-
-int MathMLElement::defaultTabIndex() const
-{
-    // FIXME: This seems wrong.
-    return 0;
 }
 
 }

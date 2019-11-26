@@ -174,7 +174,7 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (NSDate *)_lastModifiedDate;
 @end
 
-#if PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED >= 60000
+#if PLATFORM(WATCHOS)
 typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
     NSURLSessionCompanionProxyPreferenceDefault = 0,
     NSURLSessionCompanionProxyPreferencePreferCompanion,
@@ -192,10 +192,8 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 #if PLATFORM(IOS_FAMILY)
 @property (nullable, copy) NSString *_CTDataConnectionServiceType;
 #endif
-#if HAVE(CFNETWORK_WITH_AUTO_ADDED_HTTP_HEADER_SUPPRESSION_SUPPORT)
 @property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
-#endif
-#if PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED >= 60000
+#if PLATFORM(WATCHOS)
 @property NSURLSessionCompanionProxyPreference _companionProxyPreference;
 #endif
 #if HAVE(APP_SSO)

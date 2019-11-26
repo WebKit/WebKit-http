@@ -277,6 +277,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setSpatialNavigationEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE menuItemElementEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setMenuItemElementEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE keygenElementEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setKeygenElementEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE serverTimingEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setServerTimingEnabled(BOOL);
 
@@ -287,8 +289,6 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setResizeObserverEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE coreMathMLEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setCoreMathMLEnabled(BOOL);
-    virtual HRESULT STDMETHODCALLTYPE lazyImageLoadingEnabled(_Out_ BOOL*);
-    virtual HRESULT STDMETHODCALLTYPE setLazyImageLoadingEnabled(BOOL);
 
     // WebPreferences
 

@@ -488,7 +488,7 @@ $numPasses = 0
 
 # We force all tests to use a smaller (1.5M) stack so that stack overflow tests can run faster.
 BASE_OPTIONS = ["--useFTLJIT=false", "--useFunctionDotArguments=true", "--validateExceptionChecks=true", "--useDollarVM=true", "--maxPerThreadStackUsage=1572864"]
-EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
+EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--thresholdForOMGOptimizeAfterWarmUp=20", "--thresholdForOMGOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
 # NOTE: Tests rely on this using scribbleFreeCells.
 NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
 B3O1_OPTIONS = ["--defaultB3OptLevel=1"]
@@ -699,8 +699,8 @@ def runBigIntEnabled(*optionalTestSpecificOptions)
     run("big-int-enabled", "--useBigInt=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
 end
 
-def runNullishCoalescingEnabled(*optionalTestSpecificOptions)
-    run("nullish-coalescing-enabled", "--useNullishCoalescing=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
+def runNullishAwareOperatorsEnabled(*optionalTestSpecificOptions)
+    run("nullish-aware-operators-enabled", "--useNullishAwareOperators=true" , *(FTL_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJIT(*optionalTestSpecificOptions)
@@ -776,8 +776,8 @@ def runNoCJIT(*optionalTestSpecificOptions)
     run("no-cjit", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
-def runDFGMaximalFlushPhase(*optionalTestSpecificOptions)
-    run("dfg-maximal-flush-validate-no-cjit", "--forceCodeBlockToJettisonDueToOldAge=true", "--validateGraph=true", "--useMaximalFlushInsertionPhase=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+def runEagerJettisonNoCJIT(*optionalTestSpecificOptions)
+    run("eager-jettison-no-cjit", "--forceCodeBlockToJettisonDueToOldAge=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runShadowChicken(*optionalTestSpecificOptions)
@@ -802,7 +802,7 @@ def defaultRun
             runDFGEager
             if $mode != "basic"
                 runDFGEagerNoCJITValidate
-                runDFGMaximalFlushPhase
+                runEagerJettisonNoCJIT
             end
 
             return if !$isFTLPlatform
@@ -834,7 +834,7 @@ def defaultNoNoLLIntRun
             runDFGEager
             if $mode != "basic"
                 runDFGEagerNoCJITValidate
-                runDFGMaximalFlushPhase
+                runEagerJettisonNoCJIT
             end
 
             return if !$isFTLPlatform
@@ -879,28 +879,28 @@ end
 
 def defaultSpotCheck
     defaultSpotCheckNoMaximalFlush
-    runDFGMaximalFlushPhase
+    runEagerJettisonNoCJIT
 end
 
 # This is expected to not do eager runs because eager runs can have a lot of recompilations
 # for reasons that don't arise in the real world. It's used for tests that assert convergence
 # by counting recompilations.
-def defaultNoEagerRun
-    runDefault
+def defaultNoEagerRun(*optionalTestSpecificOptions)
+    runDefault(*optionalTestSpecificOptions)
     if $jitTests
-        runNoLLInt
-        runNoCJITValidatePhases
-        runNoCJITCollectContinuously if shouldCollectContinuously?
+        runNoLLInt(*optionalTestSpecificOptions)
+        runNoCJITValidatePhases(*optionalTestSpecificOptions)
+        runNoCJITCollectContinuously(*optionalTestSpecificOptions) if shouldCollectContinuously?
 
         return if !$isFTLPlatform
 
-        runNoFTL
-        runFTLNoCJITValidate
+        runNoFTL(*optionalTestSpecificOptions)
+        runFTLNoCJITValidate(*optionalTestSpecificOptions)
 
         return if $mode == "basic"
 
-        runFTLNoCJITNoInlineValidate
-        runFTLNoCJITB3O0
+        runFTLNoCJITNoInlineValidate(*optionalTestSpecificOptions)
+        runFTLNoCJITB3O0(*optionalTestSpecificOptions)
     end
 end
 
@@ -912,7 +912,7 @@ def defaultNoSamplingProfilerRun
         runNoCJITCollectContinuously if shouldCollectContinuously?
         runDFGEager
         runDFGEagerNoCJITValidate
-        runDFGMaximalFlushPhase
+        runEagerJettisonNoCJIT
 
         return if !$isFTLPlatform
 
@@ -1085,6 +1085,7 @@ def runWebAssembly
     run("default-wasm", "-m", *FTL_OPTIONS)
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager", "-m", *(FTL_OPTIONS + EAGER_OPTIONS))
         run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
         run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
@@ -1103,6 +1104,7 @@ def runWebAssemblySuite(*optionalTestSpecificOptions)
     run("default-wasm", "-m", *(FTL_OPTIONS + optionalTestSpecificOptions))
     if $mode != "quick"
         run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+        run("wasm-eager", "-m", *(FTL_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
         run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *(FTL_OPTIONS + optionalTestSpecificOptions))
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *(FTL_OPTIONS + optionalTestSpecificOptions))

@@ -767,7 +767,7 @@ InputEventsEnabled:
 
 WebAuthenticationEnabled:
   type: bool
-  defaultValue: DEFAULT_WEB_AUTHENTICATION_ENABLED
+  defaultValue: false
   humanReadableName: "Web Authentication"
   humanReadableDescription: "Enable Web Authentication support"
   webcoreBinding: RuntimeEnabledFeatures
@@ -846,7 +846,7 @@ DataTransferItemsEnabled:
 
 CustomPasteboardDataEnabled:
   type: bool
-  defaultValue: defaultCustomPasteboardDataEnabled()
+  defaultValue: DEFAULT_CUSTOM_PASTEBOARD_DATA_ENABLED
   humanReadableName: "Custom pasteboard data"
   humanReadableDescription: "Enable custom clipboard types and better security model for clipboard API."
   webcoreBinding: RuntimeEnabledFeatures
@@ -930,7 +930,7 @@ EditableLinkBehavior:
 
 InspectorAttachedHeight:
   type: uint32_t
-  defaultValue: 300
+  defaultValue: 500
   webcoreBinding: none
 
 InspectorAttachedWidth:
@@ -1207,6 +1207,14 @@ DialogElementEnabled:
   type: bool
   defaultValue: false
   webcoreBinding: RuntimeEnabledFeatures
+
+KeygenElementEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  humanReadableName: "HTMLKeygenElement"
+  humanReadableDescription: "Enables the deprecated and disabled-by-default HTML keygen element."
+  category: internal
 
 EncryptedMediaAPIEnabled:
   type: bool
@@ -1529,6 +1537,14 @@ WebAPIStatisticsEnabled:
   defaultValue: false
   humanReadableName: "Web API Statistics"
   humanReadableDescription: "Enable Web API Statistics"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: internal
+
+SecureContextChecksEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Secure Context Checks"
+  humanReadableDescription: "Allow access to HTTPS-only Web APIs over HTTP"
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
 

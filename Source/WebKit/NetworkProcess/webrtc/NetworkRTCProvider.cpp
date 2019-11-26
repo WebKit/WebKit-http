@@ -28,6 +28,7 @@
 
 #if USE(LIBWEBRTC)
 
+#include "LibWebRTCSocketClient.h"
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcess.h"
@@ -60,7 +61,7 @@ NetworkRTCProvider::NetworkRTCProvider(NetworkConnectionToWebProcess& connection
     : m_connection(&connection)
     , m_rtcMonitor(*this)
     , m_rtcNetworkThread(createThread())
-    , m_packetSocketFactory(makeUniqueRef<rtc::BasicPacketSocketFactory>(m_rtcNetworkThread.get()))
+    , m_packetSocketFactory(makeUniqueRefWithoutFastMallocCheck<rtc::BasicPacketSocketFactory>(m_rtcNetworkThread.get()))
 {
 #if defined(NDEBUG)
     rtc::LogMessage::LogToDebug(rtc::LS_NONE);
@@ -95,7 +96,7 @@ void NetworkRTCProvider::close()
     });
 }
 
-void NetworkRTCProvider::createSocket(uint64_t identifier, std::unique_ptr<rtc::AsyncPacketSocket>&& socket, LibWebRTCSocketClient::Type type)
+void NetworkRTCProvider::createSocket(uint64_t identifier, std::unique_ptr<rtc::AsyncPacketSocket>&& socket, Socket::Type type)
 {
     if (!socket) {
         sendFromMainThread([identifier, size = m_sockets.size()](IPC::Connection& connection) {
@@ -104,14 +105,14 @@ void NetworkRTCProvider::createSocket(uint64_t identifier, std::unique_ptr<rtc::
         });
         return;
     }
-    addSocket(identifier, std::make_unique<LibWebRTCSocketClient>(identifier, *this, WTFMove(socket), type));
+    addSocket(identifier, makeUnique<LibWebRTCSocketClient>(identifier, *this, WTFMove(socket), type));
 }
 
 void NetworkRTCProvider::createUDPSocket(uint64_t identifier, const RTCNetwork::SocketAddress& address, uint16_t minPort, uint16_t maxPort)
 {
     callOnRTCNetworkThread([this, identifier, address = RTCNetwork::isolatedCopy(address.value), minPort, maxPort]() {
         std::unique_ptr<rtc::AsyncPacketSocket> socket(m_packetSocketFactory->CreateUdpSocket(address, minPort, maxPort));
-        createSocket(identifier, WTFMove(socket), LibWebRTCSocketClient::Type::UDP);
+        createSocket(identifier, WTFMove(socket), Socket::Type::UDP);
     });
 }
 
@@ -125,7 +126,7 @@ void NetworkRTCProvider::createServerTCPSocket(uint64_t identifier, const RTCNet
 
     callOnRTCNetworkThread([this, identifier, address = RTCNetwork::isolatedCopy(address.value), minPort, maxPort, options]() {
         std::unique_ptr<rtc::AsyncPacketSocket> socket(m_packetSocketFactory->CreateServerTcpSocket(address, minPort, maxPort, options));
-        createSocket(identifier, WTFMove(socket), LibWebRTCSocketClient::Type::ServerTCP);
+        createSocket(identifier, WTFMove(socket), Socket::Type::ServerTCP);
     });
 }
 
@@ -145,7 +146,7 @@ void NetworkRTCProvider::createClientTCPSocket(uint64_t identifier, const RTCNet
     }
     callOnRTCNetworkThread([this, identifier, localAddress = RTCNetwork::isolatedCopy(localAddress.value), remoteAddress = RTCNetwork::isolatedCopy(remoteAddress.value), proxyInfo = proxyInfoFromSession(remoteAddress, *session), userAgent = WTFMove(userAgent).isolatedCopy(), options]() {
         std::unique_ptr<rtc::AsyncPacketSocket> socket(m_packetSocketFactory->CreateClientTcpSocket(localAddress, remoteAddress, proxyInfo, userAgent.utf8().data(), options));
-        createSocket(identifier, WTFMove(socket), LibWebRTCSocketClient::Type::ClientTCP);
+        createSocket(identifier, WTFMove(socket), Socket::Type::ClientTCP);
     });
 }
 
@@ -153,21 +154,21 @@ void NetworkRTCProvider::wrapNewTCPConnection(uint64_t identifier, uint64_t newC
 {
     callOnRTCNetworkThread([this, identifier, newConnectionSocketIdentifier]() {
         std::unique_ptr<rtc::AsyncPacketSocket> socket = m_pendingIncomingSockets.take(newConnectionSocketIdentifier);
-        addSocket(identifier, std::make_unique<LibWebRTCSocketClient>(identifier, *this, WTFMove(socket), LibWebRTCSocketClient::Type::ServerConnectionTCP));
+        addSocket(identifier, makeUnique<LibWebRTCSocketClient>(identifier, *this, WTFMove(socket), Socket::Type::ServerConnectionTCP));
     });
 }
 
-void NetworkRTCProvider::addSocket(uint64_t identifier, std::unique_ptr<LibWebRTCSocketClient>&& socket)
+void NetworkRTCProvider::addSocket(uint64_t identifier, std::unique_ptr<Socket>&& socket)
 {
     m_sockets.add(identifier, WTFMove(socket));
 }
 
-std::unique_ptr<LibWebRTCSocketClient> NetworkRTCProvider::takeSocket(uint64_t identifier)
+std::unique_ptr<NetworkRTCProvider::Socket> NetworkRTCProvider::takeSocket(uint64_t identifier)
 {
     return m_sockets.take(identifier);
 }
 
-void NetworkRTCProvider::newConnection(LibWebRTCSocketClient& serverSocket, std::unique_ptr<rtc::AsyncPacketSocket>&& newSocket)
+void NetworkRTCProvider::newConnection(Socket& serverSocket, std::unique_ptr<rtc::AsyncPacketSocket>&& newSocket)
 {
     sendFromMainThread([identifier = serverSocket.identifier(), incomingSocketIdentifier = ++m_incomingSocketIdentifier, remoteAddress = RTCNetwork::isolatedCopy(newSocket->GetRemoteAddress())](IPC::Connection& connection) {
         connection.send(Messages::WebRTCSocket::SignalNewConnection(incomingSocketIdentifier, RTCNetwork::SocketAddress(remoteAddress)), identifier);
@@ -246,7 +247,7 @@ void NetworkRTCProvider::closeListeningSockets(Function<void()>&& completionHand
     callOnRTCNetworkThread([this, completionHandler = WTFMove(completionHandler)]() mutable {
         Vector<uint64_t> listeningSocketIdentifiers;
         for (auto& keyValue : m_sockets) {
-            if (keyValue.value->type() == LibWebRTCSocketClient::Type::ServerTCP)
+            if (keyValue.value->type() == Socket::Type::ServerTCP)
                 listeningSocketIdentifiers.append(keyValue.key);
         }
         for (auto id : listeningSocketIdentifiers)
@@ -284,7 +285,7 @@ void NetworkRTCProvider::callOnRTCNetworkThread(Function<void()>&& callback)
     m_rtcNetworkThread->Post(RTC_FROM_HERE, this, 1, new NetworkMessageData(*this, WTFMove(callback)));
 }
 
-void NetworkRTCProvider::callSocket(uint64_t identifier, Function<void(LibWebRTCSocketClient&)>&& callback)
+void NetworkRTCProvider::callSocket(uint64_t identifier, Function<void(Socket&)>&& callback)
 {
     callOnRTCNetworkThread([this, identifier, callback = WTFMove(callback)]() {
         if (auto* socket = m_sockets.get(identifier))

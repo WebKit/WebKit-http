@@ -371,14 +371,12 @@ void PageClientImpl::makeFirstResponder()
 
 FloatRect PageClientImpl::convertToDeviceSpace(const FloatRect& rect)
 {
-    notImplemented();
-    return FloatRect();
+    return rect;
 }
 
 FloatRect PageClientImpl::convertToUserSpace(const FloatRect& rect)
 {
-    notImplemented();
-    return FloatRect();
+    return rect;
 }
 
 IntPoint PageClientImpl::screenToRootView(const IntPoint& point)
@@ -558,6 +556,11 @@ void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInform
     }
 
     [m_contentView _elementDidFocus:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode activityStateChanges:activityStateChanges userObject:userObject];
+}
+
+void PageClientImpl::updateInputContextAfterBlurringAndRefocusingElement()
+{
+    [m_contentView _updateInputContextAfterBlurringAndRefocusingElement];
 }
 
 bool PageClientImpl::isFocusingElement()

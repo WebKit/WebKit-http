@@ -650,7 +650,7 @@ bool TextIterator::handleTextNode()
         unsigned endPosition = (m_node == m_endContainer) ? static_cast<unsigned>(m_endOffset) : rendererText.length();
         if (!m_flowRunResolverCache || &m_flowRunResolverCache->flow() != &blockFlow) {
             m_accumulatedSimpleTextLengthInFlow = m_flowRunResolverCache ? 0 : textNodeOffsetInFlow(textNode);
-            m_flowRunResolverCache = std::make_unique<SimpleLineLayout::RunResolver>(blockFlow, *layout);
+            m_flowRunResolverCache = makeUnique<SimpleLineLayout::RunResolver>(blockFlow, *layout);
         }
         // Skip to m_offset position.
         auto range = m_flowRunResolverCache->rangeForRenderer(renderer);
@@ -1782,18 +1782,19 @@ static inline UChar foldQuoteMark(UChar c)
 // FIXME: We'd like to tailor the searcher to fold quote marks for us instead
 // of doing it in a separate replacement pass here, but ICU doesn't offer a way
 // to add tailoring on top of the locale-specific tailoring as of this writing.
-static inline String foldQuoteMarks(String string)
+String foldQuoteMarks(const String& stringToFold)
 {
-    string.replace(hebrewPunctuationGeresh, '\'');
-    string.replace(hebrewPunctuationGershayim, '"');
-    string.replace(leftDoubleQuotationMark, '"');
-    string.replace(leftLowDoubleQuotationMark, '"');
-    string.replace(leftSingleQuotationMark, '\'');
-    string.replace(leftLowSingleQuotationMark, '\'');
-    string.replace(rightDoubleQuotationMark, '"');
-    string.replace(rightSingleQuotationMark, '\'');
+    String result(stringToFold);
+    result.replace(hebrewPunctuationGeresh, '\'');
+    result.replace(hebrewPunctuationGershayim, '"');
+    result.replace(leftDoubleQuotationMark, '"');
+    result.replace(leftLowDoubleQuotationMark, '"');
+    result.replace(leftSingleQuotationMark, '\'');
+    result.replace(leftLowSingleQuotationMark, '\'');
+    result.replace(rightDoubleQuotationMark, '"');
+    result.replace(rightSingleQuotationMark, '\'');
 
-    return string;
+    return result;
 }
 
 #if !UCONFIG_NO_COLLATION
@@ -2044,7 +2045,7 @@ static void normalizeCharacters(const UChar* characters, unsigned length, Vector
 
 static bool isNonLatin1Separator(UChar32 character)
 {
-    ASSERT_ARG(character, character >= 256);
+    ASSERT_ARG(character, !isLatin1(character));
 
     return U_GET_GC_MASK(character) & (U_GC_S_MASK | U_GC_P_MASK | U_GC_Z_MASK | U_GC_CF_MASK);
 }
@@ -2070,7 +2071,7 @@ static inline bool isSeparator(UChar32 character)
         0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0
     };
 
-    if (character < 256)
+    if (isLatin1(character))
         return latin1SeparatorTable[character];
 
     return isNonLatin1Separator(character);
@@ -2410,7 +2411,7 @@ nextMatch:
 #else
 
 inline SearchBuffer::SearchBuffer(const String& target, FindOptions options)
-    : m_target(options & CaseInsensitive ? target.foldCase() : target)
+    : m_target(foldQuoteMarks(options & CaseInsensitive ? target.foldCase() : target))
     , m_options(options)
     , m_buffer(m_target.length())
     , m_isCharacterStartBuffer(m_target.length())
@@ -2419,7 +2420,6 @@ inline SearchBuffer::SearchBuffer(const String& target, FindOptions options)
 {
     ASSERT(!m_target.isEmpty());
     m_target.replace(noBreakSpace, ' ');
-    foldQuoteMarks(m_target);
 }
 
 inline SearchBuffer::~SearchBuffer() = default;

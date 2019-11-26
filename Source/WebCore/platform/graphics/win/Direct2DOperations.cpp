@@ -42,6 +42,7 @@
 #include "GraphicsContextPlatformPrivateDirect2D.h"
 #include "Image.h"
 #include "ImageBuffer.h"
+#include "ImageDecoderDirect2D.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "PlatformContextDirect2D.h"
@@ -405,7 +406,6 @@ void fillRect(PlatformContextDirect2D& platformContext, const FloatRect& rect, c
     auto context = platformContext.renderTarget();
 
     context->SetTags(1, __LINE__);
-    PlatformContextStateSaver stateSaver(platformContext);
     Function<void(ID2D1RenderTarget*)> drawFunction = [&platformContext, rect, &fillSource](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
         renderTarget->FillRectangle(&d2dRect, fillSource.brush.get());
@@ -422,7 +422,6 @@ void fillRect(PlatformContextDirect2D& platformContext, const FloatRect& rect, c
     auto context = platformContext.renderTarget();
 
     context->SetTags(1, __LINE__);
-    PlatformContextStateSaver stateSaver(platformContext);
     Function<void(ID2D1RenderTarget*)> drawFunction = [&platformContext, color, rect](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
         renderTarget->FillRectangle(&d2dRect, platformContext.brushWithColor(color).get());
@@ -445,7 +444,6 @@ void fillRoundedRect(PlatformContextDirect2D& platformContext, const FloatRounde
     bool equalHeights = (radii.topLeft().height() == radii.bottomLeft().height() && radii.bottomLeft().height() == radii.topRight().height() && radii.topRight().height() == radii.bottomRight().height());
     bool hasCustomFill = false; // FIXME: Why isn't a FillSource passed to this function?
     if (!hasCustomFill && equalWidths && equalHeights && radii.topLeft().width() * 2 == r.width() && radii.topLeft().height() * 2 == r.height()) {
-        PlatformContextStateSaver stateSaver(platformContext);
         Function<void(ID2D1RenderTarget*)> drawFunction = [&platformContext, color, rect, radii, r](ID2D1RenderTarget* renderTarget) {
             auto roundedRect = D2D1::RoundedRect(r, radii.topLeft().width(), radii.topLeft().height());
             renderTarget->FillRoundedRectangle(&roundedRect, platformContext.brushWithColor(color).get());
@@ -456,7 +454,6 @@ void fillRoundedRect(PlatformContextDirect2D& platformContext, const FloatRounde
         else
             drawWithoutShadow(platformContext, r, drawFunction);
     } else {
-        PlatformContextStateSaver stateSaver(platformContext);
         Path path;
         path.addRoundedRect(rect);
         fillPath(platformContext, path, color, shadowState);
@@ -488,7 +485,6 @@ void fillRectWithGradient(PlatformContextDirect2D& platformContext, const FloatR
     auto context = platformContext.renderTarget();
 
     context->SetTags(1, __LINE__);
-    PlatformContextStateSaver stateSaver(platformContext);
     Function<void(ID2D1RenderTarget*)> drawFunction = [&platformContext, rect, &gradient](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
         renderTarget->FillRectangle(&d2dRect, gradient);
@@ -499,13 +495,7 @@ void fillRectWithGradient(PlatformContextDirect2D& platformContext, const FloatR
 
 void fillPath(PlatformContextDirect2D& platformContext, const Path& path, const FillSource& fillSource, const ShadowState& shadowState)
 {
-    if (path.activePath()) {
-        // Make sure it's closed. This might fail if the path was already closed, so
-        // ignore the return value.
-        path.activePath()->Close();
-    }
-
-    PlatformContextStateSaver stateSaver(platformContext);
+    path.closeAnyOpenGeometries(D2D1_FIGURE_END_OPEN);
 
     auto context = platformContext.renderTarget();
 
@@ -527,8 +517,6 @@ void fillPath(PlatformContextDirect2D& platformContext, const Path& path, const 
         FloatRect contextRect(FloatPoint(), context->GetSize());
         drawWithoutShadow(platformContext, contextRect, drawFunction);
     }
-
-    flush(platformContext);
 }
 
 void fillPath(PlatformContextDirect2D& platformContext, const Path& path, const Color& color, const ShadowState& shadowState)
@@ -553,8 +541,6 @@ void fillPath(PlatformContextDirect2D& platformContext, const Path& path, const 
         FloatRect contextRect(FloatPoint(), context->GetSize());
         drawWithoutShadow(platformContext, contextRect, drawFunction);
     }
-
-    flush(platformContext);
 }
 
 void strokeRect(PlatformContextDirect2D& platformContext, const FloatRect& rect, float lineWidth, const StrokeSource& strokeSource, const ShadowState& shadowState)
@@ -577,7 +563,6 @@ void strokePath(PlatformContextDirect2D& platformContext, const Path& path, cons
     
     context->SetTags(1, __LINE__);
 
-    PlatformContextStateSaver stateSaver(platformContext);
     auto boundingRect = path.fastBoundingRect();
     Function<void(ID2D1RenderTarget*)> drawFunction = [&platformContext, &path, &strokeSource](ID2D1RenderTarget* renderTarget) {
         renderTarget->DrawGeometry(path.platformPath(), strokeSource.brush.get(), strokeSource.thickness, platformContext.strokeStyle());
@@ -587,16 +572,13 @@ void strokePath(PlatformContextDirect2D& platformContext, const Path& path, cons
         drawWithShadow(platformContext, boundingRect, shadowState, drawFunction);
     else
         drawWithoutShadow(platformContext, boundingRect, drawFunction);
-
-    flush(platformContext);
 }
 
 void drawPath(PlatformContextDirect2D& platformContext, const Path& path, const StrokeSource& strokeSource, const ShadowState&)
 {
     auto context = platformContext.renderTarget();
 
-    if (path.activePath())
-        path.activePath()->Close();
+    path.closeAnyOpenGeometries(D2D1_FIGURE_END_OPEN);
 
     context->SetTags(1, __LINE__);
 
@@ -639,13 +621,6 @@ void drawWithShadowHelper(ID2D1RenderTarget* context, ID2D1Bitmap* bitmap, const
     compositor->SetInputEffect(0, transformEffect.get());
     compositor->SetInput(1, bitmap);
 
-    // Flip the context
-    D2D1_MATRIX_3X2_F ctm;
-    deviceContext->GetTransform(&ctm);
-    auto translate = D2D1::Matrix3x2F::Translation(0.0f, deviceContext->GetSize().height);
-    auto flip = D2D1::Matrix3x2F::Scale(D2D1::SizeF(1.0f, -1.0f));
-    deviceContext->SetTransform(ctm * flip * translate);
-
     deviceContext->DrawImage(compositor.get(), D2D1_INTERPOLATION_MODE_LINEAR);
 }
 
@@ -654,13 +629,11 @@ void drawWithShadow(PlatformContextDirect2D& platformContext, const FloatRect& b
     auto context = platformContext.renderTarget();
 
     // Render the current geometry to a bitmap context
-    COMPtr<ID2D1BitmapRenderTarget> bitmapTarget;
-    HRESULT hr = context->CreateCompatibleRenderTarget(&bitmapTarget);
-    RELEASE_ASSERT(SUCCEEDED(hr));
+    COMPtr<ID2D1BitmapRenderTarget> bitmapTarget = createBitmapRenderTarget(context);
 
     bitmapTarget->BeginDraw();
     drawCommands(bitmapTarget.get());
-    hr = bitmapTarget->EndDraw();
+    HRESULT hr = bitmapTarget->EndDraw();
     RELEASE_ASSERT(SUCCEEDED(hr));
 
     COMPtr<ID2D1Bitmap> bitmap;
@@ -764,21 +737,23 @@ void drawGlyphs(PlatformContextDirect2D& platformContext, const FillSource& fill
 }
 
 
-void drawNativeImage(PlatformContextDirect2D& platformContext, IWICBitmap* image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation, InterpolationQuality imageInterpolationQuality, float globalAlpha, const ShadowState& shadowState)
+void drawNativeImage(PlatformContextDirect2D& platformContext, IWICBitmap* image, const FloatSize& originalImageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options, float globalAlpha, const ShadowState& shadowState)
 {
+    auto nativeImageSize = bitmapSize(image);
     COMPtr<ID2D1Bitmap> deviceBitmap;
     HRESULT hr = platformContext.renderTarget()->CreateBitmapFromWicBitmap(image, &deviceBitmap);
     if (!SUCCEEDED(hr))
         return;
 
-    drawNativeImage(platformContext, deviceBitmap.get(), imageSize, destRect, srcRect, compositeOperator, blendMode, orientation, imageInterpolationQuality, globalAlpha, shadowState);
+    auto imageSize = bitmapSize(deviceBitmap.get());
+    drawNativeImage(platformContext, deviceBitmap.get(), imageSize, destRect, srcRect, options, globalAlpha, shadowState);
 }
 
-void drawNativeImage(PlatformContextDirect2D& platformContext, ID2D1Bitmap* image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation, InterpolationQuality imageInterpolationQuality, float globalAlpha, const ShadowState& shadowState)
+void drawNativeImage(PlatformContextDirect2D& platformContext, ID2D1Bitmap* image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options, float globalAlpha, const ShadowState& shadowState)
 {
     auto bitmapSize = image->GetSize();
 
-    float currHeight = orientation.usesWidthAsHeight() ? bitmapSize.width : bitmapSize.height;
+    float currHeight = options.orientation().usesWidthAsHeight() ? bitmapSize.width : bitmapSize.height;
     if (currHeight <= srcRect.y())
         return;
 
@@ -806,16 +781,16 @@ void drawNativeImage(PlatformContextDirect2D& platformContext, ID2D1Bitmap* imag
     if (!shouldUseSubimage && currHeight < imageSize.height())
         adjustedDestRect.setHeight(adjustedDestRect.height() * currHeight / imageSize.height());
 
-    State::setCompositeOperation(platformContext, compositeOperator, blendMode);
+    State::setCompositeOperation(platformContext, options.compositeOperator(), options.blendMode());
 
     // ImageOrientation expects the origin to be at (0, 0).
     transform.translate(adjustedDestRect.x(), adjustedDestRect.y());
     context->SetTransform(transform);
     adjustedDestRect.setLocation(FloatPoint());
 
-    if (orientation != ImageOrientation::None) {
-        concatCTM(platformContext, orientation.transformFromDefault(adjustedDestRect.size()));
-        if (orientation.usesWidthAsHeight()) {
+    if (options.orientation() != ImageOrientation::None) {
+        concatCTM(platformContext, options.orientation().transformFromDefault(adjustedDestRect.size()));
+        if (options.orientation().usesWidthAsHeight()) {
             // The destination rect will have it's width and height already reversed for the orientation of
             // the image, as it was needed for page layout, so we need to reverse it back here.
             adjustedDestRect = FloatRect(adjustedDestRect.x(), adjustedDestRect.y(), adjustedDestRect.height(), adjustedDestRect.width());
@@ -824,8 +799,8 @@ void drawNativeImage(PlatformContextDirect2D& platformContext, ID2D1Bitmap* imag
 
     context->SetTags(1, __LINE__);
 
-    Function<void(ID2D1RenderTarget*)> drawFunction = [image, adjustedDestRect, srcRect](ID2D1RenderTarget* renderTarget) {
-        renderTarget->DrawBitmap(image, adjustedDestRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, static_cast<D2D1_RECT_F>(srcRect));
+    Function<void(ID2D1RenderTarget*)> drawFunction = [image, adjustedDestRect, globalAlpha, srcRect](ID2D1RenderTarget* renderTarget) {
+        renderTarget->DrawBitmap(image, adjustedDestRect, globalAlpha, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, srcRect);
     };
 
     if (shadowState.isVisible())
@@ -833,13 +808,11 @@ void drawNativeImage(PlatformContextDirect2D& platformContext, ID2D1Bitmap* imag
     else
         drawWithoutShadow(platformContext, adjustedDestRect, drawFunction);
 
-    flush(platformContext);
-
     if (!stateSaver.didSave())
         context->SetTransform(ctm);
 }
 
-void drawPattern(PlatformContextDirect2D& platformContext, IWICBitmap* tileImage, const IntSize& size, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, CompositeOperator compositeOperator, BlendMode blendMode)
+void drawPattern(PlatformContextDirect2D& platformContext, COMPtr<ID2D1Bitmap>&& tileImage, const IntSize& size, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, CompositeOperator compositeOperator, BlendMode blendMode)
 {
     auto context = platformContext.renderTarget();
     PlatformContextStateSaver stateSaver(platformContext);
@@ -863,8 +836,6 @@ void drawPattern(PlatformContextDirect2D& platformContext, IWICBitmap* tileImage
     // If we only want a subset of the bitmap, we need to create a cropped bitmap image. According to the documentation,
     // this does not allocate new bitmap memory.
     if (size.width() > destRect.width() || size.height() > destRect.height()) {
-        ASSERT(0);
-        /*
         float dpiX = 0;
         float dpiY = 0;
         tileImage->GetDpi(&dpiX, &dpiY);
@@ -877,16 +848,10 @@ void drawPattern(PlatformContextDirect2D& platformContext, IWICBitmap* tileImage
             if (SUCCEEDED(hr))
                 tileImage = subImage;
         }
-        */
     }
 
-    COMPtr<ID2D1Bitmap> bitmap;
-    HRESULT hr = context->CreateBitmapFromWicBitmap(tileImage, nullptr, &bitmap);
-    if (!SUCCEEDED(hr))
-        return;
-
     COMPtr<ID2D1BitmapBrush> patternBrush;
-    hr = context->CreateBitmapBrush(bitmap.get(), &bitmapBrushProperties, &brushProperties, &patternBrush);
+    HRESULT hr = context->CreateBitmapBrush(tileImage.get(), &bitmapBrushProperties, &brushProperties, &patternBrush);
     ASSERT(SUCCEEDED(hr));
     if (!SUCCEEDED(hr))
         return;
@@ -1106,8 +1071,8 @@ void beginTransparencyLayer(PlatformContextDirect2D& platformContext, float opac
     PlatformContextDirect2D::TransparencyLayerState transparencyLayer;
     transparencyLayer.opacity = opacity;
 
-    HRESULT hr = platformContext.renderTarget()->CreateCompatibleRenderTarget(&transparencyLayer.renderTarget);
-    RELEASE_ASSERT(SUCCEEDED(hr));
+    transparencyLayer.renderTarget = createBitmapRenderTarget(platformContext.renderTarget());
+
     platformContext.m_transparencyLayerStack.append(WTFMove(transparencyLayer));
 
     platformContext.m_transparencyLayerStack.last().renderTarget->BeginDraw();
@@ -1219,7 +1184,20 @@ void clipToImageBuffer(PlatformContextDirect2D&, ID2D1RenderTarget*, const Float
     notImplemented();
 }
 
+
+void copyBits(const uint8_t* srcRows, unsigned rowCount, unsigned colCount, unsigned srcStride, unsigned destStride, uint8_t* destRows)
+{
+    for (unsigned y = 0; y < rowCount; ++y) {
+        // Source data may be power-of-two sized, so we need to only copy the bits that
+        // correspond to the rectangle supplied by the caller.
+        const uint32_t* srcRow = reinterpret_cast<const uint32_t*>(srcRows + srcStride * y);
+        uint32_t* destRow = reinterpret_cast<uint32_t*>(destRows + destStride * y);
+        memcpy(destRow, srcRow, colCount);
+    }
+}
+
 } // namespace Direct2D
+
 } // namespace WebCore
 
 #endif // USE(DIRECT2D)

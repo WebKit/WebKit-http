@@ -45,20 +45,20 @@
 namespace Gigacage {
 
 enum Kind {
-    ReservedForFlagsAndNotABasePtr = 0,
     Primitive,
     JSValue,
+    NumberOfKinds
 };
 
 BINLINE const char* name(Kind kind)
 {
     switch (kind) {
-    case ReservedForFlagsAndNotABasePtr:
-        RELEASE_BASSERT_NOT_REACHED();
     case Primitive:
         return "Primitive";
     case JSValue:
         return "JSValue";
+    case NumberOfKinds:
+        break;
     }
     BCRASH();
     return nullptr;
@@ -69,14 +69,14 @@ BINLINE const char* name(Kind kind)
 #if BCPU(ARM64)
 constexpr size_t primitiveGigacageSize = 2 * bmalloc::Sizes::GB;
 constexpr size_t jsValueGigacageSize = 2 * bmalloc::Sizes::GB;
-constexpr size_t gigacageBasePtrsSize = 16 * bmalloc::Sizes::kB;
 constexpr size_t maximumCageSizeReductionForSlide = bmalloc::Sizes::GB / 4;
+constexpr size_t configSizeToProtect = 16 * bmalloc::Sizes::kB;
 #define GIGACAGE_ALLOCATION_CAN_FAIL 1
 #else
 constexpr size_t primitiveGigacageSize = 32 * bmalloc::Sizes::GB;
 constexpr size_t jsValueGigacageSize = 16 * bmalloc::Sizes::GB;
-constexpr size_t gigacageBasePtrsSize = 4 * bmalloc::Sizes::kB;
 constexpr size_t maximumCageSizeReductionForSlide = 4 * bmalloc::Sizes::GB;
+constexpr size_t configSizeToProtect = 4 * bmalloc::Sizes::kB;
 #define GIGACAGE_ALLOCATION_CAN_FAIL 0
 #endif
 
@@ -98,21 +98,53 @@ constexpr size_t gigacageSizeToMask(size_t size) { return size - 1; }
 constexpr size_t primitiveGigacageMask = gigacageSizeToMask(primitiveGigacageSize);
 constexpr size_t jsValueGigacageMask = gigacageSizeToMask(jsValueGigacageSize);
 
-extern "C" alignas(gigacageBasePtrsSize) BEXPORT char g_gigacageBasePtrs[gigacageBasePtrsSize];
+struct Config {
+    void* basePtr(Kind kind) const
+    {
+        RELEASE_BASSERT(kind < NumberOfKinds);
+        return basePtrs[kind];
+    }
 
-BINLINE bool wasEnabled() { return g_gigacageBasePtrs[0]; }
-BINLINE void setWasEnabled() { g_gigacageBasePtrs[0] = true; }
+    void setBasePtr(Kind kind, void* ptr)
+    {
+        RELEASE_BASSERT(kind < NumberOfKinds);
+        basePtrs[kind] = ptr;
+    }
 
-struct BasePtrs {
-    uintptr_t reservedForFlags;
-    void* primitive;
-    void* jsValue;
+    union {
+        struct {
+            // All the fields in this struct should be chosen such that their
+            // initial value is 0 / null / falsy because Config is instantiated
+            // as a global singleton.
+
+            bool isEnabled;
+            bool isPermanentlyFrozen;
+            bool disablingPrimitiveGigacageIsForbidden;
+            bool shouldBeEnabled;
+
+            // We would like to just put the std::once_flag for these functions
+            // here, but we can't because std::once_flag has a implicitly-deleted
+            // default constructor. So, we use a boolean instead.
+            bool shouldBeEnabledHasBeenCalled;
+            bool ensureGigacageHasBeenCalled;
+
+            void* start;
+            size_t totalSize;
+            void* basePtrs[NumberOfKinds];
+        };
+        char ensureSize[configSizeToProtect];
+    };
 };
+static_assert(sizeof(Config) == configSizeToProtect, "Gigacage Config must fit in configSizeToProtect");
 
-static_assert(offsetof(BasePtrs, primitive) == Kind::Primitive * sizeof(void*), "");
-static_assert(offsetof(BasePtrs, jsValue) == Kind::JSValue * sizeof(void*), "");
+extern "C" alignas(configSizeToProtect) BEXPORT Config g_gigacageConfig;
 
-constexpr unsigned numKinds = 2;
+// These constants are needed by the LLInt.
+constexpr ptrdiff_t offsetOfPrimitiveGigacageBasePtr = Kind::Primitive * sizeof(void*);
+constexpr ptrdiff_t offsetOfJSValueGigacageBasePtr = Kind::JSValue * sizeof(void*);
+
+
+BINLINE bool isEnabled() { return g_gigacageConfig.isEnabled; }
 
 BEXPORT void ensureGigacage();
 
@@ -122,50 +154,37 @@ BEXPORT void disablePrimitiveGigacage();
 BEXPORT void addPrimitiveDisableCallback(void (*)(void*), void*);
 BEXPORT void removePrimitiveDisableCallback(void (*)(void*), void*);
 
-BEXPORT void disableDisablingPrimitiveGigacageIfShouldBeEnabled();
+BEXPORT void forbidDisablingPrimitiveGigacage();
 
-BEXPORT bool isDisablingPrimitiveGigacageDisabled();
-inline bool isPrimitiveGigacagePermanentlyEnabled() { return isDisablingPrimitiveGigacageDisabled(); }
-inline bool canPrimitiveGigacageBeDisabled() { return !isDisablingPrimitiveGigacageDisabled(); }
+BEXPORT bool isDisablingPrimitiveGigacageForbidden();
+inline bool isPrimitiveGigacagePermanentlyEnabled() { return isDisablingPrimitiveGigacageForbidden(); }
+inline bool canPrimitiveGigacageBeDisabled() { return !isDisablingPrimitiveGigacageForbidden(); }
 
-BINLINE void*& basePtr(BasePtrs& basePtrs, Kind kind)
+BINLINE void* basePtr(Kind kind)
 {
-    switch (kind) {
-    case ReservedForFlagsAndNotABasePtr:
-        RELEASE_BASSERT_NOT_REACHED();
-    case Primitive:
-        return basePtrs.primitive;
-    case JSValue:
-        return basePtrs.jsValue;
-    }
-    BCRASH();
-    return basePtrs.primitive;
+    return g_gigacageConfig.basePtr(kind);
 }
 
-BINLINE BasePtrs& basePtrs()
+BINLINE void* addressOfBasePtr(Kind kind)
 {
-    return *reinterpret_cast<BasePtrs*>(reinterpret_cast<void*>(g_gigacageBasePtrs));
-}
-
-BINLINE void*& basePtr(Kind kind)
-{
-    return basePtr(basePtrs(), kind);
+    RELEASE_BASSERT(kind < NumberOfKinds);
+    return &g_gigacageConfig.basePtrs[kind];
 }
 
 BINLINE bool isEnabled(Kind kind)
 {
-    return !!basePtr(kind);
+    return !!g_gigacageConfig.basePtr(kind);
 }
 
 BINLINE size_t size(Kind kind)
 {
     switch (kind) {
-    case ReservedForFlagsAndNotABasePtr:
-        RELEASE_BASSERT_NOT_REACHED();
     case Primitive:
         return static_cast<size_t>(primitiveGigacageSize);
     case JSValue:
         return static_cast<size_t>(jsValueGigacageSize);
+    case NumberOfKinds:
+        break;
     }
     BCRASH();
     return 0;
@@ -192,7 +211,7 @@ template<typename T>
 BINLINE T* caged(Kind kind, T* ptr)
 {
     BASSERT(ptr);
-    void* gigacageBasePtr = basePtr(kind);
+    void* gigacageBasePtr = g_gigacageConfig.basePtr(kind);
     if (!gigacageBasePtr)
         return ptr;
     return reinterpret_cast<T*>(
@@ -213,11 +232,18 @@ BINLINE bool isCaged(Kind kind, const void* ptr)
     return caged(kind, ptr) == ptr;
 }
 
+BINLINE bool contains(const void* ptr)
+{
+    auto* start = reinterpret_cast<const uint8_t*>(g_gigacageConfig.start);
+    auto* p = reinterpret_cast<const uint8_t*>(ptr);
+    return static_cast<size_t>(p - start) < g_gigacageConfig.totalSize;
+}
+
 BEXPORT bool shouldBeEnabled();
 
 #else // GIGACAGE_ENABLED
 
-BINLINE void*& basePtr(Kind)
+BINLINE void* basePtr(Kind)
 {
     BCRASH();
     static void* unreachable;
@@ -225,12 +251,13 @@ BINLINE void*& basePtr(Kind)
 }
 BINLINE size_t size(Kind) { BCRASH(); return 0; }
 BINLINE void ensureGigacage() { }
-BINLINE bool wasEnabled() { return false; }
+BINLINE bool contains(const void*) { return false; }
+BINLINE bool isEnabled() { return false; }
 BINLINE bool isCaged(Kind, const void*) { return true; }
 BINLINE bool isEnabled(Kind) { return false; }
 template<typename T> BINLINE T* caged(Kind, T* ptr) { return ptr; }
 template<typename T> BINLINE T* cagedMayBeNull(Kind, T* ptr) { return ptr; }
-BINLINE void disableDisablingPrimitiveGigacageIfShouldBeEnabled() { }
+BINLINE void forbidDisablingPrimitiveGigacage() { }
 BINLINE bool canPrimitiveGigacageBeDisabled() { return false; }
 BINLINE void disablePrimitiveGigacage() { }
 BINLINE void addPrimitiveDisableCallback(void (*)(void*), void*) { }

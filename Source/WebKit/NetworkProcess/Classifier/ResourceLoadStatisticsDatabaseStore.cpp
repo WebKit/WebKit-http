@@ -933,43 +933,6 @@ void ResourceLoadStatisticsDatabaseStore::logFrameNavigation(const RegistrableDo
         scheduleStatisticsProcessingRequestIfNecessary();
 }
 
-void ResourceLoadStatisticsDatabaseStore::logSubresourceLoading(const SubResourceDomain& targetDomain, const TopFrameDomain& topFrameDomain, WallTime lastSeen)
-{
-    ASSERT(!RunLoop::isMain());
-
-    auto result = ensureResourceStatisticsForRegistrableDomain(targetDomain);
-    updateLastSeen(targetDomain, lastSeen);
-
-    auto targetDomainID = result.second;
-    if (!relationshipExists(m_subresourceUnderTopFrameDomainExists, targetDomainID, topFrameDomain)) {
-        insertDomainRelationship(m_subresourceUnderTopFrameDomains, targetDomainID, topFrameDomain);
-        scheduleStatisticsProcessingRequestIfNecessary();
-    }
-}
-
-void ResourceLoadStatisticsDatabaseStore::logSubresourceRedirect(const RedirectedFromDomain& sourceDomain, const RedirectedToDomain& targetDomain)
-{
-    ASSERT(!RunLoop::isMain());
-
-    auto sourceDomainResult = ensureResourceStatisticsForRegistrableDomain(sourceDomain);
-    auto targetDomainResult = ensureResourceStatisticsForRegistrableDomain(targetDomain);
-
-    bool isNewRedirectToEntry = false;
-    if (!relationshipExists(m_subresourceUniqueRedirectsToExists, sourceDomainResult.second, targetDomain)) {
-        insertDomainRelationship(m_subresourceUniqueRedirectsTo, sourceDomainResult.second, targetDomain);
-        isNewRedirectToEntry = true;
-    }
-
-    bool isNewRedirectFromEntry = false;
-    if (!relationshipExists(m_subresourceUniqueRedirectsFromExists, targetDomainResult.second, sourceDomain)) {
-        insertDomainRelationship(m_subresourceUniqueRedirectsFrom, targetDomainResult.second, sourceDomain);
-        isNewRedirectFromEntry = true;
-    }
-
-    if (isNewRedirectToEntry || isNewRedirectFromEntry)
-        scheduleStatisticsProcessingRequestIfNecessary();
-}
-
 void ResourceLoadStatisticsDatabaseStore::logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain& fromDomain, const NavigatedToDomain& toDomain)
 {
     ASSERT(!RunLoop::isMain());
@@ -1511,7 +1474,7 @@ bool ResourceLoadStatisticsDatabaseStore::shouldRemoveAllButCookiesFor(const Pre
     return false;
 }
 
-HashMap<RegistrableDomain, WebsiteDataToRemove> ResourceLoadStatisticsDatabaseStore::registrableDomainsToRemoveWebsiteDataFor()
+Vector<std::pair<RegistrableDomain, WebsiteDataToRemove>> ResourceLoadStatisticsDatabaseStore::registrableDomainsToRemoveWebsiteDataFor()
 {
     ASSERT(!RunLoop::isMain());
 
@@ -1523,15 +1486,15 @@ HashMap<RegistrableDomain, WebsiteDataToRemove> ResourceLoadStatisticsDatabaseSt
 
     clearExpiredUserInteractions();
     
-    HashMap<RegistrableDomain, WebsiteDataToRemove> domainsToRemoveWebsiteDataFor;
+    Vector<std::pair<RegistrableDomain, WebsiteDataToRemove>> domainsToRemoveWebsiteDataFor;
 
     Vector<PrevalentDomainData> prevalentDomains = this->prevalentDomains();
     Vector<unsigned> domainIDsToClearGrandfathering;
     for (auto& statistic : prevalentDomains) {
         if (shouldRemoveAllWebsiteDataFor(statistic, shouldCheckForGrandfathering))
-            domainsToRemoveWebsiteDataFor.add(statistic.registerableDomain, WebsiteDataToRemove::All);
+            domainsToRemoveWebsiteDataFor.append(std::make_pair(statistic.registerableDomain, WebsiteDataToRemove::All));
         else if (shouldRemoveAllButCookiesFor(statistic, shouldCheckForGrandfathering))
-            domainsToRemoveWebsiteDataFor.add(statistic.registerableDomain, WebsiteDataToRemove::AllButCookies);
+            domainsToRemoveWebsiteDataFor.append(std::make_pair(statistic.registerableDomain, WebsiteDataToRemove::AllButCookies));
 
         if (shouldClearGrandfathering && statistic.grandfathered)
             domainIDsToClearGrandfathering.append(statistic.domainID);

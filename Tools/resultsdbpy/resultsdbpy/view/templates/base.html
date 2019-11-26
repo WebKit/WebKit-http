@@ -27,28 +27,56 @@
 <html>
 <head>
 <title>{{title}}</title>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
+<meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="/library/css/webkit.css">
 {% block head %}{% endblock %}
 </head>
 <body>
 <div class="header fixed">
     <div class="title">
-        <div class="text large block">{{site_title}}</div>
+        <div class="text large block" style="width: calc(100% - 44px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+            {{site_title}}
+        </div>
+        <button style="width: 44px" class="button mobile-sidebar-control">☰</button>
     </div>
     <div class="actions">
-        <div class="list">
-        {% for name, url in site_menu.items() %}
-            <div class="item">
-            {% if request.path == url() %}
-                <a href="{{ url() }}">
-            {% else %}
-                <a href="{{ url() }}">
-            {% endif %}
-            {{ name }}</a></div>
-        {% endfor %}
-        </div>
+        <div class="list" id="site-menu"></div>
     </div>
 </div>
 {% block content %}{% endblock %}
+<script type="module">
+    import {queryToParams, paramsToQuery} from '/assets/js/common.js';
+    import {DOM, REF} from '/library/js/Ref.js';
+    import {disableBackGesture} from '/library/js/Utils.js';
+
+    disableBackGesture();
+
+    DOM.inject(
+        document.getElementById('site-menu'),
+        `{% for name, url_info in site_menu.items() %}
+            <div class="item">
+                <a style="cursor: pointer" ref="${REF.createRef({
+                        onElementMount: element => {
+                            element.onclick = () => {
+                                const currentParams = queryToParams(document.URL.split('?')[1]);
+                                let retainedParams = {};
+                                {{ url_info['parameters']|safe }}.forEach((parameter) => {
+                                    if (currentParams.hasOwnProperty(parameter))
+                                        retainedParams[parameter] = currentParams[parameter];
+                                });
+                                let destination = "{{ url_info['url']() }}";
+                                if (Object.keys(retainedParams).length)
+                                    destination = `${destination}?${paramsToQuery(retainedParams)}`;
+                                window.location.assign(destination);
+                            };
+                        },
+                    })}">
+                    {{ name }}
+                </a>
+            </div>
+        {% endfor %}`,
+    );
+</script>
 </body>
 </html>

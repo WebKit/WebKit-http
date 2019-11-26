@@ -239,7 +239,7 @@ gboolean webkit_user_content_manager_register_script_message_handler(WebKitUserC
     g_return_val_if_fail(name, FALSE);
 
     Ref<WebScriptMessageHandler> handler =
-        WebScriptMessageHandler::create(std::make_unique<ScriptMessageClientGtk>(manager, name), String::fromUTF8(name), API::UserContentWorld::normalWorld());
+        WebScriptMessageHandler::create(makeUnique<ScriptMessageClientGtk>(manager, name), String::fromUTF8(name), API::UserContentWorld::normalWorld());
     return manager->priv->userContentController->addUserScriptMessageHandler(handler.get());
 }
 
@@ -289,7 +289,7 @@ gboolean webkit_user_content_manager_register_script_message_handler_in_world(We
     g_return_val_if_fail(worldName, FALSE);
 
     Ref<WebScriptMessageHandler> handler =
-        WebScriptMessageHandler::create(std::make_unique<ScriptMessageClientGtk>(manager, name), String::fromUTF8(name), webkitUserContentWorld(worldName));
+        WebScriptMessageHandler::create(makeUnique<ScriptMessageClientGtk>(manager, name), String::fromUTF8(name), webkitUserContentWorld(worldName));
     return manager->priv->userContentController->addUserScriptMessageHandler(handler.get());
 }
 
@@ -353,6 +353,24 @@ void webkit_user_content_manager_remove_filter(WebKitUserContentManager* manager
     g_return_if_fail(WEBKIT_IS_USER_CONTENT_MANAGER(manager));
     g_return_if_fail(filter);
     manager->priv->userContentController->removeContentRuleList(webkitUserContentFilterGetContentRuleList(filter).name());
+}
+
+/**
+ * webkit_user_content_manager_remove_filter_by_id:
+ * @manager: A #WebKitUserContentManager
+ * @filter_id: Filter identifier
+ *
+ * Removes a filter from the given #WebKitUserContentManager given the
+ * identifier of a #WebKitUserContentFilter as returned by
+ * webkit_user_content_filter_get_identifier().
+ *
+ * Since: 2.26
+ */
+void webkit_user_content_manager_remove_filter_by_id(WebKitUserContentManager* manager, const char* filterId)
+{
+    g_return_if_fail(WEBKIT_IS_USER_CONTENT_MANAGER(manager));
+    g_return_if_fail(filterId);
+    manager->priv->userContentController->removeContentRuleList(String::fromUTF8(filterId));
 }
 
 /**

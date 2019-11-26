@@ -404,12 +404,12 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
 - (WKBrowsingContextHandle *)handle
 {
-    return [[[WKBrowsingContextHandle alloc] _initWithPageID:_page->pageID()] autorelease];
+    return [[[WKBrowsingContextHandle alloc] _initWithPage:*_page] autorelease];
 }
 
 + (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle
 {
-    return wrapper(WebKit::WebProcess::singleton().webPage(handle.pageID));
+    return wrapper(WebKit::WebProcess::singleton().webPage(handle.webPageID));
 }
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
@@ -544,7 +544,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
     };
 
     if (formDelegate)
-        _page->setInjectedBundleFormClient(std::make_unique<FormClient>(self));
+        _page->setInjectedBundleFormClient(makeUnique<FormClient>(self));
     else
         _page->setInjectedBundleFormClient(nullptr);
 }
@@ -673,7 +673,7 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
     };
 
     if (editingDelegate)
-        _page->setInjectedBundleEditorClient(std::make_unique<Client>(self));
+        _page->setInjectedBundleEditorClient(makeUnique<Client>(self));
     else
         _page->setInjectedBundleEditorClient(nullptr);
 }

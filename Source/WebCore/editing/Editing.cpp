@@ -27,6 +27,7 @@
 #include "Editing.h"
 
 #include "AXObjectCache.h"
+#include "CachedImage.h"
 #include "Document.h"
 #include "Editor.h"
 #include "Frame.h"
@@ -34,6 +35,7 @@
 #include "HTMLDListElement.h"
 #include "HTMLDivElement.h"
 #include "HTMLElementFactory.h"
+#include "HTMLImageElement.h"
 #include "HTMLInterchange.h"
 #include "HTMLLIElement.h"
 #include "HTMLNames.h"
@@ -1122,14 +1124,11 @@ VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node& node, int in
     CharacterIterator it(range.get());
     it.advance(index - 1);
 
-    if (!it.atEnd() && it.text()[0] == '\n') {
+    if (!it.atEnd() && it.text().length() == 1 && it.text()[0] == '\n') {
         // FIXME: workaround for collapsed range (where only start position is correct) emitted for some emitted newlines.
-        auto iteratorRange = it.range();
-        if (iteratorRange->startPosition() == iteratorRange->endPosition()) {
-            it.advance(1);
-            if (!it.atEnd())
-                return VisiblePosition(it.range()->startPosition());
-        }
+        it.advance(1);
+        if (!it.atEnd())
+            return VisiblePosition(it.range()->startPosition());
     }
 
     return { it.atEnd() ? range->endPosition() : it.range()->endPosition(), UPSTREAM };
@@ -1303,6 +1302,21 @@ IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, c
     LayoutRect localRect(rect);
     rendererForCaretPainting->flipForWritingMode(localRect);
     return rendererForCaretPainting->localToAbsoluteQuad(FloatRect(localRect), UseTransforms, insideFixed).enclosingBoundingBox();
+}
+
+HashSet<RefPtr<HTMLImageElement>> visibleImageElementsInRangeWithNonLoadedImages(const Range& range)
+{
+    HashSet<RefPtr<HTMLImageElement>> result;
+    for (TextIterator iterator(&range); !iterator.atEnd(); iterator.advance()) {
+        if (!is<HTMLImageElement>(iterator.node()))
+            continue;
+
+        auto& imageElement = downcast<HTMLImageElement>(*iterator.node());
+        auto* cachedImage = imageElement.cachedImage();
+        if (cachedImage && cachedImage->isLoading())
+            result.add(&imageElement);
+    }
+    return result;
 }
 
 } // namespace WebCore

@@ -52,22 +52,8 @@ public:
     IndexExpression(const IndexExpression&) = delete;
     IndexExpression(IndexExpression&&) = default;
 
-    String getterFunctionName() const
-    {
-        return "operator[]"_str;
-    }
-
-    String setterFunctionName() const
-    {
-        return "operator[]="_str;
-    }
-
-    String anderFunctionName() const
-    {
-        return "operator&[]"_str;
-    }
-
     Expression& indexExpression() { return m_index; }
+    UniqueRef<Expression>& indexReference() { return m_index; }
     UniqueRef<Expression> takeIndex() { return WTFMove(m_index); }
 
 private:

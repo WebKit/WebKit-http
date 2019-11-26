@@ -1,3 +1,1510 @@
+2019-09-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Dark Mode: Overview Timeline View has jarring white box-shadows in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=201442
+        <rdar://problem/54999794>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid:not(.variable-height-rows) table.data):
+        (.data-grid:not(.variable-height-rows) table.data.even-first-zebra-stripe):
+        (.data-grid.variable-height-rows.even-first-zebra-stripe table.data tr:nth-child(odd)):
+        (.data-grid.variable-height-rows.even-first-zebra-stripe table.data tr:nth-child(even)):
+        (.data-grid:not(.variable-height-rows) table.data.odd-first-zebra-stripe): Deleted.
+        (.data-grid.variable-height-rows.odd-first-zebra-stripe table.data tr:nth-child(odd)): Deleted.
+        (.data-grid.variable-height-rows.odd-first-zebra-stripe table.data tr:nth-child(even)): Deleted.
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.updateVisibleRows):
+        * UserInterface/Views/Table.css:
+        (.table > .data-container > .data-list):
+        (.table > .data-container > .data-list.even-first-zebra-stripe):
+        (.table > .data-container > .data-list.odd-first-zebra-stripe): Deleted.
+        * UserInterface/Views/Table.js:
+        In the gradients "even" was mistakenly first. Fix these so that "odd" is first and the
+        unusual case would be having "even" first. This allows us to line up with `nth-of-type(even)`.
+
+        * UserInterface/Views/Main.css:
+        (:root):
+        (@media (prefers-color-scheme: dark)):
+        Flip even and odd so we maintain the same styles for gradients.
+
+        * UserInterface/Views/OverviewTimelineView.css:
+        (.timeline-view.overview > .data-grid tr):
+        (.timeline-view.overview > .data-grid tr:nth-child(even)):
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded) td.graph-column .timeline-record-bar:not(.has-inactive-segment) > .segment):
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded).selected td.graph-column .timeline-record-bar:not(.has-inactive-segment) > .segment):
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded) td.graph-column .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (.timeline-view.overview > .data-grid tr.parent:not(.expanded).selected td.graph-column .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (@media (prefers-color-scheme: dark)):
+        (WI.Table.prototype._updateVisibleRows):
+        * UserInterface/Views/Variables.css:
+
+2019-09-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS Formatter: the closing } of nested @media aren't indented
+        https://bugs.webkit.org/show_bug.cgi?id=201560
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Workers/Formatter/FormatterContentBuilder.js:
+        (FormatterContentBuilder.prototype.removeLastNewline):
+        It's possible that there were multiple newlines in a row, so we should update `_startOfLine`
+        to be `true` if the previous line was empty.
+
+2019-09-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS Formatter: links to CSS resources don't map to the right line after pretty printing if the line is after a multiline comment
+        https://bugs.webkit.org/show_bug.cgi?id=201559
+
+        Reviewed by Joseph Pecoraro.
+
+        Newlines in multiline comments weren't added as line endings, so they weren't considered
+        when a source code location updated after pretty printing.
+
+        * UserInterface/Workers/Formatter/CSSFormatter.js:
+        (CSSFormatter.prototype._format):
+
+2019-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better position for Sources tab when enabling the experimental setting
+        https://bugs.webkit.org/show_bug.cgi?id=201539
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        Place the Sources tab where the Debugger tab was.
+
+2019-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network: Error response headers summary has wrong color border
+        https://bugs.webkit.org/show_bug.cgi?id=201538
+        <rdar://problem/55104469>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (body[dir] .resource-headers > section.error > .details):
+        Re-apply an error style for resource-header sections.
+
+2019-09-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: unify the interaction of show/hide status icons in Sources and Canvas
+        https://bugs.webkit.org/show_bug.cgi?id=201470
+
+        Reviewed by Joseph Pecoraro.
+
+        Rather than "fading" the tree element's text when the underlying represented object is
+        disabled/blackboxed, we should just "fade" the icon. The "fade" shouldn't change when the
+        tree element is selected. The image of the status eye also shouldn't change depending on
+        whether the underlying represented object is disabled/blackboxed, as it being visible (even
+        if it's "faded") is already enough of an indicator.
+
+        It should also be possible to toggle the disabled/blackboxed state via the context menu.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        * UserInterface/Views/SourceCodeTreeElement.css:
+        (.tree-outline:not(.navigation-sidebar-panel-content-tree-outline) .item .status > .toggle-script-blackboxed, .tree-outline .item:not(:hover) .status > .toggle-script-blackboxed:not(.blackboxed)): Added.
+        (.tree-outline:not(.navigation-sidebar-panel-content-tree-outline) .item .status > .toggle-script-blackboxed, .tree-outline .item:not(:hover, .selected) .status > .toggle-script-blackboxed:not(.blackboxed)): Deleted.
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram):
+        (WI.ShaderProgram.prototype.get disabled): Added.
+        (WI.ShaderProgram.prototype.set disabled): Added.
+        (WI.ShaderProgram.prototype.toggleDisabled): Deleted.
+        * UserInterface/Views/ShaderProgramTreeElement.js:
+        (WI.ShaderProgramTreeElement.prototype.onattach):
+        (WI.ShaderProgramTreeElement.prototype.ondetach): Added.
+        (WI.ShaderProgramTreeElement.prototype.canSelectOnMouseDown):
+        (WI.ShaderProgramTreeElement.prototype.populateContextMenu): Added.
+        (WI.ShaderProgramTreeElement.prototype._disabledImageElementClicked):
+        (WI.ShaderProgramTreeElement.prototype._handleShaderProgramDisabledChanged): Added.
+        * UserInterface/Views/ShaderProgramTreeElement.css:
+        (.tree-outline .item.shader-program .status > img): Added.
+        (.tree-outline .item.shader-program:not(:hover, .selected, .disabled) .status > img): Added.
+        (.tree-outline .item.shader-program.disabled .status > img): Added.
+        (@media (prefers-color-scheme: dark) .tree-outline .item.shader-program .status > img): Added.
+        (.item.shader-program .status > img): Deleted.
+        (.item.shader-program.disabled:hover .status > img): Deleted.
+        (.item.shader-program:not(:hover, .selected, .disabled) .status > img): Deleted.
+        (.item.shader-program.disabled > :not(.status)): Deleted.
+        (@media (prefers-color-scheme: dark) .item.shader-program .status > img): Deleted.
+
+2019-09-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Local Overrides - Provide substitution content for resource loads (URL based)
+        https://bugs.webkit.org/show_bug.cgi?id=201262
+        <rdar://problem/13108764>
+
+        Reviewed by Devin Rousso.
+
+        This adds a new "Local Overrides" section to the Sources tab sidebar
+        which will allow users to provide their own resource content for text
+        resources. Users can clone a resource, and provide their own content
+        (by editing in Web Inspector) and new requests for those particular
+        URLs will get the substitute content.
+
+        Overrides are based on a particular URL (ignoring fragment). They
+        can override: status code, status text, response headers, content,
+        and MIME Type (Content-Type).
+
+        * Tools/CodeMirrorModes/index.html: Added.
+        * Tools/CodeMirrorModes/styles.css: Added.
+        Debug tool for CodeMirror editors and our custom CodeMirror modes.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * Localizations/en.lproj/localizedStrings.js:
+        New files and strings.
+
+        * UserInterface/Base/HTTPUtilities.js: Added.
+        (WI.httpStatusTextForStatusCode):
+        Translate between typical status codes and status text.
+
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore._open):
+        New persistent store for local resource overrides.
+
+        * UserInterface/Base/Main.js:
+        (WI.showLocalResourceOverride):
+        Convenience for showing an override file.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseURL):
+        Avoid uncaught exceptions with the URL constructor for common WebKit internal sourceURL strings.
+        
+        (WI.urlWithoutFragment):
+        Strip a fragment from a URL.
+
+        * UserInterface/Controllers/HARBuilder.js:
+        (WI.HARBuilder.fetchType):
+        (WI.HARBuilder.responseSourceFromHARFetchType):
+        Handle new custom response types.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WI.NetworkObserver.prototype.responseIntercepted):
+        (WI.NetworkObserver):
+        New events.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+        (WI.NetworkManager.supportsLocalResourceOverrides):
+        (WI.NetworkManager.prototype.initializeTarget):
+        (WI.NetworkManager.prototype.get localResourceOverrides):
+        (WI.NetworkManager.prototype.get interceptionEnabled):
+        (WI.NetworkManager.prototype.set interceptionEnabled):
+        (WI.NetworkManager.prototype.addLocalResourceOverride):
+        (WI.NetworkManager.prototype.removeLocalResourceOverride):
+        (WI.NetworkManager.prototype.localResourceOverrideForURL):
+        (WI.NetworkManager.prototype.canBeOverridden):
+        (WI.NetworkManager.prototype.responseIntercepted):
+        (WI.NetworkManager.prototype._handleResourceContentDidChange):
+        (WI.NetworkManager.prototype._persistLocalResourceOverrideSoonAfterContentChange):
+        (WI.NetworkManager.prototype._saveLocalResourceOverrides):
+        (WI.NetworkManager.prototype._extraDomainsActivated):
+        (WI.NetworkManager.prototype.localResourceForURL): Deleted.
+        Handle saving and restoring local resource overrides.
+        Handle responding to a `responseIntercepted` Network protocol event.
+
+        * UserInterface/Models/LocalResource.js:
+        (WI.LocalResource.fromJSON):
+        (WI.LocalResource.prototype.toJSON):
+        (WI.LocalResource.prototype.get localContent):
+        (WI.LocalResource.prototype.get localContentIsBase64Encoded):
+        (WI.LocalResource.prototype.isLocalResourceOverride):
+        (WI.LocalResource.prototype.updateOverrideContent):
+        Allow a LocalResource to identify itself as an "override".
+
+        * UserInterface/Models/LocalResourceOverride.js: Added.
+        (WI.LocalResourceOverride.prototype.create):
+        (WI.LocalResourceOverride.fromJSON):
+        (WI.LocalResourceOverride.prototype.toJSON):
+        (WI.LocalResourceOverride.prototype.get url):
+        (WI.LocalResourceOverride.prototype.get localResource):
+        (WI.LocalResourceOverride.prototype.get disabled):
+        (WI.LocalResourceOverride.prototype.set disabled):
+        (WI.LocalResourceOverride.prototype.saveIdentityToCookie):
+        (WI.LocalResourceOverride):
+        Model object for a LocalResourceOverride. This has LocalResource content
+        and an enabled/disabled state.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.classNamesForResource):
+        (WI.Resource.responseSourceFromPayload):
+        (WI.Resource.prototype.isLocalResourceOverride):
+        (WI.Resource.prototype.async.createLocalResourceOverride):
+        (WI.Resource.classNameForResource): Deleted.
+        Convenience functions and icon updates.
+
+        * UserInterface/Views/SourcesTabContentView.js:
+        (WI.SourcesTabContentView.prototype.canShowRepresentedObject):
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        (WI.ContentView.resolvedRepresentedObjectForRepresentedObject):
+        (WI.ContentView.isViewable):
+        Handle new represented object type.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype.createContentTreeOutline):
+        (WI.SourcesNavigationSidebarPanel.prototype.willDismissPopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissLocalOverridePopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissEventBreakpointPopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissURLBreakpointPopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._addLocalResourceOverride):
+        (WI.SourcesNavigationSidebarPanel.prototype._removeLocalResourceOverride):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTreeSelectionDidChange):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateBreakpointContextMenu):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleLocalResourceOverrideAdded):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleLocalResourceOverrideRemoved):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .warning-banner):
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container, .local-overrides)):
+        (.sidebar > .panel.navigation.sources > .content > .local-overrides):
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container)): Deleted.
+        Hide and show Local Overrides section.
+
+        * UserInterface/Views/LocalResourceOverrideTreeElement.css:
+        (.item.resource.override .status > div):
+        * UserInterface/Views/LocalResourceOverrideTreeElement.js: Added.
+        (WI.LocalResourceOverrideTreeElement):
+        (WI.LocalResourceOverrideTreeElement.prototype.canSelectOnMouseDown):
+        (WI.LocalResourceOverrideTreeElement.prototype.populateContextMenu):
+        (WI.LocalResourceOverrideTreeElement.prototype.willDismissPopover):
+        TreeElement for a Local Resource Override.
+
+        * UserInterface/Views/CodeMirrorLocalOverrideURLMode.css:
+        (.cm-s-default .cm-local-override-url-bad-scheme):
+        (.cm-s-default .cm-local-override-url-fragment):
+        * UserInterface/Views/CodeMirrorLocalOverrideURLMode.js: Added.
+        (tokenBase):
+        (return.startState):
+        (return.token):
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WI.ContentBrowserTabContentView.prototype._revealAndSelectRepresentedObject):
+
+        * UserInterface/Views/ContextMenu.js:
+        (WI.ContextMenu.prototype._itemSelected):
+        (WI.ContextMenu):
+        Better debugging for exceptions in context menu handlers.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        (WI.appendContextMenuItemsForURL):
+        Context menu items for Local Resource Overrides.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.startEditingNode):
+        (WI.DataGrid.prototype._startEditingNodeAtColumnIndex):
+        (WI.DataGrid.prototype._startEditing):
+        (WI.DataGrid.prototype._contextMenuInDataTable):
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode):
+        (WI.DataGridNode.prototype.get editable):
+        (WI.DataGridNode.prototype.set editable):
+        Improve DataGrid editing functionality.
+        Allow a node to not be editable.
+        Allow adding a new node and starting to edit in one action.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype.treeElementForRepresentedObject):
+        Do not provide overrides in the Debugger tab.
+
+        * UserInterface/Views/LocalResourceOverrideLabelView.css:
+        (.local-resource-override-label-view):
+        (.local-resource-override-label-view > div):
+        (.local-resource-override-label-view > div > .label):
+        (.local-resource-override-label-view > div > .url):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/LocalResourceOverrideLabelView.js:
+        (WI.LocalResourceOverrideLabelView):
+        (WI.LocalResourceOverrideLabelView.prototype.initialLayout):
+        * UserInterface/Views/LocalResourceOverridePopover.css: Added.
+        (.popover .local-resource-override-popover-content):
+        (.popover .local-resource-override-popover-content > label.toggle):
+        (.popover .local-resource-override-popover-content > table):
+        (.popover .local-resource-override-popover-content > table > tr > th):
+        (.popover .local-resource-override-popover-content > table > tr > td):
+        (.popover .local-resource-override-popover-content .editor):
+        (.popover .local-resource-override-popover-content .editor > .CodeMirror):
+        (.popover .local-resource-override-popover-content .editor.url):
+        (.popover .local-resource-override-popover-content .editor.mime):
+        (.popover .local-resource-override-popover-content .editor.status):
+        (.popover .local-resource-override-popover-content .editor.status-text):
+        (.popover .local-resource-override-popover-content .add-header):
+        (@media (prefers-color-scheme: dark)):
+        New banner view for a local resource override itself.
+        Shows the URL being overriden.
+
+        * UserInterface/Views/LocalResourceOverrideWarningView.css:
+        (.local-resource-override-warning-view):
+        (.local-resource-override-warning-view[hidden]):
+        (.local-resource-override-warning-view > div):
+        (.local-resource-override-warning-view > div > button):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/LocalResourceOverrideWarningView.js: Added.
+        (WI.LocalResourceOverrideWarningView):
+        (WI.LocalResourceOverrideWarningView.prototype.attached):
+        (WI.LocalResourceOverrideWarningView.prototype.detached):
+        (WI.LocalResourceOverrideWarningView.prototype._updateContent):
+        (WI.LocalResourceOverrideWarningView.prototype._handleLocalResourceOverrideChanged):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.pruneStaleResourceTreeElements):
+        New banner view for a resource that has been overridden.
+        Allows jumping to the override itself.
+
+        * UserInterface/Views/LocalResourceOverridePopover.js: Added.
+        (WI.LocalResourceOverridePopover):
+        (WI.LocalResourceOverridePopover.prototype.get serializedData):
+        (WI.LocalResourceOverridePopover.prototype.show.addDataGridNodeForHeader):
+        (WI.LocalResourceOverridePopover.prototype.show):
+        (WI.LocalResourceOverridePopover.prototype._createEditor):
+        (WI.LocalResourceOverridePopover.prototype._defaultURL):
+        (WI.LocalResourceOverridePopover.prototype._presentOverTargetElement):
+        New popover for creating or editing a Local Resource Override.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.performSearch):
+        Consider searching overrides.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search.changed > .banner):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .warning-banner):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-warning-level):
+        Use a new variable for a common warning color.
+
+        * UserInterface/Images/NavigationItemNetworkOverride.svg: Added.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.canBeFormatted):
+        (WI.SourceCodeTextEditor.prototype.get _supportsDebugging):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .warning-banner):
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container, .local-overrides)):
+        (.sidebar > .panel.navigation.sources > .content > .local-overrides):
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container)): Deleted.
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor):
+        * UserInterface/Views/TextResourceContentView.css:
+        (.content-view.resource.text):
+        (.content-view.resource.text > .text-editor):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        (WI.TextResourceContentView.prototype.get navigationItems):
+        (WI.TextResourceContentView.prototype.closed):
+        (WI.TextResourceContentView.prototype._contentWillPopulate):
+        (WI.TextResourceContentView.prototype._contentDidPopulate):
+        (WI.TextResourceContentView.prototype.async._handleCreateLocalResourceOverride):
+        (WI.TextResourceContentView.prototype._handleRemoveLocalResourceOverride):
+        (WI.TextResourceContentView.prototype._handleLocalResourceOverrideChanged):
+        (WI.TextResourceContentView.prototype._textEditorContentDidChange):
+        (WI.TextResourceContentView.prototype._shouldBeEditable):
+        Allow Text resources to create a local resource override.
+        Support for Image resources will come separately.
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._responseSourceDisplayString):
+        Handle new response type.
+
+        * UserInterface/Controllers/CSSManager.js:
+        Avoid extra handling for Local Resource Overrides.
+
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon.override .icon):
+        * UserInterface/Views/ResourceSizesContentView.js:
+        (WI.ResourceSizesContentView.prototype.initialLayout):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode.prototype.iconClassNames):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.prototype._updateResource):
+        (WI.ResourceTreeElement.prototype._updateIcon):
+        (WI.ResourceTreeElement.prototype._responseReceived):
+        (WI.ResourceTreeElement):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WI.TimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateTransferSizeCell):
+        (WI.NetworkTableContentView.prototype._generateSortComparator):
+        Better Resource icons all over for overrides.
+
+        * UserInterface/Views/URLBreakpointPopover.js:
+        (WI.URLBreakpointPopover.prototype._createEditor):
+        Code cleanup.
+
+2019-09-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to view XML/HTML/SVG resource responses as a DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=201046
+        <rdar://problem/54446087>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WI.ResourceClusterContentView):
+        (WI.ResourceClusterContentView.prototype.showRequest):
+        (WI.ResourceClusterContentView.prototype.showResponse):
+        (WI.ResourceClusterContentView.prototype.get customRequestDOMContentView): Added.
+        (WI.ResourceClusterContentView.prototype.get customRequestJSONContentView): Added.
+        (WI.ResourceClusterContentView.prototype.get customResponseDOMContentView): Added.
+        (WI.ResourceClusterContentView.prototype.get customResponseJSONContentView): Added.
+        (WI.ResourceClusterContentView.prototype.get customResponseTextContentView): Added.
+        (WI.ResourceClusterContentView.prototype._createPathComponent): Added.
+        (WI.ResourceClusterContentView.prototype._canShowCustomRequestContentView):
+        (WI.ResourceClusterContentView.prototype._canShowCustomResponseContentView):
+        (WI.ResourceClusterContentView.prototype._contentViewForResourceType):
+        (WI.ResourceClusterContentView.prototype._pathComponentForContentView):
+        (WI.ResourceClusterContentView.prototype._identifierForContentView):
+        (WI.ResourceClusterContentView.prototype._showContentViewForIdentifier):
+        (WI.ResourceClusterContentView.prototype._resourceLoadingDidFinish):
+        (WI.ResourceClusterContentView.prototype._canUseDOMContentViewForContent): Added.
+        (WI.ResourceClusterContentView.prototype._normalizeMIMETypeForDOM): Added.
+        (WI.ResourceClusterContentView.prototype._tryEnableCustomRequestContentViews): Added.
+        (WI.ResourceClusterContentView.prototype._tryEnableCustomResponseContentViews): Added.
+        (WI.ResourceClusterContentView.createPathComponent): Deleted.
+        (WI.ResourceClusterContentView.prototype._tryEnableCustomRequestContentView): Deleted.
+        (WI.ResourceClusterContentView.prototype._tryEnableCustomResponseContentView): Deleted.
+        * UserInterface/Base/Main.js:
+        (WI.showResourceRequest):
+        * UserInterface/Views/PathComponentIcons.css:
+        (.object-icon .icon): Added.
+        * UserInterface/Main.html:
+        * UserInterface/Views/SVGImageResourceClusterContentView.js: Removed.
+        Reworked to allow more than one custom request/response content view at the same time. As
+        such, merge the `WI.SVGImageResourceClusterContentView` into this class.
+
+        * UserInterface/Views/LocalRemoteObjectContentView.js: Added.
+        (WI.LocalRemoteObjectContentView):
+        (WI.LocalRemoteObjectContentView.prototype.get expression):
+        (WI.LocalRemoteObjectContentView.prototype.renderRemoteObject):
+        (WI.LocalRemoteObjectContentView.prototype.initialLayout):
+        (WI.LocalRemoteObjectContentView.prototype.attached):
+        (WI.LocalRemoteObjectContentView.prototype.closed):
+        * UserInterface/Views/LocalRemoteObjectContentView.css: Added.
+        (.content-view.local-remote-object):
+        * UserInterface/Views/LocalDOMContentView.js: Added.
+        (WI.LocalDOMContentView):
+        (WI.LocalDOMContentView.prototype.get expression):
+        (WI.LocalDOMContentView.prototype.renderRemoteObject):
+        * UserInterface/Views/LocalJSONContentView.js: Added.
+        (WI.LocalJSONContentView):
+        (WI.LocalJSONContentView.prototype.get expression):
+        (WI.LocalJSONContentView.prototype.renderRemoteObject):
+        * UserInterface/Views/JSONContentView.js: Removed.
+        * UserInterface/Views/JSONContentView.css: Removed.
+        Rework `WI.JSONContentView` into a more generic set of classes that render an object we send
+        to the inspected page for instrumentation.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.populateContextMenu):
+        (WI.DOMTreeOutline.prototype._onmousemove):
+        (WI.DOMTreeOutline.prototype._onmouseout):
+        (WI.DOMTreeOutline.prototype._ondragstart):
+        (WI.DOMTreeOutline.prototype._ondragover):
+        (WI.DOMTreeOutline.prototype._ondragleave):
+        (WI.DOMTreeOutline.prototype._ondragend):
+        (WI.DOMTreeOutline.prototype._hideElements):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.populateDOMNodeContextMenu):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+        Ensure that interactions that would modify the DOM tree only happen when editable. If the
+        `WI.DOMTreeOutline` represents a "local" `WI.DOMNode` (one that's been sent to the inspected
+        page for instrumentation, and shouldn't be part of the main #document), don't allow any
+        editing actions to be performed.
+
+        * UserInterface/Views/TextContentView.js:
+        (WI.TextContentView):
+        Allow a `representedObject` object to be provided and used instead of the given `string`.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/Object.svg: Added.
+
+2019-09-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: implement blackboxing of script resources
+        https://bugs.webkit.org/show_bug.cgi?id=17240
+        <rdar://problem/5732847>
+
+        Reviewed by Joseph Pecoraro.
+
+        When a script is blackboxed and the debugger attempts to pause in that script, the pause
+        reason/data will be saved and execution will continue until it has left the blackboxed
+        script. Once outside, execution is paused with the saved reason/data.
+
+        This is especially useful when debugging issues using libraries/frameworks, as it allows the
+        developer to "skip" the internal logic of the library/framework and instead focus only on
+        how they're using it.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype.initializeTarget):
+        (WI.DebuggerManager.supportsBlackboxingScripts): Added.
+        (WI.DebuggerManager.pauseReasonFromPayload): Added.
+        (WI.DebuggerManager.prototype.isScriptBlackboxed): Added.
+        (WI.DebuggerManager.prototype.setShouldBlackboxScript): Added.
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload):
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload): Deleted.
+
+        * UserInterface/Models/SourceCode.js:
+        (WI.SourceCode.prototype.get isScript): Added.
+        (WI.SourceCode.prototype.get supportsScriptBlackboxing): Added.
+        * UserInterface/Models/Script.js:
+        (WI.Script.prototype.get isScript): Added.
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.get isScript): Added.
+        Provide a more straightforward way of determining if a `WI.SourceCode` is a script.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReason):
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._updatePauseReason):
+        (WI.SourcesNavigationSidebarPanel.prototype._updatePauseReasonSection):
+        Display the original pause reason and breakpoint (if applicable) when pausing after leaving
+        a blackboxed script.
+
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WI.SourceCodeTreeElement.prototype.canSelectOnMouseDown): Added.
+        (WI.SourceCodeTreeElement.prototype.updateStatus): Added.
+        (WI.SourceCodeTreeElement.prototype._updateSourceCode):
+        (WI.SourceCodeTreeElement.prototype._updateToggleBlackboxImageElementState): Added.
+        (WI.SourceCodeTreeElement.prototype._handleToggleBlackboxedImageElementClick): Added.
+        * UserInterface/Views/SourceCodeTreeElement.css: Added.
+        (.tree-outline .item .status > .toggle-script-blackboxed):
+        (.tree-outline:not(.navigation-sidebar-panel-content-tree-outline) .item .status > .toggle-script-blackboxed,):
+        (.tree-outline:focus .item.selected .status > .toggle-script-blackboxed):
+        (.tree-outline .item .status > .toggle-script-blackboxed.blackboxed):
+        (@media (prefers-color-scheme: dark) .tree-outline .item .status > .toggle-script-blackboxed):
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.prototype._updateResource):
+        (WI.ResourceTreeElement.prototype.updateStatus): Added.
+        (WI.ResourceTreeElement.prototype._updateStatus): Deleted.
+        Make sure that the loading indicator doesn't override the blackbox toggle.
+
+        * UserInterface/Base/Setting.js:
+        (WI.Setting.prototype.set value):
+        (WI.Setting.prototype.save): Added.
+        When modifying an array value, that doesn't go through `WI.Setting.prototype.set value`, so
+        we need a more "manual" way of saving the new value.
+
+        * UserInterface/Main.html:
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Test/TestHarness.js:
+        (TestHarness.prototype.newline): Added.
+        (TestHarness.prototype.expectException):
+        Add a special case for logging error message objects when running protocol tests.
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Update .xcconfig symbols to reflect the current set of past and future product versions.
+        https://bugs.webkit.org/show_bug.cgi?id=200720
+        <rdar://problem/54305032>
+
+        Reviewed by Alex Christensen.
+
+        Remove version symbols related to old OS's we no longer support,
+        ensure that version symbols are defined for OS's we do support.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: support event breakpoints in Worker contexts
+        https://bugs.webkit.org/show_bug.cgi?id=200651
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype._updateDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint):
+        Add assertions when adding/removing DOM breakpoints or animation frame event breakpoints if
+        the target is a `WI.WorkerTarget`, as neither are supported by `Worker`s.
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace uses of `Array.prototype.concat` with `Array.prototype.push`
+        https://bugs.webkit.org/show_bug.cgi?id=201082
+
+        Reviewed by Joseph Pecoraro.
+
+        `x = x.concat(y)` is very slow, as `x` has to be fully copied in order to add `y` to it.
+        Introduce `Array.prototype.pushIterable`, which iterates the given `iterable` and adds each
+        item to the `this` array.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype.get domBreakpoints):
+        (WI.DOMDebuggerManager.prototype.domBreakpointsInSubtree):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.completionControllerCompletionsNeeded.receivedPropertyNames):
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions):
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WI.CSSKeywordCompletions.forProperty):
+        (WI.CSSKeywordCompletions.forProperty.addKeywordsForName):
+        (WI.CSSKeywordCompletions.forFunction):
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.recordingProgress):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._updateStyleCascade):
+        (WI.DOMNodeStyles.prototype._collectStylesInCascadeOrder):
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.prototype.get sourceCodeTimelines):
+        (WI.TimelineRecording.prototype.initializeCallingContextTrees):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject.prototype._getPropertyDescriptorsResolver):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser.prototype.get currentRepresentedObjects):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._visibleChildren):
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode.prototype.get filterableData):
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView.prototype.get selectionPathComponents):
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WI.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData.processEntries):
+        * UserInterface/Views/NavigationItem.js:
+        (WI.NavigationItem.prototype.get _classNames):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WI.ObjectTreeView.prototype._updateProperties):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._addResourcesForFrame):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WI.OverviewTimelineView.prototype._loadExistingRecords):
+        * UserInterface/Views/ResourceCollectionContentView.js:
+        (WI.ResourceCollectionContentView.prototype.get navigationItems):
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._perfomSearchOnKeyValuePairs):
+        * UserInterface/Views/ResourceSecurityContentView.js:
+        (WI.ResourceSecurityContentView.prototype._perfomSearchOnKeyValuePairs):
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WI.ScriptClusterTimelineView.prototype.get selectionPathComponents):
+        * UserInterface/Views/ScrubberNavigationItem.js:
+        (WI.ScrubberNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._addGradientTokens):
+        (WI.SpreadsheetStyleProperty.prototype._addColorTokens.pushPossibleColorToken):
+        (WI.SpreadsheetStyleProperty.prototype._addTimingFunctionTokens):
+        (WI.SpreadsheetStyleProperty.prototype._addVariableTokens):
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selfOrDescendant):
+        * UserInterface/Views/View.js:
+        (WI.View._visitViewTreeForLayout):
+
+2019-08-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r248873): Debugger: pressing delete on a breakpoint will also delete any resource/element parent immediately before it in the list
+        https://bugs.webkit.org/show_bug.cgi?id=200939
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved):
+        (WI.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement.checkIfSelectionAdjustmentNeeded): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved):
+        (WI.SourcesNavigationSidebarPanel.this._breakpointsTreeOutline.ondelete.checkIfSelectionAdjustmentNeeded): Deleted.
+        When the `WI.TreeOutline`'s own `ondelete` is called, that means we must be handling a
+        delete that was _not_ handled by a `WI.TreeElement`. This means that the `selectedTreeElement`
+        has to be a resource/script, the `window` object, or one of the non-deletable breakpoints.
+
+        In the case of a non-deletable breakpoint, since they're never removed from their parent
+        `WI.TreeOutline`, we just shift the selection to the next selectable `WI.TreeElement`.
+
+        Otherwise, wait for the `WI.TreeOutline.Event.ElementRemoved` event to be fired, and adjust
+        the selection then based on whether the new `selectedTreeElement` is one of the "top" items,
+        namely the "All Exceptions", "Uncaught Exceptions", and "Assertion Failures" breakpoints.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement.prototype.ondelete):
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/URLBreakpointTreeElement.js:
+        (WI.URLBreakpointTreeElement.prototype.ondelete):
+        Add `return true;` to let the parent `WI.TreeOutline` know that the delete event was handled.
+        This prevents the parent `WI.TreeOutline`'s own `ondelete` from being called, which would
+        cause a double-delete as there would be a different `selectedTreeElement`.
+
+2019-08-29  Keith Rollin  <krollin@apple.com>
+
+        Remove support for macOS < 10.13 (part 3)
+        https://bugs.webkit.org/show_bug.cgi?id=201224
+        <rdar://problem/54795934>
+
+        Reviewed by Darin Adler.
+
+        Remove symbols in WebKitTargetConditionals.xcconfig related to macOS
+        10.13, including WK_MACOS_1013 and WK_MACOS_BEFORE_1013, and suffixes
+        like _MACOS_SINCE_1013.
+
+        Also added some macOS target numbers.
+
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2019-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Import file pickers sometimes do not import
+        https://bugs.webkit.org/show_bug.cgi?id=201290
+        <rdar://problem/54826117>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.FileUtilities.importText):
+        (WI.FileUtilities.importJSON):
+        Keep the input element alive so it doesn't get garbage collected,
+        which makes the file chooser do nothing.
+
+        (WI.FileUtilities.save):
+        (WI.FileUtilities.async.readText):
+        Place read operations after event handlers are setup in case the
+        read operations can happen synchronously and events may not fire.
+
+2019-08-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r249078): JavaScript autocomplete doesn't work when evaluating properties of values
+        https://bugs.webkit.org/show_bug.cgi?id=201226
+
+        Reviewed by Joseph Pecoraro.
+
+        r249078 modified `WI.JavaScriptRuntimeCompletionProvider` to use arrays of property names
+        instead of objects for completion, but a few code paths were missed.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.evaluated):
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNamesFromEvaluate):
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedObjectPropertyNames): Added.
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedArrayPropertyNames):
+
+        * UserInterface/Models/CallFrame.js:
+        (WI.CallFrame.prototype.collectScopeChainVariableNames):
+        (WI.CallFrame.prototype.collectScopeChainVariableNames.propertiesCollected):
+
+2019-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace uses of added utility `Array.prototype.keySet` with an actual `Set`
+        https://bugs.webkit.org/show_bug.cgi?id=201194
+
+        Reviewed by Ross Kirsling.
+
+        They both have basically the same functionality, with one difference being that a `Set` can
+        work with arrays that have non-string values.
+
+        * UserInterface/Base/Utilities.js:
+        (Array.prototype.keySet): Deleted.
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WI.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions):
+        (WI.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions.matchKeywords):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.completionControllerCompletionsNeeded.receivedPropertyNames):
+
+2019-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: change the styling of the special log "bubble" to match WI.ScopeBar
+        https://bugs.webkit.org/show_bug.cgi?id=201152
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-user-command.special-user-log > .console-message-body):
+
+2019-08-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: decrease horizontal padding of `WI.ScopeBar` to have more room
+        https://bugs.webkit.org/show_bug.cgi?id=201090
+
+        Reviewed by Joseph Pecoraro.
+
+        There's a lot of "wasted" padding space around each item that we could reuse (or "move") for
+        other navigation items.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > .navigation-bar > .item.scope-bar):
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only):
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar):
+        (body[dir=ltr] .scope-bar > li.multiple > select):
+        (body[dir=rtl] .scope-bar > li.multiple > select):
+        (.scope-bar > li.multiple > .arrows):
+
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WI.RadioButtonNavigationItem):
+        (WI.RadioButtonNavigationItem.prototype.update): Deleted.
+        There's no reason to forcibly set the `min-width` since all instances are just text.
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.initialLayout):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header > nav:not(:empty):before): Deleted.
+        Remove the unnecessary "Showing: " prefix before the `WI.ScopeBar`.
+
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.js: Removed.
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css: Removed.
+        These classes were never used.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-08-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Copy Rule" menu item does not propagate comments properly
+        https://bugs.webkit.org/show_bug.cgi?id=201095
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.commentOut):
+        (WI.CSSProperty.prototype.get formattedText):
+        Wrap the `text` in `/* ${text} */` if the `WI.CSSProperty` isn't `enabled` (e.g. commented out).
+
+2019-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create additional command line api functions for other console methods
+        https://bugs.webkit.org/show_bug.cgi?id=200971
+
+        Reviewed by Joseph Pecoraro.
+
+        Expose all `console.*` functions in the command line API, since they're all already able to
+        be referenced via the `console` object.
+
+        Provide a simpler interface for other injected scripts to modify the command line API.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.get _commandLineAPIKeys): Added.
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.updateLastPropertyNames):
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNames):
+
+2019-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: transparency checkerboard is too bright in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=201067
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Main.css:
+        (@media (prefers-color-scheme: dark) :matches(img, canvas).show-grid):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-body > .show-grid):
+
+2019-08-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console: automatically select the "Evaluations" filter whenever running commands
+        https://bugs.webkit.org/show_bug.cgi?id=201060
+
+        Reviewed by Timothy Hatcher.
+
+        If the Console is actively being filtered (e.g. not "All"), it can be confusing to run a
+        command, only to not see any results. We should automatically enable the "Evaluations"
+        filter in addition to any other existing filters in these cases.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.didAppendConsoleMessageView):
+        * UserInterface/Views/ScopeBarItem.js:
+        (WI.ScopeBarItem.prototype.set selected):
+        (WI.ScopeBarItem.prototype.toggle): Added.
+
+2019-08-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r248485): stack overflow when viewing a source map generated from inline content
+        https://bugs.webkit.org/show_bug.cgi?id=201042
+        <rdar://problem/54509750>
+
+        Reviewed by Antoine Quint.
+
+        In r248485, `WI.ResourceClusterContentView` was changed to `requestContent` whenever the
+        given resource finished loading (by listening for `WI.Resource.Event.LoadingDidFinish`).
+
+        Even though retrieving a source map's contents uses `Promise`s, in the case that the content
+        was inlined in the "original" source code, the code path would mark the source map as being
+        finished (which would fire a `WI.Resource.Event.LoadingDidFinish`) _before_ it could return
+        a `Promise`, which would've been cached (`WI.SourceCode.prototype.requestContent`) and
+        preventend any reentrancy.
+
+        Wrapping the inline code path in a `Promise.resolve()` gives the `WI.SourceCode` a chance to
+        cache the `Promise` before any events are fired.
+
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource.prototype.requestContentFromBackend):
+
+2019-08-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: console.dir should expand objects
+        https://bugs.webkit.org/show_bug.cgi?id=152039
+        <rdar://problem/23816853>
+
+        Reviewed by Joseph Pecoraro.
+
+        Expand objects logged by console.dir but keep them collapsed when logged by console.log.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype.render):
+
+2019-08-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=201041
+
+        Reviewed by Alex Christensen.
+
+        * UserInterface/Views/CPUUsageCombinedView.css:
+        (.cpu-usage-combined-view > .graph > .stacked-area-chart):
+        * UserInterface/Views/CPUUsageCombinedView.js:
+        (WI.CPUUsageCombinedView):
+        * UserInterface/Views/MediaTimelineOverviewGraph.js:
+        (WI.MediaTimelineOverviewGraph):
+
+2019-08-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide an engineering option to log protocol traffic as text
+        https://bugs.webkit.org/show_bug.cgi?id=200969
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WI.LoggingProtocolTracer.prototype._processEntry):
+        (WI.LoggingProtocolTracer):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createDebugSettingsView):
+
+2019-08-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: RTL: DOM outline in Elements tab should be LTR
+        https://bugs.webkit.org/show_bug.cgi?id=200601
+
+        Reviewed by Timothy Hatcher.
+
+        Make DOM outlines in Console and Elements tab always LTR,
+        and unsure that Left and Right arrow keys continue working correctly.
+
+        * UserInterface/Base/Main.js:
+        (WI.resolveLayoutDirectionForElement): Added.
+        The existing WI.resolvedLayoutDirection function returns the value of the root DOM element.
+        The newly added resolveLayoutDirectionForElement function returns the correct value for any element,
+        including elements with `dir=ltr` inside of `<body dir=rtl>`.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded):
+        (.tree-outline.dom li:not(.editing)):
+        (.tree-outline.dom li.editing):
+        (.tree-outline.dom li .pseudo-class-indicator):
+        (.tree-outline.dom.single-node li):
+        (.tree-outline.dom li.parent):
+        (.tree-outline.dom li .html-tag.close):
+        (.tree-outline.dom li.parent::before):
+        (.tree-outline.dom li.parent.shadow::after):
+        Remove RTL logic.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._treeKeyDown):
+        Make Left and Right arrow keys work correctly for LTR DOM outlines inside of the global RTL.
+
+2019-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Page: re-add enable/disable after r248454
+        https://bugs.webkit.org/show_bug.cgi?id=200947
+
+        Reviewed by Joseph Pecoraro.
+
+        We shouldn't design the agent system with only Web Inspector in mind. Other clients may want
+        to have different functionality, not being told about frames creation/updates/destruction.
+        In these cases, we should have graceful error message failures for other agents that rely on
+        the Page agent.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.initializeTarget):
+
+2019-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: increase the filter bar's width when it's focused if a resource type filter is active
+        https://bugs.webkit.org/show_bug.cgi?id=200940
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FilterBar.js:
+        (WI.FilterBar.prototype._handleFilterChanged):
+        (WI.FilterBar.prototype.get indicatingProgress): Deleted.
+        (WI.FilterBar.prototype.set indicatingProgress): Deleted.
+        (WI.FilterBar.prototype.get indicatingActive): Deleted.
+        (WI.FilterBar.prototype.set indicatingActive): Deleted.
+        If escape is pressed when the <input> is empty, unfocus (blur) the <input>.
+        Drive-by: remove unused/unnecessary functions.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > input[type="search"]):
+        (:matches(.filter-bar, .search-bar) > input[type="search"]): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]:matches(:focus, :not(:placeholder-shown))): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]::-webkit-search-decoration): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]::-webkit-search-results-button): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]::placeholder): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]:matches(:not(:focus), :placeholder-shown)::-webkit-search-cancel-button): Added.
+        (:matches(.filter-bar, .search-bar) > .navigation-bar + input[type="search"]): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]:focus): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"] + :empty): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"]:focus ~ *): Added.
+        (:matches(.filter-bar, .search-bar) > input[type="search"] + .navigation-bar > .item.scope-bar:last-child): Added.
+        (.filter-bar > input[type="search"] + .navigation-bar > .item.scope-bar:last-child): Deleted.
+        (.filter-bar > .navigation-bar + input[type="search"]): Deleted.
+        (.filter-bar > input[type="search"]::placeholder): Deleted.
+        (.filter-bar > input[type="search"]:focus): Deleted.
+        (.filter-bar > input[type="search"]::-webkit-search-decoration): Deleted.
+        (.filter-bar.active > input[type="search"]::-webkit-search-decoration): Deleted.
+        (.filter-bar.indicating-progress > input[type="search"]::-webkit-search-decoration): Deleted.
+        (.filter-bar > input[type="search"] + .navigation-bar:empty): Deleted.
+        When the <input> is `:focus`, hide the following `WI.NavigationBar` (if it's being used) so
+        that there's more room to show the filter text.
+        Drive-by: fix background, border, and text color styling when `:focus`.
+
+        * UserInterface/Views/SearchBar.css:
+        (.search-bar > input[type="search"]):
+        (.search-bar > input[type="search"]::placeholder): Deleted.
+        (.search-bar > input[type="search"]:focus): Deleted.
+        (.search-bar > input[type="search"]:not(:placeholder-shown)): Deleted.
+        (.search-bar > input[type="search"]:placeholder-shown::-webkit-search-cancel-button): Deleted.
+        (@media (prefers-color-scheme: dark)): Deleted.
+        (:matches(.search-bar, .filter-bar) > input[type="search"],): Deleted.
+        (:matches(.search-bar, .filter-bar) > input[type="search"]::placeholder): Deleted.
+        (:matches(.search-bar, .filter-bar) > input[type="search"]:focus): Deleted.
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search > .search-bar):
+        (.sidebar > .panel.navigation.search > .search-bar > input[type="search"]):
+        (.sidebar > .panel.navigation.search > .search-bar > .search-settings): Added.
+        (.sidebar > .panel.navigation.search > .search-bar > input[type="search"]::-webkit-search-results-button): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .search-bar > input[type="search"]::-webkit-textfield-decoration-container): Deleted.
+        Move shared styles to FilterBar.css as `WI.FilterBar` are more common.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-color-scheme: dark) :root):
+        Expose some CSS variables in light mode that were previously only defined in dark mode.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._updateURLFilterActiveIndicator): Deleted.
+        * UserInterface/Images/FilterFieldActiveGlyph.svg: Removed.
+
+2019-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary properties on SVGs
+        https://bugs.webkit.org/show_bug.cgi?id=200968
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Images/EventPause.svg:
+        * UserInterface/Images/EventPlay.svg:
+        * UserInterface/Images/EventProcessing.svg:
+        * UserInterface/Images/EventStop.svg:
+        * UserInterface/Images/MediaInstrument.svg:
+
+2019-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Implement `queryHolders` Command Line API
+        https://bugs.webkit.org/show_bug.cgi?id=200458
+
+        Reviewed by Joseph Pecoraro.
+
+        Call `queryHolders(object)` from the Console to return an array of objects that strongly
+        reference the given `object`. This could be very useful for finding JavaScript "leaks".
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+
+2019-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Address a few Esprima issues preventing pretty printing of resources
+        https://bugs.webkit.org/show_bug.cgi?id=200935
+
+        Reviewed by Timothy Hatcher.
+
+        Address a few Esprima issues:
+
+            Issue #1991 - Failure to parse template literal with destructuring assignment expression
+            https://github.com/jquery/esprima/issues/1991
+
+            Issue #1920 - Invalid Left Hand Side in for-in
+            https://github.com/jquery/esprima/issues/1920
+
+        * UserInterface/External/Esprima/esprima.js:
+
+2019-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update CodeMirror to support numeric separators in JavaScript numbers
+        https://bugs.webkit.org/show_bug.cgi?id=200942
+
+        Cherry-pick a few CodeMirror changes:
+        
+            [javascript mode] Support numeric separators
+            https://github.com/codemirror/CodeMirror/commit/beab8ed123683416bfec934df73d13401ec086b5#diff-9812850bb71d31e8dd60b476abb2bae8
+
+            [javascript mode] fix tokenizing of underscore properties
+            https://github.com/codemirror/CodeMirror/commit/463ea2c34ab442c0cae1d9732305219ca9b04dfe#diff-9812850bb71d31e8dd60b476abb2bae8
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/External/CodeMirror/javascript.js:
+
+2019-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: move the resource type scope bar to be next to the filter
+        https://bugs.webkit.org/show_bug.cgi?id=200891
+
+        Reviewed by Joseph Pecoraro.
+
+        It's odd to have UI for controlling the active filters in two different places. Move the
+        resource type `WI.ScopeBar` to the filter bar area, and "promote" the resource grouping mode
+        items from a context menu to an always visible `WI.ScopeBar` in the space left by the
+        resource type `WI.ScopeBar` (switching between grouping modes quickly is a useful workflow).
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype.hasCustomFilters):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeScopeBarSelectionChanged): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeChanged):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateResourceGroupingModeContextMenu.addOption): Deleted.
+        (WI.SourcesNavigationSidebarPanel.prototype._populateResourceGroupingModeContextMenu): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .filter-bar .sources-resource-type-scope-bar.default-item-selected:not(:hover)): Added.
+        (.sidebar > .panel.navigation.sources > .filter-bar .sources-resource-type-scope-bar.default-item-selected:hover): Added.
+
+        * UserInterface/Views/FilterBar.js:
+        (WI.FilterBar.prototype.addFilterNavigationItem): Added.
+        (WI.FilterBar.prototype.addFilterBarButton):
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > .navigation-bar > .item):
+        (.filter-bar > .navigation-bar > .item.button): Added.
+        (.filter-bar > .navigation-bar > .item.scope-bar): Added.
+        (.filter-bar > input[type="search"] + .navigation-bar > .item.scope-bar:last-child): Added.
+        Provide a way to add arbitrary `WI.NavigationItem` to the contained `WI.NavigationBar`.
+        Slightly adjust the spacing of the items (depending on their type) in the `WI.NavigationBar`
+        so they are all centered.
+
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar):
+        (.scope-bar > li):
+        (.scope-bar > li::after):
+        (.scope-bar > li:not(.selected):hover): Added.
+        (body[dir=ltr] .scope-bar > li.multiple > select):
+        (body[dir=rtl] .scope-bar > li.multiple > select):
+        (.scope-bar > li:not(.selected):hover::after): Added.
+        Introduce CSS variables for `margin`, `padding`, and `opacity` that callers can override to
+        customize the appearance of the `WI.ScopeBar`.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Sources: Give Origins their own icon in the Sources sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=200683
+        <rdar://problem/54269044>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Images/Origin.svg: Added.
+        * UserInterface/Main.html:
+        New resources.
+
+        * UserInterface/Views/FolderIcon.css:
+        (.origin-icon .icon):
+        Light and Dark appearances for Origin icons.
+
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/OriginTreeElement.js:
+        (WI.OriginTreeElement):
+        Very much like a folder with different classes.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WI.SourcesNavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WI.SourcesNavigationSidebarPanel.prototype._compareTreeElements):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeChanged):
+        Use OriginTreeElement in a few places.
+
+2019-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Support for JavaScript BigInt
+        https://bugs.webkit.org/show_bug.cgi?id=180731
+        <rdar://problem/36298748>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/External/CodeMirror/javascript.js:
+        (expressionAllowed):
+        Cherry-pick BigInt JavaScript mode support from CodeMirror:
+        https://github.com/codemirror/CodeMirror/pull/5411
+
+        * UserInterface/Images/TypeBigInt.svg: Added.
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .cm-number.cm-bigint,):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property.bigint > .icon):
+        * UserInterface/Views/HeapSnapshotInstancesContentView.css:
+        (.heap-snapshot .icon.bigint):
+        Style BigInt similiar but different from numbers but with
+        a [B] icon instead of [N].
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-bigint):
+        * UserInterface/Views/FormattedValue.js:
+        (WI.FormattedValue.hasSimpleDisplay):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression.populate):
+        (WI.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        Simple value formatting for the new type.
+
+        * UserInterface/Models/TypeSet.js:
+        (WI.TypeSet):
+        (WI.TypeSet.prototype.get primitiveTypeNames):
+        * UserInterface/Views/TypeTokenView.css:
+        (.type-token-bigint):
+        * UserInterface/Views/TypeTokenView.js:
+        (WI.TypeTokenView.prototype._displayTypeName):
+        (WI.TypeTokenView):
+        New type handling for the Type profiler.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject):
+        (WI.RemoteObject.createBigIntFromDescriptionString):
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WI.HeapSnapshotClusterContentView.iconStyleClassNameForClassName):
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WI.HeapSnapshotInstanceDataGridNode.prototype._populatePreview):
+        BigInt values are not tied to a GlobalObject, so do some special casing
+        in the Heap output (like Strings) so we get a preview.
+
+2019-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Use URL constructor to better handle all kinds of URLs
+        https://bugs.webkit.org/show_bug.cgi?id=165155
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseURL):
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: add a global breakpoint for pausing in the next microtask
+        https://bugs.webkit.org/show_bug.cgi?id=200652
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype.initializeTarget):
+        (WI.DebuggerManager.prototype.get allMicrotasksBreakpoint): ADded.
+        (WI.DebuggerManager.prototype.isBreakpointSpecial):
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload):
+        (WI.DebuggerManager.prototype._breakpointDisabledStateDidChange):
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        (WI.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.DebuggerSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved):
+        (WI.DebuggerSidebarPanel.prototype._populateCreateBreakpointContextMenu):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._insertDebuggerTreeElement):
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpoint):
+        (WI.SourcesNavigationSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateBreakpointContextMenu):
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.breakpoint-microtask-icon .icon): Added.
+        * UserInterface/Images/Microtask.svg: Added.
+
+        * UserInterface/Base/Setting.js:
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r248682): Elements: Computed: go-to arrows in the Variables section are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=200841
+
+        Reviewed by Joseph Pecoraro.
+
+        The Variables section uses a different CSS class since it's identifier changed in r248682.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .computed .details-section:matches(.computed-style-properties, .computed-style-variables)): Added.
+        (.sidebar > .panel.details.css-style > .content > .computed .details-section:matches(.computed-style-properties, .computed-style-variables) .property): Added.
+        (.sidebar > .panel.details.css-style > .content > .computed .details-section:matches(.computed-style-properties, .computed-style-variables) .property .go-to-arrow): Added.
+        (.sidebar > .panel.details.css-style > .content > .computed .details-section:matches(.computed-style-properties, .computed-style-variables) .property:not(:hover) .go-to-arrow): Added.
+        (.sidebar > .panel.details.css-style > .content > .computed .computed-style-properties): Deleted.
+        (.sidebar > .panel.details.css-style > .content > .computed .computed-style-properties .property .go-to-arrow): Deleted.
+        (.sidebar > .panel.details.css-style > .content > .computed .computed-style-properties .property:hover .go-to-arrow): Deleted.
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: have more aggressive checks for dataURLs provided to `console.screenshot`
+        https://bugs.webkit.org/show_bug.cgi?id=200747
+
+        Reviewed by Joseph Pecoraro.
+
+        Always send any /data:*+/ strings to the frontend and have it render there. If that doesn't
+        work, have the frontend "spoof" an error message look and feel.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-08-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: RTL: Network headers values should be preserved
+        https://bugs.webkit.org/show_bug.cgi?id=200873
+
+        Reviewed by Joseph Pecoraro.
+
+        Replace spans with bdi elements, which have `unicode-bidi: isolate` User Agent style.
+        This works well with both LTR and RTL values.
+
+        * UserInterface/Views/ResourceDetailsSection.js:
+        (WI.ResourceDetailsSection.prototype.appendKeyValuePair):
+        Drive-by: remove unnecessary if/else statement and use `append` instead.
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Debugger: pressing delete when the all/uncaught exceptions breakpoint is selected should select the next tree element
+        https://bugs.webkit.org/show_bug.cgi?id=200876
+
+        Reviewed by Joseph Pecoraro.
+
+        Removing the `return true;` from the various `WI.TreeElement` breakpoint classes allows the
+        owner `WI.TreeOutline` to also handle the delete event. In the Debugger/Sources navigation
+        sidebar, the owner `WI.TreeOutline` checks to see if the currently selected `WI.TreeElement`
+        is one of the "top" items ("All Exceptions", "Uncaught Exceptions", "Assertion Failures")
+        and if so, select the next tree element (if able) instead of the previous one.
+
+        This is a preferred experience because the "top" items can only be disabled, not deleted, so
+        trying to delete them wouldn't actually change the selection. They should only ever be
+        selected if there's nothing else that can be selected.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement.checkIfSelectionAdjustmentNeeded): Added.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.checkIfSelectionAdjustmentNeeded): Added.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement.prototype.ondelete):
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/URLBreakpointTreeElement.js:
+        (WI.URLBreakpointTreeElement.prototype.ondelete):
+
+2019-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: don't show the All Requests breakpoint by default
+        https://bugs.webkit.org/show_bug.cgi?id=200892
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Setting.js:
+
+2019-08-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: gear icons moves to 2nd line when sidebar is narrow
+        https://bugs.webkit.org/show_bug.cgi?id=198017
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar):
+        (WI.NavigationBar.prototype.layout):
+        (WI.NavigationBar.prototype.layout.forceItemHidden): Added.
+        (WI.NavigationBar.prototype.layout.isDivider): Added.
+        (WI.NavigationBar.prototype.layout.calculateVisibleItemWidth): Added.
+        (WI.NavigationBar.prototype.needsLayout): Deleted.
+        (WI.NavigationBar.prototype.sizeDidChange): Deleted.
+        (WI.NavigationBar.prototype._updateContent): Deleted.
+        (WI.NavigationBar.prototype._updateContent.forceItemHidden): Deleted.
+        (WI.NavigationBar.prototype._updateContent.isDivider): Deleted.
+        (WI.NavigationBar.prototype._updateContent.calculateVisibleItemWidth): Deleted.
+        Reset the cached `_minimumWidth` whenever updating in `layout()`.
+
+        * UserInterface/Views/NavigationItem.js:
+        (WI.NavigationItem.prototype.get width):
+        (WI.NavigationItem.prototype.update): Added.
+        (WI.NavigationItem.prototype.updateLayout): Deleted.
+        (WI.NavigationItem.prototype.get totalMargin): Added.
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WI.ButtonNavigationItem.prototype.get totalMargin): Added.
+        * UserInterface/Views/ButtonNavigationItem.css:
+        * UserInterface/Views/TextNavigationItem.js:
+        (WI.TextNavigationItem.prototype.get totalMargin): Added.
+        * UserInterface/Views/TextNavigationItem.css:
+        `Element.prototype.getBoundingClientRect` doesn't include the `margin` box of an element.
+        Rather than create a CSS variable and parse a computed style, save the total `margin` amount
+        to a getter that can then be added when computing the minimum width.
+
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar):
+        (WI.Sidebar.prototype._recalculateWidth):
+        * UserInterface/Views/FlexibleSpaceNavigationItem.js:
+        (WI.FlexibleSpaceNavigationItem.prototype.update): Added.
+        (WI.FlexibleSpaceNavigationItem.prototype.updateLayout): Deleted.
+        * UserInterface/Views/GroupNavigationItem.js:
+        (WI.GroupNavigationItem.prototype.update): Added.
+        (WI.GroupNavigationItem.prototype.updateLayout): Deleted.
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem.prototype.update): Added.
+        (WI.HierarchicalPathNavigationItem.prototype.updateLayout): Deleted.
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WI.RadioButtonNavigationItem.prototype.update): Added.
+        (WI.RadioButtonNavigationItem.prototype.updateLayout): Deleted.
+        Rename `updateLayout` to `update` so it doesn't clash with `WI.View` naming.
+
+        * UserInterface/Views/SidebarNavigationBar.js: Removed.
+        * UserInterface/Main.html:
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar .item): Added.
+        (.navigation-bar .item, .sidebar-navigation-bar > .holder .item): Deleted.
+        (.sidebar-navigation-bar): Deleted.
+        (.sidebar-navigation-bar .holder): Deleted.
+        Remove unnecessary class.
+
+2019-08-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Syntax Highlight more CSS media queries
+        https://bugs.webkit.org/show_bug.cgi?id=200824
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        Special case CSS "error" tokenized values from CodeMirror inside @ rules
+        to treat some as properties.
+
 2019-08-16  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: JavaScript formatting of single statement arrow function can be poor

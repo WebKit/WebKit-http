@@ -109,7 +109,7 @@ String convertEnumerationToString(PlatformMediaSession::RemoteControlCommandType
 
 std::unique_ptr<PlatformMediaSession> PlatformMediaSession::create(PlatformMediaSessionClient& client)
 {
-    return std::make_unique<PlatformMediaSession>(client);
+    return makeUnique<PlatformMediaSession>(client);
 }
 
 PlatformMediaSession::PlatformMediaSession(PlatformMediaSessionClient& client)
@@ -391,6 +391,11 @@ void PlatformMediaSession::clientCharacteristicsChanged()
 bool PlatformMediaSession::canPlayConcurrently(const PlatformMediaSession& otherSession) const
 {
     return m_client.hasMediaStreamSource() && otherSession.m_client.hasMediaStreamSource();
+}
+
+bool PlatformMediaSession::shouldOverridePauseDuringRouteChange() const
+{
+    return m_client.shouldOverridePauseDuringRouteChange();
 }
 
 #if !RELEASE_LOG_DISABLED

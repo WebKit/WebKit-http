@@ -55,6 +55,7 @@
 
 #if USE(GSTREAMER_GL)
 #define TEXTURE_COPIER_COLOR_CONVERT_FLAG VideoTextureCopierGStreamer::ColorConversion::NoConvert
+#define GST_GL_CAPS_FORMAT "{ RGBx, RGBA, I420, Y444, YV12, Y41B, Y42B, NV12, NV21, VUYA }"
 
 #include <gst/app/gstappsink.h>
 
@@ -126,7 +127,8 @@ static int greatestCommonDivisor(int a, int b)
 #if USE(TEXTURE_MAPPER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
 public:
-    explicit GstVideoFrameHolder(GstSample* sample, TextureMapperGL::Flags flags, bool gstGLEnabled)
+    explicit GstVideoFrameHolder(GstSample* sample, Optional<GstVideoDecoderPlatform> videoDecoderPlatform, TextureMapperGL::Flags flags, bool gstGLEnabled)
+        : m_videoDecoderPlatform(videoDecoderPlatform)
     {
         RELEASE_ASSERT(GST_IS_SAMPLE(sample));
 
@@ -145,8 +147,10 @@ public:
 
         if (gstGLEnabled) {
             m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL));
-            if (m_isMapped)
+            if (m_isMapped) {
                 m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
+                m_hasMappedTextures = true;
+            }
         } else
 #else
         UNUSED_PARAM(flags);
@@ -171,10 +175,24 @@ public:
         gst_video_frame_unmap(&m_videoFrame);
     }
 
+#if USE(GSTREAMER_GL)
+    virtual void waitForCPUSync()
+    {
+        GstGLSyncMeta* meta = gst_buffer_get_gl_sync_meta(m_buffer);
+        if (meta) {
+            GstMemory* mem = gst_buffer_peek_memory(m_buffer, 0);
+            GstGLContext* context = ((GstGLBaseMemory*)mem)->context;
+            gst_gl_sync_meta_wait_cpu(meta, context);
+        }
+    }
+#endif // USE(GSTREAMER_GL)
+
     const IntSize& size() const { return m_size; }
     bool hasAlphaChannel() const { return m_hasAlphaChannel; }
     TextureMapperGL::Flags flags() const { return m_flags; }
     GLuint textureID() const { return m_textureID; }
+    bool hasMappedTextures() const { return m_hasMappedTextures; }
+    const GstVideoFrame& videoFrame() const { return m_videoFrame; }
 
     void updateTexture(BitmapTextureGL& texture)
     {
@@ -201,14 +219,70 @@ public:
         texture.updateContents(srcData, WebCore::IntRect(0, 0, m_size.width(), m_size.height()), WebCore::IntPoint(0, 0), stride);
     }
 
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> platformLayerBuffer()
+    {
+        if (!m_hasMappedTextures)
+            return nullptr;
+
+        using Buffer = TextureMapperPlatformLayerBuffer;
+
+        if ((GST_VIDEO_INFO_IS_RGB(&m_videoFrame.info) && GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info) == 1))
+            return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { *static_cast<GLuint*>(m_videoFrame.data[0]) } }, m_size, m_flags, GraphicsContext3D::RGBA);
+
+        if (GST_VIDEO_INFO_IS_YUV(&m_videoFrame.info)) {
+            if (GST_VIDEO_INFO_N_COMPONENTS(&m_videoFrame.info) < 3 || GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info) > 3)
+                return nullptr;
+
+            if (m_videoDecoderPlatform && *m_videoDecoderPlatform == GstVideoDecoderPlatform::ImxVPU) {
+                // IMX VPU decoder decodes YUV data only into the Y texture from which the sampler
+                // then directly produces RGBA data. Textures for other planes aren't used, but
+                // that's decoder's problem. We have to treat that Y texture as having RGBA data.
+                return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { *static_cast<GLuint*>(m_videoFrame.data[0]) } }, m_size, m_flags, GraphicsContext3D::RGBA);
+            }
+
+            unsigned numberOfPlanes = GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info);
+            std::array<GLuint, 3> planes;
+            std::array<unsigned, 3> yuvPlane;
+            std::array<unsigned, 3> yuvPlaneOffset;
+            for (unsigned i = 0; i < numberOfPlanes; ++i)
+                planes[i] = *static_cast<GLuint*>(m_videoFrame.data[i]);
+            for (unsigned i = 0; i < 3; ++i) {
+                yuvPlane[i] = GST_VIDEO_INFO_COMP_PLANE(&m_videoFrame.info, i);
+                yuvPlaneOffset[i] = GST_VIDEO_INFO_COMP_POFFSET(&m_videoFrame.info, i);
+            }
+
+            std::array<GLfloat, 9> yuvToRgb;
+            if (gst_video_colorimetry_matches(&GST_VIDEO_INFO_COLORIMETRY(&m_videoFrame.info), GST_VIDEO_COLORIMETRY_BT709)) {
+                yuvToRgb = {
+                    1.164f,  0.0f,    1.787f,
+                    1.164f, -0.213f, -0.531f,
+                    1.164f,  2.112f,  0.0f
+                };
+            } else {
+                // Default to bt601. This is the same behaviour as GStreamer's glcolorconvert element.
+                yuvToRgb = {
+                    1.164f,  0.0f,    1.596f,
+                    1.164f, -0.391f, -0.813f,
+                    1.164f,  2.018f,  0.0f
+                };
+            }
+
+            return makeUnique<Buffer>( Buffer::TextureVariant { Buffer::YUVTexture { numberOfPlanes, planes, yuvPlane, yuvPlaneOffset, yuvToRgb } }, m_size, m_flags, GraphicsContext3D::RGBA);
+        }
+
+        return nullptr;
+    }
+
 private:
     GstBuffer* m_buffer;
     GstVideoFrame m_videoFrame { };
     IntSize m_size;
     bool m_hasAlphaChannel;
+    Optional<GstVideoDecoderPlatform> m_videoDecoderPlatform;
     TextureMapperGL::Flags m_flags { };
     GLuint m_textureID { 0 };
     bool m_isMapped { false };
+    bool m_hasMappedTextures { false };
 };
 #endif
 
@@ -237,16 +311,13 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
 #if USE(GSTREAMER_GL)
-    if (m_videoDecoderPlatform == WebKitGstVideoDecoderPlatform::Video4Linux)
+    if (m_videoDecoderPlatform == GstVideoDecoderPlatform::Video4Linux)
         flushCurrentBuffer();
 #endif
 #if USE(TEXTURE_MAPPER_GL) && USE(NICOSIA)
     downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosiaLayer->impl()).invalidateClient();
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    m_protectionCondition.notifyAll();
-#endif
     m_notifier->invalidate();
 
     if (m_videoSink) {
@@ -265,6 +336,10 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     // This will release the GStreamer thread from m_drawCondition in non AC mode in case there's an ongoing triggerRepaint call
     // waiting there, and ensure that any triggerRepaint call reaching the lock won't wait on m_drawCondition.
     cancelRepaint(true);
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    m_cdmAttachmentSemaphore.signal();
+#endif
 
     // The change to GST_STATE_NULL state is always synchronous. So after this gets executed we don't need to worry
     // about handlers running in the GStreamer thread.
@@ -327,28 +402,28 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return false;
         }
         GST_DEBUG_OBJECT(pipeline(), "handling drm-preferred-decryption-system-id need context message");
-        LockHolder lock(m_protectionMutex);
-        ProtectionSystemEvents protectionSystemEvents(message);
-        GST_TRACE("found %zu protection events, %zu decryptors available", protectionSystemEvents.events().size(), protectionSystemEvents.availableSystems().size());
+
         InitData initData;
+        {
+            LockHolder lock(m_protectionMutex);
+            ProtectionSystemEvents protectionSystemEvents(message);
+            GST_TRACE("found %zu protection events, %zu decryptors available", protectionSystemEvents.events().size(), protectionSystemEvents.availableSystems().size());
 
-        for (auto& event : protectionSystemEvents.events()) {
-            const char* eventKeySystemId = nullptr;
-            GstBuffer* data = nullptr;
-            gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
+            for (auto& event : protectionSystemEvents.events()) {
+                const char* eventKeySystemId = nullptr;
+                GstBuffer* data = nullptr;
+                gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
-            initData.append({eventKeySystemId, data});
-            m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
+                initData.append({eventKeySystemId, data});
+                m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
+            }
         }
-
         initializationDataEncountered(WTFMove(initData));
 
         GST_INFO_OBJECT(pipeline(), "waiting for a CDM instance");
-        m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
-            return this->m_cdmInstance;
-        });
-
-        if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
+        if (m_cdmAttachmentSemaphore.waitFor(4_s)
+            && m_notifier->isValid() // Check the player is not being destroyed.
+            && !m_cdmInstance->keySystem().isEmpty()) {
             const char* preferredKeySystemUuid = GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem());
             GST_INFO_OBJECT(pipeline(), "working with key system %s, continuing with key system %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
@@ -486,6 +561,7 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 // Returns the size of the video
 FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 {
+    ASSERT(isMainThread());
 #if USE(GSTREAMER_HOLEPUNCH)
     // When using the holepuch we may not be able to get the video frames size, so we can't use
     // it. But we need to report some non empty naturalSize for the player's GraphicsLayer
@@ -500,6 +576,7 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
         return m_videoSize;
 
     auto sampleLocker = holdLock(m_sampleMutex);
+
     if (!GST_IS_SAMPLE(m_sample.get()))
         return FloatSize();
 
@@ -507,6 +584,14 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     if (!caps)
         return FloatSize();
 
+    m_videoSize = naturalSizeFromCaps(caps);
+    GST_DEBUG_OBJECT(pipeline(), "Natural size: %.0fx%.0f", m_videoSize.width(), m_videoSize.height());
+    return m_videoSize;
+}
+
+FloatSize MediaPlayerPrivateGStreamerBase::naturalSizeFromCaps(GstCaps* caps) const
+{
+    ASSERT(caps);
 
     // TODO: handle possible clean aperture data. See
     // https://bugzilla.gnome.org/show_bug.cgi?id=596571
@@ -557,9 +642,7 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
         height = static_cast<guint64>(originalSize.height());
     }
 
-    GST_DEBUG_OBJECT(pipeline(), "Natural size: %" G_GUINT64_FORMAT "x%" G_GUINT64_FORMAT, width, height);
-    m_videoSize = FloatSize(static_cast<int>(width), static_cast<int>(height));
-    return m_videoSize;
+    return FloatSize(static_cast<int>(width), static_cast<int>(height));
 }
 
 void MediaPlayerPrivateGStreamerBase::setVolume(float volume)
@@ -611,11 +694,6 @@ MediaPlayer::NetworkState MediaPlayerPrivateGStreamerBase::networkState() const
 MediaPlayer::ReadyState MediaPlayerPrivateGStreamerBase::readyState() const
 {
     return m_readyState;
-}
-
-void MediaPlayerPrivateGStreamerBase::sizeChanged()
-{
-    notImplemented();
 }
 
 void MediaPlayerPrivateGStreamerBase::setMuted(bool mute)
@@ -710,19 +788,20 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
             if (!proxy.isActive())
                 return;
 
-            std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, !m_usingFallbackVideoSink);
+            std::unique_ptr<GstVideoFrameHolder> frameHolder = makeUnique<GstVideoFrameHolder>(m_sample.get(), m_videoDecoderPlatform, m_textureMapperFlags, !m_usingFallbackVideoSink);
 
-            GLuint textureID = frameHolder->textureID();
             std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer;
-            if (textureID) {
-                layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, frameHolder->size(), frameHolder->flags(), GraphicsContext3D::RGBA);
+            if (frameHolder->hasMappedTextures()) {
+                layerBuffer = frameHolder->platformLayerBuffer();
+                if (!layerBuffer)
+                    return;
                 layerBuffer->setUnmanagedBufferDataHolder(WTFMove(frameHolder));
             } else {
                 layerBuffer = proxy.getAvailableBuffer(frameHolder->size(), GL_DONT_CARE);
                 if (UNLIKELY(!layerBuffer)) {
                     auto texture = BitmapTextureGL::create(TextureMapperContextAttributes::get());
                     texture->reset(frameHolder->size(), frameHolder->hasAlphaChannel() ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
-                    layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
+                    layerBuffer = makeUnique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
                 }
                 frameHolder->updateTexture(layerBuffer->textureGL());
                 layerBuffer->setExtraFlags(m_textureMapperFlags | (frameHolder->hasAlphaChannel() ? TextureMapperGL::ShouldBlend : 0));
@@ -749,12 +828,28 @@ void MediaPlayerPrivateGStreamerBase::repaint()
     m_drawCondition.notifyOne();
 }
 
+bool MediaPlayerPrivateGStreamerBase::doSamplesHaveDifferentNaturalSizes(GstSample* sampleA, GstSample* sampleB) const
+{
+    ASSERT(sampleA);
+    ASSERT(sampleB);
+
+    GstCaps* capsA = gst_sample_get_caps(sampleA);
+    GstCaps* capsB = gst_sample_get_caps(sampleB);
+
+    if (LIKELY(capsA == capsB))
+        return false;
+
+    return naturalSizeFromCaps(capsA) != naturalSizeFromCaps(capsB);
+}
+
 void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
     bool triggerResize;
     {
         auto sampleLocker = holdLock(m_sampleMutex);
-        triggerResize = !m_sample;
+        triggerResize = !m_sample || doSamplesHaveDifferentNaturalSizes(m_sample.get(), sample);
+        if (triggerResize)
+            m_videoSize = FloatSize(); // Force re-calculation in next call to naturalSize().
         m_sample = sample;
     }
 
@@ -851,7 +946,7 @@ void MediaPlayerPrivateGStreamerBase::flushCurrentBuffer()
             gst_sample_get_segment(m_sample.get()), info ? gst_structure_copy(info) : nullptr));
     }
 
-    bool shouldWait = m_videoDecoderPlatform == WebKitGstVideoDecoderPlatform::Video4Linux;
+    bool shouldWait = m_videoDecoderPlatform == GstVideoDecoderPlatform::Video4Linux;
     auto proxyOperation = [shouldWait, pipeline = pipeline()](TextureMapperPlatformLayerProxy& proxy) {
         GST_DEBUG_OBJECT(pipeline, "Flushing video sample %s", shouldWait ? "synchronously" : "");
         LockHolder locker(!shouldWait ? &proxy.lock() : nullptr);
@@ -885,15 +980,55 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext& context, const Floa
     if (!GST_IS_SAMPLE(m_sample.get()))
         return;
 
-    ImagePaintingOptions paintingOptions(CompositeCopy);
-    if (m_renderingCanBeAccelerated)
-        paintingOptions.m_orientation = m_videoSourceOrientation;
+#if USE(GSTREAMER_GL)
+    // Ensure the input is RGBA. We handle YUV video natively, so we need to do
+    // this conversion on-demand here.
+    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
+    if (UNLIKELY(!GST_IS_BUFFER(buffer)))
+        return;
+
+    GstCaps* caps = gst_sample_get_caps(m_sample.get());
+
+    GstVideoInfo videoInfo;
+    gst_video_info_init(&videoInfo);
+    if (!gst_video_info_from_caps(&videoInfo, caps))
+        return;
+
+    if (!GST_VIDEO_INFO_IS_RGB(&videoInfo)) {
+        if (!m_colorConvert) {
+            GstMemory* mem = gst_buffer_peek_memory(buffer, 0);
+            GstGLContext* context = ((GstGLBaseMemory*)mem)->context;
+            m_colorConvert = adoptGRef(gst_gl_color_convert_new(context));
+        }
+
+        if (!m_colorConvertInputCaps || !gst_caps_is_equal(m_colorConvertInputCaps.get(), caps)) {
+            m_colorConvertInputCaps = caps;
+            m_colorConvertOutputCaps = adoptGRef(gst_caps_copy(caps));
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+            const gchar* formatString = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? "RGBA" : "BGRx";
+#else
+            const gchar* formatString = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? "RGBA" : "RGBx";
+#endif
+            gst_caps_set_simple(m_colorConvertOutputCaps.get(), "format", G_TYPE_STRING, formatString, nullptr);
+            if (!gst_gl_color_convert_set_caps(m_colorConvert.get(), caps, m_colorConvertOutputCaps.get()))
+                return;
+        }
+
+        GRefPtr<GstBuffer> rgbBuffer = adoptGRef(gst_gl_color_convert_perform(m_colorConvert.get(), buffer));
+        if (UNLIKELY(!GST_IS_BUFFER(rgbBuffer.get())))
+            return;
+
+        const GstStructure* info = gst_sample_get_info(m_sample.get());
+        m_sample = adoptGRef(gst_sample_new(rgbBuffer.get(), m_colorConvertOutputCaps.get(),
+            gst_sample_get_segment(m_sample.get()), info ? gst_structure_copy(info) : nullptr));
+    }
+#endif
 
     auto gstImage = ImageGStreamer::createImage(m_sample.get());
     if (!gstImage)
         return;
 
-    context.drawImage(gstImage->image(), rect, gstImage->rect(), paintingOptions);
+    context.drawImage(gstImage->image(), rect, gstImage->rect(), { CompositeCopy, m_renderingCanBeAccelerated ? m_videoSourceOrientation : ImageOrientation() });
 }
 
 #if USE(GSTREAMER_GL)
@@ -912,10 +1047,10 @@ bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(Graphics
     if (!GST_IS_SAMPLE(m_sample.get()))
         return false;
 
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, true);
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = makeUnique<GstVideoFrameHolder>(m_sample.get(), m_videoDecoderPlatform, m_textureMapperFlags, true);
 
-    auto textureID = frameHolder->textureID();
-    if (!textureID)
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = frameHolder->platformLayerBuffer();
+    if (!layerBuffer)
         return false;
 
     auto size = frameHolder->size();
@@ -923,9 +1058,11 @@ bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(Graphics
         size = size.transposedSize();
 
     if (!m_videoTextureCopier)
-        m_videoTextureCopier = std::make_unique<VideoTextureCopierGStreamer>(TEXTURE_COPIER_COLOR_CONVERT_FLAG);
+        m_videoTextureCopier = makeUnique<VideoTextureCopierGStreamer>(TEXTURE_COPIER_COLOR_CONVERT_FLAG);
 
-    return m_videoTextureCopier->copyVideoTextureToPlatformTexture(textureID, size, outputTexture, outputTarget, level, internalFormat, format, type, flipY, m_videoSourceOrientation);
+    frameHolder->waitForCPUSync();
+
+    return m_videoTextureCopier->copyVideoTextureToPlatformTexture(*layerBuffer.get(), size, outputTexture, outputTarget, level, internalFormat, format, type, flipY, m_videoSourceOrientation);
 }
 
 NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
@@ -939,10 +1076,10 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     if (!GST_IS_SAMPLE(m_sample.get()))
         return nullptr;
 
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, true);
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = makeUnique<GstVideoFrameHolder>(m_sample.get(), m_videoDecoderPlatform, m_textureMapperFlags, true);
 
-    auto textureID = frameHolder->textureID();
-    if (!textureID)
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = frameHolder->platformLayerBuffer();
+    if (!layerBuffer)
         return nullptr;
 
     auto size = frameHolder->size();
@@ -953,9 +1090,11 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     context->makeContextCurrent();
 
     if (!m_videoTextureCopier)
-        m_videoTextureCopier = std::make_unique<VideoTextureCopierGStreamer>(TEXTURE_COPIER_COLOR_CONVERT_FLAG);
+        m_videoTextureCopier = makeUnique<VideoTextureCopierGStreamer>(TEXTURE_COPIER_COLOR_CONVERT_FLAG);
 
-    if (!m_videoTextureCopier->copyVideoTextureToPlatformTexture(textureID, size, 0, GraphicsContext3D::TEXTURE_2D, 0, GraphicsContext3D::RGBA, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, false, m_videoSourceOrientation))
+    frameHolder->waitForCPUSync();
+
+    if (!m_videoTextureCopier->copyVideoTextureToPlatformTexture(*layerBuffer.get(), size, 0, GraphicsContext3D::TEXTURE_2D, 0, GraphicsContext3D::RGBA, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, false, m_videoSourceOrientation))
         return nullptr;
 
     return adoptRef(cairo_gl_surface_create_for_texture(context->cairoDevice(), CAIRO_CONTENT_COLOR_ALPHA, m_videoTextureCopier->resultTexture(), size.width(), size.height()));
@@ -1062,8 +1201,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
     GstElement* appsink = createGLAppSink();
 
     // glsinkbin is not used because it includes glcolorconvert which only process RGBA,
-    // but in the future it would be possible to render YUV formats too:
-    // https://bugs.webkit.org/show_bug.cgi?id=132869
+    // but we can display YUV formats too.
 
     if (!appsink || !upload || !colorconvert) {
         GST_WARNING("Failed to create GstGL elements");
@@ -1082,7 +1220,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 
     gst_bin_add_many(GST_BIN(videoSink), upload, colorconvert, appsink, nullptr);
 
-    GRefPtr<GstCaps> caps = adoptGRef(gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGBA", nullptr));
+    GRefPtr<GstCaps> caps = adoptGRef(gst_caps_from_string("video/x-raw, format = (string) " GST_GL_CAPS_FORMAT));
     gst_caps_set_features(caps.get(), 0, gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr));
     g_object_set(appsink, "caps", caps.get(), nullptr);
 
@@ -1125,7 +1263,6 @@ static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect)
 }
 
 class GStreamerHolePunchClient : public TextureMapperPlatformLayerBuffer::HolePunchClient {
-    WTF_MAKE_FAST_ALLOCATED;
 public:
     GStreamerHolePunchClient(GRefPtr<GstElement>&& videoSink) : m_videoSink(WTFMove(videoSink)) { };
     void setVideoRectangle(const IntRect& rect) final { setRectangleToVideoSink(m_videoSink.get(), rect); }
@@ -1148,8 +1285,8 @@ void MediaPlayerPrivateGStreamerBase::pushNextHolePunchBuffer()
         [this](TextureMapperPlatformLayerProxy& proxy)
         {
             LockHolder holder(proxy.lock());
-            std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldNotBlend, GL_DONT_CARE);
-            std::unique_ptr<GStreamerHolePunchClient> holePunchClient = std::make_unique<GStreamerHolePunchClient>(m_videoSink.get());
+            std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = makeUnique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldNotBlend, GL_DONT_CARE);
+            std::unique_ptr<GStreamerHolePunchClient> holePunchClient = makeUnique<GStreamerHolePunchClient>(m_videoSink.get());
             layerBuffer->setHolePunchClient(WTFMove(holePunchClient));
             proxy.pushNextBuffer(WTFMove(layerBuffer));
         };
@@ -1302,12 +1439,12 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(CDMInstance& instance)
 
     GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));
     GstStructure* contextStructure = gst_context_writable_structure(context.get());
-    gst_structure_set(contextStructure, "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr);
+    gst_structure_set(contextStructure, "cdm-instance", G_TYPE_POINTER, m_cdmInstance->proxyCDM().get(), nullptr);
     gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
 
-    GST_DEBUG_OBJECT(m_pipeline.get(), "CDM instance %p dispatched as context", m_cdmInstance.get());
+    GST_DEBUG_OBJECT(m_pipeline.get(), "CDM proxy instance %p dispatched as context", m_cdmInstance->proxyCDM().get());
 
-    m_protectionCondition.notifyAll();
+    m_cdmAttachmentSemaphore.signal();
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(CDMInstance& instance)
@@ -1327,8 +1464,6 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(CDMInstance& instance)
 
     GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));
     gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
-
-    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(CDMInstance& instance)
@@ -1346,9 +1481,12 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
-    if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_DEBUG_OBJECT(pipeline(), "event %u already handled", GST_EVENT_SEQNUM(event));
-        return;
+    {
+        LockHolder lock(m_protectionMutex);
+        if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
+            GST_DEBUG_OBJECT(pipeline(), "event %u already handled", GST_EVENT_SEQNUM(event));
+            return;
+        }
     }
     GST_DEBUG_OBJECT(pipeline(), "handling event %u from MSE", GST_EVENT_SEQNUM(event));
     const char* eventKeySystemUUID = nullptr;

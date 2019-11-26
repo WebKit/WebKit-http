@@ -53,7 +53,7 @@ private:
 Ref<HTMLSummaryElement> HTMLSummaryElement::create(const QualifiedName& tagName, Document& document)
 {
     Ref<HTMLSummaryElement> summary = adoptRef(*new HTMLSummaryElement(tagName, document));
-    summary->addShadowRoot(ShadowRoot::create(document, std::make_unique<SummarySlotElement>()));
+    summary->addShadowRoot(ShadowRoot::create(document, makeUnique<SummarySlotElement>()));
     return summary;
 }
 
@@ -100,6 +100,11 @@ static bool isClickableControl(EventTarget* target)
         return false;
     auto& element = downcast<Element>(*target);
     return is<HTMLFormControlElement>(element) || is<HTMLFormControlElement>(element.shadowHost());
+}
+
+int HTMLSummaryElement::defaultTabIndex() const
+{
+    return isActiveSummary() ? 0 : -1;
 }
 
 bool HTMLSummaryElement::supportsFocus() const

@@ -42,6 +42,7 @@ class CookieStorageObserver;
 namespace WebKit {
 class WebCookieManagerProxy;
 class WebsiteDataStore;
+enum class HTTPCookieAcceptPolicy : uint8_t;
 }
 
 namespace API {
@@ -61,6 +62,9 @@ public:
     void cookies(CompletionHandler<void(const Vector<WebCore::Cookie>&)>&&);
     void setCookies(const Vector<WebCore::Cookie>&, CompletionHandler<void()>&&);
     void deleteCookie(const WebCore::Cookie&, CompletionHandler<void()>&&);
+    
+    void deleteAllCookies(CompletionHandler<void()>&&);
+    void setHTTPCookieAcceptPolicy(WebKit::HTTPCookieAcceptPolicy, CompletionHandler<void()>&&);
 
     class Observer {
     public:
@@ -86,6 +90,8 @@ private:
     static void deleteCookieFromDefaultUIProcessCookieStore(const WebCore::Cookie&);
     void startObservingChangesToDefaultUIProcessCookieStore(Function<void()>&&);
     void stopObservingChangesToDefaultUIProcessCookieStore();
+    void deleteCookiesInDefaultUIProcessCookieStore();
+    void setHTTPCookieAcceptPolicyInDefaultUIProcessCookieStore(WebKit::HTTPCookieAcceptPolicy);
     
     // FIXME: This is a reference cycle.
     Ref<WebKit::WebsiteDataStore> m_owningDataStore;
@@ -98,7 +104,7 @@ private:
     uint64_t m_processPoolCreationListenerIdentifier { 0 };
 
 #if PLATFORM(COCOA)
-    RefPtr<WebCore::CookieStorageObserver> m_defaultUIProcessObserver;
+    std::unique_ptr<WebCore::CookieStorageObserver> m_defaultUIProcessObserver;
 #endif
 };
 

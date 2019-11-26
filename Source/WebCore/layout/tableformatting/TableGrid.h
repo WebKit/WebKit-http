@@ -46,7 +46,15 @@ public:
     void insertCell(const Box&, const Box& before);
     void removeCell(const Box&);
 
+    void setHorizontalSpacing(LayoutUnit horizontalSpacing) { m_horizontalSpacing = horizontalSpacing; }
+    LayoutUnit horizontalSpacing() const { return m_horizontalSpacing; }
+
+    void setVerticalSpacing(LayoutUnit verticalSpacing) { m_verticalSpacing = verticalSpacing; }
+    LayoutUnit verticalSpacing() const { return m_verticalSpacing; }
+
     using SlotPosition = IntPoint;
+
+    // Cell represents a <td> or <th>. It can span multiple slots in the grid.
     using CellSize = IntSize;
     struct CellInfo : public CanMakeWeakPtr<CellInfo> {
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
@@ -59,7 +67,70 @@ public:
     using CellList = WTF::ListHashSet<std::unique_ptr<CellInfo>>;
     CellList& cells() { return m_cellList; }
 
-    using SlotLogicalSize = LayoutSize;
+    // Column represents a vertical set of slots in the grid. A column has min/max and final width.
+    class ColumnsContext;
+    class Column {
+    public:
+        void setWidthConstraints(FormattingContext::IntrinsicWidthConstraints);
+        FormattingContext::IntrinsicWidthConstraints widthConstraints() const;
+
+        void setLogicalLeft(LayoutUnit);
+        LayoutUnit logicalLeft() const;
+        LayoutUnit logicalRight() const { return logicalLeft() + logicalWidth(); }
+        void setLogicalWidth(LayoutUnit);
+        LayoutUnit logicalWidth() const;
+
+    private:
+        friend class ColumnsContext;
+        Column() = default;
+
+        FormattingContext::IntrinsicWidthConstraints m_widthConstraints;
+        LayoutUnit m_computedLogicalWidth;
+        LayoutUnit m_computedLogicalLeft;
+#ifndef NDEBUG
+        bool m_hasWidthConstraints { false };
+        bool m_hasComputedWidth { false };
+        bool m_hasComputedLeft { false };
+#endif
+    };
+
+    class ColumnsContext {
+    public:
+        using ColumnList = Vector<Column>;
+        ColumnList& columns() { return m_columns; }
+        const ColumnList& columns() const { return m_columns; }
+        LayoutUnit logicalWidth() const { return columns().last().logicalRight() - columns().first().logicalLeft(); }
+
+    private:
+        friend class TableGrid;
+        void addColumn();
+
+        ColumnList m_columns;
+    };
+    ColumnsContext& columnsContext() { return m_columnsContext; }
+
+    struct Row {
+    public:
+        Row(const Box&);
+
+        const Box& box() const { return m_layoutBox; }
+
+        void setLogicalTop(LayoutUnit logicalTop) { m_logicalTop = logicalTop; }
+        LayoutUnit logicalTop() const { return m_logicalTop; }
+
+        void setLogicalHeight(LayoutUnit logicalHeight) { m_logicalHeight = logicalHeight; }
+        LayoutUnit logicalHeight() const { return m_logicalHeight; }
+
+        LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
+
+    private:
+        LayoutUnit m_logicalTop;
+        LayoutUnit m_logicalHeight;
+        const Box& m_layoutBox;
+    };
+    using RowList = WTF::Vector<Row>;
+    RowList& rows() { return m_rows; }
+
     struct SlotInfo {
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
         SlotInfo() = default;
@@ -67,14 +138,20 @@ public:
 
         WeakPtr<CellInfo> cell;
         FormattingContext::IntrinsicWidthConstraints widthConstraints;
-        SlotLogicalSize size;
     };
     SlotInfo* slot(SlotPosition);
 
+    FormattingContext::IntrinsicWidthConstraints widthConstraints() const;
+
 private:
     using SlotMap = WTF::HashMap<SlotPosition, std::unique_ptr<SlotInfo>>;
+
     SlotMap m_slotMap;
     CellList m_cellList;
+    ColumnsContext m_columnsContext;
+    RowList m_rows;
+    LayoutUnit m_horizontalSpacing;
+    LayoutUnit m_verticalSpacing;
 };
 
 }

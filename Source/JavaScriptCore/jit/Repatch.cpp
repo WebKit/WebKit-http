@@ -77,7 +77,7 @@ static FunctionPtr<CFunctionPtrTag> readPutICCallTarget(CodeBlock* codeBlock, Co
 #if ENABLE(FTL_JIT)
     if (codeBlock->jitType() == JITType::FTLJIT) {
         MacroAssemblerCodePtr<JITThunkPtrTag> thunk = MacroAssemblerCodePtr<OperationPtrTag>::createFromExecutableAddress(target.executableAddress()).retagged<JITThunkPtrTag>();
-        return codeBlock->vm()->ftlThunks->keyForSlowPathCallThunk(thunk).callTarget().retagged<CFunctionPtrTag>();
+        return codeBlock->vm().ftlThunks->keyForSlowPathCallThunk(thunk).callTarget().retagged<CFunctionPtrTag>();
     }
 #else
     UNUSED_PARAM(codeBlock);
@@ -89,7 +89,7 @@ void ftlThunkAwareRepatchCall(CodeBlock* codeBlock, CodeLocationCall<JSInternalP
 {
 #if ENABLE(FTL_JIT)
     if (codeBlock->jitType() == JITType::FTLJIT) {
-        VM& vm = *codeBlock->vm();
+        VM& vm = codeBlock->vm();
         FTL::Thunks& thunks = *vm.ftlThunks;
         FunctionPtr<OperationPtrTag> target = MacroAssembler::readCallTarget<OperationPtrTag>(call);
         auto slowPathThunk = MacroAssemblerCodePtr<JITThunkPtrTag>::createFromExecutableAddress(target.retaggedExecutableAddress<JITThunkPtrTag>());
@@ -799,21 +799,21 @@ void repatchInstanceOf(
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), operationInstanceOfGeneric);
 }
 
-static void linkSlowFor(VM*, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef<JITStubRoutinePtrTag> codeRef)
+static void linkSlowFor(VM&, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef<JITStubRoutinePtrTag> codeRef)
 {
     MacroAssembler::repatchNearCall(callLinkInfo.callReturnLocation(), CodeLocationLabel<JITStubRoutinePtrTag>(codeRef.code()));
 }
 
-static void linkSlowFor(VM* vm, CallLinkInfo& callLinkInfo, ThunkGenerator generator)
+static void linkSlowFor(VM& vm, CallLinkInfo& callLinkInfo, ThunkGenerator generator)
 {
-    linkSlowFor(vm, callLinkInfo, vm->getCTIStub(generator).retagged<JITStubRoutinePtrTag>());
+    linkSlowFor(vm, callLinkInfo, vm.getCTIStub(generator).retagged<JITStubRoutinePtrTag>());
 }
 
-static void linkSlowFor(VM* vm, CallLinkInfo& callLinkInfo)
+static void linkSlowFor(VM& vm, CallLinkInfo& callLinkInfo)
 {
     MacroAssemblerCodeRef<JITStubRoutinePtrTag> virtualThunk = virtualThunkFor(vm, callLinkInfo);
     linkSlowFor(vm, callLinkInfo, virtualThunk);
-    callLinkInfo.setSlowStub(createJITStubRoutine(virtualThunk, *vm, nullptr, true));
+    callLinkInfo.setSlowStub(createJITStubRoutine(virtualThunk, vm, nullptr, true));
 }
 
 static JSCell* webAssemblyOwner(JSCell* callee)
@@ -859,11 +859,11 @@ void linkFor(
         calleeCodeBlock->linkIncomingCall(callerFrame, &callLinkInfo);
 
     if (callLinkInfo.specializationKind() == CodeForCall && callLinkInfo.allowStubs()) {
-        linkSlowFor(&vm, callLinkInfo, linkPolymorphicCallThunkGenerator);
+        linkSlowFor(vm, callLinkInfo, linkPolymorphicCallThunkGenerator);
         return;
     }
     
-    linkSlowFor(&vm, callLinkInfo);
+    linkSlowFor(vm, callLinkInfo);
 }
 
 void linkDirectFor(
@@ -874,10 +874,10 @@ void linkDirectFor(
     
     CodeBlock* callerCodeBlock = exec->codeBlock();
 
-    VM* vm = callerCodeBlock->vm();
+    VM& vm = callerCodeBlock->vm();
     
     ASSERT(!callLinkInfo.isLinked());
-    callLinkInfo.setCodeBlock(*vm, callerCodeBlock, jsCast<FunctionCodeBlock*>(calleeCodeBlock));
+    callLinkInfo.setCodeBlock(vm, callerCodeBlock, jsCast<FunctionCodeBlock*>(calleeCodeBlock));
     if (shouldDumpDisassemblyFor(callerCodeBlock))
         dataLog("Linking call in ", FullCodeOrigin(callerCodeBlock, callLinkInfo.codeOrigin()), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
 
@@ -893,12 +893,12 @@ void linkSlowFor(
     ExecState* exec, CallLinkInfo& callLinkInfo)
 {
     CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
-    VM* vm = callerCodeBlock->vm();
+    VM& vm = callerCodeBlock->vm();
     
     linkSlowFor(vm, callLinkInfo);
 }
 
-static void revertCall(VM* vm, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef<JITStubRoutinePtrTag> codeRef)
+static void revertCall(VM& vm, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef<JITStubRoutinePtrTag> codeRef)
 {
     if (callLinkInfo.isDirect()) {
         callLinkInfo.clearCodeBlock();
@@ -930,7 +930,7 @@ void unlinkFor(VM& vm, CallLinkInfo& callLinkInfo)
     if (Options::dumpDisassembly())
         dataLog("Unlinking call at ", callLinkInfo.hotPathOther(), "\n");
     
-    revertCall(&vm, callLinkInfo, vm.getCTIStub(linkCallThunkGenerator).retagged<JITStubRoutinePtrTag>());
+    revertCall(vm, callLinkInfo, vm.getCTIStub(linkCallThunkGenerator).retagged<JITStubRoutinePtrTag>());
 }
 
 static void linkVirtualFor(ExecState* exec, CallLinkInfo& callLinkInfo)
@@ -942,8 +942,8 @@ static void linkVirtualFor(ExecState* exec, CallLinkInfo& callLinkInfo)
     if (shouldDumpDisassemblyFor(callerCodeBlock))
         dataLog("Linking virtual call at ", FullCodeOrigin(callerCodeBlock, callerFrame->codeOrigin()), "\n");
 
-    MacroAssemblerCodeRef<JITStubRoutinePtrTag> virtualThunk = virtualThunkFor(&vm, callLinkInfo);
-    revertCall(&vm, callLinkInfo, virtualThunk);
+    MacroAssemblerCodeRef<JITStubRoutinePtrTag> virtualThunk = virtualThunkFor(vm, callLinkInfo);
+    revertCall(vm, callLinkInfo, virtualThunk);
     callLinkInfo.setSlowStub(createJITStubRoutine(virtualThunk, vm, nullptr, true));
     callLinkInfo.setClearedByVirtual();
 }
@@ -1007,6 +1007,7 @@ void linkPolymorphicCall(
         callLinkInfo.setHasSeenClosure();
     
     Vector<PolymorphicCallCase> callCases;
+    Vector<int64_t> caseValues;
     
     // Figure out what our cases are.
     for (CallVariant variant : list) {
@@ -1021,36 +1022,7 @@ void linkPolymorphicCall(
                 return;
             }
         }
-        
-        callCases.append(PolymorphicCallCase(variant, codeBlock));
-    }
-    
-    // If we are over the limit, just use a normal virtual call.
-    unsigned maxPolymorphicCallVariantListSize;
-    if (isWebAssembly)
-        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSizeForWebAssemblyToJS();
-    else if (callerCodeBlock->jitType() == JITCode::topTierJIT())
-        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSizeForTopTier();
-    else
-        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSize();
 
-    if (list.size() > maxPolymorphicCallVariantListSize) {
-        linkVirtualFor(exec, callLinkInfo);
-        return;
-    }
-
-    Vector<int64_t> caseValues(callCases.size());
-    Vector<CallToCodePtr> calls(callCases.size());
-    UniqueArray<uint32_t> fastCounts;
-    
-    if (!isWebAssembly && callerCodeBlock->jitType() != JITCode::topTierJIT())
-        fastCounts = makeUniqueArray<uint32_t>(callCases.size());
-    
-    for (size_t i = 0; i < callCases.size(); ++i) {
-        if (fastCounts)
-            fastCounts[i] = 0;
-        
-        CallVariant variant = callCases[i].variant();
         int64_t newCaseValue = 0;
         if (isClosureCall) {
             newCaseValue = bitwise_cast<intptr_t>(variant.executable());
@@ -1064,25 +1036,47 @@ void linkPolymorphicCall(
             else
                 newCaseValue = bitwise_cast<intptr_t>(variant.internalFunction());
         }
-        
-        if (!ASSERT_DISABLED) {
-            for (size_t j = 0; j < i; ++j) {
-                if (caseValues[j] != newCaseValue)
-                    continue;
 
+        if (!ASSERT_DISABLED) {
+            if (caseValues.contains(newCaseValue)) {
                 dataLog("ERROR: Attempt to add duplicate case value.\n");
                 dataLog("Existing case values: ");
                 CommaPrinter comma;
-                for (size_t k = 0; k < i; ++k)
-                    dataLog(comma, caseValues[k]);
+                for (auto& value : caseValues)
+                    dataLog(comma, value);
                 dataLog("\n");
                 dataLog("Attempting to add: ", newCaseValue, "\n");
                 dataLog("Variant list: ", listDump(callCases), "\n");
                 RELEASE_ASSERT_NOT_REACHED();
             }
         }
-        
-        caseValues[i] = newCaseValue;
+
+        callCases.append(PolymorphicCallCase(variant, codeBlock));
+        caseValues.append(newCaseValue);
+    }
+    ASSERT(callCases.size() == caseValues.size());
+
+    // If we are over the limit, just use a normal virtual call.
+    unsigned maxPolymorphicCallVariantListSize;
+    if (isWebAssembly)
+        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSizeForWebAssemblyToJS();
+    else if (callerCodeBlock->jitType() == JITCode::topTierJIT())
+        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSizeForTopTier();
+    else
+        maxPolymorphicCallVariantListSize = Options::maxPolymorphicCallVariantListSize();
+
+    // We use list.size() instead of callCases.size() because we respect CallVariant size for now.
+    if (list.size() > maxPolymorphicCallVariantListSize) {
+        linkVirtualFor(exec, callLinkInfo);
+        return;
+    }
+
+    Vector<CallToCodePtr> calls(callCases.size());
+    UniqueArray<uint32_t> fastCounts;
+
+    if (!isWebAssembly && callerCodeBlock->jitType() != JITCode::topTierJIT()) {
+        fastCounts = makeUniqueArray<uint32_t>(callCases.size());
+        memset(fastCounts.get(), 0, callCases.size() * sizeof(uint32_t));
     }
     
     GPRReg calleeGPR = callLinkInfo.calleeGPR();
@@ -1092,7 +1086,7 @@ void linkPolymorphicCall(
     std::unique_ptr<CallFrameShuffler> frameShuffler;
     if (callLinkInfo.frameShuffleData()) {
         ASSERT(callLinkInfo.isTailCall());
-        frameShuffler = std::make_unique<CallFrameShuffler>(stubJit, *callLinkInfo.frameShuffleData());
+        frameShuffler = makeUnique<CallFrameShuffler>(stubJit, *callLinkInfo.frameShuffleData());
 #if USE(JSVALUE32_64)
         // We would have already checked that the callee is a cell, and we can
         // use the additional register this buys us.
@@ -1244,7 +1238,7 @@ void linkPolymorphicCall(
     // The original slow path is unreachable on 64-bits, but still
     // reachable on 32-bits since a non-cell callee will always
     // trigger the slow path
-    linkSlowFor(&vm, callLinkInfo);
+    linkSlowFor(vm, callLinkInfo);
     
     // If there had been a previous stub routine, that one will die as soon as the GC runs and sees
     // that it's no longer on stack.

@@ -29,7 +29,6 @@ set(bmalloc_SOURCES
     bmalloc/Mutex.cpp
     bmalloc/ObjectType.cpp
     bmalloc/PerProcess.cpp
-    bmalloc/PerThread.cpp
     bmalloc/Scavenger.cpp
     bmalloc/VMHeap.cpp
     bmalloc/bmalloc.cpp
@@ -65,6 +64,7 @@ set(bmalloc_PUBLIC_HEADERS
     bmalloc/EligibilityResult.h
     bmalloc/EligibilityResultInlines.h
     bmalloc/Environment.h
+    bmalloc/FailureAction.h
     bmalloc/FixedVector.h
     bmalloc/FreeList.h
     bmalloc/FreeListInlines.h

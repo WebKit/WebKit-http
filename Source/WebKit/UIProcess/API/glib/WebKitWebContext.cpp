@@ -176,7 +176,6 @@ struct _WebKitWebContextPrivate {
     CString faviconDatabaseDirectory;
     WebKitTLSErrorsPolicy tlsErrorsPolicy;
     WebKitProcessModel processModel;
-    unsigned processCountLimit;
 
     HashMap<uint64_t, WebKitWebView*> webViews;
     unsigned ephemeralPageCount;
@@ -341,6 +340,7 @@ static void webkitWebContextConstructed(GObject* object)
         configuration.setDiskCacheDirectory(FileSystem::pathByAppendingComponent(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_disk_cache_directory(priv->websiteDataManager.get())), networkCacheSubdirectory));
         configuration.setApplicationCacheDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_offline_application_cache_directory(priv->websiteDataManager.get())));
         configuration.setIndexedDBDatabaseDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_indexeddb_directory(priv->websiteDataManager.get())));
+        configuration.setHSTSStorageDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_hsts_cache_directory(priv->websiteDataManager.get())));
 ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         configuration.setWebSQLDatabaseDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_websql_directory(priv->websiteDataManager.get())));
 ALLOW_DEPRECATED_DECLARATIONS_END
@@ -358,6 +358,8 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     priv->tlsErrorsPolicy = WEBKIT_TLS_ERRORS_POLICY_FAIL;
     priv->processPool->setIgnoreTLSErrors(false);
 
+    priv->processModel = WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES;
+
 #if ENABLE(MEMORY_SAMPLER)
     if (getenv("WEBKIT_SAMPLE_MEMORY"))
         priv->processPool->startMemorySampler(0);
@@ -368,9 +370,9 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     attachCustomProtocolManagerClientToContext(webContext);
 
     priv->geolocationManager = adoptGRef(webkitGeolocationManagerCreate(priv->processPool->supplement<WebGeolocationManagerProxy>()));
-    priv->notificationProvider = std::make_unique<WebKitNotificationProvider>(priv->processPool->supplement<WebNotificationManagerProxy>(), webContext);
+    priv->notificationProvider = makeUnique<WebKitNotificationProvider>(priv->processPool->supplement<WebNotificationManagerProxy>(), webContext);
 #if PLATFORM(GTK) && ENABLE(REMOTE_INSPECTOR)
-    priv->remoteInspectorProtocolHandler = std::make_unique<RemoteInspectorProtocolHandler>(webContext);
+    priv->remoteInspectorProtocolHandler = makeUnique<RemoteInspectorProtocolHandler>(webContext);
 #endif
 }
 
@@ -679,7 +681,7 @@ void webkit_web_context_set_automation_allowed(WebKitWebContext* context, gboole
             g_warning("Not enabling automation on WebKitWebContext because there's another context with automation enabled, only one is allowed");
             return;
         }
-        context->priv->automationClient = std::make_unique<WebKitAutomationClient>(context);
+        context->priv->automationClient = makeUnique<WebKitAutomationClient>(context);
     } else
         context->priv->automationClient = nullptr;
 #endif
@@ -1525,20 +1527,18 @@ void webkit_web_context_allow_tls_certificate_for_host(WebKitWebContext* context
  * @process_model: a #WebKitProcessModel
  *
  * Specifies a process model for WebViews, which WebKit will use to
- * determine how auxiliary processes are handled. The default setting
- * (%WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS) is suitable for most
- * applications which embed a small amount of WebViews, or are used to
- * display documents which are considered safe — like local files.
+ * determine how auxiliary processes are handled.
  *
- * Applications which may potentially use a large amount of WebViews
- * —for example a multi-tabbed web browser— may want to use
- * %WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES, which will use
+ * %WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES will use
  * one process per view most of the time, while still allowing for web
  * views to share a process when needed (for example when different
  * views interact with each other). Using this model, when a process
  * hangs or crashes, only the WebViews using it stop working, while
  * the rest of the WebViews in the application will still function
  * normally.
+ *
+ * %WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS is deprecated since 2.26,
+ * using it has no effect for security reasons.
  *
  * This method **must be called before any web process has been created**,
  * as early as possible in your application. Calling it later will make
@@ -1549,6 +1549,11 @@ void webkit_web_context_allow_tls_certificate_for_host(WebKitWebContext* context
 void webkit_web_context_set_process_model(WebKitWebContext* context, WebKitProcessModel processModel)
 {
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+
+    if (processModel == WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS) {
+        g_warning("WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS is deprecated and has no effect");
+        return;
+    }
 
     if (processModel == context->priv->processModel)
         return;
@@ -1569,7 +1574,7 @@ void webkit_web_context_set_process_model(WebKitWebContext* context, WebKitProce
  */
 WebKitProcessModel webkit_web_context_get_process_model(WebKitWebContext* context)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS);
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 
     return context->priv->processModel;
 }
@@ -1582,20 +1587,17 @@ WebKitProcessModel webkit_web_context_get_process_model(WebKitWebContext* contex
  * Sets the maximum number of web processes that can be created at the same time for the @context.
  * The default value is 0 and means no limit.
  *
- * This method **must be called before any web process has been created**,
- * as early as possible in your application. Calling it later will make
- * your application crash.
+ * This function is now deprecated and does nothing for security reasons.
  *
  * Since: 2.10
+ *
+ * Deprecated: 2.26
  */
 void webkit_web_context_set_web_process_count_limit(WebKitWebContext* context, guint limit)
 {
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
 
-    if (context->priv->processCountLimit == limit)
-        return;
-
-    context->priv->processCountLimit = limit;
+    g_warning("webkit_web_context_set_web_process_count_limit is deprecated and does nothing. Limiting the number of web processes is no longer possible for security reasons");
 }
 
 /**
@@ -1604,15 +1606,19 @@ void webkit_web_context_set_web_process_count_limit(WebKitWebContext* context, g
  *
  * Gets the maximum number of web processes that can be created at the same time for the @context.
  *
+ * This function is now deprecated and always returns 0 (no limit). See also webkit_web_context_set_web_process_count_limit().
+ *
  * Returns: the maximum limit of web processes, or 0 if there isn't a limit.
  *
  * Since: 2.10
+ *
+ * Deprecated: 2.26
  */
 guint webkit_web_context_get_web_process_count_limit(WebKitWebContext* context)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), 0);
 
-    return context->priv->processCountLimit;
+    return 0;
 }
 
 static void addOriginToMap(WebKitSecurityOrigin* origin, HashMap<String, bool>* map, bool allowed)
@@ -1774,5 +1780,5 @@ void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* 
 
 WebKitWebView* webkitWebContextGetWebViewForPage(WebKitWebContext* context, WebPageProxy* page)
 {
-    return page ? context->priv->webViews.get(page->pageID().toUInt64()) : nullptr;
+    return page ? context->priv->webViews.get(page->identifier().toUInt64()) : nullptr;
 }

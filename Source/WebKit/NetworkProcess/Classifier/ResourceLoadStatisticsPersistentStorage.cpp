@@ -76,14 +76,14 @@ ResourceLoadStatisticsPersistentStorage::~ResourceLoadStatisticsPersistentStorag
         writeMemoryStoreToDisk();
 }
 
-String ResourceLoadStatisticsPersistentStorage::storageDirectoryPath() const
+String ResourceLoadStatisticsPersistentStorage::storageDirectoryPathIsolatedCopy() const
 {
     return m_storageDirectoryPath.isolatedCopy();
 }
 
 String ResourceLoadStatisticsPersistentStorage::resourceLogFilePath() const
 {
-    String storagePath = storageDirectoryPath();
+    String storagePath = storageDirectoryPathIsolatedCopy();
     if (storagePath.isEmpty())
         return emptyString();
 
@@ -100,7 +100,7 @@ void ResourceLoadStatisticsPersistentStorage::startMonitoringDisk()
     if (resourceLogPath.isEmpty())
         return;
 
-    m_fileMonitor = std::make_unique<FileMonitor>(resourceLogPath, m_workQueue.copyRef(), [this, weakThis = makeWeakPtr(*this)] (FileMonitor::FileChangeType type) {
+    m_fileMonitor = makeUnique<FileMonitor>(resourceLogPath, m_workQueue.copyRef(), [this, weakThis = makeWeakPtr(*this)] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         if (!weakThis)
             return;
@@ -122,7 +122,7 @@ void ResourceLoadStatisticsPersistentStorage::monitorDirectoryForNewStatistics()
 {
     ASSERT(!RunLoop::isMain());
 
-    String storagePath = storageDirectoryPath();
+    String storagePath = storageDirectoryPathIsolatedCopy();
     ASSERT(!storagePath.isEmpty());
 
     if (!FileSystem::fileExists(storagePath)) {
@@ -132,7 +132,7 @@ void ResourceLoadStatisticsPersistentStorage::monitorDirectoryForNewStatistics()
         }
     }
 
-    m_fileMonitor = std::make_unique<FileMonitor>(storagePath, m_workQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    m_fileMonitor = makeUnique<FileMonitor>(storagePath, m_workQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         if (type == FileMonitor::FileChangeType::Removal) {
             // Directory was removed!

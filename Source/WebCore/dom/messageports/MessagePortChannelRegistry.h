@@ -35,7 +35,9 @@ namespace WebCore {
 
 class MessagePortChannelRegistry {
 public:
-    WEBCORE_EXPORT MessagePortChannelRegistry(MessagePortChannelProvider&);
+    using CheckProcessLocalPortForActivityCallback = Function<void(const MessagePortIdentifier&, ProcessIdentifier, CompletionHandler<void(MessagePortChannelProvider::HasActivity)>&&)>;
+    WEBCORE_EXPORT explicit MessagePortChannelRegistry(CheckProcessLocalPortForActivityCallback&&);
+
     WEBCORE_EXPORT ~MessagePortChannelRegistry();
     
     WEBCORE_EXPORT void didCreateMessagePortChannel(const MessagePortIdentifier& port1, const MessagePortIdentifier& port2);
@@ -43,20 +45,19 @@ public:
     WEBCORE_EXPORT void didDisentangleMessagePort(const MessagePortIdentifier& local);
     WEBCORE_EXPORT void didCloseMessagePort(const MessagePortIdentifier& local);
     WEBCORE_EXPORT bool didPostMessageToRemote(MessageWithMessagePorts&&, const MessagePortIdentifier& remoteTarget);
-    WEBCORE_EXPORT void takeAllMessagesForPort(const MessagePortIdentifier&, Function<void(Vector<MessageWithMessagePorts>&&, Function<void()>&&)>&&);
-    WEBCORE_EXPORT void checkRemotePortForActivity(const MessagePortIdentifier& remoteTarget, Function<void(MessagePortChannelProvider::HasActivity)>&& callback);
+    WEBCORE_EXPORT void takeAllMessagesForPort(const MessagePortIdentifier&, CompletionHandler<void(Vector<MessageWithMessagePorts>&&, Function<void()>&&)>&&);
+    WEBCORE_EXPORT void checkRemotePortForActivity(const MessagePortIdentifier& remoteTarget, CompletionHandler<void(MessagePortChannelProvider::HasActivity)>&& callback);
 
     WEBCORE_EXPORT MessagePortChannel* existingChannelContainingPort(const MessagePortIdentifier&);
 
     WEBCORE_EXPORT void messagePortChannelCreated(MessagePortChannel&);
     WEBCORE_EXPORT void messagePortChannelDestroyed(MessagePortChannel&);
 
-    MessagePortChannelProvider& provider() { return m_provider; }
+    void checkProcessLocalPortForActivity(const MessagePortIdentifier&, ProcessIdentifier, CompletionHandler<void(MessagePortChannelProvider::HasActivity)>&&);
 
 private:
     HashMap<MessagePortIdentifier, MessagePortChannel*> m_openChannels;
-    MessagePortChannelProvider& m_provider;
-
+    CheckProcessLocalPortForActivityCallback m_checkProcessLocalPortForActivityCallback;
 };
 
 } // namespace WebCore

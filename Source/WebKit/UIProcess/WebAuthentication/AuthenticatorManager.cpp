@@ -37,26 +37,22 @@ using namespace WebCore;
 
 namespace AuthenticatorManagerInternal {
 
-#if PLATFORM(MAC)
-const size_t maxTransportNumber = 2;
-#else
-const size_t maxTransportNumber = 1;
-#endif
+const size_t maxTransportNumber = 3;
 
 // Suggested by WebAuthN spec as of 7 August 2018.
 const unsigned maxTimeOutValue = 120000;
 
-// FIXME(188624, 188625): Support NFC and BLE authenticators.
+// FIXME(188625): Support BLE authenticators.
 static AuthenticatorManager::TransportSet collectTransports(const Optional<PublicKeyCredentialCreationOptions::AuthenticatorSelectionCriteria>& authenticatorSelection)
 {
     AuthenticatorManager::TransportSet result;
     if (!authenticatorSelection || !authenticatorSelection->authenticatorAttachment) {
         auto addResult = result.add(AuthenticatorTransport::Internal);
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
-#if PLATFORM(MAC)
         addResult = result.add(AuthenticatorTransport::Usb);
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
-#endif
+        addResult = result.add(AuthenticatorTransport::Nfc);
+        ASSERT_UNUSED(addResult, addResult.isNewEntry);
         return result;
     }
 
@@ -66,10 +62,10 @@ static AuthenticatorManager::TransportSet collectTransports(const Optional<Publi
         return result;
     }
     if (authenticatorSelection->authenticatorAttachment == PublicKeyCredentialCreationOptions::AuthenticatorAttachment::CrossPlatform) {
-#if PLATFORM(MAC)
         auto addResult = result.add(AuthenticatorTransport::Usb);
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
-#endif
+        addResult = result.add(AuthenticatorTransport::Nfc);
+        ASSERT_UNUSED(addResult, addResult.isNewEntry);
         return result;
     }
 
@@ -88,27 +84,26 @@ static AuthenticatorManager::TransportSet collectTransports(const Vector<PublicK
     if (allowCredentials.isEmpty()) {
         auto addResult = result.add(AuthenticatorTransport::Internal);
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
-#if PLATFORM(MAC)
         addResult = result.add(AuthenticatorTransport::Usb);
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
-#endif
+        addResult = result.add(AuthenticatorTransport::Nfc);
+        ASSERT_UNUSED(addResult, addResult.isNewEntry);
         return result;
     }
 
     for (auto& allowCredential : allowCredentials) {
         if (allowCredential.transports.isEmpty()) {
             result.add(AuthenticatorTransport::Internal);
-#if PLATFORM(MAC)
             result.add(AuthenticatorTransport::Usb);
+            result.add(AuthenticatorTransport::Nfc);
             return result;
-#endif
         }
         if (!result.contains(AuthenticatorTransport::Internal) && allowCredential.transports.contains(AuthenticatorTransport::Internal))
             result.add(AuthenticatorTransport::Internal);
-#if PLATFORM(MAC)
         if (!result.contains(AuthenticatorTransport::Usb) && allowCredential.transports.contains(AuthenticatorTransport::Usb))
             result.add(AuthenticatorTransport::Usb);
-#endif
+        if (!result.contains(AuthenticatorTransport::Nfc) && allowCredential.transports.contains(AuthenticatorTransport::Nfc))
+            result.add(AuthenticatorTransport::Nfc);
         if (result.size() >= maxTransportNumber)
             return result;
     }
