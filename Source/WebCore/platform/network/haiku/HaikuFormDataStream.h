@@ -31,7 +31,7 @@ namespace WebCore {
 class BFormDataIO : public BDataIO
 {
 public:
-	BFormDataIO(const FormData* form);
+	BFormDataIO(const FormData* form, PAL::SessionID sessionID);
 	~BFormDataIO();
 	
 	ssize_t Size();
@@ -46,6 +46,7 @@ private:
 	WTF::Optional<size_t> readFromBlob(const FormDataElement::EncodedBlobData&, char*, size_t);
 
     RefPtr<FormData> m_formData;
+	PAL::SessionID m_sessionID;
 
     bool m_isContentLengthUpdated { false };
     unsigned long long m_totalSize { 0 };

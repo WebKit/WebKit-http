@@ -66,7 +66,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     BWebPage* page() const;
 
 	WTF::Optional<PageIdentifier> pageID() const final;
-	WTF::Optional<uint64_t> frameID() const final;
+	WTF::Optional<FrameIdentifier> frameID() const final;
     PAL::SessionID sessionID() const final;
 
     bool hasWebView() const override;

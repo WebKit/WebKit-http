@@ -63,7 +63,7 @@ static std::unique_ptr<NetworkStorageSession>& defaultSession()
 
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty,
 	const SameSiteInfo& sameSiteInfo, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<PageIdentifier> pageID,
+	WTF::Optional<FrameIdentifier> frameID, WTF::Optional<PageIdentifier> pageID,
 	const String& value) const
 {
 	BNetworkCookie* heapCookie
@@ -84,7 +84,7 @@ bool NetworkStorageSession::cookiesEnabled() const
 
 std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty,
 	const SameSiteInfo& sameSiteInfo, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<PageIdentifier> pageID,
+	WTF::Optional<FrameIdentifier> frameID, WTF::Optional<PageIdentifier> pageID,
 	IncludeSecureCookies includeSecureCookies) const
 {
 #if TRACE_COOKIE_JAR
@@ -175,7 +175,7 @@ Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
 }
 
 bool NetworkStorageSession::getRawCookies(const URL& firstParty,
-	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID,
+	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<FrameIdentifier> frameID,
 	WTF::Optional<PageIdentifier> pageID, Vector<Cookie>& rawCookies) const
 {
 #if TRACE_COOKIE_JAR
@@ -193,7 +193,7 @@ void NetworkStorageSession::flushCookieStore()
 }
 
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const URL& firstParty,
-	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID,
+	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<FrameIdentifier> frameID,
 	WTF::Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
 #if TRACE_COOKIE_JAR

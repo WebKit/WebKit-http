@@ -130,14 +130,13 @@ WTF::Optional<WebCore::PageIdentifier> FrameLoaderClientHaiku::pageID() const
     return {};
 }
 
-WTF::Optional<uint64_t> FrameLoaderClientHaiku::frameID() const
+WTF::Optional<FrameIdentifier> FrameLoaderClientHaiku::frameID() const
 {
     return {};
 }
 
 PAL::SessionID FrameLoaderClientHaiku::sessionID() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
     return PAL::SessionID::defaultSessionID();
 }
 

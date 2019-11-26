@@ -28,7 +28,8 @@
 
 namespace WebCore {
 
-BFormDataIO::BFormDataIO(const FormData* formData)
+BFormDataIO::BFormDataIO(const FormData* formData, PAL::SessionID sessionID)
+	: m_sessionID(sessionID)
 {
     ASSERT(isMainThread());
 
@@ -38,7 +39,7 @@ BFormDataIO::BFormDataIO(const FormData* formData)
     m_formData = formData->isolatedCopy();
 
     // Resolve the blob elements so the formData can correctly report it's size.
-    m_formData = m_formData->resolveBlobReferences(blobRegistry());
+    m_formData = m_formData->resolveBlobReferences(blobRegistry().blobRegistryImpl());
 }
 
 BFormDataIO::~BFormDataIO()
@@ -108,7 +109,7 @@ void BFormDataIO::computeContentLength()
     m_isContentLengthUpdated = true;
 
     for (const auto& element : m_formData->elements())
-        m_totalSize += element.lengthInBytes();
+        m_totalSize += element.lengthInBytes(m_sessionID);
 }
 
 
@@ -163,7 +164,7 @@ WTF::Optional<size_t> BFormDataIO::readFromData(const Vector<char>& data, char* 
 
 WTF::Optional<size_t> BFormDataIO::readFromBlob(const FormDataElement::EncodedBlobData& blob, char* buffer, size_t size)
 {
-    auto* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(blob.url);
+    auto* blobData = blobRegistry().blobRegistryImpl()->getBlobDataFromURL(blob.url);
 
 	if (!blobData)
 		return WTF::nullopt;

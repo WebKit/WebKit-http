@@ -47,7 +47,7 @@ private:
     virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&);
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&,
 		const WTF::URL& firstParty, const WebCore::SameSiteInfo&, const WTF::URL&,
-		WTF::Optional<uint64_t> frameID, WTF::Optional<WebCore::PageIdentifier> pageID,
+		WTF::Optional<WebCore::FrameIdentifier> frameID, WTF::Optional<WebCore::PageIdentifier> pageID,
 		Vector<WebCore::Cookie>&);
     virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WTF::URL&, const String&);
 };

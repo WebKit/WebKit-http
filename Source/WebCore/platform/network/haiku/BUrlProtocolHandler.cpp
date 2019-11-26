@@ -76,7 +76,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
         if(method == B_HTTP_POST || method == B_HTTP_PUT) {
             FormData* form = m_resourceHandle->firstRequest().httpBody();
             if(form) {
-                m_postData = new BFormDataIO(form);
+                m_postData = new BFormDataIO(form, context->storageSession()->sessionID());
                 httpRequest->AdoptInputData(m_postData, m_postData->Size());
             }
         }

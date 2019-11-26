@@ -62,7 +62,7 @@ void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
     WebCore::GraphicsContext& ctxt, WebCore::FloatRect const& dst,
     WebCore::FloatRect const& src, WebCore::IntSize const&,
     WebCore::CompositeOperator op, WebCore::BlendMode,
-    WebCore::ImageOrientation const&)
+    WebCore::ImageOrientation)
 {
     ctxt.save();
     ctxt.setCompositeOperation(op);
