@@ -222,6 +222,10 @@ public:
 
     void populateVisitedLinks();
 
+#if PLATFORM(IOS_FAMILY)
+    static void applicationIsAboutToSuspend();
+#endif
+
     void handleMemoryPressureWarning(Critical);
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -267,8 +271,6 @@ public:
     void registerURLSchemeAsCachePartitioned(const String&);
     void registerURLSchemeServiceWorkersCanHandle(const String&);
     void registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&);
-
-    void preconnectToServer(const URL&);
 
     VisitedLinkStore& visitedLinkStore() { return m_visitedLinkStore.get(); }
 

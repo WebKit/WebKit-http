@@ -105,7 +105,8 @@ interface TestRunner {
     void setIgnoresViewportScaleLimits(boolean value);
     void setShouldDownloadUndisplayableMIMETypes(boolean value);
     
-    // DEPRECATED: Use <!-- webkit-test-runner [ useEphemeralSession=true ] --> instead.
+    // DEPRECATED: Use <!-- webkit-test-runner [ useEphemeralSession=true ] --> instead, or
+    // testRunner.setShouldSwapToEphemeralSessionOnNextNavigation() / testRunner.setShouldSwapToDefaultSessionOnNextNavigation().
     void setPrivateBrowsingEnabled_DEPRECATED(boolean value);
 
     // Special DOM functions.
@@ -253,6 +254,9 @@ interface TestRunner {
 
     void setAllowsAnySSLCertificate(boolean value);
 
+    void setShouldSwapToEphemeralSessionOnNextNavigation(boolean value);
+    void setShouldSwapToDefaultSessionOnNextNavigation(boolean value);
+
     // Secure text input mode (Mac only)
     readonly attribute boolean secureEventInputIsEnabled;
     
@@ -317,7 +321,7 @@ interface TestRunner {
     void setStatisticsTopFrameUniqueRedirectFrom(DOMString hostName, DOMString hostNameRedirectedTo);
     void setStatisticsCrossSiteLoadWithLinkDecoration(DOMString fromHost, DOMString toHost);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
-    void statisticsNotifyObserver();
+    boolean statisticsNotifyObserver();
     void statisticsProcessStatisticsAndDataRecords();
     void statisticsUpdateCookieBlocking(object completionHandler);
     void statisticsSubmitTelemetry();

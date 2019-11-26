@@ -1609,8 +1609,6 @@ class Port(object):
     def commits_for_upload(self):
         from webkitpy.results.upload import Upload
 
-        self.host.initialize_scm()
-
         repos = {}
         if port_config.apple_additions() and getattr(port_config.apple_additions(), 'repos', False):
             repos = port_config.apple_additions().repos()

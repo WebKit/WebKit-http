@@ -127,6 +127,8 @@ public:
     void setCacheModel(int);
     void setAsynchronousSpellCheckingEnabled(bool);
     void setAllowsAnySSLCertificate(bool);
+    void setShouldSwapToEphemeralSessionOnNextNavigation(bool);
+    void setShouldSwapToDefaultSessionOnNextNavigation(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setMediaDevicesEnabled(bool);
     void setWebRTCMDNSICECandidatesEnabled(bool);
@@ -384,7 +386,7 @@ public:
     void statisticsDidModifyDataRecordsCallback();
     void statisticsDidScanDataRecordsCallback();
     void statisticsDidRunTelemetryCallback(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
-    void statisticsNotifyObserver();
+    bool statisticsNotifyObserver();
     void statisticsProcessStatisticsAndDataRecords();
     void statisticsUpdateCookieBlocking(JSValueRef completionHandler);
     void statisticsCallDidSetBlockCookiesForHostCallback();

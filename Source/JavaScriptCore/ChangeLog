@@ -1,3 +1,411 @@
+2019-09-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: instrument WebGPUDevice instead of GPUCanvasContext
+        https://bugs.webkit.org/show_bug.cgi?id=201650
+
+        Reviewed by Joseph Pecoraro.
+
+        Most of the actual "work" done with Web GPU actually uses a `WebGPUDevice`.
+
+        A `GPUCanvasContext` is basically just a display "client" of the device, and isn't even
+        required (e.g. compute pipeline).  We should treat the `GPUCanvasContext` almost like a
+        `-webkit-canvas` client of a `WebGPUDevice`.
+
+        * inspector/protocol/Canvas.json:
+         - Add `powerPreference` key to `ContextAttributes` type.
+         - Rename `requestCSSCanvasClientNodes` command to `requestClientNodes` for the above reason.
+         - Rename `cssCanvasClientNodesChanged` event to `clientNodesChanged` for the above reason.
+         - Rename `resolveCanvasContext` command to `resolveContext` since a `WebGPUDevice` isn't
+           really a "canvas".
+
+2019-09-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] 32bit bitwide operation with all-one (-1) is wrong in B3
+        https://bugs.webkit.org/show_bug.cgi?id=201634
+
+        Reviewed by Mark Lam and Robin Morisset.
+
+        This patch includes two things. One is fixing 32bit bitwise operation with allOne constants. Another is fixing the existing bug in BitAnd strength reduction.
+
+        1. 32bit bitwise operation with allOne constants
+
+            Accidentally, the B3::Value is ConstInt32(-1), `value->isInt(std::numeric_limits<uint32_t>::max())` returns `false`!
+            For example, in BitAnd strength reduction,
+
+                1034             // Turn this: BitAnd(value, all-ones)
+                1035             // Into this: value.
+                1036             if ((m_value->type() == Int64 && m_value->child(1)->isInt(std::numeric_limits<uint64_t>::max()))
+                1037                 || (m_value->type() == Int32 && m_value->child(1)->isInt(std::numeric_limits<uint32_t>::max()))) {
+                1038                 replaceWithIdentity(m_value->child(0));
+                1039                 break;
+                1040             }
+
+            We use `m_value->child(1)->isInt(std::numeric_limits<uint32_t>::max())`. However, Value::isInt is,
+
+                262 inline bool Value::isInt(int64_t value) const
+                263 {
+                264     return hasInt() && asInt() == value;
+                265 }
+
+            So, UINT32_MAX is expanded to int64_t, but it is not -1 since UINT32_MAX can be representable in int64_t. And Value::asInt implementation is,
+
+                257 inline int64_t Value::asInt() const
+                258 {
+                259     return hasInt32() ? asInt32() : asInt64();
+                260 }
+
+            So, we perform `static_cast<int64_t>(-1) == static_cast<int64_t>(UINT32_MAX)`. This is false, but this comparison is not what we want!
+            We should use `isInt32` and `isInt64` for bit patterns (like, operands for Bitwise opcodes).
+
+        2. BitAnd and BitOr strength reduction bug
+
+            We also fix the following optimization.
+
+                // Turn this: BitAnd(Op(value, constant1), constant2)
+                //     where !(constant1 & constant2)
+                //       and Op is BitOr or BitXor
+                // into this: BitAnd(value, constant2)
+
+            Since we stop further optimization when we match `if (m_value->child(1)->hasInt())`, the following optimization is never taken.
+
+                // Turn this: BitAnd(BitXor(x, allOnes), c)
+                // Into this: BitXor(BitOr(x, ~c), allOnes)
+
+            And we also found that this not-used optimization has a bug not inserting a newly produced constant B3::Value. This patch also fixes it.
+
+        For both, this patch adds tests. And (2) fix can be ensured that the testb3 does not crash with validate-graph option.
+
+        * b3/B3LowerToAir.cpp:
+        * b3/B3ReduceStrength.cpp:
+        * b3/testb3.h:
+        * b3/testb3_2.cpp:
+        (testBitAndNotNot32):
+        (testBitAndNotImm):
+        (testBitAndNotImm32):
+        (testBitOrAndAndArgs32):
+        (testBitOrAndSameArgs32):
+        (testBitOrNotNot32):
+        (testBitOrNotImm32):
+        (addBitTests):
+        * b3/testb3_3.cpp:
+        (testBitXorAndAndArgs32):
+        (testBitXorAndSameArgs32):
+
+2019-09-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r249721.
+        https://bugs.webkit.org/show_bug.cgi?id=201667
+
+        Discovering existing bug (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] 32bit bitwide operation with all-one (-1) is wrong in
+        B3"
+        https://bugs.webkit.org/show_bug.cgi?id=201634
+        https://trac.webkit.org/changeset/249721
+
+2019-09-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CodeBlock::calleeSaveRegisters should not see half-baked JITData
+        https://bugs.webkit.org/show_bug.cgi?id=201664
+        <rdar://problem/52126927>
+
+        Reviewed by Tadeu Zagallo.
+
+        We are hitting the crash accessing invalid-pointer as CodeBlock::calleeSaveRegisters result.
+        This is because concurrent Baseline JIT compiler can access m_jitData without taking a lock through CodeBlock::calleeSaveRegisters.
+        Since m_jitData can be initialized in the main thread while calling CodeBlock::calleeSaveRegisters from concurrent Baseline JIT compiler thread,
+        we can see half-baked JITData structure which holds garbage pointers.
+
+        But we do not want to make CodeBlock::calleeSaveRegisters() call with CodeBlock::m_lock due to several reasons.
+
+        1. This function is very primitive one and it is called from various AssemblyHelpers functions and other code-generation functions. Some of these functions are
+           called while taking this exact same lock, so dead-lock can happen.
+        2. JITData::m_calleeSaveRegisters is filled only for DFG and FTL CodeBlock. And DFG and FTL code accesses these field after initializing properly. For Baseline JIT
+           compiler case, only thing we should do is that JITData should say m_calleeSaveRegisters is nullptr and it won't be filled for this CodeBlock.
+
+        Instead of guarding CodeBlock::calleeSaveRegisters() function with CodeBlock::m_lock, this patch inserts WTF::storeStoreFence when filling m_jitData. This ensures that
+        JITData::m_calleeSaveRegisters is initialized with nullptr when this JITData pointer is exposed to concurrent Baseline JIT compiler thread.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::ensureJITDataSlow):
+
+2019-09-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ResultType implementation is wrong for bit ops, and ends up making ArithDiv take the DFG Int32 fast path even if Baseline constantly produces Double result
+        https://bugs.webkit.org/show_bug.cgi?id=198253
+
+        Reviewed by Mark Lam.
+
+        ResultType of bitwise operation needs to include TypeMaybeNumber. TypeInt32 is something like a flag indicating the number looks like a int32.
+        When it is specified, TypeMaybeNumber must exist too. This issue compiles op_div in JetStream2/async-fs slow-path. And eventually DFG first mis-compiles
+        it with Int32 ArithDiv while that div always produces double. And unnecessary OSR exit happens.
+
+        In this patch, we add TypeMaybeNumber to bigIntOrInt32Type correctly.
+
+        * parser/ResultType.h:
+        (JSC::ResultType::bigIntOrInt32Type):
+
+2019-09-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] 32bit bitwide operation with all-one (-1) is wrong in B3
+        https://bugs.webkit.org/show_bug.cgi?id=201634
+
+        Reviewed by Mark Lam.
+
+        Accidentally, the B3::Value is ConstInt32(-1), `value->isInt(std::numeric_limits<uint32_t>::max())` returns `false`!
+        For example, in BitAnd strength reduction,
+
+            1034             // Turn this: BitAnd(value, all-ones)
+            1035             // Into this: value.
+            1036             if ((m_value->type() == Int64 && m_value->child(1)->isInt(std::numeric_limits<uint64_t>::max()))
+            1037                 || (m_value->type() == Int32 && m_value->child(1)->isInt(std::numeric_limits<uint32_t>::max()))) {
+            1038                 replaceWithIdentity(m_value->child(0));
+            1039                 break;
+            1040             }
+
+        We use `m_value->child(1)->isInt(std::numeric_limits<uint32_t>::max())`. However, Value::isInt is,
+
+            262 inline bool Value::isInt(int64_t value) const
+            263 {
+            264     return hasInt() && asInt() == value;
+            265 }
+
+        So, UINT32_MAX is expanded to int64_t, but it is not -1 since UINT32_MAX can be representable in int64_t. And Value::asInt implementation is,
+
+            257 inline int64_t Value::asInt() const
+            258 {
+            259     return hasInt32() ? asInt32() : asInt64();
+            260 }
+
+        So, we perform `static_cast<int64_t>(-1) == static_cast<int64_t>(UINT32_MAX)`. This is false, but this comparison is not what we want!
+        We should use `isInt32` and `isInt64` for bit patterns (like, operands for Bitwise opcodes).
+
+        We also fix the following optimization.
+
+            // Turn this: BitAnd(Op(value, constant1), constant2)
+            //     where !(constant1 & constant2)
+            //       and Op is BitOr or BitXor
+            // into this: BitAnd(value, constant2)
+
+        Since we stop further optimization when we match `if (m_value->child(1)->hasInt())`, the following optimization is never taken.
+
+            // Turn this: BitAnd(BitXor(x, allOnes), c)
+            // Into this: BitXor(BitOr(x, ~c), allOnes)
+
+        We add 32bit version of B3 tests for these optimizations.
+
+        * b3/B3LowerToAir.cpp:
+        * b3/B3ReduceStrength.cpp:
+        * b3/testb3.h:
+        * b3/testb3_2.cpp:
+        (testBitAndNotNot32):
+        (testBitAndNotImm):
+        (testBitAndNotImm32):
+        (testBitOrAndAndArgs32):
+        (testBitOrAndSameArgs32):
+        (testBitOrNotNot32):
+        (testBitOrNotImm32):
+        (addBitTests):
+        * b3/testb3_3.cpp:
+        (testBitXorAndAndArgs32):
+        (testBitXorAndSameArgs32):
+
+2019-09-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WebAssembly] Use StreamingParser in existing Wasm::BBQPlan
+        https://bugs.webkit.org/show_bug.cgi?id=189043
+
+        Reviewed by Keith Miller.
+
+        This patch integrates Wasm::StreamingParser into the existing Wasm::BBQPlan.
+        And remove Wasm::ModuleParser. This patch paves the way to implementing Wasm streaming features by
+        using Wasm::StreamingParser.
+
+        Currently, we are not using streaming feature of StreamingParser. In a subsequent patch, we will
+        create a mechanism to pipe a chunk of data to streaming parser to enable WebAssembly.compileStreaming
+        and instantiateStreaming.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * tools/JSDollarVM.cpp:
+        (JSC::WasmStreamingParser::WasmStreamingParser):
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::parseAndCompileAir):
+        * wasm/WasmAirIRGenerator.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::parseAndCompile): Use FunctionData, it is good since it is more strongly typed.
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::BBQPlan):
+        (JSC::Wasm::BBQPlan::didReceiveFunctionData): Add a callback, which invokes validation.
+        (JSC::Wasm::BBQPlan::parseAndValidateModule): Use StreamingParser instead of old ModuleParser.
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        (JSC::Wasm::BBQPlan::complete):
+        * wasm/WasmBBQPlan.h:
+        * wasm/WasmModuleParser.cpp: Removed.
+        * wasm/WasmModuleParser.h: Removed.
+        * wasm/WasmOMGForOSREntryPlan.cpp:
+        (JSC::Wasm::OMGForOSREntryPlan::work):
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::fail): Make fail function callable multiple times. The first error will be used.
+        * wasm/WasmSectionParser.cpp:
+        (JSC::Wasm::SectionParser::parseCode): Since the Code section is specially handled in StreamingParser, this code is never used.
+        * wasm/WasmStreamingParser.cpp:
+        (JSC::Wasm::StreamingParser::StreamingParser):
+        (JSC::Wasm::StreamingParser::parseCodeSectionSize):
+        (JSC::Wasm::StreamingParser::parseFunctionPayload):
+        (JSC::Wasm::StreamingParser::parseSectionPayload):
+        (JSC::Wasm::StreamingParser::finalize): Call client's callbacks at appropriate timings.
+        * wasm/WasmStreamingParser.h:
+        (JSC::Wasm::StreamingParserClient::didReceiveSectionData):
+        (JSC::Wasm::StreamingParserClient::didReceiveFunctionData):
+        (JSC::Wasm::StreamingParserClient::didFinishParsing): Add StreamingParserClient,
+        which has 3 callbacks right now. StreamingParser gets this client and call these callbacks
+        at appropriate timings.
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h: Use FunctionData, it is good since it is more strongly typed.
+
+2019-09-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CodeBlock::m_constantRegisters should be guarded by ConcurrentJSLock when Vector reallocate memory
+        https://bugs.webkit.org/show_bug.cgi?id=201622
+
+        Reviewed by Mark Lam.
+
+        CodeBlock::visitChildren takes ConcurrentJSLock while iterating m_constantRegisters, some of the places reallocate
+        this Vector without taking a lock. If a Vector memory is reallocated while iterating it in concurrent collector,
+        the concurrent collector can see a garbage. This patch guards m_constantRegisters reallocation with ConcurrentJSLock.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::setConstantRegisters):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addConstant):
+        (JSC::CodeBlock::addConstantLazily):
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::ArrayBufferViewWatchpointAdaptor::add):
+        (JSC::DFG::SymbolTableAdaptor::add):
+        (JSC::DFG::FunctionExecutableAdaptor::add):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::registerFrozenValues):
+        * dfg/DFGJITFinalizer.cpp:
+        (JSC::DFG::JITFinalizer::finalizeCommon):
+        * dfg/DFGLazyJSValue.cpp:
+        (JSC::DFG::LazyJSValue::emit const):
+
+2019-09-09  Robin Morisset  <rmorisset@apple.com>
+
+        [Air] highOrderAdjacents in AbstractColoringAllocator::conservativeHeuristic should be some kind of array
+        https://bugs.webkit.org/show_bug.cgi?id=197305
+
+        Reviewed by Keith Miller.
+
+        Currently it is a HashSet, but it only ever holds at most registerCount() items. And linear search tends to be faster on such a small collection than hashing + searching in a HashSet.
+        Further benefits include avoiding the allocation of the HashSet, not actually adding the nodes adjacent to V (since there are no duplicates in the adjacency lists).
+
+        This patch also contains a trivial optimization: if the remaining number of nodes to consider + the number of highOrderAdjacents already seen is smaller than registerCount() we can return true directly.
+        Apart from that, the patch got some trivial cleanup of GraphColoringRegisterAllocation::allocateOnBank() (that for example was only logging the number of iterations for FP registers, and not the more interesting number for GP registers).
+
+        The time spent in the register allocator throughout JetStream2 on this MacBook Pro moves from 3767 / 3710 / 3785 ms to 3551 / 3454 / 3503 ms.
+        So about a 6% speedup for that phase, and between 1 and 1.5% speedup for FTL/OMG compilation overall.
+
+        No new tests as there is no intended change to the code being generated, and this was already tested by running testb3 + JetStream2.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
+2019-09-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use metadata table to iterate specific bytecode metadata instead of propertyAccessInstructions vector
+        https://bugs.webkit.org/show_bug.cgi?id=201613
+
+        Reviewed by Mark Lam.
+
+        We do not need to maintain propertyAccessInstructions vector to access metadata tied to a specific bytecode opcode
+        since we have MetadataTable::forEach<Op> feature. This removes propertyAccessInstructions entirely, and fixes the
+        issue that `op_create_promise` missed propertyAccessInstructions registration (a name "propertyAccessInstructions" is
+        misleading, it is like "instructions-requires-llint-finalize").
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::applyModification):
+        (JSC::UnlinkedCodeBlock::shrinkToFit):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions const): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions const): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitGetFromScope):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        (JSC::BytecodeGenerator::emitGetById):
+        (JSC::BytecodeGenerator::emitDirectGetById):
+        (JSC::BytecodeGenerator::emitPutById):
+        (JSC::BytecodeGenerator::emitDirectPutById):
+        (JSC::BytecodeGenerator::emitCreateThis):
+        (JSC::BytecodeGenerator::emitToThis):
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedCodeBlock<CodeBlockType>::decode const):
+        (JSC::CachedCodeBlock<CodeBlockType>::encode):
+
+2019-09-07  Keith Miller  <keith_miller@apple.com>
+
+        OSR entry into wasm misses some contexts
+        https://bugs.webkit.org/show_bug.cgi?id=201569
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch fixes an issue where we could fail to capture some of
+        our contexts when OSR entering into wasm code. Before we would
+        only capture the state of the block immediately surrounding the
+        entrance loop block header. We actually need to capture all
+        enclosed stacks.
+
+        Additionally, we don't need to use variables for all the captured
+        values. We can use a Phi and insert an upsilon just below the
+        captured value.
+
+        * interpreter/CallFrame.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionCallerIsOMGCompiled):
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::AirIRGenerator):
+        (JSC::Wasm::AirIRGenerator::emitEntryTierUpCheck):
+        (JSC::Wasm::AirIRGenerator::emitLoopTierUpCheck):
+        (JSC::Wasm::AirIRGenerator::addLoop):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::createStack):
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::addConstant):
+        (JSC::Wasm::B3IRGenerator::emitEntryTierUpCheck):
+        (JSC::Wasm::B3IRGenerator::emitLoopTierUpCheck):
+        (JSC::Wasm::B3IRGenerator::addLoop):
+        (JSC::Wasm::B3IRGenerator::addEndToUnreachable):
+        (JSC::Wasm::dumpExpressionStack):
+        (JSC::Wasm::B3IRGenerator::dump):
+        (JSC::Wasm::B3IRGenerator::Stack::Stack): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::append): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::takeLast): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::last): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::size const): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::isEmpty const): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::convertToExpressionList): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::at const): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::variableAt const): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::shrink): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::swap): Deleted.
+        (JSC::Wasm::B3IRGenerator::Stack::dump const): Deleted.
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser::controlStack):
+
 2019-09-09  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Promise resolve/reject functions should be created more efficiently

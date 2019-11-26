@@ -28,6 +28,7 @@
 #include "WebPageProxyIdentifier.h"
 #include <WebCore/FrameLoaderClient.h>
 #include "CertificateInfo.h"
+#include <pal/SessionID.h>
 
 namespace PAL {
 class SessionID;
@@ -59,8 +60,14 @@ public:
     PAL::SessionID sessionID() const final;
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    bool hasFrameSpecificStorageAccess() { return m_hasFrameSpecificStorageAccess; }
-    void setHasFrameSpecificStorageAccess(bool value) { m_hasFrameSpecificStorageAccess = value; };
+    bool hasFrameSpecificStorageAccess() final { return !!m_frameSpecificStorageAccessIdentifier; }
+    
+    struct FrameSpecificStorageAccessIdentifier {
+        PAL::SessionID sessionID;
+        WebCore::FrameIdentifier frameID;
+        WebCore::PageIdentifier pageID;
+    };
+    void setHasFrameSpecificStorageAccess(FrameSpecificStorageAccessIdentifier&&);
 #endif
     
 private:
@@ -288,7 +295,7 @@ private:
     bool m_frameCameFromPageCache;
     bool m_useIconLoadingClient { false };
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    bool m_hasFrameSpecificStorageAccess { false };
+    Optional<FrameSpecificStorageAccessIdentifier> m_frameSpecificStorageAccessIdentifier;
 #endif
 };
 

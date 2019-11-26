@@ -596,7 +596,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 if (op.type == ModuleVar) {
                     // Keep the linked module environment strongly referenced.
                     if (stronglyReferencedModuleEnvironments.add(jsCast<JSModuleEnvironment*>(op.lexicalEnvironment)).isNewEntry)
-                        addConstant(op.lexicalEnvironment);
+                        addConstant(ConcurrentJSLocker(m_lock), op.lexicalEnvironment);
                     metadata.m_lexicalEnvironment.set(vm, this, op.lexicalEnvironment);
                 } else
                     metadata.m_symbolTable.set(vm, this, op.lexicalEnvironment->symbolTable());
@@ -899,7 +899,10 @@ void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
 
     ASSERT(constants.size() == constantsSourceCodeRepresentation.size());
     size_t count = constants.size();
-    m_constantRegisters.resizeToFit(count);
+    {
+        ConcurrentJSLocker locker(m_lock);
+        m_constantRegisters.resizeToFit(count);
+    }
     for (size_t i = 0; i < count; i++) {
         JSValue constant = constants[i].get();
 
@@ -1088,24 +1091,19 @@ void CodeBlock::propagateTransitions(const ConcurrentJSLocker&, SlotVisitor& vis
     VM& vm = *m_vm;
 
     if (jitType() == JITType::InterpreterThunk) {
-        const Vector<InstructionStream::Offset>& propertyAccessInstructions = m_unlinkedCode->propertyAccessInstructions();
-        const InstructionStream& instructionStream = instructions();
-        for (size_t i = 0; i < propertyAccessInstructions.size(); ++i) {
-            auto instruction = instructionStream.at(propertyAccessInstructions[i]);
-            if (instruction->is<OpPutById>()) {
-                auto& metadata = instruction->as<OpPutById>().metadata(this);
+        if (m_metadata) {
+            m_metadata->forEach<OpPutById>([&] (auto& metadata) {
                 StructureID oldStructureID = metadata.m_oldStructureID;
                 StructureID newStructureID = metadata.m_newStructureID;
                 if (!oldStructureID || !newStructureID)
-                    continue;
+                    return;
                 Structure* oldStructure =
                     vm.heap.structureIDTable().get(oldStructureID);
                 Structure* newStructure =
                     vm.heap.structureIDTable().get(newStructureID);
                 if (vm.heap.isMarked(oldStructure))
                     visitor.appendUnbarriered(newStructure);
-                continue;
-            }
+            });
         }
     }
 
@@ -1206,130 +1204,104 @@ void CodeBlock::determineLiveness(const ConcurrentJSLocker&, SlotVisitor& visito
 void CodeBlock::finalizeLLIntInlineCaches()
 {
     VM& vm = *m_vm;
-    const Vector<InstructionStream::Offset>& propertyAccessInstructions = m_unlinkedCode->propertyAccessInstructions();
 
-    auto handleGetPutFromScope = [&] (auto& metadata) {
-        GetPutInfo getPutInfo = metadata.m_getPutInfo;
-        if (getPutInfo.resolveType() == GlobalVar || getPutInfo.resolveType() == GlobalVarWithVarInjectionChecks 
-            || getPutInfo.resolveType() == LocalClosureVar || getPutInfo.resolveType() == GlobalLexicalVar || getPutInfo.resolveType() == GlobalLexicalVarWithVarInjectionChecks)
-            return;
-        WriteBarrierBase<Structure>& structure = metadata.m_structure;
-        if (!structure || vm.heap.isMarked(structure.get()))
-            return;
-        if (Options::verboseOSR())
-            dataLogF("Clearing scope access with structure %p.\n", structure.get());
-        structure.clear();
-    };
+    if (m_metadata) {
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=166418
+        // We need to add optimizations for op_resolve_scope_for_hoisting_func_decl_in_eval to do link time scope resolution.
 
-    const InstructionStream& instructionStream = instructions();
-    for (size_t size = propertyAccessInstructions.size(), i = 0; i < size; ++i) {
-        const auto curInstruction = instructionStream.at(propertyAccessInstructions[i]);
-        switch (curInstruction->opcodeID()) {
-        case op_get_by_id: {
-            auto& metadata = curInstruction->as<OpGetById>().metadata(this);
+        m_metadata->forEach<OpGetById>([&] (auto& metadata) {
             if (metadata.m_modeMetadata.mode != GetByIdMode::Default)
-                break;
+                return;
             StructureID oldStructureID = metadata.m_modeMetadata.defaultMode.structureID;
             if (!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
-                break;
+                return;
             if (Options::verboseOSR())
                 dataLogF("Clearing LLInt property access.\n");
             LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(metadata);
-            break;
-        }
-        case op_get_by_id_direct: {
-            auto& metadata = curInstruction->as<OpGetByIdDirect>().metadata(this);
+        });
+
+        m_metadata->forEach<OpGetByIdDirect>([&] (auto& metadata) {
             StructureID oldStructureID = metadata.m_structureID;
             if (!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
-                break;
+                return;
             if (Options::verboseOSR())
                 dataLogF("Clearing LLInt property access.\n");
             metadata.m_structureID = 0;
             metadata.m_offset = 0;
-            break;
-        }
-        case op_put_by_id: {
-            auto& metadata = curInstruction->as<OpPutById>().metadata(this);
+        });
+
+        m_metadata->forEach<OpPutById>([&] (auto& metadata) {
             StructureID oldStructureID = metadata.m_oldStructureID;
             StructureID newStructureID = metadata.m_newStructureID;
             StructureChain* chain = metadata.m_structureChain.get();
             if ((!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
                 && (!newStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(newStructureID)))
                 && (!chain || vm.heap.isMarked(chain)))
-                break;
+                return;
             if (Options::verboseOSR())
                 dataLogF("Clearing LLInt put transition.\n");
             metadata.m_oldStructureID = 0;
             metadata.m_offset = 0;
             metadata.m_newStructureID = 0;
             metadata.m_structureChain.clear();
-            break;
-        }
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=166418
-        // We need to add optimizations for op_resolve_scope_for_hoisting_func_decl_in_eval to do link time scope resolution.
-        case op_resolve_scope_for_hoisting_func_decl_in_eval:
-            break;
-        case op_to_this: {
-            auto& metadata = curInstruction->as<OpToThis>().metadata(this);
+        });
+
+        m_metadata->forEach<OpToThis>([&] (auto& metadata) {
             if (!metadata.m_cachedStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(metadata.m_cachedStructureID)))
-                break;
+                return;
             if (Options::verboseOSR()) {
                 Structure* structure = vm.heap.structureIDTable().get(metadata.m_cachedStructureID);
                 dataLogF("Clearing LLInt to_this with structure %p.\n", structure);
             }
             metadata.m_cachedStructureID = 0;
             metadata.m_toThisStatus = merge(metadata.m_toThisStatus, ToThisClearedByGC);
-            break;
-        }
-        case op_create_this: {
-            auto& metadata = curInstruction->as<OpCreateThis>().metadata(this);
+        });
+
+        auto handleCreateBytecode = [&] (auto& metadata, ASCIILiteral name) {
             auto& cacheWriteBarrier = metadata.m_cachedCallee;
             if (!cacheWriteBarrier || cacheWriteBarrier.unvalidatedGet() == JSCell::seenMultipleCalleeObjects())
-                break;
+                return;
             JSCell* cachedFunction = cacheWriteBarrier.get();
             if (vm.heap.isMarked(cachedFunction))
-                break;
-            if (Options::verboseOSR())
-                dataLogF("Clearing LLInt create_this with cached callee %p.\n", cachedFunction);
+                return;
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt ", name, " with cached callee ", RawPointer(cachedFunction), ".");
             cacheWriteBarrier.clear();
-            break;
-        }
-        case op_create_promise: {
-            auto& metadata = curInstruction->as<OpCreatePromise>().metadata(this);
-            auto& cacheWriteBarrier = metadata.m_cachedCallee;
-            if (!cacheWriteBarrier || cacheWriteBarrier.unvalidatedGet() == JSCell::seenMultipleCalleeObjects())
-                break;
-            JSCell* cachedFunction = cacheWriteBarrier.get();
-            if (vm.heap.isMarked(cachedFunction))
-                break;
-            if (Options::verboseOSR())
-                dataLogF("Clearing LLInt create_promise with cached callee %p.\n", cachedFunction);
-            cacheWriteBarrier.clear();
-            break;
-        }
-        case op_resolve_scope: {
+        };
+
+        m_metadata->forEach<OpCreateThis>([&] (auto& metadata) {
+            handleCreateBytecode(metadata, "op_create_this"_s);
+        });
+        m_metadata->forEach<OpCreatePromise>([&] (auto& metadata) {
+            handleCreateBytecode(metadata, "op_create_promise"_s);
+        });
+
+        m_metadata->forEach<OpResolveScope>([&] (auto& metadata) {
             // Right now this isn't strictly necessary. Any symbol tables that this will refer to
             // are for outer functions, and we refer to those functions strongly, and they refer
             // to the symbol table strongly. But it's nice to be on the safe side.
-            auto& metadata = curInstruction->as<OpResolveScope>().metadata(this);
             WriteBarrierBase<SymbolTable>& symbolTable = metadata.m_symbolTable;
             if (!symbolTable || vm.heap.isMarked(symbolTable.get()))
-                break;
+                return;
             if (Options::verboseOSR())
                 dataLogF("Clearing dead symbolTable %p.\n", symbolTable.get());
             symbolTable.clear();
-            break;
-        }
-        case op_get_from_scope:
-            handleGetPutFromScope(curInstruction->as<OpGetFromScope>().metadata(this));
-            break;
-        case op_put_to_scope:
-            handleGetPutFromScope(curInstruction->as<OpPutToScope>().metadata(this));
-            break;
-        default:
-            OpcodeID opcodeID = curInstruction->opcodeID();
-            ASSERT_WITH_MESSAGE_UNUSED(opcodeID, false, "Unhandled opcode in CodeBlock::finalizeUnconditionally, %s(%d) at bc %u", opcodeNames[opcodeID], opcodeID, propertyAccessInstructions[i]);
-        }
+        });
+
+        auto handleGetPutFromScope = [&] (auto& metadata) {
+            GetPutInfo getPutInfo = metadata.m_getPutInfo;
+            if (getPutInfo.resolveType() == GlobalVar || getPutInfo.resolveType() == GlobalVarWithVarInjectionChecks
+                || getPutInfo.resolveType() == LocalClosureVar || getPutInfo.resolveType() == GlobalLexicalVar || getPutInfo.resolveType() == GlobalLexicalVarWithVarInjectionChecks)
+                return;
+            WriteBarrierBase<Structure>& structure = metadata.m_structure;
+            if (!structure || vm.heap.isMarked(structure.get()))
+                return;
+            if (Options::verboseOSR())
+                dataLogF("Clearing scope access with structure %p.\n", structure.get());
+            structure.clear();
+        };
+
+        m_metadata->forEach<OpGetFromScope>(handleGetPutFromScope);
+        m_metadata->forEach<OpPutToScope>(handleGetPutFromScope);
     }
 
     // We can't just remove all the sets when we clear the caches since we might have created a watchpoint set
@@ -1372,7 +1344,11 @@ void CodeBlock::finalizeLLIntInlineCaches()
 CodeBlock::JITData& CodeBlock::ensureJITDataSlow(const ConcurrentJSLocker&)
 {
     ASSERT(!m_jitData);
-    m_jitData = makeUnique<JITData>();
+    auto jitData = makeUnique<JITData>();
+    // calleeSaveRegisters() can access m_jitData without taking a lock from Baseline JIT. This is OK since JITData::m_calleeSaveRegisters is filled in DFG and FTL CodeBlocks.
+    // But we should not see garbage pointer in that case. We ensure JITData::m_calleeSaveRegisters is initialized as nullptr before exposing it to BaselineJIT by store-store-fence.
+    WTF::storeStoreFence();
+    m_jitData = WTFMove(jitData);
     return *m_jitData;
 }
 

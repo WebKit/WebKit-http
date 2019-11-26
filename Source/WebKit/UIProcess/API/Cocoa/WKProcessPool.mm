@@ -528,7 +528,6 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (void)_preconnectToServer:(NSURL *)serverURL
 {
-    _processPool->preconnectToServer(serverURL);
 }
 
 - (size_t)_pluginProcessCount
@@ -646,6 +645,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (void)_clearPermanentCredentialsForProtectionSpace:(NSURLProtectionSpace *)protectionSpace
 {
     _processPool->clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace(protectionSpace));
+}
+
+- (void)_allowAnyTLSCertificateForWebSocketTesting
+{
+    _processPool->setAllowsAnySSLCertificateForWebSocket(true);
 }
 
 @end

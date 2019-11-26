@@ -44,7 +44,8 @@ webkit.org/b/200308 fast/events/touch/ios/content-observation/non-visible-conten
 # WebGPU is not enabled on iOS Simulator.
 webgpu [ Skip ]
 inspector/canvas/create-context-webgpu.html [ Skip ]
-inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
+inspector/canvas/requestClientNodes-webgpu.html [ Skip ]
+inspector/canvas/resolveContext-webgpu.html [ Skip ]
 
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
@@ -1331,7 +1332,6 @@ webkit.org/b/178729 css3/shapes/shape-outside/values/shape-outside-polygon-004.h
 webkit.org/b/178729 css3/shapes/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
 
 webkit.org/b/178952 fast/css/font-calculated-value.html [ Failure ]
-webkit.org/b/178954 fast/css/font-shorthand-from-longhands.html [ Failure ]
 webkit.org/b/178955 fast/css/font-shorthand-line-height.html [ Failure ]
 webkit.org/b/178957 fast/css/getComputedStyle/computed-style-font.html [ Failure ]
 
@@ -3203,10 +3203,6 @@ webkit.org/b/190764 editing/spelling/spelling-dots-position-3.html [ Skip ]
 
 webkit.org/b/192279 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ Pass Failure ]
 
-webkit.org/b/192250 imported/w3c/web-platform-tests/service-workers/service-worker/update-missing-import-scripts.https.html [ Pass Failure ]
-
-webkit.org/b/192398 imported/w3c/web-platform-tests/service-workers/service-worker/update-registration-with-type.https.html [ Pass Failure ]
-
 webkit.org/b/191704 imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html [ Pass Failure ]
 
 webkit.org/b/193955 compositing/iframes/remove-reinsert-webview-with-iframe.html [ Skip ]
@@ -3318,10 +3314,6 @@ http/wpt/resource-timing/rt-initiatorType-script-module.html [ Pass Failure ]
 http/wpt/resource-timing/rt-initiatorType-element.html [ Pass Failure ]
 http/wpt/resource-timing/rt-initiatorType-xmlhttprequest.html [ Pass Failure ]
 
-# <rdar://problem/51766135> imported/w3c/web-platform-tests/preload/ tests landed failing after import
-imported/w3c/web-platform-tests/preload/dynamic-adding-preload-imagesrcset.html [ Failure ]
-imported/w3c/web-platform-tests/preload/link-header-preload-imagesrcset.html [ Failure ]
-
 # <rdar://problem/51826131> REGRESSION (r241747) 2 Layout tests are failing on Internal iOS 13 iOS / iPad Simulator testers fast/repaint/placeholder-after-caps-lock-hidden.html imported/blink/svg/custom/focus-ring-2.svg
 imported/blink/svg/custom/focus-ring-2.svg [ ImageOnlyFailure ]
 fast/repaint/placeholder-after-caps-lock-hidden.html [ Failure ]
@@ -3352,3 +3344,5 @@ http/tests/security/frameNavigation/sandbox-ALLOWED-top-navigation-with-user-ges
 media/audio-concurrent-supported.html [ Pass Failure ]
 
 webkit.org/b/181837 [ Release ] imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html [ Pass Failure ]
+
+webkit.org/b/201190 imported/w3c/web-platform-tests/service-workers/service-worker/registration-mime-types.https.html [ Pass Failure ]

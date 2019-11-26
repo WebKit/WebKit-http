@@ -1,4 +1,7 @@
 {
+    "http/tests/paymentrequest/payment-response-reference-cycle-leak.https.html": [
+        "slow"
+    ],
     "http/tests/xmlhttprequest/on-network-timeout-error-during-preflight.html": [
         "slow"
     ],
@@ -1724,6 +1727,9 @@
     "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-body-loaded-in-chunk.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event.https.html": [
         "slow"
     ],
@@ -1776,6 +1782,12 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/update-bytecheck.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/update.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/worker-interception.https.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/webrtc/RTCDTMFSender-ontonechange-long.html": [
@@ -1853,6 +1865,30 @@
     "imported/w3c/web-platform-tests/websockets/unload-a-document/005.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/workers/Worker_cross_origin_security_err.htm": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/constructors/SharedWorker/same-origin.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/constructors/Worker/same-origin.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/interfaces/WorkerUtils/importScripts/006.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/modules/dedicated-worker-options-credentials.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/semantics/multiple-workers/003.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/semantics/multiple-workers/004.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/workers/semantics/multiple-workers/007.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/xhr/progress-events-response-data-gzip.htm": [
         "slow"
     ],
@@ -1899,9 +1935,6 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/xhr/xmlhttprequest-timeout-worker-twice.html": [
-        "slow"
-    ],
-    "http/tests/paymentrequest/payment-response-reference-cycle-leak.https.html": [
         "slow"
     ]
 }

@@ -29,13 +29,10 @@
 #if ENABLE(WEB_RTC)
 
 #include "Blob.h"
-#include "Event.h"
 #include "EventNames.h"
 #include "MessageEvent.h"
-#include "RTCDataChannelHandler.h"
 #include "ScriptExecutionContext.h"
 #include "SharedBuffer.h"
-#include <JavaScriptCore/ArrayBuffer.h>
 #include <JavaScriptCore/ArrayBufferView.h>
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
@@ -56,22 +53,38 @@ static const AtomString& arraybufferKeyword()
     return arraybuffer;
 }
 
-Ref<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext& context, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
+Ref<RTCDataChannel> RTCDataChannel::create(Document& document, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
 {
     ASSERT(handler);
-    auto channel = adoptRef(*new RTCDataChannel(context, WTFMove(handler), WTFMove(label), WTFMove(options)));
+    auto channel = adoptRef(*new RTCDataChannel(document, WTFMove(handler), WTFMove(label), WTFMove(options)));
     channel->suspendIfNeeded();
     channel->m_handler->setClient(channel.get());
     channel->setPendingActivity(channel.get());
     return channel;
 }
 
-RTCDataChannel::RTCDataChannel(ScriptExecutionContext& context, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
-    : ActiveDOMObject(&context)
+NetworkSendQueue RTCDataChannel::createMessageQueue(Document& document, RTCDataChannel& channel)
+{
+    return { document, [&channel](const String& data) {
+        if (!channel.m_handler->sendStringData(data))
+            channel.scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Error sending string through RTCDataChannel."_s);
+    }, [&channel](auto* data, size_t length) {
+        if (!channel.m_handler->sendRawData(data, length))
+            channel.scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "Error sending binary data through RTCDataChannel."_s);
+    }, [&channel](int errorCode) {
+        if (auto* context = channel.scriptExecutionContext())
+            context->addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("Error ", errorCode, " in retrieving a blob data to be sent through RTCDataChannel."));
+        return NetworkSendQueue::Continue::Yes;
+    } };
+}
+
+RTCDataChannel::RTCDataChannel(Document& document, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
+    : ActiveDOMObject(document)
     , m_handler(WTFMove(handler))
     , m_scheduledEventTimer(*this, &RTCDataChannel::scheduledEventTimerFired)
     , m_label(WTFMove(label))
     , m_options(WTFMove(options))
+    , m_messageQueue(createMessageQueue(document, *this))
 {
 }
 
@@ -114,45 +127,35 @@ ExceptionOr<void> RTCDataChannel::send(const String& data)
     if (m_readyState != RTCDataChannelState::Open)
         return Exception { InvalidStateError };
 
-    if (!m_handler->sendStringData(data)) {
-        // FIXME: Decide what the right exception here is.
-        return Exception { SyntaxError };
-    }
-
+    m_messageQueue.enqueue(data);
     return { };
 }
 
-ExceptionOr<void> RTCDataChannel::sendRawData(const char* data, size_t length)
+ExceptionOr<void> RTCDataChannel::send(ArrayBuffer& data)
 {
     if (m_readyState != RTCDataChannelState::Open)
         return Exception { InvalidStateError };
 
-    if (!length)
-        return { };
-
-    if (!m_handler->sendRawData(data, length)) {
-        // FIXME: Decide what the right exception here is.
-        return Exception { SyntaxError };
-    }
-
+    m_messageQueue.enqueue(data, 0, data.byteLength());
     return { };
-}
-
-
-ExceptionOr<void> RTCDataChannel::send(ArrayBuffer& data)
-{
-    return sendRawData(static_cast<const char*>(data.data()), data.byteLength());
 }
 
 ExceptionOr<void> RTCDataChannel::send(ArrayBufferView& data)
 {
-    return sendRawData(static_cast<const char*>(data.baseAddress()), data.byteLength());
+    if (m_readyState != RTCDataChannelState::Open)
+        return Exception { InvalidStateError };
+
+    m_messageQueue.enqueue(*data.unsharedBuffer(), data.byteOffset(), data.byteLength());
+    return { };
 }
 
-ExceptionOr<void> RTCDataChannel::send(Blob&)
+ExceptionOr<void> RTCDataChannel::send(Blob& blob)
 {
-    // FIXME: Implement.
-    return Exception { NotSupportedError };
+    if (m_readyState != RTCDataChannelState::Open)
+        return Exception { InvalidStateError };
+
+    m_messageQueue.enqueue(blob);
+    return { };
 }
 
 void RTCDataChannel::close()
@@ -162,6 +165,8 @@ void RTCDataChannel::close()
 
     m_stopped = true;
     m_readyState = RTCDataChannelState::Closed;
+
+    m_messageQueue.clear();
 
     m_handler->close();
     m_handler = nullptr;

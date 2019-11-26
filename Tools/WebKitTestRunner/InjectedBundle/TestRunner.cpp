@@ -500,6 +500,24 @@ void TestRunner::setAllowsAnySSLCertificate(bool enabled)
     WKBundlePagePostSynchronousMessageForTesting(injectedBundle.page()->page(), messageName.get(), messageBody.get(), nullptr);
 }
 
+void TestRunner::setShouldSwapToEphemeralSessionOnNextNavigation(bool shouldSwap)
+{
+    auto& injectedBundle = InjectedBundle::singleton();
+
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetShouldSwapToEphemeralSessionOnNextNavigation"));
+    WKRetainPtr<WKBooleanRef> messageBody = adoptWK(WKBooleanCreate(shouldSwap));
+    WKBundlePagePostSynchronousMessageForTesting(injectedBundle.page()->page(), messageName.get(), messageBody.get(), nullptr);
+}
+
+void TestRunner::setShouldSwapToDefaultSessionOnNextNavigation(bool shouldSwap)
+{
+    auto& injectedBundle = InjectedBundle::singleton();
+
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetShouldSwapToDefaultSessionOnNextNavigation"));
+    WKRetainPtr<WKBooleanRef> messageBody = adoptWK(WKBooleanCreate(shouldSwap));
+    WKBundlePagePostSynchronousMessageForTesting(injectedBundle.page()->page(), messageName.get(), messageBody.get(), nullptr);
+}
+
 void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
 {
     auto& injectedBundle = InjectedBundle::singleton();
@@ -1913,9 +1931,9 @@ void TestRunner::statisticsDidRunTelemetryCallback(unsigned totalPrevalentResour
     callTestRunnerCallback(StatisticsDidRunTelemetryCallbackID, 1, &result);
 }
 
-void TestRunner::statisticsNotifyObserver()
+bool TestRunner::statisticsNotifyObserver()
 {
-    InjectedBundle::singleton().statisticsNotifyObserver();
+    return InjectedBundle::singleton().statisticsNotifyObserver();
 }
 
 void TestRunner::statisticsProcessStatisticsAndDataRecords()

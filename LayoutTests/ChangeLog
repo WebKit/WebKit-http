@@ -1,3 +1,394 @@
+2019-09-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: instrument WebGPUDevice instead of GPUCanvasContext
+        https://bugs.webkit.org/show_bug.cgi?id=201650
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/create-context-webgpu.html:
+        * inspector/canvas/create-context-webgpu-expected.txt:
+        * inspector/canvas/resources/create-context-utilities.js:
+        (createDetachedCanvas):
+        (createCSSCanvas):
+        (destroyCanvases):
+
+        * inspector/canvas/requestClientNodes.html: Added.
+        * inspector/canvas/requestClientNodes-expected.txt: Added.
+        * inspector/canvas/requestClientNodes-css.html: Renamed from LayoutTests/inspector/canvas/css-canvas-clients.html.
+        * inspector/canvas/requestClientNodes-css-expected.txt: Renamed from LayoutTests/inspector/canvas/css-canvas-clients-expected.txt.
+        * inspector/canvas/requestClientNodes-webgpu.html: Added.
+        * inspector/canvas/requestClientNodes-webgpu-expected.txt: Added.
+
+        * inspector/canvas/resolveContext-2d.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-2d.html.
+        * inspector/canvas/resolveContext-2d-expected.txt: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-2d-expected.txt.
+        * inspector/canvas/resolveContext-bitmaprenderer.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-bitmaprenderer.html.
+        * inspector/canvas/resolveContext-bitmaprenderer-expected.txt: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-bitmaprenderer-expected.txt.
+        * inspector/canvas/resolveContext-webgl.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgl.html.
+        * inspector/canvas/resolveContext-webgl-expected.txt: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgl-expected.txt.
+        * inspector/canvas/resolveContext-webgl2.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgl2.html.
+        * inspector/canvas/resolveContext-webgl2-expected.txt: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgl2-expected.txt.
+        * inspector/canvas/resolveContext-webgpu.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgpu.html.
+        * inspector/canvas/resolveContext-webgpu-expected.txt: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgpu-expected.txt.
+
+        * inspector/canvas/context-attributes-expected.txt:
+
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove legacy CodeMirror based pretty printers
+        https://bugs.webkit.org/show_bug.cgi?id=201624
+
+        Reviewed by Devin Rousso.
+
+        * inspector/codemirror/prettyprinting-css-expected.txt: Removed.
+        * inspector/codemirror/prettyprinting-css.html: Removed.
+        * inspector/codemirror/prettyprinting-javascript-expected.txt: Removed.
+        * inspector/codemirror/prettyprinting-javascript.html: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/basic-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/basic.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/calc-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/calc.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/gradient-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/gradient.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/keyframes-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/keyframes.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/media-query-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/media-query.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/selectors-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/selectors.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/wrapping-expected.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/css-tests/wrapping.css: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/block-comment-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/block-comment.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/do-while-loop-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/do-while-loop.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/do-while-within-if-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/do-while-within-if.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/if-followed-by-while-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/if-followed-by-while.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/if-while-within-do-while-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/if-while-within-do-while.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/single-statement-blocks-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/single-statement-blocks.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/switch-case-default-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/switch-case-default.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/unary-binary-operators-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/unary-binary-operators.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/while-within-do-while-expected.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/while-within-do-while.js: Removed.
+        * inspector/codemirror/resources/prettyprinting/utilities.js: Removed.
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in http/tests/cookies/private-cookie-storage.html
+        https://bugs.webkit.org/show_bug.cgi?id=201648
+
+        Reviewed by Alex Christensen.
+
+        Use testRunner.setShouldSwapToEphemeralSessionOnNextNavigation() / setShouldSwapToDefaultSessionOnNextNavigation() to
+        truly switch session on WebKit2 instead of using the testRunner.setPrivateBrowsingEnabled_DEPRECATED() hack.
+
+        * http/tests/cookies/private-cookie-storage-expected.txt:
+        * http/tests/cookies/private-cookie-storage.html:
+        * http/tests/cookies/resources/cookies-test-pre.js:
+        (testCookies):
+
+2019-09-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [iOS] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/registration-mime-types.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=201190
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2019-09-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-video.https.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=201665
+
+        Unreviewed test gardening.
+
+        This test was unskipped as part of r249716, but it is still frequently failing.
+
+        * TestExpectations: Skip the test again.
+
+2019-09-10  Jiewen Tan  <jiewen_tan@apple.com>
+
+        REGRESSION: [ Catalina WK2 ] http/wpt/webauthn/public-key-credential-create-success-u2f.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=201620
+        <rdar://problem/51524958>
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https.html:
+        Remove the timeout value given those tests should never time out.
+        * platform/mac-wk2/TestExpectations:
+        Change the test expectation to Pass.
+
+2019-09-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r249460): LayoutTests/webgpu/viewport-scissor-rect-triangle-strip.html is Failing
+        https://bugs.webkit.org/show_bug.cgi?id=201478
+
+        Reviewed by Simon Fraser.
+
+        -- Revert r249460 which changed drawGreenAndBlueCheckerboardInSoftware().
+        -- Remove the orientation bit from webgpu/resources/blue-checkered.png
+           so drawing it is not affected by r249364.
+
+        * webgpu/js/webgpu-functions.js:
+        (drawGreenAndBlueCheckerboardInSoftware):
+        * webgpu/resources/blue-checkered.png:
+
+2019-09-10  Nikolas Zimmermann  <zimmermann@kde.org>
+
+        SMIL animations of SVG <view> element have no effect
+        https://bugs.webkit.org/show_bug.cgi?id=201536
+
+        Reviewed by Rob Buis.
+
+        Added a new layout test to verify that navigating to different anchors within the same
+        external SVG does not cause reloads. Instead scrollToAnchor() is used which causes an
+        in-place navigation in the same document. The new test verifies that the SVGSVGElement
+        is preserved when navigating between anchors, which indicates that no new document was
+        created. Verify that the SVGViewSpec API works as intended, across navigations.
+
+        * svg/dom/SVGViewSpec-multiple-views-expected.txt: Added.
+        * svg/dom/SVGViewSpec-multiple-views.html: Added.
+        * svg/dom/resources/multiple-view-elements.svg: Added.
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, re-skip service worker test that was unskipped in r249716.
+
+        This test is still flaky.
+
+        * TestExpectations:
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r249724.
+
+        Patch included a lot more changes than intended
+
+        Reverted changeset:
+
+        "Unreviewed, re-skip service worker test that was unskipped in
+        r249716."
+        https://trac.webkit.org/changeset/249724
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, re-skip service worker test that was unskipped in r249716.
+
+        This test is still flaky.
+
+        * TestExpectations:
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync workers web platform tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=201629
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2019-09-10  Youenn Fablet  <youenn@apple.com>
+
+        Remove MediaStreamPrivate::scheduleDeferredTask
+        https://bugs.webkit.org/show_bug.cgi?id=200975
+        <rdar://problem/55113418>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/media-stream-track-source-failure.html:
+        page mediaState may be updated synchronously.
+        Get it just before failing a capture track to verify that the state is being updated after the track is stopped.
+
+2019-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip / rebaseline a few service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=201626
+
+        * TestExpectations:
+
+2019-09-10  Frederic Wang  <fwang@igalia.com>
+
+        Ensure tests for legacy features are in LayoutTests/mathml
+        https://bugs.webkit.org/show_bug.cgi?id=201604
+
+        Reviewed by Rob Buis.
+
+        This patch copies MathML WPT tests verifying legacy support for features removed from MathML
+        Core. These tests will be overriden or removed in a future WPT synchronization, so we need
+        to keep local copies to check these legacy features when the "MathML Core" option is
+        disabled.
+
+        * TestExpectations: Copy expectation.
+        * mathml/non-core/frac-linethickness-001-expected.html: Added.
+        * mathml/non-core/frac-linethickness-001.html: Added.
+        * mathml/non-core/frac-linethickness-002-expected.html: Added.
+        * mathml/non-core/frac-linethickness-002.html: Added.
+        * mathml/non-core/frac-numalign-denomalign-001-expected.html: Added.
+        * mathml/non-core/frac-numalign-denomalign-001.html: Added.
+        * mathml/non-core/lengths-1-expected.html: Added.
+        * mathml/non-core/lengths-1.html: Added.
+        * mathml/non-core/lengths-2-expected.html: Added.
+        * mathml/non-core/lengths-2.html: Added.
+        * mathml/non-core/lengths-3-expected.txt: Added.
+        * mathml/non-core/lengths-3.html: Added.
+        * platform/gtk/TestExpectations: Copy expectation.
+        * platform/win/TestExpectations: Add failure expectations.
+
+2019-09-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Option + arrow moves caret past whitespace on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=201575
+
+        Reviewed by Wenson Hsieh.
+
+        Added a new test for moving caret by word granularity on iOS.
+
+        * editing/selection/ios/move-by-word-with-keyboard-expected.txt: Added.
+        * editing/selection/ios/move-by-word-with-keyboard.html: Added.
+        * editing/selection/ios/select-non-editable-text-using-keyboard-expected.txt: Rebaselined.
+        * editing/selection/ios/select-non-editable-text-using-keyboard.html: Updated the expected
+        selection string due to the behavior change. Also fixed a bug that some test cases were
+        not waiting for a secondary selectionchange event that happens after an extra selection
+        update with character granularity introduced in r247524.
+
+2019-09-09  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations.html is frequently timing out on iOS EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=201550
+
+        Reviewed by Alex Christensen.
+
+        Update test to do checks on a timer if its call to testRunner.statisticsNotifyObserver() is a no-op
+        due to having no statistics to send to the network process.
+
+        * http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations.html:
+
+2019-09-09  Joonghun Park  <pjh0718@gmail.com>
+
+        getComputedStyle for line-height: normal should return the keyword instead of a length
+        https://bugs.webkit.org/show_bug.cgi?id=201296
+
+        Reviewed by Ryosuke Niwa.
+
+        Per https://github.com/w3c/csswg-drafts/issues/3749,
+        Gecko and Blink has this behavior already.
+
+        This patch makes WebKit has the same behavior with them.
+
+        * css3/calc/line-height-expected.txt:
+        * fast/css/font-calculated-value-expected.txt:
+        * fast/css/font-calculated-value.html:
+        * fast/css/font-shorthand-from-longhands-expected.txt:
+        * fast/css/font-shorthand-from-longhands.html:
+        * fast/css/font-shorthand-line-height-expected.txt:
+        * fast/css/font-shorthand-line-height.html:
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font.html:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/ruby/ruby-line-height-expected.txt:
+        * fast/ruby/ruby-line-height.html:
+        * fast/text-autosizing/ios/idempotentmode/line-height-boosting-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/line-height-boosting.html:
+        * fast/text-autosizing/ios/line-height-text-autosizing-expected.txt:
+        * fast/text-autosizing/ios/line-height-text-autosizing.html:
+        * media/track/track-cue-rendering-on-resize-expected.txt:
+        * media/track/track-cue-rendering-on-resize.html:
+        * platform/gtk/fast/css/css2-system-fonts-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/gtk/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/ios/TestExpectations:
+        * platform/ios/css3/calc/line-height-expected.txt:
+        * platform/ios/fast/css/css2-system-fonts-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac-sierra/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/fast/css/css2-system-fonts-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac/fast/text-autosizing/ios/line-height-text-autosizing-expected.txt:
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/wincairo/css3/calc/line-height-expected.txt:
+        * platform/wincairo/fast/css/css2-system-fonts-expected.txt:
+        * platform/wpe/fast/css/css2-system-fonts-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/wpe/svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2019-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, update test expectations for rdar://problem/51229282.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, update test expectations for rdar://problem/51766135.
+
+        * platform/ios/TestExpectations:
+
+2019-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION(r236540-r236595): ASSERTION FAILED: !frameView || !frameView->isPainting() on plugins/window-open.html
+        https://bugs.webkit.org/show_bug.cgi?id=199089
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Skip the test.
+
+2019-09-09  Chris Dumez  <cdumez@apple.com>
+
+        Stop using testRunner.setPrivateBrowsingEnabled_DEPRECATED() in http/tests/adClickAttribution/conversion-disabled-in-ephemeral-session.html
+        https://bugs.webkit.org/show_bug.cgi?id=201596
+
+        Reviewed by Alex Christensen.
+
+        Update layout test to use testRunner.setShouldSwapToEphemeralSessionOnNextNavigation() &
+        testRunner.setShouldSwapToDefaultSessionOnNextNavigation() instead of the legacy
+        testRunner.setPrivateBrowsingEnabled_DEPRECATED(). The test needed some extra steps to
+        navigate whenever we switch session but it is a lot more realistic and is really switching
+        session on WebKit2. The testRunner.setPrivateBrowsingEnabled_DEPRECATED() was not truly
+        switching session, just making the document think it did.
+
+        * http/tests/adClickAttribution/conversion-disabled-in-ephemeral-session.html:
+
+2019-09-09  Chris Dumez  <cdumez@apple.com>
+
+        Resync service workers WPT tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=201589
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+
+2019-09-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Attempt to make this test not flakey.
+        https://bugs.webkit.org/show_bug.cgi?id=201482
+
+        * legacy-animation-engine/compositing/transitions/add-remove-transition.html:
+
 2019-09-09  Jiewen Tan  <jiewen_tan@apple.com>
 
         Layout Test http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html is flaky

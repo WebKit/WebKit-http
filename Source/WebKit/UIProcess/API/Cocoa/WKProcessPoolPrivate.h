@@ -115,7 +115,7 @@
 // Test only. Should be called before any web content processes are launched.
 + (void)_forceGameControllerFramework WK_API_AVAILABLE(macos(10.13), ios(11.0));
 
-- (void)_preconnectToServer:(NSURL *)serverURL WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
+- (void)_preconnectToServer:(NSURL *)serverURL WK_API_DEPRECATED("If needed, SPI should be added to WKWebsiteDataStore", macos(10.13.4, WK_MAC_TBA), ios(11.3, WK_IOS_TBA));
 
 // Test only.
 - (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL)allows WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
@@ -123,6 +123,7 @@
 - (void)_getActivePagesOriginsInWebProcessForTesting:(pid_t)pid completionHandler:(void(^)(NSArray<NSString *> *))completionHandler WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
 - (BOOL)_networkProcessHasEntitlementForTesting:(NSString *)entitlement WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
 - (void)_clearPermanentCredentialsForProtectionSpace:(NSURLProtectionSpace *)protectionSpace WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_allowAnyTLSCertificateForWebSocketTesting WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, getter=_isCookieStoragePartitioningEnabled, setter=_setCookieStoragePartitioningEnabled:) BOOL _cookieStoragePartitioningEnabled WK_API_DEPRECATED("Partitioned cookies are no longer supported", macos(10.12.3, 10.14.4), ios(10.3, 12.2));
 @property (nonatomic, getter=_isStorageAccessAPIEnabled, setter=_setStorageAccessAPIEnabled:) BOOL _storageAccessAPIEnabled WK_API_AVAILABLE(macos(10.13.4), ios(11.3));

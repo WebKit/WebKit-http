@@ -31,6 +31,7 @@
 #include "Event.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
+#include "NetworkSendQueue.h"
 #include "RTCDataChannelHandler.h"
 #include "RTCDataChannelHandlerClient.h"
 #include "ScriptWrappable.h"
@@ -49,7 +50,7 @@ class RTCPeerConnectionHandler;
 class RTCDataChannel final : public ActiveDOMObject, public RTCDataChannelHandlerClient, public EventTargetWithInlineData {
     WTF_MAKE_ISO_ALLOCATED(RTCDataChannel);
 public:
-    static Ref<RTCDataChannel> create(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
+    static Ref<RTCDataChannel> create(Document&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
 
     bool ordered() const { return *m_options.ordered; }
     Optional<unsigned short> maxPacketLifeTime() const { return m_options.maxPacketLifeTime; }
@@ -78,7 +79,9 @@ public:
     using RTCDataChannelHandlerClient::deref;
 
 private:
-    RTCDataChannel(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
+    RTCDataChannel(Document&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
+
+    static NetworkSendQueue createMessageQueue(Document&, RTCDataChannel&);
 
     void scheduleDispatchEvent(Ref<Event>&&);
     void scheduledEventTimerFired();
@@ -88,8 +91,6 @@ private:
 
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
-
-    ExceptionOr<void> sendRawData(const char* data, size_t length);
 
     // ActiveDOMObject API
     void stop() final;
@@ -118,6 +119,8 @@ private:
     String m_label;
     RTCDataChannelInit m_options;
     size_t m_bufferedAmountLowThreshold { 0 };
+
+    NetworkSendQueue m_messageQueue;
 };
 
 } // namespace WebCore

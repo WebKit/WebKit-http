@@ -54,6 +54,7 @@
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "LoaderStrategy.h"
+#include "PageDOMDebuggerAgent.h"
 #include "PageDebuggerAgent.h"
 #include "PageHeapAgent.h"
 #include "PageRuntimeAgent.h"
@@ -72,6 +73,10 @@
 #include <JavaScriptCore/ScriptArguments.h>
 #include <JavaScriptCore/ScriptCallStack.h>
 #include <wtf/StdLibExtras.h>
+
+#if ENABLE(WEBGPU)
+#include "WebGPUSwapChain.h"
+#endif
 
 namespace WebCore {
 
@@ -1098,6 +1103,26 @@ bool InspectorInstrumentation::isShaderProgramHighlightedImpl(InstrumentingAgent
     if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
         return canvasAgent->isShaderProgramHighlighted(program);
     return false;
+}
+#endif
+
+#if ENABLE(WEBGPU)
+void InspectorInstrumentation::didCreateWebGPUDeviceImpl(InstrumentingAgents& instrumentingAgents, WebGPUDevice& device)
+{
+    if (auto* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        canvasAgent->didCreateWebGPUDevice(device);
+}
+
+void InspectorInstrumentation::willDestroyWebGPUDeviceImpl(InstrumentingAgents& instrumentingAgents, WebGPUDevice& device)
+{
+    if (auto* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        canvasAgent->willDestroyWebGPUDevice(device);
+}
+
+void InspectorInstrumentation::willConfigureSwapChainImpl(InstrumentingAgents& instrumentingAgents, GPUCanvasContext& contextGPU, WebGPUSwapChain& newSwapChain)
+{
+    if (auto* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        canvasAgent->willConfigureSwapChain(contextGPU, newSwapChain);
 }
 #endif
 
