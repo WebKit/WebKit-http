@@ -33,6 +33,7 @@
 #include <String.h>
 
 #include "FindOptions.h"
+#include <JavaScriptCore/APICast.h>
 
 class BMessenger;
 class BWebPage;
@@ -111,6 +112,8 @@ public:
 			const BString&		Title() const;
 
             const char*         Name() const;
+
+			JSGlobalContextRef	GlobalContext() const;
 private:
 	friend class BWebView;
 	friend class BWebPage;

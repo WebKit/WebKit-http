@@ -31,7 +31,6 @@
 #include "WebPage.h"
 #include "WebView.h"
 
-#include "DOMWrapperWorld.h"
 #include <Bitmap.h>
 #include "WebCore/DocumentLoader.h"
 #include "Document.h"
@@ -179,11 +178,6 @@ void
 DumpRenderTreeClient::setSerializeHTTPLoads(bool)
 {
     notImplemented();
-}
-
-JSGlobalContextRef DumpRenderTreeClient::globalContextRefForFrame(const BWebFrame* frame)
-{
-    return toGlobalRef(frame->Frame()->script().globalObject(WebCore::mainThreadNormalWorld())->globalExec());
 }
 
 void

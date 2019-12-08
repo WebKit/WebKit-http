@@ -29,6 +29,8 @@
 #include "config.h"
 #include "WebFrame.h"
 
+#include <WebCore/ScriptController.h>
+
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Editor.h"
@@ -406,6 +408,12 @@ const char* BWebFrame::Name() const
 {
     fName = WTF::String(Frame()->tree().uniqueName()).utf8().data();
     return fName.String();
+}
+
+
+JSGlobalContextRef BWebFrame::GlobalContext() const
+{
+	return toGlobalRef(Frame()->script().globalObject(mainThreadNormalWorld())->globalExec());
 }
 
 

@@ -109,7 +109,7 @@ void BFormDataIO::computeContentLength()
     m_isContentLengthUpdated = true;
 
     for (const auto& element : m_formData->elements())
-        m_totalSize += element.lengthInBytes(m_sessionID);
+        m_totalSize += element.lengthInBytes(blobRegistry().blobRegistryImpl());
 }
 
 

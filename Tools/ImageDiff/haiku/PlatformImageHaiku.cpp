@@ -114,14 +114,11 @@ void PlatformImage::writeAsPNGToStdout()
     if (BTranslatorRoster::Default()->Translate(&input, NULL, NULL,
         &imageData, B_PNG_FORMAT) == B_OK) {
         printf("Content-Length: %ld\n", imageData.BufferLength());
+        fwrite(imageData.Buffer(), 1, imageData.BufferLength(), stdout);
         fflush(stdout);
-
-        write(1, imageData.Buffer(), imageData.BufferLength());
     }
 	BBitmap* foo = NULL;
 	input.DetachBitmap(&foo);
-	if (foo != m_image)
-		delete foo;
 }
 
 } // namespace ImageDiff

@@ -22,6 +22,7 @@
 
 #include "wtf/FileSystem.h"
 #include "FormData.h"
+#include <pal/SessionID.h>
 
 #include <DataIO.h>
 #include <File.h>

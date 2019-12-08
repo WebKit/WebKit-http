@@ -29,7 +29,6 @@
 #include <Size.h>
 
 #include "wtf/URL.h"
-#include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSStringRef.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -75,8 +74,6 @@ public:
     static size_t javaScriptObjectsCount();
 
     static void setDeadDecodedDataDeletionInterval(double);
-
-    static JSGlobalContextRef globalContextRefForFrame(const BWebFrame* frame);
 
     static void setMockScrollbarsEnabled(bool);
 

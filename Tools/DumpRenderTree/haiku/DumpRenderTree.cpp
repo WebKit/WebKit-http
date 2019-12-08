@@ -717,8 +717,7 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
 
         // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
         WebCoreTestSupport::resetInternalsObject(
-            DumpRenderTreeClient::globalContextRefForFrame(
-                webView->WebPage()->MainFrame()));
+            webView->WebPage()->MainFrame()->GlobalContext());
 
         // TODO efl goes to "about:blank" here. But this triggers an extra
         // dump for us, confusing the test system.
