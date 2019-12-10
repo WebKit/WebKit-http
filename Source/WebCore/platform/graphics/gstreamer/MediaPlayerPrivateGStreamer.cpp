@@ -1307,13 +1307,13 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 #endif
 
 #if USE(GSTREAMER_HOLEPUNCH)
-        // If we didn't create a video sink, store a reference to the created one.
         if (currentState == GST_STATE_NULL && newState == GST_STATE_READY) {
-            if (!m_videoSink) {
+            // If we didn't create a video sink, store a reference to the created one.
+            if (!m_videoSink)
                 g_object_get(m_pipeline.get(), "video-sink", &m_videoSink.outPtr(), nullptr);
-                if (m_videoSink)
-                    pushNextHolePunchBuffer();
-            }
+
+            // Ensure that there's a buffer with the transparent rectangle available when playback is going to start.
+            pushNextHolePunchBuffer();
         }
 #endif
 
