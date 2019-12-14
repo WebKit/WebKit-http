@@ -132,7 +132,7 @@ protected:
 
 public:
     typedef Parent Base;
-    static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesGetPropertyNames | OverridesGetCallData;
+    static constexpr unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesGetPropertyNames | OverridesGetCallData;
     static_assert(!(StructureFlags & ImplementsDefaultHasInstance), "using customHasInstance");
 
     ~JSCallbackObject();
@@ -218,8 +218,8 @@ private:
     static JSCallbackObject* asCallbackObject(JSValue);
     static JSCallbackObject* asCallbackObject(EncodedJSValue);
  
-    static EncodedJSValue JSC_HOST_CALL call(ExecState*);
-    static EncodedJSValue JSC_HOST_CALL construct(ExecState*);
+    static EncodedJSValue JSC_HOST_CALL call(JSGlobalObject*, CallFrame*);
+    static EncodedJSValue JSC_HOST_CALL construct(JSGlobalObject*, CallFrame*);
    
     JSValue getStaticValue(ExecState*, PropertyName);
     static EncodedJSValue staticFunctionGetter(ExecState*, EncodedJSValue, PropertyName);

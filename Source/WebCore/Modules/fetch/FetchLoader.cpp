@@ -33,6 +33,7 @@
 #include "CachedResourceRequestInitiators.h"
 #include "ContentSecurityPolicy.h"
 #include "FetchBody.h"
+#include "FetchBodyConsumer.h"
 #include "FetchLoaderClient.h"
 #include "FetchRequest.h"
 #include "ResourceError.h"
@@ -48,7 +49,7 @@ namespace WebCore {
 FetchLoader::~FetchLoader()
 {
     if (!m_urlForReading.isEmpty())
-        ThreadableBlobRegistry::unregisterBlobURL(*m_sessionID, m_urlForReading);
+        ThreadableBlobRegistry::unregisterBlobURL(m_urlForReading);
 }
 
 void FetchLoader::start(ScriptExecutionContext& context, const Blob& blob)
@@ -64,8 +65,7 @@ void FetchLoader::startLoadingBlobURL(ScriptExecutionContext& context, const URL
         return;
     }
 
-    m_sessionID = context.sessionID();
-    ThreadableBlobRegistry::registerBlobURL(*m_sessionID, context.securityOrigin(), m_urlForReading, blobURL);
+    ThreadableBlobRegistry::registerBlobURL(context.securityOrigin(), m_urlForReading, blobURL);
 
     ResourceRequest request(m_urlForReading);
     request.setInitiatorIdentifier(context.resourceRequestIdentifier());

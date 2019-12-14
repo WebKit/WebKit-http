@@ -309,6 +309,50 @@ SLOW_PATH_DECL(slow_path_new_promise)
     RETURN(result);
 }
 
+template<typename JSClass, typename Bytecode>
+static JSClass* createInternalFieldObject(ExecState* exec, VM& vm, const Bytecode& bytecode, Structure* baseStructure)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* constructorAsObject = asObject(GET(bytecode.m_callee).jsValue());
+
+    Structure* structure = InternalFunction::createSubclassStructure(exec, nullptr, constructorAsObject, baseStructure);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    JSClass* result = JSClass::create(vm, structure);
+
+    JSFunction* constructor = jsDynamicCast<JSFunction*>(vm, constructorAsObject);
+    if (constructor && constructor->canUseAllocationProfile()) {
+        WriteBarrier<JSCell>& cachedCallee = bytecode.metadata(exec).m_cachedCallee;
+        if (!cachedCallee)
+            cachedCallee.set(vm, exec->codeBlock(), constructor);
+        else if (cachedCallee.unvalidatedGet() != JSCell::seenMultipleCalleeObjects() && cachedCallee.get() != constructor)
+            cachedCallee.setWithoutWriteBarrier(JSCell::seenMultipleCalleeObjects());
+    }
+    RELEASE_AND_RETURN(scope, result);
+}
+
+SLOW_PATH_DECL(slow_path_create_generator)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpCreateGenerator>();
+    RETURN(createInternalFieldObject<JSGenerator>(exec, vm, bytecode, exec->lexicalGlobalObject()->generatorStructure()));
+}
+
+SLOW_PATH_DECL(slow_path_create_async_generator)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpCreateAsyncGenerator>();
+    RETURN(createInternalFieldObject<JSAsyncGenerator>(exec, vm, bytecode, exec->lexicalGlobalObject()->asyncGeneratorStructure()));
+}
+
+SLOW_PATH_DECL(slow_path_new_generator)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpNewGenerator>();
+    JSGenerator* result = JSGenerator::create(vm, exec->lexicalGlobalObject()->generatorStructure());
+    RETURN(result);
+}
+
 SLOW_PATH_DECL(slow_path_to_this)
 {
     BEGIN();
@@ -742,13 +786,13 @@ SLOW_PATH_DECL(slow_path_rshift)
         if (WTF::holds_alternative<JSBigInt*>(leftNumeric) && WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
             JSBigInt* result = JSBigInt::signedRightShift(exec, WTF::get<JSBigInt*>(leftNumeric), WTF::get<JSBigInt*>(rightNumeric));
             CHECK_EXCEPTION();
-            RETURN(result);
+            RETURN_PROFILED(result);
         }
 
-        THROW(createTypeError(exec, "Invalid mix of BigInt and other type in signed right shift operation."));
+        THROW(createTypeError(exec, "Invalid mix of BigInt and other type in signed right shift operation."_s));
     }
 
-    RETURN(jsNumber(WTF::get<int32_t>(leftNumeric) >> (WTF::get<int32_t>(rightNumeric) & 31)));
+    RETURN_PROFILED(jsNumber(WTF::get<int32_t>(leftNumeric) >> (WTF::get<int32_t>(rightNumeric) & 31)));
 }
 
 SLOW_PATH_DECL(slow_path_urshift)

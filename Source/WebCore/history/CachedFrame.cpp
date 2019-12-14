@@ -43,7 +43,6 @@
 #include "Page.h"
 #include "PageCache.h"
 #include "RenderWidget.h"
-#include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "ScriptController.h"
 #include "SerializedScriptValue.h"
@@ -179,6 +178,10 @@ CachedFrame::CachedFrame(Frame& frame)
     // Clear FrameView to reset flags such as 'firstVisuallyNonEmptyLayoutCallbackPending' so that the
     // 'DidFirstVisuallyNonEmptyLayout' callback gets called against when restoring from PageCache.
     m_view->resetLayoutMilestones();
+
+    // The main frame is reused for the navigation and the opener link to its should thus persist.
+    if (!frame.isMainFrame())
+        frame.loader().detachFromAllOpenedFrames();
 
     frame.loader().client().savePlatformDataToCachedFrame(this);
 

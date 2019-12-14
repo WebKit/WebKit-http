@@ -22,7 +22,7 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 
 import {DOM, REF} from '/library/js/Ref.js';
-import {QueryModifier} from '/assets/js/common.js';
+import {queryToParams, paramsToQuery, QueryModifier, } from '/assets/js/common.js';
 import {Configuration} from '/assets/js/configuration.js'
 
 function setEnableRecursive(element, state) {
@@ -40,7 +40,7 @@ function Drawer(controls = [], onCollapseChange) {
     const HIDDEN = false;
     const VISIBLE = true;
     let drawerState = VISIBLE;
-    let main = null;
+    let mains = [];
 
     const sidebarControl = document.getElementsByClassName('mobile-sidebar-control')[0];
     sidebarControl.classList.add('display');
@@ -50,12 +50,10 @@ function Drawer(controls = [], onCollapseChange) {
         onStateUpdate: (element, state) => {
             if (state) {
                 element.classList.remove("hidden");
-                if (main)
-                    main.classList.remove("hidden");
+                mains.forEach(main => main.classList.remove("hidden"));
             } else {
                 element.classList.add("hidden");
-                if (main)
-                    main.classList.add("hidden");
+                mains.forEach(main => main.classList.add("hidden"));
             }
 
             for (let node of element.children) {
@@ -68,8 +66,9 @@ function Drawer(controls = [], onCollapseChange) {
         },
         onElementMount: (element) => {
             let candidates = document.getElementsByClassName("main");
-            if (candidates.length)
-                main = candidates[0];
+            mains = [];
+            for (let count = 0; count < candidates.length; ++count)
+                mains.push(candidates[count]);
 
             sidebarControl.onclick = () => {
                 if (element.style.display)
@@ -107,13 +106,33 @@ function Drawer(controls = [], onCollapseChange) {
     });
 
     return `<div class="sidebar right under-topbar-with-actions unselectable" ref="${drawerRef}">
-            <button class="button desktop-control" ref="${drawerControllerRef}" style="width:96%; margin: 10px 2% 10px 2%;"></button>
+            <button class="button desktop-control" ref="${drawerControllerRef}" style="cursor: pointer; width:96%; margin: 10px 2% 10px 2%;"></button>
             ${controls.map(control => {
                 return `<div class="list">
                         <div class="item">${control}</div>
                     </div>`;
                 }).join('')}
         </div>`;
+}
+
+let configurations = []
+let configurationsDefinedCallbacks = [];
+function refreshConfigurations() {
+    let params = queryToParams(document.URL.split('?')[1]);
+    let queryParams = {};
+    if (params.branch)
+        queryParams.branch = params.branch;
+
+    const query = paramsToQuery(queryParams);
+    fetch(query ? 'api/suites?' + query: 'api/suites').then(response => {
+        response.json().then(json => {
+            configurations = json.map(pair => new Configuration(pair[0]));
+            configurationsDefinedCallbacks.forEach(callback => callback());
+        });
+    }).catch(error => {
+        // If the load fails, log the error and continue
+        console.error(JSON.stringify(error, null, 4));
+    });
 }
 
 function BranchSelector(callback) {
@@ -130,6 +149,7 @@ function BranchSelector(callback) {
                     branchModifier.remove();
                 else
                     branchModifier.replace(branch);
+                refreshConfigurations();
                 callback();
             }
         },
@@ -171,7 +191,7 @@ function BranchSelector(callback) {
         </div>`;
 }
 
-function LimitSlider(callback, max = 10000, defaultValue = 1000) {
+function LimitSlider(callback, max = 50000, defaultValue = 5000) {
     const limitModifier = new QueryModifier('limit');
     const startingValue = limitModifier.current().length ? limitModifier.current()[limitModifier.current().length -1]:defaultValue;
 
@@ -202,28 +222,14 @@ function LimitSlider(callback, max = 10000, defaultValue = 1000) {
         onStateUpdate: (element, state) => {element.value = state;}
     });
     return `<div class="input">
-            <label style="color:var(--boldInverseColor)">Limit:</label>
-            <input type="range" min="0" max="${max}" ref="${sliderRef}" style="background:var(--boldInverseColor)"></input>
+            <label>Limit:</label>
+            <input type="range" min="0" max="${max}" ref="${sliderRef}" style="background:var(--inverseColor)"></input>
             <input type="number" min="1" ref="${numberRef}" pattern="^[0-9]"></input>
         </div>`
 }
 
 function ConfigurationSelectors(callback) {
-    let configurations = []
-    let configurationsDefinedCallbacks = [];
-    fetch('api/suites').then(response => {
-        response.json().then(json => {
-            json.forEach(pair => {
-                const config = new Configuration(pair[0]);
-                configurations.push(config);
-            });
-            configurationsDefinedCallbacks.forEach(callback => {callback();});
-        });
-    }).catch(error => {
-        // If the load fails, log the error and continue
-        console.error(JSON.stringify(error, null, 4));
-    });
-
+    refreshConfigurations();
     const elements = [
         {'query': 'platform', 'name': 'Platform'},
         {'query': 'version_name', 'name': 'Version Name'},

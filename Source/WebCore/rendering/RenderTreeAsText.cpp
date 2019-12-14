@@ -35,7 +35,7 @@
 #include "HTMLNames.h"
 #include "HTMLSpanElement.h"
 #include "InlineTextBox.h"
-#include "LineLayoutInterfaceTextBoxes.h"
+#include "LineLayoutTraversal.h"
 #include "Logging.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -202,8 +202,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
         // many test results.
         const RenderText& text = downcast<RenderText>(o);
         r = IntRect(text.firstRunLocation(), text.linesBoundingBox().size());
-        auto textBoxes = LineLayoutInterface::textBoxes(text);
-        if (textBoxes.begin() == textBoxes.end())
+        if (!LineLayoutTraversal::firstTextBoxFor(text))
             adjustForTableCells = false;
     } else if (o.isBR()) {
         const RenderLineBreak& br = downcast<RenderLineBreak>(o);
@@ -478,7 +477,7 @@ void writeDebugInfo(TextStream& ts, const RenderObject& object, OptionSet<Render
     }
 }
 
-static void writeTextBox(TextStream& ts, const RenderText& o, const LineLayoutInterface::TextBox& textBox)
+static void writeTextBox(TextStream& ts, const RenderText& o, const LineLayoutTraversal::TextBoxIterator::BoxType& textBox)
 {
     auto rect = textBox.rect();
     auto logicalRect = textBox.logicalRect();
@@ -550,7 +549,7 @@ void write(TextStream& ts, const RenderObject& o, OptionSet<RenderAsTextFlag> be
 
     if (is<RenderText>(o)) {
         auto& text = downcast<RenderText>(o);
-        for (auto textBox : LineLayoutInterface::textBoxes(text)) {
+        for (auto& textBox : LineLayoutTraversal::textBoxesFor(text)) {
             ts << indent;
             writeTextBox(ts, text, textBox);
         }

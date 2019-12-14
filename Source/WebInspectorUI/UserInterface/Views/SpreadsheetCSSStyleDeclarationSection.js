@@ -226,23 +226,20 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
 
     // SpreadsheetSelectorField delegate
 
-    spreadsheetSelectorFieldDidChange(direction)
+    spreadsheetSelectorFieldDidCommit(changed)
     {
         let selectorText = this._selectorElement.textContent.trim();
-
-        if (!selectorText || selectorText === this._style.ownerRule.selectorText)
-            this._discardSelectorChange();
-        else {
+        if (selectorText && changed) {
             this.dispatchEventToListeners(WI.SpreadsheetCSSStyleDeclarationSection.Event.SelectorWillChange);
             this._style.ownerRule.singleFireEventListener(WI.CSSRule.Event.SelectorChanged, this._renderSelector, this);
             this._style.ownerRule.selectorText = selectorText;
-        }
+        } else
+            this._discardSelectorChange();
+    }
 
-        if (!direction) {
-            // Don't do anything when it's a blur event.
-            return;
-        }
-
+    spreadsheetSelectorFieldWillNavigate(direction)
+    {
+        console.assert(direction);
         if (direction === "forward")
             this._propertiesEditor.startEditingFirstProperty();
         else if (direction === "backward") {
@@ -560,11 +557,8 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
             let sourceCode = this._style.ownerRule.sourceCodeLocation.displaySourceCode;
             if (sourceCode instanceof WI.CSSStyleSheet || (sourceCode instanceof WI.Resource && sourceCode.type === WI.Resource.Type.StyleSheet))
                 label = WI.UIString("Reveal in Style Sheet");
-            else if (WI.settings.experimentalEnableSourcesTab.value)
-                label = WI.UIString("Reveal in Sources Tab");
             else
-                label = WI.UIString("Reveal in Resources Tab");
-
+                label = WI.UIString("Reveal in Sources Tab");
             contextMenu.appendItem(label, () => {
                 WI.showSourceCodeLocation(this._style.ownerRule.sourceCodeLocation, {
                     ignoreNetworkTab: true,

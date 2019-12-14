@@ -32,7 +32,6 @@
 #include "JSDOMPromiseDeferred.h"
 #include "ReadableStreamSink.h"
 #include "SharedBuffer.h"
-#include <pal/SessionID.h>
 
 namespace WebCore {
 
@@ -75,7 +74,7 @@ public:
     void setAsLoading() { m_isLoading = true; }
 
 private:
-    Ref<Blob> takeAsBlob(PAL::SessionID);
+    Ref<Blob> takeAsBlob();
 
     Type m_type;
     String m_contentType;

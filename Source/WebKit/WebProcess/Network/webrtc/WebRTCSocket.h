@@ -28,6 +28,7 @@
 #if USE(LIBWEBRTC)
 
 #include "RTCNetwork.h"
+#include <WebCore/LibWebRTCSocketIdentifier.h>
 #include <wtf/Function.h>
 
 namespace IPC {
@@ -43,11 +44,11 @@ class LibWebRTCSocketFactory;
 
 class WebRTCSocket {
 public:
-    WebRTCSocket(LibWebRTCSocketFactory&, uint64_t);
+    WebRTCSocket(LibWebRTCSocketFactory&, WebCore::LibWebRTCSocketIdentifier);
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
-    static void signalOnNetworkThread(LibWebRTCSocketFactory&, uint64_t, Function<void(LibWebRTCSocket&)>&&);
+    static void signalOnNetworkThread(LibWebRTCSocketFactory&, WebCore::LibWebRTCSocketIdentifier, Function<void(LibWebRTCSocket&)>&&);
 
 private:
     void signalReadPacket(const IPC::DataReference&, const RTCNetwork::IPAddress&, uint16_t port, int64_t);
@@ -55,10 +56,10 @@ private:
     void signalAddressReady(const RTCNetwork::SocketAddress&);
     void signalConnect();
     void signalClose(int);
-    void signalNewConnection(uint64_t newSocketIdentifier, const WebKit::RTCNetwork::SocketAddress&);
+    void signalNewConnection(WebCore::LibWebRTCSocketIdentifier newSocketIdentifier, const WebKit::RTCNetwork::SocketAddress&);
 
     LibWebRTCSocketFactory& m_factory;
-    uint64_t m_identifier { 0 };
+    WebCore::LibWebRTCSocketIdentifier m_identifier;
 };
 
 } // namespace WebKit

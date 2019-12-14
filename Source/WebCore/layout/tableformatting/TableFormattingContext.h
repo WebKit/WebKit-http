@@ -28,28 +28,30 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "TableFormattingState.h"
+#include "TableGrid.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
 namespace Layout {
 
+class TableFormattingState;
 // This class implements the layout logic for table formatting contexts.
 // https://www.w3.org/TR/CSS22/tables.html
 class TableFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(TableFormattingContext);
 public:
-    TableFormattingContext(const Box& formattingContextRoot, TableFormattingState&);
-    void layout() override;
+    TableFormattingContext(const Container& formattingContextRoot, TableFormattingState&);
+    void layoutInFlowContent() override;
 
 private:
     class Geometry : public FormattingContext::Geometry {
     public:
-        Geometry(const TableFormattingContext&);
-
         HeightAndMargin tableCellHeightAndMargin(const Box&) const;
 
     private:
+        friend class TableFormattingContext;
+        Geometry(const TableFormattingContext&);
+
         const TableFormattingContext& formattingContext() const { return downcast<TableFormattingContext>(FormattingContext::Geometry::formattingContext()); }
     };
     TableFormattingContext::Geometry geometry() const { return Geometry(*this); }
@@ -69,7 +71,8 @@ private:
 
     void initializeDisplayBoxToBlank(Display::Box&) const;
 
-    TableFormattingState& formattingState() const { return downcast<TableFormattingState>(FormattingContext::formattingState()); }
+    const TableFormattingState& formattingState() const { return downcast<TableFormattingState>(FormattingContext::formattingState()); }
+    TableFormattingState& formattingState() { return downcast<TableFormattingState>(FormattingContext::formattingState()); }
 };
 
 inline TableFormattingContext::Geometry::Geometry(const TableFormattingContext& tableFormattingContext)

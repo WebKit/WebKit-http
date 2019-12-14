@@ -767,6 +767,15 @@ public:
         m_opInfo2 = internal;
     }
 
+    void convertToNewInternalFieldObject(NodeType newOp, RegisteredStructure structure)
+    {
+        ASSERT(m_op == CreateAsyncGenerator || m_op == CreateGenerator);
+        setOpAndDefaultFlags(newOp);
+        children.reset();
+        m_opInfo = structure;
+        m_opInfo2 = OpInfoWrapper();
+    }
+
     void convertToNewArrayBuffer(FrozenValue* immutableButterfly);
     
     void convertToDirectCall(FrozenValue*);
@@ -1372,7 +1381,7 @@ public:
         return op() == IsCellWithType;
     }
 
-    SpeculatedType speculatedTypeForQuery()
+    Optional<SpeculatedType> speculatedTypeForQuery()
     {
         return speculationFromJSType(queriedType());
     }
@@ -1410,6 +1419,9 @@ public:
         case ValueBitAnd:
         case ValueBitOr:
         case ValueBitXor:
+        case ValueBitNot:
+        case ValueBitLShift:
+        case ValueBitRShift:
         case ValueNegate:
             return true;
         default:
@@ -1720,6 +1732,7 @@ public:
         case ValueBitXor:
         case ValueBitNot:
         case ValueBitLShift:
+        case ValueBitRShift:
         case CallObjectConstructor:
         case LoadKeyFromMapBucket:
         case LoadValueFromMapBucket:
@@ -1909,6 +1922,8 @@ public:
         case ArrayifyToStructure:
         case NewObject:
         case NewPromise:
+        case NewGenerator:
+        case NewAsyncGenerator:
         case NewStringObject:
             return true;
         default:
@@ -2094,6 +2109,7 @@ public:
         case GetByVal:
         case StringCharAt:
         case StringCharCodeAt:
+        case StringCodePointAt:
         case CheckArray:
         case Arrayify:
         case ArrayifyToStructure:

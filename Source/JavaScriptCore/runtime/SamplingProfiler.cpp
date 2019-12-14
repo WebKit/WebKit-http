@@ -65,8 +65,8 @@ static double sNumTotalWalks = 0;
 static double sNumFailedWalks = 0;
 static const uint32_t sNumWalkReportingFrequency = 50;
 static const double sWalkErrorPercentage = .05;
-static const bool sReportStatsOnlyWhenTheyreAboveThreshold = false;
-static const bool sReportStats = false;
+static constexpr bool sReportStatsOnlyWhenTheyreAboveThreshold = false;
+static constexpr bool sReportStats = false;
 
 using FrameType = SamplingProfiler::FrameType;
 using UnprocessedStackFrame = SamplingProfiler::UnprocessedStackFrame;
@@ -1013,7 +1013,7 @@ void SamplingProfiler::registerForReportAtExit()
     if (!profilesToReport) {
         profilesToReport = new HashSet<RefPtr<SamplingProfiler>>();
         atexit([]() {
-            for (auto profile : *profilesToReport)
+            for (const auto& profile : *profilesToReport)
                 profile->reportDataToOptionFile();
         });
     }
@@ -1026,6 +1026,7 @@ void SamplingProfiler::reportDataToOptionFile()
 {
     if (m_needsReportAtExit) {
         m_needsReportAtExit = false;
+        JSLockHolder holder(m_vm);
         const char* path = Options::samplingProfilerPath();
         StringPrintStream pathOut;
         pathOut.print(path, "/");
@@ -1065,7 +1066,7 @@ void SamplingProfiler::reportTopFunctions(PrintStream& out)
     auto takeMax = [&] () -> std::pair<String, size_t> {
         String maxFrameDescription;
         size_t maxFrameCount = 0;
-        for (auto entry : functionCounts) {
+        for (const auto& entry : functionCounts) {
             if (entry.value > maxFrameCount) {
                 maxFrameCount = entry.value;
                 maxFrameDescription = entry.key;
@@ -1145,7 +1146,7 @@ void SamplingProfiler::reportTopBytecodes(PrintStream& out)
     auto takeMax = [&] () -> std::pair<String, size_t> {
         String maxFrameDescription;
         size_t maxFrameCount = 0;
-        for (auto entry : bytecodeCounts) {
+        for (const auto& entry : bytecodeCounts) {
             if (entry.value > maxFrameCount) {
                 maxFrameCount = entry.value;
                 maxFrameDescription = entry.key;

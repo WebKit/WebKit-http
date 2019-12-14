@@ -30,7 +30,7 @@
 
 namespace WebKit {
 
-MockAuthenticatorManager::MockAuthenticatorManager(MockWebAuthenticationConfiguration&& configuration)
+MockAuthenticatorManager::MockAuthenticatorManager(WebCore::MockWebAuthenticationConfiguration&& configuration)
     : m_testConfiguration(WTFMove(configuration))
 {
 }
@@ -45,7 +45,7 @@ void MockAuthenticatorManager::respondReceivedInternal(Respond&& respond)
     if (m_testConfiguration.silentFailure)
         return;
 
-    pendingCompletionHandler()(WTFMove(respond));
+    invokePendingCompletionHandler(WTFMove(respond));
     clearStateAsync();
     requestTimeOutTimer().stop();
 }

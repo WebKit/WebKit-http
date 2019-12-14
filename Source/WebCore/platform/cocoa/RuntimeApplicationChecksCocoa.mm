@@ -90,6 +90,12 @@ bool isInWebProcess()
     return mainBundleIsWebProcess;
 }
 
+bool isInNetworkProcess()
+{
+    static bool mainBundleIsNetworkProcess = [[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.WebKit.Networking"];
+    return mainBundleIsNetworkProcess;
+}
+
 static bool applicationBundleIsEqualTo(const String& bundleIdentifierString)
 {
     return applicationBundleIdentifier() == bundleIdentifierString;
@@ -316,6 +322,18 @@ bool IOSApplication::isEvernote()
 {
     static bool isEvernote = applicationBundleIsEqualTo("com.evernote.iPhone.Evernote"_s);
     return isEvernote;
+}
+
+bool IOSApplication::isEventbrite()
+{
+    static bool isEventbrite = applicationBundleIsEqualTo("com.eventbrite.attendee"_s);
+    return isEventbrite;
+}
+
+bool IOSApplication::isDataActivation()
+{
+    static bool isDataActivation = applicationBundleIsEqualTo("com.apple.DataActivation"_s);
+    return isDataActivation;
 }
 
 #endif

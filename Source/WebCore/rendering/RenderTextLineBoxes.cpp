@@ -146,37 +146,6 @@ InlineTextBox* RenderTextLineBoxes::findNext(int offset, int& position) const
     return current;
 }
 
-IntRect RenderTextLineBoxes::boundingBox(const RenderText& renderer) const
-{
-    if (!m_first)
-        return IntRect();
-
-    // Return the width of the minimal left side and the maximal right side.
-    float logicalLeftSide = 0;
-    float logicalRightSide = 0;
-    for (auto* current = m_first; current; current = current->nextTextBox()) {
-        if (current == m_first || current->logicalLeft() < logicalLeftSide)
-            logicalLeftSide = current->logicalLeft();
-        if (current == m_first || current->logicalRight() > logicalRightSide)
-            logicalRightSide = current->logicalRight();
-    }
-    
-    bool isHorizontal = renderer.style().isHorizontalWritingMode();
-    
-    float x = isHorizontal ? logicalLeftSide : m_first->x();
-    float y = isHorizontal ? m_first->y() : logicalLeftSide;
-    float width = isHorizontal ? logicalRightSide - logicalLeftSide : m_last->logicalBottom() - x;
-    float height = isHorizontal ? m_last->logicalBottom() - y : logicalRightSide - logicalLeftSide;
-    return enclosingIntRect(FloatRect(x, y, width, height));
-}
-
-IntPoint RenderTextLineBoxes::firstRunLocation() const
-{
-    if (!m_first)
-        return IntPoint();
-    return IntPoint(m_first->topLeft());
-}
-
 LayoutRect RenderTextLineBoxes::visualOverflowBoundingBox(const RenderText& renderer) const
 {
     if (!m_first)
@@ -200,71 +169,6 @@ LayoutRect RenderTextLineBoxes::visualOverflowBoundingBox(const RenderText& rend
     return rect;
 }
 
-bool RenderTextLineBoxes::hasRenderedText() const
-{
-    for (auto* box = m_first; box; box = box->nextTextBox()) {
-        if (box->len())
-            return true;
-    }
-    return false;
-}
-
-int RenderTextLineBoxes::caretMinOffset() const
-{
-    auto box = m_first;
-    if (!box)
-        return 0;
-    int minOffset = box->start();
-    for (box = box->nextTextBox(); box; box = box->nextTextBox())
-        minOffset = std::min<int>(minOffset, box->start());
-    return minOffset;
-}
-
-int RenderTextLineBoxes::caretMaxOffset(const RenderText& renderer) const
-{
-    auto box = m_last;
-    if (!box)
-        return renderer.text().length();
-
-    int maxOffset = box->start() + box->len();
-    for (box = box->prevTextBox(); box; box = box->prevTextBox())
-        maxOffset = std::max<int>(maxOffset, box->start() + box->len());
-    return maxOffset;
-}
-
-bool RenderTextLineBoxes::containsOffset(const RenderText& renderer, unsigned offset, OffsetType type) const
-{
-    for (auto* box = m_first; box; box = box->nextTextBox()) {
-        if (offset < box->start() && !renderer.containsReversedText())
-            return false;
-        unsigned boxEnd = box->start() + box->len();
-        if (offset >= box->start() && offset <= boxEnd) {
-            if (offset == boxEnd && (type == CharacterOffset || box->isLineBreak()))
-                continue;
-            if (type == CharacterOffset)
-                return true;
-            // Return false for offsets inside composed characters.
-            return !offset || offset == static_cast<unsigned>(renderer.nextOffset(renderer.previousOffset(offset)));
-        }
-    }
-    return false;
-}
-
-unsigned RenderTextLineBoxes::countCharacterOffsetsUntil(unsigned offset) const
-{
-    unsigned result = 0;
-    for (auto* box = m_first; box; box = box->nextTextBox()) {
-        if (offset < box->start())
-            return result;
-        if (offset <= box->start() + box->len()) {
-            result += offset - box->start();
-            return result;
-        }
-        result += box->len();
-    }
-    return result;
-}
-
 enum ShouldAffinityBeDownstream { AlwaysDownstream, AlwaysUpstream, UpstreamIfPositionIsNotAtStart };
 
 static bool lineDirectionPointFitsInBox(int pointLineDirection, const InlineTextBox& box, ShouldAffinityBeDownstream& shouldAffinityBeDownstream)
@@ -275,7 +179,7 @@ static bool lineDirectionPointFitsInBox(int pointLineDirection, const InlineText
     // the affinity must be downstream so the position doesn't jump back to the previous line
     // except when box is the first box in the line
     if (pointLineDirection <= box.logicalLeft()) {
-        shouldAffinityBeDownstream = !box.prevLeafChild() ? UpstreamIfPositionIsNotAtStart : AlwaysDownstream;
+        shouldAffinityBeDownstream = !box.previousLeafOnLine() ? UpstreamIfPositionIsNotAtStart : AlwaysDownstream;
         return true;
     }
 
@@ -290,10 +194,10 @@ static bool lineDirectionPointFitsInBox(int pointLineDirection, const InlineText
 
     // box is first on line
     // and the x coordinate is to the left of the first text box left edge
-    if (!box.prevLeafChildIgnoringLineBreak() && pointLineDirection < box.logicalLeft())
+    if (!box.previousLeafOnLineIgnoringLineBreak() && pointLineDirection < box.logicalLeft())
         return true;
 
-    if (!box.nextLeafChildIgnoringLineBreak()) {
+    if (!box.nextLeafOnLineIgnoringLineBreak()) {
         // box is last on line
         // and the x coordinate is to the right of the last text box right edge
         // generate VisiblePosition, use UPSTREAM affinity if possible
@@ -332,7 +236,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
     if (positionIsAtStartOfBox == box.isLeftToRightDirection()) {
         // offset is on the left edge
 
-        const InlineBox* prevBox = box.prevLeafChildIgnoringLineBreak();
+        const InlineBox* prevBox = box.previousLeafOnLineIgnoringLineBreak();
         if ((prevBox && prevBox->bidiLevel() == box.bidiLevel())
             || box.renderer().containingBlock()->style().direction() == box.direction()) // FIXME: left on 12CBA
             return createVisiblePositionForBox(box, box.caretLeftmostOffset(), shouldAffinityBeDownstream);
@@ -342,7 +246,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
             const InlineBox* leftmostBox;
             do {
                 leftmostBox = prevBox;
-                prevBox = leftmostBox->prevLeafChildIgnoringLineBreak();
+                prevBox = leftmostBox->previousLeafOnLineIgnoringLineBreak();
             } while (prevBox && prevBox->bidiLevel() > box.bidiLevel());
             return createVisiblePositionForBox(*leftmostBox, leftmostBox->caretRightmostOffset(), shouldAffinityBeDownstream);
         }
@@ -353,7 +257,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
             const InlineBox* nextBox = &box;
             do {
                 rightmostBox = nextBox;
-                nextBox = rightmostBox->nextLeafChildIgnoringLineBreak();
+                nextBox = rightmostBox->nextLeafOnLineIgnoringLineBreak();
             } while (nextBox && nextBox->bidiLevel() >= box.bidiLevel());
             return createVisiblePositionForBox(*rightmostBox,
                 box.isLeftToRightDirection() ? rightmostBox->caretMaxOffset() : rightmostBox->caretMinOffset(), shouldAffinityBeDownstream);
@@ -362,7 +266,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
         return createVisiblePositionForBox(box, box.caretRightmostOffset(), shouldAffinityBeDownstream);
     }
 
-    const InlineBox* nextBox = box.nextLeafChildIgnoringLineBreak();
+    const InlineBox* nextBox = box.nextLeafOnLineIgnoringLineBreak();
     if ((nextBox && nextBox->bidiLevel() == box.bidiLevel())
         || box.renderer().containingBlock()->style().direction() == box.direction())
         return createVisiblePositionForBox(box, box.caretRightmostOffset(), shouldAffinityBeDownstream);
@@ -373,7 +277,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
         const InlineBox* rightmostBox;
         do {
             rightmostBox = nextBox;
-            nextBox = rightmostBox->nextLeafChildIgnoringLineBreak();
+            nextBox = rightmostBox->nextLeafOnLineIgnoringLineBreak();
         } while (nextBox && nextBox->bidiLevel() > box.bidiLevel());
         return createVisiblePositionForBox(*rightmostBox, rightmostBox->caretLeftmostOffset(), shouldAffinityBeDownstream);
     }
@@ -384,7 +288,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
         const InlineBox* prevBox = &box;
         do {
             leftmostBox = prevBox;
-            prevBox = leftmostBox->prevLeafChildIgnoringLineBreak();
+            prevBox = leftmostBox->previousLeafOnLineIgnoringLineBreak();
         } while (prevBox && prevBox->bidiLevel() >= box.bidiLevel());
         return createVisiblePositionForBox(*leftmostBox,
             box.isLeftToRightDirection() ? leftmostBox->caretMinOffset() : leftmostBox->caretMaxOffset(), shouldAffinityBeDownstream);
@@ -404,7 +308,7 @@ VisiblePosition RenderTextLineBoxes::positionForPoint(const RenderText& renderer
 
     InlineTextBox* lastBox = nullptr;
     for (auto* box = m_first; box; box = box->nextTextBox()) {
-        if (box->isLineBreak() && !box->prevLeafChild() && box->nextLeafChild() && !box->nextLeafChild()->isLineBreak())
+        if (box->isLineBreak() && !box->previousLeafOnLine() && box->nextLeafOnLine() && !box->nextLeafOnLine()->isLineBreak())
             box = box->nextTextBox();
 
         auto& rootBox = box->root();
@@ -503,14 +407,6 @@ void RenderTextLineBoxes::collectSelectionRectsForRange(unsigned start, unsigned
         if (!rect.size().isEmpty())
             rects.append(rect);
     }
-}
-
-Vector<IntRect> RenderTextLineBoxes::absoluteRects(const LayoutPoint& accumulatedOffset) const
-{
-    Vector<IntRect> rects;
-    for (auto* box = m_first; box; box = box->nextTextBox())
-        rects.append(enclosingIntRect(FloatRect(accumulatedOffset + box->topLeft(), box->size())));
-    return rects;
 }
 
 static FloatRect localQuadForTextBox(const InlineTextBox& box, unsigned start, unsigned end, bool useSelectionHeight)

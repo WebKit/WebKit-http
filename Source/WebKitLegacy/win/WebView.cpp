@@ -123,6 +123,7 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/LegacySchemeRegistry.h>
 #include <WebCore/LibWebRTCProvider.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/Logging.h>
@@ -152,7 +153,6 @@
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
-#include <WebCore/SchemeRegistry.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/Scrollbar.h>
 #include <WebCore/ScrollbarTheme.h>
@@ -1269,9 +1269,9 @@ void WebView::paintWithDirect2D()
             gc.scale(FloatSize(scaleFactor, scaleFactor));
             gc.clip(logicalDirtyRect);
             frameView->paint(gc, logicalDirtyRect);
-            gc.restore();
             if (m_shouldInvertColors)
                 gc.fillRect(logicalDirtyRect, Color::white, CompositeDifference);
+            gc.restore();
         }
     }
 
@@ -1421,9 +1421,9 @@ void WebView::paintIntoBackingStore(FrameView* frameView, HDC bitmapDC, const In
         gc.scale(FloatSize(scaleFactor, scaleFactor));
         gc.clip(logicalDirtyRect);
         frameView->paint(gc, logicalDirtyRect);
-        gc.restore();
         if (m_shouldInvertColors)
             gc.fillRect(logicalDirtyRect, Color::white, CompositeDifference);
+        gc.restore();
     }
     gc.restore();
 }
@@ -1456,7 +1456,7 @@ void WebView::frameRect(RECT* rect)
     ::GetWindowRect(m_viewWindow, rect);
 }
 
-class WindowCloseTimer final : public WebCore::SuspendableTimer {
+class WindowCloseTimer final : public WebCore::SuspendableTimerBase {
 public:
     static WindowCloseTimer* create(WebView*);
 
@@ -1467,7 +1467,7 @@ private:
     void contextDestroyed() override;
     const char* activeDOMObjectName() const override { return "WindowCloseTimer"; }
 
-    // SuspendableTimer API.
+    // SuspendableTimerBase API.
     void fired() override;
 
     WebView* m_webView;
@@ -1492,7 +1492,7 @@ WindowCloseTimer* WindowCloseTimer::create(WebView* webView)
 }
 
 WindowCloseTimer::WindowCloseTimer(ScriptExecutionContext& context, WebView* webView)
-    : SuspendableTimer(context)
+    : SuspendableTimerBase(&context)
     , m_webView(webView)
 {
     ASSERT_ARG(webView, webView);
@@ -1500,7 +1500,7 @@ WindowCloseTimer::WindowCloseTimer(ScriptExecutionContext& context, WebView* web
 
 void WindowCloseTimer::contextDestroyed()
 {
-    SuspendableTimer::contextDestroyed();
+    SuspendableTimerBase::contextDestroyed();
     delete this;
 }
 
@@ -3102,6 +3102,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
     auto storageProvider = PageStorageSessionProvider::create();
     PageConfiguration configuration(
+        PAL::SessionID::defaultSessionID(),
         makeUniqueRef<WebEditorClient>(this),
         SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
@@ -4240,7 +4241,7 @@ HRESULT WebView::registerURLSchemeAsLocal(_In_ BSTR scheme)
     if (!scheme)
         return E_POINTER;
 
-    SchemeRegistry::registerURLSchemeAsLocal(toString(scheme));
+    LegacySchemeRegistry::registerURLSchemeAsLocal(toString(scheme));
 
     return S_OK;
 }
@@ -5608,6 +5609,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setCoreMathMLEnabled(!!enabled);
+
+    hr = prefsPrivate->requestIdleCallbackEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setRequestIdleCallbackEnabled(!!enabled);
 
     return S_OK;
 }
@@ -7327,25 +7333,24 @@ HRESULT WebView::geolocationDidFailWithError(_In_opt_ IWebError* error)
 
 HRESULT WebView::setDomainRelaxationForbiddenForURLScheme(BOOL forbidden, _In_ BSTR scheme)
 {
-    SchemeRegistry::setDomainRelaxationForbiddenForURLScheme(forbidden, toString(scheme));
+    LegacySchemeRegistry::setDomainRelaxationForbiddenForURLScheme(forbidden, toString(scheme));
     return S_OK;
 }
 
 HRESULT WebView::registerURLSchemeAsSecure(_In_ BSTR scheme)
 {
-    SchemeRegistry::registerURLSchemeAsSecure(toString(scheme));
+    LegacySchemeRegistry::registerURLSchemeAsSecure(toString(scheme));
     return S_OK;
 }
 
 HRESULT WebView::registerURLSchemeAsAllowingLocalStorageAccessInPrivateBrowsing(_In_ BSTR scheme)
 {
-    SchemeRegistry::registerURLSchemeAsAllowingLocalStorageAccessInPrivateBrowsing(toString(scheme));
     return S_OK;
 }
 
 HRESULT WebView::registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing(_In_ BSTR scheme)
 {
-    SchemeRegistry::registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing(toString(scheme));
+    LegacySchemeRegistry::registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing(toString(scheme));
     return S_OK;
 }
 

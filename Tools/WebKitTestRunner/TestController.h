@@ -210,6 +210,7 @@ public:
     void setStatisticsDebugMode(bool value);
     void setStatisticsPrevalentResourceForDebugMode(WKStringRef hostName);
     void setStatisticsLastSeen(WKStringRef hostName, double seconds);
+    void setStatisticsMergeStatistic(WKStringRef host, WKStringRef topFrameDomain1, WKStringRef topFrameDomain2, double lastSeen, bool hadUserInteraction, double mostRecentUserInteraction, bool isGrandfathered, bool isPrevalent, bool isVeryPrevalent, int dataRecordsRemoved);
     void setStatisticsPrevalentResource(WKStringRef hostName, bool value);
     void setStatisticsVeryPrevalentResource(WKStringRef hostName, bool value);
     String dumpResourceLoadStatistics();
@@ -220,8 +221,10 @@ public:
     bool isStatisticsRegisteredAsRedirectingTo(WKStringRef hostRedirectedFrom, WKStringRef hostRedirectedTo);
     void setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value);
     bool isStatisticsHasHadUserInteraction(WKStringRef hostName);
+    bool isStatisticsOnlyInDatabaseOnce(WKStringRef subHost, WKStringRef topHost);
     void setStatisticsGrandfathered(WKStringRef hostName, bool value);
     bool isStatisticsGrandfathered(WKStringRef hostName);
+    void setUseITPDatabase(bool value);
     void setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName);
     void setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo);
@@ -248,6 +251,7 @@ public:
     bool isStatisticsHasLocalStorage(WKStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
     bool hasStatisticsIsolatedSession(WKStringRef hostName);
+    void setStatisticsShouldDowngradeReferrer(bool value);
     void statisticsResetToConsistentState();
 
     void getAllStorageAccessEntries();
@@ -290,9 +294,10 @@ public:
     
     void sendDisplayConfigurationChangedMessageForTesting();
 
-    void setWebAuthenticationMockConfiguration(WKDictionaryRef);
+    void setServiceWorkerFetchTimeoutForTesting(double seconds);
+
     void addTestKeyToKeychain(const String& privateKeyBase64, const String& attrLabel, const String& applicationTagBase64);
-    void cleanUpKeychain(const String& attrLabel);
+    void cleanUpKeychain(const String& attrLabel, const String& applicationTagBase64);
     bool keyExistsInKeychain(const String& attrLabel, const String& applicationTagBase64);
 
 #if PLATFORM(COCOA)
@@ -308,7 +313,6 @@ public:
     void setAllowedMenuActions(const Vector<String>&);
     void installCustomMenuAction(const String& name, bool dismissesAutomatically);
 
-    bool canDoServerTrustEvaluationInNetworkProcess() const;
     uint64_t serverTrustEvaluationCallbackCallsCount() const { return m_serverTrustEvaluationCallbackCallsCount; }
 
     void setShouldDismissJavaScriptAlertsAsynchronously(bool);

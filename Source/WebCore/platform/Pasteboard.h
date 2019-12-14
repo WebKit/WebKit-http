@@ -148,8 +148,8 @@ public:
     virtual bool readImage(Ref<SharedBuffer>&&, const String& type, PresentationSize preferredPresentationSize = { }) = 0;
     virtual bool readURL(const URL&, const String& title) = 0;
     virtual bool readDataBuffer(SharedBuffer&, const String& type, const String& name, PresentationSize preferredPresentationSize = { }) = 0;
-#endif
     virtual bool readPlainText(const String&) = 0;
+#endif
 };
 
 struct PasteboardPlainText {
@@ -269,9 +269,14 @@ public:
 #if PLATFORM(COCOA)
     static bool shouldTreatCocoaTypeAsFile(const String&);
     WEBCORE_EXPORT static NSArray *supportedFileUploadPasteboardTypes();
-    const String& name() const { return m_pasteboardName; }
     long changeCount() const;
     const PasteboardCustomData& readCustomData();
+#endif
+
+#if PLATFORM(COCOA)
+    const String& name() const { return m_pasteboardName; }
+#else
+    const String& name() const { return emptyString(); }
 #endif
 
 #if PLATFORM(WIN)
@@ -282,6 +287,13 @@ public:
     COMPtr<WCDataObject> writableDataObject() const { return m_writableDataObject; }
     void writeImageToDataObject(Element&, const URL&); // FIXME: Layering violation.
 #endif
+
+    Vector<PasteboardItemInfo> allPasteboardItemInfo() const;
+    PasteboardItemInfo pasteboardItemInfo(size_t index) const;
+
+    String readString(size_t index, const String& type);
+    RefPtr<WebCore::SharedBuffer> readBuffer(size_t index, const String& type);
+    URL readURL(size_t index, String& title);
 
 private:
 #if PLATFORM(IOS_FAMILY)

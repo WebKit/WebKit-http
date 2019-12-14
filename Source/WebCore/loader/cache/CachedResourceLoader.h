@@ -129,7 +129,6 @@ public:
     Document* document() const { return m_document.get(); } // Can be null
     void setDocument(Document* document) { m_document = makeWeakPtr(document); }
     void clearDocumentLoader() { m_documentLoader = nullptr; }
-    PAL::SessionID sessionID() const;
 
     void loadDone(LoadCompletionType, bool shouldPerformPostLoadActions = true);
 
@@ -168,7 +167,7 @@ private:
 
     ResourceErrorOr<CachedResourceHandle<CachedResource>> requestResource(CachedResource::Type, CachedResourceRequest&&, ForPreload = ForPreload::No, DeferOption = DeferOption::NoDefer);
     CachedResourceHandle<CachedResource> revalidateResource(CachedResourceRequest&&, CachedResource&);
-    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, CachedResourceRequest&&, const CookieJar*);
+    CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, PAL::SessionID, CachedResourceRequest&&, const CookieJar&);
 
     void prepareFetch(CachedResource::Type, CachedResourceRequest&);
     void updateHTTPRequestHeaders(CachedResource::Type, CachedResourceRequest&);
@@ -179,7 +178,7 @@ private:
     RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, CachedResourceRequest&, CachedResource* existingResource, ForPreload, DeferOption) const;
 
     bool shouldUpdateCachedResourceWithCurrentRequest(const CachedResource&, const CachedResourceRequest&);
-    CachedResourceHandle<CachedResource> updateCachedResourceWithCurrentRequest(const CachedResource&, CachedResourceRequest&&, const PAL::SessionID&, const CookieJar*);
+    CachedResourceHandle<CachedResource> updateCachedResourceWithCurrentRequest(const CachedResource&, CachedResourceRequest&&, const PAL::SessionID&, const CookieJar&);
 
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(const CachedResourceRequest&, CachedResource&, ResourceError&);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
@@ -191,6 +190,10 @@ private:
 
     bool canRequestAfterRedirection(CachedResource::Type, const URL&, const ResourceLoaderOptions&) const;
     bool canRequestInContentDispositionAttachmentSandbox(CachedResource::Type, const URL&) const;
+
+#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
+    bool shouldSendXTempTabletHeader(CachedResource::Type, Frame&, const URL&) const;
+#endif
 
     HashSet<String> m_validatedURLs;
     mutable DocumentResourceMap m_documentResources;
@@ -211,6 +214,9 @@ private:
     bool m_autoLoadImages : 1;
     bool m_imagesEnabled : 1;
     bool m_allowStaleResources : 1;
+#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
+    bool m_isXTempTabletHeaderExperimentOver : 1;
+#endif
 };
 
 class ResourceCacheValidationSuppressor {

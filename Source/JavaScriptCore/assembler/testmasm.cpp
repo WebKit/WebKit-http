@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -336,7 +336,7 @@ static Vector<int64_t> int64Operands()
 #if CPU(X86_64)
 void testBranchTestBit32RegReg()
 {
-    for (uint32_t value : int32Operands()) {
+    for (auto value : int32Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -351,14 +351,14 @@ void testBranchTestBit32RegReg()
             jit.ret();
         });
 
-        for (uint32_t value2 : int32Operands())
+        for (auto value2 : int32Operands())
             CHECK_EQ(invoke<int>(test, value, value2), (value>>(value2%32))&1);
     }
 }
 
 void testBranchTestBit32RegImm()
 {
-    for (uint32_t value : int32Operands()) {
+    for (auto value : int32Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -373,14 +373,14 @@ void testBranchTestBit32RegImm()
             jit.ret();
         });
 
-        for (uint32_t value2 : int32Operands())
+        for (auto value2 : int32Operands())
             CHECK_EQ(invoke<int>(test, value2), (value2>>(value%32))&1);
     }
 }
 
 void testBranchTestBit32AddrImm()
 {
-    for (uint32_t value : int32Operands()) {
+    for (auto value : int32Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -395,14 +395,14 @@ void testBranchTestBit32AddrImm()
             jit.ret();
         });
 
-        for (uint32_t value2 : int32Operands())
+        for (auto value2 : int32Operands())
             CHECK_EQ(invoke<int>(test, &value2), (value2>>(value%32))&1);
     }
 }
 
 void testBranchTestBit64RegReg()
 {
-    for (uint64_t value : int64Operands()) {
+    for (auto value : int64Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -417,14 +417,14 @@ void testBranchTestBit64RegReg()
             jit.ret();
         });
 
-        for (uint64_t value2 : int64Operands())
+        for (auto value2 : int64Operands())
             CHECK_EQ(invoke<long int>(test, value, value2), (value>>(value2%64))&1);
     }
 }
 
 void testBranchTestBit64RegImm()
 {
-    for (uint64_t value : int64Operands()) {
+    for (auto value : int64Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -439,14 +439,14 @@ void testBranchTestBit64RegImm()
             jit.ret();
         });
 
-        for (uint64_t value2 : int64Operands())
+        for (auto value2 : int64Operands())
             CHECK_EQ(invoke<long int>(test, value2), (value2>>(value%64))&1);
     }
 }
 
 void testBranchTestBit64AddrImm()
 {
-    for (uint64_t value : int64Operands()) {
+    for (auto value : int64Operands()) {
         auto test = compile([=] (CCallHelpers& jit) {
             emitFunctionPrologue(jit);
 
@@ -461,7 +461,7 @@ void testBranchTestBit64AddrImm()
             jit.ret();
         });
 
-        for (uint64_t value2 : int64Operands())
+        for (auto value2 : int64Operands())
             CHECK_EQ(invoke<long int>(test, &value2), (value2>>(value%64))&1);
     }
 }
@@ -1210,7 +1210,11 @@ void testMoveDoubleConditionally64()
 static void testCagePreservesPACFailureBit()
 {
 #if GIGACAGE_ENABLED
-    ASSERT(!Gigacage::isDisablingPrimitiveGigacageForbidden());
+    // Placate ASan builds and any environments that disables the Gigacage.
+    if (!Gigacage::shouldBeEnabled())
+        return;
+
+    RELEASE_ASSERT(!Gigacage::isDisablingPrimitiveGigacageForbidden());
     auto cage = compile([] (CCallHelpers& jit) {
         emitFunctionPrologue(jit);
         jit.cageConditionally(Gigacage::Primitive, GPRInfo::argumentGPR0, GPRInfo::argumentGPR1, GPRInfo::argumentGPR2);
@@ -1221,7 +1225,7 @@ static void testCagePreservesPACFailureBit()
 
     void* ptr = Gigacage::tryMalloc(Gigacage::Primitive, 1);
     void* taggedPtr = tagArrayPtr(ptr, 1);
-    ASSERT(hasOneBitSet(Gigacage::size(Gigacage::Primitive) << 2));
+    RELEASE_ASSERT(hasOneBitSet(Gigacage::size(Gigacage::Primitive) << 2));
     void* notCagedPtr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(ptr) + (Gigacage::size(Gigacage::Primitive) << 2));
     CHECK_NOT_EQ(Gigacage::caged(Gigacage::Primitive, notCagedPtr), notCagedPtr);
     void* taggedNotCagedPtr = tagArrayPtr(notCagedPtr, 1);

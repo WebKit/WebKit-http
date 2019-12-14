@@ -103,7 +103,6 @@ WI.loaded = function()
     // as event listeners on these managers.
     WI.managers = [
         WI.targetManager = new WI.TargetManager,
-        WI.branchManager = new WI.BranchManager,
         WI.networkManager = new WI.NetworkManager,
         WI.domStorageManager = new WI.DOMStorageManager,
         WI.databaseManager = new WI.DatabaseManager,
@@ -143,8 +142,7 @@ WI.loaded = function()
     WI._openTabsSetting = new WI.Setting("open-tab-types", [
         WI.ElementsTabContentView.Type,
         WI.NetworkTabContentView.Type,
-        WI.DebuggerTabContentView.Type,
-        WI.ResourcesTabContentView.Type,
+        WI.SourcesTabContentView.Type,
         WI.TimelineTabContentView.Type,
         WI.StorageTabContentView.Type,
         WI.CanvasTabContentView.Type,
@@ -297,6 +295,9 @@ WI.contentLoaded = function()
     document.body.classList.add(WI.sharedApp.debuggableType);
     document.body.setAttribute("dir", WI.resolvedLayoutDirection());
 
+    WI.layoutMeasurementContainer = document.body.appendChild(document.createElement("div"));
+    WI.layoutMeasurementContainer.id = "layout-measurement-container";
+
     WI.settings.showJavaScriptTypeInformation.addEventListener(WI.Setting.Event.Changed, WI._showJavaScriptTypeInformationSettingChanged);
     WI.settings.enableControlFlowProfiler.addEventListener(WI.Setting.Event.Changed, WI._enableControlFlowProfilerSettingChanged);
     WI.settings.resourceCachingDisabled.addEventListener(WI.Setting.Event.Changed, WI._resourceCachingDisabledSettingChanged);
@@ -321,7 +322,7 @@ WI.contentLoaded = function()
 
     WI.settingsTabContentView = new WI.SettingsTabContentView;
 
-    WI._settingsKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Comma, WI._showSettingsTab);
+    WI._settingsKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Comma, WI._handleSettingsKeyboardShortcut);
 
     // Create the user interface elements.
     WI.toolbar = new WI.Toolbar(document.getElementById("toolbar"));
@@ -512,8 +513,6 @@ WI.contentLoaded = function()
         WI.ElementsTabContentView,
         WI.NetworkTabContentView,
         WI.SourcesTabContentView,
-        WI.DebuggerTabContentView,
-        WI.ResourcesTabContentView,
         WI.TimelineTabContentView,
         WI.StorageTabContentView,
         WI.CanvasTabContentView,
@@ -715,7 +714,7 @@ WI._openDefaultTab = function(event)
     WI.showNewTabTab({suppressAnimations: true});
 };
 
-WI._showSettingsTab = function(event)
+WI._handleSettingsKeyboardShortcut = function(event)
 {
     if (event.keyIdentifier === "U+002C") // ","
         WI.tabBrowser.showTabForContentView(WI.settingsTabContentView);
@@ -1096,39 +1095,6 @@ WI.isShowingSourcesTab = function()
     return WI.tabBrowser.selectedTabContentView instanceof WI.SourcesTabContentView;
 };
 
-WI.showDebuggerTab = function(options)
-{
-    var tabContentView = WI.tabBrowser.bestTabContentViewForClass(WI.DebuggerTabContentView);
-    if (!tabContentView)
-        tabContentView = new WI.DebuggerTabContentView;
-
-    if (options.breakpointToSelect instanceof WI.Breakpoint)
-        tabContentView.revealAndSelectBreakpoint(options.breakpointToSelect);
-
-    if (options.showScopeChainSidebar)
-        tabContentView.showScopeChainDetailsSidebarPanel();
-
-    WI.tabBrowser.showTabForContentView(tabContentView);
-};
-
-WI.isShowingDebuggerTab = function()
-{
-    return WI.tabBrowser.selectedTabContentView instanceof WI.DebuggerTabContentView;
-};
-
-WI.showResourcesTab = function()
-{
-    var tabContentView = WI.tabBrowser.bestTabContentViewForClass(WI.ResourcesTabContentView);
-    if (!tabContentView)
-        tabContentView = new WI.ResourcesTabContentView;
-    WI.tabBrowser.showTabForContentView(tabContentView);
-};
-
-WI.isShowingResourcesTab = function()
-{
-    return WI.tabBrowser.selectedTabContentView instanceof WI.ResourcesTabContentView;
-};
-
 WI.showStorageTab = function()
 {
     var tabContentView = WI.tabBrowser.bestTabContentViewForClass(WI.StorageTabContentView);
@@ -1177,6 +1143,14 @@ WI.showLayersTab = function(options = {})
 WI.isShowingLayersTab = function()
 {
     return WI.tabBrowser.selectedTabContentView instanceof WI.LayersTabContentView;
+};
+
+WI.showSettingsTab = function(options = {})
+{
+    WI.tabBrowser.showTabForContentView(WI.settingsTabContentView);
+
+    if (options.blackboxPatternToSelect)
+        WI.settingsTabContentView.selectBlackboxPattern(options.blackboxPatternToSelect);
 };
 
 WI.indentString = function()
@@ -1252,35 +1226,15 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
     if (representedObject === WI._consoleRepresentedObject)
         return WI.ConsoleTabContentView;
 
-    if (WI.settings.experimentalEnableSourcesTab.value) {
-        if (representedObject instanceof WI.Frame
-            || representedObject instanceof WI.FrameCollection
-            || representedObject instanceof WI.Resource
-            || representedObject instanceof WI.ResourceCollection
-            || representedObject instanceof WI.Script
-            || representedObject instanceof WI.ScriptCollection
-            || representedObject instanceof WI.CSSStyleSheet
-            || representedObject instanceof WI.CSSStyleSheetCollection)
-            return WI.SourcesTabContentView;
-    } else {
-        if (WI.debuggerManager.paused) {
-            if (representedObject instanceof WI.Script)
-                return WI.DebuggerTabContentView;
-
-            if (representedObject instanceof WI.Resource && (representedObject.type === WI.Resource.Type.Document || representedObject.type === WI.Resource.Type.Script))
-                return WI.DebuggerTabContentView;
-        }
-
-        if (representedObject instanceof WI.Frame
-            || representedObject instanceof WI.FrameCollection
-            || representedObject instanceof WI.Resource
-            || representedObject instanceof WI.ResourceCollection
-            || representedObject instanceof WI.Script
-            || representedObject instanceof WI.ScriptCollection
-            || representedObject instanceof WI.CSSStyleSheet
-            || representedObject instanceof WI.CSSStyleSheetCollection)
-            return WI.ResourcesTabContentView;
-    }
+    if (representedObject instanceof WI.Frame
+        || representedObject instanceof WI.FrameCollection
+        || representedObject instanceof WI.Resource
+        || representedObject instanceof WI.ResourceCollection
+        || representedObject instanceof WI.Script
+        || representedObject instanceof WI.ScriptCollection
+        || representedObject instanceof WI.CSSStyleSheet
+        || representedObject instanceof WI.CSSStyleSheetCollection)
+        return WI.SourcesTabContentView;
 
     if (representedObject instanceof WI.DOMStorageObject || representedObject instanceof WI.CookieStorageObject ||
         representedObject instanceof WI.DatabaseTableObject || representedObject instanceof WI.DatabaseObject ||
@@ -1574,10 +1528,7 @@ WI._handleDrop = function(event)
 
 WI._debuggerDidPause = function(event)
 {
-    if (WI.settings.experimentalEnableSourcesTab.value)
-        WI.showSourcesTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
-    else
-        WI.showDebuggerTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
+    WI.showSourcesTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
 
     WI._dashboardContainer.showDashboardViewForRepresentedObject(WI._dashboards.debugger);
 
@@ -2781,6 +2732,14 @@ WI._enableControlFlowProfilerSettingChanged = function(event)
 WI._resourceCachingDisabledSettingChanged = function(event)
 {
     NetworkAgent.setResourceCachingDisabled(WI.settings.resourceCachingDisabled.value);
+};
+
+WI.measureElement = function(element)
+{
+    WI.layoutMeasurementContainer.appendChild(element.cloneNode(true));
+    let rect = WI.layoutMeasurementContainer.getBoundingClientRect();
+    WI.layoutMeasurementContainer.removeChildren();
+    return rect;
 };
 
 WI.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)

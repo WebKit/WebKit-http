@@ -28,9 +28,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "DisplayRect.h"
-#include "InlineItem.h"
 #include "LayoutUnit.h"
-#include "TextFlags.h"
 
 namespace WebCore {
 namespace Display {
@@ -57,6 +55,8 @@ struct Run {
     Run(Rect logicalRect, TextContext);
     Run(const Run&);
 
+    const Rect& logicalRect() const { return m_logicalRect; }
+
     LayoutPoint logicalTopLeft() const { return m_logicalRect.topLeft(); }
     LayoutUnit logicalLeft() const { return m_logicalRect.left(); }
     LayoutUnit logicalRight() const { return m_logicalRect.right(); }
@@ -72,8 +72,8 @@ struct Run {
     void setLogicalRight(LayoutUnit logicalRight) { m_logicalRect.shiftRightTo(logicalRight); }
     void moveVertically(LayoutUnit delta) { m_logicalRect.moveVertically(delta); }
     void moveHorizontally(LayoutUnit delta) { m_logicalRect.moveHorizontally(delta); }
-    void expandVertically(LayoutUnit delta) { m_logicalRect.expand(0, delta); }
-    void expandHorizontally(LayoutUnit delta) { m_logicalRect.expand(delta, 0); }
+    void expandVertically(LayoutUnit delta) { m_logicalRect.expandVertically(delta); }
+    void expandHorizontally(LayoutUnit delta) { m_logicalRect.expandHorizontally(delta); }
 
     void setTextContext(TextContext textContext) { m_textContext.emplace(textContext); }
     Optional<TextContext>& textContext() { return m_textContext; }

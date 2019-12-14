@@ -47,7 +47,7 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
         this._refreshButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
         this._refreshButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this.refreshPreview, this);
 
-        this._showGridButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-grid", WI.UIString("Show Grid"), WI.UIString("Hide Grid"), "Images/NavigationItemCheckers.svg", 13, 13);
+        this._showGridButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-grid", WI.UIString("Show transparency grid"), WI.UIString("Hide transparency grid"), "Images/NavigationItemCheckers.svg", 13, 13);
         this._showGridButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showGridButtonClicked, this);
         this._showGridButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
         this._showGridButtonNavigationItem.activated = !!WI.settings.showImageGrid.value;
@@ -248,7 +248,7 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
             this._previewImageElement.remove();
 
         if (!this._errorElement) {
-            const isError = true;
+            let isError = WI.Canvas.supportsRequestContentForContextType(this.representedObject.contextType);
             this._errorElement = WI.createMessageTextView(WI.UIString("No Preview Available"), isError);
         }
 

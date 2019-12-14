@@ -5,11 +5,18 @@ class ButtonBase extends ComponentBase {
     {
         super(name);
         this._disabled = false;
+        this._title = null;
     }
 
     setDisabled(disabled)
     {
         this._disabled = disabled;
+        this.enqueueToRender();
+    }
+
+    setButtonTitle(title)
+    {
+        this._title = title;
         this.enqueueToRender();
     }
 
@@ -27,6 +34,10 @@ class ButtonBase extends ComponentBase {
             this.content('button').setAttribute('disabled', '');
         else
             this.content('button').removeAttribute('disabled');
+        if (this._title)
+            this.content('button').setAttribute('title', this._title);
+        else
+            this.content('button').removeAttribute('title');
     }
 
     static htmlTemplate()

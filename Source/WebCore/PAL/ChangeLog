@@ -1,3 +1,347 @@
+2019-10-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Build failure in WebHTMLView.mm with the public SDK (Xcode 11 and Mojave)
+        https://bugs.webkit.org/show_bug.cgi?id=199705
+
+        Patch by Dan Bernstein and Kenneth Russell.
+        Reviewed by Alexey Proskuryakov.
+
+        * pal/spi/mac/NSViewSPI.h: Declare _subviews when we are not using the
+        replacement SPI, but the SDK doesn't declare the ivar (because the SDK is too new).
+
+2019-10-04  Alex Christensen  <achristensen@webkit.org>
+
+        Simplify sandbox enabling macros
+        https://bugs.webkit.org/show_bug.cgi?id=202536
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards a functioning CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=202443
+
+        Rubber-stamped by Tim Horton.
+
+        * pal/PlatformMac.cmake:
+
+2019-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards successful CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=202426
+
+        Rubber-stamped by Tim Horton.
+
+        * pal/PlatformMac.cmake:
+
+2019-10-01  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=202386
+        <rdar://problem/55863017>
+
+        Reviewed by Eric Carlson.
+
+        Remove some support for iOS versions less than 13.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 130000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        This removal is part of a series of patches effecting the removal of
+        dead code for old versions of iOS. This particular pass involves
+        changes in which Jer Noble was involved. These changes are isolated
+        from other similar changes in order to facilitate the reviewing
+        process.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2019-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=202384
+
+        Rubber-stamped by Tim Horton.
+
+        * pal/PlatformMac.cmake:
+
+2019-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        Unify more WebKitLegacy sources
+        https://bugs.webkit.org/show_bug.cgi?id=202390
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/mac/QuickLookMacSPI.h:
+
+2019-09-27  Keith Rollin  <krollin@apple.com>
+
+        Coalesce or remove PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=202119
+        <rdar://problem/55638792>
+
+        Unreviewed, address post landing review comments for r248533 from
+        Darin Adler.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cocoa/NEFilterSourceSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2019-09-24  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=201969
+        <rdar://problem/55505586>
+
+        Reviewed by Jonathan Bedard.
+
+        Remove some support for iOS versions less than 13.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 130000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        This removal is part of a series of patches effecting the removal of
+        dead code for old versions of iOS. This particular pass involves
+        changes in which Jonathan Bedard was involved. These changes are
+        isolated from other similar changes in order to facilitate the
+        reviewing process.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+        * pal/spi/ios/UIKitSPI.h:
+
+2019-09-24  Keith Rollin  <krollin@apple.com>
+
+        Coalesce or remove PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=202119
+        <rdar://problem/55638792>
+
+        Reviewed by Alex Christensen.
+
+        After refactoring and other code evolution, some platform checks have
+        ended up looking like PLATFORM(MAC) || PLATFORM(IOS_FAMILY) (or
+        vice-versa). These can be converted into the equivalent
+        PLATFORM(COCOA). Where the instance occurs in a Cocoa-only file, the
+        check can be removed altogether (along with any "#else" branches).
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cocoa/NEFilterSourceSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2019-09-20  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=202027
+        <rdar://problem/55547109>
+
+        Reviewed by Alex Christensen.
+
+        Remove some support for iOS versions less than 13.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 130000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        After version checks have been removed, there are some cases where the
+        preprocessor conditional looks like "#if PLATFORM(MAC) ||
+        PLATFORM(IOS_FAMILY)". These can be collapsed into "#if
+        PLATFORM(COCOA)". This additional cleanup will be performed in a
+        subsequent patch.
+
+        This removal is part of a series of patches effecting the removal of
+        dead code for old versions of iOS. This particular pass involves
+        changes in which Joe Pecoraro was involved. These changes are isolated
+        from other similar changes in order to facilitate the reviewing
+        process.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2019-09-20  Keith Rollin  <krollin@apple.com>
+
+        Remove check of setSourceAppPid selector that's no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=201971
+        <rdar://problem/55505761>
+
+        Reviewed by Andy Estes.
+
+        Bug 172152 introduced a check of the NEFilterSource selector
+        setSourceAppPid in order to support OS's that didn't support it. All
+        supported Cocoa platforms now support it, so the check can be removed.
+
+        * pal/spi/cocoa/NEFilterSourceSPI.h:
+
+2019-09-20  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=201967
+        <rdar://problem/55504738>
+
+        Reviewed by Andy Estes.
+
+        Remove some support for iOS versions less than 13.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 130000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        After version checks have been removed, there are some cases where the
+        preprocessor conditional looks like "#if PLATFORM(MAC) ||
+        PLATFORM(IOS_FAMILY)". These can be collapsed into "#if
+        PLATFORM(COCOA)". This additional cleanup will be performed in a
+        subsequent patch.
+
+        This removal is part of a series of patches effecting the removal of
+        dead code for old versions of iOS. This particular pass involves
+        changes in which Andy Estes was involved. These changes are isolated
+        from other similar changes in order to facilitate the reviewing
+        process.
+
+        * pal/spi/cocoa/NEFilterSourceSPI.h:
+
+2019-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Remove functionality to disable TLS fallback
+        https://bugs.webkit.org/show_bug.cgi?id=201998
+
+        Reviewed by Geoff Garen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2019-09-18  Keith Rollin  <krollin@apple.com>
+
+        Remove alternate declaration of CCECCryptorImportKey
+        https://bugs.webkit.org/show_bug.cgi?id=201903
+        <rdar://problem/55466589>
+
+        Reviewed by Chris Dumez.
+
+        In macOS 10.15 and iOS 13.0 SDKs, the keyPackage parameter of
+        CCECCryptorImportKey() was changed from "void*" to "const void*". This
+        change was accounted for in Bug 195754 by making the same change to
+        the parallel declarations in CommonCryptoSPI.h. But since this header
+        also needed to be used in macOS 10.14 contexts, the old declaration
+        was also kept.
+
+        But since this function is a "C" function, the types of parameters are
+        not included in the function signature, and it doesn't really matter
+        what parameter types are, so long as the right values are sent to the
+        called function. This means that we don't need two versions of the
+        function, one with a "const" parameter and one without. We only really
+        need one. In this case, it makes sense to keep the more-restrictive
+        one -- the with a "const void*" parameter. Therefore, remove the one
+        taking just "void*".
+
+        * pal/spi/cocoa/CommonCryptoSPI.h:
+
+2019-09-18  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Tell websites why a session was cancelled
+        https://bugs.webkit.org/show_bug.cgi?id=201912
+        <rdar://problem/55469706>
+
+        Reviewed by Brady Eidson.
+
+        Soft-linked PKPassKitErrorDomain and included PassKit headers more judiciously.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2019-09-17  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 12
+        https://bugs.webkit.org/show_bug.cgi?id=201851
+        <rdar://problem/55422044>
+
+        Reviewed by Jiewen Tan and Alexey Proskuryakov.
+
+        Remove some support for iOS versions less than 12.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 120000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101200" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101200" are always True.
+
+        This removal is part of a series of patches effecting such removal.
+
+        * pal/spi/cocoa/IOSurfaceSPI.h:
+
+2019-09-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Follow-up: Provide a prototype for AR QuickLook to trigger processing in the originating page
+        https://bugs.webkit.org/show_bug.cgi?id=201371
+
+        Unreviewed follow-up fix.
+
+        * pal/spi/ios/SystemPreviewSPI.h:
+
+2019-09-16  Dean Jackson  <dino@apple.com>
+
+        Provide a prototype for AR QuickLook to trigger processing in the originating page
+        https://bugs.webkit.org/show_bug.cgi?id=201371
+
+        Hopefully fix the public iOS 13 build.
+
+        * pal/spi/ios/SystemPreviewSPI.h:
+
+2019-09-16  Dean Jackson  <dino@apple.com>
+
+        REGRESSION: iPad: Safari becomes unresponsive after context menu on 1-800-MY-APPLE phone number, tapping 'Add to Contacts'
+        https://bugs.webkit.org/show_bug.cgi?id=201816
+        <rdar://55105827>
+
+        Reviewed by Darin Adler.
+
+        Expose kDataDetectorsSourceRectKey (and sort things while there).
+
+        * pal/spi/ios/DataDetectorsUISPI.h:
+
+2019-09-13  Youenn Fablet  <youenn@apple.com>
+
+        Use WebProcess processIdentifier to identify Service Worker connections
+        https://bugs.webkit.org/show_bug.cgi?id=201459
+
+        Reviewed by Chris Dumez.
+
+        * pal/SessionID.h:
+        (PAL::SessionID::SessionID):
+
+2019-09-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r249801.
+
+        Caused two servier worker layout tests to become flaky.
+
+        Reverted changeset:
+
+        "Use WebProcess processIdentifier to identify Service Worker
+        connections"
+        https://bugs.webkit.org/show_bug.cgi?id=201459
+        https://trac.webkit.org/changeset/249801
+
+2019-09-12  Youenn Fablet  <youenn@apple.com>
+
+        Use WebProcess processIdentifier to identify Service Worker connections
+        https://bugs.webkit.org/show_bug.cgi?id=201459
+
+        Reviewed by Chris Dumez.
+
+        * pal/SessionID.h:
+        (PAL::SessionID::SessionID):
+
 2019-09-09  Alex Christensen  <achristensen@webkit.org>
 
         Disable TLS 1.0 and 1.1 in WebSockets

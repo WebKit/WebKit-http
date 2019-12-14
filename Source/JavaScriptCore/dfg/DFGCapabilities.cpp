@@ -117,6 +117,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_check_tdz:
     case op_create_this:
     case op_create_promise:
+    case op_create_generator:
+    case op_create_async_generator:
     case op_bitnot:
     case op_bitand:
     case op_bitor:
@@ -212,6 +214,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_end:
     case op_new_object:
     case op_new_promise:
+    case op_new_generator:
     case op_new_array:
     case op_new_array_with_size:
     case op_new_array_buffer:
@@ -303,6 +306,14 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case llint_internal_function_call_trampoline:
     case llint_internal_function_construct_trampoline:
     case handleUncaughtException:
+    case op_call_return_location:
+    case op_construct_return_location:
+    case op_call_varargs_slow_return_location:
+    case op_construct_varargs_slow_return_location:
+    case op_get_by_id_return_location:
+    case op_get_by_val_return_location:
+    case op_put_by_id_return_location:
+    case op_put_by_val_return_location:
         return CannotCompile;
     }
     return CannotCompile;

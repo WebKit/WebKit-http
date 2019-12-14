@@ -166,13 +166,13 @@ void CallLinkInfo::clearLastSeenCallee()
     m_lastSeenCalleeOrExecutable.clear();
 }
 
-JSObject* CallLinkInfo::lastSeenCallee()
+JSObject* CallLinkInfo::lastSeenCallee() const
 {
     RELEASE_ASSERT(!isDirect());
     return jsCast<JSObject*>(m_lastSeenCalleeOrExecutable.get());
 }
 
-bool CallLinkInfo::haveLastSeenCallee()
+bool CallLinkInfo::haveLastSeenCallee() const
 {
     RELEASE_ASSERT(!isDirect());
     return !!m_lastSeenCalleeOrExecutable;
@@ -190,11 +190,11 @@ ExecutableBase* CallLinkInfo::executable()
     return jsCast<ExecutableBase*>(m_lastSeenCalleeOrExecutable.get());
 }
 
-void CallLinkInfo::setMaxNumArguments(unsigned value)
+void CallLinkInfo::setMaxArgumentCountIncludingThis(unsigned value)
 {
     RELEASE_ASSERT(isDirect());
     RELEASE_ASSERT(value);
-    m_maxNumArguments = value;
+    m_maxArgumentCountIncludingThis = value;
 }
 
 void CallLinkInfo::visitWeak(VM& vm)

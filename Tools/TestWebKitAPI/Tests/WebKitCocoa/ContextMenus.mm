@@ -73,7 +73,7 @@ static RetainPtr<TestContextMenuDriver> contextMenuWebViewDriver(Class delegateC
     contextMenuRequested = true;
     UIContextMenuContentPreviewProvider previewProvider = ^UIViewController * ()
     {
-        return [UIViewController new];
+        return [[[UIViewController alloc] init] autorelease];
     };
     UIContextMenuActionProvider actionProvider = ^UIMenu *(NSArray<UIMenuElement *> *suggestedActions)
     {
@@ -180,7 +180,6 @@ TEST(WebKit, ContextMenuImage)
     EXPECT_FALSE(didEndCalled);
 }
 
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
@@ -248,5 +247,56 @@ TEST(WebKit, ContextMenuLegacy)
 
 #pragma clang diagnostic pop
 
+@interface TestContextMenuSuggestedActionsUIDelegate : NSObject <WKUIDelegate>
+@end
+
+@implementation TestContextMenuSuggestedActionsUIDelegate
+
+- (void)webView:(WKWebView *)webView contextMenuConfigurationForElement:(WKContextMenuElementInfo *)elementInfo completionHandler:(void(^)(UIContextMenuConfiguration * _Nullable))completionHandler
+{
+    EXPECT_TRUE([elementInfo.linkURL.absoluteString isEqualToString:[linkURL absoluteString]]);
+    contextMenuRequested = true;
+    UIContextMenuContentPreviewProvider previewProvider = ^UIViewController * ()
+    {
+        return [[[UIViewController alloc] init] autorelease];
+    };
+    UIContextMenuActionProvider actionProvider = ^UIMenu *(NSArray<UIMenuElement *> *suggestedActions)
+    {
+        NSArray<NSString *> *expectedIdentifiers = @[
+            @"WKElementActionTypeOpen",
+            @"WKElementActionTypeAddToReadingList",
+            @"WKElementActionTypeCopy",
+            @"WKElementActionTypeShare"
+        ];
+        EXPECT_TRUE(expectedIdentifiers.count == suggestedActions.count);
+
+        [suggestedActions enumerateObjectsUsingBlock:^(UIMenuElement *menuElement, NSUInteger index, BOOL *) {
+            EXPECT_TRUE([menuElement isKindOfClass:[UIAction class]]);
+            EXPECT_TRUE([[(UIAction *)menuElement identifier] isEqualToString:expectedIdentifiers[index]]);
+        }];
+        return [UIMenu menuWithTitle:@"" children:suggestedActions];
+    };
+    completionHandler([UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:previewProvider actionProvider:actionProvider]);
+}
+
+- (void)webView:(WKWebView *)webView contextMenuWillPresentForElement:(WKContextMenuElementInfo *)elementInfo
+{
+    willPresentCalled = true;
+}
+
+@end
+
+TEST(WebKit, ContextMenuSuggestedActions)
+{
+    auto driver = contextMenuWebViewDriver([TestContextMenuSuggestedActionsUIDelegate class]);
+    [driver begin:^(BOOL result) {
+        EXPECT_TRUE(result);
+        [driver clickDown];
+        [driver clickUp];
+    }];
+    TestWebKitAPI::Util::run(&willPresentCalled);
+    EXPECT_TRUE(contextMenuRequested);
+    EXPECT_TRUE(willPresentCalled);
+}
 
 #endif // PLATFORM(IOS) && USE(UICONTEXTMENU)

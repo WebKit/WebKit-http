@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2012 The ANGLE Project Authors. All rights reserved.
+// Copyright 2012 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -16,11 +16,11 @@
 
 #include "angle_test_configs.h"
 #include "common/angleutils.h"
+#include "common/system_utils.h"
 #include "common/vector_utils.h"
 #include "platform/Platform.h"
 #include "util/EGLWindow.h"
 #include "util/shader_utils.h"
-#include "util/system_utils.h"
 #include "util/util_gl.h"
 
 namespace angle
@@ -67,13 +67,21 @@ struct SystemInfo;
 #define EXPECT_EGLENUM_EQ(expected, actual) \
     EXPECT_EQ(static_cast<EGLenum>(expected), static_cast<EGLenum>(actual))
 
+#define ASSERT_GL_FRAMEBUFFER_COMPLETE(framebuffer) \
+    ASSERT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(framebuffer))
+#define EXPECT_GL_FRAMEBUFFER_COMPLETE(framebuffer) \
+    EXPECT_GLENUM_EQ(GL_FRAMEBUFFER_COMPLETE, glCheckFramebufferStatus(framebuffer))
+
 namespace angle
 {
 struct GLColorRGB
 {
-    GLColorRGB();
-    GLColorRGB(GLubyte r, GLubyte g, GLubyte b);
+    constexpr GLColorRGB() : R(0), G(0), B(0) {}
+    constexpr GLColorRGB(GLubyte r, GLubyte g, GLubyte b) : R(r), G(g), B(b) {}
     GLColorRGB(const angle::Vector3 &floatColor);
+
+    const GLubyte *data() const { return &R; }
+    GLubyte *data() { return &R; }
 
     GLubyte R, G, B;
 
@@ -86,8 +94,8 @@ struct GLColorRGB
 
 struct GLColor
 {
-    GLColor();
-    GLColor(GLubyte r, GLubyte g, GLubyte b, GLubyte a);
+    constexpr GLColor() : R(0), G(0), B(0), A(0) {}
+    constexpr GLColor(GLubyte r, GLubyte g, GLubyte b, GLubyte a) : R(r), G(g), B(b), A(a) {}
     GLColor(const angle::Vector4 &floatColor);
     GLColor(GLuint colorValue);
 
@@ -215,6 +223,17 @@ GLColor32F ReadColor32F(GLint x, GLint y);
         EXPECT_EQ((a), pixel[3]);                                     \
     } while (0)
 
+#define EXPECT_PIXEL_RGB_EQ_HELPER(x, y, r, g, b, ctype, format, type) \
+    do                                                                 \
+    {                                                                  \
+        ctype pixel[4];                                                \
+        glReadPixels((x), (y), 1, 1, format, type, pixel);             \
+        EXPECT_GL_NO_ERROR();                                          \
+        EXPECT_EQ((r), pixel[0]);                                      \
+        EXPECT_EQ((g), pixel[1]);                                      \
+        EXPECT_EQ((b), pixel[2]);                                      \
+    } while (0)
+
 #define EXPECT_PIXEL_NEAR(x, y, r, g, b, a, abs_error) \
     EXPECT_PIXEL_NEAR_HELPER(x, y, r, g, b, a, abs_error, GLubyte, GL_RGBA, GL_UNSIGNED_BYTE)
 
@@ -226,6 +245,9 @@ GLColor32F ReadColor32F(GLint x, GLint y);
 
 #define EXPECT_PIXEL_8UI(x, y, r, g, b, a) \
     EXPECT_PIXEL_EQ_HELPER(x, y, r, g, b, a, GLubyte, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE)
+
+#define EXPECT_PIXEL_RGB_EQUAL(x, y, r, g, b) \
+    EXPECT_PIXEL_RGB_EQ_HELPER(x, y, r, g, b, GLubyte, GL_RGBA, GL_UNSIGNED_BYTE)
 
 // TODO(jmadill): Figure out how we can use GLColor's nice printing with EXPECT_NEAR.
 #define EXPECT_PIXEL_COLOR_NEAR(x, y, angleColor, abs_error) \
@@ -279,8 +301,10 @@ class ANGLETestBase
   public:
     void setWindowVisible(bool isVisible);
 
-    virtual void overrideWorkaroundsD3D(angle::WorkaroundsD3D *workaroundsD3D) {}
-    virtual void overrideFeaturesVk(angle::FeaturesVk *workaroundsVulkan) {}
+    virtual void overrideWorkaroundsD3D(angle::FeaturesD3D *featuresD3D) {}
+    virtual void overrideFeaturesVk(angle::FeaturesVk *featuresVulkan) {}
+
+    static void ReleaseFixtures();
 
   protected:
     void ANGLETestSetUp();
@@ -362,7 +386,7 @@ class ANGLETestBase
     void setBindGeneratesResource(bool bindGeneratesResource);
     void setClientArraysEnabled(bool enabled);
     void setRobustResourceInit(bool enabled);
-    void setContextProgramCacheEnabled(bool enabled, angle::CacheProgramFunc cacheProgramFunc);
+    void setContextProgramCacheEnabled(bool enabled);
     void setContextResetStrategy(EGLenum resetStrategy);
     void forceNewDisplay();
 
@@ -399,6 +423,27 @@ class ANGLETestBase
         ~ScopedIgnorePlatformMessages();
     };
 
+    // Can be used before we get a GL context.
+    bool isGLRenderer() const
+    {
+        return mCurrentParams->getRenderer() == EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
+    }
+
+    bool isGLESRenderer() const
+    {
+        return mCurrentParams->getRenderer() == EGL_PLATFORM_ANGLE_TYPE_OPENGLES_ANGLE;
+    }
+
+    bool isD3D11Renderer() const
+    {
+        return mCurrentParams->getRenderer() == EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE;
+    }
+
+    bool isVulkanRenderer() const
+    {
+        return mCurrentParams->getRenderer() == EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE;
+    }
+
   private:
     void checkD3D11SDKLayersMessages();
 
@@ -409,6 +454,8 @@ class ANGLETestBase
                   bool useVertexBuffer,
                   bool useInstancedDrawCalls,
                   GLuint numInstances);
+
+    void initOSWindow();
 
     struct TestFixture
     {
@@ -439,12 +486,15 @@ class ANGLETestBase
     bool mAlwaysForceNewDisplay;
     bool mForceNewDisplay;
 
+    bool mSetUpCalled;
+    bool mTearDownCalled;
+
     // On most systems we force a new display on every test instance. For these configs we can
     // share a single OSWindow instance. With display reuse we need a separate OSWindow for each
     // different config. This OSWindow sharing seemed to lead to driver bugs on some platforms.
     static OSWindow *mOSWindowSingleton;
 
-    static std::map<angle::PlatformParameters, TestFixture> gPlatforms;
+    static std::map<angle::PlatformParameters, TestFixture> gFixtures;
     const angle::PlatformParameters *mCurrentParams;
     TestFixture *mFixture;
 
@@ -458,10 +508,27 @@ class ANGLETestWithParam : public ANGLETestBase, public ::testing::TestWithParam
   protected:
     ANGLETestWithParam();
 
-  public:
-    void SetUp() override { ANGLETestBase::ANGLETestSetUp(); }
+    virtual void testSetUp() {}
+    virtual void testTearDown() {}
 
-    void TearDown() override { ANGLETestBase::ANGLETestTearDown(); }
+    void recreateTestFixture()
+    {
+        TearDown();
+        SetUp();
+    }
+
+  private:
+    void SetUp() final
+    {
+        ANGLETestBase::ANGLETestSetUp();
+        testSetUp();
+    }
+
+    void TearDown() final
+    {
+        testTearDown();
+        ANGLETestBase::ANGLETestTearDown();
+    }
 };
 
 template <typename Params>
@@ -493,21 +560,8 @@ class ANGLETestEnvironment : public testing::Environment
     static std::unique_ptr<angle::Library> gWGLLibrary;
 };
 
-// This base fixture loads the EGL entry points.
-class EGLTest : public testing::Test
-{
-  public:
-    EGLTest();
-    ~EGLTest();
-
-    void SetUp() override;
-};
-
 // Driver vendors
-bool IsIntel();
 bool IsAdreno();
-bool IsAMD();
-bool IsNVIDIA();
 
 // Renderer back-ends
 // Note: FL9_3 is explicitly *not* considered D3D11.
@@ -533,6 +587,8 @@ bool IsEGLDeviceExtensionEnabled(EGLDeviceEXT device, const std::string &extName
 bool IsEGLDisplayExtensionEnabled(EGLDisplay display, const std::string &extName);
 bool IsGLExtensionEnabled(const std::string &extName);
 bool IsGLExtensionRequestable(const std::string &extName);
+
+extern angle::PlatformMethods gDefaultPlatformMethods;
 
 #define ANGLE_SKIP_TEST_IF(COND)                                  \
     do                                                            \

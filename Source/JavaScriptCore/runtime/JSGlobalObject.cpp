@@ -268,46 +268,44 @@ static JSValue createConsoleProperty(VM& vm, JSObject* object)
     return ConsoleObject::create(vm, global, ConsoleObject::createStructure(vm, global, constructEmptyObject(global->globalExec())));
 }
 
-static EncodedJSValue JSC_HOST_CALL makeBoundFunction(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL makeBoundFunction(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
-    VM& vm = exec->vm();
+    VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-
-    JSObject* target = asObject(exec->uncheckedArgument(0));
-    JSValue boundThis = exec->uncheckedArgument(1);
-    JSValue boundArgs = exec->uncheckedArgument(2);
-    JSValue lengthValue = exec->uncheckedArgument(3);
-    JSString* nameString = asString(exec->uncheckedArgument(4));
+    JSObject* target = asObject(callFrame->uncheckedArgument(0));
+    JSValue boundThis = callFrame->uncheckedArgument(1);
+    JSValue boundArgs = callFrame->uncheckedArgument(2);
+    JSValue lengthValue = callFrame->uncheckedArgument(3);
+    JSString* nameString = asString(callFrame->uncheckedArgument(4));
 
     ASSERT(lengthValue.isInt32AsAnyInt());
     int32_t length = lengthValue.asInt32AsAnyInt();
 
-    String name = nameString->value(exec);
+    String name = nameString->value(callFrame);
     RETURN_IF_EXCEPTION(scope, { });
 
-    RELEASE_AND_RETURN(scope, JSValue::encode(JSBoundFunction::create(vm, exec, globalObject, target, boundThis, boundArgs.isCell() ? jsCast<JSArray*>(boundArgs) : nullptr, length, WTFMove(name))));
+    RELEASE_AND_RETURN(scope, JSValue::encode(JSBoundFunction::create(vm, callFrame, globalObject, target, boundThis, boundArgs.isCell() ? jsCast<JSArray*>(boundArgs) : nullptr, length, WTFMove(name))));
 }
 
-static EncodedJSValue JSC_HOST_CALL hasOwnLengthProperty(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL hasOwnLengthProperty(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
-    VM& vm = exec->vm();
-    JSObject* target = asObject(exec->uncheckedArgument(0));
-    return JSValue::encode(jsBoolean(target->hasOwnProperty(exec, vm.propertyNames->length)));
+    VM& vm = globalObject->vm();
+    JSObject* target = asObject(callFrame->uncheckedArgument(0));
+    return JSValue::encode(jsBoolean(target->hasOwnProperty(callFrame, vm.propertyNames->length)));
 }
 
 #if !ASSERT_DISABLED
-static EncodedJSValue JSC_HOST_CALL assertCall(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL assertCall(JSGlobalObject*, CallFrame* callFrame)
 {
-    RELEASE_ASSERT(exec->argument(0).isBoolean());
-    if (exec->argument(0).asBoolean())
+    RELEASE_ASSERT(callFrame->argument(0).isBoolean());
+    if (callFrame->argument(0).asBoolean())
         return JSValue::encode(jsUndefined());
 
     bool iteratedOnce = false;
     CodeBlock* codeBlock = nullptr;
     unsigned line;
-    exec->iterate([&] (StackVisitor& visitor) {
+    callFrame->iterate([&] (StackVisitor& visitor) {
         if (!iteratedOnce) {
             iteratedOnce = true;
             return StackVisitor::Continue;
@@ -396,15 +394,14 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = {
 @end
 */
 
-static EncodedJSValue JSC_HOST_CALL enqueueJob(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL enqueueJob(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
-    VM& vm = exec->vm();
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    VM& vm = globalObject->vm();
 
-    JSValue job = exec->argument(0);
-    JSValue argument0 = exec->argument(1);
-    JSValue argument1 = exec->argument(2);
-    JSValue argument2 = exec->argument(3);
+    JSValue job = callFrame->argument(0);
+    JSValue argument0 = callFrame->argument(1);
+    JSValue argument1 = callFrame->argument(2);
+    JSValue argument2 = callFrame->argument(3);
 
     globalObject->queueMicrotask(createJSMicrotask(vm, job, argument0, argument1, argument2));
 
@@ -598,7 +595,7 @@ void JSGlobalObject::init(VM& vm)
             init.setPrototype(JS ## type ## ArrayPrototype::create(init.vm, init.global, JS ## type ## ArrayPrototype::createStructure(init.vm, init.global, init.global->m_typedArrayProto.get(init.global)))); \
             init.setStructure(JS ## type ## Array::createStructure(init.vm, init.global, init.prototype)); \
             init.setConstructor(JS ## type ## ArrayConstructor::create(init.vm, init.global, JS ## type ## ArrayConstructor::createStructure(init.vm, init.global, init.global->m_typedArraySuperConstructor.get(init.global)), init.prototype, #type "Array"_s, typedArrayConstructorAllocate ## type ## ArrayCodeGenerator(init.vm))); \
-            init.global->putDirectWithoutTransition(init.vm, init.vm.propertyNames->builtinNames().type ## ArrayPrivateName(), init.constructor, static_cast<unsigned>(PropertyAttribute::DontEnum)); \
+            init.global->putDirect(init.vm, init.vm.propertyNames->builtinNames().type ## ArrayPrivateName(), init.constructor, static_cast<unsigned>(PropertyAttribute::DontEnum)); \
         });
     FOR_EACH_TYPED_ARRAY_TYPE_EXCLUDING_DATA_VIEW(INIT_TYPED_ARRAY_LATER)
 #undef INIT_TYPED_ARRAY_LATER
@@ -819,6 +816,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
 
     m_generatorPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_generatorFunctionPrototype.get(), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     m_generatorFunctionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->prototype, m_generatorPrototype.get(), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    m_generatorStructure.set(vm, this, JSGenerator::createStructure(vm, this, m_generatorPrototype.get()));
 
     m_asyncFunctionPrototype.set(vm, this, AsyncFunctionPrototype::create(vm, AsyncFunctionPrototype::createStructure(vm, this, m_functionPrototype.get())));
     AsyncFunctionConstructor* asyncFunctionConstructor = AsyncFunctionConstructor::create(vm, AsyncFunctionConstructor::createStructure(vm, this, functionConstructor), m_asyncFunctionPrototype.get());
@@ -832,6 +830,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
 
     m_asyncGeneratorPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_asyncGeneratorFunctionPrototype.get(), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     m_asyncGeneratorFunctionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->prototype, m_asyncGeneratorPrototype.get(), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    m_asyncGeneratorStructure.set(vm, this, JSAsyncGenerator::createStructure(vm, this, m_asyncGeneratorPrototype.get()));
     
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
@@ -1767,6 +1766,8 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_generatorFunctionStructure);
     visitor.append(thisObject->m_asyncFunctionStructure);
     visitor.append(thisObject->m_asyncGeneratorFunctionStructure);
+    visitor.append(thisObject->m_generatorStructure);
+    visitor.append(thisObject->m_asyncGeneratorStructure);
     thisObject->m_iteratorResultObjectStructure.visit(visitor);
     visitor.append(thisObject->m_regExpMatchesArrayStructure);
     visitor.append(thisObject->m_regExpMatchesArrayWithGroupsStructure);
@@ -1822,6 +1823,7 @@ ExecState* JSGlobalObject::globalExec()
 
 void JSGlobalObject::exposeDollarVM(VM& vm)
 {
+    RELEASE_ASSERT(g_jscConfig.restrictedOptionsEnabled && Options::useDollarVM());
     if (hasOwnProperty(globalExec(), vm.propertyNames->builtinNames().dollarVMPrivateName()))
         return;
 

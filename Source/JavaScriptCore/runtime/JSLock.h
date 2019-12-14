@@ -22,6 +22,7 @@
 
 #include <mutex>
 #include <wtf/Assertions.h>
+#include <wtf/ForbidHeapAllocation.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
@@ -49,8 +50,10 @@ namespace JSC {
 // DropAllLocks object takes care to release the JSLock only if your
 // thread acquired it to begin with.
 
-class ExecState;
+class CallFrame;
 class VM;
+class JSLock;
+using ExecState = CallFrame;
 
 // This class is used to protect the initialization of the legacy single 
 // shared VM.

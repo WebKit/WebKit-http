@@ -127,21 +127,11 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     if (parameters.proxySettings.mode != SoupNetworkProxySettings::Mode::Default)
         setNetworkProxySettings(parameters.proxySettings);
 
-    ASSERT(!parameters.diskCacheDirectory.isEmpty());
-    m_diskCacheDirectory = parameters.diskCacheDirectory;
-
     GRefPtr<GResolver> cachedResolver = adoptGRef(webkitCachedResolverNew(adoptGRef(g_resolver_get_default())));
     g_resolver_set_default(cachedResolver.get());
 
-    SoupNetworkSession::clearOldSoupCache(FileSystem::directoryName(m_diskCacheDirectory));
-
     m_cacheOptions = { NetworkCache::CacheOption::RegisterNotify };
-#if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
-        m_cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
-#endif
-
-    supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(parameters.cookieAcceptPolicy, OptionalCallbackID());
+    supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(parameters.cookieAcceptPolicy, []() { });
 
     if (!parameters.languages.isEmpty())
         userPreferredLanguagesChanged(parameters.languages);

@@ -43,11 +43,6 @@
 SOFT_LINK_FRAMEWORK_OPTIONAL(NetworkExtension);
 SOFT_LINK_CLASS_OPTIONAL(NetworkExtension, NEFilterSource);
 
-// FIXME: Remove this once -setSourceAppPid: is declared in an SDK used by the builders
-@interface NEFilterSource ()
-- (void)setSourceAppPid:(pid_t)sourceAppPid;
-@end
-
 static inline NSData *replacementDataFromDecisionInfo(NSDictionary *decisionInfo)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!decisionInfo || [decisionInfo isKindOfClass:[NSDictionary class]]);
@@ -75,12 +70,8 @@ void NetworkExtensionContentFilter::initialize(const URL* url)
     m_queue = adoptOSObject(dispatch_queue_create("WebKit NetworkExtension Filtering", DISPATCH_QUEUE_SERIAL));
     ASSERT_UNUSED(url, !url);
     m_neFilterSource = adoptNS([allocNEFilterSourceInstance() initWithDecisionQueue:m_queue.get()]);
-#if PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
     [m_neFilterSource setSourceAppIdentifier:applicationBundleIdentifier()];
-    // FIXME: Remove the -respondsToSelector: check once -setSourceAppPid: is defined in an SDK used by the builders.
-    if ([m_neFilterSource respondsToSelector:@selector(setSourceAppPid:)])
-        [m_neFilterSource setSourceAppPid:presentingApplicationPID()];
-#endif
+    [m_neFilterSource setSourceAppPid:presentingApplicationPID()];
 }
 
 void NetworkExtensionContentFilter::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)

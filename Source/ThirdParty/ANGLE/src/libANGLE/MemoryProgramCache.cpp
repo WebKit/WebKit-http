@@ -64,6 +64,15 @@ HashStream &operator<<(HashStream &stream, const ProgramBindings &bindings)
     return stream;
 }
 
+HashStream &operator<<(HashStream &stream, const ProgramAliasedBindings &bindings)
+{
+    for (const auto &binding : bindings)
+    {
+        stream << binding.first << binding.second.location;
+    }
+    return stream;
+}
+
 HashStream &operator<<(HashStream &stream, const std::vector<std::string> &strings)
 {
     for (const auto &str : strings)
@@ -133,8 +142,9 @@ angle::Result MemoryProgramCache::getProgram(const Context *context,
     egl::BlobCache::Value binaryProgram;
     if (get(context, *hashOut, &binaryProgram))
     {
-        angle::Result result = program->loadBinary(context, GL_PROGRAM_BINARY_ANGLE,
-                                                   binaryProgram.data(), static_cast<int>(binaryProgram.size()));
+        angle::Result result =
+            program->loadBinary(context, GL_PROGRAM_BINARY_ANGLE, binaryProgram.data(),
+                                static_cast<int>(binaryProgram.size()));
         ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.ProgramCache.LoadBinarySuccess",
                                 result == angle::Result::Continue);
         ANGLE_TRY(result);

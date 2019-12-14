@@ -212,7 +212,7 @@ static const CGFloat presentationElementRectPadding = 15;
         indicatedRects.append(rect);
     }
 
-    for (auto path : WebCore::PathUtilities::pathsWithShrinkWrappedRects(indicatedRects, 0)) {
+    for (const auto& path : WebCore::PathUtilities::pathsWithShrinkWrappedRects(indicatedRects, 0)) {
         auto boundingRect = path.fastBoundingRect();
         if (boundingRect.contains(touchLocation))
             return CGRectInset([view convertRect:(CGRect)boundingRect fromView:_view.getAutoreleased()], -presentationElementRectPadding, -presentationElementRectPadding);
@@ -557,8 +557,6 @@ ALLOW_DEPRECATED_DECLARATIONS_END
         [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeCopy assistant:self]];
         [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeShare assistant:self]];
     }
-
-    [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionToggleShowLinkPreviews assistant:self]];
 
     return defaultActions;
 }

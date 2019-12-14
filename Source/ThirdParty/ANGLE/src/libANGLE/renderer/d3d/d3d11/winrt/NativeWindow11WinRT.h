@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016 The ANGLE Project Authors. All rights reserved.
+// Copyright 2016 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -34,6 +34,7 @@ class NativeWindow11WinRT : public NativeWindow11
                             DXGI_FORMAT format,
                             UINT width,
                             UINT height,
+                            UINT samples,
                             IDXGISwapChain **swapChain) override;
 
     void commitChange() override;

@@ -86,12 +86,15 @@ typedef USVString CSSOMString;
     // User prompts.
     void alert();
     void alert(DOMString message);
-    boolean confirm(optional DOMString message = "");
+    [ImplementedAs=confirmForBindings]boolean confirm(optional DOMString message = "");
     DOMString? prompt(optional DOMString message = "", optional DOMString defaultValue = "");
     void print();
 
     long requestAnimationFrame(RequestAnimationFrameCallback callback); // FIXME: Should return an unsigned long.
     void cancelAnimationFrame(long handle); // FIXME: handle should be an unsigned long.
+
+    [EnabledBySetting=requestIdleCallback] unsigned long requestIdleCallback(IdleRequestCallback callback, optional IdleRequestOptions options);
+    [EnabledBySetting=requestIdleCallback] void cancelIdleCallback(unsigned long handle);
 
     [CallWith=ExecState&IncumbentWindow, DoNotCheckSecurity, ForwardDeclareInHeader, MayThrowException] void postMessage(any message, USVString targetOrigin, optional sequence<object> transfer = []);
 

@@ -31,6 +31,7 @@
 #include "DataReference.h"
 #include "FormDataReference.h"
 #include "Logging.h"
+#include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessMessages.h"
 #include "ServiceWorkerFetchTaskMessages.h"
 #include "WebCacheStorageProvider.h"
@@ -57,7 +58,6 @@
 #include <WebCore/ServiceWorkerClientQueryOptions.h>
 #include <WebCore/ServiceWorkerJobDataIdentifier.h>
 #include <WebCore/UserAgent.h>
-#include <pal/SessionID.h>
 #include <wtf/ProcessID.h>
 
 #if USE(QUICK_LOOK)
@@ -68,12 +68,8 @@ namespace WebKit {
 using namespace PAL;
 using namespace WebCore;
 
-static const Seconds asyncWorkerTerminationTimeout { 10_s };
-static const Seconds syncWorkerTerminationTimeout { 100_ms }; // Only used by layout tests.
-
-ServiceWorkerFrameLoaderClient::ServiceWorkerFrameLoaderClient(WebSWContextManagerConnection& connection, SessionID sessionID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, FrameIdentifier frameID, const String& userAgent)
+ServiceWorkerFrameLoaderClient::ServiceWorkerFrameLoaderClient(WebSWContextManagerConnection& connection, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, FrameIdentifier frameID, const String& userAgent)
     : m_connection(connection)
-    , m_sessionID(sessionID)
     , m_webPageProxyID(webPageProxyID)
     , m_pageID(pageID)
     , m_frameID(frameID)
@@ -86,8 +82,9 @@ Ref<DocumentLoader> ServiceWorkerFrameLoaderClient::createDocumentLoader(const R
     return WebDocumentLoader::create(request, substituteData);
 }
 
-WebSWContextManagerConnection::WebSWContextManagerConnection(Ref<IPC::Connection>&& connection, uint64_t pageGroupID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, const WebPreferencesStore& store)
+WebSWContextManagerConnection::WebSWContextManagerConnection(Ref<IPC::Connection>&& connection, WebCore::RegistrableDomain&& registrableDomain, uint64_t pageGroupID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, const WebPreferencesStore& store)
     : m_connectionToNetworkProcess(WTFMove(connection))
+    , m_registrableDomain(WTFMove(registrableDomain))
     , m_pageGroupID(pageGroupID)
     , m_webPageProxyID(webPageProxyID)
     , m_pageID(pageID)
@@ -98,6 +95,8 @@ WebSWContextManagerConnection::WebSWContextManagerConnection(Ref<IPC::Connection
 #endif
 {
     updatePreferencesStore(store);
+    m_connectionToNetworkProcess->send(Messages::NetworkConnectionToWebProcess::EstablishSWContextConnection { m_registrableDomain }, 0);
+    WebProcess::singleton().disableTermination();
 }
 
 WebSWContextManagerConnection::~WebSWContextManagerConnection() = default;
@@ -118,11 +117,11 @@ void WebSWContextManagerConnection::updatePreferencesStore(const WebPreferencesS
     m_storageBlockingPolicy = static_cast<SecurityOrigin::StorageBlockingPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::storageBlockingPolicyKey()));
 }
 
-void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerContextData& data, SessionID sessionID, String&& userAgent)
+void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerContextData& data, String&& userAgent)
 {
     LOG(ServiceWorker, "WebSWContextManagerConnection::installServiceWorker for worker %s", data.serviceWorkerIdentifier.loggingString().utf8().data());
 
-    auto pageConfiguration = pageConfigurationWithEmptyClients();
+    auto pageConfiguration = pageConfigurationWithEmptyClients(WebProcess::singleton().sessionID());
 
 #if ENABLE(INDEXED_DATABASE)
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroupID);
@@ -136,11 +135,11 @@ void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerCont
     // FIXME: This method should be moved directly to WebCore::SWContextManager::Connection
     // If it weren't for ServiceWorkerFrameLoaderClient's dependence on WebDocumentLoader, this could already happen.
     // FIXME: Weird to pass m_previousServiceWorkerID as a FrameIdentifier.
-    auto frameLoaderClient = makeUnique<ServiceWorkerFrameLoaderClient>(*this, sessionID, m_webPageProxyID, m_pageID, frameIdentifierFromID(++m_previousServiceWorkerID), effectiveUserAgent);
+    auto frameLoaderClient = makeUnique<ServiceWorkerFrameLoaderClient>(*this, m_webPageProxyID, m_pageID, frameIdentifierFromID(++m_previousServiceWorkerID), effectiveUserAgent);
     pageConfiguration.loaderClientForMainFrame = frameLoaderClient.get();
     m_loaders.add(WTFMove(frameLoaderClient));
 
-    auto serviceWorkerThreadProxy = ServiceWorkerThreadProxy::create(WTFMove(pageConfiguration), data, sessionID, WTFMove(effectiveUserAgent), WebProcess::singleton().cacheStorageProvider(), m_storageBlockingPolicy);
+    auto serviceWorkerThreadProxy = ServiceWorkerThreadProxy::create(WTFMove(pageConfiguration), data, WTFMove(effectiveUserAgent), WebProcess::singleton().cacheStorageProvider(), m_storageBlockingPolicy);
     SWContextManager::singleton().registerServiceWorkerThreadForInstall(WTFMove(serviceWorkerThreadProxy));
 
     LOG(ServiceWorker, "Context process PID: %i created worker thread\n", getCurrentProcessID());
@@ -252,17 +251,17 @@ void WebSWContextManagerConnection::softUpdate(WebCore::ServiceWorkerIdentifier 
 
 void WebSWContextManagerConnection::terminateWorker(ServiceWorkerIdentifier identifier)
 {
-    SWContextManager::singleton().terminateWorker(identifier, asyncWorkerTerminationTimeout, nullptr);
+    SWContextManager::singleton().terminateWorker(identifier, SWContextManager::workerTerminationTimeout, nullptr);
 }
 
 void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier identifier, Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply&& reply)
 {
-    SWContextManager::singleton().terminateWorker(identifier, syncWorkerTerminationTimeout, WTFMove(reply));
+    SWContextManager::singleton().terminateWorker(identifier, SWContextManager::syncWorkerTerminationTimeout, WTFMove(reply));
 }
 
-void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, const MessageWithMessagePorts& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
-    m_connectionToNetworkProcess->send(Messages::NetworkProcess::PostMessageToServiceWorkerClient(destinationIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin), 0);
+    m_connectionToNetworkProcess->send(Messages::WebSWServerToContextConnection::PostMessageToServiceWorkerClient(destinationIdentifier, message, sourceIdentifier, sourceOrigin), 0);
 }
 
 void WebSWContextManagerConnection::didFinishInstall(Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)
@@ -347,10 +346,14 @@ void WebSWContextManagerConnection::didFinishSkipWaiting(uint64_t callbackID)
         callback();
 }
 
-void WebSWContextManagerConnection::terminateProcess()
+void WebSWContextManagerConnection::close()
 {
-    RELEASE_LOG(ServiceWorker, "Service worker process is exiting because it is no longer needed");
-    _exit(EXIT_SUCCESS);
+    RELEASE_LOG(ServiceWorker, "Service worker process is requested to stop all service workers");
+    setAsClosed();
+
+    m_connectionToNetworkProcess->send(Messages::NetworkConnectionToWebProcess::CloseSWContextConnection { }, 0);
+    SWContextManager::singleton().stopAllServiceWorkers();
+    WebProcess::singleton().enableTermination();
 }
 
 void WebSWContextManagerConnection::setThrottleState(bool isThrottleable)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -115,7 +115,7 @@ class WatchpointSet;
 #if ENABLE(JIT)
 #define JSC_WATCHPOINT_TYPES_WITHOUT_DFG(macro) \
     JSC_WATCHPOINT_TYPES_WITHOUT_JIT(macro) \
-    macro(StructureStubClearing, StructureStubClearingWatchpoint)
+    macro(StructureTransitionStructureStubClearing, StructureTransitionStructureStubClearingWatchpoint)
 
 #if ENABLE(DFG_JIT)
 #define JSC_WATCHPOINT_TYPES(macro) \
@@ -475,9 +475,9 @@ public:
     }
     
 private:
-    static const uintptr_t IsThinFlag        = 1;
-    static const uintptr_t StateMask         = 6;
-    static const uintptr_t StateShift        = 1;
+    static constexpr uintptr_t IsThinFlag        = 1;
+    static constexpr uintptr_t StateMask         = 6;
+    static constexpr uintptr_t StateShift        = 1;
     
     static bool isThin(uintptr_t data) { return data & IsThinFlag; }
     static bool isFat(uintptr_t data) { return !isThin(data); }

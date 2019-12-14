@@ -460,12 +460,12 @@ void IDBServer::confirmDidCloseFromServer(uint64_t databaseConnectionIdentifier)
         databaseConnection->confirmDidCloseFromServer();
 }
 
-void IDBServer::getAllDatabaseNames(uint64_t serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
+void IDBServer::getAllDatabaseNames(IDBConnectionIdentifier serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
 {
     postDatabaseTask(createCrossThreadTask(*this, &IDBServer::performGetAllDatabaseNames, serverConnectionIdentifier, mainFrameOrigin, openingOrigin, callbackID));
 }
 
-void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
+void IDBServer::performGetAllDatabaseNames(IDBConnectionIdentifier serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
 {
     auto databaseDirectoryPath = this->databaseDirectoryPathIsolatedCopy();
     String oldDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, databaseDirectoryPath, "v0");
@@ -487,7 +487,7 @@ void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, 
     postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::didGetAllDatabaseNames, serverConnectionIdentifier, callbackID, databases));
 }
 
-void IDBServer::didGetAllDatabaseNames(uint64_t serverConnectionIdentifier, uint64_t callbackID, const Vector<String>& databaseNames)
+void IDBServer::didGetAllDatabaseNames(IDBConnectionIdentifier serverConnectionIdentifier, uint64_t callbackID, const Vector<String>& databaseNames)
 {
     auto connection = m_connectionMap.get(serverConnectionIdentifier);
     if (!connection)
@@ -712,7 +712,6 @@ IDBServer::QuotaUser::~QuotaUser()
 void IDBServer::QuotaUser::resetSpaceUsed()
 {
     m_spaceUsed = 0;
-    m_estimatedSpaceIncrease = 0;
 
     if (!m_manager)
         return;
@@ -730,6 +729,11 @@ void IDBServer::QuotaUser::resetSpaceUsed()
     // Do add/remove to trigger call to whenInitialized.
     m_manager->removeUser(*this);
     m_manager->addUser(*this);
+}
+
+void IDBServer::QuotaUser::computeSpaceUsed()
+{
+    resetSpaceUsed();
 }
 
 void IDBServer::QuotaUser::increaseSpaceUsed(uint64_t size)

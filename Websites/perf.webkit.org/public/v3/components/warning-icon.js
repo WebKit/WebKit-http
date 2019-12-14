@@ -5,6 +5,16 @@ class WarningIcon extends ButtonBase {
         super('warning-icon');
     }
 
+    render()
+    {
+        super.render();
+    }
+
+    setWarning(warning)
+    {
+        this.setButtonTitle(warning);
+    }
+
     static sizeFactor() { return 0.7; }
 
     static buttonContent()

@@ -84,24 +84,35 @@ NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSess
     , m_enableResourceLoadStatisticsLogTestingEvent(parameters.enableResourceLoadStatisticsLogTestingEvent)
 #endif
     , m_adClickAttribution(makeUniqueRef<AdClickAttributionManager>(parameters.sessionID))
+    , m_testSpeedMultiplier(parameters.testSpeedMultiplier)
 {
     if (!m_sessionID.isEphemeral()) {
         String networkCacheDirectory = parameters.networkCacheDirectory;
-        if (networkCacheDirectory.isNull())
-            networkCacheDirectory = networkProcess.diskCacheDirectory();
-        else
+        if (!networkCacheDirectory.isNull())
             SandboxExtension::consumePermanently(parameters.networkCacheDirectoryExtensionHandle);
 
-        m_cache = NetworkCache::Cache::open(networkProcess, networkCacheDirectory, networkProcess.cacheOptions(), m_sessionID);
+        auto cacheOptions = networkProcess.cacheOptions();
+#if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
+        if (parameters.networkCacheSpeculativeValidationEnabled)
+            cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
+#endif
+        if (parameters.shouldUseTestingNetworkSession)
+            cacheOptions.add(NetworkCache::CacheOption::TestingMode);
+
+        m_cache = NetworkCache::Cache::open(networkProcess, networkCacheDirectory, cacheOptions, m_sessionID);
+
         if (!m_cache)
             RELEASE_LOG_ERROR(NetworkCache, "Failed to initialize the WebKit network disk cache");
+        
+        if (!parameters.resourceLoadStatisticsDirectory.isEmpty())
+            SandboxExtension::consumePermanently(parameters.resourceLoadStatisticsDirectoryExtensionHandle);
     }
 
     m_adClickAttribution->setPingLoadFunction([this, weakThis = makeWeakPtr(this)](NetworkResourceLoadParameters&& loadParameters, CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&& completionHandler) {
         if (!weakThis)
             return;
         // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
-        new PingLoad(m_networkProcess, WTFMove(loadParameters), WTFMove(completionHandler));
+        new PingLoad(m_networkProcess, m_sessionID, WTFMove(loadParameters), WTFMove(completionHandler));
     });
 }
 
@@ -161,6 +172,17 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
         m_resourceLoadStatistics->setPrevalentResourceForDebugMode(m_resourceLoadStatisticsManualPrevalentResource, [] { });
 }
 
+void NetworkSession::recreateResourceLoadStatisticStore()
+{
+    destroyResourceLoadStatistics();
+    m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
+}
+
+bool NetworkSession::isResourceLoadStatisticsEnabled() const
+{
+    return !!m_resourceLoadStatistics;
+}
+
 void NetworkSession::notifyResourceLoadStatisticsProcessed()
 {
     m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsProcessed(), 0);
@@ -171,9 +193,9 @@ void NetworkSession::logDiagnosticMessageWithValue(const String& message, const 
     m_networkProcess->parentProcessConnection()->send(Messages::WebPageProxy::LogDiagnosticMessageWithValue(message, description, value, significantFigures, shouldSample), 0);
 }
 
-void NetworkSession::notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins)
+void NetworkSession::notifyPageStatisticsTelemetryFinished(unsigned numberOfPrevalentResources, unsigned numberOfPrevalentResourcesWithUserInteraction, unsigned numberOfPrevalentResourcesWithoutUserInteraction, unsigned topPrevalentResourceWithUserInteractionDaysSinceUserInteraction, unsigned medianDaysSinceUserInteractionPrevalentResourceWithUserInteraction, unsigned top3NumberOfPrevalentResourcesWithUI, unsigned top3MedianSubFrameWithoutUI, unsigned top3MedianSubResourceWithoutUI, unsigned top3MedianUniqueRedirectsWithoutUI, unsigned top3MedianDataRecordsRemovedWithoutUI)
 {
-    m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsTelemetryFinished(totalPrevalentResources, totalPrevalentResourcesWithUserInteraction, top3SubframeUnderTopFrameOrigins), 0);
+    m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsTelemetryFinished(numberOfPrevalentResources, numberOfPrevalentResourcesWithUserInteraction, numberOfPrevalentResourcesWithoutUserInteraction, topPrevalentResourceWithUserInteractionDaysSinceUserInteraction, medianDaysSinceUserInteractionPrevalentResourceWithUserInteraction, top3NumberOfPrevalentResourcesWithUI, top3MedianSubFrameWithoutUI, top3MedianSubResourceWithoutUI, top3MedianUniqueRedirectsWithoutUI, top3MedianDataRecordsRemovedWithoutUI), 0);
 }
 
 void NetworkSession::deleteWebsiteDataForRegistrableDomains(OptionSet<WebsiteDataType> dataTypes, Vector<std::pair<RegistrableDomain, WebsiteDataToRemove>>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
@@ -185,6 +207,17 @@ void NetworkSession::registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType
 {
     m_networkProcess->registrableDomainsWithWebsiteData(m_sessionID, dataTypes, shouldNotifyPage, WTFMove(completionHandler));
 }
+
+void NetworkSession::setShouldDowngradeReferrerForTesting(bool enabled)
+{
+    m_downgradeReferrer = enabled;
+}
+
+bool NetworkSession::shouldDowngradeReferrer() const
+{
+    return m_downgradeReferrer;
+}
+
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 void NetworkSession::storeAdClickAttribution(WebCore::AdClickAttribution&& adClickAttribution)

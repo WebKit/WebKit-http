@@ -123,6 +123,7 @@ enctype
 end
 event
 expanded
+exportparts
 face
 filename
 focused
@@ -333,6 +334,7 @@ onwebkitwillrevealright
 onwebkitwillrevealtop
 open
 optimum
+part
 pattern
 placeholder
 playsinline

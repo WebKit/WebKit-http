@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/Ref.h>
@@ -42,9 +41,9 @@ public:
     using CompletionHandler = Function<void(Ref<FileList>&&)>;
 
     enum class ShouldResolveDirectories { No, Yes };
-    static Ref<FileListCreator> create(PAL::SessionID sessionID, const Vector<FileChooserFileInfo>& paths, ShouldResolveDirectories shouldResolveDirectories, CompletionHandler&& completionHandler)
+    static Ref<FileListCreator> create(const Vector<FileChooserFileInfo>& paths, ShouldResolveDirectories shouldResolveDirectories, CompletionHandler&& completionHandler)
     {
-        return adoptRef(*new FileListCreator(sessionID, paths, shouldResolveDirectories, WTFMove(completionHandler)));
+        return adoptRef(*new FileListCreator(paths, shouldResolveDirectories, WTFMove(completionHandler)));
     }
 
     ~FileListCreator();
@@ -52,10 +51,10 @@ public:
     void cancel();
 
 private:
-    FileListCreator(PAL::SessionID, const Vector<FileChooserFileInfo>& paths, ShouldResolveDirectories, CompletionHandler&&);
+    FileListCreator(const Vector<FileChooserFileInfo>& paths, ShouldResolveDirectories, CompletionHandler&&);
 
     template<ShouldResolveDirectories shouldResolveDirectories>
-    static Ref<FileList> createFileList(PAL::SessionID, const Vector<FileChooserFileInfo>&);
+    static Ref<FileList> createFileList(const Vector<FileChooserFileInfo>&);
 
     RefPtr<WorkQueue> m_workQueue;
     CompletionHandler m_completionHander;

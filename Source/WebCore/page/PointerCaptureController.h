@@ -26,14 +26,21 @@
 
 #if ENABLE(POINTER_EVENTS)
 
+#include "ExceptionOr.h"
 #include "PointerID.h"
 #include <wtf/HashMap.h>
 
 namespace WebCore {
 
+class Document;
 class Element;
 class EventTarget;
+class IntPoint;
+class MouseEvent;
+class Page;
+class PlatformTouchEvent;
 class PointerEvent;
+class WindowProxy;
 
 class PointerCaptureController {
     WTF_MAKE_NONCOPYABLE(PointerCaptureController);
@@ -67,6 +74,9 @@ private:
     struct CapturingData {
         RefPtr<Element> pendingTargetOverride;
         RefPtr<Element> targetOverride;
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
+        RefPtr<Element> previousTarget;
+#endif
         String pointerType;
         bool cancelled { false };
         bool isPrimary { false };
@@ -75,6 +85,7 @@ private:
         short previousMouseButton { -1 };
     };
 
+    CapturingData& ensureCapturingDataForPointerEvent(const PointerEvent&);
     void pointerEventWillBeDispatched(const PointerEvent&, EventTarget*);
     void pointerEventWasDispatched(const PointerEvent&);
 

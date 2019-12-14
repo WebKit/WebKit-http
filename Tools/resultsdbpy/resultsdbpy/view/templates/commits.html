@@ -90,7 +90,7 @@ function OneLineSwitch() {
         },
     });
     return `<div class="input">
-            <label style="color:var(--boldInverseColor)">One-line:</label>
+            <label style="color:var(--inverseColor)">One-line:</label>
             <label class="switch">
                 <input type="checkbox" ref="${switchRef}" checked=${oneLine}>
                 <span class="slider"></span>
@@ -100,11 +100,11 @@ function OneLineSwitch() {
 
 var table = new Table();
 DOM.inject(document.getElementById('app'), `${Drawer([
-    LimitSlider(() => {table.reload()}),
+    LimitSlider(() => {table.reload()}, 10000, 1000),
     OneLineSwitch(),
     BranchSelector(() => {table.reload()}),
 ])}
-<div class="main left under-topbar-with-actions">
+<div class="main right-sidebar under-topbar-with-actions">
     <div class="content">${table}</div>
 </div>`);
 

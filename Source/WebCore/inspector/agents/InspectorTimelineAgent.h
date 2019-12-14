@@ -86,30 +86,30 @@ class InspectorTimelineAgent final : public InspectorAgentBase , public Inspecto
     WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorTimelineAgent(PageAgentContext&);
-    virtual ~InspectorTimelineAgent();
+    ~InspectorTimelineAgent() override;
 
     // InspectorAgentBase
-    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*);
-    void willDestroyFrontendAndBackend(Inspector::DisconnectReason);
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // TimelineBackendDispatcherHandler
-    void enable(ErrorString&);
-    void disable(ErrorString&);
-    void start(ErrorString&, const int* maxCallStackDepth = nullptr);
-    void stop(ErrorString&);
-    void setAutoCaptureEnabled(ErrorString&, bool);
-    void setInstruments(ErrorString&, const JSON::Array&);
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void start(ErrorString&, const int* maxCallStackDepth = nullptr) override;
+    void stop(ErrorString&) override;
+    void setAutoCaptureEnabled(ErrorString&, bool) override;
+    void setInstruments(ErrorString&, const JSON::Array&) override;
 
     // ScriptDebugListener
-    void didParseSource(JSC::SourceID, const Script&) { }
-    void failedToParseSource(const String&, const String&, int, int, const String&) { }
-    void willRunMicrotask() { }
-    void didRunMicrotask() { }
-    void didPause(JSC::ExecState&, JSC::JSValue, JSC::JSValue) { }
-    void didContinue() { }
-    void breakpointActionLog(JSC::ExecState&, const String&) { }
-    void breakpointActionSound(int) { }
-    void breakpointActionProbe(JSC::ExecState&, const Inspector::ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, JSC::JSValue result);
+    void didParseSource(JSC::SourceID, const Script&) override { }
+    void failedToParseSource(const String&, const String&, int, int, const String&) override { }
+    void willRunMicrotask() override { }
+    void didRunMicrotask() override { }
+    void didPause(JSC::ExecState&, JSC::JSValue, JSC::JSValue) override { }
+    void didContinue() override { }
+    void breakpointActionLog(JSC::ExecState&, const String&) override { }
+    void breakpointActionSound(int) override { }
+    void breakpointActionProbe(JSC::ExecState&, const Inspector::ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, JSC::JSValue result) override;
 
     // InspectorInstrumentation
     void didInstallTimer(int timerId, Seconds timeout, bool singleShot, Frame*);
@@ -147,8 +147,6 @@ public:
     // Console
     void startFromConsole(JSC::ExecState*, const String& title);
     void stopFromConsole(JSC::ExecState*, const String& title);
-
-    int id() const { return m_id; }
 
 private:
     void startProgrammaticCapture();
@@ -200,7 +198,6 @@ private:
     void didCompleteCurrentRecord(TimelineRecordType);
 
     void addRecordToTimeline(RefPtr<JSON::Object>&&, TimelineRecordType);
-    void clearRecordStack();
 
     void localToPageQuad(const RenderObject&, const LayoutRect&, FloatQuad*);
 
@@ -211,7 +208,6 @@ private:
     Vector<TimelineRecordEntry> m_recordStack;
     Vector<TimelineRecordEntry> m_pendingConsoleProfileRecords;
 
-    int m_id { 1 };
     int m_maxCallStackDepth { 5 };
 
     bool m_tracking { false };

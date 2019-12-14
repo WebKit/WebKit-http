@@ -54,6 +54,7 @@ public:
     Optional<double> bindingsCurrentTime() const final;
     ExceptionOr<void> setBindingsCurrentTime(Optional<double>) final;
     WebAnimation::PlayState bindingsPlayState() const final;
+    WebAnimation::ReplaceState bindingsReplaceState() const final;
     bool bindingsPending() const final;
     WebAnimation::ReadyPromise& bindingsReady() final;
     WebAnimation::FinishedPromise& bindingsFinished() final;
@@ -88,7 +89,7 @@ private:
     bool m_wasPending { false };
     AnimationEffectPhase m_previousPhase { AnimationEffectPhase::Idle };
 
-    GenericEventQueue m_eventQueue;
+    UniqueRef<MainThreadGenericEventQueue> m_eventQueue;
 
     Element* m_owningElement;
     Ref<Animation> m_backingAnimation;

@@ -35,7 +35,7 @@ class InternalFunction : public JSDestructibleObject {
     friend class LLIntOffsetsExtractor;
 public:
     typedef JSDestructibleObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | ImplementsDefaultHasInstance | OverridesGetCallData;
+    static constexpr unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | ImplementsDefaultHasInstance | OverridesGetCallData;
 
     template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
@@ -76,6 +76,13 @@ public:
         return OBJECT_OFFSETOF(InternalFunction, m_functionForConstruct);
     }
 
+    static ptrdiff_t offsetOfGlobalObject()
+    {
+        return OBJECT_OFFSETOF(InternalFunction, m_globalObject);
+    }
+
+    JSGlobalObject* globalObject() const { return m_globalObject.get(); }
+
 protected:
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*, NativeFunction functionForCall, NativeFunction functionForConstruct);
 
@@ -91,6 +98,7 @@ protected:
     TaggedNativeFunction m_functionForCall;
     TaggedNativeFunction m_functionForConstruct;
     WriteBarrier<JSString> m_originalName;
+    WriteBarrier<JSGlobalObject> m_globalObject;
 };
 
 ALWAYS_INLINE Structure* InternalFunction::createSubclassStructure(ExecState* exec, JSValue newTarget, Structure* baseClass)
@@ -102,8 +110,6 @@ ALWAYS_INLINE Structure* InternalFunction::createSubclassStructure(ExecState* ex
 {
     // We allow newTarget == JSValue() because the API needs to be able to create classes without having a real JS frame.
     // Since we don't allow subclassing in the API we just treat newTarget == JSValue() as newTarget == exec->jsCallee()
-    ASSERT(!newTarget || newTarget.isConstructor(exec->vm()));
-
     if (newTarget && newTarget != baseCallee)
         return createSubclassStructureSlow(exec, newTarget, baseClass);
     return baseClass;

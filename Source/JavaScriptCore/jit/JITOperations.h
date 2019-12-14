@@ -39,9 +39,9 @@ typedef int64_t EncodedJSValue;
 class ArrayAllocationProfile;
 class ArrayProfile;
 class Butterfly;
+class CallFrame;
 class CallLinkInfo;
 class CodeBlock;
-class ExecState;
 class JSArray;
 class JSCell;
 class JSFunction;
@@ -66,7 +66,7 @@ struct InlineCallFrame;
 struct Instruction;
 struct ArithProfile;
 
-typedef ExecState CallFrame;
+using ExecState = CallFrame;
 
 extern "C" {
 
@@ -421,6 +421,8 @@ void JIT_OPERATION operationSetFunctionName(ExecState*, JSCell*, EncodedJSValue)
 JSCell* JIT_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewPromise(ExecState*, Structure*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewInternalPromise(ExecState*, Structure*) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationNewGenerator(ExecState*, Structure*) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationNewAsyncGenerator(ExecState*, Structure*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewRegexp(ExecState*, JSCell*) WTF_INTERNAL;
 UnusedPtr JIT_OPERATION operationHandleTraps(ExecState*) WTF_INTERNAL;
 void JIT_OPERATION operationThrow(ExecState*, EncodedJSValue) WTF_INTERNAL;

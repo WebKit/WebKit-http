@@ -26,10 +26,13 @@
 #pragma once
 
 #include "SandboxExtension.h"
+#include <pal/SessionID.h>
+#include <wtf/HashMap.h>
 
 namespace WebKit {
 
 struct WebProcessDataStoreParameters {
+    PAL::SessionID sessionID;
     String applicationCacheDirectory;
     SandboxExtension::Handle applicationCacheDirectoryExtensionHandle;
     String applicationCacheFlatFileSubdirectoryName;
@@ -41,6 +44,7 @@ struct WebProcessDataStoreParameters {
     SandboxExtension::Handle mediaKeyStorageDirectoryExtensionHandle;
     String javaScriptConfigurationDirectory;
     SandboxExtension::Handle javaScriptConfigurationDirectoryExtensionHandle;
+    HashMap<unsigned, WallTime> plugInAutoStartOriginHashes;
     bool resourceLoadStatisticsEnabled { false };
 
     template<class Encoder> void encode(Encoder&) const;
@@ -50,6 +54,7 @@ struct WebProcessDataStoreParameters {
 template<class Encoder>
 void WebProcessDataStoreParameters::encode(Encoder& encoder) const
 {
+    encoder << sessionID;
     encoder << applicationCacheDirectory;
     encoder << applicationCacheDirectoryExtensionHandle;
     encoder << applicationCacheFlatFileSubdirectoryName;
@@ -61,66 +66,92 @@ void WebProcessDataStoreParameters::encode(Encoder& encoder) const
     encoder << mediaKeyStorageDirectoryExtensionHandle;
     encoder << javaScriptConfigurationDirectory;
     encoder << javaScriptConfigurationDirectoryExtensionHandle;
+    encoder << plugInAutoStartOriginHashes;
     encoder << resourceLoadStatisticsEnabled;
 }
 
 template<class Decoder>
 Optional<WebProcessDataStoreParameters> WebProcessDataStoreParameters::decode(Decoder& decoder)
 {
-    WebProcessDataStoreParameters parameters;
+    Optional<PAL::SessionID> sessionID;
+    decoder >> sessionID;
+    if (!sessionID)
+        return WTF::nullopt;
 
-    if (!decoder.decode(parameters.applicationCacheDirectory))
+    String applicationCacheDirectory;
+    if (!decoder.decode(applicationCacheDirectory))
         return WTF::nullopt;
 
     Optional<SandboxExtension::Handle> applicationCacheDirectoryExtensionHandle;
     decoder >> applicationCacheDirectoryExtensionHandle;
     if (!applicationCacheDirectoryExtensionHandle)
         return WTF::nullopt;
-    parameters.applicationCacheDirectoryExtensionHandle = WTFMove(*applicationCacheDirectoryExtensionHandle);
 
-    if (!decoder.decode(parameters.applicationCacheFlatFileSubdirectoryName))
+    String applicationCacheFlatFileSubdirectoryName;
+    if (!decoder.decode(applicationCacheFlatFileSubdirectoryName))
         return WTF::nullopt;
 
-    if (!decoder.decode(parameters.webSQLDatabaseDirectory))
+    String webSQLDatabaseDirectory;
+    if (!decoder.decode(webSQLDatabaseDirectory))
         return WTF::nullopt;
 
     Optional<SandboxExtension::Handle> webSQLDatabaseDirectoryExtensionHandle;
     decoder >> webSQLDatabaseDirectoryExtensionHandle;
     if (!webSQLDatabaseDirectoryExtensionHandle)
         return WTF::nullopt;
-    parameters.webSQLDatabaseDirectoryExtensionHandle = WTFMove(*webSQLDatabaseDirectoryExtensionHandle);
 
-    if (!decoder.decode(parameters.mediaCacheDirectory))
+    String mediaCacheDirectory;
+    if (!decoder.decode(mediaCacheDirectory))
         return WTF::nullopt;
 
     Optional<SandboxExtension::Handle> mediaCacheDirectoryExtensionHandle;
     decoder >> mediaCacheDirectoryExtensionHandle;
     if (!mediaCacheDirectoryExtensionHandle)
         return WTF::nullopt;
-    parameters.mediaCacheDirectoryExtensionHandle = WTFMove(*mediaCacheDirectoryExtensionHandle);
 
-    if (!decoder.decode(parameters.mediaKeyStorageDirectory))
+    String mediaKeyStorageDirectory;
+    if (!decoder.decode(mediaKeyStorageDirectory))
         return WTF::nullopt;
 
     Optional<SandboxExtension::Handle> mediaKeyStorageDirectoryExtensionHandle;
     decoder >> mediaKeyStorageDirectoryExtensionHandle;
     if (!mediaKeyStorageDirectoryExtensionHandle)
         return WTF::nullopt;
-    parameters.mediaKeyStorageDirectoryExtensionHandle = WTFMove(*mediaKeyStorageDirectoryExtensionHandle);
 
-    if (!decoder.decode(parameters.javaScriptConfigurationDirectory))
+    String javaScriptConfigurationDirectory;
+    if (!decoder.decode(javaScriptConfigurationDirectory))
         return WTF::nullopt;
 
     Optional<SandboxExtension::Handle> javaScriptConfigurationDirectoryExtensionHandle;
     decoder >> javaScriptConfigurationDirectoryExtensionHandle;
     if (!javaScriptConfigurationDirectoryExtensionHandle)
         return WTF::nullopt;
-    parameters.javaScriptConfigurationDirectoryExtensionHandle = WTFMove(*javaScriptConfigurationDirectoryExtensionHandle);
-
-    if (!decoder.decode(parameters.resourceLoadStatisticsEnabled))
+        
+    Optional<HashMap<unsigned, WallTime>> plugInAutoStartOriginHashes;
+    decoder >> plugInAutoStartOriginHashes;
+    if (!plugInAutoStartOriginHashes)
         return WTF::nullopt;
 
-    return parameters;
+    bool resourceLoadStatisticsEnabled = false;
+    if (!decoder.decode(resourceLoadStatisticsEnabled))
+        return WTF::nullopt;
+
+    return WebProcessDataStoreParameters {
+        WTFMove(*sessionID),
+        WTFMove(applicationCacheDirectory),
+        WTFMove(*applicationCacheDirectoryExtensionHandle),
+        WTFMove(applicationCacheFlatFileSubdirectoryName),
+        WTFMove(webSQLDatabaseDirectory),
+        WTFMove(*webSQLDatabaseDirectoryExtensionHandle),
+        WTFMove(mediaCacheDirectory),
+        WTFMove(*mediaCacheDirectoryExtensionHandle),
+        WTFMove(mediaKeyStorageDirectory),
+        WTFMove(*mediaKeyStorageDirectoryExtensionHandle),
+        WTFMove(javaScriptConfigurationDirectory),
+        WTFMove(*javaScriptConfigurationDirectoryExtensionHandle),
+        WTFMove(*plugInAutoStartOriginHashes),
+        resourceLoadStatisticsEnabled
+    };
 }
 
 } // namespace WebKit

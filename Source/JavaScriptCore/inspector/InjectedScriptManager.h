@@ -29,14 +29,18 @@
 
 #pragma once
 
+#include "Exception.h"
 #include "InjectedScript.h"
 #include "InspectorEnvironment.h"
+#include <wtf/Expected.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
+#include <wtf/NakedPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
+using ExecState = CallFrame;
 }
 
 namespace Inspector {
@@ -73,7 +77,7 @@ protected:
 
 private:
     String injectedScriptSource();
-    JSC::JSObject* createInjectedScript(const String& source, JSC::ExecState*, int id);
+    Expected<JSC::JSObject*, NakedPtr<JSC::Exception>> createInjectedScript(const String& source, JSC::ExecState*, int id);
 
     InspectorEnvironment& m_environment;
     Ref<InjectedScriptHost> m_injectedScriptHost;

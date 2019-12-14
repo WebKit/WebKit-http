@@ -27,7 +27,6 @@
 
 #include "FrameLoaderClient.h"
 #include "ResourceError.h"
-#include <pal/SessionID.h>
 
 #if USE(QUICK_LOOK)
 #include "PreviewLoaderClient.h"
@@ -42,7 +41,6 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     Optional<FrameIdentifier> frameID() const override { return WTF::nullopt; }
     Optional<PageIdentifier> pageID() const override { return WTF::nullopt; }
-    PAL::SessionID sessionID() const override;
 
     bool hasWebView() const final { return true; } // mainly for assertions
 
@@ -57,7 +55,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void detachedFromParent2() final { }
     void detachedFromParent3() final { }
 
-    void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) final { }
+    void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&) final { }
 
     void assignIdentifierToInitialRequest(unsigned long, DocumentLoader*, const ResourceRequest&) final { }
     bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) override { return false; }

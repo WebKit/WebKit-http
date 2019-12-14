@@ -35,6 +35,7 @@
 #include "WebKitSettingsPrivate.h"
 #include "WebPageProxy.h"
 #include "WebPreferences.h"
+#include <WebCore/HTTPParsers.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/TextEncodingRegistry.h>
 #include <WebCore/UserAgent.h>
@@ -183,9 +184,6 @@ static void webKitSettingsConstructed(GObject* object)
     WebKitSettings* settings = WEBKIT_SETTINGS(object);
     WebPreferences* prefs = settings->priv->preferences.get();
     prefs->setShouldRespectImageOrientation(true);
-
-    if (g_getenv("WEBKIT_WEBRTC_DISABLE_UNIFIED_PLAN"))
-        prefs->setWebRTCUnifiedPlanEnabled(FALSE);
 
     bool mediaStreamEnabled = prefs->mediaStreamEnabled();
     prefs->setMediaDevicesEnabled(mediaStreamEnabled);
@@ -2390,7 +2388,7 @@ gboolean webkit_settings_get_enable_private_browsing(WebKitSettings* settings)
 {
     g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
 
-    return settings->priv->preferences->privateBrowsingEnabled();
+    return FALSE;
 }
 
 /**
@@ -2405,14 +2403,6 @@ gboolean webkit_settings_get_enable_private_browsing(WebKitSettings* settings)
 void webkit_settings_set_enable_private_browsing(WebKitSettings* settings, gboolean enabled)
 {
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
-
-    WebKitSettingsPrivate* priv = settings->priv;
-    bool currentValue = priv->preferences->privateBrowsingEnabled();
-    if (currentValue == enabled)
-        return;
-
-    priv->preferences->setPrivateBrowsingEnabled(enabled);
-    g_object_notify(G_OBJECT(settings), "enable-private-browsing");
 }
 #endif
 
@@ -3043,7 +3033,15 @@ void webkit_settings_set_user_agent(WebKitSettings* settings, const char* userAg
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
     WebKitSettingsPrivate* priv = settings->priv;
-    CString newUserAgent = (!userAgent || !strlen(userAgent)) ? WebCore::standardUserAgent("").utf8() : userAgent;
+
+    String userAgentString;
+    if (userAgent && *userAgent) {
+        userAgentString = String::fromUTF8(userAgent);
+        g_return_if_fail(WebCore::isValidUserAgentHeaderValue(userAgentString));
+    } else
+        userAgentString = WebCore::standardUserAgent("");
+
+    CString newUserAgent = userAgentString.utf8();
     if (newUserAgent == priv->userAgent)
         return;
 
@@ -3548,6 +3546,7 @@ void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, 
         }
         if (!priv->preferences->forceCompositingMode()) {
             priv->preferences->setForceCompositingMode(true);
+            priv->preferences->setThreadedScrollingEnabled(true);
             changed = true;
         }
         break;
@@ -3561,6 +3560,7 @@ void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, 
 
         if (priv->preferences->forceCompositingMode()) {
             priv->preferences->setForceCompositingMode(false);
+            priv->preferences->setThreadedScrollingEnabled(false);
             changed = true;
         }
         break;
@@ -3572,6 +3572,7 @@ void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, 
 
         if (priv->preferences->forceCompositingMode() && !HardwareAccelerationManager::singleton().forceHardwareAcceleration()) {
             priv->preferences->setForceCompositingMode(false);
+            priv->preferences->setThreadedScrollingEnabled(false);
             changed = true;
         }
         break;

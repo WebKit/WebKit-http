@@ -561,13 +561,13 @@ bool PageClientImpl::effectiveAppearanceIsDark() const
     if (preferDarkTheme)
         return true;
 
+    if (auto* themeNameEnv = g_getenv("GTK_THEME"))
+        return g_str_has_suffix(themeNameEnv, "-dark") || g_str_has_suffix(themeNameEnv, ":dark");
+
     GUniqueOutPtr<char> themeName;
     g_object_get(settings, "gtk-theme-name", &themeName.outPtr(), nullptr);
     if (g_str_has_suffix(themeName.get(), "-dark"))
         return true;
-
-    if (auto* themeNameEnv = g_getenv("GTK_THEME"))
-        return g_str_has_suffix(themeNameEnv, ":dark");
 
     return false;
 }
@@ -578,5 +578,11 @@ IPC::Attachment PageClientImpl::hostFileDescriptor()
     return webkitWebViewBaseRenderHostFileDescriptor(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 #endif
+
+void PageClientImpl::didChangeWebPageID() const
+{
+    if (WEBKIT_IS_WEB_VIEW(m_viewWidget))
+        webkitWebViewDidChangePageID(WEBKIT_WEB_VIEW(m_viewWidget));
+}
 
 } // namespace WebKit

@@ -97,17 +97,14 @@ ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, 
     loadPtr(MacroAssembler::Address(src, JSString::offsetOfValue()), dst);
     failures.append(branchIfRopeStringImpl(dst));
     failures.append(branch32(NotEqual, MacroAssembler::Address(dst, StringImpl::lengthMemoryOffset()), TrustedImm32(1)));
-    loadPtr(MacroAssembler::Address(dst, StringImpl::flagsOffset()), regT1);
-    loadPtr(MacroAssembler::Address(dst, StringImpl::dataOffset()), dst);
+    loadPtr(MacroAssembler::Address(dst, StringImpl::dataOffset()), regT1);
 
-    JumpList is16Bit;
-    JumpList cont8Bit;
-    is16Bit.append(branchTest32(Zero, regT1, TrustedImm32(StringImpl::flagIs8Bit())));
-    load8(MacroAssembler::Address(dst, 0), dst);
-    cont8Bit.append(jump());
+    auto is16Bit = branchTest32(Zero, Address(dst, StringImpl::flagsOffset()), TrustedImm32(StringImpl::flagIs8Bit()));
+    load8(MacroAssembler::Address(regT1, 0), dst);
+    auto done = jump();
     is16Bit.link(this);
-    load16(MacroAssembler::Address(dst, 0), dst);
-    cont8Bit.link(this);
+    load16(MacroAssembler::Address(regT1, 0), dst);
+    done.link(this);
 }
 
 ALWAYS_INLINE JIT::Call JIT::emitNakedCall(CodePtr<NoPtrTag> target)
@@ -674,7 +671,7 @@ inline void JIT::emitLoadInt32ToDouble(int index, FPRegisterID value)
 
 ALWAYS_INLINE JIT::PatchableJump JIT::emitPatchableJumpIfNotInt(RegisterID reg)
 {
-    return patchableBranch64(Below, reg, tagTypeNumberRegister);
+    return patchableBranch64(Below, reg, numberTagRegister);
 }
 
 ALWAYS_INLINE JIT::Jump JIT::emitJumpIfNotInt(RegisterID reg1, RegisterID reg2, RegisterID scratch)
@@ -722,7 +719,7 @@ ALWAYS_INLINE GetPutInfo JIT::copiedGetPutInfo(OpPutToScope bytecode)
 template<typename BinaryOp>
 ALWAYS_INLINE ArithProfile JIT::copiedArithProfile(BinaryOp bytecode)
 {
-    uint64_t key = static_cast<uint64_t>(BinaryOp::opcodeID) << 32 | static_cast<uint64_t>(bytecode.m_metadataID);
+    uint64_t key = (static_cast<uint64_t>(BinaryOp::opcodeID) + 1) << 32 | static_cast<uint64_t>(bytecode.m_metadataID);
     auto iterator = m_copiedArithProfiles.find(key);
     if (iterator != m_copiedArithProfiles.end())
         return iterator->value;

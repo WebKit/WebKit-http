@@ -46,22 +46,23 @@ public:
     Invalidator(const RuleSet&);
 
     bool dirtiesAllStyle() const { return m_dirtiesAllStyle; }
-    bool hasShadowPseudoElementRulesInAuthorSheet() const { return m_hasShadowPseudoElementRulesInAuthorSheet; }
     void invalidateStyle(Document&);
     void invalidateStyle(ShadowRoot&);
     void invalidateStyle(Element&);
     void invalidateStyleWithMatchElement(Element&, MatchElement);
+
+    static void invalidateShadowParts(ShadowRoot&);
 
 private:
     enum class CheckDescendants { Yes, No };
     CheckDescendants invalidateIfNeeded(Element&, const SelectorFilter*);
     void invalidateStyleForTree(Element&, SelectorFilter*);
     void invalidateStyleForDescendants(Element&, SelectorFilter*);
+    void invalidateInShadowTreeIfNeeded(Element&);
 
     std::unique_ptr<RuleSet> m_ownedRuleSet;
     const RuleSet& m_ruleSet;
     bool m_dirtiesAllStyle { false };
-    bool m_hasShadowPseudoElementRulesInAuthorSheet { false };
     bool m_didInvalidateHostChildren { false };
 };
 

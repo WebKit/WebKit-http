@@ -113,41 +113,32 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
 
     show(anchorBounds)
     {
-        let scrollTop = this._containerElement.scrollTop;
-
         // Measure the container so we can know the intrinsic size of the items.
-        this._containerElement.style.position = "absolute";
-        document.body.appendChild(this._containerElement);
-
-        var containerWidth = this._containerElement.offsetWidth;
-        var containerHeight = this._containerElement.offsetHeight;
-
-        this._containerElement.removeAttribute("style");
-        this._element.appendChild(this._containerElement);
+        let intrinsicSize = WI.measureElement(this._containerElement);
+        let containerWidth = Math.ceil(intrinsicSize.width);
+        let containerHeight = Math.ceil(intrinsicSize.height);
 
         // Lay out the suggest-box relative to the anchorBounds.
-        var margin = 10;
-        var horizontalPadding = 22;
-        var absoluteMaximumHeight = 160;
+        let margin = 10;
+        let absoluteMaximumHeight = 160;
 
-        var x = anchorBounds.origin.x;
-        var y = anchorBounds.origin.y + anchorBounds.size.height;
+        let x = anchorBounds.origin.x;
+        let y = anchorBounds.origin.y + anchorBounds.size.height;
 
-        var maximumWidth = window.innerWidth - anchorBounds.origin.x - margin;
-        var width = Math.min(containerWidth, maximumWidth - horizontalPadding) + horizontalPadding;
-        var paddedWidth = containerWidth + horizontalPadding;
+        let maximumWidth = window.innerWidth - anchorBounds.origin.x - margin;
+        let width = Math.min(containerWidth, maximumWidth);
 
-        if (width < paddedWidth) {
+        if (width < containerWidth) {
             // Shift the suggest box to the left to accommodate the content without trimming to the BODY edge.
             maximumWidth = window.innerWidth - margin;
-            width = Math.min(containerWidth, maximumWidth - horizontalPadding) + horizontalPadding;
+            width = Math.min(containerWidth, maximumWidth);
             x = document.body.offsetWidth - width;
         }
 
-        var aboveHeight = anchorBounds.origin.y;
-        var underHeight = window.innerHeight - anchorBounds.origin.y - anchorBounds.size.height;
-        var maximumHeight = Math.min(absoluteMaximumHeight, Math.max(underHeight, aboveHeight) - margin);
-        var height = Math.min(containerHeight, maximumHeight);
+        let aboveHeight = anchorBounds.origin.y;
+        let underHeight = window.innerHeight - anchorBounds.origin.y - anchorBounds.size.height;
+        let maximumHeight = Math.min(absoluteMaximumHeight, Math.max(underHeight, aboveHeight) - margin);
+        let height = Math.min(containerHeight, maximumHeight);
 
         // Position the suggestions below the anchor. If there is no room, position the suggestions above.
         if (underHeight - height < 0)
@@ -158,10 +149,8 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         this._element.style.width = width + "px";
         this._element.style.height = height + "px";
 
-        document.body.appendChild(this._element);
-
-        if (scrollTop)
-            this._containerElement.scrollTop = scrollTop;
+        if (!this._element.parentNode)
+            document.body.appendChild(this._element);
     }
 
     hide()

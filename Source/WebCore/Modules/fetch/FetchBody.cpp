@@ -35,6 +35,7 @@
 #include "FetchHeaders.h"
 #include "HTTPHeaderValues.h"
 #include "HTTPParsers.h"
+#include "JSDOMPromiseDeferred.h"
 #include "ReadableStreamSource.h"
 #include <JavaScriptCore/ArrayBufferView.h>
 
@@ -75,7 +76,7 @@ ExceptionOr<FetchBody> FetchBody::extract(Init&& value, String& contentType)
     });
 }
 
-Optional<FetchBody> FetchBody::fromFormData(PAL::SessionID sessionID, FormData& formData)
+Optional<FetchBody> FetchBody::fromFormData(FormData& formData)
 {
     ASSERT(!formData.isEmpty());
 
@@ -88,7 +89,7 @@ Optional<FetchBody> FetchBody::fromFormData(PAL::SessionID sessionID, FormData& 
     auto url = formData.asBlobURL();
     if (!url.isNull()) {
         // FIXME: Properly set mime type and size of the blob.
-        Ref<const Blob> blob = Blob::deserialize(sessionID, url, { }, { }, { });
+        Ref<const Blob> blob = Blob::deserialize(url, { }, { }, { });
         return FetchBody { WTFMove(blob) };
     }
 
@@ -127,6 +128,11 @@ void FetchBody::text(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
     }
     m_consumer.setType(FetchBodyConsumer::Type::Text);
     consume(owner, WTFMove(promise));
+}
+
+void FetchBody::formData(FetchBodyOwner&, Ref<DeferredPromise>&& promise)
+{
+    promise.get().reject(NotSupportedError);
 }
 
 void FetchBody::consumeOnceLoadingFinished(FetchBodyConsumer::Type type, Ref<DeferredPromise>&& promise, const String& contentType)

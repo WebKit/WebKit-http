@@ -31,6 +31,12 @@
 #include "PlatformTouchEventIOS.h"
 #endif
 
+namespace JSC {
+class CallFrame;
+class JSValue;
+using ExecState = CallFrame;
+}
+
 namespace WebCore {
 
 class DataTransfer;
@@ -38,6 +44,7 @@ class Node;
 class PlatformMouseEvent;
 
 class MouseEvent : public MouseRelatedEvent {
+    WTF_MAKE_ISO_ALLOCATED(MouseEvent);
 public:
     WEBCORE_EXPORT static Ref<MouseEvent> create(const AtomString& type, CanBubble, IsCancelable, IsComposed, MonotonicTime timestamp, RefPtr<WindowProxy>&&, int detail,
         const IntPoint& screenLocation, const IntPoint& windowLocation, const IntPoint& movementDelta, OptionSet<Modifier>, short button, unsigned short buttons,

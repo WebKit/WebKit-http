@@ -57,7 +57,11 @@ class HeadlessViewBackend;
 typedef WKViewRef PlatformWKView;
 typedef WPEToolingBackends::HeadlessViewBackend* PlatformWindow;
 #elif PLATFORM(WIN)
+#if USE(DIRECT2D)
+#include <d2d1_1.h>
+#else
 #include <cairo.h>
+#endif
 class TestRunnerWindow;
 typedef HWND PlatformWindow;
 typedef WKViewRef PlatformWKView;
@@ -65,6 +69,10 @@ typedef WKViewRef PlatformWKView;
 
 #if USE(CAIRO)
 typedef cairo_surface_t* PlatformImage;
+#elif USE(DIRECT2D)
+interface ID2D1Bitmap;
+
+typedef ID2D1Bitmap* PlatformImage;
 #endif
 
 namespace WTR {

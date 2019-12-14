@@ -118,6 +118,8 @@ shouldPrintBackgrounds:
 clipboardAccessPolicy:
   type: ClipboardAccessPolicy
   initial: ClipboardAccessPolicy::RequiresUserGesture
+asyncClipboardAPIEnabled:
+  initial: false
 
 textAreasAreResizable:
   initial: false
@@ -337,6 +339,8 @@ wantsBalancedSetDefersLoadingBehavior:
   initial: false
 requestAnimationFrameEnabled:
   initial: true
+requestIdleCallbackEnabled:
+  initial: false
 
 HTTPSUpgradeEnabled:
   initial: false
@@ -865,6 +869,9 @@ webRTCEncryptionEnabled:
 
 isITPSessionSwitchingEnabled:
   initial: true
+
+isLoggedInAPIEnabled:
+  initial: false
 
 # Deprecated
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@
 namespace JSC {
 
 namespace PolymorphicAccessInternal {
-static const bool verbose = false;
+static constexpr bool verbose = false;
 }
 
 void AccessGenerationResult::dump(PrintStream& out) const
@@ -55,9 +55,9 @@ void AccessGenerationResult::dump(PrintStream& out) const
         out.print(":", m_code);
 }
 
-Watchpoint* AccessGenerationState::addWatchpoint(const ObjectPropertyCondition& condition)
+void AccessGenerationState::installWatchpoint(const ObjectPropertyCondition& condition)
 {
-    return WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
+    WatchpointsOnStructureStubInfo::ensureReferenceAndInstallWatchpoint(
         watchpoints, jit->codeBlock(), stubInfo, condition);
 }
 
@@ -373,7 +373,7 @@ void PolymorphicAccess::commit(
     for (WatchpointSet* set : accessCase.commit(vm, ident)) {
         Watchpoint* watchpoint =
             WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
-                watchpoints, codeBlock, &stubInfo, ObjectPropertyCondition());
+                watchpoints, codeBlock, &stubInfo);
         
         set->add(watchpoint);
     }

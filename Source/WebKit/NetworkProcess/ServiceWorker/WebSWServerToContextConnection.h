@@ -31,9 +31,11 @@
 #include "MessageSender.h"
 #include "ServiceWorkerFetchTask.h"
 #include <WebCore/SWServerToContextConnection.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 struct FetchOptions;
+struct MessageWithMessagePorts;
 class ResourceRequest;
 }
 
@@ -47,25 +49,18 @@ class SessionID;
 
 namespace WebKit {
 
-class NetworkProcess;
+class NetworkConnectionToWebProcess;
+class WebSWServerConnection;
 
 class WebSWServerToContextConnection : public WebCore::SWServerToContextConnection, public IPC::MessageSender, public IPC::MessageReceiver {
 public:
-    template <typename... Args> static Ref<WebSWServerToContextConnection> create(Args&&... args)
-    {
-        return adoptRef(*new WebSWServerToContextConnection(std::forward<Args>(args)...));
-    }
-
-    void connectionClosed();
-
-    IPC::Connection* ipcConnection() const { return m_ipcConnection.ptr(); }
+    WebSWServerToContextConnection(NetworkConnectionToWebProcess&, WebCore::RegistrableDomain&&, WebCore::SWServer&);
+    ~WebSWServerToContextConnection();
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
-    void terminate();
-
-    void startFetch(PAL::SessionID, Ref<IPC::Connection>&&, WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, WebCore::ServiceWorkerIdentifier, const WebCore::ResourceRequest&, const WebCore::FetchOptions&, const IPC::FormDataReference&, const String&);
+    void startFetch(PAL::SessionID, WebSWServerConnection&, WebCore::FetchIdentifier, WebCore::ServiceWorkerIdentifier, const WebCore::ResourceRequest&, const WebCore::FetchOptions&, const IPC::FormDataReference&, const String&);
     void cancelFetch(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, WebCore::ServiceWorkerIdentifier);
     void continueDidReceiveFetchResponse(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, WebCore::ServiceWorkerIdentifier);
 
@@ -74,16 +69,17 @@ public:
     void setThrottleState(bool isThrottleable);
     bool isThrottleable() const { return m_isThrottleable; }
 
-private:
-    WebSWServerToContextConnection(NetworkProcess&, const WebCore::RegistrableDomain&, Ref<IPC::Connection>&&);
-    ~WebSWServerToContextConnection();
+    void fetchTaskTimedOut(ServiceWorkerFetchTask&);
 
+private:
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() const final;
     uint64_t messageSenderDestinationID() const final;
 
+    void postMessageToServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier& destinationIdentifier, const WebCore::MessageWithMessagePorts&, WebCore::ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin);
+
     // Messages to the SW host WebProcess
-    void installServiceWorkerContext(const WebCore::ServiceWorkerContextData&, PAL::SessionID, const String& userAgent) final;
+    void installServiceWorkerContext(const WebCore::ServiceWorkerContextData&, const String& userAgent) final;
     void fireInstallEvent(WebCore::ServiceWorkerIdentifier) final;
     void fireActivateEvent(WebCore::ServiceWorkerIdentifier) final;
     void softUpdate(WebCore::ServiceWorkerIdentifier) final;
@@ -94,13 +90,15 @@ private:
     void claimCompleted(uint64_t requestIdentifier) final;
     void didFinishSkipWaiting(uint64_t callbackID) final;
 
-    void connectionMayNoLongerBeNeeded() final;
+    void connectionIsNoLongerNeeded() final;
 
-    Ref<IPC::Connection> m_ipcConnection;
-    Ref<NetworkProcess> m_networkProcess;
-    
+    void connectionClosed();
+
+    NetworkConnectionToWebProcess& m_connection;
+    WeakPtr<WebCore::SWServer> m_server;
+
     HashMap<ServiceWorkerFetchTask::Identifier, WebCore::FetchIdentifier> m_ongoingFetchIdentifiers;
-    HashMap<WebCore::FetchIdentifier, Ref<ServiceWorkerFetchTask>> m_ongoingFetches;
+    HashMap<WebCore::FetchIdentifier, std::unique_ptr<ServiceWorkerFetchTask>> m_ongoingFetches;
     bool m_isThrottleable { true };
 }; // class WebSWServerToContextConnection
 

@@ -36,8 +36,8 @@
 #include <wtf/MainThread.h>
 
 namespace WebKit {
+using namespace WebCore;
 
-uint64_t LibWebRTCSocketFactory::s_uniqueSocketIdentifier = 0;
 uint64_t LibWebRTCSocketFactory::s_uniqueResolverIdentifier = 0;
 
 static inline rtc::SocketAddress prepareSocketAddress(const rtc::SocketAddress& address, bool disableNonLocalhostConnections)
@@ -48,10 +48,9 @@ static inline rtc::SocketAddress prepareSocketAddress(const rtc::SocketAddress& 
     return result;
 }
 
-rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createServerTcpSocket(const rtc::SocketAddress& address, uint16_t minPort, uint16_t maxPort, int options)
+rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createServerTcpSocket(const void* socketGroup, const rtc::SocketAddress& address, uint16_t minPort, uint16_t maxPort, int options)
 {
-    auto socket = makeUnique<LibWebRTCSocket>(*this, ++s_uniqueSocketIdentifier, LibWebRTCSocket::Type::ServerTCP, address, rtc::SocketAddress());
-    m_sockets.set(socket->identifier(), socket.get());
+    auto socket = makeUnique<LibWebRTCSocket>(*this, socketGroup, LibWebRTCSocket::Type::ServerTCP, address, rtc::SocketAddress());
 
     callOnMainThread([identifier = socket->identifier(), address = prepareSocketAddress(address, m_disableNonLocalhostConnections), minPort, maxPort, options]() {
         if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkRTCProvider::CreateServerTCPSocket(identifier, RTCNetwork::SocketAddress(address), minPort, maxPort, options), 0)) {
@@ -60,14 +59,12 @@ rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createServerTcpSocket(const rtc:
         }
 
     });
-
     return socket.release();
 }
 
-rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createUdpSocket(const rtc::SocketAddress& address, uint16_t minPort, uint16_t maxPort)
+rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createUdpSocket(const void* socketGroup, const rtc::SocketAddress& address, uint16_t minPort, uint16_t maxPort)
 {
-    auto socket = makeUnique<LibWebRTCSocket>(*this, ++s_uniqueSocketIdentifier, LibWebRTCSocket::Type::UDP, address, rtc::SocketAddress());
-    m_sockets.set(socket->identifier(), socket.get());
+    auto socket = makeUnique<LibWebRTCSocket>(*this, socketGroup, LibWebRTCSocket::Type::UDP, address, rtc::SocketAddress());
 
     callOnMainThread([identifier = socket->identifier(), address = prepareSocketAddress(address, m_disableNonLocalhostConnections), minPort, maxPort]() {
         if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkRTCProvider::CreateUDPSocket(identifier, RTCNetwork::SocketAddress(address), minPort, maxPort), 0)) {
@@ -78,27 +75,24 @@ rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createUdpSocket(const rtc::Socke
     return socket.release();
 }
 
-rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createClientTcpSocket(const rtc::SocketAddress& localAddress, const rtc::SocketAddress& remoteAddress, PAL::SessionID sessionID, String&& userAgent, int options)
+rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createClientTcpSocket(const void* socketGroup, const rtc::SocketAddress& localAddress, const rtc::SocketAddress& remoteAddress, String&& userAgent, int options)
 {
-    auto socket = makeUnique<LibWebRTCSocket>(*this, ++s_uniqueSocketIdentifier, LibWebRTCSocket::Type::ClientTCP, localAddress, remoteAddress);
+    auto socket = makeUnique<LibWebRTCSocket>(*this, socketGroup, LibWebRTCSocket::Type::ClientTCP, localAddress, remoteAddress);
     socket->setState(LibWebRTCSocket::STATE_CONNECTING);
-    m_sockets.set(socket->identifier(), socket.get());
 
-    callOnMainThread([identifier = socket->identifier(), localAddress = prepareSocketAddress(localAddress, m_disableNonLocalhostConnections), remoteAddress = prepareSocketAddress(remoteAddress, m_disableNonLocalhostConnections), sessionID, userAgent = WTFMove(userAgent).isolatedCopy(), options]() {
-        if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkRTCProvider::CreateClientTCPSocket(identifier, RTCNetwork::SocketAddress(localAddress), RTCNetwork::SocketAddress(remoteAddress), sessionID, userAgent, options), 0)) {
+    callOnMainThread([identifier = socket->identifier(), localAddress = prepareSocketAddress(localAddress, m_disableNonLocalhostConnections), remoteAddress = prepareSocketAddress(remoteAddress, m_disableNonLocalhostConnections), userAgent = WTFMove(userAgent).isolatedCopy(), options]() {
+        if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkRTCProvider::CreateClientTCPSocket(identifier, RTCNetwork::SocketAddress(localAddress), RTCNetwork::SocketAddress(remoteAddress), userAgent, options), 0)) {
             // FIXME: Set error back to socket
             return;
         }
     });
-
     return socket.release();
 }
 
-rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createNewConnectionSocket(LibWebRTCSocket& serverSocket, uint64_t newConnectionSocketIdentifier, const rtc::SocketAddress& remoteAddress)
+rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createNewConnectionSocket(LibWebRTCSocket& serverSocket, LibWebRTCSocketIdentifier newConnectionSocketIdentifier, const rtc::SocketAddress& remoteAddress)
 {
-    auto socket = makeUnique<LibWebRTCSocket>(*this, ++s_uniqueSocketIdentifier, LibWebRTCSocket::Type::ServerConnectionTCP, serverSocket.localAddress(), remoteAddress);
+    auto socket = makeUnique<LibWebRTCSocket>(*this, serverSocket.socketGroup(), LibWebRTCSocket::Type::ServerConnectionTCP, serverSocket.localAddress(), remoteAddress);
     socket->setState(LibWebRTCSocket::STATE_CONNECTED);
-    m_sockets.set(socket->identifier(), socket.get());
 
     callOnMainThread([identifier = socket->identifier(), newConnectionSocketIdentifier]() {
         if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkRTCProvider::WrapNewTCPConnection(identifier, newConnectionSocketIdentifier), 0)) {
@@ -109,10 +103,24 @@ rtc::AsyncPacketSocket* LibWebRTCSocketFactory::createNewConnectionSocket(LibWeb
     return socket.release();
 }
 
-void LibWebRTCSocketFactory::detach(LibWebRTCSocket& socket)
+void LibWebRTCSocketFactory::addSocket(LibWebRTCSocket& socket)
+{
+    ASSERT(!m_sockets.contains(socket.identifier()));
+    m_sockets.add(socket.identifier(), &socket);
+}
+
+void LibWebRTCSocketFactory::removeSocket(LibWebRTCSocket& socket)
 {
     ASSERT(m_sockets.contains(socket.identifier()));
     m_sockets.remove(socket.identifier());
+}
+
+void LibWebRTCSocketFactory::forSocketInGroup(const void* socketGroup, const Function<void(LibWebRTCSocket&)>& callback)
+{
+    for (auto* socket : m_sockets.values()) {
+        if (socket->socketGroup() == socketGroup)
+            callback(*socket);
+    }
 }
 
 rtc::AsyncResolverInterface* LibWebRTCSocketFactory::createAsyncResolver()

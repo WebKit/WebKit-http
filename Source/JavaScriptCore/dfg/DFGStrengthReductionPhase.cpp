@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@
 namespace JSC { namespace DFG {
 
 class StrengthReductionPhase : public Phase {
-    static const bool verbose = false;
+    static constexpr bool verbose = false;
     
 public:
     StrengthReductionPhase(Graph& graph)
@@ -93,7 +93,7 @@ private:
             break;
             
         case ArithBitLShift:
-        case BitRShift:
+        case ArithBitRShift:
         case BitURShift:
             if (m_node->child1().useKind() != UntypedUse && m_node->child2()->isInt32Constant() && !(m_node->child2()->asInt32() & 0x1f)) {
                 convertToIdentityOverChild1();

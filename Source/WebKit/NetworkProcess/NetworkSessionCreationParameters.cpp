@@ -38,46 +38,6 @@
 
 namespace WebKit {
 
-NetworkSessionCreationParameters NetworkSessionCreationParameters::privateSessionParameters(const PAL::SessionID& sessionID)
-{
-    return {
-        sessionID
-        , { }
-        , AllowsCellularAccess::Yes
-#if PLATFORM(COCOA)
-        , { }
-        , { }
-        , { }
-        , AllowsTLSFallback::Yes
-        , false
-        , { }
-        , { }
-        , { }
-        , false
-#endif
-#if USE(SOUP)
-        , { }
-        , SoupCookiePersistentStorageType::Text
-#endif
-#if USE(CURL)
-        , { }
-        , { }
-#endif
-        , { }
-        , { }
-        , false
-        , false
-        , { }
-        , { }
-        , { }
-        , { }
-        , { }
-        , { }
-        , { }
-        , { }
-    };
-}
-
 void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << sessionID;
@@ -87,7 +47,6 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     IPC::encode(encoder, proxyConfiguration.get());
     encoder << sourceApplicationBundleIdentifier;
     encoder << sourceApplicationSecondaryIdentifier;
-    encoder << allowsTLSFallback;
     encoder << shouldLogCookieInformation;
     encoder << loadThrottleLatency;
     encoder << httpProxy;
@@ -115,6 +74,12 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
 
     encoder << deviceManagementRestrictionsEnabled;
     encoder << allLoadsBlockedByDeviceManagementRestrictionsForTesting;
+    encoder << dataConnectionServiceType;
+    encoder << fastServerTrustEvaluationEnabled;
+    encoder << networkCacheSpeculativeValidationEnabled;
+    encoder << shouldUseTestingNetworkSession;
+    encoder << testSpeedMultiplier;
+    encoder << suppressesConnectionTerminationOnSystemChange;
 }
 
 Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
@@ -147,11 +112,6 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     Optional<String> sourceApplicationSecondaryIdentifier;
     decoder >> sourceApplicationSecondaryIdentifier;
     if (!sourceApplicationSecondaryIdentifier)
-        return WTF::nullopt;
-
-    Optional<AllowsTLSFallback> allowsTLSFallback;
-    decoder >> allowsTLSFallback;
-    if (!allowsTLSFallback)
         return WTF::nullopt;
 
     Optional<bool> shouldLogCookieInformation;
@@ -264,6 +224,36 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!allLoadsBlockedByDeviceManagementRestrictionsForTesting)
         return WTF::nullopt;
 
+    Optional<String> dataConnectionServiceType;
+    decoder >> dataConnectionServiceType;
+    if (!dataConnectionServiceType)
+        return WTF::nullopt;
+    
+    Optional<bool> fastServerTrustEvaluationEnabled;
+    decoder >> fastServerTrustEvaluationEnabled;
+    if (!fastServerTrustEvaluationEnabled)
+        return WTF::nullopt;
+    
+    Optional<bool> networkCacheSpeculativeValidationEnabled;
+    decoder >> networkCacheSpeculativeValidationEnabled;
+    if (!networkCacheSpeculativeValidationEnabled)
+        return WTF::nullopt;
+    
+    Optional<bool> shouldUseTestingNetworkSession;
+    decoder >> shouldUseTestingNetworkSession;
+    if (!shouldUseTestingNetworkSession)
+        return WTF::nullopt;
+    
+    Optional<unsigned> testSpeedMultiplier;
+    decoder >> testSpeedMultiplier;
+    if (!testSpeedMultiplier)
+        return WTF::nullopt;
+    
+    Optional<bool> suppressesConnectionTerminationOnSystemChange;
+    decoder >> suppressesConnectionTerminationOnSystemChange;
+    if (!suppressesConnectionTerminationOnSystemChange)
+        return WTF::nullopt;
+
     return {{
         *sessionID
         , WTFMove(*boundInterfaceIdentifier)
@@ -272,7 +262,6 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(proxyConfiguration)
         , WTFMove(*sourceApplicationBundleIdentifier)
         , WTFMove(*sourceApplicationSecondaryIdentifier)
-        , WTFMove(*allowsTLSFallback)
         , WTFMove(*shouldLogCookieInformation)
         , WTFMove(*loadThrottleLatency)
         , WTFMove(*httpProxy)
@@ -299,6 +288,12 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*resourceLoadStatisticsManualPrevalentResource)
         , WTFMove(*networkCacheDirectory)
         , WTFMove(*networkCacheDirectoryExtensionHandle)
+        , WTFMove(*dataConnectionServiceType)
+        , WTFMove(*fastServerTrustEvaluationEnabled)
+        , WTFMove(*networkCacheSpeculativeValidationEnabled)
+        , WTFMove(*shouldUseTestingNetworkSession)
+        , WTFMove(*testSpeedMultiplier)
+        , WTFMove(*suppressesConnectionTerminationOnSystemChange)
     }};
 }
 

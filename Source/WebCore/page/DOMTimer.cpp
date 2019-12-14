@@ -161,7 +161,7 @@ private:
 bool NestedTimersMap::isTrackingNestedTimers = false;
 
 DOMTimer::DOMTimer(ScriptExecutionContext& context, std::unique_ptr<ScheduledAction> action, Seconds interval, bool singleShot)
-    : SuspendableTimer(context)
+    : SuspendableTimerBase(&context)
     , m_nestingLevel(context.timerNestingLevel())
     , m_action(WTFMove(action))
     , m_originalInterval(interval)
@@ -314,7 +314,7 @@ void DOMTimer::fired()
     // Only the first execution of a multi-shot timer should get an affirmative user gesture indicator.
     m_userGestureTokenToForward = nullptr;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willFireTimer(context, m_timeoutId, !repeatInterval());
+    InspectorInstrumentation::willFireTimer(context, m_timeoutId, !repeatInterval());
 
     // Simple case for non-one-shot timers.
     if (isActive()) {
@@ -325,9 +325,9 @@ void DOMTimer::fired()
 
         m_action->execute(context);
 
-        InspectorInstrumentation::didFireTimer(cookie);
-        updateThrottlingStateIfNecessary(fireState);
+        InspectorInstrumentation::didFireTimer(context);
 
+        updateThrottlingStateIfNecessary(fireState);
         return;
     }
 
@@ -343,7 +343,7 @@ void DOMTimer::fired()
 #endif
     m_action->execute(context);
 
-    InspectorInstrumentation::didFireTimer(cookie);
+    InspectorInstrumentation::didFireTimer(context);
 
     // Check if we should throttle nested single-shot timers.
     if (nestedTimers) {

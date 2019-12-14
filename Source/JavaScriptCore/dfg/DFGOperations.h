@@ -50,6 +50,8 @@ JSCell* JIT_OPERATION operationObjectCreateObject(ExecState*, JSObject*) WTF_INT
 JSCell* JIT_OPERATION operationCreateThis(ExecState*, JSObject* constructor, uint32_t inlineCapacity) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreatePromise(ExecState*, JSObject* constructor, JSGlobalObject*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateInternalPromise(ExecState*, JSObject* constructor, JSGlobalObject*) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationCreateGenerator(ExecState*, JSObject* constructor, JSGlobalObject*) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationCreateAsyncGenerator(ExecState*, JSObject* constructor, JSGlobalObject*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToThis(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToThisStrict(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueMod(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
@@ -180,6 +182,7 @@ JSCell* JIT_OPERATION operationBitNotBigInt(ExecState*, JSCell* op1) WTF_INTERNA
 JSCell* JIT_OPERATION operationBitOrBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationBitLShiftBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationAddBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationBitRShiftBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationBitXorBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 size_t JIT_OPERATION operationSameValue(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateActivationDirect(ExecState*, Structure*, JSScope*, SymbolTable*, EncodedJSValue);

@@ -26,7 +26,6 @@
 #import "config.h"
 #import "WebProcessPool.h"
 
-#import "AccessibilitySupportSPI.h"
 #import "CookieStorageUtilsCF.h"
 #import "LegacyCustomProtocolManagerClient.h"
 #import "Logging.h"
@@ -50,6 +49,7 @@
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
+#import <objc/runtime.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
@@ -62,6 +62,7 @@
 #if PLATFORM(MAC)
 #import <QuartzCore/CARemoteLayerServer.h>
 #else
+#import "AccessibilitySupportSPI.h"
 #import "UIKitSPI.h"
 #endif
 
@@ -128,6 +129,7 @@ void WebProcessPool::platformInitialize()
 {
     registerUserDefaultsIfNeeded();
     registerNotificationObservers();
+    initializeClassesForParameterCoding();
 
     // FIXME: This should be able to share code with WebCore's MemoryPressureHandler (and be platform independent).
     // Right now it cannot because WebKit1 and WebKit2 need to be able to coexist in the UI process,
@@ -140,7 +142,7 @@ void WebProcessPool::platformInitialize()
 }
 
 #if PLATFORM(IOS_FAMILY)
-String WebProcessPool::cookieStorageDirectory() const
+String WebProcessPool::cookieStorageDirectory()
 {
     String path = pathForProcessContainer();
     if (path.isEmpty())
@@ -157,9 +159,9 @@ void WebProcessPool::platformResolvePathsForSandboxExtensions()
     m_resolvedPaths.uiProcessBundleResourcePath = resolvePathForSandboxExtension([[NSBundle mainBundle] resourcePath]);
 
 #if PLATFORM(IOS_FAMILY)
-    m_resolvedPaths.cookieStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(cookieStorageDirectory());
-    m_resolvedPaths.containerCachesDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(webContentCachesDirectory());
-    m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(containerTemporaryDirectory());
+    m_resolvedPaths.cookieStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebProcessPool::cookieStorageDirectory());
+    m_resolvedPaths.containerCachesDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebProcessPool::webContentCachesDirectory());
+    m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebProcessPool::containerTemporaryDirectory());
 #endif
 }
 
@@ -303,7 +305,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
     parameters.shouldEnableITPDatabase = [defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isITPDatabaseEnabledKey().createCFString().get()]];
-    parameters.downloadMonitorSpeedMultiplier = m_configuration->downloadMonitorSpeedMultiplier();
 
     parameters.enableAdClickAttributionDebugMode = [defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::adClickAttributionDebugModeEnabledKey().createCFString().get()]];
 }
@@ -314,12 +315,12 @@ void WebProcessPool::platformInvalidateContext()
 }
 
 #if PLATFORM(IOS_FAMILY)
-String WebProcessPool::parentBundleDirectory() const
+String WebProcessPool::parentBundleDirectory()
 {
     return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
 }
 
-String WebProcessPool::networkingCachesDirectory() const
+String WebProcessPool::networkingCachesDirectory()
 {
     String path = pathForProcessContainer();
     if (path.isEmpty())
@@ -338,7 +339,7 @@ String WebProcessPool::networkingCachesDirectory() const
     return path;
 }
 
-String WebProcessPool::webContentCachesDirectory() const
+String WebProcessPool::webContentCachesDirectory()
 {
     String path = pathForProcessContainer();
     if (path.isEmpty())
@@ -357,7 +358,7 @@ String WebProcessPool::webContentCachesDirectory() const
     return path;
 }
 
-String WebProcessPool::containerTemporaryDirectory() const
+String WebProcessPool::containerTemporaryDirectory()
 {
     String path = NSTemporaryDirectory();
     return stringByResolvingSymlinksInPath(path);
@@ -489,11 +490,11 @@ static CFURLStorageSessionRef privateBrowsingSession()
     return session;
 }
 
-bool WebProcessPool::isURLKnownHSTSHost(const String& urlString, bool privateBrowsingEnabled) const
+bool WebProcessPool::isURLKnownHSTSHost(const String& urlString) const
 {
     RetainPtr<CFURLRef> url = URL(URL(), urlString).createCFURL();
 
-    return _CFNetworkIsKnownHSTSHostWithSession(url.get(), privateBrowsingEnabled ? privateBrowsingSession() : nullptr);
+    return _CFNetworkIsKnownHSTSHostWithSession(url.get(), nullptr);
 }
 
 void WebProcessPool::resetHSTSHosts()
@@ -591,5 +592,35 @@ void WebProcessPool::applicationIsAboutToSuspend()
         processPool->handleMemoryPressureWarning(Critical::Yes);
 }
 #endif
+
+void WebProcessPool::initializeClassesForParameterCoding()
+{
+    const auto& customClasses = m_configuration->customClassesForParameterCoder();
+    if (customClasses.isEmpty())
+        return;
+
+    auto standardClasses = [NSSet setWithObjects:[NSArray class], [NSData class], [NSDate class], [NSDictionary class], [NSNull class],
+        [NSNumber class], [NSSet class], [NSString class], [NSTimeZone class], [NSURL class], [NSUUID class], nil];
+    
+    auto mutableSet = adoptNS([standardClasses mutableCopy]);
+
+    for (const auto& customClass : customClasses) {
+        const auto* className = customClass.utf8().data();
+        Class objectClass = objc_lookUpClass(className);
+        if (!objectClass) {
+            WTFLogAlways("InjectedBundle::extendClassesForParameterCoder - Class %s is not a valid Objective C class.\n", className);
+            break;
+        }
+
+        [mutableSet.get() addObject:objectClass];
+    }
+
+    m_classesForParameterCoder = mutableSet;
+}
+
+NSSet *WebProcessPool::allowedClassesForParameterCoding() const
+{
+    return m_classesForParameterCoder.get();
+}
 
 } // namespace WebKit

@@ -312,6 +312,9 @@ void JIT::privateCompileMainPass()
         DEFINE_SLOW_OP(create_rest)
         DEFINE_SLOW_OP(create_promise)
         DEFINE_SLOW_OP(new_promise)
+        DEFINE_SLOW_OP(create_generator)
+        DEFINE_SLOW_OP(create_async_generator)
+        DEFINE_SLOW_OP(new_generator)
         DEFINE_SLOW_OP(pow)
 
         DEFINE_OP(op_add)
@@ -580,6 +583,8 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_SLOW_OP(div)
         DEFINE_SLOWCASE_SLOW_OP(create_this)
         DEFINE_SLOWCASE_SLOW_OP(create_promise)
+        DEFINE_SLOWCASE_SLOW_OP(create_generator)
+        DEFINE_SLOWCASE_SLOW_OP(create_async_generator)
         DEFINE_SLOWCASE_SLOW_OP(to_this)
         DEFINE_SLOWCASE_SLOW_OP(to_primitive)
         DEFINE_SLOWCASE_SLOW_OP(to_number)
@@ -945,12 +950,6 @@ void JIT::privateCompileExceptionHandlers()
 
         move(TrustedImmPtr(&vm()), GPRInfo::argumentGPR0);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-
-#if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
-#endif
         m_calls.append(CallRecord(call(OperationPtrTag), std::numeric_limits<unsigned>::max(), FunctionPtr<OperationPtrTag>(lookupExceptionHandlerFromCallerFrame)));
         jumpToExceptionHandler(vm());
     }
@@ -964,12 +963,6 @@ void JIT::privateCompileExceptionHandlers()
         // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(&vm()), GPRInfo::argumentGPR0);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-
-#if CPU(X86)
-        // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
-        poke(GPRInfo::argumentGPR0);
-        poke(GPRInfo::argumentGPR1, 1);
-#endif
         m_calls.append(CallRecord(call(OperationPtrTag), std::numeric_limits<unsigned>::max(), FunctionPtr<OperationPtrTag>(lookupExceptionHandler)));
         jumpToExceptionHandler(vm());
     }

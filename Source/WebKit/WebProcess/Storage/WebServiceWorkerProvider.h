@@ -41,7 +41,7 @@ class WebServiceWorkerProvider final : public WebCore::ServiceWorkerProvider {
 public:
     static WebServiceWorkerProvider& singleton();
 
-    void handleFetch(WebCore::ResourceLoader&, PAL::SessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect, ServiceWorkerClientFetch::Callback&&);
+    void handleFetch(WebCore::ResourceLoader&, bool shouldClearReferrerOnHTTPSToHTTPRedirect, ServiceWorkerClientFetch::Callback&&);
     bool cancelFetch(WebCore::FetchIdentifier);
     void fetchFinished(WebCore::FetchIdentifier);
 
@@ -52,8 +52,8 @@ private:
     friend NeverDestroyed<WebServiceWorkerProvider>;
     WebServiceWorkerProvider();
 
-    WebCore::SWClientConnection* existingServiceWorkerConnectionForSession(PAL::SessionID) final;
-    WebCore::SWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID) final;
+    WebCore::SWClientConnection* existingServiceWorkerConnection() final;
+    WebCore::SWClientConnection& serviceWorkerConnection() final;
 
     HashMap<WebCore::FetchIdentifier, Ref<ServiceWorkerClientFetch>> m_ongoingFetchTasks;
 }; // class WebServiceWorkerProvider

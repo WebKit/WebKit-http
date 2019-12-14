@@ -25,6 +25,8 @@
 
 #import "config.h"
 
+#if HAVE(PDFKIT)
+
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import "TestPDFDocument.h"
@@ -183,8 +185,6 @@ TEST(PDFSnapshot, Links)
         EXPECT_EQ(page->text()[0], 'C');
         EXPECT_EQ(page->text()[7], 'e');
 
-        // FIXME: iOS doesn't have link annotations yet.
-#if PLATFORM(MAC)
         auto annotations = page->annotations();
         EXPECT_EQ(annotations.size(), 1u);
         if (annotations.size()) {
@@ -197,7 +197,6 @@ TEST(PDFSnapshot, Links)
 
             EXPECT_TRUE(CGRectContainsPoint(annotationBounds, cMidpoint));
         }
-#endif
 
         didTakeSnapshot = true;
     }];
@@ -220,8 +219,8 @@ TEST(PDFSnapshot, InlineLinks)
         auto page = document->page(0);
         EXPECT_NE(page, nullptr);
 
-        // FIXME: There should be a link here, but due to the way we gather links for annotation using the RenderInline tree
-        // it is missed.
+        // FIXME <rdar://problem/55086988>: There should be a link here, but due to the way we gather links for
+        // annotation using the RenderInline tree it is missed.
 
 //        auto annotations = page->annotations();
 //        EXPECT_EQ(annotations.size(), 1u);
@@ -236,3 +235,4 @@ TEST(PDFSnapshot, InlineLinks)
 
 }
 
+#endif // HAVE(PDFKIT)

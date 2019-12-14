@@ -179,6 +179,7 @@ private:
             break;
         }
 
+        case ValueBitRShift:
         case ValueBitLShift: {
             SpeculatedType left = node->child1()->prediction();
             SpeculatedType right = node->child2()->prediction();
@@ -783,7 +784,7 @@ private:
         case ArithBitAnd:
         case ArithBitOr:
         case ArithBitXor:
-        case BitRShift:
+        case ArithBitRShift:
         case ArithBitLShift:
         case BitURShift:
         case ArithIMul:
@@ -906,7 +907,8 @@ private:
             break;
         }
 
-        case StringCharCodeAt: {
+        case StringCharCodeAt:
+        case StringCodePointAt: {
             setPrediction(SpecInt32Only);
             break;
         }
@@ -1013,6 +1015,13 @@ private:
         case CreatePromise:
         case NewPromise:
             setPrediction(SpecPromiseObject);
+            break;
+
+        case CreateGenerator:
+        case NewGenerator:
+        case CreateAsyncGenerator:
+        case NewAsyncGenerator:
+            setPrediction(SpecObjectOther);
             break;
             
         case ArraySlice:
@@ -1160,6 +1169,7 @@ private:
         case ValueMod:
         case ValuePow:
         case ValueBitLShift:
+        case ValueBitRShift:
         case ArithAdd:
         case ArithSub:
         case ArithNegate:

@@ -41,6 +41,10 @@ namespace IPC {
 class MessageSender;
 }
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 class AuthenticationChallenge;
 class Credential;
@@ -69,8 +73,6 @@ public:
     void didReceiveAuthenticationChallenge(IPC::MessageSender& download, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
 
     void completeAuthenticationChallenge(uint64_t challengeID, AuthenticationChallengeDisposition, WebCore::Credential&&);
-
-    uint64_t outstandingAuthenticationChallengeCount() const { return m_challenges.size(); }
 
 private:
     struct Challenge {

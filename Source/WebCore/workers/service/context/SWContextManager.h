@@ -49,7 +49,7 @@ public:
     public:
         virtual ~Connection() { }
 
-        virtual void postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&&, ServiceWorkerIdentifier source, const String& sourceOrigin) = 0;
+        virtual void postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, const MessageWithMessagePorts&, ServiceWorkerIdentifier source, const String& sourceOrigin) = 0;
         virtual void serviceWorkerStarted(Optional<ServiceWorkerJobDataIdentifier>, ServiceWorkerIdentifier, bool doesHandleFetch) = 0;
         virtual void serviceWorkerFailedToStart(Optional<ServiceWorkerJobDataIdentifier>, ServiceWorkerIdentifier, const String& message) = 0;
         virtual void didFinishInstall(Optional<ServiceWorkerJobDataIdentifier>, ServiceWorkerIdentifier, bool wasSuccessful) = 0;
@@ -65,6 +65,14 @@ public:
         virtual void claim(ServiceWorkerIdentifier, CompletionHandler<void()>&&) = 0;
 
         virtual bool isThrottleable() const = 0;
+
+        bool isClosed() const { return m_isClosed; }
+
+    protected:
+        void setAsClosed() { m_isClosed = true; }
+
+    private:
+        bool m_isClosed { false };
     };
 
     WEBCORE_EXPORT void setConnection(std::unique_ptr<Connection>&&);
@@ -86,6 +94,11 @@ public:
     void setServiceWorkerCreationCallback(ServiceWorkerCreationCallback* callback) { m_serviceWorkerCreationCallback = callback; }
 
     ServiceWorkerThreadProxy* workerByID(ServiceWorkerIdentifier identifier) { return m_workerMap.get(identifier); }
+
+    WEBCORE_EXPORT void stopAllServiceWorkers();
+
+    static constexpr Seconds workerTerminationTimeout { 10_s };
+    static constexpr Seconds syncWorkerTerminationTimeout { 100_ms }; // Only used by layout tests.
 
 private:
     SWContextManager() = default;

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The ANGLE Project Authors. All rights reserved.
+// Copyright 2015 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -380,17 +380,15 @@ egl::Error DisplayGLX::makeCurrent(egl::Surface *drawSurface,
                                    egl::Surface *readSurface,
                                    gl::Context *context)
 {
-    if (drawSurface)
+    glx::Drawable drawable =
+        (drawSurface ? GetImplAs<SurfaceGLX>(drawSurface)->getDrawable() : mDummyPbuffer);
+    if (drawable != mCurrentDrawable)
     {
-        glx::Drawable drawable = GetImplAs<SurfaceGLX>(drawSurface)->getDrawable();
-        if (drawable != mCurrentDrawable)
+        if (mGLX.makeCurrent(drawable, mContext) != True)
         {
-            if (mGLX.makeCurrent(drawable, mContext) != True)
-            {
-                return egl::EglContextLost() << "Failed to make the GLX context current";
-            }
-            mCurrentDrawable = drawable;
+            return egl::EglContextLost() << "Failed to make the GLX context current";
         }
+        mCurrentDrawable = drawable;
     }
 
     return DisplayGL::makeCurrent(drawSurface, readSurface, context);
@@ -989,6 +987,16 @@ WorkerContext *DisplayGLX::createWorkerContext(std::string *infoLog)
     mWorkerPbufferPool.pop_back();
 
     return new WorkerContextGLX(context, &mGLX, workerPbuffer);
+}
+
+void DisplayGLX::initializeFrontendFeatures(angle::FrontendFeatures *features) const
+{
+    mRenderer->initializeFrontendFeatures(features);
+}
+
+void DisplayGLX::populateFeatureList(angle::FeatureList *features)
+{
+    mRenderer->getFeatures().populateFeatureList(features);
 }
 
 }  // namespace rx

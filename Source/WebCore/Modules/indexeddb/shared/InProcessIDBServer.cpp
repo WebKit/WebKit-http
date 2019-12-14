@@ -39,6 +39,7 @@
 #include "IDBResultData.h"
 #include "IDBValue.h"
 #include "Logging.h"
+#include "ProcessIdentifier.h"
 #include <wtf/FileSystem.h>
 #include <wtf/RunLoop.h>
 
@@ -57,6 +58,8 @@ Ref<InProcessIDBServer> InProcessIDBServer::create(PAL::SessionID sessionID, con
     server->m_server->registerConnection(server->connectionToClient());
     return server;
 }
+
+InProcessIDBServer::~InProcessIDBServer() = default;
 
 StorageQuotaManager* InProcessIDBServer::quotaManager(const ClientOrigin& origin)
 {
@@ -90,11 +93,11 @@ InProcessIDBServer::InProcessIDBServer(PAL::SessionID sessionID, const String& d
     m_connectionToClient = IDBServer::IDBConnectionToClient::create(*this);
 }
 
-uint64_t InProcessIDBServer::identifier() const
+IDBConnectionIdentifier InProcessIDBServer::identifier() const
 {
     // An instance of InProcessIDBServer always has a 1:1 relationship with its instance of IDBServer.
     // Therefore the connection identifier between the two can always be "1".
-    return 1;
+    return Process::identifier();
 }
 
 IDBClient::IDBConnectionToServer& InProcessIDBServer::connectionToServer() const

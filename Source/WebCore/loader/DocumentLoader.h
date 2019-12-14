@@ -268,8 +268,6 @@ public:
     bool didCreateGlobalHistoryEntry() const { return m_didCreateGlobalHistoryEntry; }
     void setDidCreateGlobalHistoryEntry(bool didCreateGlobalHistoryEntry) { m_didCreateGlobalHistoryEntry = didCreateGlobalHistoryEntry; }
 
-    bool subresourceLoadersArePageCacheAcceptable() const { return m_subresourceLoadersArePageCacheAcceptable; }
-
     void setDefersLoading(bool);
     void setMainResourceDataBufferingPolicy(DataBufferingPolicy);
 
@@ -613,11 +611,7 @@ private:
 
 #if ENABLE(SERVICE_WORKER)
     Optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;
-    struct TemporaryServiceWorkerClient {
-        DocumentIdentifier documentIdentifier;
-        PAL::SessionID sessionID;
-    };
-    Optional<TemporaryServiceWorkerClient> m_temporaryServiceWorkerClient;
+    Optional<DocumentIdentifier> m_temporaryServiceWorkerClient;
 #endif
 
 #ifndef NDEBUG

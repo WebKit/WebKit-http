@@ -36,6 +36,8 @@ class HardwareBufferImageSiblingVkAndroid : public ExternalImageSiblingVk
     // ExternalImageSiblingVk interface
     vk::ImageHelper *getImage() const override;
 
+    void release(RendererVk *renderer) override;
+
   private:
     angle::Result initImpl(DisplayVk *displayVk);
 

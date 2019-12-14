@@ -80,6 +80,11 @@ ServiceWorker::~ServiceWorker()
 
 void ServiceWorker::updateState(State state)
 {
+    if (m_isSuspended) {
+        m_pendingStateChanges.append(state);
+        return;
+    }
+
     WORKER_RELEASE_LOG_IF_ALLOWED("updateState: Updating service worker %llu state from %hhu to %hhu. Registration ID: %llu", identifier().toUInt64(), m_data.state, state, registrationIdentifier().toUInt64());
     m_data.state = state;
     if (state != State::Installing && !m_isStopped) {
@@ -92,13 +97,8 @@ void ServiceWorker::updateState(State state)
 
 ExceptionOr<void> ServiceWorker::postMessage(ScriptExecutionContext& context, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
 {
-    if (m_isStopped || !context.sessionID().isValid())
+    if (m_isStopped)
         return Exception { InvalidStateError };
-
-    if (state() == State::Redundant)
-        return Exception { InvalidStateError, "Service Worker state is redundant"_s };
-
-    // FIXME: Invoke Run Service Worker algorithm with serviceWorker as the argument.
 
     auto* execState = context.execState();
     ASSERT(execState);
@@ -117,13 +117,13 @@ ExceptionOr<void> ServiceWorker::postMessage(ScriptExecutionContext& context, JS
     if (is<ServiceWorkerGlobalScope>(context))
         sourceIdentifier = downcast<ServiceWorkerGlobalScope>(context).thread().identifier();
     else {
-        auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context.sessionID());
+        auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnection();
         sourceIdentifier = ServiceWorkerClientIdentifier { connection.serverConnectionIdentifier(), downcast<Document>(context).identifier() };
     }
 
     MessageWithMessagePorts message = { messageData.releaseReturnValue(), portsOrException.releaseReturnValue() };
-    callOnMainThread([sessionID = context.sessionID(), destinationIdentifier = identifier(), message = WTFMove(message), sourceIdentifier = WTFMove(sourceIdentifier)]() mutable {
-        auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(sessionID);
+    callOnMainThread([destinationIdentifier = identifier(), message = WTFMove(message), sourceIdentifier = WTFMove(sourceIdentifier)]() mutable {
+        auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnection();
         connection.postMessageToServiceWorker(destinationIdentifier, WTFMove(message), sourceIdentifier);
     });
     return { };
@@ -146,8 +146,23 @@ const char* ServiceWorker::activeDOMObjectName() const
 
 bool ServiceWorker::canSuspendForDocumentSuspension() const
 {
-    // FIXME: We should do better as this prevents the page from entering PageCache when there is a Service Worker.
-    return !hasPendingActivity();
+    return true;
+}
+
+void ServiceWorker::suspend(ReasonForSuspension)
+{
+    m_isSuspended = true;
+}
+
+void ServiceWorker::resume()
+{
+    m_isSuspended = false;
+    if (!m_pendingStateChanges.isEmpty()) {
+        scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this)](auto&) {
+            for (auto pendingStateChange : std::exchange(m_pendingStateChanges, { }))
+                updateState(pendingStateChange);
+        });
+    }
 }
 
 void ServiceWorker::stop()

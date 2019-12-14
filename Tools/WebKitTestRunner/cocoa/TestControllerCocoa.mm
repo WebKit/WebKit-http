@@ -262,6 +262,8 @@ void TestController::cocoaResetStateToConsistentValues(const TestOptions& option
         // Toggle on before the test, and toggle off after the test.
         if (options.shouldShowSpellCheckingDots)
             [platformView toggleContinuousSpellChecking:nil];
+
+        [platformView resetInteractionCallbacks];
     }
 
     [globalWebsiteDataStoreDelegateClient setAllowRaisingQuota: true];
@@ -363,18 +365,20 @@ void TestController::addTestKeyToKeychain(const String& privateKeyBase64, const 
     ASSERT_UNUSED(status, !status);
 }
 
-void TestController::cleanUpKeychain(const String& attrLabel)
+void TestController::cleanUpKeychain(const String& attrLabel, const String& applicationTagBase64)
 {
-    NSDictionary* deleteQuery = @{
-        (id)kSecClass: (id)kSecClassKey,
-        (id)kSecAttrLabel: attrLabel,
+    auto deleteQuery = adoptNS([[NSMutableDictionary alloc] init]);
+    [deleteQuery setObject:(id)kSecClassKey forKey:(id)kSecClass];
+    [deleteQuery setObject:attrLabel forKey:(id)kSecAttrLabel];
 #if HAVE(DATA_PROTECTION_KEYCHAIN)
-        (id)kSecUseDataProtectionKeychain: @YES
+    [deleteQuery setObject:@YES forKey:(id)kSecUseDataProtectionKeychain];
 #else
-        (id)kSecAttrNoLegacy: @YES
+    [deleteQuery setObject:@YES forKey:(id)kSecAttrNoLegacy];
 #endif
-    };
-    SecItemDelete((__bridge CFDictionaryRef)deleteQuery);
+    if (!!applicationTagBase64)
+        [deleteQuery setObject:adoptNS([[NSData alloc] initWithBase64EncodedString:applicationTagBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get() forKey:(id)kSecAttrApplicationTag];
+
+    SecItemDelete((__bridge CFDictionaryRef)deleteQuery.get());
 }
 
 bool TestController::keyExistsInKeychain(const String& attrLabel, const String& applicationTagBase64)
@@ -409,15 +413,6 @@ void TestController::setAllowsAnySSLCertificate(bool allows)
     [globalWebsiteDataStoreDelegateClient setAllowAnySSLCertificate: allows];
 }
 
-bool TestController::canDoServerTrustEvaluationInNetworkProcess() const
-{
-#if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
-    return true;
-#else
-    return false;
-#endif
-}
-
 void TestController::installCustomMenuAction(const String& name, bool dismissesAutomatically)
 {
 #if PLATFORM(IOS_FAMILY)
@@ -436,7 +431,7 @@ void TestController::setAllowedMenuActions(const Vector<String>& actions)
 {
 #if PLATFORM(IOS_FAMILY)
     auto actionNames = adoptNS([[NSMutableArray<NSString *> alloc] initWithCapacity:actions.size()]);
-    for (auto action : actions)
+    for (auto& action : actions)
         [actionNames addObject:action];
     [m_mainWebView->platformView() setAllowedMenuActions:actionNames.get()];
 #else

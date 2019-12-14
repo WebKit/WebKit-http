@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ WK_CLASS_DEPRECATED_WITH_REPLACEMENT("WKProcessPool", macos(10.10, 10.14.4), ios
 @interface WKProcessGroup : NSObject
 
 - (id)initWithInjectedBundleURL:(NSURL *)bundleURL;
-
+- (id)initWithInjectedBundleURL:(NSURL *)bundleURL andCustomClassesForParameterCoder:(NSSet *)classesForCoder;
 
 #pragma mark Delegates
 

@@ -32,6 +32,7 @@
 #include <WebCore/FrameIdentifier.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/ResourceResponse.h>
+#include <pal/SessionID.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/OptionSet.h>
 #include <wtf/Seconds.h>
@@ -170,11 +171,12 @@ public:
 
     NetworkProcess& networkProcess() { return m_networkProcess.get(); }
     const PAL::SessionID& sessionID() const { return m_sessionID; }
+    const String& storageDirectory() const { return m_storageDirectory; }
 
     ~Cache();
 
 private:
-    Cache(NetworkProcess&, Ref<Storage>&&, OptionSet<CacheOption>, PAL::SessionID);
+    Cache(NetworkProcess&, const String& storageDirectory, Ref<Storage>&&, OptionSet<CacheOption>, PAL::SessionID);
 
     Key makeCacheKey(const WebCore::ResourceRequest&);
 
@@ -195,6 +197,7 @@ private:
 
     unsigned m_traverseCount { 0 };
     PAL::SessionID m_sessionID;
+    String m_storageDirectory;
 };
 
 } // namespace NetworkCache

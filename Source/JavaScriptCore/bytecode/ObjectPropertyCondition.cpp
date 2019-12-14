@@ -46,18 +46,12 @@ void ObjectPropertyCondition::dump(PrintStream& out) const
     dumpInContext(out, nullptr);
 }
 
-bool ObjectPropertyCondition::structureEnsuresValidityAssumingImpurePropertyWatchpoint(
-    Structure* structure) const
-{
-    return m_condition.isStillValidAssumingImpurePropertyWatchpoint(structure);
-}
-
 bool ObjectPropertyCondition::structureEnsuresValidityAssumingImpurePropertyWatchpoint() const
 {
     if (!*this)
         return false;
     
-    return structureEnsuresValidityAssumingImpurePropertyWatchpoint(m_object->structure());
+    return m_condition.isStillValidAssumingImpurePropertyWatchpoint(m_object->structure(), nullptr);
 }
 
 bool ObjectPropertyCondition::validityRequiresImpurePropertyWatchpoint(Structure* structure) const
@@ -147,10 +141,11 @@ bool ObjectPropertyCondition::isStillLive(VM& vm) const
     if (!*this)
         return false;
     
-    if (!vm.heap.isMarked(m_object))
-        return false;
-    
-    return m_condition.isStillLive(vm);
+    bool isStillLive = true;
+    forEachDependentCell([&](JSCell* cell) {
+        isStillLive &= vm.heap.isMarked(cell);
+    });
+    return isStillLive;
 }
 
 void ObjectPropertyCondition::validateReferences(const TrackedReferences& tracked) const

@@ -66,12 +66,12 @@ class TransactionOperation;
 }
 
 class IDBTransaction final : public ThreadSafeRefCounted<IDBTransaction>, public EventTargetWithInlineData, public IDBActiveDOMObject {
-    WTF_MAKE_ISO_ALLOCATED(IDBTransaction);
+    WTF_MAKE_ISO_ALLOCATED_EXPORT(IDBTransaction, WEBCORE_EXPORT);
 public:
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&);
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest&);
 
-    ~IDBTransaction() final;
+    WEBCORE_EXPORT ~IDBTransaction() final;
 
     // IDBTransaction IDL
     Ref<DOMStringList> objectStoreNames() const;
@@ -229,7 +229,7 @@ private:
     void completeNoncursorRequest(IDBRequest&, const IDBResultData&);
     void completeCursorRequest(IDBRequest&, const IDBResultData&);
 
-    void schedulePendingOperationTimer();
+    void trySchedulePendingOperationTimer();
     void scheduleCompletedOperationTimer();
 
     Ref<IDBDatabase> m_database;

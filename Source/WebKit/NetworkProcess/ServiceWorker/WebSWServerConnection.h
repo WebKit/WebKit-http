@@ -31,9 +31,11 @@
 #include "MessageSender.h"
 #include "ServiceWorkerFetchTask.h"
 #include <WebCore/FetchIdentifier.h>
+#include <WebCore/ProcessIdentifier.h>
 #include <WebCore/SWServer.h>
 #include <pal/SessionID.h>
 #include <wtf/HashMap.h>
+#include <wtf/WeakPtr.h>
 
 namespace IPC {
 class FormDataReference;
@@ -53,7 +55,7 @@ class NetworkProcess;
 
 class WebSWServerConnection : public WebCore::SWServer::Connection, public IPC::MessageSender, public IPC::MessageReceiver {
 public:
-    WebSWServerConnection(NetworkProcess&, WebCore::SWServer&, IPC::Connection&, PAL::SessionID);
+    WebSWServerConnection(NetworkProcess&, WebCore::SWServer&, IPC::Connection&, WebCore::ProcessIdentifier);
     WebSWServerConnection(const WebSWServerConnection&) = delete;
     ~WebSWServerConnection() final;
 
@@ -61,11 +63,8 @@ public:
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
-
-    PAL::SessionID sessionID() const { return m_sessionID; }
-
-    void postMessageToServiceWorkerClient(WebCore::DocumentIdentifier destinationContextIdentifier, WebCore::MessageWithMessagePorts&&, WebCore::ServiceWorkerIdentifier sourceServiceWorkerIdentifier, const String& sourceOrigin);
-    void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destination, WebCore::MessageWithMessagePorts&&, const WebCore::ServiceWorkerOrClientIdentifier& source);
+    
+    PAL::SessionID sessionID() const;
 
 private:
     // Implement SWServer::Connection (Messages to the client WebProcess)
@@ -94,7 +93,9 @@ private:
     void unregisterServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier&);
     void syncTerminateWorkerFromClient(WebCore::ServiceWorkerIdentifier&&, CompletionHandler<void()>&&);
 
-    void serverToContextConnectionCreated(WebCore::SWServerToContextConnection&) final;
+    void postMessageToServiceWorkerClient(WebCore::DocumentIdentifier destinationContextIdentifier, const WebCore::MessageWithMessagePorts&, WebCore::ServiceWorkerIdentifier sourceServiceWorkerIdentifier, const String& sourceOrigin) final;
+
+    void contextConnectionCreated(WebCore::SWServerToContextConnection&) final;
 
     bool isThrottleable() const { return m_isThrottleable; }
     bool hasMatchingClient(const WebCore::RegistrableDomain&) const;
@@ -102,12 +103,13 @@ private:
     void setThrottleState(bool isThrottleable);
     void updateThrottleState();
 
+    void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destination, WebCore::MessageWithMessagePorts&&, const WebCore::ServiceWorkerOrClientIdentifier& source);
+
     IPC::Connection* messageSenderConnection() const final { return m_contentConnection.ptr(); }
-    uint64_t messageSenderDestinationID() const final { return identifier().toUInt64(); }
+    uint64_t messageSenderDestinationID() const final { return 0; }
     
     template<typename U> static void sendToContextProcess(WebCore::SWServerToContextConnection&, U&& message);
 
-    PAL::SessionID m_sessionID;
     Ref<IPC::Connection> m_contentConnection;
     Ref<NetworkProcess> m_networkProcess;
     HashMap<WebCore::ServiceWorkerClientIdentifier, WebCore::ClientOrigin> m_clientOrigins;

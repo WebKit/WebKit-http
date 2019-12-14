@@ -107,7 +107,7 @@ public:
         m_assembler.xpacd(target);
     }
 
-    static const RegisterID InvalidGPR  = static_cast<RegisterID>(-1);
+    static constexpr RegisterID InvalidGPR  = static_cast<RegisterID>(-1);
 
     enum class CallSignatureType {
         CFunctionCall,
@@ -186,6 +186,13 @@ public:
         ASSERT(tag != dataTempRegister);
         load64(address, getCachedDataTempRegisterIDAndInvalidate());
         return call(dataTempRegister, tag);
+    }
+
+    ALWAYS_INLINE void callOperation(const FunctionPtr<OperationPtrTag> operation)
+    {
+        auto tmp = getCachedDataTempRegisterIDAndInvalidate();
+        move(TrustedImmPtr(operation.executableAddress()), tmp);
+        call(tmp, OperationPtrTag);
     }
 
     ALWAYS_INLINE Jump jump() { return MacroAssemblerARM64::jump(); }

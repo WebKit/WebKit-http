@@ -34,9 +34,10 @@
 #include "IDBObjectStoreInfo.h"
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSValue;
 class SlotVisitor;
+using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -111,6 +112,8 @@ public:
     void visitReferencedIndexes(JSC::SlotVisitor&) const;
     void renameReferencedIndex(IDBIndex&, const String& newName);
 
+    bool hasPendingActivity() const final;
+
 private:
     enum class InlineKeyCheck { Perform, DoNotPerform };
     ExceptionOr<Ref<IDBRequest>> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, InlineKeyCheck);
@@ -123,7 +126,6 @@ private:
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
-    bool hasPendingActivity() const final;
 
     IDBObjectStoreInfo m_info;
     IDBObjectStoreInfo m_originalInfo;

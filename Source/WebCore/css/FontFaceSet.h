@@ -27,15 +27,18 @@
 
 #include "ActiveDOMObject.h"
 #include "CSSFontFaceSet.h"
-#include "DOMPromiseProxy.h"
 #include "EventTarget.h"
-#include "JSDOMPromiseDeferred.h"
+#include "IDLTypes.h"
+#include "SuspendableTaskQueue.h"
 
 namespace WebCore {
 
+template<typename IDLType> class DOMPromiseDeferred;
+template<typename IDLType> class DOMPromiseProxyWithResolveCallback;
+
 class DOMException;
 
-class FontFaceSet final : public RefCounted<FontFaceSet>, private CSSFontFaceSetClient, public EventTargetWithInlineData, private  ActiveDOMObject {
+class FontFaceSet final : public RefCounted<FontFaceSet>, private CSSFontFaceSetClient, public EventTargetWithInlineData, public ActiveDOMObject {
     WTF_MAKE_ISO_ALLOCATED(FontFaceSet);
 public:
     static Ref<FontFaceSet> create(Document&, const Vector<RefPtr<FontFace>>& initialFaces);
@@ -56,7 +59,7 @@ public:
     LoadStatus status() const;
 
     using ReadyPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<FontFaceSet>>;
-    ReadyPromise& ready() { return m_readyPromise; }
+    ReadyPromise& ready() { return m_readyPromise.get(); }
     void didFirstLayout();
 
     CSSFontFaceSet& backing() { return m_backing; }
@@ -88,7 +91,7 @@ private:
 
     public:
         Vector<Ref<FontFace>> faces;
-        LoadPromise promise;
+        UniqueRef<LoadPromise> promise;
         bool hasReachedTerminalState { false };
     };
 
@@ -115,7 +118,8 @@ private:
 
     Ref<CSSFontFaceSet> m_backing;
     HashMap<RefPtr<FontFace>, Vector<Ref<PendingPromise>>> m_pendingPromises;
-    ReadyPromise m_readyPromise;
+    UniqueRef<ReadyPromise> m_readyPromise;
+    UniqueRef<SuspendableTaskQueue> m_taskQueue;
     bool m_isFirstLayoutDone { true };
 };
 

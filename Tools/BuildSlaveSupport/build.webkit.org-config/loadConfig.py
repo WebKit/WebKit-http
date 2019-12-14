@@ -49,8 +49,11 @@ def loadBuilderConfig(c, test_mode_is_enabled=False):
         passwords = make_passwords_json.create_mock_slave_passwords_dict()
     else:
         passwords = json.load(open('passwords.json'))
-    config = json.load(open('config.json'))
+    results_server_api_key = passwords.get('results-server-api-key')
+    if results_server_api_key:
+        os.environ['RESULTS_SERVER_API_KEY'] = results_server_api_key
 
+    config = json.load(open('config.json'))
     c['slaves'] = [BuildSlave(slave['name'], passwords[slave['name']], max_builds=1) for slave in config['slaves']]
 
     c['schedulers'] = []
@@ -98,7 +101,7 @@ def loadBuilderConfig(c, test_mode_is_enabled=False):
         builderType = builder.pop('type')
         factory = globals()["%sFactory" % builderType]
         factorykwargs = {}
-        for key in "platform", "configuration", "architectures", "triggers", "additionalArguments", "SVNMirror":
+        for key in "platform", "configuration", "architectures", "triggers", "additionalArguments", "SVNMirror", "device_model":
             value = builder.pop(key, None)
             if value:
                 factorykwargs[key] = value

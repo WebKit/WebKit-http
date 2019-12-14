@@ -1,3 +1,79 @@
+2019-10-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a missing #include in DeferredTriggerInlines.h
+        https://bugs.webkit.org/show_bug.cgi?id=202677
+
+        Reviewed by Yusuke Suzuki.
+
+        DeferredTriggerInlines.h uses RELEASE_BASSERT, but does not include BAssert.h. This causes
+        subsequent build failures when shuffling around some sources in WebCore that then attempt to
+        include <wtf/IsoMallocInlines.h>.
+
+        * bmalloc/DeferredTriggerInlines.h:
+
+2019-09-24  Keith Rollin  <krollin@apple.com>
+
+        Address static analysis warning in Allocator.cpp: Null pointer argument in call to memory copy function
+        https://bugs.webkit.org/show_bug.cgi?id=202152
+        <rdar://problem/55671444>
+
+        Reviewed by Geoffrey Garen.
+
+        Xcode's static analysis facility flags the following:
+
+            .../OpenSource/Source/bmalloc/bmalloc/Allocator.cpp:98:5: warning: Null pointer argument in call to memory copy function
+                memcpy(result, object, copySize);
+                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        https://en.cppreference.com/w/cpp/string/byte/memcpy explains that
+        this is undefined behavior:
+
+            "If either dest or src is a null pointer, the behavior is
+             undefined, even if count is zero."
+
+        I suppose that passing in a null source pointer could be bad if the
+        implementation fetched the first source byte to copy before actually
+        checking the number of bytes to copy. So far, it doesn’t seem to be an
+        issue, but we should clean this up.
+
+        Simply adding "if (result && object)" before the memcpy will add tests
+        and branches in the hot path of this function and so might not be the
+        best solution. Instead, straighten out the code a little bit by
+        putting an early check and return on "object". This also allows us to
+        remove some intermediate code.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocateImpl):
+
+2019-09-17  Mark Lam  <mark.lam@apple.com>
+
+        Use constexpr instead of const in symbol definitions that are obviously constexpr.
+        https://bugs.webkit.org/show_bug.cgi?id=201879
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * bmalloc/AvailableMemory.cpp:
+        * bmalloc/IsoTLS.h:
+        * bmalloc/Map.h:
+        * bmalloc/Mutex.cpp:
+        (bmalloc::Mutex::lockSlowCase):
+        * bmalloc/PerThread.h:
+        * bmalloc/Vector.h:
+        * bmalloc/Zone.h:
+
+2019-09-13  Mark Lam  <mark.lam@apple.com>
+
+        We should never fail to allocate VA for the Gigacage.
+        https://bugs.webkit.org/show_bug.cgi?id=201774
+        <rdar://problem/55352042>
+
+        Reviewed by Yusuke Suzuki.
+
+        Unfortunately, this is still not true for OS(LINUX).  So, I'll leave the
+        GIGACAGE_ALLOCATION_CAN_FAIL code in place but disable it for everything else.
+
+        * bmalloc/Gigacage.h:
+
 2019-09-09  Michael Saboff  <msaboff@apple.com>
 
         Revert to pre-r243144 scavenging behavior for macOS

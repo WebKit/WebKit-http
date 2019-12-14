@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+// Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -382,7 +382,6 @@ dfg/DFGOSRExitBase.cpp
 dfg/DFGOSRExitCompilerCommon.cpp
 dfg/DFGOSRExitFuzz.cpp
 dfg/DFGOSRExitJumpPlaceholder.cpp
-dfg/DFGOSRExitPreparation.cpp
 dfg/DFGObjectAllocationSinkingPhase.cpp
 dfg/DFGObjectMaterializationData.cpp
 dfg/DFGOperations.cpp
@@ -554,7 +553,6 @@ heap/WriteBarrierSupport.cpp
 inspector/AsyncStackTrace.cpp
 inspector/ConsoleMessage.cpp
 inspector/ContentSearchUtilities.cpp
-inspector/EventLoop.cpp
 inspector/IdentifiersFactory.cpp
 inspector/InjectedScript.cpp
 inspector/InjectedScriptBase.cpp
@@ -733,7 +731,6 @@ runtime/CodeSpecializationKind.cpp
 runtime/CommonIdentifiers.cpp
 runtime/CommonSlowPaths.cpp
 runtime/CompilationResult.cpp
-tools/CompilerTimingScope.cpp
 runtime/Completion.cpp
 runtime/ConfigFile.cpp
 runtime/ConsoleClient.cpp
@@ -810,9 +807,11 @@ runtime/JSArrayBufferConstructor.cpp
 runtime/JSArrayBufferPrototype.cpp
 runtime/JSArrayBufferView.cpp
 runtime/JSAsyncFunction.cpp
+runtime/JSAsyncGenerator.cpp
 runtime/JSAsyncGeneratorFunction.cpp
 runtime/JSBigInt.cpp
 runtime/JSBoundFunction.cpp
+runtime/JSCConfig.cpp
 runtime/JSCJSValue.cpp
 runtime/JSCPtrTag.cpp
 runtime/JSCallee.cpp
@@ -824,6 +823,7 @@ runtime/JSDateMath.cpp
 runtime/JSDestructibleObjectHeapCellType.cpp
 runtime/JSFixedArray.cpp
 runtime/JSFunction.cpp
+runtime/JSGenerator.cpp
 runtime/JSGeneratorFunction.cpp
 runtime/JSGlobalLexicalEnvironment.cpp
 runtime/JSGlobalObject.cpp
@@ -984,9 +984,11 @@ JSCBuiltins.cpp
 tools/CellList.cpp
 tools/CodeProfile.cpp
 tools/CodeProfiling.cpp
+tools/CompilerTimingScope.cpp
 tools/FunctionOverrides.cpp
 tools/FunctionWhitelist.cpp
 tools/HeapVerifier.cpp
+tools/Integrity.cpp
 tools/JSDollarVM.cpp
 tools/SigillCrashAnalyzer.cpp
 tools/VMInspector.cpp

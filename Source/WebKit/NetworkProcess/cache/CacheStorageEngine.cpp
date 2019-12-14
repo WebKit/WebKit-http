@@ -33,7 +33,6 @@
 #include "WebsiteDataType.h"
 #include <WebCore/CacheQueryOptions.h>
 #include <WebCore/SecurityOrigin.h>
-#include <pal/SessionID.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
@@ -89,7 +88,12 @@ void Engine::from(NetworkProcess& networkProcess, PAL::SessionID sessionID, Func
 
 void Engine::destroyEngine(NetworkProcess& networkProcess, PAL::SessionID sessionID)
 {
+#if !USE(SOUP)
+    // Soup based ports destroy the default session right before the process exits to avoid leaking
+    // network resources like the cookies database.
     ASSERT(sessionID != PAL::SessionID::defaultSessionID());
+#endif
+
     networkProcess.removeCacheEngine(sessionID);
 }
 

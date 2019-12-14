@@ -28,18 +28,16 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FloatingState.h"
-#include "FormattingContext.h"
 #include "LayoutContainer.h"
-#include "LayoutUnits.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
-
 namespace Layout {
 
 class FloatAvoider;
+class FloatBox;
+class FormattingContext;
 class Box;
-class FloatingPair;
 class LayoutState;
 
 // FloatingContext is responsible for adjusting the position of a box in the current formatting context
@@ -47,7 +45,7 @@ class LayoutState;
 class FloatingContext {
     WTF_MAKE_ISO_ALLOCATED(FloatingContext);
 public:
-    FloatingContext(const FormattingContext&, FloatingState&);
+    FloatingContext(const Container& floatingContextRoot, const FormattingContext&, FloatingState&);
 
     FloatingState& floatingState() const { return m_floatingState; }
 
@@ -73,7 +71,7 @@ public:
 private:
     LayoutState& layoutState() const { return m_floatingState.layoutState(); }
     const FormattingContext& formattingContext() const { return m_formattingContext; }
-    const Container& root() const { return downcast<Container>(formattingContext().root()); }
+    const Container& root() const { return *m_root; }
 
     void findPositionForFloatBox(FloatBox&) const;
     void findPositionForFormattingContextRoot(FloatAvoider&) const;
@@ -84,6 +82,7 @@ private:
     LayoutUnit mapTopToFloatingStateRoot(const Box&) const;
     Point mapPointFromFormattingContextRootToFloatingStateRoot(Point) const;
 
+    WeakPtr<const Container> m_root;
     const FormattingContext& m_formattingContext;
     FloatingState& m_floatingState;
 };

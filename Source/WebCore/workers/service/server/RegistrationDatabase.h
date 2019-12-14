@@ -29,7 +29,6 @@
 
 #include "SecurityOrigin.h"
 #include "ServiceWorkerRegistrationKey.h"
-#include <pal/SessionID.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/WorkQueue.h>
@@ -79,7 +78,6 @@ private:
 
     Ref<WorkQueue> m_workQueue;
     WeakPtr<RegistrationStore> m_store;
-    PAL::SessionID m_sessionID;
     String m_databaseDirectory;
     String m_databaseFilePath;
     std::unique_ptr<SQLiteDatabase> m_database;

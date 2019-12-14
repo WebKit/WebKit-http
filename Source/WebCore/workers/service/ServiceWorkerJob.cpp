@@ -34,6 +34,7 @@
 #include "ResourceError.h"
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
+#include "SecurityOrigin.h"
 #include "ServiceWorkerJobData.h"
 #include "ServiceWorkerRegistration.h"
 
@@ -50,6 +51,11 @@ ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, RefPtr<Deferr
 ServiceWorkerJob::~ServiceWorkerJob()
 {
     ASSERT(m_creationThread.ptr() == &Thread::current());
+}
+
+RefPtr<DeferredPromise> ServiceWorkerJob::takePromise()
+{
+    return WTFMove(m_promise);
 }
 
 void ServiceWorkerJob::failedWithException(const Exception& exception)

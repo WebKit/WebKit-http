@@ -168,6 +168,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case SkipScope:
     case GetGlobalObject:
     case StringCharCodeAt:
+    case StringCodePointAt:
     case CompareStrictEq:
     case SameValue:
     case IsEmpty:
@@ -281,7 +282,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithBitOr:
     case ArithBitXor:
     case ArithBitLShift:
-    case BitRShift:
+    case ArithBitRShift:
     case BitURShift:
         if (node->child1().useKind() == UntypedUse || node->child2().useKind() == UntypedUse) {
             read(World);
@@ -667,6 +668,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NumberToStringWithRadix:
     case CreateThis:
     case CreatePromise:
+    case CreateGenerator:
+    case CreateAsyncGenerator:
     case InstanceOf:
     case StringValueOf:
     case ObjectKeys:
@@ -684,6 +687,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValueMod:
     case ValuePow:
     case ValueBitLShift:
+    case ValueBitRShift:
         if (node->isBinaryUseKind(BigIntUse)) {
             def(PureValue(node));
             return;
@@ -1565,6 +1569,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case NewObject:
     case NewPromise:
+    case NewGenerator:
+    case NewAsyncGenerator:
     case NewRegexp:
     case NewSymbol:
     case NewStringObject:

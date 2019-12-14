@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@
 namespace JSC { namespace DFG {
 
 class SSAConversionPhase : public Phase {
-    static const bool verbose = false;
+    static constexpr bool verbose = false;
     
 public:
     SSAConversionPhase(Graph& graph)
@@ -424,6 +424,8 @@ public:
                     // We have to use an unchecked use because at least sometimes, the end of the block
                     // is not exitOK.
                     UseKind useKind = uncheckedUseKindFor(format);
+
+                    dataLogLnIf(verbose, "Inserting Upsilon for ", variable->local(), " propagating ", valueForOperand.operand(variable->local()), " to ", phiNode);
                     
                     m_insertionSet.insertNode(
                         upsilonInsertionPoint, SpecNone, Upsilon, upsilonOrigin,

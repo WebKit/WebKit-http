@@ -286,11 +286,7 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitUseHighResolutionTimersPreferenceKey), kCFBooleanTrue);
 
-#if USE(CG)
     CFDictionaryAddValue(defaults, CFSTR(WebKitAcceleratedCompositingEnabledPreferenceKey), kCFBooleanTrue);
-#else
-    CFDictionaryAddValue(defaults, CFSTR(WebKitAcceleratedCompositingEnabledPreferenceKey), kCFBooleanFalse);
-#endif
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitShowDebugBordersPreferenceKey), kCFBooleanFalse);
 
@@ -342,6 +338,8 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitResizeObserverEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitCoreMathMLEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitRequestIdleCallbackEnabledPreferenceKey), kCFBooleanFalse);
 
     defaultSettings = defaults;
 #endif
@@ -1740,12 +1738,10 @@ HRESULT WebPreferences::acceleratedCompositingEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
         return E_POINTER;
+    *enabled = boolValueForKey(WebKitAcceleratedCompositingEnabledPreferenceKey);
 #if USE(CA)
-    *enabled = CACFLayerTreeHost::acceleratedCompositingAvailable() && boolValueForKey(WebKitAcceleratedCompositingEnabledPreferenceKey);
-#else
-    *enabled = TRUE;
+    *enabled = *enabled && CACFLayerTreeHost::acceleratedCompositingAvailable();
 #endif
-
     return S_OK;
 }
 
@@ -2280,6 +2276,20 @@ HRESULT WebPreferences::coreMathMLEnabled(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setCoreMathMLEnabled(BOOL enabled)
 {
     setBoolValue(WebKitCoreMathMLEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::requestIdleCallbackEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitRequestIdleCallbackEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setRequestIdleCallbackEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitRequestIdleCallbackEnabledPreferenceKey, enabled);
     return S_OK;
 }
 

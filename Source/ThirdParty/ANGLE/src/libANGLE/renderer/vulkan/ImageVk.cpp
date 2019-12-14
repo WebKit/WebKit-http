@@ -36,9 +36,16 @@ void ImageVk::onDestroy(const egl::Display *display)
     {
         mImage->releaseImage(renderer);
         mImage->releaseStagingBuffer(renderer);
-        delete mImage;
+        SafeDelete(mImage);
     }
-    mImage = nullptr;
+    else if (egl::IsExternalImageTarget(mState.target))
+    {
+        ASSERT(mState.source != nullptr);
+        ExternalImageSiblingVk *externalImageSibling =
+            GetImplAs<ExternalImageSiblingVk>(GetAs<egl::ExternalImageSibling>(mState.source));
+        externalImageSibling->release(renderer);
+        mImage = nullptr;
+    }
 }
 
 egl::Error ImageVk::initialize(const egl::Display *display)
@@ -73,7 +80,6 @@ egl::Error ImageVk::initialize(const egl::Display *display)
 
             ASSERT(mContext != nullptr);
             renderer = vk::GetImpl(mContext)->getRenderer();
-            ;
         }
         else if (egl::IsExternalImageTarget(mState.target))
         {
@@ -91,7 +97,8 @@ egl::Error ImageVk::initialize(const egl::Display *display)
         }
 
         // Make sure a staging buffer is ready to use to upload data
-        mImage->initStagingBuffer(renderer, mImage->getFormat());
+        mImage->initStagingBuffer(renderer, mImage->getFormat(), vk::kStagingBufferFlags,
+                                  vk::kStagingBufferSize);
 
         mOwnsImage = false;
 
@@ -99,6 +106,9 @@ egl::Error ImageVk::initialize(const egl::Display *display)
         mImageLevel       = 0;
         mImageLayer       = 0;
     }
+
+    // mContext is no longer needed, make sure it's not used by accident.
+    mContext = nullptr;
 
     return egl::NoError();
 }
@@ -128,6 +138,13 @@ angle::Result ImageVk::orphan(const gl::Context *context, egl::ImageSibling *sib
             return angle::Result::Stop;
         }
     }
+
+    // Grab a fence from the releasing context to know when the image is no longer used
+    ASSERT(context != nullptr);
+    ContextVk *contextVk = vk::GetImpl(context);
+
+    // Flush the context to make sure the fence has been submitted.
+    ANGLE_TRY(contextVk->flushImpl(nullptr));
 
     return angle::Result::Continue;
 }

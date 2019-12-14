@@ -12,11 +12,13 @@
 #include <fuchsia/images/cpp/fidl.h>
 #include <fuchsia/ui/views/cpp/fidl.h>
 #include <lib/async-loop/cpp/loop.h>
+#include <lib/async-loop/default.h>
 #include <lib/fdio/directory.h>
 #include <lib/fidl/cpp/interface_ptr.h>
 #include <lib/fidl/cpp/interface_request.h>
 #include <lib/ui/scenic/cpp/view_token_pair.h>
 #include <lib/zx/channel.h>
+#include <vulkan/vulkan.h>
 #include <zircon/status.h>
 
 #include "common/debug.h"
@@ -24,9 +26,39 @@
 namespace
 {
 
+uint32_t GetImagePipeSwapchainLayerImplementationVersion()
+{
+    uint32_t numInstanceLayers = 0;
+    VkResult result            = vkEnumerateInstanceLayerProperties(&numInstanceLayers, nullptr);
+    if (result != VK_SUCCESS)
+    {
+        return 0u;
+    }
+
+    std::vector<VkLayerProperties> instanceLayers(numInstanceLayers);
+    result = vkEnumerateInstanceLayerProperties(&numInstanceLayers, instanceLayers.data());
+    if (result != VK_SUCCESS)
+    {
+        return 0u;
+    }
+
+    uint32_t imagePipeSwapchainImplementationVersion = 0;
+    const std::string layerName                      = "VK_LAYER_FUCHSIA_imagepipe_swapchain";
+    for (const VkLayerProperties &layerProperty : instanceLayers)
+    {
+        if (layerName.compare(layerProperty.layerName) != 0)
+            continue;
+        imagePipeSwapchainImplementationVersion = layerProperty.implementationVersion;
+        break;
+    }
+
+    ASSERT(imagePipeSwapchainImplementationVersion > 0u);
+    return imagePipeSwapchainImplementationVersion;
+}
+
 async::Loop *GetDefaultLoop()
 {
-    static async::Loop *defaultLoop = new async::Loop(&kAsyncLoopConfigAttachToThread);
+    static async::Loop *defaultLoop = new async::Loop(&kAsyncLoopConfigAttachToCurrentThread);
     return defaultLoop;
 }
 
@@ -73,7 +105,7 @@ ScenicWindow::~ScenicWindow()
     destroy();
 }
 
-bool ScenicWindow::initialize(const std::string &name, size_t width, size_t height)
+bool ScenicWindow::initialize(const std::string &name, int width, int height)
 {
     // Set up scenic resources.
     mShape.SetShape(scenic::Rectangle(&mScenicSession, width, height));
@@ -106,15 +138,25 @@ void ScenicWindow::destroy()
 
 void ScenicWindow::resetNativeWindow()
 {
-    fuchsia::images::ImagePipePtr imagePipe;
-    uint32_t imagePipeId = mScenicSession.AllocResourceId();
-    mScenicSession.Enqueue(scenic::NewCreateImagePipeCmd(imagePipeId, imagePipe.NewRequest()));
+    zx_handle_t imagePipeHandle = 0;
+    uint32_t imagePipeId        = mScenicSession.AllocResourceId();
+    if (GetImagePipeSwapchainLayerImplementationVersion() > 1u)
+    {
+        fuchsia::images::ImagePipe2Ptr imagePipe;
+        mScenicSession.Enqueue(scenic::NewCreateImagePipe2Cmd(imagePipeId, imagePipe.NewRequest()));
+        imagePipeHandle = imagePipe.Unbind().TakeChannel().release();
+    }
+    else
+    {
+        fuchsia::images::ImagePipePtr imagePipe;
+        mScenicSession.Enqueue(scenic::NewCreateImagePipeCmd(imagePipeId, imagePipe.NewRequest()));
+        imagePipeHandle = imagePipe.Unbind().TakeChannel().release();
+    }
     mMaterial.SetTexture(imagePipeId);
     mScenicSession.ReleaseResource(imagePipeId);
     mScenicSession.Present(0, [](fuchsia::images::PresentationInfo info) {});
 
-    mFuchsiaEGLWindow.reset(
-        fuchsia_egl_window_create(imagePipe.Unbind().TakeChannel().release(), mWidth, mHeight));
+    mFuchsiaEGLWindow.reset(fuchsia_egl_window_create(imagePipeHandle, mWidth, mHeight));
 }
 
 EGLNativeWindowType ScenicWindow::getNativeWindow() const

@@ -32,9 +32,12 @@
 
 namespace WebCore {
 
+class SuspendableTaskQueue;
+
 class DOMCacheStorage : public RefCounted<DOMCacheStorage>, public ActiveDOMObject {
 public:
     static Ref<DOMCacheStorage> create(ScriptExecutionContext& context, Ref<CacheStorageConnection>&& connection) { return adoptRef(*new DOMCacheStorage(context, WTFMove(connection))); }
+    ~DOMCacheStorage();
 
     using KeysPromise = DOMPromiseDeferred<IDLSequence<IDLDOMString>>;
 
@@ -43,6 +46,9 @@ public:
     void open(const String&, DOMPromiseDeferred<IDLInterface<DOMCache>>&&);
     void remove(const String&, DOMPromiseDeferred<IDLBoolean>&&);
     void keys(KeysPromise&&);
+
+    // ActiveDOMObject
+    bool hasPendingActivity() const final;
 
 private:
     DOMCacheStorage(ScriptExecutionContext&, Ref<CacheStorageConnection>&&);
@@ -62,6 +68,7 @@ private:
     Vector<Ref<DOMCache>> m_caches;
     uint64_t m_updateCounter { 0 };
     Ref<CacheStorageConnection> m_connection;
+    UniqueRef<SuspendableTaskQueue> m_taskQueue;
     bool m_isStopped { false };
 };
 

@@ -306,7 +306,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     css/CSSPrimitiveValue.h
     css/CSSPrimitiveValueMappings.h
     css/CSSProperty.h
-    css/CSSReflectionDirection.h
     css/CSSRegisteredCustomProperty.h
     css/CSSRule.h
     css/CSSRuleList.h
@@ -791,6 +790,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/MediaCanStartListener.h
     page/MediaProducer.h
     page/MemoryRelease.h
+    page/NavigatorIsLoggedIn.h
     page/Page.h
     page/PageConfiguration.h
     page/PageConsoleClient.h
@@ -841,7 +841,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/WebCoreKeyboardUIMode.h
     page/WebKitNamespace.h
     page/WheelEventDeltaFilter.h
-    page/WheelEventTestTrigger.h
+    page/WheelEventTestMonitor.h
     page/WindowFeatures.h
 
     page/animation/AnimationBase.h
@@ -910,6 +910,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/KeyedCoding.h
     platform/KeypressCommand.h
     platform/LayoutUnit.h
+    platform/LegacySchemeRegistry.h
     platform/Length.h
     platform/LengthBox.h
     platform/LengthPoint.h
@@ -957,7 +958,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/RemoteCommandListener.h
     platform/RuntimeApplicationChecks.h
     platform/SSLKeyGenerator.h
-    platform/SchemeRegistry.h
     platform/ScreenProperties.h
     platform/ScrollAnimator.h
     platform/ScrollTypes.h
@@ -1159,6 +1159,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     platform/mediastream/libwebrtc/LibWebRTCMacros.h
     platform/mediastream/libwebrtc/LibWebRTCProvider.h
+    platform/mediastream/libwebrtc/LibWebRTCSocketIdentifier.h
 
     platform/mock/DeviceOrientationClientMock.h
     platform/mock/MediaPlaybackTargetMock.h
@@ -1251,7 +1252,9 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/HitTestRequest.h
     rendering/HitTestResult.h
     rendering/InlineBox.h
+    rendering/InlineElementBox.h
     rendering/InlineFlowBox.h
+    rendering/InlineTextBox.h
     rendering/LayerAncestorClippingStack.h
     rendering/LayerFragment.h
     rendering/MarkedText.h
@@ -1303,7 +1306,10 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/SelectionRangeData.h
     rendering/SimpleLineLayout.h
     rendering/SimpleLineLayoutCoverage.h
+    rendering/SimpleLineLayoutFlowContents.h
+    rendering/SimpleLineLayoutResolver.h
 
+    rendering/line/LineLayoutTraversal.h
     rendering/line/LineWidth.h
     rendering/line/TrailingObjects.h
 

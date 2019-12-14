@@ -134,7 +134,7 @@ public:
         return callModeFor(static_cast<CallType>(m_callType));
     }
 
-    bool isDirect()
+    bool isDirect() const
     {
         return isDirect(static_cast<CallType>(m_callType));
     }
@@ -154,7 +154,7 @@ public:
         return isVarargsCallType(static_cast<CallType>(m_callType));
     }
 
-    bool isLinked() { return m_stub || m_calleeOrCodeBlock; }
+    bool isLinked() const { return m_stub || m_calleeOrCodeBlock; }
     void unlink(VM&);
 
     void setUpCall(CallType callType, CodeOrigin codeOrigin, GPRReg calleeGPR)
@@ -201,8 +201,8 @@ public:
 
     void setLastSeenCallee(VM&, const JSCell* owner, JSObject* callee);
     void clearLastSeenCallee();
-    JSObject* lastSeenCallee();
-    bool haveLastSeenCallee();
+    JSObject* lastSeenCallee() const;
+    bool haveLastSeenCallee() const;
     
     void setExecutableDuringCompilation(ExecutableBase*);
     ExecutableBase* executable();
@@ -215,7 +215,7 @@ public:
 
     void clearStub();
 
-    PolymorphicCallStubRoutine* stub()
+    PolymorphicCallStubRoutine* stub() const
     {
         return m_stub.get();
     }
@@ -295,17 +295,17 @@ public:
         return static_cast<CallType>(m_callType);
     }
 
-    uint32_t* addressOfMaxNumArguments()
+    uint32_t* addressOfMaxArgumentCountIncludingThis()
     {
-        return &m_maxNumArguments;
+        return &m_maxArgumentCountIncludingThis;
     }
 
-    uint32_t maxNumArguments()
+    uint32_t maxArgumentCountIncludingThis()
     {
-        return m_maxNumArguments;
+        return m_maxArgumentCountIncludingThis;
     }
     
-    void setMaxNumArguments(unsigned);
+    void setMaxArgumentCountIncludingThis(unsigned);
 
     static ptrdiff_t offsetOfSlowPathCount()
     {
@@ -332,6 +332,22 @@ public:
         return m_codeOrigin;
     }
 
+    template<typename Functor>
+    void forEachDependentCell(const Functor& functor) const
+    {
+        if (isLinked()) {
+            if (stub())
+                stub()->forEachDependentCell(functor);
+            else {
+                functor(m_calleeOrCodeBlock.get());
+                if (isDirect())
+                    functor(m_lastSeenCalleeOrExecutable.get());
+            }
+        }
+        if (!isDirect() && haveLastSeenCallee())
+            functor(lastSeenCallee());
+    }
+
     void visitWeak(VM&);
 
     void setFrameShuffleData(const CallFrameShuffleData&);
@@ -342,7 +358,7 @@ public:
     }
 
 private:
-    uint32_t m_maxNumArguments { 0 }; // For varargs: the profiled maximum number of arguments. For direct: the number of stack slots allocated for arguments.
+    uint32_t m_maxArgumentCountIncludingThis { 0 }; // For varargs: the profiled maximum number of arguments. For direct: the number of stack slots allocated for arguments.
     CodeLocationLabel<JSInternalPtrTag> m_callReturnLocationOrPatchableJump;
     CodeLocationLabel<JSInternalPtrTag> m_hotPathBeginOrSlowPathStart;
     CodeLocationNearCall<JSInternalPtrTag> m_hotPathOther;

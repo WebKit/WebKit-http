@@ -134,6 +134,24 @@ op :new_promise,
         isInternalPromise: bool,
     }
 
+op :new_generator,
+    args: {
+        dst: VirtualRegister,
+    }
+
+op_group :CreateInternalFieldObjectOp,
+    [
+        :create_generator,
+        :create_async_generator,
+    ],
+    args: {
+        dst: VirtualRegister,
+        callee: VirtualRegister,
+    },
+    metadata: {
+        cachedCallee: WriteBarrier[JSCell]
+    }
+
 op :get_argument,
     args: {
         dst: VirtualRegister,
@@ -242,7 +260,6 @@ op_group :BinaryOp,
         :beloweq,
         :mod,
         :pow,
-        :rshift,
         :urshift,
     ],
     args: {
@@ -277,6 +294,7 @@ op_group :ValueProfiledBinaryOp,
         :bitor,
         :bitxor,
         :lshift,
+        :rshift,
     ],
     args: {
         dst: VirtualRegister,
@@ -1220,5 +1238,13 @@ op :llint_native_construct_trampoline
 op :llint_internal_function_call_trampoline
 op :llint_internal_function_construct_trampoline
 op :handleUncaughtException
+op :op_call_return_location
+op :op_construct_return_location
+op :op_call_varargs_slow_return_location
+op :op_construct_varargs_slow_return_location
+op :op_get_by_id_return_location
+op :op_get_by_val_return_location
+op :op_put_by_id_return_location
+op :op_put_by_val_return_location
 
 end_section :NativeHelpers

@@ -29,16 +29,13 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "InlineFormattingState.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
-#include "LayoutState.h"
-#include "TextUtil.h"
 
 namespace WebCore {
 namespace Layout {
 
-WidthAndMargin InlineFormattingContext::Geometry::inlineBlockWidthAndMargin(const Box& formattingContextRoot, UsedHorizontalValues usedValues)
+WidthAndMargin InlineFormattingContext::Geometry::inlineBlockWidthAndMargin(const Box& formattingContextRoot, UsedHorizontalValues usedHorizontalValues)
 {
     ASSERT(formattingContextRoot.isInFlow());
 
@@ -46,35 +43,34 @@ WidthAndMargin InlineFormattingContext::Geometry::inlineBlockWidthAndMargin(cons
 
     // Exactly as inline replaced elements.
     if (formattingContextRoot.replaced())
-        return inlineReplacedWidthAndMargin(formattingContextRoot, usedValues);
+        return inlineReplacedWidthAndMargin(formattingContextRoot, usedHorizontalValues);
 
     // 10.3.9 'Inline-block', non-replaced elements in normal flow
 
     // If 'width' is 'auto', the used value is the shrink-to-fit width as for floating elements.
     // A computed value of 'auto' for 'margin-left' or 'margin-right' becomes a used value of '0'.
     // #1
-    auto width = computedValueIfNotAuto(formattingContextRoot.style().logicalWidth(), usedValues.containingBlockWidth.valueOr(0));
+    auto width = computedValueIfNotAuto(formattingContextRoot.style().logicalWidth(), usedHorizontalValues.constraints.width);
     if (!width)
-        width = shrinkToFitWidth(formattingContextRoot, usedValues);
+        width = shrinkToFitWidth(formattingContextRoot, usedHorizontalValues.constraints.width);
 
     // #2
-    auto computedHorizontalMargin = Geometry::computedHorizontalMargin(formattingContextRoot, usedValues);
+    auto computedHorizontalMargin = Geometry::computedHorizontalMargin(formattingContextRoot, usedHorizontalValues);
 
     return WidthAndMargin { *width, { computedHorizontalMargin.start.valueOr(0_lu), computedHorizontalMargin.end.valueOr(0_lu) }, computedHorizontalMargin };
 }
 
-HeightAndMargin InlineFormattingContext::Geometry::inlineBlockHeightAndMargin(const Box& layoutBox) const
+HeightAndMargin InlineFormattingContext::Geometry::inlineBlockHeightAndMargin(const Box& layoutBox, UsedHorizontalValues usedHorizontalValues, UsedVerticalValues usedVerticalValues) const
 {
     ASSERT(layoutBox.isInFlow());
 
     // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block' replaced elements in normal flow and floating replaced elements
     if (layoutBox.replaced())
-        return inlineReplacedHeightAndMargin(layoutBox, { });
+        return inlineReplacedHeightAndMargin(layoutBox, usedHorizontalValues, usedVerticalValues);
 
     // 10.6.6 Complicated cases
     // - 'Inline-block', non-replaced elements.
-    auto usedHorizontalValues = UsedHorizontalValues { formattingContext().displayBoxForLayoutBox(*layoutBox.containingBlock()).contentBoxWidth() };
-    return complicatedCases(layoutBox, { }, usedHorizontalValues);
+    return complicatedCases(layoutBox, usedHorizontalValues, usedVerticalValues);
 }
 
 }

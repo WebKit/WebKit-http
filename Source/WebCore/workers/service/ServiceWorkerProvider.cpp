@@ -29,9 +29,11 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "Document.h"
+#include "Frame.h"
+#include "FrameLoader.h"
+#include "FrameLoaderClient.h"
+#include "LegacySchemeRegistry.h"
 #include "SWClientConnection.h"
-#include "SchemeRegistry.h"
-#include <pal/SessionID.h>
 
 namespace WebCore {
 
@@ -52,9 +54,9 @@ void ServiceWorkerProvider::setSharedProvider(ServiceWorkerProvider& newProvider
     sharedProvider = &newProvider;
 }
 
-bool ServiceWorkerProvider::mayHaveServiceWorkerRegisteredForOrigin(PAL::SessionID sessionID, const SecurityOriginData& origin)
+bool ServiceWorkerProvider::mayHaveServiceWorkerRegisteredForOrigin(const SecurityOriginData& origin)
 {
-    auto* connection = existingServiceWorkerConnectionForSession(sessionID);
+    auto* connection = existingServiceWorkerConnection();
     if (!connection)
         return m_mayHaveRegisteredServiceWorkers;
 
@@ -65,9 +67,10 @@ void ServiceWorkerProvider::registerServiceWorkerClients()
 {
     setMayHaveRegisteredServiceWorkers();
     for (auto* document : Document::allDocuments()) {
-        auto sessionID = document->sessionID();
-        if (SchemeRegistry::canServiceWorkersHandleURLScheme(document->url().protocol().toStringWithoutCopying()))
-            document->setServiceWorkerConnection(&serviceWorkerConnectionForSession(sessionID));
+        if (!document->page() || document->page()->mainFrame().loader().client().isServiceWorkerFrameLoaderClient())
+            continue;
+        if (LegacySchemeRegistry::canServiceWorkersHandleURLScheme(document->url().protocol().toStringWithoutCopying()))
+            document->setServiceWorkerConnection(&serviceWorkerConnection());
     }
 }
 

@@ -50,9 +50,9 @@ namespace WebCore {
 
 static Seconds terminationDelay { 10_s };
 
-SWServer::Connection::Connection(SWServer& server)
+SWServer::Connection::Connection(SWServer& server, Identifier identifier)
     : m_server(server)
-    , m_identifier(SWServerConnectionIdentifier::generate())
+    , m_identifier(identifier)
 {
 }
 
@@ -299,9 +299,12 @@ void SWServer::Connection::syncTerminateWorker(ServiceWorkerIdentifier identifie
         m_server.syncTerminateWorker(*worker);
 }
 
-SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore, String&& registrationDatabaseDirectory, PAL::SessionID sessionID)
+SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore, HashSet<String>&& registeredSchemes, bool processTerminationDelayEnabled, String&& registrationDatabaseDirectory, PAL::SessionID sessionID, CreateContextConnectionCallback&& callback)
     : m_originStore(WTFMove(originStore))
     , m_sessionID(sessionID)
+    , m_isProcessTerminationDelayEnabled(processTerminationDelayEnabled)
+    , m_registeredSchemes(WTFMove(registeredSchemes))
+    , m_createContextConnectionCallback(WTFMove(callback))
 {
     ASSERT(!registrationDatabaseDirectory.isEmpty() || m_sessionID.isEphemeral());
     if (!m_sessionID.isEphemeral())
@@ -529,27 +532,29 @@ void SWServer::removeClientServiceWorkerRegistration(Connection& connection, Ser
 
 void SWServer::updateWorker(Connection&, const ServiceWorkerJobDataIdentifier& jobDataIdentifier, SWServerRegistration& registration, const URL& url, const String& script, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, const String& referrerPolicy, WorkerType type, HashMap<URL, ServiceWorkerContextData::ImportedScript>&& scriptResourceMap)
 {
-    tryInstallContextData({ jobDataIdentifier, registration.data(), ServiceWorkerIdentifier::generate(), script, contentSecurityPolicy, referrerPolicy, url, type, sessionID(), false, WTFMove(scriptResourceMap) });
+    tryInstallContextData({ jobDataIdentifier, registration.data(), ServiceWorkerIdentifier::generate(), script, contentSecurityPolicy, referrerPolicy, url, type, false, WTFMove(scriptResourceMap) });
 }
 
 void SWServer::tryInstallContextData(ServiceWorkerContextData&& data)
 {
     RegistrableDomain registrableDomain(data.scriptURL);
-    auto* connection = SWServerToContextConnection::connectionForRegistrableDomain(registrableDomain);
+    auto* connection = contextConnectionForRegistrableDomain(registrableDomain);
     if (!connection) {
-        m_pendingContextDatas.ensure(WTFMove(registrableDomain), [] {
+        m_pendingContextDatas.ensure(registrableDomain, [] {
             return Vector<ServiceWorkerContextData> { };
         }).iterator->value.append(WTFMove(data));
+
+        createContextConnection(registrableDomain);
         return;
     }
     
     installContextData(data);
 }
 
-void SWServer::serverToContextConnectionCreated(SWServerToContextConnection& contextConnection)
+void SWServer::contextConnectionCreated(SWServerToContextConnection& contextConnection)
 {
     for (auto& connection : m_connections.values())
-        connection->serverToContextConnectionCreated(contextConnection);
+        connection->contextConnectionCreated(contextConnection);
 
     auto pendingContextDatas = m_pendingContextDatas.take(contextConnection.registrableDomain());
     for (auto& data : pendingContextDatas)
@@ -586,7 +591,7 @@ void SWServer::installContextData(const ServiceWorkerContextData& data)
     auto result = m_runningOrTerminatingWorkers.add(data.serviceWorkerIdentifier, WTFMove(worker));
     ASSERT_UNUSED(result, result.isNewEntry);
 
-    connection->installServiceWorkerContext(data, m_sessionID, userAgent);
+    connection->installServiceWorkerContext(data, userAgent);
 }
 
 void SWServer::runServiceWorkerIfNecessary(ServiceWorkerIdentifier identifier, RunServiceWorkerCallback&& callback)
@@ -603,6 +608,11 @@ void SWServer::runServiceWorkerIfNecessary(ServiceWorkerIdentifier identifier, R
         callback(contextConnection);
         return;
     }
+    
+    if (worker->state() == ServiceWorkerState::Redundant) {
+        callback(nullptr);
+        return;
+    }
 
     if (!contextConnection) {
         auto& serviceWorkerRunRequestsForOrigin = m_serviceWorkerRunRequests.ensure(worker->registrableDomain(), [] {
@@ -611,6 +621,8 @@ void SWServer::runServiceWorkerIfNecessary(ServiceWorkerIdentifier identifier, R
         serviceWorkerRunRequestsForOrigin.ensure(identifier, [&] {
             return Vector<RunServiceWorkerCallback> { };
         }).iterator->value.append(WTFMove(callback));
+
+        createContextConnection(worker->registrableDomain());
         return;
     }
 
@@ -637,7 +649,7 @@ bool SWServer::runServiceWorker(ServiceWorkerIdentifier identifier)
     auto* contextConnection = worker->contextConnection();
     ASSERT(contextConnection);
 
-    contextConnection->installServiceWorkerContext(worker->contextData(), m_sessionID, worker->userAgent());
+    contextConnection->installServiceWorkerContext(worker->contextData(), worker->userAgent());
 
     return true;
 }
@@ -828,13 +840,15 @@ void SWServer::unregisterServiceWorkerClient(const ClientOrigin& clientOrigin, S
                 terminateWorker(*worker);
 
             if (!m_clientsByRegistrableDomain.contains(clientRegistrableDomain)) {
-                if (auto* connection = SWServerToContextConnection::connectionForRegistrableDomain(clientRegistrableDomain))
-                    connection->connectionMayNoLongerBeNeeded();
+                if (auto* connection = contextConnectionForRegistrableDomain(clientRegistrableDomain)) {
+                    removeContextConnection(*connection);
+                    connection->connectionIsNoLongerNeeded();
+                }
             }
 
             m_clientIdentifiersPerOrigin.remove(clientOrigin);
         });
-        iterator->value.terminateServiceWorkersTimer->startOneShot(m_shouldDisableServiceWorkerProcessTerminationDelay ? 0_s : terminationDelay);
+        iterator->value.terminateServiceWorkersTimer->startOneShot(m_isProcessTerminationDelayEnabled ? terminationDelay : 0_s);
     }
 
     auto clientsByRegistrableDomainIterator = m_clientsByRegistrableDomain.find(clientRegistrableDomain);
@@ -859,7 +873,7 @@ void SWServer::removeFromScopeToRegistrationMap(const ServiceWorkerRegistrationK
     m_scopeToRegistrationMap.remove(key);
 }
 
-bool SWServer::needsServerToContextConnectionForRegistrableDomain(const RegistrableDomain& registrableDomain) const
+bool SWServer::needsContextConnectionForRegistrableDomain(const RegistrableDomain& registrableDomain) const
 {
     return m_clientsByRegistrableDomain.contains(registrableDomain);
 }
@@ -926,6 +940,38 @@ void SWServer::performGetOriginsWithRegistrationsCallbacks()
     auto callbacks = WTFMove(m_getOriginsWithRegistrationsCallbacks);
     for (auto& callback : callbacks)
         callback(originsWithRegistrations);
+}
+
+void SWServer::addContextConnection(SWServerToContextConnection& connection)
+{
+    ASSERT(!m_contextConnections.contains(connection.registrableDomain()));
+
+    m_pendingConnectionDomains.remove(connection.registrableDomain());
+    m_contextConnections.add(connection.registrableDomain(), &connection);
+
+    contextConnectionCreated(connection);
+}
+
+void SWServer::removeContextConnection(SWServerToContextConnection& connection)
+{
+    auto& registrableDomain = connection.registrableDomain();
+
+    ASSERT(m_contextConnections.get(registrableDomain) == &connection);
+
+    m_contextConnections.remove(registrableDomain);
+    markAllWorkersForRegistrableDomainAsTerminated(registrableDomain);
+    if (needsContextConnectionForRegistrableDomain(registrableDomain))
+        createContextConnection(registrableDomain);
+}
+
+void SWServer::createContextConnection(const RegistrableDomain& registrableDomain)
+{
+    ASSERT(!m_contextConnections.contains(registrableDomain));
+    if (m_pendingConnectionDomains.contains(registrableDomain))
+        return;
+
+    m_pendingConnectionDomains.add(registrableDomain);
+    m_createContextConnectionCallback(registrableDomain);
 }
 
 } // namespace WebCore

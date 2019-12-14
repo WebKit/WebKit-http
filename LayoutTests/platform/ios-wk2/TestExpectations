@@ -21,7 +21,7 @@ fast/web-share [ Pass ]
 editing/caret/ios [ Pass ]
 editing/find [ Pass ]
 editing/input/ios [ Pass ]
-editing/pasteboard/ios [ Pass ]
+editing/pasteboard/dom-paste [ Pass ]
 editing/undo-manager [ Pass ]
 
 accessibility/set-selected-text-range-after-newline.html [ Pass ]
@@ -54,6 +54,7 @@ imported/w3c/web-platform-tests/payment-request/payment-request-show-method.http
 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ WontFix ]
 
 webkit.org/b/170713 imported/w3c/web-platform-tests/css/css-ui/text-overflow-022.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/form-controls/text-transform.html [ ImageOnlyFailure ]
 
 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Pass ]
@@ -65,6 +66,10 @@ http/tests/webAPIStatistics [ Skip ]
 # Non-fast scrollable region doesn't apply to iOS.
 scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Skip ]
 scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Skip ]
+
+# Cocoa-specific
+http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-third-party-redirects.html [ Pass ]
+http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-third-party-requests.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -1135,6 +1140,8 @@ webkit.org/b/165814 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 webkit.org/b/161359 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-top.html [ Pass Failure ]
 webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-id-top.html [ Pass Failure ]
 
+imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-onerror.html [ Pass Failure ]
+
 # rdar://problem/26477855
 http/tests/xmlhttprequest/logout.html [ Failure ]
 
@@ -1229,6 +1236,7 @@ webkit.org/b/181166 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https.html [ Pass Failure ]
 
+imported/w3c/web-platform-tests/html/dom/idlharness.https.html [ Crash ]
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
 webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
@@ -1354,3 +1362,9 @@ fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-widt
 
 # problem with blur handling
 mathml/focus-event-handling.html [ Failure ]
+
+# <rdar://problem/51756254>REGRESSION (r244582-r244596) Layout tests fast/scrolling/ios/touch-scroll-visibility-hidden.html fast/scrolling/ios/touch-scroll-pointer-events-none.html are failing
+fast/scrolling/ios/touch-scroll-pointer-events-none.html [ Failure ]
+fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
+# <rdar://problem/52962272> fast/scrolling/ios/body-overflow-hidden.html is an Image failure
+fast/scrolling/ios/body-overflow-hidden.html [ Pass ImageOnlyFailure ]

@@ -25,11 +25,11 @@ from buildbot.process import factory
 from buildbot.steps import trigger
 
 from steps import (ApplyPatch, ApplyWatchList, CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance,
-                   CheckStyle, CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, ConfigureBuild,
+                   CheckStyle, CompileJSC, CompileWebKit, ConfigureBuild,
                    DownloadBuiltProduct, ExtractBuiltProduct, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
-                   PrintConfiguration, ReRunJavaScriptCoreTests, RunAPITests, RunBindingsTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests,
-                   RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
-                   RunWebKitPyTests, RunWebKitTests, UnApplyPatchIfRequired, UpdateWorkingDirectory, ValidatePatch)
+                   PrintConfiguration, RunAPITests, RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests,
+                   RunJavaScriptCoreTests, RunWebKit1Tests, RunWebKitPerlTests,
+                   RunWebKitPyTests, RunWebKitTests, UpdateWorkingDirectory, ValidatePatch)
 
 
 class Factory(factory.BuildFactory):
@@ -116,15 +116,11 @@ class TestFactory(Factory):
 
 
 class JSCTestsFactory(Factory):
-    def __init__(self, platform, configuration='release', architectures=None, additionalArguments=None, **kwargs):
+    def __init__(self, platform, configuration='release', architectures=None, additionalArguments=None, runTests='true', **kwargs):
         Factory.__init__(self, platform, configuration, architectures, False, additionalArguments, checkRelevance=True)
-        self.addStep(CompileJSCOnly())
-        self.addStep(UnApplyPatchIfRequired())
-        self.addStep(CompileJSCOnlyToT())
-        self.addStep(RunJavaScriptCoreTests())
-        self.addStep(ReRunJavaScriptCoreTests())
-        self.addStep(UnApplyPatchIfRequired())
-        self.addStep(RunJavaScriptCoreTestsToT())
+        self.addStep(CompileJSC(skipUpload=True))
+        if runTests.lower() == 'true':
+            self.addStep(RunJavaScriptCoreTests())
 
 
 class APITestsFactory(TestFactory):
@@ -187,3 +183,4 @@ class ServicesFactory(Factory):
         Factory.__init__(self, platform, configuration, architectures, False, additionalArguments, checkRelevance=True)
         self.addStep(RunEWSUnitTests())
         self.addStep(RunEWSBuildbotCheckConfig())
+        self.addStep(RunBuildWebKitOrgUnitTests())

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2012-2014 The ANGLE Project Authors. All rights reserved.
+// Copyright 2012 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -28,8 +28,8 @@
 #include "libANGLE/renderer/d3d/d3d11/formatutils11.h"
 #include "libANGLE/renderer/d3d/d3d11/texture_format_table.h"
 #include "libANGLE/renderer/driver_utils.h"
+#include "platform/FeaturesD3D.h"
 #include "platform/Platform.h"
-#include "platform/WorkaroundsD3D.h"
 
 namespace rx
 {
@@ -1386,7 +1386,7 @@ unsigned int GetMaxSampleMaskWords(D3D_FEATURE_LEVEL featureLevel)
 void GenerateCaps(ID3D11Device *device,
                   ID3D11DeviceContext *deviceContext,
                   const Renderer11DeviceCaps &renderer11DeviceCaps,
-                  const angle::WorkaroundsD3D &workarounds,
+                  const angle::FeaturesD3D &features,
                   gl::Caps *caps,
                   gl::TextureCapsMap *textureCapsMap,
                   gl::Extensions *extensions,
@@ -1467,7 +1467,7 @@ void GenerateCaps(ID3D11Device *device,
     caps->maxVertexAttributes = static_cast<GLuint>(GetMaximumVertexInputSlots(featureLevel));
     caps->maxVertexUniformVectors =
         static_cast<GLuint>(GetMaximumVertexUniformVectors(featureLevel));
-    if (workarounds.skipVSConstantRegisterZero)
+    if (features.skipVSConstantRegisterZero.enabled)
     {
         caps->maxVertexUniformVectors -= 1;
     }
@@ -1585,6 +1585,11 @@ void GenerateCaps(ID3D11Device *device,
 
     // GL extension support
     extensions->setTextureExtensionSupport(*textureCapsMap);
+
+    // Explicitly disable GL_OES_compressed_ETC1_RGB8_texture because it's emulated and never
+    // becomes core. WebGL doesn't want to expose it unless there is native support.
+    extensions->compressedETC1RGB8Texture = false;
+
     extensions->elementIndexUint            = true;
     extensions->getProgramBinary            = true;
     extensions->rgb8rgba8                   = true;
@@ -1619,8 +1624,9 @@ void GenerateCaps(ID3D11Device *device,
     extensions->standardDerivatives    = GetDerivativeInstructionSupport(featureLevel);
     extensions->shaderTextureLOD       = GetShaderTextureLODSupport(featureLevel);
     extensions->fragDepth              = true;
+    extensions->multiview              = IsMultiviewSupported(featureLevel);
     extensions->multiview2             = IsMultiviewSupported(featureLevel);
-    if (extensions->multiview2)
+    if (extensions->multiview || extensions->multiview2)
     {
         extensions->maxViews =
             std::min(static_cast<GLuint>(gl::IMPLEMENTATION_ANGLE_MULTIVIEW_MAX_VIEWS),
@@ -1643,12 +1649,20 @@ void GenerateCaps(ID3D11Device *device,
     extensions->copyTexture                      = true;
     extensions->copyCompressedTexture            = true;
     extensions->textureStorageMultisample2DArray = true;
-    extensions->multiviewMultisample =
-        (extensions->multiview2 && extensions->textureStorageMultisample2DArray);
-    extensions->copyTexture3d      = true;
-    extensions->textureBorderClamp = true;
-    extensions->textureMultisample = true;
-    extensions->provokingVertex    = true;
+    extensions->multiviewMultisample     = ((extensions->multiview || extensions->multiview2) &&
+                                        extensions->textureStorageMultisample2DArray);
+    extensions->copyTexture3d            = true;
+    extensions->textureBorderClamp       = true;
+    extensions->textureMultisample       = true;
+    extensions->provokingVertex          = true;
+    extensions->blendFuncExtended        = true;
+    extensions->maxDualSourceDrawBuffers = 1;
+    extensions->texture3DOES                     = true;
+    extensions->baseVertexBaseInstance           = true;
+
+    // D3D11 cannot support reading depth texture as a luminance texture.
+    // It treats it as a red-channel-only texture.
+    extensions->depthTextureOES = false;
 
     // D3D11 Feature Level 10_0+ uses SV_IsFrontFace in HLSL to emulate gl_FrontFacing.
     // D3D11 Feature Level 9_3 doesn't support SV_IsFrontFace, and has no equivalent, so can't
@@ -1676,7 +1690,10 @@ void GenerateCaps(ID3D11Device *device,
     // D3D11 does not support multiple transform feedback outputs writing to the same buffer.
     limitations->noDoubleBoundTransformFeedbackBuffers = true;
 
-#ifdef ANGLE_ENABLE_WINDOWS_STORE
+    // D3D11 does not support vertex attribute aliasing
+    limitations->noVertexAttributeAliasing = true;
+
+#ifdef ANGLE_ENABLE_WINDOWS_UWP
     // Setting a non-zero divisor on attribute zero doesn't work on certain Windows Phone 8-era
     // devices. We should prevent developers from doing this on ALL Windows Store devices. This will
     // maintain consistency across all Windows devices. We allow non-zero divisors on attribute zero
@@ -1750,6 +1767,18 @@ D3D11_BLEND ConvertBlendFunc(GLenum glBlend, bool isAlpha)
             break;
         case GL_SRC_ALPHA_SATURATE:
             d3dBlend = D3D11_BLEND_SRC_ALPHA_SAT;
+            break;
+        case GL_SRC1_COLOR_EXT:
+            d3dBlend = (isAlpha ? D3D11_BLEND_SRC1_ALPHA : D3D11_BLEND_SRC1_COLOR);
+            break;
+        case GL_SRC1_ALPHA_EXT:
+            d3dBlend = D3D11_BLEND_SRC1_ALPHA;
+            break;
+        case GL_ONE_MINUS_SRC1_COLOR_EXT:
+            d3dBlend = (isAlpha ? D3D11_BLEND_INV_SRC1_ALPHA : D3D11_BLEND_INV_SRC1_COLOR);
+            break;
+        case GL_ONE_MINUS_SRC1_ALPHA_EXT:
+            d3dBlend = D3D11_BLEND_INV_SRC1_ALPHA;
             break;
         default:
             UNREACHABLE();
@@ -2349,83 +2378,99 @@ angle::Result LazyBlendState::resolve(d3d::Context *context, Renderer11 *rendere
     return resolveImpl(context, renderer, mDesc, nullptr, mDebugName);
 }
 
-angle::WorkaroundsD3D GenerateWorkarounds(const Renderer11DeviceCaps &deviceCaps,
-                                          const DXGI_ADAPTER_DESC &adapterDesc)
+void InitializeFeatures(const Renderer11DeviceCaps &deviceCaps,
+                        const DXGI_ADAPTER_DESC &adapterDesc,
+                        angle::FeaturesD3D *features)
 {
-    bool is9_3 = (deviceCaps.featureLevel <= D3D_FEATURE_LEVEL_9_3);
-
-    angle::WorkaroundsD3D workarounds;
-    workarounds.mrtPerfWorkaround                = true;
-    workarounds.setDataFasterThanImageUpload     = true;
-    workarounds.zeroMaxLodWorkaround             = is9_3;
-    workarounds.useInstancedPointSpriteEmulation = is9_3;
-
-    // TODO(jmadill): Narrow problematic driver range.
-    if (IsNvidia(adapterDesc.VendorId))
+    bool isNvidia                  = IsNvidia(adapterDesc.VendorId);
+    bool isIntel                   = IsIntel(adapterDesc.VendorId);
+    bool isSkylake                 = false;
+    bool isBroadwell               = false;
+    bool isHaswell                 = false;
+    bool isAMD                     = IsAMD(adapterDesc.VendorId);
+    bool isFeatureLevel9_3         = (deviceCaps.featureLevel <= D3D_FEATURE_LEVEL_9_3);
+    IntelDriverVersion capsVersion = IntelDriverVersion(0);
+    if (isIntel)
     {
-        if (deviceCaps.driverVersion.valid())
+        capsVersion = d3d11_gl::GetIntelDriverVersion(deviceCaps.driverVersion);
+
+        isSkylake   = IsSkylake(adapterDesc.DeviceId);
+        isBroadwell = IsBroadwell(adapterDesc.DeviceId);
+        isHaswell   = IsHaswell(adapterDesc.DeviceId);
+    }
+
+    if (isNvidia)
+    {
+        // TODO(jmadill): Narrow problematic driver range.
+        bool driverVersionValid = deviceCaps.driverVersion.valid();
+        if (driverVersionValid)
         {
             WORD part1 = HIWORD(deviceCaps.driverVersion.value().LowPart);
             WORD part2 = LOWORD(deviceCaps.driverVersion.value().LowPart);
 
             // Disable the workaround to fix a second driver bug on newer NVIDIA.
-            workarounds.depthStencilBlitExtraCopy = (part1 <= 13u && part2 < 6881);
+            ANGLE_FEATURE_CONDITION(
+                features, depthStencilBlitExtraCopy,
+                (part1 <= 13u && part2 < 6881) && isNvidia && driverVersionValid)
         }
         else
         {
-            workarounds.depthStencilBlitExtraCopy = true;
+            ANGLE_FEATURE_CONDITION(features, depthStencilBlitExtraCopy,
+                                    isNvidia && !driverVersionValid)
         }
     }
+
+    ANGLE_FEATURE_CONDITION(features, mrtPerfWorkaround, true)
+    ANGLE_FEATURE_CONDITION(features, zeroMaxLodWorkaround, isFeatureLevel9_3)
+    ANGLE_FEATURE_CONDITION(features, useInstancedPointSpriteEmulation, isFeatureLevel9_3)
 
     // TODO(jmadill): Disable workaround when we have a fixed compiler DLL.
-    workarounds.expandIntegerPowExpressions = true;
+    ANGLE_FEATURE_CONDITION(features, expandIntegerPowExpressions, true)
 
-    workarounds.flushAfterEndingTransformFeedback = IsNvidia(adapterDesc.VendorId);
-    workarounds.getDimensionsIgnoresBaseLevel     = IsNvidia(adapterDesc.VendorId);
-    workarounds.skipVSConstantRegisterZero        = IsNvidia(adapterDesc.VendorId);
-    workarounds.forceAtomicValueResolution        = IsNvidia(adapterDesc.VendorId);
+    ANGLE_FEATURE_CONDITION(features, flushAfterEndingTransformFeedback, isNvidia)
+    ANGLE_FEATURE_CONDITION(features, getDimensionsIgnoresBaseLevel, isNvidia)
+    ANGLE_FEATURE_CONDITION(features, skipVSConstantRegisterZero, isNvidia)
+    ANGLE_FEATURE_CONDITION(features, forceAtomicValueResolution, isNvidia)
 
-    if (IsIntel(adapterDesc.VendorId))
-    {
-        IntelDriverVersion capsVersion = d3d11_gl::GetIntelDriverVersion(deviceCaps.driverVersion);
+    ANGLE_FEATURE_CONDITION(features, preAddTexelFetchOffsets, isIntel)
+    ANGLE_FEATURE_CONDITION(features, useSystemMemoryForConstantBuffers, isIntel)
 
-        workarounds.preAddTexelFetchOffsets           = true;
-        workarounds.useSystemMemoryForConstantBuffers = true;
-        workarounds.disableB5G6R5Support              = capsVersion < IntelDriverVersion(4539);
-        workarounds.addDummyTextureNoRenderTarget     = capsVersion < IntelDriverVersion(4815);
-        if (IsSkylake(adapterDesc.DeviceId))
-        {
-            workarounds.callClearTwice    = capsVersion < IntelDriverVersion(4771);
-            workarounds.emulateIsnanFloat = capsVersion < IntelDriverVersion(4542);
-        }
-        else if (IsBroadwell(adapterDesc.DeviceId) || IsHaswell(adapterDesc.DeviceId))
-        {
-            workarounds.rewriteUnaryMinusOperator = capsVersion < IntelDriverVersion(4624);
-        }
-    }
+    ANGLE_FEATURE_CONDITION(features, callClearTwice,
+                            isIntel && isSkylake && capsVersion < IntelDriverVersion(4771))
+    ANGLE_FEATURE_CONDITION(features, emulateIsnanFloat,
+                            isIntel && isSkylake && capsVersion < IntelDriverVersion(4542))
+    ANGLE_FEATURE_CONDITION(
+        features, rewriteUnaryMinusOperator,
+        isIntel && (isBroadwell || isHaswell) && capsVersion < IntelDriverVersion(4624))
+
+    ANGLE_FEATURE_CONDITION(features, addDummyTextureNoRenderTarget,
+                            isIntel && capsVersion < IntelDriverVersion(4815))
+
+    // Haswell drivers occasionally corrupt (small?) (vertex?) texture data uploads.
+    ANGLE_FEATURE_CONDITION(features, setDataFasterThanImageUpload, !(isBroadwell || isHaswell))
+
+    ANGLE_FEATURE_CONDITION(features, disableB5G6R5Support,
+                            (isIntel && capsVersion < IntelDriverVersion(4539)) || isAMD)
 
     // TODO(jmadill): Disable when we have a fixed driver version.
-    workarounds.emulateTinyStencilTextures = IsAMD(adapterDesc.VendorId);
-
     // The tiny stencil texture workaround involves using CopySubresource or UpdateSubresource on a
     // depth stencil texture.  This is not allowed until feature level 10.1 but since it is not
     // possible to support ES3 on these devices, there is no need for the workaround to begin with
     // (anglebug.com/1572).
-    if (deviceCaps.featureLevel < D3D_FEATURE_LEVEL_10_1)
-    {
-        workarounds.emulateTinyStencilTextures = false;
-    }
+    ANGLE_FEATURE_CONDITION(features, emulateTinyStencilTextures,
+                            isAMD && !(deviceCaps.featureLevel < D3D_FEATURE_LEVEL_10_1))
 
     // If the VPAndRTArrayIndexFromAnyShaderFeedingRasterizer feature is not available, we have to
     // select the viewport / RT array index in the geometry shader.
-    workarounds.selectViewInGeometryShader =
-        (deviceCaps.supportsVpRtIndexWriteFromVertexShader == false);
+    ANGLE_FEATURE_CONDITION(features, selectViewInGeometryShader,
+                            !deviceCaps.supportsVpRtIndexWriteFromVertexShader)
+
+    // Never clear for robust resource init.  This matches Chrome's texture clearning behaviour.
+    ANGLE_FEATURE_CONDITION(features, allowClearForRobustResourceInit, false)
 
     // Call platform hooks for testing overrides.
     auto *platform = ANGLEPlatformCurrent();
-    platform->overrideWorkaroundsD3D(platform, &workarounds);
-
-    return workarounds;
+    platform->overrideWorkaroundsD3D(platform, features);
 }
 
 void InitConstantBufferDesc(D3D11_BUFFER_DESC *constantBufferDescription, size_t byteWidth)

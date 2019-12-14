@@ -216,13 +216,20 @@ void ResourceLoadStatisticsMemoryStore::hasStorageAccess(const SubFrameDomain& s
     ASSERT(!RunLoop::isMain());
 
     auto& subFrameStatistic = ensureResourceStatisticsForRegistrableDomain(subFrameDomain);
+    // Return false if this domain cannot ask for storage access.
     if (shouldBlockAndPurgeCookies(subFrameStatistic)) {
         completionHandler(false);
         return;
     }
 
     if (!shouldBlockAndKeepCookies(subFrameStatistic)) {
-        completionHandler(true);
+        RunLoop::main().dispatch([store = makeRef(store()), subFrameDomain = subFrameDomain.isolatedCopy(), completionHandler = WTFMove(completionHandler)]() mutable {
+            store->hasCookies(subFrameDomain, [store = store.copyRef(), completionHandler = WTFMove(completionHandler)](bool result) mutable {
+                store->statisticsQueue().dispatch([completionHandler = WTFMove(completionHandler), result] () mutable {
+                    completionHandler(result);
+                });
+            });
+        });
         return;
     }
 
@@ -694,16 +701,6 @@ void ResourceLoadStatisticsMemoryStore::clear(CompletionHandler<void()>&& comple
     updateCookieBlockingForDomains(domainsToBlock, [callbackAggregator = callbackAggregator.copyRef()] { });
 }
 
-bool ResourceLoadStatisticsMemoryStore::wasAccessedAsFirstPartyDueToUserInteraction(const ResourceLoadStatistics& current, const ResourceLoadStatistics& updated) const
-{
-    if (!current.hadUserInteraction && !updated.hadUserInteraction)
-        return false;
-
-    auto mostRecentUserInteractionTime = std::max(current.mostRecentUserInteractionTime, updated.mostRecentUserInteractionTime);
-
-    return updated.lastSeen <= mostRecentUserInteractionTime + 24_h;
-}
-
 void ResourceLoadStatisticsMemoryStore::mergeStatistics(Vector<ResourceLoadStatistics>&& statistics)
 {
     ASSERT(!RunLoop::isMain());
@@ -712,11 +709,8 @@ void ResourceLoadStatisticsMemoryStore::mergeStatistics(Vector<ResourceLoadStati
         auto result = m_resourceStatisticsMap.ensure(statistic.registrableDomain, [&statistic] {
             return WTFMove(statistic);
         });
-        if (!result.isNewEntry) {
-            if (wasAccessedAsFirstPartyDueToUserInteraction(result.iterator->value, statistic))
-                result.iterator->value.timesAccessedAsFirstPartyDueToUserInteraction++;
+        if (!result.isNewEntry)
             result.iterator->value.merge(statistic);
-        }
     }
 }
 

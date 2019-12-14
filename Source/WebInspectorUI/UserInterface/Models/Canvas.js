@@ -45,7 +45,7 @@ WI.Canvas = class Canvas extends WI.Object
         this._shaderProgramCollection = new WI.ShaderProgramCollection;
         this._recordingCollection = new WI.RecordingCollection;
 
-        this._nextShaderProgramDisplayNumber = 1;
+        this._nextShaderProgramDisplayNumber = null;
 
         this._requestNodePromise = null;
 
@@ -115,6 +115,16 @@ WI.Canvas = class Canvas extends WI.Object
     {
         Canvas._nextContextUniqueDisplayNameNumber = 1;
         Canvas._nextDeviceUniqueDisplayNameNumber = 1;
+    }
+
+    static supportsRequestContentForContextType(contextType)
+    {
+        switch (contextType) {
+        case Canvas.ContextType.WebGPU:
+        case Canvas.ContextType.WebMetal:
+            return false;
+        }
+        return true;
     }
 
     // Public
@@ -199,6 +209,8 @@ WI.Canvas = class Canvas extends WI.Object
 
     requestContent()
     {
+        if (!Canvas.supportsRequestContentForContextType(this._contextType))
+            return Promise.resolve(null);
         return CanvasAgent.requestContent(this._identifier).then((result) => result.content).catch((error) => console.error(error));
     }
 
@@ -409,11 +421,15 @@ WI.Canvas = class Canvas extends WI.Object
         this.dispatchEventToListeners(WI.Canvas.Event.RecordingStopped, {recording, initiatedByUser});
     }
 
-    nextShaderProgramDisplayNumber()
+    nextShaderProgramDisplayNumberForProgramType(programType)
     {
         // Called from WI.ShaderProgram.
 
-        return this._nextShaderProgramDisplayNumber++;
+        if (!this._nextShaderProgramDisplayNumber)
+            this._nextShaderProgramDisplayNumber = {};
+
+        this._nextShaderProgramDisplayNumber[programType] = (this._nextShaderProgramDisplayNumber[programType] || 0) + 1;
+        return this._nextShaderProgramDisplayNumber[programType];
     }
 };
 

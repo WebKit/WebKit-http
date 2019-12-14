@@ -19,6 +19,7 @@ $(JAVASCRIPTCORE_PRIVATE_HEADERS_DIR)/xxd.pl
 $(PROJECT_DIR)/Configurations/FeatureDefines.xcconfig
 $(PROJECT_DIR)/DerivedSources.make
 $(PROJECT_DIR)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
+$(PROJECT_DIR)/Modules/applepay/ApplePayCancelEvent.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayContactField.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayError.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayErrorCode.idl
@@ -37,6 +38,7 @@ $(PROJECT_DIR)/Modules/applepay/ApplePayPaymentPass.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayPaymentRequest.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayRequestBase.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePaySession.idl
+$(PROJECT_DIR)/Modules/applepay/ApplePaySessionError.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayShippingContactUpdate.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayShippingMethod.idl
@@ -45,6 +47,9 @@ $(PROJECT_DIR)/Modules/applepay/ApplePayShippingMethodUpdate.idl
 $(PROJECT_DIR)/Modules/applepay/ApplePayValidateMerchantEvent.idl
 $(PROJECT_DIR)/Modules/applepay/paymentrequest/ApplePayModifier.idl
 $(PROJECT_DIR)/Modules/applepay/paymentrequest/ApplePayRequest.idl
+$(PROJECT_DIR)/Modules/async-clipboard/Clipboard.idl
+$(PROJECT_DIR)/Modules/async-clipboard/ClipboardItem.idl
+$(PROJECT_DIR)/Modules/async-clipboard/NavigatorClipboard.idl
 $(PROJECT_DIR)/Modules/beacon/NavigatorBeacon.idl
 $(PROJECT_DIR)/Modules/cache/CacheQueryOptions.idl
 $(PROJECT_DIR)/Modules/cache/DOMCache.idl
@@ -594,6 +599,9 @@ $(PROJECT_DIR)/dom/EventTargetFactory.in
 $(PROJECT_DIR)/dom/FocusEvent.idl
 $(PROJECT_DIR)/dom/GlobalEventHandlers.idl
 $(PROJECT_DIR)/dom/HashChangeEvent.idl
+$(PROJECT_DIR)/dom/IdleDeadline.idl
+$(PROJECT_DIR)/dom/IdleRequestCallback.idl
+$(PROJECT_DIR)/dom/IdleRequestOptions.idl
 $(PROJECT_DIR)/dom/InputEvent.idl
 $(PROJECT_DIR)/dom/KeyboardEvent.idl
 $(PROJECT_DIR)/dom/MessageChannel.idl
@@ -877,6 +885,7 @@ $(PROJECT_DIR)/page/IntersectionObserverEntry.idl
 $(PROJECT_DIR)/page/Location.idl
 $(PROJECT_DIR)/page/Navigator.idl
 $(PROJECT_DIR)/page/NavigatorID.idl
+$(PROJECT_DIR)/page/NavigatorIsLoggedIn.idl
 $(PROJECT_DIR)/page/NavigatorLanguage.idl
 $(PROJECT_DIR)/page/NavigatorOnLine.idl
 $(PROJECT_DIR)/page/NavigatorServiceWorker.idl
@@ -1081,6 +1090,7 @@ $(PROJECT_DIR)/testing/MockPaymentAddress.idl
 $(PROJECT_DIR)/testing/MockPaymentContactFields.idl
 $(PROJECT_DIR)/testing/MockPaymentCoordinator.idl
 $(PROJECT_DIR)/testing/MockPaymentError.idl
+$(PROJECT_DIR)/testing/MockWebAuthenticationConfiguration.idl
 $(PROJECT_DIR)/testing/ServiceWorkerInternals.idl
 $(PROJECT_DIR)/testing/TypeConversions.idl
 $(PROJECT_DIR)/workers/AbstractWorker.idl

@@ -164,11 +164,16 @@ void InjectedScript::getPreview(ErrorString& errorString, const String& objectId
     result = BindingTraits<Protocol::Runtime::ObjectPreview>::runtimeCast(WTFMove(resultValue));
 }
 
-void InjectedScript::getProperties(ErrorString& errorString, const String& objectId, bool ownProperties, bool generatePreview, RefPtr<JSON::ArrayOf<Protocol::Runtime::PropertyDescriptor>>& properties)
+void InjectedScript::getProperties(ErrorString& errorString, const String& objectId, bool ownProperties, int fetchStart, int fetchCount, bool generatePreview, RefPtr<JSON::ArrayOf<Protocol::Runtime::PropertyDescriptor>>& properties)
 {
+    ASSERT(fetchStart >= 0);
+    ASSERT(fetchCount >= 0);
+
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "getProperties"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
     function.appendArgument(ownProperties);
+    function.appendArgument(fetchStart);
+    function.appendArgument(fetchCount);
     function.appendArgument(generatePreview);
 
     RefPtr<JSON::Value> result = makeCall(function);
@@ -180,10 +185,15 @@ void InjectedScript::getProperties(ErrorString& errorString, const String& objec
     properties = BindingTraits<JSON::ArrayOf<Protocol::Runtime::PropertyDescriptor>>::runtimeCast(WTFMove(result));
 }
 
-void InjectedScript::getDisplayableProperties(ErrorString& errorString, const String& objectId, bool generatePreview, RefPtr<JSON::ArrayOf<Protocol::Runtime::PropertyDescriptor>>& properties)
+void InjectedScript::getDisplayableProperties(ErrorString& errorString, const String& objectId, int fetchStart, int fetchCount, bool generatePreview, RefPtr<JSON::ArrayOf<Protocol::Runtime::PropertyDescriptor>>& properties)
 {
+    ASSERT(fetchStart >= 0);
+    ASSERT(fetchCount >= 0);
+
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "getDisplayableProperties"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
+    function.appendArgument(fetchStart);
+    function.appendArgument(fetchCount);
     function.appendArgument(generatePreview);
 
     RefPtr<JSON::Value> result = makeCall(function);
@@ -211,13 +221,16 @@ void InjectedScript::getInternalProperties(ErrorString& errorString, const Strin
     properties = array->length() > 0 ? array : nullptr;
 }
 
-void InjectedScript::getCollectionEntries(ErrorString& errorString, const String& objectId, const String& objectGroup, int startIndex, int numberToFetch, RefPtr<JSON::ArrayOf<Protocol::Runtime::CollectionEntry>>& entries)
+void InjectedScript::getCollectionEntries(ErrorString& errorString, const String& objectId, const String& objectGroup, int fetchStart, int fetchCount, RefPtr<JSON::ArrayOf<Protocol::Runtime::CollectionEntry>>& entries)
 {
+    ASSERT(fetchStart >= 0);
+    ASSERT(fetchCount >= 0);
+
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "getCollectionEntries"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
     function.appendArgument(objectGroup);
-    function.appendArgument(startIndex);
-    function.appendArgument(numberToFetch);
+    function.appendArgument(fetchStart);
+    function.appendArgument(fetchCount);
 
     RefPtr<JSON::Value> result = makeCall(function);
     if (!result || result->type() != JSON::Value::Type::Array) {
@@ -250,12 +263,12 @@ Ref<JSON::ArrayOf<Protocol::Debugger::CallFrame>> InjectedScript::wrapCallFrames
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "wrapCallFrames"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(callFrames);
 
-    bool hadException = false;
-    auto callFramesValue = callFunctionWithEvalEnabled(function, hadException);
-    if (!callFramesValue)
+    auto callResult = callFunctionWithEvalEnabled(function);
+    ASSERT(callResult);
+    if (!callResult || !callResult.value())
         return JSON::ArrayOf<Protocol::Debugger::CallFrame>::create();
-    ASSERT(!hadException);
-    RefPtr<JSON::Value> result = toInspectorValue(*scriptState(), callFramesValue);
+
+    RefPtr<JSON::Value> result = toInspectorValue(*scriptState(), callResult.value());
     if (result->type() == JSON::Value::Type::Array)
         return BindingTraits<JSON::ArrayOf<Protocol::Debugger::CallFrame>>::runtimeCast(WTFMove(result)).releaseNonNull();
 
@@ -271,13 +284,12 @@ RefPtr<Protocol::Runtime::RemoteObject> InjectedScript::wrapObject(JSC::JSValue 
     wrapFunction.appendArgument(hasAccessToInspectedScriptState());
     wrapFunction.appendArgument(generatePreview);
 
-    bool hadException = false;
-    auto r = callFunctionWithEvalEnabled(wrapFunction, hadException);
-    if (hadException)
+    auto callResult = callFunctionWithEvalEnabled(wrapFunction);
+    if (!callResult)
         return nullptr;
 
     RefPtr<JSON::Object> resultObject;
-    bool castSucceeded = toInspectorValue(*scriptState(), r)->asObject(resultObject);
+    bool castSucceeded = toInspectorValue(*scriptState(), callResult.value())->asObject(resultObject);
     ASSERT_UNUSED(castSucceeded, castSucceeded);
 
     return BindingTraits<Protocol::Runtime::RemoteObject>::runtimeCast(resultObject);
@@ -291,16 +303,15 @@ RefPtr<Protocol::Runtime::RemoteObject> InjectedScript::wrapJSONString(const Str
     wrapFunction.appendArgument(groupName);
     wrapFunction.appendArgument(generatePreview);
 
-    bool hadException = false;
-    auto evalResult = callFunctionWithEvalEnabled(wrapFunction, hadException);
-    if (hadException)
+    auto callResult = callFunctionWithEvalEnabled(wrapFunction);
+    if (!callResult)
         return nullptr;
 
-    if (evalResult.isNull())
+    if (callResult.value().isNull())
         return nullptr;
 
     RefPtr<JSON::Object> resultObject;
-    bool castSucceeded = toInspectorValue(*scriptState(), evalResult)->asObject(resultObject);
+    bool castSucceeded = toInspectorValue(*scriptState(), callResult.value())->asObject(resultObject);
     ASSERT_UNUSED(castSucceeded, castSucceeded);
 
     return BindingTraits<Protocol::Runtime::RemoteObject>::runtimeCast(resultObject);
@@ -317,13 +328,12 @@ RefPtr<Protocol::Runtime::RemoteObject> InjectedScript::wrapTable(JSC::JSValue t
     else
         wrapFunction.appendArgument(columns);
 
-    bool hadException = false;
-    auto r = callFunctionWithEvalEnabled(wrapFunction, hadException);
-    if (hadException)
+    auto callResult = callFunctionWithEvalEnabled(wrapFunction);
+    if (!callResult)
         return nullptr;
 
     RefPtr<JSON::Object> resultObject;
-    bool castSucceeded = toInspectorValue(*scriptState(), r)->asObject(resultObject);
+    bool castSucceeded = toInspectorValue(*scriptState(), callResult.value())->asObject(resultObject);
     ASSERT_UNUSED(castSucceeded, castSucceeded);
 
     return BindingTraits<Protocol::Runtime::RemoteObject>::runtimeCast(resultObject);
@@ -335,13 +345,12 @@ RefPtr<Protocol::Runtime::ObjectPreview> InjectedScript::previewValue(JSC::JSVal
     Deprecated::ScriptFunctionCall wrapFunction(injectedScriptObject(), "previewValue"_s, inspectorEnvironment()->functionCallHandler());
     wrapFunction.appendArgument(value);
 
-    bool hadException = false;
-    auto r = callFunctionWithEvalEnabled(wrapFunction, hadException);
-    if (hadException)
+    auto callResult = callFunctionWithEvalEnabled(wrapFunction);
+    if (!callResult)
         return nullptr;
 
     RefPtr<JSON::Object> resultObject;
-    bool castSucceeded = toInspectorValue(*scriptState(), r)->asObject(resultObject);
+    bool castSucceeded = toInspectorValue(*scriptState(), callResult.value())->asObject(resultObject);
     ASSERT_UNUSED(castSucceeded, castSucceeded);
 
     return BindingTraits<Protocol::Runtime::ObjectPreview>::runtimeCast(resultObject);
@@ -383,11 +392,11 @@ JSC::JSValue InjectedScript::findObjectById(const String& objectId) const
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "findObjectById"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
 
-    bool hadException = false;
-    auto resultValue = callFunctionWithEvalEnabled(function, hadException);
-    ASSERT(!hadException);
-
-    return resultValue;
+    auto callResult = callFunctionWithEvalEnabled(function);
+    ASSERT(callResult);
+    if (!callResult)
+        return { };
+    return callResult.value();
 }
 
 void InjectedScript::inspectObject(JSC::JSValue value)
@@ -411,9 +420,8 @@ void InjectedScript::releaseObjectGroup(const String& objectGroup)
     Deprecated::ScriptFunctionCall releaseFunction(injectedScriptObject(), "releaseObjectGroup"_s, inspectorEnvironment()->functionCallHandler());
     releaseFunction.appendArgument(objectGroup);
 
-    bool hadException = false;
-    callFunctionWithEvalEnabled(releaseFunction, hadException);
-    ASSERT(!hadException);
+    auto callResult = callFunctionWithEvalEnabled(releaseFunction);
+    ASSERT_UNUSED(callResult, callResult);
 }
 
 JSC::JSValue InjectedScript::arrayFromVector(Vector<JSC::JSValue>&& vector)

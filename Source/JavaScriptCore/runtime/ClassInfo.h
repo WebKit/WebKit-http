@@ -185,15 +185,22 @@ struct MethodTable {
         &ClassName::estimatedSize, \
         &ClassName::visitOutputConstraints, \
     }, \
-    ClassName::TypedArrayStorageType
+    ClassName::TypedArrayStorageType, \
+    sizeof(ClassName)
 
 struct ClassInfo {
+    using CheckSubClassSnippetFunctionPtr = Ref<Snippet> (*)(void);
+
     // A string denoting the class name. Example: "Window".
     const char* className;
-
     // Pointer to the class information of the base class.
     // nullptrif there is none.
     const ClassInfo* parentClass;
+    const HashTable* staticPropHashTable;
+    CheckSubClassSnippetFunctionPtr checkSubClassSnippet;
+    MethodTable methodTable;
+    TypedArrayType typedArrayStorageType;
+    unsigned staticClassSize;
 
     static ptrdiff_t offsetOfParentClass()
     {
@@ -212,15 +219,6 @@ struct ClassInfo {
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;
 
     JS_EXPORT_PRIVATE bool hasStaticSetterOrReadonlyProperties() const;
-
-    const HashTable* staticPropHashTable;
-
-    using CheckSubClassSnippetFunctionPtr = Ref<Snippet> (*)(void);
-    CheckSubClassSnippetFunctionPtr checkSubClassSnippet;
-
-    MethodTable methodTable;
-
-    TypedArrayType typedArrayStorageType;
 };
 
 } // namespace JSC

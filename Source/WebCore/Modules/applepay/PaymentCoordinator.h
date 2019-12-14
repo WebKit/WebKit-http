@@ -39,10 +39,11 @@ class PaymentCoordinatorClient;
 class PaymentContact;
 class PaymentMerchantSession;
 class PaymentMethod;
+class PaymentMethodUpdate;
 class PaymentSession;
+class PaymentSessionError;
 enum class PaymentAuthorizationStatus;
 struct PaymentAuthorizationResult;
-struct PaymentMethodUpdate;
 struct ShippingContactUpdate;
 struct ShippingMethodUpdate;
 
@@ -75,7 +76,7 @@ public:
     WEBCORE_EXPORT void didSelectPaymentMethod(const PaymentMethod&);
     WEBCORE_EXPORT void didSelectShippingMethod(const ApplePaySessionPaymentRequest::ShippingMethod&);
     WEBCORE_EXPORT void didSelectShippingContact(const PaymentContact&);
-    WEBCORE_EXPORT void didCancelPaymentSession();
+    WEBCORE_EXPORT void didCancelPaymentSession(PaymentSessionError&&);
 
     Optional<String> validatedPaymentNetwork(Document&, unsigned version, const String&) const;
 

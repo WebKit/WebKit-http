@@ -66,6 +66,7 @@
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "LegacySchemeRegistry.h"
 #include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
@@ -100,7 +101,6 @@
 #include "ResourceUsageOverlay.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
-#include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollLatchingState.h"
@@ -263,7 +263,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_storageNamespaceProvider(*WTFMove(pageConfiguration.storageNamespaceProvider))
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
-    , m_sessionID(PAL::SessionID::defaultSessionID())
+    , m_sessionID(pageConfiguration.sessionID)
 #if ENABLE(VIDEO)
     , m_playbackControlsManagerUpdateTimer(*this, &Page::playbackControlsManagerUpdateTimerFired)
 #endif
@@ -1281,6 +1281,7 @@ void Page::layoutIfNeeded()
         view->updateLayoutAndStyleIfNeededRecursive();
 }
 
+// https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 void Page::updateRendering()
 {
     // This function is not reentrant, e.g. a rAF callback may force repaint.
@@ -1300,9 +1301,16 @@ void Page::updateRendering()
         documents.append(&document);
     });
 
+    // FIXME: Run the resize steps
+
+    // FIXME: Run the scroll steps
+
+    // FIXME: Evaluate media queries and report changes.
+
     for (auto& document : documents) {
         DOMHighResTimeStamp timestamp = document->domWindow()->nowTimestamp();
         document->updateAnimationsAndSendEvents(timestamp);
+        // FIXME: Run the fullscreen steps.
         document->serviceRequestAnimationFrameCallbacks(timestamp);
     }
 
@@ -1316,6 +1324,9 @@ void Page::updateRendering()
     for (auto& document : documents)
         document->updateResizeObservations(*this);
 #endif
+
+    // FIXME: Flush autofocus candidates
+    // https://github.com/whatwg/html/issues/4992
 
     layoutIfNeeded();
 }
@@ -1381,7 +1392,7 @@ void Page::userStyleSheetLocationChanged()
     URL url = m_settings->userStyleSheetLocation();
     
     // Allow any local file URL scheme to be loaded.
-    if (SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toStringWithoutCopying()))
+    if (LegacySchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toStringWithoutCopying()))
         m_userStyleSheetPath = url.fileSystemPath();
     else
         m_userStyleSheetPath = String();
@@ -2466,9 +2477,12 @@ PAL::SessionID Page::sessionID() const
     return m_sessionID;
 }
 
+// This is only called by WebKitLegacy.
 void Page::setSessionID(PAL::SessionID sessionID)
 {
     ASSERT(sessionID.isValid());
+    ASSERT(m_sessionID == PAL::SessionID::legacyPrivateSessionID() || m_sessionID == PAL::SessionID::defaultSessionID());
+    ASSERT(sessionID == PAL::SessionID::legacyPrivateSessionID() || sessionID == PAL::SessionID::defaultSessionID());
 
 #if ENABLE(INDEXED_DATABASE)
     if (sessionID != m_sessionID)
@@ -2566,18 +2580,18 @@ void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
 }
 #endif
 
-WheelEventTestTrigger& Page::ensureTestTrigger()
+WheelEventTestMonitor& Page::ensureWheelEventTestMonitor()
 {
-    if (!m_testTrigger) {
-        m_testTrigger = adoptRef(new WheelEventTestTrigger());
+    if (!m_wheelEventTestMonitor) {
+        m_wheelEventTestMonitor = adoptRef(new WheelEventTestMonitor());
         // We need to update the scrolling coordinator so that the mainframe scrolling node can expect wheel event test triggers.
         if (auto* frameView = mainFrame().view()) {
             if (m_scrollingCoordinator)
-                m_scrollingCoordinator->updateExpectsWheelEventTestTriggerWithFrameView(*frameView);
+                m_scrollingCoordinator->updateIsMonitoringWheelEventsForFrameView(*frameView);
         }
     }
 
-    return *m_testTrigger;
+    return *m_wheelEventTestMonitor;
 }
 
 #if ENABLE(VIDEO)
@@ -2964,7 +2978,7 @@ void Page::configureLoggingChannel(const String& channelName, WTFLogChannelState
 
 #if USE(LIBWEBRTC)
         if (channel == &LogWebRTC && m_mainFrame->document())
-            libWebRTCProvider().setEnableLogging(!m_mainFrame->document()->sessionID().isEphemeral());
+            libWebRTCProvider().setEnableLogging(!sessionID().isEphemeral());
 #endif
     }
 

@@ -57,12 +57,12 @@ void DOMPromise::whenSettled(std::function<void()>&& callback)
     whenPromiseIsSettled(globalObject(), promise(), WTFMove(callback));
 }
 
-void DOMPromise::whenPromiseIsSettled(JSDOMGlobalObject* globalObject, JSC::JSObject* promise, std::function<void()>&& callback)
+void DOMPromise::whenPromiseIsSettled(JSDOMGlobalObject* globalObject, JSC::JSObject* promise, Function<void()>&& callback)
 {
     auto& state = *globalObject->globalExec();
     auto& vm = state.vm();
     JSLockHolder lock(vm);
-    auto* handler = JSC::JSNativeStdFunction::create(vm, globalObject, 1, String { }, [callback = WTFMove(callback)] (ExecState*) mutable {
+    auto* handler = JSC::JSNativeStdFunction::create(vm, globalObject, 1, String { }, [callback = WTFMove(callback)] (JSGlobalObject*, CallFrame*) mutable {
         callback();
         return JSC::JSValue::encode(JSC::jsUndefined());
     });

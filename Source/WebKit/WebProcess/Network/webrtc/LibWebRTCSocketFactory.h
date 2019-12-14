@@ -30,37 +30,39 @@
 #include "LibWebRTCResolver.h"
 #include "LibWebRTCSocket.h"
 #include <WebCore/LibWebRTCMacros.h>
+#include <WebCore/LibWebRTCSocketIdentifier.h>
 #include <webrtc/rtc_base/nethelpers.h>
 #include <webrtc/p2p/base/packetsocketfactory.h>
 #include <wtf/HashMap.h>
 
 namespace WebKit {
 
+class LibWebRTCSocket;
+
 class LibWebRTCSocketFactory {
 public:
     LibWebRTCSocketFactory() { }
 
-    void detach(LibWebRTCSocket&);
+    void addSocket(LibWebRTCSocket&);
+    void removeSocket(LibWebRTCSocket&);
+    LibWebRTCSocket* socket(WebCore::LibWebRTCSocketIdentifier identifier) { return m_sockets.get(identifier); }
 
-    LibWebRTCSocket* socket(uint64_t identifier) { return m_sockets.get(identifier); }
+    rtc::AsyncPacketSocket* createUdpSocket(const void* socketGroup, const rtc::SocketAddress&, uint16_t minPort, uint16_t maxPort);
+    rtc::AsyncPacketSocket* createServerTcpSocket(const void* socketGroup, const rtc::SocketAddress&, uint16_t minPort, uint16_t maxPort, int options);
+    rtc::AsyncPacketSocket* createClientTcpSocket(const void* socketGroup, const rtc::SocketAddress& localAddress, const rtc::SocketAddress& remoteAddress, String&& userAgent, int options);
+    rtc::AsyncPacketSocket* createNewConnectionSocket(LibWebRTCSocket&, WebCore::LibWebRTCSocketIdentifier newConnectionSocketIdentifier, const rtc::SocketAddress&);
+
     LibWebRTCResolver* resolver(uint64_t identifier) { return m_resolvers.get(identifier); }
-
     std::unique_ptr<LibWebRTCResolver> takeResolver(uint64_t identifier) { return m_resolvers.take(identifier); }
-
-    rtc::AsyncPacketSocket* createNewConnectionSocket(LibWebRTCSocket&, uint64_t newConnectionSocketIdentifier, const rtc::SocketAddress&);
-
+    rtc::AsyncResolverInterface* createAsyncResolver();
+    
     void disableNonLocalhostConnections() { m_disableNonLocalhostConnections = true; }
 
-    rtc::AsyncPacketSocket* createUdpSocket(const rtc::SocketAddress&, uint16_t minPort, uint16_t maxPort);
-    rtc::AsyncPacketSocket* createServerTcpSocket(const rtc::SocketAddress&, uint16_t minPort, uint16_t maxPort, int options);
-    rtc::AsyncPacketSocket* createClientTcpSocket(const rtc::SocketAddress& localAddress, const rtc::SocketAddress& remoteAddress, PAL::SessionID, String&& userAgent, int options);
-    rtc::AsyncResolverInterface* createAsyncResolver();
+    void forSocketInGroup(const void* socketGroup, const Function<void(LibWebRTCSocket&)>&);
 
 private:
-
     // We cannot own sockets, clients of the factory are responsible to free them.
-    HashMap<uint64_t, LibWebRTCSocket*> m_sockets;
-    static uint64_t s_uniqueSocketIdentifier;
+    HashMap<WebCore::LibWebRTCSocketIdentifier, LibWebRTCSocket*> m_sockets;
     
     // We can own resolvers as we control their Destroy method.
     HashMap<uint64_t, std::unique_ptr<LibWebRTCResolver>> m_resolvers;

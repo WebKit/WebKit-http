@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,7 @@ public:
         Absence,
         AbsenceOfSetEffect,
         Equivalence, // An adaptive watchpoint on this will be a pair of watchpoints, and when the structure transitions, we will set the replacement watchpoint on the new structure.
+        CustomFunctionEquivalence, // Custom value or accessor.
         HasPrototype
     };
 
@@ -122,6 +123,13 @@ public:
             vm.heap.writeBarrier(owner);
         return equivalenceWithoutBarrier(uid, value);
     }
+
+    static PropertyCondition customFunctionEquivalence(UniquedStringImpl* uid)
+    {
+        PropertyCondition result;
+        result.m_header = Header(uid, CustomFunctionEquivalence);
+        return result;
+    }
     
     static PropertyCondition hasPrototypeWithoutBarrier(JSObject* prototype)
     {
@@ -193,6 +201,8 @@ public:
         case Equivalence:
             result ^= EncodedJSValueHash::hash(u.equivalence.value);
             break;
+        case CustomFunctionEquivalence:
+            break;
         }
         return result;
     }
@@ -213,6 +223,8 @@ public:
             return u.prototype.prototype == other.u.prototype.prototype;
         case Equivalence:
             return u.equivalence.value == other.u.equivalence.value;
+        case CustomFunctionEquivalence:
+            return true;
         }
         RELEASE_ASSERT_NOT_REACHED();
         return false;
@@ -279,12 +291,12 @@ public:
     // This means that it's still valid and we could enforce validity by setting a transition
     // watchpoint on the structure and possibly an impure property watchpoint.
     bool isWatchableAssumingImpurePropertyWatchpoint(
-        Structure*, JSObject* base = nullptr, WatchabilityEffort = MakeNoChanges) const;
+        Structure*, JSObject* base, WatchabilityEffort = MakeNoChanges) const;
     
     // This means that it's still valid and we could enforce validity by setting a transition
     // watchpoint on the structure.
     bool isWatchable(
-        Structure*, JSObject* base = nullptr, WatchabilityEffort = MakeNoChanges) const;
+        Structure*, JSObject*, WatchabilityEffort = MakeNoChanges) const;
     
     bool watchingRequiresStructureTransitionWatchpoint() const
     {
@@ -295,9 +307,16 @@ public:
     {
         return !!*this && m_header.type() == Equivalence;
     }
-    
-    // This means that the objects involved in this are still live.
-    bool isStillLive(VM&) const;
+
+    template<typename Functor>
+    void forEachDependentCell(const Functor& functor) const
+    {
+        if (hasPrototype() && prototype())
+            functor(prototype());
+
+        if (hasRequiredValue() && requiredValue() && requiredValue().isCell())
+            functor(requiredValue().asCell());
+    }
     
     void validateReferences(const TrackedReferences&) const;
 
@@ -332,7 +351,7 @@ struct PropertyConditionHash {
     {
         return a == b;
     }
-    static const bool safeToCompareToEmptyOrDeleted = true;
+    static constexpr bool safeToCompareToEmptyOrDeleted = true;
 };
 
 } // namespace JSC

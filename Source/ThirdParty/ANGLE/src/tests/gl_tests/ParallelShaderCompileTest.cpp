@@ -10,6 +10,7 @@
 #include "test_utils/gl_raii.h"
 
 #include "util/random_utils.h"
+#include "util/test_utils.h"
 
 using namespace angle;
 
@@ -36,10 +37,6 @@ class ParallelShaderCompileTest : public ANGLETest
         setConfigBlueBits(8);
         setConfigAlphaBits(8);
     }
-
-    void SetUp() override { ANGLETest::SetUp(); }
-
-    void TearDown() override { ANGLETest::TearDown(); }
 
     bool ensureParallelShaderCompileExtensionAvailable()
     {
@@ -161,7 +158,7 @@ class ParallelShaderCompileTest : public ANGLETest
                     }
                     ++i;
                 }
-                Sleep(kPollInterval);
+                angle::Sleep(kPollInterval);
             }
 
             while (!linkTasks.empty())
@@ -178,7 +175,7 @@ class ParallelShaderCompileTest : public ANGLETest
                     }
                     ++i;
                 }
-                Sleep(kPollInterval);
+                angle::Sleep(kPollInterval);
             }
         }
     };
@@ -324,14 +321,14 @@ void main()
             glBindImageTexture(1, texture[1], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
 
             glDispatchCompute(1, 1, 1);
-            glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
             EXPECT_GL_NO_ERROR();
 
             glBindImageTexture(0, texture[1], 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
             glBindImageTexture(1, texture[2], 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
 
             glDispatchCompute(1, 1, 1);
-            glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+            glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
             EXPECT_GL_NO_ERROR();
 
             GLuint outputValue;
@@ -395,7 +392,6 @@ TEST_P(ParallelShaderCompileTestES31, LinkAndDispatchManyPrograms)
 ANGLE_INSTANTIATE_TEST(ParallelShaderCompileTest,
                        ES2_D3D9(),
                        ES2_D3D11(),
-                       ES2_D3D11_FL9_3(),
                        ES2_OPENGL(),
                        ES2_OPENGLES(),
                        ES2_VULKAN());

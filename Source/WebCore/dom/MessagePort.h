@@ -29,15 +29,17 @@
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
+#include "GenericEventQueue.h"
 #include "MessagePortChannel.h"
 #include "MessagePortIdentifier.h"
 #include "MessageWithMessagePorts.h"
 #include <wtf/WeakPtr.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSObject;
 class JSValue;
+using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -126,6 +128,7 @@ private:
     MessagePortIdentifier m_remoteIdentifier;
 
     mutable std::atomic<unsigned> m_refCount { 1 };
+    UniqueRef<GenericEventQueue> m_eventQueue;
 };
 
 } // namespace WebCore

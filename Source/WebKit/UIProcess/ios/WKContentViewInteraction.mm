@@ -93,6 +93,7 @@
 #import <WebCore/InputMode.h>
 #import <WebCore/KeyEventCodesIOS.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/Pasteboard.h>
 #import <WebCore/Path.h>
@@ -102,6 +103,7 @@
 #import <WebCore/Scrollbar.h>
 #import <WebCore/ShareData.h>
 #import <WebCore/TextIndicator.h>
+#import <WebCore/UTIUtilities.h>
 #import <WebCore/VisibleSelection.h>
 #import <WebCore/WebEvent.h>
 #import <WebCore/WritingDirection.h>
@@ -716,6 +718,28 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     [self.layer addObserver:self forKeyPath:@"transform" options:NSKeyValueObservingOptionInitial context:nil];
 
+#if ENABLE(POINTER_EVENTS)
+    _touchActionLeftSwipeGestureRecognizer = adoptNS([[UISwipeGestureRecognizer alloc] initWithTarget:nil action:nil]);
+    [_touchActionLeftSwipeGestureRecognizer setDirection:UISwipeGestureRecognizerDirectionLeft];
+    [_touchActionLeftSwipeGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_touchActionLeftSwipeGestureRecognizer.get()];
+
+    _touchActionRightSwipeGestureRecognizer = adoptNS([[UISwipeGestureRecognizer alloc] initWithTarget:nil action:nil]);
+    [_touchActionRightSwipeGestureRecognizer setDirection:UISwipeGestureRecognizerDirectionRight];
+    [_touchActionRightSwipeGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_touchActionRightSwipeGestureRecognizer.get()];
+
+    _touchActionUpSwipeGestureRecognizer = adoptNS([[UISwipeGestureRecognizer alloc] initWithTarget:nil action:nil]);
+    [_touchActionUpSwipeGestureRecognizer setDirection:UISwipeGestureRecognizerDirectionUp];
+    [_touchActionUpSwipeGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_touchActionUpSwipeGestureRecognizer.get()];
+
+    _touchActionDownSwipeGestureRecognizer = adoptNS([[UISwipeGestureRecognizer alloc] initWithTarget:nil action:nil]);
+    [_touchActionDownSwipeGestureRecognizer setDirection:UISwipeGestureRecognizerDirectionDown];
+    [_touchActionDownSwipeGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_touchActionDownSwipeGestureRecognizer.get()];
+#endif
+
     _touchEventGestureRecognizer = adoptNS([[UIWebTouchEventsGestureRecognizer alloc] initWithTarget:self action:@selector(_webTouchEventsRecognized:) touchDelegate:self]);
     [_touchEventGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
@@ -916,6 +940,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 #if ENABLE(POINTER_EVENTS)
     [self removeGestureRecognizer:_touchActionGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionLeftSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionRightSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionUpSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionDownSwipeGestureRecognizer.get()];
 #endif
 
     _layerTreeTransactionIdAtLastTouchStart = { };
@@ -993,6 +1021,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #endif
 #if ENABLE(POINTER_EVENTS)
     [self removeGestureRecognizer:_touchActionGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionLeftSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionRightSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionUpSwipeGestureRecognizer.get()];
+    [self removeGestureRecognizer:_touchActionDownSwipeGestureRecognizer.get()];
 #endif
 }
 
@@ -1015,6 +1047,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #endif
 #if ENABLE(POINTER_EVENTS)
     [self addGestureRecognizer:_touchActionGestureRecognizer.get()];
+    [self addGestureRecognizer:_touchActionLeftSwipeGestureRecognizer.get()];
+    [self addGestureRecognizer:_touchActionRightSwipeGestureRecognizer.get()];
+    [self addGestureRecognizer:_touchActionUpSwipeGestureRecognizer.get()];
+    [self addGestureRecognizer:_touchActionDownSwipeGestureRecognizer.get()];
 #endif
 }
 
@@ -1270,7 +1306,7 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
     if (!_webView._retainingActiveFocusedState) {
         // We need to complete the editing operation before we blur the element.
         [self _endEditing];
-        if ((reason == EndEditingReasonAccessoryDone && !currentUserInterfaceIdiomIsPad()) || _keyboardDidRequestDismissal) {
+        if ((reason == EndEditingReasonAccessoryDone && !currentUserInterfaceIdiomIsPad()) || _keyboardDidRequestDismissal || self._shouldUseLegacySelectPopoverDismissalBehavior) {
             _page->blurFocusedElement();
             // Don't wait for WebPageProxy::blurFocusedElement() to round-trip back to us to hide the keyboard
             // because we know that the user explicitly requested us to do so.
@@ -1409,7 +1445,22 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
         }
     }
 }
-#endif
+#endif // ENABLE(TOUCH_EVENTS)
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if (gestureRecognizer != _touchActionLeftSwipeGestureRecognizer && gestureRecognizer != _touchActionRightSwipeGestureRecognizer && gestureRecognizer != _touchActionUpSwipeGestureRecognizer && gestureRecognizer != _touchActionDownSwipeGestureRecognizer)
+        return true;
+
+    // We update the enabled state of the various swipe gesture recognizers such that if we have a unidirectional touch-action
+    // specified (only pan-x or only pan-y) we enable the two recognizers in the opposite axis to prevent scrolling from starting
+    // if the initial gesture is such a swipe. Since the recognizers are specified to use a single finger for recognition, we don't
+    // need to worry about the case where there may be more than a single touch for a given UIScrollView.
+    auto touchActions = WebKit::touchActionsForPoint(self, WebCore::roundedIntPoint([touch locationInView:self]));
+    if (gestureRecognizer == _touchActionLeftSwipeGestureRecognizer || gestureRecognizer == _touchActionRightSwipeGestureRecognizer)
+        return touchActions == WebCore::TouchAction::PanY;
+    return touchActions == WebCore::TouchAction::PanX;
+}
 
 #pragma mark - WKTouchActionGestureRecognizerDelegate implementation
 
@@ -1457,7 +1508,7 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
     _preventsPanningInXAxis = NO;
     _preventsPanningInYAxis = NO;
 }
-#endif
+#endif // ENABLE(POINTER_EVENTS)
 
 - (void)_inspectorNodeSearchRecognized:(UIGestureRecognizer *)gestureRecognizer
 {
@@ -1671,14 +1722,29 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     [self _setDoubleTapGesturesEnabled:NO];
 }
 
-- (void)_handleSmartMagnificationInformationForPotentialTap:(uint64_t)requestID renderRect:(const WebCore::FloatRect&)renderRect fitEntireRect:(BOOL)fitEntireRect viewportMinimumScale:(double)viewportMinimumScale viewportMaximumScale:(double)viewportMaximumScale
+- (void)_handleSmartMagnificationInformationForPotentialTap:(uint64_t)requestID renderRect:(const WebCore::FloatRect&)renderRect fitEntireRect:(BOOL)fitEntireRect viewportMinimumScale:(double)viewportMinimumScale viewportMaximumScale:(double)viewportMaximumScale nodeIsRootLevel:(BOOL)nodeIsRootLevel
 {
-    ASSERT(_page->preferences().fasterClicksEnabled());
+    const auto& preferences = _page->preferences();
+
+    ASSERT(preferences.fasterClicksEnabled());
     if (!_potentialTapInProgress)
         return;
 
-    if (_page->preferences().fastClicksEverywhere() && _page->allowsFastClicksEverywhere()) {
-        RELEASE_LOG(ViewGestures, "Potential tap found an element and fast taps are forced on. Trigger click. (%p)", self);
+    // We check both the system preference and the page preference, because we only want this
+    // to apply in "desktop" mode.
+    if (preferences.preferFasterClickOverDoubleTap() && _page->preferFasterClickOverDoubleTap()) {
+        RELEASE_LOG(ViewGestures, "Potential tap found an element and fast taps are preferred. Trigger click. (%p)", self);
+        if (preferences.zoomOnDoubleTapWhenRoot() && nodeIsRootLevel) {
+            RELEASE_LOG(ViewGestures, "The click handler was on a root-level element, so don't disable double-tap. (%p)", self);
+            return;
+        }
+
+        if (preferences.alwaysZoomOnDoubleTap()) {
+            RELEASE_LOG(ViewGestures, "DTTZ is forced on, so don't disable double-tap. (%p)", self);
+            return;
+        }
+
+        RELEASE_LOG(ViewGestures, "Give preference to click by disabling double-tap. (%p)", self);
         [self _setDoubleTapGesturesEnabled:NO];
         return;
     }
@@ -2060,9 +2126,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return _outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request);
 }
 
-- (BOOL)_currentPositionInformationIsApproximatelyValidForRequest:(const WebKit::InteractionInformationRequest&)request
+- (BOOL)_currentPositionInformationIsApproximatelyValidForRequest:(const WebKit::InteractionInformationRequest&)request radiusForApproximation:(int)radius
 {
-    return _hasValidPositionInformation && _positionInformation.request.isApproximatelyValidForRequest(request);
+    return _hasValidPositionInformation && _positionInformation.request.isApproximatelyValidForRequest(request, radius);
 }
 
 - (void)_invokeAndRemovePendingHandlersValidForCurrentPositionInformation
@@ -2114,6 +2180,33 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return textSelectionRects;
 }
 
+- (BOOL)_shouldToggleSelectionCommandsAfterTapAt:(CGPoint)point
+{
+    if (_lastSelectionDrawingInfo.selectionRects.isEmpty())
+        return NO;
+
+    WebCore::FloatRect selectionBoundingRect;
+    BOOL pointIsInSelectionRect = NO;
+    for (auto& rectInfo : _lastSelectionDrawingInfo.selectionRects) {
+        auto rect = rectInfo.rect();
+        if (rect.isEmpty())
+            continue;
+
+        pointIsInSelectionRect |= rect.contains(WebCore::roundedIntPoint(point));
+        selectionBoundingRect.unite(rect);
+    }
+
+    WebCore::FloatRect unobscuredContentRect = self.unobscuredContentRect;
+    selectionBoundingRect.intersect(unobscuredContentRect);
+
+    float unobscuredArea = unobscuredContentRect.area();
+    float ratioForConsideringSelectionRectToCoverVastMajorityOfContent = 0.75;
+    if (!unobscuredArea || selectionBoundingRect.area() / unobscuredArea > ratioForConsideringSelectionRectToCoverVastMajorityOfContent)
+        return NO;
+
+    return pointIsInSelectionRect;
+}
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
     CGPoint point = [gestureRecognizer locationInView:self];
@@ -2136,13 +2229,25 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return NO;
     };
 
-    if (gestureRecognizer == _singleTapGestureRecognizer)
+    if (gestureRecognizer == _singleTapGestureRecognizer) {
+        if ([self _shouldToggleSelectionCommandsAfterTapAt:point])
+            return NO;
         return !isInterruptingDecelerationForScrollViewOrAncestor([_singleTapGestureRecognizer lastTouchedScrollView]);
+    }
+
+    if (gestureRecognizer == _doubleTapGestureRecognizerForDoubleClick) {
+        // Do not start the double-tap-for-double-click gesture recognizer unless we've got a dblclick event handler on the node at the tap location.
+        WebKit::InteractionInformationRequest request(WebCore::roundedIntPoint(point));
+        if ([self _currentPositionInformationIsApproximatelyValidForRequest:request radiusForApproximation:[_doubleTapGestureRecognizerForDoubleClick allowableMovement]])
+            return _positionInformation.nodeAtPositionHasDoubleClickHandler;
+        if (![self ensurePositionInformationIsUpToDate:request])
+            return NO;
+        return _positionInformation.nodeAtPositionHasDoubleClickHandler;
+    }
 
     if (gestureRecognizer == _highlightLongPressGestureRecognizer
         || gestureRecognizer == _doubleTapGestureRecognizer
         || gestureRecognizer == _nonBlockingDoubleTapGestureRecognizer
-        || gestureRecognizer == _doubleTapGestureRecognizerForDoubleClick
         || gestureRecognizer == _twoFingerDoubleTapGestureRecognizer) {
 
         if (hasFocusedElement(_focusedElementInformation)) {
@@ -2445,8 +2550,13 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_endPotentialTapAndEnableDoubleTapGesturesIfNecessary
 {
-    if (_webView._allowsDoubleTapGestures)
+    if (_webView._allowsDoubleTapGestures) {
+        RELEASE_LOG(ViewGestures, "ending potential tap - double taps are back. (%p)", self);
+
         [self _setDoubleTapGesturesEnabled:YES];
+    }
+
+    RELEASE_LOG(ViewGestures, "Ending potential tap. (%p)", self);
 
     _potentialTapInProgress = NO;
 }
@@ -2488,7 +2598,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
 #endif
     auto actionsToPerform = std::exchange(_actionsToPerformAfterResettingSingleTapGestureRecognizer, { });
-    for (auto action : actionsToPerform)
+    for (const auto& action : actionsToPerform)
         action();
 }
 
@@ -2654,7 +2764,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_willStartScrollingOrZooming
 {
-    [_textSelectionAssistant willStartScrollingOverflow];
+    if ([_textSelectionAssistant respondsToSelector:@selector(willStartScrollingOrZooming)])
+        [_textSelectionAssistant willStartScrollingOrZooming];
+    else
+        [_textSelectionAssistant willStartScrollingOverflow];
     _page->setIsScrollingOrZooming(true);
 
 #if PLATFORM(WATCHOS)
@@ -2674,7 +2787,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 - (void)_didEndScrollingOrZooming
 {
     if (!_needsDeferredEndScrollingSelectionUpdate) {
-        [_textSelectionAssistant didEndScrollingOverflow];
+        if ([_textSelectionAssistant respondsToSelector:@selector(didEndScrollingOrZooming)])
+            [_textSelectionAssistant didEndScrollingOrZooming];
+        else
+            [_textSelectionAssistant didEndScrollingOverflow];
     }
     _page->setIsScrollingOrZooming(false);
 
@@ -4419,7 +4535,7 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 #if PLATFORM(MACCATALYST)
     WebKit::InteractionInformationRequest request(WebCore::roundedIntPoint(point));
     [self requestAsynchronousPositionInformationUpdate:request];
-    if ([self _currentPositionInformationIsApproximatelyValidForRequest:request] && _positionInformation.isSelectable)
+    if ([self _currentPositionInformationIsApproximatelyValidForRequest:request radiusForApproximation:2] && _positionInformation.isSelectable)
         return [WKTextPosition textPositionWithRect:_positionInformation.caretRect];
 #endif
     return nil;
@@ -4860,12 +4976,10 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
     UIKeyboardImpl *keyboard = [UIKeyboardImpl sharedInstance];
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
     if (!isCharEvent && [keyboard respondsToSelector:@selector(handleKeyTextCommandForCurrentEvent)] && [keyboard handleKeyTextCommandForCurrentEvent])
         return YES;
     if (isCharEvent && [keyboard respondsToSelector:@selector(handleKeyAppCommandForCurrentEvent)] && [keyboard handleKeyAppCommandForCurrentEvent])
         return YES;
-#endif
 
     // Don't insert character for an unhandled Command-key key command. This matches iOS and Mac platform conventions.
     if (event.modifierFlags & WebEventFlagMaskCommandKey)
@@ -5503,6 +5617,7 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     _focusedElementInformation.shouldSynthesizeKeyEventsForEditing = false;
     _focusedElementInformation.shouldAvoidResizingWhenInputViewBoundsChange = false;
     _focusedElementInformation.shouldAvoidScrollingWhenFocusedContentIsVisible = false;
+    _focusedElementInformation.shouldUseLegacySelectPopoverDismissalBehaviorInDataActivation = false;
     _inputPeripheral = nil;
     _focusRequiresStrongPasswordAssistance = NO;
     _additionalContextForStrongPasswordAssistance = nil;
@@ -6401,7 +6516,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element
 {
-    _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+    _page->startInteractionWithPositionInformation(_positionInformation);
 }
 
 - (void)actionSheetAssistantDidStopInteraction:(WKActionSheetAssistant *)assistant
@@ -6424,6 +6539,15 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
         context.get()[getkDataDetectorsLeadingText()] = positionInformation.textBefore;
     if (!positionInformation.textAfter.isEmpty())
         context.get()[getkDataDetectorsTrailingText()] = positionInformation.textAfter;
+
+    CGRect sourceRect;
+    if (positionInformation.isLink)
+        sourceRect = positionInformation.linkIndicator.textBoundingRectInRootViewCoordinates;
+    else
+        sourceRect = positionInformation.bounds;
+
+    CGRect frameInContainerViewCoordinates = [self convertRect:sourceRect toView:self.containerViewForTargetedPreviews];
+    context.get()[getkDataDetectorsSourceRectKey()] = [NSValue valueWithCGRect:frameInContainerViewCoordinates];
 #endif
     
     return context.autorelease();
@@ -6466,6 +6590,20 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 - (BOOL)_shouldAvoidScrollingWhenFocusedContentIsVisible
 {
     return _focusedElementInformation.shouldAvoidScrollingWhenFocusedContentIsVisible;
+}
+
+- (BOOL)_shouldUseLegacySelectPopoverDismissalBehavior
+{
+    if (!currentUserInterfaceIdiomIsPad())
+        return NO;
+
+    if (_focusedElementInformation.elementType != WebKit::InputType::Select)
+        return NO;
+
+    if (!_focusedElementInformation.shouldUseLegacySelectPopoverDismissalBehaviorInDataActivation)
+        return NO;
+
+    return WebCore::IOSApplication::isDataActivation();
 }
 
 // FIXME: This is used for drag previews and context menu hints; it needs a better name.
@@ -6715,6 +6853,9 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
     auto unselectedSnapshotImage = snapshotWithoutSelection->nativeImage();
     if (!unselectedSnapshotImage)
+        return;
+
+    if (!_dropAnimationCount)
         return;
 
     auto unselectedContentImageForEditDrag = adoptNS([[UIImage alloc] initWithCGImage:unselectedSnapshotImage.get() scale:_page->deviceScaleFactor() orientation:UIImageOrientationUp]);
@@ -6982,6 +7123,72 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
 }
 
 #endif
+
+static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingItems(NSArray<NSItemProvider *> *itemProviders)
+{
+    Vector<WebCore::IntSize> sizes;
+    for (NSItemProvider *item in itemProviders) {
+        if (!WebCore::MIMETypeRegistry::isSupportedImageMIMEType(WebCore::MIMETypeFromUTI(item.web_fileUploadContentTypes.firstObject)))
+            return { };
+
+        WebCore::IntSize presentationSize(item.preferredPresentationSize);
+        if (presentationSize.isEmpty())
+            return { };
+
+        sizes.append(WTFMove(presentationSize));
+    }
+    return sizes;
+}
+
+- (BOOL)_handleDropByInsertingImagePlaceholders:(NSArray<NSItemProvider *> *)itemProviders session:(id <UIDropSession>)session
+{
+    if (!_webView._editable)
+        return NO;
+
+    if (_dragDropInteractionState.dragSession())
+        return NO;
+
+    if (session.items.count != itemProviders.count)
+        return NO;
+
+    auto imagePlaceholderSizes = sizesOfPlaceholderElementsToInsertWhenDroppingItems(itemProviders);
+    if (imagePlaceholderSizes.isEmpty())
+        return NO;
+
+    RELEASE_LOG(DragAndDrop, "Inserting dropped image placeholders for session: %p", session);
+
+    _page->insertDroppedImagePlaceholders(imagePlaceholderSizes, [protectedSelf = retainPtr(self), dragItems = retainPtr(session.items)] (auto& placeholderRects, auto data) {
+        auto& state = protectedSelf->_dragDropInteractionState;
+        if (!data || !protectedSelf->_dropAnimationCount) {
+            RELEASE_LOG(DragAndDrop, "Failed to animate image placeholders: missing text indicator data.");
+            state.clearAllDelayedItemPreviewProviders();
+            return;
+        }
+
+        auto snapshotWithoutSelection = data->contentImageWithoutSelection;
+        if (!snapshotWithoutSelection) {
+            RELEASE_LOG(DragAndDrop, "Failed to animate image placeholders: missing unselected content image.");
+            state.clearAllDelayedItemPreviewProviders();
+            return;
+        }
+
+        auto unselectedSnapshotImage = snapshotWithoutSelection->nativeImage();
+        if (!unselectedSnapshotImage) {
+            RELEASE_LOG(DragAndDrop, "Failed to animate image placeholders: could not decode unselected content image.");
+            state.clearAllDelayedItemPreviewProviders();
+            return;
+        }
+
+        auto unselectedContentImageForEditDrag = adoptNS([[UIImage alloc] initWithCGImage:unselectedSnapshotImage.get() scale:protectedSelf->_page->deviceScaleFactor() orientation:UIImageOrientationUp]);
+        auto snapshotView = adoptNS([[UIImageView alloc] initWithImage:unselectedContentImageForEditDrag.get()]);
+        [snapshotView setFrame:data->contentImageWithoutSelectionRectInRootViewCoordinates];
+        [protectedSelf addSubview:snapshotView.get()];
+        protectedSelf->_unselectedContentSnapshot = WTFMove(snapshotView);
+        state.deliverDelayedDropPreview(protectedSelf.get(), [protectedSelf unobscuredContentRect], dragItems.get(), placeholderRects);
+    });
+
+    return YES;
+}
 
 #pragma mark - UIDragInteractionDelegate
 
@@ -7263,6 +7470,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     [[WebItemProviderPasteboard sharedInstance] setItemProviders:itemProviders];
     [[WebItemProviderPasteboard sharedInstance] incrementPendingOperationCount];
     auto dragData = [self dragDataForDropSession:session dragDestinationAction:WKDragDestinationActionAny];
+    BOOL shouldSnapshotView = ![self _handleDropByInsertingImagePlaceholders:itemProviders session:session];
 
     RELEASE_LOG(DragAndDrop, "Loading data from %tu item providers for session: %p", itemProviders.count, session);
     // Always loading content from the item provider ensures that the web process will be allowed to call back in to the UI
@@ -7270,7 +7478,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     // or the page prevented default on `dragover`, but without this, dropping into a normal editable areas will fail due to
     // item providers not loading any data.
     RetainPtr<WKContentView> retainedSelf(self);
-    [[WebItemProviderPasteboard sharedInstance] doAfterLoadingProvidedContentIntoFileURLs:[retainedSelf, capturedDragData = WTFMove(dragData)] (NSArray *fileURLs) mutable {
+    [[WebItemProviderPasteboard sharedInstance] doAfterLoadingProvidedContentIntoFileURLs:[retainedSelf, capturedDragData = WTFMove(dragData), shouldSnapshotView] (NSArray *fileURLs) mutable {
         RELEASE_LOG(DragAndDrop, "Loaded data into %tu files", fileURLs.count);
         Vector<String> filenames;
         for (NSURL *fileURL in fileURLs)
@@ -7281,18 +7489,20 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
         WebKit::SandboxExtension::HandleArray sandboxExtensionForUpload;
         retainedSelf->_page->createSandboxExtensionsIfNeeded(filenames, sandboxExtensionHandle, sandboxExtensionForUpload);
         retainedSelf->_page->performDragOperation(capturedDragData, "data interaction pasteboard", WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
-        retainedSelf->_visibleContentViewSnapshot = [retainedSelf snapshotViewAfterScreenUpdates:NO];
-        [UIView performWithoutAnimation:[retainedSelf] {
+        if (shouldSnapshotView) {
+            retainedSelf->_visibleContentViewSnapshot = [retainedSelf snapshotViewAfterScreenUpdates:NO];
             [retainedSelf->_visibleContentViewSnapshot setFrame:[retainedSelf bounds]];
             [retainedSelf addSubview:retainedSelf->_visibleContentViewSnapshot.get()];
-        }];
+        }
     }];
 }
 
 - (void)dropInteraction:(UIDropInteraction *)interaction item:(UIDragItem *)item willAnimateDropWithAnimator:(id <UIDragAnimating>)animator
 {
+    _dropAnimationCount++;
     [animator addCompletion:[strongSelf = retainPtr(self)] (UIViewAnimatingPosition) {
-        [std::exchange(strongSelf->_unselectedContentSnapshot, nil) removeFromSuperview];
+        if (!--strongSelf->_dropAnimationCount)
+            [std::exchange(strongSelf->_unselectedContentSnapshot, nil) removeFromSuperview];
     }];
 }
 
@@ -7306,6 +7516,8 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
 
 - (UITargetedDragPreview *)dropInteraction:(UIDropInteraction *)interaction previewForDroppingItem:(UIDragItem *)item withDefault:(UITargetedDragPreview *)defaultPreview
 {
+    _dragDropInteractionState.setDefaultDropPreview(item, defaultPreview);
+
     CGRect caretRect = _page->currentDragCaretRect();
     if (CGRectIsEmpty(caretRect))
         return nil;
@@ -7683,12 +7895,22 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
         return @{ userInterfaceItem: [_actionSheetAssistant currentAvailableActionTitles] };
 
 #if HAVE(LINK_PREVIEW)
-    if ([userInterfaceItem isEqualToString:@"linkPreviewPopoverContents"]) {
+    if ([userInterfaceItem isEqualToString:@"contextMenu"]) {
         if (self._shouldUseContextMenus)
-            return @{ userInterfaceItem: @{ @"pageURL": WTF::userVisibleString(_positionInformation.url) } };
+            return @{ userInterfaceItem: @{
+                @"url": _positionInformation.url.isValid() ? WTF::userVisibleString(_positionInformation.url) : @"",
+                @"isLink": [NSNumber numberWithBool:_positionInformation.isLink],
+                @"isImage": [NSNumber numberWithBool:_positionInformation.isImage],
+                @"imageURL": _positionInformation.imageURL.isValid() ? WTF::userVisibleString(_positionInformation.imageURL) : @""
+            } };
 
         NSString *url = [_previewItemController previewData][UIPreviewDataLink];
-        return @{ userInterfaceItem: @{ @"pageURL": url } };
+        return @{ userInterfaceItem: @{
+            @"url": url,
+            @"isLink": [NSNumber numberWithBool:_positionInformation.isLink],
+            @"isImage": [NSNumber numberWithBool:_positionInformation.isImage],
+            @"imageURL": _positionInformation.imageURL.isValid() ? WTF::userVisibleString(_positionInformation.imageURL) : @""
+        } };
     }
 #endif
 
@@ -7866,32 +8088,6 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
     return [UIMenu menuWithTitle:title children:actions];
 }
 
-static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
-{
-    if (!originalMenu)
-        return nil;
-
-    // Look for a UIAction that has the WKElementActionTypeToggleShowLinkPreviewsIdentifier.
-    NSUInteger result = [originalMenu.children indexOfObjectPassingTest:^BOOL(UIMenuElement *element, NSUInteger index, BOOL *stop) {
-        if (![element isKindOfClass:[UIAction class]])
-            return NO;
-        if ([(UIAction *)element identifier] == WKElementActionTypeToggleShowLinkPreviewsIdentifier) {
-            *stop = YES;
-            return YES;
-        }
-        return NO;
-    }];
-    if (result != NSNotFound)
-        return originalMenu;
-
-    // We didn't find one, so make a new UIMenu with the toggle action.
-    NSMutableArray<UIMenuElement *> *menuElements = [NSMutableArray arrayWithCapacity:(originalMenu.children.count + 1)];
-    [menuElements addObjectsFromArray:originalMenu.children];
-    _WKElementAction *toggleAction = [_WKElementAction elementActionWithType:_WKElementActionToggleShowLinkPreviews];
-    [menuElements addObject:[toggleAction uiActionForElementInfo:nil]];
-    return [originalMenu menuByReplacingChildren:menuElements];
-}
-
 - (void)assignLegacyDataForContextMenuInteraction
 {
     ASSERT(!_contextMenuHasRequestedLegacyData);
@@ -7907,7 +8103,7 @@ static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
 
     const auto& url = _positionInformation.url;
 
-    _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+    _page->startInteractionWithPositionInformation(_positionInformation);
 
     UIViewController *previewViewController = nil;
 
@@ -7944,7 +8140,7 @@ static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
                     _contextMenuLegacyPreviewController = dataDetectorsResult.get().previewProvider();
                 if (dataDetectorsResult && dataDetectorsResult.get().actionProvider) {
                     auto menuElements = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
-                    _contextMenuLegacyMenu = menuWithShowLinkPreviewAction(dataDetectorsResult.get().actionProvider(menuElements));
+                    _contextMenuLegacyMenu = dataDetectorsResult.get().actionProvider(menuElements);
                 }
                 END_BLOCK_OBJC_EXCEPTIONS;
             }
@@ -8080,7 +8276,7 @@ static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
             return strongSelf->_contextMenuLegacyPreviewController.get();
         };
 
-        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+        _page->startInteractionWithPositionInformation(_positionInformation);
 
         continueWithContextMenuConfiguration([UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:contentPreviewProvider actionProvider:actionMenuProvider]);
         return;
@@ -8102,13 +8298,13 @@ static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
         }
 
         if (configurationFromWKUIDelegate) {
-            strongSelf->_page->startInteractionWithElementAtPosition(strongSelf->_positionInformation.request.point);
+            strongSelf->_page->startInteractionWithPositionInformation(strongSelf->_positionInformation);
             strongSelf->_contextMenuActionProviderDelegateNeedsOverride = YES;
             continueWithContextMenuConfiguration(configurationFromWKUIDelegate);
             return;
         }
 
-        if (strongSelf->_positionInformation.isImage) {
+        if (strongSelf->_positionInformation.isImage && !strongSelf->_positionInformation.isLink) {
             ASSERT(strongSelf->_positionInformation.image);
             auto cgImage = strongSelf->_positionInformation.image->makeCGImageCopy();
 
@@ -8197,7 +8393,7 @@ static UIMenu *menuWithShowLinkPreviewAction(UIMenu *originalMenu)
         NSDictionary *context = [self dataDetectionContextForPositionInformation:_positionInformation];
         UIContextMenuConfiguration *configurationFromDD = [ddContextMenuActionClass contextMenuConfigurationForURL:linkURL identifier:_positionInformation.dataDetectorIdentifier selectedText:[self selectedText] results:_positionInformation.dataDetectorResults.get() inView:self context:context menuIdentifier:nil];
         _contextMenuActionProviderDelegateNeedsOverride = YES;
-        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+        _page->startInteractionWithPositionInformation(_positionInformation);
         continueWithContextMenuConfiguration(configurationFromDD);
         return YES;
     }
@@ -8606,12 +8802,7 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
             else
                 dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView];
             dataForPreview[UIPreviewDataAttachmentIndex] = [NSNumber numberWithUnsignedInteger:index];
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 130000
-            dataForPreview[UIPreviewDataAttachmentListSourceIsManaged] = [NSNumber numberWithBool:sourceIsManaged];
-#else
             dataForPreview[UIPreviewDataAttachmentListIsContentManaged] = [NSNumber numberWithBool:sourceIsManaged];
-#endif
         }
     }
 
@@ -8635,7 +8826,7 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 
     if ([_previewItemController type] == UIPreviewItemTypeLink) {
         _longPressCanClick = NO;
-        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+        _page->startInteractionWithPositionInformation(_positionInformation);
 
         // Treat animated images like a link preview
         if (isValidURLForImagePreview && _positionInformation.isAnimatedImage) {
@@ -8695,7 +8886,7 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
         }
 
         RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:alternateURL.get() imageURL:nil location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get() userInfo:imageInfo.get()]);
-        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
+        _page->startInteractionWithPositionInformation(_positionInformation);
 
         ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if ([uiDelegate respondsToSelector:@selector(_webView:willPreviewImageWithURL:)])

@@ -62,7 +62,7 @@ public:
     void setPseudoElementType(CSSSelector::PseudoElementType type) { m_selector->setPseudoElementType(type); }
 
     void adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>&&);
-    void setLangArgumentList(std::unique_ptr<Vector<AtomString>>);
+    void setArgumentList(std::unique_ptr<Vector<AtomString>>);
     void setSelectorList(std::unique_ptr<CSSSelectorList>);
 
     CSSSelector::PseudoClassType pseudoClassType() const { return m_selector->pseudoClassType(); }
@@ -107,6 +107,7 @@ inline bool CSSParserSelector::needsImplicitShadowCombinatorForMatching() const
 #if ENABLE(VIDEO_TRACK)
             || pseudoElementType() == CSSSelector::PseudoElementCue
 #endif
+            || pseudoElementType() == CSSSelector::PseudoElementPart
             || pseudoElementType() == CSSSelector::PseudoElementWebKitCustomLegacyPrefixed);
 }
 

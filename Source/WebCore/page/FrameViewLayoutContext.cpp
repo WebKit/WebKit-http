@@ -40,7 +40,7 @@
 #include "ScriptDisallowedScope.h"
 #include "Settings.h"
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
-#include "LayoutState.h"
+#include "LayoutContext.h"
 #endif
 
 #include <wtf/SetForScope.h>
@@ -54,7 +54,7 @@ static void layoutUsingFormattingContext(const RenderView& renderView)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled())
         return;
-    Layout::LayoutState::run(renderView);
+    Layout::LayoutContext::runLayoutAndVerify(renderView);
 } 
 #endif
 
@@ -155,7 +155,7 @@ void FrameViewLayoutContext::layout()
     Ref<FrameView> protectView(view());
     LayoutScope layoutScope(*this);
     TraceScope tracingScope(LayoutStart, LayoutEnd);
-    InspectorInstrumentationCookie inspectorLayoutScope(InspectorInstrumentation::willLayout(view().frame()));
+    InspectorInstrumentation::willLayout(view().frame());
     AnimationUpdateBlock animationUpdateBlock(&view().frame().animation());
     WeakPtr<RenderElement> layoutRoot;
     
@@ -232,7 +232,7 @@ void FrameViewLayoutContext::layout()
         view().didLayout(layoutRoot);
         runOrScheduleAsynchronousTasks();
     }
-    InspectorInstrumentation::didLayout(inspectorLayoutScope, *layoutRoot);
+    InspectorInstrumentation::didLayout(view().frame(), *layoutRoot);
     DebugPageOverlays::didLayout(view().frame());
 }
 

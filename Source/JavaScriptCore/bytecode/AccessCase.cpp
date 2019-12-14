@@ -51,7 +51,7 @@
 namespace JSC {
 
 namespace AccessCaseInternal {
-static const bool verbose = false;
+static constexpr bool verbose = false;
 }
 
 AccessCase::AccessCase(VM& vm, JSCell* owner, AccessType type, PropertyOffset offset, Structure* structure, const ObjectPropertyConditionSet& conditionSet, std::unique_ptr<PolyProtoAccessChain> prototypeAccessChain)
@@ -61,6 +61,7 @@ AccessCase::AccessCase(VM& vm, JSCell* owner, AccessType type, PropertyOffset of
 {
     m_structure.setMayBeNull(vm, owner, structure);
     m_conditionSet = conditionSet;
+    RELEASE_ASSERT(m_conditionSet.isValid());
 }
 
 std::unique_ptr<AccessCase> AccessCase::create(VM& vm, JSCell* owner, AccessType type, PropertyOffset offset, Structure* structure, const ObjectPropertyConditionSet& conditionSet, std::unique_ptr<PolyProtoAccessChain> prototypeAccessChain)
@@ -203,32 +204,123 @@ bool AccessCase::guardedByStructureCheck() const
     }
 }
 
-bool AccessCase::doesCalls(Vector<JSCell*>* cellsToMark) const
+template<typename Functor>
+void AccessCase::forEachDependentCell(const Functor& functor) const
 {
+    m_conditionSet.forEachDependentCell(functor);
+    if (m_structure)
+        functor(m_structure.get());
+    if (m_polyProtoAccessChain) {
+        for (Structure* structure : m_polyProtoAccessChain->chain())
+            functor(structure);
+    }
+
     switch (type()) {
+    case Getter:
+    case Setter: {
+        auto& accessor = this->as<GetterSetterAccessCase>();
+        if (accessor.callLinkInfo())
+            accessor.callLinkInfo()->forEachDependentCell(functor);
+        break;
+    }
+    case CustomValueGetter:
+    case CustomValueSetter: {
+        auto& accessor = this->as<GetterSetterAccessCase>();
+        if (accessor.customSlotBase())
+            functor(accessor.customSlotBase());
+        break;
+    }
+    case IntrinsicGetter: {
+        auto& intrinsic = this->as<IntrinsicGetterAccessCase>();
+        if (intrinsic.intrinsicFunction())
+            functor(intrinsic.intrinsicFunction());
+        break;
+    }
+    case ModuleNamespaceLoad: {
+        auto& accessCase = this->as<ModuleNamespaceAccessCase>();
+        if (accessCase.moduleNamespaceObject())
+            functor(accessCase.moduleNamespaceObject());
+        if (accessCase.moduleEnvironment())
+            functor(accessCase.moduleEnvironment());
+        break;
+    }
+    case InstanceOfHit:
+    case InstanceOfMiss:
+        if (as<InstanceOfAccessCase>().prototype())
+            functor(as<InstanceOfAccessCase>().prototype());
+        break;
+    case CustomAccessorGetter:
+    case CustomAccessorSetter:
+    case Load:
+    case Transition:
+    case Replace:
+    case Miss:
+    case GetGetter:
+    case InHit:
+    case InMiss:
+    case ArrayLength:
+    case StringLength:
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
+    case InstanceOfGeneric:
+        break;
+    }
+}
+
+bool AccessCase::doesCalls(Vector<JSCell*>* cellsToMarkIfDoesCalls) const
+{
+    bool doesCalls;
+    switch (type()) {
+    case Transition:
+        doesCalls = newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity() && structure()->couldHaveIndexingHeader();
+        break;
     case Getter:
     case Setter:
     case CustomValueGetter:
     case CustomAccessorGetter:
     case CustomValueSetter:
     case CustomAccessorSetter:
-        return true;
-    case Transition:
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()
-            && structure()->couldHaveIndexingHeader()) {
-            if (cellsToMark)
-                cellsToMark->append(newStructure());
-            return true;
-        }
-        return false;
-    default:
-        return false;
+        doesCalls = true;
+        break;
+    case Load:
+    case Replace:
+    case Miss:
+    case GetGetter:
+    case IntrinsicGetter:
+    case InHit:
+    case InMiss:
+    case ArrayLength:
+    case StringLength:
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
+    case ModuleNamespaceLoad:
+    case InstanceOfHit:
+    case InstanceOfMiss:
+    case InstanceOfGeneric:
+        doesCalls = false;
+        break;
     }
+
+    if (doesCalls && cellsToMarkIfDoesCalls) {
+        forEachDependentCell([&](JSCell* cell) {
+            cellsToMarkIfDoesCalls->append(cell);
+        });
+    }
+    return doesCalls;
 }
 
 bool AccessCase::couldStillSucceed() const
 {
-    return m_conditionSet.structuresEnsureValidityAssumingImpurePropertyWatchpoint();
+    for (const ObjectPropertyCondition& condition : m_conditionSet) {
+        if (condition.condition().kind() == PropertyCondition::Equivalence) {
+            if (!condition.isWatchableAssumingImpurePropertyWatchpoint(PropertyCondition::WatchabilityEffort::EnsureWatchability))
+                return false;
+        } else {
+            if (!condition.structureEnsuresValidityAssumingImpurePropertyWatchpoint())
+                return false;
+        }
+    }
+    return true;
 }
 
 bool AccessCase::canReplace(const AccessCase& other) const
@@ -321,38 +413,17 @@ void AccessCase::dump(PrintStream& out) const
 
 bool AccessCase::visitWeak(VM& vm) const
 {
-    if (m_structure && !vm.heap.isMarked(m_structure.get()))
-        return false;
-    if (m_polyProtoAccessChain) {
-        for (Structure* structure : m_polyProtoAccessChain->chain()) {
-            if (!vm.heap.isMarked(structure))
-                return false;
-        }
-    }
-    if (!m_conditionSet.areStillLive(vm))
-        return false;
     if (isAccessor()) {
         auto& accessor = this->as<GetterSetterAccessCase>();
         if (accessor.callLinkInfo())
             accessor.callLinkInfo()->visitWeak(vm);
-        if (accessor.customSlotBase() && !vm.heap.isMarked(accessor.customSlotBase()))
-            return false;
-    } else if (type() == IntrinsicGetter) {
-        auto& intrinsic = this->as<IntrinsicGetterAccessCase>();
-        if (intrinsic.intrinsicFunction() && !vm.heap.isMarked(intrinsic.intrinsicFunction()))
-            return false;
-    } else if (type() == ModuleNamespaceLoad) {
-        auto& accessCase = this->as<ModuleNamespaceAccessCase>();
-        if (accessCase.moduleNamespaceObject() && !vm.heap.isMarked(accessCase.moduleNamespaceObject()))
-            return false;
-        if (accessCase.moduleEnvironment() && !vm.heap.isMarked(accessCase.moduleEnvironment()))
-            return false;
-    } else if (type() == InstanceOfHit || type() == InstanceOfMiss) {
-        if (as<InstanceOfAccessCase>().prototype() && !vm.heap.isMarked(as<InstanceOfAccessCase>().prototype()))
-            return false;
     }
 
-    return true;
+    bool isValid = true;
+    forEachDependentCell([&](JSCell* cell) {
+        isValid &= vm.heap.isMarked(cell);
+    });
+    return isValid;
 }
 
 bool AccessCase::propagateTransitions(SlotVisitor& visitor) const
@@ -417,7 +488,7 @@ void AccessCase::generateWithGuard(
                         // has the property.
 #if USE(JSVALUE64)
                         jit.load64(MacroAssembler::Address(baseForAccessGPR, offsetRelativeToBase(knownPolyProtoOffset)), baseForAccessGPR);
-                        fallThrough.append(jit.branch64(CCallHelpers::NotEqual, baseForAccessGPR, CCallHelpers::TrustedImm64(ValueNull)));
+                        fallThrough.append(jit.branch64(CCallHelpers::NotEqual, baseForAccessGPR, CCallHelpers::TrustedImm64(JSValue::ValueNull)));
 #else
                         jit.load32(MacroAssembler::Address(baseForAccessGPR, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), baseForAccessGPR);
                         fallThrough.append(jit.branchTestPtr(CCallHelpers::NonZero, baseForAccessGPR));
@@ -432,7 +503,7 @@ void AccessCase::generateWithGuard(
                         RELEASE_ASSERT(structure->isObject()); // Primitives must have a stored prototype. We use prototypeForLookup for them.
 #if USE(JSVALUE64)
                         jit.load64(MacroAssembler::Address(baseForAccessGPR, offsetRelativeToBase(knownPolyProtoOffset)), baseForAccessGPR);
-                        fallThrough.append(jit.branch64(CCallHelpers::Equal, baseForAccessGPR, CCallHelpers::TrustedImm64(ValueNull)));
+                        fallThrough.append(jit.branch64(CCallHelpers::Equal, baseForAccessGPR, CCallHelpers::TrustedImm64(JSValue::ValueNull)));
 #else
                         jit.load32(MacroAssembler::Address(baseForAccessGPR, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), baseForAccessGPR);
                         fallThrough.append(jit.branchTestPtr(CCallHelpers::Zero, baseForAccessGPR));
@@ -648,19 +719,18 @@ void AccessCase::generateImpl(AccessGenerationState& state)
     GPRReg thisGPR = state.thisGPR != InvalidGPRReg ? state.thisGPR : baseGPR;
     GPRReg scratchGPR = state.scratchGPR;
 
-    ASSERT(m_conditionSet.structuresEnsureValidityAssumingImpurePropertyWatchpoint());
-
     for (const ObjectPropertyCondition& condition : m_conditionSet) {
         RELEASE_ASSERT(!m_polyProtoAccessChain);
 
-        Structure* structure = condition.object()->structure(vm);
-
-        if (condition.isWatchableAssumingImpurePropertyWatchpoint()) {
-            structure->addTransitionWatchpoint(state.addWatchpoint(condition));
+        if (condition.isWatchableAssumingImpurePropertyWatchpoint(PropertyCondition::WatchabilityEffort::EnsureWatchability)) {
+            state.installWatchpoint(condition);
             continue;
         }
 
-        if (!condition.structureEnsuresValidityAssumingImpurePropertyWatchpoint(structure)) {
+        // For now, we only allow equivalence when it's watchable.
+        RELEASE_ASSERT(condition.condition().kind() != PropertyCondition::Equivalence);
+
+        if (!condition.structureEnsuresValidityAssumingImpurePropertyWatchpoint()) {
             // The reason why this cannot happen is that we require that PolymorphicAccess calls
             // AccessCase::generate() only after it has verified that
             // AccessCase::couldStillSucceed() returned true.
@@ -670,6 +740,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
         }
 
         // We will emit code that has a weak reference that isn't otherwise listed anywhere.
+        Structure* structure = condition.object()->structure(vm);
         state.weakReferences.append(WriteBarrier<JSCell>(vm, codeBlock, structure));
 
         jit.move(CCallHelpers::TrustedImmPtr(condition.object()), scratchGPR);

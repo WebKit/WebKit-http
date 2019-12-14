@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -94,8 +94,6 @@ typedef RefCounter<BackgroundWebProcessCounterType> BackgroundWebProcessCounter;
 typedef BackgroundWebProcessCounter::Token BackgroundWebProcessToken;
 #endif
 
-enum class AllowProcessCaching { No, Yes };
-
 class WebProcessProxy : public AuxiliaryProcessProxy, public ResponsivenessTimer::Client, public ThreadSafeRefCounted<WebProcessProxy>, public CanMakeWeakPtr<WebProcessProxy>, private ProcessThrottlerClient {
 public:
     typedef HashMap<WebCore::FrameIdentifier, RefPtr<WebFrameProxy>> WebFrameProxyMap;
@@ -125,12 +123,18 @@ public:
     WebProcessPool* processPoolIfExists() const;
     WebProcessPool& processPool() const;
 
+    bool isMatchingRegistrableDomain(const WebCore::RegistrableDomain& domain) const { return m_registrableDomain ? *m_registrableDomain == domain : false; }
     WebCore::RegistrableDomain registrableDomain() const { return m_registrableDomain.valueOr(WebCore::RegistrableDomain { }); }
     void setIsInProcessCache(bool);
     bool isInProcessCache() const { return m_isInProcessCache; }
 
+    void enableServiceWorkers();
+    void disableServiceWorkers();
+
     WebsiteDataStore& websiteDataStore() const { ASSERT(m_websiteDataStore); return *m_websiteDataStore; }
     void setWebsiteDataStore(WebsiteDataStore&);
+    
+    PAL::SessionID sessionID() const;
 
     static WebProcessProxy* processForIdentifier(WebCore::ProcessIdentifier);
     static WebPageProxy* webPage(WebPageProxyIdentifier);
@@ -270,7 +274,27 @@ public:
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
     void shutDown();
-    void maybeShutDown(AllowProcessCaching = AllowProcessCaching::Yes);
+
+    class ScopePreventingShutdown {
+    public:
+        explicit ScopePreventingShutdown(WebProcessProxy& process)
+            : m_process(process)
+        {
+            ++(m_process->m_shutdownPreventingScopeCount);
+        }
+
+        ~ScopePreventingShutdown()
+        {
+            ASSERT(m_process->m_shutdownPreventingScopeCount);
+            if (!--(m_process->m_shutdownPreventingScopeCount))
+                m_process->maybeShutDown();
+        }
+
+    private:
+        Ref<WebProcessProxy> m_process;
+    };
+
+    ScopePreventingShutdown makeScopePreventingShutdown() { return ScopePreventingShutdown { *this }; }
 
     void didStartProvisionalLoadForMainFrame(const URL&);
 
@@ -304,7 +328,7 @@ public:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    void processWasUnexpectedlyUnsuspended(CompletionHandler<void()>&&);
+    void processWasUnexpectedlyUnsuspended();
 #endif
 
     void webPageMediaStateDidChange(WebPageProxy&);
@@ -313,8 +337,7 @@ public:
     void deref() final { ThreadSafeRefCounted::deref(); }
 
 #if ENABLE(SERVICE_WORKER)
-    void establishServiceWorkerContext(const WebPreferencesStore&, PAL::SessionID);
-    void startForServiceWorkers(const WebPreferencesStore&, PAL::SessionID);
+    void establishServiceWorkerContext(const WebPreferencesStore&);
     void setServiceWorkerUserAgent(const String&);
     void updateServiceWorkerPreferencesStore(const WebPreferencesStore&);
     bool hasServiceWorkerPageProxy(WebPageProxyIdentifier pageProxyID) { return m_serviceWorkerInformation && m_serviceWorkerInformation->serviceWorkerPageProxyID == pageProxyID; }
@@ -328,7 +351,8 @@ protected:
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void connectionWillOpen(IPC::Connection&) override;
     void processWillShutDown(IPC::Connection&) override;
-
+    bool shouldSendPendingMessage(const PendingMessage&) final;
+    
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
 
@@ -336,6 +360,7 @@ protected:
     void cacheMediaMIMETypesInternal(const Vector<String>&);
 #endif
 
+    bool shouldConfigureJSCForTesting() const final;
     bool isJITEnabled() const final;
 
     void validateFreezerStatus();
@@ -359,6 +384,9 @@ private:
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
 #endif
+    void addPlugInAutoStartOriginHash(String&& pageOrigin, uint32_t hash);
+    void plugInDidReceiveUserInteraction(uint32_t hash);
+    
     void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
     bool platformIsBeingDebugged() const;
@@ -397,6 +425,8 @@ private:
     void logDiagnosticMessageForResourceLimitTermination(const String& limitKey);
     
     void updateRegistrationWithDataStore();
+
+    void maybeShutDown();
 
     enum class IsWeak { No, Yes };
     template<typename T> class WeakOrStrongPtr {
@@ -476,6 +506,7 @@ private:
 #endif
 
     unsigned m_suspendedPageCount { 0 };
+    unsigned m_shutdownPreventingScopeCount { 0 };
     bool m_hasCommittedAnyProvisionalLoads { false };
     bool m_isPrewarmed;
     bool m_hasAudibleWebPage { false };

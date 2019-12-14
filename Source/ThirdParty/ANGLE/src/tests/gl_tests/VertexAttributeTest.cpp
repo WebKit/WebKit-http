@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 //
 #include "anglebase/numerics/safe_conversions.h"
+#include "common/mathutil.h"
 #include "platform/FeaturesVk.h"
 #include "test_utils/ANGLETest.h"
 #include "test_utils/gl_raii.h"
@@ -22,10 +23,14 @@ GLsizei TypeStride(GLenum attribType)
             return 1;
         case GL_UNSIGNED_SHORT:
         case GL_SHORT:
+        case GL_HALF_FLOAT:
+        case GL_HALF_FLOAT_OES:
             return 2;
         case GL_UNSIGNED_INT:
         case GL_INT:
         case GL_FLOAT:
+        case GL_UNSIGNED_INT_10_10_10_2_OES:
+        case GL_INT_10_10_10_2_OES:
             return 4;
         default:
             EXPECT_TRUE(false);
@@ -46,6 +51,88 @@ GLfloat Normalize(T value)
     else
     {
         return static_cast<GLfloat>(value) / static_cast<GLfloat>(std::numeric_limits<T>::max());
+    }
+}
+
+// Normalization for each channel of signed/unsigned 10_10_10_2 types
+template <typename T>
+GLfloat Normalize10(T value)
+{
+    static_assert(std::is_integral<T>::value, "Integer required.");
+    GLfloat floatOutput;
+    if (std::is_signed<T>::value)
+    {
+        const uint32_t signMask     = 0x200;       // 1 set at the 9th bit
+        const uint32_t negativeMask = 0xFFFFFC00;  // All bits from 10 to 31 set to 1
+
+        if (value & signMask)
+        {
+            int negativeNumber = value | negativeMask;
+            floatOutput        = static_cast<GLfloat>(negativeNumber);
+        }
+        else
+        {
+            floatOutput = static_cast<GLfloat>(value);
+        }
+
+        const int32_t maxValue = 0x1FF;       // 1 set in bits 0 through 8
+        const int32_t minValue = 0xFFFFFE01;  // Inverse of maxValue
+
+        // A 10-bit two's complement number has the possibility of being minValue - 1 but
+        // OpenGL's normalization rules dictate that it should be clamped to minValue in
+        // this case.
+        if (floatOutput < minValue)
+            floatOutput = minValue;
+
+        const int32_t halfRange = (maxValue - minValue) >> 1;
+        floatOutput             = ((floatOutput - minValue) / halfRange) - 1.0f;
+    }
+    else
+    {
+        const GLfloat maxValue = 1023.0f;  // 1 set in bits 0 through 9
+        floatOutput            = static_cast<GLfloat>(value) / maxValue;
+    }
+    return floatOutput;
+}
+
+template <typename T>
+GLfloat Normalize2(T value)
+{
+    static_assert(std::is_integral<T>::value, "Integer required.");
+    if (std::is_signed<T>::value)
+    {
+        GLfloat outputValue = static_cast<float>(value) / 1.0f;
+        outputValue         = (outputValue >= -1.0f) ? (outputValue) : (-1.0f);
+        return outputValue;
+    }
+    else
+    {
+        return static_cast<float>(value) / 3.0f;
+    }
+}
+
+template <typename DestT, typename SrcT>
+DestT Pack1010102(std::array<SrcT, 4> input)
+{
+    static_assert(std::is_integral<SrcT>::value, "Integer required.");
+    static_assert(std::is_integral<DestT>::value, "Integer required.");
+    static_assert(std::is_unsigned<SrcT>::value == std::is_unsigned<DestT>::value,
+                  "Signedness should be equal.");
+    DestT rOut, gOut, bOut, aOut;
+    rOut = static_cast<DestT>(input[0]);
+    gOut = static_cast<DestT>(input[1]);
+    bOut = static_cast<DestT>(input[2]);
+    aOut = static_cast<DestT>(input[3]);
+
+    if (std::is_unsigned<SrcT>::value)
+    {
+        return rOut << 22 | gOut << 12 | bOut << 2 | aOut;
+    }
+    else
+    {
+        // Need to apply bit mask to account for sign extension
+        return (0xFFC00000u & rOut << 22) | (0x003FF000u & gOut << 12) | (0x00000FFCu & bOut << 2) |
+               (0x00000003u & aOut);
     }
 }
 
@@ -124,7 +211,9 @@ class VertexAttributeTest : public ANGLETest
         glEnableVertexAttribArray(mExpectedAttrib);
     }
 
-    void checkPixels()
+    void checkPixels() { checkRGBPixels(true); }
+
+    void checkRGBPixels(bool checkAlpha)
     {
         GLint viewportSize[4];
         glGetIntegerv(GL_VIEWPORT, viewportSize);
@@ -135,10 +224,20 @@ class VertexAttributeTest : public ANGLETest
         // We need to offset our checks from triangle edges to ensure we don't fall on a single tri
         // Avoid making assumptions of drawQuad with four checks to check the four possible tri
         // regions
-        EXPECT_PIXEL_EQ((midPixelX + viewportSize[0]) / 2, midPixelY, 255, 255, 255, 255);
-        EXPECT_PIXEL_EQ((midPixelX + viewportSize[2]) / 2, midPixelY, 255, 255, 255, 255);
-        EXPECT_PIXEL_EQ(midPixelX, (midPixelY + viewportSize[1]) / 2, 255, 255, 255, 255);
-        EXPECT_PIXEL_EQ(midPixelX, (midPixelY + viewportSize[3]) / 2, 255, 255, 255, 255);
+        if (checkAlpha)
+        {
+            EXPECT_PIXEL_EQ((midPixelX + viewportSize[0]) / 2, midPixelY, 255, 255, 255, 255);
+            EXPECT_PIXEL_EQ((midPixelX + viewportSize[2]) / 2, midPixelY, 255, 255, 255, 255);
+            EXPECT_PIXEL_EQ(midPixelX, (midPixelY + viewportSize[1]) / 2, 255, 255, 255, 255);
+            EXPECT_PIXEL_EQ(midPixelX, (midPixelY + viewportSize[3]) / 2, 255, 255, 255, 255);
+        }
+        else
+        {
+            EXPECT_PIXEL_RGB_EQUAL((midPixelX + viewportSize[0]) / 2, midPixelY, 255, 255, 255);
+            EXPECT_PIXEL_RGB_EQUAL((midPixelX + viewportSize[2]) / 2, midPixelY, 255, 255, 255);
+            EXPECT_PIXEL_RGB_EQUAL(midPixelX, (midPixelY + viewportSize[1]) / 2, 255, 255, 255);
+            EXPECT_PIXEL_RGB_EQUAL(midPixelX, (midPixelY + viewportSize[3]) / 2, 255, 255, 255);
+        }
     }
 
     void checkPixelsUnEqual()
@@ -177,7 +276,16 @@ class VertexAttributeTest : public ANGLETest
 
             if (checkPixelEqual)
             {
-                checkPixels();
+                if ((test.type == GL_HALF_FLOAT || test.type == GL_HALF_FLOAT_OES) && IsVulkan() &&
+                    typeSize == 3)
+                {  // We need a special case for RGB16F format on a Vulkan backend due to the fact
+                   // that in such a usecase, we need to ignore the alpha channel.
+                    checkRGBPixels(false);
+                }
+                else
+                {
+                    checkPixels();
+                }
             }
             else
             {
@@ -186,10 +294,8 @@ class VertexAttributeTest : public ANGLETest
         }
     }
 
-    void SetUp() override
+    void testSetUp() override
     {
-        ANGLETest::SetUp();
-
         glClearColor(0, 0, 0, 0);
         glClearDepthf(0.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -199,19 +305,17 @@ class VertexAttributeTest : public ANGLETest
         glGenBuffers(1, &mBuffer);
     }
 
-    void TearDown() override
+    void testTearDown() override
     {
         glDeleteProgram(mProgram);
         glDeleteBuffers(1, &mBuffer);
         glDeleteBuffers(1, &mQuadBuffer);
-
-        ANGLETest::TearDown();
     }
 
     // Override a feature to force emulation of attribute formats.
     void overrideFeaturesVk(FeaturesVk *featuresVk) override
     {
-        featuresVk->forceFallbackFormat = true;
+        featuresVk->overrideFeatures({"force_fallback_format"}, true);
     }
 
     GLuint compileMultiAttribProgram(GLint attribCount)
@@ -424,6 +528,62 @@ TEST_P(VertexAttributeTest, ShortNormalized)
     runTest(data);
 }
 
+// Verify that vertex data is updated correctly when using a float/half-float client memory pointer.
+TEST_P(VertexAttributeTest, HalfFloatClientMemoryPointer)
+{
+    std::array<GLhalf, kVertexCount> inputData;
+    std::array<GLfloat, kVertexCount> expectedData = {
+        {0.f, 1.5f, 2.3f, 3.2f, -1.8f, -2.2f, -3.9f, -4.f, 34.5f, 32.2f, -78.8f, -77.4f, -76.1f}};
+
+    for (size_t i = 0; i < kVertexCount; i++)
+    {
+        inputData[i] = gl::float32ToFloat16(expectedData[i]);
+    }
+
+    // If the extension is enabled run the test on all contexts
+    if (IsGLExtensionEnabled("GL_OES_vertex_half_float"))
+    {
+        TestData imediateData(GL_HALF_FLOAT_OES, GL_FALSE, Source::IMMEDIATE, inputData.data(),
+                              expectedData.data());
+        runTest(imediateData);
+    }
+    // Otherwise run the test only if it is an ES3 context
+    else if (getClientMajorVersion() >= 3)
+    {
+        TestData imediateData(GL_HALF_FLOAT, GL_FALSE, Source::IMMEDIATE, inputData.data(),
+                              expectedData.data());
+        runTest(imediateData);
+    }
+}
+
+// Verify that vertex data is updated correctly when using a float/half-float buffer.
+TEST_P(VertexAttributeTest, HalfFloatBuffer)
+{
+    std::array<GLhalf, kVertexCount> inputData;
+    std::array<GLfloat, kVertexCount> expectedData = {
+        {0.f, 1.5f, 2.3f, 3.2f, -1.8f, -2.2f, -3.9f, -4.f, 34.5f, 32.2f, -78.8f, -77.4f, -76.1f}};
+
+    for (size_t i = 0; i < kVertexCount; i++)
+    {
+        inputData[i] = gl::float32ToFloat16(expectedData[i]);
+    }
+
+    // If the extension is enabled run the test on all contexts
+    if (IsGLExtensionEnabled("GL_OES_vertex_half_float"))
+    {
+        TestData bufferData(GL_HALF_FLOAT_OES, GL_FALSE, Source::BUFFER, inputData.data(),
+                            expectedData.data());
+        runTest(bufferData);
+    }
+    // Otherwise run the test only if it is an ES3 context
+    else if (getClientMajorVersion() >= 3)
+    {
+        TestData bufferData(GL_HALF_FLOAT, GL_FALSE, Source::BUFFER, inputData.data(),
+                            expectedData.data());
+        runTest(bufferData);
+    }
+}
+
 // Verify that using the same client memory pointer in different format won't mess up the draw.
 TEST_P(VertexAttributeTest, UsingDifferentFormatAndSameClientMemoryPointer)
 {
@@ -554,6 +714,219 @@ TEST_P(VertexAttributeTest, MixedUsingBufferAndClientMemoryPointer)
     runTest(normalizedData);
 }
 
+// Verify signed unnormalized INT_10_10_10_2 vertex type
+TEST_P(VertexAttributeTest, SignedPacked1010102ExtensionUnnormalized)
+{
+    std::string extensionList(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    ANGLE_SKIP_TEST_IF((extensionList.find("OES_vertex_type_10_10_10_2") == std::string::npos));
+
+    // RGB channels are 10-bits, alpha is 2-bits
+    std::array<std::array<GLshort, 4>, kVertexCount / 4> unpackedInput = {{{0, 1, 2, 0},
+                                                                           {254, 255, 256, 1},
+                                                                           {256, 255, 254, -2},
+                                                                           {511, 510, 509, -1},
+                                                                           {-512, -511, -500, -2},
+                                                                           {-1, -2, -3, 1}}};
+
+    std::array<GLint, kVertexCount> packedInput;
+    std::array<GLfloat, kVertexCount> expectedTypeSize4;
+    std::array<GLfloat, kVertexCount> expectedTypeSize3;
+
+    for (size_t i = 0; i < kVertexCount / 4; i++)
+    {
+        packedInput[i] = Pack1010102<GLint, GLshort>(unpackedInput[i]);
+
+        expectedTypeSize3[i * 3 + 0] = expectedTypeSize4[i * 4 + 0] = unpackedInput[i][0];
+        expectedTypeSize3[i * 3 + 1] = expectedTypeSize4[i * 4 + 1] = unpackedInput[i][1];
+        expectedTypeSize3[i * 3 + 2] = expectedTypeSize4[i * 4 + 2] = unpackedInput[i][2];
+
+        // when the type size is 3, alpha will be 1.0f by GLES driver
+        expectedTypeSize4[i * 4 + 3] = unpackedInput[i][3];
+    }
+
+    TestData data4(GL_INT_10_10_10_2_OES, GL_FALSE, Source::IMMEDIATE, packedInput.data(),
+                   expectedTypeSize4.data());
+    TestData bufferedData4(GL_INT_10_10_10_2_OES, GL_FALSE, Source::BUFFER, packedInput.data(),
+                           expectedTypeSize4.data());
+    TestData data3(GL_INT_10_10_10_2_OES, GL_FALSE, Source::IMMEDIATE, packedInput.data(),
+                   expectedTypeSize3.data());
+    TestData bufferedData3(GL_INT_10_10_10_2_OES, GL_FALSE, Source::BUFFER, packedInput.data(),
+                           expectedTypeSize3.data());
+
+    std::array<std::pair<const TestData &, GLint>, 4> dataSet = {
+        {{data4, 4}, {bufferedData4, 4}, {data3, 3}, {bufferedData3, 3}}};
+
+    for (auto data : dataSet)
+    {
+        setupTest(data.first, data.second);
+        drawQuad(mProgram, "position", 0.5f);
+        glDisableVertexAttribArray(mTestAttrib);
+        glDisableVertexAttribArray(mExpectedAttrib);
+        checkPixels();
+    }
+}
+
+// Verify signed normalized INT_10_10_10_2 vertex type
+TEST_P(VertexAttributeTest, SignedPacked1010102ExtensionNormalized)
+{
+    std::string extensionList(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    ANGLE_SKIP_TEST_IF((extensionList.find("OES_vertex_type_10_10_10_2") == std::string::npos));
+
+    // RGB channels are 10-bits, alpha is 2-bits
+    std::array<std::array<GLshort, 4>, kVertexCount / 4> unpackedInput = {{{0, 1, 2, 0},
+                                                                           {254, 255, 256, 1},
+                                                                           {256, 255, 254, -2},
+                                                                           {511, 510, 509, -1},
+                                                                           {-512, -511, -500, -2},
+                                                                           {-1, -2, -3, 1}}};
+    std::array<GLint, kVertexCount> packedInput;
+    std::array<GLfloat, kVertexCount> expectedNormalizedTypeSize4;
+    std::array<GLfloat, kVertexCount> expectedNormalizedTypeSize3;
+
+    for (size_t i = 0; i < kVertexCount / 4; i++)
+    {
+        packedInput[i] = Pack1010102<GLint, GLshort>(unpackedInput[i]);
+
+        expectedNormalizedTypeSize3[i * 3 + 0] = expectedNormalizedTypeSize4[i * 4 + 0] =
+            Normalize10<GLshort>(unpackedInput[i][0]);
+        expectedNormalizedTypeSize3[i * 3 + 1] = expectedNormalizedTypeSize4[i * 4 + 1] =
+            Normalize10<GLshort>(unpackedInput[i][1]);
+        expectedNormalizedTypeSize3[i * 3 + 2] = expectedNormalizedTypeSize4[i * 4 + 2] =
+            Normalize10<GLshort>(unpackedInput[i][2]);
+
+        // when the type size is 3, alpha will be 1.0f by GLES driver
+        expectedNormalizedTypeSize4[i * 4 + 3] = Normalize2<GLshort>(unpackedInput[i][3]);
+    }
+
+    TestData data4(GL_INT_10_10_10_2_OES, GL_TRUE, Source::IMMEDIATE, packedInput.data(),
+                   expectedNormalizedTypeSize4.data());
+    TestData bufferedData4(GL_INT_10_10_10_2_OES, GL_TRUE, Source::BUFFER, packedInput.data(),
+                           expectedNormalizedTypeSize4.data());
+    TestData data3(GL_INT_10_10_10_2_OES, GL_TRUE, Source::IMMEDIATE, packedInput.data(),
+                   expectedNormalizedTypeSize3.data());
+    TestData bufferedData3(GL_INT_10_10_10_2_OES, GL_TRUE, Source::BUFFER, packedInput.data(),
+                           expectedNormalizedTypeSize3.data());
+
+    std::array<std::pair<const TestData &, GLint>, 4> dataSet = {
+        {{data4, 4}, {bufferedData4, 4}, {data3, 3}, {bufferedData3, 3}}};
+
+    for (auto data : dataSet)
+    {
+        setupTest(data.first, data.second);
+        drawQuad(mProgram, "position", 0.5f);
+        glDisableVertexAttribArray(mTestAttrib);
+        glDisableVertexAttribArray(mExpectedAttrib);
+        checkPixels();
+    }
+}
+
+// Verify unsigned unnormalized INT_10_10_10_2 vertex type
+TEST_P(VertexAttributeTest, UnsignedPacked1010102ExtensionUnnormalized)
+{
+    std::string extensionList(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    ANGLE_SKIP_TEST_IF((extensionList.find("OES_vertex_type_10_10_10_2") == std::string::npos));
+
+    // RGB channels are 10-bits, alpha is 2-bits
+    std::array<std::array<GLushort, 4>, kVertexCount / 4> unpackedInput = {{{0, 1, 2, 0},
+                                                                            {511, 512, 513, 1},
+                                                                            {1023, 1022, 1021, 3},
+                                                                            {513, 512, 511, 2},
+                                                                            {2, 1, 0, 3},
+                                                                            {1023, 1022, 1022, 0}}};
+
+    std::array<GLuint, kVertexCount> packedInput;
+    std::array<GLfloat, kVertexCount> expectedTypeSize3;
+    std::array<GLfloat, kVertexCount> expectedTypeSize4;
+
+    for (size_t i = 0; i < kVertexCount / 4; i++)
+    {
+        packedInput[i] = Pack1010102<GLuint, GLushort>(unpackedInput[i]);
+
+        expectedTypeSize3[i * 3 + 0] = expectedTypeSize4[i * 4 + 0] = unpackedInput[i][0];
+        expectedTypeSize3[i * 3 + 1] = expectedTypeSize4[i * 4 + 1] = unpackedInput[i][1];
+        expectedTypeSize3[i * 3 + 2] = expectedTypeSize4[i * 4 + 2] = unpackedInput[i][2];
+
+        // when the type size is 3, alpha will be 1.0f by GLES driver
+        expectedTypeSize4[i * 4 + 3] = unpackedInput[i][3];
+    }
+
+    TestData data4(GL_UNSIGNED_INT_10_10_10_2_OES, GL_FALSE, Source::IMMEDIATE, packedInput.data(),
+                   expectedTypeSize4.data());
+    TestData bufferedData4(GL_UNSIGNED_INT_10_10_10_2_OES, GL_FALSE, Source::BUFFER,
+                           packedInput.data(), expectedTypeSize4.data());
+    TestData data3(GL_UNSIGNED_INT_10_10_10_2_OES, GL_FALSE, Source::BUFFER, packedInput.data(),
+                   expectedTypeSize3.data());
+    TestData bufferedData3(GL_UNSIGNED_INT_10_10_10_2_OES, GL_FALSE, Source::BUFFER,
+                           packedInput.data(), expectedTypeSize3.data());
+
+    std::array<std::pair<const TestData &, GLint>, 4> dataSet = {
+        {{data4, 4}, {bufferedData4, 4}, {data3, 3}, {bufferedData3, 3}}};
+
+    for (auto data : dataSet)
+    {
+        setupTest(data.first, data.second);
+        drawQuad(mProgram, "position", 0.5f);
+        glDisableVertexAttribArray(mTestAttrib);
+        glDisableVertexAttribArray(mExpectedAttrib);
+        checkPixels();
+    }
+}
+
+// Verify unsigned normalized INT_10_10_10_2 vertex type
+TEST_P(VertexAttributeTest, UnsignedPacked1010102ExtensionNormalized)
+{
+    std::string extensionList(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    ANGLE_SKIP_TEST_IF((extensionList.find("OES_vertex_type_10_10_10_2") == std::string::npos));
+
+    // RGB channels are 10-bits, alpha is 2-bits
+    std::array<std::array<GLushort, 4>, kVertexCount / 4> unpackedInput = {{{0, 1, 2, 0},
+                                                                            {511, 512, 513, 1},
+                                                                            {1023, 1022, 1021, 3},
+                                                                            {513, 512, 511, 2},
+                                                                            {2, 1, 0, 3},
+                                                                            {1023, 1022, 1022, 0}}};
+
+    std::array<GLuint, kVertexCount> packedInput;
+    std::array<GLfloat, kVertexCount> expectedTypeSize4;
+    std::array<GLfloat, kVertexCount> expectedTypeSize3;
+
+    for (size_t i = 0; i < kVertexCount / 4; i++)
+    {
+        packedInput[i] = Pack1010102<GLuint, GLushort>(unpackedInput[i]);
+
+        expectedTypeSize3[i * 3 + 0] = expectedTypeSize4[i * 4 + 0] =
+            Normalize10<GLushort>(unpackedInput[i][0]);
+        expectedTypeSize3[i * 3 + 1] = expectedTypeSize4[i * 4 + 1] =
+            Normalize10<GLushort>(unpackedInput[i][1]);
+        expectedTypeSize3[i * 3 + 2] = expectedTypeSize4[i * 4 + 2] =
+            Normalize10<GLushort>(unpackedInput[i][2]);
+
+        // when the type size is 3, alpha will be 1.0f by GLES driver
+        expectedTypeSize4[i * 4 + 3] = Normalize2<GLushort>(unpackedInput[i][3]);
+    }
+
+    TestData data4(GL_UNSIGNED_INT_10_10_10_2_OES, GL_TRUE, Source::IMMEDIATE, packedInput.data(),
+                   expectedTypeSize4.data());
+    TestData bufferedData4(GL_UNSIGNED_INT_10_10_10_2_OES, GL_TRUE, Source::BUFFER,
+                           packedInput.data(), expectedTypeSize4.data());
+    TestData data3(GL_UNSIGNED_INT_10_10_10_2_OES, GL_TRUE, Source::IMMEDIATE, packedInput.data(),
+                   expectedTypeSize3.data());
+    TestData bufferedData3(GL_UNSIGNED_INT_10_10_10_2_OES, GL_TRUE, Source::BUFFER,
+                           packedInput.data(), expectedTypeSize3.data());
+
+    std::array<std::pair<const TestData &, GLint>, 4> dataSet = {
+        {{data4, 4}, {bufferedData4, 4}, {data3, 3}, {bufferedData3, 3}}};
+
+    for (auto data : dataSet)
+    {
+        setupTest(data.first, data.second);
+        drawQuad(mProgram, "position", 0.5f);
+        glDisableVertexAttribArray(mTestAttrib);
+        glDisableVertexAttribArray(mExpectedAttrib);
+        checkPixels();
+    };
+}
+
 class VertexAttributeTestES3 : public VertexAttributeTest
 {
   protected:
@@ -667,7 +1040,7 @@ TEST_P(VertexAttributeTestES3, VertexArrayObjectRendering)
 
     const auto &quadVertices = GetQuadVertices();
 
-    glBindVertexArrayOES(vaos[0]);
+    glBindVertexArray(vaos[0]);
     glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
     glBufferData(GL_ARRAY_BUFFER, quadVertices.size() * sizeof(Vector3), quadVertices.data(),
                  GL_STATIC_DRAW);
@@ -675,7 +1048,7 @@ TEST_P(VertexAttributeTestES3, VertexArrayObjectRendering)
     glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     SetupColorsForUnitQuad(colorLoc, kFloatRed, GL_STREAM_DRAW, &colorBuffers[0]);
 
-    glBindVertexArrayOES(vaos[1]);
+    glBindVertexArray(vaos[1]);
     glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
     glEnableVertexAttribArray(positionLoc);
     glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -686,11 +1059,11 @@ TEST_P(VertexAttributeTestES3, VertexArrayObjectRendering)
 
     for (int ii = 0; ii < 2; ++ii)
     {
-        glBindVertexArrayOES(vaos[0]);
+        glBindVertexArray(vaos[0]);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::red);
 
-        glBindVertexArrayOES(vaos[1]);
+        glBindVertexArray(vaos[1]);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green);
     }
@@ -835,6 +1208,9 @@ TEST_P(VertexAttributeTest, DrawArraysWithBufferOffset)
 
     // TODO(geofflang): Figure out why this is broken on AMD OpenGL
     ANGLE_SKIP_TEST_IF(IsAMD() && IsOpenGL());
+
+    // TODO(cnorthrop): Test this again on more recent drivers. http://anglebug.com/3951
+    ANGLE_SKIP_TEST_IF(IsLinux() && IsNVIDIA() && IsVulkan());
 
     initBasicProgram();
     glUseProgram(mProgram);
@@ -1041,9 +1417,9 @@ class VertexAttributeTestES31 : public VertexAttributeTestES3
         glEnableVertexAttribArray(mExpectedAttrib);
     }
 
-    void TearDown() override
+    void testTearDown() override
     {
-        VertexAttributeTestES3::TearDown();
+        VertexAttributeTestES3::testTearDown();
 
         glDeleteBuffers(1, &mExpectedBuffer);
         glDeleteVertexArrays(1, &mVAO);
@@ -1362,7 +1738,7 @@ void main()
     glUseProgram(computeProgram);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, testBuffer);
     glDispatchCompute(1, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
     // Draw again to verify that testBuffer has been changed.
     glUseProgram(mProgram);
@@ -1530,7 +1906,7 @@ class VertexAttributeCachingTest : public VertexAttributeTest
   protected:
     VertexAttributeCachingTest() {}
 
-    void SetUp() override;
+    void testSetUp() override;
 
     template <typename DestT>
     static std::vector<GLfloat> GetExpectedData(const std::vector<GLubyte> &srcData,
@@ -1625,9 +2001,9 @@ std::vector<GLfloat> VertexAttributeCachingTest::GetExpectedData(
     return expectedData;
 }
 
-void VertexAttributeCachingTest::SetUp()
+void VertexAttributeCachingTest::testSetUp()
 {
-    VertexAttributeTest::SetUp();
+    VertexAttributeTest::testSetUp();
 
     glBindBuffer(GL_ARRAY_BUFFER, mBuffer);
 
@@ -1708,7 +2084,7 @@ TEST_P(VertexAttributeCachingTest, BufferMulticaching)
 
     ASSERT_GL_NO_ERROR();
 
-    for (const auto &data : mTestData)
+    for (const AttribData &data : mTestData)
     {
         const auto &expected =
             (data.normalized) ? mNormExpectedData[data.type] : mExpectedData[data.type];
@@ -1723,7 +2099,7 @@ TEST_P(VertexAttributeCachingTest, BufferMulticaching)
                               sizeof(GLfloat) * baseStride, expected.data());
         drawQuad(mProgram, "position", 0.5f);
         ASSERT_GL_NO_ERROR();
-        EXPECT_PIXEL_EQ(getWindowWidth() / 2, getWindowHeight() / 2, 255, 255, 255, 255);
+        EXPECT_PIXEL_COLOR_EQ(getWindowWidth() / 2, getWindowHeight() / 2, GLColor::white);
     }
 }
 
@@ -2036,28 +2412,38 @@ void main()
 ANGLE_INSTANTIATE_TEST(VertexAttributeTest,
                        ES2_D3D9(),
                        ES2_D3D11(),
-                       ES2_D3D11_FL9_3(),
                        ES2_OPENGL(),
                        ES3_OPENGL(),
                        ES2_OPENGLES(),
                        ES3_OPENGLES(),
-                       ES2_VULKAN());
+                       ES2_VULKAN(),
+                       ES3_VULKAN());
 
 ANGLE_INSTANTIATE_TEST(VertexAttributeOORTest,
                        ES2_D3D9(),
                        ES2_D3D11(),
                        ES2_OPENGL(),
                        ES2_OPENGLES(),
-                       ES2_VULKAN());
+                       ES2_VULKAN(),
+                       ES3_VULKAN());
 
-ANGLE_INSTANTIATE_TEST(VertexAttributeTestES3, ES3_D3D11(), ES3_OPENGL(), ES3_OPENGLES());
+ANGLE_INSTANTIATE_TEST(VertexAttributeTestES3,
+                       ES3_D3D11(),
+                       ES3_OPENGL(),
+                       ES3_OPENGLES(),
+                       ES3_VULKAN());
 
-ANGLE_INSTANTIATE_TEST(VertexAttributeTestES31, ES31_D3D11(), ES31_OPENGL(), ES31_OPENGLES());
+ANGLE_INSTANTIATE_TEST(VertexAttributeTestES31,
+                       ES31_D3D11(),
+                       ES31_OPENGL(),
+                       ES31_OPENGLES(),
+                       ES31_VULKAN());
 
 ANGLE_INSTANTIATE_TEST(VertexAttributeCachingTest,
                        ES2_D3D9(),
                        ES2_D3D11(),
                        ES3_D3D11(),
-                       ES3_OPENGL());
+                       ES3_OPENGL(),
+                       ES3_VULKAN());
 
 }  // anonymous namespace

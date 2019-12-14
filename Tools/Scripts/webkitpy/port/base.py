@@ -240,8 +240,6 @@ class Port(object):
             return False
         if self.get_option('install') and not self._check_driver():
             return False
-        if self.get_option('install') and not self._check_port_build():
-            return False
         if not self.check_image_diff():
             if self.get_option('build'):
                 return self._build_image_diff()
@@ -253,8 +251,6 @@ class Port(object):
         if not canonicalized_binaries:
             canonicalized_binaries = self.path_to_api_test_binaries().keys()
         if not self._root_was_set and self.get_option('build') and not self._build_api_tests(wtf_only=(canonicalized_binaries == ['TestWTF'])):
-            return False
-        if self.get_option('install') and not self._check_port_build():
             return False
 
         for binary, path in self.path_to_api_test_binaries().iteritems():
@@ -278,10 +274,6 @@ class Port(object):
         if not self._filesystem.exists(driver_path):
             _log.error("%s was not found at %s" % (self.driver_name(), driver_path))
             return False
-        return True
-
-    def _check_port_build(self):
-        # Ports can override this method to do additional checks.
         return True
 
     def check_sys_deps(self):
@@ -883,12 +875,6 @@ class Port(object):
         # to have multiple copies of webkit checked out and built.
         return self._build_path('layout-test-results')
 
-    def wpt_metadata_directory(self):
-        return self._build_path('web-platform-tests-metadata')
-
-    def wpt_manifest_file(self):
-        return self._build_path('web-platform-tests-manifest.json')
-
     def setup_test_run(self, device_type=None):
         """Perform port-specific work at the beginning of a test run."""
         pass
@@ -1294,12 +1280,20 @@ class Port(object):
             return "-php7"
         return ""
 
+    def _win_php_version(self):
+        root = os.environ.get('XAMPP_ROOT', 'C:\\xampp')
+        prefix = self._filesystem.join(root, 'php')
+        for version in ('5', '7'):
+            conf = self._filesystem.join(prefix, "php{}ts.dll".format(version))
+            if self._filesystem.exists(conf):
+                return "-php{}".format(version)
+        _log.error("No php?ts.dll found in {}".format(prefix))
+        return ""
+
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
-        if sys_platform == 'cygwin':
-            return 'apache' + self._apache_version() + '-httpd-win.conf'
-        if sys_platform == 'win32':
-            return 'win-httpd-' + self._apache_version() + '-php7.conf'
+        if sys_platform in ['cygwin', 'win32']:
+            return 'win-httpd-' + self._apache_version() + self._win_php_version() + '.conf'
         if sys_platform == 'darwin':
             return 'apache' + self._apache_version() + self._darwin_php_version() + '-httpd.conf'
         if sys_platform.startswith('linux'):

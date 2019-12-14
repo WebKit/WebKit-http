@@ -94,7 +94,7 @@ void RootInlineBox::clearTruncation()
 
 bool RootInlineBox::isHyphenated() const
 {
-    for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
+    for (InlineBox* box = firstLeafDescendant(); box; box = box->nextLeafOnLine()) {
         if (is<InlineTextBox>(*box) && downcast<InlineTextBox>(*box).hasHyphen())
             return true;
     }
@@ -452,7 +452,7 @@ GapRects RootInlineBox::lineSelectionGap(RenderBlock& rootBlock, const LayoutPoi
         // Now fill in any gaps on the line that occurred between two selected elements.
         LayoutUnit lastLogicalLeft { firstBox->logicalRight() };
         bool isPreviousBoxSelected = firstBox->selectionState() != RenderObject::SelectionNone;
-        for (InlineBox* box = firstBox->nextLeafChild(); box; box = box->nextLeafChild()) {
+        for (InlineBox* box = firstBox->nextLeafOnLine(); box; box = box->nextLeafOnLine()) {
             if (box->selectionState() != RenderObject::SelectionNone) {
                 LayoutRect logicalRect { lastLogicalLeft, selTop, LayoutUnit(box->logicalLeft() - lastLogicalLeft), selHeight };
                 logicalRect.move(renderer().isHorizontalWritingMode() ? offsetFromRootBlock : LayoutSize(offsetFromRootBlock.height(), offsetFromRootBlock.width()));
@@ -531,7 +531,7 @@ RenderObject::SelectionState RootInlineBox::selectionState()
 {
     // Walk over all of the selected boxes.
     RenderObject::SelectionState state = RenderObject::SelectionNone;
-    for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
+    for (InlineBox* box = firstLeafDescendant(); box; box = box->nextLeafOnLine()) {
         RenderObject::SelectionState boxState = box->selectionState();
         if ((boxState == RenderObject::SelectionStart && state == RenderObject::SelectionEnd) ||
             (boxState == RenderObject::SelectionEnd && state == RenderObject::SelectionStart))
@@ -553,7 +553,7 @@ RenderObject::SelectionState RootInlineBox::selectionState()
 
 InlineBox* RootInlineBox::firstSelectedBox()
 {
-    for (auto* box = firstLeafChild(); box; box = box->nextLeafChild()) {
+    for (auto* box = firstLeafDescendant(); box; box = box->nextLeafOnLine()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
@@ -562,7 +562,7 @@ InlineBox* RootInlineBox::firstSelectedBox()
 
 InlineBox* RootInlineBox::lastSelectedBox()
 {
-    for (auto* box = lastLeafChild(); box; box = box->prevLeafChild()) {
+    for (auto* box = lastLeafDescendant(); box; box = box->previousLeafOnLine()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
@@ -766,14 +766,14 @@ InlineBox* RootInlineBox::closestLeafChildForPoint(const IntPoint& pointInConten
 
 InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPosition, bool onlyEditableLeaves)
 {
-    InlineBox* firstLeaf = firstLeafChild();
-    InlineBox* lastLeaf = lastLeafChild();
+    InlineBox* firstLeaf = firstLeafDescendant();
+    InlineBox* lastLeaf = lastLeafDescendant();
 
     if (firstLeaf != lastLeaf) {
         if (firstLeaf->isLineBreak())
-            firstLeaf = firstLeaf->nextLeafChildIgnoringLineBreak();
+            firstLeaf = firstLeaf->nextLeafOnLineIgnoringLineBreak();
         else if (lastLeaf->isLineBreak())
-            lastLeaf = lastLeaf->prevLeafChildIgnoringLineBreak();
+            lastLeaf = lastLeaf->previousLeafOnLineIgnoringLineBreak();
     }
 
     if (firstLeaf == lastLeaf && (!onlyEditableLeaves || isEditableLeaf(firstLeaf)))
@@ -791,7 +791,7 @@ InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPositio
         return lastLeaf;
 
     InlineBox* closestLeaf = nullptr;
-    for (InlineBox* leaf = firstLeaf; leaf; leaf = leaf->nextLeafChildIgnoringLineBreak()) {
+    for (InlineBox* leaf = firstLeaf; leaf; leaf = leaf->nextLeafOnLineIgnoringLineBreak()) {
         if (!leaf->renderer().isListMarker() && (!onlyEditableLeaves || isEditableLeaf(leaf))) {
             closestLeaf = leaf;
             if (leftPosition < leaf->logicalRight())
@@ -882,7 +882,7 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
     // Replaced boxes will return 0 for the line-height if line-box-contain says they are
     // not to be included.
     if (box.renderer().isReplaced()) {
-        if (lineStyle().lineBoxContain() & LineBoxContainReplaced) {
+        if (lineStyle().lineBoxContain().contains(LineBoxContain::Replaced)) {
             ascent = box.baselinePosition(baselineType());
             descent = box.lineHeight() - ascent;
             
@@ -1068,8 +1068,8 @@ bool RootInlineBox::includeLeadingForBox(InlineBox& box) const
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
         return false;
 
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainInline) || (&box == this && (lineBoxContain & LineBoxContainBlock));
+    auto lineBoxContain = renderer().style().lineBoxContain();
+    return lineBoxContain.contains(LineBoxContain::Inline) || (&box == this && lineBoxContain.contains(LineBoxContain::Block));
 }
 
 bool RootInlineBox::includeFontForBox(InlineBox& box) const
@@ -1080,8 +1080,7 @@ bool RootInlineBox::includeFontForBox(InlineBox& box) const
     if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainFont);
+    return renderer().style().lineBoxContain().contains(LineBoxContain::Font);
 }
 
 bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
@@ -1092,8 +1091,7 @@ bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
     if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainGlyphs);
+    return renderer().style().lineBoxContain().contains(LineBoxContain::Glyphs);
 }
 
 bool RootInlineBox::includeInitialLetterForBox(InlineBox& box) const
@@ -1104,8 +1102,7 @@ bool RootInlineBox::includeInitialLetterForBox(InlineBox& box) const
     if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainInitialLetter);
+    return renderer().style().lineBoxContain().contains(LineBoxContain::InitialLetter);
 }
 
 bool RootInlineBox::includeMarginForBox(InlineBox& box) const
@@ -1113,21 +1110,17 @@ bool RootInlineBox::includeMarginForBox(InlineBox& box) const
     if (box.renderer().isReplaced() || (box.renderer().isTextOrLineBreak() && !box.behavesLikeText()))
         return false;
 
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return lineBoxContain & LineBoxContainInlineBox;
+    return renderer().style().lineBoxContain().contains(LineBoxContain::InlineBox);
 }
-
 
 bool RootInlineBox::fitsToGlyphs() const
 {
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return ((lineBoxContain & LineBoxContainGlyphs) || (lineBoxContain & LineBoxContainInitialLetter));
+    return renderer().style().lineBoxContain().containsAny({ LineBoxContain::Glyphs, LineBoxContain::InitialLetter });
 }
 
 bool RootInlineBox::includesRootLineBoxFontOrLeading() const
 {
-    LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainBlock) || (lineBoxContain & LineBoxContainInline) || (lineBoxContain & LineBoxContainFont);
+    return renderer().style().lineBoxContain().containsAny({ LineBoxContain::Block, LineBoxContain::Inline, LineBoxContain::Font });
 }
 
 Node* RootInlineBox::getLogicalStartBoxWithNode(InlineBox*& startBox) const

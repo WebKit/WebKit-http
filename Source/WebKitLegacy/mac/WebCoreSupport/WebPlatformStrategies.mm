@@ -64,14 +64,14 @@ PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 
 class WebBlobRegistry final : public BlobRegistry {
 private:
-    void registerFileBlobURL(PAL::SessionID, const URL& url, Ref<BlobDataFileReference>&& reference, const String& contentType) final { m_blobRegistry.registerFileBlobURL(url, WTFMove(reference), contentType); }
-    void registerBlobURL(PAL::SessionID, const URL& url, Vector<BlobPart>&& parts, const String& contentType) final { m_blobRegistry.registerBlobURL(url, WTFMove(parts), contentType); }
-    void registerBlobURL(PAL::SessionID, const URL& url, const URL& srcURL) final { m_blobRegistry.registerBlobURL(url, srcURL); }
-    void registerBlobURLOptionallyFileBacked(PAL::SessionID, const URL& url, const URL& srcURL, RefPtr<BlobDataFileReference>&& reference, const String& contentType) final { m_blobRegistry.registerBlobURLOptionallyFileBacked(url, srcURL, WTFMove(reference), contentType); }
-    void registerBlobURLForSlice(PAL::SessionID, const URL& url, const URL& srcURL, long long start, long long end) final { m_blobRegistry.registerBlobURLForSlice(url, srcURL, start, end); }
-    void unregisterBlobURL(PAL::SessionID, const URL& url) final { m_blobRegistry.unregisterBlobURL(url); }
-    unsigned long long blobSize(PAL::SessionID, const URL& url) final { return m_blobRegistry.blobSize(url); }
-    void writeBlobsToTemporaryFiles(PAL::SessionID, const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&& completionHandler) final { m_blobRegistry.writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler)); }
+    void registerFileBlobURL(const URL& url, Ref<BlobDataFileReference>&& reference, const String& contentType) final { m_blobRegistry.registerFileBlobURL(url, WTFMove(reference), contentType); }
+    void registerBlobURL(const URL& url, Vector<BlobPart>&& parts, const String& contentType) final { m_blobRegistry.registerBlobURL(url, WTFMove(parts), contentType); }
+    void registerBlobURL(const URL& url, const URL& srcURL) final { m_blobRegistry.registerBlobURL(url, srcURL); }
+    void registerBlobURLOptionallyFileBacked(const URL& url, const URL& srcURL, RefPtr<BlobDataFileReference>&& reference, const String& contentType) final { m_blobRegistry.registerBlobURLOptionallyFileBacked(url, srcURL, WTFMove(reference), contentType); }
+    void registerBlobURLForSlice(const URL& url, const URL& srcURL, long long start, long long end) final { m_blobRegistry.registerBlobURLForSlice(url, srcURL, start, end); }
+    void unregisterBlobURL(const URL& url) final { m_blobRegistry.unregisterBlobURL(url); }
+    unsigned long long blobSize(const URL& url) final { return m_blobRegistry.blobSize(url); }
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&& completionHandler) final { m_blobRegistry.writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler)); }
 
     BlobRegistryImpl* blobRegistryImpl() final { return &m_blobRegistry; }
 
@@ -173,6 +173,36 @@ long WebPlatformStrategies::writeCustomData(const WebCore::PasteboardCustomData&
     return PlatformPasteboard(pasteboardName).write(data);
 }
 
+WebCore::PasteboardItemInfo WebPlatformStrategies::informationForItemAtIndex(size_t index, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).informationForItemAtIndex(index);
+}
+
+Vector<WebCore::PasteboardItemInfo> WebPlatformStrategies::allPasteboardItemInfo(const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).allPasteboardItemInfo();
+}
+
+int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).count();
+}
+
+RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(size_t index, const String& type, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).readBuffer(index, type);
+}
+
+URL WebPlatformStrategies::readURLFromPasteboard(size_t index, const String& pasteboardName, String& title)
+{
+    return PlatformPasteboard(pasteboardName).readURL(index, title);
+}
+
+String WebPlatformStrategies::readStringFromPasteboard(size_t index, const String& type, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).readString(index, type);
+}
+
 #if PLATFORM(IOS_FAMILY)
 
 void WebPlatformStrategies::writeToPasteboard(const PasteboardURL& url, const String& pasteboardName)
@@ -195,38 +225,8 @@ void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, cons
     PlatformPasteboard(pasteboardName).write(pasteboardType, text);
 }
 
-int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)
-{
-    return PlatformPasteboard(pasteboardName).count();
-}
-
 void WebPlatformStrategies::updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName)
 {
     PlatformPasteboard(pasteboardName).updateSupportedTypeIdentifiers(identifiers);
-}
-
-RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(int index, const String& type, const String& pasteboardName)
-{
-    return PlatformPasteboard(pasteboardName).readBuffer(index, type);
-}
-
-URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardName, String& title)
-{
-    return PlatformPasteboard(pasteboardName).readURL(index, title);
-}
-
-String WebPlatformStrategies::readStringFromPasteboard(int index, const String& type, const String& pasteboardName)
-{
-    return PlatformPasteboard(pasteboardName).readString(index, type);
-}
-
-Vector<WebCore::PasteboardItemInfo> WebPlatformStrategies::allPasteboardItemInfo(const String& pasteboardName)
-{
-    return PlatformPasteboard(pasteboardName).allPasteboardItemInfo();
-}
-
-WebCore::PasteboardItemInfo WebPlatformStrategies::informationForItemAtIndex(int index, const String& pasteboardName)
-{
-    return PlatformPasteboard(pasteboardName).informationForItemAtIndex(index);
 }
 #endif // PLATFORM(IOS_FAMILY)

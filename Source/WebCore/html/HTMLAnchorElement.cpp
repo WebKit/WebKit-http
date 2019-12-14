@@ -407,7 +407,8 @@ Optional<AdClickAttribution> HTMLAnchorElement::parseAdClickAttribution() const
     using Source = AdClickAttribution::Source;
     using Destination = AdClickAttribution::Destination;
 
-    if (document().sessionID().isEphemeral()
+    auto* page = document().page();
+    if (!page || page->sessionID().isEphemeral()
         || !RuntimeEnabledFeatures::sharedFeatures().adClickAttributionEnabled()
         || !UserGestureIndicator::processingUserGesture())
         return WTF::nullopt;
@@ -482,11 +483,13 @@ void HTMLAnchorElement::handleClick(Event& event)
 
     SystemPreviewInfo systemPreviewInfo;
 #if USE(SYSTEM_PREVIEW)
-    systemPreviewInfo.isSystemPreview = isSystemPreviewLink() && RuntimeEnabledFeatures::sharedFeatures().systemPreviewEnabled();
+    systemPreviewInfo.isPreview = isSystemPreviewLink() && RuntimeEnabledFeatures::sharedFeatures().systemPreviewEnabled();
 
-    if (systemPreviewInfo.isSystemPreview) {
+    if (systemPreviewInfo.isPreview) {
+        systemPreviewInfo.globalFrameID.frameID = document().frame()->loader().client().frameID().valueOr(FrameIdentifier { });
+        systemPreviewInfo.globalFrameID.pageID = document().frame()->loader().client().pageID().valueOr(PageIdentifier { });
         if (auto* child = firstElementChild())
-            systemPreviewInfo.systemPreviewRect = child->boundsInRootViewSpace();
+            systemPreviewInfo.previewRect = child->boundsInRootViewSpace();
     }
 #endif
 

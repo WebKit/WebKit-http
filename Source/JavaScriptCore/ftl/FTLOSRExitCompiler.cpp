@@ -28,8 +28,8 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "BytecodeStructs.h"
 #include "DFGOSRExitCompilerCommon.h"
-#include "DFGOSRExitPreparation.h"
 #include "FTLExitArgumentForOperand.h"
 #include "FTLJITCode.h"
 #include "FTLLocation.h"
@@ -52,7 +52,7 @@ static void reboxAccordingToFormat(
     switch (format) {
     case DataFormatInt32: {
         jit.zeroExtend32ToPtr(value, value);
-        jit.or64(GPRInfo::tagTypeNumberRegister, value);
+        jit.or64(GPRInfo::numberTagRegister, value);
         break;
     }
 
@@ -73,7 +73,7 @@ static void reboxAccordingToFormat(
 
     case DataFormatBoolean: {
         jit.zeroExtend32ToPtr(value, value);
-        jit.or32(MacroAssembler::TrustedImm32(ValueFalse), value);
+        jit.or32(MacroAssembler::TrustedImm32(JSValue::ValueFalse), value);
         break;
     }
 
@@ -237,8 +237,8 @@ static void compileStub(
     
     // Get the call frame and tag thingies.
     // Restore the exiting function's callFrame value into a regT4
-    jit.move(MacroAssembler::TrustedImm64(TagTypeNumber), GPRInfo::tagTypeNumberRegister);
-    jit.move(MacroAssembler::TrustedImm64(TagMask), GPRInfo::tagMaskRegister);
+    jit.move(MacroAssembler::TrustedImm64(JSValue::NumberTag), GPRInfo::numberTagRegister);
+    jit.move(MacroAssembler::TrustedImm64(JSValue::NotCellMask), GPRInfo::notCellMaskRegister);
     
     // Do some value profiling.
     if (exit.m_descriptor->m_profileDataFormat != DataFormatNone) {
@@ -248,7 +248,15 @@ static void compileStub(
         
         if (exit.m_kind == BadCache || exit.m_kind == BadIndexingType) {
             CodeOrigin codeOrigin = exit.m_codeOriginForExitProfile;
-            if (ArrayProfile* arrayProfile = jit.baselineCodeBlockFor(codeOrigin)->getArrayProfile(codeOrigin.bytecodeIndex())) {
+            CodeBlock* codeBlock = jit.baselineCodeBlockFor(codeOrigin);
+            if (ArrayProfile* arrayProfile = codeBlock->getArrayProfile(codeOrigin.bytecodeIndex())) {
+                const Instruction* instruction = codeBlock->instructions().at(codeOrigin.bytecodeIndex()).ptr();
+                CCallHelpers::Jump skipProfile;
+                if (instruction->is<OpGetById>()) {
+                    auto& metadata = instruction->as<OpGetById>().metadata(codeBlock);
+                    skipProfile = jit.branch8(CCallHelpers::NotEqual, CCallHelpers::AbsoluteAddress(&metadata.m_modeMetadata.mode), CCallHelpers::TrustedImm32(static_cast<uint8_t>(GetByIdMode::ArrayLength)));
+                }
+
                 jit.load32(MacroAssembler::Address(GPRInfo::regT0, JSCell::structureIDOffset()), GPRInfo::regT1);
                 jit.store32(GPRInfo::regT1, arrayProfile->addressOfLastSeenStructureID());
 
@@ -266,6 +274,9 @@ static void compileStub(
                 jit.lshift32(GPRInfo::regT1, GPRInfo::regT2);
                 storeArrayModes.link(&jit);
                 jit.or32(GPRInfo::regT2, MacroAssembler::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
+
+                if (skipProfile.isSet())
+                    skipProfile.link(&jit);
             }
         }
 
@@ -451,11 +462,11 @@ static void compileStub(
     }
 
     if (exit.isExceptionHandler()) {
-        RegisterAtOffset* vmCalleeSave = vmCalleeSaves->find(GPRInfo::tagTypeNumberRegister);
-        jit.store64(GPRInfo::tagTypeNumberRegister, MacroAssembler::Address(GPRInfo::regT1, vmCalleeSave->offset()));
+        RegisterAtOffset* vmCalleeSave = vmCalleeSaves->find(GPRInfo::numberTagRegister);
+        jit.store64(GPRInfo::numberTagRegister, MacroAssembler::Address(GPRInfo::regT1, vmCalleeSave->offset()));
 
-        vmCalleeSave = vmCalleeSaves->find(GPRInfo::tagMaskRegister);
-        jit.store64(GPRInfo::tagMaskRegister, MacroAssembler::Address(GPRInfo::regT1, vmCalleeSave->offset()));
+        vmCalleeSave = vmCalleeSaves->find(GPRInfo::notCellMaskRegister);
+        jit.store64(GPRInfo::notCellMaskRegister, MacroAssembler::Address(GPRInfo::regT1, vmCalleeSave->offset()));
     }
 
     size_t baselineVirtualRegistersForCalleeSaves = baselineCodeBlock->calleeSaveSpaceAsVirtualRegisters();
@@ -531,8 +542,6 @@ extern "C" void* compileFTLOSRExit(ExecState* exec, unsigned exitID)
                 dataLog("        ", pointerDump(materialization), "\n");
         }
     }
-
-    prepareCodeOriginForOSRExit(exec, exit.m_codeOrigin);
 
     compileStub(exitID, jitCode, exit, &vm, codeBlock);
 

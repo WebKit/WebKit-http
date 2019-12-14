@@ -55,6 +55,7 @@ public:
 
 private:
     void insertBlocksForFlushAfterTerminalPatchpoints();
+    void release(Tmp, Reg);
     void flush(Tmp, Reg);
     void spill(Tmp, Reg);
     void alloc(Tmp, Reg, bool isDef);
@@ -62,6 +63,8 @@ private:
     bool assignTmp(Tmp&, Bank, bool isDef);
     void buildLiveRanges(UnifiedTmpLiveness&);
     bool isDisallowedRegister(Reg);
+
+    void checkConsistency();
 
     Code& m_code;
     CCallHelpers* m_jit { nullptr };

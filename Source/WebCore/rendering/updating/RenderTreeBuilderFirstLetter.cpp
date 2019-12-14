@@ -56,7 +56,7 @@ static RenderStyle styleForFirstLetter(const RenderBlock& firstLetterBlock, cons
         // For an N-line first-letter and for alphabetic baselines, the cap-height of the first letter needs to equal (N-1)*line-height of paragraph lines + cap-height of the paragraph
         // Mathematically we can't rely on font-size, since font().height() doesn't necessarily match. For reliability, the best approach is simply to
         // compare the final measured cap-heights of the two fonts in order to get to the closest possible value.
-        firstLetterStyle.setLineBoxContain(LineBoxContainInitialLetter);
+        firstLetterStyle.setLineBoxContain({ LineBoxContain::InitialLetter });
         int lineHeight = paragraph->style().computedLineHeight();
 
         // Set the font to be one line too big and then ratchet back to get to a precise fit. We can't just set the desired font size based off font height metrics
@@ -185,15 +185,15 @@ void RenderTreeBuilder::FirstLetter::updateStyle(RenderBlock& firstLetterBlock, 
             m_builder.attach(*newFirstLetter, WTFMove(toMove));
         }
 
-        RenderObject* nextSibling = firstLetter->nextSibling();
         if (RenderTextFragment* remainingText = downcast<RenderBoxModelObject>(*firstLetter).firstLetterRemainingText()) {
             ASSERT(remainingText->isAnonymous() || remainingText->textNode()->renderer() == remainingText);
             // Replace the old renderer with the new one.
             remainingText->setFirstLetter(*newFirstLetter);
             newFirstLetter->setFirstLetterRemainingText(*remainingText);
         }
+        WeakPtr<RenderObject> nextSibling = makeWeakPtr(firstLetter->nextSibling());
         m_builder.destroy(*firstLetter);
-        m_builder.attach(*firstLetterContainer, WTFMove(newFirstLetter), nextSibling);
+        m_builder.attach(*firstLetterContainer, WTFMove(newFirstLetter), nextSibling.get());
         return;
     }
 

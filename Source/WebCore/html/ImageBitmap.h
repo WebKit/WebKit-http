@@ -25,9 +25,15 @@
 
 #pragma once
 
-#include "JSDOMPromiseDeferred.h"
+#include "IDLTypes.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
+
+namespace JSC {
+class ArrayBuffer;
+}
+
+using JSC::ArrayBuffer;
 
 namespace WebCore {
 
@@ -44,6 +50,8 @@ class PendingImageBitmap;
 class ScriptExecutionContext;
 class TypedOMCSSImageValue;
 struct ImageBitmapOptions;
+
+template<typename IDLType> class DOMPromiseDeferred;
 
 class ImageBitmap final : public ScriptWrappable, public RefCounted<ImageBitmap> {
     WTF_MAKE_ISO_ALLOCATED(ImageBitmap);

@@ -28,13 +28,15 @@
 #include "GraphicsLayer.h"
 #include "GraphicsTypes.h"
 #include "HTMLElement.h"
-#include "HTMLImageLoader.h"
 
 namespace WebCore {
 
+class CachedImage;
+class DeferredPromise;
 class EditableImageReference;
 class HTMLAttachmentElement;
 class HTMLFormElement;
+class HTMLImageLoader;
 class HTMLMapElement;
 
 struct ImageCandidate;
@@ -65,9 +67,9 @@ public:
 
     CompositeOperator compositeOperator() const { return m_compositeOperator; }
 
-    CachedImage* cachedImage() const { return m_imageLoader.image(); }
+    WEBCORE_EXPORT CachedImage* cachedImage() const;
 
-    void setLoadManually(bool loadManually) { m_imageLoader.setLoadManually(loadManually); }
+    void setLoadManually(bool);
 
     bool matchesUsemap(const AtomStringImpl&) const;
     HTMLMapElement* associatedMapElement() const;
@@ -103,8 +105,8 @@ public:
     const String& attachmentIdentifier() const;
 #endif
 
-    bool hasPendingActivity() const { return m_imageLoader.hasPendingActivity(); }
-    size_t pendingDecodePromisesCountForTesting() const { return m_imageLoader.pendingDecodePromisesCountForTesting(); }
+    bool hasPendingActivity() const;
+    WEBCORE_EXPORT size_t pendingDecodePromisesCountForTesting() const;
 
     bool canContainRangeEndPoint() const override { return false; }
 
@@ -125,6 +127,9 @@ public:
     void defaultEventHandler(Event&) final;
 
     bool createdByParser() const { return m_createdByParser; }
+
+    bool isDroppedImagePlaceholder() const { return m_isDroppedImagePlaceholder; }
+    void setIsDroppedImagePlaceholder() { m_isDroppedImagePlaceholder = true; }
 
 protected:
     HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = nullptr, bool createdByParser = false);
@@ -177,7 +182,7 @@ private:
     bool childShouldCreateRenderer(const Node&) const override;
 #endif
 
-    HTMLImageLoader m_imageLoader;
+    std::unique_ptr<HTMLImageLoader> m_imageLoader;
     WeakPtr<HTMLFormElement> m_form;
     WeakPtr<HTMLFormElement> m_formSetByParser;
 
@@ -189,6 +194,7 @@ private:
     bool m_experimentalImageMenuEnabled;
     bool m_hadNameBeforeAttributeChanged { false }; // FIXME: We only need this because parseAttribute() can't see the old value.
     bool m_createdByParser { false };
+    bool m_isDroppedImagePlaceholder { false };
 
     RefPtr<EditableImageReference> m_editableImage;
     WeakPtr<HTMLPictureElement> m_pictureElement;

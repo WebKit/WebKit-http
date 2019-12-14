@@ -30,6 +30,7 @@
 #include <JavaScriptCore/RemoteControllableTarget.h>
 #include <JavaScriptCore/RemoteInspectorConnectionClient.h>
 #include <wtf/HashMap.h>
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -48,10 +49,10 @@ public:
 using ConnectionID = Inspector::ConnectionID;
 using TargetID = Inspector::TargetID;
 
-class RemoteInspectorClient : public Inspector::RemoteInspectorConnectionClient {
+class RemoteInspectorClient final : public Inspector::RemoteInspectorConnectionClient {
     WTF_MAKE_FAST_ALLOCATED();
 public:
-    RemoteInspectorClient(const char* address, unsigned port, RemoteInspectorObserver&);
+    RemoteInspectorClient(URL, RemoteInspectorObserver&);
     ~RemoteInspectorClient();
 
     struct Target {
@@ -62,6 +63,7 @@ public:
     };
 
     const HashMap<ConnectionID, Vector<Target>>& targets() const { return m_targets; }
+    const String& backendCommandsURL() const { return m_backendCommandsURL; }
 
     void inspect(ConnectionID, TargetID, const String&);
     void sendMessageToBackend(ConnectionID, TargetID, const String&);
@@ -82,6 +84,7 @@ private:
 
     void sendWebInspectorEvent(const String&);
 
+    String m_backendCommandsURL;
     RemoteInspectorObserver& m_observer;
     Optional<ConnectionID> m_connectionID;
     HashMap<ConnectionID, Vector<Target>> m_targets;

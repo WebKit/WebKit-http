@@ -59,6 +59,7 @@
 #include "HistoryController.h"
 #include "IconLoader.h"
 #include "InspectorInstrumentation.h"
+#include "LegacySchemeRegistry.h"
 #include "LinkIconCollector.h"
 #include "LinkIconType.h"
 #include "LoaderStrategy.h"
@@ -74,7 +75,6 @@
 #include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SWClientConnection.h"
-#include "SchemeRegistry.h"
 #include "ScriptableDocumentParser.h"
 #include "SecurityPolicy.h"
 #include "ServiceWorker.h"
@@ -123,60 +123,6 @@ static void setAllDefersLoading(const ResourceLoaderMap& loaders, bool defers)
 {
     for (auto& loader : copyToVector(loaders.values()))
         loader->setDefersLoading(defers);
-}
-
-static bool shouldPendingCachedResourceLoadPreventPageCache(CachedResource& cachedResource)
-{
-    if (!cachedResource.isLoading())
-        return false;
-
-    switch (cachedResource.type()) {
-    case CachedResource::Type::ImageResource:
-    case CachedResource::Type::Icon:
-    case CachedResource::Type::Beacon:
-    case CachedResource::Type::Ping:
-    case CachedResource::Type::LinkPrefetch:
-        return false;
-    case CachedResource::Type::MainResource:
-    case CachedResource::Type::CSSStyleSheet:
-    case CachedResource::Type::Script:
-    case CachedResource::Type::FontResource:
-#if ENABLE(SVG_FONTS)
-    case CachedResource::Type::SVGFontResource:
-#endif
-    case CachedResource::Type::MediaResource:
-    case CachedResource::Type::RawResource:
-    case CachedResource::Type::SVGDocumentResource:
-#if ENABLE(XSLT)
-    case CachedResource::Type::XSLStyleSheet:
-#endif
-#if ENABLE(VIDEO_TRACK)
-    case CachedResource::Type::TextTrackResource:
-#endif
-#if ENABLE(APPLICATION_MANIFEST)
-    case CachedResource::Type::ApplicationManifest:
-#endif
-        break;
-    };
-    return !cachedResource.areAllClientsXMLHttpRequests();
-}
-
-static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
-{
-    for (auto& loader : copyToVector(loaders.values())) {
-        if (!loader->frameLoader() || !loader->frameLoader()->frame().page())
-            return false;
-
-        CachedResource* cachedResource = MemoryCache::singleton().resourceForRequest(loader->request(), loader->frameLoader()->frame().page()->sessionID());
-        if (!cachedResource)
-            return false;
-
-        // Only image and XHR loads do not prevent the page from entering the PageCache.
-        // All non-image loads will prevent the page from entering the PageCache.
-        if (shouldPendingCachedResourceLoadPreventPageCache(*cachedResource))
-            return false;
-    }
-    return true;
 }
 
 DocumentLoader::DocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
@@ -313,13 +259,6 @@ void DocumentLoader::stopLoading()
     // (This can happen when there's a single XMLHttpRequest currently loading and stopLoading causes it
     // to stop loading. Because of this, we need to save it so we don't return early.
     bool loading = isLoading();
-
-    // We may want to audit the existing subresource loaders when we are on a page which has completed
-    // loading but there are subresource loads during cancellation. This must be done before the
-    // frame->stopLoading() call, which may evict the CachedResources, which we rely on to check
-    // the type of the resource loads.
-    if (loading && m_committed && !mainResourceLoader() && !m_subresourceLoaders.isEmpty())
-        m_subresourceLoadersArePageCacheAcceptable = areAllLoadersPageCacheAcceptable(m_subresourceLoaders);
 
     if (m_committed) {
         // Attempt to stop the frame if the document loader is loading, or if it is done loading but
@@ -531,21 +470,20 @@ void DocumentLoader::startDataLoadTimer()
 #if ENABLE(SERVICE_WORKER)
 void DocumentLoader::matchRegistration(const URL& url, SWClientConnection::RegistrationCallback&& callback)
 {
-    auto shouldTryLoadingThroughServiceWorker = !frameLoader()->isReloadingFromOrigin() && m_frame->page() && RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && SchemeRegistry::canServiceWorkersHandleURLScheme(url.protocol().toStringWithoutCopying());
+    auto shouldTryLoadingThroughServiceWorker = !frameLoader()->isReloadingFromOrigin() && m_frame->page() && RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && LegacySchemeRegistry::canServiceWorkersHandleURLScheme(url.protocol().toStringWithoutCopying());
     if (!shouldTryLoadingThroughServiceWorker) {
         callback(WTF::nullopt);
         return;
     }
 
     auto origin = (!m_frame->isMainFrame() && m_frame->document()) ? m_frame->document()->topOrigin().data() : SecurityOriginData::fromURL(url);
-    auto sessionID = m_frame->page()->sessionID();
     auto& provider = ServiceWorkerProvider::singleton();
-    if (!provider.mayHaveServiceWorkerRegisteredForOrigin(sessionID, origin)) {
+    if (!provider.mayHaveServiceWorkerRegisteredForOrigin(origin)) {
         callback(WTF::nullopt);
         return;
     }
 
-    auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(sessionID);
+    auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnection();
     connection.matchRegistration(WTFMove(origin), url, WTFMove(callback));
 }
 
@@ -923,7 +861,7 @@ bool DocumentLoader::disallowWebArchive() const
     if (m_substituteData.isValid())
         return false;
 
-    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_request.url().protocol().toStringWithoutCopying()))
+    if (!LegacySchemeRegistry::shouldTreatURLSchemeAsLocal(m_request.url().protocol().toStringWithoutCopying()))
         return true;
 
     if (!frame() || (frame()->isMainFrame() && m_allowsWebArchiveForMainFrame))
@@ -968,15 +906,11 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
         frameLoader()->setOriginalURLForDownloadRequest(m_request);
 
-        PAL::SessionID sessionID = PAL::SessionID::defaultSessionID();
-        if (frame() && frame()->page())
-            sessionID = frame()->page()->sessionID();
-
         if (m_request.url().protocolIsData()) {
             // We decode data URL internally, there is no resource load to convert.
             frameLoader()->client().startDownload(m_request);
         } else
-            frameLoader()->client().convertMainResourceLoadToDownload(this, sessionID, m_request, m_response);
+            frameLoader()->client().convertMainResourceLoadToDownload(this, m_request, m_response);
 
         // The main resource might be loading from the memory cache, or its loader might have gone missing.
         if (mainResourceLoader()) {
@@ -1103,8 +1037,8 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
                     m_frame->document()->setActiveServiceWorker(parent->activeServiceWorker());
             }
 
-            if (m_frame->document()->activeServiceWorker() || SchemeRegistry::canServiceWorkersHandleURLScheme(m_frame->document()->url().protocol().toStringWithoutCopying()))
-                m_frame->document()->setServiceWorkerConnection(ServiceWorkerProvider::singleton().existingServiceWorkerConnectionForSession(m_frame->page()->sessionID()));
+            if (m_frame->document()->activeServiceWorker() || LegacySchemeRegistry::canServiceWorkersHandleURLScheme(m_frame->document()->url().protocol().toStringWithoutCopying()))
+                m_frame->document()->setServiceWorkerConnection(ServiceWorkerProvider::singleton().existingServiceWorkerConnection());
 
             // We currently unregister the temporary service worker client since we now registered the real document.
             // FIXME: We should make the real document use the temporary client identifier.
@@ -1775,7 +1709,7 @@ bool DocumentLoader::isMultipartReplacingLoad() const
 
 bool DocumentLoader::maybeLoadEmpty()
 {
-    bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol().toStringWithoutCopying()));
+    bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || LegacySchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol().toStringWithoutCopying()));
     if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol().toStringWithoutCopying()))
         return false;
 
@@ -1874,15 +1808,12 @@ void DocumentLoader::registerTemporaryServiceWorkerClient(const URL& url)
     if (!m_serviceWorkerRegistrationData)
         return;
 
-    m_temporaryServiceWorkerClient = TemporaryServiceWorkerClient {
-        DocumentIdentifier::generate(),
-        m_frame->page()->sessionID()
-    };
+    m_temporaryServiceWorkerClient = DocumentIdentifier::generate();
 
-    auto& serviceWorkerConnection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(m_temporaryServiceWorkerClient->sessionID);
+    auto& serviceWorkerConnection = ServiceWorkerProvider::singleton().serviceWorkerConnection();
 
     // FIXME: Compute ServiceWorkerClientFrameType appropriately.
-    ServiceWorkerClientData data { { serviceWorkerConnection.serverConnectionIdentifier(), m_temporaryServiceWorkerClient->documentIdentifier }, ServiceWorkerClientType::Window, ServiceWorkerClientFrameType::None, url };
+    ServiceWorkerClientData data { { serviceWorkerConnection.serverConnectionIdentifier(), *m_temporaryServiceWorkerClient }, ServiceWorkerClientType::Window, ServiceWorkerClientFrameType::None, url };
 
     RefPtr<SecurityOrigin> topOrigin;
     if (m_frame->isMainFrame())
@@ -1901,8 +1832,8 @@ void DocumentLoader::unregisterTemporaryServiceWorkerClient()
     if (!m_temporaryServiceWorkerClient)
         return;
 
-    auto& serviceWorkerConnection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(m_temporaryServiceWorkerClient->sessionID);
-    serviceWorkerConnection.unregisterServiceWorkerClient(m_temporaryServiceWorkerClient->documentIdentifier);
+    auto& serviceWorkerConnection = ServiceWorkerProvider::singleton().serviceWorkerConnection();
+    serviceWorkerConnection.unregisterServiceWorkerClient(*m_temporaryServiceWorkerClient);
     m_temporaryServiceWorkerClient = WTF::nullopt;
 #endif
 }

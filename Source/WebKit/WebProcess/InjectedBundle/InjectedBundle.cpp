@@ -79,7 +79,6 @@
 #include <WebCore/UserGestureIndicator.h>
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
-#include <pal/SessionID.h>
 #include <wtf/ProcessPrivilege.h>
 
 #if ENABLE(NOTIFICATIONS)
@@ -236,8 +235,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #if ENABLE(WEB_RTC)
     if (preference == "WebKitWebRTCMDNSICECandidatesEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebRTCMDNSICECandidatesEnabled(enabled);
-    if (preference == "WebKitWebRTCUnifiedPlanEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setWebRTCUnifiedPlanEnabled(enabled);
 #endif
 
     if (preference == "WebKitIsSecureContextAttributeEnabled") {
@@ -271,7 +268,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
     macro(WebKitJavaScriptEnabled, ScriptEnabled, javaScriptEnabled) \
     macro(WebKitPluginsEnabled, PluginsEnabled, pluginsEnabled) \
-    macro(WebKitUsesPageCachePreferenceKey, UsesPageCache, usesPageCache) \
     macro(WebKitWebAudioEnabled, WebAudioEnabled, webAudioEnabled) \
     macro(WebKitWebGLEnabled, WebGLEnabled, webGLEnabled) \
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
@@ -344,29 +340,6 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings().setJavaScriptCanAccessClipboard(enabled);
-}
-
-void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, WebPage* page, bool enabled)
-{
-    ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-
-    PAL::SessionID newSessionID = PAL::SessionID::legacyPrivateSessionID();
-    if (enabled) {
-        auto currentSessionID = page->corePage()->sessionID();
-        if (currentSessionID == PAL::SessionID::legacyPrivateSessionID())
-            return;
-        m_initialSessionID = currentSessionID;
-        WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
-    } else {
-        if (!m_initialSessionID)
-            return;
-        newSessionID = *std::exchange(m_initialSessionID, WTF::nullopt);
-    }
-
-    PageGroup::pageGroup(pageGroup->identifier())->setSessionIDForTesting(newSessionID);
-
-    auto webStorageNameSpaceProvider = WebStorageNamespaceProvider::getOrCreate(*pageGroup);
-    webStorageNameSpaceProvider->setSessionIDForTesting(newSessionID);
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

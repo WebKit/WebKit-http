@@ -40,6 +40,7 @@
 #include "FunctionHasExecutedCache.h"
 #include "FuzzerAgent.h"
 #include "Heap.h"
+#include "Integrity.h"
 #include "Intrinsic.h"
 #include "IsoCellSet.h"
 #include "IsoSubspace.h"
@@ -101,13 +102,13 @@ namespace JSC {
 
 class BuiltinExecutables;
 class BytecodeIntrinsicRegistry;
+class CallFrame;
 class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
 class CompactVariableMap;
 class CustomGetterSetter;
 class DOMAttributeGetterSetter;
-class ExecState;
 class Exception;
 class ExceptionScope;
 class FastMallocAlignedMemoryAllocator;
@@ -179,7 +180,7 @@ struct HashTable;
 struct Instruction;
 struct ValueProfile;
 
-typedef ExecState CallFrame;
+using ExecState = CallFrame;
 
 struct LocalTimeOffsetCache {
     LocalTimeOffsetCache()
@@ -310,6 +311,9 @@ public:
     // Global object in which execution began.
     JS_EXPORT_PRIVATE JSGlobalObject* vmEntryGlobalObject(const CallFrame*) const;
 
+    WeakRandom& random() { return m_random; }
+    Integrity::Random& integrityRandom() { return m_integrityRandom; }
+
 private:
     unsigned nextID();
 
@@ -321,6 +325,9 @@ private:
     // These need to be initialized before heap below.
     RetainPtr<CFRunLoopRef> m_runLoop;
 #endif
+
+    WeakRandom m_random;
+    Integrity::Random m_integrityRandom;
 
 public:
     Heap heap;
@@ -366,7 +373,7 @@ public:
     
     // Whenever possible, use subspaceFor<CellType>(vm) to get one of these subspaces.
     CompleteSubspace cellSpace;
-    CompleteSubspace jsValueGigacageCellSpace; // FIXME: This space is problematic because we have things in here like DirectArguments and ScopedArguments; those should be split into JSValueOOB cells and JSValueStrict auxiliaries. https://bugs.webkit.org/show_bug.cgi?id=182858
+    CompleteSubspace variableSizedCellSpace; // FIXME: This space is problematic because we have things in here like DirectArguments and ScopedArguments; those should be split into JSValueOOB cells and JSValueStrict auxiliaries. https://bugs.webkit.org/show_bug.cgi?id=182858
     CompleteSubspace destructibleCellSpace;
     CompleteSubspace stringSpace;
     CompleteSubspace destructibleObjectSpace;

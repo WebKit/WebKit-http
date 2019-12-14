@@ -50,6 +50,16 @@ static void childSetupFunction(gpointer userData)
 }
 
 #if ENABLE(BUBBLEWRAP_SANDBOX)
+static bool isInsideDocker()
+{
+    static Optional<bool> ret;
+    if (ret)
+        return *ret;
+
+    ret = g_file_test("/.dockerenv", G_FILE_TEST_EXISTS);
+    return *ret;
+}
+
 static bool isInsideFlatpak()
 {
     static Optional<bool> ret;
@@ -66,7 +76,10 @@ static bool isInsideSnap()
     if (ret)
         return *ret;
 
-    ret = g_getenv("SNAP");
+    // The "SNAP" environment variable is not unlikely to be set for/by something other
+    // than Snap, so check a couple of additional variables to avoid false positives.
+    // See: https://snapcraft.io/docs/environment-variables
+    ret = g_getenv("SNAP") && g_getenv("SNAP_NAME") && g_getenv("SNAP_REVISION");
     return *ret;
 }
 #endif
@@ -113,6 +126,12 @@ void ProcessLauncher::launchProcess()
             prefixArgs.append(arg.utf8());
         nargs += prefixArgs.size();
     }
+
+    bool configureJSCForTesting = false;
+    if (m_launchOptions.processType == ProcessLauncher::ProcessType::Web && m_client && m_client->shouldConfigureJSCForTesting()) {
+        configureJSCForTesting = true;
+        nargs++;
+    }
 #endif
 
     char** argv = g_newa(char*, nargs);
@@ -125,6 +144,10 @@ void ProcessLauncher::launchProcess()
     argv[i++] = const_cast<char*>(realExecutablePath.data());
     argv[i++] = processIdentifier.get();
     argv[i++] = webkitSocket.get();
+#if ENABLE(DEVELOPER_MODE)
+    if (configureJSCForTesting)
+        argv[i++] = const_cast<char*>("--configure-jsc-for-testing");
+#endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     argv[i++] = const_cast<char*>(realPluginPath.data());
 #else
@@ -146,9 +169,9 @@ void ProcessLauncher::launchProcess()
     if (sandboxEnv)
         sandboxEnabled = !strcmp(sandboxEnv, "1");
 
-    // You cannot use bubblewrap within Flatpak so lets ensure it never happens.
+    // You cannot use bubblewrap within Flatpak or Docker so lets ensure it never happens.
     // Snap can allow it but has its own limitations that require workarounds.
-    if (sandboxEnabled && !isInsideFlatpak() && !isInsideSnap())
+    if (sandboxEnabled && !isInsideFlatpak() && !isInsideSnap() && !isInsideDocker())
         process = bubblewrapSpawn(launcher.get(), m_launchOptions, argv, &error.outPtr());
     else
 #endif

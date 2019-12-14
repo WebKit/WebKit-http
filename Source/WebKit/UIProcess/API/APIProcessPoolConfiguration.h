@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,8 +45,6 @@ namespace API {
 class ProcessPoolConfiguration final : public ObjectImpl<Object::Type::ProcessPoolConfiguration> {
 public:
     static Ref<ProcessPoolConfiguration> create();
-    static Ref<ProcessPoolConfiguration> createWithLegacyOptions();
-    static Ref<ProcessPoolConfiguration> createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStoreConfiguration&);
 
     explicit ProcessPoolConfiguration();
     virtual ~ProcessPoolConfiguration();
@@ -56,9 +54,6 @@ public:
     bool usesSingleWebProcess() const { return m_usesSingleWebProcess; }
     void setUsesSingleWebProcess(bool enabled) { m_usesSingleWebProcess = enabled; }
 
-    uint32_t downloadMonitorSpeedMultiplier() const { return m_downloadMonitorSpeedMultiplier; }
-    void setDownloadMonitorSpeedMultiplier(uint32_t multiplier) { m_downloadMonitorSpeedMultiplier = multiplier; }
-    
     bool isAutomaticProcessWarmingEnabled() const
     {
         return m_isAutomaticProcessWarmingEnabledByClient.valueOr(m_clientWouldBenefitFromAutomaticProcessPrewarming);
@@ -73,43 +68,14 @@ public:
     bool clientWouldBenefitFromAutomaticProcessPrewarming() const { return m_clientWouldBenefitFromAutomaticProcessPrewarming; }
     void setClientWouldBenefitFromAutomaticProcessPrewarming(bool value) { m_clientWouldBenefitFromAutomaticProcessPrewarming = value; }
 
-    bool diskCacheSpeculativeValidationEnabled() const { return m_diskCacheSpeculativeValidationEnabled; }
-    void setDiskCacheSpeculativeValidationEnabled(bool enabled) { m_diskCacheSpeculativeValidationEnabled = enabled; }
-
-    WebKit::CacheModel cacheModel() const { return m_cacheModel; }
-    void setCacheModel(WebKit::CacheModel cacheModel) { m_cacheModel = cacheModel; }
-
-    const WTF::String& applicationCacheDirectory() const { return m_applicationCacheDirectory; }
-    void setApplicationCacheDirectory(const WTF::String& applicationCacheDirectory) { m_applicationCacheDirectory = applicationCacheDirectory; }
-
-    const WTF::String& applicationCacheFlatFileSubdirectoryName() const { return m_applicationCacheFlatFileSubdirectoryName; }
-
-    const WTF::String& diskCacheDirectory() const { return m_diskCacheDirectory; }
-    void setDiskCacheDirectory(const WTF::String& diskCacheDirectory) { m_diskCacheDirectory = diskCacheDirectory; }
-
-    const WTF::String& mediaCacheDirectory() const { return m_mediaCacheDirectory; }
-    void setMediaCacheDirectory(const WTF::String& mediaCacheDirectory) { m_mediaCacheDirectory = mediaCacheDirectory; }
-    
-    const WTF::String& indexedDBDatabaseDirectory() const { return m_indexedDBDatabaseDirectory; }
-    void setIndexedDBDatabaseDirectory(const WTF::String& indexedDBDatabaseDirectory) { m_indexedDBDatabaseDirectory = indexedDBDatabaseDirectory; }
+    void setUsesPageCache(bool value) { m_usesPageCache = value; }
+    bool usesPageCache() const { return m_usesPageCache; }
 
     const WTF::String& injectedBundlePath() const { return m_injectedBundlePath; }
     void setInjectedBundlePath(const WTF::String& injectedBundlePath) { m_injectedBundlePath = injectedBundlePath; }
 
-    const WTF::String& localStorageDirectory() const { return m_localStorageDirectory; }
-    void setLocalStorageDirectory(const WTF::String& localStorageDirectory) { m_localStorageDirectory = localStorageDirectory; }
-
-    const WTF::String& deviceIdHashSaltsStorageDirectory() const { return m_deviceIdHashSaltsStorageDirectory; }
-    void setDeviceIdHashSaltsStorageDirectory(const WTF::String& directory) { m_deviceIdHashSaltsStorageDirectory = directory; }
-
-    const WTF::String& webSQLDatabaseDirectory() const { return m_webSQLDatabaseDirectory; }
-    void setWebSQLDatabaseDirectory(const WTF::String& webSQLDatabaseDirectory) { m_webSQLDatabaseDirectory = webSQLDatabaseDirectory; }
-
-    const WTF::String& mediaKeysStorageDirectory() const { return m_mediaKeysStorageDirectory; }
-    void setMediaKeysStorageDirectory(const WTF::String& mediaKeysStorageDirectory) { m_mediaKeysStorageDirectory = mediaKeysStorageDirectory; }
-
-    const WTF::String& resourceLoadStatisticsDirectory() const { return m_resourceLoadStatisticsDirectory; }
-    void setResourceLoadStatisticsDirectory(const WTF::String& resourceLoadStatisticsDirectory) { m_resourceLoadStatisticsDirectory = resourceLoadStatisticsDirectory; }
+    const Vector<WTF::String>& customClassesForParameterCoder() const { return m_customClassesForParameterCoder; }
+    void setCustomClassesForParameterCoder(Vector<WTF::String>&& classesForCoder) { m_customClassesForParameterCoder = WTFMove(classesForCoder); }
 
     const Vector<WTF::String>& cachePartitionedURLSchemes() { return m_cachePartitionedURLSchemes; }
     void setCachePartitionedURLSchemes(Vector<WTF::String>&& cachePartitionedURLSchemes) { m_cachePartitionedURLSchemes = WTFMove(cachePartitionedURLSchemes); }
@@ -147,6 +113,8 @@ public:
     bool shouldCaptureDisplayInUIProcess() const { return m_shouldCaptureDisplayInUIProcess; }
     void setShouldCaptureDisplayInUIProcess(bool shouldCaptureDisplayInUIProcess) { m_shouldCaptureDisplayInUIProcess = shouldCaptureDisplayInUIProcess; }
 
+    bool shouldConfigureJSCForTesting() const { return m_shouldConfigureJSCForTesting; }
+    void setShouldConfigureJSCForTesting(bool value) { m_shouldConfigureJSCForTesting = value; }
     bool isJITEnabled() const { return m_isJITEnabled; }
     void setJITEnabled(bool enabled) { m_isJITEnabled = enabled; }
     
@@ -173,9 +141,6 @@ public:
 
     const WTF::String& customWebContentServiceBundleIdentifier() const { return m_customWebContentServiceBundleIdentifier; }
     void setCustomWebContentServiceBundleIdentifier(const WTF::String& customWebContentServiceBundleIdentifier) { m_customWebContentServiceBundleIdentifier = customWebContentServiceBundleIdentifier; }
-
-    const WTF::String& hstsStorageDirectory() const { return m_hstsStorageDirectory; }
-    void setHSTSStorageDirectory(WTF::String&& directory) { m_hstsStorageDirectory = WTFMove(directory); }
     
 #if PLATFORM(COCOA)
     bool suppressesConnectionTerminationOnSystemChange() const { return m_suppressesConnectionTerminationOnSystemChange; }
@@ -183,20 +148,8 @@ public:
 #endif
 
 private:
-    bool m_diskCacheSpeculativeValidationEnabled { false };
-    WebKit::CacheModel m_cacheModel { WebKit::CacheModel::PrimaryWebBrowser };
-
-    WTF::String m_applicationCacheDirectory;
-    WTF::String m_applicationCacheFlatFileSubdirectoryName;
-    WTF::String m_diskCacheDirectory;
-    WTF::String m_mediaCacheDirectory;
-    WTF::String m_indexedDBDatabaseDirectory;
     WTF::String m_injectedBundlePath;
-    WTF::String m_localStorageDirectory;
-    WTF::String m_deviceIdHashSaltsStorageDirectory;
-    WTF::String m_webSQLDatabaseDirectory;
-    WTF::String m_mediaKeysStorageDirectory;
-    WTF::String m_resourceLoadStatisticsDirectory;
+    Vector<WTF::String> m_customClassesForParameterCoder;
     Vector<WTF::String> m_cachePartitionedURLSchemes;
     Vector<WTF::String> m_alwaysRevalidatedURLSchemes;
     Vector<WTF::CString> m_additionalReadAccessAllowedPaths;
@@ -216,12 +169,12 @@ private:
     bool m_processSwapsOnWindowOpenWithOpener { false };
     Optional<bool> m_isAutomaticProcessWarmingEnabledByClient;
     bool m_usesWebProcessCache { false };
+    bool m_usesPageCache { true };
     bool m_clientWouldBenefitFromAutomaticProcessPrewarming { false };
     WTF::String m_customWebContentServiceBundleIdentifier;
+    bool m_shouldConfigureJSCForTesting { false };
     bool m_isJITEnabled { true };
     bool m_usesSingleWebProcess { false };
-    uint32_t m_downloadMonitorSpeedMultiplier { 1 };
-    WTF::String m_hstsStorageDirectory;
 
 #if PLATFORM(IOS_FAMILY)
     WTF::String m_ctDataConnectionServiceType;

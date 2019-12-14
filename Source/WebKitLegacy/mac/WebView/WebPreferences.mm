@@ -690,7 +690,9 @@ public:
         @NO, WebKitResizeObserverEnabledPreferenceKey,
 #endif
         @NO, WebKitCoreMathMLEnabledPreferenceKey,
+        @NO, WebKitRequestIdleCallbackEnabledPreferenceKey,
         @NO, WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey,
+        @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -3497,6 +3499,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCoreMathMLEnabledPreferenceKey];
 }
 
+- (BOOL)requestIdleCallbackEnabled
+{
+    return [self _boolValueForKey:WebKitRequestIdleCallbackEnabledPreferenceKey];
+}
+
+- (void)setRequestIdleCallbackEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitRequestIdleCallbackEnabledPreferenceKey];
+}
+
 - (BOOL)linkPreloadResponsiveImagesEnabled
 {
     return [self _boolValueForKey:WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey];
@@ -3505,6 +3517,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setLinkPreloadResponsiveImagesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey];
+}
+
+- (BOOL)cssShadowPartsEnabled
+{
+    return [self _boolValueForKey:WebKitCSSShadowPartsEnabledPreferenceKey];
+}
+
+- (void)setCSSShadowPartsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSShadowPartsEnabledPreferenceKey];
 }
 
 @end

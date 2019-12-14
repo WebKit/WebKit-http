@@ -42,6 +42,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 @interface NSObject (UIAccessibilityHidden)
 - (id)accessibilityHitTest:(CGPoint)point;
 - (id)accessibilityLinkedElement;
+- (id)accessibilityTitleElement;
 - (NSRange)accessibilityColumnRange;
 - (NSRange)accessibilityRowRange;
 - (id)accessibilityElementForRow:(NSInteger)row andColumn:(NSInteger)column;
@@ -58,7 +59,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSRange)_accessibilitySelectedTextRange;
 - (void)_accessibilitySetSelectedTextRange:(NSRange)range;
 - (BOOL)accessibilityReplaceRange:(NSRange)range withText:(NSString *)string;
-- (BOOL)_accessibilityInsertText:(NSString *)text;
+- (BOOL)accessibilityInsertText:(NSString *)text;
 - (void)accessibilitySetPostedNotificationCallback:(AXPostedNotificationCallback)function withContext:(void*)context;
 - (CGFloat)_accessibilityMinValue;
 - (CGFloat)_accessibilityMaxValue;
@@ -97,11 +98,13 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSString *)stringForTextMarkers:(NSArray *)markers;
 - (id)startOrEndTextMarkerForTextMarkers:(NSArray*)textMarkers isStart:(BOOL)isStart;
 - (NSArray *)textMarkerRangeForMarkers:(NSArray *)textMarkers;
+- (NSInteger)positionForTextMarker:(id)marker;
 - (id)nextMarkerForMarker:(id)marker;
 - (id)previousMarkerForMarker:(id)marker;
 - (id)accessibilityObjectForTextMarker:(id)marker;
 - (id)lineStartMarkerForMarker:(id)marker;
 - (id)lineEndMarkerForMarker:(id)marker;
+- (NSArray *)misspellingTextMarkerRange:(NSArray *)startTextMarkerRange forward:(BOOL)forward;
 - (NSArray *)textMarkerRangeFromMarkers:(NSArray *)markers withText:(NSString *)text;
 - (BOOL)_accessibilityIsInTableCell;
 @end
@@ -324,6 +327,9 @@ RefPtr<AccessibilityUIElement> AccessibilityUIElement::selectedRowAtIndex(unsign
 
 RefPtr<AccessibilityUIElement> AccessibilityUIElement::titleUIElement()
 {
+    id titleElement = [m_element accessibilityTitleElement];
+    if (titleElement)
+        return AccessibilityUIElement::create(titleElement);
     return nullptr;
 }
 
@@ -467,7 +473,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::subrole()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::roleDescription()
 {
-    return createEmptyJSString();
+    return concatenateAttributeAndValue(@"AXRoleDescription", [m_element accessibilityRoleDescription]);
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::computedRoleString()
@@ -1102,6 +1108,12 @@ RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::lineTextMarkerRange
     return AccessibilityTextMarkerRange::create(textMarkerRange);
 }
 
+RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::misspellingTextMarkerRange(AccessibilityTextMarkerRange* start, bool forward)
+{
+    id misspellingRange = [m_element misspellingTextMarkerRange:(id)start->platformTextMarkerRange() forward:forward];
+    return AccessibilityTextMarkerRange::create(misspellingRange);
+}
+
 RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRangeForElement(AccessibilityUIElement* element)
 {
     id textMarkerRange = [element->platformUIElement() textMarkerRange];
@@ -1172,7 +1184,7 @@ bool AccessibilityUIElement::replaceTextInRange(JSStringRef string, int location
 
 bool AccessibilityUIElement::insertText(JSStringRef text)
 {
-    return [m_element _accessibilityInsertText:[NSString stringWithJSStringRef:text]];
+    return [m_element accessibilityInsertText:[NSString stringWithJSStringRef:text]];
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForPoint(int x, int y)
@@ -1205,7 +1217,7 @@ bool AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute
 
 int AccessibilityUIElement::indexForTextMarker(AccessibilityTextMarker* marker)
 {
-    return -1;
+    return [m_element positionForTextMarker:(__bridge id)marker->platformTextMarker()];
 }
 
 bool AccessibilityUIElement::isTextMarkerValid(AccessibilityTextMarker* textMarker)

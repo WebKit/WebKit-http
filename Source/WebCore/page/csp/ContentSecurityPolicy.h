@@ -37,7 +37,8 @@
 #include <wtf/text/TextPosition.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
+using ExecState = CallFrame;
 }
 
 namespace WTF {
@@ -172,10 +173,10 @@ public:
     void setInsecureNavigationRequestsToUpgrade(HashSet<SecurityOriginData>&&);
 
     void setClient(ContentSecurityPolicyClient* client) { m_client = client; }
+    void updateSourceSelf(const SecurityOrigin&);
 
 private:
     void logToConsole(const String& message, const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), const WTF::OrdinalNumber& contextColumn = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
-    void updateSourceSelf(const SecurityOrigin&);
     void applyPolicyToScriptExecutionContext();
 
     // Implements the deprecated CSP2 "strip uri for reporting" algorithm from <https://www.w3.org/TR/CSP2/#violation-reports>.

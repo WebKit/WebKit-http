@@ -1,43 +1,201 @@
+CONSOLE MESSAGE: Unhandled Promise Rejection: 123
+Tests for the Runtime.getProperties command.
+
 
 == Running test suite: Runtime.getProperties
--- Running test case: CheckPropertiesOfWrapperObject
-Evaluating expression: (function(){var r = Object(5); r.foo = 'cat';return r;})()
+-- Running test case: Runtime.getProperties.Object
+Evaluating expression...
+Getting own properties...
 Properties:
-  __proto__ object Number
-  foo string cat
+    "foo"        =>  "cat" (string)  [writable | enumerable | configurable | isOwn]
+    "__proto__"  =>  "Number" (object)  [writable | configurable | isOwn]
 
--- Running test case: CheckPropertiesOfArray
-Evaluating expression: ['red', 'green', 'blue']
+-- Running test case: Runtime.getProperties.Array
+Evaluating expression...
+Getting own properties...
 Properties:
-  __proto__ object Array
-  0 string red
-  1 string green
-  2 string blue
+    "0"          =>  "red" (string)  [writable | enumerable | configurable | isOwn]
+    "1"          =>  "green" (string)  [writable | enumerable | configurable | isOwn]
+    "2"          =>  "blue" (string)  [writable | enumerable | configurable | isOwn]
+    "__proto__"  =>  "Array" (object array)  [writable | configurable | isOwn]
 
--- Running test case: CheckPropertiesOfBoundConstructor
-Evaluating expression: Number.bind({}, 5)
+-- Running test case: Runtime.getProperties.Constructor
+Evaluating expression...
+Getting own properties...
 Properties:
-  __proto__ function function () {
-    [native code]
-}
-  length number 0
-  name string bound Number
-Internal properties:
-  boundArgs object Array
-  boundThis object Object
-  targetFunction function function Number() {
-    [native code]
-}
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "prototype"  =>  "Test" (object)  [isOwn]
+    "name"       =>  "Test" (string)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
 
--- Running test case: CheckPropertiesOfBoundFunctionNoArguments
-Evaluating expression: (function(){}).bind(null)
+-- Running test case: Runtime.getProperties.BoundConstructor
+Evaluating expression...
+Getting own properties...
 Properties:
-  __proto__ function function () {
-    [native code]
-}
-  length number 0
-  name string bound 
-Internal properties:
-  boundThis object undefined
-  targetFunction function function (){}
+    "name"       =>  "bound Test" (string)  [configurable | isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "class Test { }" (function class)  []
+    "boundThis"       =>  null (object null)  []
+
+-- Running test case: Runtime.getProperties.BoundConstructorArguments
+Evaluating expression...
+Getting own properties...
+Properties:
+    "name"       =>  "bound Test" (string)  [configurable | isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "class Test { }" (function class)  []
+    "boundThis"       =>  null (object null)  []
+    "boundArgs"       =>  "Array" (object array)  []
+
+-- Running test case: Runtime.getProperties.Function
+Evaluating expression...
+Getting own properties...
+Properties:
+    "arguments"  =>  null (object null)  [isOwn]
+    "caller"     =>  null (object null)  [isOwn]
+    "length"     =>  3 (number)  [configurable | isOwn]
+    "name"       =>  "" (string)  [configurable | isOwn]
+    "prototype"  =>  "Object" (object)  [writable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.FunctionNoParameters
+Evaluating expression...
+Getting own properties...
+Properties:
+    "arguments"  =>  null (object null)  [isOwn]
+    "caller"     =>  null (object null)  [isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "name"       =>  "" (string)  [configurable | isOwn]
+    "prototype"  =>  "Object" (object)  [writable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.BoundFunction
+Evaluating expression...
+Getting own properties...
+Properties:
+    "name"       =>  "bound " (string)  [configurable | isOwn]
+    "length"     =>  3 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "function (a, b, c){}" (function)  []
+    "boundThis"       =>  null (object null)  []
+
+-- Running test case: Runtime.getProperties.BoundFunctionWithArguments
+Evaluating expression...
+Getting own properties...
+Properties:
+    "name"       =>  "bound " (string)  [configurable | isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "function (a, b, c){}" (function)  []
+    "boundThis"       =>  null (object null)  []
+    "boundArgs"       =>  "Array" (object array)  []
+
+-- Running test case: Runtime.getProperties.BoundFunctionNoParameters
+Evaluating expression...
+Getting own properties...
+Properties:
+    "name"       =>  "bound " (string)  [configurable | isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "function (){}" (function)  []
+    "boundThis"       =>  null (object null)  []
+
+-- Running test case: Runtime.getProperties.BoundFunctionNoParametersWithArguments
+Evaluating expression...
+Getting own properties...
+Properties:
+    "name"       =>  "bound " (string)  [configurable | isOwn]
+    "length"     =>  0 (number)  [configurable | isOwn]
+    "__proto__"  =>  "function () {\n    [native code]\n}" (function)  [writable | configurable | isOwn]
+Internal Properties:
+    "targetFunction"  =>  "function (){}" (function)  []
+    "boundThis"       =>  null (object null)  []
+    "boundArgs"       =>  "Array" (object array)  []
+
+-- Running test case: Runtime.getProperties.Promise.Resolved
+Evaluating expression...
+Getting own properties...
+Properties:
+    "__proto__"  =>  "Promise" (object)  [writable | configurable | isOwn]
+Internal Properties:
+    "status"  =>  "resolved" (string)  []
+    "result"  =>  123 (number)  []
+
+-- Running test case: Runtime.getProperties.Promise.Rejected
+Evaluating expression...
+Getting own properties...
+Properties:
+    "__proto__"  =>  "Promise" (object)  [writable | configurable | isOwn]
+Internal Properties:
+    "status"  =>  "rejected" (string)  []
+    "result"  =>  123 (number)  []
+
+-- Running test case: Runtime.getProperties.fetchStart.Object
+Evaluating expression...
+Getting own properties with fetchStart 5...
+Properties:
+    "U"  =>  5 (number)  [writable | enumerable | configurable | isOwn]
+    "G"  =>  6 (number)  [writable | enumerable | configurable | isOwn]
+    "S"  =>  7 (number)  [writable | enumerable | configurable | isOwn]
+    "I"  =>  8 (number)  [writable | enumerable | configurable | isOwn]
+    "Q"  =>  9 (number)  [writable | enumerable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.fetchCount.Object
+Evaluating expression...
+Getting own properties with fetchCount 5...
+ASSERT: Should only get 5 properties.
+Properties:
+    "A"          =>  0 (number)  [writable | enumerable | configurable | isOwn]
+    "Y"          =>  1 (number)  [writable | enumerable | configurable | isOwn]
+    "C"          =>  2 (number)  [writable | enumerable | configurable | isOwn]
+    "W"          =>  3 (number)  [writable | enumerable | configurable | isOwn]
+    "E"          =>  4 (number)  [writable | enumerable | configurable | isOwn]
+    "__proto__"  =>  "Object" (object)  [writable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.fetchStartCount.Object
+Evaluating expression...
+Getting own properties with fetchStart 3 with fetchCount 4...
+Properties:
+    "W"  =>  3 (number)  [writable | enumerable | configurable | isOwn]
+    "E"  =>  4 (number)  [writable | enumerable | configurable | isOwn]
+    "U"  =>  5 (number)  [writable | enumerable | configurable | isOwn]
+    "G"  =>  6 (number)  [writable | enumerable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.fetchStart.Array
+Evaluating expression...
+Getting own properties with fetchStart 5...
+Properties:
+    "5"  =>  "U" (string)  [writable | enumerable | configurable | isOwn]
+    "6"  =>  "G" (string)  [writable | enumerable | configurable | isOwn]
+    "7"  =>  "S" (string)  [writable | enumerable | configurable | isOwn]
+    "8"  =>  "I" (string)  [writable | enumerable | configurable | isOwn]
+    "9"  =>  "Q" (string)  [writable | enumerable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.fetchCount.Array
+Evaluating expression...
+Getting own properties with fetchCount 5...
+ASSERT: Should only get 5 properties.
+Properties:
+    "0"          =>  "A" (string)  [writable | enumerable | configurable | isOwn]
+    "1"          =>  "Y" (string)  [writable | enumerable | configurable | isOwn]
+    "2"          =>  "C" (string)  [writable | enumerable | configurable | isOwn]
+    "3"          =>  "W" (string)  [writable | enumerable | configurable | isOwn]
+    "4"          =>  "E" (string)  [writable | enumerable | configurable | isOwn]
+    "__proto__"  =>  "Array" (object array)  [writable | configurable | isOwn]
+
+-- Running test case: Runtime.getProperties.fetchStartCount.Array
+Evaluating expression...
+Getting own properties with fetchStart 3 with fetchCount 4...
+Properties:
+    "3"  =>  "W" (string)  [writable | enumerable | configurable | isOwn]
+    "4"  =>  "E" (string)  [writable | enumerable | configurable | isOwn]
+    "5"  =>  "U" (string)  [writable | enumerable | configurable | isOwn]
+    "6"  =>  "G" (string)  [writable | enumerable | configurable | isOwn]
 

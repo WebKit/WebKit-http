@@ -84,6 +84,7 @@ public:
         ScrollbarPart scrollbarPart { NoPart };
         const ContainerNode* scope { nullptr };
         bool isMatchingHostPseudoClass { false };
+        const Element* shadowHostInPartRuleScope { nullptr };
 
         // FIXME: It would be nicer to have a separate object for return values. This requires some more work in the selector compiler.
         Style::Relations styleRelations;
@@ -96,6 +97,7 @@ public:
 
     static bool isCommonPseudoClassSelector(const CSSSelector*);
     static bool matchesFocusPseudoClass(const Element&);
+    static bool matchesDirectFocusPseudoClass(const Element&);
     static bool attributeSelectorMatches(const Element&, const QualifiedName&, const AtomString& attributeValue, const CSSSelector&);
 
     enum LinkMatchMask { MatchDefault = 0, MatchLink = 1, MatchVisited = 2, MatchAll = MatchLink | MatchVisited };

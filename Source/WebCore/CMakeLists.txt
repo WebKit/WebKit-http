@@ -28,6 +28,7 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/applepay/paymentrequest"
     "${WEBCORE_DIR}/Modules/applicationmanifest"
+    "${WEBCORE_DIR}/Modules/async-clipboard"
     "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/cache"
     "${WEBCORE_DIR}/Modules/credentialmanagement"
@@ -230,6 +231,10 @@ set(WebCore_IDL_INCLUDES
 
 set(WebCore_NON_SVG_IDL_FILES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
+
+    Modules/async-clipboard/Clipboard.idl
+    Modules/async-clipboard/ClipboardItem.idl
+    Modules/async-clipboard/NavigatorClipboard.idl
 
     Modules/beacon/NavigatorBeacon.idl
 
@@ -714,6 +719,9 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/FocusEvent.idl
     dom/GlobalEventHandlers.idl
     dom/HashChangeEvent.idl
+    dom/IdleDeadline.idl
+    dom/IdleRequestCallback.idl
+    dom/IdleRequestOptions.idl
     dom/InputEvent.idl
     dom/KeyboardEvent.idl
     dom/MessageChannel.idl

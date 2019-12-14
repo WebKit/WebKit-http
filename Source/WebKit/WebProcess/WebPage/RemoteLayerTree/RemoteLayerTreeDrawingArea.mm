@@ -116,6 +116,16 @@ void RemoteLayerTreeDrawingArea::willDestroyDisplayRefreshMonitor(DisplayRefresh
         m_displayRefreshMonitorsToNotify->remove(remoteMonitor);
 }
 
+void RemoteLayerTreeDrawingArea::adoptDisplayRefreshMonitorsFromDrawingArea(DrawingArea& drawingArea)
+{
+    if (is<RemoteLayerTreeDrawingArea>(drawingArea)) {
+        auto& otherDrawingArea = downcast<RemoteLayerTreeDrawingArea>(drawingArea);
+        m_displayRefreshMonitors = WTFMove(otherDrawingArea.m_displayRefreshMonitors);
+        for (auto* monitor : m_displayRefreshMonitors)
+            monitor->updateDrawingArea(*this);
+    }
+}
+
 void RemoteLayerTreeDrawingArea::updateRootLayers()
 {
     Vector<Ref<GraphicsLayer>> children;

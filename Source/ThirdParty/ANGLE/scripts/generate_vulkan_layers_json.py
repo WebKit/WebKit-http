@@ -3,7 +3,6 @@
 # Copyright 2016 The ANGLE Project Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Generate copies of the Vulkan layers JSON files, with no paths, forcing
 Vulkan to use the default search path to look for layers."""
 
@@ -29,6 +28,7 @@ def main():
     parser.add_argument('target_dir')
     parser.add_argument('version_header', help='path to vulkan_core.h')
     parser.add_argument('json_files', nargs='*')
+    parser.add_argument('--replacement', help='replacement for the library', default=None)
     args = parser.parse_args()
 
     source_dir = args.source_dir
@@ -47,7 +47,8 @@ def main():
         os.makedirs(target_dir)
 
     # Copy the *.json files from source dir to target dir
-    if (set(glob_slash(os.path.join(source_dir, '*.json'))) != set(json_files)):
+    if (set(glob_slash(os.path.join(source_dir, '*.json'))) !=
+            set(json_files)) and data_key != 'ICD':
         print(glob.glob(os.path.join(source_dir, '*.json')))
         print('.json list in gn file is out-of-date', file=sys.stderr)
         return 1
@@ -60,13 +61,15 @@ def main():
 
         # Update the path.
         if not data_key in data:
-            raise Exception(
-                "Could not find '%s' key in %s" % (data_key, json_fname))
+            raise Exception("Could not find '%s' key in %s" % (data_key, json_fname))
 
         # The standard validation layer has no library path.
         if 'library_path' in data[data_key]:
             prev_name = os.path.basename(data[data_key]['library_path'])
-            data[data_key]['library_path'] = prev_name
+            if args.replacement:
+                data[data_key]['library_path'] = args.replacement
+            else:
+                data[data_key]['library_path'] = prev_name
 
         target_fname = os.path.join(target_dir, os.path.basename(json_fname))
         with open(target_fname, 'wb') as outfile:
@@ -75,14 +78,15 @@ def main():
     # Get the Vulkan version from the vulkan_core.h file
     vk_header_filename = args.version_header
     vk_version = None
-    with open(vk_header_filename) as vk_header_file:
-        for line in vk_header_file:
-            if line.startswith('#define VK_HEADER_VERSION'):
-                vk_version = line.split()[-1]
-                break
-    if not vk_version:
-        print('failed to extract vk_version', file=sys.stderr)
-        return 1
+    if data_key != 'ICD':
+        with open(vk_header_filename) as vk_header_file:
+            for line in vk_header_file:
+                if line.startswith('#define VK_HEADER_VERSION'):
+                    vk_version = line.split()[-1]
+                    break
+        if not vk_version:
+            print('failed to extract vk_version', file=sys.stderr)
+            return 1
 
     # Set json file prefix and suffix for generating files, default to Linux.
     relative_path_prefix = '../lib'
@@ -93,8 +97,7 @@ def main():
 
     # For each *.json.in template files in source dir generate actual json file
     # in target dir
-    if (set(glob_slash(os.path.join(source_dir, '*.json.in'))) !=
-            set(json_in_files)):
+    if (set(glob_slash(os.path.join(source_dir, '*.json.in'))) != set(json_in_files)):
         print('.json.in list in gn file is out-of-date', file=sys.stderr)
         return 1
     for json_in_name in json_in_files:
@@ -111,6 +114,7 @@ def main():
                                     relative_path_prefix + layer_lib_name)
                 line = line.replace('@VK_VERSION@', '1.1.' + vk_version)
                 json_out_file.write(line)
+
 
 if __name__ == '__main__':
     sys.exit(main())

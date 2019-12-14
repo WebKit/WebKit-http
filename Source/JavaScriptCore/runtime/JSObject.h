@@ -727,6 +727,9 @@ public:
     // This is used by JSLexicalEnvironment.
     bool putOwnDataProperty(VM&, PropertyName, JSValue, PutPropertySlot&);
     bool putOwnDataPropertyMayBeIndex(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+private:
+    void validatePutOwnDataProperty(VM&, PropertyName, JSValue);
+public:
 
     // Fast access to known property offsets.
     ALWAYS_INLINE JSValue getDirect(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
@@ -903,6 +906,8 @@ public:
     bool mayBePrototype() const;
     void didBecomePrototype();
 
+    Optional<Structure::PropertyHashEntry> findPropertyHashEntry(VM&, PropertyName) const;
+
     DECLARE_EXPORT_INFO;
 
 protected:
@@ -1032,7 +1037,7 @@ protected:
         
     // This is relevant to undecided, int32, double, and contiguous.
     unsigned countElements();
-        
+
 private:
     friend class LLIntOffsetsExtractor;
     friend class VMInspector;
@@ -1060,11 +1065,6 @@ private:
     void fillCustomGetterPropertySlot(VM&, PropertySlot&, CustomGetterSetter*, unsigned, Structure*);
 
     JS_EXPORT_PRIVATE bool getOwnStaticPropertySlot(VM&, PropertyName, PropertySlot&);
-    struct PropertyHashEntry {
-        const HashTable* table;
-        const HashTableValue* value;
-    };
-    Optional<PropertyHashEntry> findPropertyHashEntry(VM&, PropertyName) const;
         
     bool putByIndexBeyondVectorLength(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
     bool putDirectIndexBeyondVectorLengthWithArrayStorage(ExecState*, unsigned propertyName, JSValue, unsigned attributes, PutDirectIndexMode, ArrayStorage*);
@@ -1131,7 +1131,7 @@ class JSFinalObject final : public JSObject {
 
 public:
     typedef JSObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags;
+    static constexpr unsigned StructureFlags = Base::StructureFlags;
 
     static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
@@ -1139,15 +1139,15 @@ public:
     }
 
     static inline const TypeInfo typeInfo() { return TypeInfo(FinalObjectType, StructureFlags); }
-    static const IndexingType defaultIndexingType = NonArray;
+    static constexpr IndexingType defaultIndexingType = NonArray;
         
-    static const unsigned defaultSize = 64;
+    static constexpr unsigned defaultSize = 64;
     static inline unsigned defaultInlineCapacity()
     {
         return (defaultSize - allocationSize(0)) / sizeof(WriteBarrier<Unknown>);
     }
 
-    static const unsigned maxSize = 512;
+    static constexpr unsigned maxSize = 512;
     static inline unsigned maxInlineCapacity()
     {
         return (maxSize - allocationSize(0)) / sizeof(WriteBarrier<Unknown>);
@@ -1184,7 +1184,7 @@ private:
     }
 };
 
-JS_EXPORT_PRIVATE EncodedJSValue JSC_HOST_CALL objectPrivateFuncInstanceOf(ExecState*);
+JS_EXPORT_PRIVATE EncodedJSValue JSC_HOST_CALL objectPrivateFuncInstanceOf(JSGlobalObject*, CallFrame*);
 
 inline JSObject* JSObject::createRawObject(
     ExecState* exec, Structure* structure, Butterfly* butterfly)
@@ -1491,30 +1491,6 @@ inline JSValue JSObject::get(ExecState* exec, unsigned propertyName) const
         RELEASE_AND_RETURN(scope, slot.getValue(exec, propertyName));
 
     return jsUndefined();
-}
-
-inline bool JSObject::putOwnDataProperty(VM& vm, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
-{
-    ASSERT(value);
-    ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
-    ASSERT(!structure(vm)->hasGetterSetterProperties());
-    ASSERT(!structure(vm)->hasCustomGetterSetterProperties());
-
-    return putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot);
-}
-
-inline bool JSObject::putOwnDataPropertyMayBeIndex(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
-{
-    VM& vm = exec->vm();
-    ASSERT(value);
-    ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
-    ASSERT(!structure(vm)->hasGetterSetterProperties());
-    ASSERT(!structure(vm)->hasCustomGetterSetterProperties());
-
-    if (Optional<uint32_t> index = parseIndex(propertyName))
-        return putDirectIndex(exec, index.value(), value, 0, PutDirectIndexLikePutDirect);
-
-    return putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot);
 }
 
 inline bool JSObject::putDirect(VM& vm, PropertyName propertyName, JSValue value, unsigned attributes)

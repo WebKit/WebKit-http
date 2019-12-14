@@ -42,6 +42,7 @@
 #if PLATFORM(GTK)
 #include <WebCore/CairoUtilities.h>
 #include <gtk/gtk.h>
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -305,6 +306,10 @@ private:
     };
 #endif
 
+#if PLATFORM(GTK)
+    GRefPtr<GtkStyleContext> createStyleContext(const char*);
+#endif
+
     WebPageProxy& m_webPageProxy;
     ViewGestureType m_activeGestureType { ViewGestureType::None };
 
@@ -394,6 +399,7 @@ private:
 
         Seconds m_prevTime;
         double m_velocity { 0 };
+        double m_distance { 0 };
 
         Seconds m_startTime;
         Seconds m_endTime;
@@ -410,6 +416,14 @@ private:
     SwipeProgressTracker m_swipeProgressTracker;
 
     RefPtr<cairo_pattern_t> m_currentSwipeSnapshotPattern;
+    RefPtr<cairo_pattern_t> m_swipeDimmingPattern;
+    RefPtr<cairo_pattern_t> m_swipeShadowPattern;
+    RefPtr<cairo_pattern_t> m_swipeBorderPattern;
+    RefPtr<cairo_pattern_t> m_swipeOutlinePattern;
+    int m_swipeShadowSize;
+    int m_swipeBorderSize;
+    int m_swipeOutlineSize;
+    GRefPtr<GtkCssProvider> m_cssProvider;
 
     bool m_isSimulatedSwipe { false };
 #endif

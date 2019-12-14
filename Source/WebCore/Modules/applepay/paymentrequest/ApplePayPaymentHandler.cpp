@@ -41,6 +41,7 @@
 #include "JSApplePayPayment.h"
 #include "JSApplePayPaymentMethod.h"
 #include "JSApplePayRequest.h"
+#include "JSDOMConvert.h"
 #include "LinkIconCollector.h"
 #include "MerchantValidationEvent.h"
 #include "Page.h"
@@ -51,10 +52,12 @@
 #include "PaymentCoordinator.h"
 #include "PaymentMerchantSession.h"
 #include "PaymentMethod.h"
+#include "PaymentMethodUpdate.h"
 #include "PaymentRequestValidator.h"
 #include "PaymentResponse.h"
 #include "PaymentValidationErrors.h"
 #include "Settings.h"
+#include <JavaScriptCore/JSONObject.h>
 
 namespace WebCore {
 
@@ -473,14 +476,11 @@ ExceptionOr<void> ApplePayPaymentHandler::paymentMethodUpdated()
     ASSERT(m_isUpdating);
     m_isUpdating = false;
 
-    PaymentMethodUpdate update;
-
     auto newTotalAndLineItems = computeTotalAndLineItems();
     if (newTotalAndLineItems.hasException())
         return newTotalAndLineItems.releaseException();
-    update.newTotalAndLineItems = newTotalAndLineItems.releaseReturnValue();
 
-    paymentCoordinator().completePaymentMethodSelection(WTFMove(update));
+    paymentCoordinator().completePaymentMethodSelection(PaymentMethodUpdate { newTotalAndLineItems.releaseReturnValue() });
     return { };
 }
 
@@ -592,7 +592,7 @@ void ApplePayPaymentHandler::didSelectPaymentMethod(const PaymentMethod& payment
     });
 }
 
-void ApplePayPaymentHandler::didCancelPaymentSession()
+void ApplePayPaymentHandler::didCancelPaymentSession(PaymentSessionError&&)
 {
     m_paymentRequest->cancel();
 }

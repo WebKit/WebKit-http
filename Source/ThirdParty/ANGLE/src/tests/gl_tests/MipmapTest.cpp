@@ -123,10 +123,8 @@ void main()
         ASSERT_NE(0u, mCubeProgram);
     }
 
-    void SetUp() override
+    void testSetUp() override
     {
-        ANGLETest::SetUp();
-
         setUp2DProgram();
 
         setUpCubeProgram();
@@ -166,15 +164,13 @@ void main()
         ASSERT_GL_NO_ERROR();
     }
 
-    void TearDown() override
+    void testTearDown() override
     {
         glDeleteProgram(m2DProgram);
         glDeleteProgram(mCubeProgram);
         glDeleteFramebuffers(1, &mOffscreenFramebuffer);
         glDeleteTextures(1, &mTexture2D);
         glDeleteTextures(1, &mTextureCube);
-
-        ANGLETest::TearDown();
     }
 
     std::vector<GLubyte> createRGBInitData(GLint width, GLint height, GLint r, GLint g, GLint b)
@@ -359,10 +355,8 @@ void main()
         ASSERT_GL_NO_ERROR();
     }
 
-    void SetUp() override
+    void testSetUp() override
     {
-        ANGLETest::SetUp();
-
         glGenTextures(1, &mTexture);
         ASSERT_GL_NO_ERROR();
 
@@ -372,7 +366,7 @@ void main()
         setUpCubeProgram();
     }
 
-    void TearDown() override
+    void testTearDown() override
     {
         glDeleteTextures(1, &mTexture);
 
@@ -380,8 +374,6 @@ void main()
         glDeleteProgram(m3DProgram);
         glDeleteProgram(m2DProgram);
         glDeleteProgram(mCubeProgram);
-
-        ANGLETest::TearDown();
     }
 
     GLuint mTexture;
@@ -948,6 +940,10 @@ TEST_P(MipmapTestES3, MipmapForDeepTextureArray)
 // Then tests if the mipmaps are rendered correctly for all two layers.
 TEST_P(MipmapTestES3, MipmapsForTexture3D)
 {
+    // TODO(cnorthrop): Enabled the group to cover texture base level, but this test
+    // needs some triage: http://anglebug.com/3950
+    ANGLE_SKIP_TEST_IF(IsVulkan());
+
     int px = getWindowWidth() / 2;
     int py = getWindowHeight() / 2;
 
@@ -1101,6 +1097,7 @@ TEST_P(MipmapTestES3, GenerateMipmapCubeBaseLevel)
 
     // Observed incorrect rendering on NVIDIA, level zero seems to be incorrectly affected by
     // GenerateMipmap.
+    // http://anglebug.com/3851
     ANGLE_SKIP_TEST_IF(IsNVIDIA() && IsOpenGL());
 
     // Draw using level 0. It should still be blue.
@@ -1191,6 +1188,9 @@ TEST_P(MipmapTestES3, GenerateMipmapBaseLevelOutOfRange)
 // be clamped, so the call doesn't generate an error.
 TEST_P(MipmapTestES3, GenerateMipmapBaseLevelOutOfRangeImmutableTexture)
 {
+    // TODO(cnorthrop): Interacts with immutable texture supprt: http://anglebug.com/3950
+    ANGLE_SKIP_TEST_IF(IsVulkan());
+
     glBindTexture(GL_TEXTURE_2D, mTexture);
 
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
@@ -1222,6 +1222,9 @@ TEST_P(MipmapTestES3, BaseLevelTextureBug)
     // Probably not Intel.
     ANGLE_SKIP_TEST_IF(IsOSX() && (IsNVIDIA() || IsIntel()));
 
+    // TODO(cnorthrop): Figure out what's going on here: http://anglebug.com/3950
+    ANGLE_SKIP_TEST_IF(IsVulkan());
+
     std::vector<GLColor> texDataRed(2u * 2u, GLColor::red);
 
     glBindTexture(GL_TEXTURE_2D, mTexture);
@@ -1242,16 +1245,15 @@ TEST_P(MipmapTestES3, BaseLevelTextureBug)
 }
 
 // Use this to select which configurations (e.g. which renderer, which GLES major version) these
-// tests should be run against. Note: we run these tests against 9_3 on WARP due to hardware driver
-// issues on Win7
+// tests should be run against.
 ANGLE_INSTANTIATE_TEST(MipmapTest,
                        ES2_D3D9(),
-                       ES2_D3D11(EGL_EXPERIMENTAL_PRESENT_PATH_COPY_ANGLE),
-                       ES2_D3D11(EGL_EXPERIMENTAL_PRESENT_PATH_FAST_ANGLE),
-                       ES2_D3D11_FL9_3_WARP(),
+                       ES2_D3D11(),
+                       ES2_D3D11_PRESENT_PATH_FAST(),
                        ES2_OPENGL(),
                        ES3_OPENGL(),
                        ES2_OPENGLES(),
                        ES3_OPENGLES(),
-                       ES2_VULKAN());
-ANGLE_INSTANTIATE_TEST(MipmapTestES3, ES3_D3D11(), ES3_OPENGL(), ES3_OPENGLES());
+                       ES2_VULKAN(),
+                       ES3_VULKAN());
+ANGLE_INSTANTIATE_TEST(MipmapTestES3, ES3_D3D11(), ES3_OPENGL(), ES3_OPENGLES(), ES3_VULKAN());

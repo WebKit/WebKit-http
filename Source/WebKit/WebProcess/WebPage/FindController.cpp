@@ -146,6 +146,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
             selectedFrame->selection().clear();
 
         hideFindIndicator();
+        resetMatchIndex();
         didFailToFindString();
 
         m_webPage->send(Messages::WebPageProxy::DidFailToFindString(string));
@@ -328,6 +329,10 @@ void FindController::getImageForFindMatch(uint32_t matchIndex)
         return;
 
     m_webPage->send(Messages::WebPageProxy::DidGetImageForFindMatch(handle, matchIndex));
+#if USE(DIRECT2D)
+    // Don't destroy the shared handle in the WebContent process. It will be destroyed in the UIProcess.
+    selectionSnapshot->leakSharedResource();
+#endif
 }
 
 void FindController::selectFindMatch(uint32_t matchIndex)
@@ -365,6 +370,7 @@ void FindController::hideFindUI()
         m_webPage->corePage()->unmarkAllTextMatches();
     
     hideFindIndicator();
+    resetMatchIndex();
 }
 
 #if !PLATFORM(IOS_FAMILY)
@@ -391,8 +397,12 @@ void FindController::hideFindIndicator()
 
     m_webPage->send(Messages::WebPageProxy::ClearTextIndicator());
     m_isShowingFindIndicator = false;
-    m_foundStringMatchIndex = -1;
     didHideFindIndicator();
+}
+
+void FindController::resetMatchIndex()
+{
+    m_foundStringMatchIndex = -1;
 }
 
 void FindController::willFindString()

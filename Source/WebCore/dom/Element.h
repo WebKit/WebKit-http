@@ -290,6 +290,7 @@ public:
 
     struct ShadowRootInit {
         ShadowRootMode mode;
+        bool delegatesFocus { false };
     };
     ExceptionOr<ShadowRoot&> attachShadow(const ShadowRootInit&);
 
@@ -450,6 +451,9 @@ public:
     virtual bool shouldAppearIndeterminate() const;
 
     WEBCORE_EXPORT DOMTokenList& classList();
+
+    SpaceSplitString partNames() const;
+    DOMTokenList& part();
 
     DatasetDOMStringMap& dataset();
 
@@ -613,10 +617,8 @@ protected:
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);
 
-    // classAttributeChanged() exists to share code between
-    // parseAttribute (called via setAttribute()) and
-    // svgAttributeChanged (called when element.className.baseValue is set)
     void classAttributeChanged(const AtomString& newClassString);
+    void partAttributeChanged(const AtomString& newValue);
 
     void addShadowRoot(Ref<ShadowRoot>&&);
 

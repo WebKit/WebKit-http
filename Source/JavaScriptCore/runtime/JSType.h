@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -106,8 +106,11 @@ enum JSType : uint8_t {
     WithScopeType,
     // End JSScope types.
 
+    ModuleNamespaceObjectType,
     RegExpObjectType,
     ProxyObjectType,
+    JSGeneratorType,
+    JSAsyncGeneratorType,
     JSPromiseType,
     JSMapType,
     JSSetType,

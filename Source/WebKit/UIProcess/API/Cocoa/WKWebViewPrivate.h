@@ -506,6 +506,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)_accessibilityClearSelection WK_API_AVAILABLE(ios(11.3));
 - (UIView *)_fullScreenPlaceholderView WK_API_AVAILABLE(ios(12.0));
 
+- (void)_triggerSystemPreviewActionOnFrame:(uint64_t)frameID page:(uint64_t)pageID WK_API_AVAILABLE(ios(13.0));
+
 @property (nonatomic, readonly) BOOL _contentViewIsFirstResponder WK_API_AVAILABLE(ios(12.2));
 #else
 - (void)_dismissContentRelativeChildWindows WK_API_AVAILABLE(macos(10.13.4));
@@ -541,6 +543,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macos(10.12.3));
 - (NSRect)_candidateRect WK_API_AVAILABLE(macos(10.13));
 @property (nonatomic, readwrite, setter=_setUseSystemAppearance:) BOOL _useSystemAppearance WK_API_AVAILABLE(macos(10.14));
+@property (nonatomic, readonly) NSMenu *_activeMenu WK_API_AVAILABLE(macos(WK_MAC_TBA));
 
 - (void)_setHeaderBannerHeight:(int)height WK_API_AVAILABLE(macos(10.12.3));
 - (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macos(10.12.3));

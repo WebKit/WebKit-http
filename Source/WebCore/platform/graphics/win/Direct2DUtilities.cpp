@@ -65,33 +65,45 @@ FloatSize bitmapSize(ID2D1Bitmap* bitmapSource)
     return bitmapSource->GetSize();
 }
 
-FloatPoint bitmapResolution(IWICBitmapSource* bitmapSource)
+FloatSize bitmapResolution(IWICBitmapSource* bitmapSource)
 {
-    constexpr double dpiBase = 96.0;
+    constexpr double dpiBase = 96;
 
     double dpiX, dpiY;
     HRESULT hr = bitmapSource->GetResolution(&dpiX, &dpiY);
     if (!SUCCEEDED(hr))
         return { };
 
-    FloatPoint result(dpiX, dpiY);
+    FloatSize result(dpiX, dpiY);
     result.scale(1.0 / dpiBase);
     return result;
 }
 
-FloatPoint bitmapResolution(ID2D1Bitmap* bitmap)
+FloatSize bitmapResolution(ID2D1Bitmap* bitmap)
 {
-    constexpr double dpiBase = 96.0;
+    constexpr double dpiBase = 96;
 
     float dpiX, dpiY;
     bitmap->GetDpi(&dpiX, &dpiY);
 
-    FloatPoint result(dpiX, dpiY);
+    FloatSize result(dpiX, dpiY);
     result.scale(1.0 / dpiBase);
     return result;
 
 }
 
+FloatSize bitmapResolution(ID2D1RenderTarget* target)
+{
+    constexpr double dpiBase = 96;
+
+    float dpiX, dpiY;
+    target->GetDpi(&dpiX, &dpiY);
+
+    FloatSize result(dpiX, dpiY);
+    result.scale(1.0 / dpiBase);
+    return result;
+
+}
 unsigned bitsPerPixel(GUID bitmapFormat)
 {
     COMPtr<IWICComponentInfo> componentInfo;
@@ -412,20 +424,20 @@ bool createDeviceAndContext(COMPtr<ID3D11Device1>& d3dDevice, COMPtr<ID3D11Devic
     return true;
 }
 
-COMPtr<IDXGIDevice> toDXGIDevice(const COMPtr<ID3D11Device1>& d3dDevice)
+COMPtr<IDXGIDevice1> toDXGIDevice(const COMPtr<ID3D11Device1>& d3dDevice)
 {
     if (!d3dDevice)
         return nullptr;
 
-    COMPtr<IDXGIDevice> dxgiDevice;
-    HRESULT hr = d3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void **)&dxgiDevice);
+    COMPtr<IDXGIDevice1> dxgiDevice;
+    HRESULT hr = d3dDevice->QueryInterface(__uuidof(IDXGIDevice1), (void **)&dxgiDevice);
     if (!SUCCEEDED(hr))
         return nullptr;
 
     return dxgiDevice;
 }
 
-COMPtr<IDXGIFactory2> factoryForDXGIDevice(const COMPtr<IDXGIDevice>& device)
+COMPtr<IDXGIFactory2> factoryForDXGIDevice(const COMPtr<IDXGIDevice1>& device)
 {
     if (!device)
         return nullptr;
@@ -443,6 +455,57 @@ COMPtr<IDXGIFactory2> factoryForDXGIDevice(const COMPtr<IDXGIDevice>& device)
     RELEASE_ASSERT(SUCCEEDED(hr));
     
     return factory2;
+}
+
+COMPtr<IDXGISwapChain> swapChainOfSizeForWindowAndDevice(const WebCore::IntSize& size, HWND window, const COMPtr<ID3D11Device1>& device)
+{
+    if (!device)
+        return nullptr;
+
+    DXGI_SWAP_CHAIN_DESC1 swapChainDescription;
+    ::ZeroMemory(&swapChainDescription, sizeof(swapChainDescription));
+    swapChainDescription.Width = size.width();
+    swapChainDescription.Height = size.height();
+    swapChainDescription.Format = webkitTextureFormat;
+    swapChainDescription.SampleDesc.Count = 1;
+    swapChainDescription.SampleDesc.Quality = 0;
+    swapChainDescription.BufferUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDescription.BufferCount = 1;
+    swapChainDescription.Flags = DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE;
+
+    auto factory = Direct2D::factoryForDXGIDevice(Direct2D::toDXGIDevice(device));
+
+    COMPtr<IDXGISwapChain1> swapChain1;
+    HRESULT hr = factory->CreateSwapChainForHwnd(device.get(), window, &swapChainDescription, nullptr, nullptr, &swapChain1);
+    if (!SUCCEEDED(hr))
+        return nullptr;
+
+    COMPtr<IDXGISwapChain> swapChain(Query, swapChain1);
+    return swapChain;
+}
+
+COMPtr<ID2D1Bitmap> createBitmapCopyFromContext(ID2D1BitmapRenderTarget* bitmapTarget)
+{
+    COMPtr<ID2D1Bitmap> currentCanvas;
+    HRESULT hr = bitmapTarget->GetBitmap(&currentCanvas);
+    if (!SUCCEEDED(hr))
+        return nullptr;
+
+    auto bitmapCreateProperties = bitmapProperties();
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    D2D1_SIZE_U bitmapSize = currentCanvas->GetPixelSize();
+    hr = bitmapTarget->CreateBitmap(bitmapSize, bitmapCreateProperties, &bitmap);
+    if (!SUCCEEDED(hr))
+        return nullptr;
+
+    auto targetPos = D2D1::Point2U();
+    D2D1_RECT_U dataRect = D2D1::RectU(0, 0, bitmapSize.width, bitmapSize.height);
+    hr = bitmap->CopyFromBitmap(&targetPos, currentCanvas.get(), &dataRect);
+    if (!SUCCEEDED(hr))
+        return false;
+
+    return bitmap;
 }
 
 } // namespace Direct2D

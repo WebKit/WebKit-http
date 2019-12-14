@@ -142,6 +142,15 @@ http/tests/misc/willCacheResponse-delegate-callback.html [ Skip ]
 # testRunner.setAlwaysAcceptCookies() is not implemented on Windows.
 http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Skip ]
 
+# testRunner.setStatisticsShouldDowngradeReferrer() is not supported on Windows
+http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies.php [ Skip ] 
+http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php [ Skip ] 
+http/tests/navigation/ping-attribute/area-cross-origin.html [ Skip ] 
+http/tests/navigation/ping-attribute/anchor-cross-origin.html [ Skip ] 
+http/tests/referrer-policy/no-referrer-when-downgrade/ [ Skip ] 
+http/tests/referrer-policy/unsafe-url/cross-origin-http-http.html [ Skip ] 
+http/tests/referrer-policy/unsafe-url/cross-origin-http.https.html [ Skip ] 
+
 # Dark mode not supported on Windows
 css-dark-mode [ Skip ]
 
@@ -476,6 +485,9 @@ http/tests/download/area-download.html [ Skip ]
 http/tests/security/anchor-download-allow-data.html [ Skip ]
 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 http/tests/download/anchor-download-no-value.html [ Skip ]
+http/tests/download/anchor-download-attribute-content-disposition-no-extension-octet-stream.html [ Skip ]
+http/tests/download/anchor-download-attribute-content-disposition-no-extension-text-plain.html [ Skip ]
+http/tests/security/anchor-download-octet-stream-no-extension.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
@@ -1161,7 +1173,7 @@ media/track/track-in-band-cues-added-once.html [ Skip ] # Timeout
 ###### Pasteboard
 ###### These tests are very flaky.
 editing/pasteboard/ [ Pass Failure ]
-editing/pasteboard/ios [ Skip ]
+editing/pasteboard/dom-paste/ [ Skip ]
 [ Debug ] editing/pasteboard/copy-crash.html [ Skip ] # Debug Assertion
 [ Debug ] editing/pasteboard/copy-crash-with-extraneous-attribute.html [ Skip ] # Debug Assertion
 [ Debug ] editing/pasteboard/testcase-9507.html [ Skip ] # Debug Assertion
@@ -1712,6 +1724,7 @@ webkit.org/b/184676 accessibility/ARIA-reflection.html [ Skip ]
 # Not implemented on Win
 accessibility/insert-newline.html [ Skip ]
 accessibility/media-with-aria-label.html [ Skip ]
+accessibility/misspelling-range.html [ Skip ]
 
 ################################################################################
 #######################   End Accessibility Issues   ###########################
@@ -2000,12 +2013,13 @@ inspector/canvas/recording-webgl2-memoryLimit.html [ Skip ]
 inspector/canvas/recording-webgl2-snapshots.html [ Skip ]
 inspector/canvas/requestContent-webgl.html [ Skip ]
 inspector/canvas/requestContent-webgl2.html [ Skip ]
-inspector/canvas/requestShaderSource.html [ Skip ]
+inspector/canvas/requestShaderSource-webgl.html [ Skip ]
 inspector/canvas/resolveContext-webgl.html [ Skip ]
 inspector/canvas/resolveContext-webgl2.html [ Skip ]
 inspector/canvas/shaderProgram-add-remove-webgl.html [ Skip ]
 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Skip ]
-inspector/canvas/updateShader.html [ Skip ]
+inspector/canvas/updateShader-webgl.html [ Skip ]
+
 ################################################################################
 #################          End WebGL Issues              #######################
 ################################################################################
@@ -2030,6 +2044,7 @@ mathml/presentation/mathvariant-tokens.html [ ImageOnlyFailure ]
 mathml/presentation/tokenElements-mathvariant.html [ ImageOnlyFailure ]
 mathml/non-core/lengths-1.html [ ImageOnlyFailure ]
 mathml/non-core/lengths-3.html [ Failure ]
+mathml/presentation/row-nonstretchy-or-horizontal.html [ ImageOnlyFailure ]
 ################################################################################
 #################          End MathML Issues                ####################
 ################################################################################
@@ -2402,6 +2417,7 @@ http/tests/xmlhttprequest/web-apps/012.html
 http/tests/xmlhttprequest/web-apps/013.html
 
 storage/indexeddb/storage-limit.html [ Skip ]
+storage/indexeddb/request-size-estimate.html [ Skip ]
 http/tests/IndexedDB/storage-limit.https.html [ Skip ]
 http/tests/IndexedDB/storage-limit-1.https.html [ Skip ]
 http/tests/IndexedDB/storage-limit-2.https.html [ Skip ]
@@ -2785,9 +2801,7 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/pageshow-pagehide-on-back-uncached.html [ Skip ]
 
 # Newly imported W3C tests that are failing on Windows only.
-imported/w3c/web-platform-tests/html/dom/interfaces.html [ Skip ]
 imported/w3c/web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_css.html [ Skip ]
-imported/w3c/web-platform-tests/dom/nodes/Document-URL.sub.html [ Skip ]
 
 # Weird black images
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
@@ -3161,6 +3175,7 @@ http/tests/security/isolatedWorld/number-prototype.html [ Failure Pass ]
 http/tests/security/local-video-src-from-remote.html [ Failure Pass Crash ]
 http/tests/security/video-cross-origin-caching.html [ Crash Failure Timeout Pass ]
 http/tests/security/video-poster-cross-origin-crash2.html [ Crash Failure Pass ]
+http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 security/contentSecurityPolicy/worker-inherits-blocks-eval.html [ Failure Pass ]
 storage/indexeddb/database-close-private.html [ Failure Pass ]
 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ ImageOnlyFailure Pass Crash ]
@@ -3343,6 +3358,7 @@ pageoverlay/overlay-large-document.html [ Failure ]
 security/contentSecurityPolicy/plugins-types-allows-youtube-plugin-replacement.html [ Failure ]
 storage/indexeddb/modern/blob-cursor.html [ Failure ]
 streams/readable-byte-stream-controller.html [ Failure ]
+streams/readable-byte-stream-controller-worker.html [ Failure ]
 svg/W3C-SVG-1.1/struct-dom-03-b.svg [ Failure ]
 svg/W3C-SVG-1.1/struct-dom-04-b.svg [ Failure ]
 svg/W3C-SVG-1.1/struct-dom-05-b.svg [ Failure ]
@@ -3594,7 +3610,9 @@ storage/indexeddb/version-change-event-basic.html [ Failure ]
 storage/indexeddb/wasm-exceptions.html [ Failure ]
 streams/pipe-to.html [ Failure ]
 streams/readable-stream-byob-reader.html [ Failure ]
+streams/readable-stream-byob-reader-worker.html [ Failure ]
 streams/readable-stream-byob-request.html [ Failure ]
+streams/readable-stream-byob-request-worker.html [ Failure ]
 streams/reference-implementation/bad-strategies.html [ Failure ]
 streams/reference-implementation/bad-underlying-sinks.html [ Failure ]
 streams/reference-implementation/brand-checks.html [ Failure ]
@@ -3685,6 +3703,7 @@ http/tests/preload/single_download_preload_headers_charset.php [ Crash Failure P
 http/tests/security/contentSecurityPolicy/audio-redirect-allowed.html [ Crash Timeout Pass ]
 http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html [ Timeout Failure Crash ]
 http/tests/security/contentSecurityPolicy/block-favicon.html [ Failure Pass ]
+http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Crash Pass ]
 svg/animations/animations-paused-in-background-page.html [ Timeout Pass ]
 
 # FIXME: create bugs to track the following failures:
@@ -3780,6 +3799,8 @@ webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequi
 # No service worker implementation for WK1
 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 http/tests/cache-storage [ Skip ]
+http/tests/navigation/page-cache-domcache-pending-promise.html [ Skip ]
+http/tests/navigation/page-cache-domcachestorage-pending-promise.html [ Skip ]
 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 http/tests/workers/service [ Skip ]
 http/wpt/cache-storage [ Skip ]
@@ -3796,7 +3817,6 @@ imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-or
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/request/destination [ Skip ]
 imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy [ Skip ]
-imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
 
@@ -3834,6 +3854,8 @@ webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getPa
 
 webkit.org/b/176598 http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Pass Crash ]
 webkit.org/b/176606 http/tests/preload/single_download_preload_headers.php [ Pass Crash ]
+webkit.org/b/176609 http/tests/websocket/tests/hybi/close-code-and-reason.html [ Pass Crash ]
+webkit.org/b/176632 http/tests/websocket/tests/hybi/websocket-pending-activity.html [ Pass Crash ]
 
 # Web platform tests are very slow on Windows.
 webkit.org/b/176657 imported/w3c/web-platform-tests/ [ Skip ]
@@ -3849,6 +3871,8 @@ webkit.org/b/176998 pageoverlay/overlay-small-frame-paints.html [ Failure ]
 webkit.org/b/176998 storage/indexeddb/modern/idbcursor-continue-primary-key-1.html [ Timeout ]
 
 webkit.org/b/177071 fast/events/beforeunload-dom-manipulation-crash.html [ Crash ]
+
+webkit.org/b/177072 http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl [ Failure ]
 
 webkit.org/b/177109 fast/css/display-contents-style-update.html [ ImageOnlyFailure ]
 
@@ -3959,8 +3983,6 @@ webkit.org/b/182128 fast/dom/navigator-detached-no-crash.html [ Failure ]
 
 webkit.org/b/182129 editing/input/reveal-edit-on-paste-vertically.html [ Failure ]
 
-webkit.org/b/182130 http/tests/misc/bubble-drag-events.html [ Crash Pass ]
-
 webkit.org/b/182132 accessibility/aria-combobox-control-owns-elements.html [ Skip ]
 
 webkit.org/b/182133 fast/text/font-load-data-partitioned-alphabet.html [ Failure ]
@@ -4017,6 +4039,8 @@ webkit.org/b/183955 accessibility/row-with-aria-role-in-native-table.html [ Fail
 
 webkit.org/b/184133 transitions/opacity-transition-zindex.html [ Skip ]
 webkit.org/b/184133 legacy-animation-engine/transitions/opacity-transition-zindex.html [ Skip ]
+
+webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Pass Failure ]
 
 webkit.org/b/184482 legacy-animation-engine/compositing/animation/animation-backing.html [ Failure ]
 webkit.org/b/184482 legacy-animation-engine/compositing/animation/animation-compositing.html [ Failure ]
@@ -4123,10 +4147,6 @@ webkit.org/b/188169 http/tests/security/canvas-remote-read-remote-video-hls.html
 
 webkit.org/b/188600 editing/input/press-tab-during-ime-composition.html [ Failure ]
 
-http/tests/security/mixedContent/websocket [ Skip ]
-http/tests/websocket [ Skip ]
-imported/blink/http/tests/security/mixedContent/websocket [ Skip ]
-imported/blink/http/tests/websocket [ Skip ]
 imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-allowed.sub.html [ Skip ]
 imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-blocked.sub.html [ Skip ]
 imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-self.sub.html [ Skip ]
@@ -4245,7 +4265,11 @@ webkit.org/b/190520 editing/pasteboard/copy-paste-across-shadow-boundaries-with-
 webgpu [ Skip ]
 inspector/canvas/create-context-webgpu.html [ Skip ]
 inspector/canvas/requestClientNodes-webgpu.html [ Skip ]
+inspector/canvas/requestShaderSource-webgpu.html [ Skip ]
 inspector/canvas/resolveContext-webgpu.html [ Skip ]
+inspector/canvas/shaderProgram-add-remove-webgpu.html [ Skip ]
+inspector/canvas/updateShader-webgpu.html [ Skip ]
+inspector/canvas/updateShader-webgpu-sharedVertexFragment.html [ Skip ]
 
 webkit.org/b/191194 fast/block/basic/inline-content-with-floating-image.html [ Failure ]
 webkit.org/b/191194 fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
@@ -4439,3 +4463,5 @@ imported/w3c/web-platform-tests/wasm [ Skip ]
 webkit.org/b/220830 fast/text/emoji-variation-selector.html [ ImageOnlyFailure ]
 
 webkit.org/b/201491 fast/block/float/float-with-anonymous-previous-sibling.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/202460 imported/w3c/web-platform-tests/2dcontext/image-smoothing/imagesmoothing.html [ Failure ]

@@ -579,7 +579,7 @@ TypedArrayType typedArrayTypeFromSpeculation(SpeculatedType type)
     return NotTypedArray;
 }
 
-SpeculatedType speculationFromJSType(JSType type)
+Optional<SpeculatedType> speculationFromJSType(JSType type)
 {
     switch (type) {
     case StringType:
@@ -609,9 +609,8 @@ SpeculatedType speculationFromJSType(JSType type)
     case DataViewType:
         return SpecDataViewObject;
     default:
-        ASSERT_NOT_REACHED();
+        return WTF::nullopt;
     }
-    return SpecNone;
 }
 
 SpeculatedType leastUpperBoundOfStrictlyEquivalentSpeculations(SpeculatedType type)
@@ -625,10 +624,21 @@ SpeculatedType leastUpperBoundOfStrictlyEquivalentSpeculations(SpeculatedType ty
     return type;
 }
 
+static inline SpeculatedType leastUpperBoundOfEquivalentSpeculations(SpeculatedType type)
+{
+    type = leastUpperBoundOfStrictlyEquivalentSpeculations(type);
+
+    // Boolean or BigInt can be converted to Number when performing non-strict equal.
+    if (type & (SpecIntAnyFormat | SpecNonIntAsDouble | SpecBoolean | SpecBigInt))
+        type |= (SpecIntAnyFormat | SpecNonIntAsDouble | SpecBoolean | SpecBigInt);
+
+    return type;
+}
+
 bool valuesCouldBeEqual(SpeculatedType a, SpeculatedType b)
 {
-    a = leastUpperBoundOfStrictlyEquivalentSpeculations(a);
-    b = leastUpperBoundOfStrictlyEquivalentSpeculations(b);
+    a = leastUpperBoundOfEquivalentSpeculations(a);
+    b = leastUpperBoundOfEquivalentSpeculations(b);
     
     // Anything could be equal to a string.
     if (a & SpecString)

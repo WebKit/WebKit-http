@@ -85,7 +85,7 @@ enum JSTokenType {
     DEBUGGER,
     ELSE,
     IMPORT,
-    EXPORT,
+    EXPORT_,
     CLASSTOKEN,
     EXTENDS,
     SUPER,
@@ -216,6 +216,8 @@ struct JSTextPosition {
     {
         return !(*this == other);
     }
+
+    int column() const { return offset - lineStartOffset; }
 
     int line { 0 };
     int offset { 0 };

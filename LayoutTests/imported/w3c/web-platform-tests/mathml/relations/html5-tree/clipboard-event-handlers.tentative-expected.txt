@@ -1,9 +1,12 @@
 
-PASS math.addEventListener for copy 
-FAIL oncopy: the content attribute must be compiled into a function as the corresponding property assert_true: Calling the handler must run the code expected true got undefined
-PASS math.addEventListener for cut 
-FAIL oncut: the content attribute must be compiled into a function as the corresponding property assert_true: Calling the handler must run the code expected true got undefined
-PASS math.addEventListener for paste 
-FAIL onpaste: the content attribute must be compiled into a function as the corresponding property assert_true: Calling the handler must run the code expected true got undefined
+PASS copy: dispatching an Event at a <math> element must trigger element.oncopy 
+PASS oncopy: the content attribute must be compiled into a function as the corresponding property 
+PASS oncopy: dynamic changes on the attribute 
+PASS cut: dispatching an Event at a <math> element must trigger element.oncut 
+PASS oncut: the content attribute must be compiled into a function as the corresponding property 
+PASS oncut: dynamic changes on the attribute 
+PASS paste: dispatching an Event at a <math> element must trigger element.onpaste 
+PASS onpaste: the content attribute must be compiled into a function as the corresponding property 
+PASS onpaste: dynamic changes on the attribute 
 E
 

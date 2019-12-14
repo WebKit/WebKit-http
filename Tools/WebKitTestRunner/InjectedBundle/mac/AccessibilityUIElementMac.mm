@@ -75,7 +75,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 
 @interface NSObject (WebKitAccessibilityAdditions)
 - (BOOL)accessibilityReplaceRange:(NSRange)range withText:(NSString *)string;
-- (BOOL)_accessibilityInsertText:(NSString *)text;
+- (BOOL)accessibilityInsertText:(NSString *)text;
 - (NSArray *)accessibilityArrayAttributeValues:(NSString *)attribute index:(NSUInteger)index maxCount:(NSUInteger)maxCount;
 - (NSUInteger)accessibilityIndexOfChild:(id)child;
 - (NSUInteger)accessibilityArrayAttributeCount:(NSString *)attribute;
@@ -322,6 +322,16 @@ static NSDictionary *searchTextParameterizedAttributeForCriteria(JSContextRef co
         [parameterizedAttribute setObject:[NSString stringWithJSStringRef:direction] forKey:@"AXSearchTextDirection"];
 
     return parameterizedAttribute;
+}
+
+static NSDictionary *misspellingSearchParameterizedAttributeForCriteria(AccessibilityTextMarkerRange* start, bool forward)
+{
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
+
+    [parameters setObject:(__bridge id)start->platformTextMarkerRange() forKey:@"AXStartTextMarkerRange"];
+    [parameters setObject:[NSNumber numberWithBool:forward] forKey:@"AXSearchTextDirection"];
+
+    return parameters;
 }
 
 void AccessibilityUIElement::getLinkedUIElements(Vector<RefPtr<AccessibilityUIElement> >& elementVector)
@@ -1753,6 +1763,17 @@ RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::lineTextMarkerRange
     return nullptr;
 }
 
+RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::misspellingTextMarkerRange(AccessibilityTextMarkerRange* start, bool forward)
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSDictionary *parameters = misspellingSearchParameterizedAttributeForCriteria(start, forward);
+    id textMarkerRange = [m_element accessibilityAttributeValue:@"AXMisspellingTextMarkerRange" forParameter:parameters];
+    return AccessibilityTextMarkerRange::create((__bridge CFTypeRef)textMarkerRange);
+    END_AX_OBJC_EXCEPTIONS
+
+    return nullptr;
+}
+
 RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRangeForElement(AccessibilityUIElement* element)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
@@ -1881,7 +1902,7 @@ bool AccessibilityUIElement::replaceTextInRange(JSStringRef string, int location
 bool AccessibilityUIElement::insertText(JSStringRef text)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
-    return [m_element _accessibilityInsertText:[NSString stringWithJSStringRef:text]];
+    return [m_element accessibilityInsertText:[NSString stringWithJSStringRef:text]];
     END_AX_OBJC_EXCEPTIONS
     return false;
 }

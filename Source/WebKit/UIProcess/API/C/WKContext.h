@@ -116,8 +116,8 @@ WK_EXPORT void WKContextSetHistoryClient(WKContextRef context, const WKContextHi
 WK_EXPORT void WKContextSetDownloadClient(WKContextRef context, const WKContextDownloadClientBase* client);
 WK_EXPORT void WKContextSetConnectionClient(WKContextRef context, const WKContextConnectionClientBase* client);
 
-WK_EXPORT WKDownloadRef WKContextDownloadURLRequest(WKContextRef context, WKURLRequestRef request);
-WK_EXPORT WKDownloadRef WKContextResumeDownload(WKContextRef context, WKDataRef resumeData, WKStringRef path);
+WK_EXPORT WKDownloadRef WKContextDownloadURLRequest(WKContextRef context, WKURLRequestRef request) WK_C_API_DEPRECATED;
+WK_EXPORT WKDownloadRef WKContextResumeDownload(WKContextRef context, WKDataRef resumeData, WKStringRef path) WK_C_API_DEPRECATED;
 
 WK_EXPORT void WKContextSetInitializationUserDataForInjectedBundle(WKContextRef context, WKTypeRef userData);
 WK_EXPORT void WKContextPostMessageToInjectedBundle(WKContextRef context, WKStringRef messageName, WKTypeRef messageBody);
@@ -169,6 +169,9 @@ WK_EXPORT void WKContextSetPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTi
 WK_EXPORT void WKContextRefreshPlugIns(WKContextRef context);
 
 WK_EXPORT void WKContextSetCustomWebContentServiceBundleIdentifier(WKContextRef contextRef, WKStringRef name);
+
+WK_EXPORT void WKContextSetServiceWorkerFetchTimeoutForTesting(WKContextRef contextRef, double seconds);
+WK_EXPORT void WKContextResetServiceWorkerFetchTimeoutForTesting(WKContextRef contextRef);
 
 #ifdef __cplusplus
 }

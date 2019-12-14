@@ -32,10 +32,10 @@
 
 #include "ActiveDOMObject.h"
 #include "CDMInstanceSession.h"
-#include "DOMPromiseProxy.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
+#include "IDLTypes.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeySessionType.h"
 #include "MediaKeyStatus.h"
@@ -48,9 +48,12 @@ namespace WebCore {
 
 class BufferSource;
 class CDM;
+class DeferredPromise;
 class MediaKeyStatusMap;
 class MediaKeys;
 class SharedBuffer;
+
+template<typename IDLType> class DOMPromiseProxy;
 
 class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CDMInstanceSessionClient {
     WTF_MAKE_ISO_ALLOCATED(MediaKeySession);
@@ -74,9 +77,12 @@ public:
     void remove(Ref<DeferredPromise>&&);
 
     using ClosedPromise = DOMPromiseProxy<IDLVoid>;
-    ClosedPromise& closed() { return m_closedPromise; }
+    ClosedPromise& closed() { return m_closedPromise.get(); }
 
     const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
+
+    // ActiveDOMObject
+    bool hasPendingActivity() const override;
 
 private:
     MediaKeySession(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstanceSession>&&);
@@ -97,7 +103,6 @@ private:
     void derefEventTarget() override { deref(); }
 
     // ActiveDOMObject
-    bool hasPendingActivity() const override;
     const char* activeDOMObjectName() const override;
     bool canSuspendForDocumentSuspension() const override;
     void stop() override;
@@ -105,7 +110,7 @@ private:
     WeakPtr<MediaKeys> m_keys;
     String m_sessionId;
     double m_expiration;
-    ClosedPromise m_closedPromise;
+    UniqueRef<ClosedPromise> m_closedPromise;
     Ref<MediaKeyStatusMap> m_keyStatuses;
     bool m_closed { false };
     bool m_uninitialized { true };
@@ -114,7 +119,7 @@ private:
     MediaKeySessionType m_sessionType;
     Ref<CDM> m_implementation;
     Ref<CDMInstanceSession> m_instanceSession;
-    GenericEventQueue m_eventQueue;
+    UniqueRef<MainThreadGenericEventQueue> m_eventQueue;
     GenericTaskQueue<Timer> m_taskQueue;
     Vector<Ref<SharedBuffer>> m_recordOfKeyUsage;
     double m_firstDecryptTime { 0 };

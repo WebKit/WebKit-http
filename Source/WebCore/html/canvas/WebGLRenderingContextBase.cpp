@@ -411,7 +411,7 @@ public:
 private:
     void showHightlight()
     {
-        if (!m_program || LIKELY(!InspectorInstrumentation::isShaderProgramHighlighted(m_context, *m_program)))
+        if (!m_program || LIKELY(!InspectorInstrumentation::isWebGLProgramHighlighted(m_context, *m_program)))
             return;
 
         if (hasBufferBinding(GraphicsContext3D::FRAMEBUFFER_BINDING)) {
@@ -611,7 +611,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
     if (extensions.supports("GL_EXT_debug_marker"_s))
         extensions.pushGroupMarkerEXT("WebGLRenderingContext"_s);
 
-#if ENABLE(WEBGL2) && PLATFORM(MAC)
+#if ENABLE(WEBGL2) && PLATFORM(MAC) && !USE(ANGLE)
     // glTexStorage() was only added to Core in OpenGL 4.2.
     // However, according to https://developer.apple.com/opengl/capabilities/ all Apple GPUs support this extension.
     if (attributes.isWebGL2 && !extensions.supports("GL_ARB_texture_storage"))
@@ -632,13 +632,18 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
 
 WebGLRenderingContextBase::WebGLRenderingContextBase(CanvasBase& canvas, WebGLContextAttributes attributes)
     : GPUBasedCanvasRenderingContext(canvas)
-    , m_dispatchContextLostEventTimer(*this, &WebGLRenderingContextBase::dispatchContextLostEvent)
-    , m_restoreTimer(*this, &WebGLRenderingContextBase::maybeRestoreContext)
+    , m_dispatchContextLostEventTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::dispatchContextLostEvent)
+    , m_dispatchContextChangedEventTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::dispatchContextChangedEvent)
+    , m_restoreTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::maybeRestoreContext)
     , m_attributes(attributes)
     , m_numGLErrorsToConsoleAllowed(maxGLErrorsAllowedToConsole)
     , m_isPendingPolicyResolution(true)
     , m_checkForContextLossHandlingTimer(*this, &WebGLRenderingContextBase::checkForContextLossHandling)
 {
+    m_dispatchContextLostEventTimer.suspendIfNeeded();
+    m_dispatchContextChangedEventTimer.suspendIfNeeded();
+    m_restoreTimer.suspendIfNeeded();
+
     registerWithWebGLStateTracker();
     m_checkForContextLossHandlingTimer.startOneShot(checkContextLossHandlingDelay);
 }
@@ -646,13 +651,18 @@ WebGLRenderingContextBase::WebGLRenderingContextBase(CanvasBase& canvas, WebGLCo
 WebGLRenderingContextBase::WebGLRenderingContextBase(CanvasBase& canvas, Ref<GraphicsContext3D>&& context, WebGLContextAttributes attributes)
     : GPUBasedCanvasRenderingContext(canvas)
     , m_context(WTFMove(context))
-    , m_dispatchContextLostEventTimer(*this, &WebGLRenderingContextBase::dispatchContextLostEvent)
-    , m_restoreTimer(*this, &WebGLRenderingContextBase::maybeRestoreContext)
+    , m_dispatchContextLostEventTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::dispatchContextLostEvent)
+    , m_dispatchContextChangedEventTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::dispatchContextChangedEvent)
+    , m_restoreTimer(canvas.scriptExecutionContext(), *this, &WebGLRenderingContextBase::maybeRestoreContext)
     , m_generatedImageCache(4)
     , m_attributes(attributes)
     , m_numGLErrorsToConsoleAllowed(maxGLErrorsAllowedToConsole)
     , m_checkForContextLossHandlingTimer(*this, &WebGLRenderingContextBase::checkForContextLossHandling)
 {
+    m_dispatchContextLostEventTimer.suspendIfNeeded();
+    m_dispatchContextChangedEventTimer.suspendIfNeeded();
+    m_restoreTimer.suspendIfNeeded();
+
     m_contextGroup = WebGLContextGroup::create();
     m_contextGroup->addContext(*this);
     
@@ -1754,7 +1764,7 @@ RefPtr<WebGLProgram> WebGLRenderingContextBase::createProgram()
     auto program = WebGLProgram::create(*this);
     addSharedObject(program.get());
 
-    InspectorInstrumentation::didCreateProgram(*this, program.get());
+    InspectorInstrumentation::didCreateWebGLProgram(*this, program.get());
 
     return program;
 }
@@ -1840,7 +1850,7 @@ void WebGLRenderingContextBase::deleteFramebuffer(WebGLFramebuffer* framebuffer)
 void WebGLRenderingContextBase::deleteProgram(WebGLProgram* program)
 {
     if (program)
-        InspectorInstrumentation::willDeleteProgram(*this, *program);
+        InspectorInstrumentation::willDestroyWebGLProgram(*program);
 
     deleteObject(program);
     // We don't reset m_currentProgram to 0 here because the deletion of the
@@ -2110,6 +2120,9 @@ bool WebGLRenderingContextBase::validateVertexAttributes(unsigned elementCount, 
             return false;
         }
     }
+#else
+    UNUSED_PARAM(elementCount);
+    UNUSED_PARAM(primitiveCount);
 #endif
     
     return true;
@@ -2255,7 +2268,7 @@ void WebGLRenderingContextBase::drawArrays(GC3Denum mode, GC3Dint first, GC3Dsiz
     if (!validateDrawArrays("drawArrays", mode, first, count, 0))
         return;
 
-    if (m_currentProgram && InspectorInstrumentation::isShaderProgramDisabled(*this, *m_currentProgram))
+    if (m_currentProgram && InspectorInstrumentation::isWebGLProgramDisabled(*this, *m_currentProgram))
         return;
 
     clearIfComposited();
@@ -2309,7 +2322,7 @@ void WebGLRenderingContextBase::drawElements(GC3Denum mode, GC3Dsizei count, GC3
     if (!validateDrawElements("drawElements", mode, count, type, offset, numElements, 0))
         return;
 
-    if (m_currentProgram && InspectorInstrumentation::isShaderProgramDisabled(*this, *m_currentProgram))
+    if (m_currentProgram && InspectorInstrumentation::isWebGLProgramDisabled(*this, *m_currentProgram))
         return;
 
     clearIfComposited();
@@ -5197,8 +5210,17 @@ const char* WebGLRenderingContextBase::activeDOMObjectName() const
 
 bool WebGLRenderingContextBase::canSuspendForDocumentSuspension() const
 {
-    // FIXME: We should try and do better here.
-    return false;
+    return true;
+}
+
+void WebGLRenderingContextBase::suspend(ReasonForSuspension)
+{
+    m_isSuspended = true;
+}
+
+void WebGLRenderingContextBase::resume()
+{
+    m_isSuspended = false;
 }
 
 bool WebGLRenderingContextBase::getBooleanParameter(GC3Denum pname)
@@ -6151,6 +6173,7 @@ void WebGLRenderingContextBase::restoreStatesAfterVertexAttrib0Simulation()
 
 void WebGLRenderingContextBase::dispatchContextLostEvent()
 {
+    RELEASE_ASSERT(!m_isSuspended);
     auto* canvas = htmlCanvas();
     if (!canvas)
         return;
@@ -6164,6 +6187,7 @@ void WebGLRenderingContextBase::dispatchContextLostEvent()
 
 void WebGLRenderingContextBase::maybeRestoreContext()
 {
+    RELEASE_ASSERT(!m_isSuspended);
     ASSERT(m_contextLost);
     if (!m_contextLost)
         return;
@@ -6545,6 +6569,13 @@ void WebGLRenderingContextBase::recycleContext()
 
 void WebGLRenderingContextBase::dispatchContextChangedNotification()
 {
+    if (!m_dispatchContextChangedEventTimer.isActive())
+        m_dispatchContextChangedEventTimer.startOneShot(0_s);
+}
+
+void WebGLRenderingContextBase::dispatchContextChangedEvent()
+{
+    RELEASE_ASSERT(!m_isSuspended);
     auto* canvas = htmlCanvas();
     if (!canvas)
         return;

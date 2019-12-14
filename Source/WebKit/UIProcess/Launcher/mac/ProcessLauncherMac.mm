@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,7 +58,8 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
         return "com.apple.WebKit.Networking";
 #if ENABLE(NETSCAPE_PLUGIN_API)
     case ProcessLauncher::ProcessType::Plugin32:
-        return "com.apple.WebKit.Plugin.32";
+        ASSERT_NOT_REACHED();
+        return nullptr;
     case ProcessLauncher::ProcessType::Plugin64:
         return "com.apple.WebKit.Plugin.64";
 #endif
@@ -174,8 +175,12 @@ void ProcessLauncher::launchProcess()
     // FIXME: Switch to xpc_connection_set_bootstrap once it's available everywhere we need.
     auto bootstrapMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
     
-    if (m_client && !m_client->isJITEnabled())
-        xpc_dictionary_set_bool(bootstrapMessage.get(), "disable-jit", true);
+    if (m_client) {
+        if (m_client->shouldConfigureJSCForTesting())
+            xpc_dictionary_set_bool(bootstrapMessage.get(), "configure-jsc-for-testing", true);
+        if (!m_client->isJITEnabled())
+            xpc_dictionary_set_bool(bootstrapMessage.get(), "disable-jit", true);
+    }
 
     xpc_dictionary_set_string(bootstrapMessage.get(), "message-name", "bootstrap");
 

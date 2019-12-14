@@ -36,8 +36,9 @@
 #include <wtf/WeakPtr.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSValue;
+using ExecState = CallFrame;
 };
 
 namespace WebCore {
@@ -53,7 +54,7 @@ public:
 
     struct Init {
         unsigned short status { 200 };
-        String statusText { "OK"_s };
+        String statusText;
         Optional<FetchHeaders::Init> headers;
     };
 

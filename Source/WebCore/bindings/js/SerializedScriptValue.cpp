@@ -166,6 +166,7 @@ enum SerializationTag {
 #if ENABLE(WEB_RTC)
     RTCCertificateTag = 44,
 #endif
+    ImageBitmapTag = 45,
     ErrorTag = 255
 };
 
@@ -348,6 +349,7 @@ static const unsigned StringDataIs8BitFlag = 0x80000000;
  *    | DOMQuad
  *    | ImageBitmapTransferTag <value:uint32_t>
  *    | RTCCertificateTag
+ *    | ImageBitmapTag <originClean:uint8_t> <logicalWidth:int32_t> <logicalHeight:int32_t> <resolutionScale:double> <byteLength:uint32_t>(<imageByteData:uint8_t>)
  *
  * Inside certificate, data is serialized in this format as per spec:
  *
@@ -909,8 +911,35 @@ private:
             return;
         }
 
-        // Copying ImageBitmaps is not yet supported.
-        code = SerializationReturnCode::ValidationError;
+        auto& imageBitmap = jsCast<JSImageBitmap*>(obj)->wrapped();
+        auto* buffer = imageBitmap.buffer();
+
+        if (!buffer) {
+            code = SerializationReturnCode::ValidationError;
+            return;
+        }
+
+        const IntSize& logicalSize = buffer->logicalSize();
+        auto imageData = buffer->getPremultipliedImageData(IntRect(0, 0, logicalSize.width(), logicalSize.height()));
+        if (!imageData) {
+            code = SerializationReturnCode::ValidationError;
+            return;
+        }
+
+        RefPtr<ArrayBuffer> arrayBuffer = imageData->possiblySharedBuffer();
+        if (!arrayBuffer) {
+            code = SerializationReturnCode::ValidationError;
+            return;
+        }
+
+        write(ImageBitmapTag);
+        write(static_cast<uint8_t>(imageBitmap.originClean()));
+        write(static_cast<int32_t>(logicalSize.width()));
+        write(static_cast<int32_t>(logicalSize.height()));
+        write(static_cast<double>(buffer->resolutionScale()));
+
+        write(static_cast<uint32_t>(arrayBuffer->byteLength()));
+        write(static_cast<const uint8_t*>(arrayBuffer->data()), arrayBuffer->byteLength());
     }
 
     bool dumpIfTerminal(JSValue value, SerializationReturnCode& code)
@@ -2091,7 +2120,7 @@ private:
             filePath = path->string();
 
         if (m_isDOMGlobalObject)
-            file = File::deserialize(jsCast<JSDOMGlobalObject*>(m_globalObject)->scriptExecutionContext()->sessionID(), filePath, URL(URL(), url->string()), type->string(), name->string(), optionalLastModified);
+            file = File::deserialize(filePath, URL(URL(), url->string()), type->string(), name->string(), optionalLastModified);
         return true;
     }
 
@@ -2672,7 +2701,7 @@ private:
         return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), DOMQuad::create(p1.value(), p2.value(), p3.value(), p4.value()));
     }
 
-    JSValue readImageBitmap()
+    JSValue readTransferredImageBitmap()
     {
         uint32_t index;
         bool indexSuccessfullyRead = read(index);
@@ -2734,6 +2763,37 @@ private:
         return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), WTFMove(rtcCertificate));
     }
 #endif
+
+    JSValue readImageBitmap()
+    {
+        uint8_t originClean;
+        int32_t logicalWidth;
+        int32_t logicalHeight;
+        double resolutionScale;
+        RefPtr<ArrayBuffer> arrayBuffer;
+
+        if (!read(originClean) || !read(logicalWidth) || !read(logicalHeight) || !read(resolutionScale) || !readArrayBuffer(arrayBuffer)) {
+            fail();
+            return JSValue();
+        }
+
+        auto imageData = Uint8ClampedArray::tryCreate(WTFMove(arrayBuffer), 0, arrayBuffer->byteLength());
+        if (!imageData) {
+            fail();
+            return JSValue();
+        }
+
+        auto buffer = ImageBuffer::create(FloatSize(logicalWidth, logicalHeight), Unaccelerated, resolutionScale);
+        if (!buffer) {
+            fail();
+            return JSValue();
+        }
+
+        buffer->putByteArray(*imageData, AlphaPremultiplication::Premultiplied, IntSize(logicalWidth, logicalHeight), IntRect(0, 0, logicalWidth, logicalHeight), IntPoint());
+
+        auto bitmap = ImageBitmap::create({ WTFMove(buffer), static_cast<bool>(originClean) });
+        return getJSValue(bitmap);
+    }
 
     JSValue readTerminal()
     {
@@ -2857,7 +2917,7 @@ private:
                 return JSValue();
             if (!m_isDOMGlobalObject)
                 return jsNull();
-            return getJSValue(Blob::deserialize(jsCast<JSDOMGlobalObject*>(m_globalObject)->scriptExecutionContext()->sessionID(), URL(URL(), url->string()), type->string(), size, blobFilePathForBlobURL(url->string())).get());
+            return getJSValue(Blob::deserialize(URL(URL(), url->string()), type->string(), size, blobFilePathForBlobURL(url->string())).get());
         }
         case StringTag: {
             CachedStringRef cachedString;
@@ -3024,12 +3084,14 @@ private:
         case DOMQuadTag:
             return readDOMQuad();
         case ImageBitmapTransferTag:
-            return readImageBitmap();
+            return readTransferredImageBitmap();
 #if ENABLE(WEB_RTC)
         case RTCCertificateTag:
             return readRTCCertificate();
 
 #endif
+        case ImageBitmapTag:
+            return readImageBitmap();
         default:
             m_ptr--; // Push the tag back
             return JSValue();
@@ -3569,12 +3631,12 @@ Vector<String> SerializedScriptValue::blobURLsIsolatedCopy() const
     return result;
 }
 
-void SerializedScriptValue::writeBlobsToDiskForIndexedDB(PAL::SessionID sessionID, CompletionHandler<void(IDBValue&&)>&& completionHandler)
+void SerializedScriptValue::writeBlobsToDiskForIndexedDB(CompletionHandler<void(IDBValue&&)>&& completionHandler)
 {
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());
 
-    blobRegistry().writeBlobsToTemporaryFiles(sessionID, m_blobURLs, [completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)] (auto&& blobFilePaths) mutable {
+    blobRegistry().writeBlobsToTemporaryFiles(m_blobURLs, [completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)] (auto&& blobFilePaths) mutable {
         ASSERT(isMainThread());
 
         if (blobFilePaths.isEmpty()) {
@@ -3590,7 +3652,7 @@ void SerializedScriptValue::writeBlobsToDiskForIndexedDB(PAL::SessionID sessionI
     });
 }
 
-IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously(PAL::SessionID sessionID)
+IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously()
 {
     ASSERT(!isMainThread());
 
@@ -3599,8 +3661,8 @@ IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously(PAL::S
     Condition condition;
     lock.lock();
 
-    RunLoop::main().dispatch([this, sessionID, conditionPtr = &condition, valuePtr = &value] {
-        writeBlobsToDiskForIndexedDB(sessionID, [conditionPtr, valuePtr](IDBValue&& result) {
+    RunLoop::main().dispatch([this, conditionPtr = &condition, valuePtr = &value] {
+        writeBlobsToDiskForIndexedDB([conditionPtr, valuePtr](IDBValue&& result) {
             ASSERT(isMainThread());
             valuePtr->setAsIsolatedCopy(result);
 

@@ -234,16 +234,28 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         canvas.enableExtension(extension);
     }
 
-    programCreated(canvasIdentifier, programIdentifier)
+    programCreated(shaderProgramPayload)
     {
-        let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
+        let canvas = this._canvasIdentifierMap.get(shaderProgramPayload.canvasId);
         console.assert(canvas);
         if (!canvas)
             return;
 
-        console.assert(!this._shaderProgramIdentifierMap.has(programIdentifier), `ShaderProgram already exists with id ${programIdentifier}.`);
+        let programId = shaderProgramPayload.programId;
+        console.assert(!this._shaderProgramIdentifierMap.has(programId), `ShaderProgram already exists with id ${programId}.`);
 
-        let program = new WI.ShaderProgram(programIdentifier, canvas);
+        // COMPATIBILITY (iOS 13.0): `Canvas.ShaderProgram.programType` did not exist yet.
+        let programType = shaderProgramPayload.programType;
+        if (!programType)
+            programType = WI.ShaderProgram.ProgramType.Render;
+
+        let options = {};
+
+        // COMPATIBILITY (iOS 13.0): `Canvas.ShaderProgram.sharesVertexFragmentShader` did not exist yet.
+        if (shaderProgramPayload.sharesVertexFragmentShader)
+            options.sharesVertexFragmentShader = true;
+
+        let program = new WI.ShaderProgram(programId, programType, canvas, options);
         this._shaderProgramIdentifierMap.set(program.identifier, program);
 
         canvas.shaderProgramCollection.add(program);

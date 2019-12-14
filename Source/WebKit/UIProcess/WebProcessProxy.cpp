@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "APIPageHandle.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
+#include "LoadParameters.h"
 #include "Logging.h"
 #include "PluginInfoStore.h"
 #include "PluginProcessManager.h"
@@ -43,9 +44,11 @@
 #include "WebNavigationDataStore.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
+#include "WebPageMessages.h"
 #include "WebPageProxy.h"
 #include "WebPasteboardProxy.h"
 #include "WebProcessCache.h"
+#include "WebProcessDataStoreParameters.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxyMessages.h"
@@ -138,7 +141,7 @@ Ref<WebProcessProxy> WebProcessProxy::createForServiceWorkers(WebProcessPool& pr
 {
     auto proxy = adoptRef(*new WebProcessProxy(processPool, &websiteDataStore, IsPrewarmed::No));
     proxy->m_registrableDomain = WTFMove(registrableDomain);
-    proxy->m_serviceWorkerInformation = ServiceWorkerInformation { WebPageProxyIdentifier::generate(), PageIdentifier::generate() };
+    proxy->enableServiceWorkers();
     proxy->connect();
     return proxy;
 }
@@ -228,6 +231,7 @@ void WebProcessProxy::setWebsiteDataStore(WebsiteDataStore& dataStore)
     ASSERT(!m_websiteDataStore);
     m_websiteDataStore = &dataStore;
     updateRegistrationWithDataStore();
+    send(Messages::WebProcess::SetWebsiteDataStoreParameters(processPool().webProcessDataStoreParameters(*this, dataStore)), 0);
 }
 
 void WebProcessProxy::updateRegistrationWithDataStore()
@@ -244,6 +248,7 @@ void WebProcessProxy::updateRegistrationWithDataStore()
 
 void WebProcessProxy::addProvisionalPageProxy(ProvisionalPageProxy& provisionalPage)
 {
+    ASSERT(!m_isInProcessCache);
     ASSERT(!m_provisionalPages.contains(&provisionalPage));
     m_provisionalPages.add(&provisionalPage);
     updateRegistrationWithDataStore();
@@ -254,6 +259,8 @@ void WebProcessProxy::removeProvisionalPageProxy(ProvisionalPageProxy& provision
     ASSERT(m_provisionalPages.contains(&provisionalPage));
     m_provisionalPages.remove(&provisionalPage);
     updateRegistrationWithDataStore();
+    if (m_provisionalPages.isEmpty())
+        maybeShutDown();
 }
 
 void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -299,6 +306,29 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
 {
 }
 #endif
+
+bool WebProcessProxy::shouldSendPendingMessage(const PendingMessage& message)
+{
+#if HAVE(SANDBOX_ISSUE_MACH_EXTENSION_TO_PROCESS_BY_PID)
+    if (message.encoder->messageName() == "LoadRequestWaitingForPID") {
+        auto buffer = message.encoder->buffer();
+        auto bufferSize = message.encoder->bufferSize();
+        std::unique_ptr<IPC::Decoder> decoder = makeUnique<IPC::Decoder>(buffer, bufferSize, nullptr, Vector<IPC::Attachment> { });
+        LoadParameters loadParameters;
+        URL resourceDirectoryURL;
+        WebPageProxyIdentifier pageID;
+        if (decoder->decode(loadParameters) && decoder->decode(resourceDirectoryURL) && decoder->decode(pageID)) {
+            if (auto* page = WebProcessProxy::webPage(pageID)) {
+                page->maybeInitializeSandboxExtensionHandle(static_cast<WebProcessProxy&>(*this), loadParameters.request.url(), resourceDirectoryURL, loadParameters.sandboxExtensionHandle);
+                send(Messages::WebPage::LoadRequest(loadParameters), decoder->destinationID());
+            }
+        } else
+            ASSERT_NOT_REACHED();
+        return false;
+    }
+#endif
+    return true;
+}
 
 void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 {
@@ -910,7 +940,7 @@ bool WebProcessProxy::canBeAddedToWebProcessCache() const
     return true;
 }
 
-void WebProcessProxy::maybeShutDown(AllowProcessCaching allowProcessCaching)
+void WebProcessProxy::maybeShutDown()
 {
     if (processPool().dummyProcessProxy() == this && m_pageMap.isEmpty()) {
         ASSERT(state() == State::Terminated);
@@ -921,7 +951,7 @@ void WebProcessProxy::maybeShutDown(AllowProcessCaching allowProcessCaching)
     if (state() == State::Terminated || !canTerminateAuxiliaryProcess())
         return;
 
-    if (allowProcessCaching == AllowProcessCaching::Yes && canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(*this))
+    if (canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(*this))
         return;
 
     shutDown();
@@ -929,7 +959,10 @@ void WebProcessProxy::maybeShutDown(AllowProcessCaching allowProcessCaching)
 
 bool WebProcessProxy::canTerminateAuxiliaryProcess()
 {
-    if (!m_pageMap.isEmpty() || m_suspendedPageCount || !m_provisionalPages.isEmpty() || m_isInProcessCache)
+    if (!m_pageMap.isEmpty() || m_suspendedPageCount || !m_provisionalPages.isEmpty() || m_isInProcessCache || m_shutdownPreventingScopeCount)
+        return false;
+
+    if (isRunningServiceWorkers())
         return false;
 
     if (!m_processPool->shouldTerminate(this))
@@ -974,51 +1007,51 @@ void WebProcessProxy::windowServerConnectionStateChanged()
 void WebProcessProxy::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, CompletionHandler<void(WebsiteData)>&& completionHandler)
 {
     ASSERT(canSendMessage());
+    ASSERT_UNUSED(sessionID, sessionID == this->sessionID());
 
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is fetching Website data", this);
+    RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is fetching Website data", this);
 
-    connection()->sendWithAsyncReply(Messages::WebProcess::FetchWebsiteData(sessionID, dataTypes), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler), sessionID] (auto reply) mutable {
+    connection()->sendWithAsyncReply(Messages::WebProcess::FetchWebsiteData(dataTypes), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler)] (auto reply) mutable {
 #if RELEASE_LOG_DISABLED
-        UNUSED_PARAM(sessionID);
         UNUSED_PARAM(this);
 #endif
         completionHandler(WTFMove(reply));
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done fetching Website data", this);
+        RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done fetching Website data", this);
     });
 }
 
 void WebProcessProxy::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, WallTime modifiedSince, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(canSendMessage());
+    ASSERT_UNUSED(sessionID, sessionID == this->sessionID());
 
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data", this);
+    RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data", this);
 
-    connection()->sendWithAsyncReply(Messages::WebProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler), sessionID] () mutable {
+    connection()->sendWithAsyncReply(Messages::WebProcess::DeleteWebsiteData(dataTypes, modifiedSince), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler)] () mutable {
 #if RELEASE_LOG_DISABLED
         UNUSED_PARAM(this);
-        UNUSED_PARAM(sessionID);
 #endif
         completionHandler();
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data", this);
+        RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data", this);
     });
 }
 
 void WebProcessProxy::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, const Vector<WebCore::SecurityOriginData>& origins, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(canSendMessage());
+    ASSERT_UNUSED(sessionID, sessionID == this->sessionID());
 
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data for several origins", this);
+    RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data for several origins", this);
 
-    connection()->sendWithAsyncReply(Messages::WebProcess::DeleteWebsiteDataForOrigins(sessionID, dataTypes, origins), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler), sessionID] () mutable {
+    connection()->sendWithAsyncReply(Messages::WebProcess::DeleteWebsiteDataForOrigins(dataTypes, origins), [this, protectedThis = makeRef(*this), token, completionHandler = WTFMove(completionHandler)] () mutable {
 #if RELEASE_LOG_DISABLED
         UNUSED_PARAM(this);
-        UNUSED_PARAM(sessionID);
 #endif
         completionHandler();
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data for several origins", this);
+        RELEASE_LOG_IF(isReleaseLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data for several origins", this);
     });
 }
 
@@ -1313,6 +1346,11 @@ void WebProcessProxy::isResponsiveWithLazyStop()
     }
 }
 
+bool WebProcessProxy::shouldConfigureJSCForTesting() const
+{
+    return processPool().configuration().shouldConfigureJSCForTesting();
+}
+
 bool WebProcessProxy::isJITEnabled() const
 {
     return processPool().configuration().isJITEnabled();
@@ -1431,6 +1469,9 @@ void WebProcessProxy::didStartProvisionalLoadForMainFrame(const URL& url)
 
     auto registrableDomain = WebCore::RegistrableDomain { url };
     if (m_registrableDomain && *m_registrableDomain != registrableDomain) {
+#if ENABLE(SERVICE_WORKER)
+        disableServiceWorkers();
+#endif
         // Null out registrable domain since this process has now been used for several domains.
         m_registrableDomain = WebCore::RegistrableDomain { };
         return;
@@ -1451,8 +1492,10 @@ void WebProcessProxy::decrementSuspendedPageCount()
 {
     ASSERT(m_suspendedPageCount);
     --m_suspendedPageCount;
-    if (!m_suspendedPageCount)
+    if (!m_suspendedPageCount) {
         send(Messages::WebProcess::SetHasSuspendedPageProxy(false), 0);
+        maybeShutDown();
+    }
 }
 
 WebProcessPool* WebProcessProxy::processPoolIfExists() const
@@ -1468,6 +1511,22 @@ WebProcessPool& WebProcessProxy::processPool() const
 {
     ASSERT(m_processPool);
     return *m_processPool.get();
+}
+
+PAL::SessionID WebProcessProxy::sessionID() const
+{
+    ASSERT(m_websiteDataStore);
+    return m_websiteDataStore->sessionID();
+}
+
+void WebProcessProxy::addPlugInAutoStartOriginHash(String&& pageOrigin, uint32_t hash)
+{
+    processPool().plugInAutoStartProvider().addAutoStartOriginHash(WTFMove(pageOrigin), hash, sessionID());
+}
+
+void WebProcessProxy::plugInDidReceiveUserInteraction(uint32_t hash)
+{
+    processPool().plugInAutoStartProvider().didReceiveUserInteraction(hash, sessionID());
 }
 
 #if PLATFORM(WATCHOS)
@@ -1493,9 +1552,9 @@ void WebProcessProxy::releaseBackgroundActivityTokenForFullscreenInput()
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessProxy::establishServiceWorkerContext(const WebPreferencesStore& store, PAL::SessionID sessionID)
+void WebProcessProxy::establishServiceWorkerContext(const WebPreferencesStore& store)
 {
-    send(Messages::WebProcess::EstablishWorkerContextConnectionToNetworkProcess { processPool().defaultPageGroup().pageGroupID(), m_serviceWorkerInformation->serviceWorkerPageProxyID, m_serviceWorkerInformation->serviceWorkerPageID, store, sessionID }, 0);
+    send(Messages::WebProcess::EstablishWorkerContextConnectionToNetworkProcess { processPool().defaultPageGroup().pageGroupID(), m_serviceWorkerInformation->serviceWorkerPageProxyID, m_serviceWorkerInformation->serviceWorkerPageID, store, *m_registrableDomain }, 0);
 }
 
 void WebProcessProxy::setServiceWorkerUserAgent(const String& userAgent)
@@ -1510,6 +1569,28 @@ void WebProcessProxy::updateServiceWorkerPreferencesStore(const WebPreferencesSt
     send(Messages::WebSWContextManagerConnection::UpdatePreferencesStore { store }, 0);
 }
 #endif
+
+void WebProcessProxy::disableServiceWorkers()
+{
+    if (!m_serviceWorkerInformation)
+        return;
+
+    m_serviceWorkerInformation = { };
+
+#if ENABLE(SERVICE_WORKER)
+    processPool().removeFromServiceWorkerProcesses(*this);
+    send(Messages::WebSWContextManagerConnection::Close { }, 0);
+#endif
+
+    maybeShutDown();
+}
+
+void WebProcessProxy::enableServiceWorkers()
+{
+    ASSERT(m_registrableDomain && !m_registrableDomain->isEmpty());
+    ASSERT(!m_serviceWorkerInformation);
+    m_serviceWorkerInformation = ServiceWorkerInformation { WebPageProxyIdentifier::generate(), PageIdentifier::generate() };
+}
 
 } // namespace WebKit
 

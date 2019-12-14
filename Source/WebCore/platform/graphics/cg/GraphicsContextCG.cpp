@@ -67,6 +67,11 @@ static void setCGStrokeColor(CGContextRef context, const Color& color)
     CGContextSetStrokeColorWithColor(context, cachedCGColor(color));
 }
 
+inline CGAffineTransform getUserToBaseCTM(CGContextRef context)
+{
+    return CGAffineTransformConcat(CGContextGetCTM(context), CGAffineTransformInvert(CGContextGetBaseCTM(context)));
+}
+
 CGColorSpaceRef sRGBColorSpaceRef()
 {
     static CGColorSpaceRef sRGBColorSpace;
@@ -125,7 +130,7 @@ CGColorSpaceRef displayP3ColorSpaceRef()
     static CGColorSpaceRef displayP3ColorSpace;
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
+#if PLATFORM(COCOA)
         displayP3ColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
 #else
         displayP3ColorSpace = sRGBColorSpaceRef();
@@ -1635,8 +1640,6 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, float thickness,
 
 void GraphicsContext::setURLForRect(const URL& link, const FloatRect& destRect)
 {
-    // FIXME: <rdar://problem/54900133> PDF exporting on iOS should include URL rects
-#if !PLATFORM(IOS_FAMILY)
     if (paintingDisabled())
         return;
 
@@ -1656,10 +1659,6 @@ void GraphicsContext::setURLForRect(const URL& link, const FloatRect& destRect)
     rect.intersect(CGContextGetClipBoundingBox(context));
 
     CGPDFContextSetURLForRect(context, urlRef.get(), CGRectApplyAffineTransform(rect, CGContextGetCTM(context)));
-#else
-    UNUSED_PARAM(link);
-    UNUSED_PARAM(destRect);
-#endif
 }
 
 void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality mode)

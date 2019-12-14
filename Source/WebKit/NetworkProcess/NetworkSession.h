@@ -84,16 +84,20 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     WebResourceLoadStatisticsStore* resourceLoadStatistics() const { return m_resourceLoadStatistics.get(); }
     void setResourceLoadStatisticsEnabled(bool);
+    void recreateResourceLoadStatisticStore();
+    bool isResourceLoadStatisticsEnabled() const;
     void notifyResourceLoadStatisticsProcessed();
     void deleteWebsiteDataForRegistrableDomains(OptionSet<WebsiteDataType>, Vector<std::pair<WebCore::RegistrableDomain, WebsiteDataToRemove>>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&&);
     void registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<WebCore::RegistrableDomain>&&)>&&);
     void logDiagnosticMessageWithValue(const String& message, const String& description, unsigned value, unsigned significantFigures, WebCore::ShouldSample);
-    void notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
+    void notifyPageStatisticsTelemetryFinished(unsigned numberOfPrevalentResources, unsigned numberOfPrevalentResourcesWithUserInteraction, unsigned numberOfPrevalentResourcesWithoutUserInteraction, unsigned topPrevalentResourceWithUserInteractionDaysSinceUserInteraction, unsigned medianDaysSinceUserInteractionPrevalentResourceWithUserInteraction, unsigned top3NumberOfPrevalentResourcesWithUI, unsigned top3MedianSubFrameWithoutUI, unsigned top3MedianSubResourceWithoutUI, unsigned top3MedianUniqueRedirectsWithoutUI, unsigned top3MedianDataRecordsRemovedWithoutUI);
     bool enableResourceLoadStatisticsLogTestingEvent() const { return m_enableResourceLoadStatisticsLogTestingEvent; }
     void setResourceLoadStatisticsLogTestingEvent(bool log) { m_enableResourceLoadStatisticsLogTestingEvent = log; }
     bool shouldIsolateSessionsForPrevalentTopFrames() const { return m_enableResourceLoadStatisticsNSURLSessionSwitching == EnableResourceLoadStatisticsNSURLSessionSwitching::Yes; }
     virtual bool hasIsolatedSession(const WebCore::RegistrableDomain) const { return false; }
     virtual void clearIsolatedSessions() { }
+    void setShouldDowngradeReferrerForTesting(bool);
+    bool shouldDowngradeReferrer() const;
 #endif
     void storeAdClickAttribution(WebCore::AdClickAttribution&&);
     void handleAdClickAttributionConversion(WebCore::AdClickAttribution::Conversion&&, const URL& requestURL, const WebCore::ResourceRequest& redirectRequest);
@@ -118,6 +122,8 @@ public:
 
     WebCore::BlobRegistryImpl& blobRegistry() { return m_blobRegistry; }
 
+    unsigned testSpeedMultiplier() const { return m_testSpeedMultiplier; }
+
 protected:
     NetworkSession(NetworkProcess&, const NetworkSessionCreationParameters&);
 
@@ -136,6 +142,7 @@ protected:
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
     EnableResourceLoadStatisticsNSURLSessionSwitching m_enableResourceLoadStatisticsNSURLSessionSwitching { EnableResourceLoadStatisticsNSURLSessionSwitching::No };
     bool m_enableResourceLoadStatisticsLogTestingEvent;
+    bool m_downgradeReferrer { true };
 #endif
     UniqueRef<AdClickAttributionManager> m_adClickAttribution;
 
@@ -148,6 +155,7 @@ protected:
 #endif
     RefPtr<NetworkCache::Cache> m_cache;
     WebCore::BlobRegistryImpl m_blobRegistry;
+    unsigned m_testSpeedMultiplier { 1 };
 };
 
 } // namespace WebKit

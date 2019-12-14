@@ -262,7 +262,7 @@ macro doVMEntry(makeCall)
     storep sp, VM::topCallFrame[vm]
     storep cfr, VM::topEntryFrame[vm]
 
-    makeCall(entry, t3, t4)
+    makeCall(entry, protoCallFrame, t3, t4)
 
     if ARMv7
         vmEntryRecord(cfr, t3)
@@ -319,36 +319,41 @@ macro doVMEntry(makeCall)
     ret
 end
 
-macro makeJavaScriptCall(entry, temp, unused)
+# a0, a2, t3, t4
+macro makeJavaScriptCall(entry, protoCallFrame, temp1, temp2)
     addp CallerFrameAndPCSize, sp
-    checkStackPointerAlignment(temp, 0xbad0dc02)
+    checkStackPointerAlignment(temp1, 0xbad0dc02)
     if C_LOOP or C_LOOP_WIN
         cloopCallJSFunction entry
     else
         call entry
     end
-    checkStackPointerAlignment(temp, 0xbad0dc03)
+    checkStackPointerAlignment(temp1, 0xbad0dc03)
     subp CallerFrameAndPCSize, sp
 end
 
-macro makeHostFunctionCall(entry, temp1, temp2)
+# a0, a2, t3, t4
+macro makeHostFunctionCall(entry, protoCallFrame, temp1, temp2)
     move entry, temp1
     storep cfr, [sp]
     if C_LOOP or C_LOOP_WIN
-        move sp, a0
+        loadp ProtoCallFrame::globalObject[protoCallFrame], a0
+        move sp, a1
         storep lr, PtrSize[sp]
         cloopCallNative temp1
     elsif X86 or X86_WIN
-        # Put callee frame pointer on stack as arg0, also put it in ecx for "fastcall" targets
+        # Put callee frame pointer on stack as arg1, also put it in ecx for "fastcall" targets
         move 0, temp2
         move temp2, 4[sp] # put 0 in ReturnPC
-        move sp, a0 # a0 is ecx
-        push temp2 # Push dummy arg1
+        move sp, a1 # a1 is edx
+        loadp ProtoCallFrame::globalObject[protoCallFrame], a0
+        push a1
         push a0
         call temp1
         addp 8, sp
     else
-        move sp, a0
+        loadp ProtoCallFrame::globalObject[protoCallFrame], a0
+        move sp, a1
         call temp1
     end
 end
@@ -1398,6 +1403,13 @@ llintOpWithMetadata(op_get_by_id, OpGetById, macro (size, get, dispatch, metadat
 .opGetByIdSlow:
     callSlowPath(_llint_slow_path_get_by_id)
     dispatch()
+
+.osrReturnPoint:
+    getterSetterOSRExitReturnPoint(op_get_by_id, size)
+    metadata(t2, t3)
+    valueProfile(OpGetById, t2, r1, r0)
+    return(r1, r0)
+
 end)
 
 
@@ -1460,6 +1472,11 @@ llintOpWithMetadata(op_put_by_id, OpPutById, macro (size, get, dispatch, metadat
 .opPutByIdSlow:
     callSlowPath(_llint_slow_path_put_by_id)
     dispatch()
+
+.osrReturnPoint:
+    getterSetterOSRExitReturnPoint(op_put_by_id, size)
+    dispatch()
+
 end)
 
 
@@ -1511,10 +1528,17 @@ llintOpWithMetadata(op_get_by_val, OpGetByVal, macro (size, get, dispatch, metad
 .opGetByValSlow:
     callSlowPath(_llint_slow_path_get_by_val)
     dispatch()
+
+.osrReturnPoint:
+    getterSetterOSRExitReturnPoint(op_get_by_val, size)
+    metadata(t2, t3)
+    valueProfile(OpGetByVal, t2, r1, r0)
+    return(r1, r0)
+
 end)
 
 
-macro putByValOp(opcodeName, opcodeStruct)
+macro putByValOp(opcodeName, opcodeStruct, osrExitPoint)
     llintOpWithMetadata(op_%opcodeName%, opcodeStruct, macro (size, get, dispatch, metadata, return)
         macro contiguousPutByVal(storeCallback)
             biaeq t3, -sizeof IndexingHeader + IndexingHeader::u.lengths.publicLength[t0], .outOfBounds
@@ -1602,13 +1626,20 @@ macro putByValOp(opcodeName, opcodeStruct)
     .opPutByValSlow:
         callSlowPath(_llint_slow_path_%opcodeName%)
         dispatch()
+
+    .osrExitPoint:
+        osrExitPoint(size, dispatch)
     end)
 end
 
 
-putByValOp(put_by_val, OpPutByVal)
+putByValOp(put_by_val, OpPutByVal, macro (size, dispatch)
+.osrReturnPoint:
+    getterSetterOSRExitReturnPoint(op_put_by_val, size)
+    dispatch()
+end)
 
-putByValOp(put_by_val_direct, OpPutByValDirect)
+putByValOp(put_by_val_direct, OpPutByValDirect, macro (a, b) end)
 
 
 macro llintJumpTrueOrFalseOp(opcodeName, opcodeStruct, conditionOp)
@@ -1875,10 +1906,10 @@ macro commonCallOp(opcodeName, slowPath, opcodeStruct, prepareCall, prologue)
         storei CellTag, Callee + TagOffset[t3]
         move t3, sp
         prepareCall(%opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], t2, t3, t4, JSEntryPtrTag)
-        callTargetFunction(size, opcodeStruct, dispatch, %opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], JSEntryPtrTag)
+        callTargetFunction(opcodeName, size, opcodeStruct, dispatch, %opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], JSEntryPtrTag)
 
     .opCallSlow:
-        slowPathForCall(size, opcodeStruct, dispatch, slowPath, prepareCall)
+        slowPathForCall(opcodeName, size, opcodeStruct, dispatch, slowPath, prepareCall)
     end)
 end
 
@@ -1997,12 +2028,13 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         andp MarkedBlockMask, t1
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t3
         storep cfr, VM::topCallFrame[t3]
-        move cfr, a0  # a0 = ecx
-        storep a0, [sp]
-        loadi Callee + PayloadOffset[cfr], t1
-        loadp JSFunction::m_executable[t1], t1
+        move cfr, a1  # a1 = edx
+        storep a1, [sp]
+        loadi Callee + PayloadOffset[cfr], a0
+        loadp JSFunction::m_executable[a0], a2
+        loadp JSFunction::m_globalObject[a0], a0
         checkStackPointerAlignment(t3, 0xdead0001)
-        call executableOffsetToFunction[t1]
+        call executableOffsetToFunction[a2]
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
@@ -2020,14 +2052,15 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         andp MarkedBlockMask, t1
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
         storep cfr, VM::topCallFrame[t1]
-        move cfr, a0
-        loadi Callee + PayloadOffset[cfr], t1
-        loadp JSFunction::m_executable[t1], t1
+        move cfr, a1
+        loadi Callee + PayloadOffset[cfr], a0
+        loadp JSFunction::m_executable[a0], a2
+        loadp JSFunction::m_globalObject[a0], a0
         checkStackPointerAlignment(t3, 0xdead0001)
         if C_LOOP or C_LOOP_WIN
-            cloopCallNative executableOffsetToFunction[t1]
+            cloopCallNative executableOffsetToFunction[a2]
         else
-            call executableOffsetToFunction[t1]
+            call executableOffsetToFunction[a2]
         end
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3
@@ -2065,11 +2098,12 @@ macro internalFunctionCallTrampoline(offsetOfFunction)
         andp MarkedBlockMask, t1
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t3
         storep cfr, VM::topCallFrame[t3]
-        move cfr, a0  # a0 = ecx
-        storep a0, [sp]
-        loadi Callee + PayloadOffset[cfr], t1
+        move cfr, a1  # a1 = edx
+        storep a1, [sp]
+        loadi Callee + PayloadOffset[cfr], a2
+        loadp InternalFunction::m_globalObject[a2], a0
         checkStackPointerAlignment(t3, 0xdead0001)
-        call offsetOfFunction[t1]
+        call offsetOfFunction[a2]
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
@@ -2080,13 +2114,14 @@ macro internalFunctionCallTrampoline(offsetOfFunction)
         andp MarkedBlockMask, t1
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
         storep cfr, VM::topCallFrame[t1]
-        move cfr, a0
-        loadi Callee + PayloadOffset[cfr], t1
+        move cfr, a1
+        loadi Callee + PayloadOffset[cfr], a2
+        loadp InternalFunction::m_globalObject[a2], a0
         checkStackPointerAlignment(t3, 0xdead0001)
         if C_LOOP or C_LOOP_WIN
-            cloopCallNative offsetOfFunction[t1]
+            cloopCallNative offsetOfFunction[a2]
         else
-            call offsetOfFunction[t1]
+            call offsetOfFunction[a2]
         end
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3

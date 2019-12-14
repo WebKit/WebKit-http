@@ -44,8 +44,8 @@
 #include "Page.h"
 #include "PointerLockController.h"
 #include "PseudoElement.h"
+#include "RadioButtonGroups.h"
 #include "RenderView.h"
-#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include <wtf/text/CString.h>
@@ -53,7 +53,7 @@
 namespace WebCore {
 
 struct SameSizeAsTreeScope {
-    void* pointers[9];
+    void* pointers[10];
 };
 
 COMPILE_ASSERT(sizeof(TreeScope) == sizeof(SameSizeAsTreeScope), treescope_should_stay_small);
@@ -537,6 +537,13 @@ TreeScope* commonTreeScope(Node* nodeA, Node* nodeB)
         return nullptr;
     
     return treeScopesA[indexA] == treeScopesB[indexB] ? treeScopesA[indexA] : nullptr;
+}
+
+RadioButtonGroups& TreeScope::radioButtonGroups()
+{
+    if (!m_radioButtonGroups)
+        m_radioButtonGroups = makeUnique<RadioButtonGroups>();
+    return *m_radioButtonGroups;
 }
 
 } // namespace WebCore

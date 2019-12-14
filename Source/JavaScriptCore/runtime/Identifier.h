@@ -29,7 +29,8 @@
 
 namespace JSC {
 
-class ExecState;
+class CallFrame;
+using ExecState = CallFrame;
 
 ALWAYS_INLINE bool isIndex(uint32_t index)
 {
@@ -290,7 +291,7 @@ struct IdentifierRepHash : PtrHash<RefPtr<UniquedStringImpl>> {
 
 struct IdentifierMapIndexHashTraits : HashTraits<int> {
     static int emptyValue() { return std::numeric_limits<int>::max(); }
-    static const bool emptyValueIsZero = false;
+    static constexpr bool emptyValueIsZero = false;
 };
 
 typedef HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> IdentifierSet;

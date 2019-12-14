@@ -1,5 +1,5 @@
 async function helloTriangle() {
-    if (!navigator.gpu) {
+    if (!navigator.gpu || GPUBufferUsage.COPY_SRC === undefined) {
         document.body.className = 'error';
         return;
     }
@@ -105,7 +105,7 @@ async function helloTriangle() {
         format: "bgra8unorm",
         alphaBlend: alphaBlendDescriptor,
         colorBlend: colorBlendDescriptor,
-        writeMask: GPUColorWriteBits.ALL
+        writeMask: GPUColorWrite.ALL
     };
     
     /* GPURenderPipelineDescriptor */

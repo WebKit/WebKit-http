@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 The ANGLE Project Authors. All rights reserved.
+// Copyright 2015 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -71,8 +71,13 @@ class DisplayCGL : public DisplayGL
     gl::Version getMaxSupportedESVersion() const override;
 
     CGLContextObj getCGLContext() const;
+    CGLPixelFormatObj getCGLPixelFormat() const;
 
     WorkerContext *createWorkerContext(std::string *infoLog);
+
+    void initializeFrontendFeatures(angle::FrontendFeatures *features) const override;
+
+    void populateFeatureList(angle::FeatureList *features) override;
 
     // Support for dual-GPU MacBook Pros. If the context was created
     // preferring the high-power GPU, unreference that GPU during

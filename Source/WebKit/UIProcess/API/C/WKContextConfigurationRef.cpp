@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -77,6 +77,16 @@ WKStringRef WKContextConfigurationCopyInjectedBundlePath(WKContextConfigurationR
 void WKContextConfigurationSetInjectedBundlePath(WKContextConfigurationRef configuration, WKStringRef injectedBundlePath)
 {
     toImpl(configuration)->setInjectedBundlePath(toImpl(injectedBundlePath)->string());
+}
+
+WKArrayRef WKContextConfigurationCopyCustomClassesForParameterCoder(WKContextConfigurationRef configuration)
+{
+    return toAPI(&API::Array::createStringArray(toImpl(configuration)->customClassesForParameterCoder()).leakRef());
+}
+
+void WKContextConfigurationSetCustomClassesForParameterCoder(WKContextConfigurationRef configuration, WKArrayRef classesForCoder)
+{
+    toImpl(configuration)->setCustomClassesForParameterCoder(toImpl(classesForCoder)->toStringVector());
 }
 
 WKStringRef WKContextConfigurationCopyLocalStorageDirectory(WKContextConfigurationRef)
@@ -214,3 +224,7 @@ void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef co
 {
 }
 
+void WKContextConfigurationSetShouldConfigureJSCForTesting(WKContextConfigurationRef configuration, bool value)
+{
+    toImpl(configuration)->setShouldConfigureJSCForTesting(value);
+}

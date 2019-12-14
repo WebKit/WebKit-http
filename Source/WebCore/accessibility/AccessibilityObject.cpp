@@ -73,7 +73,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RenderedPosition.h"
-#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "TextCheckerClient.h"
 #include "TextCheckingHelper.h"
@@ -461,6 +460,55 @@ bool AccessibilityObject::hasMisspelling() const
         isMisspelled = true;
     
     return isMisspelled;
+}
+
+RefPtr<Range> AccessibilityObject::getMisspellingRange(RefPtr<Range> const& start, AccessibilitySearchDirection direction) const
+{
+    auto node = this->node();
+    if (!node)
+        return nullptr;
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return nullptr;
+
+    if (!unifiedTextCheckerEnabled(frame))
+        return nullptr;
+
+    Editor& editor = frame->editor();
+
+    TextCheckerClient* textChecker = editor.textChecker();
+    if (!textChecker)
+        return nullptr;
+
+    Vector<TextCheckingResult> misspellings;
+    checkTextOfParagraph(*textChecker, stringValue(), TextCheckingType::Spelling, misspellings, frame->selection().selection());
+
+    // The returned misspellings are assumed to be ordered in the document
+    // logical order, which should be matched by Range::compareBoundaryPoints.
+    // So iterate forward or backwards depending on the desired search
+    // direction to find the closest misspelling in that direction.
+    if (direction == AccessibilitySearchDirection::Next) {
+        for (const auto& misspelling : misspellings) {
+            auto misspellingRange = editor.rangeForTextCheckingResult(misspelling);
+            if (!misspellingRange)
+                continue;
+
+            if (misspellingRange->compareBoundaryPoints(Range::END_TO_END, *start).releaseReturnValue() > 0)
+                return misspellingRange;
+        }
+    } else if (direction == AccessibilitySearchDirection::Previous) {
+        for (auto rit = misspellings.rbegin(); rit != misspellings.rend(); ++rit) {
+            auto misspellingRange = editor.rangeForTextCheckingResult(*rit);
+            if (!misspellingRange)
+                continue;
+
+            if (misspellingRange->compareBoundaryPoints(Range::START_TO_START, *start).releaseReturnValue() < 0)
+                return misspellingRange;
+        }
+    }
+
+    return nullptr;
 }
 
 unsigned AccessibilityObject::blockquoteLevel() const
@@ -933,7 +981,7 @@ Vector<String> AccessibilityObject::performTextOperation(AccessibilityTextOperat
     if (!frame)
         return result;
 
-    for (auto textRange : operation.textRanges) {
+    for (const auto& textRange : operation.textRanges) {
         if (!frame->selection().setSelectedRange(textRange.get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes))
             continue;
 
@@ -2565,9 +2613,17 @@ bool AccessibilityObject::hasHighlighting() const
 
 String AccessibilityObject::roleDescription() const
 {
-    return stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_roledescriptionAttr));
+    // aria-roledescription takes precedence over any other rule.
+    String roleDescription = stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_roledescriptionAttr));
+    if (!roleDescription.isEmpty())
+        return roleDescription;
+
+    if (roleValue() == AccessibilityRole::Figure)
+        return AXFigureText();
+
+    return roleDescription;
 }
-    
+
 bool nodeHasPresentationRole(Node* node)
 {
     return nodeHasRole(node, "presentation") || nodeHasRole(node, "none");

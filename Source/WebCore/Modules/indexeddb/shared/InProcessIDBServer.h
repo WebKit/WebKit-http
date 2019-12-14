@@ -59,6 +59,8 @@ public:
     WEBCORE_EXPORT static Ref<InProcessIDBServer> create(PAL::SessionID);
     WEBCORE_EXPORT static Ref<InProcessIDBServer> create(PAL::SessionID, const String& databaseDirectoryPath);
 
+    WEBCORE_EXPORT virtual ~InProcessIDBServer();
+
     WEBCORE_EXPORT IDBClient::IDBConnectionToServer& connectionToServer() const;
     IDBServer::IDBConnectionToClient& connectionToClient() const;
     IDBServer::IDBServer& server() { return m_server.get(); }
@@ -95,7 +97,7 @@ public:
     void getAllDatabaseNames(const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID) final;
 
     // IDBConnectionToClient
-    uint64_t identifier() const override;
+    IDBConnectionIdentifier identifier() const final;
     void didDeleteDatabase(const IDBResultData&) final;
     void didOpenDatabase(const IDBResultData&) final;
     void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&) final;

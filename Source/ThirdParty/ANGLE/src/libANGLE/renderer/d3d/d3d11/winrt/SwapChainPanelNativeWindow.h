@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2014 The ANGLE Project Authors. All rights reserved.
+// Copyright 2014 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -43,11 +43,15 @@ class SwapChainPanelNativeWindow : public InspectableNativeWindow,
     ComPtr<IDXGISwapChain1> mSwapChain;
 };
 
-[uuid(8ACBD974 - 8187 - 4508 - AD80 - AEC77F93CF36)] class SwapChainPanelSizeChangedHandler
+// clang format would break the uuid below
+// clang-format off
+[uuid(8ACBD974-8187-4508-AD80-AEC77F93CF36)] class SwapChainPanelSizeChangedHandler
     : public Microsoft::WRL::RuntimeClass<
           Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
           ABI::Windows::UI::Xaml::ISizeChangedEventHandler>
 {
+    // clang-format on
+
   public:
     SwapChainPanelSizeChangedHandler() {}
     HRESULT RuntimeClassInitialize(std::shared_ptr<InspectableNativeWindow> host)

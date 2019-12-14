@@ -20,7 +20,6 @@
 #pragma once
 
 #include "BlobData.h"
-#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/URL.h>
@@ -52,7 +51,7 @@ struct FormDataElement {
         : data(EncodedBlobData { blobURL }) { }
 
     uint64_t lengthInBytes(BlobRegistryImpl*) const;
-    uint64_t lengthInBytes(PAL::SessionID) const;
+    uint64_t lengthInBytes() const;
 
     FormDataElement isolatedCopy() const;
 
@@ -251,7 +250,7 @@ public:
         return FormURLEncoded;
     }
 
-    uint64_t lengthInBytes(PAL::SessionID) const;
+    uint64_t lengthInBytes() const;
 
     WEBCORE_EXPORT URL asBlobURL() const;
 

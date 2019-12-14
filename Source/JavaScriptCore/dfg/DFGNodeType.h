@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,6 +54,8 @@ namespace JSC { namespace DFG {
     macro(ToThis, NodeResultJS) \
     macro(CreateThis, NodeResultJS) /* Note this is not MustGenerate since we're returning it anyway. */ \
     macro(CreatePromise, NodeResultJS | NodeMustGenerate) \
+    macro(CreateGenerator, NodeResultJS | NodeMustGenerate) \
+    macro(CreateAsyncGenerator, NodeResultJS | NodeMustGenerate) \
     macro(GetCallee, NodeResultJS) \
     macro(SetCallee, NodeMustGenerate) \
     macro(GetArgumentCountIncludingThis, NodeResultInt32) \
@@ -124,7 +126,8 @@ namespace JSC { namespace DFG {
     macro(ArithBitXor, NodeResultInt32) \
     macro(ArithBitLShift, NodeResultInt32) \
     macro(ValueBitLShift, NodeResultJS | NodeMustGenerate) \
-    macro(BitRShift, NodeResultInt32) \
+    macro(ArithBitRShift, NodeResultInt32) \
+    macro(ValueBitRShift, NodeResultJS | NodeMustGenerate) \
     macro(BitURShift, NodeResultInt32) \
     /* Bitwise operators call ToInt32 on their operands. */\
     macro(ValueToInt32, NodeResultInt32) \
@@ -303,6 +306,7 @@ namespace JSC { namespace DFG {
     \
     /* Optimizations for string access */ \
     macro(StringCharCodeAt, NodeResultInt32) \
+    macro(StringCodePointAt, NodeResultInt32) \
     macro(StringCharAt, NodeResultJS) \
     macro(StringFromCharCode, NodeResultJS | NodeMustGenerate) \
     \
@@ -340,6 +344,8 @@ namespace JSC { namespace DFG {
     /* Allocations. */\
     macro(NewObject, NodeResultJS) \
     macro(NewPromise, NodeResultJS) \
+    macro(NewGenerator, NodeResultJS) \
+    macro(NewAsyncGenerator, NodeResultJS) \
     macro(NewArray, NodeResultJS | NodeHasVarArgs) \
     macro(NewArrayWithSpread, NodeResultJS | NodeHasVarArgs) \
     macro(NewArrayWithSize, NodeResultJS | NodeMustGenerate) \
@@ -553,7 +559,7 @@ inline bool isAtomicsIntrinsic(NodeType op)
     }
 }
 
-static const unsigned maxNumExtraAtomicsArgs = 2;
+static constexpr unsigned maxNumExtraAtomicsArgs = 2;
 
 inline unsigned numExtraAtomicsArgs(NodeType op)
 {

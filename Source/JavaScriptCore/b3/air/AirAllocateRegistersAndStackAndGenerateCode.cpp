@@ -45,6 +45,34 @@ GenerateAndAllocateRegisters::GenerateAndAllocateRegisters(Code& code)
     , m_map(code)
 { }
 
+ALWAYS_INLINE void GenerateAndAllocateRegisters::checkConsistency()
+{
+#if !ASSERT_DISABLED
+    m_code.forEachTmp([&] (Tmp tmp) {
+        Reg reg = m_map[tmp].reg;
+        if (!reg)
+            return;
+
+        ASSERT(!m_availableRegs[tmp.bank()].contains(reg));
+        ASSERT(m_currentAllocation->at(reg) == tmp);
+    });
+
+    for (Reg reg : RegisterSet::allRegisters()) {
+        if (isDisallowedRegister(reg))
+            continue;
+
+        Tmp tmp = m_currentAllocation->at(reg);
+        if (!tmp) {
+            ASSERT(m_availableRegs[bankForReg(reg)].contains(reg));
+            continue;
+        }
+
+        ASSERT(!m_availableRegs[tmp.bank()].contains(reg));
+        ASSERT(m_map[tmp].reg == reg);
+    }
+#endif
+}
+
 void GenerateAndAllocateRegisters::buildLiveRanges(UnifiedTmpLiveness& liveness)
 {
     m_liveRangeEnd = TmpMap<size_t>(m_code, 0);
@@ -123,6 +151,18 @@ static ALWAYS_INLINE CCallHelpers::Address callFrameAddr(CCallHelpers& jit, intp
     return CCallHelpers::Address(reg);
 }
 
+ALWAYS_INLINE void GenerateAndAllocateRegisters::release(Tmp tmp, Reg reg)
+{
+    ASSERT(reg);
+    ASSERT(m_currentAllocation->at(reg) == tmp);
+    m_currentAllocation->at(reg) = Tmp();
+    ASSERT(!m_availableRegs[tmp.bank()].contains(reg));
+    m_availableRegs[tmp.bank()].set(reg);
+    ASSERT(m_map[tmp].reg == reg);
+    m_map[tmp].reg = Reg();
+}
+
+
 ALWAYS_INLINE void GenerateAndAllocateRegisters::flush(Tmp tmp, Reg reg)
 {
     ASSERT(tmp);
@@ -137,10 +177,8 @@ ALWAYS_INLINE void GenerateAndAllocateRegisters::spill(Tmp tmp, Reg reg)
 {
     ASSERT(reg);
     ASSERT(m_map[tmp].reg == reg);
-    m_availableRegs[tmp.bank()].set(reg);
-    m_currentAllocation->at(reg) = Tmp();
     flush(tmp, reg);
-    m_map[tmp].reg = Reg();
+    release(tmp, reg);
 }
 
 ALWAYS_INLINE void GenerateAndAllocateRegisters::alloc(Tmp tmp, Reg reg, bool isDef)
@@ -180,10 +218,7 @@ ALWAYS_INLINE void GenerateAndAllocateRegisters::freeDeadTmpsIfNeeded()
         if (m_liveRangeEnd[tmp] >= m_globalInstIndex)
             continue;
 
-        Reg reg = Reg::fromIndex(i);
-        m_map[tmp].reg = Reg();
-        m_availableRegs[tmp.bank()].set(reg);
-        m_currentAllocation->at(i) = Tmp();
+        release(tmp, Reg::fromIndex(i));
     }
 }
 
@@ -409,6 +444,8 @@ void GenerateAndAllocateRegisters::generate(CCallHelpers& jit)
 
         bool isReplayingSameInst = false;
         for (size_t instIndex = 0; instIndex < block->size(); ++instIndex) {
+            checkConsistency();
+
             if (instIndex && !isReplayingSameInst)
                 startLabel = m_jit->labelIgnoringWatchpoints();
 
@@ -420,6 +457,46 @@ void GenerateAndAllocateRegisters::generate(CCallHelpers& jit)
 
             m_namedUsedRegs = RegisterSet();
             m_namedDefdRegs = RegisterSet();
+
+            bool needsToGenerate = ([&] () -> bool {
+                // FIXME: We should consider trying to figure out if we can also elide Mov32s
+                if (!(inst.kind.opcode == Move || inst.kind.opcode == MoveDouble))
+                    return true;
+
+                ASSERT(inst.args.size() >= 2);
+                Arg source = inst.args[0];
+                Arg dest = inst.args[1];
+                if (!source.isTmp() || !dest.isTmp())
+                    return true;
+
+                // FIXME: We don't track where the last use of a reg is globally so we don't know where we can elide them.
+                ASSERT(source.isReg() || m_liveRangeEnd[source.tmp()] >= m_globalInstIndex);
+                if (source.isReg() || m_liveRangeEnd[source.tmp()] != m_globalInstIndex)
+                    return true;
+
+                // If we are doing a self move at the end of the temps liveness we can trivially elide the move.
+                if (source == dest)
+                    return false;
+
+                Reg sourceReg = m_map[source.tmp()].reg;
+                // If the value is not already materialized into a register we may still move it into one so let the normal generation code run.
+                if (!sourceReg)
+                    return true;
+
+                ASSERT(m_currentAllocation->at(sourceReg) == source.tmp());
+
+                if (dest.isReg() && dest.reg() != sourceReg)
+                    return true;
+
+                if (Reg oldReg = m_map[dest.tmp()].reg)
+                    release(dest.tmp(), oldReg);
+
+                m_map[dest.tmp()].reg = sourceReg;
+                m_currentAllocation->at(sourceReg) = dest.tmp();
+                m_map[source.tmp()].reg = Reg();
+                return false;
+            })();
+            checkConsistency();
 
             inst.forEachArg([&] (Arg& arg, Arg::Role role, Bank, Width) {
                 if (!arg.isTmp())
@@ -482,7 +559,7 @@ void GenerateAndAllocateRegisters::generate(CCallHelpers& jit)
             allocNamed(m_namedUsedRegs, false); // Must come before the defd registers since we may use and def the same register.
             allocNamed(m_namedDefdRegs, true);
 
-            {
+            if (needsToGenerate) {
                 auto tryAllocate = [&] {
                     Vector<Tmp*, 8> usesToAlloc;
                     Vector<Tmp*, 8> defsToAlloc;
@@ -605,7 +682,9 @@ void GenerateAndAllocateRegisters::generate(CCallHelpers& jit)
             }
 
             if (!inst.isTerminal()) {
-                CCallHelpers::Jump jump = inst.generate(*m_jit, context);
+                CCallHelpers::Jump jump;
+                if (needsToGenerate)
+                    jump = inst.generate(*m_jit, context);
                 ASSERT_UNUSED(jump, !jump.isSet());
 
                 for (Reg reg : clobberedRegisters) {
@@ -616,7 +695,7 @@ void GenerateAndAllocateRegisters::generate(CCallHelpers& jit)
                     m_map[tmp].reg = Reg();
                 }
             } else {
-                bool needsToGenerate = true;
+                ASSERT(needsToGenerate);
                 if (inst.kind.opcode == Jump && block->successorBlock(0) == m_code.findNextBlock(block))
                     needsToGenerate = false;
 

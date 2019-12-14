@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,7 +62,22 @@ unsigned ObjectPropertyConditionSet::numberOfConditionsWithKind(PropertyConditio
 
 bool ObjectPropertyConditionSet::hasOneSlotBaseCondition() const
 {
-    return (numberOfConditionsWithKind(PropertyCondition::Presence) == 1) != (numberOfConditionsWithKind(PropertyCondition::Equivalence) == 1);
+    bool sawBase = false;
+    for (const ObjectPropertyCondition& condition : *this) {
+        switch (condition.kind()) {
+        case PropertyCondition::Presence:
+        case PropertyCondition::Equivalence:
+        case PropertyCondition::CustomFunctionEquivalence:
+            if (sawBase)
+                return false;
+            sawBase = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return sawBase;
 }
 
 ObjectPropertyCondition ObjectPropertyConditionSet::slotBaseCondition() const
@@ -71,7 +86,8 @@ ObjectPropertyCondition ObjectPropertyConditionSet::slotBaseCondition() const
     unsigned numFound = 0;
     for (const ObjectPropertyCondition& condition : *this) {
         if (condition.kind() == PropertyCondition::Presence
-            || condition.kind() == PropertyCondition::Equivalence) {
+            || condition.kind() == PropertyCondition::Equivalence
+            || condition.kind() == PropertyCondition::CustomFunctionEquivalence) {
             result = condition;
             numFound++;
         }
@@ -143,11 +159,11 @@ bool ObjectPropertyConditionSet::needImpurePropertyWatchpoint() const
 
 bool ObjectPropertyConditionSet::areStillLive(VM& vm) const
 {
-    for (const ObjectPropertyCondition& condition : *this) {
-        if (!condition.isStillLive(vm))
-            return false;
-    }
-    return true;
+    bool stillLive = true;
+    forEachDependentCell([&](JSCell* cell) {
+        stillLive &= vm.heap.isMarked(cell);
+    });
+    return stillLive;
 }
 
 void ObjectPropertyConditionSet::dumpInContext(PrintStream& out, DumpContext* context) const
@@ -183,7 +199,7 @@ bool ObjectPropertyConditionSet::isValidAndWatchable() const
 namespace {
 
 namespace ObjectPropertyConditionSetInternal {
-static const bool verbose = false;
+static constexpr bool verbose = false;
 }
 
 ObjectPropertyCondition generateCondition(
@@ -226,6 +242,13 @@ ObjectPropertyCondition generateCondition(
         if (!value)
             return ObjectPropertyCondition();
         result = ObjectPropertyCondition::equivalence(vm, owner, object, uid, value);
+        break;
+    }
+    case PropertyCondition::CustomFunctionEquivalence: {
+        auto entry = object->findPropertyHashEntry(vm, uid);
+        if (!entry)
+            return ObjectPropertyCondition();
+        result = ObjectPropertyCondition::customFunctionEquivalence(vm, owner, object, uid);
         break;
     }
     default:
@@ -378,15 +401,39 @@ ObjectPropertyConditionSet generateConditionsForPrototypePropertyHit(
 
 ObjectPropertyConditionSet generateConditionsForPrototypePropertyHitCustom(
     VM& vm, JSCell* owner, ExecState* exec, Structure* headStructure, JSObject* prototype,
-    UniquedStringImpl* uid)
+    UniquedStringImpl* uid, unsigned attributes)
 {
     return generateConditions(
         vm, exec->lexicalGlobalObject(), headStructure, prototype,
         [&] (Vector<ObjectPropertyCondition>& conditions, JSObject* object) -> bool {
-            if (object == prototype)
-                return true;
-            ObjectPropertyCondition result =
-                generateCondition(vm, owner, object, uid, PropertyCondition::Absence);
+            auto kind = PropertyCondition::Absence;
+            if (object == prototype) {
+                Structure* structure = object->structure(vm);
+                PropertyOffset offset = structure->get(vm, uid);
+                if (isValidOffset(offset)) {
+                    // When we reify custom accessors, we wrap them in a JSFunction that we shove
+                    // inside a GetterSetter. So, once we've reified a custom accessor, we will
+                    // no longer see it as a "custom" accessor/value. Hence, if our property access actually
+                    // notices a custom, it must be a CustomGetterSetterType cell or something
+                    // in the static property table. Custom values get reified into CustomGetterSetters.
+                    JSValue value = object->getDirect(offset);
+                    ASSERT_UNUSED(value, value.isCell() && value.asCell()->type() == CustomGetterSetterType);
+                    kind = PropertyCondition::Equivalence;
+                } else if (structure->findPropertyHashEntry(uid))
+                    kind = PropertyCondition::CustomFunctionEquivalence;
+                else if (attributes & PropertyAttribute::DontDelete) {
+                    // This can't change, so we can blindly cache it.
+                    return true;
+                } else {
+                    // This means we materialized a custom out of thin air and it's not DontDelete (i.e, it can be
+                    // redefined). This is curious. We don't actually need to crash here. We could blindly cache
+                    // the function. Or we could blindly not cache it. However, we don't actually do this in WebKit
+                    // right now, so it's reasonable to decide what to do later (or to warn people of forgetting DoneDelete.)
+                    ASSERT_NOT_REACHED();
+                    return false;
+                }
+            }
+            ObjectPropertyCondition result = generateCondition(vm, owner, object, uid, kind);
             if (!result)
                 return false;
             conditions.append(result);

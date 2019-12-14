@@ -80,6 +80,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     case op_jmp:
     case op_new_object:
     case op_new_promise:
+    case op_new_generator:
     case op_enter:
     case op_argument_count:
     case op_catch:
@@ -194,6 +195,8 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     USES(OpNewArrayWithSize, length)
     USES(OpCreateThis, callee)
     USES(OpCreatePromise, callee)
+    USES(OpCreateGenerator, callee)
+    USES(OpCreateAsyncGenerator, callee)
     USES(OpDelById, base)
     USES(OpNewFunc, scope)
     USES(OpNewAsyncGeneratorFunc, scope)
@@ -385,6 +388,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     DEFS(OpToPrimitive, dst)
     DEFS(OpCreateThis, dst)
     DEFS(OpCreatePromise, dst)
+    DEFS(OpCreateGenerator, dst)
+    DEFS(OpCreateAsyncGenerator, dst)
     DEFS(OpNewArray, dst)
     DEFS(OpNewArrayWithSpread, dst)
     DEFS(OpSpread, dst)
@@ -465,6 +470,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, const Ins
     DEFS(OpMov, dst)
     DEFS(OpNewObject, dst)
     DEFS(OpNewPromise, dst)
+    DEFS(OpNewGenerator, dst)
     DEFS(OpToThis, srcDst)
     DEFS(OpGetScope, dst)
     DEFS(OpCreateDirectArguments, dst)

@@ -62,6 +62,7 @@ void AnimationTimeline::forgetAnimation(WebAnimation* animation)
 void AnimationTimeline::animationTimingDidChange(WebAnimation& animation)
 {
     if (m_animations.add(&animation)) {
+        animation.setGlobalPosition(m_allAnimations.size());
         m_allAnimations.append(makeWeakPtr(&animation));
         auto* timeline = animation.timeline();
         if (timeline && timeline != this)
@@ -169,8 +170,7 @@ Vector<RefPtr<WebAnimation>> AnimationTimeline::animationsForElement(Element& el
     if (m_elementToCSSTransitionsMap.contains(&element)) {
         const auto& cssTransitions = m_elementToCSSTransitionsMap.get(&element);
         if (ordering == Ordering::Sorted) {
-            Vector<RefPtr<WebAnimation>> sortedCSSTransitions;
-            sortedCSSTransitions.appendRange(cssTransitions.begin(), cssTransitions.end());
+            auto sortedCSSTransitions = copyToVector(cssTransitions);
             std::sort(sortedCSSTransitions.begin(), sortedCSSTransitions.end(), [](auto& lhs, auto& rhs) {
                 // Sort transitions first by their generation time, and then by transition-property.
                 // https://drafts.csswg.org/css-transitions-2/#animation-composite-order
@@ -190,15 +190,24 @@ Vector<RefPtr<WebAnimation>> AnimationTimeline::animationsForElement(Element& el
     }
     if (m_elementToAnimationsMap.contains(&element)) {
         const auto& webAnimations = m_elementToAnimationsMap.get(&element);
-        animations.appendRange(webAnimations.begin(), webAnimations.end());
+        if (ordering == Ordering::Sorted) {
+            auto sortedWebAnimations = copyToVector(webAnimations);
+            std::sort(sortedWebAnimations.begin(), sortedWebAnimations.end(), [](auto& lha, auto& rha) {
+                return lha->globalPosition() < rha->globalPosition();
+            });
+            animations.appendVector(sortedWebAnimations);
+        } else
+            animations.appendRange(webAnimations.begin(), webAnimations.end());
     }
     return animations;
 }
 
 void AnimationTimeline::elementWasRemoved(Element& element)
 {
-    for (auto& animation : animationsForElement(element))
-        animation->cancel(WebAnimation::Silently::Yes);
+    for (auto& cssTransition : m_elementToCSSTransitionsMap.get(&element))
+        cssTransition->cancel(WebAnimation::Silently::Yes);
+    for (auto& cssAnimation : m_elementToCSSAnimationsMap.get(&element))
+        cssAnimation->cancel(WebAnimation::Silently::Yes);
 }
 
 void AnimationTimeline::removeAnimationsForElement(Element& element)

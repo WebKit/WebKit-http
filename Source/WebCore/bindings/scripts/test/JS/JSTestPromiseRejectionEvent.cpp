@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSTestPromiseRejectionEvent.h"
 
+#include "ActiveDOMObject.h"
 #include "DOMPromiseProxy.h"
 #include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
@@ -154,9 +155,9 @@ private:
 
 using JSTestPromiseRejectionEventConstructor = JSDOMConstructor<JSTestPromiseRejectionEvent>;
 
-template<> EncodedJSValue JSC_HOST_CALL JSTestPromiseRejectionEventConstructor::construct(ExecState* state)
+template<> EncodedJSValue JSC_HOST_CALL JSTestPromiseRejectionEventConstructor::construct(JSGlobalObject* globalObject, CallFrame* state)
 {
-    VM& vm = state->vm();
+    VM& vm = globalObject->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
     auto* castedThis = jsCast<JSTestPromiseRejectionEventConstructor*>(state->jsCallee());
@@ -214,6 +215,8 @@ void JSTestPromiseRejectionEvent::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+
+    static_assert(!std::is_base_of<ActiveDOMObject, TestPromiseRejectionEvent>::value, "Interface is not marked as [ActiveDOMObject] even though implementation class subclasses ActiveDOMObject.");
 
 }
 

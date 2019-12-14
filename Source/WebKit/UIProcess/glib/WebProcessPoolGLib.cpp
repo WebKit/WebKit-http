@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebProcessPool.h"
 
+#include "LegacyGlobalSettings.h"
 #include "WebMemoryPressureHandler.h"
 #include "WebProcessCreationParameters.h"
 #include <JavaScriptCore/RemoteInspectorServer.h>
@@ -119,13 +120,13 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
             parameters.hostClientFileDescriptor = wpe_renderer_host_create_client();
             parameters.implementationLibraryName = FileSystem::fileSystemRepresentation(wpe_loader_get_loaded_implementation_library_name());
         }
-#else
+#elif USE(EGL)
         parameters.waylandCompositorDisplayName = WaylandCompositor::singleton().displayName();
 #endif
     }
 #endif
 
-    parameters.memoryCacheDisabled = m_memoryCacheDisabled || cacheModel() == CacheModel::DocumentViewer;
+    parameters.memoryCacheDisabled = m_memoryCacheDisabled || LegacyGlobalSettings::singleton().cacheModel() == CacheModel::DocumentViewer;
     parameters.proxySettings = m_networkProxySettings;
 
     if (memoryPressureMonitorDisabled())

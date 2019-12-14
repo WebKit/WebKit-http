@@ -165,7 +165,7 @@ public:
 
     void scheduleNegotiationNeededEvent();
 
-    void fireEvent(Event&);
+    void dispatchEventWhenFeasible(Ref<Event>&&);
 
     void disableICECandidateFiltering() { m_backend->disableICECandidateFiltering(); }
     void enableICECandidateFiltering() { m_backend->enableICECandidateFiltering(); }
@@ -177,6 +177,8 @@ public:
     
     Document* document();
 
+    void doTask(Function<void()>&&);
+
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return m_logger.get(); }
     const void* logIdentifier() const final { return m_logIdentifier; }
@@ -185,6 +187,11 @@ public:
 #endif
 
 private:
+    template<typename PromiseType> void addPendingPromise(PromiseType& promise)
+    {
+        promise.whenSettled([pendingActivity = makePendingActivity(*this)] { });
+    }
+
     RTCPeerConnection(Document&);
 
     ExceptionOr<void> initializeConfiguration(RTCConfiguration&&);
@@ -205,6 +212,8 @@ private:
     WEBCORE_EXPORT void stop() final;
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
 
     void updateConnectionState();
     bool doClose();
@@ -230,7 +239,8 @@ private:
     RTCConfiguration m_configuration;
     RTCController* m_controller { nullptr };
     Vector<RefPtr<RTCCertificate>> m_certificates;
-    RefPtr<PendingActivity<RTCPeerConnection>> m_pendingActivity;
+    bool m_shouldDelayTasks { false };
+    Vector<Function<void()>> m_pendingTasks;
 };
 
 } // namespace WebCore

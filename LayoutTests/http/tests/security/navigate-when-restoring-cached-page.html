@@ -1,3 +1,4 @@
+<!-- webkit-test-runner [ enablePageCache=true ] -->
 <!DOCTYPE html>
 <html>
 <body>
@@ -6,7 +7,6 @@
 if (window.testRunner) {
   testRunner.dumpAsText();
   testRunner.waitUntilDone();
-  testRunner.overridePreference("WebKitUsesPageCachePreferenceKey", 1);
   testRunner.setCanOpenWindows();
 }
 
@@ -22,8 +22,8 @@ cache_frame.src = victim_url;
 
 function runTest()
 {
-  if (window.testRunner && !testRunner.isWebKit2) {
-    // This test does not run (times out) on WebKit1.
+  if (window.testRunner && !testRunner.isWebKit2 && !window.internals) {
+    // This test does not run (times out) on WebKit1 and requires internals API.
     testRunner.notifyDone();
     return;
   }
@@ -60,10 +60,11 @@ function runTest()
             return;
           
           clearInterval(interval_id);
-          
-          canvas = w.document.body.appendChild(document.createElement('canvas'));
-          context = canvas.getContext('webgl');
-          
+
+          // Prevent entering PageCache.
+          if (w.internals)
+            w.internals.preventDocumentForEnteringPageCache();
+
           child_frame = w.document.body.appendChild(document.createElement('iframe'));
           child_frame.contentWindow.onunload = () => {
             child_frame.contentWindow.onunload = null;

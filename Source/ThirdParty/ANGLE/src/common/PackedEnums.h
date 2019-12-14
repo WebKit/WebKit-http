@@ -107,7 +107,7 @@ class PackedEnumMap
 
     // No explicit construct/copy/destroy for aggregate type
     void fill(const T &u) { mPrivateData.fill(u); }
-    void swap(PackedEnumMap<E, T> &a) noexcept { mPrivateData.swap(a.mPrivateData); }
+    void swap(PackedEnumMap<E, T, MaxSize> &a) noexcept { mPrivateData.swap(a.mPrivateData); }
 
     // iterators:
     iterator begin() noexcept { return mPrivateData.begin(); }
@@ -214,6 +214,7 @@ using ShaderMap = angle::PackedEnumMap<ShaderType, T>;
 TextureType SamplerTypeToTextureType(GLenum samplerType);
 
 bool IsMultisampled(gl::TextureType type);
+bool IsArrayTextureType(gl::TextureType type);
 
 enum class PrimitiveMode : uint8_t
 {
@@ -269,6 +270,8 @@ static_assert(ToGLenum(PrimitiveMode::TrianglesAdjacency) == GL_TRIANGLES_ADJACE
 static_assert(ToGLenum(PrimitiveMode::TriangleStripAdjacency) == GL_TRIANGLE_STRIP_ADJACENCY,
               "PrimitiveMode violation");
 
+std::ostream &operator<<(std::ostream &os, PrimitiveMode value);
+
 enum class DrawElementsType : size_t
 {
     UnsignedByte  = 0,
@@ -311,6 +314,8 @@ ANGLE_VALIDATE_PACKED_ENUM(DrawElementsType, UnsignedByte, GL_UNSIGNED_BYTE);
 ANGLE_VALIDATE_PACKED_ENUM(DrawElementsType, UnsignedShort, GL_UNSIGNED_SHORT);
 ANGLE_VALIDATE_PACKED_ENUM(DrawElementsType, UnsignedInt, GL_UNSIGNED_INT);
 
+std::ostream &operator<<(std::ostream &os, DrawElementsType value);
+
 enum class VertexAttribType
 {
     Byte               = 0,   // GLenum == 0x1400
@@ -328,9 +333,12 @@ enum class VertexAttribType
     Fixed              = 12,  // GLenum == 0x140C
     MaxBasicType       = 12,
     UnsignedInt2101010 = 13,  // GLenum == 0x8368
-    Int2101010         = 14,  // GLenum == 0x8D9F
-    InvalidEnum        = 15,
-    EnumCount          = 15,
+    HalfFloatOES       = 14,  // GLenum == 0x8D61
+    Int2101010         = 15,  // GLenum == 0x8D9F
+    UnsignedInt1010102 = 16,  // GLenum == 0x8DF6
+    Int1010102         = 17,  // GLenum == 0x8DF7
+    InvalidEnum        = 18,
+    EnumCount          = 18,
 };
 
 template <>
@@ -341,8 +349,14 @@ constexpr VertexAttribType FromGLenum<VertexAttribType>(GLenum from)
         return static_cast<VertexAttribType>(packed);
     if (from == GL_UNSIGNED_INT_2_10_10_10_REV)
         return VertexAttribType::UnsignedInt2101010;
+    if (from == GL_HALF_FLOAT_OES)
+        return VertexAttribType::HalfFloatOES;
     if (from == GL_INT_2_10_10_10_REV)
         return VertexAttribType::Int2101010;
+    if (from == GL_UNSIGNED_INT_10_10_10_2_OES)
+        return VertexAttribType::UnsignedInt1010102;
+    if (from == GL_INT_10_10_10_2_OES)
+        return VertexAttribType::Int1010102;
     return VertexAttribType::InvalidEnum;
 }
 
@@ -351,8 +365,14 @@ constexpr GLenum ToGLenum(VertexAttribType from)
     // This could be optimized using a constexpr table.
     if (from == VertexAttribType::Int2101010)
         return GL_INT_2_10_10_10_REV;
+    if (from == VertexAttribType::HalfFloatOES)
+        return GL_HALF_FLOAT_OES;
     if (from == VertexAttribType::UnsignedInt2101010)
         return GL_UNSIGNED_INT_2_10_10_10_REV;
+    if (from == VertexAttribType::UnsignedInt1010102)
+        return GL_UNSIGNED_INT_10_10_10_2_OES;
+    if (from == VertexAttribType::Int1010102)
+        return GL_INT_10_10_10_2_OES;
     return static_cast<GLenum>(from) + GL_BYTE;
 }
 
@@ -366,7 +386,158 @@ ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, Float, GL_FLOAT);
 ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, HalfFloat, GL_HALF_FLOAT);
 ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, Fixed, GL_FIXED);
 ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, Int2101010, GL_INT_2_10_10_10_REV);
+ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, HalfFloatOES, GL_HALF_FLOAT_OES);
 ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, UnsignedInt2101010, GL_UNSIGNED_INT_2_10_10_10_REV);
+ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, Int1010102, GL_INT_10_10_10_2_OES);
+ANGLE_VALIDATE_PACKED_ENUM(VertexAttribType, UnsignedInt1010102, GL_UNSIGNED_INT_10_10_10_2_OES);
+
+std::ostream &operator<<(std::ostream &os, VertexAttribType value);
+
+// Typesafe object handles.
+
+template <typename T>
+struct ResourceTypeToID;
+
+template <typename T>
+struct IsResourceIDType;
+
+// Clang Format doesn't like the following X macro.
+// clang-format off
+#define ANGLE_ID_TYPES_OP(X) \
+    X(Buffer)                \
+    X(FenceNV)               \
+    X(Framebuffer)           \
+    X(MemoryObject)          \
+    X(Path)                  \
+    X(ProgramPipeline)       \
+    X(Query)                 \
+    X(Renderbuffer)          \
+    X(Sampler)               \
+    X(Semaphore)             \
+    X(Texture)               \
+    X(TransformFeedback)     \
+    X(VertexArray)
+// clang-format on
+
+#define ANGLE_DEFINE_ID_TYPE(Type)          \
+    class Type;                             \
+    struct Type##ID                         \
+    {                                       \
+        GLuint value;                       \
+    };                                      \
+    template <>                             \
+    struct ResourceTypeToID<Type>           \
+    {                                       \
+        using IDType = Type##ID;            \
+    };                                      \
+    template <>                             \
+    struct IsResourceIDType<Type##ID>       \
+    {                                       \
+        static constexpr bool value = true; \
+    };
+
+ANGLE_ID_TYPES_OP(ANGLE_DEFINE_ID_TYPE)
+
+#undef ANGLE_DEFINE_ID_TYPE
+#undef ANGLE_ID_TYPES_OP
+
+// Shaders and programs are a bit special as they share IDs.
+struct ShaderProgramID
+{
+    GLuint value;
+};
+
+template <>
+struct IsResourceIDType<ShaderProgramID>
+{
+    constexpr static bool value = true;
+};
+
+class Shader;
+template <>
+struct ResourceTypeToID<Shader>
+{
+    using IDType = ShaderProgramID;
+};
+
+class Program;
+template <>
+struct ResourceTypeToID<Program>
+{
+    using IDType = ShaderProgramID;
+};
+
+template <typename T>
+struct ResourceTypeToID
+{
+    using IDType = void;
+};
+
+template <typename T>
+struct IsResourceIDType
+{
+    static constexpr bool value = false;
+};
+
+template <typename T>
+bool ValueEquals(T lhs, T rhs)
+{
+    return lhs.value == rhs.value;
+}
+
+// Util funcs for resourceIDs
+template <typename T>
+typename std::enable_if<IsResourceIDType<T>::value, bool>::type operator==(const T &lhs,
+                                                                           const T &rhs)
+{
+    return lhs.value == rhs.value;
+}
+
+template <typename T>
+typename std::enable_if<IsResourceIDType<T>::value, bool>::type operator!=(const T &lhs,
+                                                                           const T &rhs)
+{
+    return lhs.value != rhs.value;
+}
+
+// Used to unbox typed values.
+template <typename ResourceIDType>
+GLuint GetIDValue(ResourceIDType id);
+
+template <>
+inline GLuint GetIDValue(GLuint id)
+{
+    return id;
+}
+
+template <typename ResourceIDType>
+inline GLuint GetIDValue(ResourceIDType id)
+{
+    return id.value;
+}
+
+// First case: handling packed enums.
+template <typename EnumT, typename FromT>
+typename std::enable_if<std::is_enum<EnumT>::value, EnumT>::type FromGL(FromT from)
+{
+    return FromGLenum<EnumT>(from);
+}
+
+// Second case: handling non-pointer resource ids.
+template <typename EnumT, typename FromT>
+typename std::enable_if<!std::is_pointer<FromT>::value && !std::is_enum<EnumT>::value, EnumT>::type
+FromGL(FromT from)
+{
+    return {from};
+}
+
+// Third case: handling pointer resource ids.
+template <typename EnumT, typename FromT>
+typename std::enable_if<std::is_pointer<FromT>::value && !std::is_enum<EnumT>::value, EnumT>::type
+FromGL(FromT from)
+{
+    return reinterpret_cast<EnumT>(from);
+}
 }  // namespace gl
 
 namespace egl

@@ -45,6 +45,7 @@ void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
 
     encoder << canBeValid;
     encoder << nodeAtPositionIsFocusedElement;
+    encoder << nodeAtPositionHasDoubleClickHandler;
 #if ENABLE(DATA_INTERACTION)
     encoder << hasSelectionAtPosition;
 #endif
@@ -84,6 +85,7 @@ void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
 #if ENABLE(DATALIST_ELEMENT)
     encoder << preventTextInteraction;
 #endif
+    encoder << elementContext;
 }
 
 bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, InteractionInformationAtPosition& result)
@@ -95,6 +97,9 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
         return false;
 
     if (!decoder.decode(result.nodeAtPositionIsFocusedElement))
+        return false;
+
+    if (!decoder.decode(result.nodeAtPositionHasDoubleClickHandler))
         return false;
 
 #if ENABLE(DATA_INTERACTION)
@@ -191,6 +196,9 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
     if (!decoder.decode(result.preventTextInteraction))
         return false;
 #endif
+
+    if (!decoder.decode(result.elementContext))
+        return false;
 
     return true;
 }

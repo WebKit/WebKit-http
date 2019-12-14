@@ -106,9 +106,10 @@ void CoordinatedGraphicsLayer::setShouldUpdateVisibleRect()
         downcast<CoordinatedGraphicsLayer>(*replicaLayer()).setShouldUpdateVisibleRect();
 }
 
-void CoordinatedGraphicsLayer::didChangeGeometry()
+void CoordinatedGraphicsLayer::didChangeGeometry(FlushNotification flushNotification)
 {
-    notifyFlushRequired();
+    if (flushNotification == FlushNotification::Required)
+        notifyFlushRequired();
     setShouldUpdateVisibleRect();
 }
 
@@ -238,6 +239,16 @@ void CoordinatedGraphicsLayer::setPosition(const FloatPoint& p)
     didChangeGeometry();
 }
 
+void CoordinatedGraphicsLayer::syncPosition(const FloatPoint& p)
+{
+    if (position() == p)
+        return;
+
+    GraphicsLayer::syncPosition(p);
+    m_nicosia.delta.positionChanged = true;
+    didChangeGeometry(FlushNotification::NotRequired);
+}
+
 void CoordinatedGraphicsLayer::setAnchorPoint(const FloatPoint3D& p)
 {
     if (anchorPoint() == p)
@@ -259,6 +270,26 @@ void CoordinatedGraphicsLayer::setSize(const FloatSize& size)
     if (maskLayer())
         maskLayer()->setSize(size);
     didChangeGeometry();
+}
+
+void CoordinatedGraphicsLayer::setBoundsOrigin(const FloatPoint& boundsOrigin)
+{
+    if (this->boundsOrigin() == boundsOrigin)
+        return;
+
+    GraphicsLayer::setBoundsOrigin(boundsOrigin);
+    m_nicosia.delta.boundsOriginChanged = true;
+    didChangeGeometry();
+}
+
+void CoordinatedGraphicsLayer::syncBoundsOrigin(const FloatPoint& boundsOrigin)
+{
+    if (this->boundsOrigin() == boundsOrigin)
+        return;
+
+    GraphicsLayer::syncBoundsOrigin(boundsOrigin);
+    m_nicosia.delta.boundsOriginChanged = true;
+    didChangeGeometry(FlushNotification::NotRequired);
 }
 
 void CoordinatedGraphicsLayer::setTransform(const TransformationMatrix& t)
@@ -1139,7 +1170,7 @@ FloatPoint CoordinatedGraphicsLayer::computePositionRelativeToBase()
 {
     FloatPoint offset;
     for (const GraphicsLayer* currLayer = this; currLayer; currLayer = currLayer->parent())
-        offset += currLayer->position();
+        offset += (currLayer->position() - currLayer->boundsOrigin());
 
     return offset;
 }

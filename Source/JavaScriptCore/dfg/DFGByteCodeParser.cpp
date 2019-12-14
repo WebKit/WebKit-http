@@ -47,6 +47,7 @@
 #include "DFGJITCode.h"
 #include "FunctionCodeBlock.h"
 #include "GetByIdStatus.h"
+#include "GetterSetter.h"
 #include "Heap.h"
 #include "InByIdStatus.h"
 #include "InstanceOfStatus.h"
@@ -80,9 +81,9 @@ namespace JSC { namespace DFG {
 
 namespace DFGByteCodeParserInternal {
 #ifdef NDEBUG
-static const bool verbose = false;
+static constexpr bool verbose = false;
 #else
-static const bool verbose = true;
+static constexpr bool verbose = true;
 #endif
 } // namespace DFGByteCodeParserInternal
 
@@ -203,6 +204,8 @@ private:
     void handleNewFunc(NodeType, Bytecode);
     template <typename Bytecode>
     void handleNewFuncExp(NodeType, Bytecode);
+    template <typename Bytecode>
+    void handleCreateInternalFieldObject(const ClassInfo*, NodeType createOp, NodeType newOp, Bytecode);
 
     // Create a presence ObjectPropertyCondition based on some known offset and structure set. Does not
     // check the validity of the condition, but it may return a null one if it encounters a contradiction.
@@ -1397,9 +1400,18 @@ bool ByteCodeParser::handleRecursiveTailCall(Node* callTargetNode, CallVariant c
         VERBOSE_LOG("   We found a recursive tail call, trying to optimize it into a jump.\n");
 
         if (auto* callFrame = stackEntry->m_inlineCallFrame) {
+            // FIXME: We only accept jump to CallFrame which has exact same argumentCountIncludingThis. But we can remove this by fixing up arguments.
+            // And we can also allow jumping into CallFrame with Varargs if the passing number of arguments is greater than or equal to mandatoryMinimum of CallFrame.
+            // https://bugs.webkit.org/show_bug.cgi?id=202317
+
             // Some code may statically use the argument count from the InlineCallFrame, so it would be invalid to loop back if it does not match.
             // We "continue" instead of returning false in case another stack entry further on the stack has the right number of arguments.
             if (argumentCountIncludingThis != static_cast<int>(callFrame->argumentCountIncludingThis))
+                continue;
+            // If the target InlineCallFrame is Varargs, we do not know how many arguments are actually filled by LoadVarargs. Varargs InlineCallFrame's
+            // argumentCountIncludingThis is maximum number of potentially filled arguments by LoadVarargs. We "continue" to the upper frame which may be
+            // a good target to jump into.
+            if (callFrame->isVarargs())
                 continue;
         } else {
             // We are in the machine code entry (i.e. the original caller).
@@ -1832,7 +1844,7 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
     NodeType callOp, InlineCallFrame::Kind kind)
 {
     VERBOSE_LOG("Handling inlining (Varargs)...\nStack: ", currentCodeOrigin(), "\n");
-    if (callLinkStatus.maxNumArguments() > Options::maximumVarargsForInlining()) {
+    if (callLinkStatus.maxArgumentCountIncludingThis() > Options::maximumVarargsForInlining()) {
         VERBOSE_LOG("Bailing inlining: too many arguments for varargs inlining.\n");
         return false;
     }
@@ -1850,16 +1862,16 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
         mandatoryMinimum = 0;
     
     // includes "this"
-    unsigned maxNumArguments = std::max(callLinkStatus.maxNumArguments(), mandatoryMinimum + 1);
+    unsigned maxArgumentCountIncludingThis = std::max(callLinkStatus.maxArgumentCountIncludingThis(), mandatoryMinimum + 1);
 
     CodeSpecializationKind specializationKind = InlineCallFrame::specializationKindFor(kind);
-    if (inliningCost(callVariant, maxNumArguments, kind) > getInliningBalance(callLinkStatus, specializationKind)) {
+    if (inliningCost(callVariant, maxArgumentCountIncludingThis, kind) > getInliningBalance(callLinkStatus, specializationKind)) {
         VERBOSE_LOG("Bailing inlining: inlining cost too high.\n");
         return false;
     }
     
-    int registerOffset = firstFreeReg + 1;
-    registerOffset -= maxNumArguments; // includes "this"
+    int registerOffset = firstFreeReg;
+    registerOffset -= maxArgumentCountIncludingThis;
     registerOffset -= CallFrame::headerSizeInRegisters;
     registerOffset = -WTF::roundUpToMultipleOf(stackAlignmentRegisters(), -registerOffset);
 
@@ -1878,7 +1890,7 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
         data->start = VirtualRegister(remappedArgumentStart + 1);
         data->count = VirtualRegister(remappedRegisterOffset + CallFrameSlot::argumentCount);
         data->offset = argumentsOffset;
-        data->limit = maxNumArguments;
+        data->limit = maxArgumentCountIncludingThis;
         data->mandatoryMinimum = mandatoryMinimum;
         
         if (callOp == TailCallForwardVarargs)
@@ -1907,7 +1919,7 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
         
         set(VirtualRegister(argumentStart), get(thisArgument), ImmediateNakedSet);
         unsigned numSetArguments = 0;
-        for (unsigned argument = 1; argument < maxNumArguments; ++argument) {
+        for (unsigned argument = 1; argument < maxArgumentCountIncludingThis; ++argument) {
             VariableAccessData* variable = newVariableAccessData(VirtualRegister(remappedArgumentStart + argument));
             variable->mergeShouldNeverUnbox(true); // We currently have nowhere to put the type check on the LoadVarargs. LoadVarargs is effectful, so after it finishes, we cannot exit.
             
@@ -1939,7 +1951,7 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
     // those arguments. Even worse, if the intrinsic decides to exit, it won't really have anywhere to
     // exit to: LoadVarargs is effectful and it's part of the op_call_varargs, so we can't exit without
     // calling LoadVarargs twice.
-    inlineCall(callTargetNode, result, callVariant, registerOffset, maxNumArguments, kind, nullptr, insertChecks);
+    inlineCall(callTargetNode, result, callVariant, registerOffset, maxArgumentCountIncludingThis, kind, nullptr, insertChecks);
 
 
     VERBOSE_LOG("Successful inlining (varargs, monomorphic).\nStack: ", currentCodeOrigin(), "\n");
@@ -2282,13 +2294,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
             
         case ArrayPushIntrinsic: {
-#if USE(JSVALUE32_64)
-            if (isX86()) {
-                if (argumentCountIncludingThis > 2)
-                    return false;
-            }
-#endif
-
             if (static_cast<unsigned>(argumentCountIncludingThis) >= MIN_SPARSE_ARRAY_INDEX)
                 return false;
             
@@ -2316,12 +2321,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case ArraySliceIntrinsic: {
-#if USE(JSVALUE32_64)
-            if (isX86()) {
-                // There aren't enough registers for this to be done easily.
-                return false;
-            }
-#endif
             if (argumentCountIncludingThis < 1)
                 return false;
 
@@ -2473,9 +2472,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
             
         case ArrayPopIntrinsic: {
-            if (argumentCountIncludingThis != 1)
-                return false;
-            
             ArrayMode arrayMode = getArrayMode(Array::Write);
             if (!arrayMode.isJSArray())
                 return false;
@@ -2607,7 +2603,10 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case CharCodeAtIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
+                return false;
+
+            if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Uncountable) || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
                 return false;
 
             insertChecks();
@@ -2619,9 +2618,35 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
             return true;
         }
 
-        case CharAtIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+        case StringPrototypeCodePointAtIntrinsic: {
+            if (!is64Bit())
                 return false;
+
+            if (argumentCountIncludingThis < 2)
+                return false;
+
+            if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Uncountable) || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+                return false;
+
+            insertChecks();
+            VirtualRegister thisOperand = virtualRegisterForArgument(0, registerOffset);
+            VirtualRegister indexOperand = virtualRegisterForArgument(1, registerOffset);
+            Node* result = addToGraph(StringCodePointAt, OpInfo(ArrayMode(Array::String, Array::Read).asWord()), get(thisOperand), get(indexOperand));
+
+            setResult(result);
+            return true;
+        }
+
+        case CharAtIntrinsic: {
+            if (argumentCountIncludingThis < 2)
+                return false;
+
+            if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+                return false;
+
+            // FIXME: String#charAt returns empty string when index is out-of-bounds, and this does not break the AI's claim.
+            // Only FTL supports out-of-bounds version now. We should support out-of-bounds version even in DFG.
+            // https://bugs.webkit.org/show_bug.cgi?id=201678
 
             insertChecks();
             VirtualRegister thisOperand = virtualRegisterForArgument(0, registerOffset);
@@ -2655,7 +2680,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case RegExpExecIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
             
             insertChecks();
@@ -2667,7 +2692,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
             
         case RegExpTestIntrinsic:
         case RegExpTestFastIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             if (intrinsic == RegExpTestIntrinsic) {
@@ -2735,7 +2760,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case ObjectGetPrototypeOfIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             insertChecks();
@@ -2762,7 +2787,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case ReflectGetPrototypeOfIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             insertChecks();
@@ -2786,7 +2811,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case StringPrototypeReplaceIntrinsic: {
-            if (argumentCountIncludingThis != 3)
+            if (argumentCountIncludingThis < 3)
                 return false;
 
             // Don't inline intrinsic if we exited due to "search" not being a RegExp or String object.
@@ -2838,7 +2863,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
             
         case StringPrototypeReplaceRegExpIntrinsic: {
-            if (argumentCountIncludingThis != 3)
+            if (argumentCountIncludingThis < 3)
                 return false;
             
             insertChecks();
@@ -2874,7 +2899,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
             return true;
         }
         case IMulIntrinsic: {
-            if (argumentCountIncludingThis != 3)
+            if (argumentCountIncludingThis < 3)
                 return false;
             insertChecks();
             VirtualRegister leftOperand = virtualRegisterForArgument(1, registerOffset);
@@ -2886,8 +2911,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case RandomIntrinsic: {
-            if (argumentCountIncludingThis != 1)
-                return false;
             insertChecks();
             setResult(addToGraph(ArithRandom));
             return true;
@@ -2940,7 +2963,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
             
         case FiatInt52Intrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
             insertChecks();
             VirtualRegister operand = virtualRegisterForArgument(1, registerOffset);
@@ -2952,7 +2975,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSMapGetIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             insertChecks();
@@ -2968,7 +2991,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
 
         case JSSetHasIntrinsic:
         case JSMapHasIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             insertChecks();
@@ -2992,7 +3015,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSSetAddIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             insertChecks();
@@ -3006,7 +3029,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSMapSetIntrinsic: {
-            if (argumentCountIncludingThis != 3)
+            if (argumentCountIncludingThis < 3)
                 return false;
 
             insertChecks();
@@ -3073,7 +3096,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSWeakMapGetIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
@@ -3092,7 +3115,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSWeakMapHasIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
@@ -3112,7 +3135,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSWeakSetHasIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
@@ -3132,7 +3155,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSWeakSetAddIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
@@ -3149,7 +3172,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case JSWeakMapSetIntrinsic: {
-            if (argumentCountIncludingThis != 3)
+            if (argumentCountIncludingThis < 3)
                 return false;
 
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
@@ -3352,7 +3375,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case HasOwnPropertyIntrinsic: {
-            if (argumentCountIncludingThis != 2)
+            if (argumentCountIncludingThis < 2)
                 return false;
 
             // This can be racy, that's fine. We know that once we observe that this is created,
@@ -3390,9 +3413,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case StringPrototypeToLowerCaseIntrinsic: {
-            if (argumentCountIncludingThis != 1)
-                return false;
-
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
                 return false;
 
@@ -3404,9 +3424,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
         }
 
         case NumberPrototypeToStringIntrinsic: {
-            if (argumentCountIncludingThis != 1 && argumentCountIncludingThis != 2)
-                return false;
-
             if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
                 return false;
 
@@ -3681,7 +3698,7 @@ bool ByteCodeParser::handleTypedArrayConstructor(
     if (function->classInfo() != constructorClassInfoForType(type))
         return false;
     
-    if (function->globalObject(*m_vm) != m_inlineStackTop->m_codeBlock->globalObject())
+    if (function->globalObject() != m_inlineStackTop->m_codeBlock->globalObject())
         return false;
     
     // We only have an intrinsic for the case where you say:
@@ -3718,7 +3735,7 @@ bool ByteCodeParser::handleTypedArrayConstructor(
     if (argumentCountIncludingThis != 2)
         return false;
     
-    if (!function->globalObject(*m_vm)->typedArrayStructureConcurrently(type))
+    if (!function->globalObject()->typedArrayStructureConcurrently(type))
         return false;
 
     insertChecks();
@@ -3749,7 +3766,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
     }
 
     if (function->classInfo() == ArrayConstructor::info()) {
-        if (function->globalObject(*m_vm) != m_inlineStackTop->m_codeBlock->globalObject())
+        if (function->globalObject() != m_inlineStackTop->m_codeBlock->globalObject())
             return false;
         
         insertChecks();
@@ -3790,7 +3807,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
             resultNode = addToGraph(CallStringConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         
         if (kind == CodeForConstruct)
-            resultNode = addToGraph(NewStringObject, OpInfo(m_graph.registerStructure(function->globalObject(*m_vm)->stringObjectStructure())), resultNode);
+            resultNode = addToGraph(NewStringObject, OpInfo(m_graph.registerStructure(function->globalObject()->stringObjectStructure())), resultNode);
         
         set(result, resultNode);
         return true;
@@ -3816,9 +3833,9 @@ bool ByteCodeParser::handleConstantInternalFunction(
 
         Node* resultNode;
         if (argumentCountIncludingThis <= 1)
-            resultNode = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject(*m_vm)->objectStructureForObjectConstructor())));
+            resultNode = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject()->objectStructureForObjectConstructor())));
         else
-            resultNode = addToGraph(CallObjectConstructor, OpInfo(m_graph.freeze(function->globalObject(*m_vm))), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
+            resultNode = addToGraph(CallObjectConstructor, OpInfo(m_graph.freeze(function->globalObject())), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
         set(result, resultNode);
         return true;
     }
@@ -4845,8 +4862,6 @@ void ByteCodeParser::parseBlock(unsigned limit)
                             m_graph.freeze(rareData);
                             m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
                             
-                            // The callee is still live up to this point.
-                            addToGraph(Phantom, callee);
                             Node* object = addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure)));
                             if (structure->hasPolyProto()) {
                                 StorageAccessData* data = m_graph.m_storageAccessData.add();
@@ -4856,6 +4871,8 @@ void ByteCodeParser::parseBlock(unsigned limit)
                                 addToGraph(PutByOffset, OpInfo(data), object, object, weakJSConstant(prototype));
                             }
                             set(VirtualRegister(bytecode.m_dst), object);
+                            // The callee is still live up to this point.
+                            addToGraph(Phantom, callee);
                             alreadyEmitted = true;
                         }
                     }
@@ -4925,9 +4942,9 @@ void ByteCodeParser::parseBlock(unsigned limit)
                                 m_graph.freeze(rareData);
                                 m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
 
+                                set(VirtualRegister(bytecode.m_dst), addToGraph(NewPromise, OpInfo(m_graph.registerStructure(structure)), OpInfo(bytecode.m_isInternalPromise)));
                                 // The callee is still live up to this point.
                                 addToGraph(Phantom, callee);
-                                set(VirtualRegister(bytecode.m_dst), addToGraph(NewPromise, OpInfo(m_graph.registerStructure(structure)), OpInfo(bytecode.m_isInternalPromise)));
                                 alreadyEmitted = true;
                             }
                         }
@@ -4937,6 +4954,16 @@ void ByteCodeParser::parseBlock(unsigned limit)
                     set(VirtualRegister(bytecode.m_dst), addToGraph(CreatePromise, OpInfo(), OpInfo(bytecode.m_isInternalPromise), callee));
             }
             NEXT_OPCODE(op_create_promise);
+        }
+
+        case op_create_generator: {
+            handleCreateInternalFieldObject(JSGenerator::info(), CreateGenerator, NewGenerator, currentInstruction->as<OpCreateGenerator>());
+            NEXT_OPCODE(op_create_generator);
+        }
+
+        case op_create_async_generator: {
+            handleCreateInternalFieldObject(JSAsyncGenerator::info(), CreateAsyncGenerator, NewAsyncGenerator, currentInstruction->as<OpCreateAsyncGenerator>());
+            NEXT_OPCODE(op_create_async_generator);
         }
 
         case op_new_object: {
@@ -4952,6 +4979,13 @@ void ByteCodeParser::parseBlock(unsigned limit)
             JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
             set(bytecode.m_dst, addToGraph(NewPromise, OpInfo(m_graph.registerStructure(bytecode.m_isInternalPromise ? globalObject->internalPromiseStructure() : globalObject->promiseStructure())), OpInfo(bytecode.m_isInternalPromise)));
             NEXT_OPCODE(op_new_promise);
+        }
+
+        case op_new_generator: {
+            auto bytecode = currentInstruction->as<OpNewGenerator>();
+            JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
+            set(bytecode.m_dst, addToGraph(NewGenerator, OpInfo(m_graph.registerStructure(globalObject->generatorStructure()))));
+            NEXT_OPCODE(op_new_generator);
         }
             
         case op_new_array: {
@@ -5101,7 +5135,12 @@ void ByteCodeParser::parseBlock(unsigned limit)
             auto bytecode = currentInstruction->as<OpRshift>();
             Node* op1 = get(bytecode.m_lhs);
             Node* op2 = get(bytecode.m_rhs);
-            set(bytecode.m_dst, addToGraph(BitRShift, op1, op2));
+            if (op1->hasNumberOrAnyIntResult() && op2->hasNumberOrAnyIntResult())
+                set(bytecode.m_dst, addToGraph(ArithBitRShift, op1, op2));
+            else {
+                SpeculatedType prediction = getPredictionWithoutOSRExit();
+                set(bytecode.m_dst, addToGraph(ValueBitRShift, OpInfo(), OpInfo(prediction), op1, op2));
+            }
             NEXT_OPCODE(op_rshift);
         }
 
@@ -5400,14 +5439,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             auto bytecode = currentInstruction->as<OpStrcat>();
             int startOperand = bytecode.m_src.offset();
             int numOperands = bytecode.m_count;
-#if CPU(X86)
-            // X86 doesn't have enough registers to compile MakeRope with three arguments. The
-            // StrCat we emit here may be turned into a MakeRope. Rather than try to be clever,
-            // we just make StrCat dumber on this processor.
-            const unsigned maxArguments = 2;
-#else
             const unsigned maxArguments = 3;
-#endif
             Node* operands[AdjacencyList::Size];
             unsigned indexInOperands = 0;
             for (unsigned i = 0; i < AdjacencyList::Size; ++i)
@@ -7443,6 +7475,51 @@ void ByteCodeParser::handleNewFuncExp(NodeType op, Bytecode bytecode)
     // For the non-constant case: NewFunction could be DCE'd, but baseline's implementation
     // won't be able to handle an Undefined scope.
     addToGraph(Phantom, scope);
+}
+
+template <typename Bytecode>
+void ByteCodeParser::handleCreateInternalFieldObject(const ClassInfo* classInfo, NodeType createOp, NodeType newOp, Bytecode bytecode)
+{
+    CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
+    JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
+    Node* callee = get(VirtualRegister(bytecode.m_callee));
+
+    JSFunction* function = callee->dynamicCastConstant<JSFunction*>(*m_vm);
+    if (!function) {
+        JSCell* cachedFunction = bytecode.metadata(codeBlock).m_cachedCallee.unvalidatedGet();
+        if (cachedFunction
+            && cachedFunction != JSCell::seenMultipleCalleeObjects()
+            && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
+            ASSERT(cachedFunction->inherits<JSFunction>(*m_vm));
+
+            FrozenValue* frozen = m_graph.freeze(cachedFunction);
+            addToGraph(CheckCell, OpInfo(frozen), callee);
+
+            function = static_cast<JSFunction*>(cachedFunction);
+        }
+    }
+
+    if (function) {
+        if (FunctionRareData* rareData = function->rareData()) {
+            if (rareData->allocationProfileWatchpointSet().isStillValid()) {
+                Structure* structure = rareData->internalFunctionAllocationStructure();
+                if (structure
+                    && structure->classInfo() == classInfo
+                    && structure->globalObject() == globalObject
+                    && rareData->allocationProfileWatchpointSet().isStillValid()) {
+                    m_graph.freeze(rareData);
+                    m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
+
+                    set(VirtualRegister(bytecode.m_dst), addToGraph(newOp, OpInfo(m_graph.registerStructure(structure))));
+                    // The callee is still live up to this point.
+                    addToGraph(Phantom, callee);
+                    return;
+                }
+            }
+        }
+    }
+
+    set(VirtualRegister(bytecode.m_dst), addToGraph(createOp, callee));
 }
 
 void ByteCodeParser::parse()

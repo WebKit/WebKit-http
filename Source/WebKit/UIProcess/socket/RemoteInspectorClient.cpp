@@ -30,6 +30,7 @@
 
 #include "RemoteWebInspectorProxy.h"
 #include <wtf/MainThread.h>
+#include <wtf/text/Base64.h>
 
 namespace WebKit {
 
@@ -54,7 +55,7 @@ public:
 
     void load()
     {
-        m_proxy->load(m_debuggableType, String());
+        m_proxy->load(m_debuggableType, m_inspectorClient.backendCommandsURL());
     }
 
     void show()
@@ -85,12 +86,17 @@ private:
     String m_debuggableType;
 };
 
-RemoteInspectorClient::RemoteInspectorClient(const char* address, unsigned port, RemoteInspectorObserver& observer)
+RemoteInspectorClient::RemoteInspectorClient(URL url, RemoteInspectorObserver& observer)
     : m_observer(observer)
 {
-    m_connectionID = connectInet(address, port);
+    if (!url.host() || !url.port()) {
+        LOG_ERROR("Invalid inspector url: %s", url.string().utf8().data());
+        return;
+    }
+
+    m_connectionID = connectInet(url.host().utf8().data(), url.port().value());
     if (!m_connectionID) {
-        LOG_ERROR("Inspector client could not connect to %s:%d", address, port);
+        LOG_ERROR("Inspector client could not connect to %s", url.string().utf8().data());
         return;
     }
 
@@ -112,6 +118,7 @@ void RemoteInspectorClient::sendWebInspectorEvent(const String& event)
 HashMap<String, Inspector::RemoteInspectorConnectionClient::CallHandler>& RemoteInspectorClient::dispatchMap()
 {
     static NeverDestroyed<HashMap<String, CallHandler>> dispatchMap = HashMap<String, CallHandler>({
+        { "BackendCommands"_s, static_cast<CallHandler>(&RemoteInspectorClient::setBackendCommands) },
         { "SetTargetList"_s, static_cast<CallHandler>(&RemoteInspectorClient::setTargetList) },
         { "SendMessageToFrontend"_s, static_cast<CallHandler>(&RemoteInspectorClient::sendMessageToFrontend) },
     });
@@ -131,10 +138,14 @@ void RemoteInspectorClient::connectionClosed()
     m_targets.clear();
     m_inspectorProxyMap.clear();
     m_observer.connectionClosed(*this);
+    m_observer.targetListChanged(*this);
 }
 
 void RemoteInspectorClient::didClose(ConnectionID)
 {
+    callOnMainThread([this] {
+        connectionClosed();
+    });
 }
 
 void RemoteInspectorClient::inspect(ConnectionID connectionID, TargetID targetID, const String& type)
@@ -176,6 +187,14 @@ void RemoteInspectorClient::closeFromFrontend(ConnectionID connectionID, TargetI
     sendWebInspectorEvent(closedEvent->toJSONString());
 
     m_inspectorProxyMap.remove(std::make_pair(connectionID, targetID));
+}
+
+void RemoteInspectorClient::setBackendCommands(const Event& event)
+{
+    if (!event.message || event.message->isEmpty())
+        return;
+
+    m_backendCommandsURL = makeString("data:text/javascript;base64,", base64Encode(event.message->utf8()));
 }
 
 void RemoteInspectorClient::setTargetList(const Event& event)

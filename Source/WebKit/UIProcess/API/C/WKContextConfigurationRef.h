@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,6 +48,9 @@ WK_EXPORT void WKContextConfigurationSetIndexedDBDatabaseDirectory(WKContextConf
 WK_EXPORT WKStringRef WKContextConfigurationCopyInjectedBundlePath(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetInjectedBundlePath(WKContextConfigurationRef configuration, WKStringRef injectedBundlePath);
 
+WK_EXPORT WKArrayRef WKContextConfigurationCopyCustomClassesForParameterCoder(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetCustomClassesForParameterCoder(WKContextConfigurationRef configuration, WKArrayRef classesForCoder);
+
 WK_EXPORT WKStringRef WKContextConfigurationCopyLocalStorageDirectory(WKContextConfigurationRef configuration) WK_C_API_DEPRECATED_WITH_REPLACEMENT(WKWebsiteDataStoreConfigurationCopyLocalStorageDirectory);
 WK_EXPORT void WKContextConfigurationSetLocalStorageDirectory(WKContextConfigurationRef configuration, WKStringRef localStorageDirectory) WK_C_API_DEPRECATED_WITH_REPLACEMENT(WKWebsiteDataStoreConfigurationSetLocalStorageDirectory);
 
@@ -90,6 +93,8 @@ WK_EXPORT void WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(WKCon
 WK_EXPORT int64_t WKContextConfigurationDiskCacheSizeOverride(WKContextConfigurationRef configuration) WK_C_API_DEPRECATED;
 WK_EXPORT void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef configuration, int64_t size) WK_C_API_DEPRECATED;
     
+WK_EXPORT void WKContextConfigurationSetShouldConfigureJSCForTesting(WKContextConfigurationRef configuration, bool value);
+
 #ifdef __cplusplus
 }
 #endif

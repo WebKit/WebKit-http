@@ -1,3 +1,140 @@
+2019-10-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Use HINTS instead of PATHS when searching in paths from pkg-config
+        https://bugs.webkit.org/show_bug.cgi?id=202831
+
+        Reviewed by Carlos Garcia Campos.
+
+        HINTS and PATHS sections are similar, however HINTS is processed before
+        default system locations, while PATHS - after. If target file can be found
+        in the system, pkg-config results are ignored in case of PATHS, making it
+        impossible to override system version of library with PKG_CONFIG_PATH.
+
+        Note that CMake documentation recommends using PATHS for hard-coded guesses.
+
+        * Source/cmake/FindEnchant.cmake:
+        * Source/cmake/FindFontconfig.cmake:
+        * Source/cmake/FindLibEpoxy.cmake:
+        * Source/cmake/FindLibtasn1.cmake:
+        * Source/cmake/FindSqlite.cmake:
+
+2019-10-08  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.27.1 release
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2019-10-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.27.1 release
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2019-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        CMake-built WebKit.framework should launch XPC services successfully
+        https://bugs.webkit.org/show_bug.cgi?id=202490
+
+        Rubber-stamped by Tim Horton.
+
+        * Source/cmake/OptionsMac.cmake:
+
+2019-10-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Stop using legacy custom protocol implementation
+        https://bugs.webkit.org/show_bug.cgi?id=202407
+
+        Reviewed by Žan Doberšek.
+
+        Make LEGACY_CUSTOM_PROTOCOL_MANAGER disabled by default.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2019-10-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Enable async scrolling at build-time for Nicosia-using ports
+        https://bugs.webkit.org/show_bug.cgi?id=202397
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enable ASYNC_SCROLLING code for ports leveraging the Nicosia layering
+        system. This still has to be runtime-enabled in the DrawingArea
+        implementation.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=202384
+
+        Rubber-stamped by Tim Horton.
+
+        * Source/cmake/OptionsMac.cmake:
+
+2019-09-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add about:gpu
+        https://bugs.webkit.org/show_bug.cgi?id=202305
+
+        Reviewed by Žan Doberšek.
+
+        Add SVN_REVISION definition to the build.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-09-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        run-web-platform-tests: remove support for in-repository manifest, expectation management
+        https://bugs.webkit.org/show_bug.cgi?id=202037
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove the test expecations JSON and test manifest file that were used
+        for managing and generating the necessary wptrunner metadata.
+
+        * WebPlatformTests/gtk/TestExpectations.json: Removed.
+        * WebPlatformTests/gtk/TestManifest.ini: Removed.
+
+2019-09-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Bump WPE version numbers.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-09-17  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][curl] Define NOCRYPT to suppress libressl "Warning, overriding WinCrypt defines"
+        https://bugs.webkit.org/show_bug.cgi?id=201858
+
+        Reviewed by Alex Christensen.
+
+        LibreSSL headers are reporing a compilation warning for overriding
+        WinCrypt defines. Define NOCRYPT to let windows.h not to include
+        WinCrypt for WinCairo port.
+
+        * Source/cmake/OptionsWinCairo.cmake: Added -DNOCRYPT.
+
+2019-09-15  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][WPE] Do not run the Bubblewrap executable when configuring for cross-compilation
+        https://bugs.webkit.org/show_bug.cgi?id=201340
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/BubblewrapSandboxChecks.cmake: Do not run the
+        Bubblewrap executable when cross-compiling to guess its version.
+        Emit a warning instead and trust that valid run-time paths will
+        be set using the BWRAP_EXECUTABLE and DBUS_PROXY_EXECUTABLE
+        variables. While at it, fix the regular expression used to match
+        the version string in the Bubblewrap output when not cross-compiling.
+
 2019-09-09  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Bump GTK version numbers

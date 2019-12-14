@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -185,7 +185,7 @@ public:
     void prepareForSlowPath();
 
 private:
-    static const bool verbose = false;
+    static constexpr bool verbose = false;
 
     CCallHelpers& m_jit;
 
@@ -412,9 +412,9 @@ private:
     RegisterMap<CachedRecovery*> m_registers;
 
 #if USE(JSVALUE64)
-    mutable GPRReg m_tagTypeNumber;
+    mutable GPRReg m_numberTagRegister;
 
-    bool tryAcquireTagTypeNumber();
+    bool tryAcquireNumberTagRegister();
 #endif
 
     // This stores, for each register, information about the recovery
@@ -448,11 +448,11 @@ private:
         }
 
 #if USE(JSVALUE64)
-        if (!nonTemp && m_tagTypeNumber != InvalidGPRReg && check(Reg { m_tagTypeNumber })) {
-            ASSERT(m_lockedRegisters.get(m_tagTypeNumber));
-            m_lockedRegisters.clear(m_tagTypeNumber);
-            nonTemp = Reg { m_tagTypeNumber };
-            m_tagTypeNumber = InvalidGPRReg;
+        if (!nonTemp && m_numberTagRegister != InvalidGPRReg && check(Reg { m_numberTagRegister })) {
+            ASSERT(m_lockedRegisters.get(m_numberTagRegister));
+            m_lockedRegisters.clear(m_numberTagRegister);
+            nonTemp = Reg { m_numberTagRegister };
+            m_numberTagRegister = InvalidGPRReg;
         }
 #endif
         return nonTemp;

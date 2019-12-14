@@ -55,6 +55,16 @@ WI.FormatterWorkerProxy = class FormatterWorkerProxy
         this.performAction("formatCSS", ...arguments);
     }
 
+    formatHTML(sourceText, indentString, includeSourceMapData)
+    {
+        this.performAction("formatHTML", ...arguments);
+    }
+
+    formatXML(sourceText, indentString, includeSourceMapData)
+    {
+        this.performAction("formatXML", ...arguments);
+    }
+
     // Public
 
     performAction(actionName)

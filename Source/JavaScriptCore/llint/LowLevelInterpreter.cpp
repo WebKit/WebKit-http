@@ -144,7 +144,6 @@ public:
     ALWAYS_INLINE void* vp() const { return bitwise_cast<void*>(m_value); }
     ALWAYS_INLINE const void* cvp() const { return bitwise_cast<const void*>(m_value); }
     ALWAYS_INLINE CallFrame* callFrame() const { return bitwise_cast<CallFrame*>(m_value); }
-    ALWAYS_INLINE ExecState* execState() const { return bitwise_cast<ExecState*>(m_value); }
     ALWAYS_INLINE const void* instruction() const { return bitwise_cast<const void*>(m_value); }
     ALWAYS_INLINE VM* vm() const { return bitwise_cast<VM*>(m_value); }
     ALWAYS_INLINE JSCell* cell() const { return bitwise_cast<JSCell*>(m_value); }
@@ -316,7 +315,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 
     CLoopRegister t0, t1, t2, t3, t5, sp, cfr, lr, pc;
 #if USE(JSVALUE64)
-    CLoopRegister pcBase, tagTypeNumber, tagMask;
+    CLoopRegister pcBase, numberTag, notCellMask;
 #endif
     CLoopRegister metadataTable;
     CLoopDoubleRegister d0, d1;
@@ -356,8 +355,8 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 #if USE(JSVALUE64)
     // For the ASM llint, JITStubs takes care of this initialization. We do
     // it explicitly here for the C loop:
-    tagTypeNumber = 0xFFFF000000000000;
-    tagMask = 0xFFFF000000000002;
+    numberTag = JSValue::NumberTag;
+    notCellMask = JSValue::NotCellMask;
 #endif // USE(JSVALUE64)
 
     // Interpreter variables for value passing between opcodes and/or helpers:

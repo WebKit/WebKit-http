@@ -347,6 +347,7 @@ bool Parser<LexerType>::isArrowFunctionParameters()
     }
 
     if (matchSpecIdentifier()) {
+        semanticFailIfTrue(!m_parserState.allowAwait && match(AWAIT), "Cannot use 'await' as a parameter name in an async function");
         SavePoint saveArrowFunctionPoint = createSavePoint();
         next();
         bool isArrowFunction = match(ARROWFUNCTION);
@@ -426,7 +427,7 @@ template <class TreeBuilder> TreeSourceElements Parser<LexerType>::parseModuleSo
     while (true) {
         TreeStatement statement = 0;
         switch (m_token.m_type) {
-        case EXPORT:
+        case EXPORT_:
             statement = parseExportDeclaration(context);
             if (statement)
                 recordPauseLocation(context.breakpointLocation(statement));
@@ -2430,7 +2431,7 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
             // Parse formal parameters with [+Yield] parameterization, in order to ban YieldExpressions
             // in ArrowFormalParameters, per ES6 #sec-arrow-function-definitions-static-semantics-early-errors.
             Scope::MaybeParseAsGeneratorForScope parseAsGenerator(functionScope, parentScope->isGenerator());
-            SetForScope<bool> overrideAllowAwait(m_parserState.allowAwait, !isAsyncFunctionParseMode(mode));
+            SetForScope<bool> overrideAllowAwait(m_parserState.allowAwait, !parentScope->isAsyncFunction() && !isAsyncFunctionParseMode(mode));
             parseFunctionParameters(syntaxChecker, mode, functionInfo);
             propagateError();
         }
@@ -3379,7 +3380,7 @@ template <typename LexerType>
 template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclaration(TreeBuilder& context)
 {
     // http://www.ecma-international.org/ecma-262/6.0/#sec-exports
-    ASSERT(match(EXPORT));
+    ASSERT(match(EXPORT_));
     JSTokenLocation exportLocation(tokenLocation());
     next();
 
@@ -3830,7 +3831,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseAwaitExpress
 {
     ASSERT(match(AWAIT));
     ASSERT(currentScope()->isAsyncFunction());
-    failIfTrue(m_parserState.functionParsePhase == FunctionParsePhase::Parameters, "Cannot use await expression within parameters");
+    ASSERT(m_parserState.functionParsePhase != FunctionParsePhase::Parameters);
     JSTokenLocation location(tokenLocation());
     JSTextPosition divotStart = tokenStartPosition();
     next();
@@ -4203,62 +4204,6 @@ void Parser<LexerType>::recordFunctionLeaveLocation(const JSTextPosition& positi
 template <typename LexerType>
 template <class TreeBuilder> TreeExpression Parser<LexerType>::parseObjectLiteral(TreeBuilder& context)
 {
-    SavePoint savePoint = createSavePoint();
-    consumeOrFailWithFlags(OPENBRACE, TreeBuilder::DontBuildStrings, "Expected opening '{' at the start of an object literal");
-
-    int oldNonLHSCount = m_parserState.nonLHSCount;
-
-    JSTokenLocation location(tokenLocation());    
-    if (match(CLOSEBRACE)) {
-        next();
-        return context.createObjectLiteral(location);
-    }
-    
-    TreeProperty property = parseProperty(context, false);
-    failIfFalse(property, "Cannot parse object literal property");
-
-    if (context.getType(property) & (PropertyNode::Getter | PropertyNode::Setter)) {
-        restoreSavePoint(savePoint);
-        return parseStrictObjectLiteral(context);
-    }
-
-    bool seenUnderscoreProto = false;
-    if (shouldCheckPropertyForUnderscoreProtoDuplicate(context, property))
-        seenUnderscoreProto = *context.getName(property) == m_vm.propertyNames->underscoreProto;
-
-    TreePropertyList propertyList = context.createPropertyList(location, property);
-    TreePropertyList tail = propertyList;
-    while (match(COMMA)) {
-        next(TreeBuilder::DontBuildStrings);
-        if (match(CLOSEBRACE))
-            break;
-        JSTokenLocation propertyLocation(tokenLocation());
-        property = parseProperty(context, false);
-        failIfFalse(property, "Cannot parse object literal property");
-        if (context.getType(property) & (PropertyNode::Getter | PropertyNode::Setter)) {
-            restoreSavePoint(savePoint);
-            return parseStrictObjectLiteral(context);
-        }
-        if (shouldCheckPropertyForUnderscoreProtoDuplicate(context, property)) {
-            if (*context.getName(property) == m_vm.propertyNames->underscoreProto) {
-                semanticFailIfTrue(seenUnderscoreProto, "Attempted to redefine __proto__ property");
-                seenUnderscoreProto = true;
-            }
-        }
-        tail = context.createPropertyList(propertyLocation, property, tail);
-    }
-
-    location = tokenLocation();
-    handleProductionOrFail2(CLOSEBRACE, "}", "end", "object literal");
-    
-    m_parserState.nonLHSCount = oldNonLHSCount;
-    
-    return context.createObjectLiteral(location, propertyList);
-}
-
-template <typename LexerType>
-template <class TreeBuilder> TreeExpression Parser<LexerType>::parseStrictObjectLiteral(TreeBuilder& context)
-{
     consumeOrFail(OPENBRACE, "Expected opening '{' at the start of an object literal");
     
     int oldNonLHSCount = m_parserState.nonLHSCount;
@@ -4498,8 +4443,6 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
     case CLASSTOKEN:
         return parseClassExpression(context);
     case OPENBRACE:
-        if (strictMode())
-            return parseStrictObjectLiteral(context);
         return parseObjectLiteral(context);
     case OPENBRACKET:
         return parseArrayLiteral(context);
@@ -4520,7 +4463,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
     }
     case AWAIT:
         if (m_parserState.functionParsePhase == FunctionParsePhase::Parameters)
-            failIfFalse(m_parserState.allowAwait, "Cannot use await expression within parameters");
+            semanticFailIfFalse(m_parserState.allowAwait, "Cannot use 'await' within a parameter default expression");
         else if (currentFunctionScope()->isAsyncFunctionBoundary())
             return parseAwaitExpression(context);
 

@@ -21,6 +21,9 @@ list(APPEND WebCore_SOURCES
     page/scrolling/nicosia/ScrollingTreeFixedNode.cpp
     page/scrolling/nicosia/ScrollingTreeFrameScrollingNodeNicosia.cpp
     page/scrolling/nicosia/ScrollingTreeNicosia.cpp
+    page/scrolling/nicosia/ScrollingTreeOverflowScrollProxyNode.cpp
+    page/scrolling/nicosia/ScrollingTreeOverflowScrollingNodeNicosia.cpp
+    page/scrolling/nicosia/ScrollingTreePositionedNode.cpp
     page/scrolling/nicosia/ScrollingTreeStickyNode.cpp
 
     page/scrolling/generic/ScrollingThreadGeneric.cpp
@@ -55,7 +58,6 @@ list(APPEND WebCore_SOURCES
     platform/network/playstation/CurlSSLHandlePlayStation.cpp
     platform/network/playstation/NetworkStateNotifierPlayStation.cpp
 
-    platform/playstation/EventLoopPlayStation.cpp
     platform/playstation/MIMETypeRegistryPlayStation.cpp
     platform/playstation/PlatformScreenPlayStation.cpp
     platform/playstation/ScrollbarThemePlayStation.cpp

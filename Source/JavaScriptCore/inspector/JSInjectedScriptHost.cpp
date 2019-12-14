@@ -485,23 +485,17 @@ JSValue JSInjectedScriptHost::weakMapEntries(ExecState* exec)
 
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = exec->uncheckedArgument(0);
-    JSWeakMap* weakMap = jsDynamicCast<JSWeakMap*>(vm, value);
+    auto* weakMap = jsDynamicCast<JSWeakMap*>(vm, exec->uncheckedArgument(0));
     if (!weakMap)
         return jsUndefined();
 
-    unsigned numberToFetch = 100;
-
-    JSValue numberToFetchArg = exec->argument(1);
-    double fetchDouble = numberToFetchArg.toInteger(exec);
-    if (fetchDouble >= 0)
-        numberToFetch = static_cast<unsigned>(fetchDouble);
+    MarkedArgumentBuffer buffer;
+    auto fetchCount = exec->argument(1).toInteger(exec);
+    weakMap->takeSnapshot(buffer, fetchCount >= 0 ? static_cast<unsigned>(fetchCount) : 0);
+    ASSERT(!buffer.hasOverflowed());
 
     JSArray* array = constructEmptyArray(exec, nullptr);
     RETURN_IF_EXCEPTION(scope, JSValue());
-
-    MarkedArgumentBuffer buffer;
-    weakMap->takeSnapshot(buffer, numberToFetch);
 
     for (unsigned index = 0; index < buffer.size(); index += 2) {
         JSObject* entry = constructEmptyObject(exec);
@@ -535,23 +529,17 @@ JSValue JSInjectedScriptHost::weakSetEntries(ExecState* exec)
 
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = exec->uncheckedArgument(0);
-    JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(vm, value);
+    auto* weakSet = jsDynamicCast<JSWeakSet*>(vm, exec->uncheckedArgument(0));
     if (!weakSet)
         return jsUndefined();
 
-    unsigned numberToFetch = 100;
-
-    JSValue numberToFetchArg = exec->argument(1);
-    double fetchDouble = numberToFetchArg.toInteger(exec);
-    if (fetchDouble >= 0)
-        numberToFetch = static_cast<unsigned>(fetchDouble);
+    MarkedArgumentBuffer buffer;
+    auto fetchCount = exec->argument(1).toInteger(exec);
+    weakSet->takeSnapshot(buffer, fetchCount >= 0 ? static_cast<unsigned>(fetchCount) : 0);
+    ASSERT(!buffer.hasOverflowed());
 
     JSArray* array = constructEmptyArray(exec, nullptr);
     RETURN_IF_EXCEPTION(scope, JSValue());
-
-    MarkedArgumentBuffer buffer;
-    weakSet->takeSnapshot(buffer, numberToFetch);
 
     for (unsigned index = 0; index < buffer.size(); ++index) {
         JSObject* entry = constructEmptyObject(exec);
@@ -798,7 +786,7 @@ public:
 
     HashSet<JSCell*>& holders() { return m_holders; }
 
-    void analyzeEdge(JSCell* from, JSCell* to, SlotVisitor::RootMarkReason reason)
+    void analyzeEdge(JSCell* from, JSCell* to, SlotVisitor::RootMarkReason reason) override
     {
         ASSERT(to);
         ASSERT(to->vm().heapProfiler()->activeHeapAnalyzer() == this);
@@ -823,14 +811,14 @@ public:
         else if (!from || reason != SlotVisitor::RootMarkReason::None)
             m_rootsToInclude.add(to);
     }
-    void analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl*) { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
-    void analyzeVariableNameEdge(JSCell* from, JSCell* to, UniquedStringImpl*) { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
-    void analyzeIndexEdge(JSCell* from, JSCell* to, uint32_t) { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
+    void analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl*) override { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
+    void analyzeVariableNameEdge(JSCell* from, JSCell* to, UniquedStringImpl*) override { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
+    void analyzeIndexEdge(JSCell* from, JSCell* to, uint32_t) override { analyzeEdge(from, to, SlotVisitor::RootMarkReason::None); }
 
-    void analyzeNode(JSCell*) { }
-    void setOpaqueRootReachabilityReasonForCell(JSCell*, const char*) { }
-    void setWrappedObjectForCell(JSCell*, void*) { }
-    void setLabelForCell(JSCell*, const String&) { }
+    void analyzeNode(JSCell*) override { }
+    void setOpaqueRootReachabilityReasonForCell(JSCell*, const char*) override { }
+    void setWrappedObjectForCell(JSCell*, void*) override { }
+    void setLabelForCell(JSCell*, const String&) override { }
 
 #ifndef NDEBUG
     void dump(PrintStream& out) const

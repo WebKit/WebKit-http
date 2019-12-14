@@ -104,10 +104,6 @@ interface TestRunner {
     void setNavigationGesturesEnabled(boolean value);
     void setIgnoresViewportScaleLimits(boolean value);
     void setShouldDownloadUndisplayableMIMETypes(boolean value);
-    
-    // DEPRECATED: Use <!-- webkit-test-runner [ useEphemeralSession=true ] --> instead, or
-    // testRunner.setShouldSwapToEphemeralSessionOnNextNavigation() / testRunner.setShouldSwapToDefaultSessionOnNextNavigation().
-    void setPrivateBrowsingEnabled_DEPRECATED(boolean value);
 
     // Special DOM functions.
     void clearBackForwardList();
@@ -302,6 +298,7 @@ interface TestRunner {
     void setStatisticsDebugMode(boolean value, object completionHandler);
     void setStatisticsPrevalentResourceForDebugMode(DOMString hostName, object completionHandler);
     void setStatisticsLastSeen(DOMString hostName, double seconds, object completionHandler);
+    void setStatisticsMergeStatistic(DOMString hostName, DOMString topFrameDomain1, DOMString topFrameDomain2, double lastSeen, boolean hadUserInteraction, double mostRecentUserInteraction, boolean isGrandfathered, boolean isPrevalent, boolean isVeryPrevalent, unsigned long dataRecordsRemoved, object completionHandler);
     void setStatisticsPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     void setStatisticsVeryPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsPrevalentResource(DOMString hostName);
@@ -311,8 +308,10 @@ interface TestRunner {
     boolean isStatisticsRegisteredAsRedirectingTo(DOMString hostRedirectedFrom, DOMString hostRedirectedTo);
     void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsHasHadUserInteraction(DOMString hostName);
+    boolean isStatisticsOnlyInDatabaseOnce(DOMString subHost, DOMString topHost);
     void setStatisticsGrandfathered(DOMString hostName, boolean value);
     boolean isStatisticsGrandfathered(DOMString hostName);
+    void setUseITPDatabase(boolean value);
     void setStatisticsSubframeUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
     void setStatisticsSubresourceUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
@@ -341,6 +340,7 @@ interface TestRunner {
     void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState(object completionHandler);
     boolean hasStatisticsIsolatedSession(DOMString hostName);
+    void setStatisticsShouldDowngradeReferrer(boolean value, object callback);
 
     // Injected bundle form client.
     void installTextDidChangeInTextFieldCallback(object callback);
@@ -360,16 +360,14 @@ interface TestRunner {
     void abortModal();
 
     void setWebRTCMDNSICECandidatesEnabled(boolean value);
-    void setWebRTCUnifiedPlanEnabled(boolean value);
     void setCustomUserAgent(DOMString userAgent);
 
     void setWebAPIStatisticsEnabled(boolean value);
 
     void terminateNetworkProcess();
     void terminateServiceWorkerProcess();
+    void setUseSeparateServiceWorkerProcess(boolean value);
 
-    void setCanHandleHTTPSServerTrustEvaluation(boolean canHandle);
-    readonly attribute boolean canDoServerTrustEvaluationInNetworkProcess;
     readonly attribute unsigned long serverTrustEvaluationCallbackCallsCount;
 
     readonly attribute boolean didCancelClientRedirect;
@@ -392,10 +390,11 @@ interface TestRunner {
 
     void sendDisplayConfigurationChangedMessageForTesting();
 
-    // WebAuthN
-    void setWebAuthenticationMockConfiguration(object configuration);
+    void setServiceWorkerFetchTimeout(double seconds);
+
+    // WebAuthn
     void addTestKeyToKeychain(DOMString privateKeyBase64, DOMString attrLabel, DOMString applicationTagBase64);
-    void cleanUpKeychain(DOMString attrLabel);
+    void cleanUpKeychain(DOMString attrLabel, optional DOMString applicationTagBase64);
     boolean keyExistsInKeychain(DOMString attrLabel, DOMString applicationTagBase64);
 
     // Ad Click Attribution

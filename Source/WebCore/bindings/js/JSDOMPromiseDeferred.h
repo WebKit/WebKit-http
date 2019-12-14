@@ -146,7 +146,7 @@ public:
 
     JSC::JSValue promise() const;
 
-    void whenSettled(std::function<void()>&&);
+    void whenSettled(Function<void()>&&);
 
 private:
     DeferredPromise(JSDOMGlobalObject& globalObject, JSC::JSPromiseDeferred& deferred, Mode mode)
@@ -166,6 +166,7 @@ private:
 };
 
 class DOMPromiseDeferredBase {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     DOMPromiseDeferredBase(Ref<DeferredPromise>&& genericPromise)
         : m_promiseDeferred(WTFMove(genericPromise))
@@ -212,6 +213,11 @@ public:
     }
 
     JSC::JSValue promise() const { return m_promiseDeferred->promise(); };
+
+    void whenSettled(Function<void()>&& function)
+    {
+        m_promiseDeferred->whenSettled(WTFMove(function));
+    }
 
 protected:
     Ref<DeferredPromise> m_promiseDeferred;

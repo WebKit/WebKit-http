@@ -69,7 +69,6 @@
 #import <UIKit/UIViewController_ViewService.h>
 #import <UIKit/UIView_Private.h>
 #import <UIKit/UIVisualEffect_Private.h>
-#import <UIKit/UIWKSelectionAssistant.h>
 #import <UIKit/UIWKTextInteractionAssistant.h>
 #import <UIKit/UIWebBrowserView.h>
 #import <UIKit/UIWebDocumentView.h>
@@ -591,14 +590,6 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 @interface UIWebSelectionAssistant : NSObject
 @end
 
-@interface UIWKSelectionAssistant : UIWebSelectionAssistant
-@end
-
-@interface UIWKSelectionAssistant ()
-- (id)initWithView:(UIView *)view;
-- (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
-@end
-
 @interface UIWKAutocorrectionRects : NSObject
 @end
 
@@ -1088,6 +1079,11 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 
 #endif // USE(APPLE_INTERNAL_SDK)
 
+@interface UITextInteractionAssistant (Staging_55645619)
+- (void)didEndScrollingOrZooming;
+- (void)willStartScrollingOrZooming;
+@end
+
 @interface UIGestureRecognizer (Staging_45970040)
 @property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
 @end
@@ -1102,6 +1098,10 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @property (nonatomic, readonly) UIKeyboardInputFlags _inputFlags;
 @property (nonatomic, readonly) CFIndex _keyCode;
 @property (nonatomic, readonly) NSInteger _gsModifierFlags;
+@end
+
+@interface UIWebGeolocationPolicyDecider (Staging_25963823)
+- (void)decidePolicyForGeolocationRequestFromOrigin:(id)securityOrigin requestingURL:(NSURL *)requestingURL view:(UIView *)view listener:(id)listener;
 @end
 
 @interface UIColor (IPI)

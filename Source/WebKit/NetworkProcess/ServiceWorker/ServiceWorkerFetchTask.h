@@ -29,8 +29,8 @@
 
 #include <WebCore/FetchIdentifier.h>
 #include <WebCore/ServiceWorkerTypes.h>
+#include <WebCore/Timer.h>
 #include <pal/SessionID.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 class ResourceError;
@@ -46,10 +46,15 @@ class FormDataReference;
 
 namespace WebKit {
 
-class ServiceWorkerFetchTask : public RefCounted<ServiceWorkerFetchTask> {
-public:
-    static Ref<ServiceWorkerFetchTask> create(PAL::SessionID sessionID, Ref<IPC::Connection>&& connection, WebCore::SWServerConnectionIdentifier connectionIdentifier, WebCore::FetchIdentifier fetchIdentifier) { return adoptRef(*new ServiceWorkerFetchTask(sessionID, WTFMove(connection), connectionIdentifier, fetchIdentifier)); }
+class WebSWServerConnection;
+class WebSWServerToContextConnection;
 
+class ServiceWorkerFetchTask {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    ServiceWorkerFetchTask(PAL::SessionID, WebSWServerConnection&, WebSWServerToContextConnection&, WebCore::FetchIdentifier, WebCore::ServiceWorkerIdentifier, Seconds timeout);
+
+    void didNotHandle();
     void fail(const WebCore::ResourceError& error) { didFail(error); }
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
@@ -67,25 +72,26 @@ public:
     };
 
     const Identifier& identifier() const { return m_identifier; }
+    const WebCore::ServiceWorkerIdentifier& serviceWorkerIdentifier() const { return m_serviceWorkerIdentifier; }
+    bool wasHandled() const { return m_wasHandled; }
 
 private:
-    ServiceWorkerFetchTask(PAL::SessionID sessionID, Ref<IPC::Connection>&& connection, WebCore::SWServerConnectionIdentifier connectionIdentifier, WebCore::FetchIdentifier fetchIdentifier)
-        : m_sessionID(sessionID)
-        , m_connection(WTFMove(connection))
-        , m_identifier { connectionIdentifier, fetchIdentifier }
-    { }
-
     void didReceiveRedirectResponse(const WebCore::ResourceResponse&);
     void didReceiveResponse(const WebCore::ResourceResponse&, bool needsContinueDidReceiveResponseMessage);
     void didReceiveData(const IPC::DataReference&, int64_t encodedDataLength);
     void didReceiveFormData(const IPC::FormDataReference&);
     void didFinish();
     void didFail(const WebCore::ResourceError&);
-    void didNotHandle();
+    void timeoutTimerFired();
 
     PAL::SessionID m_sessionID;
-    Ref<IPC::Connection> m_connection;
+    WeakPtr<WebSWServerConnection> m_connection;
+    WebSWServerToContextConnection& m_contextConnection;
     Identifier m_identifier;
+    WebCore::ServiceWorkerIdentifier m_serviceWorkerIdentifier;
+    Seconds m_timeout;
+    WebCore::Timer m_timeoutTimer;
+    bool m_wasHandled { false };
 };
 
 inline bool operator==(const ServiceWorkerFetchTask::Identifier& a, const ServiceWorkerFetchTask::Identifier& b)

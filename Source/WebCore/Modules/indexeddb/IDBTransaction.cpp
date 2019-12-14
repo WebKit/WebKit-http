@@ -326,7 +326,7 @@ const char* IDBTransaction::activeDOMObjectName() const
 bool IDBTransaction::canSuspendForDocumentSuspension() const
 {
     ASSERT(&m_database->originThread() == &Thread::current());
-    return false;
+    return true;
 }
 
 bool IDBTransaction::hasPendingActivity() const
@@ -383,6 +383,8 @@ void IDBTransaction::removeRequest(IDBRequest& request)
 {
     ASSERT(&m_database->originThread() == &Thread::current());
     m_openRequests.remove(&request);
+
+    trySchedulePendingOperationTimer();
 }
 
 void IDBTransaction::scheduleOperation(Ref<IDBClient::TransactionOperation>&& operation)
@@ -394,20 +396,11 @@ void IDBTransaction::scheduleOperation(Ref<IDBClient::TransactionOperation>&& op
     m_pendingTransactionOperationQueue.append(operation.copyRef());
     m_transactionOperationMap.set(identifier, WTFMove(operation));
 
-    schedulePendingOperationTimer();
+    trySchedulePendingOperationTimer();
 }
 
-void IDBTransaction::schedulePendingOperationTimer()
+void IDBTransaction::trySchedulePendingOperationTimer()
 {
-    ASSERT(&m_database->originThread() == &Thread::current());
-
-    if (!m_pendingOperationTimer.isActive())
-        m_pendingOperationTimer.startOneShot(0_s);
-}
-
-void IDBTransaction::pendingOperationTimerFired()
-{
-    LOG(IndexedDB, "IDBTransaction::pendingOperationTimerFired (%p)", this);
     ASSERT(&m_database->originThread() == &Thread::current());
 
     if (!m_startedOnServer)
@@ -417,6 +410,18 @@ void IDBTransaction::pendingOperationTimerFired()
     // then we have to wait until it completes before sending any more.
     if (!m_transactionOperationsInProgressQueue.isEmpty() && !m_transactionOperationsInProgressQueue.last()->nextRequestCanGoToServer())
         return;
+
+    if (m_pendingTransactionOperationQueue.isEmpty() && (!m_transactionOperationMap.isEmpty() || !m_openRequests.isEmpty() || isFinishedOrFinishing()))
+        return;
+
+    if (!m_pendingOperationTimer.isActive())
+        m_pendingOperationTimer.startOneShot(0_s);
+}
+
+void IDBTransaction::pendingOperationTimerFired()
+{
+    LOG(IndexedDB, "IDBTransaction::pendingOperationTimerFired (%p)", this);
+    ASSERT(&m_database->originThread() == &Thread::current());
 
     // We want to batch operations together without spinning the runloop for performance,
     // but don't want to affect responsiveness of the main thread.
@@ -557,7 +562,7 @@ void IDBTransaction::didStart(const IDBError& error)
         return;
     }
 
-    schedulePendingOperationTimer();
+    trySchedulePendingOperationTimer();
 }
 
 void IDBTransaction::notifyDidAbort(const IDBError& error)
@@ -1282,7 +1287,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
     // workers currently write blobs to disk synchronously.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=157958 - Make this asynchronous after refactoring allows it.
     if (!isMainThread()) {
-        auto idbValue = value->writeBlobsToDiskForIndexedDBSynchronously(scriptExecutionContext()->sessionID());
+        auto idbValue = value->writeBlobsToDiskForIndexedDBSynchronously();
         if (idbValue.data().data())
             m_database->connectionProxy().putOrAdd(operation, key.get(), idbValue, overwriteMode);
         else {
@@ -1301,7 +1306,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
     // stop future requests from going to the server ahead of it.
     operation.setNextRequestCanGoToServer(false);
 
-    value->writeBlobsToDiskForIndexedDB(scriptExecutionContext()->sessionID(), [protectedThis = makeRef(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](IDBValue&& idbValue) mutable {
+    value->writeBlobsToDiskForIndexedDB([protectedThis = makeRef(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](IDBValue&& idbValue) mutable {
         ASSERT(&originThread() == &Thread::current());
         ASSERT(isMainThread());
         if (idbValue.data().data()) {
@@ -1410,7 +1415,7 @@ void IDBTransaction::operationCompletedOnClient(IDBClient::TransactionOperation&
     m_transactionOperationMap.remove(operation.identifier());
     m_transactionOperationsInProgressQueue.removeFirst();
 
-    schedulePendingOperationTimer();
+    trySchedulePendingOperationTimer();
 }
 
 void IDBTransaction::establishOnServer()
@@ -1438,7 +1443,7 @@ void IDBTransaction::deactivate()
     if (m_state == IndexedDB::TransactionState::Active)
         m_state = IndexedDB::TransactionState::Inactive;
 
-    schedulePendingOperationTimer();
+    trySchedulePendingOperationTimer();
 }
 
 void IDBTransaction::connectionClosedFromServer(const IDBError& error)

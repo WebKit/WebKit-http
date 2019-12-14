@@ -30,7 +30,6 @@
 
 #import "LocalAuthenticator.h"
 #import "LocalConnection.h"
-#import <WebCore/RuntimeEnabledFeatures.h>
 
 #import "LocalAuthenticationSoftLink.h"
 
@@ -44,10 +43,6 @@ LocalService::LocalService(Observer& observer)
 // FIXME(rdar://problem/51048542)
 bool LocalService::isAvailable()
 {
-    // FIXME(198176)
-    if (!WebCore::RuntimeEnabledFeatures::sharedFeatures().webAuthenticationLocalAuthenticatorEnabled())
-        return false;
-
     auto context = adoptNS([allocLAContextInstance() init]);
     NSError *error = nil;
     if (![context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&error]) {

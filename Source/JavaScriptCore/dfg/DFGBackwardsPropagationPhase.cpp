@@ -128,7 +128,8 @@ private:
             return power > 31;
         }
             
-        case BitRShift:
+        case ArithBitRShift:
+        case ValueBitRShift:
         case BitURShift: {
             if (power > 31)
                 return true;
@@ -226,9 +227,10 @@ private:
         case ValueBitAnd:
         case ValueBitOr:
         case ValueBitXor:
-        case BitRShift:
         case ValueBitLShift:
         case ArithBitLShift:
+        case ArithBitRShift:
+        case ValueBitRShift:
         case BitURShift:
         case ArithIMul: {
             flags |= NodeBytecodeUsesAsInt;
@@ -239,7 +241,9 @@ private:
             break;
         }
             
-        case StringCharCodeAt: {
+        case StringCharAt:
+        case StringCharCodeAt:
+        case StringCodePointAt: {
             node->child1()->mergeFlags(NodeBytecodeUsesAsValue);
             node->child2()->mergeFlags(NodeBytecodeUsesAsValue | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
             break;
@@ -387,12 +391,6 @@ private:
             // in that you would get a different exception message. So, like, whatever: we
             // claim here that NaN v. undefined is observable.
             node->child1()->mergeFlags(NodeBytecodeUsesAsInt | NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsArrayIndex);
-            break;
-        }
-            
-        case StringCharAt: {
-            node->child1()->mergeFlags(NodeBytecodeUsesAsValue);
-            node->child2()->mergeFlags(NodeBytecodeUsesAsValue | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
             break;
         }
             

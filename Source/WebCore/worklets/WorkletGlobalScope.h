@@ -36,7 +36,6 @@
 #include "WorkerEventQueue.h"
 #include <JavaScriptCore/ConsoleMessage.h>
 #include <JavaScriptCore/RuntimeFlags.h>
-#include <pal/SessionID.h>
 #include <wtf/URL.h>
 #include <wtf/ObjectIdentifier.h>
 #include <wtf/WeakPtr.h>
@@ -120,14 +119,12 @@ private:
     bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) final { RELEASE_ASSERT_NOT_REACHED(); return false; }
 #endif
     URL completeURL(const String&) const final;
-    PAL::SessionID sessionID() const final { return m_sessionID; }
     String userAgent(const URL&) const final;
     void disableEval(const String&) final;
     void disableWebAssembly(const String&) final;
 
     WeakPtr<Document> m_document;
 
-    PAL::SessionID m_sessionID;
     std::unique_ptr<WorkletScriptController> m_script;
 
     Ref<SecurityOrigin> m_topOrigin;

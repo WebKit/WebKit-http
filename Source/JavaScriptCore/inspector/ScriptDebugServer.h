@@ -38,9 +38,10 @@
 #include <wtf/text/WTFString.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSGlobalObject;
 class VM;
+using ExecState = CallFrame;
 }
 
 namespace Inspector {
@@ -62,7 +63,7 @@ public:
 
 protected:
     ScriptDebugServer(JSC::VM&);
-    ~ScriptDebugServer();
+    ~ScriptDebugServer() override;
 
     virtual void attachDebugger() = 0;
     virtual void detachDebugger(bool isBeingDestroyed) = 0;

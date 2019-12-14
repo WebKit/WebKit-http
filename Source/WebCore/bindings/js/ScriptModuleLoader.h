@@ -28,17 +28,19 @@
 #include "CachedModuleScriptLoader.h"
 #include "CachedModuleScriptLoaderClient.h"
 #include <JavaScriptCore/JSCJSValue.h>
+#include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/URL.h>
 #include <wtf/URLHash.h>
 
 namespace JSC {
 
-class ExecState;
+class CallFrame;
 class JSGlobalObject;
 class JSInternalPromise;
 class JSModuleLoader;
+class JSModuleRecord;
 class SourceOrigin;
+using ExecState = CallFrame;
 
 }
 

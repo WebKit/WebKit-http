@@ -34,6 +34,7 @@ list(APPEND WebCore_SOURCES
     platform/Cursor.cpp
     platform/LocalizedStrings.cpp
     platform/StaticPasteboard.cpp
+    platform/SuspendableTaskQueue.cpp
 
     platform/audio/PlatformMediaSessionManager.cpp
 
@@ -81,7 +82,6 @@ list(APPEND WebCore_SOURCES
     platform/win/DefWndProcWindowClass.cpp
     platform/win/DragDataWin.cpp
     platform/win/DragImageWin.cpp
-    platform/win/EventLoopWin.cpp
     platform/win/GDIObjectCounter.cpp
     platform/win/GDIUtilities.cpp
     platform/win/KeyEventWin.cpp
@@ -154,7 +154,6 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
 if (USE_CF)
     list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/cf"
-        "${WEBCORE_DIR}/platform/cf/win"
     )
 
     list(APPEND WebCore_SOURCES
@@ -164,15 +163,11 @@ if (USE_CF)
 
         platform/cf/SharedBufferCF.cpp
 
-        platform/cf/win/CertificateCFWin.cpp
-
         platform/text/cf/HyphenationCF.cpp
     )
 
     list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
         loader/archive/cf/LegacyWebArchive.h
-
-        platform/cf/win/CertificateCFWin.h
     )
 
     list(APPEND WebCore_LIBRARIES ${COREFOUNDATION_LIBRARY})
@@ -180,6 +175,18 @@ if (USE_CF)
 else ()
     list(APPEND WebCore_SOURCES
         platform/text/Hyphenation.cpp
+    )
+endif ()
+
+if (USE_CFURLCONNECTION)
+    list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
+        ${WEBCORE_DIR}/platform/cf/win
+    )
+    list(APPEND WebCore_SOURCES
+        platform/cf/win/CertificateCFWin.cpp
+    )
+    list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+        platform/cf/win/CertificateCFWin.h
     )
 endif ()
 

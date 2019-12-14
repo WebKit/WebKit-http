@@ -26,24 +26,18 @@
 #pragma once
 
 #include "Pasteboard.h"
-#include <pal/SessionID.h>
 
 namespace WebCore {
 
 class File;
 
 struct WebCorePasteboardFileReader final : PasteboardFileReader {
-    explicit WebCorePasteboardFileReader(PAL::SessionID sessionID)
-        : sessionID(sessionID)
-    {
-    }
-
+    WebCorePasteboardFileReader() = default;
     ~WebCorePasteboardFileReader();
 
     void readFilename(const String&) final;
     void readBuffer(const String& filename, const String& type, Ref<SharedBuffer>&&) final;
 
-    PAL::SessionID sessionID;
     Vector<Ref<File>> files;
 };
 

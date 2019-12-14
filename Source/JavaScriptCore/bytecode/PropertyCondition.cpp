@@ -54,6 +54,9 @@ void PropertyCondition::dumpInContext(PrintStream& out, DumpContext* context) co
     case Equivalence:
         out.print(m_header.type(), " of ", m_header.pointer(), " with ", inContext(requiredValue(), context));
         return;
+    case CustomFunctionEquivalence:
+        out.print(m_header.type(), " of ", m_header.pointer());
+        return;
     case HasPrototype:
         out.print(m_header.type(), " with prototype ", inContext(JSValue(prototype()), context));
         return;
@@ -86,6 +89,7 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
     case Absence:
     case AbsenceOfSetEffect:
     case Equivalence:
+    case CustomFunctionEquivalence:
         if (!structure->propertyAccessesAreCacheable()) {
             if (PropertyConditionInternal::verbose)
                 dataLog("Invalid because property accesses are not cacheable.\n");
@@ -248,7 +252,13 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
         }
         
         return true;
-    } }
+    } 
+    case CustomFunctionEquivalence: {
+        if (structure->staticPropertiesReified())
+            return false;
+        return !!structure->findPropertyHashEntry(uid());
+    }
+    }
     
     RELEASE_ASSERT_NOT_REACHED();
     return false;
@@ -263,6 +273,7 @@ bool PropertyCondition::validityRequiresImpurePropertyWatchpoint(Structure* stru
     case Presence:
     case Absence:
     case Equivalence:
+    case CustomFunctionEquivalence:
         return structure->needImpurePropertyWatchpoint();
     case AbsenceOfSetEffect:
     case HasPrototype:
@@ -288,6 +299,7 @@ bool PropertyCondition::isStillValid(Structure* structure, JSObject* base) const
         break;
     case Presence:
     case Equivalence:
+    case CustomFunctionEquivalence:
         if (structure->typeInfo().getOwnPropertySlotIsImpure())
             return false;
         break;
@@ -329,6 +341,21 @@ bool PropertyCondition::isWatchableWhenValid(
         
         break;
     }
+
+    case CustomFunctionEquivalence: {
+        // We just use the structure transition watchpoint for this. A structure S starts
+        // off with a property P in the static property hash table. If S transitions to
+        // S', either P remains in the static property table or not. If not, then we
+        // are no longer valid. So the above check of transitionWatchpointSetHasBeenInvalidated
+        // is sufficient.
+        //
+        // We could make this smarter in the future, since we sometimes reify static properties.
+        // We could make this adapt to looking at the object's storage for such reified custom
+        // functions, but we don't do that right now. We just allow this property condition to
+        // invalidate and create an Equivalence watchpoint for the materialized property sometime
+        // in the future.
+        break;
+    }
         
     default:
         break;
@@ -349,20 +376,6 @@ bool PropertyCondition::isWatchable(
 {
     return isStillValid(structure, base)
         && isWatchableWhenValid(structure, effort);
-}
-
-bool PropertyCondition::isStillLive(VM& vm) const
-{
-    if (hasPrototype() && prototype() && !vm.heap.isMarked(prototype()))
-        return false;
-    
-    if (hasRequiredValue()
-        && requiredValue()
-        && requiredValue().isCell()
-        && !vm.heap.isMarked(requiredValue().asCell()))
-        return false;
-    
-    return true;
 }
 
 void PropertyCondition::validateReferences(const TrackedReferences& tracked) const
@@ -416,6 +429,9 @@ void printInternal(PrintStream& out, JSC::PropertyCondition::Kind condition)
         return;
     case JSC::PropertyCondition::Equivalence:
         out.print("Equivalence");
+        return;
+    case JSC::PropertyCondition::CustomFunctionEquivalence:
+        out.print("CustomFunctionEquivalence");
         return;
     case JSC::PropertyCondition::HasPrototype:
         out.print("HasPrototype");

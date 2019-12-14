@@ -27,10 +27,6 @@
 
 #if ENABLE(SERVICE_WORKER)
 
-namespace PAL {
-class SessionID;
-}
-
 namespace WebCore {
 
 class SWClientConnection;
@@ -44,9 +40,9 @@ public:
     static ServiceWorkerProvider& singleton();
     static void setSharedProvider(ServiceWorkerProvider&);
 
-    bool mayHaveServiceWorkerRegisteredForOrigin(PAL::SessionID, const SecurityOriginData&);
-    virtual SWClientConnection* existingServiceWorkerConnectionForSession(PAL::SessionID) = 0;
-    virtual SWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID) = 0;
+    bool mayHaveServiceWorkerRegisteredForOrigin(const SecurityOriginData&);
+    virtual SWClientConnection* existingServiceWorkerConnection() = 0;
+    virtual SWClientConnection& serviceWorkerConnection() = 0;
 
     void registerServiceWorkerClients();
 

@@ -27,7 +27,6 @@
 
 #include "APIObject.h"
 #include "WebPreferencesStore.h"
-#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 
@@ -44,12 +43,12 @@ class WebPreferences;
 class WebProcessPool;
 class WebURLSchemeHandler;
 class WebUserContentControllerProxy;
+class WebsiteDataStore;
 }
 
 namespace API {
 
 class ApplicationManifest;
-class WebsiteDataStore;
 class WebsitePolicies;
 
 class PageConfiguration : public ObjectImpl<Object::Type::PageConfiguration> {
@@ -84,8 +83,8 @@ public:
     WebKit::VisitedLinkStore* visitedLinkStore();
     void setVisitedLinkStore(WebKit::VisitedLinkStore*);
 
-    WebsiteDataStore* websiteDataStore();
-    void setWebsiteDataStore(WebsiteDataStore*);
+    WebKit::WebsiteDataStore* websiteDataStore();
+    void setWebsiteDataStore(WebKit::WebsiteDataStore*);
 
     WebsitePolicies* defaultWebsitePolicies() const;
     void setDefaultWebsitePolicies(WebsitePolicies*);
@@ -145,7 +144,7 @@ private:
     RefPtr<WebKit::WebPageProxy> m_relatedPage;
     RefPtr<WebKit::VisitedLinkStore> m_visitedLinkStore;
 
-    RefPtr<WebsiteDataStore> m_websiteDataStore;
+    RefPtr<WebKit::WebsiteDataStore> m_websiteDataStore;
     RefPtr<WebsitePolicies> m_defaultWebsitePolicies;
 
     bool m_treatsSHA1SignedCertificatesAsInsecure { true };

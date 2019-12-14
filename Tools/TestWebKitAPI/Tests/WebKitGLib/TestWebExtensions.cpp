@@ -19,11 +19,9 @@
 
 #include "config.h"
 
-#include "WebKitTestBus.h"
 #include "WebViewTest.h"
 #include <wtf/glib/GRefPtr.h>
 
-static WebKitTestBus* bus;
 static GUniquePtr<char> scriptDialogResult;
 
 #define INPUT_ID "input-id"
@@ -32,16 +30,10 @@ static GUniquePtr<char> scriptDialogResult;
 
 #define FORM_SUBMISSION_TEST_ID "form-submission-test-id"
 
-static void testWebExtensionGetTitle(WebViewTest* test, gconstpointer)
+static void checkTitle(WebViewTest* test, GDBusProxy* proxy, const char* expectedTitle)
 {
-    test->loadHtml("<html><head><title>WebKitGTK Web Extensions Test</title></head><body></body></html>", 0);
-    test->waitUntilLoadFinished();
-
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
     GRefPtr<GVariant> result = adoptGRef(g_dbus_proxy_call_sync(
-        proxy.get(),
+        proxy,
         "GetTitle",
         g_variant_new("(t)", webkit_web_view_get_page_id(test->m_webView)),
         G_DBUS_CALL_FLAGS_NONE,
@@ -50,7 +42,16 @@ static void testWebExtensionGetTitle(WebViewTest* test, gconstpointer)
 
     const char* title;
     g_variant_get(result.get(), "(&s)", &title);
-    g_assert_cmpstr(title, ==, "WebKitGTK Web Extensions Test");
+    g_assert_cmpstr(title, ==, expectedTitle);
+}
+
+static void testWebExtensionGetTitle(WebViewTest* test, gconstpointer)
+{
+    test->loadHtml("<html><head><title>WebKitGTK Web Extensions Test</title></head><body></body></html>", "http://bar.com");
+    test->waitUntilLoadFinished();
+
+    auto proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "WebKitGTK Web Extensions Test");
 }
 
 #if PLATFORM(GTK)
@@ -75,9 +76,7 @@ static void testWebExtensionInputElementIsUserEdited(WebViewTest* test, gconstpo
     test->loadHtml("<html><body id='body'><input id='input'></input><textarea id='textarea'></textarea></body></html>", nullptr);
     test->waitUntilLoadFinished();
 
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+    auto proxy = test->extensionProxy();
 
     uint64_t pageID = webkit_web_view_get_page_id(test->m_webView);
     g_assert_false(inputElementIsUserEdited(proxy.get(), pageID, "input"));
@@ -114,23 +113,22 @@ static void documentLoadedCallback(GDBusConnection*, const char*, const char*, c
 
 static void testDocumentLoadedSignal(WebViewTest* test, gconstpointer)
 {
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+    auto proxy = test->extensionProxy();
+
     GDBusConnection* connection = g_dbus_proxy_get_connection(proxy.get());
     guint id = g_dbus_connection_signal_subscribe(connection,
-        0,
+        nullptr,
         "org.webkit.gtk.WebExtensionTest",
         "DocumentLoaded",
         "/org/webkit/gtk/WebExtensionTest",
-        0,
+        nullptr,
         G_DBUS_SIGNAL_FLAGS_NONE,
         reinterpret_cast<GDBusSignalCallback>(documentLoadedCallback),
         test,
-        0);
+        nullptr);
     g_assert_cmpuint(id, !=, 0);
 
-    test->loadHtml("<html><head><title>WebKitGTK Web Extensions Test</title></head><body></body></html>", 0);
+    test->loadHtml("<html><head><title>WebKitGTK Web Extensions Test</title></head><body></body></html>", nullptr);
     g_main_loop_run(test->m_mainLoop);
     g_dbus_connection_signal_unsubscribe(connection, id);
 }
@@ -145,7 +143,7 @@ static gboolean webProcessTerminatedCallback(WebKitWebView*, WebKitWebProcessTer
 
 static void testWebKitWebViewProcessCrashed(WebViewTest* test, gconstpointer)
 {
-    test->loadHtml("<html></html>", 0);
+    test->loadHtml("<html></html>", nullptr);
     test->waitUntilLoadFinished();
 
     g_signal_connect_after(test->m_webView, "web-process-terminated",
@@ -153,10 +151,7 @@ static void testWebKitWebViewProcessCrashed(WebViewTest* test, gconstpointer)
 
     test->m_expectedWebProcessCrash = true;
 
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
-
+    auto proxy = test->extensionProxy();
     GRefPtr<GVariant> result = adoptGRef(g_dbus_proxy_call_sync(
         proxy.get(),
         "AbortProcess",
@@ -225,9 +220,7 @@ static void testWebExtensionIsolatedWorld(WebViewTest* test, gconstpointer)
         "document.getElementById('console').innerHTML = top.foo;\n"
         "window.open = function () { alert('Isolated World'); }\n"
         "window.open();";
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest" , "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+    auto proxy = test->extensionProxy();
     g_dbus_proxy_call(proxy.get(),
         "RunJavaScriptInIsolatedWorld",
         g_variant_new("(t&s)", webkit_web_view_get_page_id(test->m_webView), isolatedWorldScript),
@@ -264,9 +257,7 @@ static gboolean permissionRequestCallback(WebKitWebView*, WebKitPermissionReques
 
 static void testInstallMissingPluginsPermissionRequest(WebViewTest* test, gconstpointer)
 {
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+    auto proxy = test->extensionProxy();
     GRefPtr<GVariant> result = adoptGRef(g_dbus_proxy_call_sync(proxy.get(), "RemoveAVPluginsFromGSTRegistry",
         nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr));
 
@@ -292,9 +283,7 @@ static void didAssociateFormControlsCallback(GDBusConnection*, const char*, cons
 
 static void testWebExtensionFormControlsAssociated(WebViewTest* test, gconstpointer)
 {
-    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+    auto proxy = test->extensionProxy();
     GDBusConnection* connection = g_dbus_proxy_get_connection(proxy.get());
     guint id = g_dbus_connection_signal_subscribe(connection,
         nullptr,
@@ -346,9 +335,7 @@ public:
 
     FormSubmissionTest()
     {
-        GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", s_webExtensionID));
-        m_proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-            "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", m_mainLoop));
+        m_proxy = extensionProxy();
         GDBusConnection* connection = g_dbus_proxy_get_connection(m_proxy.get());
 
         m_willSendDOMEventCallbackID = g_dbus_connection_signal_subscribe(connection,
@@ -460,12 +447,98 @@ static void testWebExtensionFormSubmissionSteps(FormSubmissionTest* test, gconst
     test->waitUntilLoadFinished();
 }
 
+static void webViewPageIDChanged(WebKitWebView* webView, GParamSpec*, bool* pageIDChangedEmitted)
+{
+    *pageIDChangedEmitted = true;
+    g_assert_nonnull(Test::s_dbusConnectionPageMap.get(webkit_web_view_get_page_id(webView)));
+}
+
+static void testWebExtensionPageID(WebViewTest* test, gconstpointer)
+{
+    auto pageID = webkit_web_view_get_page_id(test->m_webView);
+    g_assert_cmpuint(pageID, >=, 1);
+
+    bool pageIDChangedEmitted = false;
+    g_signal_connect(test->m_webView, "notify::page-id", G_CALLBACK(webViewPageIDChanged), &pageIDChangedEmitted);
+
+    test->loadHtml("<html><head><title>Title1</title></head><body></body></html>", "http://foo.com");
+    test->waitUntilLoadFinished();
+    g_assert_false(pageIDChangedEmitted);
+    g_assert_cmpuint(pageID, ==, webkit_web_view_get_page_id(test->m_webView));
+    auto proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title1");
+
+    test->loadHtml("<html><head><title>Title2</title></head><body></body></html>", "http://foo.com/bar");
+    test->waitUntilLoadFinished();
+    g_assert_false(pageIDChangedEmitted);
+    g_assert_cmpuint(pageID, ==, webkit_web_view_get_page_id(test->m_webView));
+    checkTitle(test, proxy.get(), "Title2");
+
+    test->loadHtml("<html><head><title>Title3</title></head><body></body></html>", "http://bar.com");
+    test->waitUntilLoadFinished();
+    g_assert_true(pageIDChangedEmitted);
+    pageIDChangedEmitted = false;
+    g_assert_cmpuint(pageID, <, webkit_web_view_get_page_id(test->m_webView));
+    pageID = webkit_web_view_get_page_id(test->m_webView);
+    proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title3");
+
+    test->loadHtml("<html><head><title>Title4</title></head><body></body></html>", "http://bar.com/foo");
+    test->waitUntilLoadFinished();
+    g_assert_false(pageIDChangedEmitted);
+    g_assert_cmpuint(pageID, ==, webkit_web_view_get_page_id(test->m_webView));
+    checkTitle(test, proxy.get(), "Title4");
+
+    // Register a custom URI scheme to test history navigation.
+    webkit_web_context_register_uri_scheme(test->m_webContext.get(), "foo",
+        [](WebKitURISchemeRequest* request, gpointer) {
+            SoupURI* uri = soup_uri_new(webkit_uri_scheme_request_get_uri(request));
+            GRefPtr<GInputStream> inputStream = adoptGRef(g_memory_input_stream_new());
+            char* html = g_strdup_printf("<html><head><title>%s</title></head><body></body></html>", !strcmp(uri->host, "host5") ? "Title5" : "Title6");
+            soup_uri_free(uri);
+            g_memory_input_stream_add_data(G_MEMORY_INPUT_STREAM(inputStream.get()), html, strlen(html), g_free);
+            webkit_uri_scheme_request_finish(request, inputStream.get(), strlen(html), "text/html");
+        }, nullptr, nullptr);
+
+    test->loadURI("foo://host5/");
+    test->waitUntilLoadFinished();
+    g_assert_true(pageIDChangedEmitted);
+    pageIDChangedEmitted = false;
+    g_assert_cmpuint(pageID, <, webkit_web_view_get_page_id(test->m_webView));
+    pageID = webkit_web_view_get_page_id(test->m_webView);
+    proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title5");
+
+    test->loadURI("foo://host6/");
+    test->waitUntilLoadFinished();
+    g_assert_true(pageIDChangedEmitted);
+    pageIDChangedEmitted = false;
+    g_assert_cmpuint(pageID, <, webkit_web_view_get_page_id(test->m_webView));
+    pageID = webkit_web_view_get_page_id(test->m_webView);
+    proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title6");
+
+    test->goBack();
+    test->waitUntilLoadFinished();
+    g_assert_true(pageIDChangedEmitted);
+    pageIDChangedEmitted = false;
+    g_assert_cmpuint(pageID, >, webkit_web_view_get_page_id(test->m_webView));
+    pageID = webkit_web_view_get_page_id(test->m_webView);
+    proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title5");
+
+    test->goForward();
+    test->waitUntilLoadFinished();
+    g_assert_true(pageIDChangedEmitted);
+    pageIDChangedEmitted = false;
+    g_assert_cmpuint(pageID, <, webkit_web_view_get_page_id(test->m_webView));
+    pageID = webkit_web_view_get_page_id(test->m_webView);
+    proxy = test->extensionProxy();
+    checkTitle(test, proxy.get(), "Title6");
+}
+
 void beforeAll()
 {
-    bus = new WebKitTestBus();
-    if (!bus->run())
-        return;
-
     WebViewTest::add("WebKitWebExtension", "dom-document-title", testWebExtensionGetTitle);
 #if PLATFORM(GTK)
     WebViewTest::add("WebKitWebExtension", "dom-input-element-is-user-edited", testWebExtensionInputElementIsUserEdited);
@@ -479,9 +552,9 @@ void beforeAll()
 #endif
     WebViewTest::add("WebKitWebExtension", "form-controls-associated-signal", testWebExtensionFormControlsAssociated);
     FormSubmissionTest::add("WebKitWebExtension", "form-submission-steps", testWebExtensionFormSubmissionSteps);
+    WebViewTest::add("WebKitWebExtension", "page-id", testWebExtensionPageID);
 }
 
 void afterAll()
 {
-    delete bus;
 }

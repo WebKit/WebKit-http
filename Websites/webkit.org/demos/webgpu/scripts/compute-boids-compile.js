@@ -1,4 +1,4 @@
-if (!navigator.gpu)
+if (!navigator.gpu || GPUBufferUsage.COPY_SRC === undefined)
     document.body.className = "error";
 
 const isChrome = navigator.userAgent.indexOf("Chrome") >= 0;
@@ -207,7 +207,6 @@ async function init() {
     if (!isChrome) {
         GPUBufferUsage.COPY_DST = GPUBufferUsage.TRANSFER_DST;
         GPUBufferUsage.COPY_SRC = GPUBufferUsage.TRANSFER_SRC;
-        GPUShaderStage = GPUShaderStageBit;
     }
 
     const adapter = await navigator.gpu.requestAdapter();

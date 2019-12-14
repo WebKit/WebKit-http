@@ -75,6 +75,8 @@ private:
     void matchAuthorShadowPseudoElementRules(bool includeEmptyRules, StyleResolver::RuleRange&);
     void matchHostPseudoClassRules(bool includeEmptyRules, StyleResolver::RuleRange&);
     void matchSlottedPseudoElementRules(bool includeEmptyRules, StyleResolver::RuleRange&);
+    void matchPartPseudoElementRules(bool includeEmptyRules, StyleResolver::RuleRange&);
+    void matchPartPseudoElementRulesForScope(const ShadowRoot& scopeShadowRoot, bool includeEmptyRules, StyleResolver::RuleRange&);
 
     void collectMatchingShadowPseudoElementRules(const MatchRequest&, StyleResolver::RuleRange&);
     std::unique_ptr<RuleSet::RuleDataVector> collectSlottedPseudoElementRulesForSlot(bool includeEmptyRules);
@@ -88,7 +90,9 @@ private:
 
     void addMatchedRule(const RuleData&, unsigned specificity, Style::ScopeOrdinal, StyleResolver::RuleRange&);
 
-    const Element& m_element;
+    const Element& element() const { return m_element.get(); }
+
+    const Ref<const Element> m_element;
     const RuleSet& m_authorStyle;
     const RuleSet* m_userStyle { nullptr };
     const RuleSet* m_userAgentMediaQueryStyle { nullptr };
@@ -99,6 +103,7 @@ private:
     SelectorChecker::Mode m_mode { SelectorChecker::Mode::ResolvingStyle };
     bool m_isMatchingSlottedPseudoElements { false };
     bool m_isMatchingHostPseudoClass { false };
+    RefPtr<const Element> m_shadowHostInPartRuleScope;
     Vector<std::unique_ptr<RuleSet::RuleDataVector>> m_keepAliveSlottedPseudoElementRules;
 
     Vector<MatchedRule, 64> m_matchedRules;

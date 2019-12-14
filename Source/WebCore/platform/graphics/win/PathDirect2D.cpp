@@ -327,19 +327,34 @@ FloatRect Path::fastBoundingRect() const
     return bounds;
 }
 
+FloatRect Path::fastBoundingRectForStroke(const PlatformContextDirect2D& platformContext) const
+{
+    if (isNull())
+        return FloatRect();
+
+    float tolerance = 10;
+
+    auto* strokeStyle = const_cast<PlatformContextDirect2D&>(platformContext).strokeStyle();
+
+    D2D1_RECT_F bounds = { };
+    if (!SUCCEEDED(m_path->GetWidenedBounds(platformContext.strokeThickness(), strokeStyle, nullptr, tolerance, &bounds)))
+        return FloatRect();
+
+    return bounds;
+}
+
 FloatRect Path::strokeBoundingRect(StrokeStyleApplier* applier) const
 {
     if (isNull())
         return FloatRect();
 
-    if (!applier)
-        return boundingRect();
+    PlatformContextDirect2D scratchContextD2D(scratchRenderTarget());
+    GraphicsContext scratchContext(&scratchContextD2D, GraphicsContext::BitmapRenderingContextType::GPUMemory);
 
-    UNUSED_PARAM(applier);
-    notImplemented();
+    if (applier)
+        applier->strokeStyle(&scratchContext);
 
-    // Just return regular bounding rect for now.
-    return boundingRect();
+    return fastBoundingRectForStroke(scratchContextD2D);
 }
 
 void Path::openFigureAtCurrentPointIfNecessary()
@@ -401,8 +416,6 @@ void Path::addBezierCurveTo(const FloatPoint& cp1, const FloatPoint& cp2, const 
 
 void Path::addArcTo(const FloatPoint& p1, const FloatPoint& p2, float radius)
 {
-    ASSERT(m_activePath.get());
-
     FloatPoint p0 = currentPoint();
 
     if (p1 == p0 || p1 == p2 || WTF::areEssentiallyEqual(radius, 0.0f))

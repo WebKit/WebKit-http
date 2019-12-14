@@ -4,6 +4,7 @@
 #
 
 accessibility/insert-newline.html [ Pass ]
+accessibility/misspelling-range.html [ Pass ]
 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 fast/frames/sandboxed-iframe-close-top-noclose.html [ Failure ]
 fast/multicol/flexbox-rows.html [ Skip ]
@@ -128,3 +129,8 @@ webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 imported/w3c/web-platform-tests/wasm [ Skip ]
 
 webkit.org/b/201509 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html [ Failure ]
+
+webkit.org/b/202648 crypto/workers/subtle/aes-indexeddb.html [ Skip ]
+
+# WebGPU is not enabled on iOS Simulator.
+webgpu [ Skip ]

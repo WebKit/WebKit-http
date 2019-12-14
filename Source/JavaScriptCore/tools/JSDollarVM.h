@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,15 @@
 #pragma once
 
 #include "JSObject.h"
+#include "Options.h"
 
 namespace JSC {
-    
+
+struct DollarVMAssertScope {
+    DollarVMAssertScope() { RELEASE_ASSERT(Options::useDollarVM()); }
+    ~DollarVMAssertScope() { RELEASE_ASSERT(Options::useDollarVM()); }
+};
+
 class JSDollarVM final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
@@ -37,11 +43,13 @@ public:
     
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
+        DollarVMAssertScope assertScope;
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
     static JSDollarVM* create(VM& vm, Structure* structure)
     {
+        DollarVMAssertScope assertScope;
         JSDollarVM* instance = new (NotNull, allocateCell<JSDollarVM>(vm.heap)) JSDollarVM(vm, structure);
         instance->finishCreation(vm);
         return instance;
@@ -51,7 +59,9 @@ private:
     JSDollarVM(VM& vm, Structure* structure)
         : Base(vm, structure)
     {
+        DollarVMAssertScope assertScope;
     }
+
 
     void finishCreation(VM&);
     void addFunction(VM&, JSGlobalObject*, const char* name, NativeFunction, unsigned arguments);

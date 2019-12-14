@@ -22,14 +22,12 @@
 #include "config.h"
 
 #include "LoadTrackingTest.h"
-#include "WebKitTestBus.h"
 #include "WebKitTestServer.h"
 #include "WebViewTest.h"
 #include <libsoup/soup.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
-static WebKitTestBus* bus;
 static WebKitTestServer* kServer;
 
 const char* kDNTHeaderNotPresent = "DNT header not present";
@@ -294,6 +292,13 @@ public:
         LoadTrackingTest::loadURI(uri);
     }
 
+    void loadURIAndRedirectOnCommitted(const char* uri, const char* redirectURI)
+    {
+        reset();
+        m_uriToLoadOnCommitted = redirectURI;
+        LoadTrackingTest::loadURI(uri);
+    }
+
     void provisionalLoadStarted()
     {
         m_currentURIList[Provisional] = m_currentURI;
@@ -307,12 +312,19 @@ public:
     void loadCommitted()
     {
         m_currentURIList[Commited] = m_currentURI;
+        if (!m_uriToLoadOnCommitted.isNull()) {
+            m_estimatedProgress = 0;
+            m_activeURI = m_uriToLoadOnCommitted;
+            webkit_web_view_load_uri(m_webView, m_uriToLoadOnCommitted.data());
+        }
     }
 
     void loadFinished()
     {
         m_currentURIList[Finished] = m_currentURI;
         LoadTrackingTest::loadFinished();
+        if (!m_uriToLoadOnCommitted.isNull())
+            m_uriToLoadOnCommitted = { };
     }
 
     void checkURIAtState(State state, const char* path)
@@ -326,12 +338,14 @@ public:
 private:
     void reset()
     {
-        m_currentURI = CString();
+        m_currentURI = { };
+        m_uriToLoadOnCommitted = { };
         m_currentURIList.clear();
         m_currentURIList.grow(m_currentURIList.capacity());
     }
 
     CString m_currentURI;
+    CString m_uriToLoadOnCommitted;
     Vector<CString, 4> m_currentURIList;
 };
 
@@ -417,6 +431,19 @@ static void testWebViewActiveURI(ViewURITrackingTest* test, gconstpointer)
     test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, "/normal-change-request");
     test->checkURIAtState(ViewURITrackingTest::State::Commited, "/request-changed-on-redirect");
     test->checkURIAtState(ViewURITrackingTest::State::Finished, "/request-changed-on-redirect");
+
+    test->loadURIAndRedirectOnCommitted(kServer->getURIForPath("/normal").data(), kServer->getURIForPath("/headers").data());
+    test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/normal");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, nullptr);
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/normal");
+    // Pending API request is always updated immedately.
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/headers");
+    test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/headers");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, nullptr);
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/headers");
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/headers");
 }
 
 class ViewIsLoadingTest: public LoadTrackingTest {
@@ -456,23 +483,34 @@ static void testWebViewIsLoading(ViewIsLoadingTest* test, gconstpointer)
 {
     test->loadURI(kServer->getURIForPath("/normal").data());
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 
     test->reload();
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 
     test->loadURI(kServer->getURIForPath("/error").data());
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 
     test->loadURI(kServer->getURIForPath("/normal").data());
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
     test->loadURI(kServer->getURIForPath("/normal2").data());
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 
     test->goBack();
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 
     test->goForward();
     test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
+
+    test->loadAlternateHTML("<html><head><title>Title</title></head></html>", "file:///foo", nullptr);
+    test->waitUntilLoadFinished();
+    g_assert_false(webkit_web_view_is_loading(test->m_webView));
 }
 
 class WebPageURITest: public WebViewTest {
@@ -493,11 +531,9 @@ public:
 
     WebPageURITest()
     {
-        GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
-        GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
-            "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", m_mainLoop));
+        m_proxy = extensionProxy();
         m_uriChangedSignalID = g_dbus_connection_signal_subscribe(
-            g_dbus_proxy_get_connection(proxy.get()),
+            g_dbus_proxy_get_connection(m_proxy.get()),
             0,
             "org.webkit.gtk.WebExtensionTest",
             "URIChanged",
@@ -515,7 +551,7 @@ public:
     ~WebPageURITest()
     {
         g_signal_handlers_disconnect_matched(m_webView, G_SIGNAL_MATCH_DATA, 0, 0, 0, 0, this);
-        g_dbus_connection_signal_unsubscribe(bus->connection(), m_uriChangedSignalID);
+        g_dbus_connection_signal_unsubscribe(g_dbus_proxy_get_connection(m_proxy.get()), m_uriChangedSignalID);
     }
 
     void loadURI(const char* uri)
@@ -532,6 +568,7 @@ public:
             ASSERT_CMP_CSTRING(m_webPageURIs[i], ==, m_webViewURIs[i]);
     }
 
+    GRefPtr<GDBusProxy> m_proxy;
     unsigned m_uriChangedSignalID;
     Vector<CString> m_webPageURIs;
     Vector<CString> m_webViewURIs;
@@ -729,10 +766,6 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
 
 void beforeAll()
 {
-    bus = new WebKitTestBus();
-    if (!bus->run())
-        return;
-
     kServer = new WebKitTestServer();
     kServer->run(serverCallback);
 
@@ -767,6 +800,5 @@ void beforeAll()
 
 void afterAll()
 {
-    delete bus;
     delete kServer;
 }

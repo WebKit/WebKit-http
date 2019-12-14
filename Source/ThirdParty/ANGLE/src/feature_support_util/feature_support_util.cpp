@@ -41,7 +41,9 @@ namespace angle
 #    define WARN(...) printf(__VA_ARGS__)
 #    define INFO(...) printf(__VA_ARGS__)
 #    define DEBUG(...) printf(__VA_ARGS__)
-#    define VERBOSE(...) printf(__VA_ARGS__)
+// Uncomment for debugging.
+//#    define VERBOSE(...) printf(__VA_ARGS__)
+#    define VERBOSE(...)
 #endif  // defined(ANDROID)
 
 // JSON values are generally composed of either:
@@ -745,8 +747,7 @@ class RuleList
         }
 
         // Make sure there is at least one, default rule.  If not, add it here:
-        int nRules = rules->mRuleList.size();
-        if (nRules == 0)
+        if (rules->mRuleList.size() == 0)
         {
             Rule defaultRule("Default Rule", false);
             rules->addRule(defaultRule);

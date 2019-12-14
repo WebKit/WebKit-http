@@ -320,8 +320,13 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
             nextContext.visitedMatchType = VisitedMatchType::Disabled;
 
         nextContext.pseudoId = PseudoId::None;
+
+        bool nextIsPart = leftSelector->match() == CSSSelector::PseudoElement && leftSelector->pseudoElementType() == CSSSelector::PseudoElementPart;
+        bool allowMultiplePseudoElements = relation == CSSSelector::ShadowDescendant && nextIsPart;
         // Virtual pseudo element is only effective in the rightmost fragment.
-        nextContext.pseudoElementEffective = false;
+        if (!allowMultiplePseudoElements)
+            nextContext.pseudoElementEffective = false;
+
         nextContext.isMatchElement = false;
     }
 
@@ -429,10 +434,12 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
         }
     case CSSSelector::ShadowDescendant:
         {
-            Element* shadowHostNode = context.element->shadowHost();
-            if (!shadowHostNode)
+            // When matching foo::part(bar) we skip directly to the tree of element 'foo'.
+            bool isPart = context.selector->match() == CSSSelector::PseudoElement && context.selector->pseudoElementType() == CSSSelector::PseudoElementPart;
+            auto* shadowHost = isPart ? checkingContext.shadowHostInPartRuleScope : context.element->shadowHost();
+            if (!shadowHost)
                 return MatchResult::fails(Match::SelectorFailsCompletely);
-            nextContext.element = shadowHostNode;
+            nextContext.element = shadowHost;
             nextContext.firstSelectorOfTheFragment = nextContext.selector;
             nextContext.isSubjectOrAdjacentElement = false;
             PseudoIdSet ignoreDynamicPseudo;
@@ -984,6 +991,8 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             if (context.inFunctionalPseudoClass)
                 return false;
             return element.isLink() && context.visitedMatchType == VisitedMatchType::Enabled;
+        case CSSSelector::PseudoClassDirectFocus:
+            return matchesDirectFocusPseudoClass(element);
         case CSSSelector::PseudoClassDrag:
             addStyleRelation(checkingContext, element, Style::Relation::AffectedByDrag);
 
@@ -1045,8 +1054,8 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             break;
         case CSSSelector::PseudoClassLang:
             {
-                ASSERT(selector.langArgumentList() && !selector.langArgumentList()->isEmpty());
-                return matchesLangPseudoClass(element, *selector.langArgumentList());
+                ASSERT(selector.argumentList() && !selector.argumentList()->isEmpty());
+                return matchesLangPseudoClass(element, *selector.argumentList());
             }
 #if ENABLE(FULLSCREEN_API)
         case CSSSelector::PseudoClassFullScreen:
@@ -1124,27 +1133,63 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
         }
         return false;
     }
-#if ENABLE(VIDEO_TRACK)
-    if (selector.match() == CSSSelector::PseudoElement && selector.pseudoElementType() == CSSSelector::PseudoElementCue) {
-        LocalContext subcontext(context);
 
-        const CSSSelector* const & selector = context.selector;
-        for (subcontext.selector = selector->selectorList()->first(); subcontext.selector; subcontext.selector = CSSSelectorList::next(subcontext.selector)) {
-            subcontext.firstSelectorOfTheFragment = subcontext.selector;
-            subcontext.inFunctionalPseudoClass = true;
-            subcontext.pseudoElementEffective = false;
-            PseudoIdSet ignoredDynamicPseudo;
-            unsigned ignoredSpecificity = 0;
-            if (matchRecursively(checkingContext, subcontext, ignoredDynamicPseudo, ignoredSpecificity).match == Match::SelectorMatches)
-                return true;
+    if (selector.match() == CSSSelector::PseudoElement) {
+        switch (selector.pseudoElementType()) {
+#if ENABLE(VIDEO_TRACK)
+        case CSSSelector::PseudoElementCue: {
+            LocalContext subcontext(context);
+
+            const CSSSelector* const & selector = context.selector;
+            for (subcontext.selector = selector->selectorList()->first(); subcontext.selector; subcontext.selector = CSSSelectorList::next(subcontext.selector)) {
+                subcontext.firstSelectorOfTheFragment = subcontext.selector;
+                subcontext.inFunctionalPseudoClass = true;
+                subcontext.pseudoElementEffective = false;
+                PseudoIdSet ignoredDynamicPseudo;
+                unsigned ignoredSpecificity = 0;
+                if (matchRecursively(checkingContext, subcontext, ignoredDynamicPseudo, ignoredSpecificity).match == Match::SelectorMatches)
+                    return true;
+            }
+            return false;
         }
-        return false;
-    }
 #endif
-    if (selector.match() == CSSSelector::PseudoElement && selector.pseudoElementType() == CSSSelector::PseudoElementSlotted) {
-        // We see ::slotted() pseudo elements when collecting slotted rules from the slot shadow tree only.
-        ASSERT(checkingContext.resolvingMode == Mode::CollectingRules);
-        return is<HTMLSlotElement>(element);
+        case CSSSelector::PseudoElementSlotted:
+            // We see ::slotted() pseudo elements when collecting slotted rules from the slot shadow tree only.
+            ASSERT(checkingContext.resolvingMode == Mode::CollectingRules);
+            return is<HTMLSlotElement>(element);
+
+        case CSSSelector::PseudoElementPart: {
+            auto translatePartNameToRuleScope = [&](AtomString partName) {
+                Vector<AtomString, 1> mappedNames { partName };
+                for (auto* shadowRoot = element.containingShadowRoot(); shadowRoot; shadowRoot = shadowRoot->host()->containingShadowRoot()) {
+                    // Apply mappings up to the scope the rules are coming from.
+                    if (shadowRoot->host() == checkingContext.shadowHostInPartRuleScope)
+                        break;
+                    
+                    Vector<AtomString, 1> newMappedNames;
+                    for (auto& name : mappedNames)
+                        newMappedNames.appendVector(shadowRoot->partMappings().get(name));
+                    mappedNames = newMappedNames;
+
+                    if (mappedNames.isEmpty())
+                        break;
+                }
+                return mappedNames;
+            };
+
+            Vector<AtomString, 4> translatedPartNames;
+            for (unsigned i = 0; i < element.partNames().size(); ++i)
+                translatedPartNames.appendVector(translatePartNameToRuleScope(element.partNames()[i]));
+
+            for (auto& part : *selector.argumentList()) {
+                if (!translatedPartNames.contains(part))
+                    return false;
+            }
+            return true;
+        }
+        default:
+            return true;
+        }
     }
     return true;
 }
@@ -1248,10 +1293,27 @@ static bool isFrameFocused(const Element& element)
     return element.document().frame() && element.document().frame()->selection().isFocusedAndActive();
 }
 
+static bool doesShadowTreeContainFocusedElement(const Element& element)
+{
+    auto* shadowRoot = element.shadowRoot();
+    return shadowRoot && shadowRoot->containsFocusedElement();
+}
+
 bool SelectorChecker::matchesFocusPseudoClass(const Element& element)
 {
     if (InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassFocus))
         return true;
+
+    return (element.focused() || doesShadowTreeContainFocusedElement(element)) && isFrameFocused(element);
+}
+
+// This needs to match a subset of elements matchesFocusPseudoClass match since direct focus is treated
+// as a part of focus pseudo class selectors in ElementRuleCollector::collectMatchingRules.
+bool SelectorChecker::matchesDirectFocusPseudoClass(const Element& element)
+{
+    if (InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassFocus))
+        return true;
+
     return element.focused() && isFrameFocused(element);
 }
 

@@ -767,6 +767,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/CagedBarrierPtr.h
     runtime/CallData.h
     runtime/CatchScope.h
+    runtime/CellSize.h
     runtime/ClassInfo.h
     runtime/CodeSpecializationKind.h
     runtime/CommonIdentifiers.h
@@ -842,6 +843,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSArrayBufferView.h
     runtime/JSArrayBufferViewInlines.h
     runtime/JSBigInt.h
+    runtime/JSCConfig.h
     runtime/JSCInlines.h
     runtime/JSCJSValue.h
     runtime/JSCJSValueInlines.h
@@ -918,7 +920,9 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/ObjectInitializationScope.h
     runtime/ObjectPrototype.h
     runtime/Operations.h
+    runtime/OptionEntry.h
     runtime/Options.h
+    runtime/OptionsList.h
     runtime/ParseInt.h
     runtime/PrivateName.h
     runtime/ProgramExecutable.h
@@ -997,6 +1001,11 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/WeakGCMapInlines.h
     runtime/WriteBarrier.h
     runtime/WriteBarrierInlines.h
+
+    tools/Integrity.h
+    tools/IntegrityInlines.h
+    tools/VMInspector.h
+    tools/VMInspectorInlines.h
 
     wasm/WasmCapabilities.h
     wasm/WasmCodeBlock.h

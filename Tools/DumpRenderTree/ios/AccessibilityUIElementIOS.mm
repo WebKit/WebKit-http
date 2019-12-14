@@ -75,7 +75,7 @@ AccessibilityUIElement::~AccessibilityUIElement()
 - (NSAttributedString *)attributedStringForElement;
 - (NSArray *)elementsForRange:(NSRange)range;
 - (NSString *)selectionRangeString;
-- (BOOL)_accessibilityInsertText:(NSString *)text;
+- (BOOL)accessibilityInsertText:(NSString *)text;
 - (CGPoint)accessibilityClickPoint;
 - (void)accessibilityModifySelection:(WebCore::TextGranularity)granularity increase:(BOOL)increase;
 - (void)accessibilitySetPostedNotificationCallback:(AXPostedNotificationCallback)function withContext:(void*)context;
@@ -118,6 +118,7 @@ AccessibilityUIElement::~AccessibilityUIElement()
 - (id)accessibilityObjectForTextMarker:(id)marker;
 - (id)lineStartMarkerForMarker:(id)marker;
 - (id)lineEndMarkerForMarker:(id)marker;
+- (NSArray *)misspellingTextMarkerRange:(NSArray *)startTextMarkerRange forward:(BOOL)forward;
 - (NSArray *)textMarkerRangeFromMarkers:(NSArray *)markers withText:(NSString *)text;
 @end
 
@@ -469,6 +470,12 @@ AccessibilityTextMarkerRange AccessibilityUIElement::lineTextMarkerRangeForTextM
     return AccessibilityTextMarkerRange(textMarkerRange);
 }
 
+AccessibilityTextMarkerRange AccessibilityUIElement::misspellingTextMarkerRange(AccessibilityTextMarkerRange* startRange, bool forward)
+{
+    id misspellingRange = [m_element misspellingTextMarkerRange:(id)startRange->platformTextMarkerRange() forward:forward];
+    return AccessibilityTextMarkerRange(misspellingRange);
+}
+
 AccessibilityTextMarkerRange AccessibilityUIElement::textMarkerRangeForElement(AccessibilityUIElement* element)
 {
     id textMarkerRange = [element->platformUIElement() textMarkerRange];
@@ -487,7 +494,7 @@ bool AccessibilityUIElement::replaceTextInRange(JSStringRef, int, int)
 
 bool AccessibilityUIElement::insertText(JSStringRef text)
 {
-    return [m_element _accessibilityInsertText:[NSString stringWithJSStringRef:text]];
+    return [m_element accessibilityInsertText:[NSString stringWithJSStringRef:text]];
 }
 
 void AccessibilityUIElement::resetSelectedTextMarkerRange()

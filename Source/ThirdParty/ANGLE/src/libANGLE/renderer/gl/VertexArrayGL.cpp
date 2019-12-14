@@ -30,8 +30,7 @@ namespace
 {
 bool SameVertexAttribFormat(const VertexAttribute &a, const VertexAttribute &b)
 {
-    return a.size == b.size && a.type == b.type && a.normalized == b.normalized &&
-           a.pureInteger == b.pureInteger && a.relativeOffset == b.relativeOffset;
+    return a.format == b.format && a.relativeOffset == b.relativeOffset;
 }
 
 bool SameVertexBuffer(const VertexBinding &a, const VertexBinding &b)
@@ -48,6 +47,41 @@ bool IsVertexAttribPointerSupported(size_t attribIndex, const VertexAttribute &a
 GLuint GetAdjustedDivisor(GLuint numViews, GLuint divisor)
 {
     return numViews * divisor;
+}
+
+static void ValidateStateHelperGetIntegerv(const FunctionsGL *functions,
+                                           const GLuint localValue,
+                                           const GLenum pname,
+                                           const char *localName,
+                                           const char *driverName)
+{
+    GLint queryValue;
+    functions->getIntegerv(pname, &queryValue);
+    if (localValue != static_cast<GLuint>(queryValue))
+    {
+        WARN() << localName << " (" << localValue << ") != " << driverName << " (" << queryValue
+               << ")";
+        // Re-add ASSERT: http://anglebug.com/3900
+        // ASSERT(false);
+    }
+}
+
+static void ValidateStateHelperGetVertexAttribiv(const FunctionsGL *functions,
+                                                 const GLint index,
+                                                 const GLuint localValue,
+                                                 const GLenum pname,
+                                                 const char *localName,
+                                                 const char *driverName)
+{
+    GLint queryValue;
+    functions->getVertexAttribiv(index, pname, &queryValue);
+    if (localValue != static_cast<GLuint>(queryValue))
+    {
+        WARN() << localName << "[" << index << "] (" << localValue << ") != " << driverName << "["
+               << index << "] (" << queryValue << ")";
+        // Re-add ASSERT: http://anglebug.com/3900
+        // ASSERT(false);
+    }
 }
 
 }  // anonymous namespace
@@ -369,6 +403,16 @@ angle::Result VertexArrayGL::streamAttributes(const gl::Context *context,
                                     static_cast<GLsizei>(destStride),
                                     static_cast<GLintptr>(vertexStartOffset));
 
+            // Update the state to track the streamed attribute
+            mAppliedAttributes[idx].format = attrib.format;
+
+            mAppliedAttributes[idx].relativeOffset = 0;
+            mAppliedAttributes[idx].bindingIndex   = static_cast<GLuint>(idx);
+
+            mAppliedBindings[idx].setStride(static_cast<GLsizei>(destStride));
+            mAppliedBindings[idx].setOffset(static_cast<GLintptr>(vertexStartOffset));
+            mAppliedBindings[idx].setBuffer(context, nullptr);
+
             curBufferOffset += destStride * streamedVertexCount;
         }
 
@@ -460,10 +504,7 @@ void VertexArrayGL::updateAttribPointer(const gl::Context *context, size_t attri
     callVertexAttribPointer(static_cast<GLuint>(attribIndex), attrib, binding.getStride(),
                             binding.getOffset());
 
-    mAppliedAttributes[attribIndex].size        = attrib.size;
-    mAppliedAttributes[attribIndex].type        = attrib.type;
-    mAppliedAttributes[attribIndex].normalized  = attrib.normalized;
-    mAppliedAttributes[attribIndex].pureInteger = attrib.pureInteger;
+    mAppliedAttributes[attribIndex].format = attrib.format;
 
     // After VertexAttribPointer, attrib.relativeOffset is set to 0 and attrib.bindingIndex is set
     // to attribIndex in driver. If attrib.relativeOffset != 0 or attrib.bindingIndex !=
@@ -482,17 +523,19 @@ void VertexArrayGL::callVertexAttribPointer(GLuint attribIndex,
                                             GLsizei stride,
                                             GLintptr offset) const
 {
-    const GLvoid *pointer = reinterpret_cast<const GLvoid *>(offset);
-    if (attrib.pureInteger)
+    const GLvoid *pointer       = reinterpret_cast<const GLvoid *>(offset);
+    const angle::Format &format = *attrib.format;
+    if (format.isPureInt())
     {
-        ASSERT(!attrib.normalized);
-        mFunctions->vertexAttribIPointer(attribIndex, attrib.size, gl::ToGLenum(attrib.type),
-                                         stride, pointer);
+        ASSERT(!format.isNorm());
+        mFunctions->vertexAttribIPointer(attribIndex, format.channelCount,
+                                         gl::ToGLenum(format.vertexAttribType), stride, pointer);
     }
     else
     {
-        mFunctions->vertexAttribPointer(attribIndex, attrib.size, gl::ToGLenum(attrib.type),
-                                        attrib.normalized, stride, pointer);
+        mFunctions->vertexAttribPointer(attribIndex, format.channelCount,
+                                        gl::ToGLenum(format.vertexAttribType), format.isNorm(),
+                                        stride, pointer);
     }
 }
 
@@ -512,23 +555,22 @@ void VertexArrayGL::updateAttribFormat(size_t attribIndex)
         return;
     }
 
-    if (attrib.pureInteger)
+    const angle::Format &format = *attrib.format;
+    if (format.isPureInt())
     {
-        ASSERT(!attrib.normalized);
-        mFunctions->vertexAttribIFormat(static_cast<GLuint>(attribIndex), attrib.size,
-                                        gl::ToGLenum(attrib.type), attrib.relativeOffset);
+        ASSERT(!format.isNorm());
+        mFunctions->vertexAttribIFormat(static_cast<GLuint>(attribIndex), format.channelCount,
+                                        gl::ToGLenum(format.vertexAttribType),
+                                        attrib.relativeOffset);
     }
     else
     {
-        mFunctions->vertexAttribFormat(static_cast<GLuint>(attribIndex), attrib.size,
-                                       gl::ToGLenum(attrib.type), attrib.normalized,
+        mFunctions->vertexAttribFormat(static_cast<GLuint>(attribIndex), format.channelCount,
+                                       gl::ToGLenum(format.vertexAttribType), format.isNorm(),
                                        attrib.relativeOffset);
     }
 
-    mAppliedAttributes[attribIndex].size           = attrib.size;
-    mAppliedAttributes[attribIndex].type           = attrib.type;
-    mAppliedAttributes[attribIndex].normalized     = attrib.normalized;
-    mAppliedAttributes[attribIndex].pureInteger    = attrib.pureInteger;
+    mAppliedAttributes[attribIndex].format         = attrib.format;
     mAppliedAttributes[attribIndex].relativeOffset = attrib.relativeOffset;
 }
 
@@ -609,6 +651,7 @@ void VertexArrayGL::syncDirtyAttrib(const gl::Context *context,
                 updateAttribEnabled(attribIndex);
                 break;
 
+            case VertexArray::DIRTY_ATTRIB_POINTER_BUFFER:
             case VertexArray::DIRTY_ATTRIB_POINTER:
                 updateAttribPointer(context, attribIndex);
                 break;
@@ -729,6 +772,102 @@ void VertexArrayGL::applyActiveAttribLocationsMask(const gl::AttributesMask &act
     for (size_t attribIndex : updateMask)
     {
         updateAttribEnabled(attribIndex);
+    }
+}
+
+void VertexArrayGL::validateState() const
+{
+    // Ensure this vao is currently bound
+    ValidateStateHelperGetIntegerv(mFunctions, mVertexArrayID, GL_VERTEX_ARRAY_BINDING,
+                                   "mVertexArrayID", "GL_VERTEX_ARRAY_BINDING");
+
+    // Element array buffer
+    if (mAppliedElementArrayBuffer.get() == nullptr)
+    {
+        ValidateStateHelperGetIntegerv(
+            mFunctions, mStreamingElementArrayBuffer, GL_ELEMENT_ARRAY_BUFFER_BINDING,
+            "mAppliedElementArrayBuffer", "GL_ELEMENT_ARRAY_BUFFER_BINDING");
+    }
+    else
+    {
+        const BufferGL *bufferGL = GetImplAs<BufferGL>(mAppliedElementArrayBuffer.get());
+        ValidateStateHelperGetIntegerv(
+            mFunctions, bufferGL->getBufferID(), GL_ELEMENT_ARRAY_BUFFER_BINDING,
+            "mAppliedElementArrayBuffer", "GL_ELEMENT_ARRAY_BUFFER_BINDING");
+    }
+
+    // ValidateStateHelperGetIntegerv but with > comparison instead of !=
+    GLint queryValue;
+    mFunctions->getIntegerv(GL_MAX_VERTEX_ATTRIBS, &queryValue);
+    if (mAppliedAttributes.size() > static_cast<GLuint>(queryValue))
+    {
+        WARN() << "mAppliedAttributes.size() (" << mAppliedAttributes.size()
+               << ") > GL_MAX_VERTEX_ATTRIBS (" << queryValue << ")";
+        // Re-add ASSERT: http://anglebug.com/3900
+        // ASSERT(false);
+    }
+
+    // Check each applied attribute/binding
+    for (GLuint index = 0; index < mAppliedAttributes.size(); index++)
+    {
+        VertexAttribute &attribute = mAppliedAttributes[index];
+        ASSERT(attribute.bindingIndex < mAppliedBindings.size());
+        VertexBinding &binding = mAppliedBindings[attribute.bindingIndex];
+
+        ValidateStateHelperGetVertexAttribiv(
+            mFunctions, index, attribute.enabled, GL_VERTEX_ATTRIB_ARRAY_ENABLED,
+            "mAppliedAttributes.enabled", "GL_VERTEX_ATTRIB_ARRAY_ENABLED");
+
+        if (attribute.enabled)
+        {
+            // Applied attributes
+            ASSERT(attribute.format);
+            ValidateStateHelperGetVertexAttribiv(
+                mFunctions, index, ToGLenum(attribute.format->vertexAttribType),
+                GL_VERTEX_ATTRIB_ARRAY_TYPE, "mAppliedAttributes.format->vertexAttribType",
+                "GL_VERTEX_ATTRIB_ARRAY_TYPE");
+            ValidateStateHelperGetVertexAttribiv(
+                mFunctions, index, attribute.format->channelCount, GL_VERTEX_ATTRIB_ARRAY_SIZE,
+                "attribute.format->channelCount", "GL_VERTEX_ATTRIB_ARRAY_SIZE");
+            ValidateStateHelperGetVertexAttribiv(
+                mFunctions, index, attribute.format->isNorm(), GL_VERTEX_ATTRIB_ARRAY_NORMALIZED,
+                "attribute.format->isNorm()", "GL_VERTEX_ATTRIB_ARRAY_NORMALIZED");
+            ValidateStateHelperGetVertexAttribiv(
+                mFunctions, index, attribute.format->isPureInt(), GL_VERTEX_ATTRIB_ARRAY_INTEGER,
+                "attribute.format->isPureInt()", "GL_VERTEX_ATTRIB_ARRAY_INTEGER");
+            if (supportVertexAttribBinding())
+            {
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, attribute.relativeOffset, GL_VERTEX_ATTRIB_RELATIVE_OFFSET,
+                    "attribute.relativeOffset", "GL_VERTEX_ATTRIB_RELATIVE_OFFSET");
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, attribute.bindingIndex, GL_VERTEX_ATTRIB_BINDING,
+                    "attribute.bindingIndex", "GL_VERTEX_ATTRIB_BINDING");
+            }
+
+            // Applied bindings
+            if (binding.getBuffer().get() == nullptr)
+            {
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, mStreamingArrayBuffer, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING,
+                    "mAppliedBindings.bufferID", "GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING");
+            }
+            else
+            {
+                const BufferGL *arrayBufferGL = GetImplAs<BufferGL>(binding.getBuffer().get());
+                ASSERT(arrayBufferGL);
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, arrayBufferGL->getBufferID(),
+                    GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, "mAppliedBindings.bufferID",
+                    "GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING");
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, binding.getStride(), GL_VERTEX_ATTRIB_ARRAY_STRIDE,
+                    "binding.getStride()", "GL_VERTEX_ATTRIB_ARRAY_STRIDE");
+                ValidateStateHelperGetVertexAttribiv(
+                    mFunctions, index, binding.getDivisor(), GL_VERTEX_ATTRIB_ARRAY_DIVISOR,
+                    "binding.getDivisor()", "GL_VERTEX_ATTRIB_ARRAY_DIVISOR");
+            }
+        }
     }
 }
 

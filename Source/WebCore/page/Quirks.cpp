@@ -473,30 +473,6 @@ bool Quirks::shouldLightenJapaneseBoldSansSerif() const
 #endif
 }
 
-bool Quirks::shouldIgnoreContentChange(const Element& element) const
-{
-#if PLATFORM(IOS_FAMILY)
-    if (!needsQuirks())
-        return false;
-
-    auto* parentElement = element.parentElement();
-    if (!parentElement || !parentElement->hasClass())
-        return false;
-
-    DOMTokenList& classList = parentElement->classList();
-    if (!classList.contains("feedback") || !classList.contains("feedback-mid"))
-        return false;
-
-    if (!equalLettersIgnoringASCIICase(topPrivatelyControlledDomain(m_document->url().host().toString()), "united.com"))
-        return false;
-
-    return true;
-#else
-    UNUSED_PARAM(element);
-    return false;
-#endif
-}
-
 // FIXME(<rdar://problem/50394969>): Remove after desmos.com adopts inputmode="none".
 bool Quirks::needsInputModeNoneImplicitly(const HTMLElement& element) const
 {
@@ -570,6 +546,27 @@ bool Quirks::shouldAvoidScrollingWhenFocusedContentIsVisible() const
     return equalLettersIgnoringASCIICase(m_document->url().host(), "www.zillow.com");
 }
 
+bool Quirks::shouldUseLegacySelectPopoverDismissalBehaviorInDataActivation() const
+{
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->url().host();
+    return equalLettersIgnoringASCIICase(host, "att.com") || host.endsWithIgnoringASCIICase(".att.com");
+}
+
+bool Quirks::shouldIgnoreAriaForFastPathContentObservationCheck() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->url().host();
+    return equalLettersIgnoringASCIICase(host, "www.ralphlauren.com");
+#endif
+    return false;
+}
+
 bool Quirks::shouldOpenAsAboutBlank(const String& stringToOpen) const
 {
 #if PLATFORM(IOS_FAMILY)
@@ -590,6 +587,25 @@ bool Quirks::shouldOpenAsAboutBlank(const String& stringToOpen) const
     return !equalLettersIgnoringASCIICase(urlToOpen.host(), "blank") && !equalLettersIgnoringASCIICase(urlToOpen.host(), "srcdoc");
 #else
     UNUSED_PARAM(stringToOpen);
+    return false;
+#endif
+}
+
+bool Quirks::needsPreloadAutoQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    if (m_needsPreloadAutoQuirk)
+        return m_needsPreloadAutoQuirk.value();
+
+    auto domain = m_document->securityOrigin().domain().convertToASCIILowercase();
+
+    m_needsPreloadAutoQuirk = domain == "vimeo.com" || domain.endsWith("vimeo.com");
+
+    return m_needsPreloadAutoQuirk.value();
+#else
     return false;
 #endif
 }

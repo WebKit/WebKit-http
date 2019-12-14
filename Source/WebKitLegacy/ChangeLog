@@ -1,3 +1,48 @@
+2019-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards successful CMake build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=202426
+
+        Rubber-stamped by Tim Horton.
+
+        * PlatformMac.cmake:
+
+2019-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        Unify more WebKitLegacy sources
+        https://bugs.webkit.org/show_bug.cgi?id=202410
+
+        Reviewed by Tim Horton.
+
+        * SourcesCocoa.txt:
+        * UnifiedSources-output.xcfilelist:
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * scripts/generate-unified-sources.sh:
+
+2019-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=202384
+
+        Rubber-stamped by Tim Horton.
+
+        * PlatformMac.cmake:
+
+2019-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        Unify more WebKitLegacy sources
+        https://bugs.webkit.org/show_bug.cgi?id=202390
+
+        Reviewed by Tim Horton.
+
+        These files were causing problems with the CMake build, but only if not unified.
+        So I unified them and sped up the build too, without changing any behavior.
+
+        * SourcesCocoa.txt:
+        * UnifiedSources-output.xcfilelist:
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * scripts/generate-unified-sources.sh:
+
 2019-09-10  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         Unreviewed, rolling out r239097.

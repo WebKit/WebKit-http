@@ -12,7 +12,7 @@ let image, context2d, device;
 const width = 600;
 
 async function init() {
-    if (!navigator.gpu) {
+    if (!navigator.gpu || GPUBufferUsage.COPY_SRC === undefined) {
         document.body.className = "error";
         return;
     }
@@ -82,15 +82,15 @@ function setUpCompute() {
     const bindGroupLayout = device.createBindGroupLayout({
         bindings: [{
             binding: sourceBufferBindingNum,
-            visibility: GPUShaderStageBit.COMPUTE,
+            visibility: GPUShaderStage.COMPUTE,
             type: "storage-buffer"
         }, {
             binding: outputBufferBindingNum,
-            visibility: GPUShaderStageBit.COMPUTE,
+            visibility: GPUShaderStage.COMPUTE,
             type: "storage-buffer"
         }, {
             binding: uniformsBufferBindingNum,
-            visibility: GPUShaderStageBit.COMPUTE,
+            visibility: GPUShaderStage.COMPUTE,
             type: "uniform-buffer"
         }]
     });

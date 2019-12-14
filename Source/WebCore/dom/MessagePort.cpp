@@ -98,6 +98,7 @@ MessagePort::MessagePort(ScriptExecutionContext& scriptExecutionContext, const M
     : ActiveDOMObject(&scriptExecutionContext)
     , m_identifier(local)
     , m_remoteIdentifier(remote)
+    , m_eventQueue(GenericEventQueue::create(*this))
 {
     LOG(MessagePorts, "Created MessagePort %s (%p) in process %" PRIu64, m_identifier.logString().utf8().data(), this, Process::identifier().toUInt64());
 
@@ -227,6 +228,7 @@ void MessagePort::close()
 
     MessagePortChannelProvider::fromContext(*m_scriptExecutionContext).messagePortClosed(m_identifier);
     removeAllEventListeners();
+    m_eventQueue->close();
 }
 
 void MessagePort::contextDestroyed()
@@ -268,7 +270,7 @@ void MessagePort::dispatchMessages()
             if (contextIsWorker && downcast<WorkerGlobalScope>(*m_scriptExecutionContext).isClosing())
                 return;
             auto ports = MessagePort::entanglePorts(*m_scriptExecutionContext, WTFMove(message.transferredPorts));
-            dispatchEvent(MessageEvent::create(WTFMove(ports), message.message.releaseNonNull()));
+            m_eventQueue->enqueueEvent(MessageEvent::create(WTFMove(ports), message.message.releaseNonNull()));
         }
     };
 

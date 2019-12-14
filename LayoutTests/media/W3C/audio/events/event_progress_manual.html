@@ -3,7 +3,6 @@
  <head>
   <title>video events - progress</title>
   <script src="../../w3cwrapper.js"></script>
-  <script src="../../../Microsoft/common/media.js"></script>
  </head>
  <body>
   <p><a href="http://dev.w3.org/html5/spec/Overview.html#mediaevents">spec reference</a></p>
@@ -18,8 +17,8 @@ a.addEventListener("progress", function() {
    assert_true(true);
   });
   t.done();
-});
-a.src = getAudioURI("http://media.w3.org/2010/05/sound/sound_5") + "?" + new Date() + Math.random();
+}, { once: true});
+a.src = getAudioURI();
   </script>
  </body>
 </html>

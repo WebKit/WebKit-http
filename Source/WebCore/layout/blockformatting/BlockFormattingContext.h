@@ -28,7 +28,6 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "MarginTypes.h"
 #include <wtf/HashMap.h>
 #include <wtf/IsoMalloc.h>
 
@@ -47,9 +46,9 @@ class FloatingContext;
 class BlockFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(BlockFormattingContext);
 public:
-    BlockFormattingContext(const Box& formattingContextRoot, BlockFormattingState&);
+    BlockFormattingContext(const Container& formattingContextRoot, BlockFormattingState&);
 
-    void layout() override;
+    void layoutInFlowContent() override;
 
 private:
     void layoutFormattingContextRoot(FloatingContext&, const Box&);
@@ -75,19 +74,20 @@ private:
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry : public FormattingContext::Geometry {
     public:
-        Geometry(const BlockFormattingContext&);
-
-        HeightAndMargin inFlowHeightAndMargin(const Box&, UsedVerticalValues);
+        HeightAndMargin inFlowHeightAndMargin(const Box&, UsedHorizontalValues, UsedVerticalValues);
         WidthAndMargin inFlowWidthAndMargin(const Box&, UsedHorizontalValues);
 
-        Point staticPosition(const Box&) const;
-        LayoutUnit staticVerticalPosition(const Box&) const;
-        LayoutUnit staticHorizontalPosition(const Box&) const;
+        Point staticPosition(const Box&, UsedHorizontalValues, UsedVerticalValues) const;
+        LayoutUnit staticVerticalPosition(const Box&, UsedVerticalValues) const;
+        LayoutUnit staticHorizontalPosition(const Box&, UsedHorizontalValues) const;
 
         IntrinsicWidthConstraints intrinsicWidthConstraints(const Box&);
 
     private:
-        HeightAndMargin inFlowNonReplacedHeightAndMargin(const Box&, UsedVerticalValues);
+        friend class BlockFormattingContext;
+        Geometry(const BlockFormattingContext&);
+
+        HeightAndMargin inFlowNonReplacedHeightAndMargin(const Box&, UsedHorizontalValues, UsedVerticalValues);
         WidthAndMargin inFlowNonReplacedWidthAndMargin(const Box&, UsedHorizontalValues) const;
         WidthAndMargin inFlowReplacedWidthAndMargin(const Box&, UsedHorizontalValues) const;
         Point staticPositionForOutOfFlowPositioned(const Box&) const;
@@ -99,14 +99,12 @@ private:
     // This class implements margin collapsing for block formatting context.
     class MarginCollapse {
     public:
-        MarginCollapse(const BlockFormattingContext&);
+        UsedVerticalMargin::CollapsedValues collapsedVerticalValues(const Box&, UsedVerticalMargin::NonCollapsedValues);
 
-        UsedVerticalMargin::CollapsedValues collapsedVerticalValues(const Box&, const UsedVerticalMargin::NonCollapsedValues&);
-
-        EstimatedMarginBefore estimatedMarginBefore(const Box&);
-        LayoutUnit marginBeforeIgnoringCollapsingThrough(const Box&, const UsedVerticalMargin::NonCollapsedValues&);
-        void updateMarginAfterForPreviousSibling(const Box&) const;
-        void updatePositiveNegativeMarginValues(const Box&);
+        EstimatedMarginBefore estimatedMarginBefore(const Box&, UsedVerticalMargin::NonCollapsedValues);
+        LayoutUnit marginBeforeIgnoringCollapsingThrough(const Box&, UsedVerticalMargin::NonCollapsedValues);
+        static void updateMarginAfterForPreviousSibling(BlockFormattingContext&, const MarginCollapse&, const Box&);
+        static void updatePositiveNegativeMarginValues(BlockFormattingContext&, const MarginCollapse&, const Box&);
 
         bool marginBeforeCollapsesWithParentMarginBefore(const Box&) const;
         bool marginBeforeCollapsesWithFirstInFlowChildMarginBefore(const Box&) const;
@@ -122,10 +120,14 @@ private:
         bool marginsCollapseThrough(const Box&) const;
 
     private:
+        friend class BlockFormattingContext;
+        MarginCollapse(const BlockFormattingContext&);
+
         enum class MarginType { Before, After };
-        PositiveAndNegativeVerticalMargin::Values positiveNegativeValues(const Box&, MarginType);
-        PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginBefore(const Box&, const UsedVerticalMargin::NonCollapsedValues&);
-        PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginAfter(const Box&, const UsedVerticalMargin::NonCollapsedValues&);
+        PositiveAndNegativeVerticalMargin::Values positiveNegativeValues(const Box&, MarginType) const;
+        PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginBefore(const Box&, UsedVerticalMargin::NonCollapsedValues) const;
+        PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginAfter(const Box&, UsedVerticalMargin::NonCollapsedValues) const;
+        bool hasClearance(const Box&) const;
 
         LayoutState& layoutState() { return m_blockFormattingContext.layoutState(); }
         const LayoutState& layoutState() const { return m_blockFormattingContext.layoutState(); }
@@ -137,8 +139,6 @@ private:
 
     class Quirks : public FormattingContext::Quirks {
     public:
-        Quirks(const BlockFormattingContext&);
-
         bool needsStretching(const Box&) const;
         HeightAndMargin stretchedInFlowHeight(const Box&, HeightAndMargin);
 
@@ -147,6 +147,9 @@ private:
         bool shouldIgnoreMarginAfter(const Box&) const;
 
     private:
+        friend class BlockFormattingContext;
+        Quirks(const BlockFormattingContext&);
+
         const BlockFormattingContext& formattingContext() const { return downcast<BlockFormattingContext>(FormattingContext::Quirks::formattingContext()); }
 
     };
@@ -161,7 +164,8 @@ private:
     bool hasPrecomputedMarginBefore(const Box&) const;
 #endif
 
-    BlockFormattingState& formattingState() const { return downcast<BlockFormattingState>(FormattingContext::formattingState()); }
+    const BlockFormattingState& formattingState() const { return downcast<BlockFormattingState>(FormattingContext::formattingState()); }
+    BlockFormattingState& formattingState() { return downcast<BlockFormattingState>(FormattingContext::formattingState()); }
 
 private:
     HashMap<const Box*, EstimatedMarginBefore> m_estimatedMarginBeforeList;

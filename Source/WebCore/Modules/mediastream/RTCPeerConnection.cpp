@@ -40,6 +40,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSRTCPeerConnection.h"
 #include "Logging.h"
 #include "MediaEndpointConfiguration.h"
@@ -70,13 +71,10 @@ Ref<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context
     auto& document = downcast<Document>(context);
     auto peerConnection = adoptRef(*new RTCPeerConnection(document));
     peerConnection->suspendIfNeeded();
-    // RTCPeerConnection may send events at about any time during its lifetime.
-    // Let's make it uncollectable until the pc is closed by JS or the page stops it.
     if (!peerConnection->isClosed()) {
-        peerConnection->m_pendingActivity = peerConnection->makePendingActivity(peerConnection.get());
         if (auto* page = document.page()) {
             peerConnection->registerToController(page->rtcController());
-            page->libWebRTCProvider().setEnableLogging(!document.sessionID().isEphemeral());
+            page->libWebRTCProvider().setEnableLogging(!page->sessionID().isEphemeral());
         }
     }
     return peerConnection;
@@ -197,6 +195,7 @@ void RTCPeerConnection::queuedCreateOffer(RTCOfferOptions&& options, SessionDesc
         return;
     }
 
+    addPendingPromise(promise);
     m_backend->createOffer(WTFMove(options), WTFMove(promise));
 }
 
@@ -208,6 +207,7 @@ void RTCPeerConnection::queuedCreateAnswer(RTCAnswerOptions&& options, SessionDe
         return;
     }
 
+    addPendingPromise(promise);
     m_backend->createAnswer(WTFMove(options), WTFMove(promise));
 }
 
@@ -219,6 +219,7 @@ void RTCPeerConnection::queuedSetLocalDescription(RTCSessionDescription& descrip
         return;
     }
 
+    addPendingPromise(promise);
     m_backend->setLocalDescription(description, WTFMove(promise));
 }
 
@@ -245,6 +246,7 @@ void RTCPeerConnection::queuedSetRemoteDescription(RTCSessionDescription& descri
         promise.reject(InvalidStateError);
         return;
     }
+    addPendingPromise(promise);
     m_backend->setRemoteDescription(description, WTFMove(promise));
 }
 
@@ -272,6 +274,7 @@ void RTCPeerConnection::queuedAddIceCandidate(RTCIceCandidate* rtcCandidate, DOM
         return;
     }
 
+    addPendingPromise(promise);
     m_backend->addIceCandidate(rtcCandidate, WTFMove(promise));
 }
 
@@ -399,6 +402,7 @@ void RTCPeerConnection::getStats(MediaStreamTrack* selector, Ref<DeferredPromise
             }
         }
     }
+    addPendingPromise(promise.get());
     m_backend->getStats(WTFMove(promise));
 }
 
@@ -430,6 +434,7 @@ bool RTCPeerConnection::doClose()
     if (isClosed())
         return false;
 
+    m_shouldDelayTasks = false;
     m_connectionState = RTCPeerConnectionState::Closed;
     m_iceConnectionState = RTCIceConnectionState::Closed;
     m_signalingState = RTCSignalingState::Closed;
@@ -474,7 +479,6 @@ void RTCPeerConnection::doStop()
     m_isStopped = true;
 
     m_backend->stop();
-    m_pendingActivity = nullptr;
 }
 
 void RTCPeerConnection::registerToController(RTCController& controller)
@@ -496,12 +500,48 @@ const char* RTCPeerConnection::activeDOMObjectName() const
 
 bool RTCPeerConnection::canSuspendForDocumentSuspension() const
 {
-    return !hasPendingActivity();
+    // FIXME: Evaluate whether to extend this to connected cases as well.
+    return m_iceConnectionState != RTCIceConnectionState::Completed && m_iceConnectionState != RTCIceConnectionState::Connected;
+}
+
+void RTCPeerConnection::suspend(ReasonForSuspension reason)
+{
+    if (reason != ReasonForSuspension::PageCache)
+        return;
+
+    m_shouldDelayTasks = true;
+    m_backend->suspend();
+}
+
+void RTCPeerConnection::resume()
+{
+    if (!m_shouldDelayTasks)
+        return;
+
+    m_shouldDelayTasks = false;
+    m_backend->resume();
+
+    scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this)](auto&) {
+        if (m_isStopped || m_shouldDelayTasks)
+            return;
+
+        auto tasks = WTFMove(m_pendingTasks);
+        for (auto& task : tasks)
+            task();
+    });
 }
 
 bool RTCPeerConnection::hasPendingActivity() const
 {
-    return !m_isStopped;
+    if (m_isStopped)
+        return false;
+
+    // This returns true if we have pending promises to be resolved.
+    if (ActiveDOMObject::hasPendingActivity())
+        return true;
+
+    // As long as the connection is not stopped and it has event listeners, it may dispatch events.
+    return hasEventListeners();
 }
 
 void RTCPeerConnection::addTransceiver(Ref<RTCRtpTransceiver>&& transceiver)
@@ -525,7 +565,7 @@ void RTCPeerConnection::updateIceGatheringState(RTCIceGatheringState newState)
             return;
 
         protectedThis->m_iceGatheringState = newState;
-        protectedThis->dispatchEvent(Event::create(eventNames().icegatheringstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+        protectedThis->dispatchEventWhenFeasible(Event::create(eventNames().icegatheringstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
         protectedThis->updateConnectionState();
     });
 }
@@ -539,7 +579,7 @@ void RTCPeerConnection::updateIceConnectionState(RTCIceConnectionState newState)
             return;
 
         protectedThis->m_iceConnectionState = newState;
-        protectedThis->dispatchEvent(Event::create(eventNames().iceconnectionstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+        protectedThis->dispatchEventWhenFeasible(Event::create(eventNames().iceconnectionstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
         protectedThis->updateConnectionState();
     });
 }
@@ -569,7 +609,7 @@ void RTCPeerConnection::updateConnectionState()
     INFO_LOG(LOGIDENTIFIER, "state changed from: " , m_connectionState, " to ", state);
 
     m_connectionState = state;
-    dispatchEvent(Event::create(eventNames().connectionstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+    dispatchEventWhenFeasible(Event::create(eventNames().connectionstatechangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void RTCPeerConnection::scheduleNegotiationNeededEvent()
@@ -580,13 +620,24 @@ void RTCPeerConnection::scheduleNegotiationNeededEvent()
         if (!protectedThis->m_backend->isNegotiationNeeded())
             return;
         protectedThis->m_backend->clearNegotiationNeededState();
-        protectedThis->dispatchEvent(Event::create(eventNames().negotiationneededEvent, Event::CanBubble::No, Event::IsCancelable::No));
+        protectedThis->dispatchEventWhenFeasible(Event::create(eventNames().negotiationneededEvent, Event::CanBubble::No, Event::IsCancelable::No));
     });
 }
 
-void RTCPeerConnection::fireEvent(Event& event)
+void RTCPeerConnection::doTask(Function<void()>&& task)
 {
-    dispatchEvent(event);
+    if (m_shouldDelayTasks || !m_pendingTasks.isEmpty()) {
+        m_pendingTasks.append(WTFMove(task));
+        return;
+    }
+    task();
+}
+
+void RTCPeerConnection::dispatchEventWhenFeasible(Ref<Event>&& event)
+{
+    doTask([this, event = WTFMove(event)] {
+        dispatchEvent(event);
+    });
 }
 
 void RTCPeerConnection::dispatchEvent(Event& event)

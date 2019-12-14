@@ -28,8 +28,10 @@
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 
+#include "Logging.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/Frame.h>
@@ -44,14 +46,18 @@ using namespace WebCore;
 
 static const Seconds minimumNotificationInterval { 5_s };
 
+#if !RELEASE_LOG_DISABLED
+bool WebResourceLoadObserver::shouldLogUserInteraction { false };
+
+void WebResourceLoadObserver::setShouldLogUserInteraction(bool value)
+{
+    shouldLogUserInteraction = value;
+}
+#endif
+
 static bool is3xxRedirect(const ResourceResponse& response)
 {
     return response.httpStatusCode() >= 300 && response.httpStatusCode() <= 399;
-}
-
-static bool shouldLogResourceLoadStatistics(PAL::SessionID sessionID)
-{
-    return DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() && !sessionID.isEphemeral();
 }
 
 WebResourceLoadObserver::WebResourceLoadObserver()
@@ -59,35 +65,30 @@ WebResourceLoadObserver::WebResourceLoadObserver()
 {
 }
 
-void WebResourceLoadObserver::requestStorageAccessUnderOpener(PAL::SessionID sessionID, const RegistrableDomain& domainInNeedOfStorageAccess, PageIdentifier openerPageID, Document& openerDocument)
+void WebResourceLoadObserver::requestStorageAccessUnderOpener(const RegistrableDomain& domainInNeedOfStorageAccess, PageIdentifier openerPageID, Document& openerDocument)
 {
     auto openerUrl = openerDocument.url();
     RegistrableDomain openerDomain { openerUrl };
     if (domainInNeedOfStorageAccess != openerDomain
         && !openerDocument.hasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess)
         && !equalIgnoringASCIICase(openerUrl.string(), WTF::blankURL())) {
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestStorageAccessUnderOpener(sessionID, domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
         
         // Remember user interaction-based requests since they don't need to be repeated.
         openerDocument.setHasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess);
     }
 }
     
-ResourceLoadStatistics& WebResourceLoadObserver::ensureResourceStatisticsForRegistrableDomain(PAL::SessionID sessionID, const RegistrableDomain& domain)
+ResourceLoadStatistics& WebResourceLoadObserver::ensureResourceStatisticsForRegistrableDomain(const RegistrableDomain& domain)
 {
-    auto addResult = m_perSessionResourceStatisticsMap.ensure(sessionID, [] {
-        return makeUnique<HashMap<RegistrableDomain, ResourceLoadStatistics>>();
-    });
-
-    auto addDomainResult = addResult.iterator->value->ensure(domain, [&domain] {
+    return m_resourceStatisticsMap.ensure(domain, [&domain] {
         return ResourceLoadStatistics(domain);
-    });
-    return addDomainResult.iterator->value;
+    }).iterator->value;
 }
 
 void WebResourceLoadObserver::scheduleNotificationIfNeeded()
 {
-    if (m_perSessionResourceStatisticsMap.isEmpty()) {
+    if (m_resourceStatisticsMap.isEmpty()) {
         m_notificationTimer.stop();
         return;
     }
@@ -102,52 +103,37 @@ void WebResourceLoadObserver::updateCentralStatisticsStore()
     WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ResourceLoadStatisticsUpdated(takeStatistics()), 0);
 }
 
-String WebResourceLoadObserver::statisticsForURL(PAL::SessionID sessionID, const URL& url)
+String WebResourceLoadObserver::statisticsForURL(const URL& url)
 {
-    auto* resourceStatisticsByDomain = m_perSessionResourceStatisticsMap.get(sessionID);
-    if (!resourceStatisticsByDomain)
-        return emptyString();
-
-    auto iter = resourceStatisticsByDomain->find(RegistrableDomain { url });
-    if (iter == resourceStatisticsByDomain->end())
+    auto iter = m_resourceStatisticsMap.find(RegistrableDomain { url });
+    if (iter == m_resourceStatisticsMap.end())
         return emptyString();
 
     return makeString("Statistics for ", url.host().toString(), ":\n", iter->value.toString());
 }
 
-auto WebResourceLoadObserver::takeStatistics() -> PerSessionResourceLoadData
+Vector<ResourceLoadStatistics> WebResourceLoadObserver::takeStatistics()
 {
-    PerSessionResourceLoadData perSessionStatistics;
-
-    for (auto& iter : m_perSessionResourceStatisticsMap) {
-        Vector<ResourceLoadStatistics> statistics;
-        statistics.reserveInitialCapacity(iter.value->size());
-
-        for (auto& statistic : iter.value->values())
-            statistics.uncheckedAppend(WTFMove(statistic));
-
-        perSessionStatistics.append(std::make_pair(iter.key, WTFMove(statistics)));
-    }
-    
-    m_perSessionResourceStatisticsMap.clear();
-    return perSessionStatistics;
+    Vector<ResourceLoadStatistics> statistics;
+    statistics.reserveInitialCapacity(m_resourceStatisticsMap.size());
+    for (auto& statistic : m_resourceStatisticsMap.values())
+        statistics.uncheckedAppend(WTFMove(statistic));
+    m_resourceStatisticsMap.clear();
+    return statistics;
 }
 
 void WebResourceLoadObserver::clearState()
 {
     m_notificationTimer.stop();
-    m_perSessionResourceStatisticsMap.clear();
+    m_resourceStatisticsMap.clear();
     m_lastReportedUserInteractionMap.clear();
 }
 
 void WebResourceLoadObserver::logFontLoad(const Document& document, const String& familyName, bool loadStatus)
 {
 #if ENABLE(WEB_API_STATISTICS)
-    if (!shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     RegistrableDomain registrableDomain { document.url() };
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID, registrableDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     bool shouldCallNotificationCallback = false;
     if (!loadStatus) {
         if (statistics.fontsFailedToLoad.add(familyName).isNewEntry)
@@ -171,11 +157,8 @@ void WebResourceLoadObserver::logFontLoad(const Document& document, const String
 void WebResourceLoadObserver::logCanvasRead(const Document& document)
 {
 #if ENABLE(WEB_API_STATISTICS)
-    if (!shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     RegistrableDomain registrableDomain { document.url() };
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID(), registrableDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
     statistics.canvasActivityRecord.wasDataRead = true;
     if (statistics.topFrameRegistrableDomainsWhichAccessedWebAPIs.add(mainFrameRegistrableDomain.string()).isNewEntry)
@@ -188,11 +171,8 @@ void WebResourceLoadObserver::logCanvasRead(const Document& document)
 void WebResourceLoadObserver::logCanvasWriteOrMeasure(const Document& document, const String& textWritten)
 {
 #if ENABLE(WEB_API_STATISTICS)
-    if (!shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     RegistrableDomain registrableDomain { document.url() };
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID, registrableDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     bool shouldCallNotificationCallback = false;
     RegistrableDomain mainFrameRegistrableDomain { document.topDocument().url() };
     if (statistics.canvasActivityRecord.recordWrittenOrMeasuredText(textWritten))
@@ -210,11 +190,8 @@ void WebResourceLoadObserver::logCanvasWriteOrMeasure(const Document& document, 
 void WebResourceLoadObserver::logNavigatorAPIAccessed(const Document& document, const ResourceLoadStatistics::NavigatorAPI functionName)
 {
 #if ENABLE(WEB_API_STATISTICS)
-    if (!shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     RegistrableDomain registrableDomain { document.url() };
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID, registrableDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     bool shouldCallNotificationCallback = false;
     if (!statistics.navigatorFunctionsAccessed.contains(functionName)) {
         statistics.navigatorFunctionsAccessed.add(functionName);
@@ -234,11 +211,8 @@ void WebResourceLoadObserver::logNavigatorAPIAccessed(const Document& document, 
 void WebResourceLoadObserver::logScreenAPIAccessed(const Document& document, const ResourceLoadStatistics::ScreenAPI functionName)
 {
 #if ENABLE(WEB_API_STATISTICS)
-    if (!shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     RegistrableDomain registrableDomain { document.url() };
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID, registrableDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(registrableDomain);
     bool shouldCallNotificationCallback = false;
     if (!statistics.screenFunctionsAccessed.contains(functionName)) {
         statistics.screenFunctionsAccessed.add(functionName);
@@ -263,7 +237,7 @@ void WebResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Re
         return;
 
     auto* page = frame->page();
-    if (!page || !shouldLogResourceLoadStatistics(page->sessionID()))
+    if (!page)
         return;
 
     bool isRedirect = is3xxRedirect(redirectResponse);
@@ -285,7 +259,7 @@ void WebResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Re
         return;
 
     {
-        auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(page->sessionID(), targetDomain);
+        auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(targetDomain);
         auto lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
         targetStatistics.lastSeen = lastSeen;
         targetStatistics.subresourceUnderTopFrameDomains.add(topFrameDomain);
@@ -294,20 +268,17 @@ void WebResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Re
     }
 
     if (isRedirect) {
-        auto& redirectingOriginStatistics = ensureResourceStatisticsForRegistrableDomain(page->sessionID(), redirectedFromDomain);
+        auto& redirectingOriginStatistics = ensureResourceStatisticsForRegistrableDomain(redirectedFromDomain);
         redirectingOriginStatistics.subresourceUniqueRedirectsTo.add(targetDomain);
-        auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(page->sessionID(), targetDomain);
+        auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(targetDomain);
         targetStatistics.subresourceUniqueRedirectsFrom.add(redirectedFromDomain);
 
         scheduleNotificationIfNeeded();
     }
 }
 
-void WebResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, PAL::SessionID sessionID)
+void WebResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL)
 {
-    if (!shouldLogResourceLoadStatistics(sessionID))
-        return;
-
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
     
@@ -322,7 +293,7 @@ void WebResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const UR
 
     auto lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
 
-    auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(sessionID, targetDomain);
+    auto& targetStatistics = ensureResourceStatisticsForRegistrableDomain(targetDomain);
     targetStatistics.lastSeen = lastSeen;
     targetStatistics.subresourceUnderTopFrameDomains.add(topFrameDomain);
 
@@ -331,9 +302,6 @@ void WebResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const UR
 
 void WebResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Document& document)
 {
-    if (!document.sessionID().isValid() || !shouldLogResourceLoadStatistics(document.sessionID()))
-        return;
-
     auto& url = document.url();
     if (url.protocolIsAbout() || url.isLocalFile() || url.isEmpty())
         return;
@@ -346,7 +314,7 @@ void WebResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const 
 
     m_lastReportedUserInteractionMap.set(topFrameDomain, newTime);
 
-    auto& statistics = ensureResourceStatisticsForRegistrableDomain(document.sessionID(), topFrameDomain);
+    auto& statistics = ensureResourceStatisticsForRegistrableDomain(topFrameDomain);
     statistics.hadUserInteraction = true;
     statistics.lastSeen = newTime;
     statistics.mostRecentUserInteractionTime = newTime;
@@ -356,7 +324,7 @@ void WebResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const 
             if (auto* openerDocument = opener->document()) {
                 if (auto* openerFrame = openerDocument->frame()) {
                     if (auto openerPageID = openerFrame->loader().client().pageID())
-                        requestStorageAccessUnderOpener(document.sessionID(), topFrameDomain, openerPageID.value(), *openerDocument);
+                        requestStorageAccessUnderOpener(topFrameDomain, openerPageID.value(), *openerDocument);
                 }
             }
         }
@@ -364,10 +332,10 @@ void WebResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const 
 
     // We notify right away in case of a user interaction instead of waiting the usual 5 seconds because we want
     // to update cookie blocking state as quickly as possible.
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogUserInteraction(document.sessionID(), topFrameDomain), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogUserInteraction(topFrameDomain), 0);
 
 #if !RELEASE_LOG_DISABLED
-    if (m_shouldLogUserInteraction) {
+    if (shouldLogUserInteraction) {
         auto counter = ++m_loggingCounter;
 #define LOCAL_LOG(str, ...) \
         RELEASE_LOG(ResourceLoadStatistics, "ResourceLoadObserver::logUserInteraction: counter = %" PRIu64 ": " str, counter, ##__VA_ARGS__)

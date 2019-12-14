@@ -28,6 +28,7 @@ list(APPEND WTF_PUBLIC_HEADERS
     spi/cocoa/objcSPI.h
 
     spi/darwin/DataVaultSPI.h
+    spi/darwin/ProcessMemoryFootprint.h
     spi/darwin/SandboxSPI.h
     spi/darwin/XPCSPI.h
     spi/darwin/dyldSPI.h
@@ -63,6 +64,7 @@ list(APPEND WTF_SOURCES
 
     mac/DeprecatedSymbolsUsedBySafari.mm
     mac/FileSystemMac.mm
+    mac/RunLoopMac.mm
     mac/SchedulePairMac.mm
 
     posix/FileSystemPOSIX.cpp

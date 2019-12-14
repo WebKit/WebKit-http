@@ -90,7 +90,6 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     SandboxExtension::consumePermanently(parameters.defaultDataStoreParameters.indexedDatabaseTempBlobDirectoryExtensionHandle);
 #endif
 #endif
-    m_diskCacheDirectory = parameters.diskCacheDirectory;
 
     _CFNetworkSetATSContext(parameters.networkATSContext.get());
 
@@ -114,19 +113,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     // - disk cache size passed from UI process is effectively a minimum size.
     // One non-obvious constraint is that we need to use -setSharedURLCache: even in testing mode, to prevent creating a default one on disk later, when some other code touches the cache.
 
-    ASSERT(!m_diskCacheIsDisabledForTesting);
-
-    if (m_diskCacheDirectory.isNull())
-        return;
-
-    SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
     m_cacheOptions = { NetworkCache::CacheOption::RegisterNotify };
-    if (parameters.shouldUseTestingNetworkSession)
-        m_cacheOptions.add(NetworkCache::CacheOption::TestingMode);
-#if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
-        m_cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
-#endif
 
     // Disable NSURLCache.
     auto urlCache(adoptNS([[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil]));

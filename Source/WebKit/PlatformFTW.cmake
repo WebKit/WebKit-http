@@ -46,8 +46,6 @@ list(APPEND WebKit_SOURCES
 
     UIProcess/API/C/win/WKView.cpp
 
-    UIProcess/API/win/APIWebsiteDataStoreWin.cpp
-
     UIProcess/CoordinatedGraphics/DrawingAreaProxyCoordinatedGraphics.cpp
 
     UIProcess/Launcher/win/ProcessLauncherWin.cpp
@@ -262,6 +260,7 @@ set(WebKit_PUBLIC_FRAMEWORK_HEADERS
     UIProcess/API/C/WKGeolocationManager.h
     UIProcess/API/C/WKGeolocationPermissionRequest.h
     UIProcess/API/C/WKGeolocationPosition.h
+    UIProcess/API/C/WKHTTPCookieStoreRef.h
     UIProcess/API/C/WKHitTestResult.h
     UIProcess/API/C/WKIconDatabase.h
     UIProcess/API/C/WKInspector.h
@@ -293,8 +292,8 @@ set(WebKit_PUBLIC_FRAMEWORK_HEADERS
     UIProcess/API/C/WKPageNavigationClient.h
     UIProcess/API/C/WKPagePolicyClient.h
     UIProcess/API/C/WKPagePrivate.h
-    UIProcess/API/C/WKPageStateClient.h
     UIProcess/API/C/WKPageRenderingProgressEvents.h
+    UIProcess/API/C/WKPageStateClient.h
     UIProcess/API/C/WKPageUIClient.h
     UIProcess/API/C/WKPluginLoadPolicy.h
     UIProcess/API/C/WKPreferencesRef.h
@@ -312,6 +311,7 @@ set(WebKit_PUBLIC_FRAMEWORK_HEADERS
     UIProcess/API/C/WKUserMediaPermissionRequest.h
     UIProcess/API/C/WKUserScriptRef.h
     UIProcess/API/C/WKViewportAttributes.h
+    UIProcess/API/C/WKWebsiteDataStoreConfigurationRef.h
     UIProcess/API/C/WKWebsiteDataStoreRef.h
     UIProcess/API/C/WKWebsitePolicies.h
     UIProcess/API/C/WKWindowFeaturesRef.h

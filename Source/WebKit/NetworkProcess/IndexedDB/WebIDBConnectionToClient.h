@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 #include <WebCore/IDBConnectionToClient.h>
 #include <WebCore/IndexedDB.h>
 #include <WebCore/ProcessIdentifier.h>
-#include <pal/SessionID.h>
 
 namespace WebCore {
 class IDBCursorInfo;
@@ -48,32 +47,32 @@ struct IDBGetRecordData;
 struct IDBIterateCursorData;
 struct IDBKeyRangeData;
 struct SecurityOriginData;
+
+namespace IDBServer {
+class IDBServer;
+}
 }
 
 namespace WebKit {
 
 class NetworkProcess;
 
-class WebIDBConnectionToClient final : public WebCore::IDBServer::IDBConnectionToClientDelegate, public IPC::MessageSender, public RefCounted<WebIDBConnectionToClient> {
+class WebIDBConnectionToClient final : public WebCore::IDBServer::IDBConnectionToClientDelegate, public IPC::MessageSender {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<WebIDBConnectionToClient> create(NetworkProcess&, IPC::Connection&, WebCore::ProcessIdentifier, PAL::SessionID);
+    WebIDBConnectionToClient(NetworkConnectionToWebProcess&, WebCore::IDBConnectionIdentifier);
 
     virtual ~WebIDBConnectionToClient();
 
     WebCore::IDBServer::IDBConnectionToClient& connectionToClient();
-    uint64_t identifier() const final { return m_identifier.toUInt64(); }
-
-    void ref() override { RefCounted<WebIDBConnectionToClient>::ref(); }
-    void deref() override { RefCounted<WebIDBConnectionToClient>::deref(); }
+    WebCore::IDBConnectionIdentifier identifier() const final { return m_identifier; }
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
     void disconnectedFromWebProcess();
 
 private:
-    WebIDBConnectionToClient(NetworkProcess&, IPC::Connection&, WebCore::ProcessIdentifier, PAL::SessionID);
-
     IPC::Connection* messageSenderConnection() const final;
-    uint64_t messageSenderDestinationID() const final { return m_sessionID.toUInt64(); }
+    uint64_t messageSenderDestinationID() const final { return 0; }
 
     // Messages received from WebProcess
     void deleteDatabase(const WebCore::IDBRequestData&);
@@ -135,12 +134,11 @@ private:
 
     template<class MessageType> void handleGetResult(const WebCore::IDBResultData&);
 
-    Ref<IPC::Connection> m_connection;
-    Ref<NetworkProcess> m_networkProcess;
+    WebCore::IDBServer::IDBServer& idbServer();
 
-    WebCore::ProcessIdentifier m_identifier;
-    PAL::SessionID m_sessionID;
-    RefPtr<WebCore::IDBServer::IDBConnectionToClient> m_connectionToClient;
+    NetworkConnectionToWebProcess& m_connection;
+    WebCore::IDBConnectionIdentifier m_identifier;
+    Ref<WebCore::IDBServer::IDBConnectionToClient> m_connectionToClient;
 };
 
 } // namespace WebKit

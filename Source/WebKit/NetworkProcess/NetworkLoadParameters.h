@@ -33,7 +33,6 @@
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SecurityOrigin.h>
-#include <pal/SessionID.h>
 #include <wtf/ProcessID.h>
 
 namespace WebKit {
@@ -42,17 +41,14 @@ enum class PreconnectOnly { No, Yes };
 
 class NetworkLoadParameters {
 public:
-    explicit NetworkLoadParameters(PAL::SessionID sessionID)
-        : sessionID(sessionID)
-    {
-    }
-
-    PAL::SessionID sessionID;
     WebPageProxyIdentifier webPageProxyID;
     WebCore::PageIdentifier webPageID;
     WebCore::FrameIdentifier webFrameID;
     RefPtr<WebCore::SecurityOrigin> topOrigin;
     WTF::ProcessID parentPID { 0 };
+#if HAVE(AUDIT_TOKEN)
+    Optional<audit_token_t> networkProcessAuditToken;
+#endif
     WebCore::ResourceRequest request;
     WebCore::ContentSniffingPolicy contentSniffingPolicy { WebCore::ContentSniffingPolicy::SniffContent };
     WebCore::ContentEncodingSniffingPolicy contentEncodingSniffingPolicy { WebCore::ContentEncodingSniffingPolicy::Sniff };

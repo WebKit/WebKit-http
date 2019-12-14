@@ -35,6 +35,8 @@ import urllib
 APPLE_WEBKIT_AWS_PROXY = "http://proxy01.webkit.org:3128"
 S3URL = "https://s3-us-west-2.amazonaws.com/"
 WithProperties = properties.WithProperties
+RESULTS_WEBKIT = 'https://results.webkit.org'
+RESULTS_SERVER_API_KEY = 'RESULTS_SERVER_API_KEY'
 
 
 class TestWithFailureCount(shell.Test):
@@ -72,7 +74,7 @@ class ConfigureBuild(buildstep.BuildStep):
     description = ["configuring build"]
     descriptionDone = ["configured build"]
 
-    def __init__(self, platform, configuration, architecture, buildOnly, additionalArguments, SVNMirror, *args, **kwargs):
+    def __init__(self, platform, configuration, architecture, buildOnly, additionalArguments, SVNMirror, device_model, *args, **kwargs):
         buildstep.BuildStep.__init__(self, *args, **kwargs)
         self.platform = platform
         if platform != 'jsc-only':
@@ -83,7 +85,8 @@ class ConfigureBuild(buildstep.BuildStep):
         self.buildOnly = buildOnly
         self.additionalArguments = additionalArguments
         self.SVNMirror = SVNMirror
-        self.addFactoryArguments(platform=platform, configuration=configuration, architecture=architecture, buildOnly=buildOnly, additionalArguments=additionalArguments, SVNMirror=SVNMirror)
+        self.device_model = device_model
+        self.addFactoryArguments(platform=platform, configuration=configuration, architecture=architecture, buildOnly=buildOnly, additionalArguments=additionalArguments, SVNMirror=SVNMirror, device_model=device_model)
 
     def start(self):
         self.setProperty("platform", self.platform)
@@ -93,6 +96,7 @@ class ConfigureBuild(buildstep.BuildStep):
         self.setProperty("buildOnly", self.buildOnly)
         self.setProperty("additionalArguments", self.additionalArguments)
         self.setProperty("SVNMirror", self.SVNMirror)
+        self.setProperty("device_model", self.device_model)
         self.finished(SUCCESS)
         return defer.succeed(None)
 
@@ -192,6 +196,18 @@ def appendCustomBuildFlags(step, platform, fullPlatform):
     elif platform == 'ios':
         platform = 'device'
     step.setCommand(step.command + ['--' + platform])
+
+
+def appendCustomTestingFlags(step, platform, device_model):
+    if platform not in ('gtk', 'wincairo', 'ios', 'jsc-only', 'wpe'):
+        return
+    if device_model == 'iphone':
+        device_model = 'iphone-simulator'
+    elif device_model == 'ipad':
+        device_model = 'ipad-simulator'
+    else:
+        device_model = platform
+    step.setCommand(step.command + ['--' + device_model])
 
 
 class CompileWebKit(shell.Compile):
@@ -402,15 +418,24 @@ class RunWebKitTests(shell.Test):
                "--clobber-old-results",
                "--builder-name", WithProperties("%(buildername)s"),
                "--build-number", WithProperties("%(buildnumber)s"),
+               "--buildbot-worker", WithProperties("%(slavename)s"),
                "--master-name", "webkit.org",
+               "--buildbot-master", "build.webkit.org",
+               "--report", RESULTS_WEBKIT,
                "--test-results-server", "webkit-test-results.webkit.org",
                "--exit-after-n-crashes-or-timeouts", "50",
                "--exit-after-n-failures", "500",
                WithProperties("--%(configuration)s")]
 
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        shell.Test.__init__(self, *args, **kwargs)
+
     def start(self):
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+
         platform = self.getProperty('platform')
-        appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
+        appendCustomTestingFlags(self, platform, self.getProperty('device_model'))
         additionalArguments = self.getProperty('additionalArguments')
 
         self.setCommand(self.command + ["--results-directory", self.resultDirectory])
@@ -516,11 +541,30 @@ class RunAPITests(TestWithFailureCount):
     name = "run-api-tests"
     description = ["api tests running"]
     descriptionDone = ["api-tests"]
-    command = ["python", "./Tools/Scripts/run-api-tests", "--no-build", WithProperties("--%(configuration)s"), "--verbose"]
+    jsonFileName = "api_test_results.json"
+    logfiles = {"json": jsonFileName}
+    command = [
+        "python",
+        "./Tools/Scripts/run-api-tests",
+        "--no-build",
+        "--json-output={0}".format(jsonFileName),
+        WithProperties("--%(configuration)s"),
+        "--verbose",
+        "--buildbot-master", "build.webkit.org",
+        "--builder-name", WithProperties("%(buildername)s"),
+        "--build-number", WithProperties("%(buildnumber)s"),
+        "--buildbot-worker", WithProperties("%(slavename)s"),
+        "--report", RESULTS_WEBKIT,
+    ]
     failedTestsFormatString = "%d api test%s failed or timed out"
 
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        TestWithFailureCount.__init__(self, *args, **kwargs)
+
     def start(self):
-        appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+        appendCustomTestingFlags(self, self.getProperty('platform'), self.getProperty('device_model'))
         return shell.Test.start(self)
 
     def countFailures(self, cmd):
@@ -536,10 +580,26 @@ class RunPythonTests(TestWithFailureCount):
     name = "webkitpy-test"
     description = ["python-tests running"]
     descriptionDone = ["python-tests"]
-    command = ["python", "./Tools/Scripts/test-webkitpy", "--verbose", WithProperties("--%(configuration)s")]
+    command = [
+        "python",
+        "./Tools/Scripts/test-webkitpy",
+        "--verbose",
+        WithProperties("--%(configuration)s"),
+        "--buildbot-master", "build.webkit.org",
+        "--builder-name", WithProperties("%(buildername)s"),
+        "--build-number", WithProperties("%(buildnumber)s"),
+        "--buildbot-worker", WithProperties("%(slavename)s"),
+        "--report", RESULTS_WEBKIT,
+    ]
     failedTestsFormatString = "%d python test%s failed"
 
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        TestWithFailureCount.__init__(self, *args, **kwargs)
+
     def start(self):
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+
         platform = self.getProperty('platform')
         # Python tests are flaky on the GTK builders, running them serially
         # helps and does not significantly prolong the cycle time.

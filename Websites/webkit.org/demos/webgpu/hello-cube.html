@@ -32,9 +32,13 @@ canvas {
         Safari, first make sure the Developer Menu is visible (Preferences >
         Advanced), then Develop > Experimental Features > WebGPU.
     </p>
+    <p>
+        In addition, you must be using Safari Technology Preview 92 or above.
+        You can get the latest STP <a href="https://developer.apple.com/safari/download/">here</a>.
+    </p>
 </div>
 <script>
-if (!navigator.gpu)
+if (!navigator.gpu || GPUBufferUsage.COPY_SRC === undefined)
     document.body.className = 'error';
 
 const positionAttributeNum  = 0;
@@ -173,7 +177,7 @@ async function init() {
     // Bind group binding layout
     const transformBufferBindGroupLayoutBinding = {
         binding: transformBindingNum, // id[[(0)]]
-        visibility: GPUShaderStageBit.VERTEX,
+        visibility: GPUShaderStage.VERTEX,
         type: "uniform-buffer"
     };
 
@@ -208,7 +212,7 @@ async function init() {
             dstFactor: "one-minus-src-alpha",
             operation: "add"
         },
-        writeMask: GPUColorWriteBits.ALL
+        writeMask: GPUColorWrite.ALL
     };
     const pipelineDescriptor = {
         layout: pipelineLayout,

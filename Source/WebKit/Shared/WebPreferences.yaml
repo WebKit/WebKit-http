@@ -92,11 +92,6 @@ SafeBrowsingEnabled:
   defaultValue: true
   webcoreBinding: none
 
-PrivateBrowsingEnabled:
-  type: bool
-  defaultValue: false
-  webcoreBinding: none
-
 TextAreasAreResizable:
   type: bool
   defaultValue: DEFAULT_TEXT_AREAS_ARE_RESIZABLE
@@ -111,7 +106,7 @@ HyperlinkAuditingEnabled:
 
 NeedsSiteSpecificQuirks:
   type: bool
-  defaultValue: false
+  defaultValue: true
 
 AcceleratedCompositingEnabled:
   type: bool
@@ -367,6 +362,13 @@ RequestAnimationFrameEnabled:
   type: bool
   defaultValue: true
 
+RequestIdleCallbackEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "requestIdleCallback"
+  humanReadableDescription: "Enable requestIdleCallback support"
+  category: experimental
+
 DiagnosticLoggingEnabled:
   type: bool
   defaultValue: false
@@ -553,15 +555,6 @@ InterruptAudioOnPageVisibilityChangeEnabled:
   defaultValue: WebCore::RealtimeMediaSourceCenter::shouldInterruptAudioOnPageVisibilityChange()
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(MEDIA_STREAM)
-
-WebRTCUnifiedPlanEnabled:
-  type: bool
-  defaultValue: true
-  webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(WEB_RTC)
-  humanReadableName: "WebRTC Unified Plan"
-  humanReadableDescription: "Use WebRTC Unified Plan"
-  category: internal
 
 WebRTCVP8CodecEnabled:
   type: bool
@@ -850,6 +843,13 @@ CustomPasteboardDataEnabled:
   humanReadableName: "Custom pasteboard data"
   humanReadableDescription: "Enable custom clipboard types and better security model for clipboard API."
   webcoreBinding: RuntimeEnabledFeatures
+
+AsyncClipboardAPIEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Async clipboard API"
+  humanReadableDescription: "Enable the async clipboard API"
+  category: experimental
 
 WebShareEnabled:
   type: bool
@@ -1446,6 +1446,14 @@ FetchAPIKeepAliveEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: fetchAPIKeepAliveEnabled
 
+CSSShadowPartsEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "CSS Shadow Parts"
+  humanReadableDescription: "Enable CSS Shadow Parts"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
 # For internal features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all debug features. They
@@ -1560,17 +1568,35 @@ FasterClicksEnabled:
   type: bool
   defaultValue: true
   condition: PLATFORM(IOS_FAMILY)
-  humanReadableName: "Faster clicks"
+  humanReadableName: "Fast clicks"
   humanReadableDescription: "Support faster clicks on zoomable pages"
   webcoreBinding: none
   category: internal
 
-FastClicksEverywhere:
+PreferFasterClickOverDoubleTap:
   type: bool
-  defaultValue: DEFAULT_FAST_CLICKS_EVERYWHERE
+  defaultValue: DEFAULT_PREFER_FASTER_CLICK_OVER_DOUBLE_TAP
   condition: PLATFORM(IOS_FAMILY)
-  humanReadableName: "Fast clicks everywhere"
-  humanReadableDescription: "Force fast clicks on all pages"
+  humanReadableName: "Fast clicks beat DTTZ"
+  humanReadableDescription: "Prefer a faster click over a double tap"
+  webcoreBinding: none
+  category: internal
+
+ZoomOnDoubleTapWhenRoot:
+  type: bool
+  defaultValue: false
+  condition: PLATFORM(IOS_FAMILY)
+  humanReadableName: "DTTZ also when root"
+  humanReadableDescription: "Double taps zoom, even if we dispatched a click on the root nodes"
+  webcoreBinding: none
+  category: internal
+
+AlwaysZoomOnDoubleTap:
+  type: bool
+  defaultValue: false
+  condition: PLATFORM(IOS_FAMILY)
+  humanReadableName: "DTTZ always"
+  humanReadableDescription: "Double taps zoom, even if we dispatched a click anywhere"
   webcoreBinding: none
   category: internal
 
@@ -1727,7 +1753,7 @@ IsNSURLSessionWebSocketEnabled:
   defaultValue: false
   humanReadableName: "NSURLSession WebSocket"
   humanReadableDescription: "Use NSURLSession WebSocket API"
-  category: internal
+  category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   condition: HAVE(NSURLSESSION_WEBSOCKET)
 
@@ -1746,6 +1772,13 @@ IsITPSessionSwitchingEnabled:
   humanReadableDescription: "Enable session switching for domains classified by ITP"
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
+
+IsLoggedInAPIEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "IsLoggedIn web API"
+    humanReadableDescription: "Enable the proposed IsLoggedIn web API"
+    category: experimental
 
 # Deprecated
 

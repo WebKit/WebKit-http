@@ -36,8 +36,7 @@ WKTypeID WKWebsiteDataStoreConfigurationGetTypeID()
 
 WKWebsiteDataStoreConfigurationRef WKWebsiteDataStoreConfigurationCreate()
 {
-    auto configuration = WebKit::WebsiteDataStoreConfiguration::create();
-    configuration->setPersistent(true);
+    auto configuration = WebKit::WebsiteDataStoreConfiguration::create(WebKit::IsPersistent::Yes);
     return toAPI(&configuration.leakRef());
 }
 
@@ -109,4 +108,34 @@ WKStringRef WKWebsiteDataStoreConfigurationCopyResourceLoadStatisticsDirectory(W
 void WKWebsiteDataStoreConfigurationSetResourceLoadStatisticsDirectory(WKWebsiteDataStoreConfigurationRef configuration, WKStringRef directory)
 {
     WebKit::toImpl(configuration)->setResourceLoadStatisticsDirectory(WebKit::toImpl(directory)->string());
+}
+
+uint64_t WKWebsiteDataStoreConfigurationGetPerOriginStorageQuota(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    return WebKit::toImpl(configuration)->perOriginStorageQuota();
+}
+
+void WKWebsiteDataStoreConfigurationSetPerOriginStorageQuota(WKWebsiteDataStoreConfigurationRef configuration, uint64_t quota)
+{
+    WebKit::toImpl(configuration)->setPerOriginStorageQuota(quota);
+}
+
+bool WKWebsiteDataStoreConfigurationGetNetworkCacheSpeculativeValidationEnabled(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    return WebKit::toImpl(configuration)->networkCacheSpeculativeValidationEnabled();
+}
+
+void WKWebsiteDataStoreConfigurationSetNetworkCacheSpeculativeValidationEnabled(WKWebsiteDataStoreConfigurationRef configuration, bool enabled)
+{
+    WebKit::toImpl(configuration)->setNetworkCacheSpeculativeValidationEnabled(enabled);
+}
+
+bool WKWebsiteDataStoreConfigurationGetTestingSessionEnabled(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    return WebKit::toImpl(configuration)->testingSessionEnabled();
+}
+
+void WKWebsiteDataStoreConfigurationSetTestingSessionEnabled(WKWebsiteDataStoreConfigurationRef configuration, bool enabled)
+{
+    WebKit::toImpl(configuration)->setTestingSessionEnabled(enabled);
 }

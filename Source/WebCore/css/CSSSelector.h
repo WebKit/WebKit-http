@@ -110,6 +110,7 @@ namespace WebCore {
             PseudoClassAutofillStrongPassword,
             PseudoClassAutofillStrongPasswordViewable,
             PseudoClassHover,
+            PseudoClassDirectFocus,
             PseudoClassDrag,
             PseudoClassFocus,
             PseudoClassFocusWithin,
@@ -178,6 +179,7 @@ namespace WebCore {
             PseudoElementFirstLetter,
             PseudoElementFirstLine,
             PseudoElementMarker,
+            PseudoElementPart,
             PseudoElementResizer,
             PseudoElementScrollbar,
             PseudoElementScrollbarButton,
@@ -240,7 +242,7 @@ namespace WebCore {
         const AtomString& attributeCanonicalLocalName() const;
         const AtomString& argument() const { return m_hasRareData ? m_data.m_rareData->m_argument : nullAtom(); }
         bool attributeValueMatchingIsCaseInsensitive() const;
-        const Vector<AtomString>* langArgumentList() const { return m_hasRareData ? m_data.m_rareData->m_langArgumentList.get() : nullptr; }
+        const Vector<AtomString>* argumentList() const { return m_hasRareData ? m_data.m_rareData->m_argumentList.get() : nullptr; }
         const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : nullptr; }
 
         void setValue(const AtomString&, bool matchLowerCase = false);
@@ -248,7 +250,7 @@ namespace WebCore {
         void setAttribute(const QualifiedName&, bool convertToLowercase, AttributeMatchType);
         void setNth(int a, int b);
         void setArgument(const AtomString&);
-        void setLangArgumentList(std::unique_ptr<Vector<AtomString>>);
+        void setArgumentList(std::unique_ptr<Vector<AtomString>>);
         void setSelectorList(std::unique_ptr<CSSSelectorList>);
 
         bool matchNth(int count) const;
@@ -358,7 +360,7 @@ namespace WebCore {
             QualifiedName m_attribute; // used for attribute selector
             AtomString m_attributeCanonicalLocalName;
             AtomString m_argument; // Used for :contains and :nth-*
-            std::unique_ptr<Vector<AtomString>> m_langArgumentList; // Used for :lang arguments.
+            std::unique_ptr<Vector<AtomString>> m_argumentList; // Used for :lang and ::part arguments.
             std::unique_ptr<CSSSelectorList> m_selectorList; // Used for :matches() and :not().
         
         private:
@@ -436,6 +438,11 @@ static inline bool pseudoClassIsRelativeToSiblings(CSSSelector::PseudoClassType 
         || type == CSSSelector::PseudoClassNthOfType
         || type == CSSSelector::PseudoClassNthLastChild
         || type == CSSSelector::PseudoClassNthLastOfType;
+}
+
+static inline bool isTreeStructuralPseudoClass(CSSSelector::PseudoClassType type)
+{
+    return pseudoClassIsRelativeToSiblings(type) || type == CSSSelector::PseudoClassRoot;
 }
 
 inline bool CSSSelector::isSiblingSelector() const

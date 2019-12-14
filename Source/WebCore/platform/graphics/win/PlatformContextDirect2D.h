@@ -32,6 +32,7 @@
 #include <d2d1.h>
 #include <d2d1_1.h>
 #include <d2d1effects.h>
+#include <d3d11_1.h>
 
 namespace WebCore {
 
@@ -48,16 +49,21 @@ class PlatformContextDirect2D {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(PlatformContextDirect2D);
 public:
-    PlatformContextDirect2D(ID2D1RenderTarget*);
+    PlatformContextDirect2D(ID2D1RenderTarget*, WTF::Function<void()>&& preDrawHandler = []() { }, WTF::Function<void()>&& postDrawHandler = []() { });
     ~PlatformContextDirect2D();
 
     ID2D1RenderTarget* renderTarget() { return m_renderTarget.get(); }
-    void setRenderTarget(ID2D1RenderTarget* renderTarget) { m_renderTarget = renderTarget; }
+    void setRenderTarget(ID2D1RenderTarget*);
+
+    ID2D1DeviceContext* deviceContext() { return m_deviceContext.get(); }
+
+    ID3D11Device1* d3dDevice() const { return m_d3dDevice.get(); }
+    void setD3DDevice(ID3D11Device1* device) { m_d3dDevice = device; }
 
     GraphicsContextPlatformPrivate* graphicsContextPrivate() { return m_graphicsContextPrivate; }
     void setGraphicsContextPrivate(GraphicsContextPlatformPrivate* graphicsContextPrivate) { m_graphicsContextPrivate = graphicsContextPrivate; }
 
-    ID2D1Layer* clipLayer() const { return m_renderStates.last().m_activeLayer.get(); }
+    ID2D1Layer* clipLayer() const;
     ID2D1StrokeStyle* strokeStyle();
     D2D1_STROKE_STYLE_PROPERTIES strokeStyleProperties() const;
     ID2D1StrokeStyle* platformStrokeStyle() const;
@@ -67,7 +73,7 @@ public:
     void save();
     void restore();
 
-    bool hasSavedState() const { return !m_renderStates.isEmpty(); }
+    bool hasSavedState() const { return !m_stateStack.isEmpty(); }
 
     void beginDraw();
     void endDraw();
@@ -78,13 +84,6 @@ public:
 
     void recomputeStrokeStyle();
     float strokeThickness() const { return m_strokeThickness; }
-
-    struct RenderState {
-        COMPtr<ID2D1DrawingStateBlock> m_drawingStateBlock;
-        COMPtr<ID2D1Layer> m_activeLayer;
-        Vector<Direct2DLayerType> m_clips;
-    };
-    Vector<RenderState> m_renderStates;
 
     struct TransparencyLayerState {
         COMPtr<ID2D1BitmapRenderTarget> renderTarget;
@@ -106,13 +105,22 @@ public:
     void setStrokeThickness(float);
     void setDashes(const DashArray&);
 
-    void setBlendMode(D2D1_BLEND_MODE mode) { m_blendMode = mode; }
-    void setCompositeMode(D2D1_COMPOSITE_MODE mode) { m_compositeMode = mode; }
+    void setBlendAndCompositeMode(D2D1_BLEND_MODE, D2D1_COMPOSITE_MODE);
+
+    void setTags(D2D1_TAG tag1, D2D1_TAG tag2);
+    void notifyPreDrawObserver();
+    void notifyPostDrawObserver();
+
+    void pushClip(Direct2DLayerType);
 
 private:
+    void clearClips(Vector<Direct2DLayerType>&);
+    void compositeIfNeeded();
+
     GraphicsContextPlatformPrivate* m_graphicsContextPrivate { nullptr };
 
     COMPtr<ID2D1RenderTarget> m_renderTarget;
+    COMPtr<ID2D1DeviceContext> m_deviceContext;
     COMPtr<ID2D1StrokeStyle> m_d2dStrokeStyle;
 
     HashMap<uint32_t, COMPtr<ID2D1SolidColorBrush>> m_solidColoredBrushCache;
@@ -122,6 +130,13 @@ private:
     COMPtr<ID2D1SolidColorBrush> m_solidFillBrush;
     COMPtr<ID2D1BitmapBrush> m_patternStrokeBrush;
     COMPtr<ID2D1BitmapBrush> m_patternFillBrush;
+
+    COMPtr<ID3D11Device1> m_d3dDevice;
+
+    COMPtr<ID2D1Bitmap> m_compositeSource;
+
+    WTF::Function<void()> m_preDrawHandler;
+    WTF::Function<void()> m_postDrawHandler;
 
     class State;
     State* m_state { nullptr };

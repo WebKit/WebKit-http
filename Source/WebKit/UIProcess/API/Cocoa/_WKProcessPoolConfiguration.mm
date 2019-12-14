@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,8 @@
 #import "config.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 
+#import "LegacyGlobalSettings.h"
+#import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
 
 @implementation _WKProcessPoolConfiguration
@@ -60,6 +62,31 @@
     _processPoolConfiguration->setInjectedBundlePath(injectedBundleURL.path);
 }
 
+- (NSSet<Class> *)customClassesForParameterCoder
+{
+    auto classes = _processPoolConfiguration->customClassesForParameterCoder();
+    if (classes.isEmpty())
+        return [NSSet set];
+
+    NSMutableSet *result = [[NSMutableSet alloc] initWithCapacity:classes.size()];
+    for (const auto& value : classes)
+        [result addObject: objc_lookUpClass(value.utf8().data())];
+
+    return [result autorelease];
+}
+
+- (void)setCustomClassesForParameterCoder:(NSSet<Class> *)classesForCoder
+{
+    Vector<WTF::String> classes;
+    classes.reserveInitialCapacity(classesForCoder.count);
+    for (id classObj : classesForCoder) {
+        if (auto* string = NSStringFromClass(classObj))
+            classes.uncheckedAppend(string);
+    }
+
+    _processPoolConfiguration->setCustomClassesForParameterCoder(WTFMove(classes));
+}
+
 - (NSUInteger)maximumProcessCount
 {
     // Deprecated.
@@ -82,12 +109,11 @@
 
 - (BOOL)diskCacheSpeculativeValidationEnabled
 {
-    return _processPoolConfiguration->diskCacheSpeculativeValidationEnabled();
+    return NO;
 }
 
 - (void)setDiskCacheSpeculativeValidationEnabled:(BOOL)enabled
 {
-    _processPoolConfiguration->setDiskCacheSpeculativeValidationEnabled(enabled);
 }
 
 - (BOOL)ignoreSynchronousMessagingTimeoutsForTesting
@@ -287,15 +313,12 @@
 
 - (BOOL)pageCacheEnabled
 {
-    return _processPoolConfiguration->cacheModel() != WebKit::CacheModel::DocumentViewer;
+    return _processPoolConfiguration->usesPageCache();
 }
 
 - (void)setPageCacheEnabled:(BOOL)enabled
 {
-    if (!enabled)
-        _processPoolConfiguration->setCacheModel(WebKit::CacheModel::DocumentViewer);
-    else if (![self pageCacheEnabled])
-        _processPoolConfiguration->setCacheModel(WebKit::CacheModel::PrimaryWebBrowser);
+    return _processPoolConfiguration->setUsesPageCache(enabled);
 }
 
 - (BOOL)usesSingleWebProcess
@@ -323,28 +346,18 @@
     _processPoolConfiguration->setJITEnabled(enabled);
 }
 
-- (NSUInteger)downloadMonitorSpeedMultiplierForTesting
-{
-    return _processPoolConfiguration->downloadMonitorSpeedMultiplier();
-}
-
 - (void)setHSTSStorageDirectory:(NSURL *)directory
 {
     if (directory && ![directory isFileURL])
         [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", directory];
 
     // FIXME: Move this to _WKWebsiteDataStoreConfiguration once rdar://problem/50109631 is fixed.
-    _processPoolConfiguration->setHSTSStorageDirectory(directory.path);
+    WebKit::LegacyGlobalSettings::singleton().setHSTSStorageDirectory(directory.path);
 }
 
 - (NSURL *)hstsStorageDirectory
 {
-    return [NSURL fileURLWithPath:_processPoolConfiguration->hstsStorageDirectory() isDirectory:YES];
-}
-
-- (void)setDownloadMonitorSpeedMultiplierForTesting:(NSUInteger)multiplier
-{
-    _processPoolConfiguration->setDownloadMonitorSpeedMultiplier(multiplier);
+    return [NSURL fileURLWithPath:WebKit::LegacyGlobalSettings::singleton().hstsStorageDirectory() isDirectory:YES];
 }
 
 - (void)setSuppressesConnectionTerminationOnSystemChange:(BOOL)suppressesConnectionTerminationOnSystemChange
@@ -407,6 +420,16 @@
 - (void)setCustomWebContentServiceBundleIdentifier:(NSString *)customWebContentServiceBundleIdentifier
 {
     _processPoolConfiguration->setCustomWebContentServiceBundleIdentifier(customWebContentServiceBundleIdentifier);
+}
+
+- (BOOL)configureJSCForTesting
+{
+    return _processPoolConfiguration->shouldConfigureJSCForTesting();
+}
+
+- (void)setConfigureJSCForTesting:(BOOL)value
+{
+    _processPoolConfiguration->setShouldConfigureJSCForTesting(value);
 }
 
 #pragma mark WKObject protocol implementation

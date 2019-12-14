@@ -351,12 +351,11 @@ WKStringRef WKPreferencesCopyDefaultTextEncodingName(WKPreferencesRef preference
 
 void WKPreferencesSetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-    toImpl(preferencesRef)->setPrivateBrowsingEnabled(enabled);
 }
 
 bool WKPreferencesGetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->privateBrowsingEnabled();
+    return false;
 }
 
 void WKPreferencesSetDeveloperExtrasEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1808,6 +1807,16 @@ void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef preferencesRef, bool
 bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->resourceTimingEnabled();
+}
+
+void WKPreferencesSetIsNSURLSessionWebSocketEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setIsNSURLSessionWebSocketEnabled(flag);
+}
+
+bool WKPreferencesGetIsNSURLSessionWebSocketEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->isNSURLSessionWebSocketEnabled();
 }
 
 void WKPreferencesSetFetchAPIKeepAliveEnabled(WKPreferencesRef preferencesRef, bool flag)

@@ -32,6 +32,7 @@
 #include "GPUBasedCanvasRenderingContext.h"
 #include "GraphicsContext3D.h"
 #include "ImageBuffer.h"
+#include "SuspendableTimer.h"
 #include "Timer.h"
 #include "WebGLAny.h"
 #include "WebGLBuffer.h"
@@ -364,6 +365,9 @@ public:
     void recycleContext() override;
     void dispatchContextChangedNotification() override;
 
+    // ActiveDOMObject
+    bool hasPendingActivity() const final;
+
 protected:
     WebGLRenderingContextBase(CanvasBase&, WebGLContextAttributes);
     WebGLRenderingContextBase(CanvasBase&, Ref<GraphicsContext3D>&&, WebGLContextAttributes);
@@ -387,10 +391,11 @@ protected:
     void setupFlags();
 
     // ActiveDOMObject
-    bool hasPendingActivity() const override;
     void stop() override;
     const char* activeDOMObjectName() const override;
     bool canSuspendForDocumentSuspension() const override;
+    void suspend(ReasonForSuspension) override;
+    void resume() override;
 
     void addSharedObject(WebGLSharedObject&);
     void addContextObject(WebGLContextObject&);
@@ -451,9 +456,10 @@ protected:
     // likely that there's no JavaScript on the stack, but that might be dependent
     // on how exactly the platform discovers that the context was lost. For better
     // portability we always defer the dispatch of the event.
-    Timer m_dispatchContextLostEventTimer;
+    SuspendableTimer m_dispatchContextLostEventTimer;
+    SuspendableTimer m_dispatchContextChangedEventTimer;
     bool m_restoreAllowed { false };
-    Timer m_restoreTimer;
+    SuspendableTimer m_restoreTimer;
 
     bool m_needsUpdate;
     bool m_markedCanvasDirty;
@@ -806,10 +812,6 @@ protected:
     bool validateSimulatedVertexAttrib0(GC3Duint numVertex);
     void restoreStatesAfterVertexAttrib0Simulation();
 
-    void dispatchContextLostEvent();
-    // Helper for restoration after context lost.
-    void maybeRestoreContext();
-
     // Wrapper for GraphicsContext3D::synthesizeGLError that sends a message to the JavaScript console.
     enum ConsoleDisplayPreference { DisplayInConsole, DontDisplayInConsole };
     void synthesizeGLError(GC3Denum, const char* functionName, const char* description, ConsoleDisplayPreference = DisplayInConsole);
@@ -842,6 +844,11 @@ protected:
     template <typename T> unsigned getMaxIndex(const RefPtr<JSC::ArrayBuffer> elementArrayBuffer, GC3Dintptr uoffset, GC3Dsizei n);
 
 private:
+    void dispatchContextLostEvent();
+    void dispatchContextChangedEvent();
+    // Helper for restoration after context lost.
+    void maybeRestoreContext();
+
     bool validateArrayBufferType(const char* functionName, GC3Denum type, Optional<JSC::TypedArrayType>);
     void registerWithWebGLStateTracker();
     void checkForContextLossHandling();
@@ -850,6 +857,7 @@ private:
 
     WebGLStateTracker::Token m_trackerToken;
     Timer m_checkForContextLossHandlingTimer;
+    bool m_isSuspended { false };
 };
 
 template <typename T>

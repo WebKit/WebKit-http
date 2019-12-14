@@ -38,13 +38,13 @@
 
 #include "Document.h"
 #include "Frame.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSMediaStream.h"
 #include "JSOverconstrainedError.h"
 #include "Logging.h"
 #include "MediaConstraints.h"
 #include "PlatformMediaSessionManager.h"
 #include "RealtimeMediaSourceCenter.h"
-#include "SchemeRegistry.h"
 #include "Settings.h"
 #include "UserMediaController.h"
 #include <wtf/Scope.h>
@@ -60,7 +60,8 @@ Ref<UserMediaRequest> UserMediaRequest::create(Document& document, MediaStreamRe
 
 UserMediaRequest::UserMediaRequest(Document& document, MediaStreamRequest&& request, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
     : ActiveDOMObject(document)
-    , m_promise(WTFMove(promise))
+    , m_identifier(UserMediaRequestIdentifier::generate())
+    , m_promise(makeUniqueRef<DOMPromiseDeferred<IDLInterface<MediaStream>>>(WTFMove(promise)))
     , m_request(WTFMove(request))
 {
 }
@@ -255,7 +256,7 @@ void UserMediaRequest::allow(CaptureDevice&& audioDevice, CaptureDevice&& videoD
 
         ASSERT(document.isCapturing());
         stream->document()->setHasCaptureMediaStreamTrack();
-        m_promise.resolve(WTFMove(stream));
+        m_promise->resolve(WTFMove(stream));
     };
 
     auto& document = downcast<Document>(*scriptExecutionContext());
@@ -297,7 +298,7 @@ void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& messag
         break;
     case MediaAccessDenialReason::InvalidConstraint:
         RELEASE_LOG(MediaStream, "UserMediaRequest::deny - invalid constraint - %s", message.utf8().data());
-        m_promise.rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(message, "Invalid constraint"_s).get());
+        m_promise->rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(message, "Invalid constraint"_s).get());
         return;
     case MediaAccessDenialReason::HardwareError:
         RELEASE_LOG(MediaStream, "UserMediaRequest::deny - hardware error");
@@ -318,9 +319,9 @@ void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& messag
     }
 
     if (!message.isEmpty())
-        m_promise.reject(code, message);
+        m_promise->reject(code, message);
     else
-        m_promise.reject(code);
+        m_promise->reject(code);
 }
 
 void UserMediaRequest::stop()
@@ -360,7 +361,7 @@ void UserMediaRequest::mediaStreamDidFail(RealtimeMediaSource::Type type)
         typeDescription = "unknown";
         break;
     }
-    m_promise.reject(NotReadableError, makeString("Failed starting capture of a "_s, typeDescription, " track"_s));
+    m_promise->reject(NotReadableError, makeString("Failed starting capture of a "_s, typeDescription, " track"_s));
 }
 
 } // namespace WebCore

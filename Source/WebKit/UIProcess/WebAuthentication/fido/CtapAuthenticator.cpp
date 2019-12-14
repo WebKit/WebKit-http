@@ -52,7 +52,9 @@ CtapAuthenticator::CtapAuthenticator(std::unique_ptr<CtapDriver>&& driver, Authe
 void CtapAuthenticator::makeCredential()
 {
     ASSERT(!m_isDowngraded);
-    auto cborCmd = encodeMakeCredenitalRequestAsCBOR(requestData().hash, requestData().creationOptions, m_info.options().userVerificationAvailability());
+    if (processGoogleLegacyAppIdSupportExtension())
+        return;
+    auto cborCmd = encodeMakeCredenitalRequestAsCBOR(requestData().hash, WTF::get<PublicKeyCredentialCreationOptions>(requestData().options), m_info.options().userVerificationAvailability());
     m_driver->transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
@@ -63,7 +65,7 @@ void CtapAuthenticator::makeCredential()
 
 void CtapAuthenticator::continueMakeCredentialAfterResponseReceived(Vector<uint8_t>&& data) const
 {
-    auto response = readCTAPMakeCredentialResponse(data, requestData().creationOptions.attestation);
+    auto response = readCTAPMakeCredentialResponse(data, WTF::get<PublicKeyCredentialCreationOptions>(requestData().options).attestation);
     if (!response) {
         auto error = getResponseCode(data);
         if (error == CtapDeviceResponseCode::kCtap2ErrCredentialExcluded)
@@ -78,7 +80,7 @@ void CtapAuthenticator::continueMakeCredentialAfterResponseReceived(Vector<uint8
 void CtapAuthenticator::getAssertion()
 {
     ASSERT(!m_isDowngraded);
-    auto cborCmd = encodeGetAssertionRequestAsCBOR(requestData().hash, requestData().requestOptions, m_info.options().userVerificationAvailability());
+    auto cborCmd = encodeGetAssertionRequestAsCBOR(requestData().hash, WTF::get<PublicKeyCredentialRequestOptions>(requestData().options), m_info.options().userVerificationAvailability());
     m_driver->transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
@@ -111,6 +113,17 @@ bool CtapAuthenticator::tryDowngrade()
     m_driver->setProtocol(ProtocolVersion::kU2f);
     observer()->downgrade(this, U2fAuthenticator::create(WTFMove(m_driver)));
     return true;
+}
+
+// Only U2F protocol is supported for Google legacy AppID support.
+bool CtapAuthenticator::processGoogleLegacyAppIdSupportExtension()
+{
+    // AuthenticatorCoordinator::create should always set it.
+    auto& extensions = WTF::get<PublicKeyCredentialCreationOptions>(requestData().options).extensions;
+    ASSERT(!!extensions);
+    if (extensions->googleLegacyAppidSupport)
+        tryDowngrade();
+    return extensions->googleLegacyAppidSupport;
 }
 
 } // namespace WebKit

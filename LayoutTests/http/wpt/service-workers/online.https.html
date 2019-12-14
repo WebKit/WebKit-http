@@ -9,6 +9,11 @@ var scope = "";
 var activeWorker;
 
 promise_test(async (test) => {
+    if (window.testRunner) {
+        testRunner.setUseSeparateServiceWorkerProcess(true);
+        await fetch("").then(() => { }, () => { });
+    }
+
     var registration = await navigator.serviceWorker.register("online-worker.js", { scope : scope });
     activeWorker = registration.active;
     if (activeWorker)

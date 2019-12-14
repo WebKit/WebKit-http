@@ -89,6 +89,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 #import "AccessibilitySupportSPI.h"
+#import "AssertionServicesSPI.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import <UIKit/UIAccessibility.h>
 #import <pal/spi/ios/GraphicsServicesSPI.h>
@@ -294,6 +295,7 @@ void WebProcess::updateProcessName()
 #if PLATFORM(IOS_FAMILY)
 void WebProcess::processTaskStateDidChange(ProcessTaskStateObserver::TaskState taskState)
 {
+    // NOTE: This will be called from a background thread.
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() - taskState(%d)", this, taskState);
     if (taskState == ProcessTaskStateObserver::None)
         return;
@@ -311,8 +313,10 @@ void WebProcess::processTaskStateDidChange(ProcessTaskStateObserver::TaskState t
 
     // We were awakened from suspension unexpectedly. Notify the WebProcessProxy, but take a process assertion on our parent PID
     // to ensure that it too is awakened.
-    auto uiProcessAssertion = makeUnique<ProcessAssertion>(parentProcessConnection()->remoteProcessID(), "Unexpectedly resumed", AssertionState::Background, AssertionReason::FinishTask);
-    parentProcessConnection()->sendWithAsyncReply(Messages::WebProcessProxy::ProcessWasUnexpectedlyUnsuspended(), [uiProcessAssertion = WTFMove(uiProcessAssertion)] { });
+
+    auto uiProcessAssertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:parentProcessConnection()->remoteProcessID() flags:BKSProcessAssertionPreventTaskSuspend reason:BKSProcessAssertionReasonFinishTask name:@"Unexpectedly resumed" withHandler:nil]);
+    parentProcessConnection()->send(Messages::WebProcessProxy::ProcessWasUnexpectedlyUnsuspended(), 0);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), [assertion = WTFMove(uiProcessAssertion)] { [assertion invalidate]; });
 }
 #endif
 
@@ -514,20 +518,13 @@ RetainPtr<CFDataRef> WebProcess::sourceApplicationAuditData() const
 
 void WebProcess::initializeSandbox(const AuxiliaryProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
-#if ENABLE(WEB_PROCESS_SANDBOX)
-#if ENABLE(MANUAL_SANDBOXING)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     // Need to override the default, because service has a different bundle ID.
     NSBundle *webKit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKWebView")];
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
-    sandboxParameters.setOverrideSandboxProfilePath([webKit2Bundle pathForResource:@"com.apple.WebKit.WebContent" ofType:@"sb"]);
-#else
+
     sandboxParameters.setOverrideSandboxProfilePath([webKit2Bundle pathForResource:@"com.apple.WebProcess" ofType:@"sb"]);
-#endif
+
     AuxiliaryProcess::initializeSandbox(parameters, sandboxParameters);
-#endif
-#else
-    UNUSED_PARAM(parameters);
-    UNUSED_PARAM(sandboxParameters);
 #endif
 }
 

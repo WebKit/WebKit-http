@@ -3,9 +3,6 @@ const testES256PrivateKeyBase64 =
     "BDj/zxSkzKgaBuS3cdWDF558of8AaIpgFpsjF/Qm1749VBJPgqUIwfhWHJ91nb7U" +
     "PH76c0+WFOzZKslPyyFse4goGIW2R7k9VHLPEZl5nfnBgEVFh5zev+/xpHQIvuq6" +
     "RQ==";
-const testES256PublicKeyBase64 =
-    "BDj/zxSkzKgaBuS3cdWDF558of8AaIpgFpsjF/Qm1749VBJPgqUIwfhWHJ91nb7U" +
-    "PH76c0+WFOzZKslPyyFse4g=";
 const testRpId = "localhost";
 const testUserhandleBase64 = "AAECAwQFBgcICQ==";
 const testAttestationCertificateBase64 =
@@ -339,7 +336,7 @@ function checkCtapMakeCredentialResult(credential, isNoneAttestation = true)
     assert_equals(credential.type, 'public-key');
     assert_array_equals(new Uint8Array(credential.rawId), Base64URL.parse(testHidCredentialIdBase64));
     assert_equals(bytesToASCIIString(credential.response.clientDataJSON), '{"type":"webauthn.create","challenge":"MTIzNDU2","origin":"https://localhost:9443"}');
-    assert_not_exists(credential.getClientExtensionResults(), "appid");
+    assert_not_own_property(credential.getClientExtensionResults(), "appid");
 
     // Check attestation
     const attestationObject = CBOR.decode(credential.response.attestationObject);
@@ -374,7 +371,7 @@ function checkU2fMakeCredentialResult(credential, isNoneAttestation = true)
     assert_equals(credential.type, 'public-key');
     assert_array_equals(new Uint8Array(credential.rawId), Base64URL.parse(testU2fCredentialIdBase64));
     assert_equals(bytesToASCIIString(credential.response.clientDataJSON), '{"type":"webauthn.create","challenge":"MTIzNDU2","origin":"https://localhost:9443"}');
-    assert_not_exists(credential.getClientExtensionResults(), "appid");
+    assert_not_own_property(credential.getClientExtensionResults(), "appid");
 
     // Check attestation
     const attestationObject = CBOR.decode(credential.response.attestationObject);
@@ -405,7 +402,7 @@ function checkCtapGetAssertionResult(credential)
     assert_array_equals(new Uint8Array(credential.rawId), Base64URL.parse(testHidCredentialIdBase64));
     assert_equals(bytesToASCIIString(credential.response.clientDataJSON), '{"type":"webauthn.get","challenge":"MTIzNDU2","origin":"https://localhost:9443"}');
     assert_equals(credential.response.userHandle, null);
-    assert_not_exists(credential.getClientExtensionResults(), "appid");
+    assert_not_own_property(credential.getClientExtensionResults(), "appid");
 
     // Check authData
     const authData = decodeAuthData(new Uint8Array(credential.response.authenticatorData));
@@ -423,7 +420,7 @@ function checkU2fGetAssertionResult(credential, isAppID = false, appIDHash = "c2
     assert_equals(bytesToASCIIString(credential.response.clientDataJSON), '{"type":"webauthn.get","challenge":"MTIzNDU2","origin":"https://localhost:9443"}');
     assert_equals(credential.response.userHandle, null);
     if (!isAppID)
-        assert_not_exists(credential.getClientExtensionResults(), "appid");
+        assert_not_own_property(credential.getClientExtensionResults(), "appid");
     else
         assert_true(credential.getClientExtensionResults().appid);
 
@@ -435,4 +432,44 @@ function checkU2fGetAssertionResult(credential, isAppID = false, appIDHash = "c2
         assert_equals(bytesToHexString(authData.rpIdHash), appIDHash);
     assert_equals(authData.flags, 1);
     assert_equals(authData.counter, 59);
+}
+
+function generateUserhandleBase64()
+{
+    let buffer = new Uint8Array(16);
+    crypto.getRandomValues(buffer);
+    return btoa(String.fromCharCode.apply(0, buffer));
+}
+
+async function generatePrivateKeyBase64()
+{
+    const algorithmKeyGen = {
+        name: "ECDSA",
+        namedCurve: "P-256"
+    };
+    const extractable = true;
+
+    const keyPair = await crypto.subtle.generateKey(algorithmKeyGen, extractable, ["sign", "verify"]);
+    const jwkPrivateKey = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+    const x = Base64URL.parse(jwkPrivateKey.x);
+    const y = Base64URL.parse(jwkPrivateKey.y);
+    const d = Base64URL.parse(jwkPrivateKey.d);
+
+    let buffer = new Uint8Array(x.length + y.length + d.length + 1);
+    buffer[0] = 0x04;
+    let pos = 1;
+    buffer.set(x, pos);
+    pos += x.length;
+    buffer.set(y, pos);
+    pos += y.length;
+    buffer.set(d, pos);
+
+    return btoa(String.fromCharCode.apply(0, buffer));
+}
+
+async function calculateCredentialID(privateKeyBase64) {
+    const privateKey = Base64URL.parse(privateKeyBase64);
+    const publicKey = privateKey.slice(0, 65);
+    return new Uint8Array(await crypto.subtle.digest("sha-1", publicKey));
 }

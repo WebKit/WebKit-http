@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSTestNamedSetterWithUnforgableProperties.h"
 
+#include "ActiveDOMObject.h"
 #include "JSDOMAbstractOperations.h"
 #include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
@@ -43,7 +44,7 @@ using namespace JSC;
 
 // Functions
 
-JSC::EncodedJSValue JSC_HOST_CALL jsTestNamedSetterWithUnforgablePropertiesInstanceFunctionUnforgeableOperation(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestNamedSetterWithUnforgablePropertiesInstanceFunctionUnforgeableOperation(JSC::JSGlobalObject*, JSC::CallFrame*);
 
 // Attributes
 
@@ -136,6 +137,8 @@ void JSTestNamedSetterWithUnforgableProperties::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+
+    static_assert(!std::is_base_of<ActiveDOMObject, TestNamedSetterWithUnforgableProperties>::value, "Interface is not marked as [ActiveDOMObject] even though implementation class subclasses ActiveDOMObject.");
 
 }
 
@@ -336,8 +339,9 @@ static inline JSC::EncodedJSValue jsTestNamedSetterWithUnforgablePropertiesInsta
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestNamedSetterWithUnforgablePropertiesInstanceFunctionUnforgeableOperation(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestNamedSetterWithUnforgablePropertiesInstanceFunctionUnforgeableOperation(JSGlobalObject* globalObject, CallFrame* state)
 {
+    UNUSED_PARAM(globalObject);
     return IDLOperation<JSTestNamedSetterWithUnforgableProperties>::call<jsTestNamedSetterWithUnforgablePropertiesInstanceFunctionUnforgeableOperationBody>(*state, "unforgeableOperation");
 }
 

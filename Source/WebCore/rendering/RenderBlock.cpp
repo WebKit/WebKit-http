@@ -2013,19 +2013,17 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
             case CSSBoxType::MarginBox:
                 referenceBoxRect = marginBoxRect();
                 break;
-            case CSSBoxType::BorderBox:
-                referenceBoxRect = borderBoxRect();
-                break;
             case CSSBoxType::PaddingBox:
                 referenceBoxRect = paddingBoxRect();
                 break;
+            case CSSBoxType::FillBox:
             case CSSBoxType::ContentBox:
                 referenceBoxRect = contentBoxRect();
                 break;
-            case CSSBoxType::BoxMissing:
-            case CSSBoxType::FillBox:
             case CSSBoxType::StrokeBox:
             case CSSBoxType::ViewBox:
+            case CSSBoxType::BorderBox:
+            case CSSBoxType::BoxMissing:
                 referenceBoxRect = borderBoxRect();
             }
             if (!clipPath.pathForReferenceRect(referenceBoxRect).contains(locationInContainer.point() - localOffset, clipPath.windRule()))
@@ -2514,7 +2512,7 @@ LayoutUnit RenderBlock::minLineHeightForReplacedRenderer(bool isFirstLine, Layou
         return replacedHeight;
 
     const RenderStyle& style = isFirstLine ? firstLineStyle() : this->style();
-    if (!(style.lineBoxContain() & LineBoxContainBlock))
+    if (!(style.lineBoxContain().contains(LineBoxContain::Block)))
         return 0;
 
     return std::max<LayoutUnit>(replacedHeight, lineHeight(isFirstLine, isHorizontalWritingMode() ? HorizontalLine : VerticalLine, PositionOfInteriorLineBoxes));

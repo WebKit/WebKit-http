@@ -761,7 +761,6 @@ VisiblePosition endOfWord(const VisiblePosition& c, EWordSide side)
     return nextBoundary(p, endWordBoundary);
 }
 
-template <NextWordModeInIOS nextWordModeInIOS>
 static unsigned previousWordPositionBoundary(StringView text, unsigned offset, BoundarySearchContextAvailability mayHaveMoreContext, bool& needMoreContext)
 {
     if (mayHaveMoreContext && !startOfLastWordBoundaryContext(text.substring(0, offset))) {
@@ -769,17 +768,14 @@ static unsigned previousWordPositionBoundary(StringView text, unsigned offset, B
         return 0;
     }
     needMoreContext = false;
-    return findNextWordFromIndex(text, offset, NextWordDirection::Backward, nextWordModeInIOS);
+    return findNextWordFromIndex(text, offset, false);
 }
 
-VisiblePosition previousWordPosition(const VisiblePosition& position, NextWordModeInIOS nextWordModeInIOS)
+VisiblePosition previousWordPosition(const VisiblePosition& position)
 {
-    if (nextWordModeInIOS == NextWordModeInIOS::LegacyStopBeforeWord) // FIXME: Remove this code path.
-        return position.honorEditingBoundaryAtOrBefore(previousBoundary(position, previousWordPositionBoundary<NextWordModeInIOS::LegacyStopBeforeWord>));
-    return position.honorEditingBoundaryAtOrBefore(previousBoundary(position, previousWordPositionBoundary<NextWordModeInIOS::StopAfterWord>));
+    return position.honorEditingBoundaryAtOrBefore(previousBoundary(position, previousWordPositionBoundary));
 }
 
-template <NextWordModeInIOS nextWordModeInIOS>
 static unsigned nextWordPositionBoundary(StringView text, unsigned offset, BoundarySearchContextAvailability mayHaveMoreContext, bool& needMoreContext)
 {
     if (mayHaveMoreContext && endOfFirstWordBoundaryContext(text.substring(offset)) == text.length() - offset) {
@@ -787,14 +783,12 @@ static unsigned nextWordPositionBoundary(StringView text, unsigned offset, Bound
         return text.length();
     }
     needMoreContext = false;
-    return findNextWordFromIndex(text, offset, NextWordDirection::Forward, nextWordModeInIOS);
+    return findNextWordFromIndex(text, offset, true);
 }
 
-VisiblePosition nextWordPosition(const VisiblePosition& position, NextWordModeInIOS nextWordModeInIOS)
+VisiblePosition nextWordPosition(const VisiblePosition& position)
 {
-    if (nextWordModeInIOS == NextWordModeInIOS::LegacyStopBeforeWord) // FIXME: Remove this code path.
-        return position.honorEditingBoundaryAtOrAfter(nextBoundary(position, nextWordPositionBoundary<NextWordModeInIOS::LegacyStopBeforeWord>));
-    return position.honorEditingBoundaryAtOrAfter(nextBoundary(position, nextWordPositionBoundary<NextWordModeInIOS::StopAfterWord>));
+    return position.honorEditingBoundaryAtOrAfter(nextBoundary(position, nextWordPositionBoundary));
 }
 
 bool isStartOfWord(const VisiblePosition& p)
@@ -830,7 +824,7 @@ static VisiblePosition startPositionForLine(const VisiblePosition& c, LineEndpoi
     } else {
         // Generated content (e.g. list markers and CSS :before and :after pseudoelements) have no corresponding DOM element,
         // and so cannot be represented by a VisiblePosition. Use whatever follows instead.
-        startBox = rootBox->firstLeafChild();
+        startBox = rootBox->firstLeafDescendant();
         while (true) {
             if (!startBox)
                 return VisiblePosition();
@@ -839,7 +833,7 @@ static VisiblePosition startPositionForLine(const VisiblePosition& c, LineEndpoi
             if (startNode)
                 break;
 
-            startBox = startBox->nextLeafChild();
+            startBox = startBox->nextLeafOnLine();
         }
     }
 
@@ -904,7 +898,7 @@ static VisiblePosition endPositionForLine(const VisiblePosition& c, LineEndpoint
     } else {
         // Generated content (e.g. list markers and CSS :before and :after pseudoelements) have no corresponding DOM element,
         // and so cannot be represented by a VisiblePosition. Use whatever precedes instead.
-        endBox = rootBox->lastLeafChild();
+        endBox = rootBox->lastLeafDescendant();
         while (true) {
             if (!endBox)
                 return VisiblePosition();
@@ -913,7 +907,7 @@ static VisiblePosition endPositionForLine(const VisiblePosition& c, LineEndpoint
             if (endNode)
                 break;
             
-            endBox = endBox->prevLeafChild();
+            endBox = endBox->previousLeafOnLine();
         }
     }
 
@@ -1052,7 +1046,7 @@ VisiblePosition previousLinePosition(const VisiblePosition& visiblePosition, int
         root = box->root().prevRootBox();
         // We want to skip zero height boxes.
         // This could happen in case it is a TrailingFloatsRootInlineBox.
-        if (!root || !root->logicalHeight() || !root->firstLeafChild())
+        if (!root || !root->logicalHeight() || !root->firstLeafDescendant())
             root = nullptr;
     }
 
@@ -1107,7 +1101,7 @@ VisiblePosition nextLinePosition(const VisiblePosition& visiblePosition, int lin
         root = box->root().nextRootBox();
         // We want to skip zero height boxes.
         // This could happen in case it is a TrailingFloatsRootInlineBox.
-        if (!root || !root->logicalHeight() || !root->firstLeafChild())
+        if (!root || !root->logicalHeight() || !root->firstLeafDescendant())
             root = nullptr;
     }
 

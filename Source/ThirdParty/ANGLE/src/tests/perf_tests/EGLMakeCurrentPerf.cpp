@@ -9,10 +9,10 @@
 
 #include "ANGLEPerfTest.h"
 #include "common/platform.h"
+#include "common/system_utils.h"
 #include "platform/Platform.h"
 #include "test_utils/angle_test_configs.h"
 #include "test_utils/angle_test_instantiate.h"
-#include "util/system_utils.h"
 
 #define ITERATIONS 20
 
@@ -40,7 +40,7 @@ class EGLMakeCurrentPerfTest : public ANGLEPerfTest,
 };
 
 EGLMakeCurrentPerfTest::EGLMakeCurrentPerfTest()
-    : ANGLEPerfTest("EGLMakeCurrent", "_run", ITERATIONS),
+    : ANGLEPerfTest("EGLMakeCurrent", "", "_run", ITERATIONS),
       mOSWindow(nullptr),
       mDisplay(EGL_NO_DISPLAY),
       mSurface(EGL_NO_SURFACE),
@@ -63,7 +63,8 @@ EGLMakeCurrentPerfTest::EGLMakeCurrentPerfTest()
     mOSWindow = OSWindow::New();
     mOSWindow->initialize("EGLMakeCurrent Test", 64, 64);
 
-    mEGLLibrary.reset(angle::OpenSharedLibrary(ANGLE_EGL_LIBRARY_NAME));
+    mEGLLibrary.reset(
+        angle::OpenSharedLibrary(ANGLE_EGL_LIBRARY_NAME, angle::SearchType::ApplicationDir));
 
     angle::LoadProc getProc =
         reinterpret_cast<angle::LoadProc>(mEGLLibrary->getSymbol("eglGetProcAddress"));

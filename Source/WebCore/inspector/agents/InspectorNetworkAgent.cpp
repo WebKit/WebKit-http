@@ -63,7 +63,6 @@
 #include "ResourceLoader.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "RuntimeEnabledFeatures.h"
 #include "ScriptState.h"
 #include "ScriptableDocumentParser.h"
 #include "SubresourceLoader.h"
@@ -105,7 +104,7 @@ public:
     {
     }
 
-    virtual ~InspectorThreadableLoaderClient() = default;
+    ~InspectorThreadableLoaderClient() override = default;
 
     void didReceiveResponse(unsigned long, const ResourceResponse& response) override
     {

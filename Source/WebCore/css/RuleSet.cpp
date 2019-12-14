@@ -221,6 +221,7 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, unsigned selector
     const CSSSelector* hostPseudoClassSelector = nullptr;
     const CSSSelector* customPseudoElementSelector = nullptr;
     const CSSSelector* slottedPseudoElementSelector = nullptr;
+    const CSSSelector* partPseudoElementSelector = nullptr;
 #if ENABLE(VIDEO_TRACK)
     const CSSSelector* cuePseudoElementSelector = nullptr;
 #endif
@@ -257,6 +258,9 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, unsigned selector
             case CSSSelector::PseudoElementSlotted:
                 slottedPseudoElementSelector = selector;
                 break;
+            case CSSSelector::PseudoElementPart:
+                partPseudoElementSelector = selector;
+                break;
 #if ENABLE(VIDEO_TRACK)
             case CSSSelector::PseudoElementCue:
                 cuePseudoElementSelector = selector;
@@ -274,6 +278,7 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, unsigned selector
             case CSSSelector::PseudoClassAnyLinkDeprecated:
                 linkSelector = selector;
                 break;
+            case CSSSelector::PseudoClassDirectFocus:
             case CSSSelector::PseudoClassFocus:
                 focusSelector = selector;
                 break;
@@ -314,9 +319,24 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, unsigned selector
         return;
     }
 
+    if (partPseudoElementSelector) {
+        // Filtering doesn't work accross shadow boundaries.
+        ruleData.disableSelectorFiltering();
+        m_partPseudoElementRules.append(ruleData);
+        return;
+    }
+
     if (customPseudoElementSelector) {
         // FIXME: Custom pseudo elements are handled by the shadow tree's selector filter. It doesn't know about the main DOM.
         ruleData.disableSelectorFiltering();
+
+        auto* nextSelector = customPseudoElementSelector->tagHistory();
+        if (nextSelector && nextSelector->match() == CSSSelector::PseudoElement && nextSelector->pseudoElementType() == CSSSelector::PseudoElementPart) {
+            // Handle selectors like ::part(foo)::placeholder with the part codepath.
+            m_partPseudoElementRules.append(ruleData);
+            return;
+        }
+
         addToRuleSet(customPseudoElementSelector->value(), m_shadowPseudoElementRules, ruleData);
         return;
     }

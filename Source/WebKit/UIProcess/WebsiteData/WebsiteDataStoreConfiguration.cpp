@@ -26,21 +26,37 @@
 #include "config.h"
 #include "WebsiteDataStoreConfiguration.h"
 
-#include "APIWebsiteDataStore.h"
+#include "WebsiteDataStore.h"
 
 namespace WebKit {
 
-WebsiteDataStoreConfiguration::WebsiteDataStoreConfiguration()
-    : m_resourceLoadStatisticsDirectory(API::WebsiteDataStore::defaultResourceLoadStatisticsDirectory())
+WebsiteDataStoreConfiguration::WebsiteDataStoreConfiguration(IsPersistent isPersistent)
+    : m_isPersistent(isPersistent)
 {
+    if (isPersistent == IsPersistent::Yes) {
+        setApplicationCacheDirectory(WebsiteDataStore::defaultApplicationCacheDirectory());
+        setCacheStorageDirectory(WebsiteDataStore::defaultCacheStorageDirectory());
+        setNetworkCacheDirectory(WebsiteDataStore::defaultNetworkCacheDirectory());
+        setMediaCacheDirectory(WebsiteDataStore::defaultMediaCacheDirectory());
+        setIndexedDBDatabaseDirectory(WebsiteDataStore::defaultIndexedDBDatabaseDirectory());
+        setServiceWorkerRegistrationDirectory(WebsiteDataStore::defaultServiceWorkerRegistrationDirectory());
+        setWebSQLDatabaseDirectory(WebsiteDataStore::defaultWebSQLDatabaseDirectory());
+        setLocalStorageDirectory(WebsiteDataStore::defaultLocalStorageDirectory());
+        setMediaKeysStorageDirectory(WebsiteDataStore::defaultMediaKeysStorageDirectory());
+        setResourceLoadStatisticsDirectory(WebsiteDataStore::defaultResourceLoadStatisticsDirectory());
+        setDeviceIdHashSaltsStorageDirectory(WebsiteDataStore::defaultDeviceIdHashSaltsStorageDirectory());
+        setJavaScriptConfigurationDirectory(WebsiteDataStore::defaultJavaScriptConfigurationDirectory());
+    }
 }
 
 Ref<WebsiteDataStoreConfiguration> WebsiteDataStoreConfiguration::copy()
 {
-    auto copy = WebsiteDataStoreConfiguration::create();
+    auto copy = WebsiteDataStoreConfiguration::create(m_isPersistent);
 
-    copy->m_isPersistent = this->m_isPersistent;
-
+    copy->m_serviceWorkerProcessTerminationDelayEnabled = this->m_serviceWorkerProcessTerminationDelayEnabled;
+    copy->m_serviceWorkerRegisteredSchemes = this->m_serviceWorkerRegisteredSchemes;
+    copy->m_fastServerTrustEvaluationEnabled = this->m_fastServerTrustEvaluationEnabled;
+    copy->m_networkCacheSpeculativeValidationEnabled = this->m_networkCacheSpeculativeValidationEnabled;
     copy->m_cacheStorageDirectory = this->m_cacheStorageDirectory;
     copy->m_perOriginStorageQuota = this->m_perOriginStorageQuota;
     copy->m_networkCacheDirectory = this->m_networkCacheDirectory;
@@ -65,6 +81,16 @@ Ref<WebsiteDataStoreConfiguration> WebsiteDataStoreConfiguration::copy()
     copy->m_httpsProxy = this->m_httpsProxy;
     copy->m_deviceManagementRestrictionsEnabled = this->m_deviceManagementRestrictionsEnabled;
     copy->m_allLoadsBlockedByDeviceManagementRestrictionsForTesting = this->m_allLoadsBlockedByDeviceManagementRestrictionsForTesting;
+    copy->m_boundInterfaceIdentifier = this->m_boundInterfaceIdentifier;
+    copy->m_allowsCellularAccess = this->m_allowsCellularAccess;
+    copy->m_dataConnectionServiceType = this->m_dataConnectionServiceType;
+    copy->m_testingSessionEnabled = this->m_testingSessionEnabled;
+    copy->m_testSpeedMultiplier = this->m_testSpeedMultiplier;
+    copy->m_suppressesConnectionTerminationOnSystemChange = this->m_suppressesConnectionTerminationOnSystemChange;
+#if PLATFORM(COCOA)
+    if (m_proxyConfiguration)
+        copy->m_proxyConfiguration = adoptCF(CFDictionaryCreateCopy(nullptr, this->m_proxyConfiguration.get()));
+#endif
 
     return copy;
 }

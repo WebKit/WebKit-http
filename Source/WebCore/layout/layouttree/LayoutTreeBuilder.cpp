@@ -35,6 +35,7 @@
 #include "LayoutBox.h"
 #include "LayoutChildIterator.h"
 #include "LayoutContainer.h"
+#include "LayoutContext.h"
 #include "LayoutDescendantIterator.h"
 #include "LayoutPhase.h"
 #include "LayoutState.h"
@@ -100,18 +101,6 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRen
         if (auto* element = renderer.element()) {
             if (element->hasTagName(HTMLNames::bodyTag))
                 return Box::ElementAttributes { Box::ElementType::Body };
-            if (element->hasTagName(HTMLNames::colTag))
-                return Box::ElementAttributes { Box::ElementType::TableColumn };
-            if (element->hasTagName(HTMLNames::trTag))
-                return Box::ElementAttributes { Box::ElementType::TableRow };
-            if (element->hasTagName(HTMLNames::colgroupTag))
-                return Box::ElementAttributes { Box::ElementType::TableColumnGroup };
-            if (element->hasTagName(HTMLNames::theadTag))
-                return Box::ElementAttributes { Box::ElementType::TableHeaderGroup };
-            if (element->hasTagName(HTMLNames::tbodyTag))
-                return Box::ElementAttributes { Box::ElementType::TableBodyGroup };
-            if (element->hasTagName(HTMLNames::tfootTag))
-                return Box::ElementAttributes { Box::ElementType::TableFooterGroup };
             if (element->hasTagName(HTMLNames::imgTag))
                 return Box::ElementAttributes { Box::ElementType::Image };
             if (element->hasTagName(HTMLNames::iframeTag))
@@ -154,7 +143,7 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRen
             childLayoutBox->replaced()->setIntrinsicSize(downcast<RenderReplaced>(renderer).intrinsicSize());
         if (is<RenderImage>(renderer)) {
             auto& imageRenderer = downcast<RenderImage>(renderer);
-            if (imageRenderer.imageResource().errorOccurred())
+            if (imageRenderer.shouldDisplayBrokenImageIcon())
                 childLayoutBox->replaced()->setIntrinsicRatio(1);
         }
     } else {
@@ -264,13 +253,13 @@ static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState,
         while (++printedCharacters <= depth * 2)
             stream << " ";
         stream << "  ";
-        if (inlineRun->textContext())
+        if (inlineRun.textContext())
             stream << "inline text box";
         else
             stream << "inline box";
-        stream << " at (" << inlineRun->logicalLeft() << "," << inlineRun->logicalTop() << ") size " << inlineRun->logicalWidth() << "x" << inlineRun->logicalHeight();
-        if (inlineRun->textContext())
-            stream << " run(" << inlineRun->textContext()->start() << ", " << inlineRun->textContext()->end() << ")";
+        stream << " at (" << inlineRun.logicalLeft() << "," << inlineRun.logicalTop() << ") size " << inlineRun.logicalWidth() << "x" << inlineRun.logicalHeight();
+        if (inlineRun.textContext())
+            stream << " run(" << inlineRun.textContext()->start() << ", " << inlineRun.textContext()->end() << ")";
         stream.nextLine();
     }
 }
@@ -337,14 +326,14 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Disp
 static void outputLayoutTree(const LayoutState* layoutState, TextStream& stream, const Container& rootContainer, unsigned depth)
 {
     for (auto& child : childrenOfType<Box>(rootContainer)) {
-        Display::Box* displayBox = nullptr;
-        // Not all boxes generate display boxes.
-        if (layoutState && layoutState->hasDisplayBox(child))
-            displayBox = &layoutState->displayBoxForLayoutBox(child);
-
-        outputLayoutBox(stream, child, displayBox, depth);
-        if (layoutState && child.establishesInlineFormattingContext())
-            outputInlineRuns(stream, *layoutState, downcast<Container>(child), depth + 1);
+        if (layoutState) {
+            // Not all boxes generate display boxes.
+            if (layoutState->hasDisplayBox(child))
+                outputLayoutBox(stream, child, &layoutState->displayBoxForLayoutBox(child), depth);
+            if (child.establishesInlineFormattingContext())
+                outputInlineRuns(stream, *layoutState, downcast<Container>(child), depth + 1);
+        } else
+            outputLayoutBox(stream, child, nullptr, depth);
 
         if (is<Container>(child))
             outputLayoutTree(layoutState, stream, downcast<Container>(child), depth + 1);
@@ -377,9 +366,9 @@ void printLayoutTreeForLiveDocuments()
         // FIXME: Need to find a way to output geometry without layout context.
         auto& renderView = *document->renderView();
         auto initialContainingBlock = TreeBuilder::createLayoutTree(renderView);
-        auto layoutState = LayoutState { };
+        auto layoutState = LayoutState { *initialContainingBlock };
         layoutState.setQuirksMode(renderView.document().inLimitedQuirksMode() ? LayoutState::QuirksMode::Limited : (renderView.document().inQuirksMode() ? LayoutState::QuirksMode::Yes : LayoutState::QuirksMode::No));
-        layoutState.updateLayout();
+        LayoutContext(layoutState).layout();
         showLayoutTree(*initialContainingBlock, &layoutState);
     }
 }

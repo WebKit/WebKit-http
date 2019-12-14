@@ -18,18 +18,22 @@ function target_test(...args)
     options.height = options.height || "100%";
 
     async_test(test => {
-        const target = document.body.appendChild(document.createElement("div"));
-        target.setAttribute("style", `
-            position: absolute;
-            left: ${options.x};
-            top: ${options.y};
-            width: ${options.width};
-            height: ${options.height};
-        `);
-        test.add_cleanup(() => target.remove());
-
-        continutation(target, test);
+        continutation(makeTarget(test, options), test);
     }, description);
+}
+
+function makeTarget(test, options)
+{
+    const target = document.body.appendChild(document.createElement("div"));
+    target.setAttribute("style", `
+        position: absolute;
+        left: ${options.x};
+        top: ${options.y};
+        width: ${options.width};
+        height: ${options.height};
+    `);
+    test.add_cleanup(() => target.remove());
+    return target;
 }
 
 class EventTracker
@@ -55,6 +59,8 @@ class EventTracker
             this._handlePointerEvent(event);
         else if (event instanceof MouseEvent)
             this._handleMouseEvent(event);
+        else if (event instanceof TouchEvent)
+            this._handleTouchEvent(event);
     }
 
     _handlePointerEvent(event)
@@ -82,6 +88,11 @@ class EventTracker
             x: event.clientX,
             y: event.clientY,
         });
+    }
+
+    _handleTouchEvent(event)
+    {
+        this.events.push({ type: event.type });
     }
 
     assertMatchesEvents(expectedEvents)

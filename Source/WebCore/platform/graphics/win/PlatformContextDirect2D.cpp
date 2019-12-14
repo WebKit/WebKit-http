@@ -29,6 +29,7 @@
 #if USE(DIRECT2D)
 
 #include "Direct2DOperations.h"
+#include "Direct2DUtilities.h"
 #include <d2d1.h>
 
 namespace WebCore {
@@ -38,28 +39,64 @@ namespace WebCore {
 class PlatformContextDirect2D::State {
 public:
     State() = default;
+
+    COMPtr<ID2D1DrawingStateBlock> m_drawingStateBlock;
+    COMPtr<ID2D1Layer> m_activeLayer;
+    Vector<Direct2DLayerType> m_clips;
 };
 
-PlatformContextDirect2D::PlatformContextDirect2D(ID2D1RenderTarget* renderTarget)
+PlatformContextDirect2D::PlatformContextDirect2D(ID2D1RenderTarget* renderTarget, WTF::Function<void()>&& preDrawHandler, WTF::Function<void()>&& postDrawHandler)
     : m_renderTarget(renderTarget)
+    , m_preDrawHandler(WTFMove(preDrawHandler))
+    , m_postDrawHandler(WTFMove(postDrawHandler))
 {
     m_stateStack.append(State());
     m_state = &m_stateStack.last();
+
+    m_deviceContext.query(m_renderTarget.get());
+    RELEASE_ASSERT(!!m_deviceContext);
+}
+
+void PlatformContextDirect2D::setRenderTarget(ID2D1RenderTarget* renderTarget)
+{
+    m_renderTarget = renderTarget;
+
+    m_deviceContext.query(m_renderTarget.get());
+    RELEASE_ASSERT(!!m_deviceContext);
+}
+
+ID2D1Layer* PlatformContextDirect2D::clipLayer() const
+{
+    return m_state->m_activeLayer.get();
+}
+
+void PlatformContextDirect2D::clearClips(Vector<Direct2DLayerType>& clips)
+{
+    for (auto clipType = clips.rbegin(); clipType != clips.rend(); ++clipType) {
+        if (*clipType == AxisAlignedClip)
+            m_renderTarget->PopAxisAlignedClip();
+        else
+            m_renderTarget->PopLayer();
+    }
+
+    clips.clear();
 }
 
 void PlatformContextDirect2D::restore()
 {
     ASSERT(m_renderTarget);
 
-    auto restoreState = m_renderStates.takeLast();
-    m_renderTarget->RestoreDrawingState(restoreState.m_drawingStateBlock.get());
+    // No need to restore if we don't have a saved element on the stack.
+    if (m_stateStack.size() == 1)
+        return;
 
-    for (auto clipType = restoreState.m_clips.rbegin(); clipType != restoreState.m_clips.rend(); ++clipType) {
-        if (*clipType == AxisAlignedClip)
-            m_renderTarget->PopAxisAlignedClip();
-        else
-            m_renderTarget->PopLayer();
+    auto& restoreState = m_stateStack.last();
+    if (restoreState.m_drawingStateBlock) {
+        m_renderTarget->RestoreDrawingState(restoreState.m_drawingStateBlock.get());
+        restoreState.m_drawingStateBlock = nullptr;
     }
+
+    clearClips(restoreState.m_clips);
 
     m_stateStack.removeLast();
     ASSERT(!m_stateStack.isEmpty());
@@ -70,29 +107,27 @@ PlatformContextDirect2D::~PlatformContextDirect2D() = default;
 
 void PlatformContextDirect2D::save()
 {
+    ASSERT(m_stateStack.size() >= 1); // There should always be one state on the stack.
     ASSERT(m_renderTarget);
 
     m_stateStack.append(State());
     m_state = &m_stateStack.last();
 
-    RenderState currentState;
-    GraphicsContext::systemFactory()->CreateDrawingStateBlock(&currentState.m_drawingStateBlock);
+    GraphicsContext::systemFactory()->CreateDrawingStateBlock(&m_state->m_drawingStateBlock);
 
-    m_renderTarget->SaveDrawingState(currentState.m_drawingStateBlock.get());
-
-    m_renderStates.append(currentState);
+    m_renderTarget->SaveDrawingState(m_state->m_drawingStateBlock.get());
 }
 
 void PlatformContextDirect2D::pushRenderClip(Direct2DLayerType clipType)
 {
     ASSERT(hasSavedState());
-    m_renderStates.last().m_clips.append(clipType);
+    m_state->m_clips.append(clipType);
 }
 
 void PlatformContextDirect2D::setActiveLayer(COMPtr<ID2D1Layer>&& layer)
 {
     ASSERT(hasSavedState());
-    m_renderStates.last().m_activeLayer = layer;
+    m_state->m_activeLayer = layer;
 }
 
 COMPtr<ID2D1SolidColorBrush> PlatformContextDirect2D::brushWithColor(const D2D1_COLOR_F& color)
@@ -251,6 +286,14 @@ void PlatformContextDirect2D::beginDraw()
 void PlatformContextDirect2D::endDraw()
 {
     ASSERT(m_renderTarget);
+
+    if (m_stateStack.size() > 1)
+        restore();
+
+    clearClips(m_state->m_clips);
+
+    ASSERT(m_stateStack.size() >= 1);
+
     D2D1_TAG first, second;
     HRESULT hr = m_renderTarget->EndDraw(&first, &second);
 
@@ -258,6 +301,95 @@ void PlatformContextDirect2D::endDraw()
         WTFLogAlways("Failed in PlatformContextDirect2D::endDraw: hr=%xd, first=%ld, second=%ld", hr, first, second);
 
     --beginDrawCount;
+
+    compositeIfNeeded();
+}
+
+void PlatformContextDirect2D::setTags(D2D1_TAG tag1, D2D1_TAG tag2)
+{
+#if !ASSERT_DISABLED
+    m_renderTarget->SetTags(tag1, tag2);
+#else
+    UNUSED_PARAM(tag1);
+    UNUSED_PARAM(tag2);
+#endif
+}
+
+void PlatformContextDirect2D::notifyPreDrawObserver()
+{
+    m_preDrawHandler();
+}
+
+void PlatformContextDirect2D::notifyPostDrawObserver()
+{
+    m_postDrawHandler();
+}
+
+void PlatformContextDirect2D::pushClip(Direct2DLayerType clipType)
+{
+    m_state->m_clips.append(clipType);
+}
+
+void PlatformContextDirect2D::compositeIfNeeded()
+{
+    if (!m_compositeSource)
+        return;
+
+    COMPtr<ID2D1BitmapRenderTarget> bitmapTarget(Query, m_renderTarget.get());
+    if (!bitmapTarget)
+        return;
+
+    COMPtr<ID2D1Bitmap> currentCanvas = Direct2D::createBitmapCopyFromContext(bitmapTarget.get());
+    if (!currentCanvas)
+        return;
+
+    COMPtr<ID2D1Effect> effect;
+
+    if (m_compositeMode != D2D1_COMPOSITE_MODE_FORCE_DWORD) {
+        m_deviceContext->CreateEffect(CLSID_D2D1Composite, &effect);
+        effect->SetInput(0, m_compositeSource.get());
+        effect->SetInput(1, currentCanvas.get());
+        effect->SetValue(D2D1_COMPOSITE_PROP_MODE, m_compositeMode);
+    } else if (m_blendMode != D2D1_BLEND_MODE_FORCE_DWORD) {
+        m_deviceContext->CreateEffect(CLSID_D2D1Blend, &effect);
+        effect->SetInput(0, currentCanvas.get());
+        effect->SetInput(1, m_compositeSource.get());
+        effect->SetValue(D2D1_BLEND_PROP_MODE, m_blendMode);
+    }
+
+    if (effect) {
+        m_deviceContext->BeginDraw();
+        m_deviceContext->Clear(D2D1::ColorF(0, 0, 0, 0));
+        m_deviceContext->DrawImage(effect.get());
+        m_deviceContext->EndDraw();
+    }
+
+    m_compositeSource = nullptr;
+}
+
+void PlatformContextDirect2D::setBlendAndCompositeMode(D2D1_BLEND_MODE blend, D2D1_COMPOSITE_MODE mode)
+{
+    if (mode == m_compositeMode && blend == m_blendMode)
+        return;
+
+    // Direct2D handles compositing based on bitmaps. If we are changing the
+    // compositing mode, we need to capture the current state of the rendering
+    // in a bitmap, perform drawing operations until we finish, then handle
+    // the composting of the two layers.
+    COMPtr<ID2D1BitmapRenderTarget> bitmapTarget(Query, m_renderTarget.get());
+    if (!bitmapTarget)
+        return;
+
+    endDraw();
+
+    m_compositeMode = mode;
+    m_blendMode = blend;
+
+    m_compositeSource = Direct2D::createBitmapCopyFromContext(bitmapTarget.get());
+
+    beginDraw();
+
+    m_deviceContext->Clear(D2D1::ColorF(0, 0, 0, 0));
 }
 
 } // namespace WebCore

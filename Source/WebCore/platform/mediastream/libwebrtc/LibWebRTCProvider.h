@@ -26,7 +26,6 @@
 #pragma once
 
 #include "LibWebRTCMacros.h"
-#include <pal/SessionID.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Expected.h>
 #include <wtf/UniqueRef.h>
@@ -84,7 +83,7 @@ public:
         UNUSED_PARAM(documentIdentifier);
     }
 
-    virtual void registerMDNSName(PAL::SessionID, uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(MDNSNameOrError&&)>&& callback)
+    virtual void registerMDNSName(uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(MDNSNameOrError&&)>&& callback)
     {
         UNUSED_PARAM(documentIdentifier);
         UNUSED_PARAM(ipAddress);
@@ -118,8 +117,15 @@ public:
 
     void setEnableLogging(bool);
     void setEnableWebRTCEncryption(bool);
+    void setUseDTLS10(bool);
 
-    virtual std::unique_ptr<rtc::PacketSocketFactory> createSocketFactory(PAL::SessionID, String&& /* userAgent */) { return nullptr; }
+    class SuspendableSocketFactory : public rtc::PacketSocketFactory {
+    public:
+        virtual ~SuspendableSocketFactory() = default;
+        virtual void suspend() { };
+        virtual void resume() { };
+    };
+    virtual std::unique_ptr<SuspendableSocketFactory> createSocketFactory(String&& /* userAgent */) { return nullptr; }
 
 protected:
     LibWebRTCProvider() = default;
@@ -138,6 +144,7 @@ protected:
     bool m_disableNonLocalhostConnections { false };
     bool m_supportsVP8 { false };
     bool m_enableLogging { true };
+    bool m_useDTLS10 { false };
 #endif
 };
 

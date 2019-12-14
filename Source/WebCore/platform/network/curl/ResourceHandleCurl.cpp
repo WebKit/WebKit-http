@@ -154,8 +154,7 @@ Ref<CurlRequest> ResourceHandle::createCurlRequest(ResourceRequest&& request, Re
     }
 
     CurlRequest::ShouldSuspend shouldSuspend = d->m_defersLoading ? CurlRequest::ShouldSuspend::Yes : CurlRequest::ShouldSuspend::No;
-    // FIXME: Use a correct sessionID.
-    auto curlRequest = CurlRequest::create(request, *delegate(), PAL::SessionID::defaultSessionID(), shouldSuspend, CurlRequest::EnableMultipart::Yes, CurlRequest::CaptureNetworkLoadMetrics::Basic, d->m_messageQueue);
+    auto curlRequest = CurlRequest::create(request, *delegate(), shouldSuspend, CurlRequest::EnableMultipart::Yes, CurlRequest::CaptureNetworkLoadMetrics::Basic, d->m_messageQueue);
     
     return curlRequest;
 }
@@ -185,14 +184,6 @@ void ResourceHandle::setClientCertificateInfo(const String& host, const String& 
         CurlContext::singleton().sslHandle().setClientCertificateInfo(host, certificate, key);
     else
         LOG(Network, "Invalid client certificate file: %s!\n", certificate.latin1().data());
-}
-
-#endif
-
-#if OS(WINDOWS) && USE(CF)
-
-void ResourceHandle::setClientCertificate(const String&, CFDataRef)
-{
 }
 
 #endif

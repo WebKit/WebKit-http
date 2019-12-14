@@ -36,8 +36,9 @@
 #include <wtf/RefCounted.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSValue;
+using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -117,7 +118,7 @@ private:
     void didSelectShippingMethod(const ApplePaySessionPaymentRequest::ShippingMethod&) override;
     void didSelectShippingContact(const PaymentContact&) override;
     void didSelectPaymentMethod(const PaymentMethod&) override;
-    void didCancelPaymentSession() override;
+    void didCancelPaymentSession(PaymentSessionError&&) override;
 
     PaymentCoordinator& paymentCoordinator() const;
 

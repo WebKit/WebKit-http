@@ -37,8 +37,9 @@
 namespace JSC {
 
 struct InlineCallFrame;
-class ExecState;
+class CallFrame;
 class JSFunction;
+using ExecState = CallFrame;
 
 struct InlineCallFrame {
     enum Kind {
@@ -240,7 +241,7 @@ inline CodeBlock* baselineCodeBlockForInlineCallFrame(InlineCallFrame* inlineCal
 
 inline CodeBlock* baselineCodeBlockForOriginAndBaselineCodeBlock(const CodeOrigin& codeOrigin, CodeBlock* baselineCodeBlock)
 {
-    ASSERT(baselineCodeBlock->jitType() == JITType::BaselineJIT);
+    ASSERT(JITCode::isBaselineCode(baselineCodeBlock->jitType()));
     auto* inlineCallFrame = codeOrigin.inlineCallFrame();
     if (inlineCallFrame)
         return baselineCodeBlockForInlineCallFrame(inlineCallFrame);

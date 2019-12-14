@@ -449,7 +449,10 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/mac/TextIndicatorWindow.h
     page/mac/WebCoreFrameView.h
 
+    page/scrolling/ScrollingStateOverflowScrollProxyNode.h
+
     page/scrolling/cocoa/ScrollingTreeFixedNode.h
+    page/scrolling/cocoa/ScrollingTreeOverflowScrollProxyNode.h
     page/scrolling/cocoa/ScrollingTreePositionedNode.h
     page/scrolling/cocoa/ScrollingTreeStickyNode.h
 
@@ -485,6 +488,8 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     platform/graphics/avfoundation/MediaPlaybackTargetMac.h
     platform/graphics/avfoundation/WebMediaSessionManagerMac.h
+
+    platform/graphics/avfoundation/objc/AVAssetMIMETypeCache.h
 
     platform/graphics/ca/GraphicsLayerCA.h
     platform/graphics/ca/LayerPool.h

@@ -42,10 +42,11 @@
 #include <wtf/WeakPtr.h>
 
 namespace JSC {
-class ExecState;
+class CallFrame;
 class JSObject;
 class JSValue;
 template<typename> class Strong;
+using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -64,6 +65,7 @@ class Element;
 class EventListener;
 class FloatRect;
 class History;
+class IdleRequestCallback;
 class Location;
 class MediaQueryList;
 class Navigator;
@@ -74,6 +76,7 @@ class PageConsoleClient;
 class Performance;
 class PostMessageTimer;
 class RequestAnimationFrameCallback;
+class RequestIdleCallback;
 class ScheduledAction;
 class Screen;
 class Storage;
@@ -87,6 +90,7 @@ class DeviceMotionController;
 class DeviceOrientationController;
 #endif
 
+struct IdleRequestOptions;
 struct ImageBitmapOptions;
 struct WindowFeatures;
 
@@ -184,7 +188,7 @@ public:
     void prewarmLocalStorageIfNecessary();
 
     void alert(const String& message = emptyString());
-    bool confirm(const String& message);
+    bool confirmForBindings(const String& message);
     String prompt(const String& message, const String& defaultValue);
 
     bool find(const String&, bool caseSensitive, bool backwards, bool wrap, bool wholeWord, bool searchInFrames, bool showDialog) const;
@@ -274,6 +278,9 @@ public:
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     int webkitRequestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);
+
+    int requestIdleCallback(Ref<IdleRequestCallback>&&, const IdleRequestOptions&);
+    void cancelIdleCallback(int id);
 
     // ImageBitmap
     void createImageBitmap(ImageBitmap::Source&&, ImageBitmapOptions&&, ImageBitmap::Promise&&);

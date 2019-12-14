@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018 Andy VanWagoner (andy@vanwagoner.family)
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,14 +39,14 @@ class IntlPluralRulesPrototype;
 class IntlPluralRulesConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
+    static constexpr unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static IntlPluralRulesConstructor* create(VM&, Structure*, IntlPluralRulesPrototype*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
-    Structure* pluralRulesStructure(VM& vm) const { return globalObject(vm)->pluralRulesStructure(); }
+    Structure* pluralRulesStructure(VM&) const { return globalObject()->pluralRulesStructure(); }
 
 protected:
     void finishCreation(VM&, IntlPluralRulesPrototype*);

@@ -43,7 +43,7 @@ enum class ReasonForSuspension {
     PageWillBeSuspended,
 };
 
-class ActiveDOMObject : public ContextDestructionObserver {
+class WEBCORE_EXPORT ActiveDOMObject : public ContextDestructionObserver {
 public:
     // The suspendIfNeeded must be called exactly once after object construction to update
     // the suspended state to match that of the ScriptExecutionContext.
@@ -116,14 +116,17 @@ public:
 
 protected:
     explicit ActiveDOMObject(ScriptExecutionContext*);
-    explicit ActiveDOMObject(Document*) = delete;
-    explicit ActiveDOMObject(Document&); // Implemented in Document.h
+    explicit ActiveDOMObject(Document*);
+    explicit ActiveDOMObject(Document&);
     virtual ~ActiveDOMObject();
 
 private:
-    unsigned m_pendingActivityCount;
+    enum CheckedScriptExecutionContextType { CheckedScriptExecutionContext };
+    ActiveDOMObject(ScriptExecutionContext*, CheckedScriptExecutionContextType);
+
+    unsigned m_pendingActivityCount { 0 };
 #if !ASSERT_DISABLED
-    bool m_suspendIfNeededWasCalled;
+    bool m_suspendIfNeededWasCalled { false };
     Ref<Thread> m_creationThread { Thread::current() };
 #endif
 };

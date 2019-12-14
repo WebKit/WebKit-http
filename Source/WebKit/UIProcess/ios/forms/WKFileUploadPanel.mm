@@ -343,7 +343,9 @@ static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
         else if ([mimeType caseInsensitiveCompare:@"video/*"] == NSOrderedSame)
             [mediaTypes addObject:(__bridge NSString *)kUTTypeMovie];
         else if ([mimeType caseInsensitiveCompare:@"audio/*"] == NSOrderedSame)
-            [mediaTypes addObject:(__bridge NSString *)kUTTypeAudio];
+            // UIImagePickerController doesn't allow audio-only recording, so show the video
+            // recorder for "audio/*".
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeMovie];
         else {
             auto uti = WebCore::UTIFromMIMEType(mimeType);
             if (!uti.isEmpty())
@@ -371,7 +373,10 @@ static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
                 }
             }
         }
-        return mediaTypes;
+
+        ASSERT(mediaTypes.count);
+        if (mediaTypes.count)
+            return mediaTypes;
     }
 
     // Fallback to every supported media type if there is no filter.
@@ -755,7 +760,7 @@ static NSString *displayStringForDocumentsAtURLs(NSArray<NSURL *> *urls)
         return;
     }
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if PLATFORM(IOS_FAMILY)
     if (NSURL *imageURL = info[UIImagePickerControllerImageURL]) {
         if (!imageURL.isFileURL) {
             LOG_ERROR("WKFileUploadPanel: Expected image URL to be a file path, it was not");

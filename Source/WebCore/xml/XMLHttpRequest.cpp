@@ -33,6 +33,7 @@
 #include "EventNames.h"
 #include "File.h"
 #include "HTMLDocument.h"
+#include "HTMLIFrameElement.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPHeaderValues.h"
 #include "HTTPParsers.h"
@@ -173,7 +174,7 @@ ExceptionOr<Document*> XMLHttpRequest::responseXML()
         return nullptr;
 
     if (!m_createdDocument) {
-        auto& context = *scriptExecutionContext();
+        auto& context = downcast<Document>(*scriptExecutionContext());
 
         String mimeType = responseMIMEType();
         bool isHTML = equalLettersIgnoringASCIICase(mimeType, "text/html");
@@ -185,12 +186,12 @@ ExceptionOr<Document*> XMLHttpRequest::responseXML()
             m_responseDocument = nullptr;
         } else {
             if (isHTML)
-                m_responseDocument = HTMLDocument::create(context.sessionID(), nullptr, m_url);
+                m_responseDocument = HTMLDocument::create(nullptr, m_url);
             else
-                m_responseDocument = XMLDocument::create(context.sessionID(), nullptr, m_url);
+                m_responseDocument = XMLDocument::create(nullptr, m_url);
             m_responseDocument->overrideLastModified(m_response.lastModified());
             m_responseDocument->setContent(m_responseBuilder.toStringPreserveCapacity());
-            m_responseDocument->setContextDocument(downcast<Document>(context));
+            m_responseDocument->setContextDocument(context);
             m_responseDocument->setSecurityOriginPolicy(context.securityOriginPolicy());
             m_responseDocument->overrideMIMEType(mimeType);
 
@@ -214,7 +215,7 @@ Ref<Blob> XMLHttpRequest::createResponseBlob()
         data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
     m_binaryResponseBuilder = nullptr;
     String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
-    return Blob::create(scriptExecutionContext()->sessionID(), WTFMove(data), normalizedContentType);
+    return Blob::create(WTFMove(data), normalizedContentType);
 }
 
 RefPtr<ArrayBuffer> XMLHttpRequest::createResponseArrayBuffer()
@@ -569,6 +570,23 @@ ExceptionOr<void> XMLHttpRequest::sendBytesData(const void* data, size_t length)
     return createRequest();
 }
 
+static inline bool isSyncXHRAllowedByFeaturePolicy(Document& document)
+{
+    auto& topDocument = document.topDocument();
+    if (&document != &topDocument) {
+        for (auto* ancestorDocument = &document; ancestorDocument != &topDocument; ancestorDocument = ancestorDocument->parentDocument()) {
+            auto* element = ancestorDocument->ownerElement();
+            ASSERT(element);
+            if (element && is<HTMLIFrameElement>(*element)) {
+                auto& featurePolicy = downcast<HTMLIFrameElement>(*element).featurePolicy();
+                if (!featurePolicy.allows(FeaturePolicy::Type::SyncXHR, ancestorDocument->securityOrigin().data()))
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
 ExceptionOr<void> XMLHttpRequest::createRequest()
 {
     // Only GET request is supported for blob URL.
@@ -623,7 +641,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     if (m_async) {
         m_progressEventThrottle.dispatchProgressEvent(eventNames().loadstartEvent);
         if (!m_uploadComplete && m_uploadListenerFlag)
-            m_upload->dispatchProgressEvent(eventNames().loadstartEvent, 0, request.httpBody()->lengthInBytes(scriptExecutionContext()->sessionID()));
+            m_upload->dispatchProgressEvent(eventNames().loadstartEvent, 0, request.httpBody()->lengthInBytes());
 
         if (readyState() != OPENED || !m_sendFlag || m_loader)
             return { };
@@ -642,6 +660,9 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
         if (m_loader)
             setPendingActivity(*this);
     } else {
+        if (scriptExecutionContext()->isDocument() && !isSyncXHRAllowedByFeaturePolicy(*document()))
+            return Exception { NetworkError };
+
         request.setDomainForCachePartition(scriptExecutionContext()->domainForCachePartition());
         InspectorInstrumentation::willLoadXHRSynchronously(scriptExecutionContext());
         ThreadableLoader::loadResourceSynchronously(*scriptExecutionContext(), WTFMove(request), *this, options);
@@ -1125,7 +1146,7 @@ bool XMLHttpRequest::canSuspendForDocumentSuspension() const
     // If the load event has not fired yet, cancelling the load in suspend() may cause
     // the load event to be fired and arbitrary JS execution, which would be unsafe.
     // Therefore, we prevent suspending in this case.
-    return document()->loadEventFinished();
+    return !m_loader || document()->loadEventFinished();
 }
 
 const char* XMLHttpRequest::activeDOMObjectName() const

@@ -33,6 +33,7 @@
 #include "config.h"
 #include "HTTPParsers.h"
 
+#include "HTTPHeaderField.h"
 #include "HTTPHeaderNames.h"
 #include <wtf/DateMath.h>
 #include <wtf/Language.h>
@@ -44,16 +45,24 @@
 
 namespace WebCore {
 
+// True if characters which satisfy the predicate are present, incrementing
+// "pos" to the next character which does not satisfy the predicate.
+// Note: might return pos == str.length().
+static inline bool skipWhile(const String& str, unsigned& pos, const WTF::Function<bool(const UChar)>& predicate)
+{
+    const unsigned start = pos;
+    const unsigned len = str.length();
+    while (pos < len && predicate(str[pos]))
+        ++pos;
+    return pos != start;
+}
+
 // true if there is more to parse, after incrementing pos past whitespace.
 // Note: Might return pos == str.length()
 static inline bool skipWhiteSpace(const String& str, unsigned& pos)
 {
-    unsigned len = str.length();
-
-    while (pos < len && (str[pos] == '\t' || str[pos] == ' '))
-        ++pos;
-
-    return pos < len;
+    skipWhile(str, pos, RFC7230::isWhitespace);
+    return pos < str.length();
 }
 
 // Returns true if the function can match the whole token (case insensitive)
@@ -126,15 +135,6 @@ bool isValidHTTPHeaderValue(const String& value)
     return true;
 }
 
-// See RFC 7230, Section 3.2.6.
-static bool isDelimiterCharacter(const UChar c)
-{
-    // DQUOTE and "(),/:;<=>?@[\]{}"
-    return (c == '"' || c == '(' || c == ')' || c == ',' || c == '/' || c == ':' || c == ';'
-        || c == '<' || c == '=' || c == '>' || c == '?' || c == '@' || c == '[' || c == '\\'
-        || c == ']' || c == '{' || c == '}');
-}
-
 // See RFC 7231, Section 5.3.2.
 bool isValidAcceptHeaderValue(const String& value)
 {
@@ -149,7 +149,7 @@ bool isValidAcceptHeaderValue(const String& value)
         if (c == 0x7F || (c < 0x20 && c != '\t'))
             return false;
 
-        if (isDelimiterCharacter(c))
+        if (RFC7230::isDelimiter(c))
             return false;
     }
     
@@ -180,14 +180,117 @@ bool isValidHTTPToken(const String& value)
         return false;
     auto valueStringView = StringView(value);
     for (UChar c : valueStringView.codeUnits()) {
-        if (c <= 0x20 || c >= 0x7F
-            || c == '(' || c == ')' || c == '<' || c == '>' || c == '@'
-            || c == ',' || c == ';' || c == ':' || c == '\\' || c == '"'
-            || c == '/' || c == '[' || c == ']' || c == '?' || c == '='
-            || c == '{' || c == '}')
-        return false;
+        if (!RFC7230::isTokenCharacter(c))
+            return false;
     }
     return true;
+}
+
+// True if the character at the given position satisifies a predicate, incrementing "pos" by one.
+// Note: Might return pos == str.length()
+static inline bool skipCharacter(const String& value, unsigned& pos, WTF::Function<bool(const UChar)>&& predicate)
+{
+    if (pos < value.length() && predicate(value[pos])) {
+        ++pos;
+        return true;
+    }
+    return false;
+}
+
+// True if the "expected" character is at the given position, incrementing "pos" by one.
+// Note: Might return pos == str.length()
+static inline bool skipCharacter(const String& value, unsigned& pos, const UChar expected)
+{
+    return skipCharacter(value, pos, [expected](const UChar c) {
+        return c == expected;
+    });
+}
+
+// True if a quoted pair is present, incrementing "pos" to the position after the quoted pair.
+// Note: Might return pos == str.length()
+// See RFC 7230, Section 3.2.6.
+static constexpr auto QuotedPairStartCharacter = '\\';
+static bool skipQuotedPair(const String& value, unsigned& pos)
+{
+    // quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+    return skipCharacter(value, pos, QuotedPairStartCharacter)
+        && skipCharacter(value, pos, RFC7230::isQuotedPairSecondOctet);
+}
+
+// True if a comment is present, incrementing "pos" to the position after the comment.
+// Note: Might return pos == str.length()
+// See RFC 7230, Section 3.2.6.
+static constexpr auto CommentStartCharacter = '(';
+static constexpr auto CommentEndCharacter = ')';
+static bool skipComment(const String& value, unsigned& pos)
+{
+    // comment = "(" *( ctext / quoted-pair / comment ) ")"
+    // ctext   = HTAB / SP / %x21-27 / %x2A-5B / %x5D-7E / obs-text
+    if (!skipCharacter(value, pos, CommentStartCharacter))
+        return false;
+
+    const unsigned end = value.length();
+    while (pos < end && value[pos] != CommentEndCharacter) {
+        switch (value[pos]) {
+        case CommentStartCharacter:
+            if (!skipComment(value, pos))
+                return false;
+            break;
+        case QuotedPairStartCharacter:
+            if (!skipQuotedPair(value, pos))
+                return false;
+            break;
+        default:
+            if (!skipWhile(value, pos, RFC7230::isCommentText))
+                return false;
+        }
+    }
+    return skipCharacter(value, pos, CommentEndCharacter);
+}
+
+// True if an HTTP header token is present, incrementing "pos" to the position after it.
+// Note: Might return pos == str.length()
+// See RFC 7230, Section 3.2.6.
+static bool skipHTTPToken(const String& value, unsigned& pos)
+{
+    return skipWhile(value, pos, RFC7230::isTokenCharacter);
+}
+
+// True if a product specifier (as in an User-Agent header) is present, incrementing "pos" to the position after it.
+// Note: Might return pos == str.length()
+// See RFC 7231, Section 5.5.3.
+static bool skipUserAgentProduct(const String& value, unsigned& pos)
+{
+    // product         = token ["/" product-version]
+    // product-version = token
+    if (!skipHTTPToken(value, pos))
+        return false;
+    if (skipCharacter(value, pos, '/'))
+        return skipHTTPToken(value, pos);
+    return true;
+}
+
+// See RFC 7231, Section 5.5.3
+bool isValidUserAgentHeaderValue(const String& value)
+{
+    // User-Agent = product *( RWS ( product / comment ) )
+    unsigned pos = 0;
+    if (!skipUserAgentProduct(value, pos))
+        return false;
+
+    while (pos < value.length()) {
+        if (!skipWhiteSpace(value, pos))
+            return false;
+        if (value[pos] == CommentStartCharacter) {
+            if (!skipComment(value, pos))
+                return false;
+        } else {
+            if (!skipUserAgentProduct(value, pos))
+                return false;
+        }
+    }
+
+    return pos == value.length();
 }
 
 static const size_t maxInputSampleSize = 128;
@@ -197,65 +300,6 @@ static String trimInputSample(const char* p, size_t length)
     if (length > maxInputSampleSize)
         s.append(horizontalEllipsis);
     return s;
-}
-
-bool parseHTTPRefresh(const String& refresh, double& delay, String& url)
-{
-    unsigned len = refresh.length();
-    unsigned pos = 0;
-    
-    if (!skipWhiteSpace(refresh, pos))
-        return false;
-    
-    while (pos != len && refresh[pos] != ',' && refresh[pos] != ';')
-        ++pos;
-    
-    if (pos == len) { // no URL
-        url = String();
-        bool ok;
-        delay = refresh.stripWhiteSpace().toDouble(&ok);
-        return ok;
-    } else {
-        bool ok;
-        delay = refresh.left(pos).stripWhiteSpace().toDouble(&ok);
-        if (!ok)
-            return false;
-        
-        ++pos;
-        skipWhiteSpace(refresh, pos);
-        unsigned urlStartPos = pos;
-        if (refresh.findIgnoringASCIICase("url", urlStartPos) == urlStartPos) {
-            urlStartPos += 3;
-            skipWhiteSpace(refresh, urlStartPos);
-            if (refresh[urlStartPos] == '=') {
-                ++urlStartPos;
-                skipWhiteSpace(refresh, urlStartPos);
-            } else
-                urlStartPos = pos;  // e.g. "Refresh: 0; url.html"
-        }
-
-        unsigned urlEndPos = len;
-
-        if (refresh[urlStartPos] == '"' || refresh[urlStartPos] == '\'') {
-            UChar quotationMark = refresh[urlStartPos];
-            urlStartPos++;
-            while (urlEndPos > urlStartPos) {
-                urlEndPos--;
-                if (refresh[urlEndPos] == quotationMark)
-                    break;
-            }
-            
-            // https://bugs.webkit.org/show_bug.cgi?id=27868
-            // Sometimes there is no closing quote for the end of the URL even though there was an opening quote.
-            // If we looped over the entire alleged URL string back to the opening quote, just use everything
-            // after the opening quote instead.
-            if (urlEndPos == urlStartPos)
-                urlEndPos = len;
-        }
-
-        url = refresh.substring(urlStartPos, urlEndPos - urlStartPos).stripWhiteSpace();
-        return true;
-    }
 }
 
 Optional<WallTime> parseHTTPDate(const String& value)

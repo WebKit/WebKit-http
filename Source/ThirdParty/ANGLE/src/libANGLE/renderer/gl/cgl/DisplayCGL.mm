@@ -1,31 +1,28 @@
 //
-// Copyright (c) 2015 The ANGLE Project Authors. All rights reserved.
+// Copyright 2015 The ANGLE Project Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
 
 // DisplayCGL.mm: CGL implementation of egl::Display
 
-
 #if __has_include(<Cocoa/Cocoa.h>)
 
-#include "libANGLE/renderer/gl/cgl/DisplayCGL.h"
+#    include "libANGLE/renderer/gl/cgl/DisplayCGL.h"
 
-#import <Cocoa/Cocoa.h>
-#include <EGL/eglext.h>
-#include <dlfcn.h>
+#    import <Cocoa/Cocoa.h>
+#    include <EGL/eglext.h>
+#    include <dlfcn.h>
 
-#include "common/debug.h"
-#include "gpu_info_util/SystemInfo.h"
-#include "libANGLE/Display.h"
-#include "libANGLE/renderer/gl/cgl/ContextCGL.h"
-#include "libANGLE/renderer/gl/cgl/IOSurfaceSurfaceCGL.h"
-#include "libANGLE/renderer/gl/cgl/PbufferSurfaceCGL.h"
-#include "libANGLE/renderer/gl/cgl/RendererCGL.h"
-#include "libANGLE/renderer/gl/cgl/WindowSurfaceCGL.h"
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#    include "common/debug.h"
+#    include "gpu_info_util/SystemInfo.h"
+#    include "libANGLE/Display.h"
+#    include "libANGLE/renderer/gl/cgl/ContextCGL.h"
+#    include "libANGLE/renderer/gl/cgl/DeviceCGL.h"
+#    include "libANGLE/renderer/gl/cgl/IOSurfaceSurfaceCGL.h"
+#    include "libANGLE/renderer/gl/cgl/PbufferSurfaceCGL.h"
+#    include "libANGLE/renderer/gl/cgl/RendererCGL.h"
+#    include "libANGLE/renderer/gl/cgl/WindowSurfaceCGL.h"
 
 namespace
 {
@@ -213,8 +210,7 @@ ContextImpl *DisplayCGL::createContext(const gl::State &state,
 
 DeviceImpl *DisplayCGL::createDevice()
 {
-    UNIMPLEMENTED();
-    return nullptr;
+    return new DeviceCGL();
 }
 
 egl::ConfigSet DisplayCGL::generateConfigs()
@@ -327,10 +323,16 @@ CGLContextObj DisplayCGL::getCGLContext() const
     return mContext;
 }
 
+CGLPixelFormatObj DisplayCGL::getCGLPixelFormat() const
+{
+    return mPixelFormat;
+}
+
 void DisplayCGL::generateExtensions(egl::DisplayExtensions *outExtensions) const
 {
     outExtensions->iosurfaceClientBuffer = true;
     outExtensions->surfacelessContext    = true;
+    outExtensions->deviceQuery           = true;
 
     // Contexts are virtualized so textures can be shared globally
     outExtensions->displayTextureShareGroup = true;
@@ -432,8 +434,16 @@ void DisplayCGL::unreferenceDiscreteGPU()
         mDiscreteGPUPixelFormat = nullptr;
     }
 }
+
+void DisplayCGL::initializeFrontendFeatures(angle::FrontendFeatures *features) const
+{
+    mRenderer->initializeFrontendFeatures(features);
 }
 
-#pragma clang diagnostic pop
+void DisplayCGL::populateFeatureList(angle::FeatureList *features)
+{
+    mRenderer->getFeatures().populateFeatureList(features);
+}
+}
 
-#endif // __has_include(<Cocoa/Cocoa.h>)
+#endif  // __has_include(<Cocoa/Cocoa.h>)

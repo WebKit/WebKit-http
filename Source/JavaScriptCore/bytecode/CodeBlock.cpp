@@ -547,6 +547,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpBitnot, profile)
         LINK(OpBitxor, profile)
         LINK(OpLshift, profile)
+        LINK(OpRshift, profile)
 
         LINK(OpGetById, profile)
 
@@ -568,6 +569,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpPutById)
         LINK(OpCreateThis)
         LINK(OpCreatePromise)
+        LINK(OpCreateGenerator)
 
         LINK(OpAdd)
         LINK(OpMul)
@@ -881,7 +883,7 @@ void CodeBlock::setConstantIdentifierSetRegisters(VM& vm, const Vector<ConstantI
         JSSet* jsSet = JSSet::create(exec, vm, setStructure, set.size());
         RETURN_IF_EXCEPTION(scope, void());
 
-        for (auto setEntry : set) {
+        for (const auto& setEntry : set) {
             JSString* jsString = jsOwnedString(vm, setEntry.get()); 
             jsSet->add(exec, jsString);
             RETURN_IF_EXCEPTION(scope, void());
@@ -1273,6 +1275,12 @@ void CodeBlock::finalizeLLIntInlineCaches()
         });
         m_metadata->forEach<OpCreatePromise>([&] (auto& metadata) {
             handleCreateBytecode(metadata, "op_create_promise"_s);
+        });
+        m_metadata->forEach<OpCreateGenerator>([&] (auto& metadata) {
+            handleCreateBytecode(metadata, "op_create_generator"_s);
+        });
+        m_metadata->forEach<OpCreateAsyncGenerator>([&] (auto& metadata) {
+            handleCreateBytecode(metadata, "op_create_async_generator"_s);
         });
 
         m_metadata->forEach<OpResolveScope>([&] (auto& metadata) {
@@ -1861,7 +1869,7 @@ void CodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& d
     line += ownerExecutable()->firstLine();
 }
 
-bool CodeBlock::hasOpDebugForLineAndColumn(unsigned line, unsigned column)
+bool CodeBlock::hasOpDebugForLineAndColumn(unsigned line, Optional<unsigned> column)
 {
     const InstructionStream& instructionStream = instructions();
     for (const auto& it : instructionStream) {
@@ -1870,7 +1878,7 @@ bool CodeBlock::hasOpDebugForLineAndColumn(unsigned line, unsigned column)
             unsigned opDebugLine;
             unsigned opDebugColumn;
             expressionRangeForBytecodeOffset(it.offset(), unused, unused, unused, opDebugLine, opDebugColumn);
-            if (line == opDebugLine && (column == Breakpoint::unspecifiedColumn || column == opDebugColumn))
+            if (line == opDebugLine && (!column || column == opDebugColumn))
                 return true;
         }
     }

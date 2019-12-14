@@ -66,6 +66,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSAnimationPlaybackEventInit.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSAnimationPlaybackEventInit.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSAnimationTimeline.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSAnimationTimeline.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayCancelEvent.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayCancelEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayContactField.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayContactField.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayError.cpp
@@ -106,6 +108,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayRequestBase.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePayRequestBase.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySession.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySession.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySessionError.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySessionError.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySetup.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySetup.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSApplePaySetupFeature.cpp
@@ -286,8 +290,12 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCharacterData.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCharacterData.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSChildNode.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSChildNode.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboard.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboard.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardEvent.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardItem.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardItem.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCloseEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCloseEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCommandLineAPIHost.cpp
@@ -881,6 +889,12 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIDBTransactionMode.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIDBTransactionMode.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIDBVersionChangeEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIDBVersionChangeEvent.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleDeadline.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleDeadline.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleRequestCallback.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleRequestCallback.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleRequestOptions.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSIdleRequestOptions.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSImageBitmap.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSImageBitmap.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSImageBitmapOptions.cpp
@@ -1045,6 +1059,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockPaymentCoordinator.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockPaymentCoordinator.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockPaymentError.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockPaymentError.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockWebAuthenticationConfiguration.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMockWebAuthenticationConfiguration.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMouseEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMouseEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMouseEventInit.cpp
@@ -1063,6 +1079,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigator.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigator.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorBeacon.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorBeacon.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorClipboard.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorClipboard.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorCredentials.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorCredentials.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorEME.cpp
@@ -1075,6 +1093,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorGeolocation.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorGeolocation.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorID.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorID.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorIsLoggedIn.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorIsLoggedIn.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorLanguage.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorLanguage.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSNavigatorMaxTouchPoints.cpp

@@ -70,6 +70,7 @@
 #include "UserContentProvider.h"
 #include "VisitedLinkStore.h"
 #include <JavaScriptCore/HeapInlines.h>
+#include <pal/SessionID.h>
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -215,6 +216,7 @@ private:
     void textWillBeDeletedInTextField(Element*) final { }
     void textDidChangeInTextArea(Element*) final { }
     void overflowScrollPositionChanged() final { }
+    void subFrameScrollPositionChanged() final { }
 
 #if PLATFORM(IOS_FAMILY)
     void startDelayingAndCoalescingContentChangeNotifications() final { }
@@ -464,11 +466,6 @@ void EmptyChromeClient::showShareSheet(ShareDataWithParsedURL&, CompletionHandle
 {
 }
 
-PAL::SessionID EmptyFrameLoaderClient::sessionID() const
-{
-    return PAL::SessionID::defaultSessionID();
-}
-
 void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, PolicyCheckIdentifier, FramePolicyFunction&&)
 {
 }
@@ -547,9 +544,10 @@ class EmptyStorageSessionProvider : public StorageSessionProvider {
     NetworkStorageSession* storageSession() const final { return nullptr; }
 };
 
-PageConfiguration pageConfigurationWithEmptyClients()
+PageConfiguration pageConfigurationWithEmptyClients(PAL::SessionID sessionID)
 {
     PageConfiguration pageConfiguration {
+        sessionID,
         makeUniqueRef<EmptyEditorClient>(),
         SocketProvider::create(),
         LibWebRTCProvider::create(),

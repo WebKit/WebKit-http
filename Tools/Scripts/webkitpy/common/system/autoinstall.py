@@ -39,14 +39,18 @@ import stat
 import sys
 import tarfile
 import tempfile
-import urllib2
-import urlparse
 import zipfile
 import re
 from distutils import dir_util
 from glob import glob
-import urlparse
 import subprocess
+
+if sys.version_info > (3, 0):
+    from urllib.request import urlopen
+    import urllib.parse as urlparse
+else:
+    from urllib2 import urlopen
+    import urlparse
 
 
 _log = logging.getLogger(__name__)
@@ -363,7 +367,7 @@ class AutoInstaller(object):
         failures = 0
         while True:
             try:
-                netstream = urllib2.urlopen(url, timeout=30)
+                netstream = urlopen(url, timeout=30)
                 break
             except IOError as err:
                 # Try multiple times

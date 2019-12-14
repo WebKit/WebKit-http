@@ -279,7 +279,17 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
             });
             colorBatchRender.addSeq(color, (context, color) => {
                 context.arc(x + dotMargin + useRadius, baselineY, useRadius, 0, 2 * Math.PI);
-                if (typeof innerLabel === "number" || typeof innerLabel === "string") {
+                if (innerLabel instanceof Image || typeof innerLabel === "string" && (innerLabel.endsWith('.svg') || innerLabel.endsWith('.png') || innerLabel.endsWith('.jpg') || innerLabel.endsWith('.jpeg'))) {
+                    let image = innerLabel;
+                    if (typeof innerLabel === "string") {
+                        image = new Image();
+                        image.src = innerLabel;
+                    }
+                    const image_padding = useRadius - fontSize / 2;
+                    drawLabelsSeqs.push(() => {
+                        context.drawImage(image, x + dotMargin + image_padding, y + image_padding, fontSize, fontSize);
+                    });
+                } else if (typeof innerLabel === "number" || typeof innerLabel === "string") {
                     drawLabelsSeqs.push(() => {
                         // Draw the inner label
                         const innerLabelSize = context.measureText(innerLabel);
@@ -613,6 +623,8 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     const scaleWidth = parseInt(computedStyle.getPropertyValue('--smallSize')) + parseInt(computedStyle.getPropertyValue('--tinySize'));
     const scaleTagLineHeight = parseInt(computedStyle.getPropertyValue('--smallSize'));
     const scaleTagLinePadding = 10;
+    const scaleGroupTagLinePadding = 3;
+    const scaleGroupMargin = fontSizeNumber / 2;
     const scaleBroadLineHeight = parseInt(computedStyle.getPropertyValue('--tinySize')) / 2;
     const maxinumTextHeight = scaleWidth * 4.5;
     const canvasHeight = typeof option.height === "number" ? option.height : parseInt(computedStyle.getPropertyValue('--smallSize')) * 5;
@@ -627,6 +639,7 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
         const baseLineY = isTop ? y + canvasHeight - scaleBroadLineHeight : y + scaleBroadLineHeight;
         const middlePointX = x + totalWidth / 2;
         if (group > 1) {
+            const groupBaselineY = isTop ? baseLineY - scaleBroadLineHeight : baseLineY + scaleBroadLineHeight;
             colorBatchRender.lazyCreateColorSeqs(usedGroupColor, (context) => {
                 context.beginPath();
             }, (context, color) => {
@@ -635,27 +648,27 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
                 context.stroke();
             });
             colorBatchRender.addSeq(usedGroupColor, (context) => {
-                context.moveTo(x + context.lineWidth, isTop ? canvasHeight : y);
-                context.lineTo(x + context.lineWidth, baseLineY);
-                context.moveTo(x, baseLineY);
-                context.lineTo(x + totalWidth, baseLineY);
-                context.moveTo(x + totalWidth, isTop ? canvasHeight : y);
-                context.lineTo(x + totalWidth, baseLineY);
-                context.moveTo(middlePointX, baseLineY);
+                context.moveTo(x + scaleGroupMargin, groupBaselineY);
+                context.lineTo(x + scaleGroupMargin, baseLineY);
+                context.moveTo(x + scaleGroupMargin, groupBaselineY);
+                context.lineTo(x + totalWidth - scaleGroupMargin, groupBaselineY);
+                context.moveTo(x + totalWidth - scaleGroupMargin, groupBaselineY);
+                context.lineTo(x + totalWidth - scaleGroupMargin, baseLineY);
+                context.moveTo(middlePointX, groupBaselineY);
                 if (!isTop)
-                    context.lineTo(middlePointX, baseLineY + scaleTagLineHeight - scaleTagLinePadding);
+                    context.lineTo(middlePointX, groupBaselineY + scaleTagLineHeight - scaleTagLinePadding - scaleGroupTagLinePadding);
                 else
-                    context.lineTo(middlePointX, baseLineY - scaleTagLineHeight + scaleTagLinePadding);
+                    context.lineTo(middlePointX, groupBaselineY - scaleTagLineHeight + scaleTagLinePadding + scaleGroupTagLinePadding);
             });
         } else {
-            colorBatchRender.lazyCreateColorSeqs(usedLineColor, (context) => {
+            colorBatchRender.lazyCreateColorSeqs(usedGroupColor, (context) => {
                 context.beginPath();
             }, (context, color) => {
                 context.lineWidth = 1;
                 context.strokeStyle = color;
                 context.stroke();
             });
-            colorBatchRender.addSeq(usedLineColor, (context) => {
+            colorBatchRender.addSeq(usedGroupColor, (context) => {
                 context.moveTo(middlePointX, baseLineY);
                 if (!isTop)
                     context.lineTo(middlePointX, baseLineY + scaleTagLineHeight - scaleTagLinePadding);

@@ -27,20 +27,28 @@
 
 #if ENABLE(WEBGL)
 
+#include "ContextDestructionObserver.h"
 #include "WebGLSharedObject.h"
-#include <wtf/Forward.h>
+#include <wtf/HashMap.h>
+#include <wtf/HashFunctions.h>
+#include <wtf/Lock.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
+class ScriptExecutionContext;
+class WebGLRenderingContextBase;
 class WebGLShader;
 
-class WebGLProgram final : public WebGLSharedObject {
+class WebGLProgram final : public WebGLSharedObject, public ContextDestructionObserver {
 public:
     static Ref<WebGLProgram> create(WebGLRenderingContextBase&);
     virtual ~WebGLProgram();
 
-    static HashMap<WebGLProgram*, WebGLRenderingContextBase*>& instances(const LockHolder&);
+    static HashMap<WebGLProgram*, WebGLRenderingContextBase*>& instances(const WTF::LockHolder&);
     static Lock& instancesMutex();
+
+    void contextDestroyed() final;
 
     unsigned numActiveAttribLocations();
     GC3Dint getActiveAttribLocation(GC3Duint index);

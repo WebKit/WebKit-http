@@ -27,18 +27,17 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "LayoutRect.h"
 #include "LayoutUnits.h"
 
 namespace WebCore {
-
-class RenderStyle;
-
 namespace Display {
 
 class Rect {
 public:
     Rect() = default;
     Rect(LayoutUnit top, LayoutUnit left, LayoutUnit width, LayoutUnit height);
+    Rect(LayoutPoint topLeft, LayoutUnit width, LayoutUnit height);
     
     LayoutUnit top() const;
     LayoutUnit left() const;
@@ -67,9 +66,9 @@ public:
     void moveHorizontally(LayoutUnit);
     void moveVertically(LayoutUnit);
 
-    void expand(LayoutUnit, LayoutUnit);
-    void expandHorizontally(LayoutUnit delta) { expand(delta, 0); }
-    void expandVertically(LayoutUnit delta) { expand(0, delta); }
+    void expand(Optional<LayoutUnit>, Optional<LayoutUnit>);
+    void expandHorizontally(LayoutUnit delta) { expand(delta, { }); }
+    void expandVertically(LayoutUnit delta) { expand({ }, delta); }
     bool intersects(const Rect& rect) const { return m_rect.intersects(rect); }
 
     Rect clone() const;
@@ -107,6 +106,11 @@ inline Rect::Rect(LayoutUnit top, LayoutUnit left, LayoutUnit width, LayoutUnit 
     m_hasValidWidth = true;
     m_hasValidHeight = true;
 #endif
+}
+
+inline Rect::Rect(LayoutPoint topLeft, LayoutUnit width, LayoutUnit height)
+    : Rect(topLeft.y(), topLeft.x(), width, height)
+{
 }
 
 #if !ASSERT_DISABLED
@@ -267,10 +271,11 @@ inline void Rect::moveVertically(LayoutUnit offset)
     m_rect.move(LayoutSize { 0, offset });
 }
 
-inline void Rect::expand(LayoutUnit width, LayoutUnit height)
+inline void Rect::expand(Optional<LayoutUnit> width, Optional<LayoutUnit> height)
 {
-    ASSERT(hasValidGeometry());
-    m_rect.expand(width, height);
+    ASSERT(!width || m_hasValidWidth);
+    ASSERT(!height || m_hasValidHeight);
+    m_rect.expand(width.valueOr(0), height.valueOr(0));
 }
 
 inline Rect Rect::clone() const

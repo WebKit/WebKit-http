@@ -1,3 +1,80 @@
+2019-10-10  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc third-party jsoncpp to M78
+        https://bugs.webkit.org/show_bug.cgi?id=202729
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/jsoncpp: Updated.
+
+2019-10-10  youenn fablet  <youenn@apple.com>
+
+        Rename yasm-1.3.0 folder to yasm
+        https://bugs.webkit.org/show_bug.cgi?id=202725
+
+        Reviewed by Eric Carlson.
+
+        To align with upstream repository.
+
+        * Configurations/yasm.xcconfig:
+        * Source/third_party/yasm: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/yasm-1.3.0.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2019-10-10  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc third-party abseilcpp to M78
+        https://bugs.webkit.org/show_bug.cgi?id=202726
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Remove optional.cc.
+        * Source/third_party/abseil-cpp: Updated.
+        * libwebrtc.xcodeproj/project.pbxproj: Remove optional.cc.
+
+2019-10-10  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc third-party opus to M78
+        https://bugs.webkit.org/show_bug.cgi?id=202728
+
+        Reviewed by Alex Christensen.
+
+        * Source/third_party/opus: Updated.
+
+2019-10-10  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc third-arty libyuv to M78
+        https://bugs.webkit.org/show_bug.cgi?id=202727
+
+        Reviewed by Alex Christensen.
+
+        libyuv
+
+        * Source/third_party/libyuv: Updated.
+
+2019-10-04  youenn fablet  <youenn@apple.com>
+
+        Allow to suspend RTCPeerConnection when not connected
+        https://bugs.webkit.org/show_bug.cgi?id=202403
+
+        Reviewed by Chris Dumez.
+
+        Export rtc::TimeMillis()
+
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+
+2019-09-11  Youenn Fablet  <youenn@apple.com>
+
+        Disable DTLS1.0
+        https://bugs.webkit.org/show_bug.cgi?id=201679
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/rtc_base/opensslstreamadapter.cc:
+        Set minimum version to DTLS1.2 when DTLS1.2 is supported.
+        This makes sure any client will never downgrade to DTLS1.0.
+
 2019-08-29  Keith Rollin  <krollin@apple.com>
 
         Update .xcconfig symbols to reflect the current set of past and future product versions.

@@ -53,25 +53,24 @@
 namespace WebKit {
 using namespace WebCore;
 
-Ref<WebIDBConnectionToServer> WebIDBConnectionToServer::create(PAL::SessionID sessionID)
+Ref<WebIDBConnectionToServer> WebIDBConnectionToServer::create()
 {
-    return adoptRef(*new WebIDBConnectionToServer(sessionID));
+    return adoptRef(*new WebIDBConnectionToServer());
 }
 
-WebIDBConnectionToServer::WebIDBConnectionToServer(PAL::SessionID sessionID)
-    : m_sessionID(sessionID)
-    , m_connectionToServer(IDBClient::IDBConnectionToServer::create(*this))
+WebIDBConnectionToServer::WebIDBConnectionToServer()
+    : m_connectionToServer(IDBClient::IDBConnectionToServer::create(*this))
 {
-    send(Messages::NetworkConnectionToWebProcess::EstablishIDBConnectionToServer(sessionID), 0);
+    send(Messages::NetworkConnectionToWebProcess::EstablishIDBConnectionToServer(), 0);
 }
 
 WebIDBConnectionToServer::~WebIDBConnectionToServer()
 {
 }
 
-uint64_t WebIDBConnectionToServer::identifier() const
+IDBConnectionIdentifier WebIDBConnectionToServer::identifier() const
 {
-    return Process::identifier().toUInt64();
+    return Process::identifier();
 }
 
 IPC::Connection* WebIDBConnectionToServer::messageSenderConnection() const

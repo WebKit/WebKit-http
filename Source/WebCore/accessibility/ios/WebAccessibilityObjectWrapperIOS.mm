@@ -2573,7 +2573,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return m_object->replaceTextInRange(string, PlainTextRange(range));
 }
 
-- (BOOL)_accessibilityInsertText:(NSString *)text
+- (BOOL)accessibilityInsertText:(NSString *)text
 {
     if (![self _prepareAccessibilityCall])
         return NO;
@@ -2653,6 +2653,20 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     VisiblePosition lineStart = m_object->previousLineStartPosition(start);
     
     return [WebAccessibilityTextMarker textMarkerWithVisiblePosition:lineStart cache:m_object->axObjectCache()];
+}
+
+- (NSArray *)misspellingTextMarkerRange:(NSArray *)startTextMarkerRange forward:(BOOL)forward
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
+    RefPtr<Range> startRange = [self rangeForTextMarkers:startTextMarkerRange];
+    if (!startRange)
+        return nil;
+
+    RefPtr<Range> misspellingRange = m_object->getMisspellingRange(startRange,
+        forward ? AccessibilitySearchDirection::Next : AccessibilitySearchDirection::Previous);
+    return [self textMarkersForRange:misspellingRange];
 }
 
 - (WebAccessibilityTextMarker *)nextMarkerForMarker:(WebAccessibilityTextMarker *)marker

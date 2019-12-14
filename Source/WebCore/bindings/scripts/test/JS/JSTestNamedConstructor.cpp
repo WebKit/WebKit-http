@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSTestNamedConstructor.h"
 
+#include "ActiveDOMObject.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvertInterface.h"
@@ -88,9 +89,9 @@ template<> void JSTestNamedConstructorConstructor::initializeProperties(VM& vm, 
 
 template<> const ClassInfo JSTestNamedConstructorConstructor::s_info = { "TestNamedConstructor", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestNamedConstructorConstructor) };
 
-template<> EncodedJSValue JSC_HOST_CALL JSTestNamedConstructorNamedConstructor::construct(ExecState* state)
+template<> EncodedJSValue JSC_HOST_CALL JSTestNamedConstructorNamedConstructor::construct(JSGlobalObject* globalObject, CallFrame* state)
 {
-    VM& vm = state->vm();
+    VM& vm = globalObject->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
     auto* castedThis = jsCast<JSTestNamedConstructorNamedConstructor*>(state->jsCallee());
@@ -148,6 +149,8 @@ void JSTestNamedConstructor::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+
+    static_assert(std::is_base_of<ActiveDOMObject, TestNamedConstructor>::value, "Interface is marked as [ActiveDOMObject] but implementation class does not subclass ActiveDOMObject.");
 
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,9 +30,9 @@
 
 namespace JSC {
 
-class ExecState;
+class CallFrame;
 
-typedef EncodedJSValue (JSC_HOST_CALL *RawNativeFunction)(ExecState*);
+typedef EncodedJSValue (JSC_HOST_CALL *RawNativeFunction)(JSGlobalObject*, CallFrame*);
 
 class NativeFunction {
 public:
@@ -47,7 +47,7 @@ public:
     bool operator==(NativeFunction other) const { return m_ptr == other.m_ptr; }
     bool operator!=(NativeFunction other) const { return m_ptr == other.m_ptr; }
 
-    EncodedJSValue operator()(ExecState* exec) { return m_ptr(exec); }
+    EncodedJSValue operator()(JSGlobalObject* globalObject, CallFrame* callFrame) { return m_ptr(globalObject, callFrame); }
 
     void* rawPointer() const { return reinterpret_cast<void*>(m_ptr); }
 
@@ -60,7 +60,7 @@ private:
 struct NativeFunctionHash {
     static unsigned hash(NativeFunction key) { return IntHash<uintptr_t>::hash(bitwise_cast<uintptr_t>(key)); }
     static bool equal(NativeFunction a, NativeFunction b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = true;
+    static constexpr bool safeToCompareToEmptyOrDeleted = true;
 };
 
 class TaggedNativeFunction {
@@ -81,7 +81,7 @@ public:
     bool operator==(TaggedNativeFunction other) const { return m_ptr == other.m_ptr; }
     bool operator!=(TaggedNativeFunction other) const { return m_ptr != other.m_ptr; }
 
-    EncodedJSValue operator()(ExecState* exec) { return NativeFunction(*this)(exec); }
+    EncodedJSValue operator()(JSGlobalObject* globalObject, CallFrame* callFrame) { return NativeFunction(*this)(globalObject, callFrame); }
 
     explicit operator NativeFunction()
     {
@@ -98,7 +98,7 @@ private:
 struct TaggedNativeFunctionHash {
     static unsigned hash(TaggedNativeFunction key) { return IntHash<uintptr_t>::hash(bitwise_cast<uintptr_t>(key)); }
     static bool equal(TaggedNativeFunction a, TaggedNativeFunction b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = true;
+    static constexpr bool safeToCompareToEmptyOrDeleted = true;
 };
 
 static_assert(sizeof(NativeFunction) == sizeof(void*), "");

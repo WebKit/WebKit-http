@@ -34,9 +34,11 @@ class JSGlobalObjectScriptDebugServer final : public ScriptDebugServer {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     JSGlobalObjectScriptDebugServer(JSC::JSGlobalObject&);
-    virtual ~JSGlobalObjectScriptDebugServer() { }
+    ~JSGlobalObjectScriptDebugServer() override { }
 
     JSC::JSGlobalObject& globalObject() const { return m_globalObject; }
+
+    static String runLoopMode();
 
 private:
     void attachDebugger() override;

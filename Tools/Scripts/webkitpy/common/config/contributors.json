@@ -167,7 +167,7 @@
       "nicks" : [
          "aperezdc"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Adrienne Walker" : {
       "emails" : [
@@ -1101,6 +1101,15 @@
       "nicks" : [
          "caryclark"
       ]
+   },
+   "Cathie Chen" : {
+      "emails" : [
+         "cathiechen@igalia.com"
+      ],
+      "nicks" : [
+         "cathiechen"
+      ],
+      "status" : "committer"
    },
    "Chang Shu" : {
       "emails" : [
@@ -4187,12 +4196,14 @@
          "zimmermann@physik.rwth-aachen.de",
          "zimmermann@webkit.org",
          "nzimmermann@blackberry.com",
-         "nzimmermann@rim.com"
+         "nzimmermann@rim.com",
+         "nzimmermann@igalia.com"
       ],
       "expertise" : "Core KHTML contributor, The QtWebKit Port, Text Layout, JavaScript DOM bindings, Code generation in general, XML, SVG (Scalable Vector Graphics)",
       "nicks" : [
-         "wildfox"
-      ]
+         "nzimmermann"
+      ],
+      "status" : "committer"
    },
    "Nils Barth" : {
       "emails" : [
@@ -4303,6 +4314,15 @@
       "expertise" : "CMake build system, The WinCE Port",
       "nicks" : [
          "paroga"
+      ]
+   },
+   "Patrick Griffis" : {
+      "emails" : [
+         "pgriffis@igalia.com"
+      ],
+      "nicks" : [
+         "pgriffis",
+         "TingPing"
       ]
    },
    "Pavel Feldman" : {
@@ -5678,7 +5698,8 @@
       "expertise" : "Developer Tools, Web Inspector",
       "nicks" : [
          "yurys"
-      ]
+      ],
+      "status" : "committer"
    },
    "Yusuke Suzuki" : {
       "emails" : [
