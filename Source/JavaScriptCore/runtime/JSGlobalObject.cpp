@@ -410,7 +410,7 @@ static EncodedJSValue JSC_HOST_CALL enqueueJob(JSGlobalObject* globalObject, Cal
 
 JSGlobalObject::JSGlobalObject(VM& vm, Structure* structure, const GlobalObjectMethodTable* globalObjectMethodTable)
     : Base(vm, structure, 0)
-    , m_vm(vm)
+    , m_vm(&vm)
     , m_masqueradesAsUndefinedWatchpoint(adoptRef(new WatchpointSet(IsWatched)))
     , m_havingABadTimeWatchpoint(adoptRef(new WatchpointSet(IsWatched)))
     , m_varInjectionWatchpoint(adoptRef(new WatchpointSet(IsWatched)))
@@ -543,7 +543,6 @@ void JSGlobalObject::init(VM& vm)
             init.set(JSFunction::create(init.vm, promiseConstructorResolveCodeGenerator(init.vm), init.owner));
         });
 
-    m_newPromiseCapabilityFunction.set(vm, this, JSFunction::create(vm, promiseOperationsNewPromiseCapabilityCodeGenerator(vm), this));
     m_functionProtoHasInstanceSymbolFunction.set(vm, this, hasInstanceSymbolFunction);
     m_throwTypeErrorGetterSetter.initLater(
         [] (const Initializer<GetterSetter>& init) {
@@ -980,6 +979,10 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     JSObject* setIteratorPrototype = SetIteratorPrototype::create(vm, this, SetIteratorPrototype::createStructure(vm, this, m_iteratorPrototype.get()));
     setIteratorConstructorPrivateFunction->putDirect(vm, vm.propertyNames->prototype, setIteratorPrototype);
 
+    m_newPromiseCapabilityFunction.set(vm, this, newPromiseCapabilityPrivateFunction);
+    m_resolvePromiseFunction.set(vm, this, resolvePromisePrivateFunction);
+    m_rejectPromiseFunction.set(vm, this, rejectPromisePrivateFunction);
+
     GlobalPropertyInfo staticGlobals[] = {
 #define INIT_PRIVATE_GLOBAL(varName, funcName, code) GlobalPropertyInfo(vm.propertyNames->builtinNames().funcName ## PrivateName(), varName ## PrivateFunction, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         JSC_FOREACH_BUILTIN_FUNCTION_PRIVATE_GLOBAL_NAME(INIT_PRIVATE_GLOBAL)
@@ -990,7 +993,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
         GlobalPropertyInfo(vm.propertyNames->builtinNames().propertyIsEnumerablePrivateName(), privateFuncPropertyIsEnumerable, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().ownKeysPrivateName(), privateFuncOwnKeys, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().importModulePrivateName(), privateFuncImportModule, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().enqueueJobPrivateName(), JSFunction::create(vm, this, 0, String(), enqueueJob), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().enqueueJobPrivateName(), JSFunction::create(vm, this, 0, "enqueueJob"_s, enqueueJob), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().makeTypeErrorPrivateName(), privateFuncMakeTypeError, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArrayLengthPrivateName(), privateFuncTypedArrayLength, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArrayGetOriginalConstructorPrivateName(), privateFuncTypedArrayGetOriginalConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
@@ -1036,6 +1039,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
         // RegExp.prototype helpers.
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpBuiltinExecPrivateName(), builtinRegExpExec, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpCreatePrivateName(), JSFunction::create(vm, this, 2, String(), esSpecRegExpCreate, NoIntrinsic), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().isRegExpPrivateName(), JSFunction::create(vm, this, 1, String(), esSpecIsRegExp, NoIntrinsic), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpMatchFastPrivateName(), JSFunction::create(vm, this, 1, String(), regExpProtoFuncMatchFast, RegExpMatchFastIntrinsic), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpSearchFastPrivateName(), JSFunction::create(vm, this, 1, String(), regExpProtoFuncSearchFast), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpSplitFastPrivateName(), JSFunction::create(vm, this, 2, String(), regExpProtoFuncSplitFast), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
@@ -1134,7 +1138,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
         catchScope.assertNoException();
         ASSERT(jsDynamicCast<JSFunction*>(vm, functionValue));
 
-        ObjectPropertyCondition condition = generateConditionForSelfEquivalence(m_vm, nullptr, base, ident.impl());
+        ObjectPropertyCondition condition = generateConditionForSelfEquivalence(vm, nullptr, base, ident.impl());
         RELEASE_ASSERT(condition.requiredValue() == functionValue);
 
         bool isWatchable = condition.isWatchable(PropertyCondition::EnsureWatchability);
@@ -1144,62 +1148,62 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     };
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(arrayIteratorPrototype, m_vm.propertyNames->next);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(arrayIteratorPrototype, vm.propertyNames->next);
         m_arrayIteratorPrototypeNext = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_arrayIteratorProtocolWatchpointSet);
         m_arrayIteratorPrototypeNext->install(vm);
     }
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(this->arrayPrototype(), m_vm.propertyNames->iteratorSymbol);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(this->arrayPrototype(), vm.propertyNames->iteratorSymbol);
         m_arrayPrototypeSymbolIteratorWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_arrayIteratorProtocolWatchpointSet);
         m_arrayPrototypeSymbolIteratorWatchpoint->install(vm);
     }
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(this->arrayPrototype(), m_vm.propertyNames->join);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(this->arrayPrototype(), vm.propertyNames->join);
         m_arrayPrototypeJoinWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_arrayJoinWatchpointSet);
         m_arrayPrototypeJoinWatchpoint->install(vm);
     }
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(mapIteratorPrototype, m_vm.propertyNames->next);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(mapIteratorPrototype, vm.propertyNames->next);
         m_mapIteratorPrototypeNextWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_mapIteratorProtocolWatchpointSet);
         m_mapIteratorPrototypeNextWatchpoint->install(vm);
     }
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_mapPrototype.get(), m_vm.propertyNames->iteratorSymbol);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_mapPrototype.get(), vm.propertyNames->iteratorSymbol);
         m_mapPrototypeSymbolIteratorWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_mapIteratorProtocolWatchpointSet);
         m_mapPrototypeSymbolIteratorWatchpoint->install(vm);
     }
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(setIteratorPrototype, m_vm.propertyNames->next);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(setIteratorPrototype, vm.propertyNames->next);
         m_setIteratorPrototypeNextWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_setIteratorProtocolWatchpointSet);
         m_setIteratorPrototypeNextWatchpoint->install(vm);
     }
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_setPrototype.get(), m_vm.propertyNames->iteratorSymbol);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_setPrototype.get(), vm.propertyNames->iteratorSymbol);
         m_setPrototypeSymbolIteratorWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_setIteratorProtocolWatchpointSet);
         m_setPrototypeSymbolIteratorWatchpoint->install(vm);
     }
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringIteratorPrototype.get(), m_vm.propertyNames->next);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringIteratorPrototype.get(), vm.propertyNames->next);
         m_stringIteratorPrototypeNextWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_stringIteratorProtocolWatchpointSet);
         m_stringIteratorPrototypeNextWatchpoint->install(vm);
     }
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringPrototype.get(), m_vm.propertyNames->iteratorSymbol);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringPrototype.get(), vm.propertyNames->iteratorSymbol);
         m_stringPrototypeSymbolIteratorWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_stringIteratorProtocolWatchpointSet);
         m_stringPrototypeSymbolIteratorWatchpoint->install(vm);
     }
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_mapPrototype.get(), m_vm.propertyNames->set);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_mapPrototype.get(), vm.propertyNames->set);
         m_mapPrototypeSetWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_mapSetWatchpointSet);
         m_mapPrototypeSetWatchpoint->install(vm);
     }
 
     {
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_setPrototype.get(), m_vm.propertyNames->add);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_setPrototype.get(), vm.propertyNames->add);
         m_setPrototypeAddWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_setAddWatchpointSet);
         m_setPrototypeAddWatchpoint->install(vm);
     }
@@ -1210,7 +1214,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
         auto* numberPrototype = this->numberPrototype();
         this->symbolPrototype();
 
-        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(numberPrototype, m_vm.propertyNames->toString);
+        ObjectPropertyCondition condition = setupAdaptiveWatchpoint(numberPrototype, vm.propertyNames->toString);
         m_numberPrototypeToStringWatchpoint = makeUnique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(this, condition, m_numberToStringWatchpointSet);
         m_numberPrototypeToStringWatchpoint->install(vm);
         m_numberProtoToStringFunction.set(vm, this, jsCast<JSFunction*>(numberPrototype->getDirect(vm, vm.propertyNames->toString)));
@@ -1705,10 +1709,12 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_evalFunction.visit(visitor);
     thisObject->m_iteratorProtocolFunction.visit(visitor);
     thisObject->m_promiseResolveFunction.visit(visitor);
+    visitor.append(thisObject->m_newPromiseCapabilityFunction);
+    visitor.append(thisObject->m_resolvePromiseFunction);
+    visitor.append(thisObject->m_rejectPromiseFunction);
     visitor.append(thisObject->m_promiseProtoThenFunction);
     visitor.append(thisObject->m_objectProtoValueOfFunction);
     visitor.append(thisObject->m_numberProtoToStringFunction);
-    visitor.append(thisObject->m_newPromiseCapabilityFunction);
     visitor.append(thisObject->m_functionProtoHasInstanceSymbolFunction);
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
     visitor.append(thisObject->m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter);

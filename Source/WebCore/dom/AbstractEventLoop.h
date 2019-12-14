@@ -34,6 +34,8 @@ class ScriptExecutionContext;
 
 enum class TaskSource : uint8_t {
     IdleTask,
+    Networking,
+    UserInteraction
 };
 
 // https://html.spec.whatwg.org/multipage/webappapis.html#event-loop

@@ -30,6 +30,7 @@
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageProxyMessagesReplies.h"
 #include "WebsitePoliciesData.h"
+#include <WebCore/FrameIdentifier.h>
 #include <WebCore/ResourceRequest.h>
 #include <wtf/WeakPtr.h>
 
@@ -65,7 +66,7 @@ public:
     ProvisionalPageProxy(WebPageProxy&, Ref<WebProcessProxy>&&, std::unique_ptr<SuspendedPageProxy>, uint64_t navigationID, bool isServerRedirect, const WebCore::ResourceRequest&, ProcessSwapRequestedByClient);
     ~ProvisionalPageProxy();
 
-    WebPageProxy& page() { return m_page; }
+    WebPageProxy& page() const { return m_page; }
     WebCore::PageIdentifier webPageID() const { return m_webPageID; }
     WebFrameProxy* mainFrame() const { return m_mainFrame.get(); }
     WebProcessProxy& process() { return m_process.get(); }

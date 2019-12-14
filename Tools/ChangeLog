@@ -1,3 +1,658 @@
+2019-10-07  Jer Noble  <jer.noble@apple.com>
+
+        Implement the Remote Playback API.
+        https://bugs.webkit.org/show_bug.cgi?id=162971
+
+        Reviewed by Youenn Fablet.
+
+        Enable RemotePlayback for DumpRenderTree and WebKitTestRunner.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2019-10-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add fast path for String#localeCompare
+        https://bugs.webkit.org/show_bug.cgi?id=202676
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-10-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add enterkeyhint support
+        https://bugs.webkit.org/show_bug.cgi?id=189546
+        <rdar://problem/51021148>
+
+        Reviewed by Tim Horton.
+
+        Add new API tests to check the resulting UIReturnKeyType that gets set on text input traits in the UI process,
+        given the different values for "enterkeyhint". Also verifies that the default behaviors of search fields and
+        text input fields inside actionable form elements is to show "Search" or "Go" as the return key by default,
+        unless a different value for "enterkeyhint" is specified.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/EnterKeyHintTests.mm: Added.
+        (-[TestWKWebView test:enterKeyHint:returnKeyType:]):
+        (TestWebKitAPI::enterKeyHintTestCases):
+        (TestWebKitAPI::createWebViewAndInputDelegateForTesting):
+        (TestWebKitAPI::TEST):
+
+2019-10-29  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r251639.
+
+        Caused flakey API failures for GetDisplayMediaTest.Constraints
+
+        Reverted changeset:
+
+        "Enforce user gesture for getUserMedia in case a previous
+        getUserMedia call was denied"
+        https://bugs.webkit.org/show_bug.cgi?id=203362
+        https://trac.webkit.org/changeset/251639
+
+2019-10-29  Chris Dumez  <cdumez@apple.com>
+
+        Notification permissions are not remembered for origins without port
+        https://bugs.webkit.org/show_bug.cgi?id=203537
+        <rdar://problem/55281080>
+
+        Reviewed by Brady Eidson.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/WKSecurityOrigin.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2019-10-29  Kate Cheney  <katherine_cheney@apple.com>
+
+       Removed duplicate email address.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-10-29  Kate Cheney  <katherine_cheney@apple.com>
+
+        Edited email address for commiting.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-10-28  Kate Cheney  <katherine_cheney@apple.com>
+
+        Added myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused _WKProcessPoolConfiguration SPI
+        https://bugs.webkit.org/show_bug.cgi?id=203066
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKProcessPoolConfiguration.mm:
+        (TEST):
+
+2019-10-28  Brady Eidson  <beidson@apple.com>
+
+        Expose _printOperationWithPrintInfo: SPI as API
+        <rdar://problem/36557179> and https://bugs.webkit.org/show_bug.cgi?id=203496
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController printWebView:]):
+
+2019-10-28  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Show results which are missing expectations
+        https://bugs.webkit.org/show_bug.cgi?id=203494
+        <rdar://problem/56436643>
+
+        Reviewed by Aakash Jain.
+
+        * resultsdbpy/resultsdbpy/view/static/css/timeline.css:
+        (.dot.warning): Add warning dot with dark-orange color.
+        * resultsdbpy/resultsdbpy/view/static/js/expectations.js:
+        (Expectations.colorMap): Add warning.
+        (Expectations.failureTypes): Ditto.
+        (Expectations.failureTypeMap): Ditto.
+        (Expectations.symbolMap): Ditto.
+        * resultsdbpy/resultsdbpy/view/static/js/timeline.js:
+        (Legend): Add warning bubble.
+
+2019-10-28  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Make the API work with the experimental 3rd-party cookie blocking
+        https://bugs.webkit.org/show_bug.cgi?id=203428
+        <rdar://problem/56626949>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsCallDidSetShouldDowngradeReferrerCallback):
+        (WTR::TestRunner::statisticsCallDidSetShouldBlockThirdPartyCookiesCallback):
+            Both of these were missing resets of their m_hasSet*Callback booleans.
+
+2019-10-28  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Report more descriptive configurations for non-Apple ports
+        https://bugs.webkit.org/show_bug.cgi?id=203490
+        <rdar://problem/56658244>
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort):
+        (GtkPort.configuration_for_upload): Return use GTK as the platform.
+        * Scripts/webkitpy/port/gtk_unittest.py:
+        (GtkPortTest):
+        (GtkPortTest.test_default_upload_configuration):
+        * Scripts/webkitpy/port/win.py:
+        (WinCairoPort.configuration_for_upload): Use wincairo as the platform.
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort):
+        (WPEPort.configuration_for_upload): Use WPE as the platform.
+        * Scripts/webkitpy/port/wpe_unittest.py:
+        (WPEPortTest):
+        (WPEPortTest.test_default_upload_configuration):
+
+2019-10-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Improve summary for CompileWebKit and CompileJSC build step
+        https://bugs.webkit.org/show_bug.cgi?id=203487
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CompileWebKit.getResultSummary): Method to generate custom status message.
+        (CompileJSC.getResultSummary): Ditto.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2019-10-21  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Warn users when multiple NFC tags present
+        https://bugs.webkit.org/show_bug.cgi?id=200932
+        <rdar://problem/54890736>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (-[TestWebAuthenticationPanelDelegate panel:updateWebAuthenticationPanel:]):
+        (TestWebKitAPI::TEST):
+        Adds a new test for -[_WKWebAuthenticationPanelDelegate panel:updateWebAuthenticationPanel:].
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-get-assertion-nfc-multiple-tags.html: Added.
+
+2019-10-27  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK][WPE] Test PublicSuffix.TopPrivatelyControlledDomain is failing since r250589
+        https://bugs.webkit.org/show_bug.cgi?id=203193
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/PublicSuffix.cpp:
+        (TestWebKitAPI::TEST_F): Add a test for a domain consisting only of dots.
+
+2019-10-26  youenn fablet  <youenn@apple.com>
+
+        Enforce user gesture for getUserMedia in case a previous getUserMedia call was denied
+        https://bugs.webkit.org/show_bug.cgi?id=203362
+
+        Reviewed by Eric Carlson.
+
+        Update test to take into account the ability to reask permission.
+        * TestWebKitAPI/Tests/WebKitCocoa/GetDisplayMedia.mm:
+        (TestWebKitAPI::TEST_F):
+
+2019-10-26  Chris Lord  <clord@igalia.com>
+
+        Put OffscreenCanvas behind a build flag
+        https://bugs.webkit.org/show_bug.cgi?id=203146
+
+        Reviewed by Ryosuke Niwa.
+
+        Put OffscreenCanvas behind a build flag and enable the runtime setting
+        when running tests on platforms where it's built (GTK and WPE).
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setOffscreenCanvasEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2019-10-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Add support in webkitpy.common.checkout
+        https://bugs.webkit.org/show_bug.cgi?id=201956
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/test-webkitpy-python3: Add webkitpy.common.checkout.
+        * Scripts/webkitpy/common/checkout/changelog.py: Import Python 3 compatible unicdoe.
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py: Import Python 3 compatible StringIO.
+        * Scripts/webkitpy/common/checkout/checkout.py: Use Python 3 compatible reduce.
+        (Checkout._modified_files_matching_predicate): Convert iterators into lists before returning.
+        (Checkout.suggested_reviewers): Ditto.
+        * Scripts/webkitpy/common/checkout/checkout_mock.py: Use full import paths.
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py: Use full import paths, convert
+        iterators into lists.
+        * Scripts/webkitpy/common/checkout/diff_parser_unittest.py: Use full import paths, use Python 3
+        compatible StringIO.
+        * Scripts/webkitpy/common/config/committers.py:
+        (Contributor.__hash__): Committers need to be hashable to be inserted into a set.
+
+2019-10-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Add support in webkitpy.xcode
+        https://bugs.webkit.org/show_bug.cgi?id=203417
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/test-webkitpy-python3: Add webkitpy.xcode.
+        * Scripts/webkitpy/common/system/filesystem_mock.py:
+        (ReadableBinaryFileObject.seek): Add seek function to mirror actual binary file
+        behavior and support plistlib.
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDeviceManager._disambiguate_device_type): Use values instead of itervalues.
+        (SimulatedDeviceManager._get_device_identifier_for_type): Use items instead of iteritems.
+        (SimulatedDeviceManager.device_count_for_type): Use values instead of itervalues.
+        * Scripts/webkitpy/xcode/simulated_device_unittest.py:
+        (SimulatedDeviceTest.mock_host_for_simctl): Use items instead of iteritems.
+        (change_state_to): Explicitly use bytes to edit a binary file.
+
+2019-10-25  Aakash Jain  <aakash_jain@apple.com>
+
+        [EWS] Status page should show compiler ERRORS
+        https://bugs.webkit.org/show_bug.cgi?id=203418
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (BuildLogLineObserver): Class for Analyzing build logs and extracting error logs.
+        (CompileWebKit.start): Initialize the log observer.
+        (CompileWebKit):
+        (CompileWebKit.errorReceived): Add the error to the errors log.
+
+2019-10-25  Matt Lewis  <jlewis3@apple.com>
+
+        Rolling out r251579,r251162,r251512,r251500, and r251498 for build failures
+        and test failures
+
+        Unreviewed rollout.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (-[TestWebAuthenticationPanelDelegate panel:updateWebAuthenticationPanel:]):
+        (-[TestWebAuthenticationPanelUIDelegate _webView:runWebAuthenticationPanel:initiatedByFrame:completionHandler:]):
+        (TestWebKitAPI::TEST):
+        (-[TestWebAuthenticationPanelUIDelegate panel]): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-get-assertion-nfc-multiple-tags.html: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-make-credential-hid.html: Removed.
+
+2019-10-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 13] fast/forms/ios/accessory-bar-navigation.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=203294
+        <rdar://problem/54520848>
+
+        Reviewed by Tim Horton.
+
+        This layout test consistently fails when it is the first test to involve bringing up the keyboard that is run in
+        a newly created iOS simulator. This is because a software keyboard is presented when focusing the input fields
+        in the test, and the test expectation (which depends on the visual viewport) requires a hardware keyboard.
+
+        WebKitTestRunner already simulates the hardware keyboard being attached using the call to GraphicsServices SPI
+        in TestController::platformResetStateToConsistentValues. However, this was effectively a no-op in the case where
+        the simulated device has never (in its lifetime, even through reboots) brought up an input view. This is because
+        -[UIKeyboardImpl hardwareKeyboardAvailabilityChanged] is never called, due to UIInputResponderController never
+        having an active instance with an input view set. As a result, the automaticMinimizationEnabled property of
+        UIKeyboardImpl is never set to its correct initial value (which depends on GSEventIsHardwareKeyboardAttached()).
+
+        This leads to UIKeyboardImpl not automatically minimizing itself even though the hardware keyboard is attached
+        (but only until the next time the keyboard is shown, after a hardware keyboard availability change notification
+        has been sent, which occurs between every layout test).
+
+        To work around this source of flakiness, we ensure that the keyboard preference for enabling automatic
+        minimization has been set to @YES by the time we attempt to simulate connecting the hardware keyboard by calling
+        GSEventIsHardwareKeyboardAttached. Note that the extra step of writing the value to com.apple.Preferences is
+        necessary because logic in TextInput.framework exists that periodically wipes out any cached values for keyboard
+        preferences on UIInputResponderController, and then attempts to regenerate them by reading defaults in
+        com.apple.Preferences. However, the same logic also fails to actually update com.apple.Preferences before
+        reading from it, which results in a software keyboard *very* rarely appearing again when running layout tests
+        that don't expect to observe a software keyboard.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+
+2019-10-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add exclusion rules to text manipulation SPI
+        https://bugs.webkit.org/show_bug.cgi?id=203398
+        <rdar://problem/56567256>
+
+        Reviewed by Wenson Hsieh.
+
+        Added tests for including & excluding content based on element names and attribute values.
+
+        Also added a test to make sure _startTextManipulationsWithConfiguration calls the completion handler
+        even when the _WKTextManipulationDelegate isn't set.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+
+2019-10-25  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Report the correct flavor for leaks
+        https://bugs.webkit.org/show_bug.cgi?id=203413
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunWebKit1LeakTests.start):
+
+2019-10-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        test262-runner should be able to pass JSC a feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=203301
+
+        Reviewed by Keith Miller.
+
+        * Scripts/test262/Runner.pm:
+        Recognize mapping from 262 features to JSC runtime options.
+
+2019-10-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Add support in webkitpy.common.checkout.scm
+        https://bugs.webkit.org/show_bug.cgi?id=203277
+
+        Reviewed by Stephanie Lewis.
+
+        * Scripts/test-webkitpy-python3: Add webkitpy.common.checkout.scm, add --all flag.
+        * Scripts/webkitpy/common/checkout/scm/detection.py: Use full import paths.
+        * Scripts/webkitpy/common/checkout/scm/detection_unittest.py: Ditto.
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.revisions_changing_file): Convert filter iterator to list.
+        (Git.prepend_svn_revision): Patches need to be bytes.
+        * Scripts/webkitpy/common/checkout/scm/scm.py: Import unicode.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py: Use full import paths,
+        differentiate between binary and text files, replace assertItemsEqual with sorted,
+        list fix regexes on byte arrays.
+        * Scripts/webkitpy/common/checkout/scm/stub_repository.py: Use full import paths.
+        * Scripts/webkitpy/common/checkout/scm/stub_repository_unittest.py: Use full import paths.
+        * Scripts/webkitpy/common/checkout/scm/svn.py: Use full import paths.
+        (SVN.diff_for_revision): Diff for revision should be byte array.
+        (SVN.propget): Use Python 3 compatible encoding.
+
+2019-10-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a mechanism to find and manipulate text by paragraphs
+        https://bugs.webkit.org/show_bug.cgi?id=203286
+
+        Reviewed by Wenson Hsieh.
+
+        Added basic API tests for the new SPI.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm: Added.
+        (-[TextManipulationDelegate init]):
+        (-[TextManipulationDelegate _webView:didFindItem:forFrame:]):
+        (-[TextManipulationDelegate items]):
+        (TestWebKitAPI::createItem):
+
+2019-10-24  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r251558.
+
+        This broke internal builds
+
+        Reverted changeset:
+
+        "Add a mechanism to find and manipulate text by paragraphs"
+        https://bugs.webkit.org/show_bug.cgi?id=203286
+        https://trac.webkit.org/changeset/251558
+
+2019-10-24  Brady Eidson  <beidson@apple.com>
+
+        Expose pageZoom as API.
+        https://bugs.webkit.org/show_bug.cgi?id=203381
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController toggleZoomMode:]):
+        (-[WK2BrowserWindowController resetZoom:]):
+        (-[WK2BrowserWindowController canResetZoom]):
+        (-[WK2BrowserWindowController currentZoomFactor]):
+        (-[WK2BrowserWindowController setCurrentZoomFactor:]):
+
+2019-10-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a mechanism to find and manipulate text by paragraphs
+        https://bugs.webkit.org/show_bug.cgi?id=203286
+
+        Reviewed by Wenson Hsieh.
+
+        Added basic API tests for the new SPI.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm: Added.
+        (-[TextManipulationDelegate init]):
+        (-[TextManipulationDelegate _webView:didFindItem:forFrame:]):
+        (-[TextManipulationDelegate items]):
+        (TestWebKitAPI::createItem):
+
+2019-10-24  Brady Eidson  <beidson@apple.com>
+
+        Formalize PDF snapshot API.
+        https://bugs.webkit.org/show_bug.cgi?id=203374
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController saveAsPDF:]):
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PDFSnapshot.mm:
+        (TestWebKitAPI::TEST):
+
+2019-10-24  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Make it possible to convert SharedBuffer segments and data views to NSData without copying
+        https://bugs.webkit.org/show_bug.cgi?id=203348
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/SharedBuffer.mm:
+        (TestWebKitAPI::TEST_F):
+
+2019-10-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 13] imported/mozilla/svg/text/textpath-selection.svg is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203247
+        <rdar://problem/52124292>
+
+        Reviewed by Tim Horton.
+
+        Roughly 1 in 3000 runs, this test fails due to an image diff, where only the expectation or test page shows a
+        native selection view on iOS. Both the test and expectation create DOM selections on the page, which is then
+        followed by a native selection view on the page at some point in the future.
+
+        This "point in the future" depends on both WebKit implementation details (i.e. when the next remote layer tree
+        commit happens) as well as UIKit implementation details (for example, many methods in UITextSelectionView and
+        UIWKTextInteractionAssistant will schedule changes to UIView geometry using a runloop timer, instead of applying
+        the updates immediately). Because of the latter, it's impractical to expect native selection views on iOS to
+        always appear or not appear after finishing this layout test.
+
+        To mitigate this rare source of flakiness, we hide these native text selection views when snapshotting iOS
+        WKWebViews for the purposes of ref and pixel testing.
+
+        Note that we still have a considerable number of layout tests that inspect these native selection views on iOS,
+        but they work by waiting until the native selection views reach a particular state (e.g. by polling for the
+        number of ranged selection subviews, or the presence of selection handles, or waiting for a caret selection with
+        a given geometry, etc.), which ensures that they are robust against subtle changes to the timing of selection
+        updates in the UI process.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::windowSnapshotImage):
+
+2019-10-23  Chris Dumez  <cdumez@apple.com>
+
+        WebBackForwardCache::removeEntriesMatching() may re-enter and crash
+        https://bugs.webkit.org/show_bug.cgi?id=203341
+        <rdar://problem/56553939>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-10-23  Megan Gardner  <megan_gardner@apple.com>
+
+        Rename force-press-related functions to refer to context menus, and fix a former force-press test
+        https://bugs.webkit.org/show_bug.cgi?id=202663
+        <rdar://problem/52699530>
+
+        Reviewed by Dean Jackson.
+
+        Rename all relevant fuctions to more correctly reflect that this does not specifically
+        require a force press to activate any longer.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptContext.h:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setDidShowContextMenuCallback):
+        (WTR::UIScriptController::didShowContextMenuCallback const):
+        (WTR::UIScriptController::setDidDismissContextMenuCallback):
+        (WTR::UIScriptController::didDismissContextMenuCallback const):
+        (WTR::UIScriptController::setDidShowForcePressPreviewCallback): Deleted.
+        (WTR::UIScriptController::didShowForcePressPreviewCallback const): Deleted.
+        (WTR::UIScriptController::setDidDismissForcePressPreviewCallback): Deleted.
+        (WTR::UIScriptController::didDismissForcePressPreviewCallback const): Deleted.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView resetInteractionCallbacks]):
+        (-[TestRunnerWKWebView _didShowContextMenu]):
+        (-[TestRunnerWKWebView _didDismissContextMenu]):
+        (-[TestRunnerWKWebView _didShowForcePressPreview]): Deleted.
+        (-[TestRunnerWKWebView _didDismissForcePressPreview]): Deleted.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptControllerIOS::setDidShowContextMenuCallback):
+        (WTR::UIScriptControllerIOS::setDidDismissContextMenuCallback):
+        (WTR::UIScriptControllerIOS::setDidShowForcePressPreviewCallback): Deleted.
+        (WTR::UIScriptControllerIOS::setDidDismissForcePressPreviewCallback): Deleted.
+
+2019-10-23  Aakash Jain  <aakash_jain@apple.com>
+
+        [EWS] Multiple builds are triggered for one patch sometimes in new EWS
+        https://bugs.webkit.org/show_bug.cgi?id=199417
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/fetcher.py:
+        (BugzillaPatchFetcher.fetch): Set the flag before sending the patch to buildbot. Unset it in case of failure. 
+        Also added additional check for sent_to_buildbot flag before processing patch.
+        * BuildSlaveSupport/ews-app/ews/models/patch.py:
+        (Patch.save_patch): Improved logging.
+        (Patch.set_sent_to_buildbot): Modified to accept sent_to_buildbot paramater, and set the value accordingly.
+
+2019-10-23  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r251261.
+
+        This broke multiple tests
+
+        Reverted changeset:
+
+        "Using version 1 CFRunloopSource for faster task dispatch"
+        https://bugs.webkit.org/show_bug.cgi?id=202874
+        https://trac.webkit.org/changeset/251261
+
+2019-10-23  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] iOS-13-Simulator-WK2-Tests-EWS is failing with an KeyError exception
+        https://bugs.webkit.org/show_bug.cgi?id=203281
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/layout_test_failures.py:
+        (LayoutTestFailures.results_from_string.get_failing_tests): Gracefully handle the case of missing 'report' key.
+
+2019-10-23  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Add support in webkitpy.results
+        https://bugs.webkit.org/show_bug.cgi?id=202478
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Scripts/test-webkitpy-python3: Add webkitpy.results.
+        * Scripts/webkitpy/results/upload.py:
+        (Upload.Encoder.default): Use range instead of xrange.
+        (Upload.create_configuration): Support items iteration for Python 3.
+        (Upload.create_run_stats): Change iteritems to items.
+        (Upload.create_test_result): Ditto.
+        * Scripts/webkitpy/results/upload_unittest.py:
+        (UploadTest.Options.__init__): Change iteritems to items.
+        (UploadTest.normalize): Ditto.
+
+2019-10-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Supply FrameInfo in -[WKUIDelegatePrivate _webView:runWebAuthenticationPanel:initiatedByFrame:completionHandler:]
+        https://bugs.webkit.org/show_bug.cgi?id=202563
+        <rdar://problem/55973968>
+
+        Reviewed by Brent Fulgham.
+
+        Adds new test contents into existing tests.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (-[TestWebAuthenticationPanelUIDelegate init]):
+        (-[TestWebAuthenticationPanelUIDelegate _webView:runWebAuthenticationPanel:initiatedByFrame:completionHandler:]):
+        (-[TestWebAuthenticationPanelUIDelegate frame]):
+        (TestWebKitAPI::TEST):
+
+2019-10-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix tvOS and watchOS engineering builds after r251377
+
+        -[UIPasteboard itemProviders] is only available on iOS.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ClipboardTests.mm:
+        (writeMultipleObjectsToPlatformPasteboard):
+
+2019-10-23  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: 2to3 script may not be in a user's path
+        https://bugs.webkit.org/show_bug.cgi?id=203213
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.__init__): Remove executive dependencies.
+        (AutoinstallImportHook._install_beautifulsoup): Use multiprocess because 2to3 sets
+        Some undesirable global logging state.
+
+2019-10-23  Tim Horton  <timothy_horton@apple.com>
+
+        prepare-ChangeLog should whine about not having tests in WebKit-only patches
+        https://bugs.webkit.org/show_bug.cgi?id=203027
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/prepare-ChangeLog:
+        (generateNewChangeLogs):
+        Put the "No new tests" or list of newly added tests in the deeper
+        of the WebCore or WebKit ChangeLogs, depending on which directories
+        the patch touches.
+
+        This is mostly intended to encourage tests for WebKit-only changes.
+
 2019-10-22  Aakash Jain  <aakash_jain@apple.com>
 
         [ews] Status bubble should show previous failures if any in case patch is skipped

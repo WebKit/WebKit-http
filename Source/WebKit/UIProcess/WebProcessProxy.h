@@ -223,9 +223,6 @@ public:
 
     void windowServerConnectionStateChanged();
 
-    void processReadyToSuspend();
-    void didCancelProcessSuspension();
-
     void setIsHoldingLockedFiles(bool);
 
     ProcessThrottler& throttler() { return m_throttler; }
@@ -299,11 +296,9 @@ public:
     void didStartProvisionalLoadForMainFrame(const URL&);
 
     // ProcessThrottlerClient
-    void sendProcessWillSuspendImminently() override;
-    void sendPrepareToSuspend() override;
-    void sendCancelPrepareToSuspend() override;
-    void sendProcessDidResume() override;
-    void didSetAssertionState(AssertionState) override;
+    void sendPrepareToSuspend(IsSuspensionImminent, CompletionHandler<void()>&&) final;
+    void sendProcessDidResume() final;
+    void didSetAssertionState(AssertionState) final;
 
 #if PLATFORM(COCOA)
     enum SandboxExtensionType : uint32_t {

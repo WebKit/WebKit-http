@@ -106,6 +106,7 @@ public:
 
     WTF::WorkQueue& statisticsQueue() { return m_statisticsQueue.get(); }
 
+    void populateMemoryStoreFromDisk(CompletionHandler<void()>&&);
     void setNotifyPagesWhenDataRecordsWereScanned(bool);
     void setNotifyPagesWhenTelemetryWasCaptured(bool, CompletionHandler<void()>&&);
     void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool, CompletionHandler<void()>&&);
@@ -178,7 +179,7 @@ public:
     void callHasStorageAccessForFrameHandler(const SubFrameDomain&, const TopFrameDomain&, WebCore::FrameIdentifier, WebCore::PageIdentifier, CompletionHandler<void(bool)>&&);
 
     void hasCookies(const RegistrableDomain&, CompletionHandler<void(bool)>&&);
-
+    void setIsThirdPartyCookieBlockingEnabled(bool);
     void didCreateNetworkProcess();
 
     void notifyResourceLoadStatisticsProcessed();

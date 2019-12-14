@@ -164,18 +164,21 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
         return;
 
     m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
+    m_resourceLoadStatistics->populateMemoryStoreFromDisk([] { });
 
     if (m_enableResourceLoadStatisticsDebugMode == EnableResourceLoadStatisticsDebugMode::Yes)
         m_resourceLoadStatistics->setResourceLoadStatisticsDebugMode(true, [] { });
     // This should always be forwarded since debug mode may be enabled at runtime.
     if (!m_resourceLoadStatisticsManualPrevalentResource.isEmpty())
         m_resourceLoadStatistics->setPrevalentResourceForDebugMode(m_resourceLoadStatisticsManualPrevalentResource, [] { });
+    m_resourceLoadStatistics->setIsThirdPartyCookieBlockingEnabled(m_thirdPartyCookieBlockingEnabled);
 }
 
-void NetworkSession::recreateResourceLoadStatisticStore()
+void NetworkSession::recreateResourceLoadStatisticStore(CompletionHandler<void()>&& completionHandler)
 {
     destroyResourceLoadStatistics();
     m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
+    m_resourceLoadStatistics->populateMemoryStoreFromDisk(WTFMove(completionHandler));
 }
 
 bool NetworkSession::isResourceLoadStatisticsEnabled() const
@@ -218,6 +221,13 @@ bool NetworkSession::shouldDowngradeReferrer() const
     return m_downgradeReferrer;
 }
 
+void NetworkSession::setIsThirdPartyCookieBlockingEnabled(bool enabled)
+{
+    ASSERT(m_resourceLoadStatistics);
+    m_thirdPartyCookieBlockingEnabled = enabled;
+    if (m_resourceLoadStatistics)
+        m_resourceLoadStatistics->setIsThirdPartyCookieBlockingEnabled(m_thirdPartyCookieBlockingEnabled);
+}
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 void NetworkSession::storeAdClickAttribution(WebCore::AdClickAttribution&& adClickAttribution)

@@ -36,18 +36,17 @@ namespace Layout {
 class InlineItem : public CanMakeWeakPtr<InlineItem> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum class Type { Text, HardLineBreak, Box, Float, ContainerStart, ContainerEnd };
+    enum class Type { Text, LineBreakBox, Box, Float, ContainerStart, ContainerEnd };
     InlineItem(const Box& layoutBox, Type);
 
     Type type() const { return m_type; }
     const Box& layoutBox() const { return m_layoutBox; }
     const RenderStyle& style() const { return m_layoutBox.style(); }
 
-    bool isText() const { return type() == Type::Text; }
+    bool isText() const;
     bool isBox() const { return type() == Type::Box; }
-    bool isHardLineBreak() const { return type() == Type::HardLineBreak; }
     bool isFloat() const { return type() == Type::Float; }
-    bool isLineBreak() const { return type() == Type::HardLineBreak; }
+    bool isForcedLineBreak() const;
     bool isContainerStart() const { return type() == Type::ContainerStart; }
     bool isContainerEnd() const { return type() == Type::ContainerEnd; }
 

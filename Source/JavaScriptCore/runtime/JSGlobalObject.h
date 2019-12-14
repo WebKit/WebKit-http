@@ -27,12 +27,13 @@
 #include "BooleanPrototype.h"
 #include "ErrorType.h"
 #include "ExceptionHelpers.h"
+#include "GetVM.h"
 #include "InternalFunction.h"
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSClassRef.h"
 #include "JSGlobalLexicalEnvironment.h"
-#include "JSPromiseDeferred.h"
+#include "JSPromise.h"
 #include "JSSegmentedVariableObject.h"
 #include "JSWeakObjectMapRefInternal.h"
 #include "LazyProperty.h"
@@ -225,10 +226,10 @@ struct GlobalObjectMethodTable {
     typedef String (*DefaultLanguageFunctionPtr)();
     DefaultLanguageFunctionPtr defaultLanguage;
 
-    typedef void (*CompileStreamingPtr)(JSGlobalObject*, JSPromiseDeferred*, JSValue);
+    typedef void (*CompileStreamingPtr)(JSGlobalObject*, JSPromise*, JSValue);
     CompileStreamingPtr compileStreaming;
 
-    typedef void (*InstantiateStreamingPtr)(JSGlobalObject*, JSPromiseDeferred*, JSValue, JSObject*);
+    typedef void (*InstantiateStreamingPtr)(JSGlobalObject*, JSPromise*, JSValue, JSObject*);
     InstantiateStreamingPtr instantiateStreaming;
 };
 
@@ -251,7 +252,9 @@ private:
         OpaqueJSClassDataMap opaqueJSClassData;
     };
 
-    VM& m_vm;
+    // m_vm must be a pointer (instead of a reference) because the JSCLLIntOffsetsExtractor
+    // cannot handle it being a reference.
+    VM* m_vm;
 
 // Our hashtable code-generator tries to access these properties, so we make them public.
 // However, we'd like it better if they could be protected.
@@ -302,10 +305,12 @@ public:
     LazyProperty<JSGlobalObject, JSFunction> m_evalFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_iteratorProtocolFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_promiseResolveFunction;
+    WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
+    WriteBarrier<JSFunction> m_resolvePromiseFunction;
+    WriteBarrier<JSFunction> m_rejectPromiseFunction;
     WriteBarrier<JSFunction> m_promiseProtoThenFunction;
     WriteBarrier<JSFunction> m_objectProtoValueOfFunction;
     WriteBarrier<JSFunction> m_numberProtoToStringFunction;
-    WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
     WriteBarrier<JSFunction> m_functionProtoHasInstanceSymbolFunction;
     LazyProperty<JSGlobalObject, GetterSetter> m_throwTypeErrorGetterSetter;
     WriteBarrier<JSObject> m_regExpProtoExec;
@@ -617,11 +622,13 @@ public:
     JSFunction* arrayProtoToStringFunction() const { return m_arrayProtoToStringFunction.get(this); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(this); }
     JSFunction* iteratorProtocolFunction() const { return m_iteratorProtocolFunction.get(this); }
+    JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
     JSFunction* promiseResolveFunction() const { return m_promiseResolveFunction.get(this); }
+    JSFunction* resolvePromiseFunction() const { return m_resolvePromiseFunction.get(); }
+    JSFunction* rejectPromiseFunction() const { return m_rejectPromiseFunction.get(); }
     JSFunction* promiseProtoThenFunction() const { return m_promiseProtoThenFunction.get(); }
     JSFunction* objectProtoValueOfFunction() const { return m_objectProtoValueOfFunction.get(); }
     JSFunction* numberProtoToStringFunction() const { return m_numberProtoToStringFunction.get(); }
-    JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
     JSFunction* functionProtoHasInstanceSymbolFunction() const { return m_functionProtoHasInstanceSymbolFunction.get(); }
     JSObject* regExpProtoExecFunction() const { return m_regExpProtoExec.get(); }
     JSObject* regExpProtoSymbolReplaceFunction() const { return m_regExpProtoSymbolReplace.get(); }
@@ -976,7 +983,7 @@ public:
 
     void resetPrototype(VM&, JSValue prototype);
 
-    VM& vm() const { return m_vm; }
+    VM& vm() const { return *m_vm; }
     JSObject* globalThis() const;
     WriteBarrier<JSObject>* addressOfGlobalThis() { return &m_globalThis; }
     OptionSet<CodeGenerationMode> defaultCodeGenerationMode() const;
@@ -1126,9 +1133,9 @@ inline OptionSet<CodeGenerationMode> JSGlobalObject::defaultCodeGenerationMode()
     OptionSet<CodeGenerationMode> codeGenerationMode;
     if (hasInteractiveDebugger() || Options::forceDebuggerBytecodeGeneration())
         codeGenerationMode.add(CodeGenerationMode::Debugger);
-    if (m_vm.typeProfiler())
+    if (vm().typeProfiler())
         codeGenerationMode.add(CodeGenerationMode::TypeProfiler);
-    if (m_vm.controlFlowProfiler())
+    if (vm().controlFlowProfiler())
         codeGenerationMode.add(CodeGenerationMode::ControlFlowProfiler);
     return codeGenerationMode;
 }

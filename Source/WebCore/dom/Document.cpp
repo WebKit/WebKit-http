@@ -213,6 +213,7 @@
 #include "SubresourceLoader.h"
 #include "TextAutoSizing.h"
 #include "TextEvent.h"
+#include "TextManipulationController.h"
 #include "TextNodeTraversal.h"
 #include "TouchAction.h"
 #include "TransformSource.h"
@@ -222,7 +223,6 @@
 #include "ValidationMessageClient.h"
 #include "VisibilityChangeClient.h"
 #include "VisitedLinkState.h"
-#include "VisualViewport.h"
 #include "WebAnimation.h"
 #include "WheelEvent.h"
 #include "WindowEventLoop.h"
@@ -2479,6 +2479,8 @@ void Document::prepareForDestruction()
 
     m_undoManager->removeAllItems();
 
+    m_textManipulationController = nullptr; // Free nodes kept alive by TextManipulationController.
+
 #if ENABLE(ACCESSIBILITY)
     if (this != &topDocument()) {
         // Let the ax cache know that this subframe goes out of scope.
@@ -2618,8 +2620,9 @@ void Document::resumeDeviceMotionAndOrientationUpdates()
 bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 {
     // Bypass this policy when the world is known, and it not the normal world.
-    auto& callFrame = *commonVM().topCallFrame;
-    return &callFrame != JSC::CallFrame::noCaller() && !currentWorld(*callFrame.lexicalGlobalObject()).isNormal();
+    JSC::VM& vm = commonVM();
+    auto& callFrame = *vm.topCallFrame;
+    return &callFrame != JSC::CallFrame::noCaller() && !currentWorld(*callFrame.lexicalGlobalObject(vm)).isNormal();
 }
 
 void Document::platformSuspendOrStopActiveDOMObjects()
@@ -2732,6 +2735,9 @@ ExceptionOr<void> Document::open(Document* responsibleDocument)
     if (m_ignoreOpensDuringUnloadCount)
         return { };
 
+    if (m_activeParserWasAborted)
+        return { };
+
     if (m_frame) {
         if (ScriptableDocumentParser* parser = scriptableDocumentParser()) {
             if (parser->isParsing()) {
@@ -2801,6 +2807,9 @@ void Document::cancelParsing()
     if (!m_parser)
         return;
 
+    if (m_parser->processingData())
+        m_activeParserWasAborted = true;
+
     // We have to clear the parser to avoid possibly triggering
     // the onload handler when closing as a side effect of a cancel-style
     // change, such as opening a new document or closing the window while
@@ -2815,7 +2824,7 @@ void Document::implicitOpen()
 
     setCompatibilityMode(DocumentCompatibilityMode::NoQuirksMode);
 
-    cancelParsing();
+    detachParser();
     m_parser = createParser();
 
     if (hasActiveParserYieldToken())
@@ -3085,6 +3094,9 @@ Seconds Document::timeSinceDocumentCreation() const
 
 ExceptionOr<void> Document::write(Document* responsibleDocument, SegmentedString&& text)
 {
+    if (m_activeParserWasAborted)
+        return { };
+
     NestingLevelIncrementer nestingLevelIncrementer(m_writeRecursionDepth);
 
     m_writeRecursionIsTooDeep = (m_writeRecursionDepth > 1) && m_writeRecursionIsTooDeep;
@@ -3899,19 +3911,13 @@ StyleSheetList& Document::styleSheets()
     return *m_styleSheetList;
 }
 
-void Document::updateElementsAffectedByMediaQueries()
+void Document::evaluateMediaQueryList()
 {
-    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+    if (m_mediaQueryMatcher)
+        m_mediaQueryMatcher->styleResolverChanged();
+    
     checkViewportDependentPictures();
     checkAppearanceDependentPictures();
-}
-
-void Document::evaluateMediaQueriesAndReportChanges()
-{
-    if (!m_mediaQueryMatcher)
-        return;
-
-    m_mediaQueryMatcher->evaluateAll();
 }
 
 void Document::checkViewportDependentPictures()
@@ -3950,35 +3956,6 @@ void Document::updateViewportUnitsOnResize()
         auto* renderer = element->renderer();
         if (renderer && renderer->style().hasViewportUnits())
             element->invalidateStyle();
-    }
-}
-
-void Document::setNeedsDOMWindowResizeEvent()
-{
-    m_needsDOMWindowResizeEvent = true;
-    scheduleTimedRenderingUpdate();
-}
-
-void Document::setNeedsVisualViewportResize()
-{
-    m_needsVisualViewportResizeEvent = true;
-    scheduleTimedRenderingUpdate();
-}
-
-// https://drafts.csswg.org/cssom-view/#run-the-resize-steps
-void Document::runResizeSteps()
-{
-    // FIXME: The order of dispatching is not specified: https://github.com/WICG/visual-viewport/issues/65.
-    if (m_needsDOMWindowResizeEvent) {
-        LOG(Events, "Document %p sending resize events to window", this);
-        m_needsDOMWindowResizeEvent = false;
-        dispatchWindowEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
-    }
-    if (m_needsVisualViewportResizeEvent) {
-        LOG(Events, "Document %p sending resize events to visualViewport", this);
-        m_needsVisualViewportResizeEvent = false;
-        if (auto* window = domWindow())
-            window->visualViewport().dispatchEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 }
 
@@ -7219,6 +7196,14 @@ void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
     it->value->setShouldPlayToPlaybackTarget(shouldPlay);
 }
 
+void Document::playbackTargetPickerWasDismissed(uint64_t clientId)
+{
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->playbackTargetPickerWasDismissed();
+}
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 #if ENABLE(MEDIA_SESSION)
@@ -8340,5 +8325,12 @@ void Document::setPictureInPictureElement(HTMLVideoElement* element)
     m_pictureInPictureElement = makeWeakPtr(element);
 }
 #endif
+
+TextManipulationController& Document::textManipulationController()
+{
+    if (!m_textManipulationController)
+        m_textManipulationController = makeUnique<TextManipulationController>(*this);
+    return *m_textManipulationController;
+}
 
 } // namespace WebCore

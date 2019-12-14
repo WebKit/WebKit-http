@@ -1294,17 +1294,19 @@ void Page::updateRendering()
 
     SetForScope<bool> change(m_inUpdateRendering, true);
 
-    layoutIfNeeded();
+    Vector<RefPtr<Document>> documents;
 
-    for (auto& document : collectDocuments())
-        document->runResizeSteps();
+    // The requestAnimationFrame callbacks may change the frame hierarchy of the page
+    forEachDocument([&documents] (Document& document) {
+        documents.append(&document);
+    });
+
+    // FIXME: Run the resize steps
 
     // FIXME: Run the scroll steps
 
-    for (auto& document : collectDocuments())
-        document->evaluateMediaQueriesAndReportChanges();
+    // FIXME: Evaluate media queries and report changes.
 
-    Vector<Ref<Document>> documents = collectDocuments(); // The requestAnimationFrame callbacks may change the frame hierarchy of the page
     for (auto& document : documents) {
         DOMHighResTimeStamp timestamp = document->domWindow()->nowTimestamp();
         document->updateAnimationsAndSendEvents(timestamp);
@@ -2550,6 +2552,11 @@ void Page::setMockMediaPlaybackTargetPickerState(const String& name, MediaPlayba
     chrome().client().setMockMediaPlaybackTargetPickerState(name, state);
 }
 
+void Page::mockMediaPlaybackTargetPickerDismissPopup()
+{
+    chrome().client().mockMediaPlaybackTargetPickerDismissPopup();
+}
+
 void Page::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
@@ -2574,6 +2581,15 @@ void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
         if (!frame->document())
             continue;
         frame->document()->setShouldPlayToPlaybackTarget(clientId, shouldPlay);
+    }
+}
+
+void Page::playbackTargetPickerWasDismissed(uint64_t clientId)
+{
+    for (auto* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->playbackTargetPickerWasDismissed(clientId);
     }
 }
 #endif
@@ -2664,7 +2680,7 @@ void Page::accessibilitySettingsDidChange()
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (auto* document = frame->document()) {
             document->styleScope().evaluateMediaQueriesForAccessibilitySettingsChange();
-            document->updateElementsAffectedByMediaQueries();
+            document->evaluateMediaQueryList();
         }
     }
 }
@@ -2678,7 +2694,7 @@ void Page::appearanceDidChange()
 
         document->styleScope().didChangeStyleSheetEnvironment();
         document->styleScope().evaluateMediaQueriesForAppearanceChange();
-        document->updateElementsAffectedByMediaQueries();
+        document->evaluateMediaQueryList();
     }
 }
 

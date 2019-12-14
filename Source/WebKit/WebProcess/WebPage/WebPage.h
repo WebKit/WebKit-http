@@ -73,6 +73,7 @@
 #include <WebCore/PointerID.h>
 #include <WebCore/SecurityPolicyViolationEvent.h>
 #include <WebCore/ShareData.h>
+#include <WebCore/TextManipulationController.h>
 #include <WebCore/UserActivity.h>
 #include <WebCore/UserContentTypes.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
@@ -772,9 +773,8 @@ public:
     SandboxExtensionTracker& sandboxExtensionTracker() { return m_sandboxExtensionTracker; }
 
 #if PLATFORM(GTK)
-    void setComposition(const String& text, const Vector<WebCore::CompositionUnderline>& underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeLength);
-    void confirmComposition(const String& text, int64_t selectionStart, int64_t selectionLength);
-    void cancelComposition();
+    void setComposition(const String&, const Vector<WebCore::CompositionUnderline>&, const EditingRange& selectionRange);
+    void confirmComposition(const String& text);
 
     void collapseSelectionInFrame(WebCore::FrameIdentifier);
     void showEmojiPicker(WebCore::Frame&);
@@ -1196,6 +1196,11 @@ public:
     WebCore::Element* elementForContext(const WebCore::ElementContext&) const;
     Optional<WebCore::ElementContext> contextForElement(WebCore::Element&) const;
 
+    void startTextManipulations(Vector<WebCore::TextManipulationController::ExclusionRule>&&, CompletionHandler<void()>&&);
+    void completeTextManipulation(WebCore::TextManipulationController::ItemIdentifier,
+        const Vector<WebCore::TextManipulationController::ManipulationToken>&,
+        CompletionHandler<void(WebCore::TextManipulationController::ManipulationResult)>&&);
+
 #if ENABLE(APPLE_PAY)
     WebPaymentCoordinator* paymentCoordinator();
 #endif
@@ -1367,6 +1372,8 @@ private:
 
 #if ENABLE(CONTEXT_MENUS)
     void contextMenuHidden() { m_isShowingContextMenu = false; }
+#endif
+#if ENABLE(CONTEXT_MENU_EVENT)
     void contextMenuForKeyEvent();
 #endif
 
@@ -1571,6 +1578,7 @@ private:
     void playbackTargetSelected(uint64_t, const WebCore::MediaPlaybackTargetContext& outputDevice) const;
     void playbackTargetAvailabilityDidChange(uint64_t, bool);
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
+    void playbackTargetPickerWasDismissed(uint64_t);
 #endif
 
     void clearWheelEventTestMonitor();

@@ -492,8 +492,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
     m_inspectorDebuggable->setRemoteDebuggingAllowed(true);
     m_inspectorDebuggable->init();
 #endif
-
-    createInspectorTargets();
+    m_inspectorController->init();
 }
 
 WebPageProxy::~WebPageProxy()
@@ -861,9 +860,6 @@ void WebPageProxy::finishAttachingToWebProcess(ProcessLaunchReason reason)
 #if ENABLE(REMOTE_INSPECTOR)
     remoteInspectorInformationDidChange();
 #endif
-
-    clearInspectorTargets();
-    createInspectorTargets();
 
     pageClient().didRelaunchProcess();
     m_pageLoadState.didSwapWebProcesses();
@@ -1666,17 +1662,6 @@ void WebPageProxy::remoteInspectorInformationDidChange()
     m_inspectorDebuggable->update();
 }
 #endif
-
-void WebPageProxy::clearInspectorTargets()
-{
-    m_inspectorController->clearTargets();
-}
-
-void WebPageProxy::createInspectorTargets()
-{
-    String pageTargetId = makeString("page-", m_webPageID.toUInt64());
-    m_inspectorController->createInspectorTarget(pageTargetId, Inspector::InspectorTargetType::Page);
-}
 
 void WebPageProxy::setBackgroundColor(const Optional<Color>& color)
 {
@@ -3041,6 +3026,7 @@ void WebPageProxy::commitProvisionalPage(FrameIdentifier frameID, uint64_t navig
     if (!didSuspendPreviousPage)
         m_process->send(Messages::WebPage::Close(), m_webPageID);
 
+    const auto oldWebPageID = m_webPageID;
     swapToWebProcess(m_provisionalPage->process(), m_provisionalPage->webPageID(), m_provisionalPage->takeDrawingArea(), m_provisionalPage->mainFrame());
 
 #if PLATFORM(COCOA)
@@ -3051,6 +3037,7 @@ void WebPageProxy::commitProvisionalPage(FrameIdentifier frameID, uint64_t navig
 
     didCommitLoadForFrame(frameID, navigationID, mimeType, frameHasCustomContentProvider, frameLoadType, certificateInfo, containsPluginDocument, forcedHasInsecureContent, userData);
 
+    m_inspectorController->didCommitProvisionalPage(oldWebPageID, m_webPageID);
     m_provisionalPage = nullptr;
 }
 
@@ -8033,29 +8020,21 @@ RefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
 #endif
 
 #if PLATFORM(GTK)
-void WebPageProxy::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
+void WebPageProxy::setComposition(const String& text, const Vector<CompositionUnderline>& underlines, const EditingRange& selectionRange)
 {
     // FIXME: We need to find out how to proper handle the crashes case.
     if (!hasRunningProcess())
         return;
 
-    process().send(Messages::WebPage::SetComposition(text, underlines, selectionStart, selectionEnd, replacementRangeStart, replacementRangeEnd), m_webPageID);
+    process().send(Messages::WebPage::SetComposition(text, underlines, selectionRange), m_webPageID);
 }
 
-void WebPageProxy::confirmComposition(const String& compositionString, int64_t selectionStart, int64_t selectionLength)
+void WebPageProxy::confirmComposition(const String& compositionString)
 {
     if (!hasRunningProcess())
         return;
 
-    process().send(Messages::WebPage::ConfirmComposition(compositionString, selectionStart, selectionLength), m_webPageID);
-}
-
-void WebPageProxy::cancelComposition()
-{
-    if (!hasRunningProcess())
-        return;
-
-    process().send(Messages::WebPage::CancelComposition(), m_webPageID);
+    process().send(Messages::WebPage::ConfirmComposition(compositionString), m_webPageID);
 }
 #endif // PLATFORM(GTK)
 
@@ -8590,6 +8569,11 @@ void WebPageProxy::setMockMediaPlaybackTargetPickerState(const String& name, Web
     pageClient().mediaSessionManager().setMockMediaPlaybackTargetPickerState(name, state);
 }
 
+void WebPageProxy::mockMediaPlaybackTargetPickerDismissPopup()
+{
+    pageClient().mediaSessionManager().mockMediaPlaybackTargetPickerDismissPopup();
+}
+
 void WebPageProxy::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
     if (!hasRunningProcess())
@@ -8612,6 +8596,14 @@ void WebPageProxy::setShouldPlayToPlaybackTarget(uint64_t contextId, bool should
         return;
 
     m_process->send(Messages::WebPage::SetShouldPlayToPlaybackTarget(contextId, shouldPlay), m_webPageID);
+}
+
+void WebPageProxy::playbackTargetPickerWasDismissed(uint64_t contextId)
+{
+    if (!hasRunningProcess())
+        return;
+
+    m_process->send(Messages::WebPage::PlaybackTargetPickerWasDismissed(contextId), m_webPageID);
 }
 #endif
 
@@ -9431,6 +9423,35 @@ void WebPageProxy::setMockWebAuthenticationConfiguration(MockWebAuthenticationCo
     m_websiteDataStore->setMockWebAuthenticationConfiguration(WTFMove(configuration));
 }
 #endif
+
+void WebPageProxy::startTextManipulations(const Vector<WebCore::TextManipulationController::ExclusionRule>& exclusionRules,
+    TextManipulationItemCallback&& callback, WTF::CompletionHandler<void()>&& completionHandler)
+{
+    if (!hasRunningProcess()) {
+        completionHandler();
+        return;
+    }
+    m_textManipulationItemCallback = WTFMove(callback);
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::StartTextManipulations(exclusionRules), WTFMove(completionHandler), m_webPageID);
+}
+
+void WebPageProxy::didFindTextManipulationItem(WebCore::TextManipulationController::ItemIdentifier itemID,
+    const Vector<WebCore::TextManipulationController::ManipulationToken>& tokens)
+{
+    if (!m_textManipulationItemCallback)
+        return;
+    m_textManipulationItemCallback(itemID, tokens);
+}
+
+void WebPageProxy::completeTextManipulation(WebCore::TextManipulationController::ItemIdentifier itemID,
+    const Vector<WebCore::TextManipulationController::ManipulationToken>& tokens, WTF::Function<void (WebCore::TextManipulationController::ManipulationResult result)>&& completionHandler)
+{
+    if (!hasRunningProcess()) {
+        completionHandler(WebCore::TextManipulationController::ManipulationResult::InvalidItem);
+        return;
+    }
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::CompleteTextManipulation(itemID, tokens), WTFMove(completionHandler), m_webPageID);
+}
 
 } // namespace WebKit
 

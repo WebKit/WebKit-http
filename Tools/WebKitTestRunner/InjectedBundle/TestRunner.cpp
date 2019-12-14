@@ -2207,6 +2207,7 @@ void TestRunner::setStatisticsShouldDowngradeReferrer(bool value, JSValueRef com
 void TestRunner::statisticsCallDidSetShouldDowngradeReferrerCallback()
 {
     callTestRunnerCallback(StatisticsDidSetShouldDowngradeReferrerCallbackID);
+    m_hasSetDowngradeReferrerCallback = false;
 }
 
 void TestRunner::setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRef completionHandler)
@@ -2224,6 +2225,7 @@ void TestRunner::setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRe
 void TestRunner::statisticsCallDidSetShouldBlockThirdPartyCookiesCallback()
 {
     callTestRunnerCallback(StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID);
+    m_hasSetBlockThirdPartyCookiesCallback = false;
 }
 
 void TestRunner::statisticsCallClearThroughWebsiteDataRemovalCallback()
@@ -2809,6 +2811,13 @@ void TestRunner::markAdClickAttributionsAsExpiredForTesting()
 {
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("MarkAdClickAttributionsAsExpiredForTesting"));
     WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, nullptr);
+}
+
+void TestRunner::setOffscreenCanvasEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key = adoptWK(WKStringCreateWithUTF8CString("OffscreenCanvasEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
 } // namespace WTR

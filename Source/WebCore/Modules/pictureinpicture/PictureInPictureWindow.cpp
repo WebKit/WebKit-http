@@ -35,33 +35,26 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(PictureInPictureWindow);
 
-Ref<PictureInPictureWindow> PictureInPictureWindow::create(ScriptExecutionContext& scriptExecutionContext, int width, int height)
+Ref<PictureInPictureWindow> PictureInPictureWindow::create(ScriptExecutionContext& scriptExecutionContext)
 {
-    return adoptRef(*new PictureInPictureWindow(scriptExecutionContext, width, height));
+    return adoptRef(*new PictureInPictureWindow(scriptExecutionContext));
 }
 
-PictureInPictureWindow::PictureInPictureWindow(ScriptExecutionContext& scriptExecutionContext, int width, int height)
-    : ActiveDOMObject(&scriptExecutionContext)
-    , m_width(width)
-    , m_height(height)
+PictureInPictureWindow::PictureInPictureWindow(ScriptExecutionContext& scriptExecutionContext)
+    : m_scriptExecutionContext(scriptExecutionContext)
 {
 }
 
 PictureInPictureWindow::~PictureInPictureWindow() = default;
 
-const char* PictureInPictureWindow::activeDOMObjectName() const
+void PictureInPictureWindow::setSize(const IntSize& size)
 {
-    return "PictureInPictureWindow";
+    m_size = size;
 }
 
-EventTargetInterface PictureInPictureWindow::eventTargetInterface() const
+void PictureInPictureWindow::close()
 {
-    return PictureInPictureWindowEventTargetInterfaceType;
-}
-
-ScriptExecutionContext* PictureInPictureWindow::scriptExecutionContext() const
-{
-    return ActiveDOMObject::scriptExecutionContext();
+    m_size = { 0, 0 };
 }
 
 } // namespace WebCore

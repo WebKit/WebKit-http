@@ -27,10 +27,12 @@
 #include "CallFrame.h"
 
 #include "CodeBlock.h"
+#include "ExecutableAllocator.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSWebAssemblyInstance.h"
+#include "LLIntPCRanges.h"
 #include "VMEntryScope.h"
 #include "WasmContextInlines.h"
 #include "WasmInstance.h"
@@ -114,7 +116,7 @@ const Instruction* CallFrame::currentVPC() const
 
 void CallFrame::setCurrentVPC(const Instruction* vpc)
 {
-    CallSiteIndex callSite(codeBlock()->bytecodeIndex(vpc));
+    CallSiteIndex callSite(BytecodeIndex(bitwise_cast<uint32_t>(vpc)));
     this[CallFrameSlot::argumentCount].tag() = callSite.bits();
 }
 
@@ -186,18 +188,6 @@ Register* CallFrame::topOfFrameInternal()
     CodeBlock* codeBlock = this->codeBlock();
     ASSERT(codeBlock);
     return registers() + codeBlock->stackPointerOffset();
-}
-
-JSGlobalObject* CallFrame::wasmAwareLexicalGlobalObject(VM& vm)
-{
-#if ENABLE(WEBASSEMBLY)
-    if (!callee().isWasm())
-        return lexicalGlobalObject();
-    return vm.wasmContext.load()->owner<JSWebAssemblyInstance>()->globalObject();
-#else
-    UNUSED_PARAM(vm);
-    return lexicalGlobalObject();
-#endif
 }
 
 bool CallFrame::isAnyWasmCallee()
@@ -353,6 +343,27 @@ void CallFrame::convertToStackOverflowFrame(VM& vm, CodeBlock* codeBlockToKeepAl
     setCodeBlock(codeBlockToKeepAliveUntilFrameIsUnwound);
     setCallee(stackOverflowCallee);
     setArgumentCountIncludingThis(0);
+}
+
+#if ENABLE(WEBASSEMBLY)
+JSGlobalObject* CallFrame::lexicalGlobalObjectFromWasmCallee(VM& vm) const
+{
+    return vm.wasmContext.load()->owner<JSWebAssemblyInstance>()->globalObject();
+}
+#endif
+
+bool isFromJSCode(void* returnAddress)
+{
+    UNUSED_PARAM(returnAddress);
+#if ENABLE(JIT)
+    if (isJITPC(returnAddress))
+        return true;
+#endif
+#if ENABLE(C_LOOP)
+    return true;
+#else
+    return LLInt::isLLIntPC(returnAddress);
+#endif
 }
 
 } // namespace JSC

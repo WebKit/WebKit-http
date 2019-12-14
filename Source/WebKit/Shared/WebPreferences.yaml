@@ -1247,13 +1247,22 @@ SpringTimingFunctionEnabled:
   humanReadableDescription: "CSS Spring Animation prototype"
   category: experimental
 
-ImageBitmapOffscreenCanvasEnabled:
+ImageBitmapEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "ImageBitmap and OffscreenCanvas"
-  humanReadableDescription: "Support for the ImageBitmap and OffscreenCanvas APIs"
+  humanReadableName: "ImageBitmap"
+  humanReadableDescription: "Support for the ImageBitmap APIs"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
+
+OffscreenCanvasEnabled:
+  type: bool
+  defaultValue: DEFAULT_OFFSCREEN_CANVAS_ENABLED
+  humanReadableName: "OffscreenCanvas"
+  humanReadableDescription: "Support for the OffscreenCanvas APIs"
+  category: internal
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(OFFSCREEN_CANVAS)
 
 IntersectionObserverEnabled:
   type: bool
@@ -1353,7 +1362,7 @@ WebVREnabled:
 
 ServerTimingEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_SERVER_TIMING_ENABLED
   humanReadableName: "Server Timing"
   humanReadableDescription: "Enable Server Timing API"
   category: experimental
@@ -1379,7 +1388,7 @@ CSSPaintingAPIEnabled:
 
 CSSTypedOMEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_CSS_TYPED_OM_ENABLED
   humanReadableName: "CSS Typed OM"
   humanReadableDescription: "Enable the CSS Typed OM"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1704,6 +1713,13 @@ AllowViewportShrinkToFitContent:
   category: internal
   condition: PLATFORM(IOS_FAMILY)
 
+EnterKeyHintEnabled:
+  type: bool
+  defaultValue: DEFAULT_ENTER_KEY_HINT_ENABLED
+  humanReadableName: "Enter Key Hint"
+  humanReadableDescription: "Enable the enterKeyHint HTML attribute"
+  category: internal
+
 ReferrerPolicyAttributeEnabled:
   type: bool
   defaultValue: false
@@ -1789,6 +1805,14 @@ PictureInPictureAPIEnabled:
   humanReadableDescription: "Enable Picture-in-Picture API support"
   category: experimental
   condition: ENABLE(PICTURE_IN_PICTURE_API)
+
+RemotePlaybackEnabled:
+  category: experimental
+  condition: ENABLE(WIRELESS_PLAYBACK_TARGET)
+  type: bool
+  defaultValue: false
+  humanReadableName: "Remote Playback API"
+  humanReadableDescription: "Enable Remote Playback API"
 
 # Deprecated
 

@@ -37,7 +37,7 @@ namespace Layout {
 
 static LayoutUnit inlineItemWidth(const FormattingContext& formattingContext, const InlineItem& inlineItem, LayoutUnit contentLogicalLeft)
 {
-    if (inlineItem.isLineBreak())
+    if (inlineItem.isForcedLineBreak())
         return 0;
 
     if (is<InlineTextItem>(inlineItem)) {
@@ -65,19 +65,12 @@ static LayoutUnit inlineItemWidth(const FormattingContext& formattingContext, co
     return boxGeometry.width();
 }
 
-LineLayout::LineInput::LineInput(const Line::InitialConstraints& initialLineConstraints, TextAlignMode horizontalAlignment, IndexAndRange firstToProcess, const InlineItems& inlineItems)
+LineLayout::LineInput::LineInput(const Line::InitialConstraints& initialLineConstraints, TextAlignMode horizontalAlignment, const InlineItems& inlineItems, unsigned leadingInlineItemIndex, Optional<PartialContent> leadingPartialContent)
     : initialConstraints(initialLineConstraints)
     , horizontalAlignment(horizontalAlignment)
-    , firstInlineItem(firstToProcess)
     , inlineItems(inlineItems)
-{
-}
-
-LineLayout::LineInput::LineInput(const Line::InitialConstraints& initialLineConstraints, IndexAndRange firstToProcess, const InlineItems& inlineItems)
-    : initialConstraints(initialLineConstraints)
-    , skipAlignment(Line::SkipAlignment::Yes)
-    , firstInlineItem(firstToProcess)
-    , inlineItems(inlineItems)
+    , leadingInlineItemIndex(leadingInlineItemIndex)
+    , leadingPartialContent(leadingPartialContent)
 {
 }
 
@@ -93,10 +86,10 @@ void LineLayout::UncommittedContent::reset()
     m_width = 0;
 }
 
-LineLayout::LineLayout(const InlineFormattingContext& inlineFormattingContext, const LineInput& lineInput)
+LineLayout::LineLayout(const InlineFormattingContext& inlineFormattingContext, Line::SkipAlignment skipAlignment, const LineInput& lineInput)
     : m_inlineFormattingContext(inlineFormattingContext)
     , m_lineInput(lineInput)
-    , m_line(inlineFormattingContext, lineInput.initialConstraints, lineInput.horizontalAlignment, lineInput.skipAlignment)
+    , m_line(inlineFormattingContext, lineInput.initialConstraints, lineInput.horizontalAlignment, skipAlignment)
     , m_lineHasIntrusiveFloat(lineInput.initialConstraints.lineIsConstrainedByFloat)
 {
 }
@@ -104,24 +97,21 @@ LineLayout::LineLayout(const InlineFormattingContext& inlineFormattingContext, c
 LineLayout::LineContent LineLayout::layout()
 {
     // Iterate through the inline content and place the inline boxes on the current line.
-    // Start with the partial text from the previous line.
-    auto firstInlineItem = m_lineInput.firstInlineItem;
-    unsigned firstNonPartialIndex = firstInlineItem.index;
-    if (firstInlineItem.partialContext) {
+    // Start with the partial leading text from the previous line.
+    auto firstNonPartialInlineItemIndex = m_lineInput.leadingInlineItemIndex;
+    if (m_lineInput.leadingPartialContent) {
         // Handle partial inline item (split text from the previous line).
-        auto& originalTextItem = m_lineInput.inlineItems[firstInlineItem.index];
-        RELEASE_ASSERT(originalTextItem->isText());
-
-        auto textRange = *firstInlineItem.partialContext;
+        auto& leadingTextItem = m_lineInput.inlineItems[m_lineInput.leadingInlineItemIndex];
+        RELEASE_ASSERT(leadingTextItem->isText());
         // Construct a partial leading inline item.
-        ASSERT(!m_leadingPartialInlineTextItem);
-        m_leadingPartialInlineTextItem = downcast<InlineTextItem>(*originalTextItem).split(textRange.start, textRange.length);
-        if (placeInlineItem(*m_leadingPartialInlineTextItem) == IsEndOfLine::Yes)
+        ASSERT(!m_leadingPartialTextItem);
+        m_leadingPartialTextItem = downcast<InlineTextItem>(*leadingTextItem).right(m_lineInput.leadingPartialContent->length);
+        if (placeInlineItem(*m_leadingPartialTextItem) == IsEndOfLine::Yes)
             return close();
-        ++firstNonPartialIndex;
+        ++firstNonPartialInlineItemIndex;
     }
 
-    for (auto inlineItemIndex = firstNonPartialIndex; inlineItemIndex < m_lineInput.inlineItems.size(); ++inlineItemIndex) {
+    for (auto inlineItemIndex = firstNonPartialInlineItemIndex; inlineItemIndex < m_lineInput.inlineItems.size(); ++inlineItemIndex) {
         // FIXME: We should not need to re-measure the dropped, uncommitted content when re-using them on the next line.
         if (placeInlineItem(*m_lineInput.inlineItems[inlineItemIndex]) == IsEndOfLine::Yes)
             return close();
@@ -147,15 +137,13 @@ LineLayout::LineContent LineLayout::close()
     ASSERT(m_committedInlineItemCount || m_lineHasIntrusiveFloat);
     m_uncommittedContent.reset();
     if (!m_committedInlineItemCount)
-        return LineContent { WTF::nullopt, WTFMove(m_floats), m_line.close(), m_line.lineBox() };
+        return LineContent { { }, { }, WTFMove(m_floats), m_line.close(), m_line.lineBox() };
 
-    auto lastInlineItemIndex = m_lineInput.firstInlineItem.index + m_committedInlineItemCount - 1;
-    Optional<IndexAndRange::Range> partialContext;
-    if (m_trailingPartialInlineTextItem)
-        partialContext = IndexAndRange::Range { m_trailingPartialInlineTextItem->start(), m_trailingPartialInlineTextItem->length() };
-
-    auto lastCommitedItem = IndexAndRange { lastInlineItemIndex, partialContext };
-    return LineContent { lastCommitedItem, WTFMove(m_floats), m_line.close(), m_line.lineBox() };
+    Optional<PartialContent> overflowContent;
+    if (m_overflowTextLength)
+        overflowContent = PartialContent { *m_overflowTextLength };
+    auto trailingInlineItemIndex = m_lineInput.leadingInlineItemIndex + m_committedInlineItemCount - 1;
+    return LineContent { trailingInlineItemIndex, overflowContent, WTFMove(m_floats), m_line.close(), m_line.lineBox() };
 }
 
 LineLayout::IsEndOfLine LineLayout::placeInlineItem(const InlineItem& inlineItem)
@@ -174,9 +162,7 @@ LineLayout::IsEndOfLine LineLayout::placeInlineItem(const InlineItem& inlineItem
             if (processUncommittedContent() == IsEndOfLine::Yes)
                 return IsEndOfLine::Yes;
         }
-        auto breakingBehavior = LineBreaker().breakingContextForFloat(itemLogicalWidth, m_line.availableWidth() + m_line.trailingTrimmableWidth(), lineIsConsideredEmpty);
-        ASSERT(breakingBehavior != LineBreaker::BreakingBehavior::Split);
-        if (breakingBehavior == LineBreaker::BreakingBehavior::Wrap)
+        if (LineBreaker().shouldWrapFloatBox(itemLogicalWidth, m_line.availableWidth() + m_line.trailingTrimmableWidth(), lineIsConsideredEmpty))
             return IsEndOfLine::Yes;
 
         // This float can sit on the current line.
@@ -188,8 +174,8 @@ LineLayout::IsEndOfLine LineLayout::placeInlineItem(const InlineItem& inlineItem
         m_lineHasIntrusiveFloat = true;
         return IsEndOfLine::No;
     }
-    // Explicit line breaks are also special.
-    if (inlineItem.isHardLineBreak()) {
+    // Forced line breaks are also special.
+    if (inlineItem.isForcedLineBreak()) {
         auto isEndOfLine = !m_uncommittedContent.isEmpty() ? processUncommittedContent() : IsEndOfLine::No;
         // When the uncommitted content fits(or the line is empty), add the line break to this line as well.
         if (isEndOfLine == IsEndOfLine::No) {
@@ -212,27 +198,42 @@ LineLayout::IsEndOfLine LineLayout::processUncommittedContent()
 {
     // Check if the pending content fits.
     auto lineIsConsideredEmpty = !m_line.hasContent() && !m_lineHasIntrusiveFloat;
-    auto breakingBehavior = LineBreaker().breakingContext(m_uncommittedContent.runs(), m_uncommittedContent.width(), m_line.availableWidth(), lineIsConsideredEmpty);
-
+    auto breakingContext = LineBreaker().breakingContextForInlineContent(m_uncommittedContent.runs(), m_uncommittedContent.width(), m_line.availableWidth(), lineIsConsideredEmpty);
     // The uncommitted content can fully, partially fit the current line (commit/partial commit) or not at all (reset).
-    if (breakingBehavior == LineBreaker::BreakingBehavior::Keep)
+    if (breakingContext.contentBreak == LineBreaker::BreakingContext::ContentBreak::Keep)
         commitPendingContent();
-    else if (breakingBehavior == LineBreaker::BreakingBehavior::Split)
-        ASSERT_NOT_IMPLEMENTED_YET();
-    else if (breakingBehavior == LineBreaker::BreakingBehavior::Wrap)
-        m_uncommittedContent.reset();
+    else if (breakingContext.contentBreak == LineBreaker::BreakingContext::ContentBreak::Split) {
+        ASSERT(breakingContext.trailingPartialContent);
+        ASSERT(m_uncommittedContent.runs()[breakingContext.trailingPartialContent->runIndex].inlineItem.isText());
+        // Turn the uncommitted trailing run into a partial trailing run.
+        auto overflowInlineTextItemIndex = breakingContext.trailingPartialContent->runIndex;
+        auto& overflowInlineTextItem = downcast<InlineTextItem>(m_uncommittedContent.runs()[overflowInlineTextItemIndex].inlineItem);
 
-    return breakingBehavior == LineBreaker::BreakingBehavior::Keep ? IsEndOfLine::No :IsEndOfLine::Yes;
+        // Construct a partial trailing inline run.
+        ASSERT(!m_trailingPartialTextItem);
+        auto trailingContentLength = breakingContext.trailingPartialContent->length;
+        m_trailingPartialTextItem = overflowInlineTextItem.left(trailingContentLength);
+        m_overflowTextLength = overflowInlineTextItem.length() - trailingContentLength;
+        // Keep the non-overflow part of the uncommitted runs and add the trailing partial content.
+        m_uncommittedContent.trim(overflowInlineTextItemIndex);
+        m_uncommittedContent.add(*m_trailingPartialTextItem, breakingContext.trailingPartialContent->logicalWidth);
+        commitPendingContent();
+    } else if (breakingContext.contentBreak == LineBreaker::BreakingContext::ContentBreak::Wrap)
+        m_uncommittedContent.reset();
+    else
+        ASSERT_NOT_REACHED();
+    return breakingContext.contentBreak == LineBreaker::BreakingContext::ContentBreak::Keep ? IsEndOfLine::No :IsEndOfLine::Yes;
 }
 
 bool LineLayout::shouldProcessUncommittedContent(const InlineItem& inlineItem) const
 {
+    // https://drafts.csswg.org/css-text-3/#line-break-details
     // Figure out if the new incoming content puts the uncommitted content on commit boundary.
     // e.g. <span>continuous</span> <- uncomitted content ->
     // [inline container start][text content][inline container end]
     // An incoming <img> box would enable us to commit the "<span>continuous</span>" content
     // while additional text content would not.
-    ASSERT(!inlineItem.isFloat() && !inlineItem.isHardLineBreak());
+    ASSERT(!inlineItem.isFloat() && !inlineItem.isForcedLineBreak());
     ASSERT(!m_uncommittedContent.isEmpty());
 
     auto* lastUncomittedContent = &m_uncommittedContent.runs().last().inlineItem;
@@ -301,6 +302,13 @@ bool LineLayout::shouldProcessUncommittedContent(const InlineItem& inlineItem) c
 
     ASSERT_NOT_REACHED();
     return true;
+}
+
+void LineLayout::UncommittedContent::trim(unsigned newSize)
+{
+    for (auto i = m_uncommittedRuns.size(); i--;)
+        m_width -= m_uncommittedRuns[i].logicalWidth;
+    m_uncommittedRuns.shrink(newSize);
 }
 
 

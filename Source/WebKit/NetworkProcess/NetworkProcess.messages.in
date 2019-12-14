@@ -74,10 +74,8 @@ messages -> NetworkProcess LegacyReceiver {
     ProcessDidTransitionToBackground()
     ProcessDidTransitionToForeground()
 
-    ProcessWillSuspendImminently()
     ProcessWillSuspendImminentlyForTestingSync() -> () Synchronous
-    PrepareToSuspend()
-    CancelPrepareToSuspend()
+    PrepareToSuspend(bool isSuspensionImminent) -> () Async
     ProcessDidResume()
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -146,8 +144,6 @@ messages -> NetworkProcess LegacyReceiver {
     RegisterURLSchemeAsBypassingContentSecurityPolicy(String scheme)
     RegisterURLSchemeAsLocal(String scheme)
     RegisterURLSchemeAsNoAccess(String scheme)
-    RegisterURLSchemeAsCORSEnabled(String scheme)
-    RegisterURLSchemeAsCanDisplayOnlyIfCanRequest(String scheme)
 
     SetCacheStorageParameters(PAL::SessionID sessionID, String cacheStorageDirectory, WebKit::SandboxExtension::Handle handle);
 

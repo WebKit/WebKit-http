@@ -129,22 +129,6 @@ inline JSScope* JSScope::next()
     return m_next.get();
 }
 
-inline Register& Register::operator=(JSScope* scope)
-{
-    *this = JSValue(scope);
-    return *this;
-}
-
-inline JSScope* Register::scope() const
-{
-    return jsCast<JSScope*>(unboxedCell());
-}
-
-inline JSGlobalObject* CallFrame::lexicalGlobalObject() const
-{
-    return jsCallee()->globalObject();
-}
-
 inline size_t JSScope::offsetOfNext()
 {
     return OBJECT_OFFSETOF(JSScope, m_next);

@@ -39,6 +39,7 @@
 #include "B3SlotBaseValue.h"
 #include "B3StackmapGenerationParams.h"
 #include "B3ValueInlines.h"
+#include "ButterflyInlines.h"
 #include "CallFrameShuffler.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
@@ -8845,6 +8846,7 @@ private:
                     CCallHelpers::Jump dontThrow = jit.jump();
                     slowCase.link(&jit);
                     jit.setupArguments<decltype(operationThrowStackOverflowForVarargs)>(jit.codeBlock()->globalObjectFor(node->origin.semantic));
+                    jit.prepareCallOperation(jit.vm());
                     callWithExceptionCheck(bitwise_cast<void*>(operationThrowStackOverflowForVarargs));
                     jit.abortWithReason(DFGVarargsThrowingPathDidNotThrow);
                     
@@ -9111,6 +9113,7 @@ private:
                     CCallHelpers::Jump done = jit.jump();
                     slowCase.link(&jit);
                     jit.setupArguments<decltype(operationThrowStackOverflowForVarargs)>(jit.codeBlock()->globalObjectFor(node->origin.semantic));
+                    jit.prepareCallOperation(jit.vm());
                     callWithExceptionCheck(bitwise_cast<void*>(operationThrowStackOverflowForVarargs));
                     jit.abortWithReason(DFGVarargsThrowingPathDidNotThrow);
                     
@@ -9118,6 +9121,7 @@ private:
                 } else {
                     jit.move(CCallHelpers::TrustedImm32(originalStackHeight / sizeof(EncodedJSValue)), scratchGPR1);
                     jit.setupArguments<decltype(operationSizeFrameForVarargs)>(jit.codeBlock()->globalObjectFor(node->origin.semantic), argumentsGPR, scratchGPR1, CCallHelpers::TrustedImm32(data->firstVarArgOffset));
+                    jit.prepareCallOperation(jit.vm());
                     callWithExceptionCheck(bitwise_cast<void*>(operationSizeFrameForVarargs));
 
                     jit.move(GPRInfo::returnValueGPR, scratchGPR1);
@@ -9126,6 +9130,7 @@ private:
                     emitSetVarargsFrame(jit, scratchGPR1, false, scratchGPR2, scratchGPR2);
                     jit.addPtr(CCallHelpers::TrustedImm32(-minimumJSCallAreaSize), scratchGPR2, CCallHelpers::stackPointerRegister);
                     jit.setupArguments<decltype(operationSetupVarargsFrame)>(jit.codeBlock()->globalObjectFor(node->origin.semantic), scratchGPR2, argumentsGPR, CCallHelpers::TrustedImm32(data->firstVarArgOffset), scratchGPR1);
+                    jit.prepareCallOperation(jit.vm());
                     callWithExceptionCheck(bitwise_cast<void*>(operationSetupVarargsFrame));
                     
                     jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), GPRInfo::returnValueGPR, CCallHelpers::stackPointerRegister);
@@ -9277,6 +9282,7 @@ private:
                 requiredBytes = WTF::roundUpToMultipleOf(stackAlignmentBytes(), requiredBytes);
                 jit.subPtr(CCallHelpers::TrustedImm32(requiredBytes), CCallHelpers::stackPointerRegister);
                 jit.setupArguments<decltype(operationCallEval)>(globalObject, GPRInfo::regT1);
+                jit.prepareCallOperation(vm);
                 jit.move(CCallHelpers::TrustedImmPtr(tagCFunctionPtr<OperationPtrTag>(operationCallEval)), GPRInfo::nonPreservedNonArgumentGPR0);
                 jit.call(GPRInfo::nonPreservedNonArgumentGPR0, OperationPtrTag);
                 exceptions->append(jit.emitExceptionCheck(state->vm(), AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
@@ -12985,7 +12991,7 @@ private:
             // FIXME: Revisit JSGlobalObject.
             // https://bugs.webkit.org/show_bug.cgi?id=203204
             JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-            m_out.storePtr(weakPointer(globalObject), m_out.absolute(&vm().topCallFrame));
+            m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
             setJSValue(
                 vmCall(Int64, bitwise_cast<CustomGetterSetter::CustomGetter>(m_node->callDOMGetterData()->customAccessorGetter.retaggedExecutableAddress<CFunctionPtrTag>()),
                     weakPointer(globalObject), lowCell(m_node->child1()), m_out.constIntPtr(m_graph.identifiers()[m_node->callDOMGetterData()->identifierNumber])));
@@ -15289,7 +15295,7 @@ private:
         m_out.jump(continuation);
         
         m_out.appendTo(slowPath, continuation);
-        results.append(m_out.anchor(m_out.call(Int32, m_out.operation(operationToInt32), doubleValue)));
+        results.append(m_out.anchor(m_out.callWithoutSideEffects(Int32, operationToInt32, doubleValue)));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -15329,8 +15335,7 @@ private:
             rarely(slowPath), usually(continuation));
         
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
-        ValueFromBlock slowResult = m_out.anchor(
-            m_out.call(Int32, m_out.operation(operationToInt32SensibleSlow), doubleValue));
+        ValueFromBlock slowResult = m_out.anchor(m_out.callWithoutSideEffects(Int32, operationToInt32SensibleSlow, doubleValue));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -16023,8 +16028,7 @@ private:
             
         m_out.appendTo(doubleCase, continuation);
         
-        LValue possibleResult = m_out.call(
-            Int64, m_out.operation(operationConvertBoxedDoubleToInt52), boxedValue);
+        LValue possibleResult = m_out.callWithoutSideEffects(Int64, operationConvertBoxedDoubleToInt52, boxedValue);
         FTL_TYPE_CHECK(
             jsValueValue(boxedValue), edge, SpecInt32Only | SpecAnyIntAsDouble,
             m_out.equal(possibleResult, m_out.constInt64(JSValue::notInt52)));
@@ -17263,6 +17267,9 @@ private:
         m_out.store32(
             m_out.constInt32(callSiteIndex.bits()),
             tagFor(CallFrameSlot::argumentCount));
+#if !USE(BUILTIN_FRAME_ADDRESS) || !ASSERT_DISABLED
+        m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
+#endif
     }
 
     void callPreflight()
@@ -17291,8 +17298,12 @@ private:
     void callCheck()
     {
         JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-        if (Options::useExceptionFuzz())
+        if (Options::useExceptionFuzz()) {
+#if !USE(BUILTIN_FRAME_ADDRESS) || !ASSERT_DISABLED
+            m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
+#endif
             m_out.call(Void, m_out.operation(operationExceptionFuzz), weakPointer(globalObject));
+        }
         
         LValue exception = m_out.load64(m_out.absolute(vm().addressOfException()));
         LValue hadException = m_out.notZero64(exception);

@@ -1217,22 +1217,9 @@ RefPtr<API::Object> WebProcessProxy::transformObjectsToHandles(API::Object* obje
     return UserData::transform(object, Transformer());
 }
 
-void WebProcessProxy::sendProcessWillSuspendImminently()
+void WebProcessProxy::sendPrepareToSuspend(IsSuspensionImminent isSuspensionImminent, CompletionHandler<void()>&& completionHandler)
 {
-    if (canSendMessage())
-        send(Messages::WebProcess::ProcessWillSuspendImminently(), 0);
-}
-
-void WebProcessProxy::sendPrepareToSuspend()
-{
-    if (canSendMessage())
-        send(Messages::WebProcess::PrepareToSuspend(), 0);
-}
-
-void WebProcessProxy::sendCancelPrepareToSuspend()
-{
-    if (canSendMessage())
-        send(Messages::WebProcess::CancelPrepareToSuspend(), 0);
+    sendWithAsyncReply(Messages::WebProcess::PrepareToSuspend(isSuspensionImminent == IsSuspensionImminent::Yes), WTFMove(completionHandler));
 }
 
 void WebProcessProxy::sendProcessDidResume()
@@ -1241,21 +1228,17 @@ void WebProcessProxy::sendProcessDidResume()
         send(Messages::WebProcess::ProcessDidResume(), 0);
 }
 
-void WebProcessProxy::processReadyToSuspend()
-{
-    m_throttler.processReadyToSuspend();
-}
-
-void WebProcessProxy::didCancelProcessSuspension()
-{
-    m_throttler.didCancelProcessSuspension();
-}
-
 void WebProcessProxy::didSetAssertionState(AssertionState state)
 {
 #if PLATFORM(IOS_FAMILY)
-    if (isRunningServiceWorkers())
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::didSetAssertionState(%u)", this, state);
+
+    if (isRunningServiceWorkers() && !pageCount()) {
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::didSetAssertionState() release all assertions for network process because this is a service worker process without page", this);
+        m_foregroundToken = nullptr;
+        m_backgroundToken = nullptr;
         return;
+    }
 
     ASSERT(!m_backgroundToken || !m_foregroundToken);
 

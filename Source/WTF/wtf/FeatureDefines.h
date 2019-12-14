@@ -77,6 +77,12 @@
 #define ENABLE_CONTEXT_MENUS 0
 #endif
 
+#if !defined(ENABLE_CONTEXT_MENU_EVENT)
+#if !PLATFORM(MACCATALYST)
+#define ENABLE_CONTEXT_MENU_EVENT 0
+#endif
+#endif
+
 #if !defined(ENABLE_CURSOR_SUPPORT)
 #define ENABLE_CURSOR_SUPPORT 0
 #endif
@@ -208,6 +214,12 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #if !defined(HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER)
 #if PLATFORM(IOS)
 #define HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER 1
+#endif
+#endif
+
+#if !defined(ENABLE_PREVIEW_CONVERTER)
+#if PLATFORM(IOS)
+#define ENABLE_PREVIEW_CONVERTER 1
 #endif
 #endif
 
@@ -422,6 +434,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_CONTEXT_MENUS 1
 #endif
 
+#if !defined(ENABLE_CONTEXT_MENU_EVENT)
+#define ENABLE_CONTEXT_MENU_EVENT 1
+#endif
+
 #if !defined(ENABLE_CSS3_TEXT)
 #define ENABLE_CSS3_TEXT 0
 #endif
@@ -614,6 +630,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_NOTIFICATIONS)
 #define ENABLE_NOTIFICATIONS 0
+#endif
+
+#if !defined(ENABLE_OFFSCREEN_CANVAS)
+#define ENABLE_OFFSCREEN_CANVAS 0
 #endif
 
 #if !defined(ENABLE_OPENTYPE_VERTICAL)

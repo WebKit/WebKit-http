@@ -73,12 +73,12 @@ public:
         const Box& layoutBox() const { return m_inlineItem.layoutBox(); }
 
         const Display::Rect& logicalRect() const { return m_displayRun.logicalRect(); }
-        bool isVisuallyEmpty() const { return m_isVisuallyEmpty; }
+        bool isCollapsedToZeroAdvanceWidth() const;
         bool isCollapsed() const { return m_isCollapsed; }
 
-        bool isText() const { return m_inlineItem.isText(); }
+        bool isText() const { return m_inlineItem.isText() && !isForcedLineBreak(); }
         bool isBox() const { return m_inlineItem.isBox(); }
-        bool isLineBreak() const { return m_inlineItem.isLineBreak(); }
+        bool isForcedLineBreak() const { return m_inlineItem.isForcedLineBreak(); }
         bool isContainerStart() const { return m_inlineItem.isContainerStart(); }
         bool isContainerEnd() const { return m_inlineItem.isContainerEnd(); }
 
@@ -90,8 +90,8 @@ public:
 
         void expand(const Run&);
 
-        void setVisuallyIsEmpty() { m_isVisuallyEmpty = true; }
-        void setIsCollapsed() { m_isCollapsed = true; }
+        void setIsCollapsed();
+        void setCollapsesToZeroAdvanceWidth();
 
         bool isWhitespace() const;
         bool canBeExtended() const;
@@ -99,7 +99,8 @@ public:
         const InlineItem& m_inlineItem;
         Display::Run m_displayRun;
         bool m_isCollapsed { false };
-        bool m_isVisuallyEmpty { false };
+        bool m_collapsedToZeroAdvanceWidth { false };
+        bool m_hasTrailingCollapsedContent { false };
     };
     using RunList = Vector<std::unique_ptr<Run>>;
     RunList close();
@@ -126,7 +127,7 @@ private:
     void appendReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
     void appendInlineContainerStart(const InlineItem&, LayoutUnit logicalWidth);
     void appendInlineContainerEnd(const InlineItem&, LayoutUnit logicalWidth);
-    void appendHardLineBreak(const InlineItem&);
+    void appendLineBreak(const InlineItem&);
 
     void removeTrailingTrimmableContent();
     void alignContentHorizontally();
@@ -154,10 +155,43 @@ inline void Line::Run::expand(const Run& other)
 {
     ASSERT(isText());
     ASSERT(other.isText());
+    ASSERT(!isCollapsedToZeroAdvanceWidth());
+    ASSERT(!m_hasTrailingCollapsedContent);
 
     auto& otherDisplayRun = other.displayRun();
     m_displayRun.expandHorizontally(otherDisplayRun.logicalWidth());
     m_displayRun.textContext()->expand(*otherDisplayRun.textContext());
+    m_hasTrailingCollapsedContent = other.isCollapsed();
+}
+
+inline bool Line::Run::isWhitespace() const
+{
+    return isText() && downcast<InlineTextItem>(m_inlineItem).isWhitespace();
+}
+
+inline void Line::Run::setIsCollapsed()
+{
+    ASSERT(isWhitespace());
+    m_isCollapsed = true;
+    m_hasTrailingCollapsedContent = true;
+}
+
+inline bool Line::Run::canBeExtended() const
+{
+    return isText() && !m_hasTrailingCollapsedContent;
+}
+
+inline bool Line::Run::isCollapsedToZeroAdvanceWidth() const
+{
+    ASSERT(!m_collapsedToZeroAdvanceWidth || !m_displayRun.logicalWidth());
+    return m_collapsedToZeroAdvanceWidth;
+}
+
+inline void Line::Run::setCollapsesToZeroAdvanceWidth()
+{
+    setIsCollapsed();
+    m_collapsedToZeroAdvanceWidth = true;
+    m_displayRun.setLogicalWidth({ });
 }
 
 }

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "LegacySchemeRegistry.h"
 
+#include "RuntimeApplicationChecks.h"
 #include <wtf/Lock.h>
 #include <wtf/Locker.h>
 #include <wtf/MainThread.h>
@@ -206,6 +207,7 @@ const Vector<String>& builtinCanDisplayOnlyIfCanRequestSchemes()
 
 static URLSchemesMap& canDisplayOnlyIfCanRequestSchemes()
 {
+    ASSERT(!isInNetworkProcess());
     ASSERT(schemeRegistryLock.isHeld());
     static auto canDisplayOnlyIfCanRequestSchemes = makeNeverDestroyedSchemeSet(builtinCanDisplayOnlyIfCanRequestSchemes);
     return canDisplayOnlyIfCanRequestSchemes;
@@ -379,6 +381,7 @@ bool LegacySchemeRegistry::isDomainRelaxationForbiddenForURLScheme(const String&
 
 bool LegacySchemeRegistry::canDisplayOnlyIfCanRequest(const String& scheme)
 {
+    ASSERT(!isInNetworkProcess());
     if (scheme.isNull())
         return false;
 
@@ -388,6 +391,7 @@ bool LegacySchemeRegistry::canDisplayOnlyIfCanRequest(const String& scheme)
 
 void LegacySchemeRegistry::registerAsCanDisplayOnlyIfCanRequest(const String& scheme)
 {
+    ASSERT(!isInNetworkProcess());
     if (scheme.isNull())
         return;
 
@@ -421,6 +425,7 @@ bool LegacySchemeRegistry::allowsDatabaseAccessInPrivateBrowsing(const String& s
 
 void LegacySchemeRegistry::registerURLSchemeAsCORSEnabled(const String& scheme)
 {
+    ASSERT(!isInNetworkProcess());
     if (scheme.isNull())
         return;
     CORSEnabledSchemes().add(scheme);
@@ -428,7 +433,14 @@ void LegacySchemeRegistry::registerURLSchemeAsCORSEnabled(const String& scheme)
 
 bool LegacySchemeRegistry::shouldTreatURLSchemeAsCORSEnabled(const String& scheme)
 {
+    ASSERT(!isInNetworkProcess());
     return !scheme.isNull() && CORSEnabledSchemes().contains(scheme);
+}
+
+Vector<String> LegacySchemeRegistry::allURLSchemesRegisteredAsCORSEnabled()
+{
+    ASSERT(!isInNetworkProcess());
+    return copyToVector(CORSEnabledSchemes());
 }
 
 void LegacySchemeRegistry::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme)

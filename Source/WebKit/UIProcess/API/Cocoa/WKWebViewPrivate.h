@@ -113,6 +113,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @class _WKSafeBrowsingWarning;
 @class _WKSessionState;
 @class _WKTextInputContext;
+@class _WKTextManipulationConfiguration;
+@class _WKTextManipulationItem;
 @class _WKThumbnailView;
 @class _WKWebsitePolicies;
 @class _WKWebViewPrintFormatter;
@@ -120,9 +122,10 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @protocol WKHistoryDelegatePrivate;
 @protocol _WKDiagnosticLoggingDelegate;
 @protocol _WKFindDelegate;
+@protocol _WKFullscreenDelegate;
 @protocol _WKIconLoadingDelegate;
 @protocol _WKInputDelegate;
-@protocol _WKFullscreenDelegate;
+@protocol _WKTextManipulationDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -479,8 +482,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)didStartFormControlInteraction WK_API_AVAILABLE(ios(10.3));
 - (void)didEndFormControlInteraction WK_API_AVAILABLE(ios(10.3));
 
-- (void)_didShowForcePressPreview WK_API_AVAILABLE(ios(10.3));
-- (void)_didDismissForcePressPreview WK_API_AVAILABLE(ios(10.3));
+- (void)_didShowContextMenu WK_API_AVAILABLE(ios(10.3));
+- (void)_didDismissContextMenu WK_API_AVAILABLE(ios(10.3));
 - (void)_doAfterNextStablePresentationUpdate:(dispatch_block_t)updateBlock WK_API_AVAILABLE(ios(10.3));
 - (void)_doAfterResettingSingleTapGesture:(dispatch_block_t)action WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
@@ -574,6 +577,10 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) BOOL _hasInspectorFrontend WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
 @property (nonatomic, readonly) _WKInspector *_inspector WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
 @property (nonatomic, readonly) _WKFrameHandle *_mainFrame WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
+
+@property (nonatomic, weak, setter=_setTextManipulationDelegate:) id <_WKTextManipulationDelegate> _textManipulationDelegate WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_startTextManipulationsWithConfiguration:(_WKTextManipulationConfiguration *)snapshotConfiguration completion:(void(^)(void))completionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_completeTextManipulation:(_WKTextManipulationItem *)item completion:(void(^)(BOOL success))completionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, setter=_setScrollingUpdatesDisabledForTesting:) BOOL _scrollingUpdatesDisabledForTesting WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 

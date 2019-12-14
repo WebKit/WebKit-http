@@ -95,18 +95,28 @@ void InlineFormattingContext::lineLayout(UsedHorizontalValues usedHorizontalValu
 {
     auto& inlineItems = formattingState().inlineItems();
     auto lineLogicalTop = geometryForBox(root()).contentBoxTop();
-    LineLayout::IndexAndRange currentInlineItem;
-    while (currentInlineItem.index < inlineItems.size()) {
+    unsigned leadingInlineItemIndex = 0;
+    Optional<LineLayout::PartialContent> leadingPartialContent;
+    while (leadingInlineItemIndex < inlineItems.size()) {
         auto lineConstraints = initialConstraintsForLine(usedHorizontalValues, lineLogicalTop);
-        auto lineInput = LineLayout::LineInput { lineConstraints, root().style().textAlign(), currentInlineItem, inlineItems };
-        auto lineLayout = LineLayout { *this, lineInput };
+
+        auto lineInput = LineLayout::LineInput { lineConstraints, root().style().textAlign(), inlineItems, leadingInlineItemIndex, leadingPartialContent };
+        auto lineLayout = LineLayout { *this, Line::SkipAlignment::No, lineInput };
 
         auto lineContent = lineLayout.layout();
         setDisplayBoxesForLine(lineContent, usedHorizontalValues);
 
-        if (lineContent.lastCommitted) {
-            currentInlineItem = { lineContent.lastCommitted->index + 1, WTF::nullopt };
+        leadingPartialContent = { };
+        if (lineContent.trailingInlineItemIndex) {
             lineLogicalTop = lineContent.lineBox.logicalBottom();
+            // When the trailing content is partial, we need to reuse the last InlinItem.
+            if (lineContent.trailingPartialContent) {
+                leadingInlineItemIndex = *lineContent.trailingInlineItemIndex;
+                // Turn previous line's overflow content length into the next line's leading content partial length.
+                // "sp<->litcontent" -> overflow length: 10 -> leading partial content length: 10. 
+                leadingPartialContent = LineLayout::PartialContent { lineContent.trailingPartialContent->length };
+            } else
+                leadingInlineItemIndex = *lineContent.trailingInlineItemIndex + 1;
         } else {
             // Floats prevented us placing any content on the line.
             ASSERT(lineInput.initialConstraints.lineIsConstrainedByFloat);
@@ -225,15 +235,15 @@ LayoutUnit InlineFormattingContext::computedIntrinsicWidthForConstraint(UsedHori
 {
     auto& inlineItems = formattingState().inlineItems();
     LayoutUnit maximumLineWidth;
-    LineLayout::IndexAndRange currentInlineItem;
-    while (currentInlineItem.index < inlineItems.size()) {
+    unsigned leadingInlineItemIndex = 0;
+    while (leadingInlineItemIndex < inlineItems.size()) {
         // Only the horiztonal available width is constrained when computing intrinsic width.
         auto initialLineConstraints = Line::InitialConstraints { { }, usedHorizontalValues.constraints.width, false, { } };
-        auto lineInput = LineLayout::LineInput { initialLineConstraints, currentInlineItem, inlineItems };
+        auto lineInput = LineLayout::LineInput { initialLineConstraints, root().style().textAlign(), inlineItems, leadingInlineItemIndex, { } };
 
-        auto lineContent = LineLayout(*this, lineInput).layout();
+        auto lineContent = LineLayout(*this, Line::SkipAlignment::Yes, lineInput).layout();
 
-        currentInlineItem = { lineContent.lastCommitted->index + 1, { } };
+        leadingInlineItemIndex = *lineContent.trailingInlineItemIndex + 1;
         LayoutUnit floatsWidth;
         for (auto& floatItem : lineContent.floats)
             floatsWidth += geometryForBox(floatItem->layoutBox()).marginBoxWidth();
@@ -343,7 +353,7 @@ void InlineFormattingContext::collectInlineContent()
             if (treatAsInlineContainer(layoutBox))
                 formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::ContainerEnd));
             else if (layoutBox.isLineBreakBox())
-                formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::HardLineBreak));
+                formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::LineBreakBox));
             else if (layoutBox.isFloatingPositioned())
                 formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::Float));
             else {
@@ -425,8 +435,8 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayout::LineConte
         // Inline level containers (<span>) don't generate inline runs.
         if (lineRun->isContainerStart() || lineRun->isContainerEnd())
             continue;
-        // Collapsed line runs don't generate display runs.
-        if (lineRun->isVisuallyEmpty())
+        // Completely collapsed line runs don't generate display runs.
+        if (lineRun->isCollapsedToZeroAdvanceWidth())
             continue;
         formattingState.addInlineRun(lineRun->displayRun(), currentLine);
     }
@@ -439,7 +449,7 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayout::LineConte
         auto& layoutBox = lineRun->layoutBox();
         auto& displayBox = formattingState.displayBox(layoutBox);
 
-        if (lineRun->isLineBreak()) {
+        if (lineRun->isForcedLineBreak()) {
             displayBox.setTopLeft(logicalRect.topLeft());
             displayBox.setContentBoxWidth(logicalRect.width());
             displayBox.setContentBoxHeight(logicalRect.height());
@@ -480,15 +490,14 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayout::LineConte
             const Line::Run* previousLineRun = !index ? nullptr : lineRuns[index - 1].get();
             // FIXME take content breaking into account when part of the layout box is on the previous line.
             auto firstInlineRunForLayoutBox = !previousLineRun || &previousLineRun->layoutBox() != &layoutBox;
-            auto logicalWidth = lineRun->isVisuallyEmpty() ? LayoutUnit() : logicalRect.width();
             if (firstInlineRunForLayoutBox) {
                 // Setup display box for the associated layout box.
                 displayBox.setTopLeft(logicalRect.topLeft());
-                displayBox.setContentBoxWidth(logicalWidth);
+                displayBox.setContentBoxWidth(logicalRect.width());
                 displayBox.setContentBoxHeight(logicalRect.height());
             } else {
                 // FIXME fix it for multirun/multiline.
-                displayBox.setContentBoxWidth(displayBox.contentBoxWidth() + logicalWidth);
+                displayBox.setContentBoxWidth(displayBox.contentBoxWidth() + logicalRect.width());
             }
             continue;
         }

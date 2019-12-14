@@ -25,17 +25,42 @@
 
 WI.LocalScript = class LocalScript extends WI.Script
 {
-    constructor(target, url, sourceType, text)
+    constructor(target, url, sourceURL, sourceType, source, {injected, editable} = {})
     {
-        super(target, null, WI.TextRange.fromText(text), url, sourceType);
+        const id = null;
+        super(target, id, WI.TextRange.fromText(source), url, sourceType, injected, sourceURL);
 
-        this._text = text;
+        this._editable = !!editable;
+
+        // Finalize WI.SourceCode.
+        const base64Encoded = false;
+        const mimeType = "text/javascript";
+        this._originalRevision = new WI.SourceCodeRevision(this, source, base64Encoded, mimeType);
+        this._currentRevision = this._originalRevision;
     }
 
     // Public
 
+    get editable() { return this._editable; }
+
+    get supportsScriptBlackboxing()
+    {
+        return false;
+    }
+
     requestContentFromBackend()
     {
-        return Promise.resolve({scriptSource: this._text});
+        return Promise.resolve({
+            scriptSource: this._originalRevision.content,
+        });
+    }
+
+    // Protected
+
+    handleCurrentRevisionContentChange()
+    {
+        super.handleCurrentRevisionContentChange();
+
+        this._range = WI.TextRange.fromText(this._currentRevision.content);
     }
 };

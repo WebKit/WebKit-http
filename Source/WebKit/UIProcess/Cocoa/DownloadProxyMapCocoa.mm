@@ -27,6 +27,8 @@
 #import "DownloadProxyMap.h"
 
 #if PLATFORM(IOS_FAMILY)
+#import <wtf/BlockPtr.h>
+#import <wtf/WeakPtr.h>
 #import <UIKit/UIKit.h>
 #endif
 

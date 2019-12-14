@@ -371,7 +371,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         registerURLSchemeAsDisplayIsolated(scheme);
 
     for (auto& scheme : parameters.urlSchemesRegisteredAsCORSEnabled)
-        registerURLSchemeAsCORSEnabled(scheme);
+        LegacySchemeRegistry::registerURLSchemeAsCORSEnabled(scheme);
 
     for (auto& scheme : parameters.urlSchemesRegisteredAsAlwaysRevalidated)
         registerURLSchemeAsAlwaysRevalidated(scheme);
@@ -559,9 +559,10 @@ void WebProcess::registerURLSchemeAsDisplayIsolated(const String& urlScheme) con
     LegacySchemeRegistry::registerURLSchemeAsDisplayIsolated(urlScheme);
 }
 
-void WebProcess::registerURLSchemeAsCORSEnabled(const String& urlScheme) const
+void WebProcess::registerURLSchemeAsCORSEnabled(const String& urlScheme)
 {
     LegacySchemeRegistry::registerURLSchemeAsCORSEnabled(urlScheme);
+    ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterURLSchemesAsCORSEnabled({ urlScheme }), 0);
 }
 
 void WebProcess::registerURLSchemeAsAlwaysRevalidated(const String& urlScheme) const
@@ -1172,6 +1173,7 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
 #if HAVE(AUDIT_TOKEN)
         m_networkProcessConnection->setNetworkProcessAuditToken(WTFMove(connectionInfo.auditToken));
 #endif
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::RegisterURLSchemesAsCORSEnabled(WebCore::LegacySchemeRegistry::allURLSchemesRegisteredAsCORSEnabled()), 0);
     }
     
     return *m_networkProcessConnection;
@@ -1375,18 +1377,16 @@ void WebProcess::resetAllGeolocationPermissions()
 }
 #endif
 
-void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
+void WebProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<void()>&& completionHandler)
 {
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::prepareToSuspend() isSuspensionImminent: %d", this, isSuspensionImminent);
     SetForScope<bool> suspensionScope(m_isSuspending, true);
     m_processIsSuspended = true;
 
 #if PLATFORM(COCOA)
     if (m_processType == ProcessType::PrewarmedWebContent) {
-        if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
-            RELEASE_LOG(ProcessSuspension, "%p - WebProcess::actualPrepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
-            parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
-        }
-        return;
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::prepareToSuspend() Process is ready to suspend", this);
+        return completionHandler();
     }
 #endif
 
@@ -1400,7 +1400,7 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
         MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
 
     freezeAllLayerTrees();
-    
+
 #if PLATFORM(COCOA)
     destroyRenderingResources();
 #endif
@@ -1414,66 +1414,15 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     updateFreezerStatus();
 #endif
 
-    markAllLayersVolatile([this, shouldAcknowledgeWhenReadyToSuspend](bool success) {
+    markAllLayersVolatile([this, completionHandler = WTFMove(completionHandler)](bool success) mutable {
         if (success)
             RELEASE_LOG(ProcessSuspension, "%p - WebProcess::markAllLayersVolatile() Successfuly marked all layers as volatile", this);
         else
             RELEASE_LOG(ProcessSuspension, "%p - WebProcess::markAllLayersVolatile() Failed to mark all layers as volatile", this);
 
-        if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
-            RELEASE_LOG(ProcessSuspension, "%p - WebProcess::actualPrepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
-            parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
-        }
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::prepareToSuspend() Process is ready to suspend", this);
+        completionHandler();
     });
-}
-
-void WebProcess::processWillSuspendImminently()
-{
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently() BEGIN", this);
-    actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently() END", this);
-}
-
-void WebProcess::prepareToSuspend()
-{
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::prepareToSuspend()", this);
-    actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::Yes);
-}
-
-void WebProcess::cancelPrepareToSuspend()
-{
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::cancelPrepareToSuspend()", this);
-
-    m_processIsSuspended = false;
-
-#if PLATFORM(COCOA)
-    if (m_processType == ProcessType::PrewarmedWebContent)
-        return;
-#endif
-
-    unfreezeAllLayerTrees();
-
-#if PLATFORM(IOS_FAMILY)
-    m_webSQLiteDatabaseTracker.setIsSuspended(false);
-    SQLiteDatabase::setIsDatabaseOpeningForbidden(false);
-    accessibilityProcessSuspendedNotification(false);
-#endif
-
-#if ENABLE(VIDEO)
-    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
-        platformMediaSessionManager->processDidResume();
-    resumeAllMediaBuffering();
-#endif
-
-    // If we've already finished cleaning up and sent ProcessReadyToSuspend, we
-    // shouldn't send DidCancelProcessSuspension; the UI process strictly expects one or the other.
-    if (!m_pageMarkingLayersAsVolatileCounter)
-        return;
-
-    cancelMarkAllLayersVolatile();
-
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::cancelPrepareToSuspend() Sending DidCancelProcessSuspension IPC message", this);
-    parentProcessConnection()->send(Messages::WebProcessProxy::DidCancelProcessSuspension(), 0);
 }
 
 void WebProcess::markAllLayersVolatile(WTF::Function<void(bool)>&& completionHandler)
@@ -1803,6 +1752,16 @@ void WebProcess::registerServiceWorkerClients()
     ServiceWorkerProvider::singleton().registerServiceWorkerClients();
 }
 
+void WebProcess::addServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier identifier)
+{
+    m_swRegistrationCounts.add(identifier);
+}
+
+bool WebProcess::removeServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier identifier)
+{
+    ASSERT(m_swRegistrationCounts.contains(identifier));
+    return m_swRegistrationCounts.remove(identifier);
+}
 #endif
 
 #if PLATFORM(MAC)

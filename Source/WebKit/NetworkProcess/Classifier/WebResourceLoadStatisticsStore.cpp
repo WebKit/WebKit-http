@@ -162,8 +162,6 @@ WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(NetworkSession& n
             m_statisticsStore = makeUnique<ResourceLoadStatisticsDatabaseStore>(*this, m_statisticsQueue, shouldIncludeLocalhost, resourceLoadStatisticsDirectory, sessionID);
 
             auto memoryStore = makeUnique<ResourceLoadStatisticsMemoryStore>(*this, m_statisticsQueue, shouldIncludeLocalhost);
-            auto persistentStore = makeUnique<ResourceLoadStatisticsPersistentStorage>(*memoryStore, m_statisticsQueue, resourceLoadStatisticsDirectory);
-
             downcast<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore.get()).populateFromMemoryStore(*memoryStore);
         } else {
             m_statisticsStore = makeUnique<ResourceLoadStatisticsMemoryStore>(*this, m_statisticsQueue, shouldIncludeLocalhost);
@@ -221,6 +219,18 @@ void WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore()
         semaphore.signal();
     });
     semaphore.wait();
+}
+
+void WebResourceLoadStatisticsStore::populateMemoryStoreFromDisk(CompletionHandler<void()>&& completionHandler)
+{
+    ASSERT(RunLoop::isMain());
+    
+    postTask([this, completionHandler = WTFMove(completionHandler)]() mutable {
+        if (m_persistentStorage)
+            m_persistentStorage->populateMemoryStoreFromDisk();
+
+        postTaskReply(WTFMove(completionHandler));
+    });
 }
 
 void WebResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode(bool value, CompletionHandler<void()>&& completionHandler)
@@ -444,6 +454,25 @@ void WebResourceLoadStatisticsStore::hasCookies(const RegistrableDomain& domain,
     }
     
     completionHandler(false);
+}
+
+void WebResourceLoadStatisticsStore::setIsThirdPartyCookieBlockingEnabled(bool enabled)
+{
+    ASSERT(RunLoop::isMain());
+
+    if (m_networkSession) {
+        if (auto* storageSession = m_networkSession->networkStorageSession())
+            storageSession->setIsThirdPartyCookieBlockingEnabled(enabled);
+        else
+            ASSERT_NOT_REACHED();
+    }
+
+    postTask([this, enabled]() {
+        if (!m_statisticsStore)
+            return;
+
+        m_statisticsStore->setIsThirdPartyCookieBlockingEnabled(enabled);
+    });
 }
 
 void WebResourceLoadStatisticsStore::didCreateNetworkProcess()

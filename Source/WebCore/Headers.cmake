@@ -335,6 +335,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     css/Rect.h
     css/StyleColor.h
     css/StyleProperties.h
+    css/StyleRuleType.h
     css/StyleSheet.h
     css/StyleSheetContents.h
     css/StyleSheetList.h
@@ -503,6 +504,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     editing/TextGranularity.h
     editing/TextIterator.h
     editing/TextIteratorBehavior.h
+    editing/TextManipulationController.h
     editing/UndoStep.h
     editing/VisiblePosition.h
     editing/VisibleSelection.h
@@ -539,6 +541,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     html/CollectionType.h
     html/DOMTokenList.h
     html/DataListSuggestionInformation.h
+    html/EnterKeyHint.h
     html/FeaturePolicy.h
     html/FormAssociatedElement.h
     html/FormNamedItem.h

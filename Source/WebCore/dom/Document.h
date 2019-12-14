@@ -196,6 +196,7 @@ class StyleSheet;
 class StyleSheetContents;
 class StyleSheetList;
 class Text;
+class TextManipulationController;
 class TextResourceDecoder;
 class TreeWalker;
 class UndoManager;
@@ -555,8 +556,7 @@ public:
     bool gotoAnchorNeededAfterStylesheetsLoad() { return m_gotoAnchorNeededAfterStylesheetsLoad; }
     void setGotoAnchorNeededAfterStylesheetsLoad(bool b) { m_gotoAnchorNeededAfterStylesheetsLoad = b; }
 
-    void updateElementsAffectedByMediaQueries();
-    void evaluateMediaQueriesAndReportChanges();
+    void evaluateMediaQueryList();
 
     FormController& formController();
     Vector<String> formElementsState() const;
@@ -1359,10 +1359,6 @@ public:
     bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
     void updateViewportUnitsOnResize();
 
-    void setNeedsDOMWindowResizeEvent();
-    void setNeedsVisualViewportResize();
-    void runResizeSteps();
-
     WEBCORE_EXPORT void addAudioProducer(MediaProducer&);
     WEBCORE_EXPORT void removeAudioProducer(MediaProducer&);
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
@@ -1380,6 +1376,7 @@ public:
     void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     void playbackTargetAvailabilityDidChange(uint64_t, bool);
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
+    void playbackTargetPickerWasDismissed(uint64_t);
 #endif
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
@@ -1556,6 +1553,9 @@ public:
     HTMLVideoElement* pictureInPictureElement() const;
     void setPictureInPictureElement(HTMLVideoElement*);
 #endif
+
+    WEBCORE_EXPORT TextManipulationController& textManipulationController();
+    TextManipulationController* textManipulationControllerIfExists() { return m_textManipulationController.get(); }
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1962,6 +1962,7 @@ private:
 
     MutationObserverOptions m_mutationObserverTypes { 0 };
 
+    bool m_activeParserWasAborted { false };
     bool m_writeRecursionIsTooDeep { false };
     bool m_wellFormed { false };
     bool m_createRenderers { true };
@@ -2011,8 +2012,6 @@ private:
     bool m_hasPreparedForDestruction { false };
 
     bool m_hasStyleWithViewportUnits { false };
-    bool m_needsDOMWindowResizeEvent { false };
-    bool m_needsVisualViewportResizeEvent { false };
     bool m_isTimerThrottlingEnabled { false };
     bool m_isSuspended { false };
 
@@ -2084,6 +2083,8 @@ private:
 #if ENABLE(PICTURE_IN_PICTURE_API)
     WeakPtr<HTMLVideoElement> m_pictureInPictureElement;
 #endif
+
+    std::unique_ptr<TextManipulationController> m_textManipulationController;
 
     HashMap<Element*, ElementIdentifier> m_identifiedElementsMap;
 };

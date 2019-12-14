@@ -1,3 +1,901 @@
+2019-10-07  Jer Noble  <jer.noble@apple.com>
+
+        Implement the Remote Playback API.
+        https://bugs.webkit.org/show_bug.cgi?id=162971
+
+        Reviewed by Youenn Fablet.
+
+        Add RemotePlayback as a common identifier, needed for bindings due to "EnabledAtRuntime=RemotePlayback".
+
+        * runtime/CommonIdentifiers.h:
+
+2019-10-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add fast path for String#localeCompare
+        https://bugs.webkit.org/show_bug.cgi?id=202676
+
+        Reviewed by Mark Lam.
+
+        When String#localeCompare is invoked, we are setting up UCharIterator to iterate code points.
+        But this is too slow since its implementation is invoking function pointer for each code point
+        to get next code point. Strings have many code points typically. Invoking function pointer so many times
+        takes too much time just for locale-aware comparison.
+
+        This patch revises the implementation by adding 2 fast path and 1 slow path. The slow path requires extra memory,
+        but it is soon released (not GC-managed).
+
+        1. If both strings are ASCII (not Latin1), we use ucol_strcollUTF8.
+        2. If both strings are 16-bit, we use ucol_strcoll.
+        3. Otherwise, we convert strings to 16-bit strings, and then we use ucol_strcoll.
+
+        JetStream2/cdjs is improved from 56 to 85 on iMac Pro (50%).
+
+        * runtime/IntlCollator.cpp:
+        (JSC::IntlCollator::compareStrings):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionMake16BitStringIfPossible):
+        (JSC::JSDollarVM::finishCreation):
+
+2019-10-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove JSPromiseDeferred
+        https://bugs.webkit.org/show_bug.cgi?id=203400
+
+        Reviewed by Keith Miller.
+
+        This patch optimizes the existing Promise usage in C++. We remove JSPromiseDeferred and JSInternalPromiseDeferred, use JSPromise and JSInternalPromise directly.
+        JSC now offers first `resolve` and `reject` operations to `JSPromise` without separating `resolve` and `reject` function from `JSPromise`. Then, we do not need
+        to have a tuple of these functions and promise, and we can just use `JSPromise::resolve` and `JSPromise::reject`. This removes unnecessary function allocations
+        and cell allocation for JSPromiseDeferred and makes API simple.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::JSAPIGlobalObject::moduleLoaderImportModule):
+        (JSC::JSAPIGlobalObject::moduleLoaderFetch):
+        (JSC::JSAPIGlobalObject::loadAndEvaluateJSScriptModule):
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeDeferredPromise):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderFetch):
+        (runJSC):
+        * runtime/Completion.cpp:
+        (JSC::rejectPromise):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::newPromiseCapabilityFunction const):
+        (JSC::JSGlobalObject::resolvePromiseFunction const):
+        (JSC::JSGlobalObject::rejectPromiseFunction const):
+        (JSC::JSGlobalObject::numberProtoToStringFunction const):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+        * runtime/JSInternalPromise.h:
+        * runtime/JSInternalPromiseDeferred.cpp: Removed.
+        * runtime/JSInternalPromiseDeferred.h: Removed.
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::importModule):
+        (JSC::JSModuleLoader::resolve):
+        (JSC::JSModuleLoader::fetch):
+        (JSC::moduleLoaderParseModule):
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::flags const):
+        (JSC::JSPromise::isHandled const):
+        (JSC::JSPromise::createDeferredData):
+        (JSC::JSPromise::resolvedPromise):
+        (JSC::callFunction):
+        (JSC::JSPromise::resolve):
+        (JSC::JSPromise::reject):
+        * runtime/JSPromise.h:
+        * runtime/JSPromiseDeferred.cpp: Removed.
+        * runtime/JSPromiseDeferred.h: Removed.
+        * runtime/PromiseTimer.cpp: Renamed from Source/JavaScriptCore/runtime/PromiseDeferredTimer.cpp.
+        (JSC::PromiseTimer::PromiseTimer):
+        (JSC::PromiseTimer::doWork):
+        (JSC::PromiseTimer::runRunLoop):
+        (JSC::PromiseTimer::addPendingPromise):
+        (JSC::PromiseTimer::hasPendingPromise):
+        (JSC::PromiseTimer::hasDependancyInPendingPromise):
+        (JSC::PromiseTimer::cancelPendingPromise):
+        (JSC::PromiseTimer::scheduleWorkSoon):
+        * runtime/PromiseTimer.h: Renamed from Source/JavaScriptCore/runtime/PromiseDeferredTimer.h.
+        (JSC::PromiseTimer::create):
+        * runtime/StringRecursionChecker.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::reject):
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::JSWebAssembly::webAssemblyModuleValidateAsync):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::JSWebAssembly::instantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::JSWebAssembly::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+
+2019-10-28  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][WPE] Fix various non-unified build issues introduced since r251436
+        https://bugs.webkit.org/show_bug.cgi?id=203492
+
+        Reviewed by Alex Christensen and Mark Lam.
+
+        * bytecode/BytecodeIndex.cpp: Add missing inclusion of wtf/PrintStream.h
+        * bytecode/ICStatusUtils.h: Add missing inclusion if BytecodeIndex.h
+        * bytecode/InstructionStream.h: Ditto.
+        * debugger/DebuggerLocation.cpp: Add missing inclusion of JSCellInlines.h
+        * dfg/DFGLazyJSValue.h: Add missing inclusion of GPRInfo.h
+        * ftl/FTLOSREntry.h: Add missing inclusion of BytecodeIndex.h
+        * heap/CompleteSubspaceInlines.h: Add missing inclusions of CompleteSubspace.h and VM.h
+        * inspector/JavaScriptCallFrame.h:
+        (Inspector::JavaScriptCallFrame::thisValue const): Prepend namespace to the JSC::VM type.
+        * jit/JITDisassembler.h: Add missing inclusion of BytecodeIndex.h
+        * jit/JITWorklist.h: Ditto.
+        * runtime/JSImmutableButterfly.cpp: Add missing inclusion of ButterflyInlines.h
+        * runtime/ObjectInitializationScope.h: Add missing inclusion of VM.h
+        * runtime/StringRecursionChecker.h: Add missing inclusion of GetVM.h
+        * runtime/VMTraps.cpp: Add missing inclusion of CallFrameInlines.h
+        * tools/Integrity.cpp: Add missing inclusion of Integrity.h, HeapCellInlines.h, and
+        JSCellInlines.h
+        * wasm/WasmOperations.cpp: Add missing inclusion of JSCJSValueInlines.h and
+        JSGlobalObjectInlines.h
+        * wasm/WasmOperations.h: Add missing inclusion of IndexingType.h, JSCJSValue.h, and
+        WasmExceptionType.h; add forward declarations for JSArrray and Wasm::Signature.
+        * wasm/js/JSWebAssembly.cpp: Add missing inclusion of WasmOperations.h
+        * wasm/js/JSWebAssemblyHelpers.h: Add missing inclusion of Error.h and JSArrayBufferView.h
+
+2019-10-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Lexer flags should be an OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=203032
+
+        Reviewed by Yusuke Suzuki.
+
+        LexerFlags has an annoyingly misspelled value LexexFlagsDontBuildKeywords;
+        let's use this as an opportunity to modernize this enum.
+
+        * parser/ASTBuilder.h:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        (JSC::Lexer<CharacterType>::parseIdentifierSlowCase):
+        (JSC::Lexer<T>::lexWithoutClearingLineTerminator):
+        * parser/Lexer.h:
+        (JSC::Lexer<T>::lexExpectIdentifier):
+        (JSC::Lexer<T>::lex):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Parser::next):
+        (JSC::Parser::nextWithoutClearingLineTerminator):
+        (JSC::Parser::nextExpectIdentifier):
+        (JSC::Parser::consume):
+        * parser/SyntaxChecker.h:
+
+2019-10-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Optimize Promise runtime functions
+        https://bugs.webkit.org/show_bug.cgi?id=203454
+
+        Reviewed by Keith Miller.
+
+        This patch optimizes Promise runtime functions a bit.
+
+        1. Add fast paths to Promise.resolve / Promise.reject.
+        2. Remove state check in async-functions. Unlike generators, async-function's next function is not exposed to users.
+           It is called by runtime so we can control state perfectly.
+        3. Add "enqueueJob" name to make sampling profiler work for this function.
+        4. Make Promise/InternalPromise constructor inlinable size
+
+                                              ToT                     Patched
+
+            promise-creation-many       25.5794+-0.3681     ^     22.5410+-0.3229        ^ definitely 1.1348x faster
+            promise-resolve             32.3793+-0.4252     ^      9.4219+-0.1114        ^ definitely 3.4366x faster
+            promise-reject             108.5968+-0.7741     ^     36.9383+-0.3770        ^ definitely 2.9400x faster
+
+        * builtins/AsyncFunctionPrototype.js:
+        (globalPrivate.asyncFunctionResume):
+        * builtins/PromiseConstructor.js:
+        (reject):
+        (resolve):
+        (nakedConstructor.Promise.reject):
+        (nakedConstructor.Promise):
+        (nakedConstructor.InternalPromise.reject):
+        (nakedConstructor.InternalPromise):
+        (nakedConstructor.Promise.resolve): Deleted.
+        (nakedConstructor.InternalPromise.resolve): Deleted.
+        * builtins/PromiseOperations.js:
+        (globalPrivate.newPromiseCapability.resolve):
+        (globalPrivate.newPromiseCapability.reject):
+        (globalPrivate.newPromiseCapability):
+        (globalPrivate.promiseResolveSlow):
+        (globalPrivate.promiseRejectSlow):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2019-10-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use FTLOutput::callWithoutSideEffects if operation does not have side effects
+        https://bugs.webkit.org/show_bug.cgi?id=203485
+
+        Reviewed by Mark Lam.
+
+        This makes Call's Effect none, and encourages optimizations around it.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::doubleToInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::sensibleDoubleToInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::jsValueToStrictInt52):
+
+2019-10-28  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        dumpSpeculation in SpeculatedType.cpp prints to the wrong stream and has wrong capitalization for NaN
+        https://bugs.webkit.org/show_bug.cgi?id=203486
+
+        Reviewed by Antti Koivisto.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+
+2019-10-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Windows][Clang] error LNK2001: unresolved external symbol "void * __cdecl JSC::allocateCell<class JSC::JSGenericTypedArrayView<struct JSC::Float32Adaptor> >(class JSC::Heap &,unsigned __int64)"
+        https://bugs.webkit.org/show_bug.cgi?id=203483
+
+        Unreviewed build fix for clang-cl builds.
+
+        * runtime/JSGenericTypedArrayViewInlines.h: Added #include "JSCellInlines.h".
+
+2019-10-26  Chris Lord  <clord@igalia.com>
+
+        Put OffscreenCanvas behind a build flag
+        https://bugs.webkit.org/show_bug.cgi?id=203146
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-10-25  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: support emulateUserGesture parameter in Runtime.callFunctionOn
+        https://bugs.webkit.org/show_bug.cgi?id=200262
+
+        Reviewed by Devin Rousso.
+
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/protocol/Runtime.json:
+
+2019-10-24  Mark Lam  <mark.lam@apple.com>
+
+        Move JSC::Register inline methods into RegisterInlines.h.
+        https://bugs.webkit.org/show_bug.cgi?id=203391
+
+        Reviewed by Yusuke Suzuki and Keith Miller.
+
+        We're doing this because:
+        1. RegisterInlines.h is the canonical place to put inline Register methods.
+        2. It helps reduce build time.
+           e.g. build-jsc went from 208.02 to 196.81 seconds (about a 5% reduction).
+        3. This enables experimental work to box JSCells in JSValue.
+
+        This patch also handles the fallout of this change, which necessitates more
+        inline methods being moved from <file>.h to their respective <file>Inlines.h.
+
+        JSArray.h used to include ButterflyInlines.h and JSCellInlines.h.  This is a
+        violation of inclusion ordering (.h should not #include Inlines.h).  This
+        violation has been removed.
+
+        * API/JSAPIGlobalObject.mm:
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.h:
+        (JSC::CallFrame::r): Deleted.
+        (JSC::CallFrame::uncheckedR): Deleted.
+        * bytecode/MetadataTable.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        * interpreter/CallFrame.h:
+        (JSC::CallFrame::guaranteedJSValueCallee const): Deleted.
+        (JSC::CallFrame::jsCallee const): Deleted.
+        (JSC::CallFrame::codeBlock const): Deleted.
+        (JSC::CallFrame::unsafeCodeBlock const): Deleted.
+        (JSC::CallFrame::scope const): Deleted.
+        (JSC::CallFrame::topOfFrame): Deleted.
+        (JSC::CallFrame::setScope): Deleted.
+        (JSC::CallFrame::setCallee): Deleted.
+        (JSC::CallFrame::setCodeBlock): Deleted.
+        * interpreter/CallFrameInlines.h:
+        (JSC::CallFrame::r):
+        (JSC::CallFrame::uncheckedR):
+        (JSC::CallFrame::guaranteedJSValueCallee const):
+        (JSC::CallFrame::jsCallee const):
+        (JSC::CallFrame::codeBlock const):
+        (JSC::CallFrame::unsafeCodeBlock const):
+        (JSC::CallFrame::lexicalGlobalObject const):
+        (JSC::CallFrame::setCallee):
+        (JSC::CallFrame::setCodeBlock):
+        (JSC::CallFrame::setScope):
+        (JSC::CallFrame::scope const):
+        (JSC::CallFrame::topOfFrame):
+        * interpreter/Interpreter.cpp:
+        * interpreter/ProtoCallFrame.h:
+        (JSC::ProtoCallFrame::init): Deleted.
+        * interpreter/ProtoCallFrameInlines.h: Added.
+        (JSC::ProtoCallFrame::init):
+        (JSC::ProtoCallFrame::callee const):
+        (JSC::ProtoCallFrame::setCallee):
+        (JSC::ProtoCallFrame::codeBlock const):
+        (JSC::ProtoCallFrame::setCodeBlock):
+        * interpreter/Register.h:
+        (JSC::Register::callFrame const): Deleted.
+        (JSC::Register::codeBlock const): Deleted.
+        (JSC::Register::asanUnsafeCodeBlock const): Deleted.
+        * interpreter/RegisterInlines.h: Added.
+        (JSC::Register::callFrame const):
+        (JSC::Register::codeBlock const):
+        (JSC::Register::asanUnsafeCodeBlock const):
+        (JSC::Register::object const):
+        (JSC::Register::operator=):
+        (JSC::Register::scope const):
+        * interpreter/StackVisitor.cpp:
+        * jit/AssemblyHelpers.h:
+        * llint/LLIntSlowPaths.cpp:
+        * runtime/ArrayStorage.h:
+        (JSC::ArrayStorage::optimalVectorLength): Deleted.
+        * runtime/ArrayStorageInlines.h: Added.
+        (JSC::ArrayStorage::availableVectorLength):
+        (JSC::ArrayStorage::optimalVectorLength):
+        (JSC::ArrayStorage::totalSize const):
+        * runtime/ButterflyInlines.h:
+        * runtime/ClassInfo.h:
+        * runtime/GetVM.h: Added.
+        * runtime/JSArray.h:
+        * runtime/JSArrayInlines.h:
+        * runtime/JSCellInlines.h:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSObject.h:
+        (JSC::Register::object const): Deleted.
+        (JSC::Register::operator=): Deleted.
+        * runtime/JSObjectInlines.h:
+        * runtime/JSScope.h:
+        (JSC::Register::operator=): Deleted.
+        (JSC::Register::scope const): Deleted.
+        (JSC::CallFrame::lexicalGlobalObject const): Deleted.
+        * runtime/JSString.h:
+        * runtime/PropertyNameArray.h:
+        * runtime/PropertySlot.h:
+        * runtime/VMInlines.h:
+        * tools/HeapVerifier.cpp:
+        * wasm/js/WebAssemblyFunction.cpp:
+
+2019-10-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r251468): Build, test failures in 32-bit JSC after BytecodeIndex refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=203290
+
+        Reviewed by Keith Miller.
+
+        * bytecode/BytecodeIndex.h:
+        (JSC::BytecodeIndex::BytecodeIndex):
+        Add a BytecodeIndex(WTF::HashTableDeletedValueType) constructor.
+        * bytecode/CodeOrigin.h:
+        (JSC::CodeOrigin::CodeOrigin):
+        Have the CodeOrigin(WTF::HashTableDeletedValueType) constructor
+        initialize the BytecodeIndex object accordingly, as a deleted value.
+        (JSC::CodeOrigin::isHashTableDeletedValue const):
+        Test BytecodeIndex object's deleted-value condition through the
+        corresponding BytecodeIndex::isHashTableDeletedValue() method.
+        * profiler/ProfilerOrigin.h:
+        (JSC::Profiler::Origin::Origin):
+        Simplify the m_bytecodeIndex member initialization for a deleted value.
+        (JSC::Profiler::Origin::operator! const):
+        Fix the negation operator, returning true if the m_bytecodeIndex is
+        either empty or deleted.
+
+2019-10-24  Sihui Liu  <sihui_liu@apple.com>
+
+        [ Mac WK1 ] REGRESSION (r251261): Layout Test inspector/console/webcore-logging.html is consistently Failing
+        https://bugs.webkit.org/show_bug.cgi?id=203173
+        <rdar://problem/56424721>
+
+        Hold a strong reference to JSGlobalOjbect in ConsoleMessage so that object is not garbage collected before
+        WebConsoleAgent::frameWindowDiscarded.
+
+        Covered by existing test: inspector/console/webcore-logging.html.
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::ConsoleMessage):
+        (Inspector::ConsoleMessage::clear):
+        * inspector/ConsoleMessage.h:
+
+2019-10-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Properly organize wasm operations
+        https://bugs.webkit.org/show_bug.cgi?id=203360
+
+        Reviewed by Keith Miller.
+
+        This patch cleans up operation functions called from Wasm.
+
+        1. Properly name these operations with prefix "operation".
+        2. Do not use lambda. Define function with JIT_OPERATION.
+        3. Consolidate them in WasmOperations.cpp.
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::addRefFunc):
+        (JSC::Wasm::AirIRGenerator::addTableGet):
+        (JSC::Wasm::AirIRGenerator::addTableSet):
+        (JSC::Wasm::AirIRGenerator::addTableSize):
+        (JSC::Wasm::AirIRGenerator::addTableGrow):
+        (JSC::Wasm::AirIRGenerator::addTableFill):
+        (JSC::Wasm::AirIRGenerator::addGrowMemory):
+        (JSC::Wasm::AirIRGenerator::emitWriteBarrierForJSWrapper):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Popcnt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Popcnt>):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addTableGet):
+        (JSC::Wasm::B3IRGenerator::addTableSet):
+        (JSC::Wasm::B3IRGenerator::addRefFunc):
+        (JSC::Wasm::B3IRGenerator::addTableSize):
+        (JSC::Wasm::B3IRGenerator::addTableGrow):
+        (JSC::Wasm::B3IRGenerator::addTableFill):
+        (JSC::Wasm::B3IRGenerator::addGrowMemory):
+        (JSC::Wasm::B3IRGenerator::emitWriteBarrierForJSWrapper):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32Popcnt>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64Popcnt>):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::getWasmTableElement): Deleted.
+        (JSC::Wasm::setWasmTableElement): Deleted.
+        (JSC::Wasm::doWasmTableGrow): Deleted.
+        (JSC::Wasm::doWasmTableFill): Deleted.
+        (JSC::Wasm::doWasmRefFunc): Deleted.
+        * wasm/WasmInstance.h:
+        * wasm/WasmOperations.cpp:
+        (JSC::Wasm::operationWasmUnwind):
+        (JSC::Wasm::operationConvertToF64):
+        (JSC::Wasm::operationConvertToI32):
+        (JSC::Wasm::operationConvertToF32):
+        (JSC::Wasm::operationIterateResults):
+        (JSC::Wasm::operationAllocateResultsArray):
+        (JSC::Wasm::operationWasmWriteBarrierSlowPath):
+        (JSC::Wasm::operationPopcount32):
+        (JSC::Wasm::operationPopcount64):
+        (JSC::Wasm::operationGrowMemory):
+        (JSC::Wasm::operationGetWasmTableElement):
+        (JSC::Wasm::setWasmTableElement):
+        (JSC::Wasm::operationSetWasmTableElement):
+        (JSC::Wasm::operationWasmTableGrow):
+        (JSC::Wasm::operationWasmTableFill):
+        (JSC::Wasm::operationWasmRefFunc):
+        (JSC::Wasm::operationGetWasmTableSize):
+        (JSC::Wasm::operationWasmToJSException):
+        * wasm/WasmOperations.h:
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::marshallJSResult):
+        (JSC::Wasm::allocateResultsArray): Deleted.
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::wasmToJS):
+        (JSC::Wasm::operationWasmToJSException): Deleted.
+        * wasm/js/WasmToJS.h:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+
+2019-10-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove LLInt's Callee size assumption
+        https://bugs.webkit.org/show_bug.cgi?id=203282
+
+        Reviewed by Mark Lam.
+
+        LLInt code still assumes that Callee is always allocated in non-LargeAllocation.
+        This patch removes this assumption by following three changes.
+
+        1. If we can get CodeBlock, we get VM& from CodeBlock.
+        2. In nativeCallTrampoline and internalFunctionCallTrampoline, we get VM& from JSGlobalObject. It involves one more pointer-chasing but it is OK
+           since this JSGlobalObject's VM* field will be touched in called native functions anyway. And this code is only used when we are not using JIT.
+        3. In exception handling code in LLInt, we get VM& from callee by checking LargeAllocation possibility. This is OK since it is only executed when
+           exception unwinding happens, and which is an expensive operation anyway.
+
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::headerSize):
+        * heap/WeakSet.h:
+        (JSC::WeakSet::WeakSet):
+        (JSC::WeakSet::vm const):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::vm const):
+        (JSC::JSGlobalObject::defaultCodeGenerationMode const):
+        * runtime/VM.h:
+        (JSC::WeakSet::heap const):
+
+2019-10-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [JSC] Get 32-bit ports back into building order
+        https://bugs.webkit.org/show_bug.cgi?id=203358
+
+        Reviewed by Carlos Garcia Campos.
+
+        Get JSC building again on 32-bit architectures after changes in r251468.
+        Some 32-bit code in LLint and JIT is brought back, and additional casts
+        around BytecodeIndex construction are added as necessary.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::setCurrentVPC):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        * jit/JITInlines.h:
+        (JSC::JIT::updateTopCallFrame):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_log_shadow_chicken_tail):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::emitGetByValWithCachedId):
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitPutByValWithCachedId):
+        (JSC::JIT::emit_op_try_get_by_id):
+        (JSC::JIT::emit_op_get_by_id_direct):
+        (JSC::JIT::emit_op_get_by_id):
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emit_op_put_by_id):
+        (JSC::JIT::emit_op_in_by_id):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2019-10-24  Paulo Matos  <pmatos@igalia.com>
+
+        Disable pichdr generation on MIPS for return location labels
+        https://bugs.webkit.org/show_bug.cgi?id=203040
+
+        Reviewed by Yusuke Suzuki.
+
+        Disable generation of pichdr for return location labels generated in
+        defineOSRExitReturnLabel. Since r250806 (Allow OSR exit to the LLInt),
+        MIPS was segfaulting since the pichdr after an OSR exit was corruption
+        the gp register.
+
+        * offlineasm/mips.rb:
+
+2019-10-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to inject "bootstrap" JavaScript into the page as the first script executed
+        https://bugs.webkit.org/show_bug.cgi?id=195847
+        <rdar://problem/48950551>
+
+        Reviewed by Joseph Pecoraro.
+
+        When debugging webpages, it's often useful to be able to swizzle various functions in order
+        to add extra logs for when they're called (e.g. `Event.prototype.preventDefault`). Sometimes
+        this can be difficult, such as if the page saves a copy of the function and references that
+        instead, in which case it would be helpful to have a way to guarantee that the swizzled code
+        is the first thing evaluated after the context is created.
+
+        This change adds support for that concept, which has been named Inspector Bootstrap Script.
+        Once created, it will be injected as the first user script to every new global object that
+        is created afterwards. Modifications to the Inspector Bootstrap Script take effect for all
+        new global objects created _after_ the modification happened.
+
+        * inspector/protocol/Page.json:
+        Add `setBoostrapScript` command.
+
+2019-10-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove wasmAwareLexicalGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=203351
+
+        Reviewed by Mark Lam.
+
+        CallFrame::lexicalGlobalObject() is no longer called frequently. We can just make the current wasmAwareLexicalGlobalObject as CallFrame::lexicalGlobalObject,
+        and remove wasmAwareLexicalGlobalObject function.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::hasBreakpoint):
+        (JSC::Debugger::breakProgram):
+        (JSC::lexicalGlobalObjectForCallFrame):
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::deprecatedVMEntryGlobalObject const):
+        (JSC::DebuggerCallFrame::scope):
+        (JSC::DebuggerCallFrame::thisValue const):
+        (JSC::DebuggerCallFrame::evaluateWithScopeExtension):
+        * debugger/DebuggerCallFrame.h:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::thisObject const):
+        * inspector/JavaScriptCallFrame.h:
+        (Inspector::JavaScriptCallFrame::thisValue const):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::lexicalGlobalObjectFromWasmCallee const):
+        (JSC::CallFrame::wasmAwareLexicalGlobalObject): Deleted.
+        * interpreter/CallFrame.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::notifyDebuggerOfUnwinding):
+        (JSC::Interpreter::debug):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::createArguments):
+        * interpreter/StackVisitor.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_throw_stack_overflow_error):
+        * runtime/JSFunction.cpp:
+        (JSC::RetrieveArgumentsFunctor::RetrieveArgumentsFunctor):
+        (JSC::RetrieveArgumentsFunctor::operator() const):
+        (JSC::retrieveArguments):
+        * runtime/JSScope.h:
+        (JSC::CallFrame::lexicalGlobalObject const):
+        * runtime/RegExpInlines.h:
+        (JSC::RegExp::matchInline):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::wasmToJS):
+
+2019-10-23  Keith Miller  <keith_miller@apple.com>
+
+        Undo incidental change from BytecodeIndex class patch
+        https://bugs.webkit.org/show_bug.cgi?id=203339
+
+        Reviewed by Mark Lam.
+
+        It's not totally clear why we need to claim our bytecode index is
+        0 when we can't figure what the true index is. I'd rather unbreak
+        our build for now, however, and fix the underlying issue in
+        https://bugs.webkit.org/show_bug.cgi?id=203340
+
+        * runtime/Error.cpp:
+        (JSC::getBytecodeIndex):
+
+2019-10-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Figure out missing prepareCallOperation
+        https://bugs.webkit.org/show_bug.cgi?id=203285
+
+        Reviewed by Mark Lam.
+
+        We start using __builtin_frame_address to get CallFrame* in JIT operations. For the platform which is not supporting this API (MSVC),
+        we put frame-pointer to vm.topCallFrame in the caller side. The problem is that all Apple platform is now using __builtin_frame_address,
+        and we are not testing vm.topCallFrame version at all.
+
+        To find missing prepareCallOperation call, we introduce JITOperationPrologueCallFrameTracer. When USE(BUILTIN_FRAME_ADDRESS) is enabled and
+        if it is debug build, we anyway put frame-pointer to vm.topCallFrame. And after that, we ensure that vm.topCallFrame is the same to the
+        CallFrame* gained by __builtin_frame_address. By doing this, we can find places missing this call in debug build of Apple ports.
+
+        We also found that FTL's custom getter calling is putting wrong value to vm.topCallFrame. This patch fixes it too.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::emitRestoreArguments):
+        (JSC::DFG::operationCompileOSRExit):
+        (JSC::DFG::OSRExit::compileExit):
+        (JSC::DFG::operationDebugPrintSpeculationFailure):
+        (JSC::DFG::OSRExit::compileOSRExit): Deleted.
+        (JSC::DFG::OSRExit::debugOperationPrintSpeculationFailure): Deleted.
+        * dfg/DFGOSRExit.h:
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+        (JSC::DFG::osrWriteBarrier):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitThunkGenerator):
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargsSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallEval):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOMGetter):
+        (JSC::FTL::DFG::LowerDFGToB3::callPreflight):
+        (JSC::FTL::DFG::LowerDFGToB3::callCheck):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        (JSC::FTL::operationCompileFTLOSRExit):
+        (JSC::FTL::compileFTLOSRExit): Deleted.
+        * ftl/FTLOSRExitCompiler.h:
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationPopulateObjectInOSR):
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        (JSC::FTL::operationCompileFTLLazySlowPath):
+        (JSC::FTL::compileFTLLazySlowPath): Deleted.
+        * ftl/FTLOperations.h:
+        * ftl/FTLSlowPathCall.cpp:
+        (JSC::FTL::SlowPathCallContext::makeCall):
+        * ftl/FTLThunks.cpp:
+        (JSC::FTL::genericGenerationThunkGenerator):
+        (JSC::FTL::osrExitGenerationThunkGenerator):
+        (JSC::FTL::lazySlowPathGenerationThunkGenerator):
+        (JSC::FTL::slowPathCallThunkGenerator):
+        * ftl/FTLThunks.h:
+        (JSC::FTL::generateIfNecessary):
+        (JSC::FTL::Thunks::getSlowPathCallThunk):
+        * interpreter/FrameTracers.h:
+        (JSC::SlowPathFrameTracer::SlowPathFrameTracer):
+        (JSC::JITOperationPrologueCallFrameTracer::JITOperationPrologueCallFrameTracer):
+        (JSC::JITOperationPrologueCallFrameTracer::~JITOperationPrologueCallFrameTracer):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::callExceptionFuzz):
+        (JSC::AssemblyHelpers::debugCall):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::prepareCallOperation):
+        * jit/CCallHelpers.cpp:
+        (JSC::CCallHelpers::ensureShadowChickenPacket):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::prepareCallOperation): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/Repatch.cpp:
+        (JSC::ftlThunkAwareRepatchCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::handleHostCall):
+        * runtime/AtomicsObject.cpp:
+        (JSC::operationAtomicsAdd):
+        (JSC::operationAtomicsAnd):
+        (JSC::operationAtomicsCompareExchange):
+        (JSC::operationAtomicsExchange):
+        (JSC::operationAtomicsIsLockFree):
+        (JSC::operationAtomicsLoad):
+        (JSC::operationAtomicsOr):
+        (JSC::operationAtomicsStore):
+        (JSC::operationAtomicsSub):
+        (JSC::operationAtomicsXor):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/StringPrototype.cpp:
+        (JSC::operationStringProtoFuncReplaceRegExpEmptyStr):
+        (JSC::operationStringProtoFuncReplaceRegExpString):
+        (JSC::operationStringProtoFuncReplaceGeneric):
+        * tools/JSDollarVM.cpp:
+        (IGNORE_WARNINGS_BEGIN):
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::emitLoopTierUpCheck):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emitLoopTierUpCheck):
+        * wasm/WasmOperations.cpp:
+        (JSC::Wasm::operationWasmThrowBadI64):
+        (JSC::Wasm::operationWasmTriggerOSREntryNow):
+        (JSC::Wasm::operationWasmTriggerTierUpNow):
+        (JSC::Wasm::operationThrowBadI64): Deleted.
+        (JSC::Wasm::triggerOSREntryNow): Deleted.
+        (JSC::Wasm::triggerTierUpNow): Deleted.
+        * wasm/WasmOperations.h:
+        * wasm/WasmThunks.cpp:
+        (JSC::Wasm::triggerOMGEntryTierUpThunkGenerator):
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::instantiate):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::handleBadI64Use):
+        (JSC::Wasm::operationWasmToJSException):
+        (JSC::Wasm::emitThrowWasmToJSException):
+        (JSC::Wasm::wasmToJSException): Deleted.
+        * wasm/js/WasmToJS.h:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+
+2019-10-23  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r251482.
+
+        r251261 broke multiple tests, reverting this as part of that
+        rollout.
+
+        Reverted changeset:
+
+        "[ Mac WK1 ] REGRESSION (r251261): Layout Test
+        inspector/console/webcore-logging.html is consistently
+        Failing"
+        https://bugs.webkit.org/show_bug.cgi?id=203173
+        https://trac.webkit.org/changeset/251482
+
+2019-10-23  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: notify inspector when provisional page is created, committed and destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=202704
+
+        Reviewed by Devin Rousso.
+
+        * inspector/InspectorTarget.h: changed InspectorTarget to not require FrontendChannel as
+        all messages are routed by means of the owning InspectorTargetAgent.
+        * inspector/agents/InspectorTargetAgent.cpp:
+        (Inspector::InspectorTargetAgent::InspectorTargetAgent):
+        (Inspector::buildTargetInfoObject):
+        (Inspector::InspectorTargetAgent::targetCreated):
+        (Inspector::InspectorTargetAgent::targetDestroyed):
+        (Inspector::InspectorTargetAgent::didCommitProvisionalTarget): this method is used to
+        notify frontend that corresponding provisional target has committed and replaced previous
+        target.
+        (Inspector::InspectorTargetAgent::connectionType const):
+        (Inspector::InspectorTargetAgent::connectToTargets):
+        (Inspector::InspectorTargetAgent::disconnectFromTargets):
+        * inspector/agents/InspectorTargetAgent.h:
+        * inspector/protocol/Target.json: extended TargetInfo with provisional page details and
+        added event which is fired when provisional page gets committed. If provisional
+        load fails there will be targetDestroyed event without corresponding commit.
+
+2019-10-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        String.prototype.matchAll should throw on non-global regex
+        https://bugs.webkit.org/show_bug.cgi?id=202838
+
+        Reviewed by Keith Miller.
+
+        * builtins/StringPrototype.js:
+        (matchAll):
+        Implement normative change from https://github.com/tc39/ecma262/pull/1716.
+
+        * builtins/BuiltinNames.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::esSpecIsRegExp): Added.
+        * runtime/RegExpConstructor.h:
+        Expose isRegExp to builtins. (This differs from @isRegExpObject by first checking for Symbol.match.)
+
+2019-10-23  Sihui Liu  <sihui_liu@apple.com>
+
+        [ Mac WK1 ] REGRESSION (r251261): Layout Test inspector/console/webcore-logging.html is consistently Failing
+        https://bugs.webkit.org/show_bug.cgi?id=203173
+        <rdar://problem/56424721>
+
+        Hold a strong reference to JSGlobalOjbect in ConsoleMessage so that object is not garbage collected before
+        WebConsoleAgent::frameWindowDiscarded.
+
+        Covered by existing test: inspector/console/webcore-logging.html.
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::ConsoleMessage):
+        (Inspector::ConsoleMessage::clear):
+        * inspector/ConsoleMessage.h:
+
+2019-10-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Make `JSGlobalObject*` threading change more stabilized by adding tests and assertions
+        https://bugs.webkit.org/show_bug.cgi?id=203274
+
+        Reviewed by Saam Barati.
+
+        This patch does some follow-up changes after r251425.
+
+        1. Add tests that tests vm.topCallFrame from C++ world to ensure that `vm.topCallFrame` is kept nullptr if it is accessed from C++ world even after executing some scripts.
+        2. Add assertion to ensure that `DECLARE_CALL_FRAME` is only called in JIT operation's prologue.
+        3. Remove some of ExecState::deprecatedVM call.
+        4. Define `USE(BUILTIN_FRAME_ADDRESS)` when using __builtin_frame_address to get CallFrame.
+
+        * API/tests/testapi.cpp:
+        (TestAPI::topCallFrameAccess):
+        (testCAPIViaCpp):
+        * interpreter/CallFrame.cpp:
+        (JSC::isFromJSCode):
+        * interpreter/CallFrame.h:
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::prepareCallOperation):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::dumpRegisters):
+
 2019-10-22  Yusuke Suzuki  <ysuzuki@apple.com>
 
         Unreviewed, WinCairo build fix after r251468

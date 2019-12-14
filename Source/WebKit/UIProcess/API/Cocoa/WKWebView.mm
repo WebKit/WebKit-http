@@ -65,6 +65,7 @@
 #import "WKNSURLExtras.h"
 #import "WKNavigationDelegate.h"
 #import "WKNavigationInternal.h"
+#import "WKPDFConfiguration.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKSafeBrowsingWarning.h"
@@ -98,6 +99,11 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKTextInputContextInternal.h"
+#import "_WKTextManipulationConfiguration.h"
+#import "_WKTextManipulationDelegate.h"
+#import "_WKTextManipulationExclusionRule.h"
+#import "_WKTextManipulationItem.h"
+#import "_WKTextManipulationToken.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 #import <WebCore/ElementContext.h>
@@ -113,6 +119,7 @@
 #import <WebCore/Settings.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StringUtilities.h>
+#import <WebCore/TextManipulationController.h>
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/ViewportArguments.h>
 #import <WebCore/WritingMode.h>
@@ -275,6 +282,8 @@ static Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayS
     RetainPtr<WKSafeBrowsingWarning> _safeBrowsingWarning;
 
     BOOL _usePlatformFindUI;
+
+    WeakObjCPtr<id <_WKTextManipulationDelegate>> _textManipulationDelegate;
 
 #if PLATFORM(IOS_FAMILY)
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
@@ -2033,14 +2042,14 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {
     if (_didDeferUpdateVisibleContentRectsForUnstableScrollView) {
-        RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _didCommitLayerTree:] - received a commit (%llu) while deferring visible content rect updates (_dynamicViewportUpdateMode %d, _needsResetViewStateAfterCommitLoadForMainFrame %d (wants commit %llu), sizeChangedSinceLastVisibleContentRectUpdate %d, [_scrollView isZoomBouncing] %d, _currentlyAdjustingScrollViewInsetsForKeyboard %d)",
+        RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _didCommitLayerTree:] - received a commit (%llu) while deferring visible content rect updates (_dynamicViewportUpdateMode %d, _needsResetViewStateAfterCommitLoadForMainFrame %d (wants commit %llu), sizeChangedSinceLastVisibleContentRectUpdate %d, [_scrollView isZoomBouncing] %d, _currentlyAdjustingScrollViewInsetsForKeyboard %d)",
         self, _page->identifier().toUInt64(), layerTreeTransaction.transactionID().toUInt64(), _dynamicViewportUpdateMode, _needsResetViewStateAfterCommitLoadForMainFrame, _firstPaintAfterCommitLoadTransactionID.toUInt64(), [_contentView sizeChangedSinceLastVisibleContentRectUpdate], [_scrollView isZoomBouncing], _currentlyAdjustingScrollViewInsetsForKeyboard);
     }
 
     if (_timeOfFirstVisibleContentRectUpdateWithPendingCommit) {
         auto timeSinceFirstRequestWithPendingCommit = MonotonicTime::now() - *_timeOfFirstVisibleContentRectUpdateWithPendingCommit;
         if (timeSinceFirstRequestWithPendingCommit > delayBeforeNoCommitsLogging)
-            RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _didCommitLayerTree:] - finally received commit %.2fs after visible content rect update request; transactionID %llu", self, _page->identifier().toUInt64(), timeSinceFirstRequestWithPendingCommit.value(), layerTreeTransaction.transactionID().toUInt64());
+            RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _didCommitLayerTree:] - finally received commit %.2fs after visible content rect update request; transactionID %llu", self, _page->identifier().toUInt64(), timeSinceFirstRequestWithPendingCommit.value(), layerTreeTransaction.transactionID().toUInt64());
         _timeOfFirstVisibleContentRectUpdateWithPendingCommit = WTF::nullopt;
     }
 
@@ -3142,7 +3151,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         [_passwordView setFrame:self.bounds];
         [_customContentView web_computedContentInsetDidChange];
         _didDeferUpdateVisibleContentRectsForAnyReason = YES;
-        RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _updateVisibleContentRects:] - usesStandardContentView is NO, bailing", self, _page->identifier().toUInt64());
+        RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _updateVisibleContentRects:] - usesStandardContentView is NO, bailing", self, _page->identifier().toUInt64());
         return;
     }
 
@@ -3150,13 +3159,13 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
     if (_timeOfFirstVisibleContentRectUpdateWithPendingCommit) {
         auto timeSinceFirstRequestWithPendingCommit = timeNow - *_timeOfFirstVisibleContentRectUpdateWithPendingCommit;
         if (timeSinceFirstRequestWithPendingCommit > delayBeforeNoCommitsLogging)
-            RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _updateVisibleContentRects:] - have not received a commit %.2fs after visible content rect update; lastTransactionID %llu", self, _page->identifier().toUInt64(), timeSinceFirstRequestWithPendingCommit.value(), _lastTransactionID.toUInt64());
+            RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _updateVisibleContentRects:] - have not received a commit %.2fs after visible content rect update; lastTransactionID %llu", self, _page->identifier().toUInt64(), timeSinceFirstRequestWithPendingCommit.value(), _lastTransactionID.toUInt64());
     }
 
     if (_invokingUIScrollViewDelegateCallback) {
         _didDeferUpdateVisibleContentRectsForUIScrollViewDelegateCallback = YES;
         _didDeferUpdateVisibleContentRectsForAnyReason = YES;
-        RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _updateVisibleContentRects:] - _invokingUIScrollViewDelegateCallback is YES, bailing", self, _page->identifier().toUInt64());
+        RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _updateVisibleContentRects:] - _invokingUIScrollViewDelegateCallback is YES, bailing", self, _page->identifier().toUInt64());
         return;
     }
 
@@ -3166,13 +3175,13 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         || _currentlyAdjustingScrollViewInsetsForKeyboard) {
         _didDeferUpdateVisibleContentRectsForAnyReason = YES;
         _didDeferUpdateVisibleContentRectsForUnstableScrollView = YES;
-        RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _updateVisibleContentRects:] - scroll view state is non-stable, bailing (_dynamicViewportUpdateMode %d, _needsResetViewStateAfterCommitLoadForMainFrame %d, sizeChangedSinceLastVisibleContentRectUpdate %d, [_scrollView isZoomBouncing] %d, _currentlyAdjustingScrollViewInsetsForKeyboard %d)",
+        RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _updateVisibleContentRects:] - scroll view state is non-stable, bailing (_dynamicViewportUpdateMode %d, _needsResetViewStateAfterCommitLoadForMainFrame %d, sizeChangedSinceLastVisibleContentRectUpdate %d, [_scrollView isZoomBouncing] %d, _currentlyAdjustingScrollViewInsetsForKeyboard %d)",
             self, _page->identifier().toUInt64(), _dynamicViewportUpdateMode, _needsResetViewStateAfterCommitLoadForMainFrame, [_contentView sizeChangedSinceLastVisibleContentRectUpdate], [_scrollView isZoomBouncing], _currentlyAdjustingScrollViewInsetsForKeyboard);
         return;
     }
 
     if (_didDeferUpdateVisibleContentRectsForAnyReason)
-        RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _updateVisibleContentRects:] - performing first visible content rect update after deferring updates", self, _page->identifier().toUInt64());
+        RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _updateVisibleContentRects:] - performing first visible content rect update after deferring updates", self, _page->identifier().toUInt64());
 
     _didDeferUpdateVisibleContentRectsForUIScrollViewDelegateCallback = NO;
     _didDeferUpdateVisibleContentRectsForUnstableScrollView = NO;
@@ -3270,7 +3279,7 @@ static int32_t activeOrientation(WKWebView *webView)
 
 - (void)_cancelAnimatedResize
 {
-    RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _cancelAnimatedResize] _dynamicViewportUpdateMode %d", self, _page->identifier().toUInt64(), _dynamicViewportUpdateMode);
+    RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _cancelAnimatedResize] _dynamicViewportUpdateMode %d", self, _page->identifier().toUInt64(), _dynamicViewportUpdateMode);
 
     if (_dynamicViewportUpdateMode == WebKit::DynamicViewportUpdateMode::NotResizing)
         return;
@@ -3306,7 +3315,7 @@ static int32_t activeOrientation(WKWebView *webView)
         return;
     }
 
-    RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _didCompleteAnimatedResize]", self, _page->identifier().toUInt64());
+    RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _didCompleteAnimatedResize]", self, _page->identifier().toUInt64());
 
     NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
     [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
@@ -4402,6 +4411,16 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 }
 #endif
 
+- (void)setPageZoom:(CGFloat)pageZoom
+{
+    _page->setPageZoomFactor(pageZoom);
+}
+
+- (CGFloat)pageZoom
+{
+    return _page->pageZoomFactor();
+}
+
 - (BOOL)_usePlatformFindUI
 {
     return _usePlatformFindUI;
@@ -4614,6 +4633,13 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
 #endif // ENABLE(DRAG_SUPPORT)
 
+- (NSPrintOperation *)printOperationWithPrintInfo:(NSPrintInfo *)printInfo
+{
+    if (auto webFrameProxy = _page->mainFrame())
+        return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
+    return nil;
+}
+
 #endif // PLATFORM(MAC)
 
 #if HAVE(TOUCH_BAR)
@@ -4662,6 +4688,32 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 - (Optional<BOOL>)_resolutionForShareSheetImmediateCompletionForTesting
 {
     return _resolutionForShareSheetImmediateCompletionForTesting;
+}
+
+- (void)createPDFWithConfiguration:(WKPDFConfiguration *)pdfConfiguration completionHandler:(void (^)(NSData *pdfDocumentData, NSError *error))completionHandler
+{
+    WebCore::FrameIdentifier frameID;
+    if (auto mainFrame = _page->mainFrame())
+        frameID = mainFrame->frameID();
+    else {
+        completionHandler(nil, createNSError(WKErrorUnknown).get());
+        return;
+    }
+
+    Optional<WebCore::FloatRect> floatRect;
+    if (pdfConfiguration && !CGRectIsNull(pdfConfiguration.rect))
+        floatRect = WebCore::FloatRect(pdfConfiguration.rect);
+
+    auto handler = makeBlockPtr(completionHandler);
+    _page->drawToPDF(frameID, floatRect, [retainedSelf = retainPtr(self), handler = WTFMove(handler)](const IPC::DataReference& pdfData, WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None) {
+            handler(nil, createNSError(WKErrorUnknown).get());
+            return;
+        }
+
+        auto data = adoptCF(CFDataCreate(kCFAllocatorDefault, pdfData.data(), pdfData.size()));
+        handler((NSData *)data.get(), nil);
+    });
 }
 
 @end
@@ -5095,28 +5147,13 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
 - (void)_takePDFSnapshotWithConfiguration:(WKSnapshotConfiguration *)snapshotConfiguration completionHandler:(void (^)(NSData *, NSError *))completionHandler
 {
-    WebCore::FrameIdentifier frameID;
-    if (auto mainFrame = _page->mainFrame())
-        frameID = mainFrame->frameID();
-    else {
-        completionHandler(nil, createNSError(WKErrorUnknown).get());
-        return;
+    WKPDFConfiguration *pdfConfiguration = nil;
+    if (snapshotConfiguration) {
+        pdfConfiguration = [[[WKPDFConfiguration alloc] init] autorelease];
+        pdfConfiguration.rect = snapshotConfiguration.rect;
     }
 
-    Optional<WebCore::FloatRect> floatRect;
-    if (snapshotConfiguration && !CGRectIsNull(snapshotConfiguration.rect))
-        floatRect = WebCore::FloatRect(snapshotConfiguration.rect);
-
-    auto handler = makeBlockPtr(completionHandler);
-    _page->drawToPDF(frameID, floatRect, [retainedSelf = retainPtr(self), handler = WTFMove(handler)](const IPC::DataReference& pdfData, WebKit::CallbackBase::Error error) {
-        if (error != WebKit::CallbackBase::Error::None) {
-            handler(nil, createNSError(WKErrorUnknown).get());
-            return;
-        }
-
-        auto data = adoptCF(CFDataCreate(kCFAllocatorDefault, pdfData.data(), pdfData.size()));
-        handler((NSData *)data.get(), nil);
-    });
+    [self createPDFWithConfiguration:pdfConfiguration completionHandler:completionHandler];
 }
 
 #if PLATFORM(MAC)
@@ -5604,12 +5641,12 @@ static inline OptionSet<WebCore::LayoutMilestone> layoutMilestones(_WKRenderingP
 
 - (double)_pageZoomFactor
 {
-    return _page->pageZoomFactor();
+    return [self pageZoom];
 }
 
 - (void)_setPageZoomFactor:(double)zoomFactor
 {
-    _page->setPageZoomFactor(zoomFactor);
+    [self setPageZoom:zoomFactor];
 }
 
 - (id <_WKDiagnosticLoggingDelegate>)_diagnosticLoggingDelegate
@@ -6218,7 +6255,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
     }
 
-    RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _beginAnimatedResizeWithUpdates:]", self, _page->identifier().toUInt64());
+    RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _beginAnimatedResizeWithUpdates:]", self, _page->identifier().toUInt64());
 
     _dynamicViewportUpdateMode = WebKit::DynamicViewportUpdateMode::ResizingWithAnimation;
 
@@ -6332,7 +6369,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_endAnimatedResize
 {
-    RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _endAnimatedResize] _dynamicViewportUpdateMode %d", self, _page->identifier().toUInt64(), _dynamicViewportUpdateMode);
+    RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _endAnimatedResize] _dynamicViewportUpdateMode %d", self, _page->identifier().toUInt64(), _dynamicViewportUpdateMode);
 
     // If we already have an up-to-date layer tree, immediately complete
     // the resize. Otherwise, we will defer completion until we do.
@@ -6343,7 +6380,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_resizeWhileHidingContentWithUpdates:(void (^)(void))updateBlock
 {
-    RELEASE_LOG_IF_ALLOWED("%p (PageID=%llu) -[WKWebView _resizeWhileHidingContentWithUpdates:]", self, _page->identifier().toUInt64());
+    RELEASE_LOG_IF_ALLOWED("%p (pageProxyID=%llu) -[WKWebView _resizeWhileHidingContentWithUpdates:]", self, _page->identifier().toUInt64());
 
     [self _beginAnimatedResizeWithUpdates:updateBlock];
     if (_dynamicViewportUpdateMode == WebKit::DynamicViewportUpdateMode::ResizingWithAnimation) {
@@ -6715,9 +6752,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo
 {
-    if (auto webFrameProxy = _page->mainFrame())
-        return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
-    return nil;
+    return [self printOperationWithPrintInfo:printInfo];
 }
 
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(_WKFrameHandle *)frameHandle
@@ -6947,12 +6982,12 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     // For subclasses to override.
 }
 
-- (void)_didShowForcePressPreview
+- (void)_didShowContextMenu
 {
     // For subclasses to override.
 }
 
-- (void)_didDismissForcePressPreview
+- (void)_didDismissContextMenu
 {
     // For subclasses to override.
 }
@@ -7439,6 +7474,82 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     });
 }
 
+- (id <_WKTextManipulationDelegate>)_textManipulationDelegate
+{
+    return _textManipulationDelegate.getAutoreleased();
+}
+
+- (void)_setTextManipulationDelegate:(id <_WKTextManipulationDelegate>)delegate
+{
+    _textManipulationDelegate = delegate;
+}
+
+- (void)_startTextManipulationsWithConfiguration:(_WKTextManipulationConfiguration *)configuration completion:(void(^)())completionHandler
+{
+    using ExclusionRule = WebCore::TextManipulationController::ExclusionRule;
+
+    if (!_textManipulationDelegate || !_page) {
+        completionHandler();
+        return;
+    }
+
+    Vector<WebCore::TextManipulationController::ExclusionRule> exclusionRules;
+    if (configuration) {
+        for (_WKTextManipulationExclusionRule *wkRule in configuration.exclusionRules) {
+            auto type = wkRule.isExclusion ? ExclusionRule::Type::Exclude : ExclusionRule::Type::Include;
+            if (wkRule.attributeName)
+                exclusionRules.append({type, ExclusionRule::AttributeRule { wkRule.attributeName, wkRule.attributeValue } });
+            else
+                exclusionRules.append({type, ExclusionRule::ElementRule { wkRule.elementName } });
+        }
+    }
+
+    _page->startTextManipulations(exclusionRules, [weakSelf = WeakObjCPtr<WKWebView>(self)] (WebCore::TextManipulationController::ItemIdentifier itemID,
+        const Vector<WebCore::TextManipulationController::ManipulationToken>& tokens) {
+        if (!weakSelf)
+            return;
+
+        auto retainedSelf = weakSelf.get();
+        auto delegate = [retainedSelf _textManipulationDelegate];
+        if (!delegate)
+            return;
+
+        NSMutableArray *wkTokens = [NSMutableArray arrayWithCapacity:tokens.size()];
+        for (auto& token : tokens) {
+            auto wkToken = adoptNS([[_WKTextManipulationToken alloc] init]);
+            [wkToken setIdentifier:String::number(token.identifier.toUInt64())];
+            [wkToken setContent:token.content];
+            [wkToken setExcluded:token.isExcluded];
+            [wkTokens addObject:wkToken.get()];
+        }
+
+        auto item = adoptNS([[_WKTextManipulationItem alloc] initWithIdentifier:String::number(itemID.toUInt64()) tokens:wkTokens]);
+        [delegate _webView:retainedSelf.get() didFindTextManipulationItem:item.get()];
+    }, [capturedCompletionBlock = makeBlockPtr(completionHandler)] () {
+        capturedCompletionBlock();
+    });
+}
+
+- (void)_completeTextManipulation:(_WKTextManipulationItem *)item completion:(void(^)(BOOL success))completionHandler
+{
+    using ManipulationResult = WebCore::TextManipulationController::ManipulationResult;
+
+    if (!_page)
+        return;
+
+    auto itemID = makeObjectIdentifier<WebCore::TextManipulationController::ItemIdentifierType>(String(item.identifier).toUInt64());
+
+    Vector<WebCore::TextManipulationController::ManipulationToken> tokens;
+    for (_WKTextManipulationToken *wkToken in item.tokens) {
+        auto tokenID = makeObjectIdentifier<WebCore::TextManipulationController::TokenIdentifierType>(String(wkToken.identifier).toUInt64());
+        tokens.append(WebCore::TextManipulationController::ManipulationToken { tokenID, wkToken.content });
+    }
+
+    _page->completeTextManipulation(itemID, tokens, [capturedCompletionBlock = makeBlockPtr(completionHandler)] (ManipulationResult result) {
+        capturedCompletionBlock(result == ManipulationResult::Success);
+    });
+}
+
 #if PLATFORM(IOS_FAMILY)
 
 - (CGRect)_dragCaretRect
@@ -7524,7 +7635,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_processWillSuspendImminentlyForTesting
 {
     if (_page)
-        _page->process().sendProcessWillSuspendImminently();
+        _page->process().sendPrepareToSuspend(WebKit::IsSuspensionImminent::Yes, [] { });
 }
 
 - (void)_processDidResumeForTesting

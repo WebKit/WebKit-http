@@ -32,6 +32,9 @@ namespace WebCore {
 
 String CSSUnicodeRangeValue::customCSSText() const
 {
+    if (m_from == m_to)
+        return makeString("U+", hex(m_from, Lowercase));
+
     return makeString("U+", hex(m_from, Lowercase), '-', hex(m_to, Lowercase));
 }
 

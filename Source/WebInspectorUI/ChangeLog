@@ -1,3 +1,337 @@
+2019-10-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Opacity slider background doesn't update when when hue slider moves
+        https://bugs.webkit.org/show_bug.cgi?id=203593
+        <rdar://problem/56723629>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker.prototype.set color):
+        (WI.ColorPicker.prototype.colorSquareColorDidChange):
+        Remove unused function arguments.
+
+        (WI.ColorPicker.prototype.sliderValueDidChange):
+        Update the background of the opacity slider when the hue slider changes.
+
+        (WI.ColorPicker.prototype._updateOpacitySlider): Renamed from _updateSliders.
+        Drive-by: replace `var` with `let`.
+
+2019-10-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Right-clicking in color picker should not select color
+        https://bugs.webkit.org/show_bug.cgi?id=203434
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ColorSquare.js:
+        (WI.ColorSquare.prototype._handleMousedown):
+
+2019-10-28  Antoine Quint  <graouts@apple.com>
+
+        CSS Transitions and CSS Animations properties should treat unitless 0 as an invalid value for times
+        https://bugs.webkit.org/show_bug.cgi?id=203484
+
+        Reviewed by Antti Koivisto.
+
+        Use 0s instead of 0 in places where unitless times were used but shouldn't have been.
+
+        * UserInterface/Views/FindBanner.css:
+        (.no-find-banner-transition:matches(.find-banner, .supports-find-banner)):
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar > .item > .close):
+
+2019-10-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: un-experimentalize showing rule icons
+        https://bugs.webkit.org/show_bug.cgi?id=203308
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderSelector):
+
+2019-10-24  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: assertion failure at GeneralStyleDetailsSidebarPanel.js:34:23
+        https://bugs.webkit.org/show_bug.cgi?id=203376
+
+        Reviewed by Devin Rousso.
+
+        Use class's prototype instead of class itself when doing instanceof check.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel):
+
+2019-10-24  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: CONSOLE ERROR removeEventListener cannot remove blackboxed-urls-changed because it doesn't exist.
+        https://bugs.webkit.org/show_bug.cgi?id=203372
+
+        Reviewed by Devin Rousso.
+
+        Avoid console errors when opening source panel.
+
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WI.SourceCodeTreeElement.prototype._updateSourceCode): Only remove listener if it has
+        been added before.
+
+2019-10-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to inject "bootstrap" JavaScript into the page as the first script executed
+        https://bugs.webkit.org/show_bug.cgi?id=195847
+        <rdar://problem/48950551>
+
+        Reviewed by Joseph Pecoraro.
+
+        When debugging webpages, it's often useful to be able to swizzle various functions in order
+        to add extra logs for when they're called (e.g. `Event.prototype.preventDefault`). Sometimes
+        this can be difficult, such as if the page saves a copy of the function and references that
+        instead, in which case it would be helpful to have a way to guarantee that the swizzled code
+        is the first thing evaluated after the context is created.
+
+        This change adds support for that concept, which has been named Inspector Bootstrap Script.
+        Once created, it will be injected as the first user script to every new global object that
+        is created afterwards. Modifications to the Inspector Bootstrap Script take effect for all
+        new global objects created _after_ the modification happened.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+        (WI.NetworkManager.supportsBootstrapScript): Added.
+        (WI.NetworkManager.get bootstrapScriptURL): Added.
+        (WI.NetworkManager.get bootstrapScriptSourceObjectStoreKey): Added.
+        (WI.NetworkManager.prototype.initializeTarget):
+        (WI.NetworkManager.prototype.get bootstrapScript): Added.
+        (WI.NetworkManager.prototype.get bootstrapScriptEnabled): Added.
+        (WI.NetworkManager.prototype.set bootstrapScriptEnabled): Added.
+        (WI.NetworkManager.prototype.async createBootstrapScript): Added.
+        (WI.NetworkManager.prototype.destroyBootstrapScript): Added.
+        (WI.NetworkManager.prototype._processServiceWorkerConfiguration):
+        (WI.NetworkManager.prototype._handleBootstrapScriptContentDidChange): Added.
+
+        * UserInterface/Models/LocalScript.js:
+        (WI.LocalScript):
+        (WI.LocalScript.prototype.get editable): Added.
+        (WI.LocalScript.prototype.get supportsScriptBlackboxing): Added.
+        (WI.LocalScript.prototype.requestContentFromBackend):
+        (WI.LocalScript.prototype.handleCurrentRevisionContentChange): Added.
+        * UserInterface/Views/ScriptContentView.js:
+        (WI.ScriptContentView):
+        (WI.ScriptContentView.prototype._contentWillPopulate):
+        (WI.ScriptContentView.prototype._contentDidPopulate):
+        (WI.ScriptContentView.prototype._handleTextEditorContentDidChange): Added.
+        Support editing of `WI.LocalScript` that are specifically marked as such.
+
+        * UserInterface/Models/Script.js:
+        (WI.Script):
+        (WI.Script.prototype.get displayName):
+        (WI.Script.prototype.get displayURL):
+        (WI.Script.prototype.isMainResource):
+        (WI.Script.prototype._resolveResource):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.customPerformSearch):
+        (WI.SourceCodeTextEditor.prototype._createTypeTokenAnnotator):
+        (WI.SourceCodeTextEditor.prototype._createBasicBlockAnnotator):
+        Allow a `WI.Script` to not have an associated `WI.Target`, specifically for `WI.LocalScript`.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WI.SourcesNavigationSidebarPanel.prototype.createContentTreeOutline):
+        (WI.SourcesNavigationSidebarPanel.prototype._compareTreeElements):
+        (WI.SourcesNavigationSidebarPanel.prototype._addLocalOverride): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._removeResourceOverride): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateResourceContextMenu):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleBootstrapScriptCreated): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleBootstrapScriptDestroyed): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleLocalResourceOverrideAdded):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleLocalResourceOverrideRemoved):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerPaused):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerResumed):
+        (WI.SourcesNavigationSidebarPanel.prototype._addLocalResourceOverride): Removed.
+        (WI.SourcesNavigationSidebarPanel.prototype._removeLocalResourceOverride): Removed.
+        Add an item in the create resource context menu for creating/focusing the bootstrap script.
+
+        * UserInterface/Views/ScriptTreeElement.js:
+        (WI.ScriptTreeElement):
+        * UserInterface/Views/BootstrapScriptTreeElement.js: Added.
+        (WI.BootstrapScriptTreeElement):
+        (WI.BootstrapScriptTreeElement.prototype.onattach):
+        (WI.BootstrapScriptTreeElement.prototype.ondetach):
+        (WI.BootstrapScriptTreeElement.prototype.ondelete):
+        (WI.BootstrapScriptTreeElement.prototype.onspace):
+        (WI.BootstrapScriptTreeElement.prototype.canSelectOnMouseDown):
+        (WI.BootstrapScriptTreeElement.prototype.populateContextMenu):
+        (WI.BootstrapScriptTreeElement.prototype.updateStatus):
+        (WI.BootstrapScriptTreeElement.prototype._handleNetworkManagerBootstrapScriptToggled):
+        * UserInterface/Views/BootstrapScriptTreeElement.css: Added.
+        (.item.script.bootstrap .status > input[type="checkbox"]):
+        * UserInterface/Views/LocalResourceOverrideTreeElement.css:
+        (.item.resource.override .status > input[type="checkbox"]): Added.
+        (.item.resource.override .status > div): Removed.
+        Don't show the full bootstrap script URL. Instead, show "Inspector Bootstrap Script".
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype.didPresentDialog):
+        Show the bootstrap script in the open resource dialog.
+
+        * UserInterface/Base/Utilities.js:
+        (isWebInspectorBootstrapScript): Added.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.scriptDidFail):
+
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore.static _open):
+        (WI.ObjectStore.prototype.async get): Added.
+        Add a generalized object store that can be used for one-off values that need the larger
+        storage capacity of `IndexedDB`.
+
+        * .eslintrc:
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-10-23  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: notify inspector when provisional page is created, committed and destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=202704
+
+        Reviewed by Devin Rousso.
+
+        Updated frontend code to understand provisional targets. For now there are
+        no changes frontend behavior, it will wait for the provisional target to commit
+        and will not send any commands to it before that.
+
+        * UserInterface/Base/Main.js: Moved a bunch of methods shared between Main.js and Test.js
+        to TargetManager.js to keep them in sync.
+        * UserInterface/Controllers/TargetManager.js:
+        (WI.TargetManager):
+        (WI.TargetManager.prototype.removeTarget):
+        (WI.TargetManager.prototype.createMultiplexingBackendTarget):
+        (WI.TargetManager.prototype.createDirectBackendTarget):
+        (WI.TargetManager.prototype.targetCreated):
+        (WI.TargetManager.prototype.didCommitProvisionalTarget):
+        (WI.TargetManager.prototype.targetDestroyed):
+        (WI.TargetManager.prototype.dispatchMessageFromTarget):
+        (WI.TargetManager.prototype._checkAndHandlePageTargetTransition):
+        (WI.TargetManager.prototype._checkAndHandlePageTargetTermination):
+        (WI.TargetManager.prototype._initializeBackendTarget):
+        (WI.TargetManager.prototype._initializePageTarget):
+        (WI.TargetManager.prototype._transitionPageTarget):
+        (WI.TargetManager.prototype._terminatePageTarget):
+        (WI.TargetManager.prototype._resetMainExecutionContext):
+        (WI.TargetManager.prototype._redirectGlobalAgentsToConnection):
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.WorkerConnection.sendMessageToBackend):
+        (InspectorBackend.WorkerConnection):
+        (InspectorBackend.TargetConnection.sendMessageToBackend):
+        (InspectorBackend.TargetConnection):
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.destroy): Mark target as destroyed to distinguish expected command errors from
+        genuine failures.
+
+        (WI.Target.prototype.isDestroyed):
+        * UserInterface/Protocol/TargetObserver.js: Since the front-end doesn't
+        send commands to the provisional targets yet, it has to ignore all activities
+        related to provisional pages. For that reason we need two sets to keep track of
+        - provisional pages that were destroyed and never committed
+        - old pages which were replaced by committed page and for which following targetDestroyed
+        event should be ignored
+        Better support for provisional targets will be added to frontend in a separate change.
+        (WI.TargetObserver):
+        (WI.TargetObserver.prototype.targetCreated):
+        (WI.TargetObserver.prototype.didCommitProvisionalTarget): For now convert the event into a subsequence
+        of targetDestroyed/targetCreated events which matches previous behavior.
+
+        (WI.TargetObserver.prototype.targetDestroyed):
+        (WI.TargetObserver.prototype.dispatchMessageFromTarget):
+        * UserInterface/Test/Test.js:
+        (WI.transitionPageTarget):
+        (WI.terminatePageTarget):
+
+2019-10-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Replace color wheel with square HSB color picker
+        https://bugs.webkit.org/show_bug.cgi?id=203169
+        <rdar://problem/56449832>
+
+        Reviewed by Devin Rousso.
+
+        Replace the color wheel with a square HSB color picker.
+
+        The square HSB color picker provides more precision for choosing saturation,
+        and it's more familiar to most web developers.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker):
+        (.color-picker > .hue):
+        (body[dir=ltr] .color-picker > .hue):
+        (body[dir=rtl] .color-picker > .hue):
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        (WI.ColorPicker.prototype.get colorSquare):
+        (WI.ColorPicker.prototype.set color):
+        (WI.ColorPicker.prototype.colorSquareColorDidChange):
+        (WI.ColorPicker.prototype.sliderValueDidChange):
+        (WI.ColorPicker.prototype._updateColor):
+        (WI.ColorPicker.prototype._updateSliders):
+        Add a hue slider. The new color picker has the hue slider instead of the brightness slider.
+
+        * UserInterface/Views/ColorSquare.css: Renamed from Source/WebInspectorUI/UserInterface/Views/ColorWheel.css.
+        (.color-square):
+        (.color-square > .saturation-gradient):
+        (.color-square > .lightness-gradient):
+        (.color-square > .fill):
+        (.color-square > .crosshair):
+        * UserInterface/Views/ColorSquare.js: Added.
+        (WI.ColorSquare):
+        (WI.ColorSquare.prototype.get element):
+        (WI.ColorSquare.prototype.set dimension):
+        (WI.ColorSquare.prototype.get hue):
+        (WI.ColorSquare.prototype.set hue):
+        (WI.ColorSquare.prototype.get tintedColor):
+        (WI.ColorSquare.prototype.set tintedColor):
+        (WI.ColorSquare.prototype.get rawColor):
+        (WI.ColorSquare.prototype.handleEvent):
+        (WI.ColorSquare.prototype.get _saturation):
+        (WI.ColorSquare.prototype.get _brightness):
+        (WI.ColorSquare.prototype.get _lightness):
+        (WI.ColorSquare.prototype._handleMousedown):
+        (WI.ColorSquare.prototype._handleMousemove):
+        (WI.ColorSquare.prototype._handleMouseup):
+        (WI.ColorSquare.prototype._updateColorForMouseEvent):
+        (WI.ColorSquare.prototype._setCrosshairPosition):
+        (WI.ColorSquare.prototype._updateBaseColor):
+        * UserInterface/Views/ColorWheel.js: Removed.
+        * UserInterface/Views/GradientEditor.js:
+        (WI.GradientEditor):
+
+2019-10-23  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: frontend tests should clear output before resending results
+        https://bugs.webkit.org/show_bug.cgi?id=203262
+
+        Reviewed by Devin Rousso.
+
+        Inspector front-end tests will clear output log before resending teset results. This avoids
+        race between InspectorTest.testPageDidLoad event and TestPage.addResult calls that may have
+        already be sent to the new page after navigation. The latter events otherwise would be added
+        twice.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness):
+        (FrontendTestHarness.prototype.testPageDidLoad):
+        (FrontendTestHarness.prototype.reloadPage):
+        (FrontendTestHarness.prototype.reportUnhandledRejection):
+        (FrontendTestHarness.prototype.reportUncaughtException):
+        (FrontendTestHarness.prototype._resendResults): Don't resend the results when the page is loaded
+        first time.
+
 2019-10-22  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Sources: keep the function/object name sticky in the object preview popover

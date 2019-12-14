@@ -349,12 +349,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     for (auto& scheme : parameters.urlSchemesRegisteredAsNoAccess)
         registerURLSchemeAsNoAccess(scheme);
-
-    for (auto& scheme : parameters.urlSchemesRegisteredAsCORSEnabled)
-        registerURLSchemeAsCORSEnabled(scheme);
-
-    for (auto& scheme : parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest)
-        registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
     
     RELEASE_LOG(Process, "%p - NetworkProcess::initializeNetworkProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
@@ -671,9 +665,9 @@ void NetworkProcess::setUseITPDatabase(PAL::SessionID sessionID, bool value, Com
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (m_isITPDatabaseEnabled != value) {
             m_isITPDatabaseEnabled = value;
-            networkSession->recreateResourceLoadStatisticStore();
-        }
-        completionHandler();
+            networkSession->recreateResourceLoadStatisticStore(WTFMove(completionHandler));
+        } else
+            completionHandler();
     } else {
         ASSERT_NOT_REACHED();
         completionHandler();
@@ -1261,8 +1255,8 @@ void NetworkProcess::setShouldDowngradeReferrerForTesting(bool enabled, Completi
 
 void NetworkProcess::setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID sessionID, bool enabled, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto* networkStorageSession = storageSession(sessionID))
-        networkStorageSession->setIsThirdPartyCookieBlockingEnabled(enabled);
+    if (auto* networkSession = this->networkSession(sessionID))
+        networkSession->setIsThirdPartyCookieBlockingEnabled(enabled);
     else
         ASSERT_NOT_REACHED();
     completionHandler();
@@ -2078,22 +2072,30 @@ void NetworkProcess::processDidTransitionToBackground()
     platformProcessDidTransitionToBackground();
 }
 
-void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
+void NetworkProcess::processWillSuspendImminentlyForTestingSync(CompletionHandler<void()>&& completionHandler)
 {
+    prepareToSuspend(true, WTFMove(completionHandler));
+}
+
+void NetworkProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<void()>&& completionHandler)
+{
+    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend(), isSuspensionImminent: %d", this, isSuspensionImminent);
+
+#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
+    for (auto& server : m_idbServers.values())
+        server->tryStop(isSuspensionImminent ? IDBServer::ShouldForceStop::Yes : IDBServer::ShouldForceStop::No);
+#endif
+
 #if PLATFORM(IOS_FAMILY)
     m_webSQLiteDatabaseTracker.setIsSuspended(true);
 #endif
 
     lowMemoryHandler(Critical::Yes);
 
-    RefPtr<CallbackAggregator> callbackAggregator;
-    if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
-        callbackAggregator = CallbackAggregator::create([this] {
-            RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::notifyProcessReadyToSuspend() Sending ProcessReadyToSuspend IPC message", this);
-            if (parentProcessConnection())
-                parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
-        });
-    }
+    RefPtr<CallbackAggregator> callbackAggregator = CallbackAggregator::create([this, completionHandler = WTFMove(completionHandler)]() mutable {
+        RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend() Process is ready to suspend", this);
+        completionHandler();
+    });
 
     platformPrepareToSuspend([callbackAggregator] { });
     platformSyncAllCookies([callbackAggregator] { });
@@ -2109,44 +2111,6 @@ void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend 
 #endif
 
     m_storageManagerSet->suspend([callbackAggregator] { });
-}
-
-void NetworkProcess::processWillSuspendImminently()
-{
-    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processWillSuspendImminently() BEGIN", this);
-#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
-    for (auto& server : m_idbServers.values())
-        server->tryStop(IDBServer::ShouldForceStop::Yes);
-#endif
-    actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
-    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processWillSuspendImminently() END", this);
-}
-
-void NetworkProcess::processWillSuspendImminentlyForTestingSync(CompletionHandler<void()>&& completionHandler)
-{
-    processWillSuspendImminently();
-    completionHandler();
-}
-
-void NetworkProcess::prepareToSuspend()
-{
-    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend()", this);
-
-#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
-    for (auto& server : m_idbServers.values())
-        server->tryStop(IDBServer::ShouldForceStop::No);
-#endif
-    actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::Yes);
-}
-
-void NetworkProcess::cancelPrepareToSuspend()
-{
-    // Although it is tempting to send a NetworkProcessProxy::DidCancelProcessSuspension message from here
-    // we do not because prepareToSuspend() already replied with a NetworkProcessProxy::ProcessReadyToSuspend
-    // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
-    // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
-    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
-    resume();
 }
 
 void NetworkProcess::applicationDidEnterBackground()
@@ -2231,16 +2195,6 @@ void NetworkProcess::registerURLSchemeAsLocal(const String& scheme) const
 void NetworkProcess::registerURLSchemeAsNoAccess(const String& scheme) const
 {
     LegacySchemeRegistry::registerURLSchemeAsNoAccess(scheme);
-}
-
-void NetworkProcess::registerURLSchemeAsCORSEnabled(const String& scheme) const
-{
-    LegacySchemeRegistry::registerURLSchemeAsCORSEnabled(scheme);
-}
-
-void NetworkProcess::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String& scheme) const
-{
-    LegacySchemeRegistry::registerAsCanDisplayOnlyIfCanRequest(scheme);
 }
 
 void NetworkProcess::didSyncAllCookies()

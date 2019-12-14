@@ -84,15 +84,6 @@ public:
         poke(GPRInfo::nonArgGPR0, POKE_ARGUMENT_OFFSET + argumentIndex - GPRInfo::numberOfArgumentRegisters);
     }
 
-    void prepareCallOperation(VM& vm)
-    {
-#if COMPILER(GCC_COMPATIBLE) && (CPU(ARM64) || CPU(X86_64)) && (OS(LINUX) || OS(DARWIN))
-        UNUSED_PARAM(vm);
-#else
-        storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
-#endif
-    }
-
 private:
 
     template<unsigned NumberOfRegisters, typename RegType>

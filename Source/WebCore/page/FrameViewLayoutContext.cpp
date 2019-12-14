@@ -41,6 +41,7 @@
 #include "Settings.h"
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 #include "LayoutContext.h"
+#include "LayoutState.h"
 #endif
 
 #include <wtf/SetForScope.h>
@@ -50,11 +51,11 @@
 namespace WebCore {
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
-static void layoutUsingFormattingContext(const RenderView& renderView)
+void FrameViewLayoutContext::layoutUsingFormattingContext()
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled())
         return;
-    Layout::LayoutContext::runLayoutAndVerify(renderView);
+    m_initialLayoutState = Layout::LayoutContext::runLayoutAndVerify(*renderView());
 } 
 #endif
 
@@ -204,7 +205,7 @@ void FrameViewLayoutContext::layout()
 #endif
         layoutRoot->layout();
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
-        layoutUsingFormattingContext(*renderView());
+        layoutUsingFormattingContext();
 #endif
         ++m_layoutCount;
 #if ENABLE(TEXT_AUTOSIZING)
@@ -519,7 +520,7 @@ void FrameViewLayoutContext::updateStyleForLayout()
     // Viewport-dependent media queries may cause us to need completely different style information.
     document.styleScope().evaluateMediaQueriesForViewportChange();
 
-    document.updateElementsAffectedByMediaQueries();
+    document.evaluateMediaQueryList();
     // If there is any pagination to apply, it will affect the RenderView's style, so we should
     // take care of that now.
     view().applyPaginationToViewport();

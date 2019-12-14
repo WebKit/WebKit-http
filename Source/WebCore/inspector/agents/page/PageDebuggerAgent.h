@@ -36,6 +36,7 @@
 namespace WebCore {
 
 class Document;
+class Frame;
 class Page;
 
 class PageDebuggerAgent final : public WebDebuggerAgent {
@@ -53,7 +54,7 @@ public:
     void breakpointActionLog(JSC::JSGlobalObject*, const String&) override;
 
     // InspectorInstrumentation
-    void didClearMainFrameWindowObject();
+    void didClearWindowObjectInWorld(Frame&);
     void mainFrameStartedLoading();
     void mainFrameStoppedLoading();
     void mainFrameNavigated();

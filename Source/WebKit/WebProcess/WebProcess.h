@@ -48,11 +48,12 @@
 #if PLATFORM(MAC)
 #include <WebCore/ScreenProperties.h>
 #endif
+#include <WebCore/ServiceWorkerTypes.h>
 #include <WebCore/Timer.h>
 #include <pal/HysteresisActivity.h>
 #include <pal/SessionID.h>
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounter.h>
 #include <wtf/text/AtomString.h>
@@ -234,9 +235,7 @@ public:
 
     void setHiddenPageDOMTimerThrottlingIncreaseLimit(int milliseconds);
 
-    void processWillSuspendImminently();
-    void prepareToSuspend();
-    void cancelPrepareToSuspend();
+    void prepareToSuspend(bool isSuspensionImminent, CompletionHandler<void()>&&);
     void processDidResume();
 
     void sendPrewarmInformation(const URL&);
@@ -292,6 +291,11 @@ public:
 
     void messagesAvailableForPort(const WebCore::MessagePortIdentifier&);
 
+#if ENABLE(SERVICE_WORKER)
+    void addServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier);
+    bool removeServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier);
+#endif
+
 private:
     WebProcess();
     ~WebProcess();
@@ -329,7 +333,7 @@ private:
     void registerURLSchemeAsLocal(const String&) const;
     void registerURLSchemeAsNoAccess(const String&) const;
     void registerURLSchemeAsDisplayIsolated(const String&) const;
-    void registerURLSchemeAsCORSEnabled(const String&) const;
+    void registerURLSchemeAsCORSEnabled(const String&);
     void registerURLSchemeAsAlwaysRevalidated(const String&) const;
     void registerURLSchemeAsCachePartitioned(const String&) const;
     void registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&) const;
@@ -387,9 +391,6 @@ private:
     void handleInjectedBundleMessage(const String& messageName, const UserData& messageBody);
     void setInjectedBundleParameter(const String& key, const IPC::DataReference&);
     void setInjectedBundleParameters(const IPC::DataReference&);
-
-    enum class ShouldAcknowledgeWhenReadyToSuspend { No, Yes };
-    void actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend);
 
     bool areAllPagesSuspended() const;
 
@@ -578,6 +579,10 @@ private:
 
 #if PLATFORM(IOS)
     float m_backlightLevel { 0 };
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    HashCountedSet<WebCore::ServiceWorkerRegistrationIdentifier> m_swRegistrationCounts;
 #endif
 
     HashMap<StorageAreaIdentifier, StorageAreaMap*> m_storageAreaMaps;

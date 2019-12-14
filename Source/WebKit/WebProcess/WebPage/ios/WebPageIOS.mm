@@ -2780,7 +2780,6 @@ InteractionInformationAtPosition WebPage::positionInformation(const InteractionI
     FloatPoint adjustedPoint;
     auto* nodeRespondingToClickEvents = m_page->mainFrame().nodeRespondingToClickEvents(request.point, adjustedPoint);
 
-    info.nodeAtPositionIsFocusedElement = nodeRespondingToClickEvents == m_focusedElement;
     info.adjustedPointForNodeRespondingToClickEvents = adjustedPoint;
     info.nodeAtPositionHasDoubleClickHandler = m_page->mainFrame().nodeRespondingToDoubleClickEvent(request.point, adjustedPoint);
 
@@ -2905,9 +2904,11 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     layoutIfNeeded();
 
     information.lastInteractionLocation = m_lastInteractionLocation;
+    if (auto elementContext = contextForElement(*m_focusedElement))
+        information.elementContext = WTFMove(*elementContext);
 
     if (auto* renderer = m_focusedElement->renderer()) {
-        information.elementRect = rootViewInteractionBoundsForElement(*m_focusedElement);
+        information.interactionRect = rootViewInteractionBoundsForElement(*m_focusedElement);
         information.nodeFontSize = renderer->style().fontDescription().computedSize();
 
         bool inFixed = false;
@@ -2915,7 +2916,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.insideFixedPosition = inFixed;
         information.isRTL = renderer->style().direction() == TextDirection::RTL;
     } else
-        information.elementRect = IntRect();
+        information.interactionRect = { };
 
     if (is<HTMLElement>(m_focusedElement))
         information.isSpellCheckingEnabled = downcast<HTMLElement>(*m_focusedElement).spellcheck();
@@ -2986,6 +2987,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.autofillFieldName = WebCore::toAutofillFieldName(element.autofillData().fieldName);
         information.placeholder = element.attributeWithoutSynchronization(HTMLNames::placeholderAttr);
         information.inputMode = element.canonicalInputMode();
+        information.enterKeyHint = element.canonicalEnterKeyHint();
     } else if (is<HTMLInputElement>(*m_focusedElement)) {
         HTMLInputElement& element = downcast<HTMLInputElement>(*m_focusedElement);
         HTMLFormElement* form = element.form();
@@ -3047,6 +3049,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.hasSuggestions = !!element.list();
 #endif
         information.inputMode = element.canonicalInputMode();
+        information.enterKeyHint = element.canonicalEnterKeyHint();
         information.isReadOnly = element.isReadOnly();
         information.value = element.value();
         information.valueAsNumber = element.valueAsNumber();
@@ -3061,6 +3064,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
             information.isAutocorrect = focusedElement.shouldAutocorrect();
             information.autocapitalizeType = focusedElement.autocapitalizeType();
             information.inputMode = focusedElement.canonicalInputMode();
+            information.enterKeyHint = focusedElement.canonicalEnterKeyHint();
             information.shouldSynthesizeKeyEventsForEditing = focusedElement.document().settings().syntheticEditingCommandsEnabled();
         } else {
             information.isAutocorrect = true;

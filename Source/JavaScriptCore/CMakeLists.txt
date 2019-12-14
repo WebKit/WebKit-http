@@ -678,6 +678,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     interpreter/EntryFrame.h
     interpreter/FrameTracers.h
     interpreter/Register.h
+    interpreter/RegisterInlines.h
     interpreter/ShadowChicken.h
     interpreter/StackVisitor.h
     interpreter/VMEntryRecord.h
@@ -752,6 +753,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/ArrayConventions.h
     runtime/ArrayPrototype.h
     runtime/ArrayStorage.h
+    runtime/ArrayStorageInlines.h
     runtime/AuxiliaryBarrier.h
     runtime/AuxiliaryBarrierInlines.h
     runtime/BasicBlockLocation.h
@@ -821,6 +823,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/GenericTypedArrayView.h
     runtime/GenericTypedArrayViewInlines.h
     runtime/GetPutInfo.h
+    runtime/GetVM.h
     runtime/GlobalExecutable.h
     runtime/HashMapImpl.h
     runtime/Identifier.h
@@ -871,7 +874,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSImmutableButterfly.h
     runtime/JSInternalFieldObjectImpl.h
     runtime/JSInternalPromise.h
-    runtime/JSInternalPromiseDeferred.h
     runtime/JSMicrotask.h
     runtime/JSLock.h
     runtime/JSMap.h
@@ -885,7 +887,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSObjectInlines.h
     runtime/JSPromise.h
     runtime/JSPromiseConstructor.h
-    runtime/JSPromiseDeferred.h
     runtime/JSPropertyNameEnumerator.h
     runtime/JSProxy.h
     runtime/JSRunLoopTimer.h
@@ -928,7 +929,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/ParseInt.h
     runtime/PrivateName.h
     runtime/ProgramExecutable.h
-    runtime/PromiseDeferredTimer.h
+    runtime/PromiseTimer.h
     runtime/PropertyDescriptor.h
     runtime/PropertyMapHashTable.h
     runtime/PropertyName.h

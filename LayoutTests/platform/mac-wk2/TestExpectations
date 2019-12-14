@@ -22,6 +22,8 @@ tiled-drawing [ Pass ]
 fast/events/autoscroll-when-zoomed.html [ Pass ]
 fast/events/autoscroll-main-document.html [ Pass ]
 
+fast/forms/enterkeyhint-attribute-values.html [ Pass ]
+
 accessibility/smart-invert.html [ Pass ]
 webkit.org/b/189818 accessibility/smart-invert-reference.html [ Pass ImageOnlyFailure ]
 fast/media/mq-inverted-colors-live-update.html [ Pass ]
@@ -361,7 +363,7 @@ webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [
 
 webkit.org/b/155312 inspector/heap/getPreview.html [ Pass Timeout ]
 
-webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Pass Failure ]
+webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Skip ]
 
 # Video fullscreen is not implemented for mac wk2 in webkittestrunner
 media/media-fullscreen-loop-inline.html [ Skip ]
@@ -539,6 +541,15 @@ webkit.org/b/170620 [ Sierra+ ] media/controls/pip-placeholder-without-video-con
 webkit.org/b/172998 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Failure ]
 webkit.org/b/173199 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass Failure ]
 [ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-element-attributes.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-enter-pip-1.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-enter-pip-2.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-enter-pip-3.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-enter-pip-4.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-exit-pip-1.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-exit-pip-2.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-pip-events.html [ Pass ]
+[ Sierra+ ] media/picture-in-picture-api-pip-window.html [ Pass ]
 
 # RTL Scrollbars are enabled on Sierra WebKit2.
 webkit.org/b/179455 [ Sierra+ ] fast/scrolling/rtl-scrollbars.html [ Pass ImageOnlyFailure ]
@@ -687,7 +698,6 @@ webkit.org/b/172397 legacy-animation-engine/animations/needs-layout.html [ Pass 
 http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
 http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/ [ Pass ]
-webkit.org/b/198670 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html [ Pass Timeout ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access-database.html [ Pass Timeout ]
 [ HighSierra+ ] http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture.html [ Skip ]
 [ HighSierra+ ] http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture-database.html [ Skip ]
@@ -768,7 +778,6 @@ webkit.org/b/171839 [ Debug ] tiled-drawing/scrolling/scroll-snap/scroll-snap-ma
 webkit.org/b/177687 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
 
 webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Skip ]
-webkit.org/b/183093 http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html [ Skip ]
 webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Skip ]
 
 webkit.org/b/176881 plugins/js-from-destroy.html [ Pass Failure ]
@@ -929,11 +938,6 @@ webkit.org/b/199651 [ Mojave Debug ] webgpu/whlsl/builtin-vectors-2.html [ Slow 
 webkit.org/b/199089 [ Mojave+ Debug ] plugins/window-open.html [ Skip ]
 
 webkit.org/b/202500 [ Mojave ] crypto/workers/subtle/aes-indexeddb.html [ Timeout ]
-
-#<rdar://problem/56480245> REGRESSION (~r251067): http/tests/workers/service/registration-clear-redundant-worker.html is a flaky timeout (203218)
-webkit.org/b/203218 http/tests/workers/service/registration-clear-redundant-worker.html [ Pass Timeout ]
-
-webkit.org/b/203225 legacy-animation-engine/compositing/backing/transform-transition-from-outside-view.html [ Pass Failure ]
 
 # <rdar://problem/56506063> Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html is a flaky failure (203256)
 webkit.org/b/203256 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Pass Failure ]

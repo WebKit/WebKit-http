@@ -21,20 +21,20 @@ PASS SVGFitToViewBox mixin interface must not be exposed
 PASS SVGTests mixin interface must not be exposed 
 PASS SVGURIReference mixin interface must not be exposed 
 PASS SVGZoomAndPan mixin interface must not be exposed 
-FAIL SVGElement.prototype.getPresentationAttribute must be removed assert_false: expected false got true
+PASS SVGElement.prototype.getPresentationAttribute must be removed 
 PASS SVGElement.prototype.xmlbase must be removed 
-FAIL SVGElement.prototype.xmllang must be removed assert_false: expected false got true
-FAIL SVGElement.prototype.xmlspace must be removed assert_false: expected false got true
+PASS SVGElement.prototype.xmllang must be removed 
+PASS SVGElement.prototype.xmlspace must be removed 
 FAIL SVGGraphicsElement.prototype.getTransformToElement must be removed assert_false: expected false got true
 FAIL SVGGraphicsElement.prototype.hasExtension must be removed assert_false: expected false got true
 FAIL SVGGraphicsElement.prototype.requiredFeatures must be removed assert_false: expected false got true
 FAIL SVGSVGElement.prototype.currentView must be removed assert_false: expected false got true
-FAIL SVGSVGElement.prototype.pixelUnitToMillimeterX must be removed assert_false: expected false got true
-FAIL SVGSVGElement.prototype.pixelUnitToMillimeterY must be removed assert_false: expected false got true
-FAIL SVGSVGElement.prototype.screenPixelToMillimeterX must be removed assert_false: expected false got true
-FAIL SVGSVGElement.prototype.screenPixelToMillimeterY must be removed assert_false: expected false got true
+PASS SVGSVGElement.prototype.pixelUnitToMillimeterX must be removed 
+PASS SVGSVGElement.prototype.pixelUnitToMillimeterY must be removed 
+PASS SVGSVGElement.prototype.screenPixelToMillimeterX must be removed 
+PASS SVGSVGElement.prototype.screenPixelToMillimeterY must be removed 
 FAIL SVGSVGElement.prototype.useCurrentView must be removed assert_false: expected false got true
-FAIL SVGSVGElement.prototype.viewport must be removed assert_false: expected false got true
+PASS SVGSVGElement.prototype.viewport must be removed 
 PASS SVGViewElement.prototype.viewTarget must be removed 
 PASS SVGPathElement.prototype.getPointAtLength must be moved to SVGGeometryElement.prototype 
 PASS SVGPathElement.prototype.getTotalLength must be moved to SVGGeometryElement.prototype 

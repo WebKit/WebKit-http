@@ -757,7 +757,7 @@ public:
             DollarVMAssertScope assertScope;
             VM& vm = globalObject->vm();
             CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-            NativeCallFrameTracer tracer(vm, callFrame);
+            JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
             return JSValue::encode(jsNumber(static_cast<DOMJITGetter*>(pointer)->value()));
         }
 
@@ -851,7 +851,7 @@ public:
             DollarVMAssertScope assertScope;
             VM& vm = globalObject->vm();
             CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-            NativeCallFrameTracer tracer(vm, callFrame);
+            JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
             auto scope = DECLARE_THROW_SCOPE(vm);
             auto* object = static_cast<DOMJITNode*>(pointer);
             auto* domjitGetterComplex = jsDynamicCast<DOMJITGetterComplex*>(vm, object);
@@ -958,7 +958,6 @@ public:
     {
         DollarVMAssertScope assertScope;
         VM& vm = globalObject->vm();
-        NativeCallFrameTracer tracer(vm, callFrame);
         auto scope = DECLARE_THROW_SCOPE(vm);
 
         DOMJITNode* thisObject = jsDynamicCast<DOMJITNode*>(vm, callFrame->thisValue());
@@ -972,7 +971,7 @@ public:
         DollarVMAssertScope assertScope;
         VM& vm = globalObject->vm();
         CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-        NativeCallFrameTracer tracer(vm, callFrame);
+        JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
         return JSValue::encode(jsNumber(node->value()));
     }
 
@@ -1051,7 +1050,7 @@ public:
         DollarVMAssertScope assertScope;
         VM& vm = globalObject->vm();
         CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-        NativeCallFrameTracer tracer(vm, callFrame);
+        JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
         return JSValue::encode(jsNumber(node->value()));
     }
 
@@ -1114,7 +1113,7 @@ public:
             DollarVMAssertScope assertScope;
             VM& vm = globalObject->vm();
             CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-            NativeCallFrameTracer tracer(vm, callFrame);
+            JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
             JSObject* object = static_cast<JSObject*>(pointer);
             return JSValue::encode(object->getPrototypeDirect(vm));
         }
@@ -2556,6 +2555,21 @@ static EncodedJSValue JSC_HOST_CALL functionIsWasmSupported(JSGlobalObject*, Cal
 #endif
 }
 
+static EncodedJSValue JSC_HOST_CALL functionMake16BitStringIfPossible(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    DollarVMAssertScope assertScope;
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    String string = callFrame->argument(0).toWTFString(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
+    if (!string.is8Bit())
+        return JSValue::encode(jsString(vm, WTFMove(string)));
+    Vector<UChar> buffer;
+    buffer.resize(string.length());
+    StringImpl::copyCharacters(buffer.data(), string.characters8(), string.length());
+    return JSValue::encode(jsString(vm, String::adopt(WTFMove(buffer))));
+}
+
 void JSDollarVM::finishCreation(VM& vm)
 {
     DollarVMAssertScope assertScope;
@@ -2678,6 +2692,7 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "parseCount", functionParseCount, 0);
 
     addFunction(vm, "isWasmSupported", functionIsWasmSupported, 0);
+    addFunction(vm, "make16BitStringIfPossible", functionMake16BitStringIfPossible, 1);
 }
 
 void JSDollarVM::addFunction(VM& vm, JSGlobalObject* globalObject, const char* name, NativeFunction function, unsigned arguments)

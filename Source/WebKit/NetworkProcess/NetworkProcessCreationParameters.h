@@ -68,12 +68,8 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
     uint32_t uiProcessSDKVersion { 0 };
-#if PLATFORM(IOS_FAMILY)
-    String ctDataConnectionServiceType;
-#endif
     RetainPtr<CFDataRef> networkATSContext;
     bool storageAccessAPIEnabled;
-    bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
     WebsiteDataStoreParameters defaultDataStoreParameters;
@@ -89,8 +85,6 @@ struct NetworkProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsBypassingContentSecurityPolicy;
     Vector<String> urlSchemesRegisteredAsLocal;
     Vector<String> urlSchemesRegisteredAsNoAccess;
-    Vector<String> urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
-    Vector<String> urlSchemesRegisteredAsCORSEnabled;
 
 #if ENABLE(SERVICE_WORKER)
     String serviceWorkerRegistrationDirectory;

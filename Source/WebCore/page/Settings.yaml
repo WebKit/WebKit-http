@@ -493,6 +493,10 @@ allowsAirPlayForMediaPlayback:
   initial: true
   conditional: WIRELESS_PLAYBACK_TARGET
 
+remotePlaybackEnabled:
+  initial: true
+  conditional: WIRELESS_PLAYBACK_TARGET
+
 shouldConvertPositionStyleOnCopy:
   initial: false
 
@@ -873,6 +877,9 @@ isThirdPartyCookieBlockingEnabled:
   initial: false
 
 isLoggedInAPIEnabled:
+  initial: false
+
+enterKeyHintEnabled:
   initial: false
 
 # Deprecated

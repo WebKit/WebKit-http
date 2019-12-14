@@ -35,6 +35,7 @@
 #include "InlineCallFrame.h"
 #include "JITAllocator.h"
 #include "JITCode.h"
+#include "JSCellInlines.h"
 #include "MacroAssembler.h"
 #include "MarkedSpace.h"
 #include "RegisterAtOffsetList.h"
@@ -64,6 +65,14 @@ public:
     CodeBlock* codeBlock() { return m_codeBlock; }
     VM& vm() { return m_codeBlock->vm(); }
     AssemblerType_T& assembler() { return m_assembler; }
+
+    void prepareCallOperation(VM& vm)
+    {
+        UNUSED_PARAM(vm);
+#if !USE(BUILTIN_FRAME_ADDRESS) || !ASSERT_DISABLED
+        storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
+#endif
+    }
 
     void checkStackPointerAlignment()
     {

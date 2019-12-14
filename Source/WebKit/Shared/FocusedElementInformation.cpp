@@ -63,7 +63,8 @@ Optional<OptionItem> OptionItem::decode(IPC::Decoder& decoder)
 
 void FocusedElementInformation::encode(IPC::Encoder& encoder) const
 {
-    encoder << elementRect;
+    encoder << interactionRect;
+    encoder << elementContext;
     encoder << lastInteractionLocation;
     encoder << minimumScaleFactor;
     encoder << maximumScaleFactor;
@@ -78,6 +79,7 @@ void FocusedElementInformation::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(autocapitalizeType);
     encoder.encodeEnum(elementType);
     encoder.encodeEnum(inputMode);
+    encoder.encodeEnum(enterKeyHint);
     encoder << formAction;
     encoder << selectOptions;
     encoder << selectedIndex;
@@ -113,7 +115,10 @@ void FocusedElementInformation::encode(IPC::Encoder& encoder) const
 
 bool FocusedElementInformation::decode(IPC::Decoder& decoder, FocusedElementInformation& result)
 {
-    if (!decoder.decode(result.elementRect))
+    if (!decoder.decode(result.interactionRect))
+        return false;
+
+    if (!decoder.decode(result.elementContext))
         return false;
 
     if (!decoder.decode(result.lastInteractionLocation))
@@ -156,6 +161,9 @@ bool FocusedElementInformation::decode(IPC::Decoder& decoder, FocusedElementInfo
         return false;
 
     if (!decoder.decodeEnum(result.inputMode))
+        return false;
+
+    if (!decoder.decodeEnum(result.enterKeyHint))
         return false;
 
     if (!decoder.decode(result.formAction))
