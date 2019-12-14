@@ -121,7 +121,6 @@ Shared/CacheModel.cpp
 Shared/ContextMenuContextData.cpp
 Shared/EditingRange.cpp
 Shared/EditorState.cpp
-Shared/ElementContext.cpp
 Shared/FontInfo.cpp
 Shared/FrameInfoData.cpp
 Shared/LayerTreeContext.cpp
@@ -261,6 +260,7 @@ UIProcess/UserMediaPermissionRequestProxy.cpp
 UIProcess/UserMediaProcessManager.cpp
 UIProcess/VisitedLinkStore.cpp
 UIProcess/WebBackForwardCache.cpp
+UIProcess/WebBackForwardCacheEntry.cpp
 UIProcess/WebBackForwardList.cpp
 UIProcess/WebColorPicker.cpp
 UIProcess/WebConnectionToWebProcess.cpp
@@ -411,6 +411,7 @@ UIProcess/UserContent/WebUserContentControllerProxy.cpp
 UIProcess/WebAuthentication/fido/CtapAuthenticator.cpp
 UIProcess/WebAuthentication/fido/CtapHidDriver.cpp
 UIProcess/WebAuthentication/fido/CtapNfcDriver.cpp
+UIProcess/WebAuthentication/fido/FidoAuthenticator.cpp
 UIProcess/WebAuthentication/fido/FidoService.cpp
 UIProcess/WebAuthentication/fido/U2fAuthenticator.cpp
 
@@ -526,7 +527,6 @@ WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.cpp @no-unify
 WebProcess/Plugins/Netscape/NetscapePlugin.cpp @no-unify
 WebProcess/Plugins/Netscape/NetscapePluginStream.cpp @no-unify
 
-WebProcess/Storage/ServiceWorkerClientFetch.cpp
 WebProcess/Storage/WebSWClientConnection.cpp
 WebProcess/Storage/WebSWContextManagerConnection.cpp
 WebProcess/Storage/WebSWOriginTable.cpp

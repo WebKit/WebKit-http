@@ -33,7 +33,6 @@
 #import "CompletionHandlerCallChecker.h"
 #import "DiagnosticLoggingClient.h"
 #import "DynamicViewportSizeUpdate.h"
-#import "ElementContext.h"
 #import "FindClient.h"
 #import "FullscreenClient.h"
 #import "GlobalFindInPageState.h"
@@ -101,6 +100,7 @@
 #import "_WKTextInputContextInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
+#import <WebCore/ElementContext.h>
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/JSDOMBinding.h>
@@ -5059,12 +5059,12 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
     CGRect rectInRootViewCoordinates = [self _convertRectToRootViewCoordinates:rectInWebViewCoordinates];
     auto weakSelf = WeakObjCPtr<WKWebView>(self);
-    _page->textInputContextsInRect(rectInRootViewCoordinates, [weakSelf, capturedCompletionHandler = makeBlockPtr(completionHandler)] (const Vector<WebKit::ElementContext>& contexts) {
+    _page->textInputContextsInRect(rectInRootViewCoordinates, [weakSelf, capturedCompletionHandler = makeBlockPtr(completionHandler)] (const Vector<WebCore::ElementContext>& contexts) {
         RetainPtr<NSMutableArray> elements = adoptNS([[NSMutableArray alloc] initWithCapacity:contexts.size()]);
 
         auto strongSelf = weakSelf.get();
         for (const auto& context : contexts) {
-            WebKit::ElementContext contextWithWebViewBoundingRect = context;
+            WebCore::ElementContext contextWithWebViewBoundingRect = context;
             contextWithWebViewBoundingRect.boundingRect = [strongSelf _convertRectFromRootViewCoordinates:context.boundingRect];
             [elements addObject:adoptNS([[_WKTextInputContext alloc] _initWithTextInputContext:contextWithWebViewBoundingRect]).get()];
         }
@@ -5660,6 +5660,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         findOptions |= WebKit::FindOptionsShowFindIndicator;
     if (wkFindOptions & _WKFindOptionsShowHighlight)
         findOptions |= WebKit::FindOptionsShowHighlight;
+    if (wkFindOptions & _WKFindOptionsNoIndexChange)
+        findOptions |= WebKit::FindOptionsNoIndexChange;
     if (wkFindOptions & _WKFindOptionsDetermineMatchIndex)
         findOptions |= WebKit::FindOptionsDetermineMatchIndex;
 
@@ -7539,12 +7541,12 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 #if PLATFORM(IOS_FAMILY)
-- (void)_triggerSystemPreviewActionOnFrame:(uint64_t)frameID page:(uint64_t)pageID
+- (void)_triggerSystemPreviewActionOnElement:(uint64_t)elementID document:(uint64_t)documentID page:(uint64_t)pageID
 {
 #if USE(SYSTEM_PREVIEW)
     if (_page) {
         if (auto* previewController = _page->systemPreviewController())
-            previewController->triggerSystemPreviewActionWithTargetForTesting(frameID, pageID);
+            previewController->triggerSystemPreviewActionWithTargetForTesting(elementID, documentID, pageID);
     }
 #endif
 }

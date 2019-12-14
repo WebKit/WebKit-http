@@ -230,7 +230,8 @@ public:
     void populateVisitedLinks();
 
 #if PLATFORM(IOS_FAMILY)
-    static void applicationIsAboutToSuspend();
+    void applicationIsAboutToSuspend();
+    static void notifyProcessPoolsApplicationIsAboutToSuspend();
 #endif
 
     void handleMemoryPressureWarning(Critical);
@@ -380,9 +381,9 @@ public:
     // Network Process Management
     NetworkProcessProxy& ensureNetworkProcess(WebsiteDataStore* withWebsiteDataStore = nullptr);
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
-    void networkProcessCrashed(NetworkProcessProxy&, Vector<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>>&&);
+    void networkProcessCrashed(NetworkProcessProxy&, Vector<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply>>&&);
 
-    void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
+    void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
 
     bool isServiceWorkerPageID(WebPageProxyIdentifier) const;
 #if ENABLE(SERVICE_WORKER)
@@ -392,7 +393,6 @@ public:
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
     bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
     void updateServiceWorkerUserAgent(const String& userAgent);
-    bool mayHaveRegisteredServiceWorkers(const WebsiteDataStore&);
 #endif
 
 #if PLATFORM(COCOA)
@@ -408,8 +408,6 @@ public:
 
     static void setInvalidMessageCallback(void (*)(WKStringRef));
     static void didReceiveInvalidMessage(const IPC::StringReference& messageReceiverName, const IPC::StringReference& messageName);
-
-    void processDidCachePage(WebProcessProxy*);
 
     bool isURLKnownHSTSHost(const String& urlString) const;
     void resetHSTSHosts();
@@ -503,6 +501,9 @@ public:
     void addSandboxPath(const CString& path, SandboxPermission permission) { m_extraSandboxPaths.add(path, permission); };
     const HashMap<CString, SandboxPermission>& sandboxPaths() const { return m_extraSandboxPaths; };
     bool sandboxEnabled() const { return m_sandboxEnabled; };
+
+    void setUserMessageHandler(Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)>&& handler) { m_userMessageHandler = WTFMove(handler); }
+    const Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)>& userMessageHandler() const { return m_userMessageHandler; }
 #endif
     
     void setWebProcessHasUploads(WebCore::ProcessIdentifier);
@@ -603,7 +604,6 @@ private:
     WebProcessProxy* m_prewarmedProcess { nullptr };
     WebProcessProxy* m_dummyProcessProxy { nullptr }; // A lightweight WebProcessProxy without backing process.
 
-    WebProcessProxy* m_processWithPageCache { nullptr };
 #if ENABLE(SERVICE_WORKER)
     using RegistrableDomainWithSessionID = std::pair<WebCore::RegistrableDomain, PAL::SessionID>;
     HashMap<RegistrableDomainWithSessionID, WebProcessProxy*> m_serviceWorkerProcesses;
@@ -611,7 +611,6 @@ private:
     bool m_allowsAnySSLCertificateForServiceWorker { false };
     String m_serviceWorkerUserAgent;
     Optional<WebPreferencesStore> m_serviceWorkerPreferences;
-    HashMap<String, bool> m_mayHaveRegisteredServiceWorkers;
 #endif
 
     Ref<WebPageGroup> m_defaultPageGroup;
@@ -783,6 +782,8 @@ private:
 #if PLATFORM(GTK) || PLATFORM(WPE)
     bool m_sandboxEnabled { false };
     HashMap<CString, SandboxPermission> m_extraSandboxPaths;
+
+    Function<void(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&)> m_userMessageHandler;
 #endif
 
     HashMap<WebCore::ProcessIdentifier, std::unique_ptr<ProcessAssertion>> m_processesWithUploads;

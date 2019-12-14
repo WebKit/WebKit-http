@@ -80,6 +80,7 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/BString.h>
+#include <WebCore/BackForwardCache.h>
 #include <WebCore/BackForwardController.h>
 #include <WebCore/BitmapInfo.h>
 #include <WebCore/CacheStorageProvider.h>
@@ -132,8 +133,6 @@
 #include <WebCore/MemoryRelease.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
-#include <WebCore/Page.h>
-#include <WebCore/PageCache.h>
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PathUtilities.h>
@@ -541,13 +540,13 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     unsigned cacheMaxDeadCapacity = 0;
     Seconds deadDecodedDataDeletionInterval;
 
-    unsigned pageCacheSize = 0;
+    unsigned backForwardCacheSize = 0;
 
 
     switch (cacheModel) {
     case WebCacheModelDocumentViewer: {
-        // Page cache capacity (in pages)
-        pageCacheSize = 0;
+        // Back/forward cache capacity (in pages)
+        backForwardCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 2048)
@@ -572,15 +571,15 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         break;
     }
     case WebCacheModelDocumentBrowser: {
-        // Page cache capacity (in pages)
+        // Back/forward cache capacity (in pages)
         if (memSize >= 1024)
-            pageCacheSize = 3;
+            backForwardCacheSize = 3;
         else if (memSize >= 512)
-            pageCacheSize = 2;
+            backForwardCacheSize = 2;
         else if (memSize >= 256)
-            pageCacheSize = 1;
+            backForwardCacheSize = 1;
         else
-            pageCacheSize = 0;
+            backForwardCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 2048)
@@ -618,18 +617,18 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         break;
     }
     case WebCacheModelPrimaryWebBrowser: {
-        // Page cache capacity (in pages)
+        // Back/forward cache capacity (in pages)
         // (Research indicates that value / page drops substantially after 3 pages.)
         if (memSize >= 2048)
-            pageCacheSize = 5;
+            backForwardCacheSize = 5;
         else if (memSize >= 1024)
-            pageCacheSize = 4;
+            backForwardCacheSize = 4;
         else if (memSize >= 512)
-            pageCacheSize = 3;
+            backForwardCacheSize = 3;
         else if (memSize >= 256)
-            pageCacheSize = 2;
+            backForwardCacheSize = 2;
         else
-            pageCacheSize = 1;
+            backForwardCacheSize = 1;
 
         // Object cache capacities (in bytes)
         // (Testing indicates that value / MB depends heavily on content and
@@ -687,7 +686,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     auto& memoryCache = MemoryCache::singleton();
     memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    PageCache::singleton().setMaxSize(pageCacheSize);
+    BackForwardCache::singleton().setMaxSize(backForwardCacheSize);
 
 #if USE(CFURLCONNECTION)
     // Don't shrink a big disk cache, since that would cause churn.
@@ -3654,9 +3653,9 @@ HRESULT WebView::stringByEvaluatingJavaScriptFromString(_In_ BSTR script, // ass
     if (!scriptExecutionResult)
         return E_FAIL;
     else if (scriptExecutionResult.isString()) {
-        JSC::ExecState* exec = coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec();
-        JSC::JSLockHolder lock(exec);
-        *result = BString(scriptExecutionResult.getString(exec));
+        JSC::JSGlobalObject* lexicalGlobalObject = coreFrame->script().globalObject(mainThreadNormalWorld());
+        JSC::JSLockHolder lock(lexicalGlobalObject);
+        *result = BString(scriptExecutionResult.getString(lexicalGlobalObject));
     }
 
     return S_OK;
@@ -5386,7 +5385,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = preferences->usesPageCache(&enabled);
     if (FAILED(hr))
         return hr;
-    settings.setUsesPageCache(!!enabled);
+    settings.setUsesBackForwardCache(!!enabled);
 
     hr = preferences->isDOMPasteAllowed(&enabled);
     if (FAILED(hr))
@@ -5614,6 +5613,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setRequestIdleCallbackEnabled(!!enabled);
+
+    hr = prefsPrivate->asyncClipboardAPIEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setAsyncClipboardAPIEnabled(!!enabled);
 
     return S_OK;
 }
@@ -6551,14 +6555,14 @@ HRESULT WebView::reportException(_In_ JSContextRef context, _In_ JSValueRef exce
     if (!context || !exception)
         return E_INVALIDARG;
 
-    JSC::ExecState* execState = toJS(context);
-    JSC::JSLockHolder lock(execState);
+    JSC::JSGlobalObject* globalObject = toJS(context);
+    JSC::JSLockHolder lock(globalObject);
 
     // Make sure the context has a DOMWindow global object, otherwise this context didn't originate from a WebView.
-    if (!toJSDOMWindow(execState->vm(), execState->lexicalGlobalObject()))
+    if (!toJSDOMWindow(globalObject->vm(), globalObject))
         return E_FAIL;
 
-    WebCore::reportException(execState, toJS(execState, exception));
+    WebCore::reportException(globalObject, toJS(globalObject, exception));
     return S_OK;
 }
 
@@ -6572,9 +6576,9 @@ HRESULT WebView::elementFromJS(_In_ JSContextRef context, _In_ JSValueRef nodeOb
     if (!context || !nodeObject)
         return E_INVALIDARG;
 
-    JSC::ExecState* exec = toJS(context);
-    JSC::JSLockHolder lock(exec);
-    Element* elt = JSElement::toWrapped(exec->vm(), toJS(exec, nodeObject));
+    JSC::JSGlobalObject* lexicalGlobalObject = toJS(context);
+    JSC::JSLockHolder lock(lexicalGlobalObject);
+    Element* elt = JSElement::toWrapped(lexicalGlobalObject->vm(), toJS(lexicalGlobalObject, nodeObject));
     if (!elt)
         return E_FAIL;
 

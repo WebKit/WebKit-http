@@ -90,6 +90,8 @@ public:
     void selectCacheWithoutManifest();
     void selectCacheWithManifest(const URL& manifestURL);
 
+    bool canLoadMainResource(const ResourceRequest&);
+
     void maybeLoadMainResource(const ResourceRequest&, SubstituteData&);
     void maybeLoadMainResourceForRedirect(const ResourceRequest&, SubstituteData&);
     bool maybeLoadFallbackForMainResponse(const ResourceRequest&, const ResourceResponse&);
@@ -105,7 +107,7 @@ public:
     bool maybeLoadSynchronously(ResourceRequest&, ResourceError&, ResourceResponse&, RefPtr<SharedBuffer>&);
     void maybeLoadFallbackSynchronously(const ResourceRequest&, ResourceError&, ResourceResponse&, RefPtr<SharedBuffer>&);
 
-    bool canCacheInPageCache();
+    bool canCacheInBackForwardCache();
 
     Status status() const;
     bool update();

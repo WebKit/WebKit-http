@@ -38,7 +38,7 @@
 #include "VisibleWebPageCounter.h"
 #include "WebConnectionToWebProcess.h"
 #include "WebPageProxyIdentifier.h"
-#include "WebProcessProxyMessages.h"
+#include "WebProcessProxyMessagesReplies.h"
 #include <WebCore/FrameIdentifier.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/ProcessIdentifier.h>
@@ -61,6 +61,7 @@ namespace WebCore {
 class DeferrableOneShotTimer;
 class ResourceRequest;
 struct PluginInfo;
+struct PrewarmInformation;
 struct SecurityOriginData;
 }
 
@@ -80,6 +81,8 @@ class WebProcessPool;
 class WebUserContentControllerProxy;
 class WebsiteDataStore;
 enum class WebsiteDataType;
+struct BackForwardListItemState;
+struct UserMessage;
 struct WebNavigationDataStore;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
@@ -189,9 +192,6 @@ public:
     bool checkURLReceivedFromWebProcess(const URL&);
 
     static bool fullKeyboardAccessEnabled();
-
-    void didSaveToPageCache();
-    void releasePageCache();
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, CompletionHandler<void(WebsiteData)>&&);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, CompletionHandler<void()>&&);
@@ -328,7 +328,7 @@ public:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    void processWasUnexpectedlyUnsuspended();
+    void processWasResumed();
 #endif
 
     void webPageMediaStateDidChange(WebPageProxy&);
@@ -382,12 +382,12 @@ private:
     void getPlugins(bool refresh, CompletionHandler<void(Vector<WebCore::PluginInfo>&& plugins, Vector<WebCore::PluginInfo>&& applicationPlugins, Optional<Vector<WebCore::SupportedPluginIdentifier>>&&)>&&);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    void getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
+    void getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnectionDelayedReply&&);
 #endif
     void addPlugInAutoStartOriginHash(String&& pageOrigin, uint32_t hash);
     void plugInDidReceiveUserInteraction(uint32_t hash);
     
-    void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
+    void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
 
     bool platformIsBeingDebugged() const;
     bool shouldAllowNonValidInjectedCode() const;
@@ -427,6 +427,11 @@ private:
     void updateRegistrationWithDataStore();
 
     void maybeShutDown();
+
+#if PLATFORM(GTK) || PLATFORM(WPE)
+    void sendMessageToWebContext(UserMessage&&);
+    void sendMessageToWebContextWithReply(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&);
+#endif
 
     enum class IsWeak { No, Yes };
     template<typename T> class WeakOrStrongPtr {

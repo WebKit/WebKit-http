@@ -55,6 +55,7 @@
 #import "WebCoreArgumentCoders.h"
 #import "WebFrame.h"
 #import "WebImage.h"
+#import "WebPageMessages.h"
 #import "WebPageProxyMessages.h"
 #import "WebPreviewLoaderClient.h"
 #import "WebProcess.h"
@@ -2815,7 +2816,7 @@ void WebPage::requestPositionInformation(const InteractionInformationRequest& re
     send(Messages::WebPageProxy::DidReceivePositionInformation(positionInformation(request)));
 }
 
-void WebPage::startInteractionWithElementContextOrPosition(Optional<ElementContext>&& elementContext, WebCore::IntPoint&& point)
+void WebPage::startInteractionWithElementContextOrPosition(Optional<WebCore::ElementContext>&& elementContext, WebCore::IntPoint&& point)
 {
     if (elementContext) {
         m_interactionNode = elementForContext(*elementContext);
@@ -3308,6 +3309,8 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
     frameView.setCustomSizeForResizeEvent(expandedIntSize(targetUnobscuredRectInScrollViewCoordinates.size()));
     setDeviceOrientation(deviceOrientation);
     frameView.setScrollOffset(roundedUnobscuredContentRectPosition);
+
+    m_page->updateRendering();
 
 #if ENABLE(VIEWPORT_RESIZING)
     if (immediatelyShrinkToFitContent())

@@ -36,6 +36,7 @@ import requests
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
 S3URL = 'https://s3-us-west-2.amazonaws.com/'
+EWS_URL = 'https://ews-build.webkit.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
 
@@ -602,6 +603,13 @@ class RunWebKitPerlTests(shell.ShellCommand):
 
     def __init__(self, **kwargs):
         super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            message = 'Passed webkitperl tests'
+            self.build.buildFinished([message], SUCCESS)
+            return {u'step': unicode(message)}
+        return {u'step': u'Failed webkitperl tests'}
 
 
 class RunBuildWebKitOrgUnitTests(shell.ShellCommand):
@@ -1230,7 +1238,7 @@ class UploadBuiltProduct(transfer.FileUpload):
     def __init__(self, **kwargs):
         kwargs['workersrc'] = self.workersrc
         kwargs['masterdest'] = self.masterdest
-        kwargs['mode'] = 0644
+        kwargs['mode'] = 0o0644
         kwargs['blocksize'] = 1024 * 256
         transfer.FileUpload.__init__(self, **kwargs)
 
@@ -1290,8 +1298,7 @@ class DownloadBuiltProduct(shell.ShellCommand):
     name = 'download-built-product'
     description = ['downloading built product']
     descriptionDone = ['Downloaded built product']
-    haltOnFailure = True
-    flunkOnFailure = True
+    flunkOnFailure = False
 
     def getResultSummary(self):
         if self.results != SUCCESS:
@@ -1300,6 +1307,28 @@ class DownloadBuiltProduct(shell.ShellCommand):
 
     def __init__(self, **kwargs):
         super(DownloadBuiltProduct, self).__init__(logEnviron=False, **kwargs)
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        if rc == FAILURE:
+            self.build.addStepsAfterCurrentStep([DownloadBuiltProductFromMaster()])
+        return rc
+
+
+class DownloadBuiltProductFromMaster(DownloadBuiltProduct):
+    command = ['python', 'Tools/BuildSlaveSupport/download-built-product',
+        WithProperties('--%(configuration)s'),
+        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
+    haltOnFailure = True
+    flunkOnFailure = True
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to download built product from build master'}
+        return shell.ShellCommand.getResultSummary(self)
+
+    def evaluateCommand(self, cmd):
+        return shell.ShellCommand.evaluateCommand(self, cmd)
 
 
 class ExtractBuiltProduct(shell.ShellCommand):
@@ -1507,7 +1536,7 @@ class UploadTestResults(transfer.FileUpload):
             identifier = '-{}'.format(identifier)
         kwargs['workersrc'] = self.workersrc
         kwargs['masterdest'] = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s{}.zip'.format(identifier))
-        kwargs['mode'] = 0644
+        kwargs['mode'] = 0o0644
         kwargs['blocksize'] = 1024 * 256
         transfer.FileUpload.__init__(self, **kwargs)
 

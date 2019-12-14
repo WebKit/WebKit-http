@@ -27,9 +27,14 @@
 #include "Clipboard.h"
 
 #include "ClipboardItem.h"
-#include "JSDOMPromise.h"
+#include "Frame.h"
+#include "JSBlob.h"
+#include "JSClipboardItem.h"
 #include "JSDOMPromiseDeferred.h"
 #include "Navigator.h"
+#include "Pasteboard.h"
+#include "SharedBuffer.h"
+#include "WebContentReader.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -45,6 +50,8 @@ Clipboard::Clipboard(Navigator& navigator)
     : m_navigator(makeWeakPtr(navigator))
 {
 }
+
+Clipboard::~Clipboard() = default;
 
 Navigator* Clipboard::navigator()
 {
@@ -74,13 +81,120 @@ void Clipboard::writeText(const String& data, Ref<DeferredPromise>&& promise)
 
 void Clipboard::read(Ref<DeferredPromise>&& promise)
 {
-    promise->reject(NotSupportedError);
+    auto rejectPromiseAndClearActiveSession = [&] {
+        m_activeSession = WTF::nullopt;
+        promise->reject(NotAllowedError);
+    };
+
+    auto frame = makeRefPtr(this->frame());
+    if (!frame) {
+        rejectPromiseAndClearActiveSession();
+        return;
+    }
+
+    auto pasteboard = Pasteboard::createForCopyAndPaste();
+    auto changeCountAtStart = pasteboard->changeCount();
+
+    if (!frame->requestDOMPasteAccess()) {
+        rejectPromiseAndClearActiveSession();
+        return;
+    }
+
+    if (!m_activeSession || m_activeSession->changeCount != changeCountAtStart) {
+        auto allInfo = pasteboard->allPasteboardItemInfo();
+        if (!allInfo) {
+            rejectPromiseAndClearActiveSession();
+            return;
+        }
+
+        Vector<Ref<ClipboardItem>> clipboardItems;
+        clipboardItems.reserveInitialCapacity(allInfo->size());
+        for (auto& itemInfo : *allInfo)
+            clipboardItems.uncheckedAppend(ClipboardItem::create(*this, itemInfo));
+        m_activeSession = {{ WTFMove(pasteboard), WTFMove(clipboardItems), changeCountAtStart }};
+    }
+
+    promise->resolve<IDLSequence<IDLInterface<ClipboardItem>>>(m_activeSession->items);
+}
+
+void Clipboard::getType(ClipboardItem& item, const String& type, Ref<DeferredPromise>&& promise)
+{
+    if (!m_activeSession) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    auto frame = makeRefPtr(this->frame());
+    if (!frame) {
+        m_activeSession = WTF::nullopt;
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    auto itemIndex = m_activeSession->items.findMatching([&] (auto& activeItem) {
+        return activeItem.ptr() == &item;
+    });
+
+    if (itemIndex == notFound) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    if (!item.types().contains(type)) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    String resultAsString;
+
+    if (type == "text/uri-list"_s) {
+        String title;
+        resultAsString = activePasteboard().readURL(itemIndex, title).string();
+    }
+
+    if (type == "text/plain"_s) {
+        PasteboardPlainText plainTextReader;
+        activePasteboard().read(plainTextReader, PlainTextURLReadingPolicy::IgnoreURL, itemIndex);
+        resultAsString = WTFMove(plainTextReader.text);
+    }
+
+    if (type == "text/html"_s) {
+        WebContentMarkupReader markupReader { *frame };
+        activePasteboard().read(markupReader, WebContentReadingPolicy::OnlyRichTextTypes, itemIndex);
+        resultAsString = WTFMove(markupReader.markup);
+    }
+
+    // FIXME: Support reading "image/png" as well as custom data.
+    // FIXME: Instead of checking changeCount here, we should send the changeCount over to the UI process to be vetted
+    // when attempting to read the data in the first place.
+    if (m_activeSession->changeCount != activePasteboard().changeCount()) {
+        m_activeSession = WTF::nullopt;
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    if (!resultAsString.isNull())
+        promise->resolve<IDLInterface<Blob>>(ClipboardItem::blobFromString(resultAsString, type));
+    else
+        promise->reject(NotAllowedError);
 }
 
 void Clipboard::write(const Vector<RefPtr<ClipboardItem>>& items, Ref<DeferredPromise>&& promise)
 {
     UNUSED_PARAM(items);
     promise->reject(NotSupportedError);
+}
+
+Frame* Clipboard::frame() const
+{
+    return m_navigator ? m_navigator->frame() : nullptr;
+}
+
+Pasteboard& Clipboard::activePasteboard()
+{
+    ASSERT(m_activeSession);
+    ASSERT(m_activeSession->pasteboard);
+    return *m_activeSession->pasteboard;
 }
 
 }

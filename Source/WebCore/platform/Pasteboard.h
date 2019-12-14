@@ -26,6 +26,7 @@
 #pragma once
 
 #include "DragImage.h"
+#include "PasteboardCustomData.h"
 #include "PasteboardItemInfo.h"
 #include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
@@ -64,7 +65,8 @@ class Range;
 class SelectionData;
 class SharedBuffer;
 
-enum class WebContentReadingPolicy { AnyType, OnlyRichTextTypes };
+enum class PlainTextURLReadingPolicy : bool { IgnoreURL, AllowURL };
+enum class WebContentReadingPolicy : bool { AnyType, OnlyRichTextTypes };
 enum ShouldSerializeSelectedTextForDataTransfer { DefaultSelectedTextType, IncludeImageAltTextForDataTransfer };
 
 // For writing to the pasteboard. Generally sorted with the richest formats on top.
@@ -165,21 +167,6 @@ struct PasteboardFileReader {
     virtual void readBuffer(const String& filename, const String& type, Ref<SharedBuffer>&&) = 0;
 };
 
-// FIXME: We need to ensure that the contents of sameOriginCustomData are not accessible across different origins.
-struct PasteboardCustomData {
-    String origin;
-    Vector<String> orderedTypes;
-    HashMap<String, String> platformData;
-    HashMap<String, String> sameOriginCustomData;
-
-    WEBCORE_EXPORT Ref<SharedBuffer> createSharedBuffer() const;
-    WEBCORE_EXPORT static PasteboardCustomData fromSharedBuffer(const SharedBuffer&);
-
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT static const char* cocoaType();
-#endif
-};
-
 class Pasteboard {
     WTF_MAKE_NONCOPYABLE(Pasteboard); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -216,8 +203,8 @@ public:
     virtual WEBCORE_EXPORT void clear();
     virtual WEBCORE_EXPORT void clear(const String& type);
 
-    virtual WEBCORE_EXPORT void read(PasteboardPlainText&);
-    virtual WEBCORE_EXPORT void read(PasteboardWebContentReader&, WebContentReadingPolicy = WebContentReadingPolicy::AnyType);
+    virtual WEBCORE_EXPORT void read(PasteboardPlainText&, PlainTextURLReadingPolicy = PlainTextURLReadingPolicy::AllowURL, Optional<size_t> itemIndex = WTF::nullopt);
+    virtual WEBCORE_EXPORT void read(PasteboardWebContentReader&, WebContentReadingPolicy = WebContentReadingPolicy::AnyType, Optional<size_t> itemIndex = WTF::nullopt);
     virtual WEBCORE_EXPORT void read(PasteboardFileReader&);
 
     virtual WEBCORE_EXPORT void write(const Color&);
@@ -226,7 +213,7 @@ public:
     virtual WEBCORE_EXPORT void write(const PasteboardImage&);
     virtual WEBCORE_EXPORT void write(const PasteboardWebContent&);
 
-    virtual WEBCORE_EXPORT void writeCustomData(const PasteboardCustomData&);
+    virtual WEBCORE_EXPORT void writeCustomData(const Vector<PasteboardCustomData>&);
 
     enum class FileContentState { NoFileOrImageData, InMemoryImage, MayContainFilePaths };
     virtual WEBCORE_EXPORT FileContentState fileContentState();
@@ -255,7 +242,7 @@ public:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    explicit Pasteboard(long changeCount);
+    explicit Pasteboard(int64_t changeCount);
     explicit Pasteboard(const String& pasteboardName);
 
     static NSArray *supportedWebContentPasteboardTypes();
@@ -269,8 +256,10 @@ public:
 #if PLATFORM(COCOA)
     static bool shouldTreatCocoaTypeAsFile(const String&);
     WEBCORE_EXPORT static NSArray *supportedFileUploadPasteboardTypes();
-    long changeCount() const;
+    int64_t changeCount() const;
     const PasteboardCustomData& readCustomData();
+#else
+    int64_t changeCount() const { return 0; }
 #endif
 
 #if PLATFORM(COCOA)
@@ -288,8 +277,8 @@ public:
     void writeImageToDataObject(Element&, const URL&); // FIXME: Layering violation.
 #endif
 
-    Vector<PasteboardItemInfo> allPasteboardItemInfo() const;
-    PasteboardItemInfo pasteboardItemInfo(size_t index) const;
+    Optional<Vector<PasteboardItemInfo>> allPasteboardItemInfo() const;
+    Optional<PasteboardItemInfo> pasteboardItemInfo(size_t index) const;
 
     String readString(size_t index, const String& type);
     RefPtr<WebCore::SharedBuffer> readBuffer(size_t index, const String& type);
@@ -298,7 +287,7 @@ public:
 private:
 #if PLATFORM(IOS_FAMILY)
     bool respectsUTIFidelities() const;
-    void readRespectingUTIFidelities(PasteboardWebContentReader&, WebContentReadingPolicy);
+    void readRespectingUTIFidelities(PasteboardWebContentReader&, WebContentReadingPolicy, Optional<size_t>);
 
     enum class ReaderResult {
         ReadType,
@@ -317,7 +306,7 @@ private:
 
 #if PLATFORM(COCOA)
     Vector<String> readFilePaths();
-    Vector<String> readPlatformValuesAsStrings(const String& domType, long changeCount, const String& pasteboardName);
+    Vector<String> readPlatformValuesAsStrings(const String& domType, int64_t changeCount, const String& pasteboardName);
     static void addHTMLClipboardTypesForCocoaType(ListHashSet<String>& resultTypes, const String& cocoaType);
     String readStringForPlatformType(const String&);
     Vector<String> readTypesWithSecurityCheck();
@@ -333,7 +322,7 @@ private:
 
 #if PLATFORM(COCOA)
     String m_pasteboardName;
-    long m_changeCount;
+    int64_t m_changeCount;
     Optional<PasteboardCustomData> m_customDataCache;
 #endif
 

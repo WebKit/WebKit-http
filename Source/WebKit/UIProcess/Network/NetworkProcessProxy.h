@@ -26,20 +26,22 @@
 #pragma once
 
 #include "AuxiliaryProcessProxy.h"
-#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
-#include "LegacyCustomProtocolManagerProxy.h"
-#endif
-#include "NetworkProcessProxyMessages.h"
+#include "NetworkProcessProxyMessagesReplies.h"
 #include "ProcessLauncher.h"
 #include "ProcessThrottler.h"
 #include "ProcessThrottlerClient.h"
 #include "UserContentControllerIdentifier.h"
-#include "WebProcessProxyMessages.h"
+#include "WebProcessProxyMessagesReplies.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/CrossSiteNavigationDataTransfer.h>
+#include <WebCore/FrameIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
 #include <memory>
 #include <wtf/Deque.h>
+
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
+#include "LegacyCustomProtocolManagerProxy.h"
+#endif
 
 namespace PAL {
 class SessionID;
@@ -87,7 +89,7 @@ public:
     explicit NetworkProcessProxy(WebProcessPool&);
     ~NetworkProcessProxy();
 
-    void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
+    void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
 
     DownloadProxy& createDownloadProxy(WebsiteDataStore&, const WebCore::ResourceRequest&);
 
@@ -118,7 +120,7 @@ public:
     void setAgeCapForClientSideCookies(PAL::SessionID, Optional<Seconds>, CompletionHandler<void()>&&);
     void setCacheMaxAgeCap(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
     void setGrandfathered(PAL::SessionID, const RegistrableDomain&, bool isGrandfathered, CompletionHandler<void()>&&);
-    void setUseITPDatabase(PAL::SessionID, bool value);
+    void setUseITPDatabase(PAL::SessionID, bool value, CompletionHandler<void()>&&);
     void setNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID, bool, CompletionHandler<void()>&&);
     void setIsRunningResourceLoadStatisticsTest(PAL::SessionID, bool, CompletionHandler<void()>&&);
     void setNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID, bool, CompletionHandler<void()>&&);
@@ -155,6 +157,7 @@ public:
     void deleteWebsiteDataInUIProcessForRegistrableDomains(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<RegistrableDomain>, CompletionHandler<void(HashSet<WebCore::RegistrableDomain>&&)>&&);
     void hasIsolatedSession(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void(bool)>&&);
     void setShouldDowngradeReferrerForTesting(bool, CompletionHandler<void()>&&);
+    void setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID, bool, CompletionHandler<void()>&&);
 #endif
 
     void processReadyToSuspend();
@@ -168,7 +171,7 @@ public:
     void syncAllCookies();
     void didSyncAllCookies();
 
-    void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebPageProxyIdentifier, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&&);
+    void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebPageProxyIdentifier, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReplyDelayedReply&&);
 
     ProcessThrottler& throttler() { return m_throttler; }
     WebProcessPool& processPool() { return m_processPool; }
@@ -241,7 +244,7 @@ private:
 #endif
 
 #if ENABLE(SANDBOX_EXTENSIONS)
-    void getSandboxExtensionsForBlobFiles(const Vector<String>& paths, Messages::NetworkProcessProxy::GetSandboxExtensionsForBlobFiles::AsyncReply&&);
+    void getSandboxExtensionsForBlobFiles(const Vector<String>& paths, Messages::NetworkProcessProxy::GetSandboxExtensionsForBlobFilesAsyncReply&&);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -264,7 +267,7 @@ private:
 
     struct ConnectionRequest {
         WeakPtr<WebProcessProxy> webProcess;
-        Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply reply;
+        Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply reply;
     };
     uint64_t m_connectionRequestIdentifier { 0 };
     HashMap<uint64_t, ConnectionRequest> m_connectionRequests;

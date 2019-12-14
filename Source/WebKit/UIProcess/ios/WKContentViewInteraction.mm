@@ -55,6 +55,7 @@
 #import "WKHighlightLongPressGestureRecognizer.h"
 #import "WKImagePreviewViewController.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
+#import "WKMouseGestureRecognizer.h"
 #import "WKNSURLExtras.h"
 #import "WKPreviewActionItemIdentifiers.h"
 #import "WKPreviewActionItemInternal.h"
@@ -75,6 +76,7 @@
 #import "WebEvent.h"
 #import "WebIOSEventFactory.h"
 #import "WebPageMessages.h"
+#import "WebPageProxyMessages.h"
 #import "WebProcessProxy.h"
 #import "_WKActivatedElementInfoInternal.h"
 #import "_WKElementAction.h"
@@ -133,11 +135,6 @@
 #import <UIKit/_UILookupGestureRecognizer.h>
 #endif
 
-#if HAVE(HOVER_GESTURE_RECOGNIZER)
-#import "NativeWebMouseEvent.h"
-#import <UIKit/UIHoverGestureRecognizer.h>
-#endif
-
 #if ENABLE(INPUT_TYPE_COLOR)
 #import "WKFormColorControl.h"
 #endif
@@ -148,6 +145,10 @@
 
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKPlatformFileUploadPanel.mm>)
 #import <WebKitAdditions/WKPlatformFileUploadPanel.mm>
+#endif
+
+#if HAVE(PENCILKIT_ADDITIONS)
+#import <WebKitAdditions/WebKitPencilAdditions.h>
 #endif
 
 #if ENABLE(POINTER_EVENTS)
@@ -745,9 +746,9 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
 
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-    _hoverGestureRecognizer = adoptNS([[UIHoverGestureRecognizer alloc] initWithTarget:self action:@selector(_hoverGestureRecognizerChanged:)]);
-    [_hoverGestureRecognizer setDelegate:self];
-    [self addGestureRecognizer:_hoverGestureRecognizer.get()];
+    _mouseGestureRecognizer = adoptNS([[WKMouseGestureRecognizer alloc] initWithTarget:self action:@selector(_mouseGestureRecognizerChanged:)]);
+    [_mouseGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_mouseGestureRecognizer.get()];
 #endif
 
 #if PLATFORM(MACCATALYST)    
@@ -798,6 +799,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 #if ENABLE(DATA_INTERACTION)
     [self setupDragAndDropInteractions];
+#endif
+
+#if HAVE(PENCILKIT_ADDITIONS)
+    [self setupPencilInteraction];
 #endif
 
     _twoFingerSingleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_twoFingerSingleTapGestureRecognized:)]);
@@ -897,8 +902,8 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
 
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-    [_hoverGestureRecognizer setDelegate:nil];
-    [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
+    [_mouseGestureRecognizer setDelegate:nil];
+    [self removeGestureRecognizer:_mouseGestureRecognizer.get()];
 #endif
 
 #if PLATFORM(MACCATALYST)    
@@ -951,6 +956,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #if ENABLE(DATA_INTERACTION)
     [existingLocalDragSessionContext(_dragDropInteractionState.dragSession()) cleanUpTemporaryDirectories];
     [self teardownDragAndDropInteractions];
+#endif
+
+#if HAVE(PENCILKIT_ADDITIONS)
+    [self cleanupPencilInteraction];
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -1014,7 +1023,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-    [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
+    [self removeGestureRecognizer:_mouseGestureRecognizer.get()];
 #endif
 #if PLATFORM(MACCATALYST)
     [self removeGestureRecognizer:_lookupGestureRecognizer.get()];
@@ -1040,7 +1049,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-    [self addGestureRecognizer:_hoverGestureRecognizer.get()];
+    [self addGestureRecognizer:_mouseGestureRecognizer.get()];
 #endif
 #if PLATFORM(MACCATALYST)
     [self addGestureRecognizer:_lookupGestureRecognizer.get()];
@@ -1449,17 +1458,24 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 {
-    if (gestureRecognizer != _touchActionLeftSwipeGestureRecognizer && gestureRecognizer != _touchActionRightSwipeGestureRecognizer && gestureRecognizer != _touchActionUpSwipeGestureRecognizer && gestureRecognizer != _touchActionDownSwipeGestureRecognizer)
-        return true;
+#if HAVE(HOVER_GESTURE_RECOGNIZER)
+    if (gestureRecognizer != _mouseGestureRecognizer && [_mouseGestureRecognizer mouseTouch] == touch)
+        return NO;
+#endif
 
-    // We update the enabled state of the various swipe gesture recognizers such that if we have a unidirectional touch-action
-    // specified (only pan-x or only pan-y) we enable the two recognizers in the opposite axis to prevent scrolling from starting
-    // if the initial gesture is such a swipe. Since the recognizers are specified to use a single finger for recognition, we don't
-    // need to worry about the case where there may be more than a single touch for a given UIScrollView.
-    auto touchActions = WebKit::touchActionsForPoint(self, WebCore::roundedIntPoint([touch locationInView:self]));
-    if (gestureRecognizer == _touchActionLeftSwipeGestureRecognizer || gestureRecognizer == _touchActionRightSwipeGestureRecognizer)
-        return touchActions == WebCore::TouchAction::PanY;
-    return touchActions == WebCore::TouchAction::PanX;
+    if (gestureRecognizer == _touchActionLeftSwipeGestureRecognizer || gestureRecognizer == _touchActionRightSwipeGestureRecognizer || gestureRecognizer == _touchActionUpSwipeGestureRecognizer || gestureRecognizer == _touchActionDownSwipeGestureRecognizer) {
+
+        // We update the enabled state of the various swipe gesture recognizers such that if we have a unidirectional touch-action
+        // specified (only pan-x or only pan-y) we enable the two recognizers in the opposite axis to prevent scrolling from starting
+        // if the initial gesture is such a swipe. Since the recognizers are specified to use a single finger for recognition, we don't
+        // need to worry about the case where there may be more than a single touch for a given UIScrollView.
+        auto touchActions = WebKit::touchActionsForPoint(self, WebCore::roundedIntPoint([touch locationInView:self]));
+        if (gestureRecognizer == _touchActionLeftSwipeGestureRecognizer || gestureRecognizer == _touchActionRightSwipeGestureRecognizer)
+            return touchActions == WebCore::TouchAction::PanY;
+        return touchActions == WebCore::TouchAction::PanX;
+    }
+
+    return YES;
 }
 
 #pragma mark - WKTouchActionGestureRecognizerDelegate implementation
@@ -1797,10 +1813,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (BOOL)shouldShowAutomaticKeyboardUI
 {
-    // FIXME: We should support inputmode="none" when the hardware keyboard is attached.
-    // We currently refrain from doing so because that would prevent UIKit from showing
-    // the language picker when pressing the globe key to change the input language.
-    if (_focusedElementInformation.inputMode == WebCore::InputMode::None && !GSEventIsHardwareKeyboardAttached())
+    if (_focusedElementInformation.inputMode == WebCore::InputMode::None)
         return NO;
 
     return [self _shouldShowAutomaticKeyboardUIIgnoringInputMode];
@@ -1959,7 +1972,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return YES;
 
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-    if ([gestureRecognizer isKindOfClass:[UIHoverGestureRecognizer class]] || [otherGestureRecognizer isKindOfClass:[UIHoverGestureRecognizer class]])
+    if ([gestureRecognizer isKindOfClass:[WKMouseGestureRecognizer class]] || [otherGestureRecognizer isKindOfClass:[WKMouseGestureRecognizer class]])
         return YES;
 #endif
 
@@ -3233,7 +3246,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
         NSArray *allCustomPasteboardData = [pasteboard dataForPasteboardType:@(WebCore::PasteboardCustomData::cocoaType()) inItemSet:indices];
         for (NSData *data in allCustomPasteboardData) {
             auto buffer = WebCore::SharedBuffer::create(data);
-            if (WebCore::PasteboardCustomData::fromSharedBuffer(buffer.get()).origin == focusedDocumentOrigin)
+            if (WebCore::PasteboardCustomData::fromSharedBuffer(buffer.get()).origin() == focusedDocumentOrigin)
                 return YES;
         }
         return NO;
@@ -5731,7 +5744,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
             continue;
 
         auto buffer = WebCore::SharedBuffer::create(data);
-        if (WebCore::PasteboardCustomData::fromSharedBuffer(buffer.get()).origin != originIdentifier)
+        if (WebCore::PasteboardCustomData::fromSharedBuffer(buffer.get()).origin() != originIdentifier)
             return NO;
 
         foundAtLeastOneMatchingIdentifier = YES;
@@ -6355,8 +6368,10 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
     if (!rect) {
-        auto hoverLocationInWebView = [self convertPoint:_lastHoverLocation toView:_webView];
-        rect = WebCore::FloatRect(hoverLocationInWebView.x, hoverLocationInWebView.y, 1, 1);
+        if (auto lastMouseLocation = [_mouseGestureRecognizer lastMouseLocation]) {
+            auto hoverLocationInWebView = [self convertPoint:*lastMouseLocation toView:_webView];
+            rect = WebCore::FloatRect(hoverLocationInWebView.x, hoverLocationInWebView.y, 1, 1);
+        }
     }
 #endif
     
@@ -6706,15 +6721,15 @@ static BOOL shouldEnableDragInteractionForPolicy(_WKDragInteractionPolicy policy
     if (!completion)
         return;
 
-    WebItemProviderRegistrationInfoList *registrationList = [[WebItemProviderPasteboard sharedInstance] takeRegistrationList];
-    if (!added || !registrationList || !_dragDropInteractionState.hasStagedDragSource()) {
+    auto *registrationLists = [[WebItemProviderPasteboard sharedInstance] takeRegistrationLists];
+    if (!added || ![registrationLists count] || !_dragDropInteractionState.hasStagedDragSource()) {
         _dragDropInteractionState.clearStagedDragSource();
         completion(@[ ]);
         return;
     }
 
     auto stagedDragSource = _dragDropInteractionState.stagedDragSource();
-    NSArray *dragItemsToAdd = [self _itemsForBeginningOrAddingToSessionWithRegistrationList:registrationList stagedDragSource:stagedDragSource];
+    NSArray *dragItemsToAdd = [self _itemsForBeginningOrAddingToSessionWithRegistrationLists:registrationLists stagedDragSource:stagedDragSource];
 
     RELEASE_LOG(DragAndDrop, "Drag session: %p adding %tu items", _dragDropInteractionState.dragSession(), dragItemsToAdd.count);
     _dragDropInteractionState.clearStagedDragSource(dragItemsToAdd.count ? WebKit::DragDropInteractionState::DidBecomeActive::Yes : WebKit::DragDropInteractionState::DidBecomeActive::No);
@@ -6793,7 +6808,7 @@ static UIDropOperation dropOperationForWebCoreDragOperation(WebCore::DragOperati
         [[WebItemProviderPasteboard sharedInstance] setItemProviders:nil];
     }
 
-    [[WebItemProviderPasteboard sharedInstance] stageRegistrationList:nil];
+    [[WebItemProviderPasteboard sharedInstance] clearRegistrationLists];
     [self _restoreCalloutBarIfNeeded];
 
     [std::exchange(_visibleContentViewSnapshot, nil) removeFromSuperview];
@@ -6960,7 +6975,7 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
     WebItemProviderPasteboard *pasteboard = [WebItemProviderPasteboard sharedInstance];
     pasteboard.itemProviders = @[ [registrationList itemProvider] ];
-    [pasteboard stageRegistrationList:registrationList.get()];
+    [pasteboard stageRegistrationLists:@[ registrationList.get() ]];
 }
 
 - (WKDragDestinationAction)_dragDestinationActionForDropSession:(id <UIDropSession>)session
@@ -6999,26 +7014,38 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     _shouldRestoreCalloutBarAfterDrop = NO;
 }
 
-- (NSArray<UIDragItem *> *)_itemsForBeginningOrAddingToSessionWithRegistrationList:(WebItemProviderRegistrationInfoList *)registrationList stagedDragSource:(const WebKit::DragSourceState&)stagedDragSource
+- (NSArray<UIDragItem *> *)_itemsForBeginningOrAddingToSessionWithRegistrationLists:(NSArray<WebItemProviderRegistrationInfoList *> *)registrationLists stagedDragSource:(const WebKit::DragSourceState&)stagedDragSource
 {
-    NSItemProvider *defaultItemProvider = registrationList.itemProvider;
-    if (!defaultItemProvider)
+    if (!registrationLists.count)
         return @[ ];
 
-    NSArray *adjustedItemProviders;
+    NSMutableArray *adjustedItemProviders = [NSMutableArray array];
     id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
     if ([uiDelegate respondsToSelector:@selector(_webView:adjustedDataInteractionItemProvidersForItemProvider:representingObjects:additionalData:)]) {
-        auto representingObjects = adoptNS([[NSMutableArray alloc] init]);
-        auto additionalData = adoptNS([[NSMutableDictionary alloc] init]);
-        [registrationList enumerateItems:[representingObjects, additionalData] (id <WebItemProviderRegistrar> item, NSUInteger) {
-            if ([item respondsToSelector:@selector(representingObjectForClient)])
-                [representingObjects addObject:item.representingObjectForClient];
-            if ([item respondsToSelector:@selector(typeIdentifierForClient)] && [item respondsToSelector:@selector(dataForClient)])
-                [additionalData setObject:item.dataForClient forKey:item.typeIdentifierForClient];
-        }];
-        adjustedItemProviders = [uiDelegate _webView:_webView adjustedDataInteractionItemProvidersForItemProvider:defaultItemProvider representingObjects:representingObjects.get() additionalData:additionalData.get()];
-    } else
-        adjustedItemProviders = @[ defaultItemProvider ];
+        // FIXME: We should consider a new UI delegate hook that accepts a list of item providers, so we don't need to invoke this delegate method repeatedly for multiple items.
+        for (WebItemProviderRegistrationInfoList *list in registrationLists) {
+            NSItemProvider *defaultItemProvider = list.itemProvider;
+            if (!defaultItemProvider)
+                continue;
+
+            auto representingObjects = adoptNS([[NSMutableArray alloc] init]);
+            auto additionalData = adoptNS([[NSMutableDictionary alloc] init]);
+            [list enumerateItems:[representingObjects, additionalData] (id <WebItemProviderRegistrar> item, NSUInteger) {
+                if ([item respondsToSelector:@selector(representingObjectForClient)])
+                    [representingObjects addObject:item.representingObjectForClient];
+                if ([item respondsToSelector:@selector(typeIdentifierForClient)] && [item respondsToSelector:@selector(dataForClient)])
+                    [additionalData setObject:item.dataForClient forKey:item.typeIdentifierForClient];
+            }];
+            NSArray *adjustedItems = [uiDelegate _webView:_webView adjustedDataInteractionItemProvidersForItemProvider:defaultItemProvider representingObjects:representingObjects.get() additionalData:additionalData.get()];
+            if (adjustedItems.count)
+                [adjustedItemProviders addObjectsFromArray:adjustedItems];
+        }
+    } else {
+        for (WebItemProviderRegistrationInfoList *list in registrationLists) {
+            if (auto *defaultItemProvider = list.itemProvider)
+                [adjustedItemProviders addObject:defaultItemProvider];
+        }
+    }
 
     NSMutableArray *dragItems = [NSMutableArray arrayWithCapacity:adjustedItemProviders.count];
     for (NSItemProvider *itemProvider in adjustedItemProviders) {
@@ -7261,8 +7288,8 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
     }
 
     auto stagedDragSource = _dragDropInteractionState.stagedDragSource();
-    WebItemProviderRegistrationInfoList *registrationList = [[WebItemProviderPasteboard sharedInstance] takeRegistrationList];
-    NSArray *dragItems = [self _itemsForBeginningOrAddingToSessionWithRegistrationList:registrationList stagedDragSource:stagedDragSource];
+    auto *registrationLists = [[WebItemProviderPasteboard sharedInstance] takeRegistrationLists];
+    NSArray *dragItems = [self _itemsForBeginningOrAddingToSessionWithRegistrationLists:registrationLists stagedDragSource:stagedDragSource];
     if (![dragItems count])
         _page->dragCancelled();
 
@@ -7741,46 +7768,13 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
 #endif
 
 #if HAVE(HOVER_GESTURE_RECOGNIZER)
-static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags)
-{
-    WebEventFlags eventFlags = 0;
-    if (flags & UIKeyModifierShift)
-        eventFlags |= WebEventFlagMaskLeftShiftKey;
-    if (flags & UIKeyModifierControl)
-        eventFlags |= WebEventFlagMaskLeftControlKey;
-    if (flags & UIKeyModifierAlternate)
-        eventFlags |= WebEventFlagMaskLeftOptionKey;
-    if (flags & UIKeyModifierCommand)
-        eventFlags |= WebEventFlagMaskLeftCommandKey;
-    if (flags & UIKeyModifierAlphaShift)
-        eventFlags |= WebEventFlagMaskLeftCapsLockKey;
-    return eventFlags;
-}
-
-- (void)_hoverGestureRecognizerChanged:(UIGestureRecognizer *)gestureRecognizer
+- (void)_mouseGestureRecognizerChanged:(WKMouseGestureRecognizer *)gestureRecognizer
 {
     if (!_page->hasRunningProcess())
         return;
 
-    // Make a timestamp that matches UITouch and UIEvent.
-    CFTimeInterval timestamp = GSCurrentEventTimestamp() / 1000000000.0;
-
-    CGPoint point;
-    switch (gestureRecognizer.state) {
-    case UIGestureRecognizerStateBegan:
-    case UIGestureRecognizerStateChanged:
-        point = [gestureRecognizer locationInView:self];
-        _lastHoverLocation = point;
-        break;
-    case UIGestureRecognizerStateEnded:
-    case UIGestureRecognizerStateCancelled:
-    default:
-        point = CGPointMake(-1, -1);
-        break;
-    }
-
-    auto event = adoptNS([[::WebEvent alloc] initWithMouseEventType:WebEventMouseMoved timeStamp:timestamp location:point modifiers:webEventFlagsForUIKeyModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer))]);
-    _page->handleMouseEvent(WebKit::NativeWebMouseEvent(event.get()));
+    if (auto event = gestureRecognizer.lastMouseEvent)
+        _page->handleMouseEvent(*event);
 }
 #endif
 

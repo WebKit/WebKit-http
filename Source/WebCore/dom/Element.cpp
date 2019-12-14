@@ -303,7 +303,7 @@ static bool isForceEvent(const PlatformMouseEvent& platformEvent)
     return platformEvent.type() == PlatformEvent::MouseForceChanged || platformEvent.type() == PlatformEvent::MouseForceDown || platformEvent.type() == PlatformEvent::MouseForceUp;
 }
 
-#if ENABLE(POINTER_EVENTS) && !ENABLE(TOUCH_EVENTS)
+#if ENABLE(POINTER_EVENTS)
 static bool isCompatibilityMouseEvent(const MouseEvent& mouseEvent)
 {
     // https://www.w3.org/TR/pointerevents/#compatibility-mapping-with-mouse-events
@@ -311,6 +311,40 @@ static bool isCompatibilityMouseEvent(const MouseEvent& mouseEvent)
     return type != eventNames().clickEvent && type != eventNames().mouseoverEvent && type != eventNames().mouseoutEvent && type != eventNames().mouseenterEvent && type != eventNames().mouseleaveEvent;
 }
 #endif
+
+static bool shouldIgnoreMouseEvent(Element& element, const MouseEvent& mouseEvent, const PlatformMouseEvent& platformEvent, bool& didNotSwallowEvent)
+{
+#if ENABLE(POINTER_EVENTS)
+    if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
+        if (auto* page = element.document().page()) {
+            auto& pointerCaptureController = page->pointerCaptureController();
+#if ENABLE(TOUCH_EVENTS)
+            if (platformEvent.pointerId() != mousePointerID && mouseEvent.type() != eventNames().clickEvent && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(platformEvent.pointerId()))
+                return true;
+#else
+            UNUSED_PARAM(platformEvent);
+#endif
+            if (auto pointerEvent = pointerCaptureController.pointerEventForMouseEvent(mouseEvent)) {
+                pointerCaptureController.dispatchEvent(*pointerEvent, &element);
+                if (isCompatibilityMouseEvent(mouseEvent) && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(pointerEvent->pointerId()))
+                    return true;
+                if (pointerEvent->defaultPrevented() || pointerEvent->defaultHandled()) {
+                    didNotSwallowEvent = false;
+                    if (pointerEvent->type() == eventNames().pointerdownEvent)
+                        return true;
+                }
+            }
+        }
+    }
+#else
+    UNUSED_PARAM(element);
+    UNUSED_PARAM(mouseEvent);
+    UNUSED_PARAM(platformEvent);
+    UNUSED_PARAM(didNotSwallowEvent);
+#endif
+
+    return false;
+}
 
 bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const AtomString& eventType, int detail, Element* relatedTarget)
 {
@@ -327,28 +361,8 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
     bool didNotSwallowEvent = true;
 
-#if ENABLE(POINTER_EVENTS)
-    if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
-        if (auto* page = document().page()) {
-            auto& pointerCaptureController = page->pointerCaptureController();
-#if ENABLE(TOUCH_EVENTS)
-            if (mouseEvent->type() != eventNames().clickEvent && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(platformEvent.pointerId()))
-                return false;
-#else
-            if (auto pointerEvent = pointerCaptureController.pointerEventForMouseEvent(mouseEvent)) {
-                pointerCaptureController.dispatchEvent(*pointerEvent, this);
-                if (isCompatibilityMouseEvent(mouseEvent) && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(pointerEvent->pointerId()))
-                    return false;
-                if (pointerEvent->defaultPrevented() || pointerEvent->defaultHandled()) {
-                    didNotSwallowEvent = false;
-                    if (pointerEvent->type() == eventNames().pointerdownEvent)
-                        return false;
-                }
-            }
-#endif
-        }
-    }
-#endif
+    if (shouldIgnoreMouseEvent(*this, mouseEvent.get(), platformEvent, didNotSwallowEvent))
+        return false;
 
     ASSERT(!mouseEvent->target() || mouseEvent->target() != relatedTarget);
     dispatchEvent(mouseEvent);
@@ -2346,14 +2360,14 @@ ExceptionOr<ShadowRoot&> Element::attachShadow(const ShadowRootInit& init)
     return result;
 }
 
-ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
+ShadowRoot* Element::shadowRootForBindings(JSC::JSGlobalObject& lexicalGlobalObject) const
 {
     auto* shadow = shadowRoot();
     if (!shadow)
         return nullptr;
     if (shadow->mode() == ShadowRootMode::Open)
         return shadow;
-    if (JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->world().shadowRootIsAlwaysOpen())
+    if (JSC::jsCast<JSDOMGlobalObject*>(&lexicalGlobalObject)->world().shadowRootIsAlwaysOpen())
         return shadow;
     return nullptr;
 }
@@ -4280,7 +4294,7 @@ Element* Element::findAnchorElementForLink(String& outAnchorName)
     return nullptr;
 }
 
-ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Strong<JSC::JSObject>&& keyframes, Optional<Variant<double, KeyframeAnimationOptions>>&& options)
+ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::JSGlobalObject& lexicalGlobalObject, JSC::Strong<JSC::JSObject>&& keyframes, Optional<Variant<double, KeyframeAnimationOptions>>&& options)
 {
     String id = "";
     Optional<Variant<double, KeyframeEffectOptions>> keyframeEffectOptions;
@@ -4297,7 +4311,7 @@ ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Stro
         keyframeEffectOptions = keyframeEffectOptionsVariant;
     }
 
-    auto keyframeEffectResult = KeyframeEffect::create(state, this, WTFMove(keyframes), WTFMove(keyframeEffectOptions));
+    auto keyframeEffectResult = KeyframeEffect::create(lexicalGlobalObject, this, WTFMove(keyframes), WTFMove(keyframeEffectOptions));
     if (keyframeEffectResult.hasException())
         return keyframeEffectResult.releaseException();
 

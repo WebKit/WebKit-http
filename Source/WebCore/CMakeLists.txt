@@ -300,6 +300,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
 
     Modules/mediacapabilities/AudioConfiguration.idl
+    Modules/mediacapabilities/ColorGamut.idl
+    Modules/mediacapabilities/HdrMetadataType.idl
     Modules/mediacapabilities/MediaCapabilities.idl
     Modules/mediacapabilities/MediaCapabilitiesDecodingInfo.idl
     Modules/mediacapabilities/MediaCapabilitiesEncodingInfo.idl
@@ -310,8 +312,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediacapabilities/MediaEncodingConfiguration.idl
     Modules/mediacapabilities/MediaEncodingType.idl
     Modules/mediacapabilities/NavigatorMediaCapabilities.idl
-    Modules/mediacapabilities/ScreenColorGamut.idl
-    Modules/mediacapabilities/ScreenLuminance.idl
+    Modules/mediacapabilities/TransferFunction.idl
     Modules/mediacapabilities/VideoConfiguration.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
@@ -408,6 +409,11 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/paymentrequest/PaymentShippingOption.idl
     Modules/paymentrequest/PaymentShippingType.idl
     Modules/paymentrequest/PaymentValidationErrors.idl
+
+    Modules/pictureinpicture/DocumentPictureInPicture.idl
+    Modules/pictureinpicture/EnterPictureInPictureEvent.idl
+    Modules/pictureinpicture/HTMLVideoElementPictureInPicture.idl
+    Modules/pictureinpicture/PictureInPictureWindow.idl
 
     Modules/speech/DOMWindowSpeechSynthesis.idl
     Modules/speech/SpeechSynthesis.idl
@@ -1050,7 +1056,6 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGDocument.idl
     svg/SVGElement.idl
     svg/SVGEllipseElement.idl
-    svg/SVGExternalResourcesRequired.idl
     svg/SVGFEBlendElement.idl
     svg/SVGFEColorMatrixElement.idl
     svg/SVGFEComponentTransferElement.idl

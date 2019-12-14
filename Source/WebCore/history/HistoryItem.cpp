@@ -26,10 +26,10 @@
 #include "config.h"
 #include "HistoryItem.h"
 
+#include "BackForwardCache.h"
 #include "CachedPage.h"
 #include "Document.h"
 #include "KeyedCoding.h"
-#include "PageCache.h"
 #include "ResourceRequest.h"
 #include "SerializedScriptValue.h"
 #include "SharedBuffer.h"
@@ -172,6 +172,22 @@ bool HistoryItem::hasCachedPageExpired() const
     return m_cachedPage ? m_cachedPage->hasExpired() : false;
 }
 
+void HistoryItem::setCachedPage(std::unique_ptr<CachedPage>&& cachedPage)
+{
+    bool wasInBackForwardCache = isInBackForwardCache();
+    m_cachedPage = WTFMove(cachedPage);
+    if (wasInBackForwardCache != isInBackForwardCache())
+        notifyChanged();
+}
+
+std::unique_ptr<CachedPage> HistoryItem::takeCachedPage()
+{
+    ASSERT(m_cachedPage);
+    auto cachedPage = std::exchange(m_cachedPage, nullptr);
+    notifyChanged();
+    return cachedPage;
+}
+
 URL HistoryItem::url() const
 {
     return URL({ }, m_urlString);
@@ -206,7 +222,7 @@ void HistoryItem::setURLString(const String& urlString)
 
 void HistoryItem::setURL(const URL& url)
 {
-    PageCache::singleton().remove(*this);
+    BackForwardCache::singleton().remove(*this);
     setURLString(url.string());
     clearDocumentState();
 }

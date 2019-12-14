@@ -128,7 +128,7 @@ Worker::~Worker()
     m_contextProxy.workerObjectDestroyed();
 }
 
-ExceptionOr<void> Worker::postMessage(JSC::ExecState& state, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
+ExceptionOr<void> Worker::postMessage(JSC::JSGlobalObject& state, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
 {
     Vector<RefPtr<MessagePort>> ports;
     auto message = SerializedScriptValue::create(state, messageValue, WTFMove(transfer), ports, SerializationContext::WorkerPostMessage);
@@ -150,11 +150,6 @@ void Worker::terminate()
     m_eventQueue->cancelAllEvents();
 }
 
-bool Worker::canSuspendForDocumentSuspension() const
-{
-    return true;
-}
-
 const char* Worker::activeDOMObjectName() const
 {
     return "Worker";
@@ -163,6 +158,22 @@ const char* Worker::activeDOMObjectName() const
 void Worker::stop()
 {
     terminate();
+}
+
+void Worker::suspend(ReasonForSuspension reason)
+{
+    if (reason == ReasonForSuspension::BackForwardCache) {
+        m_contextProxy.suspendForBackForwardCache();
+        m_isSuspendedForBackForwardCache = true;
+    }
+}
+
+void Worker::resume()
+{
+    if (m_isSuspendedForBackForwardCache) {
+        m_contextProxy.resumeForBackForwardCache();
+        m_isSuspendedForBackForwardCache = false;
+    }
 }
 
 bool Worker::hasPendingActivity() const

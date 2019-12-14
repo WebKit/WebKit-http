@@ -942,14 +942,18 @@ window.UIHelper = class UIHelper {
             target.addEventListener(eventName, resolve, { once: true });
             functionToCall();
         });
-
     }
 
     static callFunctionAndWaitForScrollToFinish(functionToCall, ...theArguments)
     {
+        return UIHelper.callFunctionAndWaitForTargetScrollToFinish(window, functionToCall, theArguments)
+    }
+
+    static callFunctionAndWaitForTargetScrollToFinish(scrollTarget, functionToCall, ...theArguments)
+    {
         return new Promise((resolved) => {
             function scrollDidFinish() {
-                window.removeEventListener("scroll", handleScroll, true);
+                scrollTarget.removeEventListener("scroll", handleScroll, true);
                 resolved();
             }
 
@@ -961,7 +965,7 @@ window.UIHelper = class UIHelper {
                 }
                 lastScrollTimerId = window.setTimeout(scrollDidFinish, 300); // Over 250ms to give some room for error.
             }
-            window.addEventListener("scroll", handleScroll, true);
+            scrollTarget.addEventListener("scroll", handleScroll, true);
 
             functionToCall.apply(this, theArguments);
         });
@@ -1007,7 +1011,7 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`(() => {
                 uiController.dragFromPointToPoint(${fromX}, ${fromY}, ${toX}, ${toY}, ${duration}, () => {
-                    uiController.uiScriptComplete("");
+                    uiController.uiScriptComplete();
                 });
             })();`, resolve);
         });
@@ -1031,5 +1035,10 @@ window.UIHelper = class UIHelper {
             if (!(await this.getUISelectionViewRects()).length)
                 break;
         }
+    }
+
+    static async copyText(text) {
+        const copyTextScript = `uiController.copyText(\`${text.replace(/`/g, "\\`")}\`)()`;
+        return new Promise(resolve => testRunner.runUIScript(copyTextScript, resolve));
     }
 }

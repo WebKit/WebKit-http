@@ -139,6 +139,15 @@ enum CompositingPolicy {
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     JSGenerateToJSObject,
+] dictionary DoViParameterSet {
+    DOMString codecName;
+    unsigned short bitstreamProfileID;
+    unsigned short bitstreamLevelID;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
 ] dictionary AcceleratedAnimation {
     DOMString property;
     double speed;
@@ -207,9 +216,9 @@ enum CompositingPolicy {
     void setOverrideResourceLoadPriority(ResourceLoadPriority priority);
     void setStrictRawResourceValidationPolicyDisabled(boolean disabled);
 
-    void clearPageCache();
-    unsigned long pageCacheSize();
-    void preventDocumentForEnteringPageCache();
+    void clearBackForwardCache();
+    unsigned long backForwardCacheSize();
+    void preventDocumentForEnteringBackForwardCache();
 
     CSSStyleDeclaration computedStyleIncludingVisitedInfo(Element element);
 
@@ -398,6 +407,7 @@ enum CompositingPolicy {
     const unsigned short LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 128;
     const unsigned short LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 256;
     const unsigned short LAYER_TREE_INCLUDES_EVENT_REGION = 512;
+    const unsigned short LAYER_TREE_INCLUDES_DEEP_COLOR = 1024;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] unsigned long long layerIDForElement(Element element);
@@ -612,6 +622,8 @@ enum CompositingPolicy {
     [Conditional=MEDIA_STREAM] void setMockMediaCaptureDevicesEnabled(boolean enabled);
     [Conditional=MEDIA_STREAM] void setCustomPrivateRecorderCreator();
 
+    [Conditional=WEB_AUDIO] void useMockAudioDestinationCocoa();
+
     [Conditional=WEB_RTC] void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection connection, DOMString action);
     [Conditional=WEB_RTC] void useMockRTCPeerConnectionFactory(DOMString testCase);
     [Conditional=WEB_RTC] void setICECandidateFiltering(boolean enabled);
@@ -651,8 +663,8 @@ enum CompositingPolicy {
 
     void setShowAllPlugins(boolean showAll);
 
-    [Conditional=STREAMS_API, CallWith=ExecState] any cloneArrayBuffer(any buffer, any srcByteOffset, any byteLength);
-    [Conditional=STREAMS_API, CallWith=ExecState] boolean isReadableStreamDisturbed(any stream);
+    [Conditional=STREAMS_API, CallWith=GlobalObject] any cloneArrayBuffer(any buffer, any srcByteOffset, any byteLength);
+    [Conditional=STREAMS_API, CallWith=GlobalObject] boolean isReadableStreamDisturbed(any stream);
 
     DOMString resourceLoadStatisticsForURL(DOMURL url);
     void setResourceLoadStatisticsEnabled(boolean enable);
@@ -718,6 +730,7 @@ enum CompositingPolicy {
     unsigned long long documentIdentifier(Document document);
     boolean isDocumentAlive(unsigned long long documentIdentifier);
 
+    unsigned long long elementIdentifier(Element element);
     unsigned long long frameIdentifier(Document document);
     unsigned long long pageIdentifier(Document document);
 
@@ -743,7 +756,6 @@ enum CompositingPolicy {
 
     [Conditional=SERVICE_WORKER] Promise<boolean> hasServiceWorkerRegistration(DOMString scopeURL);
     [Conditional=SERVICE_WORKER] void terminateServiceWorker(ServiceWorker worker);
-    [Conditional=SERVICE_WORKER] boolean hasServiceWorkerConnection();
 
     [CallWith=Document, Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
 
@@ -780,6 +792,7 @@ enum CompositingPolicy {
     boolean supportsVCPEncoder();
 
     HEVCParameterSet? parseHEVCCodecParameters(DOMString codecParameters);
+    DoViParameterSet? parseDoViCodecParameters(DOMString codecParameters);
 
     sequence<CookieData> getCookies();
 

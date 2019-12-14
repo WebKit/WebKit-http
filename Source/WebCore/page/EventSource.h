@@ -91,7 +91,6 @@ private:
     // ActiveDOMObject
     void stop() final;
     const char* activeDOMObjectName() const final;
-    bool canSuspendForDocumentSuspension() const final;
     void suspend(ReasonForSuspension) final;
     void resume() final;
 
@@ -118,7 +117,7 @@ private:
     Vector<UChar> m_receiveBuffer;
     bool m_discardTrailingNewline { false };
     bool m_requestInFlight { false };
-    bool m_isSuspendedForPageCache { false };
+    bool m_isSuspendedForBackForwardCache { false };
     bool m_isDoingExplicitCancellation { false };
     bool m_shouldReconnectOnResume { false };
 

@@ -7,6 +7,8 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 compositing/ios [ Skip ]
+compositing/contents-format/ipad [ Skip ]
+compositing/contents-format/iphone-7 [ Skip ]
 css3/touch-action [ Skip ]
 accessibility/ios-simulator [ Skip ]
 accessibility/gtk [ Skip ]
@@ -188,6 +190,8 @@ fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Skip ]
 # DataDetectors tests only make sense on Mac
 fast/events/do-not-drag-and-drop-data-detectors-link.html [ Skip ]
 
+webkit.org/b/202617 imported/w3c/web-platform-tests/picture-in-picture [ Skip ]
+
 # Shared Workers are unsupported
 imported/w3c/web-platform-tests/secure-contexts/basic-shared-worker.html [ Skip ]
 imported/w3c/web-platform-tests/secure-contexts/basic-shared-worker.https.html [ Skip ]
@@ -262,7 +266,9 @@ webkit.org/b/188246 imported/w3c/web-platform-tests/service-workers/service-work
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr Failure Pass ]
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ DumpJSConsoleLogInStdErr ]
+fast/files/file-reader-back-forward-cache.html [ DumpJSConsoleLogInStdErr ]
 fast/history/page-cache-createImageBitmap.html [ DumpJSConsoleLogInStdErr ]
+http/tests/navigation/page-cache-xhr-in-loading-iframe.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/202495 imported/w3c/web-platform-tests/shadow-dom/directionality-002.tentative.html [ ImageOnlyFailure ]
 
@@ -825,9 +831,6 @@ webkit.org/b/116473 editing/selection/user-drag-element-and-user-select-none.htm
 webkit.org/b/139862 editing/spelling/editing-multiple-words-with-markers.html [ Timeout Pass ]
 webkit.org/b/139903 editing/spelling/grammar-paste.html [ Timeout Pass ]
 
-# media/W3C/video/networkState/networkState_during_progress.html is flaky
-webkit.org/b/76280 media/W3C/video/networkState/networkState_during_progress.html [ Pass Failure ]
-
 # This test will run slowly in debug mode, but is plenty fast in release.
 [ Debug ] js/slow-stress/emscripten-memops.html [ Skip ]
 
@@ -1216,6 +1219,7 @@ webkit.org/b/186045 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 webkit.org/b/186045 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/available-images.html [ Pass ImageOnlyFailure ]
 webkit.org/b/186045 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/sizes-dynamic-001.html [ ImageOnlyFailure ]
 webkit.org/b/186045 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/sizes-dynamic-002.html [ ImageOnlyFailure ]
+webkit.org/b/186045 imported/w3c/web-platform-tests/apng/animated-png-timeout.html [ Skip ]
 
 # These W3C tests time out.
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/autoplay-overrides-preload.html [ Skip ]
@@ -3870,7 +3874,6 @@ webkit.org/b/202801 imported/w3c/web-platform-tests/offscreen-canvas/shadows/2d.
 webkit.org/b/202801 imported/w3c/web-platform-tests/offscreen-canvas/shadows/2d.shadow.pattern.transparent.2.html [ DumpJSConsoleLogInStdErr ]
 
 # wpt css-images failures
-webkit.org/b/200206 imported/w3c/web-platform-tests/css/css-images/gradient/color-stops-parsing.html [ Crash ]
 webkit.org/b/200207 imported/w3c/web-platform-tests/css/css-images/css-image-fallbacks-and-annotations002.html [ ImageOnlyFailure ]
 webkit.org/b/200207 imported/w3c/web-platform-tests/css/css-images/css-image-fallbacks-and-annotations003.html [ ImageOnlyFailure ]
 webkit.org/b/200207 imported/w3c/web-platform-tests/css/css-images/css-image-fallbacks-and-annotations004.html [ ImageOnlyFailure ]

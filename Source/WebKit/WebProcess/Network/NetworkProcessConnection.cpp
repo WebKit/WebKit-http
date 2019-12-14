@@ -29,11 +29,11 @@
 #include "DataReference.h"
 #include "LibWebRTCNetwork.h"
 #include "NetworkConnectionToWebProcessMessages.h"
-#include "ServiceWorkerClientFetchMessages.h"
 #include "StorageAreaMap.h"
 #include "StorageAreaMapMessages.h"
 #include "WebCacheStorageProvider.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebIDBConnectionToServer.h"
 #include "WebIDBConnectionToServerMessages.h"
 #include "WebLoaderStrategy.h"
 #include "WebMDNSRegisterMessages.h"
@@ -137,12 +137,7 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
 
 #if ENABLE(SERVICE_WORKER)
     if (decoder.messageReceiverName() == Messages::WebSWClientConnection::messageReceiverName()) {
-        if (m_swConnection)
-            m_swConnection->didReceiveMessage(connection, decoder);
-        return;
-    }
-    if (decoder.messageReceiverName() == Messages::ServiceWorkerClientFetch::messageReceiverName()) {
-        WebServiceWorkerProvider::singleton().didReceiveServiceWorkerClientFetchMessage(connection, decoder);
+        serviceWorkerConnection().didReceiveMessage(connection, decoder);
         return;
     }
     if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {

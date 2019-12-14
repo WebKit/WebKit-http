@@ -28,9 +28,11 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "CachedImage.h"
 #include "DisplayBox.h"
 #include "DisplayRun.h"
 #include "HTMLTableCellElement.h"
+#include "HTMLTableColElement.h"
 #include "InlineFormattingState.h"
 #include "LayoutBox.h"
 #include "LayoutChildIterator.h"
@@ -93,6 +95,24 @@ static Optional<LayoutSize> accumulatedOffsetForInFlowPositionedContinuation(con
     return block.relativePositionOffset();
 }
 
+static String applyTextTransform(const String& text, const RenderStyle& style)
+{
+    switch (style.textTransform()) {
+    case TextTransform::None:
+        return text;
+    case TextTransform::Capitalize: {
+        ASSERT_NOT_IMPLEMENTED_YET();
+        return text;
+    }
+    case TextTransform::Uppercase:
+        return text.convertToUppercaseWithLocale(style.locale());
+    case TextTransform::Lowercase:
+        return text.convertToLowercaseWithLocale(style.locale());
+    }
+    ASSERT_NOT_REACHED();
+    return text;
+}
+
 std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRenderer, const RenderObject& childRenderer)
 {
     auto elementAttributes = [] (const RenderElement& renderer) -> Optional<Box::ElementAttributes> {
@@ -115,11 +135,13 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRen
 
     std::unique_ptr<Box> childLayoutBox;
     if (is<RenderText>(childRenderer)) {
+        auto& textRenderer = downcast<RenderText>(childRenderer);
+        auto textContent = applyTextTransform(textRenderer.originalText(), parentRenderer.style());
         // FIXME: Clearly there must be a helper function for this.
         if (parentRenderer.style().display() == DisplayType::Inline)
-            childLayoutBox = makeUnique<Box>(downcast<RenderText>(childRenderer).originalText(), RenderStyle::clone(parentRenderer.style()));
+            childLayoutBox = makeUnique<Box>(textContent, RenderStyle::clone(parentRenderer.style()));
         else
-            childLayoutBox = makeUnique<Box>(downcast<RenderText>(childRenderer).originalText(), RenderStyle::createAnonymousStyleWithDisplay(parentRenderer.style(), DisplayType::Inline));
+            childLayoutBox = makeUnique<Box>(textContent, RenderStyle::createAnonymousStyleWithDisplay(parentRenderer.style(), DisplayType::Inline));
         childLayoutBox->setIsAnonymous();
         return childLayoutBox;
     }
@@ -145,6 +167,8 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRen
             auto& imageRenderer = downcast<RenderImage>(renderer);
             if (imageRenderer.shouldDisplayBrokenImageIcon())
                 childLayoutBox->replaced()->setIntrinsicRatio(1);
+            if (imageRenderer.cachedImage())
+                childLayoutBox->replaced()->setCachedImage(*imageRenderer.cachedImage());
         }
     } else {
         if (displayType == DisplayType::Block) {
@@ -162,8 +186,16 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const RenderElement& parentRen
         else if (displayType == DisplayType::TableCaption || displayType == DisplayType::TableCell) {
             childLayoutBox = makeUnique<Container>(elementAttributes(renderer), RenderStyle::clone(renderer.style()));
         } else if (displayType == DisplayType::TableRowGroup || displayType == DisplayType::TableHeaderGroup || displayType == DisplayType::TableFooterGroup
-            || displayType == DisplayType::TableRow || displayType == DisplayType::TableColumnGroup || displayType == DisplayType::TableColumn) {
+            || displayType == DisplayType::TableRow || displayType == DisplayType::TableColumnGroup) {
             childLayoutBox = makeUnique<Container>(elementAttributes(renderer), RenderStyle::clone(renderer.style()));
+        } else if (displayType == DisplayType::TableColumn) {
+            childLayoutBox = makeUnique<Container>(elementAttributes(renderer), RenderStyle::clone(renderer.style()));
+            auto& tableColElement = static_cast<HTMLTableColElement&>(*renderer.element());
+            auto columnWidth = tableColElement.width();
+            if (!columnWidth.isEmpty())
+                childLayoutBox->setColumnWidth(columnWidth.toInt());
+            if (tableColElement.span() > 1)
+                childLayoutBox->setColumnSpan(tableColElement.span());
         } else {
             ASSERT_NOT_IMPLEMENTED_YET();
             return { };
@@ -245,7 +277,7 @@ static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState,
 
     stream << "lines are -> ";
     for (auto& lineBox : lineBoxes)
-        stream << "[" << lineBox.logicalLeft() << "," << lineBox.logicalTop() << " " << lineBox.logicalWidth() << "x" << lineBox.logicalHeight() << "] ";
+        stream << "[" << lineBox->logicalLeft() << "," << lineBox->logicalTop() << " " << lineBox->logicalWidth() << "x" << lineBox->logicalHeight() << "] ";
     stream.nextLine();
 
     for (auto& inlineRun : inlineRuns) {
@@ -253,13 +285,13 @@ static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState,
         while (++printedCharacters <= depth * 2)
             stream << " ";
         stream << "  ";
-        if (inlineRun.textContext())
+        if (inlineRun->textContext())
             stream << "inline text box";
         else
             stream << "inline box";
-        stream << " at (" << inlineRun.logicalLeft() << "," << inlineRun.logicalTop() << ") size " << inlineRun.logicalWidth() << "x" << inlineRun.logicalHeight();
-        if (inlineRun.textContext())
-            stream << " run(" << inlineRun.textContext()->start() << ", " << inlineRun.textContext()->end() << ")";
+        stream << " at (" << inlineRun->logicalLeft() << "," << inlineRun->logicalTop() << ") size " << inlineRun->logicalWidth() << "x" << inlineRun->logicalHeight();
+        if (inlineRun->textContext())
+            stream << " run(" << inlineRun->textContext()->start() << ", " << inlineRun->textContext()->end() << ")";
         stream.nextLine();
     }
 }
@@ -291,6 +323,10 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Disp
         stream << "TBODY";
     else if (layoutBox.isTableFooter())
         stream << "TFOOT";
+    else if (layoutBox.isTableColumnGroup())
+        stream << "COL GROUP";
+    else if (layoutBox.isTableColumn())
+        stream << "COL";
     else if (layoutBox.isTableCell())
         stream << "TD";
     else if (layoutBox.isTableRow())

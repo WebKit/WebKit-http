@@ -474,6 +474,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/ArrayProfile.h
     bytecode/ByValInfo.h
     bytecode/BytecodeConventions.h
+    bytecode/BytecodeIndex.h
     bytecode/BytecodeIntrinsicRegistry.h
     bytecode/CallEdge.h
     bytecode/CallLinkInfo.h
@@ -744,6 +745,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/AbstractModuleRecord.h
     runtime/ArgList.h
     runtime/ArityCheckMode.h
+    runtime/ArrayConstructor.h
     runtime/ArrayBuffer.h
     runtime/ArrayBufferSharingMode.h
     runtime/ArrayBufferView.h
@@ -936,6 +938,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/PropertyStorage.h
     runtime/Protect.h
     runtime/PrototypeKey.h
+    runtime/ProxyObject.h
     runtime/PureNaN.h
     runtime/PutDirectIndexMode.h
     runtime/PutPropertySlot.h

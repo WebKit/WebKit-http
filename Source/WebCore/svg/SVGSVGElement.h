@@ -22,13 +22,13 @@
 #pragma once
 
 #include "FloatPoint.h"
-#include "SVGExternalResourcesRequired.h"
 #include "SVGFitToViewBox.h"
 #include "SVGGraphicsElement.h"
 #include "SVGZoomAndPan.h"
 
 namespace WebCore {
 
+struct DOMMatrix2DInit;
 class SMILTimeContainer;
 class SVGAngle;
 class SVGLength;
@@ -39,7 +39,7 @@ class SVGTransform;
 class SVGViewElement;
 class SVGViewSpec;
 
-class SVGSVGElement final : public SVGGraphicsElement, public SVGExternalResourcesRequired, public SVGFitToViewBox, public SVGZoomAndPan {
+class SVGSVGElement final : public SVGGraphicsElement, public SVGFitToViewBox, public SVGZoomAndPan {
     WTF_MAKE_ISO_ALLOCATED(SVGSVGElement);
 public: // DOM
     const AtomString& contentScriptType() const;
@@ -90,7 +90,7 @@ public: // DOM
     static Ref<SVGMatrix> createSVGMatrix();
     static Ref<SVGRect> createSVGRect();
     static Ref<SVGTransform> createSVGTransform();
-    static Ref<SVGTransform> createSVGTransformFromMatrix(SVGMatrix&);
+    static Ref<SVGTransform> createSVGTransformFromMatrix(DOMMatrix2DInit&&);
 
     Element* getElementById(const AtomString&);
 
@@ -134,7 +134,7 @@ private:
     SVGSVGElement(const QualifiedName&, Document&);
     virtual ~SVGSVGElement();
 
-    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGSVGElement, SVGGraphicsElement, SVGExternalResourcesRequired, SVGFitToViewBox>;
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGSVGElement, SVGGraphicsElement, SVGFitToViewBox>;
     const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
     
     void parseAttribute(const QualifiedName&, const AtomString&) override;

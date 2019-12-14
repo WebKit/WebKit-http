@@ -74,6 +74,7 @@ public:
 
         const Display::Rect& logicalRect() const { return m_displayRun.logicalRect(); }
         bool isVisuallyEmpty() const { return m_isVisuallyEmpty; }
+        bool isCollapsed() const { return m_isCollapsed; }
 
         bool isText() const { return m_inlineItem.isText(); }
         bool isBox() const { return m_inlineItem.isBox(); }
@@ -90,12 +91,14 @@ public:
         void expand(const Run&);
 
         void setVisuallyIsEmpty() { m_isVisuallyEmpty = true; }
+        void setIsCollapsed() { m_isCollapsed = true; }
 
         bool isWhitespace() const;
         bool canBeExtended() const;
 
         const InlineItem& m_inlineItem;
         Display::Run m_displayRun;
+        bool m_isCollapsed { false };
         bool m_isVisuallyEmpty { false };
     };
     using RunList = Vector<std::unique_ptr<Run>>;
@@ -129,7 +132,7 @@ private:
     void alignContentHorizontally();
     void alignContentVertically();
 
-    void adjustBaselineAndLineHeight(const InlineItem&, LayoutUnit runHeight);
+    void adjustBaselineAndLineHeight(const InlineItem&);
     LayoutUnit inlineItemContentHeight(const InlineItem&) const;
     bool isVisuallyEmpty() const;
 
@@ -154,7 +157,7 @@ inline void Line::Run::expand(const Run& other)
 
     auto& otherDisplayRun = other.displayRun();
     m_displayRun.expandHorizontally(otherDisplayRun.logicalWidth());
-    m_displayRun.textContext()->expand(otherDisplayRun.textContext()->length());
+    m_displayRun.textContext()->expand(*otherDisplayRun.textContext());
 }
 
 }

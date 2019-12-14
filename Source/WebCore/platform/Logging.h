@@ -42,6 +42,7 @@ namespace WebCore {
     M(Animations) \
     M(ApplePay) \
     M(Archives) \
+    M(BackForwardCache) \
     M(ClipRects) \
     M(Compositing) \
     M(CompositingOverlap) \
@@ -80,7 +81,6 @@ namespace WebCore {
     M(MessagePorts) \
     M(Network) \
     M(NotYetImplemented) \
-    M(PageCache) \
     M(PerformanceLogging) \
     M(PlatformLeaks) \
     M(Plugins) \
@@ -119,7 +119,6 @@ WEBCORE_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
 String logLevelString();
 bool isLogChannelEnabled(const String& name);
-WEBCORE_EXPORT void setLogChannelToAccumulate(const String& name);
 
 #endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 

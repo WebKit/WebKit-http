@@ -38,14 +38,14 @@
 
 namespace JSC {
 
-void ExecState::initGlobalExec(ExecState* globalExec, JSCallee* globalCallee)
+void CallFrame::initDeprecatedCallFrameForDebugger(CallFrame* globalExec, JSCallee* globalCallee)
 {
     globalExec->setCodeBlock(nullptr);
     globalExec->setCallerFrame(noCaller());
     globalExec->setReturnPC(0);
     globalExec->setArgumentCountIncludingThis(0);
     globalExec->setCallee(globalCallee);
-    ASSERT(globalExec->isGlobalExec());
+    ASSERT(globalExec->isDeprecatedCallFrameForDebugger());
 }
 
 bool CallFrame::callSiteBitsAreBytecodeOffset() const
@@ -98,12 +98,12 @@ SUPPRESS_ASAN unsigned CallFrame::unsafeCallSiteAsRawBits() const
 
 CallSiteIndex CallFrame::callSiteIndex() const
 {
-    return CallSiteIndex(callSiteAsRawBits());
+    return CallSiteIndex(BytecodeIndex(callSiteAsRawBits()));
 }
 
 SUPPRESS_ASAN CallSiteIndex CallFrame::unsafeCallSiteIndex() const
 {
-    return CallSiteIndex(unsafeCallSiteAsRawBits());
+    return CallSiteIndex(BytecodeIndex(unsafeCallSiteAsRawBits()));
 }
 
 #if USE(JSVALUE32_64)
@@ -114,7 +114,7 @@ const Instruction* CallFrame::currentVPC() const
 
 void CallFrame::setCurrentVPC(const Instruction* vpc)
 {
-    CallSiteIndex callSite(vpc);
+    CallSiteIndex callSite(codeBlock()->bytecodeIndex(vpc));
     this[CallFrameSlot::argumentCount].tag() = callSite.bits();
 }
 
@@ -134,7 +134,7 @@ const Instruction* CallFrame::currentVPC() const
 
 void CallFrame::setCurrentVPC(const Instruction* vpc)
 {
-    CallSiteIndex callSite(codeBlock()->bytecodeOffset(vpc));
+    CallSiteIndex callSite(codeBlock()->bytecodeIndex(vpc));
     this[CallFrameSlot::argumentCount].tag() = static_cast<int32_t>(callSite.bits());
 }
 
@@ -147,11 +147,11 @@ unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
 
 #endif
     
-unsigned CallFrame::bytecodeOffset()
+BytecodeIndex CallFrame::bytecodeIndex()
 {
     ASSERT(!callee().isWasm());
     if (!codeBlock())
-        return 0;
+        return BytecodeIndex(0);
 #if ENABLE(DFG_JIT)
     if (callSiteBitsAreCodeOriginIndex()) {
         ASSERT(codeBlock());
@@ -164,13 +164,13 @@ unsigned CallFrame::bytecodeOffset()
     }
 #endif
     ASSERT(callSiteBitsAreBytecodeOffset());
-    return callSiteBitsAsBytecodeOffset();
+    return BytecodeIndex(callSiteBitsAsBytecodeOffset());
 }
 
 CodeOrigin CallFrame::codeOrigin()
 {
     if (!codeBlock())
-        return CodeOrigin(0);
+        return CodeOrigin(BytecodeIndex(0));
 #if ENABLE(DFG_JIT)
     if (callSiteBitsAreCodeOriginIndex()) {
         CallSiteIndex index = callSiteIndex();
@@ -178,7 +178,7 @@ CodeOrigin CallFrame::codeOrigin()
         return codeBlock()->codeOrigin(index);
     }
 #endif
-    return CodeOrigin(callSiteBitsAsBytecodeOffset());
+    return CodeOrigin(BytecodeIndex(callSiteBitsAsBytecodeOffset()));
 }
 
 Register* CallFrame::topOfFrameInternal()
@@ -193,7 +193,7 @@ JSGlobalObject* CallFrame::wasmAwareLexicalGlobalObject(VM& vm)
 #if ENABLE(WEBASSEMBLY)
     if (!callee().isWasm())
         return lexicalGlobalObject();
-    return vm.wasmContext.load()->owner<JSWebAssemblyInstance>()->globalObject(vm);
+    return vm.wasmContext.load()->owner<JSWebAssemblyInstance>()->globalObject();
 #else
     UNUSED_PARAM(vm);
     return lexicalGlobalObject();
@@ -233,10 +233,9 @@ SUPPRESS_ASAN CallFrame* CallFrame::unsafeCallerFrame(EntryFrame*& currEntryFram
     return static_cast<CallFrame*>(unsafeCallerFrameOrEntryFrame());
 }
 
-SourceOrigin CallFrame::callerSourceOrigin()
+SourceOrigin CallFrame::callerSourceOrigin(VM& vm)
 {
     RELEASE_ASSERT(callee().isCell());
-    VM* vm = &this->vm();
     SourceOrigin sourceOrigin;
     bool haveSkippedFirstFrame = false;
     StackVisitor::visit(this, vm, [&](StackVisitor& visitor) {
@@ -292,7 +291,7 @@ String CallFrame::friendlyFunctionName()
         return "global code"_s;
     case FunctionCode:
         if (jsCallee())
-            return getCalculatedDisplayName(vm(), jsCallee());
+            return getCalculatedDisplayName(codeBlock->vm(), jsCallee());
         return emptyString();
     }
 
@@ -303,7 +302,7 @@ String CallFrame::friendlyFunctionName()
 void CallFrame::dump(PrintStream& out)
 {
     if (CodeBlock* codeBlock = this->codeBlock()) {
-        out.print(codeBlock->inferredName(), "#", codeBlock->hashAsStringIfPossible(), " [", codeBlock->jitType(), " bc#", bytecodeOffset(), "]");
+        out.print(codeBlock->inferredName(), "#", codeBlock->hashAsStringIfPossible(), " [", codeBlock->jitType(), " ", bytecodeIndex(), "]");
 
         out.print("(");
         thisValue().dumpForBacktrace(out);
@@ -339,7 +338,7 @@ const char* CallFrame::describeFrame()
 
 void CallFrame::convertToStackOverflowFrame(VM& vm, CodeBlock* codeBlockToKeepAliveUntilFrameIsUnwound)
 {
-    ASSERT(!isGlobalExec());
+    ASSERT(!isDeprecatedCallFrameForDebugger());
     ASSERT(codeBlockToKeepAliveUntilFrameIsUnwound->inherits<CodeBlock>(vm));
 
     EntryFrame* entryFrame = vm.topEntryFrame;

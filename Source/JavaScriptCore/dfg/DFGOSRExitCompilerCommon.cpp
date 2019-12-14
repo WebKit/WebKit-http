@@ -138,7 +138,7 @@ void handleExitCounts(CCallHelpers& jit, const OSRExitBase& exit)
     doneAdjusting.link(&jit);
 }
 
-void* callerReturnPC(CodeBlock* baselineCodeBlockForCaller, unsigned callBytecodeIndex, InlineCallFrame::Kind trueCallerCallKind, bool& callerIsLLInt)
+void* callerReturnPC(CodeBlock* baselineCodeBlockForCaller, BytecodeIndex callBytecodeIndex, InlineCallFrame::Kind trueCallerCallKind, bool& callerIsLLInt)
 {
     callerIsLLInt = Options::forceOSRExitToLLInt() || baselineCodeBlockForCaller->jitType() == JITType::InterpreterThunk;
 
@@ -263,7 +263,7 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
             callerFrameGPR = GPRInfo::regT3;
         } else {
             CodeBlock* baselineCodeBlockForCaller = jit.baselineCodeBlockFor(*trueCaller);
-            unsigned callBytecodeIndex = trueCaller->bytecodeIndex();
+            auto callBytecodeIndex = trueCaller->bytecodeIndex();
             void* jumpTarget = callerReturnPC(baselineCodeBlockForCaller, callBytecodeIndex, trueCallerCallKind, callerIsLLInt);
 
             if (trueCaller->inlineCallFrame()) {
@@ -334,11 +334,11 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
     }
 }
 
-static void osrWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch)
+static void osrWriteBarrier(VM& vm, CCallHelpers& jit, GPRReg owner, GPRReg scratch)
 {
     AssemblyHelpers::Jump ownerIsRememberedOrInEden = jit.barrierBranchWithoutFence(owner);
 
-    jit.setupArguments<decltype(operationOSRWriteBarrier)>(owner);
+    jit.setupArguments<decltype(operationOSRWriteBarrier)>(&vm, owner);
     jit.move(MacroAssembler::TrustedImmPtr(tagCFunctionPtr<OperationPtrTag>(operationOSRWriteBarrier)), scratch);
     jit.call(scratch, OperationPtrTag);
 
@@ -352,7 +352,7 @@ void adjustAndJumpToTarget(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
     jit.move(
         AssemblyHelpers::TrustedImmPtr(
             jit.codeBlock()->baselineAlternative()), GPRInfo::argumentGPR1);
-    osrWriteBarrier(jit, GPRInfo::argumentGPR1, GPRInfo::nonArgGPR0);
+    osrWriteBarrier(vm, jit, GPRInfo::argumentGPR1, GPRInfo::nonArgGPR0);
 
     // We barrier all inlined frames -- and not just the current inline stack --
     // because we don't know which inlined function owns the value profile that
@@ -367,7 +367,7 @@ void adjustAndJumpToTarget(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
             jit.move(
                 AssemblyHelpers::TrustedImmPtr(
                     inlineCallFrame->baselineCodeBlock.get()), GPRInfo::argumentGPR1);
-            osrWriteBarrier(jit, GPRInfo::argumentGPR1, GPRInfo::nonArgGPR0);
+            osrWriteBarrier(vm, jit, GPRInfo::argumentGPR1, GPRInfo::nonArgGPR0);
         }
     }
 
@@ -382,8 +382,8 @@ void adjustAndJumpToTarget(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
     void* jumpTarget;
     bool exitToLLInt = Options::forceOSRExitToLLInt() || codeBlockForExit->jitType() == JITType::InterpreterThunk;
     if (exitToLLInt) {
-        unsigned bytecodeOffset = exit.m_codeOrigin.bytecodeIndex();
-        const Instruction& currentInstruction = *codeBlockForExit->instructions().at(bytecodeOffset).ptr();
+        auto bytecodeIndex = exit.m_codeOrigin.bytecodeIndex();
+        const Instruction& currentInstruction = *codeBlockForExit->instructions().at(bytecodeIndex).ptr();
         MacroAssemblerCodePtr<JSEntryPtrTag> destination = LLInt::getCodePtr<JSEntryPtrTag>(currentInstruction);
 
         if (exit.isExceptionHandler()) {
@@ -394,7 +394,7 @@ void adjustAndJumpToTarget(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
         jit.move(CCallHelpers::TrustedImmPtr(codeBlockForExit->metadataTable()), LLInt::Registers::metadataTableGPR);
 #if USE(JSVALUE64)
         jit.move(CCallHelpers::TrustedImmPtr(codeBlockForExit->instructionsRawPointer()), LLInt::Registers::pbGPR);
-        jit.move(CCallHelpers::TrustedImm32(bytecodeOffset), LLInt::Registers::pcGPR);
+        jit.move(CCallHelpers::TrustedImm32(bytecodeIndex.offset()), LLInt::Registers::pcGPR);
 #else
         jit.move(CCallHelpers::TrustedImmPtr(&currentInstruction), LLInt::Registers::pcGPR);
 #endif

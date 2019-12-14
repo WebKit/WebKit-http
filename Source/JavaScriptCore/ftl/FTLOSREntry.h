@@ -31,12 +31,12 @@ namespace JSC {
 
 class CallFrame;
 class CodeBlock;
-using ExecState = CallFrame;
+class VM;
 
 namespace FTL {
 
 void* prepareOSREntry(
-    ExecState*, CodeBlock* dfgCodeBlock, CodeBlock* entryCodeBlock, unsigned bytecodeIndex,
+    VM&, CallFrame*, CodeBlock* dfgCodeBlock, CodeBlock* entryCodeBlock, BytecodeIndex,
     unsigned streamIndex);
 
 } } // namespace JSC::FTL

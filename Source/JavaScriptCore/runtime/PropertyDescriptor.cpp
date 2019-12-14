@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,10 +72,9 @@ void PropertyDescriptor::setUndefined()
     m_attributes = PropertyAttribute::ReadOnly | PropertyAttribute::DontDelete | PropertyAttribute::DontEnum;
 }
 
-GetterSetter* PropertyDescriptor::slowGetterSetter(ExecState* exec)
+GetterSetter* PropertyDescriptor::slowGetterSetter(JSGlobalObject* globalObject)
 {
-    VM& vm = exec->vm();
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    VM& vm = globalObject->vm();
     JSValue getter = m_getter && !m_getter.isUndefined() ? jsCast<JSObject*>(m_getter) : jsUndefined();
     JSValue setter = m_setter && !m_setter.isUndefined() ? jsCast<JSObject*>(m_setter) : jsUndefined();
     return GetterSetter::create(vm, globalObject, getter, setter);
@@ -193,15 +192,22 @@ void PropertyDescriptor::setGetter(JSValue getter)
     m_attributes &= ~PropertyAttribute::ReadOnly;
 }
 
-bool PropertyDescriptor::equalTo(ExecState* exec, const PropertyDescriptor& other) const
+bool PropertyDescriptor::equalTo(JSGlobalObject* globalObject, const PropertyDescriptor& other) const
 {
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     if (other.m_value.isEmpty() != m_value.isEmpty()
         || other.m_getter.isEmpty() != m_getter.isEmpty()
         || other.m_setter.isEmpty() != m_setter.isEmpty())
         return false;
-    return (!m_value || sameValue(exec, other.m_value, m_value))
-        && (!m_getter || JSValue::strictEqual(exec, other.m_getter, m_getter))
-        && (!m_setter || JSValue::strictEqual(exec, other.m_setter, m_setter))
+    if (m_value) {
+        bool isSame = sameValue(globalObject, other.m_value, m_value);
+        RETURN_IF_EXCEPTION(scope, false);
+        if (!isSame)
+            return false;
+    }
+    return (!m_getter || JSValue::strictEqual(globalObject, other.m_getter, m_getter))
+        && (!m_setter || JSValue::strictEqual(globalObject, other.m_setter, m_setter))
         && attributesEqual(other);
 }
 

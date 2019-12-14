@@ -1701,12 +1701,16 @@ void WebsiteDataStore::setGrandfathered(const URL& url, bool isGrandfathered, Co
     }
 }
 
-void WebsiteDataStore::setUseITPDatabase(bool value)
+void WebsiteDataStore::setUseITPDatabase(bool value, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
-
-    for (auto& processPool : processPools())
-        processPool->ensureNetworkProcess().setUseITPDatabase(m_sessionID, value);
+    
+    auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    
+    for (auto& processPool : processPools()) {
+        if (auto* process = processPool->networkProcess())
+            process->setUseITPDatabase(m_sessionID, value, [callbackAggregator = callbackAggregator.copyRef()] { });
+    }
 }
 
 void WebsiteDataStore::setCrossSiteLoadWithLinkDecorationForTesting(const URL& fromURL, const URL& toURL, CompletionHandler<void()>&& completionHandler)
@@ -1772,6 +1776,20 @@ void WebsiteDataStore::setResourceLoadStatisticsShouldDowngradeReferrerForTestin
     for (auto& processPool : processPools()) {
         if (auto* networkProcess = processPool->networkProcess()) {
             networkProcess->setShouldDowngradeReferrerForTesting(enabled, [callbackAggregator = callbackAggregator.copyRef()] { });
+            ASSERT(processPools().size() == 1);
+            break;
+        }
+    }
+    ASSERT(!completionHandler);
+}
+
+void WebsiteDataStore::setResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(bool enabled, CompletionHandler<void()>&& completionHandler)
+{
+    auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    
+    for (auto& processPool : processPools()) {
+        if (auto* networkProcess = processPool->networkProcess()) {
+            networkProcess->setShouldBlockThirdPartyCookiesForTesting(m_sessionID, enabled, [callbackAggregator = callbackAggregator.copyRef()] { });
             ASSERT(processPools().size() == 1);
             break;
         }
@@ -2065,6 +2083,7 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
 
     parameters.perOriginStorageQuota = perOriginStorageQuota();
     parameters.perThirdPartyOriginStorageQuota = perThirdPartyOriginStorageQuota();
+    parameters.networkSessionParameters.networkCacheDirectory = resolvedNetworkCacheDirectory();
 
     platformSetNetworkParameters(parameters);
 

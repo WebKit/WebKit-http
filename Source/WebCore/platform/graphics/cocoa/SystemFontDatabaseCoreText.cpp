@@ -49,6 +49,10 @@ SystemFontDatabaseCoreText::SystemFontDatabaseCoreText()
 
 RetainPtr<CTFontRef> SystemFontDatabaseCoreText::createSystemUIFont(const CascadeListParameters& parameters, CFStringRef locale)
 {
+    // Work around a quirk of the platform API.
+    // If the passed string is empty instead of null,
+    // CoreText doesn't use the system's locale instead.
+    // We need to use the system locale in this case.
     if (locale && !CFStringGetLength(locale))
         locale = nullptr;
     auto result = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, parameters.size, locale));
@@ -213,17 +217,17 @@ SystemFontDatabaseCoreText::CascadeListParameters SystemFontDatabaseCoreText::sy
         break;
     }
     case ClientUse::ForSystemUISerif: {
-        static NeverDestroyed<AtomString> systemUISerif = AtomString("system-ui-serif", AtomString::ConstructFromLiteral);
+        static NeverDestroyed<AtomString> systemUISerif = AtomString("ui-serif", AtomString::ConstructFromLiteral);
         result.fontName = systemUISerif.get();
         break;
     }
     case ClientUse::ForSystemUIMonospaced: {
-        static NeverDestroyed<AtomString> systemUIMonospaced = AtomString("system-ui-monospaced", AtomString::ConstructFromLiteral);
+        static NeverDestroyed<AtomString> systemUIMonospaced = AtomString("ui-monospaced", AtomString::ConstructFromLiteral);
         result.fontName = systemUIMonospaced.get();
         break;
     }
     case ClientUse::ForSystemUIRounded: {
-        static NeverDestroyed<AtomString> systemUIRounded = AtomString("system-ui-rounded", AtomString::ConstructFromLiteral);
+        static NeverDestroyed<AtomString> systemUIRounded = AtomString("ui-rounded", AtomString::ConstructFromLiteral);
         result.fontName = systemUIRounded.get();
         break;
     }

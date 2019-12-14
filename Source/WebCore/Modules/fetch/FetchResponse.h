@@ -38,7 +38,6 @@
 namespace JSC {
 class CallFrame;
 class JSValue;
-using ExecState = CallFrame;
 };
 
 namespace WebCore {
@@ -118,7 +117,7 @@ private:
 
     void stop() final;
     const char* activeDOMObjectName() const final;
-    bool canSuspendForDocumentSuspension() const final;
+    bool shouldPreventEnteringBackForwardCache_DEPRECATED() const final;
 
     const ResourceResponse& filteredResponse() const;
 

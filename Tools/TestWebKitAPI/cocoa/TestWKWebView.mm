@@ -70,6 +70,18 @@ SOFT_LINK_CLASS(UIKit, UIWindow)
     [self loadRequest:request];
 }
 
+- (void)synchronouslyGoBack
+{
+    [self goBack];
+    [self _test_waitForDidFinishNavigation];
+}
+
+- (void)synchronouslyGoForward
+{
+    [self goForward];
+    [self _test_waitForDidFinishNavigation];
+}
+
 - (void)synchronouslyLoadRequest:(NSURLRequest *)request
 {
     [self loadRequest:request];
@@ -278,25 +290,6 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
 
 #if PLATFORM(IOS_FAMILY)
 
-static NSArray<NSString *> *writableTypeIdentifiersForItemProviderWithoutPublicRTFD()
-{
-    return @[
-        @"com.apple.uikit.attributedstring",
-        (__bridge NSString *)kUTTypeFlatRTFD,
-        (__bridge NSString *)kUTTypeUTF8PlainText,
-    ];
-}
-
-static void applyWorkaroundToAllowWritingAttributedStringsToItemProviders()
-{
-    // FIXME: Remove this once <rdar://problem/51510554> is fixed.
-    static std::unique_ptr<ClassMethodSwizzler> swizzler;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        swizzler = makeUnique<ClassMethodSwizzler>(NSAttributedString.class, @selector(writableTypeIdentifiersForItemProvider), reinterpret_cast<IMP>(writableTypeIdentifiersForItemProviderWithoutPublicRTFD));
-    });
-}
-
 using InputSessionChangeCount = NSUInteger;
 static InputSessionChangeCount nextInputSessionChangeCount()
 {
@@ -348,7 +341,6 @@ static UICalloutBar *suppressUICalloutBar()
     // FIXME: Remove this workaround once <https://webkit.org/b/175204> is fixed.
     _sharedCalloutBarSwizzler = makeUnique<ClassMethodSwizzler>([UICalloutBar class], @selector(sharedCalloutBar), reinterpret_cast<IMP>(suppressUICalloutBar));
     _inputSessionChangeCount = 0;
-    applyWorkaroundToAllowWritingAttributedStringsToItemProviders();
 #endif
 
     return self;

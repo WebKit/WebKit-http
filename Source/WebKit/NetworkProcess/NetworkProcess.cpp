@@ -323,7 +323,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 #if ENABLE(SERVICE_WORKER)
     if (parentProcessHasServiceWorkerEntitlement()) {
         bool serviceWorkerProcessTerminationDelayEnabled = true;
-        addServiceWorkerSession(PAL::SessionID::defaultSessionID(), serviceWorkerProcessTerminationDelayEnabled, { }, WTFMove(parameters.serviceWorkerRegistrationDirectory), parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
+        addServiceWorkerSession(PAL::SessionID::defaultSessionID(), serviceWorkerProcessTerminationDelayEnabled, WTFMove(parameters.serviceWorkerRegistrationDirectory), parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
     }
 #endif
     initializeStorageQuota(parameters.defaultDataStoreParameters);
@@ -446,7 +446,7 @@ void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters
 
 #if ENABLE(SERVICE_WORKER)
     if (parentProcessHasServiceWorkerEntitlement())
-        addServiceWorkerSession(parameters.networkSessionParameters.sessionID, parameters.serviceWorkerProcessTerminationDelayEnabled, WTFMove(parameters.serviceWorkerRegisteredSchemes), WTFMove(parameters.serviceWorkerRegistrationDirectory), parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
+        addServiceWorkerSession(parameters.networkSessionParameters.sessionID, parameters.serviceWorkerProcessTerminationDelayEnabled, WTFMove(parameters.serviceWorkerRegistrationDirectory), parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
 #endif
 
     m_storageManagerSet->add(parameters.networkSessionParameters.sessionID, parameters.localStorageDirectory, parameters.localStorageDirectoryExtensionHandle);
@@ -666,15 +666,18 @@ void NetworkProcess::setGrandfathered(PAL::SessionID sessionID, const Registrabl
     }
 }
 
-void NetworkProcess::setUseITPDatabase(PAL::SessionID sessionID, bool value)
+void NetworkProcess::setUseITPDatabase(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (m_isITPDatabaseEnabled != value) {
             m_isITPDatabaseEnabled = value;
             networkSession->recreateResourceLoadStatisticStore();
         }
-    } else
+        completionHandler();
+    } else {
         ASSERT_NOT_REACHED();
+        completionHandler();
+    }
 }
 
 void NetworkProcess::setPrevalentResource(PAL::SessionID sessionID, const RegistrableDomain& domain, CompletionHandler<void()>&& completionHandler)
@@ -1253,6 +1256,15 @@ void NetworkProcess::setShouldDowngradeReferrerForTesting(bool enabled, Completi
     forEachNetworkSession([enabled](auto& networkSession) {
         networkSession.setShouldDowngradeReferrerForTesting(enabled);
     });
+    completionHandler();
+}
+
+void NetworkProcess::setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID sessionID, bool enabled, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
+        networkStorageSession->setIsThirdPartyCookieBlockingEnabled(enabled);
+    else
+        ASSERT_NOT_REACHED();
     completionHandler();
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -2245,7 +2257,7 @@ Ref<IDBServer::IDBServer> NetworkProcess::createIDBServer(PAL::SessionID session
         path = m_idbDatabasePaths.get(sessionID);
     }
 
-    return IDBServer::IDBServer::create(sessionID, path, *this, [this, weakThis = makeWeakPtr(this)](PAL::SessionID sessionID, const auto& origin) -> StorageQuotaManager* {
+    return IDBServer::IDBServer::create(sessionID, path, [this, weakThis = makeWeakPtr(this)](PAL::SessionID sessionID, const auto& origin) -> StorageQuotaManager* {
         if (!weakThis)
             return nullptr;
         return &this->storageQuotaManager(sessionID, origin);
@@ -2292,14 +2304,6 @@ void NetworkProcess::performNextStorageTask()
     }
     
     task.performTask();
-}
-
-void NetworkProcess::accessToTemporaryFileComplete(const String& path)
-{
-    // We've either hard linked the temporary blob file to the database directory, copied it there,
-    // or the transaction is being aborted.
-    // In any of those cases, we can delete the temporary blob file now.
-    FileSystem::deleteFile(path);
 }
 
 void NetworkProcess::collectIndexedDatabaseOriginsForVersion(const String& path, HashSet<WebCore::SecurityOriginData>& securityOrigins)
@@ -2385,12 +2389,11 @@ SWServer& NetworkProcess::swServerForSession(PAL::SessionID sessionID)
     auto result = m_swServers.ensure(sessionID, [&] {
         auto info = m_serviceWorkerInfo.get(sessionID);
         auto path = info.databasePath;
-        auto registeredSchemes = info.registeredSchemes;
         // There should already be a registered path for this PAL::SessionID.
         // If there's not, then where did this PAL::SessionID come from?
         ASSERT(sessionID.isEphemeral() || !path.isEmpty());
 
-        return makeUnique<SWServer>(makeUniqueRef<WebSWOriginStore>(), WTFMove(registeredSchemes), info.processTerminationDelayEnabled, WTFMove(path), sessionID, [this, sessionID](auto& registrableDomain) {
+        return makeUnique<SWServer>(makeUniqueRef<WebSWOriginStore>(), info.processTerminationDelayEnabled, WTFMove(path), sessionID, [this, sessionID](auto& registrableDomain) {
             ASSERT(!registrableDomain.isEmpty());
             parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess { registrableDomain, sessionID }, 0);
         });
@@ -2421,12 +2424,11 @@ void NetworkProcess::unregisterSWServerConnection(WebSWServerConnection& connect
         store->unregisterSWServerConnection(connection);
 }
 
-void NetworkProcess::addServiceWorkerSession(PAL::SessionID sessionID, bool processTerminationDelayEnabled, HashSet<String>&& registeredSchemes, String&& serviceWorkerRegistrationDirectory, const SandboxExtension::Handle& handle)
+void NetworkProcess::addServiceWorkerSession(PAL::SessionID sessionID, bool processTerminationDelayEnabled, String&& serviceWorkerRegistrationDirectory, const SandboxExtension::Handle& handle)
 {
     ServiceWorkerInfo info {
         WTFMove(serviceWorkerRegistrationDirectory),
-        processTerminationDelayEnabled,
-        WTFMove(registeredSchemes)
+        processTerminationDelayEnabled
     };
     auto addResult = m_serviceWorkerInfo.add(sessionID, WTFMove(info));
     if (addResult.isNewEntry) {

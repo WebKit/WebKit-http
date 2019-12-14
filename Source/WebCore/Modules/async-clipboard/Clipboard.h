@@ -34,16 +34,20 @@ namespace WebCore {
 
 class ClipboardItem;
 class DeferredPromise;
+class Frame;
 class Navigator;
+class Pasteboard;
 
-class Clipboard final : public RefCounted<Clipboard>, public EventTargetWithInlineData {
+class Clipboard final : public RefCounted<Clipboard>, public EventTargetWithInlineData, public CanMakeWeakPtr<Clipboard> {
     WTF_MAKE_ISO_ALLOCATED(Clipboard);
 public:
     static Ref<Clipboard> create(Navigator&);
+    ~Clipboard();
 
     EventTargetInterface eventTargetInterface() const final;
     ScriptExecutionContext* scriptExecutionContext() const final;
 
+    Frame* frame() const;
     Navigator* navigator();
 
     using RefCounted::ref;
@@ -55,12 +59,23 @@ public:
     void read(Ref<DeferredPromise>&&);
     void write(const Vector<RefPtr<ClipboardItem>>& data, Ref<DeferredPromise>&&);
 
+    void getType(ClipboardItem&, const String& type, Ref<DeferredPromise>&&);
+
 private:
     Clipboard(Navigator&);
+
+    struct Session {
+        std::unique_ptr<Pasteboard> pasteboard;
+        Vector<Ref<ClipboardItem>> items;
+        int64_t changeCount;
+    };
 
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
+    Pasteboard& activePasteboard();
+
+    Optional<Session> m_activeSession;
     WeakPtr<Navigator> m_navigator;
 };
 

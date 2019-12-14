@@ -259,6 +259,7 @@
 #define WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey @"WebKitMediaContentTypesRequiringHardwareSupport"
 #define WebKitLegacyEncryptedMediaAPIEnabledKey @"WebKitLegacyEncryptedMediaAPIEnabled"
 #define WebKitEncryptedMediaAPIEnabledKey @"WebKitEncryptedMediaAPIEnabled"
+#define WebKitPictureInPictureAPIEnabledKey @"WebKitPictureInPictureAPIEnabled"
 #define WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey @"WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallback"
 #define WebKitInspectorAdditionsEnabledPreferenceKey @"WebKitInspectorAdditionsEnabled"
 #define WebKitAccessibilityObjectModelEnabledPreferenceKey @"WebKitAccessibilityObjectModelEnabled"
@@ -273,5 +274,6 @@
 #define WebKitResizeObserverEnabledPreferenceKey @"WebKitResizeObserverEnabled"
 #define WebKitCoreMathMLEnabledPreferenceKey @"WebKitCoreMathMLEnabled"
 #define WebKitRequestIdleCallbackEnabledPreferenceKey @"WebKitRequestIdleCallbackEnabled"
+#define WebKitAsyncClipboardAPIEnabledPreferenceKey @"WebKitAsyncClipboardAPIEnabled"
 #define WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey @"WebKitLinkPreloadResponsiveImagesEnabled"
 

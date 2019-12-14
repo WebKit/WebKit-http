@@ -208,14 +208,19 @@ String DiagnosticLoggingKeys::notInMemoryCacheKey()
     return "notInMemoryCache"_s;
 }
 
-String DiagnosticLoggingKeys::pageCacheKey()
+String DiagnosticLoggingKeys::backForwardCacheKey()
 {
-    return "pageCache"_s;
+    return "backForwardCache"_s;
 }
 
-String DiagnosticLoggingKeys::pageCacheFailureKey()
+String DiagnosticLoggingKeys::backForwardCacheFailureKey()
 {
-    return "pageCacheFailure"_s;
+    return "backForwardCacheFailure"_s;
+}
+
+String DiagnosticLoggingKeys::visuallyEmptyKey()
+{
+    return "visuallyEmpty"_s;
 }
 
 String DiagnosticLoggingKeys::noDocumentLoaderKey()

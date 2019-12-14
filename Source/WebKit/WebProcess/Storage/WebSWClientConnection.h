@@ -30,7 +30,6 @@
 #include "Connection.h"
 #include "MessageReceiver.h"
 #include "MessageSender.h"
-#include "ServiceWorkerClientFetch.h"
 #include "SharedMemory.h"
 #include <WebCore/MessageWithMessagePorts.h>
 #include <WebCore/SWClientConnection.h>
@@ -60,13 +59,13 @@ public:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
     bool mayHaveServiceWorkerRegisteredForOrigin(const WebCore::SecurityOriginData&) const final;
-    void startFetch(WebCore::FetchIdentifier, WebCore::ServiceWorkerRegistrationIdentifier, const WebCore::ResourceRequest&, const WebCore::FetchOptions&, const String& referrer);
-    void cancelFetch(WebCore::FetchIdentifier, WebCore::ServiceWorkerRegistrationIdentifier);
-    void continueDidReceiveFetchResponse(WebCore::FetchIdentifier, WebCore::ServiceWorkerRegistrationIdentifier);
 
     void connectionToServerLost();
 
     void syncTerminateWorker(WebCore::ServiceWorkerIdentifier) final;
+
+    bool isThrottleable() const { return m_isThrottleable; }
+    void updateThrottleState();
 
 private:
     WebSWClientConnection();
@@ -83,11 +82,11 @@ private:
     void whenRegistrationReady(const WebCore::SecurityOriginData& topOrigin, const URL& clientURL, WhenRegistrationReadyCallback&&) final;
     void registrationReady(uint64_t callbackID, WebCore::ServiceWorkerRegistrationData&&);
 
+    void setDocumentIsControlled(WebCore::DocumentIdentifier, WebCore::ServiceWorkerRegistrationData&&, CompletionHandler<void(bool)>&&);
+
     void getRegistrations(WebCore::SecurityOriginData&& topOrigin, const URL& clientURL, GetRegistrationsCallback&&) final;
 
     void didResolveRegistrationPromise(const WebCore::ServiceWorkerRegistrationKey&) final;
-    void updateThrottleState() final;
-    bool isThrottleable() const final { return m_isThrottleable; }
     void storeRegistrationsOnDiskForTesting(CompletionHandler<void()>&&) final;
 
     void scheduleStorageJob(const WebCore::ServiceWorkerJobData&);

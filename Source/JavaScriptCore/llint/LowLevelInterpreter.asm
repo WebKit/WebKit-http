@@ -575,7 +575,7 @@ end
 #
 #     probe(
 #         macro()
-#             move cfr, a0 # pass the ExecState* as arg0.
+#             move cfr, a0 # pass the CallFrame* as arg0.
 #             move t0, a1 # pass the value of register t0 as arg1.
 #             call _cProbeCallbackFunction # to do whatever you want.
 #         end
@@ -958,6 +958,12 @@ macro callTargetFunction(opcodeName, size, opcodeStruct, dispatch, callee, callP
         call callee, callPtrTag
     end
 
+    if ARMv7
+        # Only required in ARMv7 since only here defineOSRExitReturnLabel
+        # inserts the global label words
+        restoreStackPointerAfterCall()
+        dispatchAfterCall(size, opcodeStruct, dispatch)
+    end
     defineOSRExitReturnLabel(opcodeName, size)
     restoreStackPointerAfterCall()
     dispatchAfterCall(size, opcodeStruct, dispatch)

@@ -307,6 +307,8 @@ void FetchResponse::BodyLoader::didFail(const ResourceError& error)
         m_response.m_readableStreamSource = nullptr;
     }
 #endif
+    if (m_response.m_body)
+        m_response.m_body->loadingFailed(*m_response.loadingException());
 
     // Check whether didFail is called as part of FetchLoader::start.
     if (m_loader && m_loader->isStarted()) {
@@ -534,10 +536,10 @@ const char* FetchResponse::activeDOMObjectName() const
     return "Response";
 }
 
-bool FetchResponse::canSuspendForDocumentSuspension() const
+bool FetchResponse::shouldPreventEnteringBackForwardCache_DEPRECATED() const
 {
-    // FIXME: We can probably do the same strategy as XHR.
-    return !isActive();
+    // FIXME: This should never prevent entering the back/forward cache.
+    return isActive();
 }
 
 ResourceResponse FetchResponse::resourceResponse() const

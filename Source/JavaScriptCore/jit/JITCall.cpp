@@ -91,22 +91,22 @@ JIT::compileSetupFrame(const Op& bytecode, CallLinkInfo* info)
     int firstVarArgOffset = bytecode.m_firstVarArg;
 
     emitGetVirtualRegister(arguments, regT1);
-    Z_JITOperation_EJZZ sizeOperation;
+    Z_JITOperation_GJZZ sizeOperation;
     if (Op::opcodeID == op_tail_call_forward_arguments)
         sizeOperation = operationSizeFrameForForwardArguments;
     else
         sizeOperation = operationSizeFrameForVarargs;
-    callOperation(sizeOperation, regT1, -firstFreeRegister, firstVarArgOffset);
+    callOperation(sizeOperation, TrustedImmPtr(m_codeBlock->globalObject()), regT1, -firstFreeRegister, firstVarArgOffset);
     move(TrustedImm32(-firstFreeRegister), regT1);
     emitSetVarargsFrame(*this, returnValueGPR, false, regT1, regT1);
     addPtr(TrustedImm32(-(sizeof(CallerFrameAndPC) + WTF::roundUpToMultipleOf(stackAlignmentBytes(), 5 * sizeof(void*)))), regT1, stackPointerRegister);
     emitGetVirtualRegister(arguments, regT2);
-    F_JITOperation_EFJZZ setupOperation;
+    F_JITOperation_GFJZZ setupOperation;
     if (Op::opcodeID == op_tail_call_forward_arguments)
         setupOperation = operationSetupForwardArgumentsFrame;
     else
         setupOperation = operationSetupVarargsFrame;
-    callOperation(setupOperation, regT1, regT2, firstVarArgOffset, regT0);
+    callOperation(setupOperation, TrustedImmPtr(m_codeBlock->globalObject()), regT1, regT2, firstVarArgOffset, regT0);
     move(returnValueGPR, regT1);
 
     // Profile the argument count.
@@ -138,7 +138,7 @@ bool JIT::compileCallEval(const OpCallEval& bytecode)
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
 
-    callOperation(operationCallEval, regT1);
+    callOperation(operationCallEval, m_codeBlock->globalObject(), regT1);
 
     addSlowCase(branchIfEmpty(regT0));
 
@@ -155,14 +155,14 @@ void JIT::compileCallEvalSlowCase(const Instruction* instruction, Vector<SlowCas
 
     auto bytecode = instruction->as<OpCallEval>();
     CallLinkInfo* info = m_codeBlock->addCallLinkInfo();
-    info->setUpCall(CallLinkInfo::Call, CodeOrigin(m_bytecodeOffset), regT0);
+    info->setUpCall(CallLinkInfo::Call, CodeOrigin(m_bytecodeIndex), regT0);
 
     int registerOffset = -bytecode.m_argv;
 
     addPtr(TrustedImm32(registerOffset * sizeof(Register) + sizeof(CallerFrameAndPC)), callFrameRegister, stackPointerRegister);
 
     load64(Address(stackPointerRegister, sizeof(Register) * CallFrameSlot::callee - sizeof(CallerFrameAndPC)), regT0);
-    emitDumbVirtualCall(vm(), info);
+    emitDumbVirtualCall(vm(), m_codeBlock->globalObject(), info);
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
 
@@ -226,8 +226,8 @@ void JIT::compileOpCall(const Instruction* instruction, unsigned callLinkInfoInd
     compileSetupFrame(bytecode, info);
 
     // SP holds newCallFrame + sizeof(CallerFrameAndPC), with ArgumentCount initialized.
-    uint32_t bytecodeOffset = m_codeBlock->bytecodeOffset(instruction);
-    uint32_t locationBits = CallSiteIndex(bytecodeOffset).bits();
+    auto bytecodeIndex = m_codeBlock->bytecodeIndex(instruction);
+    uint32_t locationBits = CallSiteIndex(bytecodeIndex).bits();
     store32(TrustedImm32(locationBits), Address(callFrameRegister, CallFrameSlot::argumentCount * static_cast<int>(sizeof(Register)) + TagOffset));
 
     emitGetVirtualRegister(callee, regT0); // regT0 holds callee.
@@ -242,7 +242,7 @@ void JIT::compileOpCall(const Instruction* instruction, unsigned callLinkInfoInd
     addSlowCase(slowCase);
 
     ASSERT(m_callCompilationInfo.size() == callLinkInfoIndex);
-    info->setUpCall(CallLinkInfo::callTypeFor(opcodeID), CodeOrigin(m_bytecodeOffset), regT0);
+    info->setUpCall(CallLinkInfo::callTypeFor(opcodeID), CodeOrigin(m_bytecodeIndex), regT0);
     m_callCompilationInfo.append(CallCompilationInfo());
     m_callCompilationInfo[callLinkInfoIndex].hotPathBegin = addressOfLinkedFunctionCheck;
     m_callCompilationInfo[callLinkInfoIndex].callLinkInfo = info;
@@ -279,6 +279,7 @@ void JIT::compileOpCallSlowCase(const Instruction* instruction, Vector<SlowCaseE
     if (opcodeID == op_tail_call || opcodeID == op_tail_call_varargs || opcodeID == op_tail_call_forward_arguments)
         emitRestoreCalleeSaves();
 
+    move(TrustedImmPtr(m_codeBlock->globalObject()), regT3);
     move(TrustedImmPtr(m_callCompilationInfo[callLinkInfoIndex].callLinkInfo), regT2);
 
     m_callCompilationInfo[callLinkInfoIndex].callReturnLocation =

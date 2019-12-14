@@ -77,6 +77,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxy.h"
+#include "WebProcessProxyMessages.h"
 #include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include <JavaScriptCore/JSCInlines.h>
@@ -236,7 +237,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_foregroundWebProcessCounter([this](RefCounterEvent) { updateProcessAssertions(); })
     , m_backgroundWebProcessCounter([this](RefCounterEvent) { updateProcessAssertions(); })
 #endif
-    , m_backForwardCache(makeUniqueRef<WebBackForwardCache>())
+    , m_backForwardCache(makeUniqueRef<WebBackForwardCache>(*this))
     , m_webProcessCache(makeUniqueRef<WebProcessCache>(*this))
 {
     static std::once_flag onceFlag;
@@ -563,6 +564,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     bool enableResourceLoadStatisticsLogTestingEvent = false;
     bool shouldIncludeLocalhost = true;
     bool enableResourceLoadStatisticsDebugMode = false;
+    bool enableThirdPartyCookieBlocking = false;
     WebCore::RegistrableDomain manualPrevalentResource { };
     if (withWebsiteDataStore) {
         enableResourceLoadStatistics = withWebsiteDataStore->resourceLoadStatisticsEnabled();
@@ -573,6 +575,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
             auto networkSessionParameters = withWebsiteDataStore->parameters().networkSessionParameters;
             shouldIncludeLocalhost = networkSessionParameters.shouldIncludeLocalhostInResourceLoadStatistics;
             enableResourceLoadStatisticsDebugMode = networkSessionParameters.enableResourceLoadStatisticsDebugMode;
+            enableThirdPartyCookieBlocking = networkSessionParameters.enableThirdPartyCookieBlocking;
             manualPrevalentResource = networkSessionParameters.resourceLoadStatisticsManualPrevalentResource;
         }
 
@@ -593,6 +596,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
             auto networkSessionParameters = m_websiteDataStore->parameters().networkSessionParameters;
             shouldIncludeLocalhost = networkSessionParameters.shouldIncludeLocalhostInResourceLoadStatistics;
             enableResourceLoadStatisticsDebugMode = networkSessionParameters.enableResourceLoadStatisticsDebugMode;
+            enableThirdPartyCookieBlocking = networkSessionParameters.enableThirdPartyCookieBlocking;
             manualPrevalentResource = networkSessionParameters.resourceLoadStatisticsManualPrevalentResource;
         }
 
@@ -616,6 +620,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     parameters.defaultDataStoreParameters.networkSessionParameters.enableResourceLoadStatisticsLogTestingEvent = enableResourceLoadStatisticsLogTestingEvent;
     parameters.defaultDataStoreParameters.networkSessionParameters.shouldIncludeLocalhostInResourceLoadStatistics = shouldIncludeLocalhost;
     parameters.defaultDataStoreParameters.networkSessionParameters.enableResourceLoadStatisticsDebugMode = enableResourceLoadStatisticsDebugMode;
+    parameters.defaultDataStoreParameters.networkSessionParameters.enableThirdPartyCookieBlocking = enableThirdPartyCookieBlocking;
     parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsManualPrevalentResource = manualPrevalentResource;
 
     // Add any platform specific parameters
@@ -690,8 +695,6 @@ void WebProcessPool::getNetworkProcessConnection(WebProcessProxy& webProcessProx
 void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, RegistrableDomain&& registrableDomain, PAL::SessionID sessionID)
 {
     ASSERT_UNUSED(proxy, &proxy == m_networkProcess.get());
-
-    m_mayHaveRegisteredServiceWorkers.clear();
 
     auto* websiteDataStore = WebsiteDataStore::existingNonDefaultDataStoreForSessionID(sessionID);
 
@@ -781,13 +784,6 @@ void WebProcessPool::didReceiveInvalidMessage(const IPC::StringReference& messag
     messageNameStringBuilder.appendCharacters(messageName.data(), messageName.size());
 
     s_invalidMessageCallback(toAPI(API::String::create(messageNameStringBuilder.toString()).ptr()));
-}
-
-void WebProcessPool::processDidCachePage(WebProcessProxy* process)
-{
-    if (m_processWithPageCache && m_processWithPageCache != process)
-        m_processWithPageCache->releasePageCache();
-    m_processWithPageCache = process;
 }
 
 void WebProcessPool::resolvePathsForSandboxExtensions()
@@ -959,8 +955,6 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     parameters.urlSchemesRegisteredAsCORSEnabled = copyToVector(m_schemesToRegisterAsCORSEnabled);
     parameters.urlSchemesRegisteredAsAlwaysRevalidated = copyToVector(m_schemesToRegisterAsAlwaysRevalidated);
     parameters.urlSchemesRegisteredAsCachePartitioned = copyToVector(m_schemesToRegisterAsCachePartitioned);
-    if (websiteDataStore)
-        parameters.urlSchemesServiceWorkersCanHandle = copyToVector(websiteDataStore->configuration().serviceWorkerRegisteredSchemes());
     parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest = copyToVector(m_schemesToRegisterAsCanDisplayOnlyIfCanRequest);
 
     parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
@@ -973,6 +967,8 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     parameters.fullKeyboardAccessEnabled = WebProcessProxy::fullKeyboardAccessEnabled();
 
     parameters.defaultRequestTimeoutInterval = API::URLRequest::defaultTimeoutInterval();
+
+    parameters.backForwardCacheCapacity = backForwardCache().capacity();
 
 #if ENABLE(NOTIFICATIONS)
     // FIXME: There should be a generic way for supplements to add to the intialization parameters.
@@ -1127,8 +1123,6 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
     // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls of the other supplements are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
     // Clearing everything causes assertion failures, so it's less trouble to skip that for now.
     RefPtr<WebProcessProxy> protect(process);
-    if (m_processWithPageCache == process)
-        m_processWithPageCache = nullptr;
 
     m_backForwardCache->removeEntriesForProcess(*process);
 
@@ -1272,21 +1266,6 @@ void WebProcessPool::updateServiceWorkerUserAgent(const String& userAgent)
     m_serviceWorkerUserAgent = userAgent;
     for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values())
         serviceWorkerProcess->setServiceWorkerUserAgent(m_serviceWorkerUserAgent);
-}
-
-bool WebProcessPool::mayHaveRegisteredServiceWorkers(const WebsiteDataStore& store)
-{
-    if (!m_serviceWorkerProcesses.isEmpty())
-        return true;
-
-    String serviceWorkerRegistrationDirectory = store.resolvedServiceWorkerRegistrationDirectory();
-    if (serviceWorkerRegistrationDirectory.isEmpty())
-        serviceWorkerRegistrationDirectory = WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
-
-    return m_mayHaveRegisteredServiceWorkers.ensure(serviceWorkerRegistrationDirectory, [&] {
-        // FIXME: Make this computation on a background thread.
-        return FileSystem::fileExists(WebCore::serviceWorkerRegistrationDatabaseFilename(serviceWorkerRegistrationDirectory));
-    }).iterator->value;
 }
 #endif
 
@@ -1579,7 +1558,7 @@ void WebProcessPool::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&
 
 void WebProcessPool::updateBackForwardCacheCapacity()
 {
-    if (!m_configuration->usesPageCache())
+    if (!m_configuration->usesBackForwardCache())
         return;
 
     unsigned dummy = 0;

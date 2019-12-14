@@ -234,7 +234,6 @@ webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-dur
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-endofstream.html [ Failure Crash ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-errors.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-preload.html [ Failure ]
-webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-remove.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-seekable.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-sequencemode-append-buffer.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode-timestamps.html [ Failure ]
@@ -935,8 +934,9 @@ webkit.org/b/154390 http/tests/media/video-throttled-load-metadata.html [ Pass F
 webkit.org/b/154390 http/tests/media/video-redirect.html [ Timeout Pass ]
 webkit.org/b/154390 http/tests/media/hls/video-controller-getStartDate.html [ Timeout Failure ]
 webkit.org/b/154390 http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Timeout Failure ]
-webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-video-resize.html [ Timeout Failure ]
 webkit.org/b/154390 http/tests/security/local-video-source-from-remote.html [ Timeout Pass ]
+
+webkit.org/b/199617 http/tests/media/hls/hls-video-resize.html [ Skip ]
 
 webkit.org/b/137096 svg/W3C-SVG-1.1/text-altglyph-01-b.svg [ Failure ]
 webkit.org/b/137096 svg/custom/altglyph.svg [ Failure ]
@@ -1292,6 +1292,16 @@ webkit.org/b/198830 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 
 webkit.org/b/201275 fast/events/focus-anchor-with-tabindex-hang.html [ Crash ]
 
+# Known issues that were fixed by the WebKitMediaSrc rework that is now reverted.
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-seek-beyond-duration.html [ Failure Crash ]
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-remove.html [ Pass Crash ]
+webkit.org/b/203078 media/media-source/media-source-remove-unload-crash.html [ Pass Crash ]
+webkit.org/b/203078 media/media-source/media-source-seek-detach-crash.html [ Pass Crash ]
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-getvideoplaybackquality.html [ Failure Crash ]
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-replay.html [ Failure Crash ]
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-seek-during-pending-seek.html [ Pass Crash ]
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-redundant-seek.html [ Pass Crash ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1557,8 +1567,6 @@ webkit.org/b/132999 html5lib/generated/run-tests16-write.html [ Pass Timeout ]
 webkit.org/b/133000 js/slow-stress/call-spread.html [ Pass Timeout ]
 webkit.org/b/133001 fast/workers/worker-context-gc.html [ Pass Timeout ]
 
-webkit.org/b/133865 media/W3C/video/networkState/networkState_during_progress.html [ Failure Pass ]
-
 webkit.org/b/133869 media/video-seek-after-end.html [ Failure Pass ]
 
 webkit.org/b/36642 fast/replaced/border-radius-clip.html [ Failure Pass ]
@@ -1762,8 +1770,6 @@ webkit.org/b/172815 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ Pass ImageO
 webkit.org/b/173412 fast/scrolling/overflow-scrollable-after-back.html [ Pass Failure ]
 
 webkit.org/b/168373 media/video-seek-past-end-paused.html [ Failure Pass ]
-
-webkit.org/b/174240 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
 
 webkit.org/b/174353 media/video-restricted-invisible-autoplay-not-allowed.html [ Crash Pass ]
 
@@ -2076,8 +2082,6 @@ webkit.org/b/197498 imported/w3c/web-platform-tests/web-animations/interfaces/An
 webkit.org/b/197498 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/update-and-send-events.html [ Failure Pass ]
 
 webkit.org/b/197500 legacy-animation-engine/compositing/repaint/become-overlay-composited-layer.html [ Failure Pass ]
-
-webkit.org/b/197501 fast/images/animated-webp.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/197507 compositing/updates/animation-non-composited.html [ Timeout Pass ]
 webkit.org/b/197507 css3/filters/blur-various-radii.html [ Timeout Pass ]
@@ -3299,7 +3303,6 @@ webkit.org/b/171598 accessibility/gtk/menu-list-unfocused-notifications.html [ F
 
 webkit.org/b/176020 imported/w3c/web-platform-tests/media-source/mediasource-removesourcebuffer.html [ Crash Pass ]
 
-webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-seek-beyond-duration.html [ Failure ]
 webkit.org/b/171726 media/media-source/media-source-init-segment-duration.html [ Failure ]
 
 webkit.org/b/172270 fast/text/font-interstitial-invisible-width-while-loading.html [ Failure ]
@@ -3726,13 +3729,8 @@ webkit.org/b/196541 editing/pasteboard/paste-content-with-overflow-auto-parent-a
 webkit.org/b/197248 fast/events/autoscroll-when-input-is-offscreen.html [ Failure Crash ]
 webkit.org/b/197248 fast/events/autoscroll-with-software-keyboard.html [ Failure Crash ]
 
-webkit.org/b/197251 fast/images/icon-decoding.html [ Failure ]
-webkit.org/b/197251 fast/images/reset-image-animation.html [ Failure ]
-webkit.org/b/197251 fast/images/slower-animation-than-decoding-image.html [ Failure ]
-webkit.org/b/197251 fast/images/slower-decoding-than-animation-image.html [ Failure ]
-webkit.org/b/197251 css3/shapes/shape-outside/shape-image/shape-image-025.html [ ImageOnlyFailure ]
-webkit.org/b/197251 fast/images/animated-image-loop-count.html [ ImageOnlyFailure ]
-webkit.org/b/197251 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-025.html [ ImageOnlyFailure ]
+webkit.org/b/203240 css3/shapes/shape-outside/shape-image/shape-image-025.html [ ImageOnlyFailure ]
+webkit.org/b/203240 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/shape-image-025.html [ ImageOnlyFailure ]
 
 webkit.org/b/197252 http/tests/adClickAttribution/send-attribution-conversion-request.html [ Failure ]
 
@@ -3868,6 +3866,9 @@ webkit.org/b/202746 http/tests/blink/sendbeacon/beacon-cross-origin.html [ Failu
 webkit.org/b/202747 http/tests/cache-storage/cache-records-persistency.https.html [ Failure ]
 
 webkit.org/b/202750 http/tests/download/anchor-download-attribute-content-disposition-no-extension-text-plain.html [ Failure ]
+
+# Known issues that were fixed by the WebKitMediaSrc rework that is now reverted.
+webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-v-framesize.html [ Pass Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

@@ -35,6 +35,11 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(TableGrid);
 
+TableGrid::Column::Column(const Box* columnBox)
+    : m_columnBox(makeWeakPtr(columnBox))
+{
+}
+
 void TableGrid::Column::setWidthConstraints(FormattingContext::IntrinsicWidthConstraints widthConstraints)
 {
 #ifndef NDEBUG
@@ -77,9 +82,15 @@ LayoutUnit TableGrid::Column::logicalLeft() const
     return m_computedLogicalLeft;
 }
 
-void TableGrid::ColumnsContext::addColumn()
+bool TableGrid::Column::hasFixedWidth() const
 {
-    m_columns.append({ });
+    // FIXME: This only covers the <col> attribute case.
+    return columnBox() && columnBox()->columnWidth();
+}
+
+void TableGrid::ColumnsContext::addColumn(const Box* columnBox)
+{
+    m_columns.append({ columnBox });
 }
 
 TableGrid::Row::Row(const Box& rowBox)
@@ -162,14 +173,17 @@ void TableGrid::removeCell(const Box& tableCellBox)
     UNUSED_PARAM(tableCellBox);
 }
 
-FormattingContext::IntrinsicWidthConstraints TableGrid::widthConstraints() const
+FormattingContext::IntrinsicWidthConstraints TableGrid::widthConstraints()
 {
-    // FIXME: We should probably cache this value.
-    auto widthConstraints = FormattingContext::IntrinsicWidthConstraints { };
+    // FIXME: Add constraint invalidation for incremental layouts.
+    if (m_intrinsicWidthConstraints)
+        return *m_intrinsicWidthConstraints;
+
+    m_intrinsicWidthConstraints = FormattingContext::IntrinsicWidthConstraints { };
     for (auto& column : m_columnsContext.columns())
-        widthConstraints += column.widthConstraints();
-    widthConstraints.expand((m_columnsContext.columns().size() + 1) * m_horizontalSpacing); 
-    return widthConstraints;
+        *m_intrinsicWidthConstraints += column.widthConstraints();
+    m_intrinsicWidthConstraints->expand(totalHorizontalSpacing());
+    return *m_intrinsicWidthConstraints;
 }
 
 }

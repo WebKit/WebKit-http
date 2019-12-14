@@ -29,6 +29,7 @@
 #import "CookieStorageUtilsCF.h"
 #import "SandboxUtilities.h"
 #import "StorageManager.h"
+#import "WebPreferencesKeys.h"
 #import "WebResourceLoadStatisticsStore.h"
 #import "WebsiteDataStoreParameters.h"
 #import <WebCore/RegistrableDomain.h>
@@ -68,11 +69,14 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     bool shouldLogCookieInformation = false;
     bool enableResourceLoadStatisticsDebugMode = false;
-    bool enableResourceLoadStatisticsNSURLSessionSwitching = WebCore::RuntimeEnabledFeatures::sharedFeatures().isITPSessionSwitchingEnabled();
+    bool enableThirdPartyCookieBlocking = false;
+    bool enableLegacyTLS = true;
+    if (id value = [defaults objectForKey:@"WebKitEnableLegacyTLS"])
+        enableLegacyTLS = [value boolValue];
     WebCore::RegistrableDomain resourceLoadStatisticsManualPrevalentResource { };
-    bool enableLegacyTLS = [defaults boolForKey:@"WebKitEnableLegacyTLS"];
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     enableResourceLoadStatisticsDebugMode = [defaults boolForKey:@"ITPDebugMode"];
+    enableThirdPartyCookieBlocking = [defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isThirdPartyCookieBlockingEnabledKey().createCFString().get()]];
     auto* manualPrevalentResource = [defaults stringForKey:@"ITPManualPrevalentResource"];
     if (manualPrevalentResource) {
         URL url { URL(), manualPrevalentResource };
@@ -136,7 +140,7 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
         hasStatisticsTestingCallback(),
         shouldIncludeLocalhostInResourceLoadStatistics,
         enableResourceLoadStatisticsDebugMode,
-        enableResourceLoadStatisticsNSURLSessionSwitching,
+        enableThirdPartyCookieBlocking,
         m_configuration->deviceManagementRestrictionsEnabled(),
         m_configuration->allLoadsBlockedByDeviceManagementRestrictionsForTesting(),
         WTFMove(resourceLoadStatisticsManualPrevalentResource),
@@ -180,7 +184,6 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     if (!parameters.serviceWorkerRegistrationDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.serviceWorkerRegistrationDirectory, parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
     parameters.serviceWorkerProcessTerminationDelayEnabled = m_configuration->serviceWorkerProcessTerminationDelayEnabled();
-    parameters.serviceWorkerRegisteredSchemes = m_configuration->serviceWorkerRegisteredSchemes();
 #endif
 
     parameters.localStorageDirectory = resolvedLocalStorageDirectory();
@@ -249,8 +252,8 @@ WTF::String WebsiteDataStore::defaultApplicationCacheDirectory()
     // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
     // Preserving it avoids the need to migrate data when upgrading.
     // FIXME: Ideally we should just have Safari, WebApp, and webbookmarksd create a data store with
-    // this application cache path, but that's not supported as of right now.
-    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp() || WebCore::IOSApplication::isWebBookmarksD()) {
+    // this application cache path.
+    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebBookmarksD()) {
         NSString *cachePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.apple.WebAppCache"];
 
         return WebKit::stringByResolvingSymlinksInPath(cachePath.stringByStandardizingPath);

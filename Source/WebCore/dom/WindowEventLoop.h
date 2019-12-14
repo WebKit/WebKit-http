@@ -25,31 +25,28 @@
 
 #pragma once
 
+#include "AbstractEventLoop.h"
 #include "DocumentIdentifier.h"
-#include <memory>
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
 class Document;
 
-enum class TaskSource : uint8_t {
-    IdleTask,
-};
-
 // https://html.spec.whatwg.org/multipage/webappapis.html#window-event-loop
-class WindowEventLoop : public RefCounted<WindowEventLoop> {
-    WTF_MAKE_FAST_ALLOCATED;
+class WindowEventLoop final : public AbstractEventLoop {
 public:
     static Ref<WindowEventLoop> create();
 
-    typedef WTF::Function<void ()> TaskFunction;
+    void queueTask(TaskSource, ScriptExecutionContext&, TaskFunction&&) override;
 
-    void queueTask(TaskSource, Document&, TaskFunction&&);
+    void suspend(ScriptExecutionContext&) override;
+    void resume(ScriptExecutionContext&) override;
 
 private:
-    WindowEventLoop();
+    WindowEventLoop() = default;
 
+    void scheduleToRunIfNeeded();
     void run();
 
     struct Task {
@@ -60,6 +57,8 @@ private:
 
     // Use a global queue instead of multiple task queues since HTML5 spec allows UA to pick arbitrary queue.
     Vector<Task> m_tasks;
+    bool m_isScheduledToRun { false };
+    HashSet<DocumentIdentifier> m_documentIdentifiersForSuspendedTasks;
 };
 
 } // namespace WebCore

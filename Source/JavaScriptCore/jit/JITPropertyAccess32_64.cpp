@@ -57,7 +57,7 @@ void JIT::emit_op_put_getter_by_id(const Instruction* currentInstruction)
 
     emitLoadPayload(base, regT1);
     emitLoadPayload(getter, regT3);
-    callOperation(operationPutGetterById, regT1, m_codeBlock->identifier(property).impl(), options, regT3);
+    callOperation(operationPutGetterById, m_codeBlock->globalObject(), regT1, m_codeBlock->identifier(property).impl(), options, regT3);
 }
 
 void JIT::emit_op_put_setter_by_id(const Instruction* currentInstruction)
@@ -70,7 +70,7 @@ void JIT::emit_op_put_setter_by_id(const Instruction* currentInstruction)
 
     emitLoadPayload(base, regT1);
     emitLoadPayload(setter, regT3);
-    callOperation(operationPutSetterById, regT1, m_codeBlock->identifier(property).impl(), options, regT3);
+    callOperation(operationPutSetterById, m_codeBlock->globalObject(), regT1, m_codeBlock->identifier(property).impl(), options, regT3);
 }
 
 void JIT::emit_op_put_getter_setter_by_id(const Instruction* currentInstruction)
@@ -85,7 +85,7 @@ void JIT::emit_op_put_getter_setter_by_id(const Instruction* currentInstruction)
     emitLoadPayload(base, regT1);
     emitLoadPayload(getter, regT3);
     emitLoadPayload(setter, regT4);
-    callOperation(operationPutGetterSetter, regT1, m_codeBlock->identifier(property).impl(), attributes, regT3, regT4);
+    callOperation(operationPutGetterSetter, m_codeBlock->globalObject(), regT1, m_codeBlock->identifier(property).impl(), attributes, regT3, regT4);
 }
 
 void JIT::emit_op_put_getter_by_val(const Instruction* currentInstruction)
@@ -99,7 +99,7 @@ void JIT::emit_op_put_getter_by_val(const Instruction* currentInstruction)
     emitLoadPayload(base, regT2);
     emitLoad(property, regT1, regT0);
     emitLoadPayload(getter, regT3);
-    callOperation(operationPutGetterByVal, regT2, JSValueRegs(regT1, regT0), attributes, regT3);
+    callOperation(operationPutGetterByVal, m_codeBlock->globalObject(), regT2, JSValueRegs(regT1, regT0), attributes, regT3);
 }
 
 void JIT::emit_op_put_setter_by_val(const Instruction* currentInstruction)
@@ -113,7 +113,7 @@ void JIT::emit_op_put_setter_by_val(const Instruction* currentInstruction)
     emitLoadPayload(base, regT2);
     emitLoad(property, regT1, regT0);
     emitLoadPayload(setter, regT3);
-    callOperation(operationPutSetterByVal, regT2, JSValueRegs(regT1, regT0), attributes, regT3);
+    callOperation(operationPutSetterByVal, m_codeBlock->globalObject(), regT2, JSValueRegs(regT1, regT0), attributes, regT3);
 }
 
 void JIT::emit_op_del_by_id(const Instruction* currentInstruction)
@@ -123,7 +123,7 @@ void JIT::emit_op_del_by_id(const Instruction* currentInstruction)
     int base = bytecode.m_base.offset();
     int property = bytecode.m_property;
     emitLoad(base, regT1, regT0);
-    callOperation(operationDeleteByIdJSResult, dst, JSValueRegs(regT1, regT0), m_codeBlock->identifier(property).impl());
+    callOperation(operationDeleteByIdJSResult, dst, m_codeBlock->globalObject(), JSValueRegs(regT1, regT0), m_codeBlock->identifier(property).impl());
 }
 
 void JIT::emit_op_del_by_val(const Instruction* currentInstruction)
@@ -133,7 +133,7 @@ void JIT::emit_op_del_by_val(const Instruction* currentInstruction)
     int base = bytecode.m_base.offset();
     int property = bytecode.m_property.offset();
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
-    callOperation(operationDeleteByValJSResult, dst, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
+    callOperation(operationDeleteByValJSResult, dst, m_codeBlock->globalObject(), JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
 }
 
 void JIT::emit_op_get_by_val(const Instruction* currentInstruction)
@@ -216,7 +216,7 @@ JITGetByIdGenerator JIT::emitGetByValWithCachedId(ByValInfo* byValInfo, OpGetByV
     Label coldPathBegin = label();
     gen.slowPathJump().link(this);
 
-    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, dst, gen.stubInfo(), JSValueRegs(regT1, regT0), propertyName.impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, dst, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), propertyName.impl());
     gen.reportSlowPathCall(coldPathBegin, call);
     slowDoneCase = jump();
 
@@ -252,7 +252,7 @@ void JIT::emitSlow_op_get_by_val(const Instruction* currentInstruction, Vector<S
     
     emitLoad(base, regT1, regT0);
     emitLoad(property, regT3, regT2);
-    Call call = callOperation(operationGetByValOptimize, dst, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2), byValInfo);
+    Call call = callOperation(operationGetByValOptimize, dst, m_codeBlock->globalObject(), JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2), byValInfo);
 
     m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
@@ -448,7 +448,7 @@ JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Op bytec
     // JITPutByIdGenerator only preserve the value and the base's payload, we have to reload the tag.
     emitLoadTag(base, regT1);
 
-    Call call = callOperation(gen.slowPathFunction(), gen.stubInfo(), JSValueRegs(regT3, regT2), JSValueRegs(regT1, regT0), propertyName.impl());
+    Call call = callOperation(gen.slowPathFunction(), m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT3, regT2), JSValueRegs(regT1, regT0), propertyName.impl());
     gen.reportSlowPathCall(coldPathBegin, call);
     doneCases.append(jump());
 
@@ -483,7 +483,7 @@ void JIT::emitSlow_op_put_by_val(const Instruction* currentInstruction, Vector<S
     emitLoad(base, regT2, regT1);
     emitLoad(property, regT3, regT0);
     emitLoad(value, regT5, regT4);
-    Call call = callOperation(isDirect ? operationDirectPutByValOptimize : operationPutByValOptimize, JSValueRegs(regT2, regT1), JSValueRegs(regT3, regT0), JSValueRegs(regT5, regT4), byValInfo);
+    Call call = callOperation(isDirect ? operationDirectPutByValOptimize : operationPutByValOptimize, m_codeBlock->globalObject(), JSValueRegs(regT2, regT1), JSValueRegs(regT3, regT0), JSValueRegs(regT5, regT4), byValInfo);
 
     m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
@@ -523,7 +523,7 @@ void JIT::emitSlow_op_try_get_by_id(const Instruction* currentInstruction, Vecto
 
     Label coldPathBegin = label();
 
-    Call call = callOperation(operationTryGetByIdOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperation(operationTryGetByIdOptimize, resultVReg, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -562,7 +562,7 @@ void JIT::emitSlow_op_get_by_id_direct(const Instruction* currentInstruction, Ve
 
     Label coldPathBegin = label();
 
-    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdDirectOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdDirectOptimize, resultVReg, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
 
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -608,7 +608,7 @@ void JIT::emitSlow_op_get_by_id(const Instruction* currentInstruction, Vector<Sl
     
     Label coldPathBegin = label();
     
-    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, resultVReg, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -649,7 +649,7 @@ void JIT::emitSlow_op_get_by_id_with_this(const Instruction* currentInstruction,
     
     Label coldPathBegin = label();
     
-    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdWithThisOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), JSValueRegs(regT4, regT3), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdWithThisOptimize, resultVReg, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), JSValueRegs(regT4, regT3), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -698,7 +698,7 @@ void JIT::emitSlow_op_put_by_id(const Instruction* currentInstruction, Vector<Sl
     JITPutByIdGenerator& gen = m_putByIds[m_putByIdIndex++];
     
     Call call = callOperation(
-        gen.slowPathFunction(), gen.stubInfo(), JSValueRegs(regT3, regT2), JSValueRegs(regT1, regT0), ident->impl());
+        gen.slowPathFunction(), m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT3, regT2), JSValueRegs(regT1, regT0), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -735,7 +735,7 @@ void JIT::emitSlow_op_in_by_id(const Instruction* currentInstruction, Vector<Slo
 
     Label coldPathBegin = label();
 
-    Call call = callOperation(operationInByIdOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperation(operationInByIdOptimize, resultVReg, m_codeBlock->globalObject(), gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
 
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -1010,7 +1010,7 @@ void JIT::emitSlow_op_get_from_scope(const Instruction* currentInstruction, Vect
 
     auto bytecode = currentInstruction->as<OpGetFromScope>();
     int dst = bytecode.m_dst.offset();
-    callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetFromScope, dst, currentInstruction);
+    callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetFromScope, dst, m_codeBlock->globalObject(), currentInstruction);
 }
 
 void JIT::emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet* set)
@@ -1171,7 +1171,7 @@ void JIT::emitSlow_op_put_to_scope(const Instruction* currentInstruction, Vector
         JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_throw_strict_mode_readonly_property_write_error);
         slowPathCall.call();
     } else
-        callOperation(operationPutToScope, currentInstruction);
+        callOperation(operationPutToScope, m_codeBlock->globalObject(), currentInstruction);
 }
 
 void JIT::emit_op_get_from_arguments(const Instruction* currentInstruction)
@@ -1215,7 +1215,7 @@ void JIT::emit_op_get_internal_field(const Instruction* currentInstruction)
     emitLoadPayload(base, regT2);
     load32(Address(regT2, JSInternalFieldObjectImpl<>::offsetOfInternalField(index) + TagOffset), regT1);
     load32(Address(regT2, JSInternalFieldObjectImpl<>::offsetOfInternalField(index) + PayloadOffset), regT0);
-    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
+    emitValueProfilingSite(metadata);
     emitStore(dst, regT1, regT0);
 }
 

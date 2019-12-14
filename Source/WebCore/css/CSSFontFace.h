@@ -39,7 +39,6 @@
 
 namespace JSC {
 class CallFrame;
-using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -163,7 +162,6 @@ public:
     bool purgeable() const;
 
     AllowUserInstalledFonts allowUserInstalledFonts() const;
-    bool shouldAllowDesignSystemUIFonts() const;
 
     void updateStyleIfNeeded();
 

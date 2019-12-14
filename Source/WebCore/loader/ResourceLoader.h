@@ -120,6 +120,7 @@ public:
 
 #if USE(QUICK_LOOK)
     bool isQuickLookResource() const;
+    virtual void didReceivePreviewResponse(const ResourceResponse&) { };
 #endif
 
     const URL& url() const { return m_request.url(); }

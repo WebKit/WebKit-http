@@ -72,7 +72,7 @@ private:
     
     void makeRepresentation(WebCore::DocumentLoader*) final;
 #if PLATFORM(IOS_FAMILY)
-    bool forceLayoutOnRestoreFromPageCache() final;
+    bool forceLayoutOnRestoreFromBackForwardCache() final;
 #endif
     void forceLayoutForNonHTML() final;
     
@@ -210,8 +210,7 @@ private:
 #endif
     void transitionToCommittedForNewPage() final;
 
-    void didSaveToPageCache() final;
-    void didRestoreFromPageCache() final;
+    void didRestoreFromBackForwardCache() final;
 
     void dispatchDidBecomeFrameset(bool) final;
 
@@ -286,7 +285,7 @@ private:
     bool m_hasSentResponseToPluginView;
     bool m_didCompletePageTransition;
     bool m_frameHasCustomContentProvider;
-    bool m_frameCameFromPageCache;
+    bool m_frameCameFromBackForwardCache;
     bool m_useIconLoadingClient { false };
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     Optional<FrameSpecificStorageAccessIdentifier> m_frameSpecificStorageAccessIdentifier;

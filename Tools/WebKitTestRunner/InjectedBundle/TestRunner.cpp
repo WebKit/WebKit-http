@@ -483,6 +483,13 @@ void TestRunner::setEncryptedMediaAPIEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
+void TestRunner::setPictureInPictureAPIEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key = adoptWK(WKStringCreateWithUTF8CString("WebKitPictureInPictureAPIEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
 void TestRunner::setAllowsAnySSLCertificate(bool enabled)
 {
     auto& injectedBundle = InjectedBundle::singleton();
@@ -736,6 +743,7 @@ enum {
     StatisticsDidResetToConsistentStateCallbackID,
     StatisticsDidSetBlockCookiesForHostCallbackID,
     StatisticsDidSetShouldDowngradeReferrerCallbackID,
+    StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID,
     AllStorageAccessEntriesCallbackID,
     DidRemoveAllSessionCredentialsCallbackID,
     GetApplicationManifestCallbackID,
@@ -852,8 +860,8 @@ static inline bool toBool(JSStringRef value)
 void TestRunner::overridePreference(JSStringRef preference, JSStringRef value)
 {
     auto& injectedBundle = InjectedBundle::singleton();
-    // Should use `<!-- webkit-test-runner [ enablePageCache=true ] -->` instead.
-    RELEASE_ASSERT(!JSStringIsEqualToUTF8CString(preference, "WebKitUsesPageCachePreferenceKey"));
+    // Should use `<!-- webkit-test-runner [ enableBackForwardCache=true ] -->` instead.
+    RELEASE_ASSERT(!JSStringIsEqualToUTF8CString(preference, "WebKitUsesBackForwardCachePreferenceKey"));
 
     // FIXME: handle non-boolean preferences.
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), toWK(preference).get(), toBool(value));
@@ -2199,6 +2207,23 @@ void TestRunner::setStatisticsShouldDowngradeReferrer(bool value, JSValueRef com
 void TestRunner::statisticsCallDidSetShouldDowngradeReferrerCallback()
 {
     callTestRunnerCallback(StatisticsDidSetShouldDowngradeReferrerCallbackID);
+}
+
+void TestRunner::setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRef completionHandler)
+{
+    if (m_hasSetBlockThirdPartyCookiesCallback)
+        return;
+    
+    cacheTestRunnerCallback(StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID, completionHandler);
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetStatisticsShouldBlockThirdPartyCookies"));
+    WKRetainPtr<WKBooleanRef> messageBody = adoptWK(WKBooleanCreate(value));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+    m_hasSetBlockThirdPartyCookiesCallback = true;
+}
+
+void TestRunner::statisticsCallDidSetShouldBlockThirdPartyCookiesCallback()
+{
+    callTestRunnerCallback(StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID);
 }
 
 void TestRunner::statisticsCallClearThroughWebsiteDataRemovalCallback()

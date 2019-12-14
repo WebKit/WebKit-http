@@ -96,7 +96,7 @@ public:
     };
 
     using AlgorithmIdentifier = Variant<JSC::Strong<JSC::JSObject>, String>;
-    static void generateCertificate(JSC::ExecState&, AlgorithmIdentifier&&, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&&);
+    static void generateCertificate(JSC::JSGlobalObject&, AlgorithmIdentifier&&, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&&);
 
     // 4.3.2 RTCPeerConnection Interface
     void queuedCreateOffer(RTCOfferOptions&&, PeerConnection::SessionDescriptionPromise&&);
@@ -211,7 +211,7 @@ private:
     // ActiveDOMObject
     WEBCORE_EXPORT void stop() final;
     const char* activeDOMObjectName() const final;
-    bool canSuspendForDocumentSuspension() const final;
+    bool shouldPreventEnteringBackForwardCache_DEPRECATED() const final;
     void suspend(ReasonForSuspension) final;
     void resume() final;
 

@@ -387,7 +387,6 @@ public:
 {
 #if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
-    WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
     bool attachmentElementEnabled = MacApplication::isAppleMail();
 #else
@@ -609,6 +608,11 @@ public:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
         @"~/Library/WebKit/MediaKeys", WebKitMediaKeysStorageDirectoryKey,
 #endif
+
+#if ENABLE(PICTURE_IN_PICTURE_API)
+        @NO, WebKitPictureInPictureAPIEnabledKey,
+#endif
+
 #if ENABLE(MEDIA_STREAM)
         @NO, WebKitMockCaptureDevicesEnabledPreferenceKey,
         @YES, WebKitMockCaptureDevicesPromptEnabledPreferenceKey,
@@ -691,6 +695,7 @@ public:
 #endif
         @NO, WebKitCoreMathMLEnabledPreferenceKey,
         @NO, WebKitRequestIdleCallbackEnabledPreferenceKey,
+        @NO, WebKitAsyncClipboardAPIEnabledPreferenceKey,
         @NO, WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey,
         @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
         nil];
@@ -3329,6 +3334,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitEncryptedMediaAPIEnabledKey];
 }
 
+- (BOOL)pictureInPictureAPIEnabled
+{
+    return [self _boolValueForKey:WebKitPictureInPictureAPIEnabledKey];
+}
+
+- (void)setPictureInPictureAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPictureInPictureAPIEnabledKey];
+}
+
 - (BOOL)viewportFitEnabled
 {
     return [self _boolValueForKey:WebKitViewportFitEnabledPreferenceKey];
@@ -3507,6 +3522,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setRequestIdleCallbackEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitRequestIdleCallbackEnabledPreferenceKey];
+}
+
+- (BOOL)asyncClipboardAPIEnabled
+{
+    return [self _boolValueForKey:WebKitAsyncClipboardAPIEnabledPreferenceKey];
+}
+
+- (void)setAsyncClipboardAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAsyncClipboardAPIEnabledPreferenceKey];
 }
 
 - (BOOL)linkPreloadResponsiveImagesEnabled

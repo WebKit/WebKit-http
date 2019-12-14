@@ -67,6 +67,9 @@
 
 - (void)cancel
 {
+#if ENABLE(WEB_AUTHN)
+    _panel->cancel();
+#endif
 }
 
 #if ENABLE(WEB_AUTHN)

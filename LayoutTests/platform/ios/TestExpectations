@@ -1254,7 +1254,6 @@ webkit.org/b/178487 compositing/geometry/video-fixed-scrolling.html [ Pass Failu
 webkit.org/b/178487 compositing/iframes/composited-iframe-scroll.html [ Failure ]
 webkit.org/b/178487 compositing/iframes/iframe-content-flipping.html [ Failure ]
 webkit.org/b/178487 compositing/iframes/layout-on-compositing-change.html [ Failure ]
-webkit.org/b/178487 compositing/iframes/nested-iframe-scrolling.html [ Failure ]
 webkit.org/b/178487 compositing/layer-creation/fixed-overlap-extent-rtl.html [ Failure ]
 webkit.org/b/178487 compositing/layer-creation/fixed-overlap-extent.html [ Failure ]
 webkit.org/b/178487 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
@@ -2327,8 +2326,6 @@ webkit.org/b/153371 imported/w3c/web-platform-tests/xhr/getresponseheader-chunke
 
 webkit.org/b/169210 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc.html [ Failure ]
 
-webkit.org/b/153498 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
-
 # displaylist tests are flaky on ios-simulator wk2
 webkit.org/b/153656 displaylists/canvas-display-list.html [ Pass Failure ]
 webkit.org/b/153656 displaylists/extent-includes-transforms.html [ Pass Failure ]
@@ -3324,8 +3321,6 @@ http/wpt/resource-timing/rt-initiatorType-element.html [ Pass Failure ]
 http/wpt/resource-timing/rt-initiatorType-xmlhttprequest.html [ Pass Failure ]
 
 # <rdar://problem/51826131> REGRESSION (r241747) 2 Layout tests are failing on Internal iOS 13 iOS / iPad Simulator testers fast/repaint/placeholder-after-caps-lock-hidden.html imported/blink/svg/custom/focus-ring-2.svg
-imported/blink/svg/custom/focus-ring-2.svg [ ImageOnlyFailure ]
-fast/repaint/placeholder-after-caps-lock-hidden.html [ Failure ]
 
 # <rdar://problem/51827049> REGRESSION (iOS 13?) Layout test fast/viewport/ios/use-minimum-device-width-for-page-without-viewport-meta.html is a highly flaky timeout on iOS 13 iOS Simulator
 fast/viewport/ios/use-minimum-device-width-for-page-without-viewport-meta.html [ Pass Timeout Failure ]
@@ -3339,9 +3334,6 @@ fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
 
 # <rdar://problem/52689856> storage/websql/test-authorizer.html is failing
 storage/websql/test-authorizer.html [ Failure ]
-
-# rdar://53551736 (Layout Test editing/pasteboard/paste-and-sanitize.html is a Flaky Failure on iOS 13)
-editing/pasteboard/paste-and-sanitize.html [ Pass Failure ]
 
 # Skip until we have the fixes for <rdar://problem/53613454> and <rdar://problem/54001139>.
 fast/events/ios/multiple-key-press-and-release-ordering.html [ Skip ]
@@ -3367,8 +3359,6 @@ fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
 
 # <rdar://problem/52962272> fast/scrolling/ios/body-overflow-hidden.html is an Image failure
 fast/scrolling/ios/body-overflow-hidden.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/201899 editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html [ Failure ]
 
 webkit.org/b/201900 webrtc/datachannel/mdns-ice-candidates.html [ Failure ]
 
@@ -3404,3 +3394,5 @@ webkit.org/b/202516 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.pa
 
 webkit.org/b/202518 imported/w3c/web-platform-tests/2dcontext/drawing-text-to-the-canvas/2d.text.measure.fontBoundingBox.html [ Failure ]
 webkit.org/b/202518 imported/w3c/web-platform-tests/2dcontext/drawing-text-to-the-canvas/2d.text.measure.emHeights.html [ Failure ]
+
+webkit.org/b/202958 css3/filters/svg-blur-filter-clipped.html [ ImageOnlyFailure ]

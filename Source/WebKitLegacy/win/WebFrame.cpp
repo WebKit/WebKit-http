@@ -528,7 +528,7 @@ JSGlobalContextRef WebFrame::globalContext()
     if (!coreFrame)
         return nullptr;
 
-    return toGlobalRef(coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec());
+    return toGlobalRef(coreFrame->script().globalObject(mainThreadNormalWorld()));
 }
 
 JSGlobalContextRef WebFrame::globalContextForScriptWorld(IWebScriptWorld* iWorld)
@@ -541,7 +541,7 @@ JSGlobalContextRef WebFrame::globalContextForScriptWorld(IWebScriptWorld* iWorld
     if (!world)
         return 0;
 
-    return toGlobalRef(coreFrame->script().globalObject(world->world())->globalExec());
+    return toGlobalRef(coreFrame->script().globalObject(world->world()));
 }
 
 HRESULT WebFrame::loadRequest(_In_opt_ IWebURLRequest* request)
@@ -2066,9 +2066,9 @@ HRESULT WebFrame::stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld* iWo
     if (!result || (!result.isBoolean() && !result.isString() && !result.isNumber()))
         return S_OK;
 
-    JSC::ExecState* exec = anyWorldGlobalObject->globalExec();
-    JSC::JSLockHolder lock(exec);
-    String resultString = result.toWTFString(exec);
+    JSC::JSGlobalObject* lexicalGlobalObject = anyWorldGlobalObject;
+    JSC::JSLockHolder lock(lexicalGlobalObject);
+    String resultString = result.toWTFString(lexicalGlobalObject);
     *evaluationResult = BString(resultString).release();
 
     return S_OK;
@@ -2119,7 +2119,7 @@ COMPtr<IAccessible> WebFrame::accessible() const
     else if (!m_accessible || m_accessible->document() != currentDocument) {
         // Either we've never had a wrapper for this frame's top-level Document,
         // the Document renderer was destroyed and its wrapper was detached, or
-        // the previous Document is in the page cache, and the current document
+        // the previous Document is in the back/forward cache, and the current document
         // needs to be wrapped.
         m_accessible = new AccessibleDocument(currentDocument, webView()->viewWindow());
     }

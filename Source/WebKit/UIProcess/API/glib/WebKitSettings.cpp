@@ -284,7 +284,8 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
 #if PLATFORM(GTK)
     case PROP_ENABLE_PRIVATE_BROWSING:
         G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
-        webkit_settings_set_enable_private_browsing(settings, g_value_get_boolean(value));
+        if (g_value_get_boolean(value))
+            webkit_settings_set_enable_private_browsing(settings, TRUE);
         G_GNUC_END_IGNORE_DEPRECATIONS;
         break;
 #endif
@@ -2403,6 +2404,8 @@ gboolean webkit_settings_get_enable_private_browsing(WebKitSettings* settings)
 void webkit_settings_set_enable_private_browsing(WebKitSettings* settings, gboolean enabled)
 {
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    g_warning("webkit_settings_set_enable_private_browsing is deprecated and does nothing, use #WebKitWebView:is-ephemeral or #WebKitWebContext:is-ephemeral instead");
 }
 #endif
 
@@ -2981,7 +2984,7 @@ gboolean webkit_settings_get_enable_page_cache(WebKitSettings* settings)
 {
     g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
 
-    return settings->priv->preferences->usesPageCache();
+    return settings->priv->preferences->usesBackForwardCache();
 }
 
 /**
@@ -2996,11 +2999,11 @@ void webkit_settings_set_enable_page_cache(WebKitSettings* settings, gboolean en
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
     WebKitSettingsPrivate* priv = settings->priv;
-    bool currentValue = priv->preferences->usesPageCache();
+    bool currentValue = priv->preferences->usesBackForwardCache();
     if (currentValue == enabled)
         return;
 
-    priv->preferences->setUsesPageCache(enabled);
+    priv->preferences->setUsesBackForwardCache(enabled);
     g_object_notify(G_OBJECT(settings), "enable-page-cache");
 }
 

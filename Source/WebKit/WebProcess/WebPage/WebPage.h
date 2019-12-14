@@ -48,9 +48,10 @@
 #include "ShareSheetCallbackID.h"
 #include "SharedMemory.h"
 #include "StorageNamespaceIdentifier.h"
+#include "TransactionID.h"
 #include "UserData.h"
 #include "WebBackForwardListProxy.h"
-#include "WebPageMessages.h"
+#include "WebPageMessagesReplies.h"
 #include "WebURLSchemeHandler.h"
 #include "WebUndoStepID.h"
 #include "WebUserContentController.h"
@@ -100,7 +101,6 @@ typedef struct _AtkObject AtkObject;
 
 #if PLATFORM(IOS_FAMILY)
 #include "GestureTypes.h"
-#include "WebPageMessages.h"
 #include <WebCore/IntPointHash.h>
 #include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WKContentObservation.h>
@@ -175,7 +175,6 @@ class ResourceResponse;
 class SelectionRect;
 class SharedBuffer;
 class SubstituteData;
-class SyntheticEditingCommandType;
 class TextCheckingRequest;
 class VisiblePosition;
 
@@ -191,6 +190,7 @@ enum class WritingDirection : uint8_t;
 struct BackForwardItemIdentifier;
 struct CompositionUnderline;
 struct DictationAlternative;
+struct ElementContext;
 struct GlobalFrameIdentifier;
 struct GlobalWindowIdentifier;
 struct Highlight;
@@ -212,6 +212,7 @@ class DownloadID;
 class FindController;
 class GamepadData;
 class GeolocationPermissionRequestManager;
+class LayerHostingContext;
 class MediaDeviceSandboxExtensions;
 class NotificationPermissionRequestManager;
 class PDFPlugin;
@@ -256,18 +257,22 @@ class RemoteLayerTreeTransaction;
 
 enum FindOptions : uint16_t;
 enum class DragControllerAction : uint8_t;
+enum class SyntheticEditingCommandType : uint8_t;
 
 struct AttributedString;
 struct BackForwardListItemState;
 struct DataDetectionResult;
+struct DocumentEditingContext;
+struct DocumentEditingContextRequest;
 struct EditorState;
-struct ElementContext;
 struct FontInfo;
 struct InsertTextOptions;
 struct InteractionInformationAtPosition;
 struct InteractionInformationRequest;
 struct LoadParameters;
 struct PrintInfo;
+struct TextInputContext;
+struct UserMessage;
 struct WebAutocorrectionData;
 struct WebAutocorrectionContext;
 struct WebPageCreationParameters;
@@ -611,8 +616,8 @@ public:
     void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
     void selectAll();
 
-    void textInputContextsInRect(WebCore::FloatRect, CompletionHandler<void(const Vector<WebKit::ElementContext>&)>&&);
-    void focusTextInputContext(const ElementContext&, CompletionHandler<void(bool)>&&);
+    void textInputContextsInRect(WebCore::FloatRect, CompletionHandler<void(const Vector<WebCore::ElementContext>&)>&&);
+    void focusTextInputContext(const WebCore::ElementContext&, CompletionHandler<void(bool)>&&);
 
 #if PLATFORM(IOS_FAMILY)
     WebCore::FloatSize screenSize() const;
@@ -668,7 +673,7 @@ public:
     void requestAutocorrectionContext();
     void getPositionInformation(const InteractionInformationRequest&, CompletionHandler<void(InteractionInformationAtPosition&&)>&&);
     void requestPositionInformation(const InteractionInformationRequest&);
-    void startInteractionWithElementContextOrPosition(Optional<ElementContext>&&, WebCore::IntPoint&&);
+    void startInteractionWithElementContextOrPosition(Optional<WebCore::ElementContext>&&, WebCore::IntPoint&&);
     void stopInteraction();
     void performActionOnElement(uint32_t action);
     void focusNextFocusedElement(bool isForward, CallbackID);
@@ -876,7 +881,7 @@ public:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    void computePagesForPrintingAndDrawToPDF(WebCore::FrameIdentifier, const PrintInfo&, CallbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&&);
+    void computePagesForPrintingAndDrawToPDF(WebCore::FrameIdentifier, const PrintInfo&, CallbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDFDelayedReply&&);
 #endif
 
     void drawToPDF(WebCore::FrameIdentifier, const Optional<WebCore::FloatRect>&, CallbackID);
@@ -1188,8 +1193,8 @@ public:
 
     void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel);
 
-    WebCore::Element* elementForContext(const ElementContext&) const;
-    Optional<ElementContext> contextForElement(WebCore::Element&) const;
+    WebCore::Element* elementForContext(const WebCore::ElementContext&) const;
+    Optional<WebCore::ElementContext> contextForElement(WebCore::Element&) const;
 
 #if ENABLE(APPLE_PAY)
     WebPaymentCoordinator* paymentCoordinator();
@@ -1304,7 +1309,7 @@ private:
     bool executeKeypressCommandsInternal(const Vector<WebCore::KeypressCommand>&, WebCore::KeyboardEvent*);
 #endif
 
-    void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(Messages::WebPage::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&&);
+    void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(Messages::WebPage::TestProcessIncomingSyncMessagesWhenWaitingForSyncReplyDelayedReply&&);
 
     void updateDrawingAreaLayerTreeFreezeState();
     bool markLayersVolatileImmediatelyIfPossible();
@@ -1578,7 +1583,6 @@ private:
     void didEndRequestInstallMissingMediaPlugins(uint32_t result);
 #endif
 
-    void setResourceCachingDisabled(bool);
     void setUserInterfaceLayoutDirection(uint32_t);
 
     bool canPluginHandleResponse(const WebCore::ResourceResponse&);
@@ -1629,6 +1633,11 @@ private:
     void updateMockAccessibilityElementAfterCommittingLoad();
 
     void paintSnapshotAtSize(const WebCore::IntRect&, const WebCore::IntSize&, SnapshotOptions, WebCore::Frame&, WebCore::FrameView&, WebCore::GraphicsContext&);
+
+#if PLATFORM(GTK) || PLATFORM(WPE)
+    void sendMessageToWebExtension(UserMessage&&);
+    void sendMessageToWebExtensionWithReply(UserMessage&&, CompletionHandler<void(UserMessage&&)>&&);
+#endif
 
     WebCore::PageIdentifier m_identifier;
 

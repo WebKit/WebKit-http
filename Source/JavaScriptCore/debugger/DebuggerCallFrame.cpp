@@ -63,7 +63,13 @@ private:
 
 Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
 {
-    if (UNLIKELY(callFrame == callFrame->wasmAwareLexicalGlobalObject(vm)->globalExec())) {
+    if (UNLIKELY(!callFrame)) {
+        ShadowChicken::Frame emptyFrame;
+        RELEASE_ASSERT(!emptyFrame.isTailDeleted);
+        return adoptRef(*new DebuggerCallFrame(vm, callFrame, emptyFrame));
+    }
+
+    if (callFrame->isDeprecatedCallFrameForDebugger()) {
         ShadowChicken::Frame emptyFrame;
         RELEASE_ASSERT(!emptyFrame.isTailDeleted);
         return adoptRef(*new DebuggerCallFrame(vm, callFrame, emptyFrame));
@@ -80,13 +86,12 @@ Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
     ASSERT(!frames[0].isTailDeleted); // The top frame should never be tail deleted.
 
     RefPtr<DebuggerCallFrame> currentParent = nullptr;
-    ExecState* exec = callFrame->wasmAwareLexicalGlobalObject(vm)->globalExec();
     // This walks the stack from the entry stack frame to the top of the stack.
     for (unsigned i = frames.size(); i--; ) {
         const ShadowChicken::Frame& frame = frames[i];
         if (!frame.isTailDeleted)
-            exec = frame.frame;
-        Ref<DebuggerCallFrame> currentFrame = adoptRef(*new DebuggerCallFrame(vm, exec, frame));
+            callFrame = frame.frame;
+        Ref<DebuggerCallFrame> currentFrame = adoptRef(*new DebuggerCallFrame(vm, callFrame, frame));
         currentFrame->m_caller = currentParent;
         currentParent = WTFMove(currentFrame);
     }
@@ -109,18 +114,18 @@ RefPtr<DebuggerCallFrame> DebuggerCallFrame::callerFrame()
     return m_caller;
 }
 
-ExecState* DebuggerCallFrame::globalExec()
+JSGlobalObject* DebuggerCallFrame::globalObject()
 {
-    return scope()->globalObject()->globalExec();
+    return scope()->globalObject();
 }
 
-JSC::JSGlobalObject* DebuggerCallFrame::vmEntryGlobalObject() const
+JSC::JSGlobalObject* DebuggerCallFrame::deprecatedVMEntryGlobalObject() const
 {
     ASSERT(isValid());
     if (!isValid())
         return nullptr;
-    VM& vm = m_validMachineFrame->vm();
-    return vm.vmEntryGlobalObject(m_validMachineFrame);
+    VM& vm = m_validMachineFrame->deprecatedVM();
+    return vm.deprecatedVMEntryGlobalObject(m_validMachineFrame->wasmAwareLexicalGlobalObject(vm));
 }
 
 SourceID DebuggerCallFrame::sourceID() const
@@ -139,7 +144,7 @@ String DebuggerCallFrame::functionName() const
     if (!isValid())
         return String();
 
-    VM& vm = m_validMachineFrame->vm();
+    VM& vm = m_validMachineFrame->deprecatedVM();
     if (isTailDeleted()) {
         if (JSFunction* func = jsDynamicCast<JSFunction*>(vm, m_shadowChickenFrame.callee))
             return func->calculatedDisplayName(vm);
@@ -156,7 +161,7 @@ DebuggerScope* DebuggerCallFrame::scope()
         return nullptr;
 
     if (!m_scope) {
-        VM& vm = m_validMachineFrame->vm();
+        VM& vm = m_validMachineFrame->deprecatedVM();
         JSScope* scope;
         CodeBlock* codeBlock = m_validMachineFrame->codeBlock();
         if (isTailDeleted())
@@ -182,7 +187,7 @@ DebuggerCallFrame::Type DebuggerCallFrame::type() const
     if (isTailDeleted())
         return FunctionType;
 
-    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->vm(), m_validMachineFrame->jsCallee()))
+    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->deprecatedVM(), m_validMachineFrame->jsCallee()))
         return FunctionType;
 
     return ProgramType;
@@ -210,7 +215,7 @@ JSValue DebuggerCallFrame::thisValue() const
     ECMAMode ecmaMode = NotStrictMode;
     if (codeBlock && codeBlock->isStrictMode())
         ecmaMode = StrictMode;
-    return thisValue.toThis(m_validMachineFrame, ecmaMode);
+    return thisValue.toThis(m_validMachineFrame->lexicalGlobalObject(), ecmaMode);
 }
 
 // Evaluate some JavaScript code in the scope of this frame.
@@ -221,7 +226,7 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
     if (!callFrame)
         return jsUndefined();
 
-    VM& vm = callFrame->vm();
+    VM& vm = callFrame->deprecatedVM();
     JSLockHolder lock(vm);
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
 
@@ -233,7 +238,8 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
     if (!codeBlock)
         return jsUndefined();
     
-    DebuggerEvalEnabler evalEnabler(callFrame, DebuggerEvalEnabler::Mode::EvalOnCallFrameAtDebuggerEntry);
+    JSGlobalObject* globalObject = codeBlock->globalObject();
+    DebuggerEvalEnabler evalEnabler(globalObject, DebuggerEvalEnabler::Mode::EvalOnGlobalObjectAtDebuggerEntry);
 
     EvalContextType evalContextType;
     
@@ -247,21 +253,20 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
     VariableEnvironment variablesUnderTDZ;
     JSScope::collectClosureVariablesUnderTDZ(scope()->jsScope(), variablesUnderTDZ);
 
-    auto* eval = DirectEvalExecutable::create(callFrame, makeSource(script, callFrame->callerSourceOrigin()), codeBlock->isStrictMode(), codeBlock->unlinkedCodeBlock()->derivedContextType(), codeBlock->unlinkedCodeBlock()->isArrowFunction(), evalContextType, &variablesUnderTDZ);
+    auto* eval = DirectEvalExecutable::create(globalObject, makeSource(script, callFrame->callerSourceOrigin(vm)), codeBlock->isStrictMode(), codeBlock->unlinkedCodeBlock()->derivedContextType(), codeBlock->unlinkedCodeBlock()->isArrowFunction(), evalContextType, &variablesUnderTDZ);
     if (UNLIKELY(catchScope.exception())) {
         exception = catchScope.exception();
         catchScope.clearException();
         return jsUndefined();
     }
 
-    JSGlobalObject* globalObject = vm.vmEntryGlobalObject(callFrame);
     if (scopeExtensionObject) {
         JSScope* ignoredPreviousScope = globalObject->globalScope();
         globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, ignoredPreviousScope, scopeExtensionObject));
     }
 
     JSValue thisValue = this->thisValue();
-    JSValue result = vm.interpreter->execute(eval, callFrame, thisValue, scope()->jsScope());
+    JSValue result = vm.interpreter->execute(eval, globalObject, thisValue, scope()->jsScope());
     if (UNLIKELY(catchScope.exception())) {
         exception = catchScope.exception();
         catchScope.clearException();
@@ -294,9 +299,9 @@ TextPosition DebuggerCallFrame::currentPosition(VM& vm)
 
     if (isTailDeleted()) {
         CodeBlock* codeBlock = m_shadowChickenFrame.codeBlock;
-        if (Optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
-            return TextPosition(OrdinalNumber::fromOneBasedInt(codeBlock->lineNumberForBytecodeOffset(*bytecodeOffset)),
-                OrdinalNumber::fromOneBasedInt(codeBlock->columnNumberForBytecodeOffset(*bytecodeOffset)));
+        if (Optional<BytecodeIndex> bytecodeIndex = codeBlock->bytecodeIndexFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
+            return TextPosition(OrdinalNumber::fromOneBasedInt(codeBlock->lineNumberForBytecodeIndex(*bytecodeIndex)),
+                OrdinalNumber::fromOneBasedInt(codeBlock->columnNumberForBytecodeIndex(*bytecodeIndex)));
         }
     }
 
@@ -306,13 +311,14 @@ TextPosition DebuggerCallFrame::currentPosition(VM& vm)
 TextPosition DebuggerCallFrame::positionForCallFrame(VM& vm, CallFrame* callFrame)
 {
     LineAndColumnFunctor functor;
-    StackVisitor::visit(callFrame, &vm, functor);
+    StackVisitor::visit(callFrame, vm, functor);
     return TextPosition(OrdinalNumber::fromOneBasedInt(functor.line()), OrdinalNumber::fromOneBasedInt(functor.column()));
 }
 
 SourceID DebuggerCallFrame::sourceIDForCallFrame(CallFrame* callFrame)
 {
-    ASSERT(callFrame);
+    if (!callFrame)
+        return noSourceID;
     CodeBlock* codeBlock = callFrame->codeBlock();
     if (!codeBlock)
         return noSourceID;

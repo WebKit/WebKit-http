@@ -134,12 +134,12 @@ void compile(State& state, Safepoint::Result& safepointResult)
     *state.exceptionHandler = jit.label();
     jit.copyCalleeSavesToEntryFrameCalleeSavesBuffer(vm.topEntryFrame);
     jit.move(MacroAssembler::TrustedImmPtr(&vm), GPRInfo::argumentGPR0);
-    jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+    jit.prepareCallOperation(vm);
     CCallHelpers::Call call = jit.call(OperationPtrTag);
     jit.jumpToExceptionHandler(vm);
     jit.addLinkTask(
         [=] (LinkBuffer& linkBuffer) {
-            linkBuffer.link(call, FunctionPtr<OperationPtrTag>(lookupExceptionHandler));
+            linkBuffer.link(call, FunctionPtr<OperationPtrTag>(operationLookupExceptionHandler));
         });
 
     state.finalizer->b3CodeLinkBuffer = makeUnique<LinkBuffer>(jit, codeBlock, JITCompilationCanFail);
@@ -157,12 +157,12 @@ void compile(State& state, Safepoint::Result& safepointResult)
     state.generatedFunction = label;
     state.jitCode->initializeB3Byproducts(state.proc->releaseByproducts());
 
-    for (auto pair : state.graph.m_entrypointIndexToCatchBytecodeOffset) {
-        unsigned catchBytecodeOffset = pair.value;
+    for (auto pair : state.graph.m_entrypointIndexToCatchBytecodeIndex) {
+        BytecodeIndex catchBytecodeIndex = pair.value;
         unsigned entrypointIndex = pair.key;
         Vector<FlushFormat> argumentFormats = state.graph.m_argumentFormats[entrypointIndex];
         state.jitCode->common.appendCatchEntrypoint(
-            catchBytecodeOffset, state.finalizer->b3CodeLinkBuffer->locationOf<ExceptionHandlerPtrTag>(state.proc->entrypointLabel(entrypointIndex)), WTFMove(argumentFormats));
+            catchBytecodeIndex, state.finalizer->b3CodeLinkBuffer->locationOf<ExceptionHandlerPtrTag>(state.proc->entrypointLabel(entrypointIndex)), WTFMove(argumentFormats));
     }
     state.jitCode->common.finalizeCatchEntrypoints();
 

@@ -265,7 +265,7 @@ static JSValue createReflectProperty(VM& vm, JSObject* object)
 static JSValue createConsoleProperty(VM& vm, JSObject* object)
 {
     JSGlobalObject* global = jsCast<JSGlobalObject*>(object);
-    return ConsoleObject::create(vm, global, ConsoleObject::createStructure(vm, global, constructEmptyObject(global->globalExec())));
+    return ConsoleObject::create(vm, global, ConsoleObject::createStructure(vm, global, constructEmptyObject(global)));
 }
 
 static EncodedJSValue JSC_HOST_CALL makeBoundFunction(JSGlobalObject* globalObject, CallFrame* callFrame)
@@ -282,21 +282,21 @@ static EncodedJSValue JSC_HOST_CALL makeBoundFunction(JSGlobalObject* globalObje
     ASSERT(lengthValue.isInt32AsAnyInt());
     int32_t length = lengthValue.asInt32AsAnyInt();
 
-    String name = nameString->value(callFrame);
+    String name = nameString->value(globalObject);
     RETURN_IF_EXCEPTION(scope, { });
 
-    RELEASE_AND_RETURN(scope, JSValue::encode(JSBoundFunction::create(vm, callFrame, globalObject, target, boundThis, boundArgs.isCell() ? jsCast<JSArray*>(boundArgs) : nullptr, length, WTFMove(name))));
+    RELEASE_AND_RETURN(scope, JSValue::encode(JSBoundFunction::create(vm, globalObject, target, boundThis, boundArgs.isCell() ? jsCast<JSArray*>(boundArgs) : nullptr, length, WTFMove(name))));
 }
 
 static EncodedJSValue JSC_HOST_CALL hasOwnLengthProperty(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     VM& vm = globalObject->vm();
     JSObject* target = asObject(callFrame->uncheckedArgument(0));
-    return JSValue::encode(jsBoolean(target->hasOwnProperty(callFrame, vm.propertyNames->length)));
+    return JSValue::encode(jsBoolean(target->hasOwnProperty(globalObject, vm.propertyNames->length)));
 }
 
 #if !ASSERT_DISABLED
-static EncodedJSValue JSC_HOST_CALL assertCall(JSGlobalObject*, CallFrame* callFrame)
+static EncodedJSValue JSC_HOST_CALL assertCall(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     RELEASE_ASSERT(callFrame->argument(0).isBoolean());
     if (callFrame->argument(0).asBoolean())
@@ -305,7 +305,7 @@ static EncodedJSValue JSC_HOST_CALL assertCall(JSGlobalObject*, CallFrame* callF
     bool iteratedOnce = false;
     CodeBlock* codeBlock = nullptr;
     unsigned line;
-    callFrame->iterate([&] (StackVisitor& visitor) {
+    callFrame->iterate(globalObject->vm(), [&] (StackVisitor& visitor) {
         if (!iteratedOnce) {
             iteratedOnce = true;
             return StackVisitor::Continue;
@@ -450,12 +450,12 @@ void JSGlobalObject::setGlobalThis(VM& vm, JSObject* globalThis)
     m_globalThis.set(vm, this, globalThis);
 }
 
-static JSObject* getGetterById(ExecState* exec, JSObject* base, const Identifier& ident)
+static GetterSetter* getGetterById(JSGlobalObject* globalObject, JSObject* base, const Identifier& ident)
 {
     JSValue baseValue = JSValue(base);
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
-    baseValue.getPropertySlot(exec, ident, slot);
-    return slot.getPureResult().toObject(exec);
+    baseValue.getPropertySlot(globalObject, ident, slot);
+    return jsCast<GetterSetter*>(slot.getPureResult());
 }
 
 template<ErrorType errorType>
@@ -486,12 +486,12 @@ void JSGlobalObject::init(VM& vm)
     m_calleeStructure.set(vm, this, JSCallee::createStructure(vm, this, jsNull()));
 
     m_globalLexicalEnvironment.set(vm, this, JSGlobalLexicalEnvironment::create(vm, JSGlobalLexicalEnvironment::createStructure(vm, this), this));
+
     // Need to create the callee structure (above) before creating the callee.
     JSCallee* globalCallee = JSCallee::create(vm, this, globalScope());
     m_globalCallee.set(vm, this, globalCallee);
 
-    ExecState::initGlobalExec(JSGlobalObject::globalExec(), globalCallee);
-    ExecState* exec = JSGlobalObject::globalExec();
+    CallFrame::initDeprecatedCallFrameForDebugger(JSGlobalObject::deprecatedCallFrameForDebugger(), globalCallee);
 
     JSCallee* stackOverflowFrameCallee = JSCallee::create(vm, this, globalScope());
     m_stackOverflowFrameCallee.set(vm, this, stackOverflowFrameCallee);
@@ -514,7 +514,6 @@ void JSGlobalObject::init(VM& vm)
         [] (const Initializer<Structure>& init) {
             init.set(JSBoundFunction::createStructure(init.vm, init.owner, init.owner->m_functionPrototype.get()));
         });
-    m_getterSetterStructure.set(vm, this, GetterSetter::createStructure(vm, this, jsNull()));
     m_nativeStdFunctionStructure.initLater(
         [] (const Initializer<Structure>& init) {
             init.set(JSNativeStdFunction::createStructure(init.vm, init.owner, init.owner->m_functionPrototype.get()));
@@ -756,12 +755,14 @@ void JSGlobalObject::init(VM& vm)
     JSFunction* throwTypeErrorFunction = JSFunction::create(vm, this, 0, String(), globalFuncThrowTypeError);
     m_throwTypeErrorFunction.set(vm, this, throwTypeErrorFunction);
 
-    JSCell* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
+    FunctionConstructor* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
+    m_functionConstructor.set(vm, this, functionConstructor);
 
     ArrayConstructor* arrayConstructor = ArrayConstructor::create(vm, this, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), m_speciesGetterSetter.get());
     m_arrayConstructor.set(vm, this, arrayConstructor);
     
     RegExpConstructor* regExpConstructor = RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), m_speciesGetterSetter.get());
+    m_regExpConstructor.set(vm, this, regExpConstructor);
     m_regExpGlobalData.cachedResult().record(vm, this, nullptr, jsEmptyString(vm), MatchResult(0, 0));
     
 #if ENABLE(SHARED_ARRAY_BUFFER)
@@ -901,7 +902,7 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     m_moduleLoader.initLater(
         [] (const Initializer<JSModuleLoader>& init) {
             auto catchScope = DECLARE_CATCH_SCOPE(init.vm);
-            init.set(JSModuleLoader::create(init.owner->globalExec(), init.vm, init.owner, JSModuleLoader::createStructure(init.vm, init.owner, jsNull())));
+            init.set(JSModuleLoader::create(init.owner, init.vm, JSModuleLoader::createStructure(init.vm, init.owner, jsNull())));
             catchScope.releaseAssertNoException();
         });
     if (Options::exposeInternalModuleLoader())
@@ -939,22 +940,22 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     JSFunction* privateFuncSetBucketNext = JSFunction::create(vm, this, 0, String(), setPrivateFuncSetBucketNext, JSSetBucketNextIntrinsic);
     JSFunction* privateFuncSetBucketKey = JSFunction::create(vm, this, 0, String(), setPrivateFuncSetBucketKey, JSSetBucketKeyIntrinsic);
 
-    JSObject* regExpProtoFlagsGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->flags);
+    GetterSetter* regExpProtoFlagsGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->flags);
     catchScope.assertNoException();
-    JSObject* regExpProtoGlobalGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->global);
+    GetterSetter* regExpProtoGlobalGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->global);
     catchScope.assertNoException();
-    m_regExpProtoGlobalGetter.set(vm, this, regExpProtoGlobalGetterObject);
-    JSObject* regExpProtoIgnoreCaseGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->ignoreCase);
+    m_regExpProtoGlobalGetter.set(vm, this, regExpProtoGlobalGetter);
+    GetterSetter* regExpProtoIgnoreCaseGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->ignoreCase);
     catchScope.assertNoException();
-    JSObject* regExpProtoMultilineGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->multiline);
+    GetterSetter* regExpProtoMultilineGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->multiline);
     catchScope.assertNoException();
-    JSObject* regExpProtoSourceGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->source);
+    GetterSetter* regExpProtoSourceGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->source);
     catchScope.assertNoException();
-    JSObject* regExpProtoStickyGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->sticky);
+    GetterSetter* regExpProtoStickyGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->sticky);
     catchScope.assertNoException();
-    JSObject* regExpProtoUnicodeGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->unicode);
+    GetterSetter* regExpProtoUnicodeGetter = getGetterById(this, m_regExpPrototype.get(), vm.propertyNames->unicode);
     catchScope.assertNoException();
-    m_regExpProtoUnicodeGetter.set(vm, this, regExpProtoUnicodeGetterObject);
+    m_regExpProtoUnicodeGetter.set(vm, this, regExpProtoUnicodeGetter);
     JSObject* builtinRegExpExec = asObject(m_regExpPrototype->getDirect(vm, vm.propertyNames->exec).asCell());
     m_regExpProtoExec.set(vm, this, builtinRegExpExec);
     JSObject* regExpSymbolReplace = asObject(m_regExpPrototype->getDirect(vm, vm.propertyNames->replaceSymbol).asCell());
@@ -1024,13 +1025,13 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
 
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isConstructorPrivateName(), JSFunction::create(vm, this, 1, String(), esSpecIsConstructor, NoIntrinsic), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
 
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoFlagsGetterPrivateName(), regExpProtoFlagsGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoGlobalGetterPrivateName(), regExpProtoGlobalGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoIgnoreCaseGetterPrivateName(), regExpProtoIgnoreCaseGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoMultilineGetterPrivateName(), regExpProtoMultilineGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoSourceGetterPrivateName(), regExpProtoSourceGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoStickyGetterPrivateName(), regExpProtoStickyGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoUnicodeGetterPrivateName(), regExpProtoUnicodeGetterObject, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoFlagsGetterPrivateName(), regExpProtoFlagsGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoGlobalGetterPrivateName(), regExpProtoGlobalGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoIgnoreCaseGetterPrivateName(), regExpProtoIgnoreCaseGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoMultilineGetterPrivateName(), regExpProtoMultilineGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoSourceGetterPrivateName(), regExpProtoSourceGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoStickyGetterPrivateName(), regExpProtoStickyGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpProtoUnicodeGetterPrivateName(), regExpProtoUnicodeGetter, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
 
         // RegExp.prototype helpers.
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpBuiltinExecPrivateName(), builtinRegExpExec, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
@@ -1124,13 +1125,12 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
 
     auto setupAdaptiveWatchpoint = [&] (JSObject* base, const Identifier& ident) -> ObjectPropertyCondition {
         // Performing these gets should not throw.
-        ExecState* exec = globalExec();
         PropertySlot slot(base, PropertySlot::InternalMethodType::Get);
-        bool result = base->getOwnPropertySlot(base, exec, ident, slot);
+        bool result = base->getOwnPropertySlot(base, this, ident, slot);
         ASSERT_UNUSED(result, result);
         catchScope.assertNoException();
         RELEASE_ASSERT(slot.isCacheableValue());
-        JSValue functionValue = slot.getValue(exec, ident);
+        JSValue functionValue = slot.getValue(this, ident);
         catchScope.assertNoException();
         ASSERT(jsDynamicCast<JSFunction*>(vm, functionValue));
 
@@ -1219,34 +1219,34 @@ capitalName ## Constructor* lowerName ## Constructor = featureFlag ? capitalName
     fixupPrototypeChainWithObjectPrototype(vm);
 }
 
-bool JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool JSGlobalObject::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    VM& vm = exec->vm();
+    VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
     if (UNLIKELY(isThisValueAltered(slot, thisObject)))
-        RELEASE_AND_RETURN(scope, ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode()));
+        RELEASE_AND_RETURN(scope, ordinarySetSlow(globalObject, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode()));
 
     bool shouldThrowReadOnlyError = slot.isStrictMode();
     bool ignoreReadOnlyErrors = false;
     bool putResult = false;
-    bool done = symbolTablePutTouchWatchpointSet(thisObject, exec, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult);
+    bool done = symbolTablePutTouchWatchpointSet(thisObject, globalObject, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult);
     EXCEPTION_ASSERT((!!scope.exception() == (done && !putResult)) || !shouldThrowReadOnlyError);
     if (done)
         return putResult;
-    RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
+    RELEASE_AND_RETURN(scope, Base::put(thisObject, globalObject, propertyName, value, slot));
 }
 
-bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
+bool JSGlobalObject::defineOwnProperty(JSObject* object, JSGlobalObject* globalObject, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
     PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
     // silently ignore attempts to add accessors aliasing vars.
     if (descriptor.isAccessorDescriptor() && symbolTableGet(thisObject, propertyName, slot))
         return false;
-    return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
+    return Base::defineOwnProperty(thisObject, globalObject, propertyName, descriptor, shouldThrow);
 }
 
 void JSGlobalObject::addGlobalVar(const Identifier& ident)
@@ -1265,11 +1265,11 @@ void JSGlobalObject::addGlobalVar(const Identifier& ident)
     RELEASE_ASSERT(offsetForAssert == offset);
 }
 
-void JSGlobalObject::addFunction(ExecState* exec, const Identifier& propertyName)
+void JSGlobalObject::addFunction(JSGlobalObject* globalObject, const Identifier& propertyName)
 {
-    VM& vm = exec->vm();
+    VM& vm = globalObject->vm();
     VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
-    methodTable(vm)->deleteProperty(this, exec, propertyName);
+    methodTable(vm)->deleteProperty(this, globalObject, propertyName);
     addGlobalVar(propertyName);
 }
 
@@ -1678,7 +1678,10 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_syntaxErrorStructure.visit(visitor);
     thisObject->m_typeErrorStructure.visit(visitor);
     thisObject->m_URIErrorStructure.visit(visitor);
+    visitor.append(thisObject->m_arrayConstructor);
+    visitor.append(thisObject->m_regExpConstructor);
     visitor.append(thisObject->m_objectConstructor);
+    visitor.append(thisObject->m_functionConstructor);
     visitor.append(thisObject->m_promiseConstructor);
     visitor.append(thisObject->m_internalPromiseConstructor);
 
@@ -1760,7 +1763,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     thisObject->m_customGetterSetterFunctionStructure.visit(visitor);
     thisObject->m_boundFunctionStructure.visit(visitor);
-    visitor.append(thisObject->m_getterSetterStructure);
     thisObject->m_nativeStdFunctionStructure.visit(visitor);
     visitor.append(thisObject->m_regExpStructure);
     visitor.append(thisObject->m_generatorFunctionStructure);
@@ -1816,15 +1818,15 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_regExpGlobalData.visitAggregate(visitor);
 }
 
-ExecState* JSGlobalObject::globalExec()
+CallFrame* JSGlobalObject::deprecatedCallFrameForDebugger()
 {
-    return CallFrame::create(m_globalCallFrame);
+    return CallFrame::create(m_deprecatedCallFrameForDebugger);
 }
 
 void JSGlobalObject::exposeDollarVM(VM& vm)
 {
     RELEASE_ASSERT(g_jscConfig.restrictedOptionsEnabled && Options::useDollarVM());
-    if (hasOwnProperty(globalExec(), vm.propertyNames->builtinNames().dollarVMPrivateName()))
+    if (hasOwnProperty(this, vm.propertyNames->builtinNames().dollarVMPrivateName()))
         return;
 
     JSDollarVM* dollarVM = JSDollarVM::create(vm, JSDollarVM::createStructure(vm, this, m_objectPrototype.get()));
@@ -1865,9 +1867,9 @@ void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
     }
 }
 
-bool JSGlobalObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+bool JSGlobalObject::getOwnPropertySlot(JSObject* object, JSGlobalObject* globalObject, PropertyName propertyName, PropertySlot& slot)
 {
-    if (Base::getOwnPropertySlot(object, exec, propertyName, slot))
+    if (Base::getOwnPropertySlot(object, globalObject, propertyName, slot))
         return true;
     return symbolTableGet(jsCast<JSGlobalObject*>(object), propertyName, slot);
 }
@@ -1877,12 +1879,12 @@ void JSGlobalObject::clearRareData(JSCell* cell)
     jsCast<JSGlobalObject*>(cell)->m_rareData = nullptr;
 }
 
-void JSGlobalObject::tryInstallArraySpeciesWatchpoint(ExecState* exec)
+void JSGlobalObject::tryInstallArraySpeciesWatchpoint(JSGlobalObject* globalObject)
 {
     RELEASE_ASSERT(!m_arrayPrototypeConstructorWatchpoint);
     RELEASE_ASSERT(!m_arrayConstructorSpeciesWatchpoint);
 
-    VM& vm = exec->vm();
+    VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // First we need to make sure that the Array.prototype.constructor property points to Array
@@ -1902,11 +1904,11 @@ void JSGlobalObject::tryInstallArraySpeciesWatchpoint(ExecState* exec)
     };
 
     PropertySlot constructorSlot(arrayPrototype, PropertySlot::InternalMethodType::VMInquiry);
-    arrayPrototype->getOwnPropertySlot(arrayPrototype, exec, vm.propertyNames->constructor, constructorSlot);
+    arrayPrototype->getOwnPropertySlot(arrayPrototype, globalObject, vm.propertyNames->constructor, constructorSlot);
     scope.assertNoException();
     if (constructorSlot.slotBase() != arrayPrototype
         || !constructorSlot.isCacheableValue()
-        || constructorSlot.getValue(exec, vm.propertyNames->constructor) != arrayConstructor) {
+        || constructorSlot.getValue(globalObject, vm.propertyNames->constructor) != arrayConstructor) {
         invalidateWatchpoint();
         return;
     }
@@ -1916,7 +1918,7 @@ void JSGlobalObject::tryInstallArraySpeciesWatchpoint(ExecState* exec)
         constructorStructure = constructorStructure->flattenDictionaryStructure(vm, arrayConstructor);
 
     PropertySlot speciesSlot(arrayConstructor, PropertySlot::InternalMethodType::VMInquiry);
-    arrayConstructor->getOwnPropertySlot(arrayConstructor, exec, vm.propertyNames->speciesSymbol, speciesSlot);
+    arrayConstructor->getOwnPropertySlot(arrayConstructor, globalObject, vm.propertyNames->speciesSymbol, speciesSlot);
     scope.assertNoException();
     if (speciesSlot.slotBase() != arrayConstructor
         || !speciesSlot.isCacheableGetter()
@@ -2052,16 +2054,16 @@ const HashSet<String>& JSGlobalObject::intlPluralRulesAvailableLocales()
     return m_intlPluralRulesAvailableLocales;
 }
 
-IntlCollator* JSGlobalObject::defaultCollator(ExecState* exec)
+IntlCollator* JSGlobalObject::defaultCollator(JSGlobalObject* globalObject)
 {
-    VM& vm = exec->vm();
+    VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (m_defaultCollator)
         return m_defaultCollator.get();
 
     IntlCollator* collator = IntlCollator::create(vm, collatorStructure());
-    collator->initializeCollator(*exec, jsUndefined(), jsUndefined());
+    collator->initializeCollator(globalObject, jsUndefined(), jsUndefined());
     RETURN_IF_EXCEPTION(scope, nullptr);
     m_defaultCollator.set(vm, this, collator);
     return collator;

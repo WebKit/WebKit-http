@@ -17,15 +17,15 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef WebKitWebPagePrivate_h
-#define WebKitWebPagePrivate_h
+#pragma once
 
 #include "APIDictionary.h"
+#include "UserMessage.h"
 #include "WebKitWebPage.h"
 #include "WebPage.h"
 
 WebKitWebPage* webkitWebPageCreate(WebKit::WebPage*);
 void webkitWebPageDidReceiveMessage(WebKitWebPage*, const String& messageName, API::Dictionary& message);
+void webkitWebPageDidReceiveUserMessage(WebKitWebPage*, WebKit::UserMessage&&, CompletionHandler<void(WebKit::UserMessage&&)>&&);
 WebKit::WebPage* webkitWebPageGetPage(WebKitWebPage*);
 
-#endif // WebKitWebPagePrivate_h

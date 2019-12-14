@@ -30,6 +30,7 @@
 #include "WheelEventTestMonitor.h"
 
 #include "Logging.h"
+#include <wtf/OptionSet.h>
 #include <wtf/text/TextStream.h>
 
 #if !LOG_DISABLED
@@ -46,7 +47,7 @@ WheelEventTestMonitor::WheelEventTestMonitor()
 
 void WheelEventTestMonitor::clearAllTestDeferrals()
 {
-    std::lock_guard<Lock> lock(m_reasonsLock);
+    ASSERT(isMainThread());
     m_deferCompletionReasons.clear();
     m_completionCallback = nullptr;
     m_testForCompletionTimer.stop();
@@ -55,10 +56,8 @@ void WheelEventTestMonitor::clearAllTestDeferrals()
 
 void WheelEventTestMonitor::setTestCallbackAndStartNotificationTimer(WTF::Function<void()>&& functionCallback)
 {
-    {
-        std::lock_guard<Lock> lock(m_reasonsLock);
-        m_completionCallback = WTFMove(functionCallback);
-    }
+    ASSERT(isMainThread());
+    m_completionCallback = WTFMove(functionCallback);
     
     if (!m_testForCompletionTimer.isActive())
         m_testForCompletionTimer.startRepeating(1_s / 60.);
@@ -66,7 +65,7 @@ void WheelEventTestMonitor::setTestCallbackAndStartNotificationTimer(WTF::Functi
 
 void WheelEventTestMonitor::deferForReason(ScrollableAreaIdentifier identifier, DeferReason reason)
 {
-    std::lock_guard<Lock> lock(m_reasonsLock);
+    ASSERT(isMainThread());
     m_deferCompletionReasons.ensure(identifier, [] {
         return OptionSet<DeferReason>();
     }).iterator->value.add(reason);
@@ -76,7 +75,7 @@ void WheelEventTestMonitor::deferForReason(ScrollableAreaIdentifier identifier, 
 
 void WheelEventTestMonitor::removeDeferralForReason(ScrollableAreaIdentifier identifier, DeferReason reason)
 {
-    std::lock_guard<Lock> lock(m_reasonsLock);
+    ASSERT(isMainThread());
     auto it = m_deferCompletionReasons.find(identifier);
     if (it == m_deferCompletionReasons.end())
         return;
@@ -90,18 +89,13 @@ void WheelEventTestMonitor::removeDeferralForReason(ScrollableAreaIdentifier ide
     
 void WheelEventTestMonitor::triggerTestTimerFired()
 {
-    WTF::Function<void()> functionCallback;
-
-    {
-        std::lock_guard<Lock> lock(m_reasonsLock);
-        if (!m_deferCompletionReasons.isEmpty()) {
-            LOG_WITH_STREAM(WheelEventTestMonitor, stream << "  WheelEventTestMonitor::triggerTestTimerFired - scrolling still active, reasons " << m_deferCompletionReasons);
-            return;
-        }
-
-        functionCallback = WTFMove(m_completionCallback);
+    ASSERT(isMainThread());
+    if (!m_deferCompletionReasons.isEmpty()) {
+        LOG_WITH_STREAM(WheelEventTestMonitor, stream << "  WheelEventTestMonitor::triggerTestTimerFired - scrolling still active, reasons " << m_deferCompletionReasons);
+        return;
     }
 
+    auto functionCallback = WTFMove(m_completionCallback);
     m_testForCompletionTimer.stop();
 
     LOG_WITH_STREAM(WheelEventTestMonitor, stream << "  WheelEventTestMonitor::triggerTestTimerFired: scrolling is idle, FIRING TEST");
@@ -112,6 +106,7 @@ void WheelEventTestMonitor::triggerTestTimerFired()
 TextStream& operator<<(TextStream& ts, WheelEventTestMonitor::DeferReason reason)
 {
     switch (reason) {
+    case WheelEventTestMonitor::HandlingWheelEvent: ts << "handling wheel event"; break;
     case WheelEventTestMonitor::RubberbandInProgress: ts << "rubberbanding"; break;
     case WheelEventTestMonitor::ScrollSnapInProgress: ts << "scroll-snapping"; break;
     case WheelEventTestMonitor::ScrollingThreadSyncNeeded: ts << "scrolling thread sync needed"; break;

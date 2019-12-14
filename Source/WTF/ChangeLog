@@ -1,3 +1,229 @@
+2019-10-22  Antti Koivisto  <antti@apple.com>
+
+        operator==(Vector, Vector) should work with different inline capacities
+        https://bugs.webkit.org/show_bug.cgi?id=203245
+
+        Reviewed by Alex Christensen.
+
+        Also allow different overflow behavior and minimum capacity.
+
+        * wtf/Vector.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+
+2019-10-22  Rob Buis  <rbuis@igalia.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=169667
+        URL: protocol setter needs to be more restrictive around file
+
+        Reviewed by Alex Christensen.
+
+        Restrict setting protocol to "file" as indictaed in the spec [1].
+
+        Test: imported/w3c/web-platform-tests/url/url-setters.html
+
+        [1] https://url.spec.whatwg.org/#scheme-state steps 2.1.3 and 2.1.4.
+
+        * wtf/URL.cpp:
+        (WTF::URL::setProtocol):
+
+2019-10-21  Tim Horton  <timothy_horton@apple.com>
+
+        macCatalyst: Swipe navigation gestures do not work
+        https://bugs.webkit.org/show_bug.cgi?id=203205
+        <rdar://problem/54617473>
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/Platform.h:
+        Add a new HAVE.
+
+2019-10-20  Mark Lam  <mark.lam@apple.com>
+
+        Remove all uses of untagCodePtr in debugging code.
+        https://bugs.webkit.org/show_bug.cgi?id=203188
+        <rdar://problem/56453043> 
+
+        Reviewed by Yusuke Suzuki.
+
+        We want the ability to always assert on failure to authenticate in untagCodePtr
+        (though we don't currently do that yet).
+
+        * wtf/PtrTag.cpp:
+        (WTF::tagForPtr):
+        * wtf/PtrTag.h:
+        (WTF::retagCodePtrImpl):
+        (WTF::tagCFunctionPtrImpl):
+        (WTF::untagCFunctionPtrImpl):
+        (WTF::assertIsCFunctionPtr):
+        (WTF::isTaggedWith):
+
+2019-10-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support to TextStream for dumping HashMap<> and HashSet<>
+        https://bugs.webkit.org/show_bug.cgi?id=202969
+
+        Reviewed by Dean Jackson.
+        
+        Make it possible to output HashMap<> and HashSet<> to TextStream,
+        so long as key and value types are streamable. Also implement operator<<(char)
+        so that chars show as ASCII, rather than numbers.
+
+        * wtf/text/TextStream.cpp:
+        (WTF::TextStream::operator<<):
+        * wtf/text/TextStream.h:
+        (WTF::operator<<):
+
+2019-10-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make ConcurrentJSLock Lock even if ENABLE_CONCURRENT_JS=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=202892
+
+        Reviewed by Mark Lam.
+
+        BaselineJIT also has concurrent compiler. ENABLE(CONCURRENT_JS) should not rely on ENABLE(DFG_JIT).
+        It should rely on ENABLE(JIT) instead.
+
+        * wtf/Platform.h:
+
+2019-10-17  Mark Lam  <mark.lam@apple.com>
+
+        Use constexpr in more places and remove some unnecessary external linkage.
+        https://bugs.webkit.org/show_bug.cgi?id=203115
+
+        Reviewed by Yusuke Suzuki.
+
+        Also removed unused lockSpinLimit in Threading.h.
+
+        * wtf/MD5.h:
+        * wtf/SHA1.h:
+        * wtf/StackBounds.h:
+        * wtf/Threading.h:
+
+2019-10-17  Sihui Liu  <sihui_liu@apple.com>
+
+        Using version 1 CFRunloopSource for faster task dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=202874
+
+        Reviewed by Geoffrey Garen.
+
+        We used CFRunLoopWakeUp to wake up runloop to process source, which seems to be slow according to profiling. To 
+        avoid calling CFRunLoopWakeUp, we should use version 1 CFRunloopSource instead of version 0. This patch brings
+        about 15% speedup for test PerformanceTests/IndexedDB/basic/objectstore-get.html.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::initializeWebRunLoop):
+        (WTF::RunLoop::web):
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::~RunLoop):
+        (WTF::RunLoop::wakeUp):
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::initializeWebThread):
+        (-[JSWTFMainThreadCaller call]): Deleted.
+
+2019-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the internal macOS 10.13 and 10.14 builds after r251171
+
+        * wtf/Platform.h: Add a HAVE() macro for AXClientType, which is only available on macOS 10.15+ SDKs.
+
+2019-10-15  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Simplify main thread initialization
+        https://bugs.webkit.org/show_bug.cgi?id=203001
+
+        Reviewed by Geoff Garen.
+
+        Simplify main thread initialization on macOS by always using pthread main as main thread.
+        The complexity is now isolated to the USE(WEB_THREAD) code path.
+
+        This patch also adds a debug assertion in WTF::initializeWebThreadPlatform() to make sure
+        it gets called on the actual main thread. In release, it will log a fault message indicating
+        it was called on the wrong thread.
+
+        * wtf/MainThread.cpp:
+        * wtf/MainThread.h:
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::RefCountedBase):
+        (WTF::RefCountedBase::applyRefDerefThreadingCheck const):
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::initializeWebThreadPlatform):
+        (WTF::canAccessThreadLocalDataForThread):
+        (WTF::isMainThread):
+        * wtf/generic/MainThreadGeneric.cpp:
+        * wtf/text/cf/StringImplCF.cpp:
+        (WTF::StringImpl::createCFString):
+        * wtf/win/MainThreadWin.cpp:
+
+2019-10-14  Tim Horton  <timothy_horton@apple.com>
+
+        Unify sources for bindings more densely
+        https://bugs.webkit.org/show_bug.cgi?id=202918
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/generate-unified-source-bundles.rb:
+        Add an option to separate and more densely unify sources that match
+        a given glob pattern.
+
+2019-10-14  Keith Rollin  <krollin@apple.com>
+
+        Remove some support for < iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=202820
+        <rdar://problem/56164838>
+
+        Reviewed by Anders Carlsson.
+
+        Remove some support for iOS versions less than 13.0.
+
+        Update conditionals that reference __IPHONE_OS_VERSION_MIN_REQUIRED
+        and __IPHONE_OS_VERSION_MAX_ALLOWED, assuming that they both have
+        values >= 130000. This means that expressions like
+        "__IPHONE_OS_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__IPHONE_OS_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        This removal is part of a series of patches effecting the removal of
+        dead code for old versions of iOS. This particular pass involves
+        changes in which Devin Rousso was involved. These changes are isolated
+        from other similar changes in order to facilitate the reviewing
+        process.
+
+        * wtf/Platform.h:
+
+2019-10-14  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION: [iOS 13?] TestWebKitAPI.SharedBufferTest.tryCreateArrayBufferLargeSegments is failing
+        https://bugs.webkit.org/show_bug.cgi?id=201902
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Vector.h:
+        The code introduced in r108153 to workaround a warning when building Chrome was causing us to use uninitialized memory
+        when we create a Vector with the size_t/{signed,unsigned}char constructor with a constexpr size_t.
+        This was the cause of bug 201902 and bug 201620 which only manifested themselves in release builds with some compilers.
+
+2019-10-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Sandbox extensions should be created with audit tokens, not PIDs
+        https://bugs.webkit.org/show_bug.cgi?id=201828
+
+        Reviewed by Brent Fulgham.
+
+        Remove HAVE macro for issuing sandbox extension by PID, and fix version checks for the HAVE
+        macros related to issuing sandbox extensions by audit token. Remove SPI for creating
+        extensions by PID, and add SPI for creating mach extension by audit token. Also remove an
+        unneeded flag.
+        
+        * wtf/Platform.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
 2019-10-08  Ryosuke Niwa  <rniwa@webkit.org>
 
         Make WebInspector's remote debug EventLoop code into RunLoop

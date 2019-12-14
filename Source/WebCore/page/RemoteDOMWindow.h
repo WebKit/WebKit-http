@@ -32,10 +32,10 @@
 
 namespace JSC {
 class CallFrame;
+class JSGlobalObject;
 class JSObject;
 class JSValue;
 template<typename> class Strong;
-using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -68,7 +68,7 @@ public:
     WindowProxy* top() const;
     WindowProxy* opener() const;
     WindowProxy* parent() const;
-    void postMessage(JSC::ExecState&, DOMWindow& incumbentWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
+    void postMessage(JSC::JSGlobalObject&, DOMWindow& incumbentWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
 
 private:
     WEBCORE_EXPORT RemoteDOMWindow(Ref<RemoteFrame>&&, GlobalWindowIdentifier&&);

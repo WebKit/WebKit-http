@@ -217,7 +217,7 @@ public:
     {
     }
 
-    JSC::JSValue get(JSC::ExecState& state) final
+    JSC::JSValue get(JSC::JSGlobalObject& state) final
     {
         return InspectorDOMAgent::nodeAsScriptValue(state, m_node.get());
     }
@@ -461,7 +461,7 @@ Node* InspectorDOMAgent::assertEditableNode(ErrorString& errorString, int nodeId
     Node* node = assertNode(errorString, nodeId);
     if (!node)
         return nullptr;
-    if (node->isInUserAgentShadowTree()) {
+    if (node->isInUserAgentShadowTree() && !m_allowEditingUserAgentShadowTrees) {
         errorString = "Node for given nodeId is in a shadow tree"_s;
         return nullptr;
     }
@@ -1112,7 +1112,7 @@ void InspectorDOMAgent::focusNode()
     if (!frame)
         return;
 
-    JSC::ExecState* scriptState = mainWorldExecState(frame);
+    JSC::JSGlobalObject* scriptState = mainWorldExecState(frame);
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
     if (injectedScript.hasNoValue())
         return;
@@ -1395,7 +1395,7 @@ void InspectorDOMAgent::setInspectedNode(ErrorString& errorString, int nodeId)
     if (!node)
         return;
 
-    if (node->isInUserAgentShadowTree()) {
+    if (node->isInUserAgentShadowTree() && !m_allowEditingUserAgentShadowTrees) {
         errorString = "Node for given nodeId is in a shadow tree"_s;
         return;
     }
@@ -1687,7 +1687,7 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
             document = &downcast<Node>(eventTarget).document();
 
         JSC::JSObject* handlerObject = nullptr;
-        JSC::ExecState* exec = nullptr;
+        JSC::JSGlobalObject* exec = nullptr;
 
         JSC::JSLockHolder lock(scriptListener.isolatedWorld().vm());
 
@@ -2608,10 +2608,15 @@ Node* InspectorDOMAgent::scriptValueAsNode(JSC::JSValue value)
     return JSNode::toWrapped(value.getObject()->vm(), value.getObject());
 }
 
-JSC::JSValue InspectorDOMAgent::nodeAsScriptValue(JSC::ExecState& state, Node* node)
+JSC::JSValue InspectorDOMAgent::nodeAsScriptValue(JSC::JSGlobalObject& state, Node* node)
 {
     JSC::JSLockHolder lock(&state);
     return toJS(&state, deprecatedGlobalObjectForPrototype(&state), BindingSecurity::checkSecurityForNode(state, node));
+}
+
+void InspectorDOMAgent::setAllowEditingUserAgentShadowTrees(ErrorString&, bool allow)
+{
+    m_allowEditingUserAgentShadowTrees = allow;
 }
 
 } // namespace WebCore

@@ -1,3 +1,272 @@
+2019-10-22  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2] Remove the 'viewTarget' property of SVGViewElement
+        https://bugs.webkit.org/show_bug.cgi?id=203217
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/historical-expected.txt:
+
+2019-10-22  Peng Liu  <peng.liu6@apple.com>
+
+        Cannot run some WPT cases manually
+        https://bugs.webkit.org/show_bug.cgi?id=203063
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/resources/testdriver-vendor.js:
+
+2019-10-21  Simon Fraser  <simon.fraser@apple.com>
+
+        wpt/css/css-images/gradient/color-stops-parsing.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=200206
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * web-platform-tests/css/css-images/gradient/color-stops-parsing-expected.txt:
+
+2019-10-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Thread JSGlobalObject* instead of ExecState*
+        https://bugs.webkit.org/show_bug.cgi?id=202392
+
+        Reviewed by Geoffrey Garen.
+
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-other-document-expected.txt:
+
+2019-10-22  Rob Buis  <rbuis@igalia.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=169667
+        URL: protocol setter needs to be more restrictive around file
+
+        Reviewed by Alex Christensen.
+
+        Update test result.
+
+        * web-platform-tests/url/url-setters-expected.txt:
+
+2019-10-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update Web Platform Test css/css-lists/content-property/marker-text-matches-armenian.html
+        https://bugs.webkit.org/show_bug.cgi?id=203130
+        <rdar://problem/51525184>
+
+        Reviewed by Alex Christensen.
+
+        Apply https://github.com/web-platform-tests/wpt/commit/b2d4cb4a64ae072dfc6feb888dd77575927f5ae2
+
+        * web-platform-tests/css/css-lists/content-property/marker-text-matches-armenian-expected.html:
+        * web-platform-tests/css/css-lists/content-property/marker-text-matches-armenian.html:
+
+2019-10-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2]: Add 'auto' behavior to the 'width' and 'height' properties of the SVG <image> element
+        https://bugs.webkit.org/show_bug.cgi?id=202013
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/geometry/svg-image-intrinsic-size-with-cssstyle-auto-dynamic-image-change-expected.txt:
+        * web-platform-tests/svg/geometry/svg-image-intrinsic-size-with-cssstyle-auto-expected.txt:
+
+2019-10-21  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequest should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203107
+        <rdar://problem/56438647>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline a new WPT tests that are passing now that we properly check that the
+        Document is fully active in open().
+
+        * web-platform-tests/xhr/open-url-multi-window-2-expected.txt:
+        * web-platform-tests/xhr/open-url-multi-window-5-expected.txt:
+        * web-platform-tests/xhr/open-url-multi-window-6-expected.txt:
+
+2019-10-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2]: Remove the SVGExternalResourcesRequired interface
+        https://bugs.webkit.org/show_bug.cgi?id=191293
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/import/types-dom-04-b-manual.svg:
+        Use the preserveAlpha property of <feConvolveMatrix> element to test
+        SVGAnimatedBoolean.
+
+2019-10-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Load event must be fired only for the SVG structurally external elements and the outermost SVG element
+        https://bugs.webkit.org/show_bug.cgi?id=203044
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/geometry/svg-image-intrinsic-size-with-cssstyle-auto-expected.txt:
+        The timeout issues are now fixed. webkit.org/b/202013 will fix the other
+        failures.
+
+        * web-platform-tests/svg/images/20x20.png: Added.
+        Add an image which is referenced by these tests:
+            web-platform-tests/svg/import/styling-pres-02-f-manual.svg
+            web-platform-tests/svg/import/struct-use-01-t-manual.svg
+            web-platform-tests/svg/import/interact-events-02-b-manual.svg
+
+        * web-platform-tests/svg/linking/scripted/href-script-element-expected.txt:
+
+2019-10-18  Antti Koivisto  <antti@apple.com>
+
+        [CSS Shadow Parts] :part rules should be able to override style attribute
+        https://bugs.webkit.org/show_bug.cgi?id=202919
+
+        Reviewed by Zalan Bujtas.
+
+        * web-platform-tests/css/css-shadow-parts/simple-inline-expected.txt:
+
+2019-10-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Clipboard API] Support navigator.clipboard.read()
+        https://bugs.webkit.org/show_bug.cgi?id=203021
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline a web platform test, now that Clipboard.read() no longer immediately rejects.
+
+        * web-platform-tests/clipboard-apis/async-navigator-clipboard-basics.https-expected.txt:
+
+2019-10-17  Rob Buis  <rbuis@igalia.com>
+
+        Remove duplicate MathML tests
+        https://bugs.webkit.org/show_bug.cgi?id=202979
+
+        Reviewed by Frédéric Wang.
+
+        Commit r251187 removed operators/mo-form-fallback-expected.html by
+        accident, add it again.
+
+        * web-platform-tests/mathml/presentation-markup/operators/mo-form-fallback-expected.html: Added.
+
+2019-10-16  Antti Koivisto  <antti@apple.com>
+
+        [CSS Shadow Parts] Import css/css-shadow-parts/simple-inline.html WPT
+        https://bugs.webkit.org/show_bug.cgi?id=203029
+
+        Reviewed by Adrian Perez de Castro.
+
+        * web-platform-tests/css/css-shadow-parts/simple-inline-expected.txt: Added.
+        * web-platform-tests/css/css-shadow-parts/simple-inline.html: Added.
+        * web-platform-tests/css/css-shadow-parts/w3c-import.log:
+
+2019-10-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Import apng testcases from WPT.
+        https://bugs.webkit.org/show_bug.cgi?id=202783
+
+        Reviewed by Simon Fraser.
+
+        Import apng tests from WTP.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/apng/META.yml: Added.
+        * web-platform-tests/apng/animated-png-timeout-expected.html: Added.
+        * web-platform-tests/apng/animated-png-timeout.html: Added.
+        * web-platform-tests/apng/supported-in-source-type-expected.txt: Added.
+        * web-platform-tests/apng/supported-in-source-type.html: Added.
+        * web-platform-tests/apng/w3c-import.log: Added.
+
+2019-10-15  Peng Liu  <peng.liu6@apple.com>
+
+        [Picture-in-Picture Web API] Implement HTMLVideoElement.requestPictureInPicture() / Document.exitPictureInPicture()
+        https://bugs.webkit.org/show_bug.cgi?id=201024
+
+        Reviewed by Eric Carlson.
+
+        Import wpt/picture-in-picture.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/picture-in-picture/META.yml: Added.
+        * web-platform-tests/picture-in-picture/css-selector.html: Added.
+        * web-platform-tests/picture-in-picture/disable-picture-in-picture.html: Added.
+        * web-platform-tests/picture-in-picture/enter-picture-in-picture.html: Added.
+        * web-platform-tests/picture-in-picture/exit-picture-in-picture.html: Added.
+        * web-platform-tests/picture-in-picture/idlharness.window.html: Added.
+        * web-platform-tests/picture-in-picture/idlharness.window.js: Added.
+        * web-platform-tests/picture-in-picture/leave-picture-in-picture.html: Added.
+        * web-platform-tests/picture-in-picture/mediastream.html: Added.
+        * web-platform-tests/picture-in-picture/picture-in-picture-element.html: Added.
+        * web-platform-tests/picture-in-picture/picture-in-picture-window.html: Added.
+        * web-platform-tests/picture-in-picture/request-picture-in-picture-twice.html: Added.
+        * web-platform-tests/picture-in-picture/request-picture-in-picture.html: Added.
+        * web-platform-tests/picture-in-picture/resources/picture-in-picture-helpers.js: Added.
+        (loadVideo):
+        (async.requestPictureInPictureWithTrustedClick):
+        * web-platform-tests/picture-in-picture/resources/w3c-import.log: Added.
+        * web-platform-tests/picture-in-picture/shadow-dom.html: Added.
+        * web-platform-tests/picture-in-picture/w3c-import.log: Added.
+
+2019-10-14  Youenn Fablet  <youenn@apple.com>
+
+        Handle service worker loads through NetworkResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=202309
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr.https-expected.txt:
+
+2019-10-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import W3C tests for requestidlecallback
+        https://bugs.webkit.org/show_bug.cgi?id=202946
+
+        Reviewed by Wenson Hsieh.
+
+        Imported web platform tests for requestidlecallback as of 38c2e8d53c9e54f5c4a914d1528aff4e60f07cdf.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/requestidlecallback/META.yml: Added.
+        * web-platform-tests/requestidlecallback/basic-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/basic.html: Added.
+        * web-platform-tests/requestidlecallback/callback-exception-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-exception.html: Added.
+        * web-platform-tests/requestidlecallback/callback-idle-periods-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-idle-periods.html: Added.
+        * web-platform-tests/requestidlecallback/callback-iframe-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-iframe.html: Added.
+        * web-platform-tests/requestidlecallback/callback-invoked-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-invoked.html: Added.
+        * web-platform-tests/requestidlecallback/callback-multiple-calls-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-multiple-calls.html: Added.
+        * web-platform-tests/requestidlecallback/callback-removed-frame-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-removed-frame.html: Added.
+        * web-platform-tests/requestidlecallback/callback-suspended-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-suspended.html: Added.
+        * web-platform-tests/requestidlecallback/callback-timeout-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-timeout-when-busy-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-timeout-when-busy.html: Added.
+        * web-platform-tests/requestidlecallback/callback-timeout.html: Added.
+        * web-platform-tests/requestidlecallback/callback-xhr-sync-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/callback-xhr-sync.html: Added.
+        * web-platform-tests/requestidlecallback/cancel-invoked-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/cancel-invoked.html: Added.
+        * web-platform-tests/requestidlecallback/idlharness.window-expected.txt: Added.
+        * web-platform-tests/requestidlecallback/idlharness.window.html: Added.
+        * web-platform-tests/requestidlecallback/idlharness.window.js: Added.
+        (async.idl_array.await.new.Promise.resolve.resolve):
+        * web-platform-tests/requestidlecallback/resources/post_name_on_load.html: Added.
+        * web-platform-tests/requestidlecallback/resources/w3c-import.log: Added.
+        * web-platform-tests/requestidlecallback/w3c-import.log: Added.
+
+2019-10-14  Youenn Fablet  <youenn@apple.com>
+
+        A response body promise should be rejected in case of a failure happening after the HTTP response
+        https://bugs.webkit.org/show_bug.cgi?id=202792
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-error-worker.js: Added.
+        (doTest):
+        * web-platform-tests/service-workers/service-worker/fetch-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-error.https.html: Added.
+
 2019-10-11  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add the support for ShadowRoot.delegateFocus

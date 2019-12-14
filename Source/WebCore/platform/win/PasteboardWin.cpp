@@ -48,6 +48,7 @@
 #include "TextEncoding.h"
 #include "WebCoreInstanceHandle.h"
 #include "markup.h"
+#include <wtf/Optional.h>
 #include <wtf/URL.h>
 #include <wtf/WindowsExtras.h>
 #include <wtf/text/CString.h>
@@ -788,7 +789,7 @@ bool Pasteboard::canSmartReplace()
     return ::IsClipboardFormatAvailable(WebSmartPasteFormat);
 }
 
-void Pasteboard::read(PasteboardPlainText& text)
+void Pasteboard::read(PasteboardPlainText& text, PlainTextURLReadingPolicy, Optional<size_t>)
 {
     if (::IsClipboardFormatAvailable(CF_UNICODETEXT) && ::OpenClipboard(m_owner)) {
         if (HANDLE cbData = ::GetClipboardData(CF_UNICODETEXT)) {
@@ -1073,7 +1074,7 @@ void Pasteboard::write(const PasteboardWebContent&)
 {
 }
 
-void Pasteboard::read(PasteboardWebContentReader&, WebContentReadingPolicy)
+void Pasteboard::read(PasteboardWebContentReader&, WebContentReadingPolicy, Optional<size_t>)
 {
 }
 
@@ -1081,7 +1082,7 @@ void Pasteboard::write(const PasteboardImage&)
 {
 }
 
-void Pasteboard::writeCustomData(const PasteboardCustomData&)
+void Pasteboard::writeCustomData(const Vector<PasteboardCustomData>&)
 {
 }
 

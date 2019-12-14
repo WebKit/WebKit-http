@@ -1931,7 +1931,7 @@ void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendantsClippi
             auto* clipLayer = clippingLayer();
             LayoutRect boxRect(LayoutPoint(), downcast<RenderBox>(renderer()).size());
             FloatRoundedRect contentsClippingRect = renderer().style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
-            contentsClippingRect.move(LayoutSize(clipLayer->offsetFromRenderer()));
+            contentsClippingRect.move(LayoutSize(-clipLayer->offsetFromRenderer()));
             // Note that we have to set this rounded rect again during the geometry update (clipLayer->offsetFromRenderer() may be stale here).
             if (clipLayer->setMasksToBoundsRect(contentsClippingRect)) {
                 clipLayer->setMaskLayer(nullptr);
@@ -2780,8 +2780,8 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
     if ((paintsIntoWindow() || paintsIntoCompositedAncestor()) && graphicsLayer->paintingPhase() != OptionSet<GraphicsLayerPaintingPhase>(GraphicsLayerPaintingPhase::ChildClippingMask)) {
 #if !PLATFORM(IOS_FAMILY) && !OS(WINDOWS)
         // FIXME: Looks like the CALayer tree is out of sync with the GraphicsLayer heirarchy
-        // when pages are restored from the PageCache.
-        // <rdar://problem/8712587> ASSERT: When Going Back to Page with Plugins in PageCache
+        // when pages are restored from the BackForwardCache.
+        // <rdar://problem/8712587> ASSERT: When Going Back to Page with Plugins in BackForwardCache
         ASSERT_NOT_REACHED();
 #endif
         return;

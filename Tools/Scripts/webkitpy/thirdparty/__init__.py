@@ -42,6 +42,7 @@ from collections import namedtuple
 from distutils import spawn
 from webkitpy.common.system.autoinstall import AutoInstaller
 from webkitpy.common.system.filesystem import FileSystem
+from webkitpy.common.system.executive import Executive
 
 _THIRDPARTY_DIR = os.path.dirname(__file__)
 _AUTOINSTALLED_DIR = os.path.join(_THIRDPARTY_DIR, "autoinstalled")
@@ -77,8 +78,9 @@ if not fs.exists(readme_path):
 
 
 class AutoinstallImportHook(object):
-    def __init__(self, filesystem=None):
+    def __init__(self, filesystem=None, executive=None):
         self._fs = filesystem or FileSystem()
+        self._executive = executive or Executive()
 
     def _ensure_autoinstalled_dir_is_in_sys_path(self):
         # Some packages require that the are being put somewhere under a directory in sys.path.
@@ -124,17 +126,25 @@ class AutoinstallImportHook(object):
             self._install_pytest()
         elif '.requests' in fullname:
             self._install_requests()
+        elif '.bs4' in fullname:
+            self._install_beautifulsoup()
+        elif '.html5lib' in fullname:
+            self._install_html5lib()
 
     def _install_six(self):
         self._install("https://files.pythonhosted.org/packages/16/d8/bc6316cf98419719bd59c91742194c111b6f2e85abac88e496adefaf7afe/six-1.11.0.tar.gz",
                               "six-1.11.0/six.py")
 
-    def _install_mechanize(self):
+    def _install_html5lib(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()
         self._install("https://files.pythonhosted.org/packages/0b/02/ae6ceac1baeda530866a85075641cec12989bd8d31af6d5ab4a3e8c92f47/webencodings-0.5.1.tar.gz",
-                             "webencodings-0.5.1/webencodings")
+                      "webencodings-0.5.1/webencodings")
         self._install("https://files.pythonhosted.org/packages/85/3e/cf449cf1b5004e87510b9368e7a5f1acd8831c2d6691edd3c62a0823f98f/html5lib-1.0.1.tar.gz",
-                             "html5lib-1.0.1/html5lib")
+                      "html5lib-1.0.1/html5lib")
+
+    def _install_mechanize(self):
+        self._ensure_autoinstalled_dir_is_in_sys_path()
+        self._install_html5lib()
         self._install("https://files.pythonhosted.org/packages/64/f1/1aa4c96dea14e17a955019b0fc4ac1b8dfbc50e3c90970c1fb8882e74a7b/mechanize-0.4.3.tar.gz",
                              "mechanize-0.4.3/mechanize")
         self._install_six()
@@ -195,6 +205,21 @@ class AutoinstallImportHook(object):
                       "urllib3-1.25.6/src/urllib3")
         self._install("https://files.pythonhosted.org/packages/01/62/ddcf76d1d19885e8579acb1b1df26a852b03472c0e46d2b959a714c90608/requests-2.22.0.tar.gz",
                       "requests-2.22.0/requests")
+
+    def _install_beautifulsoup(self):
+        if sys.version_info < (3, 0):
+            return
+
+        self._install_requests()
+        self._install_html5lib()
+        self._ensure_autoinstalled_dir_is_in_sys_path()
+        self._install("https://files.pythonhosted.org/packages/7f/4e/95a13527e18b6f1a15c93f1c634b86d5fa634c5619dce695f4e0cd68182f/soupsieve-1.9.4.tar.gz",
+                      "soupsieve-1.9.4/soupsieve")
+        did_download_bs4 = self._install("https://files.pythonhosted.org/packages/86/cd/495c68f0536dcd25f016e006731ba7be72e072280305ec52590012c1e6f2/beautifulsoup4-4.8.1.tar.gz",
+                                         "beautifulsoup4-4.8.1/bs4")
+        if did_download_bs4:
+            self._executive.run_command(['2to3', '-w', self._fs.join(_AUTOINSTALLED_DIR, 'bs4')])
+
 
     def _install_pylint(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()
@@ -291,7 +316,7 @@ class AutoinstallImportHook(object):
 
     def _install(self, url, url_subpath=None, target_name=None):
         installer = AutoInstaller(target_dir=_AUTOINSTALLED_DIR)
-        installer.install(url=url, url_subpath=url_subpath, target_name=target_name)
+        return installer.install(url=url, url_subpath=url_subpath, target_name=target_name)
 
     def get_latest_pypi_url(self, package_name, url_subpath_format='{name}-{version}/{lname}'):
         json_url = "https://pypi.org/pypi/%s/json" % package_name

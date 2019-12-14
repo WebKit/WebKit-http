@@ -446,7 +446,7 @@ void emitRandomThunkImpl(AssemblyHelpers& jit, GPRReg scratch0, GPRReg scratch1,
 
     // Convert `(53bit double integer value) / (1 << 53)` to `(53bit double integer value) * (1.0 / (1 << 53))`.
     // In latter case, `1.0 / (1 << 53)` will become a double value represented as (mantissa = 0 & exp = 970, it means 1e-(2**54)).
-    static const double scale = 1.0 / (1ULL << 53);
+    static constexpr double scale = 1.0 / (1ULL << 53);
 
     // Multiplying 1e-(2**54) with the double integer does not change anything of the mantissa part of the double integer.
     // It just reduces the exp part of the given 53bit double integer.
@@ -624,9 +624,10 @@ void AssemblyHelpers::restoreCalleeSavesFromEntryFrameCalleeSavesBuffer(EntryFra
 #endif
 }
 
-void AssemblyHelpers::emitDumbVirtualCall(VM& vm, CallLinkInfo* info)
+void AssemblyHelpers::emitDumbVirtualCall(VM& vm, JSGlobalObject* globalObject, CallLinkInfo* info)
 {
     move(TrustedImmPtr(info), GPRInfo::regT2);
+    move(TrustedImmPtr(globalObject), GPRInfo::regT3);
     Call call = nearCall();
     addLinkTask(
         [=, &vm] (LinkBuffer& linkBuffer) {

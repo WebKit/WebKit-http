@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CachedFrame.h"
 
+#include "BackForwardCache.h"
 #include "CSSAnimationController.h"
 #include "CachedFramePlatformData.h"
 #include "CachedPage.h"
@@ -41,12 +42,12 @@
 #include "Logging.h"
 #include "NavigationDisabler.h"
 #include "Page.h"
-#include "PageCache.h"
 #include "RenderWidget.h"
 #include "SVGDocumentExtensions.h"
 #include "ScriptController.h"
 #include "SerializedScriptValue.h"
 #include "StyleTreeResolver.h"
+#include "WindowEventLoop.h"
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/text/CString.h>
 
@@ -106,13 +107,16 @@ void CachedFrameBase::restore()
         if (m_document->svgExtensions())
             m_document->accessSVGExtensions().unpauseAnimations();
 
-        m_document->resume(ReasonForSuspension::PageCache);
+        if (auto* eventLoop = m_document->eventLoopIfExists())
+            eventLoop->resume(*m_document);
+
+        m_document->resume(ReasonForSuspension::BackForwardCache);
 
         // It is necessary to update any platform script objects after restoring the
         // cached page.
         frame->script().updatePlatformScriptObjects();
 
-        frame->loader().client().didRestoreFromPageCache();
+        frame->loader().client().didRestoreFromBackForwardCache();
 
         pruneDetachedChildFrames();
 
@@ -138,7 +142,7 @@ void CachedFrameBase::restore()
     }
 #endif
 
-    frame->view()->didRestoreFromPageCache();
+    frame->view()->didRestoreFromBackForwardCache();
 }
 
 CachedFrame::CachedFrame(Frame& frame)
@@ -150,7 +154,7 @@ CachedFrame::CachedFrame(Frame& frame)
     ASSERT(m_document);
     ASSERT(m_documentLoader);
     ASSERT(m_view);
-    ASSERT(m_document->pageCacheState() == Document::InPageCache);
+    ASSERT(m_document->backForwardCacheState() == Document::InBackForwardCache);
 
     RELEASE_ASSERT(m_document->domWindow());
     RELEASE_ASSERT(m_document->frame());
@@ -169,14 +173,17 @@ CachedFrame::CachedFrame(Frame& frame)
     RELEASE_ASSERT(m_document->domWindow()->frame());
 
     // Active DOM objects must be suspended before we cache the frame script data.
-    m_document->suspend(ReasonForSuspension::PageCache);
+    m_document->suspend(ReasonForSuspension::BackForwardCache);
+
+    if (auto* eventLoop = m_document->eventLoopIfExists())
+        eventLoop->suspend(*m_document);
 
     m_cachedFrameScriptData = makeUnique<ScriptCachedFrameData>(frame);
 
-    m_document->domWindow()->suspendForPageCache();
+    m_document->domWindow()->suspendForBackForwardCache();
 
     // Clear FrameView to reset flags such as 'firstVisuallyNonEmptyLayoutCallbackPending' so that the
-    // 'DidFirstVisuallyNonEmptyLayout' callback gets called against when restoring from PageCache.
+    // 'DidFirstVisuallyNonEmptyLayout' callback gets called against when restoring from the BackForwardCache.
     m_view->resetLayoutMilestones();
 
     // The main frame is reused for the navigation and the opener link to its should thus persist.
@@ -185,26 +192,24 @@ CachedFrame::CachedFrame(Frame& frame)
 
     frame.loader().client().savePlatformDataToCachedFrame(this);
 
-    // documentWillSuspendForPageCache() can set up a layout timer on the FrameView, so clear timers after that.
+    // documentWillSuspendForBackForwardCache() can set up a layout timer on the FrameView, so clear timers after that.
     frame.clearTimers();
 
     // Deconstruct the FrameTree, to restore it later.
     // We do this for two reasons:
     // 1 - We reuse the main frame, so when it navigates to a new page load it needs to start with a blank FrameTree.
-    // 2 - It's much easier to destroy a CachedFrame while it resides in the PageCache if it is disconnected from its parent.
+    // 2 - It's much easier to destroy a CachedFrame while it resides in the BackForwardCache if it is disconnected from its parent.
     for (unsigned i = 0; i < m_childFrames.size(); ++i)
         frame.tree().removeChild(m_childFrames[i]->view()->frame());
 
     if (!m_isMainFrame)
         frame.page()->decrementSubframeCount();
 
-    frame.loader().client().didSaveToPageCache();
-
 #ifndef NDEBUG
     if (m_isMainFrame)
-        LOG(PageCache, "Finished creating CachedFrame for main frame url '%s' and DocumentLoader %p\n", m_url.string().utf8().data(), m_documentLoader.get());
+        LOG(BackForwardCache, "Finished creating CachedFrame for main frame url '%s' and DocumentLoader %p\n", m_url.string().utf8().data(), m_documentLoader.get());
     else
-        LOG(PageCache, "Finished creating CachedFrame for child frame with url '%s' and DocumentLoader %p\n", m_url.string().utf8().data(), m_documentLoader.get());
+        LOG(BackForwardCache, "Finished creating CachedFrame for child frame with url '%s' and DocumentLoader %p\n", m_url.string().utf8().data(), m_documentLoader.get());
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -237,11 +242,11 @@ void CachedFrame::clear()
     if (!m_document)
         return;
 
-    // clear() should only be called for Frames representing documents that are no longer in the page cache.
+    // clear() should only be called for Frames representing documents that are no longer in the back/forward cache.
     // This means the CachedFrame has been:
     // 1 - Successfully restore()'d by going back/forward.
-    // 2 - destroy()'ed because the PageCache is pruning or the WebView was closed.
-    ASSERT(m_document->pageCacheState() == Document::NotInPageCache);
+    // 2 - destroy()'ed because the BackForwardCache is pruning or the WebView was closed.
+    ASSERT(m_document->backForwardCacheState() == Document::NotInBackForwardCache);
     ASSERT(m_view);
     ASSERT(!m_document->frame() || m_document->frame() == &m_view->frame());
 
@@ -261,8 +266,8 @@ void CachedFrame::destroy()
     if (!m_document)
         return;
     
-    // Only CachedFrames that are still in the PageCache should be destroyed in this manner
-    ASSERT(m_document->pageCacheState() == Document::InPageCache);
+    // Only CachedFrames that are still in the BackForwardCache should be destroyed in this manner
+    ASSERT(m_document->backForwardCacheState() == Document::InBackForwardCache);
     ASSERT(m_view);
     ASSERT(!m_document->frame());
 
@@ -283,11 +288,11 @@ void CachedFrame::destroy()
 
     m_view->frame().animation().detachFromDocument(m_document.get());
 
-    // FIXME: Why do we need to call removeAllEventListeners here? When the document is in page cache, this method won't work
+    // FIXME: Why do we need to call removeAllEventListeners here? When the document is in back/forward cache, this method won't work
     // fully anyway, because the document won't be able to access its DOMWindow object (due to being frameless).
     m_document->removeAllEventListeners();
 
-    m_document->setPageCacheState(Document::NotInPageCache);
+    m_document->setBackForwardCacheState(Document::NotInBackForwardCache);
     m_document->prepareForDestruction();
 
     clear();

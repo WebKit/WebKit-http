@@ -107,7 +107,7 @@ WebFrameLoaderClient::WebFrameLoaderClient()
     , m_hasSentResponseToPluginView(false)
     , m_didCompletePageTransition(false)
     , m_frameHasCustomContentProvider(false)
-    , m_frameCameFromPageCache(false)
+    , m_frameCameFromBackForwardCache(false)
 {
 }
 
@@ -1215,7 +1215,7 @@ bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem& item) const
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return false;
-    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(item.identifier(), item.isInPageCache()));
+    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(item.identifier(), item.isInBackForwardCache()));
     return true;
 }
 
@@ -1474,7 +1474,7 @@ void WebFrameLoaderClient::transitionToCommittedFromCachedFrame(CachedFrame*)
 {
     const ResourceResponse& response = m_frame->coreFrame()->loader().documentLoader()->response();
     m_frameHasCustomContentProvider = m_frame->isMainFrame() && m_frame->page()->shouldUseCustomContentProviderForResponse(response);
-    m_frameCameFromPageCache = true;
+    m_frameCameFromBackForwardCache = true;
 }
 
 void WebFrameLoaderClient::transitionToCommittedForNewPage()
@@ -1496,7 +1496,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     const ResourceResponse& response = m_frame->coreFrame()->loader().documentLoader()->response();
     m_frameHasCustomContentProvider = isMainFrame && webPage->shouldUseCustomContentProviderForResponse(response);
-    m_frameCameFromPageCache = false;
+    m_frameCameFromBackForwardCache = false;
 
     ScrollbarMode defaultScrollbarMode = shouldHideScrollbars ? ScrollbarAlwaysOff : ScrollbarAuto;
 
@@ -1542,19 +1542,9 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 #endif
 }
 
-void WebFrameLoaderClient::didSaveToPageCache()
+void WebFrameLoaderClient::didRestoreFromBackForwardCache()
 {
-    WebPage* webPage = m_frame->page();
-    if (!webPage)
-        return;
-
-    if (m_frame->isMainFrame())
-        webPage->send(Messages::WebPageProxy::DidSaveToPageCache());
-}
-
-void WebFrameLoaderClient::didRestoreFromPageCache()
-{
-    m_frameCameFromPageCache = true;
+    m_frameCameFromBackForwardCache = true;
 }
 
 void WebFrameLoaderClient::dispatchDidBecomeFrameset(bool value)
@@ -1615,7 +1605,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize&, HTMLPlugInElem
     parameters.values = paramValues;
     parameters.mimeType = mimeType;
     parameters.isFullFramePlugin = loadManually;
-    parameters.shouldUseManualLoader = parameters.isFullFramePlugin && !m_frameCameFromPageCache;
+    parameters.shouldUseManualLoader = parameters.isFullFramePlugin && !m_frameCameFromBackForwardCache;
 #if PLATFORM(COCOA)
     parameters.layerHostingMode = m_frame->page()->layerHostingMode();
 #endif

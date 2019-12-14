@@ -39,6 +39,7 @@
 #include <JavaScriptCore/JSArrayBufferView.h>
 #include <JavaScriptCore/JSCTestRunnerUtils.h>
 #include <JavaScriptCore/JSContextRef.h>
+#include <JavaScriptCore/JSGlobalObjectInlines.h>
 #include <JavaScriptCore/JSObjectRef.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/TypedArrayInlines.h>
@@ -583,8 +584,8 @@ static JSValueRef overridePreferenceCallback(JSContextRef context, JSObjectRef f
     auto value = adopt(JSValueToStringCopy(context, arguments[1], exception));
     ASSERT(!*exception);
 
-    // Should use `<!-- webkit-test-runner [ enablePageCache=true ] -->` instead.
-    RELEASE_ASSERT(!JSStringIsEqualToUTF8CString(key.get(), "WebKitUsesPageCachePreferenceKey"));
+    // Should use `<!-- webkit-test-runner [ enableBackForwardCache=true ] -->` instead.
+    RELEASE_ASSERT(!JSStringIsEqualToUTF8CString(key.get(), "WebKitUsesBackForwardCachePreferenceKey"));
 
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->overridePreference(key.get(), value.get());

@@ -332,6 +332,11 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetShouldBlockThirdPartyCookies")) {
+        m_testRunner->statisticsCallDidSetShouldBlockThirdPartyCookiesCallback();
+        return;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "CallDidResetStatisticsToConsistentState")) {
         m_testRunner->statisticsCallDidResetToConsistentStateCallback();
         return;
@@ -548,6 +553,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings, BegingTestingMode te
     m_testRunner->setReadableByteStreamAPIEnabled(true);
 
     m_testRunner->setEncryptedMediaAPIEnabled(true);
+    m_testRunner->setPictureInPictureAPIEnabled(true);
 
     m_testRunner->setCloseRemainingWindowsWhenComplete(false);
     m_testRunner->setAcceptsEditing(true);

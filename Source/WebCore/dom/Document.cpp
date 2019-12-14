@@ -222,6 +222,7 @@
 #include "ValidationMessageClient.h"
 #include "VisibilityChangeClient.h"
 #include "VisitedLinkState.h"
+#include "VisualViewport.h"
 #include "WebAnimation.h"
 #include "WheelEvent.h"
 #include "WindowEventLoop.h"
@@ -323,6 +324,10 @@
 
 #if ENABLE(POINTER_EVENTS)
 #include "PointerCaptureController.h"
+#endif
+
+#if ENABLE(PICTURE_IN_PICTURE_API)
+#include "HTMLVideoElement.h"
 #endif
 
 namespace WebCore {
@@ -619,7 +624,7 @@ Document::~Document()
     removeFromContextsMap();
 
     ASSERT(!renderView());
-    ASSERT(m_pageCacheState != InPageCache);
+    ASSERT(m_backForwardCacheState != InBackForwardCache);
     ASSERT(m_ranges.isEmpty());
     ASSERT(!m_parentTreeScope);
     ASSERT(!m_disabledFieldsetElementsCount);
@@ -1824,7 +1829,7 @@ void Document::scheduleStyleRecalc()
 {
     ASSERT(!m_renderView || !inHitTesting());
 
-    if (m_styleRecalcTimer.isActive() || pageCacheState() != NotInPageCache)
+    if (m_styleRecalcTimer.isActive() || backForwardCacheState() != NotInBackForwardCache)
         return;
 
     ASSERT(childNeedsStyleRecalc() || m_needsFullStyleRebuild);
@@ -1973,12 +1978,6 @@ void Document::resolveStyle(ResolveStyleType type)
         // FIXME: Assert ASSERT(!needsStyleRecalc()) here. Do we still have some cases where it's not true?
     }
 
-    // If we wanted to call implicitClose() during recalcStyle, do so now that we're finished.
-    if (m_closeAfterStyleRecalc) {
-        m_closeAfterStyleRecalc = false;
-        implicitClose();
-    }
-
     InspectorInstrumentation::didRecalculateStyle(*this);
 
     // Some animated images may now be inside the viewport due to style recalc,
@@ -2005,7 +2004,7 @@ void Document::updateTextRenderer(Text& text, unsigned offsetOfReplacedText, uns
 
 bool Document::needsStyleRecalc() const
 {
-    if (pageCacheState() != NotInPageCache)
+    if (backForwardCacheState() != NotInBackForwardCache)
         return false;
 
     if (m_needsFullStyleRebuild)
@@ -2291,7 +2290,7 @@ void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
 {
     if (auto* resolver = styleScope().resolverIfExists())
         resolver->invalidateMatchedPropertiesCache();
-    if (pageCacheState() != NotInPageCache || !renderView())
+    if (backForwardCacheState() != NotInBackForwardCache || !renderView())
         return;
     scheduleFullStyleRebuild();
 }
@@ -2310,7 +2309,7 @@ void Document::setIsResolvingTreeStyle(bool value)
 void Document::createRenderTree()
 {
     ASSERT(!renderView());
-    ASSERT(m_pageCacheState != InPageCache);
+    ASSERT(m_backForwardCacheState != InBackForwardCache);
     ASSERT(!m_axObjectCache || this != &topDocument());
 
     if (m_isNonRenderedPlaceholder)
@@ -2350,7 +2349,7 @@ void Document::didBecomeCurrentDocumentInFrame()
 
     // Ensure that the scheduled task state of the document matches the DOM suspension state of the frame. It can
     // be out of sync if the DOM suspension state changed while the document was not in the frame (possibly in the
-    // page cache, or simply newly created).
+    // back/forward cache, or simply newly created).
     if (m_frame->activeDOMObjectsAndAnimationsSuspended()) {
         if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
             if (auto* timeline = existingTimeline())
@@ -2393,7 +2392,7 @@ void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
 {
     RELEASE_ASSERT(cachedFrame.document() == this);
     ASSERT(cachedFrame.view());
-    ASSERT(m_pageCacheState == Document::InPageCache);
+    ASSERT(m_backForwardCacheState == Document::InBackForwardCache);
     observeFrame(&cachedFrame.view()->frame());
 }
 
@@ -2402,7 +2401,7 @@ void Document::detachFromCachedFrame(CachedFrameBase& cachedFrame)
     ASSERT_UNUSED(cachedFrame, cachedFrame.view());
     RELEASE_ASSERT(cachedFrame.document() == this);
     ASSERT(m_frame == &cachedFrame.view()->frame());
-    ASSERT(m_pageCacheState == Document::InPageCache);
+    ASSERT(m_backForwardCacheState == Document::InBackForwardCache);
     detachFromFrame();
 }
 
@@ -2565,10 +2564,10 @@ void Document::prepareForDestruction()
 
     m_hasPreparedForDestruction = true;
 
-    // Note that m_pageCacheState can be Document::AboutToEnterPageCache if our frame
+    // Note that m_backForwardCacheState can be Document::AboutToEnterBackForwardCache if our frame
     // was removed in an onpagehide event handler fired when the top-level frame is
-    // about to enter the page cache.
-    RELEASE_ASSERT(m_pageCacheState != Document::InPageCache);
+    // about to enter the back/forward cache.
+    RELEASE_ASSERT(m_backForwardCacheState != Document::InBackForwardCache);
 }
 
 void Document::removeAllEventListeners()
@@ -2620,7 +2619,7 @@ bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 {
     // Bypass this policy when the world is known, and it not the normal world.
     auto& callFrame = *commonVM().topCallFrame;
-    return &callFrame != JSC::CallFrame::noCaller() && !currentWorld(callFrame).isNormal();
+    return &callFrame != JSC::CallFrame::noCaller() && !currentWorld(*callFrame.lexicalGlobalObject()).isNormal();
 }
 
 void Document::platformSuspendOrStopActiveDOMObjects()
@@ -2915,12 +2914,7 @@ void Document::explicitClose()
 
 void Document::implicitClose()
 {
-    // If we're in the middle of recalcStyle, we need to defer the close until the style information is accurate and all elements are re-attached.
-    if (m_inStyleRecalc) {
-        m_closeAfterStyleRecalc = true;
-        return;
-    }
-
+    RELEASE_ASSERT(!m_inStyleRecalc);
     bool wasLocationChangePending = frame() && frame()->navigationScheduler().locationChangePending();
     bool doload = !parsing() && m_parser && !m_processingLoadEvent && !wasLocationChangePending;
     
@@ -2966,11 +2960,8 @@ void Document::implicitClose()
         HTMLLinkElement::dispatchPendingLoadEvents();
         HTMLStyleElement::dispatchPendingLoadEvents();
 
-        // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
-        // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
-        // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
         if (svgExtensions())
-            accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
+            accessSVGExtensions().dispatchLoadEventToOutermostSVGElements();
     }
 
     dispatchWindowLoadEvent();
@@ -3908,13 +3899,19 @@ StyleSheetList& Document::styleSheets()
     return *m_styleSheetList;
 }
 
-void Document::evaluateMediaQueryList()
+void Document::updateElementsAffectedByMediaQueries()
 {
-    if (m_mediaQueryMatcher)
-        m_mediaQueryMatcher->styleResolverChanged();
-    
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
     checkViewportDependentPictures();
     checkAppearanceDependentPictures();
+}
+
+void Document::evaluateMediaQueriesAndReportChanges()
+{
+    if (!m_mediaQueryMatcher)
+        return;
+
+    m_mediaQueryMatcher->evaluateAll();
 }
 
 void Document::checkViewportDependentPictures()
@@ -3953,6 +3950,35 @@ void Document::updateViewportUnitsOnResize()
         auto* renderer = element->renderer();
         if (renderer && renderer->style().hasViewportUnits())
             element->invalidateStyle();
+    }
+}
+
+void Document::setNeedsDOMWindowResizeEvent()
+{
+    m_needsDOMWindowResizeEvent = true;
+    scheduleTimedRenderingUpdate();
+}
+
+void Document::setNeedsVisualViewportResize()
+{
+    m_needsVisualViewportResizeEvent = true;
+    scheduleTimedRenderingUpdate();
+}
+
+// https://drafts.csswg.org/cssom-view/#run-the-resize-steps
+void Document::runResizeSteps()
+{
+    // FIXME: The order of dispatching is not specified: https://github.com/WICG/visual-viewport/issues/65.
+    if (m_needsDOMWindowResizeEvent) {
+        LOG(Events, "Document %p sending resize events to window", this);
+        m_needsDOMWindowResizeEvent = false;
+        dispatchWindowEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+    }
+    if (m_needsVisualViewportResizeEvent) {
+        LOG(Events, "Document %p sending resize events to visualViewport", this);
+        m_needsVisualViewportResizeEvent = false;
+        if (auto* window = domWindow())
+            window->visualViewport().dispatchEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 }
 
@@ -4049,7 +4075,7 @@ static bool isNodeInSubtree(Node& node, Node& container, Document::NodeRemoval n
 
 void Document::adjustFocusedNodeOnNodeRemoval(Node& node, NodeRemoval nodeRemoval)
 {
-    if (!m_focusedElement || pageCacheState() != NotInPageCache) // If the document is in the page cache, then we don't need to clear out the focused node.
+    if (!m_focusedElement || backForwardCacheState() != NotInBackForwardCache) // If the document is in the back/forward cache, then we don't need to clear out the focused node.
         return;
 
     Element* focusedElement = node.treeScope().focusedElementInScope();
@@ -4117,7 +4143,7 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
     if (m_focusedElement == newFocusedElement)
         return true;
 
-    if (pageCacheState() != NotInPageCache)
+    if (backForwardCacheState() != NotInBackForwardCache)
         return false;
 
     bool focusChangeBlocked = false;
@@ -4557,7 +4583,7 @@ void Document::takeDOMWindowFrom(Document& document)
     ASSERT(!m_domWindow);
     ASSERT(document.m_domWindow);
     // A valid DOMWindow is needed by CachedFrame for its documents.
-    ASSERT(pageCacheState() == NotInPageCache);
+    ASSERT(backForwardCacheState() == NotInBackForwardCache);
 
     m_domWindow = WTFMove(document.m_domWindow);
     m_domWindow->didSecureTransitionTo(*this);
@@ -5079,21 +5105,21 @@ URL Document::completeURL(const String& url) const
     return completeURL(url, m_baseURL);
 }
 
-void Document::setPageCacheState(PageCacheState state)
+void Document::setBackForwardCacheState(BackForwardCacheState state)
 {
-    if (m_pageCacheState == state)
+    if (m_backForwardCacheState == state)
         return;
 
-    m_pageCacheState = state;
+    m_backForwardCacheState = state;
 
     FrameView* v = view();
     Page* page = this->page();
 
     switch (state) {
-    case InPageCache:
+    case InBackForwardCache:
         if (v) {
             // FIXME: There is some scrolling related work that needs to happen whenever a page goes into the
-            // page cache and similar work that needs to occur when it comes out. This is where we do the work
+            // back/forward cache and similar work that needs to occur when it comes out. This is where we do the work
             // that needs to happen when we enter, and the work that needs to happen when we exit is in
             // HistoryController::restoreScrollPositionAndViewState(). It can't be here because this function is
             // called too early on in the process of a page exiting the cache for that work to be possible in this
@@ -5117,11 +5143,11 @@ void Document::setPageCacheState(PageCacheState state)
 
         clearSharedObjectPool();
         break;
-    case NotInPageCache:
+    case NotInBackForwardCache:
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
         break;
-    case AboutToEnterPageCache:
+    case AboutToEnterBackForwardCache:
         break;
     }
 }
@@ -5144,7 +5170,7 @@ void Document::suspend(ReasonForSuspension reason)
 
 #ifndef NDEBUG
     // Clear the update flag to be able to check if the viewport arguments update
-    // is dispatched, after the document is restored from the page cache.
+    // is dispatched, after the document is restored from the back/forward cache.
     m_didDispatchViewportPropertiesChanged = false;
 #endif
 
@@ -5165,7 +5191,7 @@ void Document::suspend(ReasonForSuspension reason)
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && reason == ReasonForSuspension::PageCache)
+    if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && reason == ReasonForSuspension::BackForwardCache)
         setServiceWorkerConnection(nullptr);
 #endif
 
@@ -5210,8 +5236,8 @@ void Document::resume(ReasonForSuspension reason)
     m_isSuspended = false;
 
 #if ENABLE(SERVICE_WORKER)
-    if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && reason == ReasonForSuspension::PageCache)
-        setServiceWorkerConnection(ServiceWorkerProvider::singleton().existingServiceWorkerConnection());
+    if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && reason == ReasonForSuspension::BackForwardCache)
+        setServiceWorkerConnection(&ServiceWorkerProvider::singleton().serviceWorkerConnection());
 #endif
 }
 
@@ -5530,7 +5556,7 @@ Document& Document::topDocument() const
 {
     // FIXME: This special-casing avoids incorrectly determined top documents during the process
     // of AXObjectCache teardown or notification posting for cached or being-destroyed documents.
-    if (pageCacheState() == NotInPageCache && !m_renderTreeBeingDestroyed) {
+    if (backForwardCacheState() == NotInBackForwardCache && !m_renderTreeBeingDestroyed) {
         if (!m_frame)
             return const_cast<Document&>(*this);
         // This should always be non-null.
@@ -6090,7 +6116,7 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
         m_consoleMessageListener->scheduleCallback(*this, message);
 }
 
-void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
+void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack, JSC::JSGlobalObject* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
         postTask(AddConsoleMessageTask(source, level, message));
@@ -8288,13 +8314,31 @@ MessagePortChannelProvider& Document::messagePortChannelProvider()
 }
 
 #if USE(SYSTEM_PREVIEW)
-void Document::dispatchSystemPreviewActionEvent(const String& message)
+void Document::dispatchSystemPreviewActionEvent(const SystemPreviewInfo& systemPreviewInfo, const String& message)
 {
+    auto* element = searchForElementByIdentifier(systemPreviewInfo.element.elementIdentifier);
+    if (!element)
+        return;
+
+    if (!is<HTMLAnchorElement>(element))
+        return;
+
     auto event = MessageEvent::create(message, origin());
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, this);
-    dispatchWindowEvent(event, domWindow());
+    element->dispatchEvent(event);
 }
 #endif
 
+#if ENABLE(PICTURE_IN_PICTURE_API)
+HTMLVideoElement* Document::pictureInPictureElement() const
+{
+    return m_pictureInPictureElement.get();
+};
+
+void Document::setPictureInPictureElement(HTMLVideoElement* element)
+{
+    m_pictureInPictureElement = makeWeakPtr(element);
+}
+#endif
 
 } // namespace WebCore

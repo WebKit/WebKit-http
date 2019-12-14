@@ -78,7 +78,7 @@ AbstractInterpreter<AbstractStateType>::booleanResult(
 {
     JSValue childConst = value.value();
     if (childConst) {
-        if (childConst.toBoolean(m_codeBlock->globalObjectFor(node->origin.semantic)->globalExec()))
+        if (childConst.toBoolean(m_codeBlock->globalObjectFor(node->origin.semantic)))
             return DefinitelyTrue;
         return DefinitelyFalse;
     }
@@ -939,7 +939,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             // when node->useKind is UntypedUse. In the case of BigIntUse, children will be
             // cleared by `AbstractInterpreter::executeEffects`.
             didFoldClobberWorld();
-            setConstant(node, jsDoubleNumber(operationMathPow(childX.asNumber(), childY.asNumber())));
+            // Our boxing scheme here matches what we do in operationValuePow.
+            setConstant(node, jsNumber(operationMathPow(childX.asNumber(), childY.asNumber())));
             break;
         }
 
@@ -2758,7 +2759,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (base.isNull())
                 structure = globalObject->nullPrototypeObjectStructure();
             else if (base.isObject())
-                structure = globalObject->vm().structureCache.emptyObjectStructureConcurrently(globalObject, base.getObject(), JSFinalObject::defaultInlineCapacity());
+                structure = m_vm.structureCache.emptyObjectStructureConcurrently(globalObject, base.getObject(), JSFinalObject::defaultInlineCapacity());
             
             if (structure) {
                 m_state.setFoundConstants(true);
@@ -3466,12 +3467,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         
-        if (base.value() && base.value().isObject()) {
-            setForNode(node, asObject(base.value())->globalObject()->getterSetterStructure());
-            break;
-        }
-
-        setTypeForNode(node, SpecObjectOther);
+        setForNode(node, m_vm.getterSetterStructure.get());
         break;
     }
         

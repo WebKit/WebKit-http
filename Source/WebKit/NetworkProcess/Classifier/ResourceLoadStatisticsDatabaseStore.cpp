@@ -1350,12 +1350,18 @@ void ResourceLoadStatisticsDatabaseStore::setUserInteraction(const RegistrableDo
     ASSERT_UNUSED(resetResult, resetResult == SQLITE_OK);
 }
 
-void ResourceLoadStatisticsDatabaseStore::logUserInteraction(const TopFrameDomain& domain)
+void ResourceLoadStatisticsDatabaseStore::logUserInteraction(const TopFrameDomain& domain, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
+    bool didHavePreviousUserInteraction = hasHadUserInteraction(domain, OperatingDatesWindow::Long);
     ensureResourceStatisticsForRegistrableDomain(domain);
     setUserInteraction(domain, true, WallTime::now());
+    if (didHavePreviousUserInteraction) {
+        completionHandler();
+        return;
+    }
+    updateCookieBlocking(WTFMove(completionHandler));
 }
 
 void ResourceLoadStatisticsDatabaseStore::clearUserInteraction(const RegistrableDomain& domain)
@@ -1680,7 +1686,7 @@ void ResourceLoadStatisticsDatabaseStore::clear(CompletionHandler<void()>&& comp
     removeAllStorageAccess([callbackAggregator = callbackAggregator.copyRef()] { });
 
     auto registrableDomainsToBlockAndDeleteCookiesFor = ensurePrevalentResourcesForDebugMode();
-    RegistrableDomainsToBlockCookiesFor domainsToBlock { registrableDomainsToBlockAndDeleteCookiesFor, { } };
+    RegistrableDomainsToBlockCookiesFor domainsToBlock { registrableDomainsToBlockAndDeleteCookiesFor, { }, { } };
     updateCookieBlockingForDomains(domainsToBlock, [callbackAggregator = callbackAggregator.copyRef()] { });
 }
 
@@ -1752,19 +1758,35 @@ Vector<RegistrableDomain> ResourceLoadStatisticsDatabaseStore::domainsToBlockBut
     return results;
 }
 
+Vector<RegistrableDomain> ResourceLoadStatisticsDatabaseStore::domainsWithUserInteractionAsFirstParty() const
+{
+    ASSERT(!RunLoop::isMain());
+
+    Vector<RegistrableDomain> results;
+    SQLiteStatement statement(m_database, "SELECT registrableDomain FROM ObservedDomains WHERE hadUserInteraction = 1"_s);
+    if (statement.prepare() != SQLITE_OK)
+        return results;
+    
+    while (statement.step() == SQLITE_ROW)
+        results.append(RegistrableDomain::uncheckedCreateFromRegistrableDomainString(statement.getColumnText(0)));
+
+    return results;
+}
+
 void ResourceLoadStatisticsDatabaseStore::updateCookieBlocking(CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
     auto domainsToBlockAndDeleteCookiesFor = this->domainsToBlockAndDeleteCookiesFor();
     auto domainsToBlockButKeepCookiesFor = this->domainsToBlockButKeepCookiesFor();
+    auto domainsWithUserInteractionAsFirstParty = this->domainsWithUserInteractionAsFirstParty();
 
-    if (domainsToBlockAndDeleteCookiesFor.isEmpty() && domainsToBlockButKeepCookiesFor.isEmpty()) {
+    if (domainsToBlockAndDeleteCookiesFor.isEmpty() && domainsToBlockButKeepCookiesFor.isEmpty() && domainsWithUserInteractionAsFirstParty.isEmpty()) {
         completionHandler();
         return;
     }
 
-    RegistrableDomainsToBlockCookiesFor domainsToBlock { domainsToBlockAndDeleteCookiesFor, domainsToBlockButKeepCookiesFor };
+    RegistrableDomainsToBlockCookiesFor domainsToBlock { domainsToBlockAndDeleteCookiesFor, domainsToBlockButKeepCookiesFor, domainsWithUserInteractionAsFirstParty };
 
     if (debugLoggingEnabled() && !domainsToBlockAndDeleteCookiesFor.isEmpty() && !domainsToBlockButKeepCookiesFor.isEmpty())
         debugLogDomainsInBatches("block", domainsToBlock);

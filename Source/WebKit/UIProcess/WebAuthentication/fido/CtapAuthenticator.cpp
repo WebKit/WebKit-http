@@ -34,6 +34,7 @@
 #include <WebCore/DeviceRequestConverter.h>
 #include <WebCore/DeviceResponseConverter.h>
 #include <WebCore/ExceptionData.h>
+#include <WebCore/U2fCommandConstructor.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringConcatenateNumbers.h>
 
@@ -42,11 +43,9 @@ using namespace WebCore;
 using namespace fido;
 
 CtapAuthenticator::CtapAuthenticator(std::unique_ptr<CtapDriver>&& driver, AuthenticatorGetInfoResponse&& info)
-    : m_driver(WTFMove(driver))
+    : FidoAuthenticator(WTFMove(driver))
     , m_info(WTFMove(info))
 {
-    // FIXME(191520): We need a way to convert std::unique_ptr to UniqueRef.
-    ASSERT(m_driver);
 }
 
 void CtapAuthenticator::makeCredential()
@@ -55,7 +54,7 @@ void CtapAuthenticator::makeCredential()
     if (processGoogleLegacyAppIdSupportExtension())
         return;
     auto cborCmd = encodeMakeCredenitalRequestAsCBOR(requestData().hash, WTF::get<PublicKeyCredentialCreationOptions>(requestData().options), m_info.options().userVerificationAvailability());
-    m_driver->transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
+    driver().transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
             return;
@@ -81,7 +80,7 @@ void CtapAuthenticator::getAssertion()
 {
     ASSERT(!m_isDowngraded);
     auto cborCmd = encodeGetAssertionRequestAsCBOR(requestData().hash, WTF::get<PublicKeyCredentialRequestOptions>(requestData().options), m_info.options().userVerificationAvailability());
-    m_driver->transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
+    driver().transact(WTFMove(cborCmd), [weakThis = makeWeakPtr(*this)](Vector<uint8_t>&& data) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
             return;
@@ -96,6 +95,8 @@ void CtapAuthenticator::continueGetAssertionAfterResponseReceived(Vector<uint8_t
         auto error = getResponseCode(data);
         if (error != CtapDeviceResponseCode::kCtap2ErrInvalidCBOR && tryDowngrade())
             return;
+        if (error == CtapDeviceResponseCode::kCtap2ErrNoCredentials && observer())
+            observer()->authenticatorStatusUpdated(WebAuthenticationStatus::NoCredentialsFound);
         receiveRespond(ExceptionData { UnknownError, makeString("Unknown internal error. Error code: ", static_cast<uint8_t>(error)) });
         return;
     }
@@ -106,12 +107,14 @@ bool CtapAuthenticator::tryDowngrade()
 {
     if (m_info.versions().find(ProtocolVersion::kU2f) == m_info.versions().end())
         return false;
+    if (!isConvertibleToU2fSignCommand(WTF::get<PublicKeyCredentialRequestOptions>(requestData().options)))
+        return false;
     if (!observer())
         return false;
 
     m_isDowngraded = true;
-    m_driver->setProtocol(ProtocolVersion::kU2f);
-    observer()->downgrade(this, U2fAuthenticator::create(WTFMove(m_driver)));
+    driver().setProtocol(ProtocolVersion::kU2f);
+    observer()->downgrade(this, U2fAuthenticator::create(releaseDriver()));
     return true;
 }
 

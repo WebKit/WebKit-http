@@ -48,6 +48,7 @@
 #import "WebProcess.h"
 #import <JavaScriptCore/JSContextRef.h>
 #import <JavaScriptCore/JSObjectRef.h>
+#import <JavaScriptCore/OpaqueJSString.h>
 #import <Quartz/Quartz.h>
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
@@ -1735,7 +1736,7 @@ void PDFPlugin::writeItemsToPasteboard(NSString *pasteboardName, NSArray *items,
     for (NSString *type in types)
         pasteboardTypes.append(type);
 
-    uint64_t newChangeCount;
+    int64_t newChangeCount;
     auto& webProcess = WebProcess::singleton();
     webProcess.parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::SetPasteboardTypes(pasteboardName, pasteboardTypes),
         Messages::WebPasteboardProxy::SetPasteboardTypes::Reply(newChangeCount), 0);

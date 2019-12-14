@@ -147,9 +147,6 @@ public:
     void setIsITPDatabaseEnabled(bool isEnabled) { m_isITPDatabaseEnabled = isEnabled; }
     bool isITPDatabaseEnabled() const { return m_isITPDatabaseEnabled; }
 
-    void setIsITPSessionSwitchingEnabled(bool isEnabled) { m_isITPSessionSwitchingEnabled = isEnabled; }
-    bool isITPSessionSwitchingEnabled() const { return m_isITPSessionSwitchingEnabled; }
-
     void setRestrictedHTTPResponseAccess(bool isEnabled) { m_isRestrictedHTTPResponseAccess = isEnabled; }
     bool restrictedHTTPResponseAccess() const { return m_isRestrictedHTTPResponseAccess; }
 
@@ -408,7 +405,7 @@ private:
     bool m_isCustomPasteboardDataEnabled { false };
     bool m_isWebShareEnabled { false };
     bool m_inputEventsEnabled { true };
-    bool m_areWebAnimationsEnabled { false };
+    bool m_areWebAnimationsEnabled { true };
     bool m_isWebAnimationsCSSIntegrationEnabled { false };
     bool m_isImageBitmapOffscreenCanvasEnabled { true };
     bool m_isCacheAPIEnabled { false };
@@ -420,7 +417,6 @@ private:
     bool m_accessibilityObjectModelEnabled { false };
     bool m_ariaReflectionEnabled { true };
     bool m_itpDebugMode { false };
-    bool m_isITPSessionSwitchingEnabled { true };
     bool m_isRestrictedHTTPResponseAccess { true };
     bool m_crossOriginResourcePolicyEnabled { true };
     bool m_isWebGLCompressedTextureASTCSupportEnabled { false };

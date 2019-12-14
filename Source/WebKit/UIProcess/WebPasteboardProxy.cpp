@@ -33,6 +33,11 @@
 #include <wtf/CompletionHandler.h>
 #include <wtf/NeverDestroyed.h>
 
+#if !PLATFORM(COCOA)
+#include <WebCore/PasteboardCustomData.h>
+#include <WebCore/PasteboardItemInfo.h>
+#endif
+
 namespace WebKit {
 
 WebPasteboardProxy& WebPasteboardProxy::singleton()
@@ -70,19 +75,19 @@ void WebPasteboardProxy::typesSafeForDOMToReadAndWrite(const String&, const Stri
     completionHandler({ });
 }
 
-void WebPasteboardProxy::writeCustomData(const WebCore::PasteboardCustomData&, const String&, CompletionHandler<void(uint64_t)>&& completionHandler)
+void WebPasteboardProxy::writeCustomData(const Vector<WebCore::PasteboardCustomData>&, const String&, CompletionHandler<void(int64_t)>&& completionHandler)
 {
     completionHandler(0);
 }
 
-void WebPasteboardProxy::allPasteboardItemInfo(const String&, CompletionHandler<void(Vector<PasteboardItemInfo>&&)>&& completionHandler)
+void WebPasteboardProxy::allPasteboardItemInfo(const String&, int64_t, CompletionHandler<void(Optional<Vector<WebCore::PasteboardItemInfo>>&&)>&& completionHandler)
 {
-    completionHandler({ });
+    completionHandler(WTF::nullopt);
 }
 
-void WebPasteboardProxy::informationForItemAtIndex(size_t, const String&, CompletionHandler<void(PasteboardItemInfo&&)>&& completionHandler)
+void WebPasteboardProxy::informationForItemAtIndex(size_t, const String&, int64_t, CompletionHandler<void(Optional<WebCore::PasteboardItemInfo>&&)>&& completionHandler)
 {
-    completionHandler({ });
+    completionHandler(WTF::nullopt);
 }
 
 void WebPasteboardProxy::getPasteboardItemsCount(const String&, CompletionHandler<void(uint64_t)>&& completionHandler)

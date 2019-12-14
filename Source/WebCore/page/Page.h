@@ -413,7 +413,7 @@ public:
 
     // Page and FrameView both store a Pagination value. Page::pagination() is set only by API,
     // and FrameView::pagination() is set only by CSS. Page::pagination() will affect all
-    // FrameViews in the page cache, but FrameView::pagination() only affects the current
+    // FrameViews in the back/forward cache, but FrameView::pagination() only affects the current
     // FrameView.
     const Pagination& pagination() const { return m_pagination; }
     WEBCORE_EXPORT void setPagination(const Pagination&);
@@ -679,11 +679,8 @@ public:
     String captionUserPreferencesStyleSheet();
     void setCaptionUserPreferencesStyleSheet(const String&);
 
-    bool isResourceCachingDisabled() const { return m_resourceCachingDisabled || m_resourceCachingDisabledOverride; }
-    void setResourceCachingDisabled(bool disabled) { m_resourceCachingDisabled = disabled; }
-
-    // Web Inspector can override whatever value is set via WebKit SPI, but only while it is open.
-    void setResourceCachingDisabledOverride(bool disabled) { m_resourceCachingDisabledOverride = disabled; }
+    bool isResourceCachingDisabledByWebInspector() const { return m_resourceCachingDisabledByWebInspector; }
+    void setResourceCachingDisabledByWebInspector(bool disabled) { m_resourceCachingDisabledByWebInspector = disabled; }
 
     Optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
     void setEventThrottlingBehaviorOverride(Optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
@@ -753,6 +750,7 @@ private:
     void handleLowModePowerChange(bool);
 
     void forEachDocument(const WTF::Function<void(Document&)>&);
+    Vector<Ref<Document>> collectDocuments();
 
     enum class TimerThrottlingState { Disabled, Enabled, EnabledIncreasing };
     void hiddenPageDOMTimerThrottlingStateChanged();
@@ -949,8 +947,7 @@ private:
     bool m_allowsPlaybackControlsForAutoplayingAudio { false };
     bool m_showAllPlugins { false };
     bool m_controlledByAutomation { false };
-    bool m_resourceCachingDisabled { false };
-    bool m_resourceCachingDisabledOverride { false };
+    bool m_resourceCachingDisabledByWebInspector { false };
     bool m_isUtilityPage;
     UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
     

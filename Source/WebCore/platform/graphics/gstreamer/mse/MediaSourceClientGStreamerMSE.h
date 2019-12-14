@@ -43,6 +43,7 @@ public:
     // From MediaSourceGStreamer.
     MediaSourcePrivate::AddStatus addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>, const ContentType&);
     void durationChanged(const MediaTime&);
+    void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
     // From SourceBufferPrivateGStreamer.
     void abort(RefPtr<SourceBufferPrivateGStreamer>);
@@ -50,11 +51,8 @@ public:
     void append(RefPtr<SourceBufferPrivateGStreamer>, Vector<unsigned char>&&);
     void removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer>);
     void flush(AtomString);
-    void enqueueSample(Ref<MediaSample>&&, AtomString trackId);
+    void enqueueSample(Ref<MediaSample>&&);
     void allSamplesInTrackEnqueued(const AtomString&);
-
-    bool isReadyForMoreSamples(const AtomString&);
-    void notifyClientWhenReadyForMoreSamples(const AtomString&, SourceBufferPrivateClient*);
 
     const MediaTime& duration();
     GRefPtr<WebKitMediaSrc> webKitMediaSrc();

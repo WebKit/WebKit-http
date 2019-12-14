@@ -633,7 +633,6 @@ private:
 
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
-    bool canSuspendForDocumentSuspension() const override;
     void suspend(ReasonForSuspension) override;
     void resume() override;
     void stop() override;
@@ -912,7 +911,7 @@ private:
     void updateCaptionContainer();
     void ensureMediaControlsShadowRoot();
 
-    using JSSetupFunction = WTF::Function<bool(JSDOMGlobalObject&, JSC::ExecState&, ScriptController&, DOMWrapperWorld&)>;
+    using JSSetupFunction = WTF::Function<bool(JSDOMGlobalObject&, JSC::JSGlobalObject&, ScriptController&, DOMWrapperWorld&)>;
     bool setupAndCallJS(const JSSetupFunction&);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)

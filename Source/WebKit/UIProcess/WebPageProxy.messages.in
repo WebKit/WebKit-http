@@ -230,7 +230,7 @@ messages -> WebPageProxy {
     BackForwardBackListCount() -> (uint32_t count) Synchronous
     BackForwardForwardListCount() -> (uint32_t count) Synchronous
     BackForwardClear()
-    WillGoToBackForwardListItem(struct WebCore::BackForwardItemIdentifier itemID, bool inPageCache)
+    WillGoToBackForwardListItem(struct WebCore::BackForwardItemIdentifier itemID, bool inBackForwardCache)
 
     # Undo/Redo messages
     RegisterEditCommandForUndo(uint64_t commandID, String label)
@@ -453,8 +453,6 @@ messages -> WebPageProxy {
 
     DidUpdateActivityState()
 
-    DidSaveToPageCache()
-
 #if ENABLE(WEB_CRYPTO)
     WrapCryptoKey(Vector<uint8_t> key) -> (bool succeeded, Vector<uint8_t> wrappedKey) Synchronous
     UnwrapCryptoKey(Vector<uint8_t> wrappedKey) -> (bool succeeded, Vector<uint8_t> key) Synchronous
@@ -577,5 +575,10 @@ messages -> WebPageProxy {
 
 #if ENABLE(WEB_AUTHN)
     SetMockWebAuthenticationConfiguration(struct WebCore::MockWebAuthenticationConfiguration configuration);
+#endif
+
+#if PLATFORM(GTK) || PLATFORM(WPE)
+    SendMessageToWebView(struct WebKit::UserMessage userMessage)
+    SendMessageToWebViewWithReply(struct WebKit::UserMessage userMessage) -> (struct WebKit::UserMessage replyMessage) Async
 #endif
 }

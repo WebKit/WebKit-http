@@ -26,18 +26,50 @@
 #include "config.h"
 #include "ClipboardItem.h"
 
-#include "JSDOMPromise.h"
-#include "JSDOMPromiseDeferred.h"
+#include "Blob.h"
+#include "Clipboard.h"
+#include "ClipboardItemBindingsDataSource.h"
+#include "ClipboardItemPasteboardDataSource.h"
 #include "Navigator.h"
+#include "PasteboardItemInfo.h"
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
 ClipboardItem::~ClipboardItem() = default;
 
-ClipboardItem::ClipboardItem(Vector<KeyValuePair<String, RefPtr<DOMPromise>>>&& items, const Options& options)
-    : m_presentationStyle(options.presentationStyle)
+Ref<Blob> ClipboardItem::blobFromString(const String& stringData, const String& type)
 {
-    UNUSED_PARAM(items);
+    auto utf8 = stringData.utf8();
+    return Blob::create(SharedBuffer::create(utf8.data(), utf8.length()), Blob::normalizedContentType(type));
+}
+
+static ClipboardItem::PresentationStyle clipboardItemPresentationStyle(const PasteboardItemInfo& info)
+{
+    switch (info.preferredPresentationStyle) {
+    case PasteboardItemPresentationStyle::Unspecified:
+        return ClipboardItem::PresentationStyle::Unspecified;
+    case PasteboardItemPresentationStyle::Inline:
+        return ClipboardItem::PresentationStyle::Inline;
+    case PasteboardItemPresentationStyle::Attachment:
+        return ClipboardItem::PresentationStyle::Attachment;
+    }
+    ASSERT_NOT_REACHED();
+    return ClipboardItem::PresentationStyle::Unspecified;
+}
+
+ClipboardItem::ClipboardItem(Vector<KeyValuePair<String, RefPtr<DOMPromise>>>&& items, const Options& options)
+    : m_dataSource(makeUnique<ClipboardItemBindingsDataSource>(*this, WTFMove(items)))
+    , m_presentationStyle(options.presentationStyle)
+{
+}
+
+ClipboardItem::ClipboardItem(Clipboard& clipboard, const PasteboardItemInfo& info)
+    : m_clipboard(makeWeakPtr(clipboard))
+    , m_navigator(makeWeakPtr(clipboard.navigator()))
+    , m_dataSource(makeUnique<ClipboardItemPasteboardDataSource>(*this, info))
+    , m_presentationStyle(clipboardItemPresentationStyle(info))
+{
 }
 
 Ref<ClipboardItem> ClipboardItem::create(Vector<KeyValuePair<String, RefPtr<DOMPromise>>>&& data, const Options& options)
@@ -45,22 +77,29 @@ Ref<ClipboardItem> ClipboardItem::create(Vector<KeyValuePair<String, RefPtr<DOMP
     return adoptRef(*new ClipboardItem(WTFMove(data), options));
 }
 
+Ref<ClipboardItem> ClipboardItem::create(Clipboard& clipboard, const PasteboardItemInfo& info)
+{
+    return adoptRef(*new ClipboardItem(clipboard, info));
+}
+
 Vector<String> ClipboardItem::types() const
 {
-    return { };
+    return m_dataSource->types();
 }
 
 void ClipboardItem::getType(const String& type, Ref<DeferredPromise>&& promise)
 {
-    UNUSED_PARAM(type);
-    promise->reject(NotSupportedError);
+    m_dataSource->getType(type, WTFMove(promise));
 }
 
 Navigator* ClipboardItem::navigator()
 {
-    // FIXME: When support for Clipboard.read() is implemented, this should instead return the associated Clipboard
-    // object's navigator, if it is associated with a Clipboard.
-    return nullptr;
+    return m_navigator.get();
+}
+
+Clipboard* ClipboardItem::clipboard()
+{
+    return m_clipboard.get();
 }
 
 } // namespace WebCore

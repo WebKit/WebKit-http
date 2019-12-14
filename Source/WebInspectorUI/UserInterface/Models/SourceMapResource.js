@@ -74,6 +74,11 @@ WI.SourceMapResource = class SourceMapResource extends WI.Resource
         return resourceURLComponents.path.substring(sourceMappingBasePathURLComponents.path.length, resourceURLComponents.length);
     }
 
+    get supportsScriptBlackboxing()
+    {
+        return false;
+    }
+
     requestContentFromBackend()
     {
         // Revert the markAsFinished that was done in the constructor.
@@ -100,8 +105,7 @@ WI.SourceMapResource = class SourceMapResource extends WI.Resource
 
         function sourceMapResourceLoadError(error)
         {
-            // There was an error calling NetworkAgent.loadResource.
-            console.error(error || "There was an unknown error calling NetworkAgent.loadResource.");
+            console.error(error || "There was an unknown error calling Network.loadResource.");
             this.markAsFailed();
             return Promise.resolve({error: WI.UIString("An error occurred trying to load the resource.")});
         }
@@ -128,7 +132,7 @@ WI.SourceMapResource = class SourceMapResource extends WI.Resource
             });
         }
 
-        if (!window.NetworkAgent)
+        if (!InspectorBackend.hasDomain("Network"))
             return sourceMapResourceLoadError.call(this);
 
         var frameIdentifier = null;
@@ -138,7 +142,7 @@ WI.SourceMapResource = class SourceMapResource extends WI.Resource
         if (!frameIdentifier)
             frameIdentifier = WI.networkManager.mainFrame ? WI.networkManager.mainFrame.id : "";
 
-        return NetworkAgent.loadResource(frameIdentifier, this.url).then(sourceMapResourceLoaded.bind(this)).catch(sourceMapResourceLoadError.bind(this));
+        return this._target.NetworkAgent.loadResource(frameIdentifier, this.url).then(sourceMapResourceLoaded.bind(this)).catch(sourceMapResourceLoadError.bind(this));
     }
 
     createSourceCodeLocation(lineNumber, columnNumber)

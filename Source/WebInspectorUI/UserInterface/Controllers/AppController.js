@@ -30,25 +30,27 @@ WI.AppController = class AppController extends WI.AppControllerBase
         super();
 
         this._hasExtraDomains = false;
-        this._debuggableType = AppController.debuggableTypeFromHost();
-    }
 
-    // Static
-
-    static debuggableTypeFromHost()
-    {
-        let type = InspectorFrontendHost.debuggableType();
-        switch (type) {
+        switch (InspectorFrontendHost.debuggableType()) {
         case "javascript":
-            return WI.DebuggableType.JavaScript;
+            this._debuggableType = WI.DebuggableType.JavaScript;
+            break;
+
+        case "page":
+            this._debuggableType = WI.DebuggableType.Page;
+            break;
+
         case "service-worker":
-            return WI.DebuggableType.ServiceWorker;
-        case "web":
-            return WI.DebuggableType.Web;
-        default:
-            console.assert(false, "Unexpected debuggable type", type);
-            return WI.DebuggableType.JavaScript;
+            this._debuggableType = WI.DebuggableType.ServiceWorker;
+            break;
+
+        case "web-page":
+            this._debuggableType = WI.DebuggableType.WebPage;
+            break;
         }
+        console.assert(this._debuggableType);
+        if (!this._debuggableType)
+            this._debuggableType = WI.DebuggableType.JavaScript;
     }
 
     // Properties.
@@ -66,21 +68,22 @@ WI.AppController = class AppController extends WI.AppControllerBase
         this._hasExtraDomains = true;
 
         console.assert(WI.mainTarget instanceof WI.DirectBackendTarget);
-        console.assert(WI.mainTarget.type === WI.Target.Type.JSContext);
+        console.assert(WI.mainTarget.type === WI.TargetType.JavaScript);
         console.assert(WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript);
         console.assert(WI.targets.length === 1);
 
-        for (let domain of domains) {
-            let agent = InspectorBackend.activateDomain(domain);
+        let target = WI.mainTarget;
 
-            for (let target of WI.targets)
-                target.activateExtraDomain(domain);
+        for (let domain of domains) {
+            InspectorBackend.activateDomain(domain);
+
+            target.activateExtraDomain(domain);
 
             let manager = WI.managers.find((manager) => manager.domains && manager.domains.includes(domain));
             if (manager)
                 manager.activateExtraDomain(domain);
-            else if (agent.enable)
-                agent.enable();
+            else if (target.hasCommand(domain + ".enable"))
+                target._agents[domain].enable();
         }
 
         // FIXME: all code within WI.activateExtraDomains should be distributed elsewhere.

@@ -126,10 +126,12 @@
 #import <JavaScriptCore/Exception.h>
 #import <JavaScriptCore/InitializeThreading.h>
 #import <JavaScriptCore/JSCJSValue.h>
+#import <JavaScriptCore/JSGlobalObjectInlines.h>
 #import <JavaScriptCore/JSLock.h>
 #import <JavaScriptCore/JSValueRef.h>
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/ApplicationCacheStorage.h>
+#import <WebCore/BackForwardCache.h>
 #import <WebCore/BackForwardController.h>
 #import <WebCore/CSSAnimationController.h>
 #import <WebCore/CacheStorageProvider.h>
@@ -185,7 +187,6 @@
 #import <WebCore/Notification.h>
 #import <WebCore/NotificationController.h>
 #import <WebCore/Page.h>
-#import <WebCore/PageCache.h>
 #import <WebCore/PageConfiguration.h>
 #import <WebCore/PageGroup.h>
 #import <WebCore/PathUtilities.h>
@@ -1159,15 +1160,14 @@ static CFMutableSetRef allWebViewsSet;
     if (!exception || !context)
         return;
 
-    JSC::ExecState* execState = toJS(context);
-    JSC::JSLockHolder lock(execState);
+    JSC::JSGlobalObject* globalObject = toJS(context);
+    JSC::JSLockHolder lock(globalObject);
 
     // Make sure the context has a DOMWindow global object, otherwise this context didn't originate from a WebView.
-    JSC::JSGlobalObject* globalObject = execState->lexicalGlobalObject();
     if (!WebCore::toJSDOMWindow(globalObject->vm(), globalObject))
         return;
 
-    WebCore::reportException(execState, toJS(execState, exception));
+    WebCore::reportException(globalObject, toJS(globalObject, exception));
 }
 
 static bool shouldEnableLoadDeferring()
@@ -1417,8 +1417,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if (WebCore::IOSApplication::isMobileSafari())
             WebCore::DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
-        
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitEnableLegacyTLS"])
+
+        if (id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitEnableLegacyTLS"])
+            WebCore::SocketStreamHandleImpl::setLegacyTLSEnabled([value boolValue]);
+        else
             WebCore::SocketStreamHandleImpl::setLegacyTLSEnabled(true);
 
         didOneTimeInitialization = true;
@@ -2367,8 +2369,8 @@ static bool fastDocumentTeardownEnabled()
 
     _private->group->removeWebView(self);
 
-    // Deleteing the WebCore::Page will clear the page cache so we call destroy on
-    // all the plug-ins in the page cache to break any retain cycles.
+    // Deleteing the WebCore::Page will clear the back/forward cache so we call destroy on
+    // all the plug-ins in the back/forward cache to break any retain cycles.
     // See comment in HistoryItem::releaseAllPendingPageCaches() for more information.
     auto* page = _private->page;
     _private->page = nullptr;
@@ -2911,9 +2913,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setEditableLinkBehavior(core([preferences editableLinkBehavior]));
     settings.setTextDirectionSubmenuInclusionBehavior(core([preferences textDirectionSubmenuInclusionBehavior]));
     settings.setDOMPasteAllowed([preferences isDOMPasteAllowed]);
-    settings.setUsesPageCache([self usesPageCache]);
-    settings.setPageCacheSupportsPlugins([preferences pageCacheSupportsPlugins]);
-    settings.setBackForwardCacheExpirationInterval([preferences _backForwardCacheExpirationInterval]);
+    settings.setUsesBackForwardCache([self usesPageCache]);
+    settings.setBackForwardCacheSupportsPlugins([preferences pageCacheSupportsPlugins]);
+    settings.setBackForwardCacheExpirationInterval(Seconds { [preferences _backForwardCacheExpirationInterval] });
 
     settings.setDeveloperExtrasEnabled([preferences developerExtrasEnabled]);
     settings.setJavaScriptRuntimeFlags(JSC::RuntimeFlags([preferences javaScriptRuntimeFlags]));
@@ -3041,7 +3043,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPasswordEchoEnabled([preferences _allowPasswordEcho]);
     settings.setPasswordEchoDurationInSeconds([preferences _passwordEchoDuration]);
 
-    ASSERT_WITH_MESSAGE(settings.pageCacheSupportsPlugins(), "PageCacheSupportsPlugins should be enabled on iOS.");
+    ASSERT_WITH_MESSAGE(settings.backForwardCacheSupportsPlugins(), "BackForwardCacheSupportsPlugins should be enabled on iOS.");
     settings.setDelegatesPageScaling(true);
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -3198,6 +3200,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setEncryptedMediaAPIEnabled(preferences.encryptedMediaAPIEnabled);
 #endif
 
+#if ENABLE(PICTURE_IN_PICTURE_API)
+    settings.setPictureInPictureAPIEnabled(preferences.pictureInPictureAPIEnabled);
+#endif
+
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(preferences.inspectorAdditionsEnabled);
 
     settings.setAllowMediaContentTypesRequiringHardwareSupportAsFallback(preferences.allowMediaContentTypesRequiringHardwareSupportAsFallback);
@@ -3236,6 +3242,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setCoreMathMLEnabled([preferences coreMathMLEnabled]);
     settings.setRequestIdleCallbackEnabled([preferences requestIdleCallbackEnabled]);
+    settings.setAsyncClipboardAPIEnabled(preferences.asyncClipboardAPIEnabled);
 
     RuntimeEnabledFeatures::sharedFeatures().setServerTimingEnabled([preferences serverTimingEnabled]);
 
@@ -4354,7 +4361,7 @@ IGNORE_WARNINGS_END
 #endif // ENABLE(TOUCH_EVENTS)
 
 // For backwards compatibility with the WebBackForwardList API, we honor both
-// a per-WebView and a per-preferences setting for whether to use the page cache.
+// a per-WebView and a per-preferences setting for whether to use the back/forward cache.
 
 - (BOOL)usesPageCache
 {
@@ -5412,7 +5419,6 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 #if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
-    WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
 
@@ -7826,17 +7832,17 @@ static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *stri
 }
 
 #if !PLATFORM(IOS_FAMILY)
-static NSAppleEventDescriptor* aeDescFromJSValue(JSC::ExecState* exec, JSC::JSValue jsValue)
+static NSAppleEventDescriptor* aeDescFromJSValue(JSC::JSGlobalObject* lexicalGlobalObject, JSC::JSValue jsValue)
 {
     using namespace JSC;
-    VM& vm = exec->vm();
+    VM& vm = lexicalGlobalObject->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     NSAppleEventDescriptor* aeDesc = 0;
     if (jsValue.isBoolean())
         return [NSAppleEventDescriptor descriptorWithBoolean:jsValue.asBoolean()];
     if (jsValue.isString())
-        return [NSAppleEventDescriptor descriptorWithString:asString(jsValue)->value(exec)];
+        return [NSAppleEventDescriptor descriptorWithString:asString(jsValue)->value(lexicalGlobalObject)];
     if (jsValue.isNumber()) {
         double value = jsValue.asNumber();
         int intValue = value;
@@ -7862,17 +7868,17 @@ static NSAppleEventDescriptor* aeDescFromJSValue(JSC::ExecState* exec, JSC::JSVa
                 aeDesc = [NSAppleEventDescriptor listDescriptor];
                 unsigned numItems = array->length();
                 for (unsigned i = 0; i < numItems; ++i)
-                    [aeDesc insertDescriptor:aeDescFromJSValue(exec, array->get(exec, i)) atIndex:0];
+                    [aeDesc insertDescriptor:aeDescFromJSValue(lexicalGlobalObject, array->get(lexicalGlobalObject, i)) atIndex:0];
                 visitedElems.get().remove(object);
                 return aeDesc;
             }
         }
-        JSC::JSValue primitive = object->toPrimitive(exec);
+        JSC::JSValue primitive = object->toPrimitive(lexicalGlobalObject);
         if (UNLIKELY(scope.exception())) {
             scope.clearException();
             return [NSAppleEventDescriptor nullDescriptor];
         }
-        return aeDescFromJSValue(exec, primitive);
+        return aeDescFromJSValue(lexicalGlobalObject, primitive);
     }
     if (jsValue.isUndefined())
         return [NSAppleEventDescriptor descriptorWithTypeCode:cMissingValue];
@@ -7890,8 +7896,8 @@ static NSAppleEventDescriptor* aeDescFromJSValue(JSC::ExecState* exec, JSC::JSVa
     JSC::JSValue result = coreFrame->script().executeScript(script, true);
     if (!result) // FIXME: pass errors
         return 0;
-    JSC::JSLockHolder lock(coreFrame->script().globalObject(WebCore::mainThreadNormalWorld())->globalExec());
-    return aeDescFromJSValue(coreFrame->script().globalObject(WebCore::mainThreadNormalWorld())->globalExec(), result);
+    JSC::JSLockHolder lock(coreFrame->script().globalObject(WebCore::mainThreadNormalWorld()));
+    return aeDescFromJSValue(coreFrame->script().globalObject(WebCore::mainThreadNormalWorld()), result);
 }
 #endif
 
@@ -8793,7 +8799,7 @@ FORWARD(toggleUnderline)
 
     switch (cacheModel) {
     case WebCacheModelDocumentViewer: {
-        // Page cache capacity (in pages)
+        // Back/forward cache capacity (in pages)
         pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
@@ -8829,7 +8835,7 @@ FORWARD(toggleUnderline)
         break;
     }
     case WebCacheModelDocumentBrowser: {
-        // Page cache capacity (in pages)
+        // Back/forward cache capacity (in pages)
         if (memSize >= 512)
             pageCacheSize = 2;
         else if (memSize >= 256)
@@ -8880,7 +8886,7 @@ FORWARD(toggleUnderline)
         break;
     }
     case WebCacheModelPrimaryWebBrowser: {
-        // Page cache capacity (in pages)
+        // Back/forward cache capacity (in pages)
         if (memSize >= 512)
             pageCacheSize = 2;
         else if (memSize >= 256)
@@ -8963,7 +8969,7 @@ FORWARD(toggleUnderline)
     memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
 
-    auto& pageCache = WebCore::PageCache::singleton();
+    auto& pageCache = WebCore::BackForwardCache::singleton();
     pageCache.setMaxSize(pageCacheSize);
 #if PLATFORM(IOS_FAMILY)
     nsurlCacheMemoryCapacity = std::max(nsurlCacheMemoryCapacity, [nsurlCache memoryCapacity]);

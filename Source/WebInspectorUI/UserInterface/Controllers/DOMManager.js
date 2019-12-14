@@ -63,10 +63,15 @@ WI.DOMManager = class DOMManager extends WI.Object
         // This currently uses a setTimeout since it doesn't need to happen immediately, and DOMManager uses the
         // global DOMAgent to request the document, so we want to make sure we've transitioned the global agents
         // to this target if necessary.
-        if (target.DOMAgent) {
+        if (target.hasDomain("DOM")) {
             setTimeout(() => {
                 this.ensureDocument();
             });
+
+            if (WI.isEngineeringBuild) {
+                if (DOMManager.supportsEditingUserAgentShadowTrees({target}))
+                    target.DOMAgent.setAllowEditingUserAgentShadowTrees(WI.settings.engineeringAllowEditingUserAgentShadowTrees.value);
+            }
         }
     }
 
@@ -79,12 +84,22 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     static supportsDisablingEventListeners()
     {
-        return !!(InspectorBackend.domains.DOM && InspectorBackend.domains.DOM.setEventListenerDisabled);
+        return InspectorBackend.hasCommand("DOM.setEventListenerDisabled");
     }
 
     static supportsEventListenerBreakpoints()
     {
-        return !!(InspectorBackend.domains.DOM && InspectorBackend.domains.DOM.setBreakpointForEventListener && InspectorBackend.domains.DOM.removeBreakpointForEventListener);
+        return InspectorBackend.hasCommand("DOM.setBreakpointForEventListener")
+            && InspectorBackend.hasCommand("DOM.removeBreakpointForEventListener");
+    }
+
+    static supportsEditingUserAgentShadowTrees({frontendOnly, target} = {})
+    {
+        target = target || InspectorBackend;
+        return WI.isEngineeringBuild
+            && WI.settings.engineeringAllowEditingUserAgentShadowTrees.value
+            && (frontendOnly || target.hasCommand("DOM.setAllowEditingUserAgentShadowTrees"));
+
     }
 
     // Public
@@ -114,7 +129,7 @@ WI.DOMManager = class DOMManager extends WI.Object
         if (!WI.pageTarget)
             return;
 
-        if (!WI.pageTarget.DOMAgent)
+        if (!WI.pageTarget.hasDomain("DOM"))
             return;
 
         this._hasRequestedDocument = true;
@@ -137,12 +152,18 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     pushNodeToFrontend(objectId, callback)
     {
-        this._dispatchWhenDocumentAvailable(DOMAgent.requestNode.bind(DOMAgent, objectId), callback);
+        let target = WI.assumingMainTarget();
+        this._dispatchWhenDocumentAvailable((callbackWrapper) => {
+            target.DOMAgent.requestNode(objectId, callbackWrapper);
+        }, callback);
     }
 
     pushNodeByPathToFrontend(path, callback)
     {
-        this._dispatchWhenDocumentAvailable(DOMAgent.pushNodeByPathToFrontend.bind(DOMAgent, path), callback);
+        let target = WI.assumingMainTarget();
+        this._dispatchWhenDocumentAvailable((callbackWrapper) => {
+            target.DOMAgent.pushNodeByPathToFrontend(path, callbackWrapper);
+        }, callback);
     }
 
     // DOMObserver
@@ -262,9 +283,11 @@ WI.DOMManager = class DOMManager extends WI.Object
 
         this._loadNodeAttributesTimeout = 0;
 
+        let target = WI.assumingMainTarget();
+
         for (var nodeId in this._attributeLoadNodeIds) {
             var nodeIdAsNumber = parseInt(nodeId);
-            DOMAgent.getAttributes(nodeIdAsNumber, callback.bind(this, nodeIdAsNumber));
+            target.DOMAgent.getAttributes(nodeIdAsNumber, callback.bind(this, nodeIdAsNumber));
         }
         this._attributeLoadNodeIds = {};
     }
@@ -453,10 +476,11 @@ WI.DOMManager = class DOMManager extends WI.Object
         let nodeId = nodeOrNodeId instanceof WI.DOMNode ? nodeOrNodeId.id : nodeOrNodeId;
         console.assert(typeof nodeId === "number");
 
+        let target = WI.assumingMainTarget();
         if (typeof callback === "function")
-            DOMAgent.querySelector(nodeId, selector, this._wrapClientCallback(callback));
+            target.DOMAgent.querySelector(nodeId, selector, this._wrapClientCallback(callback));
         else
-            return DOMAgent.querySelector(nodeId, selector).then(({nodeId}) => nodeId);
+            return target.DOMAgent.querySelector(nodeId, selector).then(({nodeId}) => nodeId);
     }
 
     querySelectorAll(nodeOrNodeId, selector, callback)
@@ -464,10 +488,11 @@ WI.DOMManager = class DOMManager extends WI.Object
         let nodeId = nodeOrNodeId instanceof WI.DOMNode ? nodeOrNodeId.id : nodeOrNodeId;
         console.assert(typeof nodeId === "number");
 
+        let target = WI.assumingMainTarget();
         if (typeof callback === "function")
-            DOMAgent.querySelectorAll(nodeId, selector, this._wrapClientCallback(callback));
+            target.DOMAgent.querySelectorAll(nodeId, selector, this._wrapClientCallback(callback));
         else
-            return DOMAgent.querySelectorAll(nodeId, selector).then(({nodeIds}) => nodeIds);
+            return target.DOMAgent.querySelectorAll(nodeId, selector).then(({nodeIds}) => nodeIds);
     }
 
     highlightDOMNode(nodeId, mode)
@@ -477,17 +502,19 @@ WI.DOMManager = class DOMManager extends WI.Object
             this._hideDOMNodeHighlightTimeout = undefined;
         }
 
-        this._highlightedDOMNodeId = nodeId;
+        let target = WI.assumingMainTarget();
         if (nodeId)
-            DOMAgent.highlightNode.invoke({nodeId, highlightConfig: this._buildHighlightConfig(mode)});
+            target.DOMAgent.highlightNode.invoke({nodeId, highlightConfig: this._buildHighlightConfig(mode)});
         else
-            DOMAgent.hideHighlight();
+            target.DOMAgent.hideHighlight();
     }
 
     highlightDOMNodeList(nodeIds, mode)
     {
+        let target = WI.assumingMainTarget();
+
         // COMPATIBILITY (iOS 11): DOM.highlightNodeList did not exist.
-        if (!DOMAgent.highlightNodeList)
+        if (!target.hasCommand("DOM.highlightNodeList"))
             return;
 
         if (this._hideDOMNodeHighlightTimeout) {
@@ -495,13 +522,15 @@ WI.DOMManager = class DOMManager extends WI.Object
             this._hideDOMNodeHighlightTimeout = undefined;
         }
 
-        DOMAgent.highlightNodeList(nodeIds, this._buildHighlightConfig(mode));
+        target.DOMAgent.highlightNodeList(nodeIds, this._buildHighlightConfig(mode));
     }
 
     highlightSelector(selectorText, frameId, mode)
     {
+        let target = WI.assumingMainTarget();
+
         // COMPATIBILITY (iOS 8): DOM.highlightSelector did not exist.
-        if (!DOMAgent.highlightSelector)
+        if (!target.hasCommand("DOM.highlightSelector"))
             return;
 
         if (this._hideDOMNodeHighlightTimeout) {
@@ -509,12 +538,13 @@ WI.DOMManager = class DOMManager extends WI.Object
             this._hideDOMNodeHighlightTimeout = undefined;
         }
 
-        DOMAgent.highlightSelector(this._buildHighlightConfig(mode), selectorText, frameId);
+        target.DOMAgent.highlightSelector(this._buildHighlightConfig(mode), selectorText, frameId);
     }
 
     highlightRect(rect, usePageCoordinates)
     {
-        DOMAgent.highlightRect.invoke({
+        let target = WI.assumingMainTarget();
+        target.DOMAgent.highlightRect.invoke({
             x: rect.x,
             y: rect.y,
             width: rect.width,
@@ -546,12 +576,13 @@ WI.DOMManager = class DOMManager extends WI.Object
         if (enabled === this._inspectModeEnabled)
             return;
 
+        let target = WI.assumingMainTarget();
         let commandArguments = {
             enabled,
             highlightConfig: this._buildHighlightConfig(),
             showRulers: WI.settings.showRulersDuringElementSelection.value,
         };
-        DOMAgent.setInspectModeEnabled.invoke(commandArguments, (error) => {
+        target.DOMAgent.setInspectModeEnabled.invoke(commandArguments, (error) => {
             this._inspectModeEnabled = error ? false : enabled;
             this.dispatchEventToListeners(WI.DOMManager.Event.InspectModeStateChanged);
         });
@@ -568,27 +599,31 @@ WI.DOMManager = class DOMManager extends WI.Object
             if (error)
                 return;
 
+            let lastInspectedNode = this._inspectedNode;
             this._inspectedNode = node;
 
-            this.dispatchEventToListeners(WI.DOMManager.Event.InspectedNodeChanged);
+            this.dispatchEventToListeners(WI.DOMManager.Event.InspectedNodeChanged, {lastInspectedNode});
         };
 
+        let target = WI.assumingMainTarget();
+
         // COMPATIBILITY (iOS 11): DOM.setInspectedNode did not exist.
-        if (!DOMAgent.setInspectedNode) {
-            ConsoleAgent.addInspectedNode(node.id, callback);
+        if (!target.hasCommand("DOM.setInspectedNode")) {
+            target.ConsoleAgent.addInspectedNode(node.id, callback);
             return;
         }
 
-        DOMAgent.setInspectedNode(node.id, callback);
+        target.DOMAgent.setInspectedNode(node.id, callback);
     }
 
     getSupportedEventNames(callback)
     {
-        if (!DOMAgent.getSupportedEventNames)
+        let target = WI.assumingMainTarget();
+        if (!target.hasCommand("DOM.getSupportedEventNames"))
             return Promise.resolve(new Set);
 
         if (!this._getSupportedEventNamesPromise) {
-            this._getSupportedEventNamesPromise = DOMAgent.getSupportedEventNames()
+            this._getSupportedEventNamesPromise = target.DOMAgent.getSupportedEventNames()
             .then(({eventNames}) => new Set(eventNames));
         }
 
@@ -597,7 +632,8 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     setEventListenerDisabled(eventListener, disabled)
     {
-        DOMAgent.setEventListenerDisabled(eventListener.eventListenerId, disabled, (error) => {
+        let target = WI.assumingMainTarget();
+        target.DOMAgent.setEventListenerDisabled(eventListener.eventListenerId, disabled, (error) => {
             if (error)
                 console.error(error);
         });
@@ -618,7 +654,7 @@ WI.DOMManager = class DOMManager extends WI.Object
         this._breakpointsForEventListeners.set(eventListener.eventListenerId, breakpoint);
 
         for (let target of WI.targets) {
-            if (target.DOMAgent)
+            if (target.hasDomain("DOM"))
                 this._updateEventBreakpoint(breakpoint, target);
         }
 
@@ -631,7 +667,7 @@ WI.DOMManager = class DOMManager extends WI.Object
         console.assert(breakpoint);
 
         for (let target of WI.targets) {
-            if (target.DOMAgent)
+            if (target.hasDomain("DOM"))
                 target.DOMAgent.removeBreakpointForEventListener(eventListener.eventListenerId);
         }
 
@@ -697,7 +733,7 @@ WI.DOMManager = class DOMManager extends WI.Object
             return;
 
         for (let target of WI.targets) {
-            if (target.DOMAgent)
+            if (target.hasDomain("DOM"))
                 this._updateEventBreakpoint(breakpoint, target);
         }
     }

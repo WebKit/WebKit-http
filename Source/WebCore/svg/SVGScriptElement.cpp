@@ -32,10 +32,9 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(SVGScriptElement);
 
 inline SVGScriptElement::SVGScriptElement(const QualifiedName& tagName, Document& document, bool wasInsertedByParser, bool alreadyStarted)
     : SVGElement(tagName, document)
-    , SVGExternalResourcesRequired(this)
     , SVGURIReference(this)
     , ScriptElement(*this, wasInsertedByParser, alreadyStarted)
-    , m_svgLoadEventTimer(*this, &SVGElement::svgLoadEventTimerFired)
+    , m_loadEventTimer(*this, &SVGElement::loadEventTimerFired)
 {
     ASSERT(hasTagName(SVGNames::scriptTag));
 }
@@ -49,7 +48,6 @@ void SVGScriptElement::parseAttribute(const QualifiedName& name, const AtomStrin
 {
     SVGElement::parseAttribute(name, value);
     SVGURIReference::parseAttribute(name, value);
-    SVGExternalResourcesRequired::parseAttribute(name, value);
 }
 
 void SVGScriptElement::svgAttributeChanged(const QualifiedName& attrName)
@@ -62,14 +60,11 @@ void SVGScriptElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     SVGElement::svgAttributeChanged(attrName);
-    SVGExternalResourcesRequired::svgAttributeChanged(attrName);
 }
 
 Node::InsertedIntoAncestorResult SVGScriptElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
     SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
-    if (insertionType.connectedToDocument)
-        SVGExternalResourcesRequired::insertedIntoDocument();
     return ScriptElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 }
 
@@ -84,12 +79,6 @@ void SVGScriptElement::childrenChanged(const ChildChange& change)
     ScriptElement::childrenChanged(change);
 }
 
-void SVGScriptElement::finishParsingChildren()
-{
-    SVGElement::finishParsingChildren();
-    SVGExternalResourcesRequired::finishParsingChildren();
-}
-
 void SVGScriptElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     SVGElement::addSubresourceAttributeURLs(urls);
@@ -99,6 +88,12 @@ void SVGScriptElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 Ref<Element> SVGScriptElement::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
 {
     return adoptRef(*new SVGScriptElement(tagQName(), targetDocument, false, alreadyStarted()));
+}
+
+void SVGScriptElement::dispatchErrorEvent()
+{
+    setErrorOccurred(true);
+    ScriptElement::dispatchErrorEvent();
 }
 
 }

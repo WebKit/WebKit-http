@@ -93,7 +93,6 @@
 #import <getopt.h>
 #import <wtf/Assertions.h>
 #import <wtf/FastMalloc.h>
-#import <wtf/LoggingAccumulator.h>
 #import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/RetainPtr.h>
@@ -1029,8 +1028,9 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.resizeObserverEnabled = options.enableResizeObserver;
     preferences.coreMathMLEnabled = options.enableCoreMathML;
     preferences.requestIdleCallbackEnabled = options.enableRequestIdleCallback;
+    preferences.asyncClipboardAPIEnabled = options.enableAsyncClipboardAPI;
     preferences.privateBrowsingEnabled = options.useEphemeralSession;
-    preferences.usesPageCache = options.enablePageCache;
+    preferences.usesPageCache = options.enableBackForwardCache;
 }
 
 // Called once on DumpRenderTree startup.
@@ -1944,7 +1944,7 @@ static void resetWebViewToConsistentStateBeforeTesting(const TestOptions& option
     [LayoutTestSpellChecker uninstallAndReset];
 #endif
 
-    resetAccumulatedLogs();
+    WebCoreTestSupport::clearAllLogChannelsToAccumulate();
     WebCoreTestSupport::initializeLogChannelsIfNecessary();
 }
 

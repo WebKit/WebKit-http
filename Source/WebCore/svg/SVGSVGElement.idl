@@ -72,11 +72,10 @@
     [NewObject] SVGMatrix createSVGMatrix();
     [NewObject] SVGRect createSVGRect();
     [NewObject] SVGTransform createSVGTransform();
-    [NewObject] SVGTransform createSVGTransformFromMatrix(SVGMatrix matrix);
+    [NewObject] SVGTransform createSVGTransformFromMatrix(optional DOMMatrix2DInit matrix);
 
     Element getElementById([RequiresExistingAtomString] DOMString elementId);
 };
 
-SVGSVGElement implements SVGExternalResourcesRequired;
 SVGSVGElement implements SVGFitToViewBox;
 SVGSVGElement implements SVGZoomAndPan;

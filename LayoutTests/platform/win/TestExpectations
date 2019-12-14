@@ -897,8 +897,6 @@ media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
 
-webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html [ Skip ]
-
 # No CORS support for media elements is implemented yet.
 webkit.org/b/176626 http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Crash Failure ]
 webkit.org/b/176653 http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Crash Failure ]
@@ -1188,6 +1186,12 @@ http/tests/security/clipboard/copy-paste-html-across-origin-sanitizes-html.html 
 http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-across-origin.html [ Skip ]
 http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-in-same-origin.html [ Skip ]
 http/tests/security/clipboard/copy-paste-html-across-origin-strips-mso-list.html [ Skip ]
+
+webkit.org/b/203100 editing/async-clipboard/clipboard-read-basic.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-reading.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-getting-type.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-item-get-type-basic.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-get-type-with-old-items.html [ Skip ]
 
 webkit.org/b/140783 [ Release ] editing/pasteboard/copy-standalone-image.html [ Failure ImageOnlyFailure ]
 webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Skip ] # Debug Assertion
@@ -3794,8 +3798,6 @@ webkit.org/b/174801 fast/text/line-height-minimumFontSize-zoom.html [ ImageOnlyF
 webkit.org/b/174801 fast/text/line-height-minimumFontSize-autosize.html [ Failure ]
 webkit.org/b/174801 fast/text/line-height-minimumFontSize.html [ Failure ]
 
-webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
-
 # No service worker implementation for WK1
 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 http/tests/cache-storage [ Skip ]
@@ -4465,3 +4467,28 @@ webkit.org/b/220830 fast/text/emoji-variation-selector.html [ ImageOnlyFailure ]
 webkit.org/b/201491 fast/block/float/float-with-anonymous-previous-sibling.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/202460 imported/w3c/web-platform-tests/2dcontext/image-smoothing/imagesmoothing.html [ Failure ]
+
+webkit.org/b/202938 fast/images/reset-image-animation.html [ Failure Pass ]
+
+webkit.org/b/202939 fast/workers/worker-exception-during-navigation.html [ Failure Pass ]
+
+webkit.org/b/202945 fast/css/invalidation-errors-2.html [ Failure ]
+webkit.org/b/202945 fast/css/invalidation-errors.html [ Failure ]
+
+webkit.org/b/202948 fast/forms/targeted-frame-submission.html [ Failure ]
+webkit.org/b/202948 fast/forms/textarea-scroll-height.html [ Failure ]
+webkit.org/b/202948 fast/loader/text-document-wrapping.html [ Failure ]
+webkit.org/b/202948 fast/parser/open-comment-in-textarea.html [ Failure ]
+
+webkit.org/b/202947 http/tests/is-logged-in/available-in-secure-contexts.https.html [ Failure ]
+
+webkit.org/b/202949 http/tests/websocket/tests/hybi/non-document-mixed-content-blocked-http-with-embedded-https-with-embedded-http.html [ Failure ]
+webkit.org/b/202949 http/tests/websocket/tests/hybi/non-document-mixed-content-blocked-http-with-embedded-https.html [ Failure ]
+
+webkit.org/b/202954 http/wpt/resource-timing/rt-resources-per-worker.html [ Failure ]
+
+webkit.org/b/202951 fast/canvas/drawImage-animated-gif-draws-first-frame-and-no-reset-image.html [ Timeout ]
+
+webkit.org/b/202952 http/tests/security/navigate-when-restoring-cached-page.html [ Timeout ]
+
+webkit.org/b/202953 http/tests/websocket/tests/hybi/non-document-mixed-content-blocked-https-with-embedded-http-with-embedded-https.https.html [ Timeout ]

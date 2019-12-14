@@ -48,6 +48,11 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
 
     // Public
 
+    get supportsNewRule()
+    {
+        return this.nodeStyles && !this.nodeStyles.node.isInUserAgentShadowTree();
+    }
+
     refresh(significantChange)
     {
         // We only need to do a rebuild on significant changes. Other changes are handled
@@ -93,17 +98,11 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
 
     newRuleButtonClicked()
     {
-        if (this.nodeStyles.node.isInUserAgentShadowTree())
-            return;
-
         this._addNewRule();
     }
 
     newRuleButtonContextMenu(event)
     {
-        if (this.nodeStyles.node.isInUserAgentShadowTree())
-            return;
-
         let styleSheets = WI.cssManager.styleSheets.filter(styleSheet => styleSheet.hasInfo() && !styleSheet.isInlineStyleTag() && !styleSheet.isInlineStyleAttributeStyleSheet());
         if (!styleSheets.length)
             return;
@@ -308,7 +307,7 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
             // Add all pseudo styles before any inherited rules.
             let beforePseudoId = null;
             let afterPseudoId = null;
-            if (InspectorBackend.domains.CSS.PseudoId) {
+            if (InspectorBackend.Enum.CSS.PseudoId) {
                 beforePseudoId = WI.CSSManager.PseudoSelectorNames.Before;
                 afterPseudoId = WI.CSSManager.PseudoSelectorNames.After;
             } else {

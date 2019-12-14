@@ -33,6 +33,11 @@ class TextStream;
 
 namespace WebCore {
 
+enum class DumpStyleValues {
+    All,
+    NonInitial,
+};
+
 static const size_t PrintColorAdjustBits = 1;
 enum class PrintColorAdjust : uint8_t {
     Economy,
@@ -901,6 +906,7 @@ enum class PointerEvents : uint8_t {
     VisibleStroke,
     VisibleFill,
     VisiblePainted,
+    BoundingBox,
     All
 };
 
@@ -915,6 +921,8 @@ enum class BackfaceVisibility : uint8_t {
 };
 
 enum class TransformBox : uint8_t {
+    StrokeBox,
+    ContentBox,
     BorderBox,
     FillBox,
     ViewBox

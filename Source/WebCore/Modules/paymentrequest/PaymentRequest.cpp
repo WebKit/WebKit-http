@@ -251,7 +251,7 @@ enum class ShouldValidatePaymentMethodIdentifier {
     Yes,
 };
 
-static ExceptionOr<std::tuple<String, Vector<String>>> checkAndCanonicalizeDetails(JSC::ExecState& execState, PaymentDetailsBase& details, bool requestShipping, ShouldValidatePaymentMethodIdentifier shouldValidatePaymentMethodIdentifier)
+static ExceptionOr<std::tuple<String, Vector<String>>> checkAndCanonicalizeDetails(JSC::JSGlobalObject& execState, PaymentDetailsBase& details, bool requestShipping, ShouldValidatePaymentMethodIdentifier shouldValidatePaymentMethodIdentifier)
 {
     for (auto& item : details.displayItems) {
         auto exception = checkAndCanonicalizeAmount(item.amount);
@@ -539,9 +539,10 @@ Optional<PaymentShippingType> PaymentRequest::shippingType() const
     return WTF::nullopt;
 }
 
-bool PaymentRequest::canSuspendForDocumentSuspension() const
+// FIXME: This should never prevent entering the back/forward cache.
+bool PaymentRequest::shouldPreventEnteringBackForwardCache_DEPRECATED() const
 {
-    return !hasPendingActivity();
+    return hasPendingActivity();
 }
 
 void PaymentRequest::shippingAddressChanged(Ref<PaymentAddress>&& shippingAddress)

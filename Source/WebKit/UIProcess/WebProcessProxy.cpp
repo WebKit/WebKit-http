@@ -29,6 +29,7 @@
 #include "APIFrameHandle.h"
 #include "APIPageGroupHandle.h"
 #include "APIPageHandle.h"
+#include "AuthenticatorManager.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
 #include "LoadParameters.h"
@@ -39,6 +40,7 @@
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "UserData.h"
+#include "WebBackForwardCache.h"
 #include "WebBackForwardListItem.h"
 #include "WebInspectorUtilities.h"
 #include "WebNavigationDataStore.h"
@@ -309,7 +311,7 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
 
 bool WebProcessProxy::shouldSendPendingMessage(const PendingMessage& message)
 {
-#if HAVE(SANDBOX_ISSUE_MACH_EXTENSION_TO_PROCESS_BY_PID)
+#if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
     if (message.encoder->messageName() == "LoadRequestWaitingForPID") {
         auto buffer = message.encoder->buffer();
         auto bufferSize = message.encoder->bufferSize();
@@ -631,6 +633,13 @@ void WebProcessProxy::updateBackForwardItem(const BackForwardListItemState& item
         return;
 
     item->setPageState(PageState { itemState.pageState });
+
+    if (!!item->backForwardCacheEntry() != itemState.hasCachedPage) {
+        if (itemState.hasCachedPage)
+            processPool().backForwardCache().addEntry(*item, coreProcessIdentifier());
+        else if (!item->suspendedPage())
+            processPool().backForwardCache().removeEntry(*item);
+    }
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -883,6 +892,12 @@ void WebProcessProxy::didDestroyFrame(FrameIdentifier frameID)
     // back to the UIProcess, then the frameDestroyed message will still be received because it
     // gets sent directly to the WebProcessProxy.
     ASSERT(WebFrameProxyMap::isValidKey(frameID));
+#if ENABLE(WEB_AUTHN)
+    if (auto* frame = webFrame(frameID)) {
+        if (auto* page = frame->page())
+            page->websiteDataStore().authenticatorManager().cancelRequest(page->webPageID(), frameID);
+    }
+#endif
     m_frameMap.remove(frameID);
 }
 
@@ -985,17 +1000,6 @@ void WebProcessProxy::updateTextCheckerState()
 {
     if (canSendMessage())
         send(Messages::WebProcess::SetTextCheckerState(TextChecker::state()), 0);
-}
-
-void WebProcessProxy::didSaveToPageCache()
-{
-    m_processPool->processDidCachePage(this);
-}
-
-void WebProcessProxy::releasePageCache()
-{
-    if (canSendMessage())
-        send(Messages::WebProcess::ReleasePageCache(), 0);
 }
 
 void WebProcessProxy::windowServerConnectionStateChanged()

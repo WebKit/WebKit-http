@@ -31,6 +31,7 @@
 #include "DataReference.h"
 #include "Logging.h"
 #include "NetworkCache.h"
+#include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkMDNSRegisterMessages.h"
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
@@ -101,6 +102,10 @@ NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(NetworkProcess& net
     // reply from the Network process, which would be unsafe.
     m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
     m_connection->open();
+
+#if ENABLE(SERVICE_WORKER)
+    establishSWServerConnection();
+#endif
 }
 
 NetworkConnectionToWebProcess::~NetworkConnectionToWebProcess()
@@ -400,14 +405,30 @@ Vector<RefPtr<WebCore::BlobDataFileReference>> NetworkConnectionToWebProcess::re
 
 void NetworkConnectionToWebProcess::scheduleResourceLoad(NetworkResourceLoadParameters&& loadParameters)
 {
+#if ENABLE(SERVICE_WORKER)
+    auto& server = m_networkProcess->swServerForSession(m_sessionID);
+    if (!server.isImportCompleted()) {
+        server.whenImportIsCompleted([this, protectedThis = makeRef(*this), loadParameters = WTFMove(loadParameters)]() mutable {
+            if (!m_networkProcess->webProcessConnection(webProcessIdentifier()))
+                return;
+            ASSERT(m_networkProcess->swServerForSession(m_sessionID).isImportCompleted());
+            scheduleResourceLoad(WTFMove(loadParameters));
+        });
+        return;
+    }
+#endif
     auto identifier = loadParameters.identifier;
     RELEASE_ASSERT(identifier);
     RELEASE_ASSERT(RunLoop::isMain());
     ASSERT(!m_networkResourceLoaders.contains(identifier));
 
-    auto loader = NetworkResourceLoader::create(WTFMove(loadParameters), *this);
-    m_networkResourceLoaders.add(identifier, loader.copyRef());
+    auto& loader = m_networkResourceLoaders.add(identifier, NetworkResourceLoader::create(WTFMove(loadParameters), *this)).iterator->value;
+
+#if ENABLE(SERVICE_WORKER)
+    loader->startWithServiceWorker();
+#else
     loader->start();
+#endif
 }
 
 void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadParameters&& loadParameters, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
@@ -875,10 +896,12 @@ void NetworkConnectionToWebProcess::unregisterSWConnection()
 
 void NetworkConnectionToWebProcess::establishSWServerConnection()
 {
+    if (m_swConnection)
+        return;
+
     auto& server = m_networkProcess->swServerForSession(m_sessionID);
     auto connection = makeUnique<WebSWServerConnection>(m_networkProcess, server, m_connection.get(), m_webProcessIdentifier);
 
-    ASSERT(!m_swConnection);
     m_swConnection = makeWeakPtr(*connection);
     server.addConnection(WTFMove(connection));
 }
@@ -900,6 +923,13 @@ void NetworkConnectionToWebProcess::serverToContextConnectionNoLongerNeeded()
     m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::WorkerContextConnectionNoLongerNeeded { webProcessIdentifier() }, 0);
 
     m_swContextConnection = nullptr;
+}
+
+WebSWServerConnection& NetworkConnectionToWebProcess::swConnection()
+{
+    if (!m_swConnection)
+        establishSWServerConnection();
+    return *m_swConnection;
 }
 #endif
 

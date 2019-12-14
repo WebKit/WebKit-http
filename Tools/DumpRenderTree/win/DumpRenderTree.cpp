@@ -912,8 +912,9 @@ static void setWebPreferencesForTestOptions(IWebPreferences* preferences, const 
     prefsPrivate->setIsSecureContextAttributeEnabled(options.enableIsSecureContextAttribute);
     prefsPrivate->setInspectorAdditionsEnabled(options.enableInspectorAdditions);
     prefsPrivate->setRequestIdleCallbackEnabled(options.enableRequestIdleCallback);
+    prefsPrivate->setAsyncClipboardAPIEnabled(options.enableAsyncClipboardAPI);
     preferences->setPrivateBrowsingEnabled(options.useEphemeralSession);
-    preferences->setUsesPageCache(options.enablePageCache);
+    preferences->setUsesPageCache(options.enableBackForwardCache);
 }
 
 static String applicationId()
@@ -1051,6 +1052,9 @@ static void resetWebViewToConsistentStateBeforeTesting(const TestOptions& option
 
     COMPtr<IWebViewPrivate5> webViewPrivate5(Query, webView);
     webViewPrivate5->exitFullscreenIfNeeded();
+
+    WebCoreTestSupport::clearAllLogChannelsToAccumulate();
+    WebCoreTestSupport::initializeLogChannelsIfNecessary();
 }
 
 static void sizeWebViewForCurrentTest()

@@ -28,8 +28,10 @@
 #if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 #import "Attachment.h"
+#import "LayerHostingContext.h"
 #import "Logging.h"
 #import "PlaybackSessionManager.h"
+#import "VideoFullscreenManagerMessages.h"
 #import "VideoFullscreenManagerProxyMessages.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebPage.h"

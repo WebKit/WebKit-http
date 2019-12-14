@@ -34,6 +34,7 @@
 #include "ApplicationCacheStorage.h"
 #include "AudioSession.h"
 #include "Autofill.h"
+#include "BackForwardCache.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
 #include "CSSAnimationController.h"
@@ -121,13 +122,13 @@
 #include "MediaStreamTrack.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
+#include "MockAudioDestinationCocoa.h"
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "NavigatorMediaDevices.h"
 #include "NetworkLoadInformation.h"
 #include "Page.h"
-#include "PageCache.h"
 #include "PageOverlay.h"
 #include "PathUtilities.h"
 #include "PlatformKeyboardEvent.h"
@@ -331,6 +332,7 @@ private:
     void reopen() final { }
     void bringToFront() final { }
     String localizedStringsURL() final { return String(); }
+    String debuggableType() const final { return "page"_s; };
     void inspectedURLChanged(const String&) final { }
     void showCertificate(const CertificateInfo&) final { }
     void setAttachedWindowHeight(unsigned) final { }
@@ -535,6 +537,8 @@ void Internals::resetToConsistentState(Page& page)
 #if ENABLE(MEDIA_STREAM)
     RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(false);
 #endif
+
+    HTMLCanvasElement::setMaxPixelMemoryForTesting(0); // This means use the default value.
 }
 
 Internals::Internals(Document& document)
@@ -577,6 +581,10 @@ Internals::Internals(Document& document)
 #endif
 
     m_unsuspendableActiveDOMObject = nullptr;
+
+#if PLATFORM(COCOA) &&  ENABLE(WEB_AUDIO)
+    AudioDestinationCocoa::createOverride = nullptr;
+#endif
 }
 
 Document* Internals::contextDocument() const
@@ -920,14 +928,14 @@ void Internals::setGridMaxTracksLimit(unsigned maxTrackLimit)
     GridPosition::setMaxPositionForTesting(maxTrackLimit);
 }
 
-void Internals::clearPageCache()
+void Internals::clearBackForwardCache()
 {
-    PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
+    BackForwardCache::singleton().pruneToSizeNow(0, PruningReason::None);
 }
 
-unsigned Internals::pageCacheSize() const
+unsigned Internals::backForwardCacheSize() const
 {
-    return PageCache::singleton().pageCount();
+    return BackForwardCache::singleton().pageCount();
 }
 
 class UnsuspendableActiveDOMObject final : public ActiveDOMObject, public RefCounted<UnsuspendableActiveDOMObject> {
@@ -941,11 +949,11 @@ private:
         suspendIfNeeded();
     }
 
-    bool canSuspendForDocumentSuspension() const final { return false; }
+    bool shouldPreventEnteringBackForwardCache_DEPRECATED() const final { return true; }
     const char* activeDOMObjectName() const { return "UnsuspendableActiveDOMObject"; }
 };
 
-void Internals::preventDocumentForEnteringPageCache()
+void Internals::preventDocumentForEnteringBackForwardCache()
 {
     if (auto* context = contextDocument())
         m_unsuspendableActiveDOMObject = UnsuspendableActiveDOMObject::create(*context);
@@ -2197,16 +2205,17 @@ private:
 String Internals::parserMetaData(JSC::JSValue code)
 {
     JSC::VM& vm = contextDocument()->vm();
-    JSC::ExecState* exec = vm.topCallFrame;
+    JSC::CallFrame* callFrame = vm.topCallFrame;
+    JSC::JSGlobalObject* globalObject = callFrame->lexicalGlobalObject();
     ScriptExecutable* executable;
 
     if (!code || code.isNull() || code.isUndefined()) {
         GetCallerCodeBlockFunctor iter;
-        exec->iterate(iter);
+        callFrame->iterate(vm, iter);
         CodeBlock* codeBlock = iter.codeBlock();
         executable = codeBlock->ownerExecutable();
     } else if (code.isFunction(vm)) {
-        JSFunction* funcObj = JSC::jsCast<JSFunction*>(code.toObject(exec));
+        JSFunction* funcObj = JSC::jsCast<JSFunction*>(code.toObject(globalObject));
         executable = funcObj->jsExecutable();
     } else
         return String();
@@ -2508,6 +2517,11 @@ bool Internals::isDocumentAlive(uint64_t documentIdentifier) const
     return Document::allDocumentsMap().contains(makeObjectIdentifier<DocumentIdentifierType>(documentIdentifier));
 }
 
+uint64_t Internals::elementIdentifier(Element& element) const
+{
+    return element.document().identifierForElement(element).toUInt64();
+}
+
 uint64_t Internals::frameIdentifier(const Document& document) const
 {
     if (auto* page = document.page())
@@ -2623,6 +2637,8 @@ static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
         layerTreeFlags |= LayerTreeFlagsIncludeRootLayerProperties;
     if (flags & Internals::LAYER_TREE_INCLUDES_EVENT_REGION)
         layerTreeFlags |= LayerTreeFlagsIncludeEventRegion;
+    if (flags & Internals::LAYER_TREE_INCLUDES_DEEP_COLOR)
+        layerTreeFlags |= LayerTreeFlagsIncludeDeepColor;
 
     return layerTreeFlags;
 }
@@ -3464,7 +3480,7 @@ Ref<SerializedScriptValue> Internals::deserializeBuffer(ArrayBuffer& buffer) con
 
 bool Internals::isFromCurrentWorld(JSC::JSValue value) const
 {
-    return isWorldCompatible(*contextDocument()->vm().topCallFrame, value);
+    return isWorldCompatible(*contextDocument()->vm().topCallFrame->lexicalGlobalObject(), value);
 }
 
 void Internals::setUsesOverlayScrollbars(bool enabled)
@@ -4071,7 +4087,6 @@ void Internals::sendMediaControlEvent(MediaControlEvent event)
 #endif // ENABLE(MEDIA_SESSION)
 
 #if ENABLE(WEB_AUDIO)
-
 void Internals::setAudioContextRestrictions(AudioContext& context, StringView restrictionsString)
 {
     AudioContext::BehaviorRestrictions restrictions = context.behaviorRestrictions();
@@ -4090,6 +4105,12 @@ void Internals::setAudioContextRestrictions(AudioContext& context, StringView re
     context.addBehaviorRestriction(restrictions);
 }
 
+void Internals::useMockAudioDestinationCocoa()
+{
+#if PLATFORM(COCOA)
+    AudioDestinationCocoa::createOverride = MockAudioDestinationCocoa::create;
+#endif
+}
 #endif
 
 void Internals::simulateSystemSleep() const
@@ -4457,21 +4478,20 @@ void Internals::setShowAllPlugins(bool show)
 
 #if ENABLE(STREAMS_API)
 
-bool Internals::isReadableStreamDisturbed(JSC::ExecState& state, JSValue stream)
+bool Internals::isReadableStreamDisturbed(JSC::JSGlobalObject& lexicalGlobalObject, JSValue stream)
 {
-    return ReadableStream::isDisturbed(state, stream);
+    return ReadableStream::isDisturbed(lexicalGlobalObject, stream);
 }
 
-JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSValue srcByteOffset, JSValue srcLength)
+JSValue Internals::cloneArrayBuffer(JSC::JSGlobalObject& lexicalGlobalObject, JSValue buffer, JSValue srcByteOffset, JSValue srcLength)
 {
-    JSC::VM& vm = state.vm();
-    JSGlobalObject* globalObject = vm.vmEntryGlobalObject(&state);
+    JSC::VM& vm = lexicalGlobalObject.vm();
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData);
     const Identifier& privateName = clientData->builtinNames().cloneArrayBufferPrivateName();
     JSValue value;
     PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
-    globalObject->methodTable(vm)->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
-    value = propertySlot.getValue(&state, privateName);
+    lexicalGlobalObject.methodTable(vm)->getOwnPropertySlot(&lexicalGlobalObject, &lexicalGlobalObject, privateName, propertySlot);
+    value = propertySlot.getValue(&lexicalGlobalObject, privateName);
     ASSERT(value.isFunction(vm));
 
     JSObject* function = value.getObject();
@@ -4484,7 +4504,7 @@ JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSVal
     arguments.append(srcLength);
     ASSERT(!arguments.hasOverflowed());
 
-    return JSC::call(&state, function, callType, callData, JSC::jsUndefined(), arguments);
+    return JSC::call(&lexicalGlobalObject, function, callType, callData, JSC::jsUndefined(), arguments);
 }
 
 #endif
@@ -5006,14 +5026,6 @@ void Internals::terminateServiceWorker(ServiceWorker& worker)
 
     ServiceWorkerProvider::singleton().serviceWorkerConnection().syncTerminateWorker(worker.identifier());
 }
-
-bool Internals::hasServiceWorkerConnection()
-{
-    if (!contextDocument())
-        return false;
-
-    return ServiceWorkerProvider::singleton().existingServiceWorkerConnection();
-}
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -5135,6 +5147,11 @@ bool Internals::supportsVCPEncoder()
 Optional<HEVCParameterSet> Internals::parseHEVCCodecParameters(const String& codecString)
 {
     return WebCore::parseHEVCCodecParameters(codecString);
+}
+
+Optional<DoViParameterSet> Internals::parseDoViCodecParameters(const String& codecString)
+{
+    return WebCore::parseDoViCodecParameters(codecString);
 }
 
 auto Internals::getCookies() const -> Vector<CookieData>

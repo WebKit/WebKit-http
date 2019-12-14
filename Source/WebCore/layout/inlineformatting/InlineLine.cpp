@@ -54,7 +54,10 @@ bool Line::Run::canBeExtended() const
 {
     if (!isText())
         return false;
-    return !downcast<InlineTextItem>(m_inlineItem).isCollapsed() && !isVisuallyEmpty();
+    // Non-collapsed text runs can be merged into one continuous run.
+    if (isVisuallyEmpty())
+        return false;
+    return !isCollapsed();
 }
 
 Line::Line(const InlineFormattingContext& inlineFormattingContext, const InitialConstraints& initialConstraints, Optional<TextAlignMode> horizontalAlignment, SkipAlignment skipAlignment)
@@ -69,7 +72,7 @@ Line::Line(const InlineFormattingContext& inlineFormattingContext, const Initial
     auto initialBaselineOffset = initialConstraints.heightAndBaseline ? initialConstraints.heightAndBaseline->baselineOffset : LayoutUnit();
     auto lineRect = Display::Rect { initialConstraints.logicalTopLeft, { }, initialLineHeight };
     auto baseline = LineBox::Baseline { initialBaselineOffset, initialLineHeight - initialBaselineOffset };
-    m_lineBox = LineBox { lineRect, baseline, { } };
+    m_lineBox = LineBox { lineRect, baseline, initialBaselineOffset };
 }
 
 static bool isInlineContainerConsideredEmpty(const FormattingContext& formattingContext, const Box& layoutBox)
@@ -77,6 +80,22 @@ static bool isInlineContainerConsideredEmpty(const FormattingContext& formatting
     // Note that this does not check whether the inline container has content. It simply checks if the container itself is considered empty.
     auto& boxGeometry = formattingContext.geometryForBox(layoutBox);
     return !(boxGeometry.horizontalBorder() || (boxGeometry.horizontalPadding() && boxGeometry.horizontalPadding().value()));
+}
+
+static bool shouldPreserveTrailingContent(const InlineTextItem& inlineTextItem)
+{
+    if (!inlineTextItem.isWhitespace())
+        return true;
+    auto whitespace = inlineTextItem.style().whiteSpace();
+    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap;
+}
+
+static bool shouldPreserveLeadingContent(const InlineTextItem& inlineTextItem)
+{
+    if (!inlineTextItem.isWhitespace())
+        return true;
+    auto whitespace = inlineTextItem.style().whiteSpace();
+    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
 }
 
 bool Line::isVisuallyEmpty() const
@@ -144,15 +163,14 @@ void Line::alignContentVertically()
     ASSERT(!m_skipAlignment);
 
     if (isVisuallyEmpty()) {
-        m_lineBox.baseline().reset();
-        m_lineBox.setBaselineOffset({ });
+        m_lineBox.resetBaseline();
         m_lineBox.setLogicalHeight({ });
     }
 
     // Remove descent when all content is baseline aligned but none of them have descent.
     if (formattingContext().quirks().lineDescentNeedsCollapsing(m_runList)) {
         m_lineBox.shrinkVertically(m_lineBox.baseline().descent());
-        m_lineBox.baseline().setDescent({ });
+        m_lineBox.resetDescent();
     }
 
     auto& layoutState = this->layoutState();
@@ -174,8 +192,24 @@ void Line::alignContentVertically()
                 auto& formattingState = downcast<InlineFormattingState>(layoutState.establishedFormattingState(downcast<Container>(layoutBox)));
                 // Spec makes us generate at least one line -even if it is empty.
                 ASSERT(!formattingState.lineBoxes().isEmpty());
-                auto inlineBlockBaseline = formattingState.lineBoxes().last().baseline();
-                logicalTop = baselineOffset() - inlineBlockBaseline.ascent();
+                auto inlineBlockBaselineOffset = formattingState.lineBoxes().last()->baselineOffset();
+                // The inline-block's baseline offset is relative to its content box. Let's convert it relative to the margin box.
+                //   inline-block
+                //              \
+                //           _______________ <- margin box
+                //          |
+                //          |  ____________  <- border box
+                //          | |
+                //          | |  _________  <- content box
+                //          | | |   ^
+                //          | | |   |  <- baseline offset
+                //          | | |   |
+                //     text | | |   v text
+                //     -----|-|-|---------- <- baseline
+                //
+                auto& boxGeometry = formattingContext.geometryForBox(layoutBox);
+                auto baselineOffsetFromMarginBox = boxGeometry.marginBefore() + boxGeometry.borderTop() + boxGeometry.paddingTop().valueOr(0) + inlineBlockBaselineOffset;
+                logicalTop = baselineOffset() - baselineOffsetFromMarginBox;
             } else
                 logicalTop = baselineOffset() - run->logicalRect().height();
             break;
@@ -284,7 +318,7 @@ void Line::append(const InlineItem& inlineItem, LayoutUnit logicalWidth)
 
 void Line::appendNonBreakableSpace(const InlineItem& inlineItem, const Display::Rect& logicalRect)
 {
-    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { logicalRect }));
+    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { inlineItem.style(), logicalRect }));
     m_lineBox.expandHorizontally(logicalRect.width());
 }
 
@@ -294,9 +328,8 @@ void Line::appendInlineContainerStart(const InlineItem& inlineItem, LayoutUnit l
     auto logicalRect = Display::Rect { 0, contentLogicalWidth(), logicalWidth, 0 };
 
     if (!m_skipAlignment) {
-        auto logicalHeight = inlineItemContentHeight(inlineItem);
-        adjustBaselineAndLineHeight(inlineItem, logicalHeight);
-        logicalRect.setHeight(logicalHeight);
+        adjustBaselineAndLineHeight(inlineItem);
+        logicalRect.setHeight(inlineItemContentHeight(inlineItem));
     }
     appendNonBreakableSpace(inlineItem, logicalRect);
 }
@@ -304,13 +337,13 @@ void Line::appendInlineContainerStart(const InlineItem& inlineItem, LayoutUnit l
 void Line::appendInlineContainerEnd(const InlineItem& inlineItem, LayoutUnit logicalWidth)
 {
     // This is really just a placeholder to mark the end of the inline level container </span>.
-    auto logicalRect = Display::Rect { 0, contentLogicalRight(), logicalWidth, inlineItemContentHeight(inlineItem) };
+    auto logicalRect = Display::Rect { 0, contentLogicalRight(), logicalWidth, m_skipAlignment ? LayoutUnit() : inlineItemContentHeight(inlineItem) };
     appendNonBreakableSpace(inlineItem, logicalRect);
 }
 
 void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logicalWidth)
 {
-    auto isTrimmable = TextUtil::isTrimmableContent(inlineItem);
+    auto isTrimmable = !shouldPreserveTrailingContent(inlineItem);
     if (!isTrimmable)
         m_trimmableContent.clear();
 
@@ -320,18 +353,22 @@ void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logica
             ASSERT(!logicalWidth);
             return true;
         }
-        if (!isTrimmable)
-            return false;
         // Leading whitespace.
         if (m_runList.isEmpty())
-            return true;
-        // Check if the last item is trimmable as well.
-        for (int index = m_runList.size() - 1; index >= 0; --index) {
-            auto& run = m_runList[index];
+            return !shouldPreserveLeadingContent(inlineItem);
+
+        if (!inlineItem.isCollapsible())
+            return false;
+        // Check if the last item is collapsed as well.
+        for (auto i = m_runList.size(); i--;) {
+            auto& run = m_runList[i];
             if (run->isBox())
                 return false;
+            // When the previous text run is collapsed, this collapsible run collapses completely.
             if (run->isText())
-                return run->isWhitespace() && run->layoutBox().style().collapseWhiteSpace();
+                return run->isCollapsed();
+            // Collapsing works across inline containers: "<span>  </span> " <- the trailing whitespace collapses completely.
+            // Not that when the inline container has preserve whitespace style, "<span style="white-space: pre">  </span> " <- this whitespace stays around. 
             ASSERT(run->isContainerStart() || run->isContainerEnd());
         }
         return true;
@@ -341,13 +378,19 @@ void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logica
     logicalRect.setLeft(contentLogicalWidth());
     logicalRect.setWidth(logicalWidth);
     if (!m_skipAlignment) {
-        auto runHeight = inlineItemContentHeight(inlineItem);
-        logicalRect.setHeight(runHeight);
-        adjustBaselineAndLineHeight(inlineItem, runHeight);
+        adjustBaselineAndLineHeight(inlineItem);
+        logicalRect.setHeight(inlineItemContentHeight(inlineItem));
     }
 
-    auto lineItem = makeUnique<Run>(inlineItem, Display::Run { logicalRect, Display::Run::TextContext { inlineItem.start(), inlineItem.isCollapsed() ? 1 : inlineItem.length() } });
+    auto collapseRun = inlineItem.isCollapsible();
+    auto contentStart = inlineItem.start();
+    auto contentLength =  collapseRun ? 1 : inlineItem.length();
+    auto textContent = inlineItem.layoutBox().textContent().substring(contentStart, contentLength);
+    auto lineItem = makeUnique<Run>(inlineItem, Display::Run { inlineItem.style(), logicalRect, Display::Run::TextContext { contentStart, contentLength, textContent } });
+
     auto isVisuallyEmpty = willCollapseCompletely();
+    if (collapseRun)
+        lineItem->setIsCollapsed();
     if (isVisuallyEmpty)
         lineItem->setVisuallyIsEmpty();
     else if (isTrimmable)
@@ -362,25 +405,29 @@ void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logica
 void Line::appendNonReplacedInlineBox(const InlineItem& inlineItem, LayoutUnit logicalWidth)
 {
     auto& boxGeometry = formattingContext().geometryForBox(inlineItem.layoutBox());
-    auto horizontalMargin = boxGeometry.horizontalMargin();    
+    auto horizontalMargin = boxGeometry.horizontalMargin();
     auto logicalRect = Display::Rect { };
 
     logicalRect.setLeft(contentLogicalWidth() + horizontalMargin.start);
     logicalRect.setWidth(logicalWidth);
     if (!m_skipAlignment) {
-        adjustBaselineAndLineHeight(inlineItem, boxGeometry.marginBoxHeight());
-        logicalRect.setHeight(inlineItemContentHeight(inlineItem));
+        adjustBaselineAndLineHeight(inlineItem);
+        auto runHeight = formattingContext().geometryForBox(inlineItem.layoutBox()).marginBoxHeight();
+        logicalRect.setHeight(runHeight);
     }
 
-    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { logicalRect }));
+    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { inlineItem.style(), logicalRect }));
     m_lineBox.expandHorizontally(logicalWidth + horizontalMargin.start + horizontalMargin.end);
     m_trimmableContent.clear();
 }
 
 void Line::appendReplacedInlineBox(const InlineItem& inlineItem, LayoutUnit logicalWidth)
 {
-    // FIXME Surely replaced boxes behave differently.
+    ASSERT(inlineItem.layoutBox().isReplaced());
+    // FIXME: Surely replaced boxes behave differently.
     appendNonReplacedInlineBox(inlineItem, logicalWidth);
+    if (auto* replaced = inlineItem.layoutBox().replaced(); replaced && replaced->cachedImage())
+        m_runList.last()->m_displayRun.setImage(*replaced->cachedImage());
 }
 
 void Line::appendHardLineBreak(const InlineItem& inlineItem)
@@ -389,13 +436,13 @@ void Line::appendHardLineBreak(const InlineItem& inlineItem)
     logicalRect.setLeft(contentLogicalWidth());
     logicalRect.setWidth({ });
     if (!m_skipAlignment) {
-        adjustBaselineAndLineHeight(inlineItem, { });
+        adjustBaselineAndLineHeight(inlineItem);
         logicalRect.setHeight(logicalHeight());
     }
-    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { logicalRect }));
+    m_runList.append(makeUnique<Run>(inlineItem, Display::Run { inlineItem.style(), logicalRect }));
 }
 
-void Line::adjustBaselineAndLineHeight(const InlineItem& inlineItem, LayoutUnit runHeight)
+void Line::adjustBaselineAndLineHeight(const InlineItem& inlineItem)
 {
     ASSERT(!inlineItem.isContainerEnd());
     auto& layoutBox = inlineItem.layoutBox();
@@ -406,18 +453,16 @@ void Line::adjustBaselineAndLineHeight(const InlineItem& inlineItem, LayoutUnit 
         // Inline containers stretch the line by their font size.
         // Vertical margins, paddings and borders don't contribute to the line height.
         auto& fontMetrics = style.fontMetrics();
-        LayoutUnit contentHeight;
         if (style.verticalAlign() == VerticalAlign::Baseline) {
             auto halfLeading = halfLeadingMetrics(fontMetrics, style.computedLineHeight());
             // Both halfleading ascent and descent could be negative (tall font vs. small line-height value)
             if (halfLeading.descent() > 0)
-                baseline.setDescentIfGreater(halfLeading.descent());
+                m_lineBox.setDescentIfGreater(halfLeading.descent());
             if (halfLeading.ascent() > 0)
-                baseline.setAscentIfGreater(halfLeading.ascent());
-            contentHeight = baseline.height();
+                m_lineBox.setAscentIfGreater(halfLeading.ascent());
+            m_lineBox.setLogicalHeightIfGreater(baseline.height());
         } else
-            contentHeight = fontMetrics.height();
-        m_lineBox.setLogicalHeightIfGreater(contentHeight, LineBox::AdjustBaseline::Yes);
+            m_lineBox.setLogicalHeightIfGreater(fontMetrics.height());
         return;
     }
 
@@ -426,37 +471,53 @@ void Line::adjustBaselineAndLineHeight(const InlineItem& inlineItem, LayoutUnit 
         // through the inline container (start) -see above. Normally the text content itself does not stretch the line.
         if (!m_initialStrut)
             return;
-        baseline.setAscentIfGreater(m_initialStrut->ascent());
-        baseline.setDescentIfGreater(m_initialStrut->descent());
-        m_lineBox.setLogicalHeightIfGreater(baseline.height(), LineBox::AdjustBaseline::Yes);
+        m_lineBox.setAscentIfGreater(m_initialStrut->ascent());
+        m_lineBox.setDescentIfGreater(m_initialStrut->descent());
+        m_lineBox.setLogicalHeightIfGreater(baseline.height());
         m_initialStrut = { };
         return;
     }
 
     if (inlineItem.isBox()) {
+        auto& boxGeometry = formattingContext().geometryForBox(layoutBox);
+        auto marginBoxHeight = boxGeometry.marginBoxHeight();
+
         switch (style.verticalAlign()) {
         case VerticalAlign::Baseline: {
-            auto newBaselineCandidate = LineBox::Baseline { runHeight, 0 };
             if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
                 // Inline-blocks with inline content always have baselines.
                 auto& formattingState = downcast<InlineFormattingState>(layoutState().establishedFormattingState(downcast<Container>(layoutBox)));
                 // Spec makes us generate at least one line -even if it is empty.
                 ASSERT(!formattingState.lineBoxes().isEmpty());
-                newBaselineCandidate = formattingState.lineBoxes().last().baseline();
+                auto& lastLineBox = *formattingState.lineBoxes().last();
+                auto inlineBlockBaseline = lastLineBox.baseline();
+                auto beforeHeight = boxGeometry.marginBefore() + boxGeometry.borderTop() + boxGeometry.paddingTop().valueOr(0);
+
+                m_lineBox.setAscentIfGreater(inlineBlockBaseline.ascent());
+                m_lineBox.setDescentIfGreater(inlineBlockBaseline.descent());
+                m_lineBox.setBaselineOffsetIfGreater(beforeHeight + lastLineBox.baselineOffset());
+                m_lineBox.setLogicalHeightIfGreater(marginBoxHeight);
+            } else {
+                // Non inline-block boxes sit on the baseline (including their bottom margin).
+                m_lineBox.setAscentIfGreater(marginBoxHeight);
+                // Ignore negative descent (yes, negative descent is a thing).
+                m_lineBox.setLogicalHeightIfGreater(marginBoxHeight + std::max(LayoutUnit(), baseline.descent()));
             }
-            baseline.setAscentIfGreater(newBaselineCandidate.ascent());
-            baseline.setDescentIfGreater(newBaselineCandidate.descent());
-            m_lineBox.setLogicalHeightIfGreater(std::max(runHeight, baseline.height()), LineBox::AdjustBaseline::Yes);
             break;
         }
         case VerticalAlign::Top:
-            // Top align content never changes the baseline offset, it only pushes the bottom of the line further down.
-            m_lineBox.setLogicalHeightIfGreater(runHeight, LineBox::AdjustBaseline::No);
+            // Top align content never changes the baseline, it only pushes the bottom of the line further down.
+            m_lineBox.setLogicalHeightIfGreater(marginBoxHeight);
             break;
-        case VerticalAlign::Bottom:
+        case VerticalAlign::Bottom: {
             // Bottom aligned, tall content pushes the baseline further down from the line top.
-            m_lineBox.setLogicalHeightIfGreater(runHeight, LineBox::AdjustBaseline::Yes);
+            auto lineLogicalHeight = m_lineBox.logicalHeight();
+            if (marginBoxHeight > lineLogicalHeight) {
+                m_lineBox.setLogicalHeightIfGreater(marginBoxHeight);
+                m_lineBox.setBaselineOffsetIfGreater(m_lineBox.baselineOffset() + (marginBoxHeight - lineLogicalHeight));
+            }
             break;
+        }
         default:
             ASSERT_NOT_IMPLEMENTED_YET();
             break;
@@ -476,17 +537,14 @@ LayoutUnit Line::inlineItemContentHeight(const InlineItem& inlineItem) const
     auto& layoutBox = inlineItem.layoutBox();
     auto& boxGeometry = formattingContext().geometryForBox(layoutBox);
 
-    if (layoutBox.isFloatingPositioned())
-        return boxGeometry.borderBoxHeight();
-
-    if (layoutBox.replaced())
-        return boxGeometry.borderBoxHeight();
+    if (layoutBox.replaced() || layoutBox.isFloatingPositioned())
+        return boxGeometry.contentBoxHeight();
 
     if (inlineItem.isContainerStart() || inlineItem.isContainerEnd())
-        return fontMetrics.height() + boxGeometry.verticalBorder() + boxGeometry.verticalPadding().valueOr(0);
+        return fontMetrics.height();
 
-    // Non-replaced inline box (e.g. inline-block)
-    return boxGeometry.borderBoxHeight();
+    // Non-replaced inline box (e.g. inline-block). It looks a bit misleading but their margin box is considered the content height here.
+    return boxGeometry.marginBoxHeight();
 }
 
 LineBox::Baseline Line::halfLeadingMetrics(const FontMetrics& fontMetrics, LayoutUnit lineLogicalHeight)

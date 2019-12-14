@@ -229,7 +229,7 @@ bool ScriptExecutionContext::canSuspendActiveDOMObjectsForDocumentSuspension(Vec
     bool canSuspend = true;
 
     forEachActiveDOMObject([&](auto& activeDOMObject) {
-        if (!activeDOMObject.canSuspendForDocumentSuspension()) {
+        if (activeDOMObject.shouldPreventEnteringBackForwardCache_DEPRECATED()) {
             canSuspend = false;
             if (unsuspendableObjects)
                 unsuspendableObjects->append(&activeDOMObject);
@@ -278,7 +278,7 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ReasonForSuspension why)
     checkConsistency();
 
     if (m_activeDOMObjectsAreSuspended) {
-        // A page may subsequently suspend DOM objects, say as part of entering the page cache, after the embedding
+        // A page may subsequently suspend DOM objects, say as part of entering the back/forward cache, after the embedding
         // client requested the page be suspended. We ignore such requests so long as the embedding client requested
         // the suspension first. See <rdar://problem/13754896> for more details.
         ASSERT(m_reasonForSuspendingActiveDOMObjects == ReasonForSuspension::PageWillBeSuspended);
@@ -301,15 +301,16 @@ void ScriptExecutionContext::resumeActiveDOMObjects(ReasonForSuspension why)
 
     if (m_reasonForSuspendingActiveDOMObjects != why)
         return;
-    m_activeDOMObjectsAreSuspended = false;
 
     forEachActiveDOMObject([](auto& activeDOMObject) {
         activeDOMObject.resume();
         return ShouldContinue::Yes;
     });
 
-    // In case there were pending messages at the time the script execution context entered PageCache,
-    // make sure those get dispatched shortly after restoring from PageCache.
+    m_activeDOMObjectsAreSuspended = false;
+
+    // In case there were pending messages at the time the script execution context entered the BackForwardCache,
+    // make sure those get dispatched shortly after restoring from the BackForwardCache.
     processMessageWithMessagePortsSoon();
 }
 
@@ -396,7 +397,7 @@ void ScriptExecutionContext::reportException(const String& errorMessage, int lin
         logExceptionToConsole(exception->m_errorMessage, exception->m_sourceURL, exception->m_lineNumber, exception->m_columnNumber, WTFMove(exception->m_callStack));
 }
 
-void ScriptExecutionContext::reportUnhandledPromiseRejection(JSC::ExecState& state, JSC::JSPromise& promise, RefPtr<Inspector::ScriptCallStack>&& callStack)
+void ScriptExecutionContext::reportUnhandledPromiseRejection(JSC::JSGlobalObject& state, JSC::JSPromise& promise, RefPtr<Inspector::ScriptCallStack>&& callStack)
 {
     Page* page = nullptr;
     if (is<Document>(this))
@@ -420,7 +421,7 @@ void ScriptExecutionContext::reportUnhandledPromiseRejection(JSC::ExecState& sta
     addConsoleMessage(WTFMove(message));
 }
 
-void ScriptExecutionContext::addConsoleMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* state, unsigned long requestIdentifier)
+void ScriptExecutionContext::addConsoleMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::JSGlobalObject* state, unsigned long requestIdentifier)
 {
     addMessage(source, level, message, sourceURL, lineNumber, columnNumber, 0, state, requestIdentifier);
 }
@@ -535,12 +536,12 @@ bool ScriptExecutionContext::hasPendingActivity() const
     return false;
 }
 
-JSC::ExecState* ScriptExecutionContext::execState()
+JSC::JSGlobalObject* ScriptExecutionContext::execState()
 {
     if (is<Document>(*this)) {
         Document& document = downcast<Document>(*this);
         auto* frame = document.frame();
-        return frame ? frame->script().globalObject(mainThreadNormalWorld())->globalExec() : nullptr;
+        return frame ? frame->script().globalObject(mainThreadNormalWorld()) : nullptr;
     }
 
     if (is<WorkerGlobalScope>(*this))

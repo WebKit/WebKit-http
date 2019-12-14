@@ -2,6 +2,8 @@
 css-dark-mode [ Pass ]
 css-dark-mode/older-systems [ Skip ]
 
+compositing/contents-format/ipad [ Pass ]
+
 # iPads don't zoom when form elements are focused
 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Skip ]
 
@@ -20,8 +22,6 @@ webkit.org/b/193970 compositing/ios/overflow-scroll-update-overlap.html [ ImageO
 webkit.org/b/194228 fast/media/invalid-media-query-list.html [ ImageOnlyFailure ]
 
 webkit.org/b/194234 media/modern-media-controls/media-documents/background-color-and-centering.html [ ImageOnlyFailure ]
-
-webkit.org/b/193971 editing/selection/ios/selection-handles-in-readonly-input.html [ Skip ]
 
 webkit.org/b/165311 platform/ipad/media/modern-media-controls/pip-support/pip-support-tap.html [ Skip ]
 
@@ -43,8 +43,7 @@ webkit.org/b/194259 fast/events/ios/viewport-no-width-value-allows-double-tap.ht
 # <rdar://problem/51863703> [ iPad Sim ] New Layout test fast/events/autoscroll-with-software-keyboard.html is failing on iOS 13 iPad Simulator testers
 fast/events/autoscroll-with-software-keyboard.html [ Failure ]
 
-# <rdar://problem/51868813> REGRESSION (r245483) [ iPad Simulator ] 2 Layout tests fast/scrolling/ios/overflow-scroll-inherited.html fast/scrolling/ios/overflow-scrolling-touch-enabled-stacking.html are failing
-fast/scrolling/ios/overflow-scroll-inherited.html [ Failure ]
+# This tests an iphone-specific behavior so is expected to fail on iPad.
 fast/scrolling/ios/overflow-scrolling-touch-enabled-stacking.html [ ImageOnlyFailure ]
 
 # <rdar://problem/51869921> REGRESSION (iOS 13) [ iPad Sim ] Layout Test http/tests/adClickAttribution/anchor-tag-attributes-validation.html is failing
@@ -63,5 +62,8 @@ media/video-concurrent-visible-playback.html [ Pass Timeout ]
 # <rdar://problem/52914585> (Layout Test fast/forms/file/file-input-reset-using-open-panel.html is Failing)
 fast/forms/file/file-input-reset-using-open-panel.html [ ImageOnlyFailure ]
 
-# rdar://52970947 (Layout Test scrollingcoordinator/ios/ui-scrolling-tree.html is a Flaky Failure on iPad iOS 13)
-scrollingcoordinator/ios/ui-scrolling-tree.html [ Pass Failure ]
+# <rdar://problem/56512107> [ iOS ] Three editing/pasteboard/smart-paste-paragraph tests have been flaky since they landed in r243124 (203264)
+webkit.org/b/203264 editing/pasteboard/smart-paste-paragraph-001.html [ Pass ]
+webkit.org/b/203264 editing/pasteboard/smart-paste-paragraph-002.html [ Pass ]
+webkit.org/b/203264 editing/pasteboard/smart-paste-paragraph-004.html [ Pass ]
+

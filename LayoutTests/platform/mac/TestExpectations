@@ -445,8 +445,6 @@ plugins/form-value.html
 # WebKit1 OOP plug-ins: Exceptions aren't thrown on invoke failure.
 plugins/npruntime/invoke-failure.html
 
-webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
-
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution
 
@@ -783,7 +781,6 @@ webkit.org/b/149113 media/media-controls-play-button-updates.html [ Pass Failure
 ## --- Start flaky media tests ---
 webkit.org/b/34331 http/tests/media/video-referer.html [ Pass Timeout ]
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
-webkit.org/b/82976 media/W3C/video/networkState/networkState_during_progress.html [ Pass Failure ]
 webkit.org/b/85525 media/video-played-reset.html [ Pass Failure ]
 webkit.org/b/112659 media/video-playing-and-pause.html [ Failure Timeout ]
 webkit.org/b/114744 media/video-layer-crash.html [ Pass Timeout Failure ]
@@ -1169,7 +1166,6 @@ webkit.org/b/158534 css3/filters/backdrop/dynamic-backdrop-filter-change.html [ 
 
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 [ Sierra+ ] fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
-webkit.org/b/159003 [ Sierra+ ] fast/text/font-cursive-italic-cjk.html [ Skip ]
 
 webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure Timeout ]
 
@@ -1810,8 +1806,6 @@ imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/cramped-001.h
 
 webkit.org/b/19650 [ HighSierra+ ] accessibility/mac/press-not-work-for-disabled-menu-list.html [ Pass Failure ]
 
-webkit.org/b/196517 imported/w3c/web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint.html [ Skip ]
-
 # Skip iOS-specific Pointer Events WPT tests.
 imported/w3c/web-platform-tests/pointerevents/pointerevent_change-touch-action-onpointerdown_touch.html [ Skip ]
 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointercancel_touch.html [ Skip ]
@@ -1945,9 +1939,6 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 # <rdar://problem/51055223>
 [ Catalina+ ] js/intl-numberformat.html [ Failure ]
 
-# <rdar://problem/51525184>
-[ Catalina+ ] imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-armenian.html [ ImageOnlyFailure ]
-
 # <rdar://problem/51762717>
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.html [ Pass Failure ]
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.worker.html [ Pass Failure ]
@@ -1975,9 +1966,6 @@ webkit.org/b/200128 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 # rdar://52557916 (REGRESSION: fast/css/paint-order.html and fast/css/paint-order-shadow.html are failing)
 [ Catalina+ ] fast/css/paint-order.html [ ImageOnlyFailure ]
 [ Catalina+ ] fast/css/paint-order-shadow.html [ ImageOnlyFailure ]
-
-# rdar://54317204 (fast/text/font-cursive-italic-cjk-2.html is failing)
-[ Catalina+ ] fast/text/font-cursive-italic-cjk-2.html [ ImageOnlyFailure ]
 
 webkit.org/b/181837 [ Release ] imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html [ Pass Failure ]
 
@@ -2032,3 +2020,7 @@ webkit.org/b/202516 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.pa
 webkit.org/b/202523 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.path.stroke.scale2.html [ Failure ]
 
 webkit.org/b/202598 imported/w3c/web-platform-tests/2dcontext/line-styles/2d.line.cap.round.html [ Failure ]
+
+webkit.org/b/198867 [ Mojave+ ] webgl/many-contexts.html [ Skip ]
+
+webkit.org/b/203171 inspector/layers/layers-for-node.html [ Pass Failure ]

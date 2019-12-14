@@ -27,7 +27,6 @@
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 
-#include "Connection.h"
 #include "StorageAccessStatus.h"
 #include "WebPageProxyIdentifier.h"
 #include "WebsiteDataType.h"
@@ -65,7 +64,6 @@ class WebProcessProxy;
 enum class ShouldGrandfatherStatistics : bool;
 enum class ShouldIncludeLocalhost : bool { No, Yes };
 enum class EnableResourceLoadStatisticsDebugMode : bool { No, Yes };
-enum class EnableResourceLoadStatisticsNSURLSessionSwitching : bool { No, Yes };
 enum class WebsiteDataToRemove : uint8_t {
     All,
     AllButHttpOnlyCookies,
@@ -74,7 +72,8 @@ enum class WebsiteDataToRemove : uint8_t {
 struct RegistrableDomainsToBlockCookiesFor {
     Vector<WebCore::RegistrableDomain> domainsToBlockAndDeleteCookiesFor;
     Vector<WebCore::RegistrableDomain> domainsToBlockButKeepCookiesFor;
-    RegistrableDomainsToBlockCookiesFor isolatedCopy() const { return { domainsToBlockAndDeleteCookiesFor.isolatedCopy(), domainsToBlockButKeepCookiesFor.isolatedCopy() }; }
+    Vector<WebCore::RegistrableDomain> domainsWithUserInteractionAsFirstParty;
+    RegistrableDomainsToBlockCookiesFor isolatedCopy() const { return { domainsToBlockAndDeleteCookiesFor.isolatedCopy(), domainsToBlockButKeepCookiesFor.isolatedCopy(), domainsWithUserInteractionAsFirstParty.isolatedCopy() }; }
 };
 
 class WebResourceLoadStatisticsStore final : public ThreadSafeRefCounted<WebResourceLoadStatisticsStore, WTF::DestructionThread::Main> {
@@ -105,7 +104,7 @@ public:
 
     static const OptionSet<WebsiteDataType>& monitoredDataTypes();
 
-    WorkQueue& statisticsQueue() { return m_statisticsQueue.get(); }
+    WTF::WorkQueue& statisticsQueue() { return m_statisticsQueue.get(); }
 
     void setNotifyPagesWhenDataRecordsWereScanned(bool);
     void setNotifyPagesWhenTelemetryWasCaptured(bool, CompletionHandler<void()>&&);
@@ -206,7 +205,7 @@ private:
     void flushAndDestroyPersistentStore();
 
     WeakPtr<NetworkSession> m_networkSession;
-    Ref<WorkQueue> m_statisticsQueue;
+    Ref<WTF::WorkQueue> m_statisticsQueue;
     std::unique_ptr<ResourceLoadStatisticsStore> m_statisticsStore;
     std::unique_ptr<ResourceLoadStatisticsPersistentStorage> m_persistentStorage;
 

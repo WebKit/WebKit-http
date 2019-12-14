@@ -239,10 +239,10 @@ bool WebFrameLoaderClient::hasHTMLView() const
 }
 
 #if PLATFORM(IOS_FAMILY)
-bool WebFrameLoaderClient::forceLayoutOnRestoreFromPageCache()
+bool WebFrameLoaderClient::forceLayoutOnRestoreFromBackForwardCache()
 {
     NSView <WebDocumentView> *view = [m_webFrame->_private->webFrameView documentView];
-    // This gets called to lay out a page restored from the page cache.
+    // This gets called to lay out a page restored from the back/forward cache.
     // To work around timing problems with UIKit, restore fixed 
     // layout settings here.
     WebView* webView = getWebView(m_webFrame.get());
@@ -1495,11 +1495,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     }
 }
 
-void WebFrameLoaderClient::didSaveToPageCache()
-{
-}
-
-void WebFrameLoaderClient::didRestoreFromPageCache()
+void WebFrameLoaderClient::didRestoreFromBackForwardCache()
 {
 #if PLATFORM(IOS_FAMILY)
     WebView *webView = getWebView(m_webFrame.get());
@@ -2355,7 +2351,6 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, WebCore::Sha
 {
 #if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
-    WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
 }

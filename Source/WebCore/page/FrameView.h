@@ -554,7 +554,7 @@ public:
 
     // Page and FrameView both store a Pagination value. Page::pagination() is set only by API,
     // and FrameView::pagination() is set only by CSS. Page::pagination() will affect all
-    // FrameViews in the page cache, but FrameView::pagination() only affects the current
+    // FrameViews in the back/forward cache, but FrameView::pagination() only affects the current
     // FrameView. FrameView::pagination() will return m_pagination if it has been set. Otherwise,
     // it will return Page::pagination() since currently there are no callers that need to
     // distinguish between the two.
@@ -643,7 +643,7 @@ public:
 
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const final;
 
-    void didRestoreFromPageCache();
+    void didRestoreFromBackForwardCache();
 
     void willDestroyRenderTree();
     void didDestroyRenderTree();
@@ -749,12 +749,18 @@ private:
     bool usesMockScrollAnimator() const final;
     void logMockScrollAnimatorMessage(const String&) const final;
 
+    bool styleHidesScrollbarWithOrientation(ScrollbarOrientation) const;
+    bool horizontalScrollbarHiddenByStyle() const final;
+    bool verticalScrollbarHiddenByStyle() const final;
+
     // Override scrollbar notifications to update the AXObject cache.
     void didAddScrollbar(Scrollbar*, ScrollbarOrientation) final;
     void willRemoveScrollbar(Scrollbar*, ScrollbarOrientation) final;
 
     IntSize sizeForResizeEvent() const;
     void sendResizeEventIfNeeded();
+    
+    RefPtr<Element> rootElementForCustomScrollbarPartStyle(PseudoId) const;
 
     void adjustScrollbarsForLayout(bool firstLayout);
 

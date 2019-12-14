@@ -123,8 +123,10 @@ TargetListing RemoteInspector::listingForInspectionTarget(const RemoteInspection
     targetListing->setString("url"_s, target.url());
     targetListing->setInteger("targetID"_s, target.targetIdentifier());
     targetListing->setBoolean("hasLocalDebugger"_s, target.hasLocalDebugger());
-    if (target.type() == RemoteInspectionTarget::Type::Web)
-        targetListing->setString("type"_s, "web"_s);
+    if (target.type() == RemoteInspectionTarget::Type::WebPage)
+        targetListing->setString("type"_s, "web-page"_s);
+    else if (target.type() == RemoteInspectionTarget::Type::Page)
+        targetListing->setString("type"_s, "page"_s);
     else if (target.type() == RemoteInspectionTarget::Type::JavaScript)
         targetListing->setString("type"_s, "javascript"_s);
     else if (target.type() == RemoteInspectionTarget::Type::ServiceWorker)
@@ -133,9 +135,14 @@ TargetListing RemoteInspector::listingForInspectionTarget(const RemoteInspection
     return targetListing;
 }
 
-TargetListing RemoteInspector::listingForAutomationTarget(const RemoteAutomationTarget&) const
+TargetListing RemoteInspector::listingForAutomationTarget(const RemoteAutomationTarget& target) const
 {
-    return nullptr;
+    TargetListing targetListing = JSON::Object::create();
+    targetListing->setString("type"_s, "automation"_s);
+    targetListing->setString("name"_s, target.name());
+    targetListing->setInteger("targetID"_s, target.targetIdentifier());
+    targetListing->setBoolean("isPaired"_s, target.isPaired());
+    return targetListing;
 }
 
 void RemoteInspector::pushListingsNow()
@@ -176,6 +183,30 @@ void RemoteInspector::pushListingsSoon()
 
 void RemoteInspector::sendAutomaticInspectionCandidateMessage()
 {
+    ASSERT(m_enabled);
+    ASSERT(m_automaticInspectionEnabled);
+    ASSERT(m_automaticInspectionPaused);
+    ASSERT(m_automaticInspectionCandidateTargetIdentifier);
+    // FIXME: Implement automatic inspection.
+}
+
+void RemoteInspector::requestAutomationSession(const String& sessionID, const Client::SessionCapabilities& capabilities)
+{
+    if (!m_client)
+        return;
+
+    if (!m_clientCapabilities || !m_clientCapabilities->remoteAutomationAllowed) {
+        LOG_ERROR("Error: Remote automation is not allowed");
+        return;
+    }
+
+    if (sessionID.isNull()) {
+        LOG_ERROR("Client error: SESSION ID cannot be null");
+        return;
+    }
+
+    m_client->requestAutomationSession(sessionID, capabilities);
+    updateClientCapabilities();
 }
 
 void RemoteInspector::sendMessageToRemote(TargetID targetIdentifier, const String& message)
@@ -249,6 +280,7 @@ HashMap<String, RemoteInspectorConnectionClient::CallHandler>& RemoteInspector::
         { "Setup"_s, static_cast<CallHandler>(&RemoteInspector::setupTarget) },
         { "FrontendDidClose"_s, static_cast<CallHandler>(&RemoteInspector::frontendDidClose) },
         { "SendMessageToBackend"_s, static_cast<CallHandler>(&RemoteInspector::sendMessageToBackend) },
+        { "StartAutomationSession"_s, static_cast<CallHandler>(&RemoteInspector::startAutomationSession) },
     });
 
     return methods;
@@ -317,6 +349,32 @@ void RemoteInspector::sendMessageToBackend(const Event& event)
     }
 
     connectionToTarget->sendMessageToTarget(event.message.value());
+}
+
+void RemoteInspector::startAutomationSession(const Event& event)
+{
+    ASSERT(isMainThread());
+
+    if (!event.message)
+        return;
+
+    requestAutomationSession(event.message.value(), { });
+
+    auto sendEvent = JSON::Object::create();
+    sendEvent->setString("event"_s, "SetCapabilities"_s);
+
+    auto capability = clientCapabilities();
+
+    auto message = JSON::Object::create();
+    message->setString("browserName"_s, capability ? capability->browserName : "");
+    message->setString("browserVersion"_s, capability ? capability->browserVersion : "");
+    sendEvent->setString("message"_s, message->toJSONString());
+    sendWebInspectorEvent(sendEvent->toJSONString());
+
+    m_readyToPushListings = true;
+
+    LockHolder lock(m_mutex);
+    pushListingsNow();
 }
 
 } // namespace Inspector

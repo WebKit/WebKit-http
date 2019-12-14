@@ -846,7 +846,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetAllowCrossOriginSubresourcesToAskForCredentials(preferences, options.allowCrossOriginSubresourcesToAskForCredentials);
     WKPreferencesSetColorFilterEnabled(preferences, options.enableColorFilter);
     WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(preferences, options.punchOutWhiteBackgroundsInDarkMode);
-    WKPreferencesSetPageCacheEnabled(preferences, options.enablePageCache);
+    WKPreferencesSetPageCacheEnabled(preferences, options.enableBackForwardCache);
     WKPreferencesSetLazyImageLoadingEnabled(preferences, options.enableLazyImageLoading);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
@@ -1429,8 +1429,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contentMode = { value.c_str() };
         else if (key == "enableAppNap")
             testOptions.enableAppNap = parseBooleanTestHeaderValue(value);
-        else if (key == "enablePageCache")
-            testOptions.enablePageCache = parseBooleanTestHeaderValue(value);
+        else if (key == "enableBackForwardCache")
+            testOptions.enableBackForwardCache = parseBooleanTestHeaderValue(value);
         else if (key == "enableLazyImageLoading")
             testOptions.enableLazyImageLoading = parseBooleanTestHeaderValue(value);
         else if (key == "allowsLinkPreview")
@@ -3382,7 +3382,9 @@ bool TestController::isStatisticsGrandfathered(WKStringRef host)
 
 void TestController::setUseITPDatabase(bool value)
 {
-    WKWebsiteDataStoreSetUseITPDatabase(TestController::websiteDataStore(), value);
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetUseITPDatabase(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
 }
 
 void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef host, WKStringRef topFrameHost)
@@ -3551,6 +3553,14 @@ void TestController::setStatisticsShouldDowngradeReferrer(bool value)
     WKWebsiteDataStoreSetResourceLoadStatisticsShouldDowngradeReferrerForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetShouldDowngradeReferrer();
+}
+
+void TestController::setStatisticsShouldBlockThirdPartyCookies(bool value)
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetShouldBlockThirdPartyCookies();
 }
 
 void TestController::statisticsResetToConsistentState()

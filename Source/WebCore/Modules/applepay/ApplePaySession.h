@@ -37,8 +37,8 @@
 
 namespace JSC {
 class CallFrame;
+class JSGlobalObject;
 class JSValue;
-using ExecState = CallFrame;
 }
 
 namespace WebCore {
@@ -80,7 +80,7 @@ public:
 
     ExceptionOr<void> begin(Document&);
     ExceptionOr<void> abort();
-    ExceptionOr<void> completeMerchantValidation(JSC::ExecState&, JSC::JSValue merchantSession);
+    ExceptionOr<void> completeMerchantValidation(JSC::JSGlobalObject&, JSC::JSValue merchantSession);
     ExceptionOr<void> completeShippingMethodSelection(ApplePayShippingMethodUpdate&&);
     ExceptionOr<void> completeShippingContactSelection(ApplePayShippingContactUpdate&&);
     ExceptionOr<void> completePaymentMethodSelection(ApplePayPaymentMethodUpdate&&);
@@ -102,7 +102,7 @@ private:
 
     // ActiveDOMObject.
     const char* activeDOMObjectName() const override;
-    bool canSuspendForDocumentSuspension() const override;
+    bool shouldPreventEnteringBackForwardCache_DEPRECATED() const override;
     void stop() override;
 
     // EventTargetWithInlineData.

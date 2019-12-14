@@ -22,7 +22,6 @@
 #pragma once
 
 #include "SVGElement.h"
-#include "SVGExternalResourcesRequired.h"
 #include "SVGFitToViewBox.h"
 #include "SVGSVGElement.h"
 #include "SVGStringList.h"
@@ -30,15 +29,13 @@
 
 namespace WebCore {
 
-class SVGViewElement final : public SVGElement, public SVGExternalResourcesRequired, public SVGFitToViewBox, public SVGZoomAndPan {
+class SVGViewElement final : public SVGElement, public SVGFitToViewBox, public SVGZoomAndPan {
     WTF_MAKE_ISO_ALLOCATED(SVGViewElement);
 public:
     static Ref<SVGViewElement> create(const QualifiedName&, Document&);
 
     using SVGElement::ref;
     using SVGElement::deref;
-
-    Ref<SVGStringList> viewTarget() { return m_viewTarget.copyRef(); }
 
     const SVGSVGElement* targetElement() const { return m_targetElement.get(); }
     void setTargetElement(const SVGSVGElement& targetElement) { m_targetElement = makeWeakPtr(targetElement); }
@@ -47,7 +44,7 @@ public:
 private:
     SVGViewElement(const QualifiedName&, Document&);
 
-    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGViewElement, SVGElement, SVGExternalResourcesRequired, SVGFitToViewBox>;
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGViewElement, SVGElement, SVGFitToViewBox>;
     const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
     void parseAttribute(const QualifiedName&, const AtomString&) final;
@@ -56,7 +53,6 @@ private:
     bool rendererIsNeeded(const RenderStyle&) final { return false; }
 
     PropertyRegistry m_propertyRegistry { *this };
-    Ref<SVGStringList> m_viewTarget { SVGStringList::create(this) };
     WeakPtr<SVGSVGElement> m_targetElement { nullptr };
 };
 

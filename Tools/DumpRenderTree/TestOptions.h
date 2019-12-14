@@ -33,7 +33,7 @@ struct TestOptions {
     bool useAcceleratedDrawing { false };
     bool enableIntersectionObserver { false };
     bool useEphemeralSession { false };
-    bool enablePageCache { false };
+    bool enableBackForwardCache { false };
     bool enableMenuItemElement { false };
     bool enableKeygenElement { false };
     bool enableModernMediaControls { true };
@@ -52,6 +52,7 @@ struct TestOptions {
     bool enableResizeObserver { false };
     bool enableCoreMathML { false };
     bool enableRequestIdleCallback { false };
+    bool enableAsyncClipboardAPI { false };
     std::string jscOptions;
     std::string additionalSupportedImageTypes;
 

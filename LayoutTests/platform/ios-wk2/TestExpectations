@@ -32,6 +32,8 @@ fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
 fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
+fast/repaint/placeholder-after-caps-lock-hidden.html [ Pass ]
+
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
 
@@ -1236,7 +1238,6 @@ webkit.org/b/181166 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https.html [ Pass Failure ]
 
-imported/w3c/web-platform-tests/html/dom/idlharness.https.html [ Crash ]
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
 webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
@@ -1297,7 +1298,6 @@ webkit.org/b/189641 [ Debug ] webgl/2.0.0/conformance/attribs/gl-vertexattribpoi
 fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html [ Skip ]
 fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html [ Skip ]
 fast/forms/password-scrolled-after-caps-lock-toggled.html [ Skip ]
-fast/repaint/placeholder-after-caps-lock-hidden.html [ Skip ]
 
 webkit.org/b/194826 [ Debug ] http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
 
@@ -1322,8 +1322,6 @@ webkit.org/b/197662 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConn
 
 webkit.org/b/198774 imported/w3c/web-platform-tests/websockets/bufferedAmount-unchanged-by-sync-xhr.any.worker.html [ Failure ]
 
-webkit.org/b/198185 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Skip ]
-
 webkit.org/b/176030 http/tests/websocket/tests/hybi/send-object-tostring-check.html [ Pass Failure ]
 
 webkit.org/b/199013 [ Debug ] imported/w3c/web-platform-tests/websockets/Create-Secure-verify-url-set-non-default-port.any.html [ Pass Failure ]
@@ -1343,19 +1341,6 @@ webkit.org/b/199370 [ Release ] imported/mozilla/svg/text/selectSubString.svg [ 
 
 webkit.org/b/199387 imported/blink/fast/multicol/span/overflow-on-viewport.html [ Pass ImageOnlyFailure ]
 
-# <rdar://problem/51751714> iOS 13: Multiple fast/scrolling/ios tests failing with unexpected scrollbars appearing in result
-fast/scrolling/ios/mixing-user-and-programmatic-scroll-002.html [ ImageOnlyFailure ]
-fast/scrolling/ios/mixing-user-and-programmatic-scroll-003.html [ ImageOnlyFailure ]
-fast/scrolling/ios/mixing-user-and-programmatic-scroll-006.html [ ImageOnlyFailure ]
-fast/scrolling/ios/scroll-iframe-001.html [ ImageOnlyFailure ]
-fast/scrolling/ios/scroll-iframe-002.html [ ImageOnlyFailure ]
-fast/scrolling/ios/scroll-iframe-003.html [ ImageOnlyFailure ]
-fast/scrolling/ios/scroll-iframe-004.html [ ImageOnlyFailure ]
-fast/scrolling/ios/hit-testing-iframe-006.html [ ImageOnlyFailure ]
-
-# <rdar://problem/52699318> fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html is timing out
-fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html [ Pass Timeout ]
-
 # Skip tests timing out for <rdar://problem/48616298>
 fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html [ Skip ]
 fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-width.html [ Skip ]
@@ -1363,8 +1348,17 @@ fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-widt
 # problem with blur handling
 mathml/focus-event-handling.html [ Failure ]
 
-# <rdar://problem/51756254>REGRESSION (r244582-r244596) Layout tests fast/scrolling/ios/touch-scroll-visibility-hidden.html fast/scrolling/ios/touch-scroll-pointer-events-none.html are failing
-fast/scrolling/ios/touch-scroll-pointer-events-none.html [ Failure ]
-fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
 # <rdar://problem/52962272> fast/scrolling/ios/body-overflow-hidden.html is an Image failure
 fast/scrolling/ios/body-overflow-hidden.html [ Pass ImageOnlyFailure ]
+
+# <rdar://problem/56480245> REGRESSION (~r251067): http/tests/workers/service/registration-clear-redundant-worker.html is a flaky timeout (203218)
+webkit.org/b/203218 http/tests/workers/service/registration-clear-redundant-worker.html [ Pass Timeout ]
+
+# <rdar://problem/56506063> Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html is a flaky failure (203256)
+webkit.org/b/203256 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Pass Failure ]
+
+# <rdar://problem/56512107> [ iOS ] Three editing/pasteboard/smart-paste-paragraph tests have been flaky since they landed in r243124 (203264)
+webkit.org/b/203264 [ Release ] editing/pasteboard/smart-paste-paragraph-001.html [ Pass Failure ]
+webkit.org/b/203264 [ Release ] editing/pasteboard/smart-paste-paragraph-002.html [ Pass Failure ]
+webkit.org/b/203264 [ Release ] editing/pasteboard/smart-paste-paragraph-004.html [ Pass Failure ]
+

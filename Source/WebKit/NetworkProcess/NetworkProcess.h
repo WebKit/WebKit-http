@@ -121,11 +121,7 @@ namespace CacheStorage {
 class Engine;
 }
 
-class NetworkProcess : public AuxiliaryProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>
-#if ENABLE(INDEXED_DATABASE)
-    , public WebCore::IDBServer::IDBBackingStoreTemporaryFileHandler
-#endif
-    , public CanMakeWeakPtr<NetworkProcess>
+class NetworkProcess : public AuxiliaryProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>, public CanMakeWeakPtr<NetworkProcess>
 {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
 public:
@@ -221,7 +217,7 @@ public:
     void isRegisteredAsSubFrameUnder(PAL::SessionID, const SubFrameDomain&, const TopFrameDomain&, CompletionHandler<void(bool)>&&);
     void isRegisteredAsSubresourceUnder(PAL::SessionID, const SubResourceDomain&, const TopFrameDomain&, CompletionHandler<void(bool)>&&);
     void setGrandfathered(PAL::SessionID, const RegistrableDomain&, bool isGrandfathered, CompletionHandler<void()>&&);
-    void setUseITPDatabase(PAL::SessionID, bool value);
+    void setUseITPDatabase(PAL::SessionID, bool value, CompletionHandler<void()>&&);
     void setMaxStatisticsEntries(PAL::SessionID, uint64_t maximumEntryCount, CompletionHandler<void()>&&);
     void setPrevalentResource(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
     void setPrevalentResourceForDebugMode(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
@@ -266,6 +262,7 @@ public:
     void hasIsolatedSession(PAL::SessionID, const WebCore::RegistrableDomain&, CompletionHandler<void(bool)>&&) const;
     bool isITPDatabaseEnabled() const { return m_isITPDatabaseEnabled; }
     void setShouldDowngradeReferrerForTesting(bool, CompletionHandler<void()>&&);
+    void setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID, bool, CompletionHandler<void()>&&);
 #endif
 
     using CacheStorageRootPathCallback = CompletionHandler<void(String&&)>;
@@ -283,8 +280,6 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     WebCore::IDBServer::IDBServer& idbServer(PAL::SessionID);
-    // WebCore::IDBServer::IDBBackingStoreFileHandler.
-    void accessToTemporaryFileComplete(const String& path) final;
 #endif
 
     void syncLocalStorage(CompletionHandler<void()>&&);
@@ -462,7 +457,7 @@ private:
     
     WebSWOriginStore* existingSWOriginStoreForSession(PAL::SessionID) const;
 
-    void addServiceWorkerSession(PAL::SessionID, bool processTerminationDelayEnabled, HashSet<String>&& registeredSchemes, String&& serviceWorkerRegistrationDirectory, const SandboxExtension::Handle&);
+    void addServiceWorkerSession(PAL::SessionID, bool processTerminationDelayEnabled, String&& serviceWorkerRegistrationDirectory, const SandboxExtension::Handle&);
 #endif
 
     void postStorageTask(CrossThreadTask&&);
@@ -530,7 +525,6 @@ private:
     struct ServiceWorkerInfo {
         String databasePath;
         bool processTerminationDelayEnabled { true };
-        HashSet<String> registeredSchemes;
     };
     HashMap<PAL::SessionID, ServiceWorkerInfo> m_serviceWorkerInfo;
     HashMap<PAL::SessionID, std::unique_ptr<WebCore::SWServer>> m_swServers;

@@ -130,7 +130,7 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     // Returns true if the client forced the layout.
-    virtual bool forceLayoutOnRestoreFromPageCache() = 0;
+    virtual bool forceLayoutOnRestoreFromBackForwardCache() = 0;
 #endif
     virtual void forceLayoutForNonHTML() = 0;
 
@@ -280,8 +280,7 @@ public:
 #endif
     virtual void transitionToCommittedForNewPage() = 0;
 
-    virtual void didSaveToPageCache() = 0;
-    virtual void didRestoreFromPageCache() = 0;
+    virtual void didRestoreFromBackForwardCache() = 0;
 
     virtual void dispatchDidBecomeFrameset(bool) = 0; // Can change due to navigation or DOM modification.
 

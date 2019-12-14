@@ -29,7 +29,7 @@
 #include "MessageSender.h"
 #include "NetworkCache.h"
 #include "NetworkConnectionToWebProcess.h"
-#include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkConnectionToWebProcessMessagesReplies.h"
 #include "NetworkLoadClient.h"
 #include "NetworkResourceLoadParameters.h"
 #include <WebCore/AdClickAttribution.h>
@@ -51,6 +51,8 @@ namespace WebKit {
 class NetworkConnectionToWebProcess;
 class NetworkLoad;
 class NetworkLoadChecker;
+class ServiceWorkerFetchTask;
+class WebSWServerConnection;
 
 namespace NetworkCache {
 class Entry;
@@ -63,7 +65,7 @@ class NetworkResourceLoader final
     , public WebCore::ContentSecurityPolicyClient
     , public CanMakeWeakPtr<NetworkResourceLoader> {
 public:
-    static Ref<NetworkResourceLoader> create(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply = nullptr)
+    static Ref<NetworkResourceLoader> create(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoadDelayedReply&& reply = nullptr)
     {
         return adoptRef(*new NetworkResourceLoader(WTFMove(parameters), connection, WTFMove(reply)));
     }
@@ -88,7 +90,8 @@ public:
     ResourceLoadIdentifier identifier() const { return m_parameters.identifier; }
     WebCore::FrameIdentifier frameID() const { return m_parameters.webFrameID; }
     WebCore::PageIdentifier pageID() const { return m_parameters.webPageID; }
-    
+    const NetworkResourceLoadParameters& parameters() const { return m_parameters; }
+
     NetworkCache::GlobalFrameID globalFrameID() { return { m_parameters.webPageProxyID, pageID(), frameID() }; }
 
     struct SynchronousLoadData;
@@ -122,8 +125,13 @@ public:
 
     bool isKeptAlive() const { return m_isKeptAlive; }
 
+#if ENABLE(SERVICE_WORKER)
+    void startWithServiceWorker();
+    void serviceWorkerDidNotHandle();
+#endif
+
 private:
-    NetworkResourceLoader(NetworkResourceLoadParameters&&, NetworkConnectionToWebProcess&, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&&);
+    NetworkResourceLoader(NetworkResourceLoadParameters&&, NetworkConnectionToWebProcess&, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoadDelayedReply&&);
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() const override;
@@ -220,6 +228,9 @@ private:
     bool m_isKeptAlive { false };
 
     Optional<NetworkActivityTracker> m_networkActivityTracker;
+#if ENABLE(SERVICE_WORKER)
+    std::unique_ptr<ServiceWorkerFetchTask> m_serviceWorkerFetchTask;
+#endif
 };
 
 } // namespace WebKit

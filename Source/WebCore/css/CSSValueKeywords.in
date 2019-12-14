@@ -1013,6 +1013,7 @@ visibleStroke
 painted
 fill
 stroke
+bounding-box
 //all
 //none
 
@@ -1297,6 +1298,8 @@ translate3d
 // transform-box
 // border-box
 // view-box
+// stroke-box
+// content-box
 fill-box
 
 // motion path

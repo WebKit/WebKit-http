@@ -177,7 +177,7 @@ treatsAnyTextCSSLinkAsStylesheet:
   initial: false
 shrinksStandaloneImagesToFit:
   initial: true
-pageCacheSupportsPlugins:
+backForwardCacheSupportsPlugins:
   initial: false
 showsURLsInToolTips:
   initial: false
@@ -293,6 +293,8 @@ inlineMediaPlaybackRequiresPlaysInlineAttribute:
   initial: defaultInlineMediaPlaybackRequiresPlaysInlineAttribute
 allowsPictureInPictureMediaPlayback:
   initial: defaultAllowsPictureInPictureMediaPlayback
+pictureInPictureAPIEnabled:
+  initial: false
 mediaControlsScaleWithPageZoom:
   initial: defaultMediaControlsScaleWithPageZoom
 invisibleAutoplayNotPermitted:
@@ -420,8 +422,8 @@ logsPageMessagesToSystemConsoleEnabled:
   initial: false
 
 backForwardCacheExpirationInterval:
-  type: double
-  initial: 1800
+  type: Seconds
+  initial: 30_min
 
 # Some apps could have a default video poster if it is not set.
 defaultVideoPosterURL:
@@ -714,9 +716,9 @@ pluginsEnabled:
   getter: arePluginsEnabled
   onChange: pluginsEnabledChanged
 
-usesPageCache:
+usesBackForwardCache:
   initial: false
-  onChange: usesPageCacheChanged
+  onChange: usesBackForwardCacheChanged
 
 dnsPrefetchingEnabled:
   initial: false
@@ -747,10 +749,6 @@ storageBlockingPolicy:
 
 shouldAllowUserInstalledFonts:
   initial: true
-  onChange: setNeedsRecalcStyleInAllFrames
-
-shouldAllowDesignSystemUIFonts:
-  initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
 resizeObserverEnabled:
@@ -821,6 +819,10 @@ mediaCapabilitiesExtensionsEnabled:
   type: bool
   initial: false
 
+hdrMediaCapabilitiesEnabled:
+  type: bool
+  initial: false
+
 clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
@@ -867,8 +869,8 @@ webRTCEncryptionEnabled:
   initial: true
   inspectorOverride: true
 
-isITPSessionSwitchingEnabled:
-  initial: true
+isThirdPartyCookieBlockingEnabled:
+  initial: false
 
 isLoggedInAPIEnabled:
   initial: false

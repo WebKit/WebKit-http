@@ -155,11 +155,11 @@ LocalFileContentSniffingEnabled:
   type: bool
   defaultValue: false
 
-UsesPageCache:
+UsesBackForwardCache:
   type: bool
   defaultValue: true
 
-PageCacheSupportsPlugins:
+BackForwardCacheSupportsPlugins:
   type: bool
   defaultValue: true
 
@@ -1131,10 +1131,6 @@ ShouldAllowUserInstalledFonts:
   type: bool
   defaultValue: true
 
-ShouldAllowDesignSystemUIFonts:
-  type: bool
-  defaultValue: false
-
 MediaCapabilitiesEnabled:
   type: bool
   defaultValue: true
@@ -1306,7 +1302,7 @@ BlockingOfSmallPluginsEnabled:
 
 WebAnimationsEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "Web Animations"
   humanReadableDescription: "Web Animations prototype"
   category: experimental
@@ -1411,6 +1407,13 @@ MediaCapabilitiesExtensionsEnabled:
   defaultValue: true
   humanReadableName: "Media Capabilities Extensions"
   humanReadableDescription: "Media Capabilities Extensions"
+  category: experimental
+
+HDRMediaCapabilitiesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "HDR Media Capabilities"
+  humanReadableDescription: "HDR Media Capabilities"
   category: experimental
 
 ResizeObserverEnabled:
@@ -1765,13 +1768,12 @@ LazyImageLoadingEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
 
-IsITPSessionSwitchingEnabled:
+IsThirdPartyCookieBlockingEnabled:
   type: bool
-  defaultValue: true
-  humanReadableName: "ITP Session Switching"
-  humanReadableDescription: "Enable session switching for domains classified by ITP"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: internal
+  defaultValue: false
+  humanReadableName: "Block All 3rd-Party Cookies (ITP)"
+  humanReadableDescription: "Block all third-party cookies when Intelligent Tracking Prevention is enabled"
+  category: experimental
 
 IsLoggedInAPIEnabled:
     type: bool
@@ -1779,6 +1781,14 @@ IsLoggedInAPIEnabled:
     humanReadableName: "IsLoggedIn web API"
     humanReadableDescription: "Enable the proposed IsLoggedIn web API"
     category: experimental
+
+PictureInPictureAPIEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Picture-in-Picture API"
+  humanReadableDescription: "Enable Picture-in-Picture API support"
+  category: experimental
+  condition: ENABLE(PICTURE_IN_PICTURE_API)
 
 # Deprecated
 

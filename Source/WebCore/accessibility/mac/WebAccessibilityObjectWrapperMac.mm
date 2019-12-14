@@ -2023,7 +2023,7 @@ static void WebTransformCGPathToNSBezierPath(void* info, const CGPathElement *el
         children.reserveInitialCapacity(nodeChildren.size());
         auto tree = treeNode->tree();
         for (auto childID : nodeChildren)
-            children.uncheckedAppend(tree->nodeForID(child));
+            children.uncheckedAppend(tree->nodeForID(childID));
         return convertToNSArray(children);
     }
 #endif
@@ -2199,6 +2199,10 @@ static AccessibilityRoleMap createAccessibilityRoleMap()
         { AccessibilityRole::Insertion, NSAccessibilityGroupRole },
         { AccessibilityRole::Subscript, NSAccessibilityGroupRole },
         { AccessibilityRole::Superscript, NSAccessibilityGroupRole },
+        { AccessibilityRole::Code, NSAccessibilityGroupRole },
+        { AccessibilityRole::Emphasis, NSAccessibilityGroupRole },
+        { AccessibilityRole::Strong, NSAccessibilityGroupRole },
+        { AccessibilityRole::Generic, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap roleMap;
     for (auto& role : roles)
@@ -2412,13 +2416,17 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         return @"AXSuperscriptStyleGroup";
     if (role == AccessibilityRole::Subscript)
         return @"AXSubscriptStyleGroup";
+    if (role == AccessibilityRole::Code)
+        return @"AXCodeStyleGroup";
+    if (role == AccessibilityRole::Emphasis)
+        return @"AXEmphasisStyleGroup";
+    if (role == AccessibilityRole::Strong)
+        return @"AXStrongStyleGroup";
 
     if (m_object->isStyleFormatGroup()) {
         if (Node* node = m_object->node()) {
             if (node->hasTagName(kbdTag))
                 return @"AXKeyboardInputStyleGroup";
-            if (node->hasTagName(codeTag))
-                return @"AXCodeStyleGroup";
             if (node->hasTagName(preTag))
                 return @"AXPreformattedStyleGroup";
             if (node->hasTagName(sampTag))

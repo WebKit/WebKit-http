@@ -25,11 +25,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebKitTestRunnerPasteboard.h"
+#import "config.h"
+#import "WebKitTestRunnerPasteboard.h"
 
-#include <objc/runtime.h>
-#include <wtf/RetainPtr.h>
+#import "NSPasteboardAdditions.h"
+#import <objc/runtime.h>
+#import <wtf/RetainPtr.h>
 
 @interface LocalPasteboard : NSPasteboard
 {
@@ -123,15 +124,35 @@ static NSMutableDictionary *localPasteboards;
 {
 }
 
-- (NSInteger)declareTypes:(NSArray *)newTypes owner:(id)newOwner
+- (void)_clearContentsWithoutUpdatingChangeCount
 {
     [typesArray removeAllObjects];
     [typesSet removeAllObjects];
     [dataByType removeAllObjects];
-    return [self addTypes:newTypes owner:newOwner];
 }
 
-- (NSInteger)addTypes:(NSArray *)newTypes owner:(id)newOwner
+- (NSInteger)clearContents
+{
+    [self _clearContentsWithoutUpdatingChangeCount];
+    return ++changeCount;
+}
+
+- (NSInteger)declareTypes:(NSArray *)newTypes owner:(id)newOwner
+{
+    [self _clearContentsWithoutUpdatingChangeCount];
+    [self _addTypesWithoutUpdatingChangeCount:newTypes owner:newOwner];
+    return ++changeCount;
+}
+
+- (NSInteger)addTypes:(NSArray<NSPasteboardType> *)newTypes owner:(id)newOwner
+{
+    [self _addTypesWithoutUpdatingChangeCount:newTypes owner:newOwner];
+    // FIXME: Ideally, we would keep track of the current owner and only bump the change
+    // count if the new owner is different.
+    return ++changeCount;
+}
+
+- (void)_addTypesWithoutUpdatingChangeCount:(NSArray *)newTypes owner:(id)newOwner
 {
     unsigned count = [newTypes count];
     unsigned i;
@@ -147,7 +168,6 @@ static NSMutableDictionary *localPasteboards;
         if (newOwner && [newOwner respondsToSelector:@selector(pasteboard:provideDataForType:)])
             [newOwner pasteboard:self provideDataForType:setType];
     }
-    return ++changeCount;
 }
 
 - (NSInteger)changeCount
@@ -202,7 +222,7 @@ static NSMutableDictionary *localPasteboards;
 {
     auto item = adoptNS([[NSPasteboardItem alloc] init]);
     for (NSString *type in dataByType)
-        [item setData:dataByType[type] forType:type];
+        [item setData:dataByType[type] forType:[NSPasteboard _modernPasteboardType:type]];
     return @[ item.get() ];
 }
 

@@ -25,21 +25,24 @@
 
 #pragma once
 
+#include <WebCore/ProcessIdentifier.h>
 #include <pal/SessionID.h>
 #include <wtf/Forward.h>
-#include <wtf/ListHashSet.h>
+#include <wtf/Vector.h>
 
 namespace WebKit {
 
 class SuspendedPageProxy;
+class WebBackForwardCacheEntry;
 class WebBackForwardListItem;
 class WebPageProxy;
+class WebProcessPool;
 class WebProcessProxy;
 
 class WebBackForwardCache {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WebBackForwardCache();
+    explicit WebBackForwardCache(WebProcessPool&);
     ~WebBackForwardCache();
 
     void setCapacity(unsigned);
@@ -47,20 +50,25 @@ public:
     unsigned size() const { return m_itemsWithCachedPage.size(); }
 
     void clear();
+    void pruneToSize(unsigned);
     void removeEntriesForProcess(WebProcessProxy&);
     void removeEntriesForPage(WebPageProxy&);
     void removeEntriesForSession(PAL::SessionID);
 
     void addEntry(WebBackForwardListItem&, std::unique_ptr<SuspendedPageProxy>&&);
+    void addEntry(WebBackForwardListItem&, WebCore::ProcessIdentifier);
     void removeEntry(WebBackForwardListItem&);
-    std::unique_ptr<SuspendedPageProxy> takeEntry(WebBackForwardListItem&);
+    void removeEntry(SuspendedPageProxy&);
+    std::unique_ptr<SuspendedPageProxy> takeSuspendedPage(WebBackForwardListItem&);
 
 private:
     void removeOldestEntry();
     void removeEntriesMatching(const Function<bool(WebBackForwardListItem&)>&);
+    void addEntry(WebBackForwardListItem&, std::unique_ptr<WebBackForwardCacheEntry>&&);
 
+    WebProcessPool& m_processPool;
     unsigned m_capacity { 0 };
-    ListHashSet<WebBackForwardListItem*> m_itemsWithCachedPage;
+    Vector<WebBackForwardListItem*, 2> m_itemsWithCachedPage;
 };
 
 } // namespace WebKit

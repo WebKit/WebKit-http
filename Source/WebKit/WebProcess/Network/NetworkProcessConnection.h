@@ -28,7 +28,6 @@
 
 #include "Connection.h"
 #include "ShareableResource.h"
-#include "WebIDBConnectionToServer.h"
 #include <WebCore/MessagePortChannelProvider.h>
 #include <WebCore/ServiceWorkerTypes.h>
 #include <wtf/RefCounted.h>
@@ -48,6 +47,7 @@ struct MessageWithMessagePorts;
 
 namespace WebKit {
 
+class WebIDBConnectionToServer;
 class WebSWClientConnection;
 
 typedef uint64_t ResourceLoadIdentifier;
@@ -72,7 +72,6 @@ public:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    WebSWClientConnection* existingServiceWorkerConnection() { return m_swConnection.get(); }
     WebSWClientConnection& serviceWorkerConnection();
 #endif
 

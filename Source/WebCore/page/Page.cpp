@@ -25,6 +25,7 @@
 #include "ApplicationCacheStorage.h"
 #include "ApplicationStateChangeListener.h"
 #include "AuthenticatorCoordinator.h"
+#include "BackForwardCache.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
 #include "CSSAnimationController.h"
@@ -73,7 +74,6 @@
 #include "LowPowerModeNotifier.h"
 #include "MediaCanStartListener.h"
 #include "Navigator.h"
-#include "PageCache.h"
 #include "PageConfiguration.h"
 #include "PageConsoleClient.h"
 #include "PageDebuggable.h"
@@ -359,7 +359,7 @@ Page::~Page()
 
     backForward().close();
     if (!isUtilityPage())
-        PageCache::singleton().removeAllItemsForPage(*this);
+        BackForwardCache::singleton().removeAllItemsForPage(*this);
 
 #ifndef NDEBUG
     pageCounter.decrement();
@@ -1071,7 +1071,7 @@ void Page::setViewScaleFactor(float scale)
         return;
 
     m_viewScaleFactor = scale;
-    PageCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
+    BackForwardCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
 }
 
 void Page::setDeviceScaleFactor(float scaleFactor)
@@ -1087,7 +1087,7 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     setNeedsRecalcStyleInAllFrames();
 
     mainFrame().deviceOrPageScaleFactorChanged();
-    PageCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
+    BackForwardCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
 
     pageOverlayController().didChangeDeviceScaleFactor();
 }
@@ -1294,19 +1294,17 @@ void Page::updateRendering()
 
     SetForScope<bool> change(m_inUpdateRendering, true);
 
-    Vector<RefPtr<Document>> documents;
+    layoutIfNeeded();
 
-    // The requestAnimationFrame callbacks may change the frame hierarchy of the page
-    forEachDocument([&documents] (Document& document) {
-        documents.append(&document);
-    });
-
-    // FIXME: Run the resize steps
+    for (auto& document : collectDocuments())
+        document->runResizeSteps();
 
     // FIXME: Run the scroll steps
 
-    // FIXME: Evaluate media queries and report changes.
+    for (auto& document : collectDocuments())
+        document->evaluateMediaQueriesAndReportChanges();
 
+    Vector<Ref<Document>> documents = collectDocuments(); // The requestAnimationFrame callbacks may change the frame hierarchy of the page
     for (auto& document : documents) {
         DOMHighResTimeStamp timestamp = document->domWindow()->nowTimestamp();
         document->updateAnimationsAndSendEvents(timestamp);
@@ -2666,7 +2664,7 @@ void Page::accessibilitySettingsDidChange()
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (auto* document = frame->document()) {
             document->styleScope().evaluateMediaQueriesForAccessibilitySettingsChange();
-            document->evaluateMediaQueryList();
+            document->updateElementsAffectedByMediaQueries();
         }
     }
 }
@@ -2680,7 +2678,7 @@ void Page::appearanceDidChange()
 
         document->styleScope().didChangeStyleSheetEnvironment();
         document->styleScope().evaluateMediaQueriesForAppearanceChange();
-        document->evaluateMediaQueryList();
+        document->updateElementsAffectedByMediaQueries();
     }
 }
 
@@ -2871,6 +2869,18 @@ void Page::forEachDocument(const Function<void(Document&)>& functor)
 
         functor(*frame->document());
     }
+}
+
+Vector<Ref<Document>> Page::collectDocuments()
+{
+    Vector<Ref<Document>> documents;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        auto* document = frame->document();
+        if (!document)
+            continue;
+        documents.append(*document);
+    }
+    return documents;
 }
 
 void Page::applicationWillResignActive()

@@ -1,3 +1,533 @@
+2019-10-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: keep the function/object name sticky in the object preview popover
+        https://bugs.webkit.org/show_bug.cgi?id=203259
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content):
+        (.popover .debugger-popover-content.expandable): Added.
+        (.popover .debugger-popover-content > .title):
+        (.popover .debugger-popover-content > .body):
+        (.popover .debugger-popover-content.formatted): Added.
+        (.popover .expandable): Deleted.
+        Use flexbox to ensure that only the function/object body is scrollable.
+        Adjust the min/max width/height to take less space for smaller objects.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._showPopoverWithFormattedValue):
+        Wrap formatted values in a `<div>` so we can apply special styling to them.
+
+2019-10-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: content of function definition popover sometimes cut off
+        https://bugs.webkit.org/show_bug.cgi?id=203258
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._showPopoverForFunction.didGetDetails):
+
+2019-10-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Sources: when editing style sheets, the content is sometimes suddenly replaced with the original content of the resource
+        https://bugs.webkit.org/show_bug.cgi?id=203235
+
+        Reviewed by Timothy Hatcher.
+
+        Each `WI.CSSStyleSheet` manages it's own state about when it should ignore events from the
+        backend telling it that it was modified, such as if the frontend caused the update. In these
+        cases, the `WI.CSSStyleSheet` itself was early-returning, but the `WI.CSSManager` wasn't,
+        meaning that the `WI.CSSManager` would then override the content even though the specific
+        `WI.CSSStyleSheet` knows that its content shouldn't update. To compound this issue, the
+        `WI.CSSManager` updates any `WI.CSSStyleSheet` using a `Throttler`, so any updates would be
+        further delayed (first by the protocol travel time) by this, leading to the timing based
+        intermittent issue. `WI.CSSStyleSheet` already exposes when it should be updated or not via
+        `WI.CSSStyleSheet.prototype.noteContentDidChange`. Rather than have `WI.CSSManager` just
+        call that function, it should examine the returned boolean to see if it should continue to
+        process the update, or if the `WI.CSSStyleSheet` knows that it should be ignored.
+
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager.prototype.styleSheetChanged):
+
+2019-10-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251227): Uncaught Exception: undefined is not an object (evaluating 'agent.enable')
+        https://bugs.webkit.org/show_bug.cgi?id=203208
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/AppController.js:
+        (WI.AppController.prototype.activateExtraDomains):
+
+2019-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a flag for technology preview builds
+        https://bugs.webkit.org/show_bug.cgi?id=203164
+        <rdar://problem/56202164>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Test/Test.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Setting.js:
+        (WI.isTechnologyPreviewBuild):
+        (WI.arePreviewFeaturesEnabled):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        In non-TechnologyPreview builds, if there are Preview Features provide a
+        setting switch that can be used to match the TechnologyPreview features.
+
+2019-10-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace all uses of `window.*Agent` with a target-specific call
+        https://bugs.webkit.org/show_bug.cgi?id=201149
+
+        Reviewed by Matt Baker.
+
+        Most of these were changed in r251227, but a few appear to have slipped through the cracks.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.debuggerDidResume):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._createTypeTokenAnnotator):
+        (WI.SourceCodeTextEditor.prototype._createBasicBlockAnnotator):
+
+2019-10-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: allow WebKit engineers to edit UserAgent shadow trees
+        https://bugs.webkit.org/show_bug.cgi?id=203159
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.initializeTarget):
+        (WI.DOMManager.supportsEditingUserAgentShadowTrees): Added.
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.get editable):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.get editable):
+        (WI.DOMTreeElement.prototype._startEditingTarget):
+        (WI.DOMTreeElement.prototype.populateDOMNodeContextMenu):
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._showPanel):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._handleNodeChanged): Added.
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WI.StyleDetailsPanel.prototype.get supportsNewRule): Added.
+        (WI.StyleDetailsPanel.prototype.markAsNeedsRefresh):
+        (WI.StyleDetailsPanel.prototype.refresh):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.get supportsNewRule): Added.
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.newRuleButtonContextMenu):
+        Don't show the "Add Rule" button if the selected node is inside a UserAgent shadow tree.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createEngineeringSettingsView):
+
+2019-10-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: $0 is shown for the wrong node when selecting elements in a user agent shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=203155
+
+        Reviewed by Matt Baker.
+
+        Rather than naively using the last selected node (from `WI.TreeOutline`), we should wait
+        to see if the inspected page's DOM agent allows the selected node to be used as the
+        inspected node, and if so then to show the `$0`.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.setInspectedNode):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype._handleInspectedNodeChanged): Added.
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li.inspected-node > span::after): Added.
+        (.tree-outline.dom:focus li.inspected-node.selected > span::after): Added.
+        (.tree-outline.dom.show-last-selected li.last-selected > span::after): Deleted.
+        (.tree-outline.dom.show-last-selected:focus li.last-selected > span::after): Deleted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerSelectionDidChange):
+
+2019-10-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251254): Elements: forced pseudo-class indicator isn't visible for selected nodes
+        https://bugs.webkit.org/show_bug.cgi?id=203158
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li > :not(.selection-area)): Added.
+        (.tree-outline.dom li > span): Deleted.
+
+2019-10-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: selection shouldn't be dimmed by shadow trees
+        https://bugs.webkit.org/show_bug.cgi?id=203057
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li .selection-area):
+        (.tree-outline.dom li > span): Added.
+        Don't force the `.selection-area` to be behind (`z-index: -1;`) the rest of the content, as
+        that also puts it behind any `background-color`. Instead, we should make all the content in
+        every `WI.DOMTreeElement` be above (`z-index: 1;`) the rest of the content, including the
+        `.selection-area` and any parent's `background-color`.
+
+2019-10-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: updates when toggling resource caching should be sent to every connected target
+        https://bugs.webkit.org/show_bug.cgi?id=203025
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI._resourceCachingDisabledSettingChanged):
+
+2019-10-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: rework frontend agent construction to allow commands/events to be controlled by the related target's type
+        https://bugs.webkit.org/show_bug.cgi?id=200384
+        <rdar://problem/53850352>
+
+        Reviewed by Joseph Pecoraro.
+
+        `InspectorBackend.domains.${domain}` isn't a truly valid way to feature check, as it
+        indicates what's supported by the WebKit framework underlying whatever's currently being
+        inspected, not what the current inspection target supports.
+
+        As an example, inspecting an iOS `JSContext` will still show `InspectorBackend.domains.DOM`
+        as the `DOMAgent` is supported by WebKit, even though `JSContext`s have no concept of the
+        DOM. In this example, however, `window.DOMAgent` would NOT exist, as the `availability`
+        check for the `DOM` domain wouldn't pass, meaning that the agent never gets connected.
+
+        In order to do proper feature checking, `InspectorBackend.domains` needs to be accurate
+        depending on the debuggable type. Furthermore, each target underneath that debuggable needs
+        to be able to "choose" what commands/events are supported based on that target's type.
+
+        This patch modifies how InspectorBackendCommands.js ties into `InspectorBackend`. Rather
+        than directly creating an `InspectorBackend.Agent` for each domain, we now create more of a
+        "blueprint" of the domain, and wait to actually create an `InspectorBackend.Agent` until we
+        have a `WI.Target` (and therefore an `InspectorBackend.Connection`). Each "concept" of the
+        protocol now directly maps to an object.
+         - InspectorBackend.Domain
+         - InspectorBackend.Command
+         - InspectorBackend.Event
+         - InspectorBackend.Dispatcher
+        When a `WI.Target` is created, it gets the list of `InspectorBackend.Domain` that support
+        that `WI.Target`'s type (specified in the protocol JSON files) and generates an
+        `InspectorBackend.Agent` for each, which in turn generates an `InspectorBackend.Callable`
+        for each supported `InspectorBackend.Command` and instantiates `InspectorBackend.Dispatcher`.
+
+        Activating a `InspectorBackend.Domain` means it's visible for `InspectorBackend` feature
+        checking. This must be done this way for older ITML backends that will still appear as
+        "JSContext" targets and therefore go through the "extra domains" path. Ideally, the process
+        of registering a domain should be enough to activate it. <https://webkit.org/b/201150>
+
+        Feature checking can now only be done via `hasDomain`, `hasCommand`, and `hasEvent` on
+        `InspectorBackend` or a specific `WI.Target`, and there are different implications for each:
+         - `InspectorBackend.hasDomain(DOM)` asks whether the `DOM` domain is supported by the
+           current debuggable, but says nothing about whether any `WI.Target` support `DOM`.
+         - `target.hasDomain("DOM")` asks whether the given `target` supports `DOM`, which is
+           limited by `InspectorBackend.hasDomain("DOM")`.
+
+        Now that `InspectorBackend.Agent` is only created by a `WI.Target`, it's no longer valid to
+        write `window.DOMAgent`, as there is no "global" agent. All protocol logic _must_ go through
+        a `WI.Target`. <https://webkit.org/b/201149>
+
+        Debuggable Types:
+         - JavaScript (JSC::JSGlobalObject)
+         - Page (WebCore::Page)
+         - ServiceWorker (WebCore::ServiceWorkerThreadProxy)
+         - WebPage (WebKit::WebPageProxy)
+
+        Target Types:
+         - JavaScript (direct connection)
+         - Page (multi-target connection to any Worker)
+         - ServiceWorker (direct connection)
+         - WebPage (multi-target connection to 1+ Page)
+         - Worker (direct connection, only available for Page debuggables)
+
+        * UserInterface/Base/DebuggableType.js:
+        * UserInterface/Base/TargetType.js: Copied from Source/WebInspectorUI/UserInterface/Base/DebuggableType.js.
+        * UserInterface/Protocol/Connection.js:
+        * UserInterface/Protocol/InspectorBackend.js:
+
+        * UserInterface/Protocol/ApplicationCacheObserver.js:
+        * UserInterface/Protocol/CPUProfilerObserver.js:
+        * UserInterface/Protocol/CSSObserver.js:
+        * UserInterface/Protocol/CanvasObserver.js:
+        * UserInterface/Protocol/ConsoleObserver.js:
+        * UserInterface/Protocol/DOMObserver.js:
+        * UserInterface/Protocol/DOMStorageObserver.js:
+        * UserInterface/Protocol/DatabaseObserver.js:
+        * UserInterface/Protocol/DebuggerObserver.js:
+        * UserInterface/Protocol/HeapObserver.js:
+        * UserInterface/Protocol/InspectorObserver.js:
+        * UserInterface/Protocol/LayerTreeObserver.js:
+        * UserInterface/Protocol/MemoryObserver.js:
+        * UserInterface/Protocol/NetworkObserver.js:
+        * UserInterface/Protocol/PageObserver.js:
+        * UserInterface/Protocol/RuntimeObserver.js:
+        * UserInterface/Protocol/ScriptProfilerObserver.js:
+        * UserInterface/Protocol/TargetObserver.js:
+        * UserInterface/Protocol/TimelineObserver.js:
+        * UserInterface/Protocol/WorkerObserver.js:
+        All observers now extend from `InspectorBackend.Dispatcher` and have a separate instance for
+        each `InspectorBackend.Agent`, each having their own `_target`.
+
+        * UserInterface/Protocol/Target.js:
+        * UserInterface/Protocol/DirectBackendTarget.js:
+        * UserInterface/Protocol/JavaScriptContextTarget.js: Removed.
+        * UserInterface/Protocol/MultiplexingBackendTarget.js:
+        * UserInterface/Protocol/PageTarget.js:
+        * UserInterface/Protocol/WorkerTarget.js:
+        Agents are now created per-target instead of copied from the "global" list. This means that
+        agents can have a different set of commands/events depending on the associated target.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Controllers/AppController.js:
+        * UserInterface/Controllers/AppControllerBase.js:
+        * UserInterface/Controllers/ApplicationCacheManager.js:
+        * UserInterface/Controllers/AuditManager.js:
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        * UserInterface/Controllers/CSSManager.js:
+        * UserInterface/Controllers/CanvasManager.js:
+        * UserInterface/Controllers/ConsoleManager.js:
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        * UserInterface/Controllers/DOMManager.js:
+        * UserInterface/Controllers/DOMStorageManager.js:
+        * UserInterface/Controllers/DatabaseManager.js:
+        * UserInterface/Controllers/DebuggerManager.js:
+        * UserInterface/Controllers/HeapManager.js:
+        * UserInterface/Controllers/IndexedDBManager.js:
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        * UserInterface/Controllers/LayerTreeManager.js:
+        * UserInterface/Controllers/MemoryManager.js:
+        * UserInterface/Controllers/NetworkManager.js:
+        * UserInterface/Controllers/RuntimeManager.js:
+        * UserInterface/Controllers/TargetManager.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        * UserInterface/Controllers/WorkerManager.js:
+        * UserInterface/Main.html:
+        * UserInterface/Models/AuditTestBase.js:
+        * UserInterface/Models/AuditTestCase.js:
+        * UserInterface/Models/AuditTestCaseResult.js:
+        * UserInterface/Models/CPUInstrument.js:
+        * UserInterface/Models/CPUTimelineRecord.js:
+        * UserInterface/Models/CSSCompletions.js:
+        * UserInterface/Models/CSSStyleSheet.js:
+        * UserInterface/Models/Canvas.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Models/DOMNodeStyles.js:
+        * UserInterface/Models/DOMStorageObject.js:
+        * UserInterface/Models/DOMTree.js:
+        * UserInterface/Models/DatabaseObject.js:
+        * UserInterface/Models/FPSInstrument.js:
+        * UserInterface/Models/GarbageCollection.js:
+        * UserInterface/Models/HeapAllocationsInstrument.js:
+        * UserInterface/Models/Instrument.js:
+        * UserInterface/Models/MediaInstrument.js:
+        * UserInterface/Models/MemoryInstrument.js:
+        * UserInterface/Models/MemoryPressureEvent.js:
+        * UserInterface/Models/MemoryTimelineRecord.js:
+        * UserInterface/Models/Recording.js:
+        * UserInterface/Models/Resource.js:
+        * UserInterface/Models/ScriptInstrument.js:
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        * UserInterface/Models/ShaderProgram.js:
+        * UserInterface/Models/SourceMapResource.js:
+        * UserInterface/Models/TimelineRecording.js:
+        * UserInterface/Protocol/RemoteObject.js:
+        * UserInterface/Test.html:
+        * UserInterface/Test/FrontendTestHarness.js:
+        * UserInterface/Test/Test.js:
+        * UserInterface/Test/TestAppController.js:
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        * UserInterface/Views/AuditTabContentView.js:
+        * UserInterface/Views/CanvasTabContentView.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        * UserInterface/Views/ElementsTabContentView.js:
+        * UserInterface/Views/IndexedDatabaseDetailsSidebarPanel.js:
+        * UserInterface/Views/Layers3DContentView.js:
+        * UserInterface/Views/LayersTabContentView.js:
+        * UserInterface/Views/LayoutTimelineView.js:
+        * UserInterface/Views/LogContentView.js:
+        * UserInterface/Views/NetworkTabContentView.js:
+        * UserInterface/Views/NetworkTableContentView.js:
+        * UserInterface/Views/NetworkTimelineView.js:
+        * UserInterface/Views/ObjectTreeView.js:
+        * UserInterface/Views/QuickConsole.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        * UserInterface/Views/ScriptTreeElement.js:
+        * UserInterface/Views/SearchSidebarPanel.js:
+        * UserInterface/Views/SearchTabContentView.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        * UserInterface/Views/StorageTabContentView.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        * UserInterface/Views/TimelineTabContentView.js:
+        * UserInterface/Views/Toolbar.js:
+        * UserInterface/Views/WebSocketContentView.js:
+        * UserInterface/Views/WorkerTreeElement.js:
+        Replace all instances of `window.DomainAgent` with `target.DomainAgent`, where `target` is
+        either derived from an associated model object or `WI.assumingMainTarget()`.
+        Split the `WI.DebuggableType.Web` debuggable type into `WI.DebuggableType.Page` (WebCore::Page)
+        and `WI.DebuggableType.WebPage` (WebKit::WebPageProxy).
+
+        * UserInterface/Protocol/Legacy/*:
+        * Versions/*:
+        Update protocol files for older versions of iOS.
+
+        * .eslintrc:
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-10-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: prevent source mapped resources from being blackboxed
+        https://bugs.webkit.org/show_bug.cgi?id=203007
+
+        Reviewed by Matt Baker.
+
+        Since source mapped resources are entirely a frontend concept, it doesn't make sense to
+        allow them to be blackboxed.
+
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource.prototype.get supportsScriptBlackboxing):
+
+2019-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Convert CSSRule selectorText setter to setSelectorText method because it's asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=202840
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule.prototype.setSelectorText):
+        (WI.CSSRule.prototype._selectorRejected):
+        (WI.CSSRule.prototype._selectorResolved):
+        Remove WI.CSSRule.Event.SelectorChanged event and since it wasn't used anywhere else.
+
+        (WI.CSSRule):
+        (WI.CSSRule.prototype.set selectorText): Deleted.
+        (WI.CSSRule.prototype.setSelectorText): Added.
+        (WI.CSSRule.prototype._selectorRejected): Deleted.
+        (WI.CSSRule.Event.SelectorChanged): Deleted.
+        Remove `{valid: ...}` object since it wasn't used.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidCommit):
+
+2019-10-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Local Resource Overrides: automatically create an image/font local override when dragging content over a non-overridden resource
+        https://bugs.webkit.org/show_bug.cgi?id=202957
+
+        Reviewed by Joseph Pecoraro.
+
+        Since non-text resources aren't editable, some users of local resource overrides kept trying
+        to drag image/font files over the actual resource content view (not the local override),
+        which didn't do anything. Rather than having to click "Create Local Override" and then do a
+        drag/drop, we should support the "shorter" workflow of drag/drop over the actual resource.
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.FileUtilities.import): Added.
+        (WI.FileUtilities.importText):
+        (WI.FileUtilities.importJSON):
+        (WI.FileUtilities.importData): Added.
+        (WI.FileUtilities.async readText):
+        (WI.FileUtilities.async readJSON):
+        (WI.FileUtilities.async readData): Added.
+        (WI.FileUtilities.async _read): Added.
+        Create utility functions for importing non-text content as data.
+        Drive-by: fix a bug in the `import*` functions where the `callback` would be bound on the
+                  first call, meaning that since the `<input>` was cached for all calls, we'd only
+                  ever use the first `callback` in subsequent calls.
+
+        * UserInterface/Views/DropZoneView.js:
+        (WI.DropZoneView):
+        (WI.DropZoneView.prototype.set text): Added.
+        Support the text content of the drop zone changing after it's initialized.
+
+        * UserInterface/Views/FontResourceContentView.js:
+        (WI.FontResourceContentView):
+        (WI.FontResourceContentView.prototype.contentAvailable):
+        (WI.FontResourceContentView.prototype.dropZoneHandleDragEnter): Added.
+        (WI.FontResourceContentView.prototype.dropZoneHandleDrop):
+        (WI.FontResourceContentView.prototype._handleLocalResourceContentDidChange): Added.
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WI.ImageResourceContentView):
+        (WI.ImageResourceContentView.prototype.contentAvailable):
+        (WI.ImageResourceContentView.prototype.dropZoneHandleDragEnter): Added.
+        (WI.ImageResourceContentView.prototype.dropZoneHandleDrop):
+        (WI.ImageResourceContentView.prototype._handleLocalResourceContentDidChange): Added.
+        Support drag/drop on non-override image/font content views, which will create/update the
+        local resource override for that resource.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView):
+        (WI.ResourceContentView.prototype.get navigationItems):
+        (WI.ResourceContentView.prototype._handleImportLocalResourceOverride): Added.
+        When viewing a local resource override, add an "Import" navigation item for non-drag/drop
+        updating of the contents of the local resource override. This is also exposed for text-based
+        local resource overrides, since drag/drop inserts the contents of the file (if it's text),
+        which attempts to determine whether the dropped file is text or data based on the MIME type.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._handleImportButtonNavigationItemClicked):
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._handleImportButtonNavigationItemClicked):
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._handleImportButtonNavigationItemClicked):
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView.prototype._importButtonNavigationItemClicked):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._importHAR):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView.prototype._importButtonNavigationItemClicked):
+        Explicitly allow multiple files to be imported at the same time.
+
+        * UserInterface/Base/BlobUtilities.js:
+        (WI.BlobUtilities.blobForContent):
+        Drive-by: remove extra `base64Encoded` argument when calling `decodeBase64ToBlob`, which
+                  caused SVG-based image local resource overrides to show a broken image when
+                  closing and reopening Web Inspector.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-10-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r250991): Sources: local resource overrides should be enabled when not in tests
+        https://bugs.webkit.org/show_bug.cgi?id=202944
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+
 2019-10-11  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Debugger: support pattern blackboxing

@@ -38,9 +38,12 @@ struct BackForwardItemIdentifier {
     ObjectIdentifier<ItemIdentifierType> itemIdentifier;
 
     unsigned hash() const;
+    explicit operator bool() const { return processIdentifier && itemIdentifier; }
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static Optional<BackForwardItemIdentifier> decode(Decoder&);
+
+    String string() const { return makeString(processIdentifier.toUInt64(), '-', itemIdentifier.toUInt64()); }
 
 #if !LOG_DISABLED
     const char* logString() const;

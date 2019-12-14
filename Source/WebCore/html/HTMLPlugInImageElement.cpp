@@ -53,6 +53,7 @@
 #include "TypedElementDescendantIterator.h"
 #include "UserGestureIndicator.h"
 #include <JavaScriptCore/CatchScope.h>
+#include <JavaScriptCore/JSGlobalObjectInlines.h>
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -184,13 +185,13 @@ bool HTMLPlugInImageElement::wouldLoadAsPlugIn(const String& relativeURL, const 
 
 RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
-    ASSERT(document().pageCacheState() == Document::NotInPageCache);
+    ASSERT(document().backForwardCacheState() == Document::NotInBackForwardCache);
 
     if (displayState() >= PreparingPluginReplacement)
         return HTMLPlugInElement::createElementRenderer(WTFMove(style), insertionPosition);
 
     // Once a plug-in element creates its renderer, it needs to be told when the document goes
-    // inactive or reactivates so it can clear the renderer before going into the page cache.
+    // inactive or reactivates so it can clear the renderer before going into the back/forward cache.
     if (!m_needsDocumentActivationCallbacks) {
         m_needsDocumentActivationCallbacks = true;
         document().registerForDocumentSuspensionCallbacks(*this);
@@ -392,12 +393,12 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
     auto& vm = globalObject.vm();
     JSC::JSLockHolder lock(vm);
     auto scope = DECLARE_CATCH_SCOPE(vm);
-    auto& state = *globalObject.globalExec();
+    auto& lexicalGlobalObject = globalObject;
 
     JSC::MarkedArgumentBuffer argList;
-    argList.append(toJS<IDLInterface<ShadowRoot>>(state, globalObject, root));
-    argList.append(toJS<IDLDOMString>(state, titleText(*page, mimeType)));
-    argList.append(toJS<IDLDOMString>(state, subtitleText(*page, mimeType)));
+    argList.append(toJS<IDLInterface<ShadowRoot>>(lexicalGlobalObject, globalObject, root));
+    argList.append(toJS<IDLDOMString>(lexicalGlobalObject, titleText(*page, mimeType)));
+    argList.append(toJS<IDLDOMString>(lexicalGlobalObject, subtitleText(*page, mimeType)));
     
     // This parameter determines whether or not the snapshot overlay should always be visible over the plugin snapshot.
     // If no snapshot was found then we want the overlay to be visible.
@@ -405,7 +406,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
     ASSERT(!argList.hasOverflowed());
 
     // It is expected the JS file provides a createOverlay(shadowRoot, title, subtitle) function.
-    auto* overlay = globalObject.get(&state, JSC::Identifier::fromString(vm, "createOverlay")).toObject(&state);
+    auto* overlay = globalObject.get(&lexicalGlobalObject, JSC::Identifier::fromString(vm, "createOverlay")).toObject(&lexicalGlobalObject);
     ASSERT(!overlay == !!scope.exception());
     if (!overlay) {
         scope.clearException();
@@ -416,7 +417,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
     if (callType == JSC::CallType::None)
         return;
 
-    call(&state, overlay, callType, callData, &globalObject, argList);
+    call(&lexicalGlobalObject, overlay, callType, callData, &globalObject, argList);
     scope.clearException();
 }
 

@@ -48,28 +48,20 @@
             display: block;
         }
     </style>
+    <script src="../../../resources/ui-helper.js"></script>
     <script>
         if (window.testRunner) {
             testRunner.waitUntilDone();
             testRunner.dumpAsText();
         }
 
-        function getScrollingTreeUIScript(x, y)
-        {
-            return `(function() {
-                return uiController.scrollingTreeAsText;
-            })();`;
-        }
-
-        function doTest()
+        async function doTest()
         {
             if (!testRunner.runUIScript)
                 return
 
-            testRunner.runUIScript(getScrollingTreeUIScript(), function(scrollingTree) {
-                document.getElementById('scrolling-tree').textContent = scrollingTree;
-                testRunner.notifyDone();
-            });
+            document.getElementById('scrolling-tree').textContent = await UIHelper.getScrollingTree();
+            testRunner.notifyDone();
         }
         
         window.addEventListener('load', doTest, false);

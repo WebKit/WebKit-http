@@ -298,6 +298,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardItem.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSClipboardItem.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCloseEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCloseEvent.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSColorGamut.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSColorGamut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCommandLineAPIHost.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCommandLineAPIHost.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSComment.cpp
@@ -483,6 +485,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentFullscreen.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentFullscreen.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentOrShadowRoot.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentOrShadowRoot.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentPictureInPicture.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentPictureInPicture.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentStorageAccess.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentStorageAccess.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSDocumentTimeline.cpp
@@ -519,6 +523,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSElement.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSElement.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSElementCSSInlineStyle.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSElementCSSInlineStyle.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSEnterPictureInPictureEvent.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSEnterPictureInPictureEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSErrorCallback.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSErrorCallback.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSErrorEvent.cpp
@@ -855,8 +861,12 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLUnknownElement.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLUnknownElement.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLVideoElement.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLVideoElement.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLVideoElementPictureInPicture.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHTMLVideoElementPictureInPicture.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHashChangeEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHashChangeEvent.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHdrMetadataType.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHdrMetadataType.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHistory.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHistory.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSHkdfParams.cpp
@@ -1241,6 +1251,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPerformanceTiming.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPerformanceTiming.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPeriodicWave.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPeriodicWave.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPictureInPictureWindow.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPictureInPictureWindow.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPlaybackDirection.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPlaybackDirection.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSPointerEvent.cpp
@@ -1473,8 +1485,6 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGElementWrapperFactory.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGElementWrapperFactory.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGEllipseElement.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGEllipseElement.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGExternalResourcesRequired.cpp
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGExternalResourcesRequired.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGFEBlendElement.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGFEBlendElement.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGFEColorMatrixElement.cpp
@@ -1703,10 +1713,6 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGZoomEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSSVGZoomEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreen.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreen.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreenColorGamut.cpp
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreenColorGamut.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreenLuminance.cpp
-$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScreenLuminance.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScriptProcessorNode.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScriptProcessorNode.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSScrollIntoViewOptions.cpp
@@ -1821,6 +1827,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTouchList.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTouchList.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTrackEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTrackEvent.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTransferFunction.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTransferFunction.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTransitionEvent.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTransitionEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSTreeWalker.cpp

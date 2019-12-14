@@ -81,8 +81,8 @@ TestOptions::TestOptions(const std::string& pathOrURL, const std::string& absolu
             enableIntersectionObserver = parseBooleanTestHeaderValue(value);
         else if (key == "useEphemeralSession")
             useEphemeralSession = parseBooleanTestHeaderValue(value);
-        else if (key == "enablePageCache")
-            enablePageCache = parseBooleanTestHeaderValue(value);
+        else if (key == "enableBackForwardCache")
+            enableBackForwardCache = parseBooleanTestHeaderValue(value);
         else if (key == "enableMenuItemElement")
             enableMenuItemElement = parseBooleanTestHeaderValue(value);
         else if (key == "enableKeygenElement")
@@ -125,6 +125,8 @@ TestOptions::TestOptions(const std::string& pathOrURL, const std::string& absolu
             enableCoreMathML = parseBooleanTestHeaderValue(value);
         else if (key == "experimental:RequestIdleCallbackEnabled")
             enableRequestIdleCallback = parseBooleanTestHeaderValue(value);
+        else if (key == "experimental:AsyncClipboardAPIEnabled")
+            enableAsyncClipboardAPI = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

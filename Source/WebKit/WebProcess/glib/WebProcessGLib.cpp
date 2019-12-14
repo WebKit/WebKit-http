@@ -27,6 +27,8 @@
 #include "config.h"
 #include "WebProcess.h"
 
+#include "WebKitExtensionManager.h"
+#include "WebKitWebExtensionPrivate.h"
 #include "WebProcessCreationParameters.h"
 
 #if USE(GSTREAMER)
@@ -74,7 +76,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
             if (hostClientFileDescriptor != -1) {
                 wpe_loader_init(parameters.implementationLibraryName.data());
                 m_wpeDisplay = WebCore::PlatformDisplayLibWPE::create();
-                m_wpeDisplay->initialize(hostClientFileDescriptor);
+                if (!m_wpeDisplay->initialize(hostClientFileDescriptor))
+                    m_wpeDisplay = nullptr;
             }
         }
 #else
@@ -94,6 +97,12 @@ void WebProcess::platformSetWebsiteDataStoreParameters(WebProcessDataStoreParame
 
 void WebProcess::platformTerminate()
 {
+}
+
+void WebProcess::sendMessageToWebExtension(UserMessage&& message)
+{
+    if (auto* extension = WebKitExtensionManager::singleton().extension())
+        webkitWebExtensionDidReceiveUserMessage(extension, WTFMove(message));
 }
 
 } // namespace WebKit

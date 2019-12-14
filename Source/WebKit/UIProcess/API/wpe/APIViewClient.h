@@ -25,6 +25,9 @@
 
 #pragma once
 
+#include "UserMessage.h"
+#include <wtf/CompletionHandler.h>
+
 typedef struct OpaqueJSContext* JSGlobalContextRef;
 
 namespace WebKit {
@@ -46,6 +49,7 @@ public:
     virtual void handleDownloadRequest(WKWPE::View&, WebKit::DownloadProxy&) { }
     virtual void willStartLoad(WKWPE::View&) { }
     virtual void didChangePageID(WKWPE::View&) { }
+    virtual void didReceiveUserMessage(WKWPE::View&, WebKit::UserMessage&&, CompletionHandler<void(WebKit::UserMessage&&)>&& completionHandler) { completionHandler(WebKit::UserMessage()); }
 };
 
 } // namespace API

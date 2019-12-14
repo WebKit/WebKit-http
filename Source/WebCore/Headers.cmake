@@ -187,6 +187,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     bindings/js/CachedScriptFetcher.h
     bindings/js/CommonVM.h
     bindings/js/DOMWrapperWorld.h
+    bindings/js/ExceptionDetails.h
     bindings/js/GCController.h
     bindings/js/IDBBindingUtilities.h
     bindings/js/JSCSSRuleCustom.h
@@ -382,6 +383,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/Element.h
     dom/ElementAncestorIterator.h
     dom/ElementChildIterator.h
+    dom/ElementContext.h
     dom/ElementData.h
     dom/ElementDescendantIterator.h
     dom/ElementIdentifier.h
@@ -520,13 +522,13 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     fileapi/FileReaderLoaderClient.h
     fileapi/NetworkSendQueue.h
 
+    history/BackForwardCache.h
     history/BackForwardClient.h
     history/BackForwardController.h
     history/BackForwardItemIdentifier.h
     history/CachedFrame.h
     history/CachedFramePlatformData.h
     history/HistoryItem.h
-    history/PageCache.h
 
     html/Autocapitalize.h
     html/AutocapitalizeTypes.h
@@ -929,6 +931,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/PODIntervalTree.h
     platform/PODRedBlackTree.h
     platform/Pasteboard.h
+    platform/PasteboardCustomData.h
     platform/PasteboardItemInfo.h
     platform/PasteboardStrategy.h
     platform/PasteboardWriterData.h

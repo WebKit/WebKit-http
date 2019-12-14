@@ -44,9 +44,6 @@ css-custom-properties-api [ Skip ]
 css-typedom [ Skip ]
 css-dark-mode [ Skip ]
 
-# Async Clipboard API is not supported in WebKit1 yet.
-webkit.org/b/202654 editing/async-clipboard [ Skip ]
-
 webgpu [ Skip ]
 inspector/canvas/create-context-webgpu.html [ Skip ]
 inspector/canvas/requestClientNodes-webgpu.html [ Skip ]
@@ -67,6 +64,9 @@ inspector/page/overrideSetting-MockCaptureDevicesEnabled.html [ Skip ]
 accessibility/datalist.html [ WontFix ]
 fast/forms/datalist [ WontFix ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element [ WontFix ]
+
+# DOM paste access requests are not implemented in WebKit1.
+editing/async-clipboard/clipboard-change-data-while-reading.html [ Skip ]
 
 imported/w3c/web-platform-tests/websockets/Close-1000-reason.any.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/Close-1000-reason.any.worker.html [ Pass Failure ]
@@ -724,8 +724,6 @@ webkit.org/b/187711 [ Debug ] svg/custom/linking-uri-01-b.svg [ Pass Failure ]
 [ Mojave+ ] displaylists/layer-dispay-list.html [ Failure ]
 [ Mojave+ ] displaylists/replay-skip-clipped-rect.html [ Failure ]
 
-webkit.org/b/188357 legacy-animation-engine/compositing/backing/transform-transition-from-outside-view.html [ Pass Failure ]
-
 webkit.org/b/184611 compositing/layer-creation/fixed-overlap-extent.html [ Pass Failure ]
 
 # <rdar://problem/42904780>
@@ -801,3 +799,8 @@ webkit.org/b/200002 [ Mojave+ Debug ] imported/blink/storage/indexeddb/blob-basi
 
 # Skip IsLoggedIn
 http/tests/is-logged-in/ [ Skip ]
+
+webkit.org/b/203173 inspector/console/webcore-logging.html [ Pass Failure ]
+
+webkit.org/b/203176 [ Debug ] fast/scrolling/latching/scroll-select-bottom-test.html [ Pass Failure ]
+

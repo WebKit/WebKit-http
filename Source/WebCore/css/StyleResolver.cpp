@@ -584,8 +584,8 @@ std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element&
     collector.matchUARules();
 
     if (m_matchAuthorAndUserStyles) {
-        collector.matchUserRules(false);
-        collector.matchAuthorRules(false);
+        collector.matchUserRules();
+        collector.matchAuthorRules();
     }
 
     ASSERT(!collector.matchedPseudoElementIds());
@@ -1257,6 +1257,7 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(const Elemen
     collector.setMode(SelectorChecker::Mode::CollectingRules);
     collector.setPseudoStyleRequest(PseudoStyleRequest(pseudoId));
     collector.setMedium(&m_mediaQueryEvaluator);
+    collector.setIncludeEmptyRules(rulesToInclude & EmptyCSSRules);
 
     if (rulesToInclude & UAAndUserCSSRules) {
         // First we match rules from the user agent sheet.
@@ -1264,11 +1265,11 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(const Elemen
 
         // Now we check user sheet rules.
         if (m_matchAuthorAndUserStyles)
-            collector.matchUserRules(rulesToInclude & EmptyCSSRules);
+            collector.matchUserRules();
     }
 
     if (m_matchAuthorAndUserStyles && (rulesToInclude & AuthorCSSRules))
-        collector.matchAuthorRules(rulesToInclude & EmptyCSSRules);
+        collector.matchAuthorRules();
 
     return collector.matchedRuleList();
 }
@@ -1950,7 +1951,6 @@ void StyleResolver::initializeFontStyle()
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueMedium, false, document()));
     fontDescription.setShouldAllowUserInstalledFonts(settings().shouldAllowUserInstalledFonts() ? AllowUserInstalledFonts::Yes : AllowUserInstalledFonts::No);
-    fontDescription.setShouldAllowDesignSystemUIFonts(settings().shouldAllowDesignSystemUIFonts());
     setFontDescription(WTFMove(fontDescription));
 }
 
@@ -2369,7 +2369,8 @@ void StyleResolver::CascadedProperties::addImportantMatches(const MatchResult& m
         int index;
         Style::ScopeOrdinal ordinal;
     };
-    Vector<IndexAndOrdinal> shadowTreeMatches;
+    Vector<IndexAndOrdinal> importantMatches;
+    bool hasMatchesFromOtherScopes = false;
 
     for (int i = startIndex; i <= endIndex; ++i) {
         const MatchedProperties& matchedProperties = matchResult.matchedProperties()[i];
@@ -2377,24 +2378,24 @@ void StyleResolver::CascadedProperties::addImportantMatches(const MatchResult& m
         if (!hasImportantProperties(*matchedProperties.properties))
             continue;
 
-        if (matchedProperties.styleScopeOrdinal != Style::ScopeOrdinal::Element) {
-            shadowTreeMatches.append({ i, matchedProperties.styleScopeOrdinal });
-            continue;
-        }
+        importantMatches.append({ i, matchedProperties.styleScopeOrdinal });
 
-        addMatch(matchResult, i, true, inheritedOnly);
+        if (matchedProperties.styleScopeOrdinal != Style::ScopeOrdinal::Element)
+            hasMatchesFromOtherScopes = true;
     }
 
-    if (shadowTreeMatches.isEmpty())
+    if (importantMatches.isEmpty())
         return;
 
-    // For !important properties a later shadow tree wins.
-    // Match results are sorted in reverse tree context order so this is not needed for normal properties.
-    std::stable_sort(shadowTreeMatches.begin(), shadowTreeMatches.end(), [] (const IndexAndOrdinal& a, const IndexAndOrdinal& b) {
-        return a.ordinal < b.ordinal;
-    });
+    if (hasMatchesFromOtherScopes) {
+        // For !important properties a later shadow tree wins.
+        // Match results are sorted in reverse tree context order so this is not needed for normal properties.
+        std::stable_sort(importantMatches.begin(), importantMatches.end(), [] (const IndexAndOrdinal& a, const IndexAndOrdinal& b) {
+            return a.ordinal < b.ordinal;
+        });
+    }
 
-    for (auto& match : shadowTreeMatches)
+    for (auto& match : importantMatches)
         addMatch(matchResult, match.index, true, inheritedOnly);
 }
 

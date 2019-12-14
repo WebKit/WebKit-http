@@ -114,8 +114,9 @@ public:
     static String notInMemoryCacheKey();
     WEBCORE_EXPORT static String occurredKey();
     WEBCORE_EXPORT static String otherKey();
-    static String pageCacheKey();
-    static String pageCacheFailureKey();
+    static String backForwardCacheKey();
+    static String backForwardCacheFailureKey();
+    static String visuallyEmptyKey();
     static String pageContainsAtLeastOneMediaEngineKey();
     static String pageContainsAtLeastOnePluginKey();
     static String pageContainsMediaEngineKey();

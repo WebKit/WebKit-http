@@ -1,3 +1,272 @@
+2019-10-22  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable legacy TLS by default, keep runtime switch
+        https://bugs.webkit.org/show_bug.cgi?id=203253
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2019-10-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Thread JSGlobalObject* instead of ExecState*
+        https://bugs.webkit.org/show_bug.cgi?id=202392
+
+        Reviewed by Geoffrey Garen.
+
+        * DOM/DOMInternal.mm:
+        (-[WebScriptObject _initializeScriptDOMNodeImp]):
+        * DOM/WebDOMOperations.mm:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        (WebKit::NetscapePluginInstanceProxy::invoke):
+        (WebKit::NetscapePluginInstanceProxy::invokeDefault):
+        (WebKit::NetscapePluginInstanceProxy::construct):
+        (WebKit::NetscapePluginInstanceProxy::getProperty):
+        (WebKit::NetscapePluginInstanceProxy::setProperty):
+        (WebKit::NetscapePluginInstanceProxy::removeProperty):
+        (WebKit::NetscapePluginInstanceProxy::hasProperty):
+        (WebKit::NetscapePluginInstanceProxy::hasMethod):
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray):
+        (WebKit::NetscapePluginInstanceProxy::marshalValue):
+        (WebKit::NetscapePluginInstanceProxy::marshalValues):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValue):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValues):
+        (WebKit::NetscapePluginInstanceProxy::moveGlobalExceptionToExecState):
+        * Plugins/Hosted/ProxyInstance.h:
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyField::valueFromInstance const):
+        (WebKit::ProxyField::setValueToInstance const):
+        (WebKit::ProxyInstance::newRuntimeObject):
+        (WebKit::ProxyInstance::invoke):
+        (WebKit::ProxyRuntimeMethod::create):
+        (WebKit::ProxyInstance::getMethod):
+        (WebKit::ProxyInstance::invokeMethod):
+        (WebKit::ProxyInstance::invokeDefaultMethod):
+        (WebKit::ProxyInstance::invokeConstruct):
+        (WebKit::ProxyInstance::defaultValue const):
+        (WebKit::ProxyInstance::stringValue const):
+        (WebKit::ProxyInstance::numberValue const):
+        (WebKit::ProxyInstance::valueOf const):
+        (WebKit::ProxyInstance::getPropertyNames):
+        (WebKit::ProxyInstance::fieldValue const):
+        (WebKit::ProxyInstance::setFieldValue const):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+        (-[WebFrame _globalContextForScriptWorld:]):
+        (-[WebFrame jsWrapperForNode:inScriptWorld:]):
+        (-[WebFrame globalContext]):
+        * WebView/WebScriptDebugger.h:
+        * WebView/WebScriptDebugger.mm:
+        (WebScriptDebugger::sourceParsed):
+        * WebView/WebView.mm:
+        (+[WebView _reportException:inContext:]):
+        (aeDescFromJSValue):
+        (-[WebView aeDescByEvaluatingJavaScriptFromString:]):
+
+2019-10-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        imported/w3c/web-platform-tests/clipboard-apis/async-navigator-clipboard-basics.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203181
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a changeCount argument to informationForItemAtIndex and allPasteboardItemInfo, and also make then return
+        optional values. See WebCore ChangeLog for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::changeCount):
+        (WebPlatformStrategies::addTypes):
+        (WebPlatformStrategies::setTypes):
+        (WebPlatformStrategies::setBufferForType):
+        (WebPlatformStrategies::setURL):
+        (WebPlatformStrategies::setColor):
+        (WebPlatformStrategies::setStringForType):
+        (WebPlatformStrategies::writeCustomData):
+        (WebPlatformStrategies::informationForItemAtIndex):
+        (WebPlatformStrategies::allPasteboardItemInfo):
+
+2019-10-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: rework frontend agent construction to allow commands/events to be controlled by the related target's type
+        https://bugs.webkit.org/show_bug.cgi?id=200384
+        <rdar://problem/53850352>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorFrontendClient::debuggableType const): Added.
+        Split the `Web` debuggable type into `Page` (WebCore::Page) and `WebPage` (WebKit::WebPageProxy).
+
+2019-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix iOS Debug build after r251220.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Rename PageCache to BackForwardCache
+        https://bugs.webkit.org/show_bug.cgi?id=203048
+
+        Reviewed by Alex Christensen.
+
+        Rename PageCache to BackForwardCache for clarity and consistency with the UIProcess's WebBackForwardCache.
+
+        * History/BackForwardList.mm:
+        (BackForwardList::addItem):
+        (BackForwardList::setCapacity):
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList pageCacheSize]):
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+        * Misc/WebCache.mm:
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics cachedPageCount]):
+        (+[WebCoreStatistics cachedFrameCount]):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::forceLayoutOnRestoreFromBackForwardCache):
+        (WebFrameLoaderClient::didRestoreFromBackForwardCache):
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView layoutToMinimumPageWidth:height:originalPageWidth:originalPageHeight:maximumShrinkRatio:adjustingViewSize:]):
+        (-[WebHTMLView setNeedsLayout:]):
+        (-[WebHTMLView setNeedsToApplyStyles:]):
+        * WebView/WebView.mm:
+        (-[WebView _close]):
+        (-[WebView _preferencesChanged:]):
+        (+[WebView _setCacheModel:]):
+
+2019-10-16  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Move back/forward cache entry expiration from the WebProcess to the UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=203034
+        <rdar://problem/56332453>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-10-15  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Simplify main thread initialization
+        https://bugs.webkit.org/show_bug.cgi?id=203001
+
+        Reviewed by Geoff Garen.
+
+        * History/WebBackForwardList.mm:
+        (+[WebBackForwardList initialize]):
+        * History/WebHistoryItem.mm:
+        (+[WebHistoryItem initialize]):
+        * Misc/WebCache.mm:
+        (+[WebCache initialize]):
+        * Misc/WebElementDictionary.mm:
+        (+[WebElementDictionary initialize]):
+        * Misc/WebIconDatabase.mm:
+        * Misc/WebStringTruncator.mm:
+        (+[WebStringTruncator initialize]):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (+[WebHostedNetscapePluginView initialize]):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.mm:
+        (+[WebBasePluginPackage initialize]):
+        * Plugins/WebNetscapePluginView.mm:
+        (+[WebNetscapePluginView initialize]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (+[WebUndoStep initialize]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (+[WebFramePolicyListener initialize]):
+        * WebView/WebArchive.mm:
+        (+[WebArchivePrivate initialize]):
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource initialize]):
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLViewPrivate initialize]):
+        (+[WebHTMLView initialize]):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebResource.mm:
+        (+[WebResourcePrivate initialize]):
+        * WebView/WebTextIterator.mm:
+        (+[WebTextIteratorPrivate initialize]):
+        * WebView/WebView.mm:
+        (+[WebView initialize]):
+        * WebView/WebViewData.mm:
+        (+[WebViewPrivate initialize]):
+
+2019-10-15  Peng Liu  <peng.liu6@apple.com>
+
+        [Picture-in-Picture Web API] Implement HTMLVideoElement.requestPictureInPicture() / Document.exitPictureInPicture()
+        https://bugs.webkit.org/show_bug.cgi?id=201024
+
+        Reviewed by Eric Carlson.
+
+        Add configurations for Picture-in-Picture API and also a preference option for it.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences pictureInPictureAPIEnabled]):
+        (-[WebPreferences setPictureInPictureAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-10-14  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Have WebBackForwardCache class coordinate page caching in all WebProcesses
+        https://bugs.webkit.org/show_bug.cgi?id=202929
+        <rdar://problem/56250421>
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2019-10-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Clipboard API] Refactor custom pasteboard writing codepaths to handle multiple items
+        https://bugs.webkit.org/show_bug.cgi?id=202916
+
+        Reviewed by Tim Horton.
+
+        Adjust some method signatures.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::writeCustomData):
+
+2019-10-14  David Quesada  <david_quesada@apple.com>
+
+        Remove WebCore::IOSApplication::isWebApp()
+        https://bugs.webkit.org/show_bug.cgi?id=181259
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebApplicationCache.mm:
+        (applicationCacheBundleIdentifier):
+
+2019-10-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Clipboard API] Support writing multiple PasteboardCustomData with SharedBuffers to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=202851
+
+        Reviewed by Darin Adler.
+
+        See WebCore ChangeLog for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+
 2019-10-09  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [Clipboard API] Refactor Pasteboard item reading functions to work on both iOS and macOS

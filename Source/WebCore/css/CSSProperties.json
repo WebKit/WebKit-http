@@ -3469,7 +3469,8 @@
                 "visiblestroke",
                 "painted",
                 "fill",
-                "stroke"
+                "stroke",
+                "bounding-box"
             ],
             "specification": {
                 "category": "svg",
@@ -6378,7 +6379,9 @@
             "values" : [
                 "border-box",
                 "fill-box",
-                "view-box"
+                "view-box",
+                "stroke-box",
+                "content-box"
             ],
             "codegen-properties": {
             },

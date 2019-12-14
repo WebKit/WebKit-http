@@ -32,6 +32,7 @@
 #import "Decoder.h"
 #import "Encoder.h"
 #import "WebCoreArgumentCoders.h"
+#import <UIKit/UIKit.h>
 #import <WebCore/FloatRect.h>
 
 namespace WebKit {
