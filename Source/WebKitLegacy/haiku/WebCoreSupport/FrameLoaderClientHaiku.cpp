@@ -135,11 +135,6 @@ WTF::Optional<FrameIdentifier> FrameLoaderClientHaiku::frameID() const
     return {};
 }
 
-PAL::SessionID FrameLoaderClientHaiku::sessionID() const
-{
-    return PAL::SessionID::defaultSessionID();
-}
-
 bool FrameLoaderClientHaiku::hasWebView() const
 {
     return m_webPage->WebView();
@@ -692,7 +687,7 @@ void FrameLoaderClientHaiku::didDetectXSS(const URL&, bool)
 }
 
 void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*,
-    PAL::SessionID, const ResourceRequest& request, const ResourceResponse&)
+    const ResourceRequest& request, const ResourceResponse&)
 {
     startDownload(request);
 }

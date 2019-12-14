@@ -27,9 +27,10 @@
  */
 
 #include "config.h"
-#include "WebFrame.h"
 
 #include <WebCore/ScriptController.h>
+
+#include "WebFrame.h"
 
 #include "Document.h"
 #include "DocumentLoader.h"

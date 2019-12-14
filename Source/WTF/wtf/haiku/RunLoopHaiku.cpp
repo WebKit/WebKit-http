@@ -160,6 +160,11 @@ void RunLoop::iterate()
 	RunLoop::current().performWork();
 }
 
+RunLoop::CycleResult RunLoop::cycle(const String&)
+{
+    iterate();
+}
+
 void RunLoop::dispatchAfter(Seconds delay, Function<void()>&& function)
 {
 	BMessage* message = new BMessage('daft');

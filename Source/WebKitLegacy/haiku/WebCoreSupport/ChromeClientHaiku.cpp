@@ -143,26 +143,26 @@ Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& 
 	// implement themselves, so this method is not implemented in the Chromium
 	// WebKit code.)
 
-    BRect windowFrame;
-    // If any frame property of the features is set, the windowFrame will be valid and
-    // starts of as an offseted copy of the window frame where this page is embedded.
-    if (features.x || features.y || features.width || features.height)
-    	windowFrame = m_webPage->windowFrame().OffsetByCopy(10, 10);
+	BRect windowFrame;
+	// If any frame property of the features is set, the windowFrame will be valid and
+	// starts of as an offseted copy of the window frame where this page is embedded.
+	if (features.x || features.y || features.width || features.height)
+		windowFrame = m_webPage->windowFrame().OffsetByCopy(10, 10);
 
-    if (features.x)
-    	windowFrame.OffsetTo(*features.x, windowFrame.top);
-    if (features.y)
-    	windowFrame.OffsetTo(windowFrame.left, *features.y);
-    if (features.width)
-        windowFrame.right = windowFrame.left + *features.width - 1;
-    if (features.height)
-        windowFrame.bottom = windowFrame.top + *features.height - 1;
+	if (features.x)
+		windowFrame.OffsetTo(*features.x, windowFrame.top);
+	if (features.y)
+		windowFrame.OffsetTo(windowFrame.left, *features.y);
+	if (features.width)
+		windowFrame.right = windowFrame.left + *features.width - 1;
+	if (features.height)
+		windowFrame.bottom = windowFrame.top + *features.height - 1;
 
 	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable);
 	if (!page)
-	    return 0;
+		return 0;
 
-    return page;
+	return page;
 }
 
 void ChromeClientHaiku::show()
@@ -384,18 +384,18 @@ void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, uns
 
 void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
 {
-    if (!m_webView->LockLooper())
-        return;
+	if (!m_webView->LockLooper())
+		return;
 
 	// FIXME: Unless HideToolTip() is called here, changing the tool tip has no
 	// effect in BView. Remove when BView is fixed.
 	m_webView->HideToolTip();
-    if (!tip.length())
-        m_webView->SetToolTip(reinterpret_cast<BToolTip*>(NULL));
-    else
-        m_webView->SetToolTip(BString(tip).String());
+	if (!tip.length())
+		m_webView->SetToolTip(reinterpret_cast<BToolTip*>(NULL));
+	else
+		m_webView->SetToolTip(BString(tip).String());
 
-    m_webView->UnlockLooper();
+	m_webView->UnlockLooper();
 }
 
 void ChromeClientHaiku::print(Frame&)

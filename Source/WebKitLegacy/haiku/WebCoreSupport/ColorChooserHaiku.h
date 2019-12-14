@@ -118,7 +118,7 @@ public:
                 rgb_color* c;
                 message->FindData("RGBColor", B_RGB_COLOR_TYPE, (const void**)&c, NULL);
                 control->SetValue(*c);
-                // fallthrough
+                [[fallthrough]];
             }
             case 'chng':
             {
@@ -128,7 +128,7 @@ public:
             }
             case 'done':
                 m_client.didChooseColor(control->ValueAsColor());
-                // fallthrough
+            	[[fallthrough]];
             case 'canc':
                 Hide();
                 return;

@@ -262,6 +262,7 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 
 	auto storageProvider = PageStorageSessionProvider::create();
     PageConfiguration pageClients(
+		PAL::SessionID::defaultSessionID(),
 		makeUniqueRef<EditorClientHaiku>(this),
 		SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),

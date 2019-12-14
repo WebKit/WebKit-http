@@ -23,10 +23,10 @@
 */
 
 #include "config.h"
+
 #include "DumpRenderTreeClient.h"
 #include "FrameLoaderClientHaiku.h"
 
-#include "WebFrame.h"
 #include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "WebView.h"
@@ -47,6 +47,8 @@
 #include "UserContentTypes.h"
 
 #include "WebCore/Editor.h"
+
+#include "WebFrame.h"
 
 namespace WebCore {
 

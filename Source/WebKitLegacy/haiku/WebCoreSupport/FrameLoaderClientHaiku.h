@@ -67,7 +67,6 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
 	WTF::Optional<PageIdentifier> pageID() const final;
 	WTF::Optional<FrameIdentifier> frameID() const final;
-    PAL::SessionID sessionID() const final;
 
     bool hasWebView() const override;
 
@@ -159,7 +158,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     bool shouldGoToHistoryItem(HistoryItem&) const override;
 
     bool canCachePage() const override;
-    void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID,
+    void convertMainResourceLoadToDownload(DocumentLoader*,
         const ResourceRequest&, const ResourceResponse&) override;
 
     void didDisplayInsecureContent() override;

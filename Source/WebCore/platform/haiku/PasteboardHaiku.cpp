@@ -36,7 +36,7 @@
 #include "TextResourceDecoder.h"
 #include "markup.h"
 #include <support/Locker.h>
-#include <Clipboard.h>
+#include <app/Clipboard.h>
 #include <Message.h>
 #include <String.h>
 #include <wtf/text/CString.h>

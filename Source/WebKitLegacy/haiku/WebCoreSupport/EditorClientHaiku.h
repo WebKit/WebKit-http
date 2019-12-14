@@ -137,6 +137,7 @@ public:
 	WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String&) final { return WebCore::DOMPasteAccessResponse::DeniedForGesture;}
 
 	bool canShowFontPanel() const final { return false; }
+	void subFrameScrollPositionChanged() final {}
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,
