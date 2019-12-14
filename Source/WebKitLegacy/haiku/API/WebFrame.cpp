@@ -414,7 +414,7 @@ const char* BWebFrame::Name() const
 
 JSGlobalContextRef BWebFrame::GlobalContext() const
 {
-	return toGlobalRef(Frame()->script().globalObject(mainThreadNormalWorld())->globalExec());
+	return toGlobalRef(Frame()->script().globalObject(mainThreadNormalWorld()));
 }
 
 

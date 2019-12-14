@@ -66,7 +66,6 @@
 #include "NotificationClientHaiku.h"
 #include "MHTMLArchive.h"
 #include "Page.h"
-#include "PageCache.h"
 #include "PageConfiguration.h"
 #include "PageGroup.h"
 #include "PageStorageSessionProvider.h"
@@ -228,7 +227,6 @@ BMessenger BWebPage::sDownloadListener;
 
     MemoryCache::singleton().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     MemoryCache::singleton().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    PageCache::singleton().setMaxSize(pageCacheCapacity);
 }
 
 BWebPage::BWebPage(BWebView* webView, BUrlContext* context)

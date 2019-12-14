@@ -987,14 +987,6 @@ String FrameLoaderClientHaiku::overrideMediaType() const
     return "screen";
 }
 
-void FrameLoaderClientHaiku::didSaveToPageCache()
-{
-}
-
-void FrameLoaderClientHaiku::didRestoreFromPageCache()
-{
-}
-
 void FrameLoaderClientHaiku::dispatchDidBecomeFrameset(bool)
 {
 }
@@ -1016,8 +1008,8 @@ void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
         // callback. This can't be done using the asynchronous BMessage above:
         // by the time the message is processed by the target, the JS test will
         // already have run!
-        JSGlobalContextRef context = toGlobalRef(m_webFrame->Frame()->script().globalObject(mainThreadNormalWorld())->globalExec());
-        JSObjectRef windowObject = toRef(m_webFrame->Frame()->script().globalObject(mainThreadNormalWorld()));
+        JSGlobalContextRef context = toGlobalRef(m_webFrame->Frame()->script().globalObject(mainThreadNormalWorld()));
+        JSObjectRef windowObject = JSContextGetGlobalObject(context);
         m_webPage->fDumpRenderTree->didClearWindowObjectInWorld(world, context, windowObject);
     }
 

@@ -214,9 +214,6 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     String overrideMediaType() const override;
 
-    void didSaveToPageCache() override;
-    void didRestoreFromPageCache() override;
-
     void dispatchDidBecomeFrameset(bool) override;
 
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
@@ -225,6 +222,8 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void updateCachedDocumentLoader(WebCore::DocumentLoader&) override { }
 
     void prefetchDNS(const String&) override { }
+
+	void didRestoreFromBackForwardCache() final {}
  private:
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 

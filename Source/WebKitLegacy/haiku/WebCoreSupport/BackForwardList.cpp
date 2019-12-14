@@ -32,7 +32,6 @@
 #include <WebCore/SerializedScriptValue.h>
 
 #include "WebCore/HistoryItem.h"
-#include "WebCore/PageCache.h"
 
 static const unsigned DefaultCapacity = 100;
 static const unsigned NoCurrentItemIndex = UINT_MAX;
@@ -63,7 +62,6 @@ void BackForwardList::addItem(Ref<HistoryItem>&& newItem)
         while (m_entries.size() > targetSize) {
             RefPtr<HistoryItem> item = m_entries.takeLast();
             m_entryHash.remove(item);
-            PageCache::singleton().remove(*item);
         }
     }
 
@@ -73,7 +71,6 @@ void BackForwardList::addItem(Ref<HistoryItem>&& newItem)
         RefPtr<HistoryItem> item = WTFMove(m_entries[0]);
         m_entries.remove(0);
         m_entryHash.remove(item);
-        PageCache::singleton().remove(*item);
         --m_current;
     }
 
