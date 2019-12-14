@@ -35,6 +35,8 @@
 #include "ProcessThrottler.h"
 #include "ProcessThrottlerClient.h"
 #include "ResponsivenessTimer.h"
+#include "ServiceWorkerInitializationData.h"
+#include "UserContentControllerIdentifier.h"
 #include "VisibleWebPageCounter.h"
 #include "WebConnectionToWebProcess.h"
 #include "WebPageProxyIdentifier.h"
@@ -74,6 +76,7 @@ class ProvisionalPageProxy;
 class UserMediaCaptureManagerProxy;
 class VisitedLinkStore;
 class WebBackForwardListItem;
+class WebCompiledContentRuleListData;
 class WebFrameProxy;
 class WebPageGroup;
 class WebPageProxy;
@@ -131,7 +134,7 @@ public:
     void setIsInProcessCache(bool);
     bool isInProcessCache() const { return m_isInProcessCache; }
 
-    void enableServiceWorkers();
+    void enableServiceWorkers(const Optional<UserContentControllerIdentifier>&);
     void disableServiceWorkers();
 
     WebsiteDataStore& websiteDataStore() const { ASSERT(m_websiteDataStore); return *m_websiteDataStore; }
@@ -246,8 +249,8 @@ public:
     bool hasCommittedAnyProvisionalLoads() const { return m_hasCommittedAnyProvisionalLoads; }
 
 #if PLATFORM(WATCHOS)
-    void takeBackgroundActivityTokenForFullscreenInput();
-    void releaseBackgroundActivityTokenForFullscreenInput();
+    void startBackgroundActivityForFullscreenInput();
+    void endBackgroundActivityForFullscreenInput();
 #endif
 
     bool isPrewarmed() const { return m_isPrewarmed; }
@@ -479,7 +482,7 @@ private:
 
     int m_numberOfTimesSuddenTerminationWasDisabled;
     ProcessThrottler m_throttler;
-    ProcessThrottler::BackgroundActivityToken m_tokenForHoldingLockedFiles;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_activityForHoldingLockedFiles;
 #if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessToken m_foregroundToken;
     BackgroundWebProcessToken m_backgroundToken;
@@ -512,7 +515,7 @@ private:
     bool m_hasAudibleWebPage { false };
 
 #if PLATFORM(WATCHOS)
-    ProcessThrottler::BackgroundActivityToken m_backgroundActivityTokenForFullscreenFormControls;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_backgroundActivityForFullscreenFormControls;
 #endif
 
 #if PLATFORM(COCOA)
@@ -522,6 +525,7 @@ private:
     struct ServiceWorkerInformation {
         WebPageProxyIdentifier serviceWorkerPageProxyID;
         WebCore::PageIdentifier serviceWorkerPageID;
+        ServiceWorkerInitializationData initializationData;
     };
     Optional<ServiceWorkerInformation> m_serviceWorkerInformation;
 };

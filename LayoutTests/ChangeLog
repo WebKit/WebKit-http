@@ -1,3 +1,556 @@
+2019-11-02  Yury Semikhatsky  <yurys@chromium.org>
+
+        REGRESSION: [ Mac ] inspector/dom/getAccessibilityPropertiesForNode.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=203746
+
+        Unreviewed. Move custom test expectation under platform/gtk and revert generic
+        one to the previous state (it was wrongly updated in r251818).
+
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * platform/gtk/inspector/dom/getAccessibilityPropertiesForNode-expected.txt: Copied from LayoutTests/inspector/dom/getAccessibilityPropertiesForNode-expected.txt.
+
+2019-11-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: add a timeline that shows information about any recorded CSS animation/transition
+        https://bugs.webkit.org/show_bug.cgi?id=203651
+        <rdar://problem/56128726>
+
+        Reviewed by Brian Burg.
+
+        * inspector/animation/tracking.html: Added.
+        * inspector/animation/tracking-expected.txt: Added.
+
+2019-11-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG pair properties must be detached from their owner before it's deleted
+        https://bugs.webkit.org/show_bug.cgi?id=203545
+
+        Reviewed by Simon Fraser.
+
+        * svg/custom/pair-properties-detach-expected.txt: Added.
+        * svg/custom/pair-properties-detach.html: Added.
+
+2019-11-01  Eric Carlson  <eric.carlson@apple.com>
+
+        Add experimental TextTrackCue API
+        https://bugs.webkit.org/show_bug.cgi?id=203649
+        <rdar://problem/55675172>
+
+        Reviewed by Jer Noble.
+
+        * media/track/texttrackcue/texttrackcue-addcue-expected.txt: Added.
+        * media/track/texttrackcue/texttrackcue-addcue.html: Added.
+        * media/track/texttrackcue/texttrackcue-constructor-expected.txt: Added.
+        * media/track/texttrackcue/texttrackcue-constructor.html: Added.
+        * media/track/texttrackcue/texttrackcue-displaycue-expected.txt: Added.
+        * media/track/texttrackcue/texttrackcue-displaycue.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-11-01  Kate Cheney  <katherine_cheney@apple.com>
+
+        http/tests/websocket/tests/hybi/handshake-ok-with-legacy-websocket-response-headers.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=176240
+        <rdar://problem/51445000>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Flakiness no longer reproducible.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        macOS WK1: requestidlecallback/requestidlecallback-document-gc.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203758
+
+        Reviewed by Wenson Hsieh.
+
+        Fix the test by delaying the check until the next run loop via setTimeout.
+        This is needed to make GC work reliably in WK1.
+
+        * requestidlecallback/requestidlecallback-document-gc.html:
+
+2019-11-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Display color swatches for p3 colors
+        https://bugs.webkit.org/show_bug.cgi?id=203439
+        <rdar://problem/56637250>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/model/color-expected.txt:
+        * inspector/model/color.html:
+
+2019-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Integrate media query evaluation into HTML5 event loop
+        https://bugs.webkit.org/show_bug.cgi?id=203134
+        <rdar://problem/56396316>
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for listening to accessiblity related media queries without having any style rules
+        get affected by those media queries so that we can catch any future regressions. For now,
+        changing accessiblity settings seem to always schedule a rendering update so there is nothing to do
+        when these accessibility settings do change.
+
+        * fast/media/media-query-list-07.html: Fixed the test to be compatible with new behavior.
+        * fast/media/mq-inverted-colors-live-update-for-listener-expected.txt: Added.
+        * fast/media/mq-inverted-colors-live-update-for-listener.html: Added.
+        * fast/media/mq-prefers-reduced-motion-live-update-for-listener-expected.txt: Added.
+        * fast/media/mq-prefers-reduced-motion-live-update-for-listener.html: Added.
+
+2019-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't leak documents with a pending requestIdleCallback
+        https://bugs.webkit.org/show_bug.cgi?id=203708
+
+        Reviewed by Simon Fraser.
+
+        Added a test for removing iframes with a pending idle callback and test that
+        the current documents of those iframes are collected immediately by GCController.collect.
+
+        * requestidlecallback/requestidlecallback-document-gc-expected.txt: Added.
+        * requestidlecallback/requestidlecallback-document-gc.html: Added.
+
+2019-11-01  Peng Liu  <peng.liu6@apple.com>
+
+        Picture-in-Picture layout test cases interfere with each other
+        https://bugs.webkit.org/show_bug.cgi?id=203614
+
+        Reviewed by Eric Carlson.
+
+        Use "internals.setPictureInPictureAPITestEnabled(video, true)" to test
+        the picture-in-picture API implementation without AVKit/CoreMedia stuffs.
+
+        * media/picture-in-picture-api-enter-pip-1-expected.txt:
+        * media/picture-in-picture-api-enter-pip-1.html:
+        * media/picture-in-picture-api-enter-pip-2-expected.txt:
+        * media/picture-in-picture-api-enter-pip-2.html:
+        * media/picture-in-picture-api-enter-pip-3-expected.txt:
+        * media/picture-in-picture-api-enter-pip-3.html:
+        * media/picture-in-picture-api-enter-pip-4-expected.txt:
+        * media/picture-in-picture-api-enter-pip-4.html:
+        * media/picture-in-picture-api-exit-pip-1-expected.txt:
+        * media/picture-in-picture-api-exit-pip-1.html:
+        * media/picture-in-picture-api-exit-pip-2-expected.txt:
+        * media/picture-in-picture-api-exit-pip-2.html:
+        * media/picture-in-picture-api-pip-events-expected.txt:
+        * media/picture-in-picture-api-pip-events.html:
+        * media/picture-in-picture-api-pip-window-expected.txt:
+        * media/picture-in-picture-api-pip-window.html:
+
+2019-11-01  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on IOSurface support in the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=203026
+        <rdar://problem/56320993>
+
+        * platform/ios/TestExpectations:
+        Adjust some more test expectations after turning on accelerated drawing.
+        This is starting to get concerning.
+
+2019-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on IOSurface support in the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=203026
+        <rdar://problem/56320993>
+
+        * platform/ios/TestExpectations:
+        Adjust some more test expectations after turning on accelerated drawing.
+
+2019-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on IOSurface support in the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=203026
+        <rdar://problem/56320993>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/canvas/accelerated-canvas-compositing-size-limit-expected.txt:
+        * platform/ios-device/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ios/compositing/canvas/accelerated-canvas-compositing-expected.txt: Added.
+        * platform/ios/compositing/canvas/accelerated-canvas-compositing-size-limit-expected.txt: Removed.
+        * platform/ios/fast/canvas/canvas-render-layer-expected.txt: Added.
+        * platform/ios/fast/canvas/canvas-scale-shadowBlur-expected.txt: Added.
+        * platform/ios/fast/canvas/canvas-scale-strokePath-shadow-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/2dcontext/drawing-images-to-the-canvas/drawimage_html_image-expected.txt: Removed.
+        Move and expand the scope of some TestExpectations for canvas tests
+        that fail due to noise introduced in the hardware accelerated drawing path.
+        We will separately investigate how to mitigate this, but it already affects
+        iOS on-device testing (as well as macOS in most cases). The tiny reduction
+        in coverage here is well worth the massive improvement in coverage of
+        accelerated drawing code paths.
+
+        * fast/images/exif-orientation-canvas-expected.html:
+        Due to rdar://problem/56755864, <canvas> and <img> render slightly differently.
+        Use <canvas> for the reference as well, but use transforms to translate it
+        instead of depending on EXIF orientation support, to continue testing
+        the intended behavior.
+
+2019-10-31  Jer Noble  <jer.noble@apple.com>
+
+        [EME] Batch multiple key requests into one request and response
+        https://bugs.webkit.org/show_bug.cgi?id=203580
+        <rdar://problem/54853345>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/media/encrypted-media/fps-multiple-pssh-expected.txt: Added.
+        * platform/mac/media/encrypted-media/fps-multiple-pssh.html: Added.
+
+2019-10-31  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Color picker: incorrect saturation when selecting color on color square
+        https://bugs.webkit.org/show_bug.cgi?id=203695
+        <rdar://problem/56793697>
+
+        Reviewed by Matt Baker.
+
+        * inspector/model/color-expected.txt:
+        * inspector/model/color.html:
+
+2019-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: Node Removed breakpoints should fire whenever the node is removed from the main DOM tree, not just when it's removed from it's parent
+        https://bugs.webkit.org/show_bug.cgi?id=203349
+
+        Reviewed by Matt Baker.
+
+        * inspector/dom-debugger/dom-breakpoints.html:
+        * inspector/dom-debugger/dom-breakpoints-expected.txt:
+
+2019-10-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Integrate resize event with HTML5 event loop
+        https://bugs.webkit.org/show_bug.cgi?id=202964
+
+        Reviewed by Geoffrey Garen and Simon Fraser.
+
+        Added a regression test and fixed an existing test to work with the new behavior.
+
+        * fast/events/resize-subframe-in-rendering-update-expected.txt: Added.
+        * fast/events/resize-subframe-in-rendering-update.html: Added.
+        * fast/shadow-dom/trusted-event-scoped-flags.html:
+
+2019-10-31  Truitt Savell  <tsavell@apple.com>
+
+        Update results for fast/css/hsl-color.html on win
+        https://bugs.webkit.org/show_bug.cgi?id=203592
+
+        Unreviewed test gardening
+
+        * platform/win/fast/css/hsl-color-expected.txt:
+
+2019-10-31  Yury Semikhatsky  <yurys@chromium.org>
+
+        [GTK] Web Inspector: inspector/timeline/timeline-event-*.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=203625
+
+        Reviewed by Devin Rousso.
+
+        Unflake inspector/timeline/timeline-event-*.html tests on GTK.
+
+        * inspector/timeline/resources/timeline-event-utilities.js: There is a race between CapturingState.Inactive
+        and SavePageData events, so the test has to wait for both.
+        Drive-by: wrap promis.reject in a lambda, otherwise reject would be called on an undefined 'this' object.
+        arrive before resolving the promise.
+        (TestPage.registerInitializer):
+        * platform/gtk/TestExpectations:
+
+2019-10-31  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK and WPE gardening after r251837.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/parsing/height-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/geometry/parsing/width-computed-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/scripted/disabled-shapes-not-hit-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance/extensions/oes-texture-half-float-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/extensions/ext-color-buffer-float-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/textures/misc/tex-new-formats-expected.txt:
+
+2019-10-30  Peng Liu  <peng.liu6@apple.com>
+
+        [Picture-in-Picture Web API] Enable the support for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=202618
+
+        Reviewed by Jer Noble.
+
+        We do not need to play the video before entering the picture-in-picture mode,
+        so remove the code to start video playback in the test pages.
+        Also, enable the layout test cases of the Picture-in-Picture API for iPad.
+
+        * media/picture-in-picture-api-pip-events-expected.txt:
+        * media/picture-in-picture-api-pip-events.html:
+        * media/picture-in-picture-api-pip-window-expected.txt:
+        * media/picture-in-picture-api-pip-window.html:
+        * platform/ipad/TestExpectations:
+
+2019-10-30  Yury Semikhatsky  <yurys@chromium.org>
+
+        inspector-protocol/debugger/setBreakpoint-dfg.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=128736
+
+        Reviewed by Devin Rousso.
+
+        Reenabling the test on all platforms. Depending on the platform implementation of EventLoop
+        there is a difference in what is dispatched first when execution is resumed: previously
+        paused inspected script or commands from the inspector front-end. It would not be a problem
+        if InspectorFrontendAPI.dispatchMessageAsync actually delivered messages asynchronously.
+        With the current implementation though response to Debugger.resume
+        is dispatched in the front-end synchronously and the front-end would call InspectoTest.log
+        when inspected script execution is not yet resumed.
+
+        * TestExpectations:
+        * inspector/debugger/setBreakpoint-dfg-expected.txt:
+        * inspector/debugger/setBreakpoint-dfg.html: Print final 'PASS' output after exiting nested loop
+        so that it always appears last.
+        * platform/gtk/TestExpectations:
+
+2019-10-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Opacity should always serialize as a number
+        https://bugs.webkit.org/show_bug.cgi?id=203601
+
+        Reviewed by Dean Jackson.
+
+        Fix the tests and results.
+
+        * fast/css/parsing-opacity-expected.txt:
+        * fast/css/parsing-opacity.html:
+        * fast/svg/parsing-fill-opacity-expected.txt:
+        * fast/svg/parsing-fill-opacity.html:
+        * fast/svg/parsing-flood-opacity-expected.txt:
+        * fast/svg/parsing-flood-opacity.html:
+        * fast/svg/parsing-stop-opacity-expected.txt:
+        * fast/svg/parsing-stop-opacity.html:
+        * fast/svg/parsing-stroke-opacity-expected.txt:
+        * fast/svg/parsing-stroke-opacity.html:
+
+2019-10-30  Chris Dumez  <cdumez@apple.com>
+
+        GPUCanvasContext should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203104
+        <rdar://problem/56748066>
+
+        Reviewed by Tim Horton.
+
+        Add layout test coverage.
+
+        * fast/history/page-cache-gpu-canvas-context-expected.txt: Added.
+        * fast/history/page-cache-gpu-canvas-context.html: Added.
+
+2019-10-30  Yury Semikhatsky  <yurys@chromium.org>
+
+        [GTK] LayoutTests/inspector tests timeout
+        https://bugs.webkit.org/show_bug.cgi?id=147518
+
+        Unreviewed. Renable inspector/dom and inspector/timeline tests on GTK.
+
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt: This test has consistent output which
+        is slightly different from Mac.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/inspector/timeline/line-column-expected.txt: Added. TimelineRecordType::RenderingFrame
+        is only emitted on PLATFORM(COCOA), so we need custom expectation on other platforms.
+
+2019-10-30  Russell Epstein  <repstein@apple.com>
+
+        [ iOS ] Layout Test fast/css-custom-paint/simple-hidpi.html is a Flaky Failure (203637).
+        https://bugs.webkit.org/show_bug.cgi?id=203637
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations: Marked test as flaky.
+
+2019-10-30  Alex Christensen  <achristensen@webkit.org>
+
+        WKContentRuleLists should block requests from service workers
+        https://bugs.webkit.org/show_bug.cgi?id=201980
+        <rdar://problem/55516735>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/contentextensions/resources/fetch-worker.js: Added.
+        (event.fetch.string_appeared_here.then):
+        (event.catch):
+        * http/tests/contentextensions/resources/serviceworkertest.js: Added.
+        (testServiceWorker):
+        (test):
+        * http/tests/contentextensions/service-worker.https-expected.txt: Added.
+        * http/tests/contentextensions/service-worker.https.html: Added.
+        * http/tests/contentextensions/service-worker.https.html.json: Added.
+
+2019-10-30  Daniel Bates  <dabates@apple.com>
+
+        Fix misspelling test named fast/dom/simultaneouslyRegsiteredTimerFireOrder.html
+        https://bugs.webkit.org/show_bug.cgi?id=203578
+
+        Reviewed by Jer Noble.
+
+        * fast/dom/simultaneously-registered-timer-fire-order-expected.txt: Renamed from LayoutTests/fast/dom/simultaneouslyRegsiteredTimerFireOrder-expected.txt.
+        * fast/dom/simultaneously-registered-timer-fire-order.html: Renamed from LayoutTests/fast/dom/simultaneouslyRegsiteredTimerFireOrder.html.
+
+2019-10-30  Russell Epstein  <repstein@apple.com>
+
+        REGRESSION [ PHP ][ iOS ]: Two http/tests/cookies/same-site/set-first-party-* Tests are Failing
+        https://bugs.webkit.org/show_bug.cgi?id=203567
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations: Marked tests as failing.
+
+2019-10-30  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r251750): Three CSS Tests are Failing
+        https://bugs.webkit.org/show_bug.cgi?id=203616
+        <rdar://problem/56749907>
+
+        Unreviewed test gardening.
+
+        Fix the conic-gradient-parsing.html tests, and update iOS expectations for two hsl tests.
+
+        * http/wpt/css/css-images-4/conic-gradient-parsing.html:
+        * platform/ios/fast/css/hsl-color-expected.txt:
+        * platform/ios/fast/css/hsla-color-expected.txt:
+
+2019-10-30  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !object || !isRuby(object->parent()) || is<RenderRubyRun>(*object) || (object->isInline() && (object->isBeforeContent() || object->isAfterContent())) || (object->isAnonymous() && is<RenderBlock>(*object) && object->style().display() == D
+        https://bugs.webkit.org/show_bug.cgi?id=196003
+        <rdar://problem/49219890>
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations:
+
+2019-10-30  Peng Liu  <peng.liu6@apple.com>
+
+        [Picture-in-Picture Web API] Implement PictureInPictureWindow
+        https://bugs.webkit.org/show_bug.cgi?id=202615
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-10-30  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r238252): HTTP POST is losing application/x-www-form-urlencoded body if there's a redirect to different host
+        https://bugs.webkit.org/show_bug.cgi?id=201950
+        <rdar://problem/55577782>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/misc/form-submit-file-cross-site-redirect-expected.txt: Added.
+        * http/tests/misc/form-submit-file-cross-site-redirect.html: Added.
+
+2019-10-30  Antti Koivisto  <antti@apple.com>
+
+        ::before/::after elements not filling their grid cell when container has display: contents
+        https://bugs.webkit.org/show_bug.cgi?id=193567
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/display-contents-before-after-grid-expected.html: Added.
+        * fast/css/display-contents-before-after-grid.html: Added.
+
+2019-10-30  Antti Koivisto  <antti@apple.com>
+
+        Update css/css-display web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=203607
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+
+2019-10-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Make testharnessreport.js report the results correctly inside an SVG document
+        https://bugs.webkit.org/show_bug.cgi?id=203503
+
+        Reviewed by Chris Dumez.
+
+        For SVG tests, the completion callback has to create a foreignObject and
+        append it to the root element. Then the results element has to be appended
+        to this foreignObject.
+
+        * TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/svg/path/error-handling/bounding-expected.txt: Removed.
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/scripted/disabled-shapes-not-hit-expected.txt: Removed.
+        * resources/testharnessreport.js:
+        (self.testRunner.add_completion_callback):
+
+2019-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip imported/w3c/web-platform-tests/cors/credentials-flag.htm
+
+        The test is not flaky if we don't dump JS console messages in the output.
+
+        * TestExpectations:
+
+2019-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip 3 WPT tests that are timing out since they were imported.
+
+        It unnecessarily slows down our test runs.
+
+        * TestExpectations:
+
+2019-10-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix autoscroll test to work on iPad.
+        https://bugs.webkit.org/show_bug.cgi?id=203598
+        <rdar://problem/51863703>
+
+        Reviewed by Wenson Hsieh.
+
+        iPads are much taller than iPhones, so to test autoscrolling under a
+        software keyboard, we need to return several more times.
+        Also take the opportunity to make the test more robust to races.
+
+        * fast/events/autoscroll-with-software-keyboard.html:
+        * platform/ipad/TestExpectations:
+
+2019-10-30  Frederic Wang  <fwang@igalia.com>
+
+        Import WPT tests for scrollend and overscroll events
+        https://bugs.webkit.org/show_bug.cgi?id=203500
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations: Skip the tests on most platforms, since
+        sendEventStream is not supported.
+        * platform/ios/TestExpectations: Enable the tests on iOS.
+
+2019-10-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2] SVGSymbolElement should inherits SVGGraphicsElement
+        https://bugs.webkit.org/show_bug.cgi?id=203573
+
+        Reviewed by Simon Fraser.
+
+        * svg/dom/svg2-inheritance-expected.txt:
+        * svg/dom/svg2-inheritance.html:
+
+2019-10-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r251693): [iOS] Unable to change selection after focusing an element with keyboard attached
+        https://bugs.webkit.org/show_bug.cgi?id=203582
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to cover this scenario.
+
+        * editing/selection/ios/set-selection-by-tapping-after-changing-focused-element-bounds-expected.txt: Added.
+        * editing/selection/ios/set-selection-by-tapping-after-changing-focused-element-bounds.html: Added.
+
 2019-10-29  Chris Dumez  <cdumez@apple.com>
 
         UserMediaRequest should not prevent entering the back/forward cache

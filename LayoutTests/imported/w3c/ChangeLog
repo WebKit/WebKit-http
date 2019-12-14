@@ -1,3 +1,361 @@
+2019-11-02  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Fix line name positions after auto repeat with no line names
+        https://bugs.webkit.org/show_bug.cgi?id=203670
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Import WPT tests.
+        There are some test failures because integer repeat() is still expanded
+        at computed-value time (https://webkit.org/b/202259).
+
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-expected.txt:
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-nogrid-expected.txt:
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-nogrid.html:
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-withcontent-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed-withcontent.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-columns-computed.html:
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-expected.txt:
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-nogrid-expected.txt:
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-nogrid.html:
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-withcontent-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed-withcontent.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-rows-computed.html:
+        * web-platform-tests/css/css-grid/parsing/w3c-import.log:
+
+2019-10-31  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGGeometryElement.getPointAtLength should clamp its argument to [0, length]
+        https://bugs.webkit.org/show_bug.cgi?id=203687
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/types/scripted/SVGGeometryElement.getPointAtLength-01-expected.txt:
+
+2019-10-31  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Add support for AnimationEvent.pseudoElement
+        https://bugs.webkit.org/show_bug.cgi?id=203671
+
+        Reviewed by Dean Jackson.
+
+        Mark WPT progressions.
+
+        * web-platform-tests/css/css-animations/animationevent-interface-expected.txt:
+        * web-platform-tests/css/css-animations/animationevent-pseudoelement-expected.txt:
+        * web-platform-tests/css/css-animations/animationevent-types-expected.txt:
+        * web-platform-tests/css/css-animations/idlharness-expected.txt:
+
+2019-10-31  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] transform property is always "none" for getKeyframes() output of a CSS Animation
+        https://bugs.webkit.org/show_bug.cgi?id=203669
+
+        Reviewed by Dean Jackson.
+
+        Mark a progression, although the test still fails overall, it fails in a better way.
+
+        * web-platform-tests/css/css-animations/KeyframeEffect-getKeyframes.tentative-expected.txt:
+
+2019-10-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Opacity should always serialize as a number
+        https://bugs.webkit.org/show_bug.cgi?id=203601
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css/css-color/parsing/opacity-valid-expected.txt:
+
+2019-10-30  Antti Koivisto  <antti@apple.com>
+
+        Update css/css-display web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=203607
+
+        Reviewed by Simon Fraser.
+
+        * resources/resource-files.json:
+        * web-platform-tests/css/css-display/META.yml: Added.
+        * web-platform-tests/css/css-display/OWNERS: Removed.
+        * web-platform-tests/css/css-display/display-change-iframe-expected.xht: Added.
+        * web-platform-tests/css/css-display/display-change-iframe.html: Added.
+        * web-platform-tests/css/css-display/display-change-object-iframe-expected.xht: Added.
+        * web-platform-tests/css/css-display/display-change-object-iframe.html: Added.
+        * web-platform-tests/css/css-display/display-contents-blockify-dynamic-expected.txt: Added.
+        * web-platform-tests/css/css-display/display-contents-blockify-dynamic.html: Added.
+        * web-platform-tests/css/css-display/display-contents-details.html:
+        * web-platform-tests/css/css-display/display-contents-fieldset-nested-legend-expected.html:
+        * web-platform-tests/css/css-display/display-contents-shadow-dom-1-expected.html: Added.
+        * web-platform-tests/css/css-display/display-contents-shadow-dom-1.html: Added.
+        * web-platform-tests/css/css-display/display-contents-shadow-host-whitespace-expected.html: Added.
+        * web-platform-tests/css/css-display/display-contents-shadow-host-whitespace.html: Added.
+        * web-platform-tests/css/css-display/display-contents-sharing-001-expected.html: Added.
+        * web-platform-tests/css/css-display/display-contents-sharing-001.html: Added.
+        * web-platform-tests/css/css-display/display-contents-whitespace-inside-inline-expected.html: Added.
+        * web-platform-tests/css/css-display/display-contents-whitespace-inside-inline.html: Added.
+        * web-platform-tests/css/css-display/display-flow-root-list-item-001-expected.html: Added.
+        * web-platform-tests/css/css-display/display-flow-root-list-item-001.html: Added.
+        * web-platform-tests/css/css-display/display-inline-dynamic-001-expected.html: Added.
+        * web-platform-tests/css/css-display/display-inline-dynamic-001.html: Added.
+        * web-platform-tests/css/css-display/display-none-inline-img-expected.html: Added.
+        * web-platform-tests/css/css-display/display-none-inline-img.html: Added.
+        * web-platform-tests/css/css-display/inheritance-expected.txt: Added.
+        * web-platform-tests/css/css-display/inheritance.html: Added.
+        * web-platform-tests/css/css-display/parsing/display-computed-expected.txt: Added.
+        * web-platform-tests/css/css-display/parsing/display-computed.html: Added.
+        * web-platform-tests/css/css-display/parsing/display-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-display/parsing/display-invalid.html: Added.
+        * web-platform-tests/css/css-display/parsing/display-valid-expected.txt: Added.
+        * web-platform-tests/css/css-display/parsing/display-valid.html: Added.
+        * web-platform-tests/css/css-display/parsing/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-display/support/w3c-import.log.
+        * web-platform-tests/css/css-display/run-in/OWNERS: Removed.
+        * web-platform-tests/css/css-display/run-in/direction-applies-to-011.xht:
+        * web-platform-tests/css/css-display/run-in/font-family-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/font-size-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/font-style-applies-to-004-expected.xht:
+        * web-platform-tests/css/css-display/run-in/letter-spacing-applies-to-004-expected.html:
+        * web-platform-tests/css/css-display/run-in/letter-spacing-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/overflow-applies-to-011.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-001.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-003.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-004.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-006.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-007.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-008.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-009.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-010.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-011.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-012.xht:
+        * web-platform-tests/css/css-display/run-in/run-in-013.xht:
+        * web-platform-tests/css/css-display/run-in/support/w3c-import.log:
+        * web-platform-tests/css/css-display/run-in/table-layout-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/text-indent-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/vertical-align-applies-to-011.xht:
+        * web-platform-tests/css/css-display/run-in/w3c-import.log:
+        * web-platform-tests/css/css-display/run-in/white-space-applies-to-004.xht:
+        * web-platform-tests/css/css-display/run-in/word-spacing-applies-to-004.xht:
+        * web-platform-tests/css/css-display/select-4-option-optgroup-display-none-expected.html: Added.
+        * web-platform-tests/css/css-display/select-4-option-optgroup-display-none.html: Added.
+        * web-platform-tests/css/css-display/support/red-square.html: Added.
+        * web-platform-tests/css/css-display/support/w3c-import.log:
+        * web-platform-tests/css/css-display/w3c-import.log:
+
+2019-10-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Make testharnessreport.js report the results correctly inside an SVG document
+        https://bugs.webkit.org/show_bug.cgi?id=203503
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/dom/nodes/Document-constructor-xml-expected.txt:
+        * web-platform-tests/dom/nodes/Node-contains-xml-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-10-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-11-expected.txt:
+        * web-platform-tests/svg/animations/scripted/end-element-on-inactive-element-expected.txt: Added.
+        * web-platform-tests/svg/animations/scripted/onhover-syncbases-expected.txt: Added.
+        * web-platform-tests/svg/extensibility/foreignObject/properties-expected.txt: Added.
+        * web-platform-tests/svg/extensibility/interfaces/foreignObject-graphics-expected.txt: Added.
+        * web-platform-tests/svg/geometry/inheritance-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cx-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cx-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cx-valid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cy-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cy-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/cy-valid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/height-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/r-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/r-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/r-valid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/rx-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/rx-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/rx-valid-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/ry-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/ry-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/ry-valid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/sizing-properties-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/width-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/x-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/x-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/x-valid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/y-computed-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/y-invalid-expected.txt: Added.
+        * web-platform-tests/svg/geometry/parsing/y-valid-expected.txt: Added.
+        * web-platform-tests/svg/interact/inheritance-expected.txt: Added.
+        * web-platform-tests/svg/interact/parsing/pointer-events-computed-expected.txt: Added.
+        * web-platform-tests/svg/interact/parsing/pointer-events-invalid-expected.txt: Added.
+        * web-platform-tests/svg/interact/parsing/pointer-events-valid-expected.txt: Added.
+        * web-platform-tests/svg/interact/script-content-expected.txt: Added.
+        * web-platform-tests/svg/interact/scripted/composed.window-expected.txt: Added.
+        * web-platform-tests/svg/interact/scripted/focus-events-expected.txt: Added.
+        * web-platform-tests/svg/interact/scripted/focus-tabindex-default-value-expected.txt: Added.
+        * web-platform-tests/svg/interact/scripted/tabindex-focus-flag-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/a-download-click-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/a.rel-getter-01-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/a.rel-setter-01-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/a.text-getter-01-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/a.text-setter-01-expected.txt: Added.
+        * web-platform-tests/svg/linking/scripted/rellist-feature-detection-expected.txt: Added.
+        * web-platform-tests/svg/painting/inheritance-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/color-interpolation-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/color-interpolation-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-opacity-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-opacity-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-opacity-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-rule-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-rule-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-rule-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/fill-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/image-rendering-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/image-rendering-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/image-rendering-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-end-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-end-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-end-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-mid-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-mid-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-mid-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-start-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-start-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-start-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/marker-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/paint-order-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/paint-order-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/paint-order-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/shape-rendering-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/shape-rendering-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/shape-rendering-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dasharray-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dasharray-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dasharray-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dashoffset-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dashoffset-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-dashoffset-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linecap-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linecap-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linecap-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linejoin-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linejoin-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-linejoin-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-miterlimit-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-miterlimit-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-miterlimit-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-opacity-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-opacity-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-opacity-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-width-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-width-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/stroke-width-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/text-rendering-computed-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/text-rendering-invalid-expected.txt: Added.
+        * web-platform-tests/svg/painting/parsing/text-rendering-valid-expected.txt: Added.
+        * web-platform-tests/svg/painting/scripted/paint-order-computed-value-01-expected.txt: Added.
+        * web-platform-tests/svg/path/error-handling/bounding-expected.txt: Added.
+        * web-platform-tests/svg/path/interfaces/SVGAnimatedPathData-removed-expected.txt: Added.
+        * web-platform-tests/svg/path/property/d-interpolation-discrete-expected.txt: Added.
+        * web-platform-tests/svg/path/property/d-interpolation-relative-absolute-expected.txt: Added.
+        * web-platform-tests/svg/path/property/d-interpolation-single-expected.txt: Added.
+        * web-platform-tests/svg/path/property/getComputedStyle-expected.txt: Added.
+        * web-platform-tests/svg/path/property/serialization-expected.txt: Added.
+        * web-platform-tests/svg/pservers/inheritance-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-color-computed-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-color-invalid-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-color-valid-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-opacity-computed-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-opacity-invalid-expected.txt: Added.
+        * web-platform-tests/svg/pservers/parsing/stop-opacity-valid-expected.txt: Added.
+        * web-platform-tests/svg/pservers/scripted/stop-color-inheritance-currentcolor-expected.txt: Added.
+        * web-platform-tests/svg/scripted/text-attrs-dxdy-have-length-expected.txt: Added.
+        * web-platform-tests/svg/scripted/text-attrs-xyrotate-have-length-expected.txt: Added.
+        * web-platform-tests/svg/scripted/text-tspan-attrs-have-length-expected.txt: Added.
+        * web-platform-tests/svg/scripted/text-tspan-attrs-indexed-access-expected.txt: Added.
+        * web-platform-tests/svg/scripted/tspan-attrs-dxdy-have-length-expected.txt: Added.
+        * web-platform-tests/svg/scripted/tspan-attrs-xyrotate-have-length-expected.txt: Added.
+        * web-platform-tests/svg/shapes/line-getPointAtLength-expected.txt: Added.
+        * web-platform-tests/svg/shapes/line-pathLength-expected.txt: Added.
+        * web-platform-tests/svg/shapes/rx-ry-not-inherited-expected.txt: Added.
+        * web-platform-tests/svg/shapes/scripted/disabled-shapes-not-hit-expected.txt: Added.
+        * web-platform-tests/svg/struct/UnknownElement/interface-expected.txt: Added.
+        * web-platform-tests/svg/struct/scripted/autofocus-attribute-expected.txt: Added.
+        * web-platform-tests/svg/styling/required-properties-expected.txt: Added.
+        * web-platform-tests/svg/text/inheritance-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/inline-size-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/inline-size-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-inside-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-inside-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-margin-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-margin-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-subtract-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/shape-subtract-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-anchor-computed-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-anchor-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-anchor-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-decoration-fill-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-decoration-fill-valid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-decoration-stroke-invalid-expected.txt: Added.
+        * web-platform-tests/svg/text/parsing/text-decoration-stroke-valid-expected.txt: Added.
+        * web-platform-tests/svg/types/elements/SVGGeometryElement-rect-expected.txt: Added.
+        * web-platform-tests/svg/types/scripted/SVGGeometryElement.getPointAtLength-01-expected.txt: Added.
+        * web-platform-tests/svg/types/scripted/SVGGeometryElement.isPointInFill-01-expected.txt: Added.
+        * web-platform-tests/svg/types/scripted/SVGGeometryElement.isPointInStroke-01-expected.txt: Added.
+        * web-platform-tests/svg/types/scripted/SVGGraphicsElement-expected.txt: Added.
+        * web-platform-tests/svg/types/scripted/event-handler-all-document-element-events-expected.txt: Added.
+
+2019-10-30  Dirk Schulze  <krit@webkit.org>
+
+        [css-masking] Unprefix -webkit-clip-path
+        https://bugs.webkit.org/show_bug.cgi?id=187888
+
+        Reviewed by Simon Fraser.
+
+        Test started passing. Updating test results.
+
+        * web-platform-tests/css/css-masking/parsing/clip-path-computed-expected.txt:
+        * web-platform-tests/css/css-masking/parsing/clip-path-valid-expected.txt:
+        * web-platform-tests/css/css-shapes/basic-shape-circle-ellipse-serialization-expected.txt:
+        * web-platform-tests/css/css-shapes/shape-outside/formatting-context/shape-outside-formatting-context.tentative-expected.html:
+                Test result is incorrect: Doesn't test the shifing of content when shape-outside is set.
+        * web-platform-tests/css/css-shapes/shape-outside/formatting-context/shape-outside-formatting-context.tentative.html:
+
+2019-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip imported/w3c/web-platform-tests/cors/credentials-flag.htm
+
+        The test is not flaky if we don't dump JS console messages in the output.
+
+        * web-platform-tests/cors/credentials-flag-expected.txt:
+
+2019-10-30  Frederic Wang  <fwang@igalia.com>
+
+        Import WPT tests for scrollend and overscroll events
+        https://bugs.webkit.org/show_bug.cgi?id=203500
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/dom/events/scrolling/overscroll-event-fired-to-document-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/overscroll-event-fired-to-element-with-overscroll-behavior-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/overscroll-event-fired-to-scrolled-element-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/overscroll-event-fired-to-window-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/scrollend-event-fired-after-snap-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/scrollend-event-fired-to-document-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/scrollend-event-fired-to-scrolled-element-expected.txt: Added.
+        * web-platform-tests/dom/events/scrolling/scrollend-event-fired-to-window-expected.txt: Added.
+
+2019-10-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2] SVGSymbolElement should inherits SVGGraphicsElement
+        https://bugs.webkit.org/show_bug.cgi?id=203573
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/idlharness.window-expected.txt:
+
 2019-10-29  Simon Fraser  <simon.fraser@apple.com>
 
         Align CSS hsl() -> rgb() color conversion with the spec

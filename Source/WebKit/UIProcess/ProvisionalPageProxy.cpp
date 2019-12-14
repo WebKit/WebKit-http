@@ -63,7 +63,7 @@ ProvisionalPageProxy::ProvisionalPageProxy(WebPageProxy& page, Ref<WebProcessPro
     , m_request(request)
     , m_processSwapRequestedByClient(processSwapRequestedByClient)
 #if PLATFORM(IOS_FAMILY)
-    , m_suspensionToken(m_process->throttler().foregroundActivityToken())
+    , m_provisionalLoadActivity(m_process->throttler().foregroundActivity("Provisional Load"_s))
 #endif
 {
     RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "ProvisionalPageProxy: pageProxyID=%" PRIu64 " webPageID=%" PRIu64 " navigationID=%" PRIu64 " suspendedPage: %p", m_page.identifier().toUInt64(), m_webPageID.toUInt64(), navigationID, suspendedPage.get());
@@ -354,9 +354,9 @@ void ProvisionalPageProxy::decidePolicyForNavigationActionSync(FrameIdentifier f
 }
 
 #if USE(QUICK_LOOK)
-void ProvisionalPageProxy::didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName)
+void ProvisionalPageProxy::requestPasswordForQuickLookDocumentInMainFrame(const String& fileName, CompletionHandler<void(const String&)>&& completionHandler)
 {
-    m_page.didRequestPasswordForQuickLookDocumentInMainFrameShared(m_process.copyRef(), fileName);
+    m_page.requestPasswordForQuickLookDocumentInMainFrameShared(fileName, WTFMove(completionHandler));
 }
 #endif
 
@@ -469,8 +469,8 @@ void ProvisionalPageProxy::didReceiveMessage(IPC::Connection& connection, IPC::D
     }
 
 #if USE(QUICK_LOOK)
-    if (decoder.messageName() == Messages::WebPageProxy::DidRequestPasswordForQuickLookDocumentInMainFrame::name()) {
-        IPC::handleMessage<Messages::WebPageProxy::DidRequestPasswordForQuickLookDocumentInMainFrame>(decoder, this, &ProvisionalPageProxy::didRequestPasswordForQuickLookDocumentInMainFrame);
+    if (decoder.messageName() == Messages::WebPageProxy::RequestPasswordForQuickLookDocumentInMainFrame::name()) {
+        IPC::handleMessageAsync<Messages::WebPageProxy::RequestPasswordForQuickLookDocumentInMainFrame>(connection, decoder, this, &ProvisionalPageProxy::requestPasswordForQuickLookDocumentInMainFrame);
         return;
     }
 #endif

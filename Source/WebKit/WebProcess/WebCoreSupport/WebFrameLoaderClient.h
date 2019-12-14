@@ -123,7 +123,7 @@ private:
     void dispatchDidFailLoad(const WebCore::ResourceError&) final;
     void dispatchDidFinishDocumentLoad() final;
     void dispatchDidFinishLoad() final;
-    void dispatchDidExplicitOpen(const URL&) final;
+    void dispatchDidExplicitOpen(const URL&, const String& mimeType) final;
 
     void dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>) final;
     void dispatchDidLayout() final;

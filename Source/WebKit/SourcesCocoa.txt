@@ -101,7 +101,7 @@ Shared/API/c/mac/WKCertificateInfoMac.mm
 Shared/API/c/mac/WKObjCTypeWrapperRef.mm
 Shared/API/c/mac/WKURLRequestNS.mm
 Shared/API/c/mac/WKURLResponseNS.mm
-Shared/API/c/mac/WKWebArchive.cpp
+Shared/API/c/mac/WKWebArchiveRef.cpp
 Shared/API/c/mac/WKWebArchiveResource.cpp
 
 Shared/API/Cocoa/_WKFrameHandle.mm
@@ -173,7 +173,6 @@ Shared/ios/InteractionInformationRequest.cpp
 Shared/ios/NativeWebKeyboardEventIOS.mm
 Shared/ios/NativeWebMouseEventIOS.mm
 Shared/ios/NativeWebTouchEventIOS.mm
-Shared/ios/QuickLookDocumentData.cpp
 Shared/ios/WebAutocorrectionData.mm
 Shared/ios/WebIconUtilities.mm
 Shared/ios/WebIOSEventFactory.mm

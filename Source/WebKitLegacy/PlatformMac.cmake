@@ -110,6 +110,7 @@ list(APPEND WebKitLegacy_SOURCES
     mac/WebCoreSupport/WebKitFullScreenListener.mm
     mac/WebCoreSupport/WebNotificationClient.mm
     mac/WebCoreSupport/WebOpenPanelResultListener.mm
+    mac/WebCoreSupport/WebPaymentCoordinatorClient.mm
     mac/WebCoreSupport/WebPlatformStrategies.mm
     mac/WebCoreSupport/WebPluginInfoProvider.mm
     mac/WebCoreSupport/WebProgressTrackerClient.mm
@@ -638,14 +639,16 @@ foreach (_file ${WebKitLegacy_LEGACY_FORWARDING_HEADERS_FILES})
     endif ()
 endforeach ()
 
-file(COPY
-    mac/Plugins/Hosted/WebKitPluginAgent.defs
-    mac/Plugins/Hosted/WebKitPluginAgentReply.defs
-    mac/Plugins/Hosted/WebKitPluginClient.defs
-    mac/Plugins/Hosted/WebKitPluginHost.defs
-    mac/Plugins/Hosted/WebKitPluginHostTypes.defs
-    mac/Plugins/Hosted/WebKitPluginHostTypes.h
-DESTINATION ${WebKitLegacy_DERIVED_SOURCES_DIR})
+if (NOT EXISTS ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginHostTypes.h)
+    file(COPY
+        mac/Plugins/Hosted/WebKitPluginAgent.defs
+        mac/Plugins/Hosted/WebKitPluginAgentReply.defs
+        mac/Plugins/Hosted/WebKitPluginClient.defs
+        mac/Plugins/Hosted/WebKitPluginHost.defs
+        mac/Plugins/Hosted/WebKitPluginHostTypes.defs
+        mac/Plugins/Hosted/WebKitPluginHostTypes.h
+        DESTINATION ${WebKitLegacy_DERIVED_SOURCES_DIR})
+endif ()
 
 add_custom_command(
     OUTPUT

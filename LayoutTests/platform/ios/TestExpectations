@@ -2494,6 +2494,9 @@ webkit.org/b/160367 media/track/track-remove-crash.html
 # They are also flakily failing on WebKit2, as snapshot sometimes has a black rectangle for video element instead of white one.
 webkit.org/b/131476 media/track/w3c/track/webvtt
 
+# VTTRegion height doesn't adjust when cue font size changes.
+webkit.org/b/203621 media/track/regions-webvtt/vtt-region-display.html [ Pass Failure ]
+
 media/video-object-fit-change.html [ ImageOnlyFailure ]
 media/video-object-fit.html [ ImageOnlyFailure ]
 
@@ -2559,6 +2562,8 @@ media/video-volume.html [ Failure ]
 media/W3C/audio/canPlayType/canPlayType_supported_but_no_codecs_parameter_1.html [ Failure ]
 
 media/video-seek-to-current-time.html [ Failure ]
+
+imported/w3c/web-platform-tests/dom/events/scrolling [ Pass ]
 
 fast/attachment/attachment-wrapping-action.html [ Pass ]
 fast/attachment/attachment-borderless.html [ Pass ]
@@ -3370,6 +3375,70 @@ imported/w3c/web-platform-tests/2dcontext/drawing-paths-to-the-canvas/drawFocusI
 imported/w3c/web-platform-tests/2dcontext/drawing-paths-to-the-canvas/drawFocusIfNeeded_003.html [ Skip ]
 imported/w3c/web-platform-tests/2dcontext/drawing-paths-to-the-canvas/drawFocusIfNeeded_004.html [ Skip ]
 imported/w3c/web-platform-tests/2dcontext/drawing-paths-to-the-canvas/drawFocusIfNeeded_005.html [ Skip ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=175736
+canvas/philip/tests/2d.path.stroke.scale2.html [ Failure ]
+fast/canvas/canvas-currentColor.html [ Failure ]
+fast/canvas/canvas-radial-gradient-spreadMethod.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.cone.bottom.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.cone.cylinder.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.cone.front.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.cone.shape1.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.cone.top.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.inside1.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.inside2.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.inside3.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.outside1.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.outside2.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.outside3.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.touch1.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.touch2.html [ Failure ]
+imported/w3c/canvas/2d.gradient.radial.touch3.html [ Failure ]
+imported/w3c/canvas/2d.path.stroke.scale2.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.cone.bottom.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.cone.cylinder.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.cone.front.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.cone.shape1.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.cone.top.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.inside1.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.inside2.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.inside3.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.outside1.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.outside2.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.outside3.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.touch1.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.touch2.html [ Failure ]
+imported/w3c/web-platform-tests/2dcontext/fill-and-stroke-styles/2d.gradient.radial.touch3.html [ Failure ]
+
+# These tests fail with tiny (0.01%) image diffs with accelerated drawing enabled.
+accessibility/smart-invert-reference.html [ ImageOnlyFailure ]
+compositing/masks/become-tiled-mask.html [ ImageOnlyFailure ]
+css3/filters/backdrop/add-remove-add-backdrop-filter.html [ ImageOnlyFailure ]
+fast/css/object-fit/object-fit-canvas.html [ ImageOnlyFailure ]
+fast/hidpi/image-srcset-png-canvas.html [ ImageOnlyFailure ]
+scrollingcoordinator/ios/fixed-frame-overflow-swipe.html [ ImageOnlyFailure ]
+fast/canvas/canvas-transform-inverse.html [ ImageOnlyFailure ]
+fast/overflow/border-radius-clipping-2.html [ ImageOnlyFailure ]
+imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ ImageOnlyFailure ]
+imported/blink/css3/blending/mix-blend-mode-with-filters.html [ ImageOnlyFailure ]
+imported/blink/fast/canvas/bidi-multi-run.html [ ImageOnlyFailure ]
+imported/blink/fast/gradients/gradient-transparency.html [ ImageOnlyFailure ]
+
+# These tests fail unexpectedly with accelerated drawing enabled.
+# Interestingly, these versions fail worse than the more recently updated WPT versions above.
+canvas/philip/tests/2d.gradient.radial.cone.bottom.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.cylinder.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.front.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.shape1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.top.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch3.html [ Failure ]
+fast/canvas/set-colors.html [ Failure ]
+
+webkit.org/b/202460 imported/w3c/web-platform-tests/2dcontext/image-smoothing/imagesmoothing.html [ Failure ]
+
+webkit.org/b/202523 imported/w3c/web-platform-tests/2dcontext/path-objects/2d.path.stroke.scale2.html [ Failure ]
 
 # canvas tests that fail with small antialiasing diffs
 imported/w3c/web-platform-tests/2dcontext/building-paths/canvas_complexshapes_arcto_001.htm [ ImageOnlyFailure ]

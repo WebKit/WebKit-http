@@ -42,7 +42,7 @@ class DocumentPictureInPicture : public Supplement<Document> {
 public:
     virtual ~DocumentPictureInPicture();
 
-    static bool pictureInPictureEnabled(Document&) { return true; }
+    static bool pictureInPictureEnabled(Document&);
     static void exitPictureInPicture(Document&, Ref<DeferredPromise>&&);
 
     static DocumentPictureInPicture* from(Document&);

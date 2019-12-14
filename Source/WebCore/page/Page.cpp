@@ -565,19 +565,13 @@ void Page::initGroup()
 
 void Page::updateStyleAfterChangeInEnvironment()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        // If a change in the global environment has occurred, we need to
-        // make sure all the properties a recomputed, therefore we invalidate
-        // the properties cache.
-        auto* document = frame->document();
-        if (!document)
-            continue;
-
-        if (StyleResolver* styleResolver = document->styleScope().resolverIfExists())
+    forEachDocument([](Document& document) {
+        if (StyleResolver* styleResolver = document.styleScope().resolverIfExists())
             styleResolver->invalidateMatchedPropertiesCache();
-        document->scheduleFullStyleRebuild();
-        document->styleScope().didChangeStyleSheetEnvironment();
-    }
+        document.scheduleFullStyleRebuild();
+        document.styleScope().didChangeStyleSheetEnvironment();
+        document.scheduleTimedRenderingUpdate();
+    });
 }
 
 void Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment()
@@ -1294,19 +1288,19 @@ void Page::updateRendering()
 
     SetForScope<bool> change(m_inUpdateRendering, true);
 
-    Vector<RefPtr<Document>> documents;
+    layoutIfNeeded();
 
-    // The requestAnimationFrame callbacks may change the frame hierarchy of the page
-    forEachDocument([&documents] (Document& document) {
-        documents.append(&document);
+    forEachDocument([&](Document& document) {
+        document.runResizeSteps();
     });
-
-    // FIXME: Run the resize steps
 
     // FIXME: Run the scroll steps
 
-    // FIXME: Evaluate media queries and report changes.
+    forEachDocument([&](Document& document) {
+        document.evaluateMediaQueriesAndReportChanges();        
+    });
 
+    Vector<Ref<Document>> documents = collectDocuments(); // The requestAnimationFrame callbacks may change the frame hierarchy of the page
     for (auto& document : documents) {
         DOMHighResTimeStamp timestamp = document->domWindow()->nowTimestamp();
         document->updateAnimationsAndSendEvents(timestamp);
@@ -2677,25 +2671,21 @@ void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
 
 void Page::accessibilitySettingsDidChange()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (auto* document = frame->document()) {
-            document->styleScope().evaluateMediaQueriesForAccessibilitySettingsChange();
-            document->evaluateMediaQueryList();
-        }
-    }
+    forEachDocument([](auto& document) {
+        document.styleScope().evaluateMediaQueriesForAccessibilitySettingsChange();
+        document.updateElementsAffectedByMediaQueries();
+        document.scheduleTimedRenderingUpdate();
+    });
 }
 
 void Page::appearanceDidChange()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        auto* document = frame->document();
-        if (!document)
-            continue;
-
-        document->styleScope().didChangeStyleSheetEnvironment();
-        document->styleScope().evaluateMediaQueriesForAppearanceChange();
-        document->evaluateMediaQueryList();
-    }
+    forEachDocument([](auto& document) {
+        document.styleScope().didChangeStyleSheetEnvironment();
+        document.styleScope().evaluateMediaQueriesForAppearanceChange();
+        document.updateElementsAffectedByMediaQueries();
+        document.scheduleTimedRenderingUpdate();
+    });
 }
 
 void Page::setUnobscuredSafeAreaInsets(const FloatBoxExtent& insets)

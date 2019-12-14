@@ -773,11 +773,11 @@ public:
 
 class OrderedNamedLinesCollectorInGridLayout : public OrderedNamedLinesCollector {
 public:
-    OrderedNamedLinesCollectorInGridLayout(const RenderStyle& style, bool isRowAxis, unsigned autoRepeatTracksCount)
+    OrderedNamedLinesCollectorInGridLayout(const RenderStyle& style, bool isRowAxis, unsigned autoRepeatTracksCount, unsigned autoRepeatTrackListLength)
         : OrderedNamedLinesCollector(style, isRowAxis)
         , m_insertionPoint(isRowAxis ? style.gridAutoRepeatColumnsInsertionPoint() : style.gridAutoRepeatRowsInsertionPoint())
         , m_autoRepeatTotalTracks(autoRepeatTracksCount)
-        , m_autoRepeatTrackListLength(isRowAxis ? style.gridAutoRepeatColumns().size() : style.gridAutoRepeatRows().size())
+        , m_autoRepeatTrackListLength(autoRepeatTrackListLength)
     {
     }
 
@@ -816,7 +816,7 @@ void OrderedNamedLinesCollectorInsideRepeat::collectLineNamesForIndex(CSSGridLin
 void OrderedNamedLinesCollectorInGridLayout::collectLineNamesForIndex(CSSGridLineNamesValue& lineNamesValue, unsigned i) const
 {
     ASSERT(!isEmpty());
-    if (m_orderedNamedAutoRepeatGridLines.isEmpty() || i < m_insertionPoint) {
+    if (!m_autoRepeatTrackListLength || i < m_insertionPoint) {
         appendLines(lineNamesValue, i, NamedLines);
         return;
     }
@@ -910,7 +910,7 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
     // specifying track sizes in pixels and expanding the repeat() notation.
     if (isRenderGrid) {
         auto* grid = downcast<RenderGrid>(renderer);
-        OrderedNamedLinesCollectorInGridLayout collector(style, isRowAxis, grid->autoRepeatCountForDirection(direction));
+        OrderedNamedLinesCollectorInGridLayout collector(style, isRowAxis, grid->autoRepeatCountForDirection(direction), autoRepeatTrackSizes.size());
         populateGridTrackList(list.get(), collector, grid->trackSizesForComputedStyle(direction), [&](const LayoutUnit& v) {
             return zoomAdjustedPixelValue(v, style);
         });
@@ -3542,7 +3542,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyInStyle(const RenderSty
             return counterToCSSValue(style, propertyID);
         case CSSPropertyCounterReset:
             return counterToCSSValue(style, propertyID);
-        case CSSPropertyWebkitClipPath: {
+        case CSSPropertyClipPath: {
             auto* operation = style.clipPath();
             if (!operation)
                 return cssValuePool.createIdentifierValue(CSSValueNone);
@@ -3843,7 +3843,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyInStyle(const RenderSty
 #endif
 
         case CSSPropertyBufferedRendering:
-        case CSSPropertyClipPath:
         case CSSPropertyClipRule:
         case CSSPropertyMask:
         case CSSPropertyEnableBackground:

@@ -33,6 +33,8 @@ namespace WebCore {
 class ScriptExecutionContext;
 
 enum class TaskSource : uint8_t {
+    DOMManipulation,
+    FileReading,
     IdleTask,
     Networking,
     UserInteraction
@@ -45,9 +47,6 @@ public:
 
     typedef WTF::Function<void ()> TaskFunction;
     virtual void queueTask(TaskSource, ScriptExecutionContext&, TaskFunction&&) = 0;
-
-    virtual void suspend(ScriptExecutionContext&) = 0;
-    virtual void resume(ScriptExecutionContext&) = 0;
 
 protected:
     AbstractEventLoop() = default;

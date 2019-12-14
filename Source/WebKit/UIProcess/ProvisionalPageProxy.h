@@ -115,7 +115,7 @@ private:
         FrameInfoData&&, Optional<WebPageProxyIdentifier> originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
         WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSyncDelayedReply&&);
 #if USE(QUICK_LOOK)
-    void didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName);
+    void requestPasswordForQuickLookDocumentInMainFrame(const String& fileName, CompletionHandler<void(const String&)>&&);
 #endif
 #if PLATFORM(COCOA)
     void registerWebProcessAccessibilityToken(const IPC::DataReference&);
@@ -143,7 +143,7 @@ private:
     Vector<uint8_t> m_accessibilityToken;
 #endif
 #if PLATFORM(IOS_FAMILY)
-    ProcessThrottler::ForegroundActivityToken m_suspensionToken;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_provisionalLoadActivity;
 #endif
 };
 

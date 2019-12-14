@@ -34,6 +34,7 @@
 #include "Document.h"
 #include "DocumentTimeline.h"
 #include "EventNames.h"
+#include "InspectorInstrumentation.h"
 #include "JSWebAnimation.h"
 #include "KeyframeEffect.h"
 #include "Microtasks.h"
@@ -75,8 +76,17 @@ WebAnimation::WebAnimation(Document& document)
 
 WebAnimation::~WebAnimation()
 {
+    InspectorInstrumentation::willDestroyWebAnimation(*this);
+
     if (m_timeline)
         m_timeline->forgetAnimation(this);
+}
+
+void WebAnimation::contextDestroyed()
+{
+    InspectorInstrumentation::willDestroyWebAnimation(*this);
+
+    ActiveDOMObject::contextDestroyed();
 }
 
 void WebAnimation::remove()
@@ -174,6 +184,8 @@ void WebAnimation::setEffectInternal(RefPtr<AnimationEffect>&& newEffect, bool d
         if (m_timeline && newTarget && previousTarget != newTarget)
             m_timeline->animationWasAddedToElement(*this, *newTarget);
     }
+
+    InspectorInstrumentation::didChangeWebAnimationEffect(*this);
 }
 
 void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
@@ -545,7 +557,7 @@ Seconds WebAnimation::effectEndTime() const
 {
     // The target effect end of an animation is equal to the end time of the animation's target effect.
     // If the animation has no target effect, the target effect end is zero.
-    return m_effect ? m_effect->getBasicTiming().endTime : 0_s;
+    return m_effect ? m_effect->endTime() : 0_s;
 }
 
 void WebAnimation::cancel()
@@ -1291,7 +1303,7 @@ Seconds WebAnimation::timeToNextTick() const
                 return animationEffect->delay() - localTime;
         }
     } else if (auto animationCurrentTime = currentTime())
-        return effect()->getBasicTiming().endTime - *animationCurrentTime;
+        return effect()->endTime() - *animationCurrentTime;
 
     ASSERT_NOT_REACHED();
     return Seconds::infinity();

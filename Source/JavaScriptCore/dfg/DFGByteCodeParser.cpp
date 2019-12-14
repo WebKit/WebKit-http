@@ -32,7 +32,7 @@
 #include "ArrayConstructor.h"
 #include "BasicBlockLocation.h"
 #include "BuiltinNames.h"
-#include "BytecodeStructs.h"
+#include "BytecodeGenerator.h"
 #include "CallLinkStatus.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
@@ -3192,6 +3192,41 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
             addVarArgChild(Edge(hash, Int32Use));
             addToGraph(Node::VarArg, WeakMapSet, OpInfo(0), OpInfo(0));
             setResult(base);
+            return true;
+        }
+
+        case DatePrototypeGetTimeIntrinsic: {
+            if (!is64Bit())
+                return false;
+            insertChecks();
+            Node* base = get(virtualRegisterForArgument(0, registerOffset));
+            setResult(addToGraph(DateGetTime, OpInfo(intrinsic), OpInfo(), base));
+            return true;
+        }
+
+        case DatePrototypeGetFullYearIntrinsic:
+        case DatePrototypeGetUTCFullYearIntrinsic:
+        case DatePrototypeGetMonthIntrinsic:
+        case DatePrototypeGetUTCMonthIntrinsic:
+        case DatePrototypeGetDateIntrinsic:
+        case DatePrototypeGetUTCDateIntrinsic:
+        case DatePrototypeGetDayIntrinsic:
+        case DatePrototypeGetUTCDayIntrinsic:
+        case DatePrototypeGetHoursIntrinsic:
+        case DatePrototypeGetUTCHoursIntrinsic:
+        case DatePrototypeGetMinutesIntrinsic:
+        case DatePrototypeGetUTCMinutesIntrinsic:
+        case DatePrototypeGetSecondsIntrinsic:
+        case DatePrototypeGetUTCSecondsIntrinsic:
+        case DatePrototypeGetMillisecondsIntrinsic:
+        case DatePrototypeGetUTCMillisecondsIntrinsic:
+        case DatePrototypeGetTimezoneOffsetIntrinsic:
+        case DatePrototypeGetYearIntrinsic: {
+            if (!is64Bit())
+                return false;
+            insertChecks();
+            Node* base = get(virtualRegisterForArgument(0, registerOffset));
+            setResult(addToGraph(DateGetInt32OrNaN, OpInfo(intrinsic), OpInfo(prediction), base));
             return true;
         }
 

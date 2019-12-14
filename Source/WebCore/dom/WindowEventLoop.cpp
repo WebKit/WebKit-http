@@ -43,19 +43,24 @@ void WindowEventLoop::queueTask(TaskSource source, ScriptExecutionContext& conte
     m_tasks.append(Task { source, WTFMove(task), downcast<Document>(context).identifier() });
 }
 
-void WindowEventLoop::suspend(ScriptExecutionContext&)
+void WindowEventLoop::suspend(Document&)
 {
     ASSERT(isMainThread());
 }
 
-void WindowEventLoop::resume(ScriptExecutionContext& context)
+void WindowEventLoop::resume(Document& document)
 {
     ASSERT(isMainThread());
-    ASSERT(is<Document>(context));
-    auto& document = downcast<Document>(context);
     if (!m_documentIdentifiersForSuspendedTasks.contains(document.identifier()))
         return;
     scheduleToRunIfNeeded();
+}
+
+void WindowEventLoop::stop(Document& document)
+{
+    m_tasks.removeAllMatching([identifier = document.identifier()] (auto& task) {
+        return task.documentIdentifier == identifier;
+    });
 }
 
 void WindowEventLoop::scheduleToRunIfNeeded()
@@ -72,6 +77,9 @@ void WindowEventLoop::scheduleToRunIfNeeded()
 
 void WindowEventLoop::run()
 {
+    if (m_tasks.isEmpty())
+        return;
+
     Vector<Task> tasks = WTFMove(m_tasks);
     m_documentIdentifiersForSuspendedTasks.clear();
     Vector<Task> remainingTasks;

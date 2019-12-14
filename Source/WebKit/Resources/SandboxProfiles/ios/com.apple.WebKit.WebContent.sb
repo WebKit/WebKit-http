@@ -425,11 +425,14 @@
 
     (allow mach-lookup
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
+        (global-name "com.apple.CARenderServer")
+        (global-name "com.apple.iohideventsystem")
+    )
+
+    (allow mach-lookup (with telemetry)
         (global-name-regex #"^com\.apple\.uikit\.viewservice\..+")
         (xpc-service-name-regex #"\.apple-extension-service$") ;; <rdar://problem/19525887>
         (xpc-service-name-regex #"\.viewservice$") ;; <rdar://problem/31252371>
-        (global-name "com.apple.CARenderServer")
-        (global-name "com.apple.iohideventsystem")
     )
 
     ; UIKit-required IOKit nodes.
@@ -609,12 +612,10 @@
         (extension "com.apple.fileprovider.read-write")))
 
 (allow mach-lookup
-    (global-name "com.apple.logd"))
-
-(deny mach-lookup (with send-signal SIGKILL)
-    (global-name "com.apple.logd.events"))
-
-(allow mach-lookup
+    (global-name "com.apple.logd")
+    (global-name "com.apple.logd.events")
+    (global-name "com.apple.distributed_notifications@1v3")
+    (global-name "com.apple.aggregated")
     (global-name "com.apple.cfprefsd.daemon"))
 
 (allow ipc-posix-shm-read*
@@ -812,7 +813,10 @@
     (sysctl-name
         "hw.activecpu"
         "hw.availcpu"
+        "hw.cachelinesize"
+        "hw.cputype"
         "hw.l2cachesize"
+        "hw.logicalcpu"
         "hw.logicalcpu_max"
         "hw.ncpu"
         "hw.machine"
@@ -930,7 +934,10 @@
     (literal "/usr/local/lib/log") ; <rdar://problem/36629495>
 )
 
-(allow mach-lookup (extension "com.apple.webkit.extension.mach"))
+(allow mach-lookup
+    (require-all
+        (extension "com.apple.webkit.extension.mach")
+        (global-name "com.apple.iphone.axserver-systemwide")))
 
 (media-capture-support)
 

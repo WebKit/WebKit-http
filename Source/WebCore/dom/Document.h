@@ -88,6 +88,7 @@ class InputCursor;
 
 namespace WebCore {
 
+class AbstractEventLoop;
 class ApplicationStateChangeListener;
 class AXObjectCache;
 class Attr;
@@ -128,6 +129,7 @@ class FormController;
 class Frame;
 class FrameView;
 class FullscreenManager;
+class GPUCanvasContext;
 class HTMLAllCollection;
 class HTMLBodyElement;
 class HTMLCanvasElement;
@@ -205,7 +207,6 @@ class VisitedLinkState;
 class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
-class GPUCanvasContext;
 class WindowEventLoop;
 class WindowProxy;
 class Worklet;
@@ -556,7 +557,8 @@ public:
     bool gotoAnchorNeededAfterStylesheetsLoad() { return m_gotoAnchorNeededAfterStylesheetsLoad; }
     void setGotoAnchorNeededAfterStylesheetsLoad(bool b) { m_gotoAnchorNeededAfterStylesheetsLoad = b; }
 
-    void evaluateMediaQueryList();
+    void updateElementsAffectedByMediaQueries();
+    void evaluateMediaQueriesAndReportChanges();
 
     FormController& formController();
     Vector<String> formElementsState() const;
@@ -1061,8 +1063,7 @@ public:
 
     WEBCORE_EXPORT void postTask(Task&&) final; // Executes the task on context's thread asynchronously.
 
-    WindowEventLoop& eventLoop();
-    WindowEventLoop* eventLoopIfExists() { return m_eventLoop.get(); }
+    AbstractEventLoop& eventLoop() final;
 
     ScriptedAnimationController* scriptedAnimationController() { return m_scriptedAnimationController.get(); }
     void suspendScriptedAnimationControllerCallbacks();
@@ -1358,6 +1359,10 @@ public:
     void setHasStyleWithViewportUnits() { m_hasStyleWithViewportUnits = true; }
     bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
     void updateViewportUnitsOnResize();
+
+    void setNeedsDOMWindowResizeEvent();
+    void setNeedsVisualViewportResize();
+    void runResizeSteps();
 
     WEBCORE_EXPORT void addAudioProducer(MediaProducer&);
     WEBCORE_EXPORT void removeAudioProducer(MediaProducer&);
@@ -2012,6 +2017,8 @@ private:
     bool m_hasPreparedForDestruction { false };
 
     bool m_hasStyleWithViewportUnits { false };
+    bool m_needsDOMWindowResizeEvent { false };
+    bool m_needsVisualViewportResizeEvent { false };
     bool m_isTimerThrottlingEnabled { false };
     bool m_isSuspended { false };
 

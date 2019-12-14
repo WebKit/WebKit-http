@@ -35,6 +35,7 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${WEBCORE_DIR}/testing/cocoa
     ${WEBKITLEGACY_DIR}
     ${WEBKIT_TESTRUNNER_SHARED_DIR}/cocoa
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/mac
     ${WEBKIT_TESTRUNNER_SHARED_DIR}/spi
 )
 
@@ -137,5 +138,7 @@ set(DumpRenderTree_RESOURCES
 
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DumpRenderTree.resources)
 foreach (_file ${DumpRenderTree_RESOURCES})
-    file(COPY ${TOOLS_DIR}/DumpRenderTree/fonts/${_file} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DumpRenderTree.resources)
+    if (NOT EXISTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DumpRenderTree.resources/${_file})
+        file(COPY ${TOOLS_DIR}/DumpRenderTree/fonts/${_file} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DumpRenderTree.resources)
+    endif ()
 endforeach ()

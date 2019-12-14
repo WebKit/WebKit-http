@@ -36,7 +36,7 @@ from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.version import Version
 from webkitpy.common.version_name_map import PUBLIC_TABLE, INTERNAL_TABLE
 from webkitpy.common.version_name_map import VersionNameMap
-from webkitpy.port.config import apple_additions
+from webkitpy.port.config import apple_additions, Config
 from webkitpy.port.darwin import DarwinPort
 
 _log = logging.getLogger(__name__)
@@ -222,7 +222,7 @@ class MacPort(DarwinPort):
         self._helper = self._executive.popen(arguments,
             stdin=self._executive.PIPE, stdout=self._executive.PIPE, stderr=None)
         is_ready = self._helper.stdout.readline()
-        if not is_ready.startswith('ready'):
+        if not is_ready.startswith(b'ready'):
             _log.error("LayoutTestHelper could not start")
             return False
         return True
@@ -242,7 +242,7 @@ class MacPort(DarwinPort):
         if self._helper:
             _log.debug("Stopping LayoutTestHelper")
             try:
-                self._helper.stdin.write("x\n")
+                self._helper.stdin.write(b"x\n")
                 self._helper.stdin.close()
                 self._helper.wait()
             except IOError as e:
@@ -284,3 +284,11 @@ class MacPort(DarwinPort):
             configuration['model'] = match.group('model')
 
         return configuration
+
+
+class MacCatalystPort(MacPort):
+    port_name = "maccatalyst"
+
+    def __init__(self, *args, **kwargs):
+        super(MacCatalystPort, self).__init__(*args, **kwargs)
+        self._config = Config(self._executive, self._filesystem, MacCatalystPort.port_name)

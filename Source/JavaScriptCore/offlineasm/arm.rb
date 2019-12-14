@@ -300,7 +300,7 @@ class Sequence
         }
         result = riscLowerMalformedAddressesDouble(result)
         result = riscLowerMisplacedImmediates(result, ["storeb", "storei", "storep", "storeq"])
-        result = riscLowerMalformedImmediates(result, 0..0xff)
+        result = riscLowerMalformedImmediates(result, 0..0xff, 0..0x0ff)
         result = riscLowerMisplacedAddresses(result)
         result = riscLowerRegisterReuse(result)
         result = assignRegistersToTemporaries(result, :gpr, ARM_EXTRA_GPRS)
@@ -468,7 +468,7 @@ class Instruction
             emitArm("vmul.f64", operands)
         when "sqrtd"
             $asm.puts "vsqrt.f64 #{armFlippedOperands(operands)}"
-        when "ci2d"
+        when "ci2ds"
             $asm.puts "vmov #{operands[1].armSingle}, #{operands[0].armOperand}"
             $asm.puts "vcvt.f64.s32 #{operands[1].armOperand}, #{operands[1].armSingle}"
         when "bdeq"

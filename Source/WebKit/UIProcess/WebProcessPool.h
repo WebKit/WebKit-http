@@ -393,6 +393,7 @@ public:
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
     bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
     void updateServiceWorkerUserAgent(const String& userAgent);
+    const Optional<UserContentControllerIdentifier>& userContentControllerIdentifierForServiceWorkers() const { return m_userContentControllerIDForServiceWorker; }
 #endif
 
 #if PLATFORM(COCOA)
@@ -611,6 +612,7 @@ private:
     bool m_allowsAnySSLCertificateForServiceWorker { false };
     String m_serviceWorkerUserAgent;
     Optional<WebPreferencesStore> m_serviceWorkerPreferences;
+    Optional<UserContentControllerIdentifier> m_userContentControllerIDForServiceWorker;
 #endif
 
     Ref<WebPageGroup> m_defaultPageGroup;
@@ -760,11 +762,11 @@ private:
 #if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessCounter m_foregroundWebProcessCounter;
     BackgroundWebProcessCounter m_backgroundWebProcessCounter;
-    ProcessThrottler::ForegroundActivityToken m_foregroundTokenForNetworkProcess;
-    ProcessThrottler::BackgroundActivityToken m_backgroundTokenForNetworkProcess;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_foregroundActivityForNetworkProcess;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_backgroundActivityForNetworkProcess;
 #if ENABLE(SERVICE_WORKER)
-    HashMap<WebCore::RegistrableDomain, ProcessThrottler::ForegroundActivityToken> m_foregroundTokensForServiceWorkerProcesses;
-    HashMap<WebCore::RegistrableDomain, ProcessThrottler::BackgroundActivityToken> m_backgroundTokensForServiceWorkerProcesses;
+    HashMap<WebCore::RegistrableDomain, std::unique_ptr<ProcessThrottler::ForegroundActivity>> m_foregroundActivitiesForServiceWorkerProcesses;
+    HashMap<WebCore::RegistrableDomain, std::unique_ptr<ProcessThrottler::BackgroundActivity>> m_backgroundActivitiesForServiceWorkerProcesses;
 #endif
 #endif
 

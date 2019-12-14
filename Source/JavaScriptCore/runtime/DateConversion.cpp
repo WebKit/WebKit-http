@@ -36,8 +36,6 @@
 
 namespace JSC {
 
-using namespace WTF;
-
 template<int width>
 static inline void appendNumber(StringBuilder& builder, int value)
 {
@@ -68,16 +66,16 @@ String formatDateTime(const GregorianDateTime& t, DateTimeFormat format, bool as
     StringBuilder builder;
 
     if (appendDate) {
-        builder.append(weekdayName[(t.weekDay() + 6) % 7]);
+        builder.append(WTF::weekdayName[(t.weekDay() + 6) % 7]);
 
         if (asUTCVariant) {
             builder.appendLiteral(", ");
             appendNumber<2>(builder, t.monthDay());
             builder.append(' ');
-            builder.append(monthName[t.month()]);
+            builder.append(WTF::monthName[t.month()]);
         } else {
             builder.append(' ');
-            builder.append(monthName[t.month()]);
+            builder.append(WTF::monthName[t.month()]);
             builder.append(' ');
             appendNumber<2>(builder, t.monthDay());
         }
@@ -97,8 +95,8 @@ String formatDateTime(const GregorianDateTime& t, DateTimeFormat format, bool as
         builder.appendLiteral(" GMT");
 
         if (!asUTCVariant) {
-            int offset = abs(t.utcOffset()) / 60;
-            builder.append(t.utcOffset() < 0 ? '-' : '+');
+            int offset = abs(t.utcOffsetInMinute());
+            builder.append(t.utcOffsetInMinute() < 0 ? '-' : '+');
             appendNumber<2>(builder, offset / 60);
             appendNumber<2>(builder, offset % 60);
 

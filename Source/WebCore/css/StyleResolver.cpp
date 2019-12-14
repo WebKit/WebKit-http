@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  * Copyright (C) 2004-2005 Allan Sandfeld Jensen (kde@carewolf.com)
  * Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com)
- * Copyright (C) 2005-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
@@ -30,31 +30,18 @@
 #include "config.h"
 #include "StyleResolver.h"
 
-#include "CSSCalculationValue.h"
-#include "CSSCursorImageValue.h"
-#include "CSSCustomPropertyValue.h"
 #include "CSSDefaultStyleSheets.h"
-#include "CSSFilterImageValue.h"
 #include "CSSFontSelector.h"
-#include "CSSFunctionValue.h"
-#include "CSSGradientValue.h"
-#include "CSSImageSetValue.h"
-#include "CSSImageValue.h"
 #include "CSSKeyframeRule.h"
 #include "CSSKeyframesRule.h"
 #include "CSSParser.h"
 #include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyNames.h"
-#include "CSSReflectValue.h"
 #include "CSSSelector.h"
-#include "CSSShadowValue.h"
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
-#include "CSSValueList.h"
-#include "CSSValuePool.h"
 #include "CachedResourceLoader.h"
 #include "ElementRuleCollector.h"
-#include "FilterOperation.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -73,9 +60,7 @@
 #include "MediaQueryEvaluator.h"
 #include "NodeRenderStyle.h"
 #include "PageRuleCollector.h"
-#include "PaintWorkletGlobalScope.h"
 #include "Pair.h"
-#include "PropertyCascade.h"
 #include "Quirks.h"
 #include "RenderScrollbar.h"
 #include "RenderStyleConstants.h"
@@ -87,21 +72,17 @@
 #include "SVGDocumentExtensions.h"
 #include "SVGFontFaceElement.h"
 #include "SVGNames.h"
-#include "SVGSVGElement.h"
 #include "SVGURIReference.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SharedStringHash.h"
-#include "StyleColor.h"
-#include "StyleCachedImage.h"
+#include "StyleBuilder.h"
 #include "StyleFontSizeFunctions.h"
-#include "StyleGeneratedImage.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
+#include "StyleResolveForDocument.h"
 #include "StyleRule.h"
 #include "StyleSheetContents.h"
-#include "TransformFunctions.h"
-#include "TransformOperations.h"
 #include "UserAgentStyleSheets.h"
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
@@ -115,8 +96,6 @@
 namespace WebCore {
 
 using namespace HTMLNames;
-
-static const CSSPropertyID firstLowPriorityProperty = static_cast<CSSPropertyID>(lastHighPriorityProperty + 1);
 
 inline void StyleResolver::State::cacheBorderAndBackground()
 {
@@ -133,7 +112,6 @@ inline void StyleResolver::State::clear()
     m_element = nullptr;
     m_parentStyle = nullptr;
     m_ownedParentStyle = nullptr;
-    m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
 StyleResolver::StyleResolver(Document& document)
@@ -143,7 +121,6 @@ StyleResolver::StyleResolver(Document& document)
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     , m_viewportStyleResolver(ViewportStyleResolver::create(&document))
 #endif
-    , m_styleMap(this)
     , m_matchAuthorAndUserStyles(m_document.settings().authorAndUserStylesEnabled())
 {
     Element* root = m_document.documentElement();
@@ -244,7 +221,6 @@ StyleResolver::State::State(const Element& element, const RenderStyle* parentSty
     : m_element(&element)
     , m_parentStyle(parentStyle)
     , m_selectorFilter(selectorFilter)
-    , m_elementLinkState(element.document().visitedLinkState().determineLinkState(element))
 {
     bool resetStyleInheritance = hasShadowRootParent(element) && downcast<ShadowRoot>(element.parentNode())->resetStyleInheritance();
     if (resetStyleInheritance)
@@ -256,19 +232,11 @@ StyleResolver::State::State(const Element& element, const RenderStyle* parentSty
         m_rootElementStyle = document.renderStyle();
     else
         m_rootElementStyle = documentElementStyle ? documentElementStyle : documentElement->renderStyle();
-
-    updateConversionData();
-}
-
-inline void StyleResolver::State::updateConversionData()
-{
-    m_cssToLengthConversionData = CSSToLengthConversionData(m_style.get(), m_rootElementStyle, m_element ? m_element->document().renderView() : nullptr);
 }
 
 inline void StyleResolver::State::setStyle(std::unique_ptr<RenderStyle> style)
 {
     m_style = WTFMove(style);
-    updateConversionData();
 }
 
 inline void StyleResolver::State::setParentStyle(std::unique_ptr<RenderStyle> parentStyle)
@@ -308,7 +276,7 @@ ElementStyle StyleResolver::styleForElement(const Element& element, const Render
 
     if (element.isLink()) {
         style.setIsLink(true);
-        InsideLink linkState = state.elementLinkState();
+        InsideLink linkState = document().visitedLinkState().determineLinkState(element);
         if (linkState != InsideLink::NotInside) {
             bool forceVisited = InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassVisited);
             if (forceVisited)
@@ -364,22 +332,8 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* 
     state.setStyle(RenderStyle::clonePtr(*elementStyle));
     state.setParentStyle(RenderStyle::clonePtr(*elementStyle));
 
-    Style::PropertyCascade cascade(*this, result, { Style::CascadeLevel::Author });
-
-    cascade.applyProperties(firstCSSProperty, lastHighPriorityProperty);
-
-    // If our font got dirtied, update it now.
-    updateFont();
-
-    // Now resolve remaining custom properties and the rest, in any order
-    cascade.applyCustomProperties();
-
-    cascade.applyProperties(firstLowPriorityProperty, lastCSSProperty);
-
-    // If our font got dirtied by one of the non-essential font props, update it a second time.
-    updateFont();
-
-    cascade.applyDeferredProperties();
+    Style::Builder builder(*this, result, { Style::CascadeLevel::Author });
+    builder.applyAllProperties();
 
     adjustRenderStyle(*state.style(), *state.parentStyle(), nullptr, nullptr);
 
@@ -499,7 +453,7 @@ void StyleResolver::keyframeStylesForAnimation(const Element& element, const Ren
     }
 }
 
-std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element& element, const PseudoStyleRequest& pseudoStyleRequest, const RenderStyle& parentStyle, const SelectorFilter* selectorFilter)
+std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element& element, const PseudoStyleRequest& pseudoStyleRequest, const RenderStyle& parentStyle, const RenderStyle* parentBoxStyle, const SelectorFilter* selectorFilter)
 {
     m_state = State(element, &parentStyle, m_overrideDocumentElementStyle, selectorFilter);
 
@@ -537,7 +491,7 @@ std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element&
     applyMatchedProperties(collector.matchResult(), element);
 
     // Clean up our style object's display and text decorations (among other fixups).
-    adjustRenderStyle(*state.style(), *m_state.parentStyle(), nullptr, nullptr);
+    adjustRenderStyle(*state.style(), *m_state.parentStyle(), parentBoxStyle, nullptr);
 
     if (state.style()->hasViewportUnits())
         document().setHasStyleWithViewportUnits();
@@ -564,19 +518,8 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 
     auto& result = collector.matchResult();
 
-    Style::PropertyCascade cascade(*this, result, { Style::CascadeLevel::Author });
-
-    cascade.applyProperties(firstCSSProperty, lastHighPriorityProperty);
-
-    // If our font got dirtied, update it now.
-    updateFont();
-
-    // Now resolve remaining custom properties and the rest, in any order
-    cascade.applyCustomProperties();
-
-    cascade.applyProperties(firstLowPriorityProperty, lastCSSProperty);
-
-    cascade.applyDeferredProperties();
+    Style::Builder builder(*this, result, { Style::CascadeLevel::Author });
+    builder.applyAllProperties();
 
     // Now return the style.
     return m_state.takeStyle();
@@ -679,16 +622,6 @@ static bool isScrollableOverflow(Overflow overflow)
     return overflow == Overflow::Scroll || overflow == Overflow::Auto;
 }
 #endif
-
-void StyleResolver::adjustStyleForInterCharacterRuby()
-{
-    RenderStyle* style = m_state.style();
-    if (style->rubyPosition() != RubyPosition::InterCharacter || !m_state.element() || !m_state.element()->hasTagName(rtTag))
-        return;
-    style->setTextAlign(TextAlignMode::Center);
-    if (style->isHorizontalWritingMode())
-        style->setWritingMode(LeftToRightWritingMode);
-}
 
 static bool hasEffectiveDisplayNoneForDisplayContents(const Element& element)
 {
@@ -1142,37 +1075,6 @@ void StyleResolver::adjustRenderStyleForSiteSpecificQuirks(RenderStyle& style, c
     }
 }
 
-static void checkForOrientationChange(RenderStyle& style)
-{
-    auto [fontOrientation, glyphOrientation] = style.fontAndGlyphOrientation();
-
-    const auto& fontDescription = style.fontDescription();
-    if (fontDescription.orientation() == fontOrientation && fontDescription.nonCJKGlyphOrientation() == glyphOrientation)
-        return;
-
-    auto newFontDescription = fontDescription;
-    newFontDescription.setNonCJKGlyphOrientation(glyphOrientation);
-    newFontDescription.setOrientation(fontOrientation);
-    style.setFontDescription(WTFMove(newFontDescription));
-}
-
-void StyleResolver::updateFont()
-{
-    if (!m_state.fontDirty())
-        return;
-
-    auto& style = *m_state.style();
-#if ENABLE(TEXT_AUTOSIZING)
-    checkForTextSizeAdjust(style);
-#endif
-    checkForGenericFamilyChange(style, m_state.parentStyle());
-    checkForZoomChange(style, m_state.parentStyle());
-    checkForOrientationChange(style);
-    style.fontCascade().update(&document().fontSelector());
-    if (m_state.fontSizeHasViewportUnits())
-        style.setHasViewportUnits(true);
-    m_state.setFontDirty(false);
-}
 
 Vector<RefPtr<StyleRule>> StyleResolver::styleRulesForElement(const Element* element, unsigned rulesToInclude)
 {
@@ -1325,63 +1227,29 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         // Find out if there's a -webkit-appearance property in effect from the UA sheet.
         // If so, we cache the border and background styles so that RenderTheme::adjustStyle()
         // can look at them later to figure out if this is a styled form control or not.
-        Style::PropertyCascade cascade(*this, matchResult, { Style::CascadeLevel::UserAgent }, includedProperties);
-
-        cascade.applyProperties(CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition);
-        adjustStyleForInterCharacterRuby();
-
-#if ENABLE(DARK_MODE_CSS)
-        // Supported color schemes can affect resolved colors, so we need to apply that property before any color properties.
-        cascade.applyProperties(CSSPropertyColorScheme, CSSPropertyColorScheme);
-#endif
-
-        cascade.applyProperties(firstCSSProperty, lastHighPriorityProperty);
-
-        // If our font got dirtied, update it now.
-        updateFont();
-
-        // Now resolve remaining custom properties and the rest, in any order
-        cascade.applyCustomProperties();
-
-        cascade.applyProperties(firstLowPriorityProperty, lastCSSProperty);
+        Style::Builder builder(*this, matchResult, { Style::CascadeLevel::UserAgent }, includedProperties);
+        builder.applyAllProperties();
 
         state.cacheBorderAndBackground();
     }
 
-    Style::PropertyCascade cascade(*this, matchResult, Style::allCascadeLevels(), includedProperties);
+    Style::Builder builder(*this, matchResult, Style::allCascadeLevels(), includedProperties);
 
-    cascade.applyProperties(CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition);
-    adjustStyleForInterCharacterRuby();
-
-#if ENABLE(DARK_MODE_CSS)
-    // Supported color schemes can affect resolved colors, so we need to apply that property before any color properties.
-    cascade.applyProperties(CSSPropertyColorScheme, CSSPropertyColorScheme);
-#endif
-
-    cascade.applyProperties(firstCSSProperty, lastHighPriorityProperty);
+    // High priority properties may affect resolution of other properties (they are mostly font related).
+    builder.applyHighPriorityProperties();
 
     // If the effective zoom value changes, we can't use the matched properties cache. Start over.
     if (cacheItem && cacheItem->renderStyle->effectiveZoom() != state.style()->effectiveZoom())
         return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
-    // If our font got dirtied, update it now.
-    updateFont();
-
     // If the font changed, we can't use the matched properties cache. Start over.
     if (cacheItem && cacheItem->renderStyle->fontDescription() != state.style()->fontDescription())
         return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
-    // Now resolve remaining custom properties and the rest, in any order
-    cascade.applyCustomProperties();
+    builder.applyLowPriorityProperties();
 
-    cascade.applyProperties(firstLowPriorityProperty, lastCSSProperty);
-
-    // Finally, some properties must be applied in the order they were parsed.
-    // There are some CSS properties that affect the same RenderStyle values,
-    // so to preserve behavior, we queue them up during cascade and flush here.
-    cascade.applyDeferredProperties();
-
-    ASSERT(!state.fontDirty());
+    for (auto& contentAttribute : builder.state().registeredContentAttributes())
+        ruleSets().mutableFeatures().registerContentAttribute(contentAttribute);
 
     if (cacheItem || !cacheHash)
         return;
@@ -1402,110 +1270,10 @@ void StyleResolver::applyPropertyToCurrentStyle(CSSPropertyID id, CSSValue* valu
 {
     if (!value)
         return;
+
     MatchResult matchResult;
-    Style::PropertyCascade cascade(*this, matchResult, { });
-    if (value)
-        cascade.applyProperty(id, *value);
-}
-
-// SVG handles zooming in a different way compared to CSS. The whole document is scaled instead
-// of each individual length value in the render style / tree. CSSPrimitiveValue::computeLength*()
-// multiplies each resolved length with the zoom multiplier - so for SVG we need to disable that.
-// Though all CSS values that can be applied to outermost <svg> elements (width/height/border/padding...)
-// need to respect the scaling. RenderBox (the parent class of RenderSVGRoot) grabs values like
-// width/height/border/padding/... from the RenderStyle -> for SVG these values would never scale,
-// if we'd pass a 1.0 zoom factor everyhwere. So we only pass a zoom factor of 1.0 for specific
-// properties that are NOT allowed to scale within a zoomed SVG document (letter/word-spacing/font-size).
-bool StyleResolver::useSVGZoomRules() const
-{
-    return m_state.element() && m_state.element()->isSVGElement();
-}
-
-// Scale with/height properties on inline SVG root.
-bool StyleResolver::useSVGZoomRulesForLength() const
-{
-    return is<SVGElement>(m_state.element()) && !(is<SVGSVGElement>(*m_state.element()) && m_state.element()->parentNode());
-}
-
-RefPtr<StyleImage> StyleResolver::styleImage(CSSValue& value)
-{
-    if (is<CSSImageGeneratorValue>(value)) {
-        if (is<CSSGradientValue>(value))
-            return StyleGeneratedImage::create(downcast<CSSGradientValue>(value).gradientWithStylesResolved(*this));
-
-        if (is<CSSFilterImageValue>(value)) {
-            // FilterImage needs to calculate FilterOperations.
-            downcast<CSSFilterImageValue>(value).createFilterOperations(this);
-        }
-        return StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(value));
-    }
-
-    if (is<CSSImageValue>(value) || is<CSSImageSetValue>(value) || is<CSSCursorImageValue>(value))
-        return StyleCachedImage::create(value);
-
-    return nullptr;
-}
-
-#if ENABLE(TEXT_AUTOSIZING)
-void StyleResolver::checkForTextSizeAdjust(RenderStyle& style)
-{
-    if (style.textSizeAdjust().isAuto()
-        || !settings().textAutosizingEnabled()
-        || (settings().textAutosizingUsesIdempotentMode() && !style.textSizeAdjust().isNone()))
-        return;
-
-    auto newFontDescription = style.fontDescription();
-    if (!style.textSizeAdjust().isNone())
-        newFontDescription.setComputedSize(newFontDescription.specifiedSize() * style.textSizeAdjust().multiplier());
-    else
-        newFontDescription.setComputedSize(newFontDescription.specifiedSize());
-    style.setFontDescription(WTFMove(newFontDescription));
-}
-#endif
-
-void StyleResolver::checkForZoomChange(RenderStyle& style, const RenderStyle* parentStyle)
-{
-    if (!parentStyle)
-        return;
-
-    if (style.effectiveZoom() == parentStyle->effectiveZoom() && style.textZoom() == parentStyle->textZoom())
-        return;
-
-    const auto& childFont = style.fontDescription();
-    auto newFontDescription = childFont;
-    setFontSize(newFontDescription, childFont.specifiedSize());
-    style.setFontDescription(WTFMove(newFontDescription));
-}
-
-void StyleResolver::checkForGenericFamilyChange(RenderStyle& style, const RenderStyle* parentStyle)
-{
-    const auto& childFont = style.fontDescription();
-
-    if (childFont.isAbsoluteSize() || !parentStyle)
-        return;
-
-    const auto& parentFont = parentStyle->fontDescription();
-    if (childFont.useFixedDefaultSize() == parentFont.useFixedDefaultSize())
-        return;
-    // We know the parent is monospace or the child is monospace, and that font
-    // size was unspecified. We want to scale our font size as appropriate.
-    // If the font uses a keyword size, then we refetch from the table rather than
-    // multiplying by our scale factor.
-    float size;
-    if (CSSValueID sizeIdentifier = childFont.keywordSizeAsIdentifier())
-        size = Style::fontSizeForKeyword(sizeIdentifier, childFont.useFixedDefaultSize(), document());
-    else {
-        float fixedScaleFactor = (settings().defaultFixedFontSize() && settings().defaultFontSize())
-            ? static_cast<float>(settings().defaultFixedFontSize()) / settings().defaultFontSize()
-            : 1;
-        size = parentFont.useFixedDefaultSize() ?
-                childFont.specifiedSize() / fixedScaleFactor :
-                childFont.specifiedSize() * fixedScaleFactor;
-    }
-
-    auto newFontDescription = childFont;
-    setFontSize(newFontDescription, size);
-    style.setFontDescription(WTFMove(newFontDescription));
+    Style::Builder builder(*this, matchResult, { });
+    builder.applyPropertyValue(id, *value);
 }
 
 void StyleResolver::initializeFontStyle()
@@ -1514,53 +1282,13 @@ void StyleResolver::initializeFontStyle()
     fontDescription.setRenderingMode(settings().fontRenderingMode());
     fontDescription.setOneFamily(standardFamily);
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
-    setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueMedium, false, document()));
-    fontDescription.setShouldAllowUserInstalledFonts(settings().shouldAllowUserInstalledFonts() ? AllowUserInstalledFonts::Yes : AllowUserInstalledFonts::No);
-    setFontDescription(WTFMove(fontDescription));
-}
 
-void StyleResolver::setFontSize(FontCascadeDescription& fontDescription, float size)
-{
+    auto size = Style::fontSizeForKeyword(CSSValueMedium, false, document());
     fontDescription.setSpecifiedSize(size);
-    fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSize(size, fontDescription.isAbsoluteSize(), useSVGZoomRules(), m_state.style(), document()));
-}
+    fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSize(size, fontDescription.isAbsoluteSize(), is<SVGElement>(m_state.element()), m_state.style(), document()));
 
-bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(const CSSPrimitiveValue& value)
-{
-    switch (value.valueID()) {
-    case CSSValueWebkitText:
-    case CSSValueWebkitLink:
-    case CSSValueWebkitActivelink:
-    case CSSValueCurrentcolor:
-        return true;
-    default:
-        return false;
-    }
-}
-
-Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, bool forVisitedLink) const
-{
-    if (value.isRGBColor())
-        return value.color();
-
-    auto identifier = value.valueID();
-    switch (identifier) {
-    case CSSValueWebkitText:
-        return document().textColor();
-    case CSSValueWebkitLink:
-        return (m_state.element()->isLink() && forVisitedLink) ? document().visitedLinkColor() : document().linkColor();
-    case CSSValueWebkitActivelink:
-        return document().activeLinkColor();
-    case CSSValueWebkitFocusRingColor:
-        return RenderTheme::singleton().focusRingColor(document().styleColorOptions(m_state.style()));
-    case CSSValueCurrentcolor:
-        // Color is an inherited property so depending on it effectively makes the property inherited.
-        // FIXME: Setting the flag as a side effect of calling this function is a bit oblique. Can we do better?
-        m_state.style()->setHasExplicitlyInheritedProperties();
-        return m_state.style()->color();
-    default:
-        return StyleColor::colorFromKeyword(identifier, document().styleColorOptions(m_state.style()));
-    }
+    fontDescription.setShouldAllowUserInstalledFonts(settings().shouldAllowUserInstalledFonts() ? AllowUserInstalledFonts::Yes : AllowUserInstalledFonts::No);
+    style()->setFontDescription(WTFMove(fontDescription));
 }
 
 void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExpression& expression, bool result)
@@ -1606,173 +1334,6 @@ bool StyleResolver::hasMediaQueriesAffectedByAppearanceChange() const
             return true;
     }
     return false;
-}
-
-static FilterOperation::OperationType filterOperationForType(CSSValueID type)
-{
-    switch (type) {
-    case CSSValueUrl:
-        return FilterOperation::REFERENCE;
-    case CSSValueGrayscale:
-        return FilterOperation::GRAYSCALE;
-    case CSSValueSepia:
-        return FilterOperation::SEPIA;
-    case CSSValueSaturate:
-        return FilterOperation::SATURATE;
-    case CSSValueHueRotate:
-        return FilterOperation::HUE_ROTATE;
-    case CSSValueInvert:
-        return FilterOperation::INVERT;
-    case CSSValueAppleInvertLightness:
-        return FilterOperation::APPLE_INVERT_LIGHTNESS;
-    case CSSValueOpacity:
-        return FilterOperation::OPACITY;
-    case CSSValueBrightness:
-        return FilterOperation::BRIGHTNESS;
-    case CSSValueContrast:
-        return FilterOperation::CONTRAST;
-    case CSSValueBlur:
-        return FilterOperation::BLUR;
-    case CSSValueDropShadow:
-        return FilterOperation::DROP_SHADOW;
-    default:
-        break;
-    }
-    ASSERT_NOT_REACHED();
-    return FilterOperation::NONE;
-}
-
-bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperations& outOperations)
-{
-    State& state = m_state;
-    ASSERT(outOperations.isEmpty());
-
-    if (is<CSSPrimitiveValue>(inValue)) {
-        auto& primitiveValue = downcast<CSSPrimitiveValue>(inValue);
-        if (primitiveValue.valueID() == CSSValueNone)
-            return true;
-    }
-
-    if (!is<CSSValueList>(inValue))
-        return false;
-
-    FilterOperations operations;
-    for (auto& currentValue : downcast<CSSValueList>(inValue)) {
-
-        if (is<CSSPrimitiveValue>(currentValue)) {
-            auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
-            if (!primitiveValue.isURI())
-                continue;
-
-            String cssUrl = primitiveValue.stringValue();
-            URL url = document().completeURL(cssUrl);
-
-            auto operation = ReferenceFilterOperation::create(cssUrl, url.fragmentIdentifier());
-            operations.operations().append(WTFMove(operation));
-            continue;
-        }
-
-        if (!is<CSSFunctionValue>(currentValue))
-            continue;
-
-        auto& filterValue = downcast<CSSFunctionValue>(currentValue.get());
-        FilterOperation::OperationType operationType = filterOperationForType(filterValue.name());
-
-        // Check that all parameters are primitive values, with the
-        // exception of drop shadow which has a CSSShadowValue parameter.
-        const CSSPrimitiveValue* firstValue = nullptr;
-        if (operationType != FilterOperation::DROP_SHADOW) {
-            bool haveNonPrimitiveValue = false;
-            for (unsigned j = 0; j < filterValue.length(); ++j) {
-                if (!is<CSSPrimitiveValue>(*filterValue.itemWithoutBoundsCheck(j))) {
-                    haveNonPrimitiveValue = true;
-                    break;
-                }
-            }
-            if (haveNonPrimitiveValue)
-                continue;
-            if (filterValue.length())
-                firstValue = downcast<CSSPrimitiveValue>(filterValue.itemWithoutBoundsCheck(0));
-        }
-
-        switch (operationType) {
-        case FilterOperation::GRAYSCALE:
-        case FilterOperation::SEPIA:
-        case FilterOperation::SATURATE: {
-            double amount = 1;
-            if (filterValue.length() == 1) {
-                amount = firstValue->doubleValue();
-                if (firstValue->isPercentage())
-                    amount /= 100;
-            }
-
-            operations.operations().append(BasicColorMatrixFilterOperation::create(amount, operationType));
-            break;
-        }
-        case FilterOperation::HUE_ROTATE: {
-            double angle = 0;
-            if (filterValue.length() == 1)
-                angle = firstValue->computeDegrees();
-
-            operations.operations().append(BasicColorMatrixFilterOperation::create(angle, operationType));
-            break;
-        }
-        case FilterOperation::INVERT:
-        case FilterOperation::BRIGHTNESS:
-        case FilterOperation::CONTRAST:
-        case FilterOperation::OPACITY: {
-            double amount = 1;
-            if (filterValue.length() == 1) {
-                amount = firstValue->doubleValue();
-                if (firstValue->isPercentage())
-                    amount /= 100;
-            }
-
-            operations.operations().append(BasicComponentTransferFilterOperation::create(amount, operationType));
-            break;
-        }
-        case FilterOperation::APPLE_INVERT_LIGHTNESS: {
-            operations.operations().append(InvertLightnessFilterOperation::create());
-            break;
-        }
-        case FilterOperation::BLUR: {
-            Length stdDeviation = Length(0, Fixed);
-            if (filterValue.length() >= 1)
-                stdDeviation = convertToFloatLength(firstValue, state.cssToLengthConversionData());
-            if (stdDeviation.isUndefined())
-                return false;
-
-            operations.operations().append(BlurFilterOperation::create(stdDeviation));
-            break;
-        }
-        case FilterOperation::DROP_SHADOW: {
-            if (filterValue.length() != 1)
-                return false;
-
-            const auto* cssValue = filterValue.itemWithoutBoundsCheck(0);
-            if (!is<CSSShadowValue>(cssValue))
-                continue;
-
-            const auto& item = downcast<CSSShadowValue>(*cssValue);
-            int x = item.x->computeLength<int>(state.cssToLengthConversionData());
-            int y = item.y->computeLength<int>(state.cssToLengthConversionData());
-            IntPoint location(x, y);
-            int blur = item.blur ? item.blur->computeLength<int>(state.cssToLengthConversionData()) : 0;
-            Color color;
-            if (item.color)
-                color = colorFromPrimitiveValue(*item.color);
-
-            operations.operations().append(DropShadowFilterOperation::create(location, blur, color.isValid() ? color : Color::transparent));
-            break;
-        }
-        default:
-            ASSERT_NOT_REACHED();
-            break;
-        }
-    }
-
-    outOperations = operations;
-    return true;
 }
 
 } // namespace WebCore

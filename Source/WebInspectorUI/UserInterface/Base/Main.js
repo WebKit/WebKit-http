@@ -51,6 +51,8 @@ WI.LayoutDirection = {
 WI.loaded = function()
 {
     // Register observers for events from the InspectorBackend.
+    if (InspectorBackend.registerAnimationDispatcher)
+        InspectorBackend.registerAnimationDispatcher(WI.AnimationObserver);
     if (InspectorBackend.registerApplicationCacheDispatcher)
         InspectorBackend.registerApplicationCacheDispatcher(WI.ApplicationCacheObserver);
     if (InspectorBackend.registerCPUProfilerDispatcher)
@@ -150,6 +152,26 @@ WI.loaded = function()
         WI.ConsoleTabContentView.Type,
     ]);
     WI._selectedTabIndexSetting = new WI.Setting("selected-tab-index", 0);
+
+    // Replace the Debugger/Resources Tab with the Sources Tab.
+    let debuggerIndex = WI._openTabsSetting.value.indexOf("debugger");
+    let resourcesIndex = WI._openTabsSetting.value.indexOf("resources");
+    if (debuggerIndex >= 0 || resourcesIndex >= 0) {
+        WI._openTabsSetting.value.remove("debugger");
+        WI._openTabsSetting.value.remove("resources");
+
+        if (debuggerIndex === -1)
+            debuggerIndex = Infinity;
+        if (resourcesIndex === -1)
+            resourcesIndex = Infinity;
+
+        let sourcesIndex = Math.min(debuggerIndex, resourcesIndex);
+        WI._openTabsSetting.value.splice(sourcesIndex, 1, WI.SourcesTabContentView.Type);
+        WI._openTabsSetting.save();
+
+        if (WI._selectedTabIndexSetting.value === debuggerIndex || WI._selectedTabIndexSetting.value === resourcesIndex)
+            WI._selectedTabIndexSetting.value = sourcesIndex;
+    }
 
     // State.
     WI.printStylesEnabled = false;
@@ -523,6 +545,9 @@ WI.contentLoaded = function()
 
     if (WI.runBootstrapOperations)
         WI.runBootstrapOperations();
+
+    if (WI.DiagnosticController.supportsDiagnosticLogging())
+        WI._diagnosticController = new WI.DiagnosticController;
 };
 
 WI.performOneTimeFrontendInitializationsUsingTarget = function(target)
@@ -913,9 +938,14 @@ WI.close = function()
     InspectorFrontendHost.closeWindow();
 };
 
+WI.isContentAreaFocused = function()
+{
+    return WI._contentElement.contains(document.activeElement);
+}
+
 WI.isConsoleFocused = function()
 {
-    return WI.quickConsole.prompt.focused;
+    return !WI._didAutofocusConsolePrompt && WI.quickConsole.prompt.focused;
 };
 
 WI.isShowingSplitConsole = function()
@@ -1354,6 +1384,8 @@ WI._focusSearchField = function(event)
 
 WI._focusChanged = function(event)
 {
+    WI._didAutofocusConsolePrompt = false;
+
     // Make a caret selection inside the focused element if there isn't a range selection and there isn't already
     // a caret selection inside. This is needed (at least) to remove caret from console when focus is moved.
     // The selection change should not apply to text fields and text areas either.
@@ -1528,6 +1560,14 @@ WI._restoreCookieForOpenTabs = function(restorationType)
             continue;
         tabContentView.restoreStateFromCookie(restorationType);
     }
+
+    window.requestAnimationFrame(() => {
+        if (WI.isContentAreaFocused())
+            return;
+
+        WI.quickConsole.prompt.focus();
+        WI._didAutofocusConsolePrompt = true;
+    });
 };
 
 WI._saveCookieForOpenTabs = function()

@@ -30,6 +30,7 @@
 #include "DisplayRect.h"
 #include "LayoutUnit.h"
 #include "RenderStyle.h"
+#include "TextFlags.h"
 
 namespace WebCore {
 
@@ -42,18 +43,28 @@ struct Run {
     struct TextContext {
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
     public:
-        TextContext(unsigned position, unsigned length, String content);
+        struct ExpansionContext;
+        TextContext(unsigned position, unsigned length, String content, Optional<ExpansionContext> = { });
 
         unsigned start() const { return m_start; }
         unsigned end() const { return start() + length(); }
         unsigned length() const { return m_length; }
         String content() const { return m_content; }
 
+        struct ExpansionContext {
+            ExpansionBehavior behavior;
+            LayoutUnit horizontalExpansion;
+        };
+        void setExpansion(ExpansionContext expansionContext) { m_expansionContext = expansionContext; }
+        void resetExpansion() { m_expansionContext = WTF::nullopt; }
+        Optional<ExpansionContext> expansion() const { return m_expansionContext; }
+
         void expand(const TextContext& other);
 
     private:
-        unsigned m_start;
-        unsigned m_length;
+        unsigned m_start { 0 };
+        unsigned m_length { 0 };
+        Optional<ExpansionContext> m_expansionContext;
         // FIXME: This is temporary. We should have some mapping setup to identify associated text content instead.
         String m_content;
     };
@@ -104,9 +115,10 @@ inline Run::Run(const RenderStyle& style, Rect logicalRect, Optional<TextContext
 {
 }
 
-inline Run::TextContext::TextContext(unsigned start, unsigned length, String content)
+inline Run::TextContext::TextContext(unsigned start, unsigned length, String content, Optional<ExpansionContext> expansionContext)
     : m_start(start)
     , m_length(length)
+    , m_expansionContext(expansionContext)
     , m_content(content)
 {
 }

@@ -72,10 +72,10 @@
 #include "RuntimeEnabledFeatures.h"
 #include "SVGPathByteStream.h"
 #include "SVGPathUtilities.h"
+#include "StyleBuilder.h"
 #include "StyleBuilderConverter.h"
 #include "StylePropertyShorthand.h"
 #include "StylePropertyShorthandFunctions.h"
-#include "StyleResolver.h"
 #include <bitset>
 #include <memory>
 #include <wtf/text/StringBuilder.h>
@@ -297,10 +297,10 @@ bool CSSPropertyParser::canParseTypedCustomPropertyValue(const String& syntax, c
     return parser.canParseTypedCustomPropertyValue(syntax);
 }
 
-RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const CSSParserTokenRange& tokens, const StyleResolver& styleResolver, const CSSParserContext& context)
+RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const CSSParserTokenRange& tokens, const Style::BuilderState& builderState, const CSSParserContext& context)
 {
     CSSPropertyParser parser(tokens, context, nullptr, false);
-    RefPtr<CSSCustomPropertyValue> value = parser.parseTypedCustomPropertyValue(name, syntax, styleResolver);
+    RefPtr<CSSCustomPropertyValue> value = parser.parseTypedCustomPropertyValue(name, syntax, builderState);
     if (!value || !parser.m_range.atEnd())
         return nullptr;
     return value;
@@ -2586,7 +2586,7 @@ static RefPtr<CSSValue> consumeBasicShapeOrBox(CSSParserTokenRange& range, const
     return list;
 }
     
-static RefPtr<CSSValue> consumeWebkitClipPath(CSSParserTokenRange& range, const CSSParserContext& context)
+static RefPtr<CSSValue> consumeClipPath(CSSParserTokenRange& range, const CSSParserContext& context)
 {
     if (range.peek().id() == CSSValueNone)
         return consumeIdent(range);
@@ -4074,7 +4074,6 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyMarkerStart:
     case CSSPropertyMarkerMid:
     case CSSPropertyMarkerEnd:
-    case CSSPropertyClipPath:
     case CSSPropertyMask:
         return consumeNoneOrURI(m_range);
     case CSSPropertyFlexBasis:
@@ -4146,8 +4145,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeVerticalAlign(m_range, m_context.mode);
     case CSSPropertyShapeOutside:
         return consumeShapeOutside(m_range, m_context);
-    case CSSPropertyWebkitClipPath:
-        return consumeWebkitClipPath(m_range, m_context);
+    case CSSPropertyClipPath:
+        return consumeClipPath(m_range, m_context);
     case CSSPropertyJustifyContent:
         // justify-content property does not allow the <baseline-position> values.
         if (isBaselineKeyword(m_range.peek().id()))
@@ -4295,13 +4294,13 @@ void CSSPropertyParser::collectParsedCustomPropertyValueDependencies(const Strin
     }
 }
 
-RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const StyleResolver& styleResolver)
+RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const Style::BuilderState& builderState)
 {
     if (syntax != "*") {
         m_range.consumeWhitespace();
         auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
         if (primitiveVal && primitiveVal->isPrimitiveValue() && downcast<CSSPrimitiveValue>(*primitiveVal).isLength()) {
-            auto length = StyleBuilderConverter::convertLength(styleResolver, *primitiveVal);
+            auto length = Style::BuilderConverter::convertLength(builderState, *primitiveVal);
             if (!length.isCalculated() && !length.isUndefined())
                 return CSSCustomPropertyValue::createSyntaxLength(name, WTFMove(length));
         }

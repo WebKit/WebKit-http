@@ -595,7 +595,8 @@ void FrameLoader::didExplicitOpen()
     if (!m_stateMachine.committedFirstRealDocumentLoad())
         m_stateMachine.advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
 
-    m_client.dispatchDidExplicitOpen(m_frame.document() ? m_frame.document()->url() : URL());
+    if (auto* document = m_frame.document())
+        m_client.dispatchDidExplicitOpen(document->url(), document->contentType());
     
     // Prevent window.open(url) -- eg window.open("about:blank") -- from blowing away results
     // from a subsequent window.document.open / window.document.write call. 
@@ -842,15 +843,6 @@ void FrameLoader::checkCompleted()
     // Have we completed before?
     if (m_isComplete)
         return;
-    
-#if ENABLE(VIDEO)
-    // FIXME: Remove this code once https://webkit.org/b/185284 is fixed.
-    if (HTMLMediaElement::isRunningDestructor()) {
-        ASSERT_NOT_REACHED();
-        scheduleCheckCompleted();
-        return;
-    }
-#endif
 
     // FIXME: It would be better if resource loads were kicked off after render tree update (or didn't complete synchronously).
     //        https://bugs.webkit.org/show_bug.cgi?id=171729

@@ -35,7 +35,7 @@
 #include "LayoutContext.h"
 #include "LayoutState.h"
 #include "Logging.h"
-#include "Textutil.h"
+#include "TextUtil.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/TextStream.h>
 
@@ -353,7 +353,7 @@ void InlineFormattingContext::collectInlineContent()
             if (treatAsInlineContainer(layoutBox))
                 formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::ContainerEnd));
             else if (layoutBox.isLineBreakBox())
-                formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::LineBreakBox));
+                formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::ForcedLineBreak));
             else if (layoutBox.isFloatingPositioned())
                 formattingState.addInlineItem(makeUnique<InlineItem>(layoutBox, InlineItem::Type::Float));
             else {

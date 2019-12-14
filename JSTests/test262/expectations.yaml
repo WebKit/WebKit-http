@@ -633,12 +633,6 @@ test/built-ins/Array/proto-from-ctor-realm-zero.js:
 test/built-ins/Array/prototype/filter/target-array-with-non-writable-property.js:
   default: 'TypeError: Attempted to assign to readonly property.'
   strict mode: 'TypeError: Attempted to assign to readonly property.'
-test/built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js:
-  default: 'Test262Error: [[GetPrototypeOf]] trap called'
-  strict mode: 'Test262Error: [[GetPrototypeOf]] trap called'
-test/built-ins/Array/prototype/lastIndexOf/calls-only-has-on-prototype-after-length-zeroed.js:
-  default: 'Test262Error: [[GetPrototypeOf]] trap called'
-  strict mode: 'Test262Error: [[GetPrototypeOf]] trap called'
 test/built-ins/Array/prototype/map/target-array-with-non-writable-property.js:
   default: 'TypeError: Attempted to assign to readonly property.'
   strict mode: 'TypeError: Attempted to assign to readonly property.'
@@ -1153,9 +1147,6 @@ test/built-ins/Proxy/construct/return-not-object-throws-undefined-realm.js:
 test/built-ins/Proxy/construct/trap-is-not-callable-realm.js:
   default: 'Test262Error: Expected a TypeError but got a TypeError'
   strict mode: 'Test262Error: Expected a TypeError but got a TypeError'
-test/built-ins/Proxy/has/call-in-prototype.js:
-  default: 'Test262Error: [[GetPrototypeOf]] trap called'
-  strict mode: 'Test262Error: [[GetPrototypeOf]] trap called'
 test/built-ins/Proxy/revocable/revocation-function-name.js:
   default: 'Test262Error: obj should have an own property name'
   strict mode: 'Test262Error: obj should have an own property name'
@@ -1894,14 +1885,11 @@ test/intl402/DateTimeFormat/prototype/formatToParts/related-year.js:
   default: 'Test262Error: Expected SameValue(Â«falseÂ», Â«trueÂ») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«falseÂ», Â«trueÂ») to be true'
 test/intl402/DateTimeFormat/prototype/resolvedOptions/order-dayPeriod.js:
-  default: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, hour, hourCycle, hour12, minute] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, dayPeriod, hour, minute] to have the same contents. '
-  strict mode: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, hour, hourCycle, hour12, minute] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, dayPeriod, hour, minute] to have the same contents. '
+  default: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, hour, minute] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, dayPeriod, hour, minute] to have the same contents. '
+  strict mode: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, hour, minute] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, dayPeriod, hour, minute] to have the same contents. '
 test/intl402/DateTimeFormat/prototype/resolvedOptions/order-fractionalSecondDigits.js:
   default: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, minute, second] and [locale, calendar, numberingSystem, timeZone, minute, second, fractionalSecondDigits] to have the same contents. '
   strict mode: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, minute, second] and [locale, calendar, numberingSystem, timeZone, minute, second, fractionalSecondDigits] to have the same contents. '
-test/intl402/DateTimeFormat/prototype/resolvedOptions/order.js:
-  default: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, weekday, era, year, month, day, hour, hourCycle, hour12, minute, second, timeZoneName] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, weekday, era, year, month, day, hour, minute, second, timeZoneName] to have the same contents. '
-  strict mode: 'Test262Error: Expected [locale, calendar, numberingSystem, timeZone, weekday, era, year, month, day, hour, hourCycle, hour12, minute, second, timeZoneName] and [locale, calendar, numberingSystem, timeZone, hourCycle, hour12, weekday, era, year, month, day, hour, minute, second, timeZoneName] to have the same contents. '
 test/intl402/Intl/getCanonicalLocales/canonicalized-tags.js:
   default: 'Test262Error: Expected SameValue(Â«cmnÂ», Â«zhÂ») to be true'
   strict mode: 'Test262Error: Expected SameValue(Â«cmnÂ», Â«zhÂ») to be true'

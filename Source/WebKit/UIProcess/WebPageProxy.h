@@ -44,6 +44,7 @@
 #include "SandboxExtension.h"
 #include "ShareSheetCallbackID.h"
 #include "ShareableBitmap.h"
+#include "ShareableResource.h"
 #include "SuspendedPageProxy.h"
 #include "SyntheticEditingCommandType.h"
 #include "SystemPreviewController.h"
@@ -328,10 +329,6 @@ struct UserMessage;
 enum class ProcessSwapRequestedByClient;
 enum class UndoOrRedo : bool;
 enum class WebContentMode : uint8_t;
-
-#if USE(QUICK_LOOK)
-class QuickLookDocumentData;
-#endif
 
 typedef GenericCallback<API::Data*> DataCallback;
 typedef GenericCallback<uint64_t> UnsignedCallback;
@@ -1560,7 +1557,7 @@ public:
         FrameInfoData&&, Optional<WebPageProxyIdentifier> originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
         WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSyncDelayedReply&&);
 #if USE(QUICK_LOOK)
-    void didRequestPasswordForQuickLookDocumentInMainFrameShared(Ref<WebProcessProxy>&&, const String& fileName);
+    void requestPasswordForQuickLookDocumentInMainFrameShared(const String& fileName, CompletionHandler<void(const String&)>&&);
 #endif
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoadForFrameShared(Ref<WebProcessProxy>&&, const WebCore::ContentFilterUnblockHandler&, WebCore::FrameIdentifier);
@@ -1678,7 +1675,7 @@ private:
     void didFailLoadForFrame(WebCore::FrameIdentifier, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
     void didSameDocumentNavigationForFrame(WebCore::FrameIdentifier, uint64_t navigationID, uint32_t sameDocumentNavigationType, URL&&, const UserData&);
     void didChangeMainDocument(WebCore::FrameIdentifier);
-    void didExplicitOpenForFrame(WebCore::FrameIdentifier, URL&&);
+    void didExplicitOpenForFrame(WebCore::FrameIdentifier, URL&&, String&& mimeType);
 
     void didReceiveTitleForFrame(WebCore::FrameIdentifier, const String&, const UserData&);
     void didFirstLayoutForFrame(WebCore::FrameIdentifier, const UserData&);
@@ -2052,8 +2049,8 @@ private:
 
 #if USE(QUICK_LOOK)
     void didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti);
-    void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&);
-    void didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName);
+    void didFinishLoadForQuickLookDocumentInMainFrame(const ShareableResource::Handle&);
+    void requestPasswordForQuickLookDocumentInMainFrame(const String& fileName, CompletionHandler<void(const String&)>&&);
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
@@ -2292,7 +2289,10 @@ private:
 #if PLATFORM(IOS_FAMILY)
     bool m_allowsMediaDocumentInlinePlayback { false };
     bool m_alwaysRunsAtForegroundPriority { false };
-    ProcessThrottler::ForegroundActivityToken m_activityToken;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_isVisibleActivity;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_isAudibleActivity;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_isCapturingActivity;
+    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_alwaysRunsAtForegroundPriorityActivity;
 #endif
     bool m_initialCapitalizationEnabled { false };
     Optional<double> m_cpuLimit;

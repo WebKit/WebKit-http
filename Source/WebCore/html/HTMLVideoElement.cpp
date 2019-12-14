@@ -39,6 +39,7 @@
 #include "HTMLParserIdioms.h"
 #include "Logging.h"
 #include "Page.h"
+#include "PictureInPictureSupport.h"
 #include "RenderImage.h"
 #include "RenderVideo.h"
 #include "ScriptController.h"
@@ -414,10 +415,8 @@ bool HTMLVideoElement::webkitSupportsPresentationMode(VideoPresentationMode mode
         return supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard);
 
     if (mode == VideoPresentationMode::PictureInPicture) {
-#if PLATFORM(COCOA)
         if (!supportsPictureInPicture())
             return false;
-#endif
 
         return supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
     }
@@ -450,6 +449,22 @@ void HTMLVideoElement::webkitSetPresentationMode(VideoPresentationMode mode)
 
 void HTMLVideoElement::setFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
+#if ENABLE(PICTURE_IN_PICTURE_API)
+    if (m_pictureInPictureAPITestEnabled) {
+        if (mode == VideoFullscreenModePictureInPicture) {
+            fullscreenModeChanged(mode);
+            didBecomeFullscreenElement();
+            setVideoFullscreenFrame({0, 0, 100, 100});
+            return;
+        }
+
+        if (mode == VideoFullscreenModeNone) {
+            fullscreenModeChanged(mode);
+            return;
+        }
+    }
+#endif
+
     if (mode == VideoFullscreenModeNone && isFullscreen()) {
         exitFullscreen();
         return;
@@ -517,6 +532,11 @@ void HTMLVideoElement::didBecomeFullscreenElement()
 void HTMLVideoElement::setPictureInPictureObserver(PictureInPictureObserver* observer)
 {
     m_pictureInPictureObserver = observer;
+}
+
+void HTMLVideoElement::setPictureInPictureAPITestEnabled(bool enabled)
+{
+    m_pictureInPictureAPITestEnabled = enabled;
 }
 #endif
 

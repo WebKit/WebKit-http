@@ -25,10 +25,12 @@
 
 WI.Target = class Target extends WI.Object
 {
-    constructor(identifier, name, type, connection)
+    constructor(parentTarget, identifier, name, type, connection)
     {
+        console.assert(parentTarget === null || parentTarget instanceof WI.Target);
         super();
 
+        this._parentTarget = parentTarget;
         this._identifier = identifier;
         this._name = name;
         this._type = type;
@@ -105,8 +107,9 @@ WI.Target = class Target extends WI.Object
 
     // Agents
 
-    get AuditAgent() { return this._agents.Audit; }
+    get AnimationAgent() { return this._agents.Animation; }
     get ApplicationCacheAgent() { return this._agents.ApplicationCache; }
+    get AuditAgent() { return this._agents.Audit; }
     get CPUProfilerAgent() { return this._agents.CPUProfiler; }
     get CSSAgent() { return this._agents.CSS; }
     get CanvasAgent() { return this._agents.Canvas; }
@@ -148,6 +151,17 @@ WI.Target = class Target extends WI.Object
     }
 
     // Public
+
+    get parentTarget() { return this._parentTarget; }
+
+    get rootTarget()
+    {
+        if (this._type === WI.TargetType.Page)
+            return this;
+        if (this._parentTarget)
+            return this._parentTarget.rootTarget;
+        return this;
+    }
 
     get identifier() { return this._identifier; }
     set identifier(identifier) { this._identifier = identifier; }

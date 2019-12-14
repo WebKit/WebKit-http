@@ -294,7 +294,7 @@ inlineMediaPlaybackRequiresPlaysInlineAttribute:
 allowsPictureInPictureMediaPlayback:
   initial: defaultAllowsPictureInPictureMediaPlayback
 pictureInPictureAPIEnabled:
-  initial: false
+  initial: true
 mediaControlsScaleWithPageZoom:
   initial: defaultMediaControlsScaleWithPageZoom
 invisibleAutoplayNotPermitted:
@@ -317,6 +317,9 @@ shouldDisplayCaptions:
 shouldDisplayTextDescriptions:
   initial: false
   conditional: VIDEO_TRACK
+genericCueAPIEnabled:
+    initial: false
+    conditional: VIDEO_TRACK
 scrollingCoordinatorEnabled:
   initial: false
 scrollingTreeIncludesFrames:

@@ -223,6 +223,7 @@
 #include "ValidationMessageClient.h"
 #include "VisibilityChangeClient.h"
 #include "VisitedLinkState.h"
+#include "VisualViewport.h"
 #include "WebAnimation.h"
 #include "WheelEvent.h"
 #include "WindowEventLoop.h"
@@ -2634,6 +2635,8 @@ void Document::platformSuspendOrStopActiveDOMObjects()
 
 void Document::suspendActiveDOMObjects(ReasonForSuspension why)
 {
+    if (m_eventLoop)
+        m_eventLoop->suspend(*this);
     ScriptExecutionContext::suspendActiveDOMObjects(why);
     suspendDeviceMotionAndOrientationUpdates();
     platformSuspendOrStopActiveDOMObjects();
@@ -2641,6 +2644,8 @@ void Document::suspendActiveDOMObjects(ReasonForSuspension why)
 
 void Document::resumeActiveDOMObjects(ReasonForSuspension why)
 {
+    if (m_eventLoop)
+        m_eventLoop->resume(*this);
     ScriptExecutionContext::resumeActiveDOMObjects(why);
     resumeDeviceMotionAndOrientationUpdates();
     // FIXME: For iOS, do we need to add content change observers that were removed in Document::suspendActiveDOMObjects()?
@@ -2648,6 +2653,8 @@ void Document::resumeActiveDOMObjects(ReasonForSuspension why)
 
 void Document::stopActiveDOMObjects()
 {
+    if (m_eventLoop)
+        m_eventLoop->stop(*this);
     ScriptExecutionContext::stopActiveDOMObjects();
     platformSuspendOrStopActiveDOMObjects();
 }
@@ -3911,13 +3918,19 @@ StyleSheetList& Document::styleSheets()
     return *m_styleSheetList;
 }
 
-void Document::evaluateMediaQueryList()
+void Document::updateElementsAffectedByMediaQueries()
 {
-    if (m_mediaQueryMatcher)
-        m_mediaQueryMatcher->styleResolverChanged();
-    
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
     checkViewportDependentPictures();
     checkAppearanceDependentPictures();
+}
+
+void Document::evaluateMediaQueriesAndReportChanges()
+{
+    if (!m_mediaQueryMatcher)
+        return;
+
+    m_mediaQueryMatcher->evaluateAll();
 }
 
 void Document::checkViewportDependentPictures()
@@ -3956,6 +3969,35 @@ void Document::updateViewportUnitsOnResize()
         auto* renderer = element->renderer();
         if (renderer && renderer->style().hasViewportUnits())
             element->invalidateStyle();
+    }
+}
+
+void Document::setNeedsDOMWindowResizeEvent()
+{
+    m_needsDOMWindowResizeEvent = true;
+    scheduleTimedRenderingUpdate();
+}
+
+void Document::setNeedsVisualViewportResize()
+{
+    m_needsVisualViewportResizeEvent = true;
+    scheduleTimedRenderingUpdate();
+}
+
+// https://drafts.csswg.org/cssom-view/#run-the-resize-steps
+void Document::runResizeSteps()
+{
+    // FIXME: The order of dispatching is not specified: https://github.com/WICG/visual-viewport/issues/65.
+    if (m_needsDOMWindowResizeEvent) {
+        LOG_WITH_STREAM(Events, stream << "Document" << this << "sending resize events to window");
+        m_needsDOMWindowResizeEvent = false;
+        dispatchWindowEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+    }
+    if (m_needsVisualViewportResizeEvent) {
+        LOG_WITH_STREAM(Events, stream << "Document" << this << "sending resize events to visualViewport");
+        m_needsVisualViewportResizeEvent = false;
+        if (auto* window = domWindow())
+            window->visualViewport().dispatchEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 }
 
@@ -6128,11 +6170,12 @@ void Document::pendingTasksTimerFired()
         task.performTask(*this);
 }
 
-WindowEventLoop& Document::eventLoop()
+AbstractEventLoop& Document::eventLoop()
 {
+    ASSERT(isMainThread());
     if (!m_eventLoop) {
         if (m_contextDocument)
-            m_eventLoop = &m_contextDocument->eventLoop();
+            m_eventLoop = m_contextDocument->m_eventLoop;
         else // FIXME: Documents of similar origin should share the same event loop.
             m_eventLoop = WindowEventLoop::create();
     }

@@ -40,8 +40,9 @@ public:
 
     void queueTask(TaskSource, ScriptExecutionContext&, TaskFunction&&) override;
 
-    void suspend(ScriptExecutionContext&) override;
-    void resume(ScriptExecutionContext&) override;
+    void suspend(Document&);
+    void resume(Document&);
+    void stop(Document&);
 
 private:
     WindowEventLoop() = default;

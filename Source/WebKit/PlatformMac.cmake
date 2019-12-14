@@ -6,6 +6,7 @@ find_library(SECURITYINTERFACE_LIBRARY SecurityInterface)
 find_library(QUARTZ_LIBRARY Quartz)
 find_library(AVFOUNDATION_LIBRARY AVFoundation)
 find_library(AVFAUDIO_LIBRARY AVFAudio HINTS ${AVFOUNDATION_LIBRARY}/Versions/*/Frameworks)
+find_library(DEVICEIDENTITY_LIBRARY DeviceIdentity HINTS /System/Library/PrivateFrameworks)
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 add_definitions(-iframework ${CARBON_LIBRARY}/Frameworks)
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
@@ -16,6 +17,7 @@ set(MACOSX_FRAMEWORK_IDENTIFIER com.apple.WebKit)
 list(APPEND WebKit_LIBRARIES
     WebKitLegacy
     ${APPLICATIONSERVICES_LIBRARY}
+    ${DEVICEIDENTITY_LIBRARY}
     ${SECURITYINTERFACE_LIBRARY}
 )
 
@@ -37,6 +39,8 @@ list(APPEND WebKit_SOURCES
     UIProcess/Cocoa/WKSafeBrowsingWarning.mm
     UIProcess/Cocoa/WKShareSheet.mm
     UIProcess/Cocoa/WKStorageAccessAlert.mm
+
+    WebProcess/InjectedBundle/API/c/mac/WKBundlePageMac.mm
 )
 
 list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
@@ -55,6 +59,7 @@ list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/RemoteLayerTree"
     "${WEBKIT_DIR}/UIProcess/RemoteLayerTree/ios"
     "${WEBKIT_DIR}/UIProcess/RemoteLayerTree/mac"
+    "${WEBKIT_DIR}/UIProcess/WebAuthentication/Cocoa"
     "${WEBKIT_DIR}/UIProcess/ios"
     "${WEBKIT_DIR}/Platform/cg"
     "${WEBKIT_DIR}/Platform/classifier"
@@ -71,6 +76,7 @@ list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared/API/c/cf"
     "${WEBKIT_DIR}/Shared/API/c/cg"
     "${WEBKIT_DIR}/Shared/API/c/mac"
+    "${WEBKIT_DIR}/Shared/ApplePay/cocoa/"
     "${WEBKIT_DIR}/Shared/Authentication/cocoa"
     "${WEBKIT_DIR}/Shared/ios"
     "${WEBKIT_DIR}/Shared/cf"
@@ -79,6 +85,8 @@ list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared/mac"
     "${WEBKIT_DIR}/Shared/Plugins/mac"
     "${WEBKIT_DIR}/Shared/Scrolling"
+    "${WEBKIT_DIR}/UIProcess/WebAuthentication/fido"
+    "${WEBKIT_DIR}/WebProcess/WebAuthentication"
     "${WEBKIT_DIR}/WebProcess/cocoa"
     "${WEBKIT_DIR}/WebProcess/mac"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/Cocoa"
@@ -142,22 +150,30 @@ set(WebKit_FORWARDING_HEADERS_FILES
 list(APPEND WebKit_MESSAGES_IN_FILES
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
 
+    Shared/ApplePay/WebPaymentCoordinatorProxy.messages.in
+
     Shared/API/Cocoa/RemoteObjectRegistry.messages.in
 
     UIProcess/ViewGestureController.messages.in
 
     UIProcess/Cocoa/PlaybackSessionManagerProxy.messages.in
+    UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in
     UIProcess/Cocoa/VideoFullscreenManagerProxy.messages.in
 
     UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.messages.in
 
     UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.messages.in
 
+    UIProcess/WebAuthentication/WebAuthenticatorCoordinatorProxy.messages.in
+
     UIProcess/ios/EditableImageController.messages.in
 
     UIProcess/mac/SecItemShimProxy.messages.in
 
+    WebProcess/ApplePay/WebPaymentCoordinator.messages.in
+
     WebProcess/cocoa/PlaybackSessionManager.messages.in
+    WebProcess/cocoa/UserMediaCaptureManager.messages.in
     WebProcess/cocoa/VideoFullscreenManager.messages.in
 
     WebProcess/WebPage/ViewGestureGeometryCollector.messages.in
@@ -430,6 +446,7 @@ target_include_directories(SecItemShim PRIVATE
     ${FORWARDING_HEADERS_DIR}
     ${WEBKIT_DIR}
 )
+add_dependencies(SecItemShim WebCore)
 
 # FIXME: These should not be necessary.
 file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/WKImageCG.h "#import <WebKit/Shared/API/c/cg/WKImageCG.h>")
@@ -473,6 +490,16 @@ function(WEBKIT_DEFINE_XPC_SERVICES)
         "com.apple.WebKit.Networking"
         ${WEBKIT_DIR}/NetworkProcess/EntryPoint/Cocoa/XPCService/NetworkService/Info-OSX.plist
         ${WebKit_NetworkProcess_OUTPUT_NAME})
+
+    set(WebKit_RESOURCES_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/Versions/A/Resources)
+    add_custom_command(OUTPUT ${WebKit_RESOURCES_DIR}/com.apple.WebProcess.sb COMMAND
+        grep -o "^[^;]*" ${WEBKIT_DIR}/WebProcess/com.apple.WebProcess.sb.in | clang -E -P -w -include wtf/Platform.h -I ${FORWARDING_HEADERS_DIR} - > ${WebKit_RESOURCES_DIR}/com.apple.WebProcess.sb
+        VERBATIM)
+    add_custom_command(OUTPUT ${WebKit_RESOURCES_DIR}/com.apple.WebKit.NetworkProcess.sb COMMAND
+        grep -o "^[^;]*" ${WEBKIT_DIR}/NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in | clang -E -P -w -include wtf/Platform.h -I ${FORWARDING_HEADERS_DIR} - > ${WebKit_RESOURCES_DIR}/com.apple.WebKit.NetworkProcess.sb
+        VERBATIM)
+    add_custom_target(WebKitSandboxProfiles ALL DEPENDS ${WebKit_RESOURCES_DIR}/com.apple.WebProcess.sb ${WebKit_RESOURCES_DIR}/com.apple.WebKit.NetworkProcess.sb)
+    add_dependencies(WebKit WebKitSandboxProfiles)
 
     add_custom_command(OUTPUT ${WebKit_XPC_SERVICE_DIR}/com.apple.WebKit.WebContent.xpc/Contents/Resources/WebContentProcess.nib COMMAND
         ibtool --compile ${WebKit_XPC_SERVICE_DIR}/com.apple.WebKit.WebContent.xpc/Contents/Resources/WebContentProcess.nib ${WEBKIT_DIR}/Resources/WebContentProcess.xib

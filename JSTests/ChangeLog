@@ -1,3 +1,164 @@
+2019-11-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Revert http://trac.webkit.org/r251875
+        Don't use memmove/memcpy/memset for memory that can be scanned concurrently
+
+        This is suspected to have broken performance tests on iOS.
+
+        * stress/torn-js-value-concurrent-collector.js: Removed.
+
+2019-11-01  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        [[HasProperty]] result of Proxy in prototype chain is ignored
+        https://bugs.webkit.org/show_bug.cgi?id=203560
+
+        Reviewed by Ross Kirsling.
+
+        * stress/proxy-get-prototype-of.js: Correct Proxy "has" trap test.
+        * test262/expectations.yaml: Mark 6 test cases as passing.
+
+2019-11-01  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC][MIPS] Skip tests failing in RELEASE_ASSERT_NOT_REACHED() at CallFrame.cpp:81
+        https://bugs.webkit.org/show_bug.cgi?id=203738
+
+        Unreviewed gardening.
+
+        * stress/allocation-sinking-hints-are-valid-ssa.js:
+        * stress/has-instance-exception-check.js:
+        * stress/regress-176485.js:
+
+2019-10-31  Caio Lima  <ticaiolima@gmail.com>
+
+        Temporary skip broken tests on MIPS that is broken due to OSR exit to LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=203710
+
+        Unreviewed gardening.
+
+        * microbenchmarks/call-spread-call.js:
+        * microbenchmarks/throw.js:
+        * stress/allocation-sinking-hints-are-valid-ssa-2.js:
+        * stress/arith-profile-for-negate-can-see-non-number-due-to-dfg-osr-exit-profiling.js:
+        * stress/arrowfunction-lexical-bind-supercall-4.js:
+        * stress/arrowfunction-tdz-3.js:
+        * stress/function-constructor-semantics.js:
+        * stress/stress-cleared-calllinkinfo.js:
+        * stress/typedarray-configure-index.js:
+        * stress/v8-deltablue-strict.js:
+
+2019-10-31  Saam Barati  <sbarati@apple.com>
+
+        Don't use memmove/memcpy/memset for memory that can be scanned concurrently
+        https://bugs.webkit.org/show_bug.cgi?id=203228
+        <rdar://problem/56401852>
+
+        Reviewed by Robin Morisset.
+
+        * stress/torn-js-value-concurrent-collector.js: Added.
+        (foo):
+
+2019-10-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Date functions should have intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=202187
+
+        Reviewed by Keith Miller.
+
+        * stress/date-cse.js: Added.
+        (shouldBe):
+        (test):
+        (test2):
+        (test3):
+        * stress/date-get-date-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-day-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-full-year-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-hours-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-milliseconds-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-minutes-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-month-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-seconds-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-time-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-timezone-offset-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-date-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-day-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-full-year-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-hours-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-milliseconds-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-minutes-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-month-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-utc-seconds-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-get-year-jit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/date-value-of-jit.js: Added.
+        (shouldBe):
+        (test):
+
+2019-10-30  Guillaume Emont  <guijemont@igalia.com>
+
+        Temporarily skip ChakraCore/test/Math/max.js on arm and mips
+
+        Unreviewed gardening.
+
+        * ChakraCore.yaml:
+
+2019-10-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Intl.DateTimeFormat returns resolvedOptions in the wrong order
+        https://bugs.webkit.org/show_bug.cgi?id=203297
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        Mark two test cases as passing.
+
+2019-10-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        tryCachePutToScopeGlobal should hold the lock to update metadata.m_getPutInfo
+        https://bugs.webkit.org/show_bug.cgi?id=203628
+        <rdar://problem/56705353>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/property-move-from-global-object-to-global-lexical-environment.js: Added.
+        (foo):
+
 2019-10-29  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Add fast path for String#localeCompare

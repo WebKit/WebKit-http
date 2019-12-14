@@ -25,9 +25,10 @@
 
 #pragma once
 
+#include "CascadeLevel.h"
 #include "ElementRuleCollector.h"
+#include "StyleBuilderState.h"
 #include <bitset>
-#include <wtf/Bitmap.h>
 
 namespace WebCore {
 
@@ -35,24 +36,20 @@ class StyleResolver;
 
 namespace Style {
 
-enum class CascadeLevel : uint8_t {
-    UserAgent   = 1 << 0,
-    User        = 1 << 1,
-    Author      = 1 << 2
-};
-
-static constexpr OptionSet<CascadeLevel> allCascadeLevels() { return { Style::CascadeLevel::UserAgent, Style::CascadeLevel::User, Style::CascadeLevel::Author }; }
-
 class PropertyCascade {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     enum IncludedProperties { All, InheritedOnly };
-    PropertyCascade(StyleResolver&, const MatchResult&, OptionSet<CascadeLevel>, IncludedProperties = IncludedProperties::All);
+
+    struct Direction {
+        TextDirection textDirection;
+        WritingMode writingMode;
+    };
+
+    PropertyCascade(const MatchResult&, OptionSet<CascadeLevel>, IncludedProperties, Direction);
     PropertyCascade(const PropertyCascade&, OptionSet<CascadeLevel>);
 
     ~PropertyCascade();
-
-    StyleResolver& styleResolver() { return m_styleResolver; }
 
     struct Property {
         CSSPropertyID id;
@@ -67,13 +64,12 @@ public:
     bool hasCustomProperty(const String&) const;
     Property customProperty(const String&) const;
 
-    void applyProperties(int firstProperty, int lastProperty);
-    void applyDeferredProperties();
+    const Vector<Property, 8>& deferredProperties() const { return m_deferredProperties; }
+    const HashMap<AtomString, Property>& customProperties() const { return m_customProperties; }
 
-    void applyCustomProperties();
-    void applyCustomProperty(const String& name);
+    Direction direction() const { return m_direction; }
 
-    void applyProperty(CSSPropertyID, CSSValue&, SelectorChecker::LinkMatchMask = SelectorChecker::MatchDefault);
+    const PropertyCascade* propertyCascadeForRollback(CascadeLevel) const;
 
 private:
     void buildCascade(OptionSet<CascadeLevel>);
@@ -85,25 +81,11 @@ private:
     void setDeferred(CSSPropertyID, CSSValue&, unsigned linkMatchType, CascadeLevel, ScopeOrdinal);
     static void setPropertyInternal(Property&, CSSPropertyID, CSSValue&, unsigned linkMatchType, CascadeLevel, ScopeOrdinal);
 
-    const PropertyCascade* propertyCascadeForRollback(CascadeLevel);
-
-    enum CustomPropertyCycleTracking { Enabled = 0, Disabled };
-    template<CustomPropertyCycleTracking trackCycles>
-    void applyPropertiesImpl(int firstProperty, int lastProperty);
-    void applyProperty(const Property&);
-
-    Ref<CSSValue> resolveValue(CSSPropertyID, CSSValue&);
-    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSValue&);
-
-    void resolveDirectionAndWritingMode();
-
-    StyleResolver& m_styleResolver;
+    Direction resolveDirectionAndWritingMode(Direction inheritedDirection) const;
 
     const MatchResult& m_matchResult;
     const IncludedProperties m_includedProperties;
-    
-    TextDirection m_direction;
-    WritingMode m_writingMode;
+    const Direction m_direction;
 
     Property m_properties[numCSSProperties + 2];
     std::bitset<numCSSProperties + 2> m_propertyIsPresent;
@@ -111,19 +93,8 @@ private:
     Vector<Property, 8> m_deferredProperties;
     HashMap<AtomString, Property> m_customProperties;
 
-    // State to use when applying properties, to keep track of which custom and high-priority
-    // properties have been resolved.
-    struct ApplyState {
-        Bitmap<numCSSProperties> appliedProperties = { };
-        HashSet<String> appliedCustomProperties = { };
-        Bitmap<numCSSProperties> inProgressProperties = { };
-        HashSet<String> inProgressPropertiesCustom = { };
-    };
-
-    ApplyState m_applyState;
-
-    std::unique_ptr<const PropertyCascade> m_authorRollbackCascade;
-    std::unique_ptr<const PropertyCascade> m_userRollbackCascade;
+    mutable std::unique_ptr<const PropertyCascade> m_authorRollbackCascade;
+    mutable std::unique_ptr<const PropertyCascade> m_userRollbackCascade;
 };
 
 inline bool PropertyCascade::hasProperty(CSSPropertyID id) const
