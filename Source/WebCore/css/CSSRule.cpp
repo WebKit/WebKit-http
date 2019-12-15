@@ -48,7 +48,7 @@ COMPILE_ASSERT(StyleRuleType::Keyframe == static_cast<StyleRuleType>(CSSRule::Ty
 COMPILE_ASSERT(StyleRuleType::Namespace == static_cast<StyleRuleType>(CSSRule::Type::NAMESPACE_RULE), enums_should_match);
 COMPILE_ASSERT(StyleRuleType::Supports == static_cast<StyleRuleType>(CSSRule::Type::SUPPORTS_RULE), enums_should_match);
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-COMPILE_ASSERT(StyleRuleBase::Viewport == static_cast<StyleRuleType>(CSSRule::WEBKIT_VIEWPORT_RULE), enums_should_match);
+COMPILE_ASSERT(StyleRuleType::Viewport == static_cast<StyleRuleType>(CSSRule::WEBKIT_VIEWPORT_RULE), enums_should_match);
 #endif
 
 ExceptionOr<void> CSSRule::setCssText(const String&)

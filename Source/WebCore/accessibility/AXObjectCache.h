@@ -514,7 +514,7 @@ inline void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectC
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
 inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(*this, &AXObjectCache::notificationPostTimerFired), m_passwordNotificationPostTimer(*this, &AXObjectCache::passwordNotificationPostTimerFired), m_liveRegionChangedPostTimer(*this, &AXObjectCache::liveRegionChangedNotificationPostTimerFired), m_focusModalNodeTimer(*this, &AXObjectCache::focusModalNodeTimerFired), m_performCacheUpdateTimer(*this, &AXObjectCache::performCacheUpdateTimerFired) { }
 inline AXObjectCache::~AXObjectCache() { }
-inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return nullptr; }
+inline AXCoreObject* AXObjectCache::focusedUIElementForPage(const Page*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(Node*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(Widget*) { return nullptr; }
@@ -561,10 +561,10 @@ inline void AXObjectCache::notificationPostTimerFired() { }
 inline void AXObjectCache::passwordNotificationPostTimerFired() { }
 inline void AXObjectCache::performDeferredCacheUpdate() { }
 inline void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject*) { }
-inline void AXObjectCache::postNotification(AccessibilityObject*, Document*, AXNotification, PostTarget, PostType) { }
+inline void AXObjectCache::postNotification(AXCoreObject*, Document*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postNotification(Node*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postNotification(RenderObject*, AXNotification, PostTarget, PostType) { }
-inline void AXObjectCache::postPlatformNotification(AccessibilityObject*, AXNotification) { }
+inline void AXObjectCache::postPlatformNotification(AXCoreObject*, AXNotification) { }
 inline void AXObjectCache::postTextReplacementNotification(Node*, AXTextEditType, const String&, AXTextEditType, const String&, const VisiblePosition&) { }
 inline void AXObjectCache::postTextReplacementNotificationForTextControl(HTMLTextFormControlElement&, const String&, const String&) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, AXTextEditType, const String&, const VisiblePosition&) { }

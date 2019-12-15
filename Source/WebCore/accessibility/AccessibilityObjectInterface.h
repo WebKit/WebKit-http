@@ -1032,7 +1032,6 @@ public:
     virtual bool isHidden() const = 0;
 
     virtual AccessibilityObjectWrapper* wrapper() const = 0;
-    virtual void setWrapper(AccessibilityObjectWrapper*) = 0;
 
     virtual void overrideAttachmentParent(AXCoreObject* parent) = 0;
 

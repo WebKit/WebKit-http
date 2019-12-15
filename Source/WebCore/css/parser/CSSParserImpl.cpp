@@ -589,7 +589,7 @@ RefPtr<StyleRuleViewport> CSSParserImpl::consumeViewportRule(CSSParserTokenRange
         m_observerWrapper->observer().endRuleBody(endOffset);
     }
 
-    consumeDeclarationList(block, StyleRule::Viewport);
+    consumeDeclarationList(block, StyleRuleType::Viewport);
     return StyleRuleViewport::create(createStyleProperties(m_parsedProperties, CSSViewportRuleMode));
 }
 #endif
