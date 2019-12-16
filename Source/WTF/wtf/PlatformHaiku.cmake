@@ -7,6 +7,7 @@ LIST(APPEND WTF_SOURCES
     linux/MemoryPressureHandlerLinux.cpp
 
     posix/FileSystemPOSIX.cpp
+	haiku/FileSystemHaiku.cpp
     haiku/OSAllocatorHaiku.cpp
     posix/ThreadingPOSIX.cpp
 
