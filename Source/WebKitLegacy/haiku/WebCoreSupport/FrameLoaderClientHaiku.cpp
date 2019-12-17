@@ -58,7 +58,6 @@
 #include "ProgressTracker.h"
 #include "RenderFrame.h"
 #include "ResourceRequest.h"
-#include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "WebFrame.h"

@@ -23,17 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#pragma once
 
-#include "HTTPCookieAcceptPolicy.h"
 #include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
 
 namespace WebKit {
 
 class WebFrame;
 class WebFrameLoaderClient;
+struct WebsiteDataStoreParameters;
 
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
@@ -42,8 +40,8 @@ public:
         return adoptRef(*new WebFrameNetworkingContext(frame));
     }
 
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
+    static void ensurePrivateBrowsingSession(WebsiteDataStoreParameters&&);
+    static void ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&);
 
     WebFrameLoaderClient* webFrameLoaderClient() const;
 
@@ -54,5 +52,3 @@ private:
 };
 
 }
-
-#endif // WebFrameNetworkingContext_h

@@ -28,10 +28,10 @@
 #include <config.h>
 #include "WebSettingsPrivate.h"
 
-#include "PageCache.h"
 #include "Settings.h"
 #include "WebSettings.h"
 
+#include <Font.h>
 #include <Path.h>
 #include <PathFinder.h>
 
