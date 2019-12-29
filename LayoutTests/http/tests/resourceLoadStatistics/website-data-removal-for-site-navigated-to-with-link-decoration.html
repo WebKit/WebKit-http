@@ -126,7 +126,7 @@
 
                 if (++intervalCounterIDB >= maxIntervals) {
                     clearInterval(checkIDBIntervalID);
-                    addOutput("Before deletion: IDB entry does not exist.");
+                    addOutput("After deletion: IDB entry checks exhausted.");
                     semaphoreIDBCheck = false;
                     checkIDBCallback();
                 } else {
@@ -165,6 +165,8 @@
             checkLocalStorageIntervalID = setInterval(function() {
                 if (++intervalCounterLocalStorage >= maxIntervals) {
                     clearInterval(checkLocalStorageIntervalID);
+                    let value = localStorage.getItem(localStorageName);
+                    addOutput("Before deletion: LocalStorage entry " + (value === localStorageValue ? "does" : "does not") + " exist.");
                     checkLocalStorageCallback();
                 } else if (testRunner.isStatisticsHasLocalStorage(destinationOrigin)) {
                     clearInterval(checkLocalStorageIntervalID);
@@ -178,6 +180,8 @@
             checkLocalStorageIntervalID = setInterval(function() {
                 if (++intervalCounterLocalStorage >= maxIntervals) {
                     clearInterval(checkLocalStorageIntervalID);
+                    let value = localStorage.getItem(localStorageName);
+                    addOutput("After deletion: LocalStorage entry " + (value === localStorageValue ? "does" : "does not") + " exist.");
                     checkLocalStorageCallback();
                 } else if (!testRunner.isStatisticsHasLocalStorage(destinationOrigin)) {
                     clearInterval(checkLocalStorageIntervalID);

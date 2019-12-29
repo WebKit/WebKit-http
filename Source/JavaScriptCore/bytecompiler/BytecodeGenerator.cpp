@@ -1531,6 +1531,9 @@ RegisterID* BytecodeGenerator::emitUnaryOp(OpcodeID opcodeID, RegisterID* dst, R
     case op_to_number:
         emitUnaryOp<OpToNumber>(dst, src);
         break;
+    case op_to_numeric:
+        emitUnaryOp<OpToNumeric>(dst, src);
+        break;
     default:
         ASSERT_NOT_REACHED();
     }
@@ -1599,6 +1602,11 @@ RegisterID* BytecodeGenerator::emitToObject(RegisterID* dst, RegisterID* src, co
 RegisterID* BytecodeGenerator::emitToNumber(RegisterID* dst, RegisterID* src)
 {
     return emitUnaryOp<OpToNumber>(dst, src);
+}
+
+RegisterID* BytecodeGenerator::emitToNumeric(RegisterID* dst, RegisterID* src)
+{
+    return emitUnaryOp<OpToNumeric>(dst, src);
 }
 
 RegisterID* BytecodeGenerator::emitToString(RegisterID* dst, RegisterID* src)
@@ -4883,10 +4891,8 @@ void ForInContext::finalize(BytecodeGenerator& generator, UnlinkedCodeBlock* cod
 
     for (unsigned offset = bodyBytecodeStartOffset(); isValid() && offset < bodyBytecodeEndOffset;) {
         auto instruction = generator.instructions().at(offset);
-        OpcodeID opcodeID = instruction->opcodeID();
-
-        ASSERT(opcodeID != op_enter);
-        computeDefsForBytecodeIndex(codeBlock, opcodeID, instruction.ptr(), [&] (VirtualRegister operand) {
+        ASSERT(!instruction->is<OpEnter>());
+        computeDefsForBytecodeIndex(codeBlock, instruction.ptr(), [&] (VirtualRegister operand) {
             if (local()->virtualRegister() == operand)
                 invalidate();
         });

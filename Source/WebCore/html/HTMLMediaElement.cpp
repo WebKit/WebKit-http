@@ -72,6 +72,7 @@
 #include "MediaQueryEvaluator.h"
 #include "MediaResourceLoader.h"
 #include "NetworkingContext.h"
+#include "PODIntervalTree.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "PictureInPictureSupport.h"
@@ -1003,7 +1004,7 @@ void HTMLMediaElement::scheduleNextSourceChild()
     });
 }
 
-void HTMLMediaElement::mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*)
+void HTMLMediaElement::mediaPlayerActiveSourceBuffersChanged()
 {
     m_hasEverHadAudio |= hasAudio();
     m_hasEverHadVideo |= hasVideo();
@@ -1627,6 +1628,12 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
 #if ENABLE(VIDEO_TRACK)
 
+struct HTMLMediaElement::CueData {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+    PODIntervalTree<MediaTime, TextTrackCue*> cueTree;
+    CueList currentlyActiveCues;
+};
+
 static bool trackIndexCompare(TextTrack* a, TextTrack* b)
 {
     return a->trackIndex() - b->trackIndex() < 0;
@@ -1661,6 +1668,11 @@ static bool compareCueIntervalEndTime(const CueInterval& one, const CueInterval&
     return one.data()->endMediaTime() > two.data()->endMediaTime();
 }
 
+bool HTMLMediaElement::ignoreTrackDisplayUpdateRequests() const
+{
+    return m_ignoreTrackDisplayUpdate > 0 || !m_textTracks || !m_cueData || m_cueData->cueTree.isEmpty();
+}
+
 void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
 {
     // 4.8.10.8 Playing the media resource
@@ -1680,9 +1692,9 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
 
     // The user agent must synchronously unset [the text track cue active] flag
     // whenever ... the media element's readyState is changed back to HAVE_NOTHING.
-    auto movieTimeInterval = m_cueTree.createInterval(movieTime, movieTime);
+    auto movieTimeInterval = m_cueData->cueTree.createInterval(movieTime, movieTime);
     if (m_readyState != HAVE_NOTHING && m_player) {
-        currentCues = m_cueTree.allOverlaps(movieTimeInterval);
+        currentCues = m_cueData->cueTree.allOverlaps(movieTimeInterval);
         if (currentCues.size() > 1)
             std::sort(currentCues.begin(), currentCues.end(), &compareCueInterval);
     }
@@ -1693,7 +1705,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
     // 2 - Let other cues be a list of cues, initialized to contain all the cues
     // of hidden, showing, and showing by default text tracks of the media
     // element that are not present in current cues.
-    previousCues = m_currentlyActiveCues;
+    previousCues = m_cueData->currentlyActiveCues;
 
     // 3 - Let last time be the current playback position at the time this
     // algorithm was last run for this media element, if this is not the first
@@ -1707,7 +1719,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
     // end times are less than or equal to the current playback position.
     // Otherwise, let missed cues be an empty list.
     if (lastTime >= MediaTime::zeroTime() && m_lastSeekTime < movieTime) {
-        for (auto& cue : m_cueTree.allOverlaps(m_cueTree.createInterval(lastTime, movieTime))) {
+        for (auto& cue : m_cueData->cueTree.allOverlaps({ lastTime, movieTime })) {
             // Consider cues that may have been missed since the last seek time.
             if (cue.low() > std::max(m_lastSeekTime, lastTime) && cue.high() < movieTime)
                 missedCues.append(cue);
@@ -1752,7 +1764,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
     if (auto nearestEndingCue = std::min_element(currentCues.begin(), currentCues.end(), compareCueIntervalEndTime))
         nextInterestingTime = nearestEndingCue->data()->endMediaTime();
 
-    Optional<CueInterval> nextCue = m_cueTree.nextIntervalAfter(movieTimeInterval);
+    Optional<CueInterval> nextCue = m_cueData->cueTree.nextIntervalAfter(movieTimeInterval.high());
     if (nextCue)
         nextInterestingTime = std::min(nextInterestingTime, nextCue->low());
 
@@ -1897,7 +1909,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
             previousCues[i].data()->setIsActive(false);
 
     // Update the current active cues.
-    m_currentlyActiveCues = currentCues;
+    m_cueData->currentlyActiveCues = currentCues;
 
     if (activeSetChanged)
         updateTextTrackDisplay();
@@ -2034,24 +2046,30 @@ void HTMLMediaElement::textTrackAddCue(TextTrack& track, TextTrackCue& cue)
     if (track.mode() == TextTrack::Mode::Disabled)
         return;
 
+    if (!m_cueData)
+        m_cueData = makeUnique<CueData>();
+
     // Negative duration cues need be treated in the interval tree as
     // zero-length cues.
     MediaTime endTime = std::max(cue.startMediaTime(), cue.endMediaTime());
 
-    CueInterval interval = m_cueTree.createInterval(cue.startMediaTime(), endTime, &cue);
-    if (!m_cueTree.contains(interval))
-        m_cueTree.add(interval);
+    CueInterval interval = m_cueData->cueTree.createInterval(cue.startMediaTime(), endTime, &cue);
+    if (!m_cueData->cueTree.contains(interval))
+        m_cueData->cueTree.add(interval);
     updateActiveTextTrackCues(currentMediaTime());
 }
 
 void HTMLMediaElement::textTrackRemoveCue(TextTrack&, TextTrackCue& cue)
 {
+    if (!m_cueData)
+        m_cueData = makeUnique<CueData>();
+
     // Negative duration cues need to be treated in the interval tree as
     // zero-length cues.
     MediaTime endTime = std::max(cue.startMediaTime(), cue.endMediaTime());
 
-    CueInterval interval = m_cueTree.createInterval(cue.startMediaTime(), endTime, &cue);
-    m_cueTree.remove(interval);
+    CueInterval interval = m_cueData->cueTree.createInterval(cue.startMediaTime(), endTime, &cue);
+    m_cueData->cueTree.remove(interval);
 
     // Since the cue will be removed from the media element and likely the
     // TextTrack might also be destructed, notifying the region of the cue
@@ -2060,10 +2078,10 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack&, TextTrackCue& cue)
     if (isVTT)
         toVTTCue(&cue)->notifyRegionWhenRemovingDisplayTree(false);
 
-    size_t index = m_currentlyActiveCues.find(interval);
+    size_t index = m_cueData->currentlyActiveCues.find(interval);
     if (index != notFound) {
         cue.setIsActive(false);
-        m_currentlyActiveCues.remove(index);
+        m_cueData->currentlyActiveCues.remove(index);
     }
 
     cue.removeDisplayTree();
@@ -2071,6 +2089,13 @@ void HTMLMediaElement::textTrackRemoveCue(TextTrack&, TextTrackCue& cue)
 
     if (isVTT)
         toVTTCue(&cue)->notifyRegionWhenRemovingDisplayTree(true);
+}
+
+CueList HTMLMediaElement::currentlyActiveCues() const
+{
+    if (!m_cueData)
+        return { };
+    return m_cueData->currentlyActiveCues;
 }
 
 #endif
@@ -2230,7 +2255,7 @@ void HTMLMediaElement::cancelPendingEventsAndCallbacks()
     rejectPendingPlayPromises(WTFMove(m_pendingPlayPromises), DOMException::create(AbortError));
 }
 
-void HTMLMediaElement::mediaPlayerNetworkStateChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerNetworkStateChanged()
 {
     beginProcessingMediaPlayerCallback();
     setNetworkState(m_player->networkState());
@@ -2376,7 +2401,7 @@ void HTMLMediaElement::changeNetworkStateFromLoadingToIdle()
     m_networkState = NETWORK_IDLE;
 }
 
-void HTMLMediaElement::mediaPlayerReadyStateChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerReadyStateChanged()
 {
     beginProcessingMediaPlayerCallback();
 
@@ -2594,7 +2619,7 @@ RefPtr<ArrayBuffer> HTMLMediaElement::mediaPlayerCachedKeyForKeyId(const String&
     return m_webKitMediaKeys ? m_webKitMediaKeys->cachedKeyForKeyId(keyId) : nullptr;
 }
 
-bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
+bool HTMLMediaElement::mediaPlayerKeyNeeded(Uint8Array* initData)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().legacyEncryptedMediaAPIEnabled())
         return false;
@@ -4821,7 +4846,7 @@ void HTMLMediaElement::sourceWasRemoved(HTMLSourceElement& source)
     }
 }
 
-void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerTimeChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -4949,7 +4974,7 @@ void HTMLMediaElement::seekToPlaybackPositionEndedTimerFired()
 #endif
 }
 
-void HTMLMediaElement::mediaPlayerVolumeChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerVolumeChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -4965,7 +4990,7 @@ void HTMLMediaElement::mediaPlayerVolumeChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerMuteChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerMuteChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -4975,14 +5000,14 @@ void HTMLMediaElement::mediaPlayerMuteChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerDurationChanged(MediaPlayer* player)
+void HTMLMediaElement::mediaPlayerDurationChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
     beginProcessingMediaPlayerCallback();
 
     scheduleEvent(eventNames().durationchangeEvent);
-    mediaPlayerCharacteristicChanged(player);
+    mediaPlayerCharacteristicChanged();
 
     MediaTime now = currentMediaTime();
     MediaTime dur = durationMediaTime();
@@ -4992,7 +5017,7 @@ void HTMLMediaElement::mediaPlayerDurationChanged(MediaPlayer* player)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerRateChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerRateChanged()
 {
     beginProcessingMediaPlayerCallback();
 
@@ -5010,7 +5035,7 @@ void HTMLMediaElement::mediaPlayerRateChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerPlaybackStateChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerPlaybackStateChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5028,7 +5053,7 @@ void HTMLMediaElement::mediaPlayerPlaybackStateChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerSawUnsupportedTracks(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerSawUnsupportedTracks()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5039,7 +5064,7 @@ void HTMLMediaElement::mediaPlayerSawUnsupportedTracks(MediaPlayer*)
         downcast<MediaDocument>(document()).mediaElementSawUnsupportedTracks();
 }
 
-void HTMLMediaElement::mediaPlayerResourceNotSupported(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerResourceNotSupported()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5048,7 +5073,7 @@ void HTMLMediaElement::mediaPlayerResourceNotSupported(MediaPlayer*)
 }
 
 // MediaPlayerPresentation methods
-void HTMLMediaElement::mediaPlayerRepaint(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerRepaint()
 {
     beginProcessingMediaPlayerCallback();
     updateDisplayState();
@@ -5057,7 +5082,7 @@ void HTMLMediaElement::mediaPlayerRepaint(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerSizeChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5071,14 +5096,14 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
     endProcessingMediaPlayerCallback();
 }
 
-bool HTMLMediaElement::mediaPlayerRenderingCanBeAccelerated(MediaPlayer*)
+bool HTMLMediaElement::mediaPlayerRenderingCanBeAccelerated()
 {
     auto* renderer = this->renderer();
     return is<RenderVideo>(renderer)
         && downcast<RenderVideo>(*renderer).view().compositor().canAccelerateVideoRendering(downcast<RenderVideo>(*renderer));
 }
 
-void HTMLMediaElement::mediaPlayerRenderingModeChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerRenderingModeChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5093,7 +5118,7 @@ bool HTMLMediaElement::mediaPlayerAcceleratedCompositingEnabled()
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 
-GraphicsDeviceAdapter* HTMLMediaElement::mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const
+GraphicsDeviceAdapter* HTMLMediaElement::mediaPlayerGraphicsDeviceAdapter() const
 {
     auto* page = document().page();
     if (!page)
@@ -5153,7 +5178,7 @@ void HTMLMediaElement::mediaEngineWasUpdated()
 #endif
 }
 
-void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerEngineUpdated()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5166,19 +5191,19 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
     scheduleMediaEngineWasUpdated();
 }
 
-void HTMLMediaElement::mediaPlayerFirstVideoFrameAvailable(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerFirstVideoFrameAvailable()
 {
     INFO_LOG(LOGIDENTIFIER, "current display mode = ", (int)displayMode());
 
     beginProcessingMediaPlayerCallback();
     if (displayMode() == PosterWaitingForVideo) {
         setDisplayMode(Video);
-        mediaPlayerRenderingModeChanged(m_player.get());
+        mediaPlayerRenderingModeChanged();
     }
     endProcessingMediaPlayerCallback();
 }
 
-void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerCharacteristicChanged()
 {
     INFO_LOG(LOGIDENTIFIER);
 
@@ -5191,7 +5216,7 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
 
     if (potentiallyPlaying() && displayMode() == PosterWaitingForVideo) {
         setDisplayMode(Video);
-        mediaPlayerRenderingModeChanged(m_player.get());
+        mediaPlayerRenderingModeChanged();
     }
 
     if (hasMediaControls())
@@ -5866,7 +5891,7 @@ void HTMLMediaElement::wirelessRoutesAvailableDidChange()
     enqueuePlaybackTargetAvailabilityChangedEvent();
 }
 
-void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*)
+void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged()
 {
     setIsPlayingToWirelessTarget(m_player && m_player->isCurrentPlaybackTargetWireless());
 }
@@ -6049,7 +6074,7 @@ void HTMLMediaElement::toggleStandardFullscreenState()
 
 void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
 {
-    INFO_LOG(LOGIDENTIFIER);
+    INFO_LOG(LOGIDENTIFIER, ", m_videoFullscreenMode = ", m_videoFullscreenMode, ", mode = ", mode);
     ASSERT(mode != VideoFullscreenModeNone);
 
     if (m_videoFullscreenMode == mode)
@@ -6078,6 +6103,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
         if (is<HTMLVideoElement>(*this)) {
             HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
             if (document().page()->chrome().client().supportsVideoFullscreen(m_videoFullscreenMode)) {
+                INFO_LOG(LOGIDENTIFIER, "Entering fullscreen mode ", m_videoFullscreenMode, ", m_videoFullscreenStandby = ", m_videoFullscreenStandby);
                 document().page()->chrome().client().enterVideoFullscreenForVideoElement(asVideo, m_videoFullscreenMode, m_videoFullscreenStandby);
                 scheduleEvent(eventNames().webkitbeginfullscreenEvent);
             }
@@ -6196,6 +6222,7 @@ void HTMLMediaElement::willBecomeFullscreenElement()
 
 void HTMLMediaElement::didBecomeFullscreenElement()
 {
+    INFO_LOG(LOGIDENTIFIER, ", fullscreen mode = ", fullscreenMode());
     m_waitingToEnterFullscreen = false;
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
@@ -6227,6 +6254,7 @@ void HTMLMediaElement::setPreparedToReturnVideoLayerToInline(bool value)
 
 void HTMLMediaElement::waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler)
 {
+    INFO_LOG(LOGIDENTIFIER);
     ASSERT(!m_preparedForInlineCompletionHandler);
     if (m_preparedForInline)  {
         completionHandler();
@@ -6251,6 +6279,7 @@ bool HTMLMediaElement::isVideoLayerInline()
 
 void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer, WTF::Function<void()>&& completionHandler)
 {
+    INFO_LOG(LOGIDENTIFIER);
     m_videoFullscreenLayer = platformLayer;
     if (!m_player) {
         completionHandler();
@@ -7601,7 +7630,10 @@ bool HTMLMediaElement::canProduceAudio() const
     if (muted())
         return false;
 
-    return m_player && m_readyState >= HAVE_METADATA && hasAudio();
+    if (m_player && m_readyState >= HAVE_METADATA)
+        return hasAudio();
+
+    return hasEverHadAudio();
 }
 
 bool HTMLMediaElement::isSuspended() const

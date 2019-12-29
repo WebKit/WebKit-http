@@ -151,6 +151,7 @@ set(WTF_PUBLIC_HEADERS
     ObjCRuntimeExtras.h
     ObjectIdentifier.h
     OptionSet.h
+    OptionSetHash.h
     Optional.h
     OrderMaker.h
     Packed.h
@@ -327,7 +328,6 @@ set(WTF_PUBLIC_HEADERS
     text/TextStream.h
     text/UTF8ConversionError.h
     text/UniquedStringImpl.h
-    text/ValueToString.h
     text/WTFString.h
 
     text/icu/TextBreakIteratorICU.h

@@ -53,6 +53,7 @@
 #include "VMInspector.h"
 #include "WasmCapabilities.h"
 #include <wtf/Atomics.h>
+#include <wtf/CPUTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/ProcessID.h>
 #include <wtf/StringPrintStream.h>
@@ -104,8 +105,8 @@ namespace {
 // globals (since these must have trivial constructors) e.g. DOMJITAttribute.
 // Instead, these constructors should always be ALWAYS_INLINE.
 
-class JSDollarVMCallFrame : public JSDestructibleObject {
-    using Base = JSDestructibleObject;
+class JSDollarVMCallFrame : public JSNonFinalObject {
+    using Base = JSNonFinalObject;
 public:
     JSDollarVMCallFrame(VM& vm, Structure* structure)
         : Base(vm, structure)
@@ -2016,6 +2017,7 @@ static void callWithStackSizeProbeFunction(Probe::State* state)
 }
 #endif // ENABLE(MASM_PROBE)
 
+SUPPRESS_ASAN
 static EncodedJSValue JSC_HOST_CALL functionCallWithStackSize(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     DollarVMAssertScope assertScope;
@@ -2091,7 +2093,9 @@ static EncodedJSValue JSC_HOST_CALL functionCallWithStackSize(JSGlobalObject* gl
     );
 #else
     UNUSED_PARAM(function);
+#if !COMPILER(MSVC)
     UNUSED_PARAM(callWithStackSizeProbeFunction);
+#endif
 #endif // OS(DARWIN) && CPU(X86_64)
 
     Options::maxPerThreadStackUsage() = originalMaxPerThreadStackUsage;
@@ -2099,6 +2103,7 @@ static EncodedJSValue JSC_HOST_CALL functionCallWithStackSize(JSGlobalObject* gl
     RELEASE_ASSERT(vm.softStackLimit() == originalVMSoftStackLimit);
     RELEASE_ASSERT(vm.stackLimit() == originalVMStackLimit);
 
+    throwScope.release();
     return encodedJSUndefined();
 
 #else // not ENABLE(MASM_PROBE)
@@ -2671,6 +2676,12 @@ static EncodedJSValue JSC_HOST_CALL functionDeltaBetweenButterflies(JSGlobalObje
     return JSValue::encode(jsNumber(static_cast<int32_t>(delta)));
 }
 
+static EncodedJSValue JSC_HOST_CALL functionCurrentCPUTime(JSGlobalObject*, CallFrame*)
+{
+    DollarVMAssertScope assertScope;
+    return JSValue::encode(jsNumber(CPUTime::forCurrentThread().value()));
+}
+
 static EncodedJSValue JSC_HOST_CALL functionTotalGCTime(JSGlobalObject* globalObject, CallFrame*)
 {
     DollarVMAssertScope assertScope;
@@ -2828,6 +2839,7 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "deltaBetweenButterflies", functionDeltaBetweenButterflies, 2);
     
+    addFunction(vm, "currentCPUTime", functionCurrentCPUTime, 0);
     addFunction(vm, "totalGCTime", functionTotalGCTime, 0);
 
     addFunction(vm, "parseCount", functionParseCount, 0);

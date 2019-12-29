@@ -76,6 +76,10 @@
 #include "WebPaymentCoordinatorProxyMessages.h"
 #endif
 
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
+#include "LegacyCustomProtocolManager.h"
+#endif
+
 #undef RELEASE_LOG_IF_ALLOWED
 #define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(m_sessionID.isAlwaysOnLoggingAllowed(), channel, "%p - NetworkConnectionToWebProcess::" fmt, this, ##__VA_ARGS__)
 
@@ -504,15 +508,24 @@ void NetworkConnectionToWebProcess::prefetchDNS(const String& hostname)
 void NetworkConnectionToWebProcess::preconnectTo(uint64_t preconnectionIdentifier, NetworkResourceLoadParameters&& parameters)
 {
     ASSERT(!parameters.request.httpBody());
-    
-#if ENABLE(SERVER_PRECONNECT)
-    new PreconnectTask(networkProcess(), sessionID(), WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
-        didFinishPreconnection(identifier, error);
-    });
-#else
-    UNUSED_PARAM(parameters);
-    didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
+
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
+    if (networkProcess().supplement<LegacyCustomProtocolManager>()->supportsScheme(parameters.request.url().protocol().toString())) {
+        didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
+        return;
+    }
 #endif
+
+#if ENABLE(SERVER_PRECONNECT)
+    auto* session = networkSession();
+    if (session && session->allowsServerPreconnect()) {
+        new PreconnectTask(networkProcess(), sessionID(), WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
+            didFinishPreconnection(identifier, error);
+        });
+        return;
+    }
+#endif
+    didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
 }
 
 void NetworkConnectionToWebProcess::didFinishPreconnection(uint64_t preconnectionIdentifier, const ResourceError& error)
@@ -994,9 +1007,9 @@ void NetworkConnectionToWebProcess::takeAllMessagesForPort(const MessagePortIden
 
 void NetworkConnectionToWebProcess::didDeliverMessagePortMessages(uint64_t messageBatchIdentifier)
 {
-    auto callback = m_messageBatchDeliveryCompletionHandlers.take(messageBatchIdentifier);
-    ASSERT(callback);
-    callback();
+    // Null check only necessary for rare condition where network process crashes during message port connection establishment.
+    if (auto callback = m_messageBatchDeliveryCompletionHandlers.take(messageBatchIdentifier))
+        callback();
 }
 
 void NetworkConnectionToWebProcess::postMessageToRemote(MessageWithMessagePorts&& message, const MessagePortIdentifier& port)

@@ -34,7 +34,6 @@
 #include "Supplementable.h"
 #include <wtf/URL.h>
 #include "WorkerCacheStorageConnection.h"
-#include "WorkerEventQueue.h"
 #include "WorkerMessagePortChannelProvider.h"
 #include "WorkerScriptController.h"
 #include <JavaScriptCore/ConsoleMessage.h>
@@ -42,10 +41,10 @@
 
 namespace WebCore {
 
+class CSSValuePool;
 class ContentSecurityPolicyResponseHeaders;
 class Crypto;
 class EventLoopTaskGroup;
-class MicrotaskQueue;
 class Performance;
 class ScheduledAction;
 class WorkerEventLoop;
@@ -89,8 +88,6 @@ public:
     void clearScript() { m_script = nullptr; }
 
     WorkerInspectorController& inspectorController() const { return *m_inspectorController; }
-
-    MicrotaskQueue& microtaskQueue() const { return *m_microtaskQueue; }
 
     WorkerThread& thread() const { return m_thread; }
 
@@ -137,6 +134,8 @@ public:
 
     unsigned long createUniqueIdentifier() { return m_uniqueIdentifier++; }
 
+    CSSValuePool& cssValuePool();
+
 protected:
     WorkerGlobalScope(const URL&, Ref<SecurityOrigin>&&, const String& identifier, const String& userAgent, bool isOnline, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
 
@@ -164,7 +163,6 @@ private:
     void disableEval(const String& errorMessage) final;
     void disableWebAssembly(const String& errorMessage) final;
     EventTarget* errorEventTarget() final;
-    WorkerEventQueue& eventQueue() const final;
     String resourceRequestIdentifier() const final { return m_identifier; }
     SocketProvider* socketProvider() final;
 
@@ -191,7 +189,6 @@ private:
     WorkerThread& m_thread;
     std::unique_ptr<WorkerScriptController> m_script;
     std::unique_ptr<WorkerInspectorController> m_inspectorController;
-    std::unique_ptr<MicrotaskQueue> m_microtaskQueue;
 
     bool m_closing { false };
     bool m_isOnline;
@@ -199,8 +196,6 @@ private:
 
     RefPtr<WorkerEventLoop> m_eventLoop;
     std::unique_ptr<EventLoopTaskGroup> m_defaultTaskGroup;
-
-    mutable WorkerEventQueue m_eventQueue;
 
     Ref<SecurityOrigin> m_topOrigin;
 
@@ -219,6 +214,7 @@ private:
 #if ENABLE(SERVICE_WORKER)
     RefPtr<WorkerSWClientConnection> m_swClientConnection;
 #endif
+    std::unique_ptr<CSSValuePool> m_cssValuePool;
 };
 
 } // namespace WebCore

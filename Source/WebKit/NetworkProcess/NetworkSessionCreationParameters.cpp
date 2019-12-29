@@ -68,7 +68,8 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldIncludeLocalhostInResourceLoadStatistics;
     encoder << enableResourceLoadStatisticsDebugMode;
     encoder << resourceLoadStatisticsManualPrevalentResource;
-    encoder << enableThirdPartyCookieBlocking;
+    encoder << thirdPartyCookieBlockingMode;
+    encoder << firstPartyWebsiteDataRemovalMode;
 
     encoder << networkCacheDirectory << networkCacheDirectoryExtensionHandle;
 
@@ -81,6 +82,7 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << staleWhileRevalidateEnabled;
     encoder << testSpeedMultiplier;
     encoder << suppressesConnectionTerminationOnSystemChange;
+    encoder << allowsServerPreconnect;
 }
 
 Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
@@ -200,9 +202,14 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!resourceLoadStatisticsManualPrevalentResource)
         return WTF::nullopt;
 
-    Optional<bool> enableThirdPartyCookieBlocking;
-    decoder >> enableThirdPartyCookieBlocking;
-    if (!enableThirdPartyCookieBlocking)
+    Optional<WebCore::ThirdPartyCookieBlockingMode> thirdPartyCookieBlockingMode;
+    decoder >> thirdPartyCookieBlockingMode;
+    if (!thirdPartyCookieBlockingMode)
+        return WTF::nullopt;
+
+    Optional<WebCore::FirstPartyWebsiteDataRemovalMode> firstPartyWebsiteDataRemovalMode;
+    decoder >> firstPartyWebsiteDataRemovalMode;
+    if (!firstPartyWebsiteDataRemovalMode)
         return WTF::nullopt;
 
     Optional<String> networkCacheDirectory;
@@ -260,6 +267,11 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!suppressesConnectionTerminationOnSystemChange)
         return WTF::nullopt;
 
+    Optional<bool> allowsServerPreconnect;
+    decoder >> allowsServerPreconnect;
+    if (!allowsServerPreconnect)
+        return WTF::nullopt;
+
     return {{
         *sessionID
         , WTFMove(*boundInterfaceIdentifier)
@@ -288,7 +300,8 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*enableResourceLoadStatisticsLogTestingEvent)
         , WTFMove(*shouldIncludeLocalhostInResourceLoadStatistics)
         , WTFMove(*enableResourceLoadStatisticsDebugMode)
-        , WTFMove(*enableThirdPartyCookieBlocking)
+        , WTFMove(*thirdPartyCookieBlockingMode)
+        , WTFMove(*firstPartyWebsiteDataRemovalMode)
         , WTFMove(*deviceManagementRestrictionsEnabled)
         , WTFMove(*allLoadsBlockedByDeviceManagementRestrictionsForTesting)
         , WTFMove(*resourceLoadStatisticsManualPrevalentResource)
@@ -301,6 +314,7 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*staleWhileRevalidateEnabled)
         , WTFMove(*testSpeedMultiplier)
         , WTFMove(*suppressesConnectionTerminationOnSystemChange)
+        , WTFMove(*allowsServerPreconnect)
     }};
 }
 

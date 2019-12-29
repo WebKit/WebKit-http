@@ -59,6 +59,11 @@ MemoryIDBBackingStore::MemoryIDBBackingStore(PAL::SessionID sessionID, const IDB
 
 MemoryIDBBackingStore::~MemoryIDBBackingStore() = default;
 
+IDBError MemoryIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info, const LockHolder&)
+{
+    return getOrEstablishDatabaseInfo(info);
+}
+
 IDBError MemoryIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info)
 {
     if (!m_databaseInfo)
@@ -76,7 +81,7 @@ void MemoryIDBBackingStore::setDatabaseInfo(const IDBDatabaseInfo& info)
     m_databaseInfo = makeUnique<IDBDatabaseInfo>(info);
 }
 
-IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
+IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::beginTransaction");
 
@@ -101,7 +106,7 @@ IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
+IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& transactionIdentifier, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::abortTransaction - %s", transactionIdentifier.loggingString().utf8().data());
 
@@ -114,7 +119,7 @@ IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& tr
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)
+IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& transactionIdentifier, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::commitTransaction - %s", transactionIdentifier.loggingString().utf8().data());
 
@@ -127,7 +132,7 @@ IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& t
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& info)
+IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& info, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::createObjectStore - adding OS %s with ID %" PRIu64, info.name().utf8().data(), info.identifier());
 
@@ -150,7 +155,7 @@ IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier)
+IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::deleteObjectStore");
 
@@ -173,7 +178,7 @@ IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& t
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& newName)
+IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& newName, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::renameObjectStore");
 
@@ -194,12 +199,15 @@ IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& t
     objectStore->rename(newName);
     transaction->objectStoreRenamed(*objectStore, oldName);
 
+    m_objectStoresByName.remove(oldName);
+    m_objectStoresByName.set(newName, objectStore);
+
     m_databaseInfo->renameObjectStore(objectStoreIdentifier, newName);
 
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier)
+IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::clearObjectStore");
     ASSERT(objectStoreIdentifier);
@@ -220,9 +228,14 @@ IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& tr
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo& info)
+IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo& info, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::createIndex");
+
+    ASSERT(m_databaseInfo);
+    auto* objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(info.objectStoreIdentifier());
+    if (!objectStoreInfo)
+        return IDBError { ConstraintError };
 
     auto rawTransaction = m_transactions.get(transactionIdentifier);
     ASSERT(rawTransaction);
@@ -232,12 +245,25 @@ IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transac
     if (!objectStore)
         return IDBError { ConstraintError };
 
-    return objectStore->createIndex(*rawTransaction, info);
+    auto error = objectStore->createIndex(*rawTransaction, info);
+    if (error.isNull())
+        objectStoreInfo->addExistingIndex(info);
+
+    return error;
 }
 
-IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier)
+IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::deleteIndex");
+
+    ASSERT(m_databaseInfo);
+    auto* objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
+    if (!objectStoreInfo)
+        return IDBError { ConstraintError };
+
+    auto* indexInfo = objectStoreInfo->infoForExistingIndex(indexIdentifier);
+    if (!indexInfo)
+        return IDBError { ConstraintError };
 
     auto rawTransaction = m_transactions.get(transactionIdentifier);
     ASSERT(rawTransaction);
@@ -247,10 +273,14 @@ IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transac
     if (!objectStore)
         return IDBError { ConstraintError };
 
-    return objectStore->deleteIndex(*rawTransaction, indexIdentifier);
+    auto error = objectStore->deleteIndex(*rawTransaction, indexIdentifier);
+    if (!error.isNull())
+        objectStoreInfo->deleteIndex(indexIdentifier);
+
+    return error;
 }
 
-IDBError MemoryIDBBackingStore::renameIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+IDBError MemoryIDBBackingStore::renameIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::renameIndex");
 
@@ -303,7 +333,7 @@ void MemoryIDBBackingStore::restoreObjectStoreForVersionChangeAbort(Ref<MemoryOb
     registerObjectStore(WTFMove(objectStore));
 }
 
-IDBError MemoryIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifier&, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, bool& keyExists)
+IDBError MemoryIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifier&, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, bool& keyExists, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::keyExistsInObjectStore");
 
@@ -316,7 +346,7 @@ IDBError MemoryIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifi
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range)
+IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::deleteRange");
 
@@ -333,7 +363,7 @@ IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transac
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const IDBValue& value)
+IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const IDBValue& value, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::addRecord");
 
@@ -350,7 +380,7 @@ IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
     return objectStore->addRecord(*transaction, keyData, value);
 }
 
-IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, IDBGetRecordDataType type, IDBGetResult& outValue)
+IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, IDBGetRecordDataType type, IDBGetResult& outValue, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getRecord");
 
@@ -377,7 +407,7 @@ IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transacti
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::getAllRecords(const IDBResourceIdentifier& transactionIdentifier, const IDBGetAllRecordsData& getAllRecordsData, IDBGetAllResult& result)
+IDBError MemoryIDBBackingStore::getAllRecords(const IDBResourceIdentifier& transactionIdentifier, const IDBGetAllRecordsData& getAllRecordsData, IDBGetAllResult& result, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getAllRecords");
 
@@ -402,7 +432,7 @@ IDBError MemoryIDBBackingStore::getAllRecords(const IDBResourceIdentifier& trans
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range, IDBGetResult& outValue)
+IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range, IDBGetResult& outValue, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getIndexRecord");
 
@@ -419,7 +449,7 @@ IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& tran
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData& range, uint64_t& outCount)
+IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData& range, uint64_t& outCount, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getCount");
 
@@ -437,7 +467,7 @@ IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactio
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::generateKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t& keyNumber)
+IDBError MemoryIDBBackingStore::generateKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t& keyNumber, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::generateKeyNumber");
     ASSERT(objectStoreIdentifier);
@@ -456,7 +486,7 @@ IDBError MemoryIDBBackingStore::generateKeyNumber(const IDBResourceIdentifier& t
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::revertGeneratedKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t keyNumber)
+IDBError MemoryIDBBackingStore::revertGeneratedKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t keyNumber, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::revertGeneratedKeyNumber");
     ASSERT(objectStoreIdentifier);
@@ -471,7 +501,7 @@ IDBError MemoryIDBBackingStore::revertGeneratedKeyNumber(const IDBResourceIdenti
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, double newKeyNumber)
+IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, double newKeyNumber, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber");
     ASSERT(objectStoreIdentifier);
@@ -484,6 +514,11 @@ IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceI
     if (newKeyNumber < objectStore->currentKeyGeneratorValue())
         return IDBError { };
 
+    if (newKeyNumber >= (double)maxGeneratedKeyValue) {
+        objectStore->setKeyGeneratorValue(maxGeneratedKeyValue + 1);
+        return IDBError { };
+    }
+
     uint64_t newKeyInteger(newKeyNumber);
     if (newKeyInteger <= uint64_t(newKeyNumber))
         ++newKeyInteger;
@@ -495,7 +530,7 @@ IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceI
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBCursorInfo& info, IDBGetResult& outData)
+IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBCursorInfo& info, IDBGetResult& outData, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::openCursor");
 
@@ -537,7 +572,7 @@ IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transact
     return IDBError { };
 }
 
-IDBError MemoryIDBBackingStore::iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData& data, IDBGetResult& outData)
+IDBError MemoryIDBBackingStore::iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData& data, IDBGetResult& outData, const LockHolder&)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::iterateCursor");
 
@@ -584,24 +619,18 @@ RefPtr<MemoryObjectStore> MemoryIDBBackingStore::takeObjectStoreByIdentifier(uin
     return objectStoreByIdentifier;
 }
 
-IDBObjectStoreInfo* MemoryIDBBackingStore::infoForObjectStore(uint64_t objectStoreIdentifier)
+IDBObjectStoreInfo* MemoryIDBBackingStore::infoForObjectStore(uint64_t objectStoreIdentifier, const LockHolder&)
 {
     ASSERT(m_databaseInfo);
     return m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
 }
 
-void MemoryIDBBackingStore::deleteBackingStore()
+void MemoryIDBBackingStore::deleteBackingStore(const LockHolder&)
 {
     // The in-memory IDB backing store doesn't need to do any cleanup when it is deleted.
 }
 
-uint64_t MemoryIDBBackingStore::databaseSize() const
-{
-    // FIXME: Implement this.
-    return 0;
-}
-
-void MemoryIDBBackingStore::close()
+void MemoryIDBBackingStore::close(const LockHolder&)
 {
 }
 

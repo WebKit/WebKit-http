@@ -163,6 +163,7 @@ public:
     RenderLayer* firstChild() const { return m_first; }
     RenderLayer* lastChild() const { return m_last; }
     bool isDescendantOf(const RenderLayer&) const;
+    RenderLayer* commonAncestorWithLayer(const RenderLayer&) const;
 
     // This does an ancestor tree walk. Avoid it!
     const RenderLayer* root() const
@@ -176,8 +177,12 @@ public:
     void addChild(RenderLayer& newChild, RenderLayer* beforeChild = nullptr);
     void removeChild(RenderLayer&);
 
-    void insertOnlyThisLayer();
-    void removeOnlyThisLayer();
+    enum class LayerChangeTiming {
+        StyleChange,
+        RenderTreeConstruction,
+    };
+    void insertOnlyThisLayer(LayerChangeTiming);
+    void removeOnlyThisLayer(LayerChangeTiming);
 
     bool isNormalFlowOnly() const { return m_isNormalFlowOnly; }
 
@@ -648,7 +653,7 @@ public:
     LayoutPoint convertToLayerCoords(const RenderLayer* ancestorLayer, const LayoutPoint&, ColumnOffsetAdjustment adjustForColumns = DontAdjustForColumns) const;
     LayoutSize offsetFromAncestor(const RenderLayer*, ColumnOffsetAdjustment = DontAdjustForColumns) const;
 
-    int zIndex() const { return renderer().style().zIndex(); }
+    int zIndex() const { return renderer().style().usedZIndex(); }
 
     enum PaintLayerFlag {
         PaintLayerHaveTransparency                      = 1 << 0,

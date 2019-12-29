@@ -342,7 +342,8 @@ interface TestRunner {
     void statisticsResetToConsistentState(object completionHandler);
     boolean hasStatisticsIsolatedSession(DOMString hostName);
     void setStatisticsShouldDowngradeReferrer(boolean value, object callback);
-    void setStatisticsShouldBlockThirdPartyCookies(boolean value, object callback);
+    void setStatisticsShouldBlockThirdPartyCookies(boolean value, object callback, optional boolean onlyOnSitesWithoutUserInteraction);
+    void setStatisticsFirstPartyWebsiteDataRemovalMode(boolean value, object callback);
 
     // Injected bundle form client.
     void installTextDidChangeInTextFieldCallback(object callback);
@@ -367,7 +368,7 @@ interface TestRunner {
     void setWebAPIStatisticsEnabled(boolean value);
 
     void terminateNetworkProcess();
-    void terminateServiceWorkerProcess();
+    void terminateServiceWorkers();
     void setUseSeparateServiceWorkerProcess(boolean value);
 
     readonly attribute unsigned long serverTrustEvaluationCallbackCallsCount;
@@ -386,6 +387,8 @@ interface TestRunner {
     void clearMockMediaDevices();
     void removeMockMediaDevice(DOMString persistentId);
     void resetMockMediaDevices();
+    void setMockCameraOrientation(unsigned long orientation);
+    boolean isMockRealtimeMediaSourceCenterEnabled();
 
     void injectUserScript(DOMString string);
     readonly attribute unsigned long userScriptInjectedCount;

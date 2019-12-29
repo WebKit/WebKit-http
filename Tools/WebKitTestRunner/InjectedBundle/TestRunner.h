@@ -442,8 +442,10 @@ public:
     bool hasStatisticsIsolatedSession(JSStringRef hostName);
     void setStatisticsShouldDowngradeReferrer(bool, JSValueRef callback);
     void statisticsCallDidSetShouldDowngradeReferrerCallback();
-    void setStatisticsShouldBlockThirdPartyCookies(bool, JSValueRef callback);
+    void setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRef callback, bool onlyOnSitesWithoutUserInteraction);
     void statisticsCallDidSetShouldBlockThirdPartyCookiesCallback();
+    void setStatisticsFirstPartyWebsiteDataRemovalMode(bool value, JSValueRef callback);
+    void statisticsCallDidSetFirstPartyWebsiteDataRemovalModeCallback();
     void statisticsResetToConsistentState(JSValueRef completionHandler);
     void statisticsCallDidResetToConsistentStateCallback();
 
@@ -469,7 +471,7 @@ public:
     void abortModal();
 
     void terminateNetworkProcess();
-    void terminateServiceWorkerProcess();
+    void terminateServiceWorkers();
     void setUseSeparateServiceWorkerProcess(bool);
 
     void removeAllSessionCredentials(JSValueRef);
@@ -489,6 +491,8 @@ public:
     void clearMockMediaDevices();
     void removeMockMediaDevice(JSStringRef persistentId);
     void resetMockMediaDevices();
+    void setMockCameraOrientation(unsigned);
+    bool isMockRealtimeMediaSourceCenterEnabled();
 
     size_t userScriptInjectedCount() const;
     void injectUserScript(JSStringRef);
@@ -580,6 +584,7 @@ private:
     bool m_dumpAllHTTPRedirectedResponseHeaders { false };
     bool m_hasSetDowngradeReferrerCallback { false };
     bool m_hasSetBlockThirdPartyCookiesCallback { false };
+    bool m_hasSetFirstPartyWebsiteDataRemovalModeCallback { false };
 };
 
 } // namespace WTR

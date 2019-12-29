@@ -45,6 +45,7 @@
 #include "RenderMultiColumnFlow.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderTreeUpdaterGeneratedContent.h"
+#include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
 #include "StyleResolver.h"
 #include "StyleTreeResolver.h"
@@ -297,7 +298,7 @@ void RenderTreeUpdater::updateRendererStyle(RenderElement& renderer, RenderStyle
     m_builder.normalizeTreeAfterStyleChange(renderer, oldStyle);
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
     if (RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled()) {
-        if (!m_document.view() || !m_document.view()->layoutContext().layoutFormattingState())
+        if (!m_document.view() || !m_document.view()->layoutContext().layoutTreeContent())
             return;
         if (auto* layoutBox = m_document.view()->layoutContext().layoutTreeContent()->layoutBoxForRenderer(renderer))
             layoutBox->updateStyle(renderer.style());

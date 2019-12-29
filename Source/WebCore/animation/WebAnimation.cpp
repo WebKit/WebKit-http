@@ -26,19 +26,22 @@
 #include "config.h"
 #include "WebAnimation.h"
 
-#include "AbstractEventLoop.h"
 #include "AnimationEffect.h"
 #include "AnimationPlaybackEvent.h"
 #include "AnimationTimeline.h"
+#include "CSSComputedStyleDeclaration.h"
 #include "DOMPromiseProxy.h"
 #include "DeclarativeAnimation.h"
 #include "Document.h"
 #include "DocumentTimeline.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "InspectorInstrumentation.h"
 #include "JSWebAnimation.h"
 #include "KeyframeEffect.h"
-#include "Microtasks.h"
+#include "KeyframeEffectStack.h"
+#include "RenderElement.h"
+#include "StyledElement.h"
 #include "WebAnimationUtilities.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/Optional.h>
@@ -716,11 +719,17 @@ ExceptionOr<void> WebAnimation::finish()
     return { };
 }
 
-void WebAnimation::timingDidChange(DidSeek didSeek, SynchronouslyNotify synchronouslyNotify)
+void WebAnimation::timingDidChange(DidSeek didSeek, SynchronouslyNotify synchronouslyNotify, Silently silently)
 {
     m_shouldSkipUpdatingFinishedStateWhenResolving = false;
     updateFinishedState(didSeek, synchronouslyNotify);
-    if (m_timeline)
+
+    if (is<KeyframeEffect>(m_effect)) {
+        updateRelevance();
+        downcast<KeyframeEffect>(*m_effect).animationTimingDidChange();
+    }
+
+    if (silently == Silently::No && m_timeline)
         m_timeline->animationTimingDidChange(*this);
 };
 
@@ -795,12 +804,14 @@ void WebAnimation::updateFinishedState(DidSeek didSeek, SynchronouslyNotify sync
             // Otherwise, if synchronously notify is false, queue a microtask to run finish notification steps for animation unless there
             // is already a microtask queued to run those steps for animation.
             m_finishNotificationStepsMicrotaskPending = true;
-            MicrotaskQueue::mainThreadQueue().append(makeUnique<VoidMicrotask>([this, protectedThis = makeRef(*this)] () {
-                if (m_finishNotificationStepsMicrotaskPending) {
-                    m_finishNotificationStepsMicrotaskPending = false;
-                    finishNotificationSteps();
-                }
-            }));
+            if (auto* context = scriptExecutionContext()) {
+                context->eventLoop().queueMicrotask([this, protectedThis = makeRef(*this)] {
+                    if (m_finishNotificationStepsMicrotaskPending) {
+                        m_finishNotificationStepsMicrotaskPending = false;
+                        finishNotificationSteps();
+                    }
+                });
+            }
         }
     }
 
@@ -970,7 +981,7 @@ void WebAnimation::runPendingPlayTask()
         m_readyPromise->resolve(*this);
 
     // 5. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the synchronously notify flag set to false.
-    timingDidChange(DidSeek::No, SynchronouslyNotify::No);
+    timingDidChange(DidSeek::No, SynchronouslyNotify::No, Silently::Yes);
 
     invalidateEffect();
 }
@@ -1096,7 +1107,7 @@ void WebAnimation::runPendingPauseTask()
 
     // 6. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the
     //    synchronously notify flag set to false.
-    timingDidChange(DidSeek::No, SynchronouslyNotify::No);
+    timingDidChange(DidSeek::No, SynchronouslyNotify::No, Silently::Yes);
 
     invalidateEffect();
 }
@@ -1275,42 +1286,109 @@ void WebAnimation::persist()
 
 ExceptionOr<void> WebAnimation::commitStyles()
 {
+    // https://drafts.csswg.org/web-animations-1/#commit-computed-styles
+
+    // 1. Let targets be the set of all effect targets for animation effects associated with animation.
+    auto* effect = is<KeyframeEffect>(m_effect) ? downcast<KeyframeEffect>(m_effect.get()) : nullptr;
+    auto* target = effect ? effect->target() : nullptr;
+
+    // 2. For each target in targets:
+    //
+    // 2.1 If target is not an element capable of having a style attribute (for example, it is a pseudo-element or is an element in a
+    // document format for which style attributes are not defined) throw a "NoModificationAllowedError" DOMException and abort these steps.
+    if (!is<StyledElement>(target))
+        return Exception { NoModificationAllowedError };
+
+    auto& styledElement = downcast<StyledElement>(*target);
+
+    // 2.2 If, after applying any pending style changes, target is not being rendered, throw an "InvalidStateError" DOMException and abort these steps.
+    styledElement.document().updateStyleIfNeeded();
+    auto* renderer = styledElement.renderer();
+    if (!renderer)
+        return Exception { InvalidStateError };
+
+    // 2.3 Let inline style be the result of getting the CSS declaration block corresponding to target’s style attribute. If target does not have a style
+    // attribute, let inline style be a new empty CSS declaration block with the readonly flag unset and owner node set to target.
+
+    // 2.4 Let targeted properties be the set of physical longhand properties that are a target property for at least one animation effect associated with
+    // animation whose effect target is target.
+
+    auto& style = renderer->style();
+    auto computedStyleExtractor = ComputedStyleExtractor(&styledElement);
+    auto inlineStyle = styledElement.document().createCSSStyleDeclaration();
+    inlineStyle->setCssText(styledElement.getAttribute("style"));
+
+    auto& keyframeStack = styledElement.ensureKeyframeEffectStack();
+    auto cssAnimationNames = keyframeStack.cssAnimationNames();
+
+    // 2.5 For each property, property, in targeted properties:
+    for (auto property : effect->animatedProperties()) {
+        // 1. Let partialEffectStack be a copy of the effect stack for property on target.
+        // 2. If animation's replace state is removed, add all animation effects associated with animation whose effect target is target and which include
+        // property as a target property to partialEffectStack.
+        // 3. Remove from partialEffectStack any animation effects whose associated animation has a higher composite order than animation.
+        // 4. Let effect value be the result of calculating the result of partialEffectStack for property using target's computed style (see § 5.4.3 Calculating
+        // the result of an effect stack).
+        // 5. Set a CSS declaration property for effect value in inline style.
+        // 6. Update style attribute for inline style.
+
+        // We actually perform those steps in a different way: instead of building a copy of the effect stack and then removing stuff, we iterate through the
+        // effect stack and stop when we've found this animation's effect or when we've found an effect associated with an animation with a higher composite order.
+        auto animatedStyle = RenderStyle::clonePtr(style);
+        for (const auto& effectInStack : keyframeStack.sortedEffects()) {
+            if (effectInStack->animation() != this && !compareAnimationsByCompositeOrder(*effectInStack->animation(), *this, cssAnimationNames))
+                break;
+            if (effectInStack->animatedProperties().contains(property))
+                effectInStack->animation()->resolve(*animatedStyle);
+            if (effectInStack->animation() == this)
+                break;
+        }
+        if (m_replaceState == ReplaceState::Removed)
+            effect->animation()->resolve(*animatedStyle);
+        if (auto cssValue = computedStyleExtractor.valueForPropertyInStyle(*animatedStyle, property, renderer))
+            inlineStyle->setPropertyInternal(property, cssValue->cssText(), false);
+    }
+
+    styledElement.setAttribute("style", inlineStyle->cssText());
+
     return { };
 }
 
 Seconds WebAnimation::timeToNextTick() const
 {
-    ASSERT(isRunningAccelerated());
-
+    // Any animation that is pending needs immediate resolution.
     if (pending())
         return 0_s;
 
-    // If we're not running, there's no telling when we'll end.
-    if (playState() != PlayState::Running)
+    // If we're not running, or time is not advancing for this animation, there's no telling when we'll end.
+    auto playbackRate = effectivePlaybackRate();
+    if (playState() != PlayState::Running || !playbackRate)
         return Seconds::infinity();
 
-    // CSS Animations dispatch events for each iteration, so compute the time until
-    // the end of this iteration. Any other animation only cares about remaning total time.
-    if (isCSSAnimation()) {
-        auto* animationEffect = effect();
-        auto timing = animationEffect->getComputedTiming();
-        // If we're actively running, we need the time until the next iteration.
-        if (auto iterationProgress = timing.simpleIterationProgress)
-            return animationEffect->iterationDuration() * (1 - *iterationProgress);
-
-        // Otherwise we're probably in the before phase waiting to reach our start time.
-        if (auto animationCurrentTime = currentTime()) {
-            // If our current time is negative, we need to be scheduled to be resolved at the inverse
-            // of our current time, unless we fill backwards, in which case we want to invalidate as
-            // soon as possible.
-            auto localTime = animationCurrentTime.value();
-            if (localTime < 0_s)
-                return -localTime;
-            if (localTime < animationEffect->delay())
-                return animationEffect->delay() - localTime;
+    auto& effect = *this->effect();
+    auto timing = effect.getBasicTiming();
+    switch (timing.phase) {
+    case AnimationEffectPhase::Before:
+        // The animation is in its "before" phase, in this case we can wait until it enters its "active" phase.
+        return (effect.delay() - timing.localTime.value()) / playbackRate;
+    case AnimationEffectPhase::Active:
+        // Non-accelerated animations in the "active" phase will need to update their animated value at the immediate next opportunity.
+        if (!isRunningAccelerated())
+            return 0_s;
+        // Accelerated CSS Animations need to trigger "animationiteration" events, in this case we can wait until the next iteration.
+        if (isCSSAnimation()) {
+            if (auto iterationProgress = effect.getComputedTiming().simpleIterationProgress)
+                return effect.iterationDuration() * (1 - *iterationProgress);
         }
-    } else if (auto animationCurrentTime = currentTime())
-        return effect()->endTime() - *animationCurrentTime;
+        // Accelerated animations in the "active" phase can wait until they ended.
+        return (effect.endTime() - timing.localTime.value()) / playbackRate;
+    case AnimationEffectPhase::After:
+        // The animation is in its after phase, which means it will no longer update its value, so it doens't need a tick.
+        return Seconds::infinity();
+    case AnimationEffectPhase::Idle:
+        ASSERT_NOT_REACHED();
+        return Seconds::infinity();
+    }
 
     ASSERT_NOT_REACHED();
     return Seconds::infinity();

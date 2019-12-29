@@ -26,6 +26,8 @@
 #include "config.h"
 #include "InlineItem.h"
 
+#include "InlineTextItem.h"
+
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 namespace WebCore {

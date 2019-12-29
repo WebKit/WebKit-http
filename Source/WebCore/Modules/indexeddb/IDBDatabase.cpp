@@ -278,14 +278,14 @@ void IDBDatabase::connectionToServerLost(const IDBError& error)
     auto errorEvent = Event::create(m_eventNames.errorEvent, Event::CanBubble::Yes, Event::IsCancelable::No);
     errorEvent->setTarget(this);
 
-    if (auto* context = scriptExecutionContext())
-        context->eventQueue().enqueueEvent(WTFMove(errorEvent));
+    if (scriptExecutionContext())
+        queueTaskToDispatchEvent(*this, TaskSource::DatabaseAccess, WTFMove(errorEvent));
 
     auto closeEvent = Event::create(m_eventNames.closeEvent, Event::CanBubble::Yes, Event::IsCancelable::No);
     closeEvent->setTarget(this);
 
-    if (auto* context = scriptExecutionContext())
-        context->eventQueue().enqueueEvent(WTFMove(closeEvent));
+    if (scriptExecutionContext())
+        queueTaskToDispatchEvent(*this, TaskSource::DatabaseAccess, WTFMove(closeEvent));
 }
 
 void IDBDatabase::maybeCloseInServer()
@@ -468,8 +468,7 @@ void IDBDatabase::fireVersionChangeEvent(const IDBResourceIdentifier& requestIde
     }
     
     Ref<Event> event = IDBVersionChangeEvent::create(requestIdentifier, currentVersion, requestedVersion, m_eventNames.versionchangeEvent);
-    event->setTarget(this);
-    scriptExecutionContext()->eventQueue().enqueueEvent(WTFMove(event));
+    queueTaskToDispatchEvent(*this, TaskSource::DatabaseAccess, WTFMove(event));
 }
 
 void IDBDatabase::dispatchEvent(Event& event)

@@ -40,11 +40,13 @@
 #include "ScriptDisallowedScope.h"
 #include "Settings.h"
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+#include "DisplayBox.h"
 #include "InvalidationContext.h"
 #include "InvalidationState.h"
 #include "LayoutContext.h"
 #include "LayoutState.h"
 #include "LayoutTreeBuilder.h"
+#include "RenderDescendantIterator.h"
 #endif
 
 #include <wtf/SetForScope.h>
@@ -59,8 +61,13 @@ void FrameViewLayoutContext::layoutUsingFormattingContext()
     if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled())
         return;
 
+    // FrameView::setContentsSize temporary disables layout.
+    if (m_disableSetNeedsLayoutCount)
+        return;
+
+    auto& renderView = *this->renderView();
     if (!m_layoutTreeContent) {
-        m_layoutTreeContent = Layout::TreeBuilder::buildLayoutTree(*renderView());
+        m_layoutTreeContent = Layout::TreeBuilder::buildLayoutTree(renderView);
         // FIXME: New layout tree requires a new state for now.
         m_layoutState = nullptr;
     }
@@ -69,11 +76,20 @@ void FrameViewLayoutContext::layoutUsingFormattingContext()
 
     // FIXME: This is not the real invalidation yet.
     auto invalidationState = Layout::InvalidationState { };
-    auto invalidationContext = Layout::InvalidationContext { invalidationState };
-    invalidationContext.styleChanged(*m_layoutState->root().firstChild(), StyleDifference::Layout);
-
     auto layoutContext = Layout::LayoutContext { *m_layoutState };
-    layoutContext.layout(renderView()->size(), invalidationState);
+    layoutContext.layout(view().layoutSize(), invalidationState);
+
+    // Clean up the render tree state when we don't run RenderView::layout.
+    if (renderView.needsLayout()) {
+        auto contentSize = m_layoutState->displayBoxForLayoutBox(*m_layoutState->root().firstChild()).size();
+        renderView.setSize(contentSize);
+        renderView.repaintViewRectangle({ 0, 0, contentSize.width(), contentSize.height() });
+
+        for (auto& descendant : descendantsOfType<RenderObject>(renderView))
+            descendant.clearNeedsLayout();
+        renderView.clearNeedsLayout();
+    }
+
 #ifndef NDEBUG
     Layout::LayoutContext::verifyAndOutputMismatchingLayoutTree(*m_layoutState);
 #endif

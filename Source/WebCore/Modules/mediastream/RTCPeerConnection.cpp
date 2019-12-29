@@ -455,7 +455,7 @@ void RTCPeerConnection::close()
 
     updateConnectionState();
     ASSERT(isClosed());
-    doStop();
+    m_backend->close();
 }
 
 void RTCPeerConnection::emulatePlatformEvent(const String& action)
@@ -465,9 +465,7 @@ void RTCPeerConnection::emulatePlatformEvent(const String& action)
 
 void RTCPeerConnection::stop()
 {
-    if (!doClose())
-        return;
-
+    doClose();
     doStop();
 }
 
@@ -477,8 +475,8 @@ void RTCPeerConnection::doStop()
         return;
 
     m_isStopped = true;
-
-    m_backend->stop();
+    if (m_backend)
+        m_backend->stop();
 }
 
 void RTCPeerConnection::registerToController(RTCController& controller)
@@ -496,12 +494,6 @@ void RTCPeerConnection::unregisterFromController()
 const char* RTCPeerConnection::activeDOMObjectName() const
 {
     return "RTCPeerConnection";
-}
-
-// FIXME: This should never prevent entering the back/forward cache.
-bool RTCPeerConnection::shouldPreventEnteringBackForwardCache_DEPRECATED() const
-{
-    return m_iceConnectionState == RTCIceConnectionState::Completed || m_iceConnectionState == RTCIceConnectionState::Connected;
 }
 
 void RTCPeerConnection::suspend(ReasonForSuspension reason)

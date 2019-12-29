@@ -45,7 +45,7 @@ namespace WebKit {
 class CrossProcessRealtimeAudioSource;
 class WebProcess;
 
-class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver, public WebCore::AudioCaptureFactory, public WebCore::VideoCaptureFactory, public WebCore::DisplayCaptureFactory {
+class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit UserMediaCaptureManager(WebProcess&);
@@ -58,9 +58,44 @@ private:
     void initialize(const WebProcessCreationParameters&) final;
 
     // WebCore::RealtimeMediaSource factories
-    WebCore::CaptureSourceOrError createAudioCaptureSource(const WebCore::CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WTFMove(hashSalt), constraints); }
-    WebCore::CaptureSourceOrError createVideoCaptureSource(const WebCore::CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WTFMove(hashSalt), constraints); }
-    WebCore::CaptureSourceOrError createDisplayCaptureSource(const WebCore::CaptureDevice& device, const WebCore::MediaConstraints* constraints) final  { return createCaptureSource(device, { }, constraints); }
+    class AudioFactory : public WebCore::AudioCaptureFactory {
+    public:
+        explicit AudioFactory(UserMediaCaptureManager& manager) : m_manager(manager) { }
+        void setShouldCaptureInGPUProcess(bool value) { m_shouldCaptureInGPUProcess = value; }
+    private:
+        WebCore::CaptureSourceOrError createAudioCaptureSource(const WebCore::CaptureDevice&, String&& hashSalt, const WebCore::MediaConstraints*) final;
+        WebCore::CaptureDeviceManager& audioCaptureDeviceManager() final { return m_manager.m_noOpCaptureDeviceManager; }
+#if PLATFORM(IOS_FAMILY)
+        void setAudioCapturePageState(bool interrupted, bool pageMuted) final;
+#endif
+
+        UserMediaCaptureManager& m_manager;
+        bool m_shouldCaptureInGPUProcess { false };
+    };
+    class VideoFactory : public WebCore::VideoCaptureFactory {
+    public:
+        explicit VideoFactory(UserMediaCaptureManager& manager) : m_manager(manager) { }
+
+    private:
+        WebCore::CaptureSourceOrError createVideoCaptureSource(const WebCore::CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints) final { return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints); }
+        WebCore::CaptureDeviceManager& videoCaptureDeviceManager() final { return m_manager.m_noOpCaptureDeviceManager; }
+#if PLATFORM(IOS_FAMILY)
+        void setVideoCapturePageState(bool interrupted, bool pageMuted) final;
+#endif
+
+        UserMediaCaptureManager& m_manager;
+    };
+    class DisplayFactory : public WebCore::DisplayCaptureFactory {
+    public:
+        explicit DisplayFactory(UserMediaCaptureManager& manager) : m_manager(manager) { }
+
+    private:
+        WebCore::CaptureSourceOrError createDisplayCaptureSource(const WebCore::CaptureDevice& device, const WebCore::MediaConstraints* constraints) final  { return m_manager.createCaptureSource(device, { }, constraints); }
+        WebCore::CaptureDeviceManager& displayCaptureDeviceManager() final { return m_manager.m_noOpCaptureDeviceManager; }
+
+        UserMediaCaptureManager& m_manager;
+    };
+
     WebCore::CaptureSourceOrError createCaptureSource(const WebCore::CaptureDevice&, String&&, const WebCore::MediaConstraints*);
 
     class NoOpCaptureDeviceManager : public WebCore::CaptureDeviceManager {
@@ -75,15 +110,6 @@ private:
         }
         Vector<WebCore::CaptureDevice> m_emptyDevices;
     };
-
-    WebCore::CaptureDeviceManager& audioCaptureDeviceManager() final { return m_noOpCaptureDeviceManager; }
-    WebCore::CaptureDeviceManager& videoCaptureDeviceManager() final { return m_noOpCaptureDeviceManager; }
-    WebCore::CaptureDeviceManager& displayCaptureDeviceManager() final { return m_noOpCaptureDeviceManager; }
-
-#if PLATFORM(IOS_FAMILY)
-    void setAudioCapturePageState(bool interrupted, bool pageMuted) final;
-    void setVideoCapturePageState(bool interrupted, bool pageMuted) final;
-#endif
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
@@ -109,9 +135,17 @@ private:
 
     class Source;
     friend class Source;
+
+    void requestToEnd(uint64_t sourceID);
+    Ref<WebCore::RealtimeMediaSource> cloneSource(Source&);
+    Ref<WebCore::RealtimeMediaSource> cloneVideoSource(Source&);
+
     HashMap<uint64_t, RefPtr<Source>> m_sources;
     WebProcess& m_process;
     NoOpCaptureDeviceManager m_noOpCaptureDeviceManager;
+    AudioFactory m_audioFactory;
+    VideoFactory m_videoFactory;
+    DisplayFactory m_displayFactory;
 };
 
 } // namespace WebKit

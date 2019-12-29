@@ -50,13 +50,20 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
         this._dataGrid.sortColumnIdentifier = "key";
         this._dataGrid.createSettings("dom-storage-content-view");
         this._dataGrid.addEventListener(WI.DataGrid.Event.SortChanged, this._sortDataGrid, this);
-
         this.addSubview(this._dataGrid);
+
+        this._filterBarNavigationItem = new WI.FilterBarNavigationItem;
+        this._filterBarNavigationItem.filterBar.addEventListener(WI.FilterBar.Event.FilterDidChange, this._handleFilterBarFilterDidChange, this);
 
         this._populate();
     }
 
     // Public
+
+    get navigationItems()
+    {
+        return [this._filterBarNavigationItem];
+    }
 
     saveToCookie(cookie)
     {
@@ -68,6 +75,16 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
     get scrollableElements()
     {
         return [this._dataGrid.scrollContainer];
+    }
+
+    get canFocusFilterBar()
+    {
+        return true;
+    }
+
+    focusFilterBar()
+    {
+        this._filterBarNavigationItem.filterBar.focus();
     }
 
     itemsCleared(event)
@@ -98,7 +115,7 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
                 return;
         }
 
-        this._dataGrid.appendChild(new WI.DataGridNode({key, value, originalValue}, false));
+        this._dataGrid.appendChild(new WI.DataGridNode({key, value, originalValue}));
         this._sortDataGrid();
     }
 
@@ -145,7 +162,7 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
 
                 let originalValue = value;
                 value = this._truncateValue(value);
-                let node = new WI.DataGridNode({key, value, originalValue}, false);
+                let node = new WI.DataGridNode({key, value, originalValue});
                 this._dataGrid.appendChild(node);
             }
 
@@ -267,6 +284,11 @@ WI.DOMStorageContentView = class DOMStorageContentView extends WI.ContentView
         if (columnIdentifier === "value" && node.data.originalValue)
             return node.data.originalValue;
         return text;
+    }
+
+    _handleFilterBarFilterDidChange(event)
+    {
+        this._dataGrid.filterText = this._filterBarNavigationItem.filterBar.filters.text || "";
     }
 };
 

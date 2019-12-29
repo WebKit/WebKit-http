@@ -3,5 +3,5 @@
 void methods return undefined
 
 
-FAIL void methods return undefined null is not an object (evaluating 'ctx.save')
+PASS void methods return undefined 
 

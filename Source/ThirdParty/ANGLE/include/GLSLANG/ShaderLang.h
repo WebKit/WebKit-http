@@ -26,7 +26,7 @@
 
 // Version number for shader translation API.
 // It is incremented every time the API changes.
-#define ANGLE_SH_VERSION 216
+#define ANGLE_SH_VERSION 218
 
 enum ShShaderSpec
 {
@@ -69,6 +69,10 @@ enum ShShaderOutput
 
     // Output specialized GLSL to be fed to glslang for Vulkan SPIR.
     SH_GLSL_VULKAN_OUTPUT = 0x8B4B,
+
+    // Output specialized GLSL to be fed to glslang for Vulkan SPIR to be cross compiled to Metal
+    // later.
+    SH_GLSL_METAL_OUTPUT = 0x8B4C,
 };
 
 // Compile options.
@@ -304,6 +308,9 @@ const ShCompileOptions SH_USE_OLD_REWRITE_STRUCT_SAMPLERS = UINT64_C(1) << 47;
 // when angle_BaseVertex is available.
 const ShCompileOptions SH_ADD_BASE_VERTEX_TO_VERTEX_ID = UINT64_C(1) << 48;
 
+// This works around the dynamic lvalue indexing of swizzled vectors on various platforms.
+const ShCompileOptions SH_REMOVE_DYNAMIC_INDEXING_OF_SWIZZLED_VECTOR = UINT64_C(1) << 49;
+
 // Defines alternate strategies for implementing array index clamping.
 enum ShArrayIndexClampingStrategy
 {
@@ -497,6 +504,9 @@ struct ShBuiltInResources
     int MaxGeometryShaderStorageBlocks;
     int MaxGeometryShaderInvocations;
     int MaxGeometryImageUniforms;
+
+    // Subpixel bits used in rasterization.
+    int SubPixelBits;
 };
 
 //
@@ -515,26 +525,26 @@ namespace sh
 // Driver must call this first, once, before doing any other compiler operations.
 // If the function succeeds, the return value is true, else false.
 //
-bool Initialize();
+ANGLE_EXPORT bool Initialize();
 //
 // Driver should call this at shutdown.
 // If the function succeeds, the return value is true, else false.
 //
-bool Finalize();
+ANGLE_EXPORT bool Finalize();
 
 //
 // Initialize built-in resources with minimum expected values.
 // Parameters:
 // resources: The object to initialize. Will be comparable with memcmp.
 //
-void InitBuiltInResources(ShBuiltInResources *resources);
+ANGLE_EXPORT void InitBuiltInResources(ShBuiltInResources *resources);
 
 //
 // Returns the a concatenated list of the items in ShBuiltInResources as a null-terminated string.
 // This function must be updated whenever ShBuiltInResources is changed.
 // Parameters:
 // handle: Specifies the handle of the compiler to be used.
-const std::string &GetBuiltInResourcesString(const ShHandle handle);
+ANGLE_EXPORT const std::string &GetBuiltInResourcesString(const ShHandle handle);
 
 //
 // Driver calls these to create and destroy compiler objects.
@@ -547,11 +557,11 @@ const std::string &GetBuiltInResourcesString(const ShHandle handle);
 //         SH_HLSL_3_0_OUTPUT or SH_HLSL_4_1_OUTPUT. Note: Each output type may only
 //         be supported in some configurations.
 // resources: Specifies the built-in resources.
-ShHandle ConstructCompiler(sh::GLenum type,
-                           ShShaderSpec spec,
-                           ShShaderOutput output,
-                           const ShBuiltInResources *resources);
-void Destruct(ShHandle handle);
+ANGLE_EXPORT ShHandle ConstructCompiler(sh::GLenum type,
+                                        ShShaderSpec spec,
+                                        ShShaderOutput output,
+                                        const ShBuiltInResources *resources);
+ANGLE_EXPORT void Destruct(ShHandle handle);
 
 //
 // Compiles the given shader source.
@@ -577,35 +587,35 @@ void Destruct(ShHandle handle);
 // SH_VARIABLES: Extracts attributes, uniforms, and varyings.
 //               Can be queried by calling ShGetVariableInfo().
 //
-bool Compile(const ShHandle handle,
+ANGLE_EXPORT bool Compile(const ShHandle handle,
              const char *const shaderStrings[],
              size_t numStrings,
              ShCompileOptions compileOptions);
 
 // Clears the results from the previous compilation.
-void ClearResults(const ShHandle handle);
+ANGLE_EXPORT void ClearResults(const ShHandle handle);
 
 // Return the version of the shader language.
-int GetShaderVersion(const ShHandle handle);
+ANGLE_EXPORT int GetShaderVersion(const ShHandle handle);
 
 // Return the currently set language output type.
-ShShaderOutput GetShaderOutputType(const ShHandle handle);
+ANGLE_EXPORT ShShaderOutput GetShaderOutputType(const ShHandle handle);
 
 // Returns null-terminated information log for a compiled shader.
 // Parameters:
 // handle: Specifies the compiler
-const std::string &GetInfoLog(const ShHandle handle);
+ANGLE_EXPORT const std::string &GetInfoLog(const ShHandle handle);
 
 // Returns null-terminated object code for a compiled shader.
 // Parameters:
 // handle: Specifies the compiler
-const std::string &GetObjectCode(const ShHandle handle);
+ANGLE_EXPORT const std::string &GetObjectCode(const ShHandle handle);
 
 // Returns a (original_name, hash) map containing all the user defined names in the shader,
 // including variable names, function names, struct names, and struct field names.
 // Parameters:
 // handle: Specifies the compiler
-const std::map<std::string, std::string> *GetNameHashingMap(const ShHandle handle);
+ANGLE_EXPORT const std::map<std::string, std::string> *GetNameHashingMap(const ShHandle handle);
 
 // Shader variable inspection.
 // Returns a pointer to a list of variables of the designated type.
@@ -613,19 +623,19 @@ const std::map<std::string, std::string> *GetNameHashingMap(const ShHandle handl
 // Returns NULL on failure.
 // Parameters:
 // handle: Specifies the compiler
-const std::vector<sh::ShaderVariable> *GetUniforms(const ShHandle handle);
-const std::vector<sh::ShaderVariable> *GetVaryings(const ShHandle handle);
-const std::vector<sh::ShaderVariable> *GetInputVaryings(const ShHandle handle);
-const std::vector<sh::ShaderVariable> *GetOutputVaryings(const ShHandle handle);
-const std::vector<sh::ShaderVariable> *GetAttributes(const ShHandle handle);
-const std::vector<sh::ShaderVariable> *GetOutputVariables(const ShHandle handle);
-const std::vector<sh::InterfaceBlock> *GetInterfaceBlocks(const ShHandle handle);
-const std::vector<sh::InterfaceBlock> *GetUniformBlocks(const ShHandle handle);
-const std::vector<sh::InterfaceBlock> *GetShaderStorageBlocks(const ShHandle handle);
-sh::WorkGroupSize GetComputeShaderLocalGroupSize(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetUniforms(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetVaryings(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetInputVaryings(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetOutputVaryings(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetAttributes(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::ShaderVariable> *GetOutputVariables(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::InterfaceBlock> *GetInterfaceBlocks(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::InterfaceBlock> *GetUniformBlocks(const ShHandle handle);
+ANGLE_EXPORT const std::vector<sh::InterfaceBlock> *GetShaderStorageBlocks(const ShHandle handle);
+ANGLE_EXPORT sh::WorkGroupSize GetComputeShaderLocalGroupSize(const ShHandle handle);
 // Returns the number of views specified through the num_views layout qualifier. If num_views is
 // not set, the function returns -1.
-int GetVertexShaderNumViews(const ShHandle handle);
+ANGLE_EXPORT int GetVertexShaderNumViews(const ShHandle handle);
 
 // Returns true if the passed in variables pack in maxVectors followingthe packing rules from the
 // GLSL 1.017 spec, Appendix A, section 7.
@@ -634,8 +644,8 @@ int GetVertexShaderNumViews(const ShHandle handle);
 // Parameters:
 // maxVectors: the available rows of registers.
 // variables: an array of variables.
-bool CheckVariablesWithinPackingLimits(int maxVectors,
-                                       const std::vector<sh::ShaderVariable> &variables);
+ANGLE_EXPORT bool CheckVariablesWithinPackingLimits(int maxVectors,
+                                                    const std::vector<sh::ShaderVariable> &variables);
 
 // Gives the compiler-assigned register for a shader storage block.
 // The method writes the value to the output variable "indexOut".
@@ -644,9 +654,9 @@ bool CheckVariablesWithinPackingLimits(int maxVectors,
 // handle: Specifies the compiler
 // shaderStorageBlockName: Specifies the shader storage block
 // indexOut: output variable that stores the assigned register
-bool GetShaderStorageBlockRegister(const ShHandle handle,
-                                   const std::string &shaderStorageBlockName,
-                                   unsigned int *indexOut);
+ANGLE_EXPORT bool GetShaderStorageBlockRegister(const ShHandle handle,
+                                                const std::string &shaderStorageBlockName,
+                                                unsigned int *indexOut);
 
 // Gives the compiler-assigned register for a uniform block.
 // The method writes the value to the output variable "indexOut".
@@ -655,13 +665,13 @@ bool GetShaderStorageBlockRegister(const ShHandle handle,
 // handle: Specifies the compiler
 // uniformBlockName: Specifies the uniform block
 // indexOut: output variable that stores the assigned register
-bool GetUniformBlockRegister(const ShHandle handle,
-                             const std::string &uniformBlockName,
-                             unsigned int *indexOut);
+ANGLE_EXPORT bool GetUniformBlockRegister(const ShHandle handle,
+                                          const std::string &uniformBlockName,
+                                          unsigned int *indexOut);
 
 // Gives a map from uniform names to compiler-assigned registers in the default uniform block.
 // Note that the map contains also registers of samplers that have been extracted from structs.
-const std::map<std::string, unsigned int> *GetUniformRegisterMap(const ShHandle handle);
+ANGLE_EXPORT const std::map<std::string, unsigned int> *GetUniformRegisterMap(const ShHandle handle);
 
 // Sampler, image and atomic counters share registers(t type and u type),
 // GetReadonlyImage2DRegisterIndex and GetImage2DRegisterIndex return the first index into

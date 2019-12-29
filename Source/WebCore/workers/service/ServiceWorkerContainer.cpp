@@ -28,10 +28,10 @@
 
 #if ENABLE(SERVICE_WORKER)
 
-#include "AbstractEventLoop.h"
 #include "DOMPromiseProxy.h"
 #include "Document.h"
 #include "Event.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "Exception.h"
 #include "IDLTypes.h"
@@ -392,7 +392,11 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
         if (shouldNotifyWhenResolved == ShouldNotifyWhenResolved::Yes) {
             m_ongoingSettledRegistrations.add(++m_lastOngoingSettledRegistrationIdentifier, registration->data().key);
             promise->whenSettled([this, protectedThis = WTFMove(protectedThis), identifier = m_lastOngoingSettledRegistrationIdentifier] {
-                notifyRegistrationIsSettled(m_ongoingSettledRegistrations.take(identifier));
+                auto iterator = m_ongoingSettledRegistrations.find(identifier);
+                if (iterator == m_ongoingSettledRegistrations.end())
+                    return;
+                notifyRegistrationIsSettled(iterator->value);
+                m_ongoingSettledRegistrations.remove(iterator);
             });
         }
 
@@ -416,9 +420,7 @@ void ServiceWorkerContainer::postMessage(MessageWithMessagePorts&& message, Serv
 
 void ServiceWorkerContainer::notifyRegistrationIsSettled(const ServiceWorkerRegistrationKey& registrationKey)
 {
-    callOnMainThread([registrationKey = registrationKey.isolatedCopy()] {
-        mainThreadConnection().didResolveRegistrationPromise(registrationKey);
-    });
+    ensureSWClientConnection().didResolveRegistrationPromise(registrationKey);
 }
 
 void ServiceWorkerContainer::jobResolvedWithUnregistrationResult(ServiceWorkerJob& job, bool unregistrationResult)
@@ -473,9 +475,7 @@ void ServiceWorkerContainer::jobFinishedLoadingScript(ServiceWorkerJob& job, con
 
     CONTAINER_RELEASE_LOG_IF_ALLOWED("jobFinishedLoadingScript: Successfuly finished fetching script for job %" PRIu64, job.identifier().toUInt64());
 
-    callOnMainThread([jobDataIdentifier = job.data().identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), script = script.isolatedCopy(), contentSecurityPolicy = contentSecurityPolicy.isolatedCopy(), referrerPolicy = referrerPolicy.isolatedCopy()] {
-        mainThreadConnection().finishFetchingScriptInServer({ jobDataIdentifier, registrationKey, script, contentSecurityPolicy, referrerPolicy, { } });
-    });
+    ensureSWClientConnection().finishFetchingScriptInServer({ job.data().identifier(), job.data().registrationKey(), script, contentSecurityPolicy, referrerPolicy, { } });
 }
 
 void ServiceWorkerContainer::jobFailedLoadingScript(ServiceWorkerJob& job, const ResourceError& error, Exception&& exception)
@@ -499,9 +499,7 @@ void ServiceWorkerContainer::jobFailedLoadingScript(ServiceWorkerJob& job, const
 
 void ServiceWorkerContainer::notifyFailedFetchingScript(ServiceWorkerJob& job, const ResourceError& error)
 {
-    callOnMainThread([jobIdentifier = job.identifier(), registrationKey = job.data().registrationKey().isolatedCopy(), error = error.isolatedCopy()] {
-        mainThreadConnection().failedFetchingScript(jobIdentifier, registrationKey, error);
-    });
+    ensureSWClientConnection().finishFetchingScriptInServer(serviceWorkerFetchError(job.data().identifier(), ServiceWorkerRegistrationKey { job.data().registrationKey() }, ResourceError { error }));
 }
 
 void ServiceWorkerContainer::destroyJob(ServiceWorkerJob& job)

@@ -81,6 +81,7 @@ class FloatRoundedRect;
 class FloatSize;
 class FixedPositionViewportConstraints;
 class HTTPHeaderMap;
+class ImageHandle;
 class IntPoint;
 class IntRect;
 class IntSize;
@@ -90,7 +91,6 @@ class LayoutPoint;
 class LinearTimingFunction;
 class Notification;
 class PasteboardCustomData;
-class Path;
 class ProtectionSpace;
 class Region;
 class ResourceError;
@@ -189,7 +189,8 @@ namespace DOMCacheEngine {
 struct CacheInfo;
 struct Record;
 }
-}
+
+} // namespace WebCore
 
 namespace IPC {
 
@@ -328,12 +329,6 @@ template<> struct ArgumentCoder<WebCore::LayoutPoint> {
     static bool decode(Decoder&, WebCore::LayoutPoint&);
 };
 
-template<> struct ArgumentCoder<WebCore::Path> {
-    static void encode(Encoder&, const WebCore::Path&);
-    static bool decode(Decoder&, WebCore::Path&);
-    static Optional<WebCore::Path> decode(Decoder&);
-};
-
 template<> struct ArgumentCoder<WebCore::Length> {
     static void encode(Encoder&, const WebCore::Length&);
     static bool decode(Decoder&, WebCore::Length&);
@@ -381,6 +376,11 @@ template<> struct ArgumentCoder<WebCore::Credential> {
 template<> struct ArgumentCoder<WebCore::Cursor> {
     static void encode(Encoder&, const WebCore::Cursor&);
     static bool decode(Decoder&, WebCore::Cursor&);
+};
+
+template<> struct ArgumentCoder<WebCore::ImageHandle> {
+    static void encode(Encoder&, const WebCore::ImageHandle&);
+    static bool decode(Decoder&, WebCore::ImageHandle&);
 };
 
 template<> struct ArgumentCoder<WebCore::ResourceRequest> {
@@ -786,9 +786,9 @@ namespace WTF {
 template<> struct EnumTraits<WebCore::ColorSpace> {
     using values = EnumValues<
     WebCore::ColorSpace,
-    WebCore::ColorSpace::ColorSpaceSRGB,
-    WebCore::ColorSpace::ColorSpaceLinearRGB,
-    WebCore::ColorSpace::ColorSpaceDisplayP3
+    WebCore::ColorSpace::SRGB,
+    WebCore::ColorSpace::LinearRGB,
+    WebCore::ColorSpace::DisplayP3
     >;
 };
 

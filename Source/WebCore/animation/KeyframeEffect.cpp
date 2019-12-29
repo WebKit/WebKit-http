@@ -49,6 +49,7 @@
 #include "RenderBoxModelObject.h"
 #include "RenderElement.h"
 #include "RenderStyle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "StylePendingResources.h"
 #include "StyleResolver.h"
 #include "TimingFunction.h"
@@ -196,7 +197,8 @@ static inline ExceptionOr<KeyframeEffect::KeyframeLikeObject> processKeyframeLik
         else
             baseProperties.offset = nullptr;
         baseProperties.easing = baseKeyframe.easing;
-        baseProperties.composite = baseKeyframe.composite;
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCompositeOperationsEnabled())
+            baseProperties.composite = baseKeyframe.composite;
     }
     RETURN_IF_EXCEPTION(scope, Exception { TypeError });
 
@@ -302,8 +304,10 @@ static inline ExceptionOr<void> processIterableKeyframes(JSGlobalObject& lexical
 
         // When calling processKeyframeLikeObject() with the "allow lists" flag set to false, the only composite
         // alternatives we should expect is CompositeOperationAuto.
-        ASSERT(WTF::holds_alternative<CompositeOperationOrAuto>(keyframeLikeObject.baseProperties.composite));
-        keyframeOutput.composite = WTF::get<CompositeOperationOrAuto>(keyframeLikeObject.baseProperties.composite);
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCompositeOperationsEnabled()) {
+            ASSERT(WTF::holds_alternative<CompositeOperationOrAuto>(keyframeLikeObject.baseProperties.composite));
+            keyframeOutput.composite = WTF::get<CompositeOperationOrAuto>(keyframeLikeObject.baseProperties.composite);
+        }
 
         for (auto& propertyAndValue : keyframeLikeObject.propertiesAndValues) {
             auto cssPropertyId = propertyAndValue.property;
@@ -438,26 +442,28 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(JSGlobalObject& 
         parsedKeyframes[i].easing = easings[i];
 
     // 12. If the “composite” member of the property-indexed keyframe is not an empty sequence:
-    Vector<CompositeOperationOrAuto> compositeModes;
-    if (WTF::holds_alternative<Vector<CompositeOperationOrAuto>>(propertyIndexedKeyframe.baseProperties.composite))
-        compositeModes = WTF::get<Vector<CompositeOperationOrAuto>>(propertyIndexedKeyframe.baseProperties.composite);
-    else if (WTF::holds_alternative<CompositeOperationOrAuto>(propertyIndexedKeyframe.baseProperties.composite))
-        compositeModes.append(WTF::get<CompositeOperationOrAuto>(propertyIndexedKeyframe.baseProperties.composite));
-    if (!compositeModes.isEmpty()) {
-        // 1. Let composite modes be a sequence of CompositeOperationOrAuto values assigned from the “composite” member of property-indexed keyframe. If that member is a single
-        //    CompositeOperationOrAuto value operation, let composite modes be a sequence of length one, with the value of the “composite” as its single item.
-        // 2. As with easings, if composite modes has fewer items than processed keyframes, repeat the elements in composite modes successively starting from the beginning of
-        //    the list until composite modes has as many items as processed keyframes.
-        if (compositeModes.size() < parsedKeyframes.size()) {
-            size_t initialNumberOfCompositeModes = compositeModes.size();
-            for (i = initialNumberOfCompositeModes; i < parsedKeyframes.size(); ++i)
-                compositeModes.append(compositeModes[i % initialNumberOfCompositeModes]);
-        }
-        // 3. Assign each value in composite modes that is not auto to the keyframe-specific composite operation on the keyframe with the corresponding position in processed
-        //    keyframes until the end of processed keyframes is reached.
-        for (size_t i = 0; i < compositeModes.size() && i < parsedKeyframes.size(); ++i) {
-            if (compositeModes[i] != CompositeOperationOrAuto::Auto)
-                parsedKeyframes[i].composite = compositeModes[i];
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCompositeOperationsEnabled()) {
+        Vector<CompositeOperationOrAuto> compositeModes;
+        if (WTF::holds_alternative<Vector<CompositeOperationOrAuto>>(propertyIndexedKeyframe.baseProperties.composite))
+            compositeModes = WTF::get<Vector<CompositeOperationOrAuto>>(propertyIndexedKeyframe.baseProperties.composite);
+        else if (WTF::holds_alternative<CompositeOperationOrAuto>(propertyIndexedKeyframe.baseProperties.composite))
+            compositeModes.append(WTF::get<CompositeOperationOrAuto>(propertyIndexedKeyframe.baseProperties.composite));
+        if (!compositeModes.isEmpty()) {
+            // 1. Let composite modes be a sequence of CompositeOperationOrAuto values assigned from the “composite” member of property-indexed keyframe. If that member is a single
+            //    CompositeOperationOrAuto value operation, let composite modes be a sequence of length one, with the value of the “composite” as its single item.
+            // 2. As with easings, if composite modes has fewer items than processed keyframes, repeat the elements in composite modes successively starting from the beginning of
+            //    the list until composite modes has as many items as processed keyframes.
+            if (compositeModes.size() < parsedKeyframes.size()) {
+                size_t initialNumberOfCompositeModes = compositeModes.size();
+                for (i = initialNumberOfCompositeModes; i < parsedKeyframes.size(); ++i)
+                    compositeModes.append(compositeModes[i % initialNumberOfCompositeModes]);
+            }
+            // 3. Assign each value in composite modes that is not auto to the keyframe-specific composite operation on the keyframe with the corresponding position in processed
+            //    keyframes until the end of processed keyframes is reached.
+            for (size_t i = 0; i < compositeModes.size() && i < parsedKeyframes.size(); ++i) {
+                if (compositeModes[i] != CompositeOperationOrAuto::Auto)
+                    parsedKeyframes[i].composite = compositeModes[i];
+            }
         }
     }
 
@@ -636,7 +642,8 @@ Vector<Strong<JSObject>> KeyframeEffect::getKeyframes(JSGlobalObject& lexicalGlo
             computedKeyframe.offset = parsedKeyframe.offset;
             computedKeyframe.computedOffset = parsedKeyframe.computedOffset;
             computedKeyframe.easing = timingFunctionForKeyframeAtIndex(i)->cssText();
-            computedKeyframe.composite = parsedKeyframe.composite;
+            if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCompositeOperationsEnabled())
+                computedKeyframe.composite = parsedKeyframe.composite;
 
             auto outputKeyframe = convertDictionaryToJS(lexicalGlobalObject, *jsCast<JSDOMGlobalObject*>(&lexicalGlobalObject), computedKeyframe);
 
@@ -663,7 +670,10 @@ Vector<Strong<JSObject>> KeyframeEffect::getKeyframes(JSGlobalObject& lexicalGlo
 
 ExceptionOr<void> KeyframeEffect::setKeyframes(JSGlobalObject& lexicalGlobalObject, Strong<JSObject>&& keyframesInput)
 {
-    return processKeyframes(lexicalGlobalObject, WTFMove(keyframesInput));
+    auto processKeyframesResult = processKeyframes(lexicalGlobalObject, WTFMove(keyframesInput));
+    if (!processKeyframesResult.hasException() && animation())
+        animation()->effectTimingDidChange();
+    return processKeyframesResult;
 }
 
 ExceptionOr<void> KeyframeEffect::processKeyframes(JSGlobalObject& lexicalGlobalObject, Strong<JSObject>&& keyframesInput)
@@ -996,21 +1006,43 @@ void KeyframeEffect::animationTimelineDidChange(AnimationTimeline* timeline)
         return;
 
     if (timeline)
-        m_target->ensureKeyframeEffectStack().addEffect(*this);
-    else
+        m_inTargetEffectStack = m_target->ensureKeyframeEffectStack().addEffect(*this);
+    else {
         m_target->ensureKeyframeEffectStack().removeEffect(*this);
+        m_inTargetEffectStack = false;
+    }
+}
+
+void KeyframeEffect::animationTimingDidChange()
+{
+    updateEffectStackMembership();
+}
+
+void KeyframeEffect::updateEffectStackMembership()
+{
+    if (!m_target)
+        return;
+
+    bool isRelevant = animation() && animation()->isRelevant();
+    if (isRelevant && !m_inTargetEffectStack)
+        m_inTargetEffectStack = m_target->ensureKeyframeEffectStack().addEffect(*this);
+    else if (!isRelevant && m_inTargetEffectStack) {
+        m_target->ensureKeyframeEffectStack().removeEffect(*this);
+        m_inTargetEffectStack = false;
+    }
 }
 
 void KeyframeEffect::setAnimation(WebAnimation* animation)
 {
     bool animationChanged = animation != this->animation();
     AnimationEffect::setAnimation(animation);
-    if (m_target && animationChanged) {
-        if (animation)
-            m_target->ensureKeyframeEffectStack().addEffect(*this);
-        else
-            m_target->ensureKeyframeEffectStack().removeEffect(*this);
-    }
+
+    if (!animationChanged)
+        return;
+
+    if (animation)
+        animation->updateRelevance();
+    updateEffectStackMembership();
 }
 
 void KeyframeEffect::setTarget(RefPtr<Element>&& newTarget)
@@ -1033,10 +1065,12 @@ void KeyframeEffect::setTarget(RefPtr<Element>&& newTarget)
     // any animated styles are removed immediately.
     invalidateElement(previousTarget.get());
 
-    if (previousTarget)
+    if (previousTarget) {
         previousTarget->ensureKeyframeEffectStack().removeEffect(*this);
+        m_inTargetEffectStack = false;
+    }
     if (m_target)
-        m_target->ensureKeyframeEffectStack().addEffect(*this);
+        m_inTargetEffectStack = m_target->ensureKeyframeEffectStack().addEffect(*this);
 }
 
 void KeyframeEffect::apply(RenderStyle& targetStyle)
@@ -1060,8 +1094,8 @@ void KeyframeEffect::apply(RenderStyle& targetStyle)
     // https://w3c.github.io/web-animations/#side-effects-section
     // For every property targeted by at least one animation effect that is current or in effect, the user agent
     // must act as if the will-change property ([css-will-change-1]) on the target element includes the property.
-    if (m_triggersStackingContext && targetStyle.hasAutoZIndex())
-        targetStyle.setZIndex(0);
+    if (m_triggersStackingContext && targetStyle.hasAutoUsedZIndex())
+        targetStyle.setUsedZIndex(0);
 }
 
 void KeyframeEffect::invalidate()
@@ -1318,6 +1352,9 @@ void KeyframeEffect::updateAcceleratedAnimationState()
 
 void KeyframeEffect::addPendingAcceleratedAction(AcceleratedAction action)
 {
+    if (action == m_lastRecordedAcceleratedAction)
+        return;
+
     if (action == AcceleratedAction::Stop)
         m_pendingAcceleratedActions.clear();
     m_pendingAcceleratedActions.append(action);
@@ -1357,8 +1394,13 @@ void KeyframeEffect::applyPendingAcceleratedActions()
         return;
 
     auto* renderer = this->renderer();
-    if (!renderer || !renderer->isComposited())
+    if (!renderer || !renderer->isComposited()) {
+        // The renderer may no longer be composited because the accelerated animation ended before we had a chance to update it,
+        // in which case if we asked for the animation to stop, we can discard the current set of accelerated actions.
+        if (m_lastRecordedAcceleratedAction == AcceleratedAction::Stop)
+            m_pendingAcceleratedActions.clear();
         return;
+    }
 
     auto pendingAcceleratedActions = m_pendingAcceleratedActions;
     m_pendingAcceleratedActions.clear();

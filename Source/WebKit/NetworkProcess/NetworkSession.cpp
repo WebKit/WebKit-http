@@ -39,7 +39,6 @@
 #include "WebSocketTask.h"
 #include <WebCore/AdClickAttribution.h>
 #include <WebCore/CookieJar.h>
-#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/ResourceRequest.h>
 
 #if PLATFORM(COCOA)
@@ -85,25 +84,27 @@ NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSess
 #endif
     , m_adClickAttribution(makeUniqueRef<AdClickAttributionManager>(parameters.sessionID))
     , m_testSpeedMultiplier(parameters.testSpeedMultiplier)
+    , m_allowsServerPreconnect(parameters.allowsServerPreconnect)
 {
     if (!m_sessionID.isEphemeral()) {
         String networkCacheDirectory = parameters.networkCacheDirectory;
-        if (!networkCacheDirectory.isNull())
+        if (!networkCacheDirectory.isNull()) {
             SandboxExtension::consumePermanently(parameters.networkCacheDirectoryExtensionHandle);
 
-        auto cacheOptions = networkProcess.cacheOptions();
+            auto cacheOptions = networkProcess.cacheOptions();
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-        if (parameters.networkCacheSpeculativeValidationEnabled)
-            cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
+            if (parameters.networkCacheSpeculativeValidationEnabled)
+                cacheOptions.add(NetworkCache::CacheOption::SpeculativeRevalidation);
 #endif
-        if (parameters.shouldUseTestingNetworkSession)
-            cacheOptions.add(NetworkCache::CacheOption::TestingMode);
+            if (parameters.shouldUseTestingNetworkSession)
+                cacheOptions.add(NetworkCache::CacheOption::TestingMode);
 
-        m_cache = NetworkCache::Cache::open(networkProcess, networkCacheDirectory, cacheOptions, m_sessionID);
+            m_cache = NetworkCache::Cache::open(networkProcess, networkCacheDirectory, cacheOptions, m_sessionID);
 
-        if (!m_cache)
-            RELEASE_LOG_ERROR(NetworkCache, "Failed to initialize the WebKit network disk cache");
-        
+            if (!m_cache)
+                RELEASE_LOG_ERROR(NetworkCache, "Failed to initialize the WebKit network disk cache");
+        }
+
         if (!parameters.resourceLoadStatisticsDirectory.isEmpty())
             SandboxExtension::consumePermanently(parameters.resourceLoadStatisticsDirectoryExtensionHandle);
     }
@@ -175,7 +176,7 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
     // This should always be forwarded since debug mode may be enabled at runtime.
     if (!m_resourceLoadStatisticsManualPrevalentResource.isEmpty())
         m_resourceLoadStatistics->setPrevalentResourceForDebugMode(m_resourceLoadStatisticsManualPrevalentResource, [] { });
-    m_resourceLoadStatistics->setIsThirdPartyCookieBlockingEnabled(m_thirdPartyCookieBlockingEnabled);
+    forwardResourceLoadStatisticsSettings();
 }
 
 void NetworkSession::recreateResourceLoadStatisticStore(CompletionHandler<void()>&& completionHandler)
@@ -183,6 +184,13 @@ void NetworkSession::recreateResourceLoadStatisticStore(CompletionHandler<void()
     destroyResourceLoadStatistics();
     m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
     m_resourceLoadStatistics->populateMemoryStoreFromDisk(WTFMove(completionHandler));
+    forwardResourceLoadStatisticsSettings();
+}
+
+void NetworkSession::forwardResourceLoadStatisticsSettings()
+{
+    m_resourceLoadStatistics->setThirdPartyCookieBlockingMode(m_thirdPartyCookieBlockingMode);
+    m_resourceLoadStatistics->setFirstPartyWebsiteDataRemovalMode(m_firstPartyWebsiteDataRemovalMode, [] { });
 }
 
 bool NetworkSession::isResourceLoadStatisticsEnabled() const
@@ -225,12 +233,12 @@ bool NetworkSession::shouldDowngradeReferrer() const
     return m_downgradeReferrer;
 }
 
-void NetworkSession::setIsThirdPartyCookieBlockingEnabled(bool enabled)
+void NetworkSession::setThirdPartyCookieBlockingMode(ThirdPartyCookieBlockingMode blockingMode)
 {
     ASSERT(m_resourceLoadStatistics);
-    m_thirdPartyCookieBlockingEnabled = enabled;
+    m_thirdPartyCookieBlockingMode = blockingMode;
     if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->setIsThirdPartyCookieBlockingEnabled(m_thirdPartyCookieBlockingEnabled);
+        m_resourceLoadStatistics->setThirdPartyCookieBlockingMode(blockingMode);
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 

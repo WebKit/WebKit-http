@@ -28,7 +28,6 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSDestructibleObject.h"
-#include "JSObject.h"
 #include "WasmMemory.h"
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
@@ -38,9 +37,11 @@ namespace JSC {
 class ArrayBuffer;
 class JSArrayBuffer;
 
-class JSWebAssemblyMemory final : public JSDestructibleObject {
+class JSWebAssemblyMemory final : public JSNonFinalObject {
 public:
-    typedef JSDestructibleObject Base;
+    using Base = JSNonFinalObject;
+    static constexpr bool needsDestruction = true;
+    static void destroy(JSCell*);
 
     template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
@@ -48,7 +49,7 @@ public:
         return vm.webAssemblyMemorySpace<mode>();
     }
 
-    static JSWebAssemblyMemory* create(JSGlobalObject*, VM&, Structure*);
+    static JSWebAssemblyMemory* tryCreate(JSGlobalObject*, VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_EXPORT_INFO;
@@ -62,7 +63,6 @@ public:
 private:
     JSWebAssemblyMemory(VM&, Structure*);
     void finishCreation(VM&);
-    static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
     Ref<Wasm::Memory> m_memory;

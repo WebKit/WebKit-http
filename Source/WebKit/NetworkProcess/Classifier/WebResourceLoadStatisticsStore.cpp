@@ -462,22 +462,38 @@ void WebResourceLoadStatisticsStore::hasCookies(const RegistrableDomain& domain,
     completionHandler(false);
 }
 
-void WebResourceLoadStatisticsStore::setIsThirdPartyCookieBlockingEnabled(bool enabled)
+void WebResourceLoadStatisticsStore::setThirdPartyCookieBlockingMode(ThirdPartyCookieBlockingMode blockingMode)
 {
     ASSERT(RunLoop::isMain());
 
     if (m_networkSession) {
         if (auto* storageSession = m_networkSession->networkStorageSession())
-            storageSession->setIsThirdPartyCookieBlockingEnabled(enabled);
+            storageSession->setThirdPartyCookieBlockingMode(blockingMode);
         else
             ASSERT_NOT_REACHED();
     }
 
-    postTask([this, enabled]() {
+    postTask([this, blockingMode]() {
         if (!m_statisticsStore)
             return;
 
-        m_statisticsStore->setIsThirdPartyCookieBlockingEnabled(enabled);
+        m_statisticsStore->setThirdPartyCookieBlockingMode(blockingMode);
+    });
+}
+
+void WebResourceLoadStatisticsStore::setFirstPartyWebsiteDataRemovalMode(FirstPartyWebsiteDataRemovalMode mode, CompletionHandler<void()>&& completionHandler)
+{
+    ASSERT(RunLoop::isMain());
+
+    postTask([this, mode, completionHandler = WTFMove(completionHandler)]() mutable {
+        if (m_statisticsStore) {
+            m_statisticsStore->setFirstPartyWebsiteDataRemovalMode(mode);
+            if (mode == FirstPartyWebsiteDataRemovalMode::AllButCookiesReproTestingTimeout)
+                m_statisticsStore->setIsRunningTest(true);
+        }
+        postTaskReply([completionHandler = WTFMove(completionHandler)]() mutable {
+            completionHandler();
+        });
     });
 }
 
@@ -611,9 +627,14 @@ void WebResourceLoadStatisticsStore::clearUserInteraction(const RegistrableDomai
     ASSERT(RunLoop::isMain());
     
     postTask([this, domain = domain.isolatedCopy(), completionHandler = WTFMove(completionHandler)]() mutable {
-        if (m_statisticsStore)
-            m_statisticsStore->clearUserInteraction(domain);
-        postTaskReply(WTFMove(completionHandler));
+        auto innerCompletionHandler = [completionHandler = WTFMove(completionHandler)]() mutable {
+            postTaskReply(WTFMove(completionHandler));
+        };
+        if (m_statisticsStore) {
+            m_statisticsStore->clearUserInteraction(domain, WTFMove(innerCompletionHandler));
+            return;
+        }
+        innerCompletionHandler();
     });
 }
 
@@ -1129,6 +1150,11 @@ void WebResourceLoadStatisticsStore::notifyPageStatisticsTelemetryFinished(unsig
     ASSERT(RunLoop::isMain());
     if (m_networkSession)
         const_cast<WebResourceLoadStatisticsStore*>(this)->networkSession()->notifyPageStatisticsTelemetryFinished(numberOfPrevalentResources, numberOfPrevalentResourcesWithUserInteraction, numberOfPrevalentResourcesWithoutUserInteraction, topPrevalentResourceWithUserInteractionDaysSinceUserInteraction, medianDaysSinceUserInteractionPrevalentResourceWithUserInteraction, top3NumberOfPrevalentResourcesWithUI, top3MedianSubFrameWithoutUI, top3MedianSubResourceWithoutUI, top3MedianUniqueRedirectsWithoutUI, top3MedianDataRecordsRemovedWithoutUI);
+}
+
+Vector<ThirdPartyData> WebResourceLoadStatisticsStore::aggregatedThirdPartyData()
+{
+    return m_statisticsStore->aggregatedThirdPartyData();
 }
 
 } // namespace WebKit

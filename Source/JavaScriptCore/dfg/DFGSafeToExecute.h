@@ -240,6 +240,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ValueBitNot:
     case ValueBitLShift:
     case ValueBitRShift:
+    case Inc:
+    case Dec:
     case ValueNegate:
     case ValueAdd:
     case ValueSub:
@@ -293,7 +295,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case CheckBadCell:
     case CheckNotEmpty:
     case AssertNotEmpty:
-    case CheckStringIdent:
+    case CheckIdent:
     case RegExpExec:
     case RegExpExecNonGlobalOrSticky:
     case RegExpTest:
@@ -358,6 +360,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ToPrimitive:
     case ToString:
     case ToNumber:
+    case ToNumeric:
     case ToObject:
     case NumberToStringWithRadix:
     case NumberToStringWithValidRadixConstant:
@@ -520,7 +523,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
         return false;
         
     case FilterCallLinkStatus:
-    case FilterGetByIdStatus:
+    case FilterGetByStatus:
     case FilterPutByIdStatus:
     case FilterInByIdStatus:
         // We don't want these to be moved anywhere other than where we put them, since we want them

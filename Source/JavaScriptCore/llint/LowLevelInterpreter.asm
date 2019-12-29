@@ -994,9 +994,11 @@ macro callTargetFunction(opcodeName, size, opcodeStruct, dispatch, callee, callP
         call callee, callPtrTag
     end
 
-    if ARMv7
-        # Only required in ARMv7 since only here defineOSRExitReturnLabel
-        # inserts the global label words
+    if ARMv7 or MIPS
+        # It is required in ARMv7 and MIPs because global label definitions
+        # for those architectures generates a set of instructions
+        # that can clobber LLInt execution, resulting in unexpected
+        # crashes.
         restoreStackPointerAfterCall()
         dispatchAfterCall(size, opcodeStruct, dispatch)
     end
@@ -1772,7 +1774,6 @@ compareUnsignedJumpOp(
 
 preOp(inc, OpInc,
     macro (value, slow) baddio 1, value, slow end)
-
 
 preOp(dec, OpDec,
     macro (value, slow) bsubio 1, value, slow end)

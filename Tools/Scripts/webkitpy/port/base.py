@@ -260,12 +260,7 @@ class Port(object):
         return True
 
     def environment_for_api_tests(self):
-        build_root_path = str(self._build_path())
-        environment = self.setup_environ_for_server()
-        for name in ['DYLD_LIBRARY_PATH', '__XPC_DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', '__XPC_DYLD_FRAMEWORK_PATH']:
-            self._append_value_colon_separated(environment, name, build_root_path)
-
-        return environment
+        return self.setup_environ_for_server()
 
     def _check_driver(self):
         driver_path = self._path_to_driver()
@@ -1197,6 +1192,12 @@ class Port(object):
 
     def allowed_hosts(self):
         return self.get_option("allowed_host", [])
+
+    def internal_feature(self):
+        return self.get_option("internal_feature", [])
+
+    def experimental_feature(self):
+        return self.get_option("experimental_feature", [])
 
     def default_configuration(self):
         return self._config.default_configuration()

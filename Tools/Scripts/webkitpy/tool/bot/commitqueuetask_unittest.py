@@ -112,7 +112,7 @@ class FailingTestCommitQueue(MockCommitQueue):
         assert(self._test_run_counter >= 0)
         failures_for_run = self._test_failure_plan[self._test_run_counter]
         assert(isinstance(failures_for_run, list))
-        results = LayoutTestResults(test_results=map(self._mock_test_result, failures_for_run), did_exceed_test_failure_limit=(len(failures_for_run) >= 10))
+        results = LayoutTestResults(test_results=list(map(self._mock_test_result, failures_for_run)), did_exceed_test_failure_limit=(len(failures_for_run) >= 10))
         return results
 
 
@@ -147,7 +147,7 @@ class MockSimpleTestPlanCommitQueue(MockCommitQueue):
 
     def test_results(self):
         assert(isinstance(self._current_test_results, list))
-        return LayoutTestResults(test_results=map(self._mock_test_result, self._current_test_results), did_exceed_test_failure_limit=(len(self._current_test_results) >= 10))
+        return LayoutTestResults(test_results=list(map(self._mock_test_result, self._current_test_results)), did_exceed_test_failure_limit=(len(self._current_test_results) >= 10))
 
     def did_run_clean_tests(self):
         return self._did_run_clean_tests
@@ -159,7 +159,7 @@ class GoldenScriptError(ScriptError):
     pass
 
 
-_lots_of_failing_tests = map(lambda num: "test-%s.html" % num, range(0, 100))
+_lots_of_failing_tests = list(map(lambda num: "test-%s.html" % num, range(0, 100)))
 
 
 class CommitQueueTaskTest(unittest.TestCase):
@@ -544,6 +544,14 @@ command_failed: failure_message='Unable to land patch' script_error='MOCK land f
             clean_test_failures=["PreExistingFail1", "PreExistingFail2"])
 
         self._run_and_expect_patch_analysis_result(commit_queue, PatchAnalysisResult.DEFER, expect_clean_tests_to_run=True, expected_reported_flaky_tests=["Fail1", "Fail2"])
+
+    def test_mildly_flaky_patch_with_some_tree_redness_and_flakiness(self):
+        commit_queue = MockSimpleTestPlanCommitQueue(
+            first_test_failures=["PreExistingFail1", "PreExistingFail2", "Fail1"],
+            second_test_failures=["PreExistingFail1", "PreExistingFail2"],
+            clean_test_failures=["PreExistingFail1", "PreExistingFail2", "Fail2"])
+
+        self._run_and_expect_patch_analysis_result(commit_queue, PatchAnalysisResult.DEFER, expect_clean_tests_to_run=True, expected_reported_flaky_tests=["Fail1"])
 
     def test_tree_more_red_than_patch(self):
         commit_queue = MockSimpleTestPlanCommitQueue(

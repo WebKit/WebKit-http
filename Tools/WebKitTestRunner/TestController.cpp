@@ -472,6 +472,8 @@ void TestController::initialize(int argc, const char* argv[])
     m_shouldShowTouches = options.shouldShowTouches;
     m_checkForWorldLeaks = options.checkForWorldLeaks;
     m_allowAnyHTTPSCertificateForAllowedHosts = options.allowAnyHTTPSCertificateForAllowedHosts;
+    m_internalFeatures = options.internalFeatures;
+    m_experimentalFeatures = options.experimentalFeatures;
 
     m_usingServerMode = (m_paths.size() == 1 && m_paths[0] == "-");
     if (m_usingServerMode)
@@ -813,6 +815,10 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     for (const auto& internalDebugFeature : options.internalDebugFeatures)
         WKPreferencesSetInternalDebugFeatureForKey(preferences, internalDebugFeature.value, toWK(internalDebugFeature.key).get());
 
+#if PLATFORM(COCOA)
+    WKPreferencesSetCaptureVideoInUIProcessEnabled(preferences, options.enableCaptureVideoInUIProcess);
+    WKPreferencesSetCaptureAudioInGPUProcessEnabled(preferences, options.enableCaptureAudioInGPUProcess);
+#endif
     WKPreferencesSetProcessSwapOnNavigationEnabled(preferences, options.contextOptions.shouldEnableProcessSwapOnNavigation());
     WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, options.enableAppNap);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
@@ -879,6 +885,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetMediaSourceEnabled(preferences, true);
     WKPreferencesSetSourceBufferChangeTypeEnabled(preferences, true);
 #endif
+    WKPreferencesSetHighlightAPIEnabled(preferences, true);
 
     WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(preferences, false);
     WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(preferences, false);
@@ -981,11 +988,15 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     clearServiceWorkerRegistrations();
     clearDOMCaches();
 
+    resetQuota();
+
     WKContextSetAllowsAnySSLCertificateForServiceWorkerTesting(platformContext(), true);
 
     WKContextClearCurrentModifierStateForTesting(TestController::singleton().context());
 
     WKContextSetUseSeparateServiceWorkerProcess(TestController::singleton().context(), false);
+
+    WKPageSetMockCameraOrientation(m_mainWebView->page(), 0);
 
     // FIXME: This function should also ensure that there is only one page open.
 
@@ -1442,6 +1453,10 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableLazyImageLoading = parseBooleanTestHeaderValue(value);
         else if (key == "allowsLinkPreview")
             testOptions.allowsLinkPreview = parseBooleanTestHeaderValue(value);
+        else if (key == "enableCaptureVideoInUIProcess")
+            testOptions.enableCaptureVideoInUIProcess = parseBooleanTestHeaderValue(value);
+        else if (key == "enableCaptureAudioInGPUProcess")
+            testOptions.enableCaptureAudioInGPUProcess = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1452,6 +1467,11 @@ TestOptions TestController::testOptionsForTest(const TestCommand& command) const
 
     options.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
     options.shouldShowWebView = m_shouldShowWebView;
+
+    for (auto& feature : m_internalFeatures)
+        options.internalDebugFeatures.add(feature.c_str(), true);
+    for (auto& feature : m_experimentalFeatures)
+        options.experimentalFeatures.add(feature.c_str(), true);
 
     updatePlatformSpecificTestOptionsForTest(options, command.pathOrURL);
     updateTestOptionsFromTestHeader(options, command.pathOrURL, command.absolutePath);
@@ -2988,9 +3008,9 @@ void TestController::terminateNetworkProcess()
     WKContextTerminateNetworkProcess(platformContext());
 }
 
-void TestController::terminateServiceWorkerProcess()
+void TestController::terminateServiceWorkers()
 {
-    WKContextTerminateServiceWorkerProcess(platformContext());
+    WKContextTerminateServiceWorkers(platformContext());
 }
 
 #if !PLATFORM(COCOA)
@@ -3139,6 +3159,13 @@ void TestController::syncLocalStorage()
 {
     StorageVoidCallbackContext context(*this);
     WKContextSyncLocalStorage(platformContext(), &context, StorageVoidCallback);
+    runUntil(context.done, noTimeout);
+}
+
+void TestController::resetQuota()
+{
+    StorageVoidCallbackContext context(*this);
+    WKWebsiteDataStoreResetQuota(TestController::websiteDataStore(), &context, StorageVoidCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3567,12 +3594,20 @@ void TestController::setStatisticsShouldDowngradeReferrer(bool value)
     m_currentInvocation->didSetShouldDowngradeReferrer();
 }
 
-void TestController::setStatisticsShouldBlockThirdPartyCookies(bool value)
+void TestController::setStatisticsShouldBlockThirdPartyCookies(bool value, bool onlyOnSitesWithoutUserInteraction)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(TestController::websiteDataStore(), value, onlyOnSitesWithoutUserInteraction, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetShouldBlockThirdPartyCookies();
+}
+
+void TestController::setStatisticsFirstPartyWebsiteDataRemovalMode(bool value)
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetFirstPartyWebsiteDataRemovalMode();
 }
 
 void TestController::statisticsResetToConsistentState()
@@ -3601,6 +3636,16 @@ void TestController::removeMockMediaDevice(WKStringRef persistentID)
 void TestController::resetMockMediaDevices()
 {
     WKResetMockMediaDevices(platformContext());
+}
+
+void TestController::setMockCameraOrientation(uint64_t orientation)
+{
+    WKPageSetMockCameraOrientation(m_mainWebView->page(), orientation);
+}
+
+bool TestController::isMockRealtimeMediaSourceCenterEnabled() const
+{
+    return WKPageIsMockRealtimeMediaSourceCenterEnabled(m_mainWebView->page());
 }
 
 #if !PLATFORM(COCOA)

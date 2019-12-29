@@ -142,6 +142,8 @@ WI.CSSManager = class CSSManager extends WI.Object
             return WI.unlocalizedString("::first-line");
         case CSSManager.PseudoSelectorNames.FirstLetter:
             return WI.unlocalizedString("::first-letter");
+        case CSSManager.PseudoSelectorNames.Highlight:
+            return WI.unlocalizedString("::highlight");
         case CSSManager.PseudoSelectorNames.Marker:
             return WI.unlocalizedString("::marker");
         case CSSManager.PseudoSelectorNames.Before:
@@ -533,6 +535,7 @@ WI.CSSManager = class CSSManager extends WI.Object
         this._styleSheetIdentifierMap.clear();
         this._styleSheetFrameURLMap.clear();
         this._modifiedStyles.clear();
+        this._forcedAppearance = null;
 
         this._nodeStylesMap = {};
     }
@@ -660,7 +663,7 @@ WI.CSSManager = class CSSManager extends WI.Object
                 // ignore the next _updateResourceContent call.
                 resource.__ignoreNextUpdateResourceContent = true;
 
-                let revision = styleSheet.currentRevision;
+                let revision = styleSheet.editableRevision;
                 revision.updateRevisionContent(resource.content);
             }
 
@@ -704,7 +707,7 @@ WI.CSSManager = class CSSManager extends WI.Object
 
             this._ignoreResourceContentDidChangeEventForResource = representedObject;
 
-            let revision = representedObject.currentRevision;
+            let revision = representedObject.editableRevision;
             if (styleSheet.isInspectorStyleSheet()) {
                 revision.updateRevisionContent(representedObject.content);
                 styleSheet.dispatchEventToListeners(WI.SourceCode.Event.ContentDidChange);
@@ -750,6 +753,7 @@ WI.CSSManager.PseudoSelectorNames = {
     Before: "before",
     FirstLetter: "first-letter",
     FirstLine: "first-line",
+    Highlight: "highlight",
     Marker: "marker",
     Resizer: "resizer",
     Scrollbar: "scrollbar",

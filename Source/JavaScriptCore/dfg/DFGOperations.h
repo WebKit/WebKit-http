@@ -69,6 +69,8 @@ EncodedJSValue JIT_OPERATION operationValueBitURShift(JSGlobalObject*, EncodedJS
 EncodedJSValue JIT_OPERATION operationValueAddNotNumber(JSGlobalObject*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueDiv(JSGlobalObject*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValuePow(JSGlobalObject*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInc(JSGlobalObject*, EncodedJSValue encodedOp1) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationDec(JSGlobalObject*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 double JIT_OPERATION operationArithAbs(JSGlobalObject*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 uint32_t JIT_OPERATION operationArithClz32(JSGlobalObject*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 double JIT_OPERATION operationArithFRound(JSGlobalObject*, EncodedJSValue encodedOp1) WTF_INTERNAL;
@@ -83,7 +85,6 @@ EncodedJSValue JIT_OPERATION operationArithRound(JSGlobalObject*, EncodedJSValue
 EncodedJSValue JIT_OPERATION operationArithFloor(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationArithCeil(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationArithTrunc(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationGetByVal(JSGlobalObject*, EncodedJSValue encodedBase, EncodedJSValue encodedProperty) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValCell(JSGlobalObject*, JSCell*, EncodedJSValue encodedProperty) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValObjectInt(JSGlobalObject*, JSObject*, int32_t) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValStringInt(JSGlobalObject*, JSString*, int32_t) WTF_INTERNAL;
@@ -91,6 +92,7 @@ EncodedJSValue JIT_OPERATION operationGetByValObjectString(JSGlobalObject*, JSCe
 EncodedJSValue JIT_OPERATION operationGetByValObjectSymbol(JSGlobalObject*, JSCell*, JSCell* symbol) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToPrimitive(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToNumber(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationToNumeric(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValWithThis(JSGlobalObject*, EncodedJSValue, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetPrototypeOf(JSGlobalObject*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetPrototypeOfObject(JSGlobalObject*, JSObject*) WTF_INTERNAL;

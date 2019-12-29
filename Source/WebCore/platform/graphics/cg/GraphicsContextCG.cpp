@@ -143,17 +143,17 @@ static InterpolationQuality convertInterpolationQuality(CGInterpolationQuality q
 {
     switch (quality) {
     case kCGInterpolationDefault:
-        return InterpolationDefault;
+        return InterpolationQuality::Default;
     case kCGInterpolationNone:
-        return InterpolationNone;
+        return InterpolationQuality::DoNotInterpolate;
     case kCGInterpolationLow:
-        return InterpolationLow;
+        return InterpolationQuality::Low;
     case kCGInterpolationMedium:
-        return InterpolationMedium;
+        return InterpolationQuality::Medium;
     case kCGInterpolationHigh:
-        return InterpolationHigh;
+        return InterpolationQuality::High;
     }
-    return InterpolationDefault;
+    return InterpolationQuality::Default;
 }
 
 static CGBlendMode selectCGBlendMode(CompositeOperator compositeOperator, BlendMode blendMode)
@@ -161,33 +161,33 @@ static CGBlendMode selectCGBlendMode(CompositeOperator compositeOperator, BlendM
     switch (blendMode) {
     case BlendMode::Normal:
         switch (compositeOperator) {
-        case CompositeClear:
+        case CompositeOperator::Clear:
             return kCGBlendModeClear;
-        case CompositeCopy:
+        case CompositeOperator::Copy:
             return kCGBlendModeCopy;
-        case CompositeSourceOver:
+        case CompositeOperator::SourceOver:
             return kCGBlendModeNormal;
-        case CompositeSourceIn:
+        case CompositeOperator::SourceIn:
             return kCGBlendModeSourceIn;
-        case CompositeSourceOut:
+        case CompositeOperator::SourceOut:
             return kCGBlendModeSourceOut;
-        case CompositeSourceAtop:
+        case CompositeOperator::SourceAtop:
             return kCGBlendModeSourceAtop;
-        case CompositeDestinationOver:
+        case CompositeOperator::DestinationOver:
             return kCGBlendModeDestinationOver;
-        case CompositeDestinationIn:
+        case CompositeOperator::DestinationIn:
             return kCGBlendModeDestinationIn;
-        case CompositeDestinationOut:
+        case CompositeOperator::DestinationOut:
             return kCGBlendModeDestinationOut;
-        case CompositeDestinationAtop:
+        case CompositeOperator::DestinationAtop:
             return kCGBlendModeDestinationAtop;
-        case CompositeXOR:
+        case CompositeOperator::XOR:
             return kCGBlendModeXOR;
-        case CompositePlusDarker:
+        case CompositeOperator::PlusDarker:
             return kCGBlendModePlusDarker;
-        case CompositePlusLighter:
+        case CompositeOperator::PlusLighter:
             return kCGBlendModePlusLighter;
-        case CompositeDifference:
+        case CompositeOperator::Difference:
             return kCGBlendModeDifference;
         }
         break;
@@ -1667,19 +1667,19 @@ void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality 
 
     CGInterpolationQuality quality = kCGInterpolationDefault;
     switch (mode) {
-    case InterpolationDefault:
+    case InterpolationQuality::Default:
         quality = kCGInterpolationDefault;
         break;
-    case InterpolationNone:
+    case InterpolationQuality::DoNotInterpolate:
         quality = kCGInterpolationNone;
         break;
-    case InterpolationLow:
+    case InterpolationQuality::Low:
         quality = kCGInterpolationLow;
         break;
-    case InterpolationMedium:
+    case InterpolationQuality::Medium:
         quality = kCGInterpolationMedium;
         break;
-    case InterpolationHigh:
+    case InterpolationQuality::High:
         quality = kCGInterpolationHigh;
         break;
     }

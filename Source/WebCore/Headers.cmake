@@ -79,7 +79,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/indexeddb/shared/IDBResourceIdentifier.h
     Modules/indexeddb/shared/IDBResultData.h
     Modules/indexeddb/shared/IDBTransactionInfo.h
-    Modules/indexeddb/shared/InProcessIDBServer.h
 
     Modules/mediasession/MediaSessionEvents.h
     Modules/mediasession/MediaSessionMetadata.h
@@ -373,7 +372,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/DeviceOrientationData.h
     dom/DeviceOrientationOrMotionPermissionState.h
     dom/Document.h
-    dom/DocumentEventQueue.h
     dom/DocumentFragment.h
     dom/DocumentFullscreen.h
     dom/DocumentIdentifier.h
@@ -1013,6 +1011,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/gamepad/PlatformGamepad.h
 
     platform/graphics/ANGLEWebKitBridge.h
+    platform/graphics/AnimationFrameRate.h
     platform/graphics/AudioTrackPrivate.h
     platform/graphics/BitmapImage.h
     platform/graphics/Color.h
@@ -1120,6 +1119,10 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/VideoTrackPrivate.h
     platform/graphics/WidthCache.h
     platform/graphics/WindRule.h
+
+    platform/graphics/angle/Extensions3DANGLE.h
+
+    platform/graphics/displaylists/DisplayListItems.h
 
     platform/graphics/cv/ImageTransferSessionVT.h
 
@@ -1318,6 +1321,9 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/SimpleLineLayoutResolver.h
 
     rendering/line/LineLayoutTraversal.h
+    rendering/line/LineLayoutTraversalComplexPath.h
+    rendering/line/LineLayoutTraversalDisplayRunPath.h
+    rendering/line/LineLayoutTraversalSimplePath.h
     rendering/line/LineWidth.h
     rendering/line/TrailingObjects.h
 
@@ -1379,7 +1385,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     storage/StorageNamespace.h
     storage/StorageNamespaceProvider.h
     storage/StorageQuotaManager.h
-    storage/StorageQuotaUser.h
     storage/StorageType.h
 
     style/StyleChange.h

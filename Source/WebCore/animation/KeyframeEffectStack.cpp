@@ -30,6 +30,7 @@
 #include "CSSTransition.h"
 #include "KeyframeEffect.h"
 #include "WebAnimation.h"
+#include "WebAnimationUtilities.h"
 
 namespace WebCore {
 
@@ -42,15 +43,16 @@ KeyframeEffectStack::~KeyframeEffectStack()
     ASSERT(m_effects.isEmpty());
 }
 
-void KeyframeEffectStack::addEffect(KeyframeEffect& effect)
+bool KeyframeEffectStack::addEffect(KeyframeEffect& effect)
 {
-    // To qualify for membership in an effect stack, an effect must have a target, an animation and a timeline.
+    // To qualify for membership in an effect stack, an effect must have a target, an animation, a timeline and be relevant.
     // This method will be called in WebAnimation and KeyframeEffect as those properties change.
-    if (!effect.target() || !effect.animation() || !effect.animation()->timeline())
-        return;
+    if (!effect.target() || !effect.animation() || !effect.animation()->timeline() || !effect.animation()->isRelevant())
+        return false;
 
     m_effects.append(makeWeakPtr(&effect));
     m_isSorted = false;
+    return true;
 }
 
 void KeyframeEffectStack::removeEffect(KeyframeEffect& effect)
@@ -76,47 +78,7 @@ void KeyframeEffectStack::ensureEffectsAreSorted()
         ASSERT(lhsAnimation);
         ASSERT(rhsAnimation);
 
-        // CSS Transitions sort first.
-        bool lhsIsCSSTransition = is<CSSTransition>(lhsAnimation);
-        bool rhsIsCSSTransition = is<CSSTransition>(rhsAnimation);
-        if (lhsIsCSSTransition || rhsIsCSSTransition) {
-            if (lhsIsCSSTransition == rhsIsCSSTransition) {
-                // Sort transitions first by their generation time, and then by transition-property.
-                // https://drafts.csswg.org/css-transitions-2/#animation-composite-order
-                auto* lhsCSSTransition = downcast<CSSTransition>(lhsAnimation);
-                auto* rhsCSSTransition = downcast<CSSTransition>(rhsAnimation);
-                if (lhsCSSTransition->generationTime() != rhsCSSTransition->generationTime())
-                    return lhsCSSTransition->generationTime() < rhsCSSTransition->generationTime();
-                return lhsCSSTransition->transitionProperty().utf8() < rhsCSSTransition->transitionProperty().utf8();
-            }
-            return !rhsIsCSSTransition;
-        }
-
-        // CSS Animations sort next.
-        bool lhsIsCSSAnimation = is<CSSAnimation>(lhsAnimation);
-        bool rhsIsCSSAnimation = is<CSSAnimation>(rhsAnimation);
-        if (lhsIsCSSAnimation || rhsIsCSSAnimation) {
-            if (lhsIsCSSAnimation == rhsIsCSSAnimation) {
-                // https://drafts.csswg.org/css-animations-2/#animation-composite-order
-                // Sort A and B based on their position in the computed value of the animation-name property of the (common) owning element.
-                auto& lhsCSSAnimationName = downcast<CSSAnimation>(lhsAnimation)->backingAnimation().name();
-                auto& rhsCSSAnimationName = downcast<CSSAnimation>(rhsAnimation)->backingAnimation().name();
-
-                for (auto& animationName : m_cssAnimationNames) {
-                    if (animationName == lhsCSSAnimationName)
-                        return true;
-                    if (animationName == rhsCSSAnimationName)
-                        return false;
-                }
-                // We should have found either of those CSS animations in the CSS animations list.
-                ASSERT_NOT_REACHED();
-            }
-            return !rhsIsCSSAnimation;
-        }
-
-        // JS-originated animations sort last based on their position in the global animation list.
-        // https://drafts.csswg.org/web-animations-1/#animation-composite-order
-        return lhsAnimation->globalPosition() < rhsAnimation->globalPosition();
+        return compareAnimationsByCompositeOrder(*lhsAnimation, *rhsAnimation, m_cssAnimationNames);
     });
 
     m_isSorted = true;

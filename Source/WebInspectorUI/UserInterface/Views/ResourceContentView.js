@@ -114,7 +114,18 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
 
     get saveData()
     {
-        return {url: this._resource.url, content: this._resource.content};
+        let saveData = {
+            url: this._resource.url,
+            content: this._resource.content,
+        };
+
+        if (this._resource.urlComponents.path === "/") {
+            let extension = WI.fileExtensionForMIMEType(this._resource.mimeType);
+            if (extension)
+                saveData.suggestedName = `index.${extension}`;
+        }
+
+        return saveData;
     }
 
     contentAvailable(content, base64Encoded)
@@ -209,8 +220,12 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
             return;
         }
 
+        // The view maybe populated with inline scripts content by the time resource
+        // content arrives. SourceCodeTextEditor will handle that.
+        if (this._hasContent())
+            return;
+
         // Content is ready to show, call the public method now.
-        console.assert(!this._hasContent());
         console.assert(parameters.sourceCode === this._resource);
         this.contentAvailable(parameters.sourceCode.content, parameters.base64Encoded);
 
@@ -290,8 +305,8 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
             let localResourceOverride = WI.networkManager.localResourceOverrideForURL(this.resource.url);
             console.assert(localResourceOverride);
 
-            let revision = localResourceOverride.localResource.currentRevision;
             await this._getContentForLocalResourceOverrideFromFile(fileList[0], ({mimeType, base64Encoded, content}) => {
+                let revision = localResourceOverride.localResource.editableRevision;
                 revision.updateRevisionContent(content, {base64Encoded, mimeType});
             });
 

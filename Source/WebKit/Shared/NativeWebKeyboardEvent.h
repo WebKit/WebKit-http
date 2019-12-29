@@ -80,7 +80,7 @@ public:
 #elif USE(LIBWPE)
     NativeWebKeyboardEvent(struct wpe_input_keyboard_event*);
 #elif PLATFORM(WIN)
-    NativeWebKeyboardEvent(HWND, UINT message, WPARAM, LPARAM);
+    NativeWebKeyboardEvent(HWND, UINT message, WPARAM, LPARAM, Vector<MSG>&& pendingCharEvents);
 #endif
 
 #if USE(APPKIT)
@@ -96,6 +96,7 @@ public:
     ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WIN)
     const MSG* nativeEvent() const { return &m_nativeEvent; }
+    const Vector<MSG>& pendingCharEvents() const { return m_pendingCharEvents; }
 #else
     const void* nativeEvent() const { return nullptr; }
 #endif
@@ -114,6 +115,7 @@ private:
     RetainPtr<::WebEvent> m_nativeEvent;
 #elif PLATFORM(WIN)
     MSG m_nativeEvent;
+    Vector<MSG> m_pendingCharEvents;
 #endif
 };
 

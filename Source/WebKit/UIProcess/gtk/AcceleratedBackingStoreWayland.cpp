@@ -41,9 +41,7 @@
 #if USE(OPENGL_ES)
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#include <WebCore/Extensions3DOpenGLES.h>
 #else
-#include <WebCore/Extensions3DOpenGL.h>
 #include <WebCore/OpenGLShims.h>
 #endif
 
@@ -64,6 +62,32 @@ static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glImageTargetTexture2D;
 namespace WebKit {
 using namespace WebCore;
 
+bool isEGLImageAvailable(bool useIndexedGetString)
+{
+#if USE(OPENGL_ES)
+    UNUSED_PARAM(useIndexedGetString);
+#else
+    if (useIndexedGetString) {
+        GLint numExtensions = 0;
+        ::glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+        for (GLint i = 0; i < numExtensions; ++i) {
+            String extension = String(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
+            if (extension == "GL_OES_EGL_image" || extension == "GL_OES_EGL_image_external")
+                return true;
+        }
+    } else
+#endif
+    {
+        String extensionsString = String(reinterpret_cast<const char*>(::glGetString(GL_EXTENSIONS)));
+        for (auto& extension : extensionsString.split(' ')) {
+            if (extension == "GL_OES_EGL_image" || extension == "GL_OES_EGL_image_external")
+                return true;
+        }
+    }
+
+    return false;
+}
+
 bool AcceleratedBackingStoreWayland::checkRequirements()
 {
 #if USE(WPE_RENDERER)
@@ -79,11 +103,10 @@ bool AcceleratedBackingStoreWayland::checkRequirements()
             return false;
 
 #if USE(OPENGL_ES)
-        std::unique_ptr<Extensions3DOpenGLES> glExtensions = makeUnique<Extensions3DOpenGLES>(nullptr,  false);
+        if (isEGLImageAvailable(false))
 #else
-        std::unique_ptr<Extensions3DOpenGL> glExtensions = makeUnique<Extensions3DOpenGL>(nullptr, GLContext::current()->version() >= 320);
+        if (isEGLImageAvailable(GLContext::current()->version() >= 320))
 #endif
-        if (glExtensions->supports("GL_OES_EGL_image") || glExtensions->supports("GL_OES_EGL_image_external"))
             glImageTargetTexture2D = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
     }
 

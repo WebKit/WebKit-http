@@ -611,7 +611,6 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
         default:
             break;
         }
-
     }
     
     if (selector->match() == CSSSelector::PseudoElement) {
@@ -627,6 +626,19 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
             return selector;
         }
 #endif
+        case CSSSelector::PseudoElementHighlight: {
+            DisallowPseudoElementsScope scope(this);
+
+            auto& ident = block.consumeIncludingWhitespace();
+            if (ident.type() != IdentToken || !block.atEnd())
+                return nullptr;
+
+            auto argumentList = makeUnique<Vector<AtomString>>();
+            argumentList->append(ident.value().toAtomString());
+            selector->setArgumentList(WTFMove(argumentList));
+
+            return selector;
+        }
         case CSSSelector::PseudoElementPart: {
             auto argumentList = makeUnique<Vector<AtomString>>();
             do {

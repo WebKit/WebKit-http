@@ -421,7 +421,7 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
         const Color& backgroundColor = (settings().backgroundShouldExtendBeyondPage() && documentBackgroundColor.isValid()) ? documentBackgroundColor : frameView().baseBackgroundColor();
         if (backgroundColor.isVisible()) {
             CompositeOperator previousOperator = paintInfo.context().compositeOperation();
-            paintInfo.context().setCompositeOperation(CompositeCopy);
+            paintInfo.context().setCompositeOperation(CompositeOperator::Copy);
             paintInfo.context().fillRect(paintInfo.rect, backgroundColor);
             paintInfo.context().setCompositeOperation(previousOperator);
         } else
@@ -875,6 +875,24 @@ unsigned RenderView::pageCount() const
         return multiColumnFlow()->firstMultiColumnSet()->columnCount();
 
     return 0;
+}
+
+void RenderView::layerChildrenChangedDuringStyleChange(RenderLayer& layer)
+{
+    if (!m_styleChangeLayerMutationRoot) {
+        m_styleChangeLayerMutationRoot = makeWeakPtr(layer);
+        return;
+    }
+
+    RenderLayer* commonAncestor = m_styleChangeLayerMutationRoot->commonAncestorWithLayer(layer);
+    m_styleChangeLayerMutationRoot = makeWeakPtr(commonAncestor);
+}
+
+RenderLayer* RenderView::takeStyleChangeLayerTreeMutationRoot()
+{
+    auto* result = m_styleChangeLayerMutationRoot.get();
+    m_styleChangeLayerMutationRoot.clear();
+    return result;
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)

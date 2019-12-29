@@ -109,6 +109,8 @@ class CommonIdentifiers;
 class CompactVariableMap;
 class CustomGetterSetter;
 class DOMAttributeGetterSetter;
+class DateInstance;
+class ErrorInstance;
 class Exception;
 class ExceptionScope;
 class FastMallocAlignedMemoryAllocator;
@@ -120,18 +122,31 @@ class HasOwnPropertyCache;
 class HeapProfiler;
 class Identifier;
 class Interpreter;
+class IntlCollator;
+class IntlDateTimeFormat;
+class IntlNumberFormat;
+class IntlPluralRules;
+class JSCCallbackFunction;
 class JSCustomGetterSetterFunction;
 class JSDestructibleObjectHeapCellType;
 class JSGlobalObject;
+class JSModuleNamespaceObject;
+class JSModuleRecord;
 class JSObject;
 class JSPromise;
 class JSPropertyNameEnumerator;
 class JSRunLoopTimer;
-class JSStringHeapCellType;
-class JSWebAssemblyCodeBlockHeapCellType;
+class JSWeakMap;
+class JSWeakSet;
+class JSWebAssemblyCodeBlock;
+class JSWebAssemblyGlobal;
 class JSWebAssemblyInstance;
+class JSWebAssemblyMemory;
+class JSWebAssemblyModule;
+class JSWebAssemblyTable;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
+class ObjCCallbackFunction;
 class PromiseTimer;
 class RegExp;
 class RegExpCache;
@@ -162,7 +177,10 @@ class TopLevelGlobalObjectScope;
 class Watchdog;
 class Watchpoint;
 class WatchpointSet;
-class WebAssemblyFunctionHeapCellType;
+class WebAssemblyFunction;
+class WebAssemblyModuleRecord;
+
+template<typename CellType> class IsoHeapCellType;
 
 #if ENABLE(FTL_JIT)
 namespace FTL {
@@ -298,6 +316,7 @@ public:
     FuzzerAgent* fuzzerAgent() const { return m_fuzzerAgent.get(); }
     void setFuzzerAgent(std::unique_ptr<FuzzerAgent>&& fuzzerAgent)
     {
+        RELEASE_ASSERT_WITH_MESSAGE(!m_fuzzerAgent, "Only one FuzzerAgent can be specified at a time.");
         m_fuzzerAgent = WTFMove(fuzzerAgent);
     }
 
@@ -339,11 +358,35 @@ public:
     std::unique_ptr<HeapCellType> immutableButterflyHeapCellType;
     std::unique_ptr<HeapCellType> cellHeapCellType;
     std::unique_ptr<HeapCellType> destructibleCellHeapCellType;
-    std::unique_ptr<JSStringHeapCellType> stringHeapCellType;
+    std::unique_ptr<IsoHeapCellType<DateInstance>> dateInstanceHeapCellType;
+    std::unique_ptr<IsoHeapCellType<ErrorInstance>> errorInstanceHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSModuleRecord>> jsModuleRecordHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSModuleNamespaceObject>> moduleNamespaceObjectHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSString>> stringHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWeakMap>> weakMapHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWeakSet>> weakSetHeapCellType;
     std::unique_ptr<JSDestructibleObjectHeapCellType> destructibleObjectHeapCellType;
+#if JSC_OBJC_API_ENABLED
+    std::unique_ptr<IsoHeapCellType<ObjCCallbackFunction>> objCCallbackFunctionHeapCellType;
+#endif
+#ifdef JSC_GLIB_API_ENABLED
+    std::unique_ptr<IsoHeapCellType<JSCCallbackFunction>> jscCallbackFunctionHeapCellType;
+#endif
+#if ENABLE(INTL)
+    std::unique_ptr<IsoHeapCellType<IntlCollator>> intlCollatorHeapCellType;
+    std::unique_ptr<IsoHeapCellType<IntlDateTimeFormat>> intlDateTimeFormatHeapCellType;
+    std::unique_ptr<IsoHeapCellType<IntlNumberFormat>> intlNumberFormatHeapCellType;
+    std::unique_ptr<IsoHeapCellType<IntlPluralRules>> intlPluralRulesHeapCellType;
+#endif
 #if ENABLE(WEBASSEMBLY)
-    std::unique_ptr<JSWebAssemblyCodeBlockHeapCellType> webAssemblyCodeBlockHeapCellType;
-    std::unique_ptr<WebAssemblyFunctionHeapCellType> webAssemblyFunctionHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyCodeBlock>> webAssemblyCodeBlockHeapCellType;
+    std::unique_ptr<IsoHeapCellType<WebAssemblyFunction>> webAssemblyFunctionHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyGlobal>> webAssemblyGlobalHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyInstance>> webAssemblyInstanceHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyMemory>> webAssemblyMemoryHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyModule>> webAssemblyModuleHeapCellType;
+    std::unique_ptr<IsoHeapCellType<WebAssemblyModuleRecord>> webAssemblyModuleRecordHeapCellType;
+    std::unique_ptr<IsoHeapCellType<JSWebAssemblyTable>> webAssemblyTableHeapCellType;
 #endif
     
     CompleteSubspace primitiveGigacageAuxiliarySpace; // Typed arrays, strings, bitvectors, etc go here.
@@ -377,16 +420,23 @@ public:
     CompleteSubspace destructibleObjectSpace;
     
     IsoSubspace bigIntSpace;
+    IsoSubspace calleeSpace;
+    IsoSubspace clonedArgumentsSpace;
+    IsoSubspace dateInstanceSpace;
     IsoSubspace executableToCodeBlockEdgeSpace;
     IsoSubspace functionSpace;
     IsoSubspace getterSetterSpace;
     IsoSubspace internalFunctionSpace;
     IsoSubspace nativeExecutableSpace;
+    IsoSubspace numberObjectSpace;
+    IsoSubspace promiseSpace;
     IsoSubspace propertyTableSpace;
+    IsoSubspace regExpObjectSpace;
     IsoSubspace ropeStringSpace;
     IsoSubspace scopedArgumentsSpace;
     IsoSubspace sparseArrayValueMapSpace;
     IsoSubspace stringSpace;
+    IsoSubspace stringObjectSpace;
     IsoSubspace structureRareDataSpace;
     IsoSubspace structureSpace;
     IsoSubspace symbolTableSpace;
@@ -406,15 +456,38 @@ public:
 #if JSC_OBJC_API_ENABLED
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(objCCallbackFunctionSpace)
 #endif
+#ifdef JSC_GLIB_API_ENABLED
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(jscCallbackFunctionSpace)
+#endif
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(arrayBufferSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(asyncGeneratorSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(bigIntObjectSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(booleanObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(boundFunctionSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(callbackFunctionSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(customGetterSetterFunctionSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(dataViewSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(errorInstanceSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(float32ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(float64ArraySpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(functionRareDataSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(generatorSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(int8ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(int16ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(int32ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(jsModuleRecordSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(mapSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(moduleNamespaceObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(nativeStdFunctionSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(proxyObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(proxyRevokeSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolObjectSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(uint8ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(uint8ClampedArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(uint16ArraySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(uint32ArraySpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedEvalCodeBlockSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedFunctionCodeBlockSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(unlinkedModuleProgramCodeBlockSpace)
@@ -422,10 +495,22 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakObjectRefSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakSetSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakMapSpace)
+#if ENABLE(INTL)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlCollatorSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlDateTimeFormatSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlNumberFormatSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlPluralRulesSpace)
+#endif
 #if ENABLE(WEBASSEMBLY)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(jsToWasmICCalleeSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyCodeBlockSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyFunctionSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyGlobalSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyInstanceSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyMemorySpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyModuleSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyModuleRecordSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyTableSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(webAssemblyWrapperFunctionSpace)
 #endif
 
@@ -585,6 +670,8 @@ public:
 
     AtomStringTable* atomStringTable() const { return m_atomStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
+
+    Strong<JSBigInt> bigIntConstantOne;
 
     Structure* setIteratorStructure()
     {

@@ -37,6 +37,7 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/entriesapi"
     "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
+    "${WEBCORE_DIR}/Modules/highlight"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
@@ -103,6 +104,7 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/layout/floats"
     "${WEBCORE_DIR}/layout/inlineformatting"
     "${WEBCORE_DIR}/layout/inlineformatting/text"
+    "${WEBCORE_DIR}/layout/integration"
     "${WEBCORE_DIR}/layout/layouttree"
     "${WEBCORE_DIR}/loader"
     "${WEBCORE_DIR}/loader/appcache"
@@ -202,6 +204,7 @@ set(WebCore_IDL_INCLUDES
     Modules/entriesapi
     Modules/fetch
     Modules/geolocation
+    Modules/highlight
     Modules/indexeddb
     Modules/mediacapabilities
     Modules/mediarecorder
@@ -282,6 +285,9 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/geolocation/PositionCallback.idl
     Modules/geolocation/PositionErrorCallback.idl
     Modules/geolocation/PositionOptions.idl
+
+    Modules/highlight/HighlightMap.idl
+    Modules/highlight/HighlightRangeGroup.idl
 
     Modules/indexeddb/DOMWindowIndexedDatabase.idl
     Modules/indexeddb/IDBCursor.idl
@@ -1607,6 +1613,8 @@ set(WebCoreTestSupport_IDL_FILES
     testing/GCObservation.idl
     testing/InternalSettings.idl
     testing/Internals.idl
+    testing/InternalsMapLike.idl
+    testing/InternalsSetLike.idl
     testing/MallocStatistics.idl
     testing/MemoryInfo.idl
     testing/MockCDMFactory.idl
@@ -1627,6 +1635,8 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/GCObservation.cpp
     testing/InternalSettings.cpp
     testing/Internals.cpp
+    testing/InternalsMapLike.cpp
+    testing/InternalsSetLike.cpp
     testing/MockCDMFactory.cpp
     testing/MockGamepad.cpp
     testing/MockGamepadProvider.cpp

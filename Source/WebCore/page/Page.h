@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ActivityState.h"
+#include "AnimationFrameRate.h"
 #include "DisabledAdaptations.h"
 #include "Document.h"
 #include "FindOptions.h"
@@ -67,6 +68,10 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "MediaPlaybackTargetContext.h"
+#endif
+
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
+#include "DeviceOrientationUpdateProvider.h"
 #endif
 
 namespace JSC {
@@ -204,7 +209,7 @@ public:
     bool canStartMedia() const { return m_canStartMedia; }
 
     EditorClient& editorClient() { return m_editorClient.get(); }
-    PlugInClient* plugInClient() const { return m_plugInClient; }
+    PlugInClient* plugInClient() const { return m_plugInClient.get(); }
 
     Frame& mainFrame() { return m_mainFrame.get(); }
     const Frame& mainFrame() const { return m_mainFrame.get(); }
@@ -269,6 +274,7 @@ public:
     PerformanceMonitor* performanceMonitor() { return m_performanceMonitor.get(); }
 
     RenderingUpdateScheduler& renderingUpdateScheduler();
+    bool isRenderingUpdateThrottled() const { return !m_throttlingReasons.isEmpty(); }
 
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
     void updateValidationBubbleStateIfNeeded();
@@ -556,7 +562,7 @@ public:
     bool isPainting() const { return m_isPainting; }
 #endif
 
-    AlternativeTextClient* alternativeTextClient() const { return m_alternativeTextClient; }
+    AlternativeTextClient* alternativeTextClient() const { return m_alternativeTextClient.get(); }
 
     bool hasSeenPlugin(const String& serviceType) const;
     WEBCORE_EXPORT bool hasSeenAnyPlugin() const;
@@ -583,6 +589,10 @@ public:
     void forbidPrompts();
     void allowPrompts();
     bool arePromptsAllowed();
+
+    void forbidSynchronousLoads();
+    void allowSynchronousLoads();
+    bool areSynchronousLoadsAllowed();
 
     void mainFrameLoadStarted(const URL&, FrameLoadType);
 
@@ -651,9 +661,6 @@ public:
     void clearWheelEventTestMonitor() { m_wheelEventTestMonitor = nullptr; }
     bool isMonitoringWheelEvents() const { return !!m_wheelEventTestMonitor; }
 
-    void setIsForSanitizingWebContent() { m_isForSanitizingWebContent = true; }
-    bool isForSanitizingWebContent() const { return m_isForSanitizingWebContent; }
-
 #if ENABLE(VIDEO)
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
     WEBCORE_EXPORT void setAllowsMediaDocumentInlinePlayback(bool);
@@ -708,6 +715,8 @@ public:
     bool isLowPowerModeEnabled() const;
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(Optional<bool>);
 
+    Seconds preferredRenderingUpdateInterval() const;
+
     WEBCORE_EXPORT void applicationWillResignActive();
     WEBCORE_EXPORT void applicationDidEnterBackground();
     WEBCORE_EXPORT void applicationWillEnterForeground();
@@ -718,6 +727,10 @@ public:
     void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel);
 
     WEBCORE_EXPORT Vector<Ref<Element>> editableElementsInRect(const FloatRect&) const;
+
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
+    DeviceOrientationUpdateProvider* deviceOrientationUpdateProvider() const { return m_deviceOrientationUpdateProvider.get(); }
+#endif
 
 private:
     struct Navigation {
@@ -792,7 +805,7 @@ private:
     RefPtr<PluginData> m_pluginData;
 
     UniqueRef<EditorClient> m_editorClient;
-    PlugInClient* m_plugInClient;
+    std::unique_ptr<PlugInClient> m_plugInClient;
     std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
     std::unique_ptr<PerformanceLoggingClient> m_performanceLoggingClient;
@@ -900,7 +913,7 @@ private:
 #ifndef NDEBUG
     bool m_isPainting { false };
 #endif
-    AlternativeTextClient* m_alternativeTextClient;
+    std::unique_ptr<AlternativeTextClient> m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended { false };
     const std::unique_ptr<PageConsoleClient> m_consoleClient;
@@ -918,6 +931,7 @@ private:
 
     unsigned m_lastSpatialNavigationCandidatesCount { 0 };
     unsigned m_forbidPromptsDepth { 0 };
+    unsigned m_forbidSynchronousLoadsDepth { 0 };
 
     Ref<SocketProvider> m_socketProvider;
     Ref<CookieJar> m_cookieJar;
@@ -990,12 +1004,15 @@ private:
 
     Optional<ViewportArguments> m_overrideViewportArguments;
 
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
+    RefPtr<DeviceOrientationUpdateProvider> m_deviceOrientationUpdateProvider;
+#endif
+
     bool m_shouldEnableICECandidateFilteringByDefault { true };
     bool m_mediaPlaybackIsSuspended { false };
     bool m_mediaBufferingIsSuspended { false };
     bool m_inUpdateRendering { false };
-
-    bool m_isForSanitizingWebContent { false };
+    OptionSet<ThrottlingReason> m_throttlingReasons;
 };
 
 inline PageGroup& Page::group()

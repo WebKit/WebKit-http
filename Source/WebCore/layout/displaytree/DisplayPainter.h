@@ -41,6 +41,7 @@ namespace Display {
 class Painter {
 public:
     static void paint(const Layout::LayoutState&, GraphicsContext&, const IntRect& dirtyRect);
+    static void paintInlineFlow(const Layout::LayoutState&, GraphicsContext&);
 };
 
 }

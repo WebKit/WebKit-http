@@ -28,6 +28,7 @@ from twisted.internet import defer
 
 import os
 import re
+import socket
 import json
 import cStringIO
 import urllib
@@ -35,8 +36,9 @@ import urllib
 APPLE_WEBKIT_AWS_PROXY = "http://proxy01.webkit.org:3128"
 S3URL = "https://s3-us-west-2.amazonaws.com/"
 WithProperties = properties.WithProperties
-RESULTS_WEBKIT = 'https://results.webkit.org'
+RESULTS_WEBKIT_URL = 'https://results.webkit.org'
 RESULTS_SERVER_API_KEY = 'RESULTS_SERVER_API_KEY'
+BUILD_WEBKIT_URL = socket.gethostname().strip()
 
 
 class TestWithFailureCount(shell.Test):
@@ -341,11 +343,26 @@ class RunJavaScriptCoreTests(TestWithFailureCount):
     description = ["jscore-tests running"]
     descriptionDone = ["jscore-tests"]
     jsonFileName = "jsc_results.json"
-    command = ["perl", "./Tools/Scripts/run-javascriptcore-tests", "--no-build", "--no-fail-fast", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
+    command = [
+        "perl", "./Tools/Scripts/run-javascriptcore-tests",
+        "--no-build", "--no-fail-fast",
+        "--json-output={0}".format(jsonFileName),
+        WithProperties("--%(configuration)s"),
+        "--builder-name", WithProperties("%(buildername)s"),
+        "--build-number", WithProperties("%(buildnumber)s"),
+        "--buildbot-worker", WithProperties("%(slavename)s"),
+        "--buildbot-master", BUILD_WEBKIT_URL,
+        "--report", RESULTS_WEBKIT_URL,
+    ]
     failedTestsFormatString = "%d JSC test%s failed"
     logfiles = {"json": jsonFileName}
 
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        TestWithFailureCount.__init__(self, *args, **kwargs)
+
     def start(self):
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
         platform = self.getProperty('platform')
         architecture = self.getProperty("architecture")
         # Currently run-javascriptcore-test doesn't support run javascript core test binaries list below remotely
@@ -420,8 +437,8 @@ class RunWebKitTests(shell.Test):
                "--build-number", WithProperties("%(buildnumber)s"),
                "--buildbot-worker", WithProperties("%(slavename)s"),
                "--master-name", "webkit.org",
-               "--buildbot-master", "build.webkit.org",
-               "--report", RESULTS_WEBKIT,
+               "--buildbot-master", BUILD_WEBKIT_URL,
+               "--report", RESULTS_WEBKIT_URL,
                "--test-results-server", "webkit-test-results.webkit.org",
                "--exit-after-n-crashes-or-timeouts", "50",
                "--exit-after-n-failures", "500",
@@ -442,7 +459,7 @@ class RunWebKitTests(shell.Test):
         self.setCommand(self.command + ['--debug-rwt-logging'])
 
         if platform == "win":
-            self.setCommand(self.command + ['--batch-size', '100', '--root=' + os.path.join("WebKitBuild", self.getProperty('configuration'), "bin32")])
+            self.setCommand(self.command + ['--batch-size', '100', '--root=' + os.path.join("WebKitBuild", self.getProperty('configuration'), "bin64")])
 
         if additionalArguments:
             self.setCommand(self.command + additionalArguments)
@@ -550,11 +567,11 @@ class RunAPITests(TestWithFailureCount):
         "--json-output={0}".format(jsonFileName),
         WithProperties("--%(configuration)s"),
         "--verbose",
-        "--buildbot-master", "build.webkit.org",
+        "--buildbot-master", BUILD_WEBKIT_URL,
         "--builder-name", WithProperties("%(buildername)s"),
         "--build-number", WithProperties("%(buildnumber)s"),
         "--buildbot-worker", WithProperties("%(slavename)s"),
-        "--report", RESULTS_WEBKIT,
+        "--report", RESULTS_WEBKIT_URL,
     ]
     failedTestsFormatString = "%d api test%s failed or timed out"
 
@@ -585,11 +602,11 @@ class RunPythonTests(TestWithFailureCount):
         "./Tools/Scripts/test-webkitpy",
         "--verbose",
         WithProperties("--%(configuration)s"),
-        "--buildbot-master", "build.webkit.org",
+        "--buildbot-master", BUILD_WEBKIT_URL,
         "--builder-name", WithProperties("%(buildername)s"),
         "--build-number", WithProperties("%(buildnumber)s"),
         "--buildbot-worker", WithProperties("%(slavename)s"),
-        "--report", RESULTS_WEBKIT,
+        "--report", RESULTS_WEBKIT_URL,
     ]
     failedTestsFormatString = "%d python test%s failed"
 
@@ -647,9 +664,28 @@ class RunLLINTCLoopTests(TestWithFailureCount):
     description = ["cloop-tests running"]
     descriptionDone = ["cloop-tests"]
     jsonFileName = "jsc_cloop.json"
-    command = ["perl", "./Tools/Scripts/run-javascriptcore-tests", "--cloop", "--no-build", "--no-jsc-stress", "--no-fail-fast", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
+    command = [
+        "perl", "./Tools/Scripts/run-javascriptcore-tests",
+        "--cloop", "--no-build",
+        "--no-jsc-stress", "--no-fail-fast",
+        "--json-output={0}".format(jsonFileName),
+        WithProperties("--%(configuration)s"),
+        "--builder-name", WithProperties("%(buildername)s"),
+        "--build-number", WithProperties("%(buildnumber)s"),
+        "--buildbot-worker", WithProperties("%(slavename)s"),
+        "--buildbot-master", BUILD_WEBKIT_URL,
+        "--report", RESULTS_WEBKIT_URL,
+    ]
     failedTestsFormatString = "%d regression%s found."
     logfiles = {"json": jsonFileName}
+
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        TestWithFailureCount.__init__(self, *args, **kwargs)
+
+    def start(self):
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+        return shell.Test.start(self)
 
     def countFailures(self, cmd):
         logText = cmd.logs['stdio'].getText()
@@ -668,9 +704,28 @@ class Run32bitJSCTests(TestWithFailureCount):
     description = ["32bit-jsc-tests running"]
     descriptionDone = ["32bit-jsc-tests"]
     jsonFileName = "jsc_32bit.json"
-    command = ["perl", "./Tools/Scripts/run-javascriptcore-tests", "--32-bit", "--no-build", "--no-fail-fast", "--no-jit", "--no-testair", "--no-testb3", "--no-testmasm", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
+    command = [
+        "perl", "./Tools/Scripts/run-javascriptcore-tests",
+        "--32-bit", "--no-build",
+        "--no-fail-fast", "--no-jit", "--no-testair", "--no-testb3", "--no-testmasm",
+        "--json-output={0}".format(jsonFileName),
+        WithProperties("--%(configuration)s"),
+        "--builder-name", WithProperties("%(buildername)s"),
+        "--build-number", WithProperties("%(buildnumber)s"),
+        "--buildbot-worker", WithProperties("%(slavename)s"),
+        "--buildbot-master", BUILD_WEBKIT_URL,
+        "--report", RESULTS_WEBKIT_URL,
+    ]
     failedTestsFormatString = "%d regression%s found."
     logfiles = {"json": jsonFileName}
+
+    def __init__(self, *args, **kwargs):
+        kwargs['logEnviron'] = False
+        TestWithFailureCount.__init__(self, *args, **kwargs)
+
+    def start(self):
+        self.slaveEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+        return shell.Test.start(self)
 
     def countFailures(self, cmd):
         logText = cmd.logs['stdio'].getText()

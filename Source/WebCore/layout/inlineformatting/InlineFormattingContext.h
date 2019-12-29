@@ -28,7 +28,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "InlineLineLayout.h"
+#include "LineLayoutContext.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
@@ -50,8 +50,8 @@ private:
 
     class Quirks : public FormattingContext::Quirks {
     public:
-        bool lineDescentNeedsCollapsing(const Line::RunList&) const;
-        Line::InitialConstraints::HeightAndBaseline lineHeightConstraints(const Box& formattingRoot) const;
+        bool lineDescentNeedsCollapsing(const LineBuilder::RunList&) const;
+        LineBuilder::Constraints::HeightAndBaseline lineHeightConstraints(const Box& formattingRoot) const;
 
     private:
         friend class InlineFormattingContext;
@@ -64,8 +64,8 @@ private:
 
     class Geometry : public FormattingContext::Geometry {
     public:
-        ContentHeightAndMargin inlineBlockHeightAndMargin(const Box&, UsedHorizontalValues, UsedVerticalValues) const;
-        ContentWidthAndMargin inlineBlockWidthAndMargin(const Box&, UsedHorizontalValues);
+        ContentHeightAndMargin inlineBlockHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&) const;
+        ContentWidthAndMargin inlineBlockWidthAndMargin(const Box&, const UsedHorizontalValues&);
 
     private:
         friend class InlineFormattingContext;
@@ -76,27 +76,27 @@ private:
     };
     InlineFormattingContext::Geometry geometry() const { return Geometry(*this); }
 
-    void lineLayout(UsedHorizontalValues);
-    void layoutFormattingContextRoot(const Box&, InvalidationState&, UsedHorizontalValues, UsedVerticalValues);
-    void computeHorizontalAndVerticalGeometry(const Box&, UsedHorizontalValues, UsedVerticalValues);
+    void lineLayout(const UsedHorizontalValues&);
+    void layoutFormattingContextRoot(const Box&, InvalidationState&, const UsedHorizontalValues&, const UsedVerticalValues&);
+    void computeHorizontalAndVerticalGeometry(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
 
-    void computeIntrinsicWidthForFormattingRoot(const Box&, UsedHorizontalValues);
-    void computeWidthAndHeightForReplacedInlineBox(const Box&, UsedHorizontalValues, UsedVerticalValues);
-    LayoutUnit computedIntrinsicWidthForConstraint(UsedHorizontalValues) const;
+    void computeIntrinsicWidthForFormattingRoot(const Box&, const UsedHorizontalValues&);
+    void computeWidthAndHeightForReplacedInlineBox(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
+    InlineLayoutUnit computedIntrinsicWidthForConstraint(const UsedHorizontalValues&) const;
 
-    void computeHorizontalMargin(const Box&, UsedHorizontalValues);
-    void computeHeightAndMargin(const Box&, UsedHorizontalValues, UsedVerticalValues);
-    void computeWidthAndMargin(const Box&, UsedHorizontalValues);
+    void computeHorizontalMargin(const Box&, const UsedHorizontalValues&);
+    void computeHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
+    void computeWidthAndMargin(const Box&, const UsedHorizontalValues&);
 
     void collectInlineContentIfNeeded();
-    Line::InitialConstraints initialConstraintsForLine(UsedHorizontalValues, const LayoutUnit lineLogicalTop);
-    void setDisplayBoxesForLine(const LineLayout::LineContent&, UsedHorizontalValues);
+    LineBuilder::Constraints constraintsForLine(const UsedHorizontalValues&, InlineLayoutUnit lineLogicalTop);
+    void setDisplayBoxesForLine(const LineLayoutContext::LineContent&, const UsedHorizontalValues&);
     void invalidateFormattingState(const InvalidationState&);
 
     const InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }
     InlineFormattingState& formattingState() { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }
     // FIXME: Come up with a structure that requires no friending.
-    friend class Line;
+    friend class LineBuilder;
 };
 
 inline InlineFormattingContext::Geometry::Geometry(const InlineFormattingContext& inlineFormattingContext)

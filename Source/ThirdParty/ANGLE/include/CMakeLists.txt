@@ -28,10 +28,12 @@ set(gles3_headers
     GLES3/gl31.h
     GLES3/gl31ext_explicit_context_autogen.inc
     GLES3/gl32.h
+    GLES3/gl32ext_explicit_context_autogen.inc
     GLES3/gl3platform.h
 )
 
 set(glslang_headers
+    export.h
     GLSLANG/ShaderLang.h
     GLSLANG/ShaderVars.h
 )
@@ -46,6 +48,23 @@ if (USE_ANGLE_EGL)
         ${gles_headers}
         ${gles2_headers}
         ${gles3_headers}
+    )
+endif ()
+
+if (USE_ANGLE_WEBGL)
+    set(ANGLE_WEBGL_HEADERS
+        export.h
+        ${khr_headers}
+        ${egl_headers}
+        ${gles_headers}
+        ${gles2_headers}
+        ${gles3_headers}
+    )
+
+    WEBKIT_COPY_FILES(ANGLEWebGLHeaders
+        DESTINATION ${ANGLE_FRAMEWORK_HEADERS_DIR}/ANGLE
+        FILES ${ANGLE_WEBGL_HEADERS}
+        FLATTENED
     )
 endif ()
 

@@ -74,7 +74,7 @@ private:
     int m_monthDay { 0 }; // [1, 31].
 };
 
-enum class OperatingDatesWindow : bool { Long, Short };
+enum class OperatingDatesWindow : uint8_t { Long, Short, ForLiveOnTesting, ForReproTesting };
 enum class CookieAccess : uint8_t { CannotRequest, BasedOnCookiePolicy, OnlyIfGranted };
 
 // This is always constructed / used / destroyed on the WebResourceLoadStatisticsStore's statistics queue.
@@ -98,6 +98,7 @@ public:
 
     virtual void clear(CompletionHandler<void()>&&) = 0;
     virtual bool isEmpty() const = 0;
+    virtual Vector<ThirdPartyData> aggregatedThirdPartyData() const = 0;
 
     virtual void updateCookieBlocking(CompletionHandler<void()>&&) = 0;
     void updateCookieBlockingForDomains(const RegistrableDomainsToBlockCookiesFor&, CompletionHandler<void()>&&);
@@ -161,9 +162,11 @@ public:
     void setResourceLoadStatisticsDebugMode(bool);
     bool isDebugModeEnabled() const { return m_debugModeEnabled; };
     void setPrevalentResourceForDebugMode(const RegistrableDomain&);
-    void setIsThirdPartyCookieBlockingEnabled(bool enabled) { m_thirdPartyCookieBlockingEnabled = enabled; };
-    bool isThirdPartyCookieBlockingEnabled() const { return m_thirdPartyCookieBlockingEnabled; };
+    void setThirdPartyCookieBlockingMode(WebCore::ThirdPartyCookieBlockingMode mode) { m_thirdPartyCookieBlockingMode = mode; };
+    WebCore::ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode() const { return m_thirdPartyCookieBlockingMode; };
+    void setFirstPartyWebsiteDataRemovalMode(WebCore::FirstPartyWebsiteDataRemovalMode mode) { m_firstPartyWebsiteDataRemovalMode = mode; }
 
+    virtual bool areAllThirdPartyCookiesBlockedUnder(const TopFrameDomain&) = 0;
     virtual void hasStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<WebCore::FrameIdentifier>, WebCore::PageIdentifier, CompletionHandler<void(bool)>&&) = 0;
     virtual void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, WebCore::FrameIdentifier, WebCore::PageIdentifier, CompletionHandler<void(StorageAccessStatus)>&&) = 0;
     virtual void grantStorageAccess(SubFrameDomain&&, TopFrameDomain&&, WebCore::FrameIdentifier, WebCore::PageIdentifier, WebCore::StorageAccessPromptWasShown, CompletionHandler<void(WebCore::StorageAccessWasGranted)>&&) = 0;
@@ -172,7 +175,7 @@ public:
     virtual void logUserInteraction(const TopFrameDomain&, CompletionHandler<void()>&&) = 0;
     virtual void logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain&, const NavigatedToDomain&) = 0;
 
-    virtual void clearUserInteraction(const RegistrableDomain&) = 0;
+    virtual void clearUserInteraction(const RegistrableDomain&, CompletionHandler<void()>&&) = 0;
     virtual bool hasHadUserInteraction(const RegistrableDomain&, OperatingDatesWindow) = 0;
 
     virtual void setLastSeen(const RegistrableDomain& primaryDomain, Seconds) = 0;
@@ -235,6 +238,7 @@ protected:
     const RegistrableDomain& debugStaticPrevalentResource() const { return m_debugStaticPrevalentResource; }
     bool debugLoggingEnabled() const { return m_debugLoggingEnabled; };
     bool debugModeEnabled() const { return m_debugModeEnabled; }
+    WebCore::FirstPartyWebsiteDataRemovalMode firstPartyWebsiteDataRemovalMode() const { return m_firstPartyWebsiteDataRemovalMode; }
 
     static constexpr unsigned maxNumberOfRecursiveCallsInRedirectTraceBack { 50 };
     
@@ -270,9 +274,10 @@ private:
     const RegistrableDomain m_debugStaticPrevalentResource { URL { URL(), "https://3rdpartytestwebkit.org"_s } };
     bool m_debugLoggingEnabled { false };
     bool m_debugModeEnabled { false };
-    bool m_thirdPartyCookieBlockingEnabled { false };
+    WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::AllOnSitesWithoutUserInteraction };
     bool m_dataRecordsBeingRemoved { false };
     ShouldIncludeLocalhost m_shouldIncludeLocalhost { ShouldIncludeLocalhost::Yes };
+    WebCore::FirstPartyWebsiteDataRemovalMode m_firstPartyWebsiteDataRemovalMode { WebCore::FirstPartyWebsiteDataRemovalMode::None };
 };
 
 } // namespace WebKit

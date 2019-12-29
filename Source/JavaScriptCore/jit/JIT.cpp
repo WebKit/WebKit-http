@@ -440,6 +440,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_switch_string)
         DEFINE_OP(op_throw)
         DEFINE_OP(op_to_number)
+        DEFINE_OP(op_to_numeric)
         DEFINE_OP(op_to_string)
         DEFINE_OP(op_to_object)
         DEFINE_OP(op_to_primitive)
@@ -485,6 +486,7 @@ void JIT::privateCompileLinkPass()
 void JIT::privateCompileSlowCases()
 {
     m_getByIdIndex = 0;
+    m_getByValIndex = 0;
     m_getByIdWithThisIndex = 0;
     m_putByIdIndex = 0;
     m_inByIdIndex = 0;
@@ -586,6 +588,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_SLOW_OP(to_this)
         DEFINE_SLOWCASE_SLOW_OP(to_primitive)
         DEFINE_SLOWCASE_SLOW_OP(to_number)
+        DEFINE_SLOWCASE_SLOW_OP(to_numeric)
         DEFINE_SLOWCASE_SLOW_OP(to_string)
         DEFINE_SLOWCASE_SLOW_OP(to_object)
         DEFINE_SLOWCASE_SLOW_OP(not)
@@ -850,6 +853,7 @@ CompilationResult JIT::link()
     }
     
     finalizeInlineCaches(m_getByIds, patchBuffer);
+    finalizeInlineCaches(m_getByVals, patchBuffer);
     finalizeInlineCaches(m_getByIdsWithThis, patchBuffer);
     finalizeInlineCaches(m_putByIds, patchBuffer);
     finalizeInlineCaches(m_inByIds, patchBuffer);

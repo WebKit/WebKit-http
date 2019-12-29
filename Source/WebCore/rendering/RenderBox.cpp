@@ -567,6 +567,12 @@ int RenderBox::scrollTop() const
     return hasOverflowClip() && layer() ? layer()->scrollPosition().y() : 0;
 }
 
+void RenderBox::resetLogicalHeightBeforeLayoutIfNeeded()
+{
+    if (shouldResetLogicalHeightBeforeLayout() || (is<RenderBlock>(parent()) && downcast<RenderBlock>(*parent()).shouldResetChildLogicalHeightBeforeLayout(*this)))
+        setLogicalHeight(0_lu);
+}
+
 static void setupWheelEventMonitor(RenderLayer& layer)
 {
     Page& page = layer.renderer().page();
@@ -1476,7 +1482,7 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
         if (childLayer->isComposited())
             return false;
         // FIXME: Deal with z-index.
-        if (!childStyle.hasAutoZIndex())
+        if (!childStyle.hasAutoUsedZIndex())
             return false;
         if (childLayer->hasTransform() || childLayer->isTransparent() || childLayer->hasFilter())
             return false;
@@ -1583,7 +1589,7 @@ void RenderBox::paintMaskImages(const PaintInfo& paintInfo, const LayoutRect& pa
     bool pushTransparencyLayer = false;
     bool compositedMask = hasLayer() && layer()->hasCompositedMask();
     bool flattenCompositingLayers = paintInfo.paintBehavior.contains(PaintBehavior::FlattenCompositingLayers);
-    CompositeOperator compositeOp = CompositeSourceOver;
+    CompositeOperator compositeOp = CompositeOperator::SourceOver;
 
     bool allMaskImagesLoaded = true;
     
@@ -1596,9 +1602,9 @@ void RenderBox::paintMaskImages(const PaintInfo& paintInfo, const LayoutRect& pa
 
         allMaskImagesLoaded &= style().maskLayers().imagesAreLoaded();
 
-        paintInfo.context().setCompositeOperation(CompositeDestinationIn);
+        paintInfo.context().setCompositeOperation(CompositeOperator::DestinationIn);
         paintInfo.context().beginTransparencyLayer(1);
-        compositeOp = CompositeSourceOver;
+        compositeOp = CompositeOperator::SourceOver;
     }
 
     if (allMaskImagesLoaded) {

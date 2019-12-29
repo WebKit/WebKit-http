@@ -138,6 +138,7 @@ public:
 #endif
 
     void willRecalcStyle();
+    void styleDidChange() override;
     bool updateCompositingLayersAfterStyleChange();
     void updateCompositingLayersAfterLayout();
 
@@ -425,7 +426,6 @@ public:
     WEBCORE_EXPORT void adjustPageHeightDeprecated(float* newBottom, float oldTop, float oldBottom, float bottomLimit);
 
     bool scrollToFragment(const URL&);
-    bool scrollToAnchor(const String&);
     void maintainScrollPositionAtAnchor(ContainerNode*);
     WEBCORE_EXPORT void scrollElementToRect(const Element&, const IntRect&);
 
@@ -778,6 +778,7 @@ private:
 
     void updateWidgetPositionsTimerFired();
 
+    bool scrollToFragmentInternal(const String&);
     void scrollToAnchor();
     void scrollPositionChanged(const ScrollPosition& oldPosition, const ScrollPosition& newPosition);
     void scrollableAreaSetChanged();

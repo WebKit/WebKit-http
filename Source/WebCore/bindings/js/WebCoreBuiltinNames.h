@@ -112,6 +112,8 @@ namespace WebCore {
     macro(GPUTextureView) \
     macro(GPUUncapturedErrorEvent) \
     macro(GPUValidationError) \
+    macro(HighlightMap) \
+    macro(HighlightRangeGroup) \
     macro(HTMLAttachmentElement) \
     macro(HTMLAudioElement) \
     macro(HTMLDialogElement) \
@@ -245,6 +247,7 @@ namespace WebCore {
     macro(associatedReadableByteStreamController) \
     macro(autoAllocateChunkSize) \
     macro(backingMap) \
+    macro(backingSet) \
     macro(blur) \
     macro(body) \
     macro(byobRequest) \

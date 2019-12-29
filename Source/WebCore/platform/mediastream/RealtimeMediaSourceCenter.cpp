@@ -52,6 +52,7 @@ RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::singleton()
 
 RealtimeMediaSourceCenter::RealtimeMediaSourceCenter()
 {
+    m_supportedConstraints.setSupportsEchoCancellation(true);
     m_supportedConstraints.setSupportsWidth(true);
     m_supportedConstraints.setSupportsHeight(true);
     m_supportedConstraints.setSupportsAspectRatio(true);
@@ -78,7 +79,7 @@ void RealtimeMediaSourceCenter::createMediaStream(Ref<const Logger>&& logger, Ne
             if (!audioSource.errorMessage.isEmpty())
                 LOG(Media, "RealtimeMediaSourceCenter::createMediaStream(%p), audio constraints failed to apply: %s", this, audioSource.errorMessage.utf8().data());
 #endif
-            completionHandler(nullptr);
+            completionHandler(makeUnexpected(makeString("Failed to create MediaStream audio source: ", audioSource.errorMessage)));
             return;
         }
     }
@@ -97,7 +98,7 @@ void RealtimeMediaSourceCenter::createMediaStream(Ref<const Logger>&& logger, Ne
             if (!videoSource.errorMessage.isEmpty())
                 LOG(Media, "RealtimeMediaSourceCenter::createMediaStream(%p), video constraints failed to apply: %s", this, videoSource.errorMessage.utf8().data());
 #endif
-            completionHandler(nullptr);
+            completionHandler(makeUnexpected(makeString("Failed to create MediaStream video source: ", videoSource.errorMessage)));
             return;
         }
     }

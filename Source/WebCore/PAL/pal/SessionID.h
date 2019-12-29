@@ -99,9 +99,8 @@ Optional<SessionID> SessionID::decode(Decoder& decoder)
 {
     Optional<uint64_t> sessionID;
     decoder >> sessionID;
-    if (!sessionID)
+    if (!sessionID || !isValidSessionIDValue(*sessionID))
         return WTF::nullopt;
-    ASSERT(isValidSessionIDValue(*sessionID));
     return SessionID { *sessionID };
 }
 

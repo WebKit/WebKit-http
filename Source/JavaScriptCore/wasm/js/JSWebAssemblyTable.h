@@ -27,7 +27,6 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSDestructibleObject.h"
 #include "JSObject.h"
 #include "WasmLimits.h"
 #include "WasmTable.h"
@@ -38,11 +37,19 @@
 
 namespace JSC {
 
-class JSWebAssemblyTable final : public JSDestructibleObject {
+class JSWebAssemblyTable final : public JSNonFinalObject {
 public:
-    typedef JSDestructibleObject Base;
+    using Base = JSNonFinalObject;
+    static constexpr bool needsDestruction = true;
+    static void destroy(JSCell*);
 
-    static JSWebAssemblyTable* create(JSGlobalObject*, VM&, Structure*, Ref<Wasm::Table>&&);
+    template<typename CellType, SubspaceAccess mode>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return vm.webAssemblyTableSpace<mode>();
+    }
+
+    static JSWebAssemblyTable* tryCreate(JSGlobalObject*, VM&, Structure*, Ref<Wasm::Table>&&);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
@@ -63,7 +70,6 @@ public:
 private:
     JSWebAssemblyTable(VM&, Structure*, Ref<Wasm::Table>&&);
     void finishCreation(VM&);
-    static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
     Ref<Wasm::Table> m_table;

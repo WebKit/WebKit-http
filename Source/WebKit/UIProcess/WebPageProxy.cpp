@@ -171,6 +171,7 @@
 #include <WebCore/WritingDirection.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/Scope.h>
 #include <wtf/SystemTracing.h>
 #include <wtf/URL.h>
 #include <wtf/URLParser.h>
@@ -196,6 +197,7 @@
 #include "RemoteLayerTreeScrollingPerformanceData.h"
 #include "TouchBarMenuData.h"
 #include "TouchBarMenuItemData.h"
+#include "UserMediaCaptureManagerProxy.h"
 #include "VersionChecks.h"
 #include "VideoFullscreenManagerProxy.h"
 #include "VideoFullscreenManagerProxyMessages.h"
@@ -255,6 +257,10 @@
 #include <d3d11_1.h>
 #endif
 
+#if PLATFORM(IOS_FAMILY) && ENABLE(DEVICE_ORIENTATION)
+#include "WebDeviceOrientationUpdateProviderProxy.h"
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -269,6 +275,8 @@ static const unsigned wheelEventQueueSizeThreshold = 10;
 
 static const Seconds resetRecentCrashCountDelay = 30_s;
 static unsigned maximumWebProcessRelaunchAttempts = 1;
+static const Seconds audibleActivityClearDelay = 10_s;
+static const Seconds tryCloseTimeoutDelay = 500_ms;
 
 namespace WebKit {
 using namespace WebCore;
@@ -429,6 +437,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
     , m_notificationPermissionRequestManager(*this)
 #if PLATFORM(IOS_FAMILY)
     , m_alwaysRunsAtForegroundPriority(m_configuration->alwaysRunsAtForegroundPriority())
+    , m_audibleActivityTimer(RunLoop::main(), this, &WebPageProxy::clearAudibleActivity)
 #endif
     , m_initialCapitalizationEnabled(m_configuration->initialCapitalizationEnabled())
     , m_cpuLimit(m_configuration->cpuLimit())
@@ -446,6 +455,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Ref
     , m_inspectorDebuggable(makeUnique<WebPageDebuggable>(*this))
 #endif
     , m_resetRecentCrashCountTimer(RunLoop::main(), this, &WebPageProxy::resetRecentCrashCount)
+    , m_tryCloseTimeoutTimer(RunLoop::main(), this, &WebPageProxy::tryCloseTimedOut)
 {
     RELEASE_LOG_IF_ALLOWED(Loading, "constructor:");
 
@@ -901,6 +911,11 @@ void WebPageProxy::didAttachToRunningProcess()
     ASSERT(!m_editableImageController);
     m_editableImageController = makeUnique<EditableImageController>(*this);
 #endif
+    
+#if PLATFORM(IOS_FAMILY) && ENABLE(DEVICE_ORIENTATION)
+    ASSERT(!m_webDeviceOrientationUpdateProviderProxy);
+    m_webDeviceOrientationUpdateProviderProxy = makeUnique<WebDeviceOrientationUpdateProviderProxy>(*this);
+#endif
 }
 
 RefPtr<API::Navigation> WebPageProxy::launchProcessForReload()
@@ -1059,6 +1074,7 @@ void WebPageProxy::close()
     m_isAudibleActivity = nullptr;
     m_isCapturingActivity = nullptr;
     m_alwaysRunsAtForegroundPriorityActivity = nullptr;
+    m_audibleActivityTimer.stop();
 #endif
 
     stopAllURLSchemeTasks();
@@ -1070,16 +1086,29 @@ bool WebPageProxy::tryClose()
     if (!hasRunningProcess())
         return true;
 
-    RELEASE_LOG_IF_ALLOWED(Loading, "tryClose:");
+    RELEASE_LOG_IF_ALLOWED(Process, "tryClose:");
 
     // Close without delay if the process allows it. Our goal is to terminate
     // the process, so we check a per-process status bit.
     if (m_process->isSuddenTerminationEnabled())
         return true;
 
-    m_process->send(Messages::WebPage::TryClose(), m_webPageID);
-    m_process->responsivenessTimer().start();
+    m_tryCloseTimeoutTimer.startOneShot(tryCloseTimeoutDelay);
+    sendWithAsyncReply(Messages::WebPage::TryClose(), [this, weakThis = makeWeakPtr(*this)](bool shouldClose) {
+        if (!weakThis)
+            return;
+
+        m_tryCloseTimeoutTimer.stop();
+        if (shouldClose)
+            closePage();
+    });
     return false;
+}
+
+void WebPageProxy::tryCloseTimedOut()
+{
+    RELEASE_LOG_ERROR_IF_ALLOWED(Process, "tryCloseTimedOut: Timed out waiting for the process to respond to the WebPage::TryClose IPC, closing the page now");
+    closePage();
 }
 
 void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& process, const URL& url, const URL& resourceDirectoryURL, SandboxExtension::Handle& sandboxExtensionHandle, bool checkAssumedReadAccessToResourceURL)
@@ -1949,9 +1978,11 @@ void WebPageProxy::updateThrottleState()
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is taking a foreground assertion because we are playing audio");
             m_isAudibleActivity = m_process->throttler().foregroundActivity("View is playing audio"_s).moveToUniquePtr();
         }
+        m_audibleActivityTimer.stop();
     } else if (m_isAudibleActivity) {
-        RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because we are no longer playing audio");
-        m_isAudibleActivity = nullptr;
+        RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess will release a foreground assertion in %g seconds because we are no longer playing audio", audibleActivityClearDelay.seconds());
+        if (!m_audibleActivityTimer.isActive())
+            m_audibleActivityTimer.startOneShot(audibleActivityClearDelay);
     }
 
     bool isCapturingMedia = m_activityState.contains(ActivityState::IsCapturingMedia);
@@ -1976,6 +2007,14 @@ void WebPageProxy::updateThrottleState()
     }
 #endif
 }
+
+#if PLATFORM(IOS_FAMILY)
+void WebPageProxy::clearAudibleActivity()
+{
+    RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because we are no longer playing audio");
+    m_isAudibleActivity = nullptr;
+}
+#endif
 
 void WebPageProxy::updateHiddenPageThrottlingAutoIncreases()
 {
@@ -2756,7 +2795,7 @@ void WebPageProxy::handleGestureEvent(const NativeWebGestureEvent& event)
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
+void WebPageProxy::handlePreventableTouchEvent(NativeWebTouchEvent& event)
 {
     if (!hasRunningProcess())
         return;
@@ -2765,9 +2804,20 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 
     updateTouchEventTracking(event);
 
+    auto handleAllTouchPointsReleased = WTF::makeScopeExit([&] {
+        if (!event.allTouchPointsAreReleased())
+            return;
+
+        m_touchAndPointerEventTracking.reset();
+        didReleaseAllTouchPoints();
+    });
+
     TrackingType touchEventsTrackingType = touchEventTrackingType(event);
-    if (touchEventsTrackingType == TrackingType::NotTracking)
+    if (touchEventsTrackingType == TrackingType::NotTracking) {
+        if (!isHandlingPreventableTouchStart())
+            pageClient().doneDeferringNativeGestures(false);
         return;
+    }
 
     if (touchEventsTrackingType == TrackingType::Asynchronous) {
         // We can end up here if a native gesture has not started but the event handlers are passive.
@@ -2777,8 +2827,32 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
         // But, here we know that all events handlers that can handle this events are passive.
         // We can use asynchronous dispatch and pretend to the client that the page does nothing with the events.
         event.setCanPreventNativeGestures(false);
-        handleTouchEventAsynchronously(event);
+        handleUnpreventableTouchEvent(event);
         didReceiveEvent(event.type(), false);
+        if (!isHandlingPreventableTouchStart())
+            pageClient().doneDeferringNativeGestures(false);
+        return;
+    }
+
+    if (event.type() == WebEvent::TouchStart) {
+        ++m_handlingPreventableTouchStartCount;
+        Function<void(bool, CallbackBase::Error)> completionHandler = [this, protectedThis = makeRef(*this), event](bool handled, CallbackBase::Error error) {
+            ASSERT(m_handlingPreventableTouchStartCount);
+            if (m_handlingPreventableTouchStartCount)
+                --m_handlingPreventableTouchStartCount;
+
+            if (error == CallbackBase::Error::ProcessExited)
+                return;
+
+            bool handledOrFailedWithError = handled || error != CallbackBase::Error::None;
+            didReceiveEvent(event.type(), handledOrFailedWithError);
+            pageClient().doneWithTouchEvent(event, handledOrFailedWithError);
+            if (!isHandlingPreventableTouchStart())
+                pageClient().doneDeferringNativeGestures(handledOrFailedWithError);
+        };
+
+        auto callbackID = m_callbacks.put(WTFMove(completionHandler), m_process->throttler().backgroundActivity("WebPageProxy::handlePreventableTouchEvent"_s));
+        m_process->send(Messages::EventDispatcher::TouchEvent(m_webPageID, event, callbackID), 0);
         return;
     }
 
@@ -2790,12 +2864,8 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
         handled = true;
     didReceiveEvent(event.type(), handled);
     pageClient().doneWithTouchEvent(event, handled);
+    pageClient().doneDeferringNativeGestures(handled);
     m_process->responsivenessTimer().stop();
-
-    if (event.allTouchPointsAreReleased()) {
-        m_touchAndPointerEventTracking.reset();
-        didReleaseAllTouchPoints();
-    }
 }
 
 void WebPageProxy::resetPotentialTapSecurityOrigin()
@@ -2806,7 +2876,7 @@ void WebPageProxy::resetPotentialTapSecurityOrigin()
     m_process->send(Messages::WebPage::ResetPotentialTapSecurityOrigin(), m_webPageID);
 }
 
-void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& event)
+void WebPageProxy::handleUnpreventableTouchEvent(const NativeWebTouchEvent& event)
 {
     if (!hasRunningProcess())
         return;
@@ -2815,7 +2885,7 @@ void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& eve
     if (touchEventsTrackingType == TrackingType::NotTracking)
         return;
 
-    m_process->send(Messages::EventDispatcher::TouchEvent(m_webPageID, event), 0);
+    m_process->send(Messages::EventDispatcher::TouchEvent(m_webPageID, event, WTF::nullopt), 0);
 
     if (event.allTouchPointsAreReleased()) {
         m_touchAndPointerEventTracking.reset();
@@ -3081,30 +3151,36 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, s
         m_provisionalPage = nullptr;
     }
 
-    m_provisionalPage = makeUnique<ProvisionalPageProxy>(*this, newProcess.copyRef(), WTFMove(suspendedPage), navigation.navigationID(), navigation.currentRequestIsRedirect(), navigation.currentRequest(), processSwapRequestedByClient);
+    m_provisionalPage = makeUnique<ProvisionalPageProxy>(*this, WTFMove(newProcess), WTFMove(suspendedPage), navigation.navigationID(), navigation.currentRequestIsRedirect(), navigation.currentRequest(), processSwapRequestedByClient);
 
-    if (auto* item = navigation.targetItem()) {
-        LOG(Loading, "WebPageProxy %p continueNavigationInNewProcess to back item URL %s", this, item->url().utf8().data());
+    auto continuation = [this, protectedThis = makeRef(*this), navigation = makeRef(navigation), websitePolicies = WTFMove(websitePolicies)]() mutable {
+        if (auto* item = navigation->targetItem()) {
+            LOG(Loading, "WebPageProxy %p continueNavigationInNewProcess to back item URL %s", this, item->url().utf8().data());
 
-        auto transaction = m_pageLoadState.transaction();
-        m_pageLoadState.setPendingAPIRequest(transaction, { navigation.navigationID(), item->url() });
+            auto transaction = m_pageLoadState.transaction();
+            m_pageLoadState.setPendingAPIRequest(transaction, { navigation->navigationID(), item->url() });
 
-        m_provisionalPage->goToBackForwardItem(navigation, *item, WTFMove(websitePolicies));
-        return;
-    }
+            m_provisionalPage->goToBackForwardItem(navigation, *item, WTFMove(websitePolicies));
+            return;
+        }
 
-    if (m_backForwardList->currentItem() && (navigation.lockBackForwardList() == LockBackForwardList::Yes || navigation.lockHistory() == LockHistory::Yes)) {
-        // If WebCore is supposed to lock the history for this load, then the new process needs to know about the current history item so it can update
-        // it instead of creating a new one.
-        newProcess->send(Messages::WebPage::SetCurrentHistoryItemForReattach(m_backForwardList->currentItem()->itemState()), m_provisionalPage->webPageID());
-    }
+        if (m_backForwardList->currentItem() && (navigation->lockBackForwardList() == LockBackForwardList::Yes || navigation->lockHistory() == LockHistory::Yes)) {
+            // If WebCore is supposed to lock the history for this load, then the new process needs to know about the current history item so it can update
+            // it instead of creating a new one.
+            m_provisionalPage->send(Messages::WebPage::SetCurrentHistoryItemForReattach(m_backForwardList->currentItem()->itemState()));
+        }
 
-    // FIXME: Work out timing of responding with the last policy delegate, etc
-    ASSERT(!navigation.currentRequest().isEmpty());
-    if (auto& substituteData = navigation.substituteData())
-        m_provisionalPage->loadData(navigation, { substituteData->content.data(), substituteData->content.size() }, substituteData->MIMEType, substituteData->encoding, substituteData->baseURL, substituteData->userData.get(), WTFMove(websitePolicies));
+        // FIXME: Work out timing of responding with the last policy delegate, etc
+        ASSERT(!navigation->currentRequest().isEmpty());
+        if (auto& substituteData = navigation->substituteData())
+            m_provisionalPage->loadData(navigation, { substituteData->content.data(), substituteData->content.size() }, substituteData->MIMEType, substituteData->encoding, substituteData->baseURL, substituteData->userData.get(), WTFMove(websitePolicies));
+        else
+            m_provisionalPage->loadRequest(navigation, ResourceRequest { navigation->currentRequest() }, WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, nullptr, WTFMove(websitePolicies));
+    };
+    if (m_inspectorController->shouldPauseLoading(*m_provisionalPage))
+        m_inspectorController->setContinueLoadingCallback(*m_provisionalPage, WTFMove(continuation));
     else
-        m_provisionalPage->loadRequest(navigation, ResourceRequest { navigation.currentRequest() }, WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, nullptr, WTFMove(websitePolicies));
+        continuation();
 }
 
 bool WebPageProxy::isPageOpenedByDOMShowingInitialEmptyDocument() const
@@ -5292,11 +5368,12 @@ void WebPageProxy::didExitFullscreen()
     m_uiClient->didExitFullscreen(this);
 }
 
-void WebPageProxy::closePage(bool stopResponsivenessTimer)
+void WebPageProxy::closePage()
 {
-    if (stopResponsivenessTimer)
-        m_process->responsivenessTimer().stop();
+    if (isClosed())
+        return;
 
+    RELEASE_LOG_IF_ALLOWED(Process, "closePage:");
     pageClient().clearAllEditCommands();
     m_uiClient->close(this);
 }
@@ -5369,6 +5446,7 @@ void WebPageProxy::mouseDidMoveOverElement(WebHitTestResultData&& hitTestResultD
     m_lastMouseMoveHitTestResult = API::HitTestResult::create(hitTestResultData);
     auto modifiers = OptionSet<WebEvent::Modifier>::fromRaw(opaqueModifiers);
     m_uiClient->mouseDidMoveOverElement(*this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
+    setToolTip(hitTestResultData.toolTipText);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -6458,6 +6536,9 @@ void WebPageProxy::takeFocus(uint32_t direction)
 
 void WebPageProxy::setToolTip(const String& toolTip)
 {
+    if (m_toolTip == toolTip)
+        return;
+
     String oldToolTip = m_toolTip;
     m_toolTip = toolTip;
     pageClient().toolTipChanged(oldToolTip, m_toolTip);
@@ -6562,6 +6643,11 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         MESSAGE_CHECK(m_process, type == event.type());
 
+#if PLATFORM(WIN)
+        if (!handled && type == WebEvent::RawKeyDown)
+            dispatchPendingCharEvents(event);
+#endif
+
         bool canProcessMoreKeyEvents = !m_keyEventQueue.isEmpty();
         if (canProcessMoreKeyEvents) {
             LOG(KeyHandling, " UI process: sent keyEvent from didReceiveEvent");
@@ -6643,6 +6729,17 @@ void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, Callbac
         return;
 
     callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).ptr());
+}
+
+void WebPageProxy::boolCallback(bool result, CallbackID callbackID)
+{
+    auto callback = m_callbacks.take<BoolCallback>(callbackID);
+    if (!callback) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(result);
 }
 
 void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, CallbackID callbackID)
@@ -7151,7 +7248,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 
     m_notificationPermissionRequestManager.invalidateRequests();
 
-    m_toolTip = String();
+    setToolTip({ });
 
     m_mainFrameHasHorizontalScrollbar = false;
     m_mainFrameHasVerticalScrollbar = false;
@@ -7202,8 +7299,12 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 #if HAVE(PENCILKIT)
     m_editableImageController = nullptr;
 #endif
+    
+#if PLATFORM(IOS_FAMILY) && ENABLE(DEVICE_ORIENTATION)
+    m_webDeviceOrientationUpdateProviderProxy = nullptr;
+#endif
 
-    CallbackBase::Error error;
+    CallbackBase::Error error { };
     switch (resetStateReason) {
     case ResetStateReason::NavigationSwap:
         FALLTHROUGH;
@@ -9511,6 +9612,14 @@ void WebPageProxy::setOverriddenMediaType(const String& mediaType)
 {
     m_overriddenMediaType = mediaType;
     m_process->send(Messages::WebPage::SetOverriddenMediaType(mediaType), m_webPageID);
+}
+
+void WebPageProxy::setOrientationForMediaCapture(uint64_t orientation)
+{
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    if (auto* proxy = m_process->userMediaCaptureManagerProxy())
+        proxy->setOrientation(orientation);
+#endif
 }
 
 } // namespace WebKit

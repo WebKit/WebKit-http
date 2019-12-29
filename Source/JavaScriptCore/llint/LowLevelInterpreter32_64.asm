@@ -91,6 +91,7 @@ macro makeReturnProfiled(opcodeStruct, get, metadata, dispatch, fn)
 end
 
 
+# After calling, calling bytecode is claiming input registers are not used.
 macro dispatchAfterCall(size, opcodeStruct, dispatch)
     loadi ArgumentCount + TagOffset[cfr], PC
     get(size, opcodeStruct, m_dst, t3)
@@ -351,6 +352,14 @@ macro makeHostFunctionCall(entry, protoCallFrame, temp1, temp2)
         push a0
         call temp1
         addp 8, sp
+    elsif MIPS
+        move sp, a1
+        # We need to allocate stack space for 16 bytes (8-byte aligned)
+        # for 4 arguments, since callee can use this space.
+        subp 16, sp 
+        loadp ProtoCallFrame::globalObject[protoCallFrame], a0
+        call temp1
+        addp 16, sp
     else
         loadp ProtoCallFrame::globalObject[protoCallFrame], a0
         move sp, a1
@@ -941,13 +950,20 @@ strictEqualityJumpOp(jnstricteq, OpJnstricteq,
     macro (left, right, target) bineq left, right, target end)
 
 
-macro preOp(opcodeName, opcodeStruct, operation)
-    llintOp(op_%opcodeName%, opcodeStruct, macro (size, get, dispatch)
+macro preOp(opcodeName, opcodeStruct, integerOperation)
+    llintOpWithMetadata(op_%opcodeName%, opcodeStruct, macro (size, get, dispatch, metadata, return)
+        macro updateArithProfile(type)
+            orh type, %opcodeStruct%::Metadata::m_arithProfile + UnaryArithProfile::m_bits[t1]
+        end
+
+        metadata(t1, t2)
         get(m_srcDst, t0)
         bineq TagOffset[cfr, t0, 8], Int32Tag, .slow
-        loadi PayloadOffset[cfr, t0, 8], t1
-        operation(t1, .slow)
-        storei t1, PayloadOffset[cfr, t0, 8]
+        loadi PayloadOffset[cfr, t0, 8], t2
+        # Metadata in t1, srcDst in t2
+        integerOperation(t2, .slow)
+        storei t2, PayloadOffset[cfr, t0, 8]
+        updateArithProfile(ArithProfileInt)
         dispatch()
 
     .slow:
@@ -967,6 +983,19 @@ llintOpWithProfile(op_to_number, OpToNumber, macro (size, get, dispatch, return)
 
 .opToNumberSlow:
     callSlowPath(_slow_path_to_number)
+    dispatch()
+end)
+
+llintOpWithProfile(op_to_numeric, OpToNumeric, macro (size, get, dispatch, return)
+    get(m_operand, t0)
+    loadConstantOrVariable(size, t0, t2, t3)
+    bieq t2, Int32Tag, .opToNumericIsInt
+    biaeq t2, LowestTag, .opToNumericSlow
+.opToNumericIsInt:
+    return(t2, t3)
+
+.opToNumericSlow:
+    callSlowPath(_slow_path_to_numeric)
     dispatch()
 end)
 

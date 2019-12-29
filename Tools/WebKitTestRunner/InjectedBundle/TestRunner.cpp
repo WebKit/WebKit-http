@@ -33,6 +33,7 @@
 #include "StringFunctions.h"
 #include "TestController.h"
 #include <JavaScriptCore/JSCTestRunnerUtils.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/ResourceLoadObserver.h>
 #include <WebKit/WKBundle.h>
 #include <WebKit/WKBundleBackForwardList.h>
@@ -751,6 +752,7 @@ enum {
     StatisticsDidSetBlockCookiesForHostCallbackID,
     StatisticsDidSetShouldDowngradeReferrerCallbackID,
     StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID,
+    StatisticsDidSetFirstPartyWebsiteDataRemovalModeCallbackID,
     AllStorageAccessEntriesCallbackID,
     DidRemoveAllSessionCredentialsCallbackID,
     GetApplicationManifestCallbackID,
@@ -1273,9 +1275,9 @@ void TestRunner::terminateNetworkProcess()
     WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, nullptr);
 }
 
-void TestRunner::terminateServiceWorkerProcess()
+void TestRunner::terminateServiceWorkers()
 {
-    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("TerminateServiceWorkerProcess"));
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("TerminateServiceWorkers"));
     WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, nullptr);
 }
 
@@ -2223,13 +2225,15 @@ void TestRunner::statisticsCallDidSetShouldDowngradeReferrerCallback()
     m_hasSetDowngradeReferrerCallback = false;
 }
 
-void TestRunner::setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRef completionHandler)
+void TestRunner::setStatisticsShouldBlockThirdPartyCookies(bool value, JSValueRef completionHandler, bool onlyOnSitesWithoutUserInteraction)
 {
     if (m_hasSetBlockThirdPartyCookiesCallback)
         return;
-    
+
     cacheTestRunnerCallback(StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID, completionHandler);
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetStatisticsShouldBlockThirdPartyCookies"));
+    if (onlyOnSitesWithoutUserInteraction)
+        messageName = adoptWK(WKStringCreateWithUTF8CString("SetStatisticsShouldBlockThirdPartyCookiesOnSitesWithoutUserInteraction"));
     WKRetainPtr<WKBooleanRef> messageBody = adoptWK(WKBooleanCreate(value));
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
     m_hasSetBlockThirdPartyCookiesCallback = true;
@@ -2239,6 +2243,24 @@ void TestRunner::statisticsCallDidSetShouldBlockThirdPartyCookiesCallback()
 {
     callTestRunnerCallback(StatisticsDidSetShouldBlockThirdPartyCookiesCallbackID);
     m_hasSetBlockThirdPartyCookiesCallback = false;
+}
+
+void TestRunner::setStatisticsFirstPartyWebsiteDataRemovalMode(bool value, JSValueRef completionHandler)
+{
+    if (m_hasSetFirstPartyWebsiteDataRemovalModeCallback)
+        return;
+
+    cacheTestRunnerCallback(StatisticsDidSetFirstPartyWebsiteDataRemovalModeCallbackID, completionHandler);
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("SetStatisticsFirstPartyWebsiteDataRemovalMode"));
+    WKRetainPtr<WKBooleanRef> messageBody = adoptWK(WKBooleanCreate(value));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+    m_hasSetFirstPartyWebsiteDataRemovalModeCallback = true;
+}
+
+void TestRunner::statisticsCallDidSetFirstPartyWebsiteDataRemovalModeCallback()
+{
+    callTestRunnerCallback(StatisticsDidSetFirstPartyWebsiteDataRemovalModeCallbackID);
+    m_hasSetFirstPartyWebsiteDataRemovalModeCallback = false;
 }
 
 void TestRunner::statisticsCallClearThroughWebsiteDataRemovalCallback()
@@ -2393,6 +2415,22 @@ void TestRunner::resetMockMediaDevices()
 {
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("ResetMockMediaDevices"));
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), nullptr, nullptr);
+}
+
+void TestRunner::setMockCameraOrientation(unsigned orientation)
+{
+    auto messageName = adoptWK(WKStringCreateWithUTF8CString("SetMockCameraOrientation"));
+    auto messageBody = adoptWK(WKUInt64Create(orientation));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+}
+
+bool TestRunner::isMockRealtimeMediaSourceCenterEnabled()
+{
+    auto messageName = adoptWK(WKStringCreateWithUTF8CString("IsMockRealtimeMediaSourceCenterEnabled"));
+    WKTypeRef returnData = nullptr;
+    WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, &returnData);
+    ASSERT(WKGetTypeID(returnData) == WKBooleanGetTypeID());
+    return WKBooleanGetValue(adoptWK(static_cast<WKBooleanRef>(returnData)).get());
 }
 
 #if PLATFORM(MAC)

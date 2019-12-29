@@ -1,3 +1,67 @@
+2019-12-05  Chris Dumez  <cdumez@apple.com>
+
+        [IPC] Fail PAL::SessionID decoding if the decoded integer is not a valid session ID
+        https://bugs.webkit.org/show_bug.cgi?id=204917
+        <rdar://problem/53418119>
+
+        Reviewed by Ryosuke Niwa.
+
+        Fail PAL::SessionID IPC decoding if the decoded integer is not a valid session ID.
+        This makes our IPC more robust to bad input and makes sure we don't try to lookup
+        an invalid sessionID from a HashMap as a result of a bad IPC.
+
+        * pal/SessionID.h:
+        (PAL::SessionID::decode):
+
+2019-12-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce a GPU process
+        https://bugs.webkit.org/show_bug.cgi?id=204343
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Adopt AVContentKeyReportGroup
+        https://bugs.webkit.org/show_bug.cgi?id=204765
+
+        Reviewed by Eric Carlson.
+
+        * pal/cocoa/AVFoundationSoftLink.h:
+        * pal/cocoa/AVFoundationSoftLink.mm:
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2019-11-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Remove ENABLE_KEYBOARD_CODE_ATTRIBUTE and ENABLE_KEYBOARD_KEY_ATTRIBUTE macros
+        https://bugs.webkit.org/show_bug.cgi?id=204666
+
+        Reviewed by Ross Kirsling and Don Olmstead.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-11-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Ran sort-Xcode-project-file.
+
+        Unreviewed.
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2019-11-21  Jer Noble  <jer.noble@apple.com>
+
+        Experimental support for HDR media query
+        https://bugs.webkit.org/show_bug.cgi?id=204422
+
+        Reviewed by Eric Carlson.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+        * pal/cocoa/MediaToolboxSoftLink.cpp: Renamed from Source/WebCore/platform/cocoa/MediaToolboxSoftLink.h.
+        * pal/cocoa/MediaToolboxSoftLink.h: Renamed from Source/WebCore/platform/cocoa/MediaToolboxSoftLink.cpp.
+
 2019-11-15  Eric Carlson  <eric.carlson@apple.com>
 
         Don't use AVCapture on watchOS and tvOS

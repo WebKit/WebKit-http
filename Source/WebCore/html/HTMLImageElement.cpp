@@ -74,7 +74,7 @@ HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document& docum
     , m_imageLoader(WTF::makeUnique<HTMLImageLoader>(*this))
     , m_form(nullptr)
     , m_formSetByParser(makeWeakPtr(form))
-    , m_compositeOperator(CompositeSourceOver)
+    , m_compositeOperator(CompositeOperator::SourceOver)
     , m_imageDevicePixelRatio(1.0f)
     , m_experimentalImageMenuEnabled(false)
     , m_createdByParser(createdByParser)
@@ -95,6 +95,8 @@ Ref<HTMLImageElement> HTMLImageElement::create(const QualifiedName& tagName, Doc
 
 HTMLImageElement::~HTMLImageElement()
 {
+    document().removeDynamicMediaQueryDependentImage(*this);
+
     if (m_form)
         m_form->removeImgElement(this);
     setPictureElement(nullptr);
@@ -160,11 +162,7 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
     if (!picture)
         return { };
 
-    picture->clearViewportDependentResults();
-    document().removeViewportDependentPicture(*picture);
-
-    picture->clearAppearanceDependentResults();
-    document().removeAppearanceDependentPicture(*picture);
+    ImageCandidate candidate;
 
     for (RefPtr<Node> child = picture->firstChild(); child && child != this; child = child->nextSibling()) {
         if (!is<HTMLSourceElement>(*child))
@@ -188,33 +186,51 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
         MediaQueryEvaluator evaluator { document().printing() ? "print" : "screen", document(), documentElement ? documentElement->computedStyle() : nullptr };
         auto* queries = source.parsedMediaAttribute(document());
         LOG(MediaQueries, "HTMLImageElement %p bestFitSourceFromPictureElement evaluating media queries", this);
-        auto evaluation = !queries || evaluator.evaluate(*queries, picture->viewportDependentResults(), picture->appearanceDependentResults());
-        if (picture->hasViewportDependentResults())
-            document().addViewportDependentPicture(*picture);
-        if (picture->hasAppearanceDependentResults())
-            document().addAppearanceDependentPicture(*picture);
+
+        auto evaluation = !queries || evaluator.evaluate(*queries, &m_mediaQueryDynamicResults);
         if (!evaluation)
             continue;
 
-        auto sourceSize = SizesAttributeParser(source.attributeWithoutSynchronization(sizesAttr).string(), document()).length();
-        auto candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), nullAtom(), srcset, sourceSize);
+        SizesAttributeParser sizesParser(source.attributeWithoutSynchronization(sizesAttr).string(), document(), &m_mediaQueryDynamicResults);
+        auto sourceSize = sizesParser.length();
+
+        candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), nullAtom(), srcset, sourceSize);
         if (!candidate.isEmpty())
-            return candidate;
+            break;
     }
-    return { };
+
+    return candidate;
+}
+
+void HTMLImageElement::evaluateDynamicMediaQueryDependencies()
+{
+    auto documentElement = makeRefPtr(document().documentElement());
+    MediaQueryEvaluator evaluator { document().printing() ? "print" : "screen", document(), documentElement ? documentElement->computedStyle() : nullptr };
+
+    if (!evaluator.evaluateForChanges(m_mediaQueryDynamicResults))
+        return;
+
+    selectImageSource();
 }
 
 void HTMLImageElement::selectImageSource()
 {
+    m_mediaQueryDynamicResults = { };
+    document().removeDynamicMediaQueryDependentImage(*this);
+
     // First look for the best fit source from our <picture> parent if we have one.
     ImageCandidate candidate = bestFitSourceFromPictureElement();
     if (candidate.isEmpty()) {
         // If we don't have a <picture> or didn't find a source, then we use our own attributes.
-        auto sourceSize = SizesAttributeParser(attributeWithoutSynchronization(sizesAttr).string(), document()).length();
+        SizesAttributeParser sizesParser(attributeWithoutSynchronization(sizesAttr).string(), document(), &m_mediaQueryDynamicResults);
+        auto sourceSize = sizesParser.length();
         candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), attributeWithoutSynchronization(srcAttr), attributeWithoutSynchronization(srcsetAttr), sourceSize);
     }
     setBestFitURLAndDPRFromImageCandidate(candidate);
     m_imageLoader->updateFromElementIgnoringPreviousError();
+
+    if (!m_mediaQueryDynamicResults.isEmpty())
+        document().addDynamicMediaQueryDependentImage(*this);
 }
 
 void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomString& value)
@@ -236,7 +252,7 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomStrin
         // FIXME: images don't support blend modes in their compositing attribute.
         BlendMode blendOp = BlendMode::Normal;
         if (!parseCompositeAndBlendOperator(value, m_compositeOperator, blendOp))
-            m_compositeOperator = CompositeSourceOver;
+            m_compositeOperator = CompositeOperator::SourceOver;
 #if ENABLE(SERVICE_CONTROLS)
     } else if (name == webkitimagemenuAttr) {
         m_experimentalImageMenuEnabled = !value.isNull();
@@ -665,6 +681,8 @@ void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 
 void HTMLImageElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
+    oldDocument.removeDynamicMediaQueryDependentImage(*this);
+
     m_imageLoader->elementDidMoveToNewDocument();
     HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
 }

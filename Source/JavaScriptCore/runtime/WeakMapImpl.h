@@ -192,13 +192,14 @@ public:
 };
 
 template <typename WeakMapBucketType>
-class WeakMapImpl : public JSDestructibleObject {
-    using Base = JSDestructibleObject;
+class WeakMapImpl : public JSNonFinalObject {
+    using Base = JSNonFinalObject;
     using WeakMapBufferType = WeakMapBuffer<WeakMapBucketType>;
 
 public:
     using BucketType = WeakMapBucketType;
 
+    static constexpr bool needsDestruction = true;
     static void destroy(JSCell*);
 
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -305,7 +306,7 @@ public:
     template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        if (isWeakMap())
+        if constexpr (isWeakMap())
             return vm.weakMapSpace<mode>();
         return vm.weakSetSpace<mode>();
     }

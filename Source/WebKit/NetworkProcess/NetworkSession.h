@@ -27,9 +27,11 @@
 
 #include "PrefetchCache.h"
 #include "SandboxExtension.h"
+#include "ServiceWorkerSoftUpdateLoader.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/AdClickAttribution.h>
 #include <WebCore/BlobRegistryImpl.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
 #include <wtf/HashSet.h>
@@ -97,7 +99,7 @@ public:
     virtual void clearIsolatedSessions() { }
     void setShouldDowngradeReferrerForTesting(bool);
     bool shouldDowngradeReferrer() const;
-    void setIsThirdPartyCookieBlockingEnabled(bool);
+    void setThirdPartyCookieBlockingMode(WebCore::ThirdPartyCookieBlockingMode);
 #endif
     void storeAdClickAttribution(WebCore::AdClickAttribution&&);
     void handleAdClickAttributionConversion(WebCore::AdClickAttribution::Conversion&&, const URL& requestURL, const WebCore::ResourceRequest& redirectRequest);
@@ -123,14 +125,21 @@ public:
     WebCore::BlobRegistryImpl& blobRegistry() { return m_blobRegistry; }
 
     unsigned testSpeedMultiplier() const { return m_testSpeedMultiplier; }
+    bool allowsServerPreconnect() const { return m_allowsServerPreconnect; }
 
     bool isStaleWhileRevalidateEnabled() const { return m_isStaleWhileRevalidateEnabled; }
+
+#if ENABLE(SERVICE_WORKER)
+    void addSoftUpdateLoader(std::unique_ptr<ServiceWorkerSoftUpdateLoader>&& loader) { m_softUpdateLoaders.add(WTFMove(loader)); }
+    void removeSoftUpdateLoader(ServiceWorkerSoftUpdateLoader* loader) { m_softUpdateLoaders.remove(loader); }
+#endif
 
 protected:
     NetworkSession(NetworkProcess&, const NetworkSessionCreationParameters&);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void destroyResourceLoadStatistics();
+    void forwardResourceLoadStatisticsSettings();
 #endif
 
     PAL::SessionID m_sessionID;
@@ -144,7 +153,8 @@ protected:
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
     bool m_enableResourceLoadStatisticsLogTestingEvent;
     bool m_downgradeReferrer { true };
-    bool m_thirdPartyCookieBlockingEnabled { false };
+    WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::AllOnSitesWithoutUserInteraction };
+    WebCore::FirstPartyWebsiteDataRemovalMode m_firstPartyWebsiteDataRemovalMode { WebCore::FirstPartyWebsiteDataRemovalMode::None };
 #endif
     bool m_isStaleWhileRevalidateEnabled { false };
     UniqueRef<AdClickAttributionManager> m_adClickAttribution;
@@ -159,6 +169,11 @@ protected:
     RefPtr<NetworkCache::Cache> m_cache;
     WebCore::BlobRegistryImpl m_blobRegistry;
     unsigned m_testSpeedMultiplier { 1 };
+    bool m_allowsServerPreconnect { true };
+
+#if ENABLE(SERVICE_WORKER)
+    HashSet<std::unique_ptr<ServiceWorkerSoftUpdateLoader>> m_softUpdateLoaders;
+#endif
 };
 
 } // namespace WebKit

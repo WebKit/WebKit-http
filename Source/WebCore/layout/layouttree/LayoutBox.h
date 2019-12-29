@@ -29,6 +29,7 @@
 
 #include "LayoutReplaced.h"
 #include "RenderStyle.h"
+#include "TextContext.h"
 #include <wtf/IsoMalloc.h>
 #include <wtf/WeakPtr.h>
 
@@ -63,7 +64,7 @@ public:
     typedef unsigned BaseTypeFlags;
 
     Box(Optional<ElementAttributes>, RenderStyle&&);
-    Box(String textContent, RenderStyle&&);
+    Box(TextContext&&, RenderStyle&&);
     virtual ~Box();
 
     bool establishesFormattingContext() const;
@@ -142,8 +143,8 @@ public:
     const Replaced* replaced() const;
     // FIXME: Temporary until after intrinsic size change is tracked by Replaced.
     Replaced* replaced();
-    bool hasTextContent() const;
-    String textContent() const;
+    bool hasTextContent() const { return !!m_textContext; }
+    const Optional<TextContext>& textContext() const { return m_textContext; }
 
     // FIXME: Find a better place for random DOM things.
     void setRowSpan(unsigned);
@@ -162,17 +163,14 @@ public:
     void setIsAnonymous() { m_isAnonymous = true; }
 
 protected:
-    Box(Optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags);
+    Box(Optional<ElementAttributes>, Optional<TextContext>, RenderStyle&&, BaseTypeFlags);
 
 private:
-    void setTextContent(String);
-
     class BoxRareData {
         WTF_MAKE_FAST_ALLOCATED;
     public:
         BoxRareData() = default;
 
-        String textContent;
         std::unique_ptr<Replaced> replaced;
         unsigned rowSpan { 1 };
         unsigned columnSpan { 1 };
@@ -195,6 +193,8 @@ private:
     Container* m_parent { nullptr };
     Box* m_previousSibling { nullptr };
     Box* m_nextSibling { nullptr };
+    
+    const Optional<TextContext> m_textContext;
 
     unsigned m_baseTypeFlags : 6;
     bool m_hasRareData : 1;

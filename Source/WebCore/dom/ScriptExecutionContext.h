@@ -53,7 +53,7 @@ class ScriptCallStack;
 
 namespace WebCore {
 
-class AbstractEventLoop;
+class EventLoop;
 class CachedScript;
 class DatabaseContext;
 class EventQueue;
@@ -126,11 +126,6 @@ public:
 
     PublicURLManager& publicURLManager();
 
-    // Active objects are not garbage collected even if inaccessible, e.g. because their activity may result in callbacks being invoked.
-    WEBCORE_EXPORT bool canSuspendActiveDOMObjectsForDocumentSuspension(Vector<ActiveDOMObject*>* unsuspendableObjects = nullptr);
-
-    // Active objects can be asked to suspend even if canSuspendActiveDOMObjectsForDocumentSuspension() returns 'false' -
-    // step-by-step JS debugging is one example.
     virtual void suspendActiveDOMObjects(ReasonForSuspension);
     virtual void resumeActiveDOMObjects(ReasonForSuspension);
     virtual void stopActiveDOMObjects();
@@ -217,7 +212,6 @@ public:
     void didChangeTimerAlignmentInterval();
     virtual Seconds domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) const;
 
-    virtual EventQueue& eventQueue() const = 0;
     virtual EventTarget* errorEventTarget() = 0;
 
     DatabaseContext* databaseContext() { return m_databaseContext.get(); }

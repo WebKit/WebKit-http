@@ -105,12 +105,12 @@ const Platform3DObject NullPlatform3DObject = 0;
 
 namespace WebCore {
 class Extensions3D;
-#if !PLATFORM(COCOA) && USE(OPENGL_ES)
+#if USE(ANGLE)
+class Extensions3DANGLE;
+#elif !PLATFORM(COCOA) && USE(OPENGL_ES)
 class Extensions3DOpenGLES;
 #elif USE(OPENGL) || (PLATFORM(COCOA) && USE(OPENGL_ES))
 class Extensions3DOpenGL;
-#elif USE(ANGLE)
-class Extensions3DANGLE;
 #endif
 class HostWindow;
 class Image;
@@ -746,8 +746,11 @@ public:
         PRIMITIVE_RESTART_FIXED_INDEX = 0x8D69,
         PRIMITIVE_RESTART = 0x8F9D,
 
-        // OpenGL ES 3 constants
-        MAP_READ_BIT = 0x0001
+        // OpenGL ES 3 constants.
+        MAP_READ_BIT = 0x0001,
+
+        // Necessary desktop OpenGL constants.
+        TEXTURE_RECTANGLE_ARB = 0x84F5
     };
 
     enum RenderStyle {
@@ -781,6 +784,10 @@ public:
     PlatformGraphicsContext3D platformGraphicsContext3D() const { return m_contextObj; }
     Platform3DObject platformTexture() const { return m_texture; }
     CALayer* platformLayer() const { return reinterpret_cast<CALayer*>(m_webGLLayer.get()); }
+#if USE(ANGLE)
+    PlatformGraphicsContext3DDisplay platformDisplay() const { return m_displayObj; }
+    PlatformGraphicsContext3DConfig platformConfig() const { return m_configObj; }
+#endif // USE(ANGLE)
 #else
     PlatformGraphicsContext3D platformGraphicsContext3D();
     Platform3DObject platformTexture() const;
@@ -1196,15 +1203,12 @@ public:
     void presentRenderbuffer();
 #endif
 
-#if USE(OPENGL)
+#if USE(OPENGL) || USE(ANGLE)
     void allocateIOSurfaceBackingStore(IntSize);
     void updateFramebufferTextureBackingStoreFromLayer();
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     void updateCGLContext();
 #endif
-
-#if USE(ANGLE)
-    void allocateIOSurfaceBackingStore(IntSize);
-    void updateFramebufferTextureBackingStoreFromLayer();
 #endif
 #endif // PLATFORM(COCOA)
 
@@ -1384,6 +1388,7 @@ private:
     PlatformGraphicsContext3D m_contextObj { nullptr };
 #if USE(ANGLE)
     PlatformGraphicsContext3DDisplay m_displayObj { nullptr };
+    PlatformGraphicsContext3DConfig m_configObj { nullptr };
 #endif // USE(ANGLE)
 #endif // PLATFORM(COCOA)
 
@@ -1460,7 +1465,10 @@ private:
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 #endif // !USE(ANGLE)
 
-#if !PLATFORM(COCOA) && USE(OPENGL_ES)
+#if USE(ANGLE)
+    friend class Extensions3DANGLE;
+    std::unique_ptr<Extensions3DANGLE> m_extensions;
+#elif !PLATFORM(COCOA) && USE(OPENGL_ES)
     friend class Extensions3DOpenGLES;
     friend class Extensions3DOpenGLCommon;
     std::unique_ptr<Extensions3DOpenGLES> m_extensions;
@@ -1468,9 +1476,6 @@ private:
     friend class Extensions3DOpenGL;
     friend class Extensions3DOpenGLCommon;
     std::unique_ptr<Extensions3DOpenGL> m_extensions;
-#elif USE(ANGLE)
-    friend class Extensions3DANGLE;
-    std::unique_ptr<Extensions3DANGLE> m_extensions;
 #endif
 
     GraphicsContext3DAttributes m_attrs;
@@ -1496,7 +1501,7 @@ private:
     bool m_layerComposited { false };
     GC3Duint m_internalColorFormat { 0 };
 
-#if USE(ANGLE)
+#if USE(ANGLE) && PLATFORM(COCOA)
     PlatformGraphicsContext3DSurface m_pbuffer;
 #endif
 

@@ -34,6 +34,8 @@ from webkitpy.common.checkout.scm.scm_unittest import SCMTest
 
 
 PYTHON3_COMPATIBLE_DIRECTORIES = [
+  'webkitpy.benchmark_runner',
+  'webkitpy.browserperfdash',
   'webkitpy.common',
   'webkitpy.layout_tests.controllers',
   'webkitpy.layout_tests.layout_package',
@@ -43,6 +45,8 @@ PYTHON3_COMPATIBLE_DIRECTORIES = [
   'webkitpy.port',
   'webkitpy.results',
   'webkitpy.style',
+  'webkitpy.test',
+  'webkitpy.tool',
   'webkitpy.xcode',
 ]
 SLOW_TESTS = [

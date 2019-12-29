@@ -1738,6 +1738,7 @@ public:
         case StringReplace:
         case StringReplaceRegExp:
         case ToNumber:
+        case ToNumeric:
         case ToObject:
         case ValueBitAnd:
         case ValueBitOr:
@@ -1872,7 +1873,7 @@ public:
 
     bool hasUidOperand()
     {
-        return op() == CheckStringIdent;
+        return op() == CheckIdent;
     }
 
     UniquedStringImpl* uidOperand()
@@ -2915,15 +2916,15 @@ public:
         return m_opInfo.as<CallLinkStatus*>();
     }
     
-    bool hasGetByIdStatus()
+    bool hasGetByStatus()
     {
-        return op() == FilterGetByIdStatus;
+        return op() == FilterGetByStatus;
     }
     
-    GetByIdStatus* getByIdStatus()
+    GetByStatus* getByStatus()
     {
-        ASSERT(hasGetByIdStatus());
-        return m_opInfo.as<GetByIdStatus*>();
+        ASSERT(hasGetByStatus());
+        return m_opInfo.as<GetByStatus*>();
     }
     
     bool hasInByIdStatus()

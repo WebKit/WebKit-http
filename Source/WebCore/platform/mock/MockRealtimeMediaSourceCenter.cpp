@@ -41,6 +41,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringView.h>
 
+#if PLATFORM(COCOA)
+#include "CoreAudioCaptureSource.h"
+#endif
+
 namespace WebCore {
 
 static inline Vector<MockMediaDevice> defaultDevices()
@@ -143,11 +147,7 @@ public:
     }
 private:
 #if PLATFORM(IOS_FAMILY)
-    void setAudioCapturePageState(bool interrupted, bool pageMuted) final
-    {
-        if (activeSource())
-            activeSource()->setInterrupted(interrupted, pageMuted);
-    }
+    void setAudioCapturePageState(bool interrupted, bool pageMuted) final { CoreAudioCaptureSourceFactory::singleton().setAudioCapturePageState(interrupted, pageMuted); }
 #endif
     CaptureDeviceManager& audioCaptureDeviceManager() final { return MockRealtimeMediaSourceCenter::singleton().audioCaptureDeviceManager(); }
 };
@@ -191,16 +191,15 @@ MockRealtimeMediaSourceCenter& MockRealtimeMediaSourceCenter::singleton()
 
 void MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(bool enabled)
 {
-    static bool active = false;
-    if (active == enabled)
-        return;
-
-    active = enabled;
-
-    RealtimeMediaSourceCenter& center = RealtimeMediaSourceCenter::singleton();
     MockRealtimeMediaSourceCenter& mock = singleton();
 
-    if (active) {
+    if (mock.m_isEnabled == enabled)
+        return;
+
+    mock.m_isEnabled = enabled;
+    RealtimeMediaSourceCenter& center = RealtimeMediaSourceCenter::singleton();
+
+    if (mock.m_isEnabled) {
         if (mock.m_isMockAudioCaptureEnabled)
             center.setAudioCaptureFactory(mock.audioCaptureFactory());
         if (mock.m_isMockVideoCaptureEnabled)
@@ -220,10 +219,7 @@ void MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(bool
 
 bool MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled()
 {
-    MockRealtimeMediaSourceCenter& mock = singleton();
-    RealtimeMediaSourceCenter& center = RealtimeMediaSourceCenter::singleton();
-
-    return &center.audioCaptureFactory() == &mock.audioCaptureFactory() || &center.videoCaptureFactory() == &mock.videoCaptureFactory() || &center.displayCaptureFactory() == &mock.displayCaptureFactory();
+    return singleton().m_isEnabled;
 }
 
 static void createCaptureDevice(const MockMediaDevice& device)

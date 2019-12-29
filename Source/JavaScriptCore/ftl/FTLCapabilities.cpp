@@ -105,6 +105,8 @@ inline CapabilityLevel canCompile(Node* node)
     case ValueDiv:
     case ValueMod:
     case ValuePow:
+    case Inc:
+    case Dec:
     case StrCat:
     case ArithAdd:
     case ArithClz32:
@@ -159,7 +161,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckBadCell:
     case CheckNotEmpty:
     case AssertNotEmpty:
-    case CheckStringIdent:
+    case CheckIdent:
     case CheckTraps:
     case StringCharCodeAt:
     case StringCodePointAt:
@@ -208,6 +210,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetArgumentCountIncludingThis:
     case SetArgumentCountIncludingThis:
     case ToNumber:
+    case ToNumeric:
     case ToString:
     case ToObject:
     case CallObjectConstructor:
@@ -378,7 +381,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PutByValWithThis:
     case MatchStructure:
     case FilterCallLinkStatus:
-    case FilterGetByIdStatus:
+    case FilterGetByStatus:
     case FilterPutByIdStatus:
     case FilterInByIdStatus:
     case CreateThis:

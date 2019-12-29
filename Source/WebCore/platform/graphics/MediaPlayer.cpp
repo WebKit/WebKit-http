@@ -495,7 +495,7 @@ void MediaPlayer::loadWithNextMediaEngine(const MediaPlayerFactory* current)
     } else if (m_currentMediaEngine != engine) {
         m_currentMediaEngine = engine;
         m_private = engine->constructor(this);
-        client().mediaPlayerEngineUpdated(this);
+        client().mediaPlayerEngineUpdated();
         m_private->setPrivateBrowsingMode(m_privateBrowsing);
         m_private->setPreload(m_preload);
         m_private->setPreservesPitch(preservesPitch());
@@ -517,8 +517,8 @@ void MediaPlayer::loadWithNextMediaEngine(const MediaPlayerFactory* current)
         m_private->load(m_url.string());
     } else {
         m_private = makeUnique<NullMediaPlayerPrivate>(this);
-        client().mediaPlayerEngineUpdated(this);
-        client().mediaPlayerResourceNotSupported(this);
+        client().mediaPlayerEngineUpdated();
+        client().mediaPlayerResourceNotSupported();
     }
 
     m_initializingMediaEngine = false;
@@ -996,7 +996,7 @@ void MediaPlayer::setWirelessVideoPlaybackDisabled(bool disabled)
 
 void MediaPlayer::currentPlaybackTargetIsWirelessChanged()
 {
-    client().mediaPlayerCurrentPlaybackTargetIsWirelessChanged(this);
+    client().mediaPlayerCurrentPlaybackTargetIsWirelessChanged();
 }
 
 bool MediaPlayer::canPlayToWirelessPlaybackTarget() const
@@ -1182,12 +1182,12 @@ void MediaPlayer::networkStateChanged()
             return;
         }
     }
-    client().mediaPlayerNetworkStateChanged(this);
+    client().mediaPlayerNetworkStateChanged();
 }
 
 void MediaPlayer::readyStateChanged()
 {
-    client().mediaPlayerReadyStateChanged(this);
+    client().mediaPlayerReadyStateChanged();
 }
 
 void MediaPlayer::volumeChanged(double newVolume)
@@ -1198,7 +1198,7 @@ void MediaPlayer::volumeChanged(double newVolume)
 #else
     m_volume = newVolume;
 #endif
-    client().mediaPlayerVolumeChanged(this);
+    client().mediaPlayerVolumeChanged();
 }
 
 void MediaPlayer::muteChanged(bool newMuted)
@@ -1207,47 +1207,47 @@ void MediaPlayer::muteChanged(bool newMuted)
         return;
 
     m_muted = newMuted;
-    client().mediaPlayerMuteChanged(this);
+    client().mediaPlayerMuteChanged();
 }
 
 void MediaPlayer::timeChanged()
 {
-    client().mediaPlayerTimeChanged(this);
+    client().mediaPlayerTimeChanged();
 }
 
 void MediaPlayer::sizeChanged()
 {
-    client().mediaPlayerSizeChanged(this);
+    client().mediaPlayerSizeChanged();
 }
 
 void MediaPlayer::repaint()
 {
-    client().mediaPlayerRepaint(this);
+    client().mediaPlayerRepaint();
 }
 
 void MediaPlayer::durationChanged()
 {
-    client().mediaPlayerDurationChanged(this);
+    client().mediaPlayerDurationChanged();
 }
 
 void MediaPlayer::rateChanged()
 {
-    client().mediaPlayerRateChanged(this);
+    client().mediaPlayerRateChanged();
 }
 
 void MediaPlayer::playbackStateChanged()
 {
-    client().mediaPlayerPlaybackStateChanged(this);
+    client().mediaPlayerPlaybackStateChanged();
 }
 
 void MediaPlayer::firstVideoFrameAvailable()
 {
-    client().mediaPlayerFirstVideoFrameAvailable(this);
+    client().mediaPlayerFirstVideoFrameAvailable();
 }
 
 void MediaPlayer::characteristicChanged()
 {
-    client().mediaPlayerCharacteristicChanged(this);
+    client().mediaPlayerCharacteristicChanged();
 }
 
 #if ENABLE(WEB_AUDIO)
@@ -1268,7 +1268,7 @@ RefPtr<ArrayBuffer> MediaPlayer::cachedKeyForKeyId(const String& keyId) const
 
 bool MediaPlayer::keyNeeded(Uint8Array* initData)
 {
-    return client().mediaPlayerKeyNeeded(this, initData);
+    return client().mediaPlayerKeyNeeded(initData);
 }
 
 String MediaPlayer::mediaKeysStorageDirectory() const
@@ -1327,7 +1327,7 @@ long MediaPlayer::platformErrorCode() const
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 GraphicsDeviceAdapter* MediaPlayer::graphicsDeviceAdapter() const
 {
-    return client().mediaPlayerGraphicsDeviceAdapter(this);
+    return client().mediaPlayerGraphicsDeviceAdapter();
 }
 #endif
 

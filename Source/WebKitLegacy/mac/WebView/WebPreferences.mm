@@ -579,7 +579,7 @@ public:
         [NSNumber numberWithFloat:-1.0f], WebKitMaxParseDurationPreferenceKey,
         @NO, WebKitAllowMultiElementImplicitFormSubmissionPreferenceKey,
         @NO, WebKitAlwaysRequestGeolocationPermissionPreferenceKey,
-        [NSNumber numberWithInt:InterpolationLow], WebKitInterpolationQualityPreferenceKey,
+        [NSNumber numberWithInt:static_cast<int>(InterpolationQuality::Low)], WebKitInterpolationQualityPreferenceKey,
         @YES, WebKitPasswordEchoEnabledPreferenceKey,
         [NSNumber numberWithFloat:2.0f], WebKitPasswordEchoDurationPreferenceKey,
         @NO, WebKitNetworkDataUsageTrackingEnabledPreferenceKey,
@@ -617,6 +617,10 @@ public:
         @NO, WebKitGenericCueAPIEnabledKey,
 #endif
 
+#if ENABLE(VIDEO)
+        @NO, WebKitOutOfProcessMediaEnabledKey,
+#endif
+
 #if ENABLE(MEDIA_STREAM)
         @NO, WebKitMockCaptureDevicesEnabledPreferenceKey,
         @YES, WebKitMockCaptureDevicesPromptEnabledPreferenceKey,
@@ -627,6 +631,7 @@ public:
         @YES, WebKitDataTransferItemsEnabledPreferenceKey,
         @NO, WebKitCustomPasteboardDataEnabledPreferenceKey,
         @NO, WebKitDialogElementEnabledPreferenceKey,
+        @NO, WebKitHighlightAPIEnabledPreferenceKey,
         @YES, WebKitModernMediaControlsEnabledPreferenceKey,
         @NO, WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
 
@@ -2846,6 +2851,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitGamepadsEnabledPreferenceKey];
 }
 
+- (BOOL)highlightAPIEnabled
+{
+    return [self _boolValueForKey:WebKitHighlightAPIEnabledPreferenceKey];
+}
+
+- (void)setHighlightAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitHighlightAPIEnabledPreferenceKey];
+}
+
 - (BOOL)shouldConvertPositionStyleOnCopy
 {
     return [self _boolValueForKey:WebKitShouldConvertPositionStyleOnCopyPreferenceKey];
@@ -3176,6 +3191,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
 }
 
+- (BOOL)webAnimationsCompositeOperationsEnabled
+{
+    return [self _boolValueForKey:WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey];
+}
+
+- (void)setWebAnimationsCompositeOperationsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey];
+}
+
 - (BOOL)pointerEventsEnabled
 {
     return [self _boolValueForKey:WebKitPointerEventsEnabledPreferenceKey];
@@ -3356,6 +3381,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setGenericCueAPIEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitGenericCueAPIEnabledKey];
+}
+
+- (BOOL)outOfProcessMediaEnabled
+{
+    return [self _boolValueForKey:WebKitOutOfProcessMediaEnabledKey];
+}
+
+- (void)setOutOfProcessMediaEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitOutOfProcessMediaEnabledKey];
 }
 
 - (BOOL)viewportFitEnabled

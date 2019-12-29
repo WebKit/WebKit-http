@@ -28,8 +28,6 @@
 #include "Internals.h"
 
 #include "AXObjectCache.h"
-#include "AbstractEventLoop.h"
-#include "ActiveDOMCallbackMicrotask.h"
 #include "ActivityState.h"
 #include "AnimationTimeline.h"
 #include "ApplicationCacheStorage.h"
@@ -71,6 +69,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "EventListener.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "ExtendableEvent.h"
 #include "ExtensionStyleSheets.h"
@@ -109,6 +108,8 @@
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "InternalSettings.h"
+#include "InternalsMapLike.h"
+#include "InternalsSetLike.h"
 #include "JSDOMPromiseDeferred.h"
 #include "JSImageData.h"
 #include "LegacySchemeRegistry.h"
@@ -169,6 +170,7 @@
 #include "SpellChecker.h"
 #include "StaticNodeList.h"
 #include "StringCallback.h"
+#include "StyleResolver.h"
 #include "StyleRule.h"
 #include "StyleScope.h"
 #include "StyleSheetContents.h"
@@ -554,7 +556,6 @@ Internals::Internals(Document& document)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    setMockMediaCaptureDevicesEnabled(true);
     setMediaCaptureRequiresSecureConnection(false);
 #endif
 
@@ -580,8 +581,6 @@ Internals::Internals(Document& document)
         frame->page()->setPaymentCoordinator(makeUnique<PaymentCoordinator>(*mockPaymentCoordinator));
     }
 #endif
-
-    m_unsuspendableActiveDOMObject = nullptr;
 
 #if PLATFORM(COCOA) &&  ENABLE(WEB_AUDIO)
     AudioDestinationCocoa::createOverride = nullptr;
@@ -939,25 +938,10 @@ unsigned Internals::backForwardCacheSize() const
     return BackForwardCache::singleton().pageCount();
 }
 
-class UnsuspendableActiveDOMObject final : public ActiveDOMObject, public RefCounted<UnsuspendableActiveDOMObject> {
-public:
-    static Ref<UnsuspendableActiveDOMObject> create(ScriptExecutionContext& context) { return adoptRef(*new UnsuspendableActiveDOMObject { &context }); }
-
-private:
-    explicit UnsuspendableActiveDOMObject(ScriptExecutionContext* context)
-        : ActiveDOMObject(context)
-    {
-        suspendIfNeeded();
-    }
-
-    bool shouldPreventEnteringBackForwardCache_DEPRECATED() const final { return true; }
-    const char* activeDOMObjectName() const { return "UnsuspendableActiveDOMObject"; }
-};
-
-void Internals::preventDocumentForEnteringBackForwardCache()
+void Internals::preventDocumentFromEnteringBackForwardCache()
 {
-    if (auto* context = contextDocument())
-        m_unsuspendableActiveDOMObject = UnsuspendableActiveDOMObject::create(*context);
+    if (auto* document = contextDocument())
+        document->preventEnteringBackForwardCacheForTesting();
 }
 
 void Internals::disableTileSizeUpdateDelay()
@@ -1563,13 +1547,6 @@ void Internals::setUseDTLS10(bool useDTLS10)
 void Internals::setShouldInterruptAudioOnPageVisibilityChange(bool shouldInterrupt)
 {
     RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(shouldInterrupt);
-}
-
-void Internals::setMockMediaCaptureDevicesEnabled(bool enabled)
-{
-    Document* document = contextDocument();
-    if (auto* page = document->page())
-        page->settings().setMockCaptureDevicesEnabled(enabled);
 }
 
 void Internals::setMediaCaptureRequiresSecureConnection(bool enabled)
@@ -4327,11 +4304,11 @@ void Internals::queueMicroTask(int testNumber)
     if (!document)
         return;
 
-    auto microtask = makeUnique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *document, [document, testNumber]() {
+    ScriptExecutionContext* context = document;
+    auto& eventLoop = context->eventLoop();
+    eventLoop.queueMicrotask([document = makeRef(*document), testNumber]() {
         document->addConsoleMessage(MessageSource::JS, MessageLevel::Debug, makeString("MicroTask #", testNumber, " has run."));
     });
-
-    MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
 }
 
 #if ENABLE(CONTENT_FILTERING)
@@ -4676,19 +4653,57 @@ void Internals::postTask(RefPtr<VoidCallback>&& callback)
     });
 }
 
+static Optional<TaskSource> taskSourceFromString(const String& taskSourceName)
+{
+    if (taskSourceName == "DOMManipulation")
+        return TaskSource::DOMManipulation;
+    return WTF::nullopt;
+}
+
 ExceptionOr<void> Internals::queueTask(ScriptExecutionContext& context, const String& taskSourceName, RefPtr<VoidCallback>&& callback)
 {
-    TaskSource source;
-    if (taskSourceName == "DOMManipulation")
-        source = TaskSource::DOMManipulation;
-    else
+    auto source = taskSourceFromString(taskSourceName);
+    if (!source)
         return Exception { NotSupportedError };
 
-    context.eventLoop().queueTask(source, [callback = WTFMove(callback)]() {
+    context.eventLoop().queueTask(*source, [callback = WTFMove(callback)] {
         callback->handleEvent();
     });
 
     return { };
+}
+
+ExceptionOr<void> Internals::queueTaskToQueueMicrotask(Document& document, const String& taskSourceName, RefPtr<VoidCallback>&& callback)
+{
+    auto source = taskSourceFromString(taskSourceName);
+    if (!source)
+        return Exception { NotSupportedError };
+
+    ScriptExecutionContext& context = document; // This avoids unnecessarily exporting Document::eventLoop.
+    context.eventLoop().queueTask(*source, [movedCallback = WTFMove(callback), protectedDocument = makeRef(document)]() mutable {
+        ScriptExecutionContext& context = protectedDocument.get();
+        context.eventLoop().queueMicrotask([callback = WTFMove(movedCallback)] {
+            callback->handleEvent();
+        });
+    });
+
+    return { };
+}
+
+ExceptionOr<bool> Internals::hasSameEventLoopAs(WindowProxy& proxy)
+{
+    RefPtr<ScriptExecutionContext> context = contextDocument();
+    if (!context || !proxy.frame())
+        return Exception { InvalidStateError };
+
+    auto& proxyFrame = *proxy.frame();
+    if (!is<Frame>(proxyFrame))
+        return false;
+    RefPtr<ScriptExecutionContext> proxyContext = downcast<Frame>(proxyFrame).document();
+    if (!proxyContext)
+        return Exception { InvalidStateError };
+
+    return context->eventLoop().hasSameEventLoopAs(proxyContext->eventLoop());
 }
 
 Vector<String> Internals::accessKeyModifiers() const
@@ -4886,6 +4901,11 @@ void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& 
 void Internals::setMediaStreamSourceInterrupted(MediaStreamTrack& track, bool interrupted)
 {
     track.source().setInterruptedForTesting(interrupted);
+}
+
+bool Internals::isMockRealtimeMediaSourceCenterEnabled()
+{
+    return MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled();
 }
 #endif
 
@@ -5239,6 +5259,22 @@ void Internals::setIsPlayingToAutomotiveHeadUnit(bool isPlaying)
     PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(isPlaying);
 #endif
 }
+
+String Internals::highlightPseudoElementColor(const String& highlightName, Element& element)
+{
+    element.document().updateStyleIfNeeded();
+
+    auto& styleResolver = element.document().styleScope().resolver();
+    auto* parentStyle = element.computedStyle();
+    if (!parentStyle)
+        return { };
+
+    auto style = styleResolver.pseudoStyleForElement(element, { PseudoId::Highlight, highlightName }, *parentStyle);
+    if (!style)
+        return { };
+
+    return style->color().cssText();
+}
     
 Internals::TextIndicatorInfo::TextIndicatorInfo()
 {
@@ -5294,6 +5330,16 @@ void Internals::setMaxCanvasPixelMemory(unsigned size)
 int Internals::processIdentifier() const
 {
     return getCurrentProcessID();
+}
+
+Ref<InternalsMapLike> Internals::createInternalsMapLike()
+{
+    return InternalsMapLike::create();
+}
+
+Ref<InternalsSetLike> Internals::createInternalsSetLike()
+{
+    return InternalsSetLike::create();
 }
 
 } // namespace WebCore

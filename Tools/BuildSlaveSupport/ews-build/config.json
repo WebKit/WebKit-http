@@ -14,6 +14,10 @@
       "platform": "jsc-only"
     },
     {
+      "name": "igalia-jsc32-i386-ews",
+      "platform": "jsc-only"
+    },
+    {
       "name": "igalia1-gtk-wk2-ews",
       "platform": "gtk"
     },
@@ -273,6 +277,18 @@
     {
       "name": "ews215",
       "platform": "win"
+    },
+    {
+      "name": "webkit-cq-01",
+      "platform": "mac-highsierra"
+    },
+    {
+      "name": "webkit-cq-02",
+      "platform": "mac-highsierra"
+    },
+    {
+      "name": "webkit-cq-03",
+      "platform": "mac-highsierra"
     }
   ],
   "builders": [
@@ -447,6 +463,18 @@
       "remotes": "../../EWS-test-devices.json"
     },
     {
+      "name": "JSC-i386-32bits-EWS",
+      "shortname": "jsc-i386",
+      "icon": "buildOnly",
+      "factory": "JSCTestsFactory",
+      "platform": "jsc-only",
+      "configuration": "release",
+      "architectures": ["x86"],
+      "runTests": "false",
+      "workernames": ["igalia-jsc32-i386-ews"],
+      "remotes": "../../EWS-test-devices.json"
+    },
+    {
       "name": "Bindings-Tests-EWS",
       "shortname": "bindings",
       "icon": "testOnly",
@@ -493,6 +521,16 @@
       "factory": "ServicesFactory",
       "platform": "*",
       "workernames": ["ews151", "webkit-misc"]
+    },
+    {
+      "name": "Commit-Queue",
+      "shortname": "commit",
+      "icon": "buildAndTest",
+      "factory": "CommitQueueFactory",
+      "platform": "mac-highsierra",
+      "configuration": "release",
+      "architectures": ["x86_64"],
+      "workernames": ["webkit-cq-01", "webkit-cq-02", "webkit-cq-03"]
     }
   ],
   "schedulers": [
@@ -501,14 +539,14 @@
       "name": "try",
       "port": 5555,
       "builderNames": ["Apply-WatchList-EWS", "Bindings-Tests-EWS", "GTK-Webkit2-EWS", "iOS-13-Build-EWS", "iOS-13-Simulator-Build-EWS",
-                       "JSC-ARMv7-32bits-EWS", "JSC-MIPSEL-32bits-EWS", "JSC-Tests-EWS", "macOS-High-Sierra-Debug-Build-EWS", "macOS-High-Sierra-Release-Build-EWS",
-                       "Services-EWS", "Style-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS", "WPE-EWS", "WinCairo-EWS"]
+                       "JSC-ARMv7-32bits-EWS", "JSC-i386-32bits-EWS", "JSC-MIPSEL-32bits-EWS", "JSC-Tests-EWS", "macOS-High-Sierra-Debug-Build-EWS", "macOS-High-Sierra-Release-Build-EWS",
+                       "Services-EWS", "Style-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS", "WPE-EWS", "WinCairo-EWS", "Windows-EWS"]
     },
     {
       "type": "Try_Userpass",
-      "name": "disabled",
-      "port": 5556,
-      "builderNames": ["Windows-EWS"]
+      "name": "try_commitqueue",
+      "port": 5557,
+      "builderNames": ["Commit-Queue"]
     },
     {
       "type": "Triggerable",

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "JSExecState.h"
 
-#include "Microtasks.h"
+#include "EventLoop.h"
 #include "RejectedPromiseTracker.h"
 #include "ScriptExecutionContext.h"
 #include "ScriptState.h"
@@ -39,7 +39,7 @@ void JSExecState::didLeaveScriptContext(JSC::JSGlobalObject* lexicalGlobalObject
     ScriptExecutionContext* context = scriptExecutionContextFromExecState(lexicalGlobalObject);
     if (!context)
         return;
-    MicrotaskQueue::contextQueue(*context).performMicrotaskCheckpoint();
+    context->eventLoop().performMicrotaskCheckpoint();
     context->ensureRejectedPromiseTracker().processQueueSoon();
 }
 

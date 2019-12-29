@@ -870,8 +870,8 @@ void drawNativeImage(PlatformContextCairo& platformContext, cairo_surface_t* sur
     platformContext.save();
 
     // Set the compositing operation.
-    if (options.compositeOperator() == CompositeSourceOver && options.blendMode() == BlendMode::Normal && !cairoSurfaceHasAlpha(surface))
-        Cairo::State::setCompositeOperation(platformContext, CompositeCopy, BlendMode::Normal);
+    if (options.compositeOperator() == CompositeOperator::SourceOver && options.blendMode() == BlendMode::Normal && !cairoSurfaceHasAlpha(surface))
+        Cairo::State::setCompositeOperation(platformContext, CompositeOperator::Copy, BlendMode::Normal);
     else
         Cairo::State::setCompositeOperation(platformContext, options.compositeOperator(), options.blendMode());
 
@@ -936,15 +936,15 @@ void drawSurface(PlatformContextCairo& platformContext, cairo_surface_t* surface
     RefPtr<cairo_pattern_t> pattern = adoptRef(cairo_pattern_create_for_surface(patternSurface.get()));
 
     switch (imageInterpolationQuality) {
-    case InterpolationNone:
-    case InterpolationLow:
+    case InterpolationQuality::DoNotInterpolate:
+    case InterpolationQuality::Low:
         cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_FAST);
         break;
-    case InterpolationMedium:
-    case InterpolationDefault:
+    case InterpolationQuality::Medium:
+    case InterpolationQuality::Default:
         cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_GOOD);
         break;
-    case InterpolationHigh:
+    case InterpolationQuality::High:
         cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_BEST);
         break;
     }

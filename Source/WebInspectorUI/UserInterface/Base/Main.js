@@ -185,8 +185,10 @@ WI.loaded = function()
 
     // Targets.
     WI.backendTarget = null;
+    WI._backendTargetAvailablePromise = new WI.WrappedPromise;
+
     WI.pageTarget = null;
-    WI._targetsAvailablePromise = new WI.WrappedPromise;
+    WI._pageTargetAvailablePromise = new WI.WrappedPromise;
 
     // COMPATIBILITY (iOS 13.0): Target.exists was "replaced" by differentiating "web" debuggables
     // into "page" (direct) and "web-page" debuggables (multiplexing).
@@ -527,7 +529,7 @@ WI.contentLoaded = function()
     updateConsoleSavedResultPrefixCSSVariable();
 
     // Signal that the frontend is now ready to receive messages.
-    WI.whenTargetsAvailable().then(() => {
+    WI._backendTargetAvailablePromise.promise.then(() => {
         InspectorFrontendAPI.loadCompleted();
     });
 
@@ -543,11 +545,15 @@ WI.contentLoaded = function()
     // Store WI on the window in case the WebInspector global gets corrupted.
     window.__frontendCompletedLoad = true;
 
+    WI.frontendCompletedLoadTimestamp = performance.now();
+
     if (WI.runBootstrapOperations)
         WI.runBootstrapOperations();
 
-    if (WI.DiagnosticController.supportsDiagnosticLogging())
-        WI._diagnosticController = new WI.DiagnosticController;
+    if (InspectorFrontendHost.supportsDiagnosticLogging) {
+        WI.diagnosticController = new WI.DiagnosticController;
+        WI.diagnosticController.addRecorder(new WI.TabActivityDiagnosticEventRecorder(WI.diagnosticController));
+    }
 };
 
 WI.performOneTimeFrontendInitializationsUsingTarget = function(target)
@@ -588,12 +594,12 @@ WI.initializeTarget = function(target)
 
 WI.targetsAvailable = function()
 {
-    return WI._targetsAvailablePromise.settled;
+    return WI._pageTargetAvailablePromise.settled;
 };
 
 WI.whenTargetsAvailable = function()
 {
-    return WI._targetsAvailablePromise.promise;
+    return WI._pageTargetAvailablePromise.promise;
 };
 
 WI.isTabTypeAllowed = function(tabType)
@@ -2637,7 +2643,7 @@ WI.setZoomFactor = function(factor)
 WI.resolvedLayoutDirection = function()
 {
     let layoutDirection = WI.settings.debugLayoutDirection.value;
-    if (!WI.isDebugUIEnabled() || layoutDirection === WI.LayoutDirection.System)
+    if (layoutDirection === WI.LayoutDirection.System)
         layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
     return layoutDirection;
 };

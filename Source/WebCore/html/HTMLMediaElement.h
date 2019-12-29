@@ -47,7 +47,7 @@
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrack.h"
 #include "CaptionUserPreferences.h"
-#include "PODIntervalTree.h"
+#include "PODInterval.h"
 #include "TextTrack.h"
 #include "TextTrackCue.h"
 #include "VTTCue.h"
@@ -112,8 +112,7 @@ class RemotePlayback;
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-using CueIntervalTree = PODIntervalTree<MediaTime, TextTrackCue*>;
-using CueInterval = CueIntervalTree::IntervalType;
+using CueInterval = PODInterval<MediaTime, TextTrackCue*>;
 using CueList = Vector<CueInterval>;
 #endif
 
@@ -347,7 +346,7 @@ public:
     TextTrackList* textTracks() const { return m_textTracks.get(); }
     VideoTrackList* videoTracks() const { return m_videoTracks.get(); }
 
-    CueList currentlyActiveCues() const { return m_currentlyActiveCues; }
+    CueList currentlyActiveCues() const;
 
     void addAudioTrack(Ref<AudioTrack>&&);
     void addTextTrack(Ref<TextTrack>&&);
@@ -611,12 +610,6 @@ protected:
     
     bool isMediaElement() const final { return true; }
 
-#if ENABLE(VIDEO_TRACK)
-    bool ignoreTrackDisplayUpdateRequests() const { return m_ignoreTrackDisplayUpdate > 0 || !m_textTracks || !m_cueTree.size(); }
-    void beginIgnoringTrackDisplayUpdateRequests();
-    void endIgnoringTrackDisplayUpdateRequests();
-#endif
-
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -663,33 +656,33 @@ private:
     double effectivePlaybackRate() const;
     double requestedPlaybackRate() const;
 
-    void mediaPlayerNetworkStateChanged(MediaPlayer*) override;
-    void mediaPlayerReadyStateChanged(MediaPlayer*) override;
-    void mediaPlayerTimeChanged(MediaPlayer*) override;
-    void mediaPlayerVolumeChanged(MediaPlayer*) override;
-    void mediaPlayerMuteChanged(MediaPlayer*) override;
-    void mediaPlayerDurationChanged(MediaPlayer*) override;
-    void mediaPlayerRateChanged(MediaPlayer*) override;
-    void mediaPlayerPlaybackStateChanged(MediaPlayer*) override;
-    void mediaPlayerSawUnsupportedTracks(MediaPlayer*) override;
-    void mediaPlayerResourceNotSupported(MediaPlayer*) override;
-    void mediaPlayerRepaint(MediaPlayer*) override;
-    void mediaPlayerSizeChanged(MediaPlayer*) override;
-    bool mediaPlayerRenderingCanBeAccelerated(MediaPlayer*) override;
-    void mediaPlayerRenderingModeChanged(MediaPlayer*) override;
-    bool mediaPlayerAcceleratedCompositingEnabled() override;
-    void mediaPlayerEngineUpdated(MediaPlayer*) override;
+    void mediaPlayerNetworkStateChanged() final;
+    void mediaPlayerReadyStateChanged() final;
+    void mediaPlayerTimeChanged() final;
+    void mediaPlayerVolumeChanged() final;
+    void mediaPlayerMuteChanged() final;
+    void mediaPlayerDurationChanged() final;
+    void mediaPlayerRateChanged() final;
+    void mediaPlayerPlaybackStateChanged() final;
+    void mediaPlayerSawUnsupportedTracks() final;
+    void mediaPlayerResourceNotSupported() final;
+    void mediaPlayerRepaint() final;
+    void mediaPlayerSizeChanged() final;
+    bool mediaPlayerRenderingCanBeAccelerated() final;
+    void mediaPlayerRenderingModeChanged() final;
+    bool mediaPlayerAcceleratedCompositingEnabled() final;
+    void mediaPlayerEngineUpdated() final;
 
     void scheduleMediaEngineWasUpdated();
     void mediaEngineWasUpdated();
 
-    void mediaPlayerFirstVideoFrameAvailable(MediaPlayer*) override;
-    void mediaPlayerCharacteristicChanged(MediaPlayer*) override;
+    void mediaPlayerFirstVideoFrameAvailable() final;
+    void mediaPlayerCharacteristicChanged() final;
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String& keyId) const override;
-    bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) override;
-    String mediaPlayerMediaKeysStorageDirectory() const override;
+    RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String& keyId) const final;
+    bool mediaPlayerKeyNeeded(Uint8Array*) final;
+    String mediaPlayerMediaKeysStorageDirectory() const final;
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -704,7 +697,7 @@ private:
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
+    void mediaPlayerCurrentPlaybackTargetIsWirelessChanged() final;
     void enqueuePlaybackTargetAvailabilityChangedEvent();
 
     using EventTarget::dispatchEvent;
@@ -737,10 +730,10 @@ private:
     const String& mediaPlayerMediaCacheDirectory() const override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
-    GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
+    GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter() const override;
 #endif
 
-    void mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*) override;
+    void mediaPlayerActiveSourceBuffersChanged() override;
 
     void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
     String sourceApplicationIdentifier() const override;
@@ -803,13 +796,14 @@ private:
     URL selectNextSourceChild(ContentType*, String* keySystem, InvalidURLAction);
 
 #if ENABLE(VIDEO_TRACK)
+    bool ignoreTrackDisplayUpdateRequests() const;
+    void beginIgnoringTrackDisplayUpdateRequests();
+    void endIgnoringTrackDisplayUpdateRequests();
+
     void updateActiveTextTrackCues(const MediaTime&);
     HTMLTrackElement* showingTrackWithSameKind(HTMLTrackElement*) const;
 
-    enum ReconfigureMode {
-        Immediately,
-        AfterDelay,
-    };
+    enum ReconfigureMode { Immediately, AfterDelay };
     void markCaptionAndSubtitleTracksAsUnconfigured(ReconfigureMode);
     void captionPreferencesChanged() override;
     CaptionUserPreferences::CaptionDisplayMode captionDisplayMode();
@@ -874,11 +868,7 @@ private:
     bool isLiveStream() const override { return movieLoadType() == MediaPlayerEnums::LiveStream; }
 
     void updateSleepDisabling();
-    enum class SleepType {
-        None,
-        Display,
-        System,
-    };
+    enum class SleepType { None, Display, System };
     SleepType shouldDisableSleep() const;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -1152,9 +1142,9 @@ private:
     RefPtr<VideoTrackList> m_videoTracks;
     Vector<RefPtr<TextTrack>> m_textTracksWhenResourceSelectionBegan;
 
-    CueIntervalTree m_cueTree;
+    struct CueData;
+    std::unique_ptr<CueData> m_cueData;
 
-    CueList m_currentlyActiveCues;
     int m_ignoreTrackDisplayUpdate { 0 };
 
     bool m_requireCaptionPreferencesChangedCallbacks { false };
@@ -1183,6 +1173,7 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<WebKitMediaKeys> m_webKitMediaKeys;
 #endif
+
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<MediaKeys> m_mediaKeys;
     bool m_attachingMediaKeys { false };
@@ -1233,23 +1224,6 @@ namespace WTF {
 template<> struct LogArgument<WebCore::HTMLMediaElement::AutoplayEventPlaybackState> {
     static String toString(WebCore::HTMLMediaElement::AutoplayEventPlaybackState reason) { return convertEnumerationToString(reason); }
 };
-
-#if ENABLE(VIDEO_TRACK) && !defined(NDEBUG)
-
-// Template specialization required by PodIntervalTree in debug mode.
-template<> struct ValueToString<WebCore::TextTrackCue*> {
-    static String string(const WebCore::TextTrackCue* cue) { return cue->debugString(); }
-};
-
-#endif
-
-#ifndef NDEBUG
-
-template<> struct ValueToString<MediaTime> {
-    static String string(const MediaTime& time) { return toString(time); }
-};
-
-#endif
 
 } // namespace WTF
 

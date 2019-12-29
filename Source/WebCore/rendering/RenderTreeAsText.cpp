@@ -176,8 +176,8 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
     if (behavior.contains(RenderAsTextFlag::ShowAddresses))
         ts << " " << static_cast<const void*>(&o);
 
-    if (o.style().zIndex())
-        ts << " zI: " << o.style().zIndex();
+    if (o.style().usedZIndex()) // FIXME: This should use !hasAutoUsedZIndex().
+        ts << " zI: " << o.style().usedZIndex();
 
     if (o.node()) {
         String tagName = getTagName(o.node());
@@ -477,7 +477,7 @@ void writeDebugInfo(TextStream& ts, const RenderObject& object, OptionSet<Render
     }
 }
 
-static void writeTextBox(TextStream& ts, const RenderText& o, const LineLayoutTraversal::TextBoxIterator::BoxType& textBox)
+static void writeTextBox(TextStream& ts, const RenderText& o, const LineLayoutTraversal::TextBox& textBox)
 {
     auto rect = textBox.rect();
     auto logicalRect = textBox.logicalRect();
@@ -638,7 +638,7 @@ static void writeLayer(TextStream& ts, const RenderLayer& layer, const LayoutRec
     if (layer.isolatesBlending())
         ts << " isolatesBlending";
     if (layer.hasBlendMode())
-        ts << " blendMode: " << compositeOperatorName(CompositeSourceOver, layer.blendMode());
+        ts << " blendMode: " << compositeOperatorName(CompositeOperator::SourceOver, layer.blendMode());
 #endif
     
     ts << "\n";

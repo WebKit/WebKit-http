@@ -27,20 +27,16 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "DisplayRun.h"
+#include "DisplayInlineContent.h"
 #include "FormattingState.h"
 #include "InlineItem.h"
-#include "InlineLineBox.h"
 #include <wtf/IsoMalloc.h>
-#include <wtf/OptionSet.h>
 
 namespace WebCore {
 namespace Layout {
 
-// Temp
 using InlineItems = Vector<std::unique_ptr<InlineItem>, 30>;
-using InlineRuns = Vector<std::unique_ptr<Display::Run>, 10>;
-using LineBoxes = Vector<std::unique_ptr<LineBox>, 5>;
+
 // InlineFormattingState holds the state for a particular inline formatting context tree.
 class InlineFormattingState : public FormattingState {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingState);
@@ -52,38 +48,22 @@ public:
     const InlineItems& inlineItems() const { return m_inlineItems; }
     void addInlineItem(std::unique_ptr<InlineItem>&& inlineItem) { m_inlineItems.append(WTFMove(inlineItem)); }
 
-    const InlineRuns& inlineRuns() const { return m_inlineRuns; }
-    InlineRuns& inlineRuns() { return m_inlineRuns; }
-    void addInlineRun(std::unique_ptr<Display::Run>&&, const LineBox&);
-    void resetInlineRuns();
-
-    const LineBoxes& lineBoxes() const { return m_lineBoxes; }
-    LineBoxes& lineBoxes() { return m_lineBoxes; }
-    void addLineBox(const LineBox& lineBox) { m_lineBoxes.append(makeUnique<LineBox>(lineBox)); }
-
-    const LineBox& lineBoxForRun(const Display::Run& inlineRun) const { return *m_inlineRunToLineMap.get(&inlineRun); }
+    const Display::InlineContent* displayInlineContent() const { return m_displayInlineContent.get(); }
+    Display::InlineContent& ensureDisplayInlineContent();
+    void clearDisplayInlineContent() { m_displayInlineContent = nullptr; }
 
 private:
+    // Cacheable input to line layout.
     InlineItems m_inlineItems;
-    InlineRuns m_inlineRuns;
-    LineBoxes m_lineBoxes;
-    // This is temporary until after we figure out the display run/line relationships.
-    HashMap<const Display::Run*, const LineBox*> m_inlineRunToLineMap;
+
+    RefPtr<Display::InlineContent> m_displayInlineContent;
 };
 
-inline void InlineFormattingState::addInlineRun(std::unique_ptr<Display::Run>&& displayRun, const LineBox& line)
+inline Display::InlineContent& InlineFormattingState::ensureDisplayInlineContent()
 {
-    m_inlineRunToLineMap.set(displayRun.get(), &line);
-    m_inlineRuns.append(WTFMove(displayRun));
-}
-
-inline void InlineFormattingState::resetInlineRuns()
-{
-    m_inlineRuns.clear();
-    // Resetting the runs means no more line boxes either.
-    m_lineBoxes.clear();
-    m_inlineRunToLineMap.clear();
-
+    if (!m_displayInlineContent)
+        m_displayInlineContent = adoptRef(*new Display::InlineContent);
+    return *m_displayInlineContent;
 }
 
 }

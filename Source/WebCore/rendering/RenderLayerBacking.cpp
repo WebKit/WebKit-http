@@ -2279,7 +2279,7 @@ static bool supportsDirectlyCompositedBoxDecorations(const RenderLayerModelObjec
         return false;
 
     // FIXME: we should be able to allow backgroundComposite; However since this is not a common use case it has been deferred for now.
-    if (style.backgroundComposite() != CompositeSourceOver)
+    if (style.backgroundComposite() != CompositeOperator::SourceOver)
         return false;
 
     return true;
@@ -2927,7 +2927,7 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
 
     const FloatSize tileSize { 32, 18 };
 
-    auto imageBuffer = ImageBuffer::createCompatibleBuffer(tileSize, ColorSpaceSRGB, destContext);
+    auto imageBuffer = ImageBuffer::createCompatibleBuffer(tileSize, ColorSpace::SRGB, destContext);
     if (!imageBuffer)
         return nullptr;
 

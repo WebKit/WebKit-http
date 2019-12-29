@@ -56,6 +56,7 @@ enum class StorageAccessPromptWasShown : bool;
 enum class StorageAccessWasGranted : bool;
 class SecurityOrigin;
 struct SecurityOriginData;
+struct ClientOrigin;
 }
 
 namespace WebKit {
@@ -157,7 +158,8 @@ public:
     void deleteWebsiteDataInUIProcessForRegistrableDomains(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<RegistrableDomain>, CompletionHandler<void(HashSet<WebCore::RegistrableDomain>&&)>&&);
     void hasIsolatedSession(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void(bool)>&&);
     void setShouldDowngradeReferrerForTesting(bool, CompletionHandler<void()>&&);
-    void setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID, bool, CompletionHandler<void()>&&);
+    void setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID, WebCore::ThirdPartyCookieBlockingMode, CompletionHandler<void()>&&);
+    void setFirstPartyWebsiteDataRemovalModeForTesting(PAL::SessionID, WebCore::FirstPartyWebsiteDataRemovalMode, CompletionHandler<void()>&&);
 #endif
     
     void synthesizeAppIsBackground(bool background);
@@ -195,6 +197,8 @@ public:
 
     void registerSchemeForLegacyCustomProtocol(const String&);
     void unregisterSchemeForLegacyCustomProtocol(const String&);
+
+    void resetQuota(PAL::SessionID, CompletionHandler<void()>&&);
 
 private:
     // AuxiliaryProcessProxy

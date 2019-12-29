@@ -380,6 +380,15 @@ void RenderImage::notifyFinished(CachedResource& newImage)
         page().didFinishLoadingImageForElement(downcast<HTMLImageElement>(*element()));
 }
 
+void RenderImage::setImageDevicePixelRatio(float factor)
+{
+    if (m_imageDevicePixelRatio == factor)
+        return;
+
+    m_imageDevicePixelRatio = factor;
+    intrinsicSizeChanged();
+}
+
 bool RenderImage::isShowingMissingOrImageError() const
 {
     return !imageResource().cachedImage() || imageResource().errorOccurred();
@@ -636,10 +645,10 @@ ImageDrawResult RenderImage::paintIntoRect(PaintInfo& paintInfo, const FloatRect
         downcast<BitmapImage>(*image).updateFromSettings(settings());
 
     ImagePaintingOptions options = {
-        imageElement ? imageElement->compositeOperator() : CompositeSourceOver,
+        imageElement ? imageElement->compositeOperator() : CompositeOperator::SourceOver,
         decodingModeForImageDraw(*image, paintInfo),
         imageOrientation(),
-        image ? chooseInterpolationQuality(paintInfo.context(), *image, image, LayoutSize(rect.size())) : InterpolationDefault
+        image ? chooseInterpolationQuality(paintInfo.context(), *image, image, LayoutSize(rect.size())) : InterpolationQuality::Default
     };
 
     auto drawResult = paintInfo.context().drawImage(*img, rect, options);

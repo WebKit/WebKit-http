@@ -48,11 +48,18 @@ using SignatureIndex = uint64_t;
 class SymbolTable;
 class JSWebAssemblyCodeBlock;
 class JSWebAssemblyMemory;
-class WebAssemblyToJSCallee;
 
-class JSWebAssemblyModule final : public JSDestructibleObject {
+class JSWebAssemblyModule final : public JSNonFinalObject {
 public:
-    typedef JSDestructibleObject Base;
+    using Base = JSNonFinalObject;
+    static constexpr bool needsDestruction = true;
+    static void destroy(JSCell*);
+
+    template<typename CellType, SubspaceAccess mode>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return vm.webAssemblyModuleSpace<mode>();
+    }
 
     DECLARE_EXPORT_INFO;
 
@@ -62,7 +69,6 @@ public:
     const Wasm::ModuleInformation& moduleInformation() const;
     SymbolTable* exportSymbolTable() const;
     Wasm::SignatureIndex signatureIndexFromFunctionIndexSpace(unsigned functionIndexSpace) const;
-    WebAssemblyToJSCallee* callee() const;
 
     JSWebAssemblyCodeBlock* codeBlock(Wasm::MemoryMode mode);
     void setCodeBlock(VM&, Wasm::MemoryMode, JSWebAssemblyCodeBlock*);
@@ -74,13 +80,11 @@ private:
 
     JSWebAssemblyModule(VM&, Structure*, Ref<Wasm::Module>&&);
     void finishCreation(VM&);
-    static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
     Ref<Wasm::Module> m_module;
     WriteBarrier<SymbolTable> m_exportSymbolTable;
     WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlocks[Wasm::NumberOfMemoryModes];
-    WriteBarrier<WebAssemblyToJSCallee> m_callee;
 };
 
 } // namespace JSC

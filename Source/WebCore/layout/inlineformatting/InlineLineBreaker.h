@@ -27,8 +27,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "InlineLineLayout.h"
-#include "LayoutUnit.h"
+#include "LayoutUnits.h"
 
 namespace WebCore {
 namespace Layout {
@@ -39,27 +38,90 @@ class InlineTextItem;
 class LineBreaker {
 public:
     struct BreakingContext {
-        enum class ContentBreak { Keep, Split, Wrap };
-        ContentBreak contentBreak;
-        struct TrailingPartialContent {
+        enum class ContentWrappingRule {
+            Keep, // Keep content on the current line.
+            Split, // Partial content is on the current line.
+            Push // Content is pushed to the next line.
+        };
+        ContentWrappingRule contentWrappingRule;
+        struct PartialTrailingContent {
             unsigned runIndex { 0 };
             unsigned length { 0 };
-            LayoutUnit logicalWidth;
+            InlineLayoutUnit logicalWidth { 0 };
+            bool needsHyphen { false };
         };
-        Optional<TrailingPartialContent> trailingPartialContent;
+        Optional<PartialTrailingContent> partialTrailingContent;
     };
-    BreakingContext breakingContextForInlineContent(const LineLayout::RunList&, LayoutUnit logicalWidth, LayoutUnit availableWidth, bool lineIsEmpty);
-    bool shouldWrapFloatBox(LayoutUnit floatLogicalWidth, LayoutUnit availableWidth, bool lineIsEmpty);
+
+    // This struct represents the amount of content committed to line breaking at a time e.g.
+    // text content <span>span1</span>between<span>span2</span>
+    // [text][ ][content][ ][container start][span1][container end][between][container start][span2][container end]
+    // -> content chunks ->
+    // [text]
+    // [ ]
+    // [content]
+    // [container start][span1][container end][between][container start][span2][container end]
+    // see https://drafts.csswg.org/css-text-3/#line-break-details
+    struct Content {
+        void append(const InlineItem&, InlineLayoutUnit logicalWidth);
+        void reset();
+        void trim(unsigned newSize);
+
+        static bool isAtContentBoundary(const InlineItem&, const Content&);
+
+        struct Run {
+            const InlineItem& inlineItem;
+            InlineLayoutUnit logicalWidth { 0 };
+        };
+        using RunList = Vector<Run, 30>;
+
+        RunList& runs() { return m_continousRuns; }
+        const RunList& runs() const { return m_continousRuns; }
+        bool isEmpty() const { return m_continousRuns.isEmpty(); }
+        bool hasTextContentOnly() const;
+        bool hasNonContentRunsOnly() const;
+        unsigned size() const { return m_continousRuns.size(); }
+        InlineLayoutUnit width() const { return m_width; }
+        InlineLayoutUnit nonTrimmableWidth() const { return m_width - m_trailingTrimmableContent.width; }
+
+        bool hasTrailingTrimmableContent() const { return !!m_trailingTrimmableContent.width; }
+        bool isTrailingContentFullyTrimmable() const { return m_trailingTrimmableContent.isFullyTrimmable; }
+
+        Optional<unsigned> firstTextRunIndex() const;
+
+    private:
+        RunList m_continousRuns;
+        struct TrailingTrimmableContent {
+            void reset();
+
+            bool isFullyTrimmable { false };
+            InlineLayoutUnit width { 0 };
+        };
+        TrailingTrimmableContent m_trailingTrimmableContent;
+        InlineLayoutUnit m_width { 0 };
+    };
+
+    struct LineStatus {
+        InlineLayoutUnit availableWidth { 0 };
+        InlineLayoutUnit trimmableWidth { 0 };
+        bool lineHasFullyTrimmableTrailingRun { false };
+        bool lineIsEmpty { true };
+    };
+    BreakingContext breakingContextForInlineContent(const Content& candidateRuns, const LineStatus&);
+    bool shouldWrapFloatBox(InlineLayoutUnit floatLogicalWidth, InlineLayoutUnit availableWidth, bool lineIsEmpty);
+
+    void setHyphenationDisabled() { n_hyphenationIsDisabled = true; }
 
 private:
-
-    Optional<BreakingContext::TrailingPartialContent> wordBreakingBehavior(const LineLayout::RunList&, LayoutUnit availableWidth) const;
-
-    struct SplitLengthAndWidth {
+    Optional<BreakingContext::PartialTrailingContent> wordBreakingBehavior(const Content::RunList&, const LineStatus&) const;
+    struct LeftSide {
         unsigned length { 0 };
-        LayoutUnit leftLogicalWidth;
+        InlineLayoutUnit logicalWidth { 0 };
+        bool needsHyphen { false };
     };
-    Optional<SplitLengthAndWidth> tryBreakingTextRun(const LineLayout::Run overflowRun, LayoutUnit availableWidth) const;
+    Optional<LeftSide> tryBreakingTextRun(const Content::Run& overflowRun, InlineLayoutUnit availableWidth, bool lineIsEmpty) const;
+
+    bool n_hyphenationIsDisabled { false };
 };
 
 }

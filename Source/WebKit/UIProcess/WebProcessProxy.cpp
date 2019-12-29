@@ -381,10 +381,6 @@ void WebProcessProxy::shutDown()
         frame->webProcessWillShutDown();
     m_frameMap.clear();
 
-    for (auto* visitedLinkStore : m_visitedLinkStoresWithUsers.keys())
-        visitedLinkStore->removeProcess(*this);
-    m_visitedLinkStoresWithUsers.clear();
-
     for (auto* webUserContentControllerProxy : m_webUserContentControllerProxies)
         webUserContentControllerProxy->removeProcess(*this);
     m_webUserContentControllerProxies.clear();
@@ -489,7 +485,7 @@ void WebProcessProxy::addVisitedLinkStoreUser(VisitedLinkStore& visitedLinkStore
     ASSERT(!users.contains(pageID));
     users.add(pageID);
 
-    if (users.size() == 1 && state() == State::Running)
+    if (users.size() == 1)
         visitedLinkStore.addProcess(*this);
 }
 
@@ -682,6 +678,13 @@ void WebProcessProxy::getNetworkProcessConnection(Messages::WebProcessProxy::Get
     m_processPool->getNetworkProcessConnection(*this, WTFMove(reply));
 }
 
+#if ENABLE(GPU_PROCESS)
+void WebProcessProxy::getGPUProcessConnection(Messages::WebProcessProxy::GetGPUProcessConnection::DelayedReply&& reply)
+{
+    m_processPool->getGPUProcessConnection(*this, WTFMove(reply));
+}
+#endif
+
 #if !PLATFORM(COCOA)
 bool WebProcessProxy::platformIsBeingDebugged() const
 {
@@ -857,9 +860,6 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 
     m_processPool->processDidFinishLaunching(this);
     m_backgroundResponsivenessTimer.updateState();
-
-    for (auto* visitedLinkStore : m_visitedLinkStoresWithUsers.keys())
-        visitedLinkStore->addProcess(*this);
 
 #if PLATFORM(IOS_FAMILY)
     if (connection()) {
@@ -1511,11 +1511,14 @@ PAL::SessionID WebProcessProxy::sessionID() const
 
 void WebProcessProxy::addPlugInAutoStartOriginHash(String&& pageOrigin, uint32_t hash)
 {
+    MESSAGE_CHECK(PlugInAutoStartProvider::AutoStartTable::isValidKey(pageOrigin));
+    MESSAGE_CHECK(PlugInAutoStartProvider::HashToOriginMap::isValidKey(hash));
     processPool().plugInAutoStartProvider().addAutoStartOriginHash(WTFMove(pageOrigin), hash, sessionID());
 }
 
 void WebProcessProxy::plugInDidReceiveUserInteraction(uint32_t hash)
 {
+    MESSAGE_CHECK(PlugInAutoStartProvider::HashToOriginMap::isValidKey(hash));
     processPool().plugInAutoStartProvider().didReceiveUserInteraction(hash, sessionID());
 }
 

@@ -32,10 +32,10 @@
 #include "DOMWindow.h"
 #include "DeclarativeAnimation.h"
 #include "Document.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "GraphicsLayer.h"
 #include "KeyframeEffect.h"
-#include "Microtasks.h"
 #include "Node.h"
 #include "Page.h"
 #include "PseudoElement.h"
@@ -43,9 +43,6 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include <JavaScriptCore/VM.h>
-
-static const Seconds defaultAnimationInterval { 15_ms };
-static const Seconds throttledAnimationInterval { 30_ms };
 
 namespace WebCore {
 
@@ -181,6 +178,10 @@ Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
         return false;
     });
 
+    std::sort(webAnimations.begin(), webAnimations.end(), [](auto& lhs, auto& rhs) {
+        return lhs->globalPosition() < rhs->globalPosition();
+    });
+
     // Finally, we can concatenate the sorted CSS Transitions, CSS Animations and Web Animations in their relative composite order.
     Vector<RefPtr<WebAnimation>> animations;
     animations.appendRange(cssTransitions.begin(), cssTransitions.end());
@@ -189,16 +190,11 @@ Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
     return animations;
 }
 
-void DocumentTimeline::updateThrottlingState()
-{
-    scheduleAnimationResolution();
-}
-
 Seconds DocumentTimeline::animationInterval() const
 {
     if (!m_document || !m_document->page())
         return Seconds::infinity();
-    return m_document->page()->isLowPowerModeEnabled() ? throttledAnimationInterval : defaultAnimationInterval;
+    return m_document->page()->preferredRenderingUpdateInterval();
 }
 
 void DocumentTimeline::suspendAnimations()
@@ -345,11 +341,15 @@ void DocumentTimeline::updateAnimationsAndSendEvents(DOMHighResTimeStamp timesta
     if (m_isSuspended || !m_animationResolutionScheduled || !shouldRunUpdateAnimationsAndSendEventsIgnoringSuspensionState())
         return;
 
+    // Updating animations and sending events may invalidate the timing of some animations, so we must set the m_animationResolutionScheduled
+    // flag to false prior to running that procedure to allow animation with timing model updates to schedule updates.
+    m_animationResolutionScheduled = false;
+
     internalUpdateAnimationsAndSendEvents();
     applyPendingAcceleratedAnimations();
 
-    m_animationResolutionScheduled = false;
-    scheduleNextTick();
+    if (!m_animationResolutionScheduled)
+        scheduleNextTick();
 }
 
 void DocumentTimeline::internalUpdateAnimationsAndSendEvents()
@@ -388,7 +388,8 @@ void DocumentTimeline::internalUpdateAnimationsAndSendEvents()
     removeReplacedAnimations();
 
     // 3. Perform a microtask checkpoint.
-    MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+    if (auto document = makeRefPtr(this->document()))
+        document->eventLoop().performMicrotaskCheckpoint();
 
     // 4. Let events to dispatch be a copy of doc's pending animation event queue.
     // 5. Clear doc's pending animation event queue.
@@ -522,13 +523,6 @@ void DocumentTimeline::scheduleNextTick()
     // There is no tick to schedule if we don't have any relevant animations.
     if (m_animations.isEmpty())
         return;
-
-    for (const auto& animation : m_animations) {
-        if (!animation->isRunningAccelerated()) {
-            scheduleAnimationResolution();
-            return;
-        }
-    }
 
     Seconds scheduleDelay = Seconds::infinity();
 

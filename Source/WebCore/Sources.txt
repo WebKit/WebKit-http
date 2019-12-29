@@ -79,6 +79,9 @@ Modules/geolocation/GeolocationController.cpp
 Modules/geolocation/GeolocationCoordinates.cpp
 Modules/geolocation/NavigatorGeolocation.cpp
 
+Modules/highlight/HighlightMap.cpp
+Modules/highlight/HighlightRangeGroup.cpp
+
 Modules/indexeddb/DOMWindowIndexedDatabase.cpp
 Modules/indexeddb/IDBCursor.cpp
 Modules/indexeddb/IDBCursorWithValue.cpp
@@ -139,7 +142,6 @@ Modules/indexeddb/shared/IDBRequestData.cpp
 Modules/indexeddb/shared/IDBResourceIdentifier.cpp
 Modules/indexeddb/shared/IDBResultData.cpp
 Modules/indexeddb/shared/IDBTransactionInfo.cpp
-Modules/indexeddb/shared/InProcessIDBServer.cpp
 Modules/indexeddb/shared/IndexKey.cpp
 
 Modules/mediacapabilities/MediaCapabilities.cpp
@@ -457,6 +459,7 @@ animation/DeclarativeAnimation.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
 animation/WebAnimation.cpp
+animation/WebAnimationUtilities.cpp
 
 bindings/js/CachedModuleScriptLoader.cpp
 bindings/js/CachedScriptFetcher.cpp
@@ -503,6 +506,7 @@ bindings/js/JSDOMGuardedObject.cpp
 bindings/js/JSDOMMapLike.cpp
 bindings/js/JSDOMPromise.cpp
 bindings/js/JSDOMPromiseDeferred.cpp
+bindings/js/JSDOMSetLike.cpp
 bindings/js/JSDOMWindowBase.cpp
 bindings/js/JSDOMWindowCustom.cpp
 bindings/js/JSDOMWindowProperties.cpp
@@ -818,7 +822,6 @@ cssjit/SelectorCompiler.cpp
 dom/AbortController.cpp
 dom/AbortSignal.cpp
 dom/ActiveDOMCallback.cpp
-dom/ActiveDOMCallbackMicrotask.cpp
 dom/ActiveDOMObject.cpp
 dom/AllDescendantsCollection.cpp
 dom/AnimationEvent.cpp
@@ -864,7 +867,6 @@ dom/DeviceOrientationData.cpp
 dom/DeviceOrientationEvent.cpp
 dom/DeviceOrientationOrMotionEvent.cpp
 dom/Document.cpp
-dom/DocumentEventQueue.cpp
 dom/DocumentFragment.cpp
 dom/DocumentMarkerController.cpp
 dom/DocumentParser.cpp
@@ -880,6 +882,7 @@ dom/Event.cpp
 dom/EventContext.cpp
 dom/EventDispatcher.cpp
 dom/EventListenerMap.cpp
+dom/EventLoop.cpp
 dom/EventNames.cpp
 dom/EventPath.cpp
 dom/EventTarget.cpp
@@ -1082,6 +1085,7 @@ fileapi/ThreadableBlobRegistry.cpp
 
 history/BackForwardCache.cpp
 history/BackForwardController.cpp
+history/BackForwardItemIdentifier.cpp
 history/CachedFrame.cpp
 history/CachedPage.cpp
 history/HistoryItem.cpp
@@ -1428,6 +1432,7 @@ layout/blockformatting/BlockFormattingContextQuirks.cpp
 layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
 layout/displaytree/DisplayBox.cpp
+layout/displaytree/DisplayInlineContent.cpp
 layout/displaytree/DisplayPainter.cpp
 layout/floats/FloatAvoider.cpp
 layout/floats/FloatBox.cpp
@@ -1438,11 +1443,12 @@ layout/inlineformatting/InlineFormattingContextGeometry.cpp
 layout/inlineformatting/InlineFormattingContextQuirks.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineItem.cpp
-layout/inlineformatting/InlineLine.cpp
 layout/inlineformatting/InlineLineBreaker.cpp
-layout/inlineformatting/InlineLineLayout.cpp
+layout/inlineformatting/InlineLineBuilder.cpp
 layout/inlineformatting/InlineTextItem.cpp
+layout/inlineformatting/LineLayoutContext.cpp
 layout/inlineformatting/text/TextUtil.cpp
+layout/integration/LayoutIntegrationLineLayout.cpp
 layout/invalidation/InvalidationContext.cpp
 layout/invalidation/InvalidationState.cpp
 layout/layouttree/LayoutBox.cpp
@@ -2508,7 +2514,6 @@ workers/DedicatedWorkerThread.cpp
 workers/Worker.cpp
 workers/WorkerConsoleClient.cpp
 workers/WorkerEventLoop.cpp
-workers/WorkerEventQueue.cpp
 workers/WorkerGlobalScope.cpp
 workers/WorkerInspectorProxy.cpp
 workers/WorkerLocation.cpp
@@ -2898,6 +2903,8 @@ JSGeolocationPositionError.cpp
 JSGlobalCrypto.cpp
 JSGlobalEventHandlers.cpp
 JSGlobalPerformance.cpp
+JSHighlightMap.cpp
+JSHighlightRangeGroup.cpp
 JSHTMLAllCollection.cpp
 JSHTMLAnchorElement.cpp
 JSHTMLAppletElement.cpp

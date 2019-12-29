@@ -21,6 +21,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 
+GPUProcess/GPUProcess.cpp
+GPUProcess/GPUConnectionToWebProcess.cpp
+GPUProcess/GPUProcessCreationParameters.cpp
+
 NetworkProcess/AdClickAttributionManager.cpp
 NetworkProcess/NetworkActivityTracker.cpp
 NetworkProcess/NetworkCORSPreflightChecker.cpp
@@ -61,6 +65,7 @@ NetworkProcess/Downloads/PendingDownload.cpp
 NetworkProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
 NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.cpp @no-unify
+NetworkProcess/ServiceWorker/ServiceWorkerSoftUpdateLoader.cpp
 NetworkProcess/ServiceWorker/WebSWOriginStore.cpp @no-unify
 NetworkProcess/ServiceWorker/WebSWServerConnection.cpp @no-unify
 NetworkProcess/ServiceWorker/WebSWServerToContextConnection.cpp @no-unify
@@ -398,6 +403,8 @@ UIProcess/Launcher/ProcessLauncher.cpp @no-unify
 
 UIProcess/Network/NetworkProcessProxy.cpp
 
+UIProcess/GPU/GPUProcessProxy.cpp
+
 UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp
 UIProcess/Notifications/WebNotification.cpp
 UIProcess/Notifications/WebNotificationManagerProxy.cpp
@@ -490,6 +497,8 @@ WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp @no-unify
 
 WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp
 WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
+
+WebProcess/GPU/GPUProcessConnection.cpp
 
 WebProcess/Network/NetworkProcessConnection.cpp
 WebProcess/Network/WebLoaderStrategy.cpp

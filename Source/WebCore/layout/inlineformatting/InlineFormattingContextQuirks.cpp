@@ -28,13 +28,13 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "InlineLine.h"
+#include "InlineLineBuilder.h"
 #include "LayoutState.h"
 
 namespace WebCore {
 namespace Layout {
 
-bool InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(const Line::RunList& runList) const
+bool InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(const LineBuilder::RunList& runList) const
 {
     // Collapse line descent in limited and full quirk mode when there's no baseline aligned content or
     // the baseline aligned content has no descent.
@@ -47,7 +47,7 @@ bool InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(const Line::Run
         if (run.isContainerEnd() || layoutBox.style().verticalAlign() != VerticalAlign::Baseline)
             continue;
 
-        if (run.isForcedLineBreak())
+        if (run.isLineBreak())
             return false;
         if (run.isText()) {
             if (!run.isCollapsedToVisuallyEmpty())
@@ -63,8 +63,7 @@ bool InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(const Line::Run
         if (run.isBox()) {
             if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
                 auto& formattingState = downcast<InlineFormattingState>(layoutState.establishedFormattingState(downcast<Container>(layoutBox)));
-                ASSERT(!formattingState.lineBoxes().isEmpty());
-                auto inlineBlockBaseline = formattingState.lineBoxes().last()->baseline();
+                auto inlineBlockBaseline = formattingState.displayInlineContent()->lineBoxes.last().baseline();
                 if (inlineBlockBaseline.descent())
                     return false;
             }
@@ -75,24 +74,24 @@ bool InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(const Line::Run
     return true;
 }
 
-Line::InitialConstraints::HeightAndBaseline InlineFormattingContext::Quirks::lineHeightConstraints(const Box& formattingRoot) const
+LineBuilder::Constraints::HeightAndBaseline InlineFormattingContext::Quirks::lineHeightConstraints(const Box& formattingRoot) const
 {
     // computedLineHeight takes font-size into account when line-height is not set.
     // Strut is the imaginary box that we put on every line. It sets the initial vertical constraints for each new line.
-    auto strutHeight = formattingRoot.style().computedLineHeight();
-    auto strutBaselineOffset = Line::halfLeadingMetrics(formattingRoot.style().fontMetrics(), strutHeight).ascent();
+    InlineLayoutUnit strutHeight = formattingRoot.style().computedLineHeight();
+    auto strutBaselineOffset = LineBuilder::halfLeadingMetrics(formattingRoot.style().fontMetrics(), strutHeight).ascent();
     if (layoutState().inNoQuirksMode())
         return { strutHeight, strutBaselineOffset, { } };
 
     auto lineHeight = formattingRoot.style().lineHeight();
     if (lineHeight.isPercentOrCalculated()) {
-        auto initialBaselineOffset = Line::halfLeadingMetrics(formattingRoot.style().fontMetrics(), { }).ascent();
-        return { initialBaselineOffset, initialBaselineOffset, LineBox::Baseline { strutBaselineOffset, strutHeight - strutBaselineOffset } };
+        auto initialBaselineOffset = LineBuilder::halfLeadingMetrics(formattingRoot.style().fontMetrics(), 0_lu).ascent();
+        return { initialBaselineOffset, initialBaselineOffset, Display::LineBox::Baseline { strutBaselineOffset, strutHeight - strutBaselineOffset } };
     }
     // FIXME: The only reason why we use intValue() here is to match current inline tree (integral)behavior.
-    auto initialLineHeight = LayoutUnit { lineHeight.intValue() };
-    auto initialBaselineOffset = Line::halfLeadingMetrics(formattingRoot.style().fontMetrics(), initialLineHeight).ascent();
-    return { initialLineHeight, initialBaselineOffset, LineBox::Baseline { strutBaselineOffset, strutHeight - strutBaselineOffset } };
+    InlineLayoutUnit initialLineHeight = lineHeight.intValue();
+    auto initialBaselineOffset = LineBuilder::halfLeadingMetrics(formattingRoot.style().fontMetrics(), initialLineHeight).ascent();
+    return { initialLineHeight, initialBaselineOffset, Display::LineBox::Baseline { strutBaselineOffset, strutHeight - strutBaselineOffset } };
 }
 
 }

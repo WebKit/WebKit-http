@@ -79,6 +79,7 @@ UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy(W
 #if ENABLE(MEDIA_STREAM)
     proxies().add(this);
 #endif
+    syncWithWebCorePrefs();
 }
 
 UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy()
@@ -239,7 +240,16 @@ void UserMediaPermissionRequestManagerProxy::finishGrantingRequest(UserMediaPerm
     m_hasFilteredDeviceList = false;
 
     ++m_hasPendingCapture;
-    m_page.process().connection()->sendWithAsyncReply(Messages::WebPage::UserMediaAccessWasGranted { request.userMediaID(), request.audioDevice(), request.videoDevice(), request.deviceIdentifierHashSalt() }, [this, weakThis = makeWeakPtr(this)] {
+
+    SandboxExtension::Handle handle;
+#if PLATFORM(IOS)
+    if (!m_hasCreatedSandboxExtensionForTCCD) {
+        SandboxExtension::createHandleForMachLookup("com.apple.tccd", m_page.process().connection()->getAuditToken(), handle);
+        m_hasCreatedSandboxExtensionForTCCD = true;
+    }
+#endif
+
+    m_page.process().connection()->sendWithAsyncReply(Messages::WebPage::UserMediaAccessWasGranted { request.userMediaID(), request.audioDevice(), request.videoDevice(), request.deviceIdentifierHashSalt(), handle }, [this, weakThis = makeWeakPtr(this)] {
         if (!weakThis)
             return;
         if (!--m_hasPendingCapture)
@@ -672,6 +682,12 @@ void UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame(Frame
     UNUSED_PARAM(topLevelDocumentOrigin);
     completionHandler({ }, { });
 #endif
+}
+
+void UserMediaPermissionRequestManagerProxy::setMockCaptureDevicesEnabledOverride(Optional<bool> enabled)
+{
+    m_mockDevicesEnabledOverride = enabled;
+    syncWithWebCorePrefs();
 }
 
 void UserMediaPermissionRequestManagerProxy::syncWithWebCorePrefs() const

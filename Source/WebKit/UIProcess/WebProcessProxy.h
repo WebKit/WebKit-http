@@ -347,6 +347,10 @@ public:
 #endif
     void setAssertionStateForTesting(AssertionState state) { didSetAssertionState(state); }
 
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    UserMediaCaptureManagerProxy* userMediaCaptureManagerProxy() { return m_userMediaCaptureManagerProxy.get(); }
+#endif
+
 protected:
     WebProcessProxy(WebProcessPool&, WebsiteDataStore*, IsPrewarmed);
 
@@ -392,6 +396,10 @@ private:
     void plugInDidReceiveUserInteraction(uint32_t hash);
     
     void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
+
+#if ENABLE(GPU_PROCESS)
+    void getGPUProcessConnection(Messages::WebProcessProxy::GetGPUProcessConnectionDelayedReply&&);
+#endif
 
     bool platformIsBeingDebugged() const;
     bool shouldAllowNonValidInjectedCode() const;

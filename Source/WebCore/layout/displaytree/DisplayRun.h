@@ -27,8 +27,8 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "DisplayRect.h"
-#include "LayoutUnit.h"
+#include "DisplayInlineRect.h"
+#include "LayoutBox.h"
 #include "RenderStyle.h"
 #include "TextFlags.h"
 
@@ -44,88 +44,95 @@ struct Run {
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
     public:
         struct ExpansionContext;
-        TextContext(unsigned position, unsigned length, StringView content, Optional<ExpansionContext> = { });
+        TextContext(unsigned position, unsigned length, const String&);
 
         unsigned start() const { return m_start; }
         unsigned end() const { return start() + length(); }
         unsigned length() const { return m_length; }
-        StringView content() const { return m_content; }
+        StringView content() const { return StringView(m_contentString).substring(m_start, m_length); }
 
         struct ExpansionContext {
             ExpansionBehavior behavior;
-            LayoutUnit horizontalExpansion;
+            InlineLayoutUnit horizontalExpansion { 0 };
         };
         void setExpansion(ExpansionContext expansionContext) { m_expansionContext = expansionContext; }
         Optional<ExpansionContext> expansion() const { return m_expansionContext; }
 
-        void expand(StringView, unsigned expandedLength);
+        bool needsHyphen() const { return m_needsHyphen; }
+
+        void expand(unsigned expandedLength);
+        void setNeedsHyphen() { m_needsHyphen = true; }
 
     private:
         unsigned m_start { 0 };
         unsigned m_length { 0 };
+        bool m_needsHyphen { false };
+        String m_contentString;
         Optional<ExpansionContext> m_expansionContext;
-        // FIXME: This is temporary. We should have some mapping setup to identify associated text content instead.
-        StringView m_content;
     };
 
-    Run(const RenderStyle&, const Rect& logicalRect, Optional<TextContext> = WTF::nullopt);
+    Run(size_t lineIndex, const Layout::Box&, const InlineRect& logicalRect, Optional<TextContext> = WTF::nullopt);
 
-    const Rect& logicalRect() const { return m_logicalRect; }
+    size_t lineIndex() const { return m_lineIndex; }
 
-    LayoutPoint logicalTopLeft() const { return m_logicalRect.topLeft(); }
-    LayoutUnit logicalLeft() const { return m_logicalRect.left(); }
-    LayoutUnit logicalRight() const { return m_logicalRect.right(); }
-    LayoutUnit logicalTop() const { return m_logicalRect.top(); }
-    LayoutUnit logicalBottom() const { return m_logicalRect.bottom(); }
+    const InlineRect& logicalRect() const { return m_logicalRect; }
 
-    LayoutUnit logicalWidth() const { return m_logicalRect.width(); }
-    LayoutUnit logicalHeight() const { return m_logicalRect.height(); }
+    InlineLayoutPoint logicalTopLeft() const { return m_logicalRect.topLeft(); }
+    InlineLayoutUnit logicalLeft() const { return m_logicalRect.left(); }
+    InlineLayoutUnit logicalRight() const { return m_logicalRect.right(); }
+    InlineLayoutUnit logicalTop() const { return m_logicalRect.top(); }
+    InlineLayoutUnit logicalBottom() const { return m_logicalRect.bottom(); }
 
-    void setLogicalWidth(LayoutUnit width) { m_logicalRect.setWidth(width); }
-    void setLogicalTop(LayoutUnit logicalTop) { m_logicalRect.setTop(logicalTop); }
-    void setLogicalLeft(LayoutUnit logicalLeft) { m_logicalRect.setLeft(logicalLeft); }
-    void setLogicalRight(LayoutUnit logicalRight) { m_logicalRect.shiftRightTo(logicalRight); }
-    void moveVertically(LayoutUnit delta) { m_logicalRect.moveVertically(delta); }
-    void moveHorizontally(LayoutUnit delta) { m_logicalRect.moveHorizontally(delta); }
-    void expandVertically(LayoutUnit delta) { m_logicalRect.expandVertically(delta); }
-    void expandHorizontally(LayoutUnit delta) { m_logicalRect.expandHorizontally(delta); }
+    InlineLayoutUnit logicalWidth() const { return m_logicalRect.width(); }
+    InlineLayoutUnit logicalHeight() const { return m_logicalRect.height(); }
 
-    void setTextContext(TextContext textContext) { m_textContext.emplace(textContext); }
+    void setLogicalWidth(InlineLayoutUnit width) { m_logicalRect.setWidth(width); }
+    void setLogicalTop(InlineLayoutUnit logicalTop) { m_logicalRect.setTop(logicalTop); }
+    void setLogicalLeft(InlineLayoutUnit logicalLeft) { m_logicalRect.setLeft(logicalLeft); }
+    void moveVertically(InlineLayoutUnit delta) { m_logicalRect.moveVertically(delta); }
+    void moveHorizontally(InlineLayoutUnit delta) { m_logicalRect.moveHorizontally(delta); }
+    void expandVertically(InlineLayoutUnit delta) { m_logicalRect.expandVertically(delta); }
+    void expandHorizontally(InlineLayoutUnit delta) { m_logicalRect.expandHorizontally(delta); }
+
+    void setTextContext(const TextContext&& textContext) { m_textContext.emplace(textContext); }
+    const Optional<TextContext>& textContext() const { return m_textContext; }
     Optional<TextContext>& textContext() { return m_textContext; }
-    Optional<TextContext> textContext() const { return m_textContext; }
 
     void setImage(CachedImage& image) { m_cachedImage = &image; }
     CachedImage* image() const { return m_cachedImage; }
 
-    const RenderStyle& style() const { return m_style; }
+    bool isLineBreak() const { return layoutBox().isLineBreakBox() || (textContext() && textContext()->content() == "\n" && style().preserveNewline()); }
+
+    const Layout::Box& layoutBox() const { return *m_layoutBox; }
+    const RenderStyle& style() const { return m_layoutBox->style(); }
 
 private:
     // FIXME: Find out the Display::Run <-> paint style setup.
-    const RenderStyle& m_style;
+    const size_t m_lineIndex;
+    WeakPtr<const Layout::Box> m_layoutBox;
     CachedImage* m_cachedImage { nullptr };
-    Rect m_logicalRect;
+    InlineRect m_logicalRect;
     Optional<TextContext> m_textContext;
 };
 
-inline Run::Run(const RenderStyle& style, const Rect& logicalRect, Optional<TextContext> textContext)
-    : m_style(style)
+inline Run::Run(size_t lineIndex, const Layout::Box& layoutBox, const InlineRect& logicalRect, Optional<TextContext> textContext)
+    : m_lineIndex(lineIndex)
+    , m_layoutBox(makeWeakPtr(layoutBox))
     , m_logicalRect(logicalRect)
     , m_textContext(textContext)
 {
 }
 
-inline Run::TextContext::TextContext(unsigned start, unsigned length, StringView content, Optional<ExpansionContext> expansionContext)
+inline Run::TextContext::TextContext(unsigned start, unsigned length, const String& contentString)
     : m_start(start)
     , m_length(length)
-    , m_expansionContext(expansionContext)
-    , m_content(content)
+    , m_contentString(contentString)
 {
 }
 
-inline void Run::TextContext::expand(StringView text, unsigned expandedLength)
+inline void Run::TextContext::expand(unsigned expandedLength)
 {
     m_length = expandedLength;
-    m_content = text;
 }
 
 }

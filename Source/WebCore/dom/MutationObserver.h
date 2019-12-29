@@ -40,18 +40,19 @@
 
 namespace WebCore {
 
+class Document;
 class HTMLSlotElement;
 class MutationCallback;
 class MutationObserverRegistration;
 class MutationRecord;
 class Node;
+class WindowEventLoop;
 
 using MutationObserverOptions = unsigned char;
 using MutationRecordDeliveryOptions = unsigned char;
 
 class MutationObserver final : public RefCounted<MutationObserver> {
     WTF_MAKE_ISO_ALLOCATED(MutationObserver);
-    friend class MutationObserverMicrotask;
 public:
     enum MutationType {
         ChildList = 1 << 0,
@@ -97,7 +98,7 @@ public:
     void observationStarted(MutationObserverRegistration&);
     void observationEnded(MutationObserverRegistration&);
     void enqueueMutationRecord(Ref<MutationRecord>&&);
-    void setHasTransientRegistration();
+    void setHasTransientRegistration(Document&);
     bool canDeliver();
 
     HashSet<Node*> observedNodes() const;
@@ -106,11 +107,12 @@ public:
 
     static void enqueueSlotChangeEvent(HTMLSlotElement&);
 
+    static void notifyMutationObservers(WindowEventLoop&);
+
 private:
     explicit MutationObserver(Ref<MutationCallback>&&);
     void deliver();
 
-    static void notifyMutationObservers();
     static bool validateOptions(MutationObserverOptions);
 
     Ref<MutationCallback> m_callback;

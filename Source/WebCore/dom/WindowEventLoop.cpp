@@ -26,76 +26,77 @@
 #include "config.h"
 #include "WindowEventLoop.h"
 
+#include "CommonVM.h"
+#include "CustomElementReactionQueue.h"
 #include "Document.h"
+#include "HTMLSlotElement.h"
+#include "Microtasks.h"
+#include "MutationObserver.h"
 
 namespace WebCore {
 
-static HashMap<RegistrableDomain, WindowEventLoop*>& windowEventLoopMap()
+static HashMap<String, WindowEventLoop*>& windowEventLoopMap()
 {
     RELEASE_ASSERT(isMainThread());
-    static NeverDestroyed<HashMap<RegistrableDomain, WindowEventLoop*>> map;
+    static NeverDestroyed<HashMap<String, WindowEventLoop*>> map;
     return map.get();
 }
 
-Ref<WindowEventLoop> WindowEventLoop::ensureForRegistrableDomain(const RegistrableDomain& domain)
+static String agentClusterKeyOrNullIfUnique(const SecurityOrigin& origin)
 {
-    auto addResult = windowEventLoopMap().add(domain, nullptr);
+    auto computeKey = [&] {
+        // https://html.spec.whatwg.org/multipage/webappapis.html#obtain-agent-cluster-key
+        if (origin.isUnique())
+            return origin.toString();
+        RegistrableDomain registrableDomain { origin.data() };
+        if (registrableDomain.isEmpty())
+            return origin.toString();
+        return makeString(origin.protocol(), "://", registrableDomain.string());
+    };
+    auto key = computeKey();
+    if (key.isEmpty() || key == "null"_s)
+        return { };
+    return key;
+}
+
+Ref<WindowEventLoop> WindowEventLoop::eventLoopForSecurityOrigin(const SecurityOrigin& origin)
+{
+    auto key = agentClusterKeyOrNullIfUnique(origin);
+    if (key.isNull())
+        return create({ });
+
+    auto addResult = windowEventLoopMap().add(key, nullptr);
     if (UNLIKELY(addResult.isNewEntry)) {
-        auto newEventLoop = adoptRef(*new WindowEventLoop(domain));
+        auto newEventLoop = create(key);
         addResult.iterator->value = newEventLoop.ptr();
         return newEventLoop;
     }
     return *addResult.iterator->value;
 }
 
-inline WindowEventLoop::WindowEventLoop(const RegistrableDomain& domain)
-    : m_domain(domain)
+inline Ref<WindowEventLoop> WindowEventLoop::create(const String& agentClusterKey)
+{
+    return adoptRef(*new WindowEventLoop(agentClusterKey));
+}
+
+inline WindowEventLoop::WindowEventLoop(const String& agentClusterKey)
+    : m_agentClusterKey(agentClusterKey)
+    , m_timer(*this, &WindowEventLoop::run)
+    , m_perpetualTaskGroupForSimilarOriginWindowAgents(*this)
 {
 }
 
 WindowEventLoop::~WindowEventLoop()
 {
-    auto didRemove = windowEventLoopMap().remove(m_domain);
+    if (m_agentClusterKey.isNull())
+        return;
+    auto didRemove = windowEventLoopMap().remove(m_agentClusterKey);
     RELEASE_ASSERT(didRemove);
-}
-
-void AbstractEventLoop::queueTask(std::unique_ptr<EventLoopTask>&& task)
-{
-    ASSERT(task->group());
-    ASSERT(isContextThread());
-    scheduleToRunIfNeeded();
-    m_tasks.append(WTFMove(task));
-}
-
-void AbstractEventLoop::resumeGroup(EventLoopTaskGroup& group)
-{
-    ASSERT(isContextThread());
-    if (!m_groupsWithSuspenedTasks.contains(group))
-        return;
-    scheduleToRunIfNeeded();
-}
-
-void AbstractEventLoop::stopGroup(EventLoopTaskGroup& group)
-{
-    ASSERT(isContextThread());
-    m_tasks.removeAllMatching([&group] (auto& task) {
-        return group.matchesTask(*task);
-    });
-}
-
-void AbstractEventLoop::scheduleToRunIfNeeded()
-{
-    if (m_isScheduledToRun)
-        return;
-    m_isScheduledToRun = true;
-    scheduleToRun();
 }
 
 void WindowEventLoop::scheduleToRun()
 {
-    callOnMainThread([eventLoop = makeRef(*this)] () {
-        eventLoop->run();
-    });
+    m_timer.startOneShot(0_s);
 }
 
 bool WindowEventLoop::isContextThread() const
@@ -103,56 +104,47 @@ bool WindowEventLoop::isContextThread() const
     return isMainThread();
 }
 
-void AbstractEventLoop::run()
+MicrotaskQueue& WindowEventLoop::microtaskQueue()
 {
-    m_isScheduledToRun = false;
-    if (m_tasks.isEmpty())
+    if (!m_microtaskQueue)
+        m_microtaskQueue = makeUnique<MicrotaskQueue>(commonVM());
+    return *m_microtaskQueue;
+}
+
+void WindowEventLoop::queueMutationObserverCompoundMicrotask()
+{
+    if (m_mutationObserverCompoundMicrotaskQueuedFlag)
         return;
+    m_mutationObserverCompoundMicrotaskQueuedFlag = true;
+    m_perpetualTaskGroupForSimilarOriginWindowAgents.queueMicrotask([this] {
+        // We can't make a Ref to WindowEventLoop in the lambda capture as that would result in a reference cycle & leak.
+        auto protectedThis = makeRef(*this);
+        m_mutationObserverCompoundMicrotaskQueuedFlag = false;
 
-    auto tasks = std::exchange(m_tasks, { });
-    m_groupsWithSuspenedTasks.clear();
-    Vector<std::unique_ptr<EventLoopTask>> remainingTasks;
-    for (auto& task : tasks) {
-        auto* group = task->group();
-        if (!group || group->isStoppedPermanently())
-            continue;
-
-        if (group->isSuspended()) {
-            m_groupsWithSuspenedTasks.add(group);
-            remainingTasks.append(WTFMove(task));
-            continue;
-        }
-
-        task->execute();
-    }
-    for (auto& task : m_tasks)
-        remainingTasks.append(WTFMove(task));
-    m_tasks = WTFMove(remainingTasks);
+        // FIXME: This check doesn't exist in the spec.
+        if (m_deliveringMutationRecords)
+            return;
+        m_deliveringMutationRecords = true;
+        MutationObserver::notifyMutationObservers(*this);
+        m_deliveringMutationRecords = false;
+    });
 }
 
-void AbstractEventLoop::clearAllTasks()
+CustomElementQueue& WindowEventLoop::backupElementQueue()
 {
-    m_tasks.clear();
-    m_groupsWithSuspenedTasks.clear();
-}
-
-class EventLoopFunctionDispatchTask : public EventLoopTask {
-public:
-    EventLoopFunctionDispatchTask(TaskSource source, EventLoopTaskGroup& group, AbstractEventLoop::TaskFunction&& function)
-        : EventLoopTask(source, group)
-        , m_function(WTFMove(function))
-    {
+    if (!m_processingBackupElementQueue) {
+        m_processingBackupElementQueue = true;
+        m_perpetualTaskGroupForSimilarOriginWindowAgents.queueMicrotask([this] {
+            // We can't make a Ref to WindowEventLoop in the lambda capture as that would result in a reference cycle & leak.
+            auto protectedThis = makeRef(*this);
+            m_processingBackupElementQueue = false;
+            ASSERT(m_customElementQueue);
+            CustomElementReactionQueue::processBackupQueue(*m_customElementQueue);
+        });
     }
-
-    void execute() final { m_function(); }
-
-private:
-    AbstractEventLoop::TaskFunction m_function;
-};
-
-void EventLoopTaskGroup::queueTask(TaskSource source, AbstractEventLoop::TaskFunction&& function)
-{
-    return queueTask(makeUnique<EventLoopFunctionDispatchTask>(source, *this, WTFMove(function)));
+    if (!m_customElementQueue)
+        m_customElementQueue = makeUnique<CustomElementQueue>();
+    return *m_customElementQueue;
 }
 
 } // namespace WebCore

@@ -38,9 +38,10 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(Box);
 
-Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
+Box::Box(Optional<ElementAttributes> attributes, Optional<TextContext> textContext, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : m_style(WTFMove(style))
     , m_elementAttributes(attributes)
+    , m_textContext(textContext)
     , m_baseTypeFlags(baseTypeFlags)
     , m_hasRareData(false)
     , m_isAnonymous(false)
@@ -50,14 +51,14 @@ Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFl
 }
 
 Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style)
-    : Box(attributes, WTFMove(style), BaseTypeFlag::BoxFlag)
+    : Box(attributes, { }, WTFMove(style), BaseTypeFlag::BoxFlag)
 {
 }
 
-Box::Box(String textContent, RenderStyle&& style)
-    : Box({ }, WTFMove(style), BaseTypeFlag::BoxFlag)
+Box::Box(TextContext&& textContext, RenderStyle&& style)
+    : Box({ }, WTFMove(textContext), WTFMove(style), BaseTypeFlag::BoxFlag)
 {
-    setTextContent(textContent);
+    ASSERT(isInlineLevelBox());
 }
 
 Box::~Box()
@@ -384,25 +385,6 @@ bool Box::isPaddingApplicable() const
         && !isTableRow()
         && !isTableColumnGroup()
         && !isTableColumn();
-}
-
-void Box::setTextContent(String textContent)
-{
-    ASSERT(isInlineLevelBox());
-    ensureRareData().textContent = textContent;
-}
-
-bool Box::hasTextContent() const
-{
-    ASSERT(isInlineLevelBox());
-    return hasRareData() && !rareData().textContent.isNull();
-}
-
-String Box::textContent() const
-{
-    ASSERT(hasRareData());
-    ASSERT(isInlineLevelBox());
-    return rareData().textContent;
 }
 
 const Replaced* Box::replaced() const

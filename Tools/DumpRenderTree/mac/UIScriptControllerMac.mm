@@ -34,6 +34,7 @@
 #import <JavaScriptCore/OpaqueJSString.h>
 #import <WebKit/WebKit.h>
 #import <WebKit/WebViewPrivate.h>
+#import <wtf/BlockPtr.h>
 
 #if PLATFORM(MAC)
 
@@ -50,11 +51,11 @@ void UIScriptControllerMac::doAsyncTask(JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), makeBlockPtr([this, strongThis = makeRef(*this), callbackID] {
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
-    });
+    }).get());
 }
 
 void UIScriptControllerMac::replaceTextAtRange(JSStringRef text, int location, int length)
@@ -100,17 +101,17 @@ JSObjectRef UIScriptControllerMac::contentsOfUserInterfaceItem(JSStringRef inter
 #endif
 }
 
-void UIScriptControllerMac::activateDataListSuggestion(long index, JSValueRef callback)
+void UIScriptControllerMac::activateDataListSuggestion(unsigned index, JSValueRef callback)
 {
     // FIXME: Not implemented.
     UNUSED_PARAM(index);
 
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), makeBlockPtr([this, strongThis = makeRef(*this), callbackID] {
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
-    });
+    }).get());
 }
 
 void UIScriptControllerMac::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
@@ -129,11 +130,11 @@ void UIScriptControllerMac::removeViewFromWindow(JSValueRef callback)
     WebView *webView = [mainFrame webView];
     [webView removeFromSuperview];
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), makeBlockPtr([this, strongThis = makeRef(*this), callbackID] {
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
-    });
+    }).get());
 }
 
 void UIScriptControllerMac::addViewToWindow(JSValueRef callback)
@@ -143,11 +144,11 @@ void UIScriptControllerMac::addViewToWindow(JSValueRef callback)
     WebView *webView = [mainFrame webView];
     [[mainWindow contentView] addSubview:webView];
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), makeBlockPtr([this, strongThis = makeRef(*this), callbackID] {
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
-    });
+    }).get());
 }
 
 void UIScriptControllerMac::toggleCapsLock(JSValueRef callback)

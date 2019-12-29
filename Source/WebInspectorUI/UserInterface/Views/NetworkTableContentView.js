@@ -342,6 +342,16 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._showingRepresentedObjectCookie = null;
     }
 
+    get canFocusFilterBar()
+    {
+        return !this._detailView;
+    }
+
+    focusFilterBar()
+    {
+        this._urlFilterNavigationItem.filterBar.focus();
+    }
+
     // NetworkDetailView delegate
 
     networkDetailViewClose(networkDetailView)
@@ -2141,8 +2151,8 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             let mainFrame = WI.networkManager.mainFrame;
             let archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
             WI.FileUtilities.save({
-                url: WI.FileUtilities.inspectorURLForFilename(archiveName + ".har"),
                 content: JSON.stringify(har, null, 2),
+                suggestedName: archiveName + ".har",
                 forceSaveAs: true,
             });
         });

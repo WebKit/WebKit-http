@@ -36,6 +36,7 @@
 #include "StructureSet.h"
 #include "StructureStubClearingWatchpoint.h"
 #include "StubInfoSummary.h"
+#include <wtf/Box.h>
 
 namespace JSC {
 
@@ -46,10 +47,11 @@ class AccessGenerationResult;
 class PolymorphicAccess;
 
 enum class AccessType : int8_t {
-    Get,
-    GetWithThis,
-    GetDirect,
-    TryGet,
+    GetById,
+    GetByIdWithThis,
+    GetByIdDirect,
+    TryGetById,
+    GetByVal,
     Put,
     In,
     InstanceOf
@@ -72,7 +74,7 @@ public:
     StructureStubInfo(AccessType);
     ~StructureStubInfo();
 
-    void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
+    void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset, const Identifier&);
     void initArrayLength();
     void initStringLength();
     void initPutByIdReplace(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
@@ -92,7 +94,7 @@ public:
     // This returns true if it has marked everything that it will ever mark.
     bool propagateTransitions(SlotVisitor&);
         
-    ALWAYS_INLINE bool considerCaching(VM& vm, CodeBlock* codeBlock, Structure* structure)
+    ALWAYS_INLINE bool considerCaching(VM& vm, CodeBlock* codeBlock, Structure* structure, UniquedStringImpl* impl = nullptr)
     {
         DisallowGC disallowGC;
 
@@ -152,7 +154,7 @@ public:
             // NOTE: This will behave oddly for InstanceOf if the user varies the prototype but not
             // the base's structure. That seems unlikely for the canonical use of instanceof, where
             // the prototype is fixed.
-            bool isNewlyAdded = bufferedStructures.add(structure);
+            bool isNewlyAdded = bufferedStructures.add({ structure, impl }).isNewEntry;
             if (isNewlyAdded)
                 vm.heap.writeBarrier(codeBlock);
             return isNewlyAdded;
@@ -168,7 +170,9 @@ public:
     bool containsPC(void* pc) const;
 
     CodeOrigin codeOrigin;
-    CallSiteIndex callSiteIndex;
+private:
+    Box<Identifier> m_getByIdSelfIdentifier;
+public:
 
     union {
         struct {
@@ -177,77 +181,116 @@ public:
         } byIdSelf;
         PolymorphicAccess* stub;
     } u;
+
+    Box<Identifier> getByIdSelfIdentifier()
+    {
+        RELEASE_ASSERT(m_cacheType == CacheType::GetByIdSelf);
+        return m_getByIdSelfIdentifier;
+    }
     
+private:
     // Represents those structures that already have buffered AccessCases in the PolymorphicAccess.
     // Note that it's always safe to clear this. If we clear it prematurely, then if we see the same
     // structure again during this buffering countdown, we will create an AccessCase object for it.
     // That's not so bad - we'll get rid of the redundant ones once we regenerate.
-    StructureSet bufferedStructures;
+    HashSet<std::pair<Structure*, RefPtr<UniquedStringImpl>>> bufferedStructures;
+public:
     
-    struct {
-        CodeLocationLabel<JITStubRoutinePtrTag> start; // This is either the start of the inline IC for *byId caches. or the location of patchable jump for 'instanceof' caches.
-        CodeLocationLabel<JSInternalPtrTag> doneLocation;
-        CodeLocationCall<JSInternalPtrTag> slowPathCallLocation;
-        CodeLocationLabel<JITStubRoutinePtrTag> slowPathStartLocation;
+    CodeLocationLabel<JITStubRoutinePtrTag> start; // This is either the start of the inline IC for *byId caches. or the location of patchable jump for 'instanceof' caches.
+    CodeLocationLabel<JSInternalPtrTag> doneLocation;
+    CodeLocationCall<JSInternalPtrTag> slowPathCallLocation;
+    CodeLocationLabel<JITStubRoutinePtrTag> slowPathStartLocation;
 
-        RegisterSet usedRegisters;
+    RegisterSet usedRegisters;
 
-        uint32_t inlineSize() const
-        {
-            int32_t inlineSize = MacroAssembler::differenceBetweenCodePtr(start, doneLocation);
-            ASSERT(inlineSize >= 0);
-            return inlineSize;
-        }
-
-        GPRReg baseGPR;
-        GPRReg valueGPR;
-        union {
-            GPRReg thisGPR;
-            GPRReg prototypeGPR;
-        } u;
-#if USE(JSVALUE32_64)
-        GPRReg valueTagGPR;
-        GPRReg baseTagGPR;
-        GPRReg thisTagGPR;
-#endif
-    } patch;
-
-    GPRReg baseGPR() const
+    uint32_t inlineSize() const
     {
-        return patch.baseGPR;
+        int32_t inlineSize = MacroAssembler::differenceBetweenCodePtr(start, doneLocation);
+        ASSERT(inlineSize >= 0);
+        return inlineSize;
     }
 
-    CodeLocationCall<JSInternalPtrTag> slowPathCallLocation() { return patch.slowPathCallLocation; }
-    CodeLocationLabel<JSInternalPtrTag> doneLocation() { return patch.doneLocation; }
-    CodeLocationLabel<JITStubRoutinePtrTag> slowPathStartLocation() { return patch.slowPathStartLocation; }
+    GPRReg baseGPR;
+    GPRReg valueGPR;
+    union {
+        GPRReg thisGPR;
+        GPRReg prototypeGPR;
+        GPRReg propertyGPR;
+    } regs;
+#if USE(JSVALUE32_64)
+    GPRReg valueTagGPR;
+    // FIXME: [32-bits] Check if StructureStubInfo::baseTagGPR is used somewhere.
+    // https://bugs.webkit.org/show_bug.cgi?id=204726
+    GPRReg baseTagGPR;
+    union {
+        GPRReg thisTagGPR;
+        GPRReg propertyTagGPR;
+    } v;
+#endif
 
     CodeLocationJump<JSInternalPtrTag> patchableJump()
     { 
         ASSERT(accessType == AccessType::InstanceOf);
-        return patch.start.jumpAtOffset<JSInternalPtrTag>(0);
+        return start.jumpAtOffset<JSInternalPtrTag>(0);
     }
 
     JSValueRegs valueRegs() const
     {
         return JSValueRegs(
 #if USE(JSVALUE32_64)
-            patch.valueTagGPR,
+            valueTagGPR,
 #endif
-            patch.valueGPR);
+            valueGPR);
     }
 
+    JSValueRegs propertyRegs() const
+    {
+        return JSValueRegs(
+#if USE(JSVALUE32_64)
+            v.propertyTagGPR,
+#endif
+            regs.propertyGPR);
+    }
+
+    JSValueRegs baseRegs() const
+    {
+        return JSValueRegs(
+#if USE(JSVALUE32_64)
+            baseTagGPR,
+#endif
+            baseGPR);
+    }
+
+    bool thisValueIsInThisGPR() const { return accessType == AccessType::GetByIdWithThis; }
+
+#if !ASSERT_DISABLED
+    void checkConsistency();
+#else
+    ALWAYS_INLINE void checkConsistency() { }
+#endif
 
     AccessType accessType;
-    CacheType cacheType;
+private:
+    CacheType m_cacheType;
+    void setCacheType(CacheType);
+public:
+    CacheType cacheType() const { return m_cacheType; }
     uint8_t countdown; // We repatch only when this is zero. If not zero, we decrement.
     uint8_t repatchCount;
     uint8_t numberOfCoolDowns;
+
+    CallSiteIndex callSiteIndex;
+
     uint8_t bufferingCountdown;
     bool resetByGC : 1;
     bool tookSlowPath : 1;
     bool everConsidered : 1;
     bool prototypeIsKnownObject : 1; // Only relevant for InstanceOf.
     bool sawNonCell : 1;
+    bool hasConstantIdentifier : 1;
+    bool propertyIsString : 1;
+    bool propertyIsInt32 : 1;
+    bool propertyIsSymbol : 1;
 };
 
 inline CodeOrigin getStructureStubInfoCodeOrigin(StructureStubInfo& structureStubInfo)
@@ -258,13 +301,13 @@ inline CodeOrigin getStructureStubInfoCodeOrigin(StructureStubInfo& structureStu
 inline auto appropriateOptimizingGetByIdFunction(AccessType type) -> decltype(&operationGetByIdOptimize)
 {
     switch (type) {
-    case AccessType::Get:
+    case AccessType::GetById:
         return operationGetByIdOptimize;
-    case AccessType::TryGet:
+    case AccessType::TryGetById:
         return operationTryGetByIdOptimize;
-    case AccessType::GetDirect:
+    case AccessType::GetByIdDirect:
         return operationGetByIdDirectOptimize;
-    case AccessType::GetWithThis:
+    case AccessType::GetByIdWithThis:
     default:
         ASSERT_NOT_REACHED();
         return nullptr;
@@ -274,13 +317,13 @@ inline auto appropriateOptimizingGetByIdFunction(AccessType type) -> decltype(&o
 inline auto appropriateGenericGetByIdFunction(AccessType type) -> decltype(&operationGetByIdGeneric)
 {
     switch (type) {
-    case AccessType::Get:
+    case AccessType::GetById:
         return operationGetByIdGeneric;
-    case AccessType::TryGet:
+    case AccessType::TryGetById:
         return operationTryGetByIdGeneric;
-    case AccessType::GetDirect:
+    case AccessType::GetByIdDirect:
         return operationGetByIdDirectGeneric;
-    case AccessType::GetWithThis:
+    case AccessType::GetByIdWithThis:
     default:
         ASSERT_NOT_REACHED();
         return nullptr;

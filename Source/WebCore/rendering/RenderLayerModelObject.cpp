@@ -97,7 +97,7 @@ void RenderLayerModelObject::createLayer()
     ASSERT(!m_layer);
     m_layer = makeUnique<RenderLayer>(*this);
     setHasLayer(true);
-    m_layer->insertOnlyThisLayer();
+    m_layer->insertOnlyThisLayer(RenderLayer::LayerChangeTiming::StyleChange);
 }
 
 bool RenderLayerModelObject::hasSelfPaintingLayer() const
@@ -132,8 +132,8 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
             // When a layout hint happens, we do a repaint of the layer, since the layer could end up being destroyed.
             if (hasLayer()) {
                 if (oldStyle->position() != newStyle.position()
-                    || oldStyle->zIndex() != newStyle.zIndex()
-                    || oldStyle->hasAutoZIndex() != newStyle.hasAutoZIndex()
+                    || oldStyle->usedZIndex() != newStyle.usedZIndex()
+                    || oldStyle->hasAutoUsedZIndex() != newStyle.hasAutoUsedZIndex()
                     || !(oldStyle->clip() == newStyle.clip())
                     || oldStyle->hasClip() != newStyle.hasClip()
                     || oldStyle->opacity() != newStyle.opacity()
@@ -169,22 +169,21 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
             if (s_wasFloating && isFloating())
                 setChildNeedsLayout();
             createLayer();
-            if (parent() && !needsLayout() && containingBlock()) {
+            if (parent() && !needsLayout() && containingBlock())
                 layer()->setRepaintStatus(NeedsFullRepaint);
-                layer()->updateLayerPositionsAfterStyleChange();
-            }
         }
     } else if (layer() && layer()->parent()) {
 #if ENABLE(CSS_COMPOSITING)
         if (oldStyle->hasBlendMode())
             layer()->willRemoveChildWithBlendMode();
 #endif
-        setHasTransformRelatedProperty(false); // All transform-related propeties force layers, so we know we don't have one or the object doesn't support them.
+        setHasTransformRelatedProperty(false); // All transform-related properties force layers, so we know we don't have one or the object doesn't support them.
         setHasReflection(false);
         // Repaint the about to be destroyed self-painting layer when style change also triggers repaint.
         if (layer()->isSelfPaintingLayer() && layer()->repaintStatus() == NeedsFullRepaint && hasRepaintLayoutRects())
             repaintUsingContainer(containerForRepaint(), repaintLayoutRects().m_repaintRect);
-        layer()->removeOnlyThisLayer(); // calls destroyLayer() which clears m_layer
+
+        layer()->removeOnlyThisLayer(RenderLayer::LayerChangeTiming::StyleChange); // calls destroyLayer() which clears m_layer
         if (s_wasFloating && isFloating())
             setChildNeedsLayout();
         if (s_hadTransform)

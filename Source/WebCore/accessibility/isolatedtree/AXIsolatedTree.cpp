@@ -106,6 +106,7 @@ RefPtr<AXIsolatedObject> AXIsolatedTree::nodeForID(AXID axID) const
 
 RefPtr<AXIsolatedObject> AXIsolatedTree::focusedUIElement()
 {
+    m_focusedNodeID = m_pendingFocusedNodeID;
     return nodeForID(m_focusedNodeID);
 }
     
@@ -114,7 +115,7 @@ RefPtr<AXIsolatedObject> AXIsolatedTree::rootNode()
     return nodeForID(m_rootNodeID);
 }
 
-void AXIsolatedTree::setRoot(Ref<AXIsolatedObject>& root)
+void AXIsolatedTree::setRootNode(Ref<AXIsolatedObject>& root)
 {
     LockHolder locker { m_changeLogLock };
     m_rootNodeID = root->objectID();

@@ -24,11 +24,11 @@
 #include "config.h"
 #include "JSDOMWindowBase.h"
 
-#include "ActiveDOMCallbackMicrotask.h"
 #include "Chrome.h"
 #include "CommonVM.h"
 #include "DOMWindow.h"
 #include "Document.h"
+#include "EventLoop.h"
 #include "FetchResponse.h"
 #include "Frame.h"
 #include "InspectorController.h"
@@ -70,7 +70,7 @@ const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = {
     &supportsRichSourceInfo,
     &shouldInterruptScript,
     &javaScriptRuntimeFlags,
-    &queueTaskToEventLoop,
+    &queueMicrotaskToEventLoop,
     &shouldInterruptScriptBeforeTimeout,
     &moduleLoaderImportModule,
     &moduleLoaderResolve,
@@ -204,16 +204,15 @@ RuntimeFlags JSDOMWindowBase::javaScriptRuntimeFlags(const JSGlobalObject* objec
     return frame->settings().javaScriptRuntimeFlags();
 }
 
-void JSDOMWindowBase::queueTaskToEventLoop(JSGlobalObject& object, Ref<JSC::Microtask>&& task)
+void JSDOMWindowBase::queueMicrotaskToEventLoop(JSGlobalObject& object, Ref<JSC::Microtask>&& task)
 {
     JSDOMWindowBase& thisObject = static_cast<JSDOMWindowBase&>(object);
 
     auto callback = JSMicrotaskCallback::create(thisObject, WTFMove(task));
-    auto microtask = makeUnique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *thisObject.scriptExecutionContext(), [callback = WTFMove(callback)]() mutable {
+    auto& eventLoop = thisObject.scriptExecutionContext()->eventLoop();
+    eventLoop.queueMicrotask([callback = WTFMove(callback)]() mutable {
         callback->call();
     });
-
-    MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
 }
 
 void JSDOMWindowBase::willRemoveFromWindowProxy()

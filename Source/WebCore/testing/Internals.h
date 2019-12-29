@@ -75,7 +75,9 @@ class HTMLSelectElement;
 class HTMLVideoElement;
 class ImageData;
 class InspectorStubFrontend;
+class InternalsMapLike;
 class InternalSettings;
+class InternalsSetLike;
 class MallocStatistics;
 class MediaSession;
 class MediaStream;
@@ -172,7 +174,7 @@ public:
 
     void clearBackForwardCache();
     unsigned backForwardCacheSize() const;
-    void preventDocumentForEnteringBackForwardCache();
+    void preventDocumentFromEnteringBackForwardCache();
 
     void disableTileSizeUpdateDelay();
 
@@ -542,7 +544,6 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setShouldInterruptAudioOnPageVisibilityChange(bool);
-    void setMockMediaCaptureDevicesEnabled(bool);
     void setMediaCaptureRequiresSecureConnection(bool);
     void setCustomPrivateRecorderCreator();
 #endif
@@ -744,6 +745,7 @@ public:
     void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack&);
     void setMediaStreamTrackIdentifier(MediaStreamTrack&, String&& id);
     void setMediaStreamSourceInterrupted(MediaStreamTrack&, bool);
+    bool isMockRealtimeMediaSourceCenterEnabled();
 #endif
 
     bool supportsAudioSession() const;
@@ -777,6 +779,9 @@ public:
 
     void postTask(RefPtr<VoidCallback>&&);
     ExceptionOr<void> queueTask(ScriptExecutionContext&, const String& source, RefPtr<VoidCallback>&&);
+    ExceptionOr<void> queueTaskToQueueMicrotask(Document&, const String& source, RefPtr<VoidCallback>&&);
+    ExceptionOr<bool> hasSameEventLoopAs(WindowProxy&);
+
     void markContextAsInsecure();
 
     bool usingAppleInternalSDK() const;
@@ -905,6 +910,11 @@ public:
 
     int processIdentifier() const;
 
+    Ref<InternalsSetLike> createInternalsSetLike();
+    Ref<InternalsMapLike> createInternalsMapLike();
+
+    String highlightPseudoElementColor(const String& highlightName, Element&);
+
 private:
     explicit Internals(Document&);
     Document* contextDocument() const;
@@ -926,8 +936,6 @@ private:
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
     RefPtr<CacheStorageConnection> m_cacheStorageConnection;
-
-    RefPtr<UnsuspendableActiveDOMObject> m_unsuspendableActiveDOMObject;
 };
 
 } // namespace WebCore

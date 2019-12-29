@@ -403,6 +403,9 @@ fullscreen/ [ Skip ]
 # viewport meta tag support
 fast/viewport/ [ Skip ]
 
+# highlight API
+highlight/ [ Skip ]
+
 # Pre-HMTL5 parser quirks only apply to the mac port for now.
 fast/parser/pre-html5-parser-quirks.html [ Skip ]
 
@@ -529,7 +532,6 @@ fast/css/draggable-region-parser.html [ Skip ]
 css3/font-feature-settings-rendering.html [ Skip ]
 
 webkit.org/b/149771 css3/font-feature-settings-font-face-rendering.html [ Skip ] # WontFix
-webkit.org/b/149771 css3/font-variant-font-face-all.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-override.html [ Skip ] # WontFix
 webkit.org/b/149774 css3/font-variant-petite-caps-synthesis-coverage.html [ Skip ] # WontFix
 webkit.org/b/149774 css3/font-variant-petite-caps-synthesis.html [ Skip ] # WontFix
@@ -1023,8 +1025,8 @@ media/controls-without-preload.html [ Skip ] # Crashing
 media/video-autoplay.html [ Skip ] # Crashing
 media/video-controls-transformed.html [ Skip ] # Crashing
 media/video-display-aspect-ratio.html [ Skip ] # Crashing
-media/video-fullscreeen-only-controls.html [ Skip ] # Crashing
-media/video-fullscreeen-only-playback.html [ Skip ] # Crashing
+media/video-fullscreen-only-controls.html [ Skip ] # Crashing
+media/video-fullscreen-only-playback.html [ Skip ] # Crashing
 media/video-load-networkState.html [ Skip ] # Crashing
 media/video-object-fit.html [ Skip ] # Crashing
 media/video-object-fit-change.html [ Skip ] # Crashing
@@ -3235,7 +3237,6 @@ fast/dom/HTMLMeterElement/meter-styles.html [ Failure ]
 fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element.html [ Failure ]
 fast/dom/Window/get-set-properties.html [ Failure ]
 fast/dom/Window/window-lookup-precedence.html [ Failure ]
-fast/events/arrow-keys-on-body.html [ Failure ]
 fast/events/before-input-events-prevent-drag-and-drop.html [ Failure ]
 fast/events/constructors/keyboard-event-constructor.html [ Failure ]
 fast/events/constructors/overconstrained-error-event-constructor.html [ Failure ]
@@ -3246,9 +3247,7 @@ fast/events/ime-composition-events-001.html [ Failure ]
 fast/events/ime-compositionend-on-selection-change.html [ Failure ]
 fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
-fast/events/key-events-in-input-text.html [ Failure ]
 fast/events/keyboardevent-code.html [ Failure ]
-fast/events/keyboardevent-key.html [ Failure ]
 fast/events/updateLayoutForHitTest.html [ Failure ]
 fast/events/wheelevent-basic.html [ Failure ]
 fast/forms/listbox-respects-padding-bottom.html [ Failure ]
@@ -3672,6 +3671,7 @@ editing/selection/character-granularity-select-text-with-click-handler.html [ Sk
 editing/selection/character-granularity-selected-range-after-dismissing-selection.html [ Skip ]
 fast/dom/FileList-iterator-using-open-panel.html [ Skip ]
 fast/forms/file/file-input-reset-using-open-panel.html [ Skip ]
+fast/forms/file/file-input-user-selection-events.html [ Skip ]
 fast/forms/file/file-reset-in-change-using-open-panel.html [ Skip ]
 fast/forms/file/file-reset-in-change-using-open-panel-with-icon.html [ Skip ]
 fast/forms/file/get-file-upload-using-open-panel.html [ Skip ]
@@ -3804,8 +3804,6 @@ webkit.org/b/174801 fast/text/line-height-minimumFontSize.html [ Failure ]
 # No service worker implementation for WK1
 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 http/tests/cache-storage [ Skip ]
-http/tests/navigation/page-cache-domcache-pending-promise.html [ Skip ]
-http/tests/navigation/page-cache-domcachestorage-pending-promise.html [ Skip ]
 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 http/tests/workers/service [ Skip ]
 http/wpt/cache-storage [ Skip ]
@@ -4475,3 +4473,25 @@ webkit.org/b/204153 http/tests/navigation/page-cache-mediastream.html [ Timeout 
 webkit.org/b/204153 ietestcenter/Javascript/15.4.4.15-3-29.html [ Timeout ]
 
 webkit.org/b/204253 animations/no-style-recalc-during-accelerated-animation.html [ Failure ]
+
+webkit.org/b/204413 fast/text/font-antialiasing-save-restore.html [ ImageOnlyFailure ]
+
+webkit.org/b/204438 http/tests/misc/repeat-open-cancel.html [ Pass Timeout ]
+webkit.org/b/204439 fast/repaint/backgroundSizeRepaint.html [ Pass ImageOnlyFailure ]
+webkit.org/b/204440 imported/blink/fast/events/panScroll-crash.html [ Pass Crash ]
+
+webkit.org/b/204489 storage/indexeddb/modern/new-database-after-user-delete.html [ Pass Failure ]
+
+webkit.org/b/204545 fast/xsl/sort-unicode.xml [ Failure ]
+webkit.org/b/204545 svg/W3C-SVG-1.1/paths-data-02-t.svg [ Failure ]
+webkit.org/b/204545 css2.1/20110323/border-conflict-element-001d.htm [ ImageOnlyFailure ]
+webkit.org/b/204545 css3/filters/blur-various-radii.html [ Pass ImageOnlyFailure ]
+webkit.org/b/204545 fast/masking/clip-path-inset-large-radii.html [ ImageOnlyFailure ]
+webkit.org/b/204545 fast/shrink-wrap/rect-shrink-wrap.html [ ImageOnlyFailure ]
+webkit.org/b/204545 svg/as-image/svg-nested.html [ Pass Timeout Crash ]
+
+webkit.org/b/204794 webanimations/accelerated-animation-removal-upon-transition-completion.html [ Timeout ]
+
+webkit.org/b/204795 fast/layoutformattingcontext/flow-integration-basic.html [ Failure ]
+
+webkit.org/b/204974 http/tests/xmlhttprequest/sync-xhr-in-unload.html [ Failure ]

@@ -143,6 +143,11 @@ WI.RemoteObject = class RemoteObject
 
     static resolveNode(node, objectGroup)
     {
+        console.assert(node instanceof WI.DOMNode, node);
+
+        if (node.destroyed)
+            return Promise.reject("ERROR: node is destroyed");
+
         let target = WI.assumingMainTarget();
         return target.DOMAgent.resolveNode(node.id, objectGroup)
             .then(({object}) => WI.RemoteObject.fromPayload(object, WI.mainTarget));
@@ -594,7 +599,7 @@ WI.RemoteObject = class RemoteObject
             var location = response.location;
             var sourceCode = WI.debuggerManager.scriptForIdentifier(location.scriptId, this._target);
 
-            if (!sourceCode || ((!WI.isEngineeringBuild || !WI.settings.engineeringShowInternalScripts.value) && isWebKitInternalScript(sourceCode.sourceURL))) {
+            if (!sourceCode || (!WI.settings.engineeringShowInternalScripts.value && isWebKitInternalScript(sourceCode.sourceURL))) {
                 result.resolve(WI.RemoteObject.SourceCodeLocationPromise.NoSourceFound);
                 return;
             }

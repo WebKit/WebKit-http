@@ -1,3 +1,24 @@
+2019-12-07  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [bmalloc] Decommit unused region in chunk metadata.
+        https://bugs.webkit.org/show_bug.cgi?id=204810
+
+        Reviewed by Yusuke Suzuki.
+
+        There is an unused memory region from just after Chunk object to next page border.
+        We can decommit those memory to kernel at the initialization of Chunk.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateSmallChunk):
+
+2019-11-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Ran sort-Xcode-project-file.
+
+        Unreviewed.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
 2019-11-18  Basuke Suzuki  <basuke.suzuki@sony.com>
 
         [bmalloc] Some chunks have unused region in the tail of its memory block.

@@ -107,6 +107,7 @@ namespace WebKit {
 
 class EventDispatcher;
 class GamepadData;
+class GPUProcessConnection;
 class InjectedBundle;
 class LibWebRTCNetwork;
 class NetworkProcessConnection;
@@ -212,6 +213,12 @@ public:
     void networkProcessConnectionClosed(NetworkProcessConnection*);
     NetworkProcessConnection* existingNetworkProcessConnection() { return m_networkProcessConnection.get(); }
     WebLoaderStrategy& webLoaderStrategy();
+
+#if ENABLE(GPU_PROCESS)
+    GPUProcessConnection& ensureGPUProcessConnection();
+    void gpuProcessConnectionClosed(GPUProcessConnection*);
+    GPUProcessConnection* existingGPUProcessConnection() { return m_gpuProcessConnection.get(); }
+#endif // ENABLE(GPU_PROCESS)
 
     LibWebRTCNetwork& libWebRTCNetwork();
 
@@ -464,6 +471,8 @@ private:
     void processTaskStateDidChange(ProcessTaskStateObserver::TaskState) final;
     bool shouldFreezeOnSuspension() const;
     void updateFreezerStatus();
+
+    void releaseProcessWasResumedAssertions();
 #endif
 
 #if ENABLE(VIDEO)
@@ -512,6 +521,10 @@ private:
     RefPtr<NetworkProcessConnection> m_networkProcessConnection;
     WebLoaderStrategy& m_webLoaderStrategy;
 
+#if ENABLE(GPU_PROCESS)
+    RefPtr<GPUProcessConnection> m_gpuProcessConnection;
+#endif
+
     Ref<WebCacheStorageProvider> m_cacheStorageProvider;
     WebSocketChannelManager m_webSocketChannelManager;
 
@@ -542,8 +555,9 @@ private:
 #if PLATFORM(IOS_FAMILY)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
     RefPtr<ProcessTaskStateObserver> m_taskStateObserver;
-    Lock m_processWasResumedUIAssertionLock;
+    Lock m_processWasResumedAssertionsLock;
     RetainPtr<BKSProcessAssertion> m_processWasResumedUIAssertion;
+    RetainPtr<BKSProcessAssertion> m_processWasResumedOwnAssertion;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };

@@ -218,7 +218,7 @@ enum CompositingPolicy {
 
     void clearBackForwardCache();
     unsigned long backForwardCacheSize();
-    void preventDocumentForEnteringBackForwardCache();
+    void preventDocumentFromEnteringBackForwardCache();
 
     CSSStyleDeclaration computedStyleIncludingVisitedInfo(Element element);
 
@@ -620,7 +620,6 @@ enum CompositingPolicy {
     [Conditional=WIRELESS_PLAYBACK_TARGET] void setMockMediaPlaybackTargetPickerEnabled(boolean enabled);
     [Conditional=WIRELESS_PLAYBACK_TARGET, MayThrowException] void setMockMediaPlaybackTargetPickerState(DOMString deviceName, DOMString deviceState);
     [Conditional=WIRELESS_PLAYBACK_TARGET] void mockMediaPlaybackTargetPickerDismissPopup();
-    [Conditional=MEDIA_STREAM] void setMockMediaCaptureDevicesEnabled(boolean enabled);
     [Conditional=MEDIA_STREAM] void setCustomPrivateRecorderCreator();
 
     [Conditional=WEB_AUDIO] void useMockAudioDestinationCocoa();
@@ -726,6 +725,7 @@ enum CompositingPolicy {
     [Conditional=MEDIA_STREAM] void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] void setMediaStreamTrackIdentifier(MediaStreamTrack track, DOMString identifier);
     [Conditional=MEDIA_STREAM] void setMediaStreamSourceInterrupted(MediaStreamTrack track, boolean interrupted);
+    [Conditional=MEDIA_STREAM] boolean isMockRealtimeMediaSourceCenterEnabled();
 
     unsigned long long documentIdentifier(Document document);
     boolean isDocumentAlive(unsigned long long documentIdentifier);
@@ -766,6 +766,9 @@ enum CompositingPolicy {
 
     void postTask(VoidCallback callback);
     [CallWith=ScriptExecutionContext, MayThrowException] void queueTask(DOMString source, VoidCallback callback);
+    [CallWith=Document] void queueTaskToQueueMicrotask(DOMString source, VoidCallback callback);
+    [MayThrowException] boolean hasSameEventLoopAs(WindowProxy windowProxy);
+
     void markContextAsInsecure();
 
     void setMaxCanvasPixelMemory(unsigned long size);
@@ -815,4 +818,9 @@ enum CompositingPolicy {
     [Conditional=WEB_AUTHN] void setMockWebAuthenticationConfiguration(MockWebAuthenticationConfiguration configuration);
 
     [Conditional=PICTURE_IN_PICTURE_API] void setPictureInPictureAPITestEnabled(HTMLVideoElement videoElement, boolean enabled);
+
+    InternalsMapLike createInternalsMapLike();
+    InternalsSetLike createInternalsSetLike();
+
+    DOMString highlightPseudoElementColor(DOMString highlightName, Element element);
 };

@@ -470,7 +470,7 @@ void RenderElement::didAttachChild(RenderObject& child, RenderObject*)
     // To avoid the problem alltogether, detect early if we're inside a hidden SVG subtree
     // and stop creating layers at all for these cases - they're not used anyways.
     if (child.hasLayer() && !layerCreationAllowedForSubtree())
-        downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer();
+        downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer(RenderLayer::LayerChangeTiming::RenderTreeConstruction);
 }
 
 RenderObject* RenderElement::attachRendererInternal(RenderPtr<RenderObject> child, RenderObject* beforeChild)
@@ -711,8 +711,8 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         // If our z-index changes value or our visibility changes,
         // we need to dirty our stacking context's z-order list.
         bool visibilityChanged = m_style.visibility() != newStyle.visibility()
-            || m_style.zIndex() != newStyle.zIndex()
-            || m_style.hasAutoZIndex() != newStyle.hasAutoZIndex();
+            || m_style.usedZIndex() != newStyle.usedZIndex()
+            || m_style.hasAutoUsedZIndex() != newStyle.hasAutoUsedZIndex();
 
         if (visibilityChanged)
             document().invalidateRenderingDependentRegions();

@@ -54,6 +54,10 @@ deviceHeight:
   type: int
   initial: 0
 
+disallowSyncXHRDuringPageDismissalEnabled:
+  type: bool
+  initial: true
+
 # Allow clients concerned with memory consumption to set a quota on session storage
 # since the memory used won't be released until the Page is destroyed.
 sessionStorageQuota:
@@ -320,6 +324,9 @@ shouldDisplayTextDescriptions:
 genericCueAPIEnabled:
     initial: false
     conditional: VIDEO_TRACK
+outOfProcessMediaEnabled:
+    initial: false
+    conditional: VIDEO
 scrollingCoordinatorEnabled:
   initial: false
 scrollingTreeIncludesFrames:
@@ -632,6 +639,10 @@ forcedDisplayIsMonochromeAccessibilityValue:
 forcedPrefersReducedMotionAccessibilityValue:
   type: ForcedAccessibilityValue
   initial: defaultForcedPrefersReducedMotionAccessibilityValue
+forcedSupportsHighDynamicRangeValue:
+  type: ForcedAccessibilityValue
+  initial: defaultForcedSupportsHighDynamicRangeValue
+  onChange: setNeedsRecalcStyleInAllFrames
 
 largeImageAsyncDecodingEnabled:
   initial: true
@@ -877,6 +888,15 @@ webRTCEncryptionEnabled:
   inspectorOverride: true
 
 isThirdPartyCookieBlockingEnabled:
+  initial: true
+
+isFirstPartyWebsiteDataRemovalEnabled:
+  initial: true
+
+isFirstPartyWebsiteDataRemovalLiveOnTestingEnabled:
+  initial: false
+
+isFirstPartyWebsiteDataRemovalReproTestingEnabled:
   initial: false
 
 isLoggedInAPIEnabled:
@@ -884,6 +904,10 @@ isLoggedInAPIEnabled:
 
 enterKeyHintEnabled:
   initial: false
+
+legacyGetUserMediaEnabled:
+  initial: false
+  conditional: MEDIA_STREAM
 
 # Deprecated
 

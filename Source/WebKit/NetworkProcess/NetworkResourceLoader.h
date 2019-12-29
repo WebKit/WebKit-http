@@ -125,6 +125,8 @@ public:
 
     bool isKeptAlive() const { return m_isKeptAlive; }
 
+    void consumeSandboxExtensionsIfNeeded();
+
 #if ENABLE(SERVICE_WORKER)
     void startWithServiceWorker();
     void serviceWorkerDidNotHandle();
@@ -155,6 +157,7 @@ private:
     void startNetworkLoad(WebCore::ResourceRequest&&, FirstLoad);
     void restartNetworkLoad(WebCore::ResourceRequest&&);
     void continueDidReceiveResponse();
+    void didReceiveMainResourceResponse(const WebCore::ResourceResponse&);
 
     enum class LoadResult {
         Unknown,

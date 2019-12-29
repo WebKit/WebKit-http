@@ -31,6 +31,7 @@
 #include "WebPageProxyIdentifier.h"
 #include "WebsiteDataType.h"
 #include <WebCore/FrameIdentifier.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
 #include <wtf/CompletionHandler.h>
@@ -52,6 +53,7 @@ enum class ShouldSample : bool;
 enum class IncludeHttpOnlyCookies : bool;
 enum class StorageAccessPromptWasShown : bool;
 enum class StorageAccessWasGranted : bool;
+enum class ThirdPartyCookieBlockingMode : uint8_t;
 }
 
 namespace WebKit {
@@ -74,6 +76,46 @@ struct RegistrableDomainsToBlockCookiesFor {
     Vector<WebCore::RegistrableDomain> domainsToBlockButKeepCookiesFor;
     Vector<WebCore::RegistrableDomain> domainsWithUserInteractionAsFirstParty;
     RegistrableDomainsToBlockCookiesFor isolatedCopy() const { return { domainsToBlockAndDeleteCookiesFor.isolatedCopy(), domainsToBlockButKeepCookiesFor.isolatedCopy(), domainsWithUserInteractionAsFirstParty.isolatedCopy() }; }
+};
+
+struct ThirdPartyDataForSpecificFirstParty {
+    WebCore::RegistrableDomain firstPartyDomain;
+    bool storageAccessGranted;
+
+    String toString() const
+    {
+        return makeString("Has been granted storage access under ", firstPartyDomain.string(), ": ", storageAccessGranted ? '1' : '0');
+    }
+
+    bool operator==(ThirdPartyDataForSpecificFirstParty const other) const
+    {
+        return firstPartyDomain == other.firstPartyDomain && storageAccessGranted == other.storageAccessGranted;
+    }
+};
+
+struct ThirdPartyData {
+    WebCore::RegistrableDomain thirdPartyDomain;
+    Vector<ThirdPartyDataForSpecificFirstParty> underFirstParties;
+
+    String toString() const
+    {
+        StringBuilder stringBuilder;
+        stringBuilder.append("Third Party Registrable Domain: ", thirdPartyDomain.string(), "\n");
+        stringBuilder.appendLiteral("    {");
+
+        for (auto firstParty : underFirstParties) {
+            stringBuilder.appendLiteral("{ ");
+            stringBuilder.append(firstParty.toString());
+            stringBuilder.appendLiteral(" },");
+        }
+        stringBuilder.appendLiteral("}");
+        return stringBuilder.toString();
+    }
+
+    bool operator<(const ThirdPartyData &other) const
+    {
+        return underFirstParties.size() < other.underFirstParties.size();
+    }
 };
 
 class WebResourceLoadStatisticsStore final : public ThreadSafeRefCounted<WebResourceLoadStatisticsStore, WTF::DestructionThread::Main> {
@@ -179,7 +221,8 @@ public:
     void callHasStorageAccessForFrameHandler(const SubFrameDomain&, const TopFrameDomain&, WebCore::FrameIdentifier, WebCore::PageIdentifier, CompletionHandler<void(bool)>&&);
 
     void hasCookies(const RegistrableDomain&, CompletionHandler<void(bool)>&&);
-    void setIsThirdPartyCookieBlockingEnabled(bool);
+    void setThirdPartyCookieBlockingMode(WebCore::ThirdPartyCookieBlockingMode);
+    void setFirstPartyWebsiteDataRemovalMode(WebCore::FirstPartyWebsiteDataRemovalMode, CompletionHandler<void()>&&);
     void didCreateNetworkProcess();
 
     void notifyResourceLoadStatisticsProcessed();
@@ -192,6 +235,7 @@ public:
 
     void resourceLoadStatisticsUpdated(Vector<WebCore::ResourceLoadStatistics>&&);
     void requestStorageAccessUnderOpener(DomainInNeedOfStorageAccess&&, WebCore::PageIdentifier openerID, OpenerDomain&&);
+    Vector<ThirdPartyData> aggregatedThirdPartyData();
 
 private:
     explicit WebResourceLoadStatisticsStore(NetworkSession&, const String&, ShouldIncludeLocalhost);

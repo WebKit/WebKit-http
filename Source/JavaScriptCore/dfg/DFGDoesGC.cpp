@@ -134,7 +134,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckCell:
     case CheckNotEmpty:
     case AssertNotEmpty:
-    case CheckStringIdent:
+    case CheckIdent:
     case CompareBelow:
     case CompareBelowEq:
     case CompareEqPtr:
@@ -239,7 +239,7 @@ bool doesGC(Graph& graph, Node* node)
     case AtomicsIsLockFree:
     case MatchStructure:
     case FilterCallLinkStatus:
-    case FilterGetByIdStatus:
+    case FilterGetByStatus:
     case FilterPutByIdStatus:
     case FilterInByIdStatus:
     case DateGetInt32OrNaN:
@@ -329,6 +329,7 @@ bool doesGC(Graph& graph, Node* node)
     case TailCallVarargsInlinedCaller:
     case Throw:
     case ToNumber:
+    case ToNumeric:
     case ToObject:
     case ToPrimitive:
     case ToThis:
@@ -527,6 +528,17 @@ bool doesGC(Graph& graph, Node* node)
             return true;
         }
         RELEASE_ASSERT_NOT_REACHED();
+
+    case Inc:
+    case Dec:
+        switch (node->child1().useKind()) {
+        case Int32Use:
+        case Int52RepUse:
+        case DoubleRepUse:
+            return false;
+        default:
+            return true;
+        }
 
     case LastNodeType:
         RELEASE_ASSERT_NOT_REACHED();

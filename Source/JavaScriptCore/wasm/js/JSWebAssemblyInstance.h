@@ -28,8 +28,8 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSDestructibleObject.h"
-#include "JSObject.h"
 #include "JSWebAssemblyCodeBlock.h"
+#include "JSWebAssemblyGlobal.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyTable.h"
 #include "WasmCreationMode.h"
@@ -40,19 +40,26 @@ namespace JSC {
 
 class JSModuleNamespaceObject;
 class JSWebAssemblyModule;
-class WebAssemblyToJSCallee;
 
 namespace Wasm {
 class CodeBlock;
 }
 
-class JSWebAssemblyInstance final : public JSDestructibleObject {
+class JSWebAssemblyInstance final : public JSNonFinalObject {
 public:
-    typedef JSDestructibleObject Base;
+    using Base = JSNonFinalObject;
+    static constexpr bool needsDestruction = true;
+    static void destroy(JSCell*);
+
+    template<typename CellType, SubspaceAccess mode>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return vm.webAssemblyInstanceSpace<mode>();
+    }
 
     static Identifier createPrivateModuleKey();
 
-    static JSWebAssemblyInstance* create(VM&, JSGlobalObject*, const Identifier& moduleKey, JSWebAssemblyModule*, JSObject* importObject, Structure*, Ref<Wasm::Module>&&, Wasm::CreationMode);
+    static JSWebAssemblyInstance* tryCreate(VM&, JSGlobalObject*, const Identifier& moduleKey, JSWebAssemblyModule*, JSObject* importObject, Structure*, Ref<Wasm::Module>&&, Wasm::CreationMode);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_EXPORT_INFO;
@@ -61,7 +68,6 @@ public:
     
     Wasm::Instance& instance() { return m_instance.get(); }
     JSModuleNamespaceObject* moduleNamespaceObject() { return m_moduleNamespaceObject.get(); }
-    WebAssemblyToJSCallee* webAssemblyToJSCallee() { return m_callee.get(); }
 
     JSWebAssemblyMemory* memory() { return m_memory.get(); }
     void setMemory(VM& vm, JSWebAssemblyMemory* value) {
@@ -80,18 +86,24 @@ public:
         instance().setTable(index, makeRef(*table(index)->table()));
     }
 
+    void linkGlobal(VM& vm, uint32_t index, JSWebAssemblyGlobal* value)
+    {
+        ASSERT(value == value->global()->owner<JSWebAssemblyGlobal>());
+        instance().linkGlobal(index, makeRef(*value->global()));
+        vm.heap.writeBarrier(this, value);
+    }
+
     JSGlobalObject* globalObject() const { return m_globalObject.get(); }
     JSWebAssemblyModule* module() const { return m_module.get(); }
 
     static size_t offsetOfInstance() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_instance); }
+    static size_t offsetOfModule() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_module); }
     static size_t offsetOfGlobalObject() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_globalObject); }
-    static size_t offsetOfCallee() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_callee); }
     static size_t offsetOfVM() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_vm); }
 
 protected:
     JSWebAssemblyInstance(VM&, Structure*, Ref<Wasm::Instance>&&);
     void finishCreation(VM&, JSWebAssemblyModule*, JSModuleNamespaceObject*);
-    static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
 private:
@@ -104,7 +116,6 @@ private:
     WriteBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
     WriteBarrier<JSWebAssemblyMemory> m_memory;
     Vector<WriteBarrier<JSWebAssemblyTable>> m_tables;
-    WriteBarrier<WebAssemblyToJSCallee> m_callee;
 };
 
 } // namespace JSC

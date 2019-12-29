@@ -481,6 +481,44 @@ EncodedJSValue JIT_OPERATION operationValueMod(JSGlobalObject* globalObject, Enc
     return binaryOp(globalObject, vm, encodedOp1, encodedOp2, bigIntOp, numberOp, "Invalid mix of BigInt and other type in remainder operation.");
 }
 
+EncodedJSValue JIT_OPERATION operationInc(JSGlobalObject* globalObject, EncodedJSValue encodedOp1)
+{
+    VM& vm = globalObject->vm();
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+
+    auto operandNumeric = op1.toNumeric(globalObject);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    if (WTF::holds_alternative<JSBigInt*>(operandNumeric))
+        RELEASE_AND_RETURN(scope, JSValue::encode(JSBigInt::inc(globalObject, WTF::get<JSBigInt*>(operandNumeric))));
+
+    double value = WTF::get<double>(operandNumeric);
+    return JSValue::encode(jsNumber(value + 1));
+}
+
+EncodedJSValue JIT_OPERATION operationDec(JSGlobalObject* globalObject, EncodedJSValue encodedOp1)
+{
+    VM& vm = globalObject->vm();
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+
+    auto operandNumeric = op1.toNumeric(globalObject);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    if (WTF::holds_alternative<JSBigInt*>(operandNumeric))
+        RELEASE_AND_RETURN(scope, JSValue::encode(JSBigInt::dec(globalObject, WTF::get<JSBigInt*>(operandNumeric))));
+
+    double value = WTF::get<double>(operandNumeric);
+    return JSValue::encode(jsNumber(value - 1));
+}
+
 EncodedJSValue JIT_OPERATION operationValueBitNot(JSGlobalObject* globalObject, EncodedJSValue encodedOp1)
 {
     VM& vm = globalObject->vm();
@@ -766,62 +804,6 @@ EncodedJSValue JIT_OPERATION operationArithTrunc(JSGlobalObject* globalObject, E
     return JSValue::encode(jsNumber(truncatedValueOfArgument));
 }
 
-static ALWAYS_INLINE EncodedJSValue getByVal(JSGlobalObject* globalObject, JSCell* base, uint32_t index)
-{
-    if (base->isObject()) {
-        JSObject* object = asObject(base);
-        if (object->canGetIndexQuickly(index))
-            return JSValue::encode(object->getIndexQuickly(index));
-    }
-
-    if (isJSString(base) && asString(base)->canGetIndex(index))
-        return JSValue::encode(asString(base)->getIndex(globalObject, index));
-
-    return JSValue::encode(JSValue(base).get(globalObject, index));
-}
-
-EncodedJSValue JIT_OPERATION operationGetByVal(JSGlobalObject* globalObject, EncodedJSValue encodedBase, EncodedJSValue encodedProperty)
-{
-    VM& vm = globalObject->vm();
-    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
-    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSValue baseValue = JSValue::decode(encodedBase);
-    JSValue property = JSValue::decode(encodedProperty);
-
-    if (LIKELY(baseValue.isCell())) {
-        JSCell* base = baseValue.asCell();
-
-        if (property.isUInt32())
-            RELEASE_AND_RETURN(scope, getByVal(globalObject, base, property.asUInt32()));
-
-        if (property.isDouble()) {
-            double propertyAsDouble = property.asDouble();
-            uint32_t propertyAsUInt32 = static_cast<uint32_t>(propertyAsDouble);
-            if (propertyAsUInt32 == propertyAsDouble && isIndex(propertyAsUInt32))
-                RELEASE_AND_RETURN(scope, getByVal(globalObject, base, propertyAsUInt32));
-
-        } else if (property.isString()) {
-            Structure& structure = *base->structure(vm);
-            if (JSCell::canUseFastGetOwnProperty(structure)) {
-                RefPtr<AtomStringImpl> existingAtomString = asString(property)->toExistingAtomString(globalObject);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-                if (existingAtomString) {
-                    if (JSValue result = base->fastGetOwnProperty(vm, structure, existingAtomString.get()))
-                        return JSValue::encode(result);
-                }
-            }
-        }
-    }
-
-    baseValue.requireObjectCoercible(globalObject);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    auto propertyName = property.toPropertyKey(globalObject);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    RELEASE_AND_RETURN(scope, JSValue::encode(baseValue.get(globalObject, propertyName)));
-}
-
 EncodedJSValue JIT_OPERATION operationGetByValCell(JSGlobalObject* globalObject, JSCell* base, EncodedJSValue encodedProperty)
 {
     VM& vm = globalObject->vm();
@@ -832,13 +814,13 @@ EncodedJSValue JIT_OPERATION operationGetByValCell(JSGlobalObject* globalObject,
     JSValue property = JSValue::decode(encodedProperty);
 
     if (property.isUInt32())
-        RELEASE_AND_RETURN(scope, getByVal(globalObject, base, property.asUInt32()));
+        RELEASE_AND_RETURN(scope, getByValWithIndex(globalObject, base, property.asUInt32()));
 
     if (property.isDouble()) {
         double propertyAsDouble = property.asDouble();
         uint32_t propertyAsUInt32 = static_cast<uint32_t>(propertyAsDouble);
         if (propertyAsUInt32 == propertyAsDouble)
-            RELEASE_AND_RETURN(scope, getByVal(globalObject, base, propertyAsUInt32));
+            RELEASE_AND_RETURN(scope, getByValWithIndex(globalObject, base, propertyAsUInt32));
 
     } else if (property.isString()) {
         Structure& structure = *base->structure(vm);
@@ -1674,6 +1656,18 @@ EncodedJSValue JIT_OPERATION operationToNumber(JSGlobalObject* globalObject, Enc
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
 
     return JSValue::encode(jsNumber(JSValue::decode(value).toNumber(globalObject)));
+}
+
+EncodedJSValue JIT_OPERATION operationToNumeric(JSGlobalObject* globalObject, EncodedJSValue value)
+{
+    VM& vm = globalObject->vm();
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+
+    auto variant = JSValue::decode(value).toNumeric(globalObject);
+    if (WTF::holds_alternative<JSBigInt*>(variant))
+        return JSValue::encode(WTF::get<JSBigInt*>(variant));
+    return JSValue::encode(jsNumber(WTF::get<double>(variant)));
 }
 
 EncodedJSValue JIT_OPERATION operationGetByValWithThis(JSGlobalObject* globalObject, EncodedJSValue encodedBase, EncodedJSValue encodedThis, EncodedJSValue encodedSubscript)

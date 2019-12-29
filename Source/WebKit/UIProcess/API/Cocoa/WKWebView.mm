@@ -924,7 +924,8 @@ static void validate(WKWebViewConfiguration *configuration)
     [super dealloc];
 }
 
-- (id)valueForUndefinedKey:(NSString *)key {
+- (id)valueForUndefinedKey:(NSString *)key
+{
     if ([key isEqualToString:@"serverTrust"])
         return (__bridge id)[self serverTrust];
 
@@ -4987,6 +4988,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 #endif
 }
 
+- (void)_stopMediaCapture
+{
+    _page->stopMediaCapture();
+}
+
 - (void)_stopAllMediaPlayback
 {
     _page->stopAllMediaPlayback();
@@ -7580,6 +7586,8 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
             auto type = wkRule.isExclusion ? ExclusionRule::Type::Exclude : ExclusionRule::Type::Include;
             if (wkRule.attributeName)
                 exclusionRules.append({type, ExclusionRule::AttributeRule { wkRule.attributeName, wkRule.attributeValue } });
+            else if (wkRule.className)
+                exclusionRules.append({type, ExclusionRule::ClassRule { wkRule.className } });
             else
                 exclusionRules.append({type, ExclusionRule::ElementRule { wkRule.elementName } });
         }

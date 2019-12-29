@@ -28,12 +28,13 @@
 #include "config.h"
 #include "WorkerGlobalScope.h"
 
+#include "CSSValueList.h"
+#include "CSSValuePool.h"
 #include "ContentSecurityPolicy.h"
 #include "Crypto.h"
 #include "IDBConnectionProxy.h"
 #include "ImageBitmapOptions.h"
 #include "InspectorInstrumentation.h"
-#include "Microtasks.h"
 #include "Performance.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
@@ -68,10 +69,8 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
     , m_thread(thread)
     , m_script(makeUnique<WorkerScriptController>(this))
     , m_inspectorController(makeUnique<WorkerInspectorController>(*this))
-    , m_microtaskQueue(makeUnique<MicrotaskQueue>(m_script->vm()))
     , m_isOnline(isOnline)
     , m_shouldBypassMainWorldContentSecurityPolicy(shouldBypassMainWorldContentSecurityPolicy)
-    , m_eventQueue(*this)
     , m_topOrigin(WTFMove(topOrigin))
 #if ENABLE(INDEXED_DATABASE)
     , m_connectionProxy(connectionProxy)
@@ -143,7 +142,8 @@ void WorkerGlobalScope::prepareForTermination()
     removeAllEventListeners();
 
     // MicrotaskQueue and RejectedPromiseTracker reference Heap.
-    m_microtaskQueue = nullptr;
+    if (m_eventLoop)
+        m_eventLoop->clearMicrotaskQueue();
     removeRejectedPromiseTracker();
 }
 
@@ -414,11 +414,6 @@ bool WorkerGlobalScope::isJSExecutionForbidden() const
     return m_script->isExecutionForbidden();
 }
 
-WorkerEventQueue& WorkerGlobalScope::eventQueue() const
-{
-    return m_eventQueue;
-}
-
 #if ENABLE(WEB_CRYPTO)
 
 class CryptoBufferContainer : public ThreadSafeRefCounted<CryptoBufferContainer> {
@@ -531,6 +526,13 @@ void WorkerGlobalScope::createImageBitmap(ImageBitmap::Source&& source, ImageBit
 void WorkerGlobalScope::createImageBitmap(ImageBitmap::Source&& source, int sx, int sy, int sw, int sh, ImageBitmapOptions&& options, ImageBitmap::Promise&& promise)
 {
     ImageBitmap::createPromise(*this, WTFMove(source), WTFMove(options), sx, sy, sw, sh, WTFMove(promise));
+}
+
+CSSValuePool& WorkerGlobalScope::cssValuePool()
+{
+    if (!m_cssValuePool)
+        m_cssValuePool = makeUnique<CSSValuePool>();
+    return *m_cssValuePool;
 }
 
 } // namespace WebCore

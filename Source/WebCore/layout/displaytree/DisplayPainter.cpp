@@ -110,28 +110,32 @@ static void paintBoxDecoration(GraphicsContext& context, const Box& absoluteDisp
     }
 }
 
-static void paintInlineContent(GraphicsContext& context, const Box& rootAbsoluteDisplayBox, const Layout::InlineFormattingState& formattingState)
+static void paintInlineContent(GraphicsContext& context, LayoutPoint absoluteOffset, const Layout::InlineFormattingState& formattingState)
 {
-    auto& inlineRuns = formattingState.inlineRuns();
-    if (inlineRuns.isEmpty())
+    auto* displayInlineContent = formattingState.displayInlineContent();
+    if (!displayInlineContent)
         return;
 
-    for (auto& run : inlineRuns) {
-        if (auto textContext = run->textContext()) {
-            auto& style = run->style();
+    auto& displayRuns = displayInlineContent->runs;
+    if (displayRuns.isEmpty())
+        return;
+
+    for (auto& run : displayRuns) {
+        if (auto& textContext = run.textContext()) {
+            auto& style = run.style();
             context.setStrokeColor(style.color());
             context.setFillColor(style.color());
 
-            auto logicalLeft = rootAbsoluteDisplayBox.left() + run->logicalLeft();
+            auto logicalLeft = absoluteOffset.x() + run.logicalLeft();
             // FIXME: Add non-baseline align painting
-            auto& lineBox = formattingState.lineBoxForRun(*run);
-            auto baselineOffset = rootAbsoluteDisplayBox.top() + lineBox.logicalTop() + lineBox.baselineOffset();
+            auto& lineBox = displayInlineContent->lineBoxForRun(run);
+            auto baselineOffset = absoluteOffset.y() + lineBox.logicalTop() + lineBox.baselineOffset();
             if (auto expansionContext = textContext->expansion())
                 context.drawText(style.fontCascade(), TextRun { textContext->content(), logicalLeft, expansionContext->horizontalExpansion, expansionContext->behavior }, { logicalLeft, baselineOffset });
             else
                 context.drawText(style.fontCascade(), TextRun { textContext->content(), logicalLeft }, { logicalLeft, baselineOffset });
-        } else if (auto* cachedImage = run->image()) {
-            auto runAbsoluteRect = FloatRect { rootAbsoluteDisplayBox.left() + run->logicalLeft(), rootAbsoluteDisplayBox.top() + run->logicalTop(), run->logicalWidth(), run->logicalHeight() };
+        } else if (auto* cachedImage = run.image()) {
+            auto runAbsoluteRect = FloatRect { absoluteOffset.x() + run.logicalLeft(), absoluteOffset.y() + run.logicalTop(), run.logicalWidth(), run.logicalHeight() };
             context.drawImage(*cachedImage->image(), runAbsoluteRect);
         }
     }
@@ -190,10 +194,19 @@ void Painter::paint(const Layout::LayoutState& layoutState, GraphicsContext& con
             continue;
         if (layoutBox.establishesInlineFormattingContext()) {
             auto& container = downcast<Layout::Container>(layoutBox);
-            paintInlineContent(context, absoluteDisplayBox, downcast<Layout::InlineFormattingState>(layoutState.establishedFormattingState(container)));
+            paintInlineContent(context, absoluteDisplayBox.topLeft(), downcast<Layout::InlineFormattingState>(layoutState.establishedFormattingState(container)));
             continue;
         }
     }
+}
+
+void Painter::paintInlineFlow(const Layout::LayoutState& layoutState, GraphicsContext& context)
+{
+    auto& layoutRoot = layoutState.root();
+
+    ASSERT(layoutRoot.establishesInlineFormattingContext());
+
+    paintInlineContent(context, { }, downcast<Layout::InlineFormattingState>(layoutState.establishedFormattingState(layoutRoot)));
 }
 
 }

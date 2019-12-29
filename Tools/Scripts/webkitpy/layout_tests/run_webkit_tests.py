@@ -118,6 +118,10 @@ def parse_args(args):
             help="Use accelerated drawing (OS X only)"),
         optparse.make_option("--remote-layer-tree", action="store_true", default=False,
             help="Use the remote layer tree drawing model (OS X WebKit2 only)"),
+        optparse.make_option("--internal-feature", type="string", action="append",
+            default=[], help="Enable internal feature"),
+        optparse.make_option("--experimental-feature", type="string", action="append",
+            default=[], help="Enable experimental feature"),
     ]))
 
     option_group_definitions.append(("WebKit Options", [
@@ -311,12 +315,15 @@ def parse_args(args):
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [
-        optparse.make_option("--lint-test-files", action="store_true",
-        default=False, help=("Makes sure the test files parse for all "
-                            "configurations. Does not run any tests.")),
-        optparse.make_option("--print-expectations", action="store_true",
-        default=False, help=("Print the expected outcome for the given test, or all tests listed in TestExpectations. "
-                            "Does not run any tests.")),
+        optparse.make_option(
+            "--lint-test-files", action="store_true", default=False,
+            help=("Makes sure the test files parse for all configurations. Does not run any tests.")),
+        optparse.make_option(
+            "--print-expectations", action="store_true", default=False,
+            help=("Print the expected outcome for the given test, or all tests listed in TestExpectations. Does not run any tests.")),
+        optparse.make_option(
+            "--webgl-test-suite", action="store_true", default=False,
+            help=("Run exhaustive webgl list, including test ordinarily skipped for performance reasons. Equivalent to '--additional-expectations=LayoutTests/webgl/TestExpectations webgl'")),
     ]))
 
     option_group_definitions.append(("Web Platform Test Server Options", [
@@ -351,7 +358,14 @@ def parse_args(args):
         option_group.add_options(group_options)
         option_parser.add_option_group(option_group)
 
-    return option_parser.parse_args(args)
+    options, args = option_parser.parse_args(args)
+    if options.webgl_test_suite:
+        if not args:
+            args.append('webgl')
+        host = Host()
+        host.initialize_scm()
+        options.additional_expectations.insert(0, host.filesystem.join(host.scm().checkout_root, 'LayoutTests/webgl/TestExpectations'))
+    return options, args
 
 
 def _print_expectations(port, options, args, logging_stream):

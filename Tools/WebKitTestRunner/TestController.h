@@ -253,7 +253,8 @@ public:
     void setStatisticsCacheMaxAgeCap(double seconds);
     bool hasStatisticsIsolatedSession(WKStringRef hostName);
     void setStatisticsShouldDowngradeReferrer(bool value);
-    void setStatisticsShouldBlockThirdPartyCookies(bool value);
+    void setStatisticsShouldBlockThirdPartyCookies(bool value, bool onlyOnSitesWithoutUserInteraction);
+    void setStatisticsFirstPartyWebsiteDataRemovalMode(bool value);
     void statisticsResetToConsistentState();
 
     void getAllStorageAccessEntries();
@@ -267,7 +268,9 @@ public:
 #endif
 
     void terminateNetworkProcess();
-    void terminateServiceWorkerProcess();
+    void terminateServiceWorkers();
+
+    void resetQuota();
 
     void removeAllSessionCredentials();
 
@@ -291,6 +294,8 @@ public:
     void clearMockMediaDevices();
     void removeMockMediaDevice(WKStringRef persistentID);
     void resetMockMediaDevices();
+    void setMockCameraOrientation(uint64_t);
+    bool isMockRealtimeMediaSourceCenterEnabled() const;
 
     void injectUserScript(WKStringRef);
     
@@ -500,6 +505,9 @@ private:
     bool m_createdOtherPage { false };
     std::vector<std::string> m_paths;
     std::set<std::string> m_allowedHosts;
+    std::set<std::string> m_internalFeatures;
+    std::set<std::string> m_experimentalFeatures;
+
     WKRetainPtr<WKStringRef> m_injectedBundlePath;
     WKRetainPtr<WKStringRef> m_testPluginDirectory;
 
@@ -572,7 +580,7 @@ private:
     bool m_checkForWorldLeaks { false };
 
     bool m_allowAnyHTTPSCertificateForAllowedHosts { false };
-    
+
     bool m_shouldDecideNavigationPolicyAfterDelay { false };
     bool m_shouldDecideResponsePolicyAfterDelay { false };
 

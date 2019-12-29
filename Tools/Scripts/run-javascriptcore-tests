@@ -380,13 +380,13 @@ sub configurationForUpload()
     } elsif (isGtk()) {
         $platform = 'GTK';
         if (!$version) {
-            chomp($version = `/usr/bin/uname -r`);
+            chomp($version = `uname -r`);
             $version = splitVersionString($version);
         }
     } elsif (isWPE()) {
         $platform = 'WPE';
         if (!$version) {
-            chomp($version = `/usr/bin/uname -r`);
+            chomp($version = `uname -r`);
             $version = splitVersionString($version);
         }
     } elsif (isAnyWindows()) {
@@ -414,7 +414,14 @@ sub configurationForUpload()
             }
         }
     } else {
-        die "Cannot determine platform\n";
+        # FIXME: This will be the kernel version, which is not always exactly what we want, but it will at least
+        # always give us something to work with
+        chomp($platform = `uname`);
+        $platform = lc $platform;
+        if (!$version) {
+            chomp($version = `uname -r`);
+            $version = splitVersionString($version);
+        }
     }
 
     my $result = {
@@ -519,7 +526,7 @@ sub runTest {
     open(TEST, "-|", "@command 2>&1") or die "Failed to run @command";
     while ( my $line = <TEST> ) {
         my $subTestName;
-        print $line;
+        print $line if ($verbose);
 
         # e.g.: 'O2: testRotRWithImmShift(uint64-max, uint32-min): OK!''
         if ($line =~ /(O\d): (\S+)(\(.*\)): ([A-Za-z]+)!\n/) {
@@ -582,7 +589,7 @@ sub runTest {
         }
 
         if (!defined $reportData{$subTestName}) {
-            print("$subTestName $failureFlag\n") if $failureFlag;
+            print "$subTestName failed\n" if ($failureFlag && !$verbose);
             $reportData{$subTestName} = $failureFlag ? {actual => "FAIL"} : {actual => "PASS"};
         }
         $failureFlag = 0;

@@ -984,7 +984,7 @@ void SpeculativeJIT::useChildren(Node* node)
 
 void SpeculativeJIT::compileGetById(Node* node, AccessType accessType)
 {
-    ASSERT(accessType == AccessType::Get || accessType == AccessType::GetDirect || accessType == AccessType::TryGet);
+    ASSERT(accessType == AccessType::GetById || accessType == AccessType::GetByIdDirect || accessType == AccessType::TryGetById);
 
     switch (node->child1().useKind()) {
     case CellUse: {
@@ -4609,6 +4609,22 @@ void SpeculativeJIT::compileArithSub(Node* node)
     }
 }
 
+void SpeculativeJIT::compileIncOrDec(Node* node)
+{
+    // In all other cases the node should have been transformed into an add or a sub by FixupPhase
+    ASSERT(node->child1().useKind() == UntypedUse);
+
+    JSValueOperand op1(this, node->child1());
+    JSValueRegs op1Regs = op1.jsValueRegs();
+    flushRegisters();
+    JSValueRegsFlushedCallResult result(this);
+    JSValueRegs resultRegs = result.regs();
+    auto operation = node->op() == Inc ? operationInc : operationDec;
+    callOperation(operation, resultRegs, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), op1Regs);
+    m_jit.exceptionCheck();
+    jsValueResult(resultRegs, node);
+}
+
 void SpeculativeJIT::compileValueNegate(Node* node)
 {
     CodeBlock* baselineCodeBlock = m_jit.graph().baselineCodeBlockFor(node->origin.semantic);
@@ -7193,21 +7209,26 @@ void SpeculativeJIT::compileGetArrayLength(Node* node)
     } }
 }
 
-void SpeculativeJIT::compileCheckStringIdent(Node* node)
+void SpeculativeJIT::compileCheckIdent(Node* node)
 {
-    SpeculateCellOperand string(this, node->child1());
-    GPRTemporary storage(this);
+    SpeculateCellOperand stringOrSymbol(this, node->child1());
+    GPRTemporary impl(this);
+    GPRReg stringOrSymbolGPR = stringOrSymbol.gpr();
+    GPRReg implGPR = impl.gpr();
 
-    GPRReg stringGPR = string.gpr();
-    GPRReg storageGPR = storage.gpr();
-
-    speculateString(node->child1(), stringGPR);
-    speculateStringIdentAndLoadStorage(node->child1(), stringGPR, storageGPR);
+    if (node->child1().useKind() == StringIdentUse) {
+        speculateString(node->child1(), stringOrSymbolGPR);
+        speculateStringIdentAndLoadStorage(node->child1(), stringOrSymbolGPR, implGPR);
+    } else {
+        ASSERT(node->child1().useKind() == SymbolUse);
+        speculateSymbol(node->child1(), stringOrSymbolGPR);
+        m_jit.loadPtr(MacroAssembler::Address(stringOrSymbolGPR, Symbol::offsetOfSymbolImpl()), implGPR);
+    }
 
     UniquedStringImpl* uid = node->uidOperand();
     speculationCheck(
         BadIdent, JSValueSource(), nullptr,
-        m_jit.branchPtr(JITCompiler::NotEqual, storageGPR, TrustedImmPtr(uid)));
+        m_jit.branchPtr(JITCompiler::NotEqual, implGPR, TrustedImmPtr(uid)));
     noResult(node);
 }
 
@@ -9890,9 +9911,20 @@ void SpeculativeJIT::compileNewTypedArrayWithSize(Node* node)
 #endif
 
     auto butterfly = TrustedImmPtr(nullptr);
-    emitAllocateJSObject<JSArrayBufferView>(
-        resultGPR, TrustedImmPtr(structure), butterfly, scratchGPR, scratchGPR2,
-        slowCases);
+    switch (typedArrayType) {
+#define TYPED_ARRAY_TYPE_CASE(name) \
+    case Type ## name: \
+        emitAllocateJSObject<JS##name##Array>(resultGPR, TrustedImmPtr(structure), butterfly, scratchGPR, scratchGPR2, slowCases); \
+        break;
+    FOR_EACH_TYPED_ARRAY_TYPE_EXCLUDING_DATA_VIEW(TYPED_ARRAY_TYPE_CASE)
+#undef TYPED_ARRAY_TYPE_CASE
+    case TypeDataView:
+        emitAllocateJSObject<JSDataView>(resultGPR, TrustedImmPtr(structure), butterfly, scratchGPR, scratchGPR2, slowCases);
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
 
     m_jit.storePtr(
         storageGPR,
@@ -12933,6 +12965,34 @@ void SpeculativeJIT::compileToPrimitive(Node* node)
     addSlowPathGenerator(slowPathCall(notPrimitive, this, operationToPrimitive, resultRegs, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), argumentRegs));
 
     jsValueResult(resultRegs, node, DataFormatJS, UseChildrenCalledExplicitly);
+}
+
+void SpeculativeJIT::compileToNumeric(Node* node)
+{
+    DFG_ASSERT(m_jit.graph(), node, node->child1().useKind() == UntypedUse, node->child1().useKind());
+    JSValueOperand argument(this, node->child1());
+    JSValueRegsTemporary result(this);
+    GPRTemporary temp(this);
+
+    JSValueRegs argumentRegs = argument.jsValueRegs();
+    JSValueRegs resultRegs = result.regs();
+    GPRReg scratch = temp.gpr();
+
+    MacroAssembler::JumpList slowCases;
+
+    MacroAssembler::Jump notCell = m_jit.branchIfNotCell(argumentRegs);
+    slowCases.append(m_jit.branchIfNotBigInt(argumentRegs.payloadGPR()));
+    MacroAssembler::Jump isBigInt = m_jit.jump();
+
+    notCell.link(&m_jit);
+    slowCases.append(m_jit.branchIfNotNumber(argumentRegs, scratch));
+
+    isBigInt.link(&m_jit);
+    m_jit.moveValueRegs(argumentRegs, resultRegs);
+
+    addSlowPathGenerator(slowPathCall(slowCases, this, operationToNumeric, resultRegs, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), argumentRegs));
+
+    jsValueResult(resultRegs, node, DataFormatJS);
 }
 
 void SpeculativeJIT::compileLogShadowChickenPrologue(Node* node)

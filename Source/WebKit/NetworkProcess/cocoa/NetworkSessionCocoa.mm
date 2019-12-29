@@ -594,16 +594,6 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
     }
 }
 
-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask willCacheResponse:(NSCachedURLResponse *)proposedResponse completionHandler:(void (^)(NSCachedURLResponse *cachedResponse))completionHandler
-{
-    // FIXME: remove if <rdar://problem/20001985> is ever resolved.
-    if ([proposedResponse.response respondsToSelector:@selector(allHeaderFields)]
-        && [[(id)proposedResponse.response allHeaderFields] objectForKey:@"Content-Range"])
-        completionHandler(nil);
-    else
-        completionHandler(proposedResponse);
-}
-
 #if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
 static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, SessionWrapper& sessionWrapper, NSURLAuthenticationChallenge *challenge, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
 {
@@ -1135,7 +1125,8 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     m_shouldIncludeLocalhostInResourceLoadStatistics = parameters.shouldIncludeLocalhostInResourceLoadStatistics ? ShouldIncludeLocalhost::Yes : ShouldIncludeLocalhost::No;
     m_enableResourceLoadStatisticsDebugMode = parameters.enableResourceLoadStatisticsDebugMode ? EnableResourceLoadStatisticsDebugMode::Yes : EnableResourceLoadStatisticsDebugMode::No;
     m_resourceLoadStatisticsManualPrevalentResource = parameters.resourceLoadStatisticsManualPrevalentResource;
-    m_thirdPartyCookieBlockingEnabled = parameters.enableThirdPartyCookieBlocking;
+    m_thirdPartyCookieBlockingMode = parameters.thirdPartyCookieBlockingMode;
+    m_firstPartyWebsiteDataRemovalMode = parameters.firstPartyWebsiteDataRemovalMode;
     setResourceLoadStatisticsEnabled(parameters.enableResourceLoadStatistics);
 #endif
 

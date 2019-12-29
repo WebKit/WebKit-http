@@ -29,7 +29,7 @@
 import logging
 import os
 
-from webkitpy.common.unicode_compatibility import BytesIO, encode_if_necessary, unicode
+from webkitpy.common.unicode_compatibility import BytesIO, decode_for, encode_if_necessary, unicode
 from webkitpy.common.system.executive import ScriptError
 
 _log = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class MockExecutive(object):
 
     def running_pids(self, process_name_filter):
         running_pids = []
-        for process_name, process_pid in self._running_pids.iteritems():
+        for process_name, process_pid in self._running_pids.items():
             if process_name_filter(process_name):
                 running_pids.append(process_pid)
 
@@ -99,7 +99,11 @@ class MockExecutive(object):
         if self._should_log:
             env_string = ""
             if env:
-                env_string = ", env=%s" % env
+                for key in sorted(env.keys()):
+                    if len(env_string):
+                        env_string += ", "
+                    env_string += "'{}': '{}'".format(key, env[key])
+                env_string = ", env={" + env_string + "}"
             _log.info("MOCK run_and_throw_if_fail: %s, cwd=%s%s" % (args, cwd, env_string))
         if self._should_throw_when_run.intersection(args):
             raise ScriptError("Exception for %s" % args, output="MOCK command output")
@@ -126,10 +130,14 @@ class MockExecutive(object):
         if self._should_log:
             env_string = ""
             if env:
-                env_string = ", env=%s" % env
+                for key in sorted(env.keys()):
+                    if len(env_string):
+                        env_string += ", "
+                    env_string += "'{}': '{}'".format(key, env[key])
+                env_string = ", env={" + env_string + "}"
             input_string = ""
             if input:
-                input_string = ", input=%s" % input
+                input_string = ", input=%s" % decode_for(input, str)
             _log.info("MOCK run_command: %s, cwd=%s%s%s" % (args, cwd, env_string, input_string))
         output = "MOCK output of child process"
 

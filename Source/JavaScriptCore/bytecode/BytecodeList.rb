@@ -30,6 +30,7 @@ types [
     :ErrorType,
     :GetByIdMode,
     :GetByIdModeMetadata,
+    :GetByValHistory,
     :GetPutInfo,
     :IndexingType,
     :JSCell,
@@ -330,14 +331,16 @@ op_group :UnaryOp,
         operand: VirtualRegister,
     }
 
-op :inc,
+op_group :UnaryInPlaceProfiledOp,
+    [
+        :inc,
+        :dec,
+    ],
     args: {
         srcDst: VirtualRegister,
-    }
-
-op :dec,
-    args: {
-        srcDst: VirtualRegister,
+    },
+    metadata: {
+        arithProfile: UnaryArithProfile
     }
 
 op :to_object,
@@ -350,7 +353,11 @@ op :to_object,
         profile: ValueProfile,
     }
 
-op :to_number,
+op_group :ValueProfiledUnaryOp,
+    [
+        :to_number,
+        :to_numeric,
+    ],
     args: {
         dst: VirtualRegister,
         operand: VirtualRegister,
@@ -528,6 +535,7 @@ op :get_by_val,
     metadata: {
         profile: ValueProfile,
         arrayProfile: ArrayProfile,
+        seenIdentifiers: GetByValHistory,
     }
 
 op :put_by_val,
@@ -1293,13 +1301,19 @@ op :switch,
     args: {
         scrutinee: VirtualRegister,
         tableIndex: unsigned,
-        defaultTarget: WasmBoundLabel,
     }
 
 # Wasm specific bytecodes
 
 op :unreachable
 op :ret_void
+
+op :drop_keep,
+    args: {
+        startOffset: unsigned,
+        dropCount: unsigned,
+        keepCount: unsigned,
+    }
 
 op :ref_is_null,
     args: {
@@ -1326,6 +1340,24 @@ op :set_global,
     }
 
 op :set_global_ref,
+    args: {
+        globalIndex: unsigned,
+        value: VirtualRegister,
+    }
+
+op :get_global_portable_binding,
+    args: {
+        dst: VirtualRegister,
+        globalIndex: unsigned,
+    }
+
+op :set_global_portable_binding,
+    args: {
+        globalIndex: unsigned,
+        value: VirtualRegister,
+    }
+
+op :set_global_ref_portable_binding,
     args: {
         globalIndex: unsigned,
         value: VirtualRegister,

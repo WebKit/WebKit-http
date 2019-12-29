@@ -1,3 +1,302 @@
+2019-07-13  Darin Adler  <darin@apple.com>
+
+        Streamline PODIntervalTree code and remove ValueToString
+        https://bugs.webkit.org/show_bug.cgi?id=199782
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj: Remove ValueToString.h.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/MediaTime.cpp:
+        (WTF::operator<<): Implement debug-only TextStream serialization
+        based on toJSONString.
+        * wtf/MediaTime.h: Ditto.
+
+        * wtf/text/ValueToString.h: Removed.
+
+2019-12-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Use bmalloc's memory footprint API for JSC heap growth management
+        https://bugs.webkit.org/show_bug.cgi?id=204576
+
+        Reviewed by Saam Barati.
+
+        Add the new USE_BMALLOC_MEMORY_FOOTPRINT_API, enabled for the iOS-family
+        ports and the Linux ports, as long as system malloc enforcement is
+        disabled and bmalloc is subsequently built and used. The flag is used in
+        JavaScriptCore to enable usage of bmalloc's memory footprint API for
+        JSC heap growth control.
+
+        * wtf/Platform.h:
+
+2019-12-05  Chris Dumez  <cdumez@apple.com>
+
+        [IPC] Fail ObjectIdentifier decoding if the decoded integer is not a valid ID
+        https://bugs.webkit.org/show_bug.cgi?id=204921
+        <rdar://problem/57677747>
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::ObjectIdentifier::decode):
+
+2019-12-03  Sunny He  <sunny_he@apple.com>
+
+        Enable security assertions on all ASAN builds
+        https://bugs.webkit.org/show_bug.cgi?id=204802
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2019-12-03  Christopher Reid  <chris.reid@sony.com>
+
+        Regular expression hangs in Safari only
+        https://bugs.webkit.org/show_bug.cgi?id=202882
+        <rdar://problem/56236654>
+
+        Reviewed by Yusuke Suzuki.
+
+        BumpPointerPool::ensureCapacityCrossPool can cause an infinite loop
+        if multiple large pools are deallocated and a new capacity does not
+        fit in the deallocated pools. BumpPointerPool should try using
+        more pools if the next one isn't large enough.
+
+        * wtf/BumpPointerAllocator.h:
+        (WTF::BumpPointerPool::ensureCapacityCrossPool):
+
+2019-11-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Remove ENABLE_KEYBOARD_CODE_ATTRIBUTE and ENABLE_KEYBOARD_KEY_ATTRIBUTE macros
+        https://bugs.webkit.org/show_bug.cgi?id=204666
+
+        Reviewed by Ross Kirsling and Don Olmstead.
+
+        * wtf/FeatureDefines.h:
+
+2019-11-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Update KeyboardEvent as per the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=202183
+
+        Reviewed by Ross Kirsling.
+
+        * wtf/FeatureDefines.h:
+
+2019-11-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Add DefaultHash<OptionSet<T>> and HashTrait<OptionSet<T>> specializations
+        https://bugs.webkit.org/show_bug.cgi?id=204562
+
+        Reviewed by Daniel Bates.
+
+        * WTF.xcodeproj/project.pbxproj: Added OptionSetHash.h
+        * wtf/CMakeLists.txt: Ditto.
+        * wtf/OptionSet.h: Made StorageType public, and use C++14 types.
+        * wtf/OptionSetHash.h: Added.
+        (WTF::DefaultHash<OptionSet<T>>::Hash::hash):
+        (WTF::DefaultHash<OptionSet<T>>::Hash::equal):
+        (WTF::HashTraits<OptionSet<T>>::emptyValue):
+        (WTF::HashTraits<OptionSet<T>>::constructDeletedValue):
+        (WTF::HashTraits<OptionSet<T>>::isDeletedValue):
+
+2019-11-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r252770): [GTK][WPE] Remote inspector no longer works if debugger is in a different kind of system
+        https://bugs.webkit.org/show_bug.cgi?id=204572
+
+        Reviewed by Žan Doberšek.
+
+        This patch adds the following changes:
+
+         - Use uint32_t instead of size_t to store the body size in the message header, because size_t has a different
+           size in 32 and 64 bit platforms.
+         - Use htonl/ntohl to write/read the body size in the header.
+         - Add a flags byte to the header to include the message byte order. The sender always uses the host byter order
+           and the receiver does the byte swapping if needed.
+
+        * wtf/glib/SocketConnection.cpp:
+        (WTF::messageIsByteSwapped):
+        (WTF::SocketConnection::readMessage):
+        (WTF::SocketConnection::sendMessage):
+
+2019-11-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r252770): [GTK][WPE] Remote inspector broken in debug builds after r252770
+        https://bugs.webkit.org/show_bug.cgi?id=204569
+
+        Reviewed by Žan Doberšek.
+
+        We need to call relaxAdoptionRequirement() in SocketConnection constructor because we are taking a reference for
+        the read monitor lambda.
+
+        * wtf/glib/SocketConnection.cpp:
+        (WTF::SocketConnection::SocketConnection):
+
+2019-11-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Ran sort-Xcode-project-file.
+
+        Unreviewed.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2019-11-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Try to fix the GTK WebDriver tests in the bots after r252770
+
+        They are failing in the bots because g_variant_new_from_data() is failing due to the given data not being
+        properly aligned for the type being loaded. This is not a problem since GLib 2.60 that checks the alignment and
+        reallocates the buffer in aligned memory only if needed. For previous versions we need to ensure the memory we
+        pass to g_variant_new_from_data() is aligned.
+
+        * wtf/glib/SocketConnection.cpp:
+        (WTF::SocketConnection::readMessage):
+
+2019-11-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed FTW build fix after r252687.
+
+        * wtf/PlatformFTW.cmake:
+
+2019-11-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] RemoteInspector: use sockets instead of DBus
+        https://bugs.webkit.org/show_bug.cgi?id=204503
+
+        Reviewed by Žan Doberšek.
+
+        Add SocketConnection class.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/glib/GSocketMonitor.cpp: Renamed from Source/WebKit/Platform/IPC/glib/GSocketMonitor.cpp.
+        (WTF::GSocketMonitor::start):
+        * wtf/glib/GSocketMonitor.h: Renamed from Source/WebKit/Platform/IPC/glib/GSocketMonitor.h.
+        (WTF::GSocketMonitor::isActive const):
+        * wtf/glib/GTypedefs.h:
+        * wtf/glib/GUniquePtr.h:
+        * wtf/glib/SocketConnection.cpp: Added.
+        (WTF::SocketConnection::SocketConnection):
+        (WTF::SocketConnection::~SocketConnection):
+        (WTF::SocketConnection::read):
+        (WTF::SocketConnection::readMessage):
+        (WTF::SocketConnection::sendMessage):
+        (WTF::SocketConnection::write):
+        (WTF::SocketConnection::waitForSocketWritability):
+        (WTF::SocketConnection::close):
+        (WTF::SocketConnection::didClose):
+        * wtf/glib/SocketConnection.h: Added.
+        (WTF::SocketConnection::create):
+        (WTF::SocketConnection::isClosed const):
+
+2019-11-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, rolling in again, regression is not caused by it
+        https://bugs.webkit.org/show_bug.cgi?id=202471
+
+        * wtf/text/StringCommon.h:
+        (WTF::findCommon):
+
+2019-11-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r252683 and r252721.
+        https://bugs.webkit.org/show_bug.cgi?id=204475
+
+        13% regression in JetStream2/prepack-wtb (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "Implement String.prototype.replaceAll"
+        https://bugs.webkit.org/show_bug.cgi?id=202471
+        https://trac.webkit.org/changeset/252683
+
+        "Unreviewed, address Darin's feedback on r252683."
+        https://trac.webkit.org/changeset/252721
+
+2019-11-21  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        add ASSERT_NOT_REACHED_WITH_MESSAGE and RELEASE_ASSERT_NOT_REACHED_WITH_MESSAGE
+        https://bugs.webkit.org/show_bug.cgi?id=204445
+
+        Reviewed by Antti Koivisto.
+
+        Add assertions that combine ASSERT_NOT_REACHED and ASSERT_WITH_MESSAGE.
+
+        * wtf/Assertions.h:
+
+2019-11-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed, address Darin's feedback on r252683.
+
+        * wtf/text/StringCommon.h:
+        (WTF::findCommon):
+
+2019-11-20  ChangSeok Oh  <changseok@webkit.org>
+
+        [GTK] Add ANGLE backend to GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=199060
+
+        Reviewed by Žan Doberšek.
+
+        The GTK port uses TEXTURE_MAPPER that has a gl context for accelerated rendering,
+        and ANGLE has an egl context for WebGL. We want to make both live together
+        so an exception is made where TEXTURE_MAPPER is enabled.
+
+        * wtf/Platform.h:
+
+2019-11-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Implement WTF::ThreadSpecific in WTF::Thread
+        https://bugs.webkit.org/show_bug.cgi?id=204341
+
+        Reviewed by Brent Fulgham and Yusuke Suzuki.
+
+        Thread::destructTLS had a tricky code to defer destroying
+        WTF::Thread in TLS in order to ensure WTF::Thread is destructed
+        after other ThreadSpecific are destructed, which is a part of
+        cause of nasty hanging issue in the process termination (Bug 204192).
+
+        This change implements WTF::ThreadSpecific in WTF::Thread by
+        adding a new class Thread::SpecificStorage to manage TLS. Simplify
+        Thread::destructTLS. Remove threadMapMutex in ThreadingWin.cpp
+
+        * wtf/PlatformWin.cmake:
+        * wtf/ThreadSpecific.h:
+        (WTF::canBeGCThread>::ThreadSpecific):
+        (WTF::canBeGCThread>::get):
+        (WTF::canBeGCThread>::setInTLS):
+        (WTF::canBeGCThread>::destroy):
+        (WTF::canBeGCThread>::~ThreadSpecific): Deleted.
+        * wtf/Threading.h:
+        (WTF::Thread::specificStorage):
+        (WTF::Thread::current):
+        * wtf/win/ThreadSpecificWin.cpp: Removed.
+        * wtf/win/ThreadingWin.cpp:
+        (WTF::Thread::initializeTLSKey):
+        (WTF::Thread::initializeTLS):
+        (WTF::Thread::destructTLS):
+        (WTF::Thread::SpecificStorage::allocateKey):
+        (WTF::Thread::SpecificStorage::get):
+        (WTF::Thread::SpecificStorage::set):
+        (WTF::Thread::SpecificStorage::destroySlots):
+        (): Deleted.
+        (WTF::Thread::currentDying): Deleted.
+        (WTF::Thread::get): Deleted.
+
+2019-11-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Implement String.prototype.replaceAll
+        https://bugs.webkit.org/show_bug.cgi?id=202471
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/text/StringCommon.h:
+        (WTF::findCommon):
+        Fix logic: "start > length" early out should come before "empty search string" early out.
+
 2019-11-19  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [IndexedDB] IndexedDB's threading assertion should respect Web thread

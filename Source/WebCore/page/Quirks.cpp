@@ -561,7 +561,7 @@ bool Quirks::shouldOpenAsAboutBlank(const String& stringToOpen) const
     if (!equalLettersIgnoringASCIICase(openerURL.host(), "docs.google.com"))
         return false;
 
-    if (!m_document->frame() || !m_document->frame()->loader().userAgentForJavaScript(openerURL).contains("Macintosh"))
+    if (!m_document->frame() || !m_document->frame()->loader().userAgent(openerURL).contains("Macintosh"))
         return false;
 
     URL urlToOpen { URL { }, stringToOpen };
@@ -628,5 +628,15 @@ bool Quirks::shouldBypassBackForwardCache() const
 
     return false;
 }
+
+#if ENABLE(MEDIA_STREAM)
+bool Quirks::shouldEnableLegacyGetUserMedia() const
+{
+    if (!needsQuirks())
+        return false;
+
+    return m_document->url().protocolIs("https") && equalLettersIgnoringASCIICase(m_document-> url().host(), "www.baidu.com");
+}
+#endif
 
 }

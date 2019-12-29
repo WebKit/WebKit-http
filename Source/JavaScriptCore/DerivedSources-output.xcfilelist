@@ -8,7 +8,6 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/AsyncGeneratorPrototype.lut.
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BigIntConstructor.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BigIntPrototype.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BooleanPrototype.lut.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BytecodeCacheVersion.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BytecodeIndices.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/BytecodeStructs.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/Bytecodes.h
@@ -61,9 +60,10 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/UnicodePatternTables.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WasmB3IRGeneratorInlines.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WasmLLIntGeneratorInlines.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WasmOps.h
-$(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WasmValidateInlines.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyCompileErrorConstructor.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyCompileErrorPrototype.lut.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyGlobalConstructor.lut.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyGlobalPrototype.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyInstanceConstructor.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyInstancePrototype.lut.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/WebAssemblyLinkErrorConstructor.lut.h
