@@ -25,13 +25,12 @@
 #include "DocumentRuleSets.h"
 #include "ElementRuleCollector.h"
 #include "InspectorCSSOMWrappers.h"
+#include "MatchedDeclarationsCache.h"
 #include "MediaQueryEvaluator.h"
 #include "RenderStyle.h"
 #include "RuleSet.h"
-#include "SelectorChecker.h"
-#include <bitset>
+#include "StyleBuilderState.h"
 #include <memory>
-#include <wtf/Bitmap.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -114,12 +113,8 @@ public:
     std::unique_ptr<RenderStyle> pseudoStyleForElement(const Element&, const PseudoStyleRequest&, const RenderStyle& parentStyle, const RenderStyle* parentBoxStyle = nullptr, const SelectorFilter* = nullptr);
 
     std::unique_ptr<RenderStyle> styleForPage(int pageIndex);
-    std::unique_ptr<RenderStyle> defaultStyleForElement();
+    std::unique_ptr<RenderStyle> defaultStyleForElement(const Element*);
 
-    RenderStyle* style() const { return m_state.style(); }
-    const RenderStyle* parentStyle() const { return m_state.parentStyle(); }
-    const RenderStyle* rootElementStyle() const { return m_state.rootElementStyle(); }
-    const Element* element() { return m_state.element(); }
     Document& document() { return m_document; }
     const Document& document() const { return m_document; }
     const Settings& settings() const { return m_document.settings(); }
@@ -135,10 +130,8 @@ public:
     void setOverrideDocumentElementStyle(RenderStyle* style) { m_overrideDocumentElementStyle = style; }
 
     void addCurrentSVGFontFaceRules();
-    static void adjustSVGElementStyle(const SVGElement&, RenderStyle&);
 
-    void setNewStateWithElement(const Element&);
-    std::unique_ptr<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleRuleKeyframe*, KeyframeValue&);
+    std::unique_ptr<RenderStyle> styleForKeyframe(const Element&, const RenderStyle*, const StyleRuleKeyframe*, KeyframeValue&);
     bool isAnimationNameValid(const String&);
 
     // These methods will give back the set of rules that matched for a given element (or a pseudo-element).
@@ -151,11 +144,6 @@ public:
     };
     Vector<RefPtr<StyleRule>> styleRulesForElement(const Element*, unsigned rulesToInclude = AllButEmptyCSSRules);
     Vector<RefPtr<StyleRule>> pseudoStyleRulesForElement(const Element*, PseudoId, unsigned rulesToInclude = AllButEmptyCSSRules);
-
-    void applyPropertyToStyle(CSSPropertyID, CSSValue*, std::unique_ptr<RenderStyle>);
-    void applyPropertyToCurrentStyle(CSSPropertyID, CSSValue*);
-
-    void initializeFontStyle();
 
     bool hasSelectorForId(const AtomString&) const;
     bool hasSelectorForAttribute(const Element&, const AtomString&) const;
@@ -181,33 +169,20 @@ public:
     bool usesFirstLineRules() const { return m_ruleSets.features().usesFirstLineRules; }
     bool usesFirstLetterRules() const { return m_ruleSets.features().usesFirstLetterRules; }
     
-    void invalidateMatchedPropertiesCache();
+    void invalidateMatchedDeclarationsCache();
+    void clearCachedDeclarationsAffectedByViewportUnits();
 
-    void clearCachedPropertiesAffectedByViewportUnits();
+    InspectorCSSOMWrappers& inspectorCSSOMWrappers() { return m_inspectorCSSOMWrappers; }
 
 private:
-    void adjustRenderStyle(RenderStyle&, const RenderStyle& parentStyle, const RenderStyle* parentBoxStyle, const Element*);
-    void adjustRenderStyleForSiteSpecificQuirks(RenderStyle&, const Element&);
-        
-    enum ShouldUseMatchedPropertiesCache { DoNotUseMatchedPropertiesCache = 0, UseMatchedPropertiesCache };
-    void applyMatchedProperties(const MatchResult&, const Element&, ShouldUseMatchedPropertiesCache = UseMatchedPropertiesCache);
-
-    DocumentRuleSets m_ruleSets;
-
-    typedef HashMap<AtomStringImpl*, RefPtr<StyleRuleKeyframes>> KeyframesRuleMap;
-    KeyframesRuleMap m_keyframesRuleMap;
-
-public:
-    typedef HashMap<CSSPropertyID, RefPtr<CSSValue>> PendingImagePropertyMap;
+    friend class PageRuleCollector;
 
     class State {
     public:
         State() { }
-        State(const Element&, const RenderStyle* parentStyle, const RenderStyle* documentElementStyle = nullptr, const SelectorFilter* = nullptr);
+        State(const Element&, const RenderStyle* parentStyle, const RenderStyle* documentElementStyle = nullptr);
 
     public:
-        void clear();
-
         const Element* element() const { return m_element; }
 
         void setStyle(std::unique_ptr<RenderStyle>);
@@ -218,70 +193,28 @@ public:
         const RenderStyle* parentStyle() const { return m_parentStyle; }
         const RenderStyle* rootElementStyle() const { return m_rootElementStyle; }
 
-        void cacheBorderAndBackground();
-        bool hasUAAppearance() const { return m_hasUAAppearance; }
-        BorderData borderData() const { return m_borderData; }
-        FillLayer backgroundData() const { return m_backgroundData; }
-        const Color& backgroundColor() const { return m_backgroundColor; }
+        const RenderStyle* userAgentAppearanceStyle() const { return m_userAgentAppearanceStyle.get(); }
+        void setUserAgentAppearanceStyle(std::unique_ptr<RenderStyle> style) { m_userAgentAppearanceStyle = WTFMove(style); }
 
-        const SelectorFilter* selectorFilter() const { return m_selectorFilter; }
-        
     private:
         const Element* m_element { nullptr };
         std::unique_ptr<RenderStyle> m_style;
         const RenderStyle* m_parentStyle { nullptr };
-        std::unique_ptr<RenderStyle> m_ownedParentStyle;
+        std::unique_ptr<const RenderStyle> m_ownedParentStyle;
         const RenderStyle* m_rootElementStyle { nullptr };
 
-        const SelectorFilter* m_selectorFilter { nullptr };
-
-        BorderData m_borderData;
-        FillLayer m_backgroundData { FillLayerType::Background };
-        Color m_backgroundColor;
-
-        bool m_hasUAAppearance { false };
+        std::unique_ptr<RenderStyle> m_userAgentAppearanceStyle;
     };
 
-    State& state() { return m_state; }
-    const State& state() const { return m_state; }
+    Style::BuilderContext builderContext(const State&);
 
-    InspectorCSSOMWrappers& inspectorCSSOMWrappers() { return m_inspectorCSSOMWrappers; }
+    enum class UseMatchedDeclarationsCache { Yes, No };
+    void applyMatchedProperties(State&, const MatchResult&, UseMatchedDeclarationsCache = UseMatchedDeclarationsCache::Yes);
 
-    bool adjustRenderStyleForTextAutosizing(RenderStyle&, const Element&);
+    DocumentRuleSets m_ruleSets;
 
-private:
-    void cacheBorderAndBackground();
-
-    static unsigned computeMatchedPropertiesHash(const MatchResult&);
-    struct MatchedPropertiesCacheItem {
-        Vector<MatchedProperties> userAgentDeclarations;
-        Vector<MatchedProperties> userDeclarations;
-        Vector<MatchedProperties> authorDeclarations;
-        std::unique_ptr<RenderStyle> renderStyle;
-        std::unique_ptr<RenderStyle> parentRenderStyle;
-        
-        MatchedPropertiesCacheItem(const MatchResult& matchResult, const RenderStyle* style, const RenderStyle* parentStyle)
-            : renderStyle(RenderStyle::clonePtr(*style))
-            , parentRenderStyle(RenderStyle::clonePtr(*parentStyle))
-        {
-            // Assign rather than copy-construct so we only allocate as much vector capacity as needed.
-            userAgentDeclarations = matchResult.userAgentDeclarations;
-            userDeclarations = matchResult.userDeclarations;
-            authorDeclarations = matchResult.authorDeclarations;
-        }
-        MatchedPropertiesCacheItem() = default;
-    };
-    const MatchedPropertiesCacheItem* findFromMatchedPropertiesCache(unsigned hash, const MatchResult&);
-    void addToMatchedPropertiesCache(const RenderStyle*, const RenderStyle* parentStyle, unsigned hash, const MatchResult&);
-
-    // Every N additions to the matched declaration cache trigger a sweep where entries holding
-    // the last reference to a style declaration are garbage collected.
-    void sweepMatchedPropertiesCache();
-
-    typedef HashMap<unsigned, MatchedPropertiesCacheItem> MatchedPropertiesCache;
-    MatchedPropertiesCache m_matchedPropertiesCache;
-
-    Timer m_matchedPropertiesCacheSweepTimer;
+    typedef HashMap<AtomStringImpl*, RefPtr<StyleRuleKeyframes>> KeyframesRuleMap;
+    KeyframesRuleMap m_keyframesRuleMap;
 
     MediaQueryEvaluator m_mediaQueryEvaluator;
     std::unique_ptr<RenderStyle> m_rootDefaultStyle;
@@ -300,9 +233,7 @@ private:
 
     InspectorCSSOMWrappers m_inspectorCSSOMWrappers;
 
-    State m_state;
-
-    unsigned m_matchedPropertiesCacheAdditionsSinceLastSweep { 0 };
+    Style::MatchedDeclarationsCache m_matchedDeclarationsCache;
 
     bool m_matchAuthorAndUserStyles { true };
     // See if we still have crashes where StyleResolver gets deleted early.

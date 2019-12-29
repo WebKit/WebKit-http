@@ -63,7 +63,6 @@
 #import "RuntimeEnabledFeatures.h"
 #import "SharedBuffer.h"
 #import "StringTruncator.h"
-#import "StyleResolver.h"
 #import "ThemeMac.h"
 #import "TimeRanges.h"
 #import "UTIUtilities.h"
@@ -882,11 +881,10 @@ bool RenderThemeMac::usesTestModeFocusRingColor() const
     return WebCore::usesTestModeFocusRingColor();
 }
 
-bool RenderThemeMac::isControlStyled(const RenderStyle& style, const BorderData& border,
-                                     const FillLayer& background, const Color& backgroundColor) const
+bool RenderThemeMac::isControlStyled(const RenderStyle& style, const RenderStyle& userAgentStyle) const
 {
     if (style.appearance() == TextFieldPart || style.appearance() == TextAreaPart || style.appearance() == ListboxPart)
-        return style.border() != border;
+        return style.border() != userAgentStyle.border();
 
     // FIXME: This is horrible, but there is not much else that can be done.  Menu lists cannot draw properly when
     // scaled.  They can't really draw properly when transformed either.  We can't detect the transform case at style
@@ -895,7 +893,7 @@ bool RenderThemeMac::isControlStyled(const RenderStyle& style, const BorderData&
     if (style.appearance() == MenulistPart && style.effectiveZoom() != 1.0f)
         return true;
 
-    return RenderTheme::isControlStyled(style, border, background, backgroundColor);
+    return RenderTheme::isControlStyled(style, userAgentStyle);
 }
 
 static FloatRect inflateRect(const FloatRect& rect, const IntSize& size, const int* margins, float zoomLevel)
@@ -1075,7 +1073,7 @@ void RenderThemeMac::setSizeFromFont(RenderStyle& style, const IntSize* sizes) c
         style.setHeight(Length(size.height(), Fixed));
 }
 
-void RenderThemeMac::setFontFromControlSize(StyleResolver&, RenderStyle& style, NSControlSize controlSize) const
+void RenderThemeMac::setFontFromControlSize(RenderStyle& style, NSControlSize controlSize) const
 {
     FontCascadeDescription fontDescription;
     fontDescription.setIsAbsoluteSize(true);
@@ -1142,7 +1140,7 @@ void RenderThemeMac::paintListButtonForInput(const RenderObject& o, GraphicsCont
     context.drawImage(*image, imageRect);
 }
 
-void RenderThemeMac::adjustListButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustListButtonStyle(RenderStyle& style, const Element*) const
 {
     // Add a margin to place the button at end of the input field.
     if (style.isLeftToRightDirection())
@@ -1191,7 +1189,7 @@ bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& pain
     return false;
 }
 
-void RenderThemeMac::adjustTextFieldStyle(StyleResolver&, RenderStyle&, const Element*) const
+void RenderThemeMac::adjustTextFieldStyle(RenderStyle&, const Element*) const
 {
 }
 
@@ -1202,7 +1200,7 @@ bool RenderThemeMac::paintTextArea(const RenderObject& o, const PaintInfo& paint
     return false;
 }
 
-void RenderThemeMac::adjustTextAreaStyle(StyleResolver&, RenderStyle&, const Element*) const
+void RenderThemeMac::adjustTextAreaStyle(RenderStyle&, const Element*) const
 {
 }
 
@@ -1430,7 +1428,7 @@ Seconds RenderThemeMac::animationDurationForProgressBar(RenderProgress&) const
     return progressAnimationFrameRate * progressAnimationNumFrames;
 }
 
-void RenderThemeMac::adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const
+void RenderThemeMac::adjustProgressBarStyle(RenderStyle&, const Element*) const
 {
 }
 
@@ -1675,7 +1673,7 @@ static const IntSize* menuListButtonSizes()
     return sizes;
 }
 
-void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
+void RenderThemeMac::adjustMenuListStyle(RenderStyle& style, const Element* e) const
 {
     NSControlSize controlSize = controlSizeForFont(style);
 
@@ -1702,7 +1700,7 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
     // Our font is locked to the appropriate system font size for the control.  To clarify, we first use the CSS-specified font to figure out
     // a reasonable control size, but once that control size is determined, we throw that font away and use the appropriate
     // system font for the control size instead.
-    setFontFromControlSize(styleResolver, style, controlSize);
+    setFontFromControlSize(style, controlSize);
 
     style.setBoxShadow(nullptr);
 }
@@ -1748,7 +1746,7 @@ PopupMenuStyle::PopupMenuSize RenderThemeMac::popupMenuSize(const RenderStyle& s
     }
 }
 
-void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustMenuListButtonStyle(RenderStyle& style, const Element*) const
 {
     float fontScale = style.computedFontPixelSize() / baseFontSize;
 
@@ -1800,7 +1798,7 @@ int RenderThemeMac::minimumMenuListSize(const RenderStyle& style) const
 const int trackWidth = 5;
 const int trackRadius = 2;
 
-void RenderThemeMac::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSliderTrackStyle(RenderStyle& style, const Element*) const
 {
     style.setBoxShadow(nullptr);
 }
@@ -1846,9 +1844,9 @@ bool RenderThemeMac::paintSliderTrack(const RenderObject& o, const PaintInfo& pa
     return false;
 }
 
-void RenderThemeMac::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* element) const
+void RenderThemeMac::adjustSliderThumbStyle(RenderStyle& style, const Element* element) const
 {
-    RenderTheme::adjustSliderThumbStyle(styleResolver, style, element);
+    RenderTheme::adjustSliderThumbStyle(style, element);
     style.setBoxShadow(nullptr);
 }
 
@@ -1985,7 +1983,7 @@ void RenderThemeMac::setSearchFieldSize(RenderStyle& style) const
     setSizeFromFont(style, searchFieldSizes());
 }
 
-void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSearchFieldStyle(RenderStyle& style, const Element*) const
 {
     // Override border.
     style.resetBorder();
@@ -2011,7 +2009,7 @@ void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, Render
     style.setPaddingBottom(Length(padding, Fixed));
 
     NSControlSize controlSize = controlSizeForFont(style);
-    setFontFromControlSize(styleResolver, style, controlSize);
+    setFontFromControlSize(style, controlSize);
 
     style.setBoxShadow(nullptr);
 }
@@ -2076,7 +2074,7 @@ const IntSize* RenderThemeMac::cancelButtonSizes() const
     return sizes;
 }
 
-void RenderThemeMac::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSearchFieldCancelButtonStyle(RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, cancelButtonSizes());
     style.setWidth(Length(size.width(), Fixed));
@@ -2092,7 +2090,7 @@ const IntSize* RenderThemeMac::resultsButtonSizes() const
 }
 
 const int emptyResultsOffset = 9;
-void RenderThemeMac::adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSearchFieldDecorationPartStyle(RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width() - emptyResultsOffset, Fixed));
@@ -2105,7 +2103,7 @@ bool RenderThemeMac::paintSearchFieldDecorationPart(const RenderObject&, const P
     return false;
 }
 
-void RenderThemeMac::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSearchFieldResultsDecorationPartStyle(RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width(), Fixed));
@@ -2141,7 +2139,7 @@ bool RenderThemeMac::paintSearchFieldResultsDecorationPart(const RenderBox& box,
     return false;
 }
 
-void RenderThemeMac::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
+void RenderThemeMac::adjustSearchFieldResultsButtonStyle(RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width() + resultsArrowWidth, Fixed));

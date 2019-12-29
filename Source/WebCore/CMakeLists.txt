@@ -1238,9 +1238,11 @@ set(WebCore_LIBRARIES
 )
 
 set(WebCoreTestSupport_LIBRARIES
-    WebCore
     WebKit::JavaScriptCore
 )
+if (NOT WTF_OS_WINDOWS)
+    list(APPEND WebCoreTestSupport_LIBRARIES WebCore)
+endif ()
 
 if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
@@ -1320,6 +1322,8 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLBuffer.cpp
         html/canvas/WebGLCompressedTextureASTC.cpp
         html/canvas/WebGLCompressedTextureATC.cpp
+        html/canvas/WebGLCompressedTextureETC.cpp
+        html/canvas/WebGLCompressedTextureETC1.cpp
         html/canvas/WebGLCompressedTexturePVRTC.cpp
         html/canvas/WebGLCompressedTextureS3TC.cpp
         html/canvas/WebGLContextEvent.cpp
@@ -1369,6 +1373,8 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLBuffer.idl
         html/canvas/WebGLCompressedTextureASTC.idl
         html/canvas/WebGLCompressedTextureATC.idl
+        html/canvas/WebGLCompressedTextureETC.idl
+        html/canvas/WebGLCompressedTextureETC1.idl
         html/canvas/WebGLCompressedTexturePVRTC.idl
         html/canvas/WebGLCompressedTextureS3TC.idl
         html/canvas/WebGLContextAttributes.idl

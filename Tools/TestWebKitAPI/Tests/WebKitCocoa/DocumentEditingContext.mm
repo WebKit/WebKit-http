@@ -28,7 +28,7 @@
 #if PLATFORM(IOS_FAMILY) && HAVE(UI_WK_DOCUMENT_CONTEXT)
 
 #import "PlatformUtilities.h"
-#import "Test.h"
+#import "TestCocoa.h"
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
 #import "UIKitSPI.h"
@@ -45,12 +45,6 @@
 #define EXPECT_ATTRIBUTED_STRING_EQ(expected, actual) \
     EXPECT_TRUE([actual isKindOfClass:[NSAttributedString class]]); \
     EXPECT_WK_STREQ(expected, [(NSAttributedString *)actual string]);
-
-#define EXPECT_RECT_EQ(xExpected, yExpected, widthExpected, heightExpected, rect) \
-    EXPECT_DOUBLE_EQ(xExpected, rect.origin.x); \
-    EXPECT_DOUBLE_EQ(yExpected, rect.origin.y); \
-    EXPECT_DOUBLE_EQ(widthExpected, rect.size.width); \
-    EXPECT_DOUBLE_EQ(heightExpected, rect.size.height);
 
 @interface WKContentView ()
 - (void)requestDocumentContext:(UIWKDocumentRequest *)request completionHandler:(void (^)(UIWKDocumentContext *))completionHandler;
@@ -105,14 +99,16 @@ static UIWKDocumentRequest *makeRequest(UIWKDocumentRequestFlags flags, UITextGr
 
 @end
 
-static NSString *applyStyle(NSString *HTMLString)
+static NSString *applyStyle(NSString *htmlString)
 {
-    return [@"<style>body { margin: 0; } iframe { border: none; }</style><meta name='viewport' content='initial-scale=1'>" stringByAppendingString:HTMLString];
+    return [@"<style>body { margin: 0; } </style><meta name='viewport' content='initial-scale=1'>" stringByAppendingString:htmlString];
 }
 
-static NSString *applyAhemStyle(NSString *HTMLString)
+constexpr unsigned glyphWidth { 25 }; // pixels
+
+static NSString *applyAhemStyle(NSString *htmlString)
 {
-    return [@"<style>@font-face { font-family: customFont; src: url(Ahem.ttf); } body { margin: 0; font-family: customFont; } iframe { border: none; }</style><meta name='viewport' content='initial-scale=1'>" stringByAppendingString:HTMLString];
+    return [NSString stringWithFormat:@"<style>@font-face { font-family: Ahem; src: url(Ahem.ttf); } body { margin: 0; font: %upx/1 Ahem; -webkit-text-size-adjust: 100%%; }</style><meta name='viewport' content='width=980, initial-scale=1.0'>%@", glyphWidth, htmlString];
 }
 
 TEST(WebKit, DocumentEditingContext)
@@ -210,10 +206,10 @@ TEST(WebKit, DocumentEditingContext)
         return [@(a.CGRectValue.origin.x) compare:@(b.CGRectValue.origin.x)];
     }];
     EXPECT_EQ(4UL, rects.count);
-    EXPECT_RECT_EQ(0, 0, 23, 24, rects[0].CGRectValue);
-    EXPECT_RECT_EQ(23, 0, 23, 24, rects[1].CGRectValue);
-    EXPECT_RECT_EQ(46, 0, 23, 24, rects[2].CGRectValue);
-    EXPECT_RECT_EQ(69, 0, 23, 24, rects[3].CGRectValue);
+    EXPECT_EQ(CGRectMake(0, 0, glyphWidth, glyphWidth), rects[0].CGRectValue);
+    EXPECT_EQ(CGRectMake(glyphWidth, 0, glyphWidth, glyphWidth), rects[1].CGRectValue);
+    EXPECT_EQ(CGRectMake(2 * glyphWidth, 0, glyphWidth, glyphWidth), rects[2].CGRectValue);
+    EXPECT_EQ(CGRectMake(3 * glyphWidth, 0, glyphWidth, glyphWidth), rects[3].CGRectValue);
     rects = [context characterRectsForCharacterRange:NSMakeRange(5, 1)];
     EXPECT_EQ(0UL, rects.count);
 
@@ -221,16 +217,16 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NSSTRING_EQ(" MMM", context.contextAfter);
     rects = [context characterRectsForCharacterRange:NSMakeRange(0, 1)];
     EXPECT_EQ(1UL, rects.count);
-    EXPECT_RECT_EQ(0, 0, 23, 24, rects.firstObject.CGRectValue);
+    EXPECT_EQ(CGRectMake(0, 0, glyphWidth, glyphWidth), rects.firstObject.CGRectValue);
     rects = [context characterRectsForCharacterRange:NSMakeRange(6, 1)];
     EXPECT_EQ(1UL, rects.count);
-    EXPECT_RECT_EQ(138, 0, 23, 24, rects.firstObject.CGRectValue);
+    EXPECT_EQ(CGRectMake(6 * glyphWidth, 0, glyphWidth, glyphWidth), rects.firstObject.CGRectValue);
 
     // Text Input Context
     [webView synchronouslyLoadHTMLString:applyStyle(@"<input type='text' style='width: 50px; height: 50px;' value='hello, world'>")];
     NSArray<_WKTextInputContext *> *textInputContexts = [webView synchronouslyRequestTextInputContextsInRect:[webView frame]];
     EXPECT_EQ(1UL, textInputContexts.count);
-    EXPECT_RECT_EQ(0, 0, 50, 50, textInputContexts[0].boundingRect);
+    EXPECT_EQ(CGRectMake(0, 0, 50, 50), textInputContexts[0].boundingRect);
 
     context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityWord, 0, CGRectZero, textInputContexts[0])];
     EXPECT_NSSTRING_EQ("hello,", context.contextBefore);

@@ -1,3 +1,712 @@
+2019-11-09  Dean Jackson  <dino@apple.com>
+
+        Clicky Orbing support.apple.com categories shows a PNG instead of the web page preview, tapping loads image asset only instead of web page
+        https://bugs.webkit.org/show_bug.cgi?id=204037
+        <rdar://55614939>
+
+        Reviewed by Simon Fraser.
+
+        New tests for a link wrapping an image, and the ordering of API and SPI.
+
+        Rename these tests so that they are much easier to filter on the command line.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/ContextMenus.mm:
+        (TEST):
+        (-[TestContextMenuAPIBeforeSPIUIDelegate webView:contextMenuConfigurationForElement:completionHandler:]):
+        (-[TestContextMenuAPIBeforeSPIUIDelegate _webView:contextMenuConfigurationForElement:completionHandler:]):
+        (-[TestContextMenuAPIBeforeSPIUIDelegate webView:contextMenuWillPresentForElement:]):
+        * TestWebKitAPI/Tests/WebKitCocoa/WKRequestActivatedElementInfo.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/image.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/link-with-image.html: Added.
+
+2019-11-08  Brady Eidson  <beidson@apple.com>
+
+        WKWebView Find-in-page API.
+        <rdar://problem/46971112> and https://bugs.webkit.org/show_bug.cgi?id=203872
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/FindInPageAPI.mm: Added.
+        (TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView selectionRangeHasStartOffset:endOffset:]):
+
+2019-11-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Simulators having trouble launching apps after booting
+        <rdar://problem/57032042>
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess._start): Temporarily increase timeout to help out bots.
+
+2019-11-08  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: List failing tests for criteria
+        https://bugs.webkit.org/show_bug.cgi?id=203905
+
+        Rubber-stamped by Aakash Jain.
+
+        * resultsdbpy/resultsdbpy/controller/api_routes.py:
+        (APIRoutes.__init__): Add FailureController and /failures endpoint.
+        * resultsdbpy/resultsdbpy/controller/failure_controller.py: Added.
+        (FailureController): Added FailureController object to drive /failure endpoint.
+        (FailureController.__init__):
+        (FailureController.failures): Return a json list of failures for a range.
+        * resultsdbpy/resultsdbpy/controller/failure_controller_unittest.py: Added.
+        (FailureControllerTest): Test the /failure API.
+        (FailureControllerTest.setup_webserver):
+        (FailureControllerTest.test_failures_collapsed):
+        (FailureControllerTest.test_unexpected_failures_collapsed):
+        (FailureControllerTest.test_failures):
+        (FailureControllerTest.test_unexpected_failures):
+        (FailureControllerTest.test_failure_by_time):
+        * resultsdbpy/resultsdbpy/model/failure_context.py: Added.
+        (FailureContext): Database access to tables recording test failures.
+        (FailureContext.TestFailuresBase):
+        (FailureContext.TestFailuresBase.unpack):
+        (FailureContext.TestFailuresByCommit): Save test failures sorted by commit.
+        (FailureContext.TestFailuresByStartTime): Save test failures sorted by start time.
+        (FailureContext.UnexpectedTestFailuresByCommit): Save unexpected test failures
+        sorted by commit.
+        (FailureContext.UnexpectedTestFailuresByStartTime): Save unexpected test failures
+        sorted by commit.
+        (FailureContext.__init__):
+        (FailureContext.register): Register test failures to each of the 4 tables for an upload.
+        (FailureContext._failures): Return a list of test failures from a table.
+        (FailureContext.failures_by_commit): Return a list of test failures from a table sorted
+        by commit.
+        (FailureContext.failures_by_start_time): Return a list of test failures from a table
+        sorted by commit.
+        * resultsdbpy/resultsdbpy/model/failure_context_unittest.py: Added.
+        (FailureContextTest):
+        (FailureContextTest.init_database):
+        (FailureContextTest.test_failures_collapsed):
+        (FailureContextTest.test_unexpected_failures_collapsed):
+        (FailureContextTest.test_failures):
+        (FailureContextTest.test_unexpected_failures):
+        * resultsdbpy/resultsdbpy/model/model.py:
+        (Model.__init__):
+        * resultsdbpy/resultsdbpy/view/templates/documentation.html: Add documentation
+        for the /failure endpoint.
+
+2019-11-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix flaky tests in http/tests/cache/disk-cache
+        https://bugs.webkit.org/show_bug.cgi?id=203822
+
+        Reviewed by Youenn Fablet.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::setCacheModel):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2019-11-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Clicking on EWS status-bubble should open the results in new tab
+        https://bugs.webkit.org/show_bug.cgi?id=204012
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-app/ews/templates/statusbubble.html:
+
+2019-11-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Return NotAllowedError immediately for UI cancellations
+        https://bugs.webkit.org/show_bug.cgi?id=203937
+        <rdar://problem/56962420>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (TestWebKitAPI::TEST):
+
+2019-11-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Prioritize builders over testers when a bot is shared over multiple queues
+        https://bugs.webkit.org/show_bug.cgi?id=204007
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig):
+        (prioritizeBuilders): Method to prioritize builder queues over tester queues.
+
+2019-11-08  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix for platforms without WebRTC's SSL after r252185
+        https://bugs.webkit.org/show_bug.cgi?id=203934
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        The new test uses TLS with the HTTPS proxy.  Don't compile it if we can't compile it.
+
+2019-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add pointer lock permission request API
+        https://bugs.webkit.org/show_bug.cgi?id=203896
+
+        Reviewed by Adrian Perez de Castro.
+
+        Handle pointer lock permission requests in MiniBrowser and add a new tests case to check the new API.
+
+        * MiniBrowser/gtk/BrowserTab.c:
+        (pointerLockMessageTimeoutCallback):
+        (decidePermissionRequest):
+        (browserTabFinalize):
+        (browserTabConstructed):
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewPointerLockPermissionRequest):
+        (beforeAll):
+
+2019-11-07  Chris Dumez  <cdumez@apple.com>
+
+        TestController may reuse a view that used window.open(), which prevents process-swapping and causes flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=203981
+
+        Reviewed by Ryosuke Niwa.
+
+        Stop reusing WebViews that have created other WebViews (via window.open()) since this prevents process-swapping
+        and may therefore cause flakiness (see Bug 203965).
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        * WebKitTestRunner/TestController.h:
+
+2019-11-07  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] rename RunJavaScriptCoreTestsToT to RunJSCTestsWithoutPatch
+        https://bugs.webkit.org/show_bug.cgi?id=203959
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunJSCTestsWithoutPatch): Renamed.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2019-11-07  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable NSURLSession isolation after r252116
+        https://bugs.webkit.org/show_bug.cgi?id=203934
+        <rdar://problem/56921584>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (-[DataTaskIdentifierCollisionDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[DataTaskIdentifierCollisionDelegate waitForMessages:]):
+        (-[DataTaskIdentifierCollisionDelegate webView:didReceiveAuthenticationChallenge:completionHandler:]):
+        (TEST):
+
+2019-11-07  Paulo Matos  <pmatos@igalia.com>
+
+        Add support for remotes file for EWS builders
+        https://bugs.webkit.org/show_bug.cgi?id=203899
+
+        Reviewed by Aakash Jain.
+
+        Require to support builders that cross-compile and run tests on native machines
+        through the use of --remote-config-file.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (Factory.__init__):
+        (StyleFactory.__init__):
+        (WatchListFactory.__init__):
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig):
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ConfigureBuild.__init__):
+        (ConfigureBuild.start):
+        (RunJavaScriptCoreTests.start):
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+        (TestRunJavaScriptCoreTests.test_remote_success):
+
+2019-11-06  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION: [ iOS ] ( r251015 ) Layout Test fast/text/whitespace/pre-wrap-overflow-selection.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203366
+        <rdar://problem/56580680>
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dump):
+
+2019-11-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        WEBCORE_TESTSUPPORT_EXPORT should be used only for WebCoreTestSupport, not for WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=203876
+
+        Reviewed by Ross Kirsling.
+
+        * TestWebKitAPI/win/TestWebKitAPIPrefix.h:
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerInjectedBundlePrefix.h:
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h:
+        Define WEBCORE_TESTSUPPORT_EXPORT emtpy.
+
+2019-11-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] DumpRenderTree.exe and WebKitTestRunner.exe shouldn't link with WebCoreTestSupport
+        https://bugs.webkit.org/show_bug.cgi?id=203879
+
+        Reviewed by Ross Kirsling.
+
+        After r252086, WinCairo DumpRenderTree.exe and
+        WebKitTestRunner.exe can't start because they are linked with
+        WinCairoRequirements DLLs unexpectedly.
+
+        DumpRenderTree.exe and WebKitTestRunner.exe are just wrapper
+        programs. They shouldn't link with WinCairoRequirements libs.
+
+        * DumpRenderTree/PlatformWin.cmake: Set DumpRenderTree_LIBRARIES only shlwapi.
+        * WebKitTestRunner/PlatformWin.cmake: Set WebKitTestRunner_LIBRARIES only shlwapi.
+
+2019-11-06  Kate Cheney  <katherine_cheney@apple.com>
+
+        Update entry in contributors.json to fix commit privileges.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-11-06  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix: fix TestWebKitAPI in macCatalyst, tvOS, and
+        watchOS builds by conditionalizing some code on HAVE_UIWEBVIEW and
+        HAVE_PDFKIT. Follow-up to r251976.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKPDFView.mm:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/AudioSessionCategoryIOS.mm:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/JSLockTakesWebThreadLock.mm:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/ScrollToRevealSelection.mm:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/ScrollingDoesNotPauseMedia.mm:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/SnapshotViaRenderInContext.mm:
+        * TestWebKitAPI/Tests/ios/SetTimeoutFunction.mm:
+        * TestWebKitAPI/config.h:
+
+2019-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        All EWS status-bubbles shows #1 on security patches when patch is uploaded with webkit-patch --no-review
+        https://bugs.webkit.org/show_bug.cgi?id=203903
+
+        Reviewed by David Kilzer.
+
+        * BuildSlaveSupport/ews-app/ews/fetcher.py:
+        (BugzillaPatchFetcher.fetch):
+
+2019-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Increase timeout for svn-apply
+        https://bugs.webkit.org/show_bug.cgi?id=203909
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+
+2019-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        Add watchlist category for BuildSlaveSupport
+        https://bugs.webkit.org/show_bug.cgi?id=203900
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2019-11-06  Philippe Normand  <philn@igalia.com>
+
+        [GTK][WPE] Add libfdk-aac-dev to the install-dependencies script
+        https://bugs.webkit.org/show_bug.cgi?id=203812
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/install-dependencies:
+        * wpe/install-dependencies:
+
+2019-11-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Implement support for Pointer Lock API
+        https://bugs.webkit.org/show_bug.cgi?id=202956
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::getGDKKeySymForKeyRef): Handle escape key.
+
+2019-11-05  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Scroll position does not get restored when doing a history navigation while the reader view is shown
+        https://bugs.webkit.org/show_bug.cgi?id=203871
+        <rdar://problem/56564603>
+
+        Reviewed by Tim Horton.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/simple-tall.html:
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreScrollPosition.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2019-11-05  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION(r252031): layout tests fail to run in non apple ports after r252031 (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=203844
+
+        Rubber-stamped by Aakash Jain.
+
+        Remove infinite loop for Windows.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._path_to_default_image_diff):
+        (WinPort._path_to_image_diff): Deleted.
+
+2019-11-05  Aakash Jain  <aakash_jain@apple.com>
+
+        EWS should report test failures from clean-tree to results.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=203829
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig):
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitTests.__init__):
+        (RunWebKitTestsWithoutPatch.start):
+        (RunAPITestsWithoutPatch.start):
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added and updated unit-tests.
+
+2019-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Native text substitutions interfere with HTML <datalist> options resulting in crash
+        https://bugs.webkit.org/show_bug.cgi?id=203116
+        <rdar://problem/49875932>
+
+        Reviewed by Tim Horton.
+
+        Add a new testing hook to wait for datalist suggestions to show up and choose the suggestion at the given index.
+
+        * DumpRenderTree/mac/UIScriptControllerMac.h:
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptControllerMac::activateDataListSuggestion):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        (WTR::UIScriptController::activateDataListSuggestion):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptControllerIOS::activateDataListSuggestion):
+        * WebKitTestRunner/mac/UIScriptControllerMac.h:
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptControllerMac::isShowingDataListSuggestions const):
+        (WTR::UIScriptControllerMac::activateDataListSuggestion):
+
+        Dig through the view hierarchy of the NSWindow subclass used to show datalist suggestions for the table view
+        containing the suggestions; then, select the given row, and invoke the action on the target.
+
+        (WTR::UIScriptControllerMac::dataListSuggestionsTableView const):
+
+2019-11-05  Daniel Bates  <dabates@apple.com>
+
+        TestWebKitAPI.WebKit.DocumentEditingContext is failing on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=203828
+        <rdar://problem/55854631>
+
+        Reviewed by Myles Maxfield.
+
+        Specify both a font size and line height when using Ahem as per [1]. Otherwise, text may be
+        rendered inconsistently. Plus, disable text-autosizing and fix viewport to make test result
+        consistent on both iPhone and iPad. 
+
+        [1] <https://web-platform-tests.org/writing-tests/ahem.html>
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        (applyStyle): Remove unused style for <iframe>s and fix up parameter name to conform to style guide.
+        (applyAhemStyle): Set -webkit-text-size-adjust to 100% to disable auto-sizing. Fix viewport width
+        and initial scale to ensure the result is the same on both iPhone and iPad. Also remove unused style
+        for <iframe>s and renamed parameter name to conform to style guide.
+        (TEST):
+
+2019-11-05  Sihui Liu  <sihui_liu@apple.com>
+
+        REGRESSION (r250754): web page using IDBIndex doesn't load occasionally
+        https://bugs.webkit.org/show_bug.cgi?id=203431
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBInPageCache.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBInPageCache.mm: Added.
+        (-[IndexedDBInPageCacheMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBNotInPageCache.html: Added.
+
+2019-11-05  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Build ImageDiff if it is missing (Follow-fix)
+        https://bugs.webkit.org/show_bug.cgi?id=183422
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._path_to_image_diff): Use the host build directory.
+        * Scripts/webkitpy/port/config.py:
+        (Config.build_directory): Allow the caller to ignore the port argument, which will return the default
+        build directory for the host running the script.
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase.make_port):
+
+2019-11-05  Chris Lord  <clord@igalia.com>
+
+        [WPE] WebKit.NewFirstVisuallyNonEmptyLayout* unexpected pass
+        https://bugs.webkit.org/show_bug.cgi?id=203846
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2019-11-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r252031): layout tests fail to run in non apple ports after r252031
+        https://bugs.webkit.org/show_bug.cgi?id=203844
+
+        Reviewed by Žan Doberšek.
+
+        Since r252032 Port.check_image_diff() assumes that ImageDiff binary is built in the build path, which is not
+        true for all ports. This patch adds Port._path_to_default_image_diff() to be used instead of the build_path()
+        and overriden by ports not building the ImageDiff in the build path.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.check_image_diff):
+        (Port._path_to_default_image_diff):
+        (Port._path_to_image_diff):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._path_to_default_image_diff):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._path_to_default_image_diff):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._path_to_default_image_diff):
+
+2019-11-05  Chris Lord  <clord@igalia.com>
+
+        [WPE] Geolocation API tests are consistently passing
+        https://bugs.webkit.org/show_bug.cgi?id=203845
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2019-11-05  youenn fablet  <youenn@apple.com>
+
+        Enforce user gesture for getUserMedia in case a previous getUserMedia call was denied
+        https://bugs.webkit.org/show_bug.cgi?id=203362
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/GetDisplayMedia.mm:
+        (TestWebKitAPI::TEST_F):
+        Update test to take into account the ability to ask again for permission.
+        * TestWebKitAPI/Tests/WebKit/getDisplayMedia.html:
+        Update to make sure we notify test if internals is not available.
+
+2019-11-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Perform validation of patch before retrying API and layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=203756
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ValidatePatch.__init__): Added parameters to optionally skip certain validations.
+        (ValidatePatch.start): Skip certain validations based on the parameters.
+        (RunWebKitTests.evaluateCommand): Add a ValidatePatch step before retrying.
+        (ReRunWebKitTests.evaluateCommand): Ditto.
+        (RunAPITests.evaluateCommand): Ditto.
+        (ReRunAPITests.evaluateCommand): Ditto.
+
+2019-11-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Guard against unexpected -[_WKWebAuthenticationPanel cancel]
+        https://bugs.webkit.org/show_bug.cgi?id=203830
+        <rdar://problem/56797134>
+
+        Reviewed by Brent Fulgham .
+
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (-[TestWebAuthenticationPanelDelegate panel:updateWebAuthenticationPanel:]):
+        (-[TestWebAuthenticationPanelDelegate panel:dismissWebAuthenticationPanelWithResult:]):
+        (TestWebKitAPI::TEST):
+
+2019-11-04  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Build ImageDiff if it is missing
+        https://bugs.webkit.org/show_bug.cgi?id=183422
+
+        Reviewed by Alexey Proskuryakov.
+
+        ImageDiff is built with a different SDK than the rest of the WebKit
+        stack, and this frequently causes infrastructure failures where ImageDiff
+        is missing on testers. To address this, we should automatically build
+        ImageDiff if it is missing.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.check_build): Unconditionally build ImageDiff if it is missing.
+        (Port.check_image_diff): Use _build_path since _path_to_image_diff will
+        attempt to use a back-up location.
+        (Port._path_to_image_diff): If the provided path to ImageDiff does not
+        exist, use the path of the one we built.
+
+2019-11-04  Daniel Bates  <dabates@apple.com>
+
+        Add Googletest assertion support for CGRect and NSRect
+        https://bugs.webkit.org/show_bug.cgi?id=203817
+
+        Reviewed by Myles C. Maxfield.
+
+        Add operator== and operator<< overloads for CGRect and NSRect so that these types can be
+        passed to EXPECT_EQ() and other Googletest assertions.
+
+        To make use of these overloads Cocoa tests should include #import "TestCocoa.h" instead of
+        "Test.h". TestCocoa.h imports Test.h. With these overloads an assertion like this:
+
+            EXPECT_EQ(CGRectMake(0, 0, 23, 24), rects[0].CGRectValue);
+
+        will produce output like this when it fails:
+
+            Expected equality of these values:
+              CGRectMake(138, 0, 23, 24)
+                Which is: (origin = (x = 138, y = 0), size = (width = 23, height = 24))
+              rects.firstObject.CGRectValue
+                Which is: (origin = (x = 96, y = 0), size = (width = 16, height = 17))
+
+        * TestWebKitAPI/SourcesCocoa.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add source files.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/RequestTextInputContext.mm:
+        Write in terms of EXPECT_EQ() now that it just works when passed CGRects.
+
+        * TestWebKitAPI/cocoa/TestCocoa.h: Added.
+        * TestWebKitAPI/cocoa/TestCocoa.mm: Added.
+        (ostreamRectCommon):
+        (operator<<):
+        (operator==):
+
+2019-11-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Status bubble should be white for CANCELLED builds
+        https://bugs.webkit.org/show_bug.cgi?id=201204
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+
+2019-11-04  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Flush the shared ResourceLoadObserver when the webpage is closed by JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=203623
+        <rdar://problem/56756427>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (TEST):
+
+2019-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Consolidate forEachViewInHierarchy and findAllViewsInHierarchyOfType into common helper file
+        https://bugs.webkit.org/show_bug.cgi?id=203777
+
+        Reviewed by Tim Horton.
+
+        * TestRunnerShared/cocoa/PlatformViewHelpers.h: Added.
+        * TestRunnerShared/cocoa/PlatformViewHelpers.mm: Added.
+
+        Add a new Cocoa helper file, PlatformViewHelpers, to make it easier to traverse platform view hierarchies
+        (NSView and UIView) for testing purposes. This is minor refactoring, before I try to create some new testing
+        primitives to make webkit.org/b/203116 testable.
+
+        (forEachViewInHierarchy):
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptControllerIOS::findEditableImageCanvas const):
+        (WTR::forEachViewInHierarchy): Deleted.
+        (WTR::findEditableImageCanvas): Deleted.
+
+2019-11-04  Alex Christensen  <achristensen@webkit.org>
+
+        Flaky API Test TestWebKitAPI.WebKit.UploadDirectory
+        https://bugs.webkit.org/show_bug.cgi?id=203652
+
+        Reviewed by Alexey Proskuryakov.
+
+        It is not important that the directory to upload does not exist before the test starts.
+        Make the test more robust to state left behind by previous iterations of this test by removing the check.
+        The important check in this test is the uploaded body size.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UploadDirectory.mm:
+        (TEST):
+
+2019-11-04  Kate Cheney  <katherine_cheney@apple.com>
+
+        updated email in contributors.json to match bugzilla.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-11-04  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r251623): When downloading a QuickLook file, the web view navigates to a "The URL can't be shown" error page instead of staying on the current page
+        https://bugs.webkit.org/show_bug.cgi?id=203790
+        <rdar://problem/56795440>
+
+        Reviewed by Alex Christensen.
+
+        Tested that "download" and "cancel" policy decisions for QuickLook files result in a
+        provisional navigation failure with error code WebKitErrorFrameLoadInterruptedByPolicyChange.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/QuickLook.mm:
+        (-[QuickLookDelegate navigationError]):
+        (-[QuickLookDelegate _webView:didFailNavigation:withError:userInfo:]):
+        (-[QuickLookDelegate webView:didFailProvisionalNavigation:withError:]):
+        (TEST):
+
+2019-11-04  Peng Liu  <peng.liu6@apple.com>
+
+        Cannot run WebKit layout tests on iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=203796
+
+        Reviewed by Jonathan Bedard.
+
+        Fix the error to parse iOS version numbers like "xx.yy".
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.__init__):
+
+2019-11-03  Tim Horton  <timothy_horton@apple.com>
+
+        WKWebView can get stuck blank (Web Content process thinks the app is backgrounded)
+        https://bugs.webkit.org/show_bug.cgi?id=203774
+        <rdar://problem/53399054>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKPDFView.mm: Added.
+        (TEST):
+        (isBackground):
+        (createHostViewForExtensionIdentifier):
+        * TestWebKitAPI/Tests/WebKitCocoa/WKPDFViewResizeCrash.mm: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/WKPDFViewStablePresentationUpdateCallback.mm: Removed.
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.h:
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.mm:
+        (-[WKWebView _test_waitForDidFinishNavigationWithoutPresentationUpdate]):
+        Merge existing WKPDFView tests into one file, and add one for this bug.
+
 2019-11-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Add diagnostic logging for frontend feature usage

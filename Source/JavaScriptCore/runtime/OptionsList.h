@@ -86,6 +86,7 @@ namespace JSC {
     v(Unsigned, repatchBufferingCountdown, 8, Normal, nullptr) \
     \
     v(Bool, dumpGeneratedBytecodes, false, Normal, nullptr) \
+    v(Bool, dumpGeneratedWasmBytecodes, false, Normal, nullptr) \
     v(Bool, dumpBytecodeLivenessResults, false, Normal, nullptr) \
     v(Bool, validateBytecode, false, Normal, nullptr) \
     v(Bool, forceDebuggerBytecodeGeneration, false, Normal, nullptr) \
@@ -183,7 +184,7 @@ namespace JSC {
     v(Double, gcIncrementScale, 0, Normal, nullptr) \
     v(Bool, scribbleFreeCells, false, Normal, nullptr) \
     v(Double, sizeClassProgression, 1.4, Normal, nullptr) \
-    v(Unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
+    v(Unsigned, preciseAllocationCutoff, 100000, Normal, nullptr) \
     v(Bool, dumpSizeClasses, false, Normal, nullptr) \
     v(Bool, useBumpAllocator, true, Normal, nullptr) \
     v(Bool, stealEmptyBlocksFromOtherAllocators, true, Normal, nullptr) \
@@ -428,6 +429,8 @@ namespace JSC {
     \
     v(Bool, useBBQTierUpChecks, true, Normal, "Enables tier up checks for our BBQ code.") \
     v(Bool, useWebAssemblyOSR, true, Normal, nullptr) \
+    v(Int32, thresholdForBBQOptimizeAfterWarmUp, 150, Normal, "The count before we tier up a function to BBQ.") \
+    v(Int32, thresholdForBBQOptimizeSoon, 50, Normal, nullptr) \
     v(Int32, thresholdForOMGOptimizeAfterWarmUp, 50000, Normal, "The count before we tier up a function to OMG.") \
     v(Int32, thresholdForOMGOptimizeSoon, 500, Normal, nullptr) \
     v(Int32, omgTierUpCounterIncrementForLoop, 1, Normal, "The amount the tier up counter is incremented on each loop backedge.") \
@@ -442,6 +445,7 @@ namespace JSC {
     v(Bool, useFastTLSForWasmContext, true, Normal, "If true, we will store context in fast TLS. If false, we will pin it to a register.") \
     v(Bool, wasmBBQUsesAir, true, Normal, nullptr) \
     v(Bool, useWasmLLInt, true, Normal, nullptr) \
+    v(Bool, wasmLLIntTiersUpToBBQ, true, Normal, nullptr) \
     v(Size, webAssemblyBBQAirModeThreshold, isIOS() ? (10 * MB) : 0, Normal, "If 0, we always use BBQ Air. If Wasm module code size hits this threshold, we compile Wasm module with B3 BBQ mode.") \
     v(Bool, useWebAssemblyStreamingApi, enableWebAssemblyStreamingApi, Normal, "Allow to run WebAssembly's Streaming API") \
     v(Bool, useEagerWebAssemblyModuleHashing, false, Normal, "Unnamed WebAssembly modules are identified in backtraces through their hash, if available.") \

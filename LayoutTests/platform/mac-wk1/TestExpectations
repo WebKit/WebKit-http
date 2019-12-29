@@ -291,6 +291,7 @@ imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worke
 imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-self-fallback.https.sub.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/request/destination [ Skip ]
 imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy [ Skip ]
+imported/w3c/web-platform-tests/fetch/range/sw.https.window.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
 imported/w3c/web-platform-tests/streams/readable-byte-streams/detached-buffers.serviceworker.https.html [ Skip ]
@@ -569,7 +570,7 @@ http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 # auto-sizing produces inconsistent image results
 css3/viewport-percentage-lengths/vh-auto-size.html [ Skip ]
 
-webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-reserved-words.html [ Pass Timeout ]
+webkit.org/b/170877 [ Debug ] webgl/1.0.3/conformance/glsl/misc/shader-with-reserved-words.html [ Pass Timeout ]
 
 webkit.org/b/180554 imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm [ Skip ]
 
@@ -807,8 +808,6 @@ webkit.org/b/200002 [ Mojave+ Debug ] imported/blink/storage/indexeddb/blob-basi
 
 # Skip IsLoggedIn
 http/tests/is-logged-in/ [ Skip ]
-
-webkit.org/b/203176 [ Debug ] fast/scrolling/latching/scroll-select-bottom-test.html [ Pass Failure ]
 
 webkit.org/b/203305 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-inherit-001.html [ Pass Failure ]
 

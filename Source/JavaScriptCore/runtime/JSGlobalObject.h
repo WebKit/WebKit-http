@@ -42,7 +42,6 @@
 #include "ParserModes.h"
 #include "RegExpGlobalData.h"
 #include "RuntimeFlags.h"
-#include "SpecialPointer.h"
 #include "StringPrototype.h"
 #include "SymbolPrototype.h"
 #include "VM.h"
@@ -119,6 +118,7 @@ class UnlinkedModuleProgramCodeBlock;
 class VariableEnvironment;
 struct ActivationStackNode;
 struct HashTable;
+enum class LinkTimeConstant : int32_t;
 
 #ifdef JSC_GLIB_API_ENABLED
 class WrapperMap;
@@ -132,8 +132,6 @@ constexpr bool typeExposedByDefault = true;
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     macro(String, string, stringObject, StringObject, String, object, typeExposedByDefault) \
-    macro(Map, map, map, JSMap, Map, object, typeExposedByDefault) \
-    macro(Set, set, set, JSSet, Set, object, typeExposedByDefault) \
     macro(JSPromise, promise, promise, JSPromise, Promise, object, typeExposedByDefault) \
     macro(BigInt, bigInt, bigIntObject, BigIntObject, BigInt, object, Options::useBigInt()) \
     macro(WeakObjectRef, weakObjectRef, weakObjectRef, JSWeakObjectRef, WeakRef, object, Options::useWeakRefs()) \
@@ -149,7 +147,9 @@ constexpr bool typeExposedByDefault = true;
     macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object, typeExposedByDefault) \
     macro(Date, date, date, DateInstance, Date, object, typeExposedByDefault) \
     macro(Error, error, error, ErrorInstance, Error, object, typeExposedByDefault) \
+    macro(Map, map, map, JSMap, Map, object, typeExposedByDefault) \
     macro(Number, number, numberObject, NumberObject, Number, object, typeExposedByDefault) \
+    macro(Set, set, set, JSSet, Set, object, typeExposedByDefault) \
     macro(Symbol, symbol, symbolObject, SymbolObject, Symbol, object, typeExposedByDefault) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
     DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
@@ -297,26 +297,16 @@ public:
     LazyProperty<JSGlobalObject, JSFunction> m_parseIntFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_parseFloatFunction;
 
-    WriteBarrier<JSFunction> m_callFunction;
-    WriteBarrier<JSFunction> m_applyFunction;
-    WriteBarrier<JSFunction> m_throwTypeErrorFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoToStringFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoValuesFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_evalFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_iteratorProtocolFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_promiseResolveFunction;
-    WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
-    WriteBarrier<JSFunction> m_resolvePromiseFunction;
-    WriteBarrier<JSFunction> m_rejectPromiseFunction;
-    WriteBarrier<JSFunction> m_promiseProtoThenFunction;
+    LazyProperty<JSGlobalObject, JSFunction> m_numberProtoToStringFunction;
     WriteBarrier<JSFunction> m_objectProtoValueOfFunction;
-    WriteBarrier<JSFunction> m_numberProtoToStringFunction;
     WriteBarrier<JSFunction> m_functionProtoHasInstanceSymbolFunction;
     LazyProperty<JSGlobalObject, GetterSetter> m_throwTypeErrorGetterSetter;
-    WriteBarrier<JSObject> m_regExpProtoExec;
     WriteBarrier<JSObject> m_regExpProtoSymbolReplace;
-    WriteBarrier<GetterSetter> m_regExpProtoGlobalGetter;
-    WriteBarrier<GetterSetter> m_regExpProtoUnicodeGetter;
     WriteBarrier<GetterSetter> m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter;
 
     LazyProperty<JSGlobalObject, JSModuleLoader> m_moduleLoader;
@@ -430,8 +420,7 @@ public:
     FOR_EACH_TYPED_ARRAY_TYPE(DECLARE_TYPED_ARRAY_TYPE_STRUCTURE)
 #undef DECLARE_TYPED_ARRAY_TYPE_STRUCTURE
 
-    JSCell* m_specialPointers[Special::TableSize]; // Special pointers used by the LLInt and JIT.
-    JSCell* m_linkTimeConstants[LinkTimeConstantCount];
+    Vector<LazyProperty<JSGlobalObject, JSCell>> m_linkTimeConstants;
 
     String m_name;
 
@@ -616,24 +605,22 @@ public:
     JSFunction* parseFloatFunction() const { return m_parseFloatFunction.get(this); }
 
     JSFunction* evalFunction() const { return m_evalFunction.get(this); }
-    JSFunction* callFunction() const { return m_callFunction.get(); }
-    JSFunction* applyFunction() const { return m_applyFunction.get(); }
-    JSFunction* throwTypeErrorFunction() const { return m_throwTypeErrorFunction.get(); }
+    JSFunction* throwTypeErrorFunction() const;
     JSFunction* arrayProtoToStringFunction() const { return m_arrayProtoToStringFunction.get(this); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(this); }
     JSFunction* iteratorProtocolFunction() const { return m_iteratorProtocolFunction.get(this); }
-    JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
+    JSFunction* newPromiseCapabilityFunction() const;
     JSFunction* promiseResolveFunction() const { return m_promiseResolveFunction.get(this); }
-    JSFunction* resolvePromiseFunction() const { return m_resolvePromiseFunction.get(); }
-    JSFunction* rejectPromiseFunction() const { return m_rejectPromiseFunction.get(); }
-    JSFunction* promiseProtoThenFunction() const { return m_promiseProtoThenFunction.get(); }
+    JSFunction* resolvePromiseFunction() const;
+    JSFunction* rejectPromiseFunction() const;
+    JSFunction* promiseProtoThenFunction() const;
     JSFunction* objectProtoValueOfFunction() const { return m_objectProtoValueOfFunction.get(); }
-    JSFunction* numberProtoToStringFunction() const { return m_numberProtoToStringFunction.get(); }
+    JSFunction* numberProtoToStringFunction() const { return m_numberProtoToStringFunction.getInitializedOnMainThread(this); }
     JSFunction* functionProtoHasInstanceSymbolFunction() const { return m_functionProtoHasInstanceSymbolFunction.get(); }
-    JSObject* regExpProtoExecFunction() const { return m_regExpProtoExec.get(); }
+    JSFunction* regExpProtoExecFunction() const;
     JSObject* regExpProtoSymbolReplaceFunction() const { return m_regExpProtoSymbolReplace.get(); }
-    GetterSetter* regExpProtoGlobalGetter() const { return m_regExpProtoGlobalGetter.get(); }
-    GetterSetter* regExpProtoUnicodeGetter() const { return m_regExpProtoUnicodeGetter.get(); }
+    GetterSetter* regExpProtoGlobalGetter() const;
+    GetterSetter* regExpProtoUnicodeGetter() const;
     GetterSetter* throwTypeErrorArgumentsCalleeAndCallerGetterSetter()
     {
         return m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.get();
@@ -657,9 +644,9 @@ public:
     GeneratorFunctionPrototype* generatorFunctionPrototype() const { return m_generatorFunctionPrototype.get(); }
     GeneratorPrototype* generatorPrototype() const { return m_generatorPrototype.get(); }
     AsyncFunctionPrototype* asyncFunctionPrototype() const { return m_asyncFunctionPrototype.get(); }
-    MapPrototype* mapPrototype() const { return m_mapPrototype.get(); }
+    JSObject* mapPrototype() const { return m_mapStructure.prototype(this); }
     // Workaround for the name conflict between JSCell::setPrototype.
-    SetPrototype* jsSetPrototype() const { return m_setPrototype.get(); }
+    JSObject* jsSetPrototype() const { return m_setStructure.prototype(this); }
     JSPromisePrototype* promisePrototype() const { return m_promisePrototype.get(); }
     AsyncGeneratorPrototype* asyncGeneratorPrototype() const { return m_asyncGeneratorPrototype.get(); }
     AsyncGeneratorFunctionPrototype* asyncGeneratorFunctionPrototype() const { return m_asyncGeneratorFunctionPrototype.get(); }
@@ -758,7 +745,6 @@ public:
     Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(this); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(this); }
-    Structure* mapStructure() const { return m_mapStructure.get(); }
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* generatorStructure() const { return m_generatorStructure.get(); }
     Structure* asyncGeneratorStructure() const { return m_asyncGeneratorStructure.get(); }
@@ -911,16 +897,11 @@ public:
         return lazyTypedArrayStructure(type).constructor(this);
     }
 
-    JSCell* actualPointerFor(Special::Pointer pointer)
+    JSCell* linkTimeConstant(LinkTimeConstant value) const
     {
-        ASSERT(pointer < Special::TableSize);
-        return m_specialPointers[pointer];
-    }
-    JSCell* jsCellForLinkTimeConstant(LinkTimeConstant type)
-    {
-        unsigned index = static_cast<unsigned>(type);
-        ASSERT(index < LinkTimeConstantCount);
-        return m_linkTimeConstants[index];
+        JSCell* result = m_linkTimeConstants[static_cast<unsigned>(value)].getInitializedOnMainThread(this);
+        ASSERT(result);
+        return result;
     }
 
     WatchpointSet* masqueradesAsUndefinedWatchpoint() { return m_masqueradesAsUndefinedWatchpoint.get(); }
@@ -1030,7 +1011,10 @@ public:
     void setWrapperMap(std::unique_ptr<WrapperMap>&&);
 #endif
 
-    void tryInstallArraySpeciesWatchpoint(JSGlobalObject*);
+    void tryInstallArraySpeciesWatchpoint();
+    void installNumberPrototypeWatchpoint(NumberPrototype*);
+    void installMapPrototypeWatchpoint(MapPrototype*);
+    void installSetPrototypeWatchpoint(SetPrototype*);
 
 protected:
     struct GlobalPropertyInfo {

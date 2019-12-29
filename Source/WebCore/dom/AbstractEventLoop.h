@@ -25,20 +25,13 @@
 
 #pragma once
 
+#include "TaskSource.h"
 #include <wtf/Function.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class ScriptExecutionContext;
-
-enum class TaskSource : uint8_t {
-    DOMManipulation,
-    FileReading,
-    IdleTask,
-    Networking,
-    UserInteraction
-};
 
 // https://html.spec.whatwg.org/multipage/webappapis.html#event-loop
 class AbstractEventLoop : public RefCounted<AbstractEventLoop> {

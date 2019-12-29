@@ -44,6 +44,7 @@
 #include "JSCompositeOperationOrAuto.h"
 #include "JSDOMConvert.h"
 #include "JSKeyframeEffect.h"
+#include "KeyframeEffectStack.h"
 #include "RenderBox.h"
 #include "RenderBoxModelObject.h"
 #include "RenderElement.h"
@@ -743,7 +744,6 @@ void KeyframeEffect::updateBlendingKeyframes(RenderStyle& elementStyle)
     StyleResolver& styleResolver = m_target->styleResolver();
 
     for (auto& keyframe : m_parsedKeyframes) {
-        styleResolver.setNewStateWithElement(*m_target);
         KeyframeValue keyframeValue(keyframe.computedOffset, nullptr);
 
         auto styleProperties = keyframe.style->immutableCopyIfNeeded();
@@ -751,7 +751,7 @@ void KeyframeEffect::updateBlendingKeyframes(RenderStyle& elementStyle)
             keyframeList.addProperty(styleProperties->propertyAt(i).id());
 
         auto keyframeRule = StyleRuleKeyframe::create(WTFMove(styleProperties));
-        keyframeValue.setStyle(styleResolver.styleForKeyframe(&elementStyle, keyframeRule.ptr(), keyframeValue));
+        keyframeValue.setStyle(styleResolver.styleForKeyframe(*m_target, &elementStyle, keyframeRule.ptr(), keyframeValue));
         keyframeList.insert(WTFMove(keyframeValue));
     }
 
@@ -990,6 +990,29 @@ void KeyframeEffect::computeStackingContextImpact()
     }
 }
 
+void KeyframeEffect::animationTimelineDidChange(AnimationTimeline* timeline)
+{
+    if (!m_target)
+        return;
+
+    if (timeline)
+        m_target->ensureKeyframeEffectStack().addEffect(*this);
+    else
+        m_target->ensureKeyframeEffectStack().removeEffect(*this);
+}
+
+void KeyframeEffect::setAnimation(WebAnimation* animation)
+{
+    bool animationChanged = animation != this->animation();
+    AnimationEffect::setAnimation(animation);
+    if (m_target && animationChanged) {
+        if (animation)
+            m_target->ensureKeyframeEffectStack().addEffect(*this);
+        else
+            m_target->ensureKeyframeEffectStack().removeEffect(*this);
+    }
+}
+
 void KeyframeEffect::setTarget(RefPtr<Element>&& newTarget)
 {
     if (m_target == newTarget)
@@ -1009,6 +1032,11 @@ void KeyframeEffect::setTarget(RefPtr<Element>&& newTarget)
     // Likewise, we need to invalidate styles on the previous target so that
     // any animated styles are removed immediately.
     invalidateElement(previousTarget.get());
+
+    if (previousTarget)
+        previousTarget->ensureKeyframeEffectStack().removeEffect(*this);
+    if (m_target)
+        m_target->ensureKeyframeEffectStack().addEffect(*this);
 }
 
 void KeyframeEffect::apply(RenderStyle& targetStyle)

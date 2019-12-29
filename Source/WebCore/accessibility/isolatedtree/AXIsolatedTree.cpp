@@ -67,7 +67,7 @@ Ref<AXIsolatedTree> AXIsolatedTree::create()
     return adoptRef(*new AXIsolatedTree());
 }
 
-RefPtr<AXIsolatedTreeNode> AXIsolatedTree::nodeInTreeForID(AXIsolatedTreeID treeID, AXID axID)
+RefPtr<AXIsolatedObject> AXIsolatedTree::nodeInTreeForID(AXIsolatedTreeID treeID, AXID axID)
 {
     return treeForID(treeID)->nodeForID(axID);
 }
@@ -97,27 +97,28 @@ RefPtr<AXIsolatedTree> AXIsolatedTree::treeForPageID(PageIdentifier pageID)
     return nullptr;
 }
 
-RefPtr<AXIsolatedTreeNode> AXIsolatedTree::nodeForID(AXID axID) const
+RefPtr<AXIsolatedObject> AXIsolatedTree::nodeForID(AXID axID) const
 {
     if (!axID)
         return nullptr;
     return m_readerThreadNodeMap.get(axID);
 }
 
-RefPtr<AXIsolatedTreeNode> AXIsolatedTree::focusedUIElement()
+RefPtr<AXIsolatedObject> AXIsolatedTree::focusedUIElement()
 {
     return nodeForID(m_focusedNodeID);
 }
     
-RefPtr<AXIsolatedTreeNode> AXIsolatedTree::rootNode()
+RefPtr<AXIsolatedObject> AXIsolatedTree::rootNode()
 {
     return nodeForID(m_rootNodeID);
 }
 
-void AXIsolatedTree::setRootNodeID(AXID axID)
+void AXIsolatedTree::setRoot(Ref<AXIsolatedObject>& root)
 {
     LockHolder locker { m_changeLogLock };
-    m_pendingRootNodeID = axID;
+    m_rootNodeID = root->objectID();
+    m_readerThreadNodeMap.add(root->objectID(), WTFMove(root));
 }
     
 void AXIsolatedTree::setFocusedNodeID(AXID axID)
@@ -132,7 +133,7 @@ void AXIsolatedTree::removeNode(AXID axID)
     m_pendingRemovals.append(axID);
 }
 
-void AXIsolatedTree::appendNodeChanges(Vector<Ref<AXIsolatedTreeNode>>& log)
+void AXIsolatedTree::appendNodeChanges(Vector<Ref<AXIsolatedObject>>& log)
 {
     LockHolder locker { m_changeLogLock };
     for (auto& node : log)
@@ -143,18 +144,17 @@ void AXIsolatedTree::applyPendingChanges()
 {
     RELEASE_ASSERT(!isMainThread());
     LockHolder locker { m_changeLogLock };
-    Vector<Ref<AXIsolatedTreeNode>> appendCopy;
+    Vector<Ref<AXIsolatedObject>> appendCopy;
     std::swap(appendCopy, m_pendingAppends);
     Vector<AXID> removeCopy({ WTFMove(m_pendingRemovals) });
     locker.unlockEarly();
 
     // We don't clear the pending IDs beacause if the next round of updates does not modify them, then they stay the same
     // value without extra bookkeeping.
-    m_rootNodeID = m_pendingRootNodeID;
     m_focusedNodeID = m_pendingFocusedNodeID;
-    
+
     for (auto& item : appendCopy)
-        m_readerThreadNodeMap.add(item->identifier(), WTFMove(item));
+        m_readerThreadNodeMap.add(item->objectID(), WTFMove(item));
 
     for (auto item : removeCopy)
         m_readerThreadNodeMap.remove(item);

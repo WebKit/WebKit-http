@@ -448,6 +448,7 @@ accessibility/isolatedtree/AXIsolatedTree.cpp
 accessibility/isolatedtree/AXIsolatedTreeNode.cpp
 
 animation/AnimationEffect.cpp
+animation/KeyframeEffectStack.cpp
 animation/AnimationPlaybackEvent.cpp
 animation/AnimationTimeline.cpp
 animation/CSSAnimation.cpp
@@ -1287,6 +1288,8 @@ html/canvas/WebGL2RenderingContext.cpp
 html/canvas/WebGLBuffer.cpp
 html/canvas/WebGLCompressedTextureASTC.cpp
 html/canvas/WebGLCompressedTextureATC.cpp
+html/canvas/WebGLCompressedTextureETC.cpp
+html/canvas/WebGLCompressedTextureETC1.cpp
 html/canvas/WebGLCompressedTexturePVRTC.cpp
 html/canvas/WebGLCompressedTextureS3TC.cpp
 html/canvas/WebGLContextEvent.cpp
@@ -1761,7 +1764,6 @@ platform/SharedBuffer.cpp
 platform/SharedBufferChunkReader.cpp
 platform/SharedStringHash.cpp
 platform/StaticPasteboard.cpp
-platform/SuspendableTaskQueue.cpp
 platform/Theme.cpp
 platform/ThreadGlobalData.cpp
 platform/ThreadTimers.cpp
@@ -2345,7 +2347,9 @@ style/AttributeChangeInvalidation.cpp
 style/ClassChangeInvalidation.cpp
 style/IdChangeInvalidation.cpp
 style/InlineTextBoxStyle.cpp
+style/MatchedDeclarationsCache.cpp
 style/PropertyCascade.cpp
+style/StyleAdjuster.cpp
 style/StyleBuilder.cpp
 style/StyleBuilderState.cpp
 style/StyleChange.cpp
@@ -3556,6 +3560,8 @@ JSWebGLActiveInfo.cpp
 JSWebGLBuffer.cpp
 JSWebGLCompressedTextureASTC.cpp
 JSWebGLCompressedTextureATC.cpp
+JSWebGLCompressedTextureETC.cpp
+JSWebGLCompressedTextureETC1.cpp
 JSWebGLCompressedTexturePVRTC.cpp
 JSWebGLCompressedTextureS3TC.cpp
 JSWebGLContextAttributes.cpp

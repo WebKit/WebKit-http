@@ -33,7 +33,7 @@
 #import "AccessibilityTable.h"
 #import "RenderObject.h"
 #import "WebAccessibilityObjectWrapperMac.h"
-#import <pal/spi/mac/NSAccessibilitySPI.h>
+#import <pal/spi/cocoa/NSAccessibilitySPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <ApplicationServices/ApplicationServicesPriv.h>
@@ -238,17 +238,7 @@ void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachm
     obj->setWrapper(nullptr);
 }
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-void AXObjectCache::associateIsolatedTreeNode(AccessibilityObject& object, AXIsolatedTreeNode& node, AXIsolatedTreeID treeID)
-{
-    auto wrapper = object.wrapper();
-    ASSERT(wrapper);
-    wrapper.isolatedTreeIdentifier = treeID;
-    node.setWrapper(wrapper);
-}
-#endif
-
-void AXObjectCache::attachWrapper(AccessibilityObject* obj)
+void AXObjectCache::attachWrapper(AXCoreObject* obj)
 {
     RetainPtr<WebAccessibilityObjectWrapper> wrapper = adoptNS([[WebAccessibilityObjectWrapper alloc] initWithAccessibilityObject:obj]);
     obj->setWrapper(wrapper.get());

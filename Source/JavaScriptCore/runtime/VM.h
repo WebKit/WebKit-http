@@ -973,7 +973,6 @@ private:
 
     bool isSafeToRecurse(void* stackLimit) const
     {
-        ASSERT(Thread::current().stack().isGrowingDownward());
         void* curr = currentStackPointer();
         return curr >= stackLimit;
     }
@@ -1094,6 +1093,7 @@ private:
     friend class Heap;
     friend class CatchScope;
     friend class ExceptionScope;
+    friend class JSDollarVMHelper;
     friend class ThrowScope;
     friend class VMTraps;
     friend class WTF::DoublyLinkedListNode<VM>;

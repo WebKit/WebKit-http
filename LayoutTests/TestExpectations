@@ -197,15 +197,7 @@ fast/events/do-not-drag-and-drop-data-detectors-link.html [ Skip ]
 webkit.org/b/202617 imported/w3c/web-platform-tests/picture-in-picture [ Skip ]
 
 # PiP API tests are only relevant on mac and iPad
-media/picture-in-picture-api-element-attributes.html [ Skip ]
-media/picture-in-picture-api-enter-pip-1.html [ Skip ]
-media/picture-in-picture-api-enter-pip-2.html [ Skip ]
-media/picture-in-picture-api-enter-pip-3.html [ Skip ]
-media/picture-in-picture-api-enter-pip-4.html [ Skip ]
-media/picture-in-picture-api-exit-pip-1.html [ Skip ]
-media/picture-in-picture-api-exit-pip-2.html [ Skip ]
-media/picture-in-picture-api-pip-events.html [ Skip ]
-media/picture-in-picture-api-pip-window.html [ Skip ]
+media/picture-in-picture [ Skip ]
 
 # Shared Workers are unsupported
 imported/w3c/web-platform-tests/secure-contexts/basic-shared-worker.html [ Skip ]
@@ -774,7 +766,6 @@ imported/w3c/web-platform-tests/fetch/sec-metadata [ Skip ]
 # These fetch tests time out
 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination.https.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/range/sw.https.window.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/content-encoding/bad-gzip-body.any.worker.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-prefetch.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/content-type/response.window.html [ Skip ]
@@ -925,9 +916,6 @@ inspector/formatting/source-map-javascript-1.html [ Slow ]
 webkit.org/b/129639 inspector/dom/dom-search-crash.html [ Skip ]
 
 webkit.org/b/134982 inspector/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
-
-webkit.org/b/202932 inspector/model/remote-object-weak-collection.html [ Pass Timeout Failure ]
-webkit.org/b/202934 inspector/model/remote-object.html [ Pass Timeout ]
 
 # These tests are fast enough in release but quite slow in debug builds.
 [ Debug ] inspector/console/queryHolders.html [ Skip ]
@@ -1538,6 +1526,8 @@ webkit.org/b/201918 imported/w3c/web-platform-tests/svg/render/reftests/change-s
 webkit.org/b/173154 imported/w3c/web-platform-tests/svg/linking/reftests/use-keyframes.html [ Skip ]
 webkit.org/b/201992 imported/w3c/web-platform-tests/svg/linking/reftests/href-filter-element.html [ Skip ]
 
+webkit.org/b/203172 imported/w3c/web-platform-tests/svg/text/visualtests/text-inline-size-003-visual.svg [ Pass Timeout ]
+
 webkit.org/b/139595 http/tests/xmlhttprequest/workers/abort-exception-assert.html [ Pass Failure Timeout ]
 
 # Debug assertions are tracked as <rdar://problem/18216390>.
@@ -1565,8 +1555,6 @@ webkit.org/b/139638 [ Debug ] svg/filters/svg-deeply-nested-crash.html [ Slow ]
 webkit.org/b/126420 svg/custom/resource-invalidation-crash.svg [ Failure Pass ]
 
 webkit.org/b/139639 [ Debug ] cssom/non-subpixel-scroll-top-left-values.html [ Slow ]
-
-webkit.org/b/139640 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Slow ]
 
 # These tests are generating inconsistent results between my machine (AMD) and test bots (INTEL)
 webkit.org/b/189641 webgl/2.0.0/conformance/buffers/buffer-uninitialized.html [ Skip ]
@@ -1711,7 +1699,6 @@ webkit.org/b/121452 [ Debug ] fast/frames/lots-of-iframes.html [ Slow ]
 webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] js/dfg-double-vote-fuzz.html [ Slow ]
 [ Debug ] js/dom/string-replacement-outofmemory.html [ Slow ]
-[ Debug ] webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Slow ]
 [ Debug ] js/dfg-osr-entry-hoisted-clobbered-structure-check.html [ Slow ]
 [ Debug ] editing/selection/move-by-character-brute-force.html [ Slow ]
 [ Debug ] fast/workers/dedicated-worker-lifecycle.html [ Slow ]
@@ -2109,6 +2096,8 @@ fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 webkit.org/b/157849 fast/frames/crash-during-iframe-load-stop.html [ Pass Timeout ]
 
 webkit.org/b/158085 http/tests/css/shared-stylesheet-mutation.html [ Pass Failure ]
+
+http/tests/appcache/remove-cache.html [ DumpJSConsoleLogInStdErr ]
 
 # PiP tests are only relevant on macOS Sierra and newer.
 media/click-placeholder-not-pausing.html [ WontFix ]
@@ -2696,8 +2685,6 @@ imported/w3c/web-platform-tests/css/css-pseudo/first-letter-002.html [ ImageOnly
 imported/w3c/web-platform-tests/css/css-pseudo/first-letter-003.html [ ImageOnlyFailure ]
 
 webkit.org/b/177799 accessibility/table-detection.html [ Pass Failure ]
-
-webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.html [ Pass Failure ]
 
 webkit.org/b/179069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/sandbox_032.htm [ Pass Failure ]
 
@@ -3584,6 +3571,9 @@ imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-match
 imported/w3c/web-platform-tests/css/css-lists/counter-increment-inside-display-contents.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/counter-reset-inside-display-contents.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/list-marker-with-lineheight-and-overflow-hidden-001.html [ ImageOnlyFailure ]
+webkit.org/b/202849 imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-005a.html [ ImageOnlyFailure ]
+webkit.org/b/202849 imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-005b.html [ ImageOnlyFailure ]
+webkit.org/b/202849 imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-006.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/list-with-image-display-changed-001.html [ ImageOnlyFailure ]
 
 [ Debug ] fast/css/first-letter-and-float-crash.html [ Skip ]
@@ -3904,3 +3894,29 @@ webkit.org/b/203606 imported/w3c/web-platform-tests/css/css-display/display-chan
 webkit.org/b/203606 imported/w3c/web-platform-tests/css/css-display/display-flow-root-list-item-001.html [ ImageOnlyFailure ]
 webkit.org/b/203606 imported/w3c/web-platform-tests/css/css-display/select-4-option-optgroup-display-none.html [ ImageOnlyFailure ]
 webkit.org/b/203606 imported/w3c/web-platform-tests/css/css-display/display-contents-shadow-dom-1.html [ Skip ]
+
+# webkit.org/b/203763 2019 WebGL test gardening: These tests pass in Safari and the conformance suite, but timeout in TestRunner and MiniBrowser.
+webgl/1.0.3/conformance/glsl/bugs/complex-glsl-does-not-crash.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-bvec3.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-bvec4.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-ivec3.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-ivec4.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-mat2.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-mat3.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-mat4.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-vec3.html [ Skip ]
+webgl/1.0.3/conformance/glsl/constructors/glsl-construct-vec4.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/shader-with-reserved-words.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/shader-with-non-reserved-words.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/shaders-with-mis-matching-uniforms.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/struct-nesting-of-variable-names.html [ Skip ]
+webgl/1.0.3/conformance/glsl/misc/struct-unary-operators.html [ Skip ]
+webgl/1.0.3/conformance/uniforms/gl-uniform-arrays.html [ Skip ]
+
+# webkit.org/b/203908 Tests generate inconsistent results or time out
+webgl/1.0.3/conformance/textures/texture-npot-video.html [ Skip ]
+webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Skip ]
+webgl/1.0.3/conformance/textures/copy-tex-image-2d-formats.html [ Skip ]
+webgl/1.0.3/conformance/canvas/rapid-resizing.html [ Skip ]
+webgl/1.0.3/conformance/extensions/webgl-draw-buffers.html [ Skip ]

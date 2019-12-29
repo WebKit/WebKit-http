@@ -31,8 +31,6 @@
 
 #if ENABLE(ACCESSIBILITY)
 
-#import "AXIsolatedTree.h"
-#import "AXIsolatedTreeNode.h"
 #import "AXObjectCache.h"
 #import "AccessibilityARIAGridRow.h"
 #import "AccessibilityList.h"
@@ -275,20 +273,10 @@ static void addChildToArray(AXCoreObject& child, RetainPtr<NSMutableArray> array
         [array.get() addObject:wrapper];
 }
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-NSArray *convertToNSArray(const Vector<RefPtr<WebCore::AXIsolatedTreeNode>>& children)
+NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVector& children)
 {
     NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:children.size()];
-    for (auto& child : children)
-        addChildToArray(*child, result);
-    return [result autorelease];
-}
-#endif
-
-NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChildrenVector& children)
-{
-    NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:children.size()];
-    for (auto& child : children)
+    for (const auto& child : children)
         addChildToArray(*child, result);
     return [result autorelease];
 }
@@ -296,11 +284,8 @@ NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChild
 @implementation WebAccessibilityObjectWrapperBase
 
 @synthesize identifier=_identifier;
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-@synthesize isolatedTreeIdentifier=_isolatedTreeIdentifier;
-#endif
 
-- (id)initWithAccessibilityObject:(AccessibilityObject*)axObject
+- (id)initWithAccessibilityObject:(AXCoreObject*)axObject
 {
     if (!(self = [super init]))
         return nil;
@@ -311,46 +296,14 @@ NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChild
     return self;
 }
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-- (RefPtr<WebCore::AXIsolatedTreeNode>)isolatedTreeNode
-{
-    RELEASE_ASSERT(!isMainThread());
-
-    if (!_identifier)
-        return nullptr;
-
-    if (m_isolatedTreeNode)
-        return m_isolatedTreeNode;
-
-    m_isolatedTreeNode = AXIsolatedTree::nodeInTreeForID(_isolatedTreeIdentifier, _identifier);
-    return m_isolatedTreeNode;
-}
-#endif
-
 - (void)detach
 {
     m_object = nullptr;
     _identifier = 0;
-
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    m_isolatedTreeNode = nullptr;
-    _isolatedTreeIdentifier = 0;
-#endif
 }
 
 - (BOOL)updateObjectBackingStore
 {
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (_AXUIElementRequestServicedBySecondaryAXThread()) {
-        RELEASE_ASSERT(!isMainThread());
-        if (auto treeNode = self.isolatedTreeNode) {
-            if (auto tree = treeNode->tree())
-                tree->applyPendingChanges();
-        }
-        return _identifier;
-    }
-#endif
-    
     // Calling updateBackingStore() can invalidate this element so self must be retained.
     // If it does become invalidated, m_object will be nil.
     CFRetain((__bridge CFTypeRef)self);
@@ -371,11 +324,8 @@ NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChild
     return nil;
 }
 
-- (AccessibilityObject*)accessibilityObject
+- (AXCoreObject*)accessibilityObject
 {
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    ASSERT(!_AXUIElementRequestServicedBySecondaryAXThread());
-#endif
     return m_object;
 }
 
@@ -388,10 +338,6 @@ NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChild
 
 - (WebCore::AXCoreObject*)axBackingObject
 {
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (_AXUIElementRequestServicedBySecondaryAXThread())
-        return self.isolatedTreeNode.get();
-#endif
     return m_object;
 }
 
@@ -523,53 +469,7 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
 
 - (NSString *)ariaLandmarkRoleDescription
 {
-    switch (_axBackingObject->roleValue()) {
-    case AccessibilityRole::LandmarkBanner:
-        return AXARIAContentGroupText(@"ARIALandmarkBanner");
-    case AccessibilityRole::LandmarkComplementary:
-        return AXARIAContentGroupText(@"ARIALandmarkComplementary");
-    case AccessibilityRole::LandmarkContentInfo:
-        return AXARIAContentGroupText(@"ARIALandmarkContentInfo");
-    case AccessibilityRole::LandmarkMain:
-        return AXARIAContentGroupText(@"ARIALandmarkMain");
-    case AccessibilityRole::LandmarkNavigation:
-        return AXARIAContentGroupText(@"ARIALandmarkNavigation");
-    case AccessibilityRole::LandmarkDocRegion:
-    case AccessibilityRole::LandmarkRegion:
-        return AXARIAContentGroupText(@"ARIALandmarkRegion");
-    case AccessibilityRole::LandmarkSearch:
-        return AXARIAContentGroupText(@"ARIALandmarkSearch");
-    case AccessibilityRole::ApplicationAlert:
-        return AXARIAContentGroupText(@"ARIAApplicationAlert");
-    case AccessibilityRole::ApplicationAlertDialog:
-        return AXARIAContentGroupText(@"ARIAApplicationAlertDialog");
-    case AccessibilityRole::ApplicationDialog:
-        return AXARIAContentGroupText(@"ARIAApplicationDialog");
-    case AccessibilityRole::ApplicationLog:
-        return AXARIAContentGroupText(@"ARIAApplicationLog");
-    case AccessibilityRole::ApplicationMarquee:
-        return AXARIAContentGroupText(@"ARIAApplicationMarquee");
-    case AccessibilityRole::ApplicationStatus:
-        return AXARIAContentGroupText(@"ARIAApplicationStatus");
-    case AccessibilityRole::ApplicationTimer:
-        return AXARIAContentGroupText(@"ARIAApplicationTimer");
-    case AccessibilityRole::Document:
-        return AXARIAContentGroupText(@"ARIADocument");
-    case AccessibilityRole::DocumentArticle:
-        return AXARIAContentGroupText(@"ARIADocumentArticle");
-    case AccessibilityRole::DocumentMath:
-        return AXARIAContentGroupText(@"ARIADocumentMath");
-    case AccessibilityRole::DocumentNote:
-        return AXARIAContentGroupText(@"ARIADocumentNote");
-    case AccessibilityRole::UserInterfaceTooltip:
-        return AXARIAContentGroupText(@"ARIAUserInterfaceTooltip");
-    case AccessibilityRole::TabPanel:
-        return AXARIAContentGroupText(@"ARIATabPanel");
-    case AccessibilityRole::WebApplication:
-        return AXARIAContentGroupText(@"ARIAWebApplication");
-    default:
-        return nil;
-    }
+    return m_object->ariaLandmarkRoleDescription();
 }
 
 - (void)baseAccessibilitySetFocus:(BOOL)focus
@@ -785,7 +685,7 @@ AccessibilitySearchCriteria accessibilitySearchCriteriaForSearchPredicateParamet
     if ([searchTextParameter isKindOfClass:[NSString class]])
         searchText = searchTextParameter;
     
-    AccessibilityObject* startElement = nullptr;
+    AXCoreObject* startElement = nullptr;
     if ([startElementParameter isKindOfClass:[WebAccessibilityObjectWrapperBase class]])
         startElement = [startElementParameter accessibilityObject];
     

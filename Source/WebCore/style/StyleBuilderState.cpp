@@ -32,6 +32,7 @@
 
 #include "CSSCursorImageValue.h"
 #include "CSSFilterImageValue.h"
+#include "CSSFontSelector.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
@@ -40,23 +41,22 @@
 #include "RenderTheme.h"
 #include "SVGElement.h"
 #include "SVGSVGElement.h"
+#include "Settings.h"
 #include "StyleBuilder.h"
 #include "StyleCachedImage.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
 #include "TransformFunctions.h"
 
 namespace WebCore {
 namespace Style {
 
-BuilderState::BuilderState(Builder& builder, RenderStyle& style, const RenderStyle& parentStyle, const RenderStyle* rootElementStyle, const Document& document, const Element* element)
+BuilderState::BuilderState(Builder& builder, RenderStyle& style, BuilderContext&& context)
     : m_builder(builder)
     , m_styleMap(*this)
     , m_style(style)
-    , m_parentStyle(parentStyle)
-    , m_rootElementStyle(rootElementStyle)
-    , m_cssToLengthConversionData(&style, rootElementStyle, document.renderView())
-    , m_document(document)
-    , m_element(element)
+    , m_context(WTFMove(context))
+    , m_cssToLengthConversionData(&style, rootElementStyle(), document().renderView())
 {
 }
 
@@ -356,7 +356,7 @@ void BuilderState::updateFontForTextSizeAdjust()
 
 void BuilderState::updateFontForZoomChange()
 {
-    if (m_style.effectiveZoom() == m_parentStyle.effectiveZoom() && m_style.textZoom() == m_parentStyle.textZoom())
+    if (m_style.effectiveZoom() == parentStyle().effectiveZoom() && m_style.textZoom() == parentStyle().textZoom())
         return;
 
     const auto& childFont = m_style.fontDescription();
@@ -373,7 +373,7 @@ void BuilderState::updateFontForGenericFamilyChange()
     if (childFont.isAbsoluteSize())
         return;
 
-    const auto& parentFont = m_parentStyle.fontDescription();
+    const auto& parentFont = parentStyle().fontDescription();
     if (childFont.useFixedDefaultSize() == parentFont.useFixedDefaultSize())
         return;
 

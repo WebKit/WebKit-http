@@ -27,8 +27,10 @@
 #pragma once
 
 #include "ContextDestructionObserver.h"
+#include "TaskSource.h"
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Threading.h>
 
@@ -111,6 +113,23 @@ public:
     bool isContextStopped() const;
     bool isAllowedToRunScript() const;
 
+    template<typename T>
+    static void queueTaskKeepingObjectAlive(T& object, TaskSource source, Function<void ()>&& task)
+    {
+        object.queueTaskInEventLoop(source, [protectedObject = makeRef(object), activity = object.makePendingActivity(object), task = WTFMove(task)] () {
+            task();
+        });
+    }
+
+    template<typename EventTargetType, typename EventType>
+    static void queueTaskToDispatchEvent(EventTargetType& target, TaskSource source, Ref<EventType>&& event)
+    {
+        ASSERT(!event->target() || &target == event->target());
+        queueTaskKeepingObjectAlive(target, source, [&target, event = WTFMove(event)] () mutable {
+            target.dispatchEvent(event.get());
+        });
+    }
+
 protected:
     explicit ActiveDOMObject(ScriptExecutionContext*);
     explicit ActiveDOMObject(Document*);
@@ -120,6 +139,8 @@ protected:
 private:
     enum CheckedScriptExecutionContextType { CheckedScriptExecutionContext };
     ActiveDOMObject(ScriptExecutionContext*, CheckedScriptExecutionContextType);
+
+    void queueTaskInEventLoop(TaskSource, Function<void ()>&&);
 
     unsigned m_pendingActivityCount { 0 };
 #if !ASSERT_DISABLED

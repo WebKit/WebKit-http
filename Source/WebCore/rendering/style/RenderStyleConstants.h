@@ -631,6 +631,7 @@ enum class ListStyleType : uint8_t {
     Katakana,
     HiraganaIroha,
     KatakanaIroha,
+    String,
     None
 };
 

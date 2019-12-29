@@ -103,3 +103,9 @@ gboolean webkitWebViewScriptDialog(WebKitWebView*, WebKitScriptDialog*);
 gboolean webkitWebViewRunFileChooser(WebKitWebView*, WebKitFileChooserRequest*);
 void webkitWebViewDidChangePageID(WebKitWebView*);
 void webkitWebViewDidReceiveUserMessage(WebKitWebView*, WebKit::UserMessage&&, CompletionHandler<void(WebKit::UserMessage&&)>&&);
+
+#if ENABLE(POINTER_LOCK)
+void webkitWebViewRequestPointerLock(WebKitWebView*);
+void webkitWebViewDenyPointerLockRequest(WebKitWebView*);
+void webkitWebViewDidLosePointerLock(WebKitWebView*);
+#endif

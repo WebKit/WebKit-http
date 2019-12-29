@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebAnimation.h"
 
+#include "AbstractEventLoop.h"
 #include "AnimationEffect.h"
 #include "AnimationPlaybackEvent.h"
 #include "AnimationTimeline.h"
@@ -68,7 +69,6 @@ WebAnimation::WebAnimation(Document& document)
     : ActiveDOMObject(document)
     , m_readyPromise(makeUniqueRef<ReadyPromise>(*this, &WebAnimation::readyPromiseResolve))
     , m_finishedPromise(makeUniqueRef<FinishedPromise>(*this, &WebAnimation::finishedPromiseResolve))
-    , m_taskQueue(SuspendableTaskQueue::create(document))
 {
     m_readyPromise->resolve(*this);
     suspendIfNeeded();
@@ -237,6 +237,9 @@ void WebAnimation::setTimelineInternal(RefPtr<AnimationTimeline>&& timeline)
         m_timeline->removeAnimation(*this);
 
     m_timeline = WTFMove(timeline);
+
+    if (m_effect)
+        m_effect->animationTimelineDidChange(m_timeline.get());
 }
 
 void WebAnimation::effectTargetDidChange(Element* previousTarget, Element* newTarget)
@@ -626,9 +629,7 @@ void WebAnimation::enqueueAnimationPlaybackEvent(const AtomString& type, Optiona
         downcast<DocumentTimeline>(*m_timeline).enqueueAnimationPlaybackEvent(WTFMove(event));
     } else {
         // Otherwise, queue a task to dispatch event at animation. The task source for this task is the DOM manipulation task source.
-        m_taskQueue->enqueueTask([this, event = WTFMove(event)] {
-            dispatchEvent(event);
-        });
+        queueTaskToDispatchEvent(*this, TaskSource::DOMManipulation, WTFMove(event));
     }
 }
 
@@ -1181,7 +1182,6 @@ void WebAnimation::resume()
 
 void WebAnimation::stop()
 {
-    m_taskQueue->cancelAllTasks();
     ActiveDOMObject::stop();
     removeAllEventListeners();
 }
@@ -1189,7 +1189,7 @@ void WebAnimation::stop()
 bool WebAnimation::hasPendingActivity() const
 {
     // Keep the JS wrapper alive if the animation is considered relevant or could become relevant again by virtue of having a timeline.
-    return m_timeline || m_isRelevant || m_taskQueue->hasPendingTasks() || ActiveDOMObject::hasPendingActivity();
+    return m_timeline || m_isRelevant || ActiveDOMObject::hasPendingActivity();
 }
 
 void WebAnimation::updateRelevance()
@@ -1261,8 +1261,12 @@ void WebAnimation::persist()
     auto previousReplaceState = std::exchange(m_replaceState, ReplaceState::Persisted);
 
     if (previousReplaceState == ReplaceState::Removed && m_timeline) {
-        if (is<KeyframeEffect>(m_effect))
-            m_timeline->animationWasAddedToElement(*this, *downcast<KeyframeEffect>(m_effect.get())->target());
+        if (is<KeyframeEffect>(m_effect)) {
+            auto& keyframeEffect = downcast<KeyframeEffect>(*m_effect);
+            auto& target = *keyframeEffect.target();
+            m_timeline->animationWasAddedToElement(*this, target);
+            target.ensureKeyframeEffectStack().addEffect(keyframeEffect);
+        }
     }
 }
 

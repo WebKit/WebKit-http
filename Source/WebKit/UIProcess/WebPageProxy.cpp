@@ -1935,7 +1935,7 @@ void WebPageProxy::updateThrottleState()
     if (isViewVisible()) {
         if (!m_isVisibleActivity || !m_isVisibleActivity->isValid()) {
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is taking a foreground assertion because the view is visible");
-            m_isVisibleActivity = m_process->throttler().foregroundActivity("View is visible"_s);
+            m_isVisibleActivity = m_process->throttler().foregroundActivity("View is visible"_s).moveToUniquePtr();
         }
     } else if (m_isVisibleActivity) {
         RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because the view is no longer visible");
@@ -1946,7 +1946,7 @@ void WebPageProxy::updateThrottleState()
     if (isAudible) {
         if (!m_isAudibleActivity || !m_isAudibleActivity->isValid()) {
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is taking a foreground assertion because we are playing audio");
-            m_isAudibleActivity = m_process->throttler().foregroundActivity("View is playing audio"_s);
+            m_isAudibleActivity = m_process->throttler().foregroundActivity("View is playing audio"_s).moveToUniquePtr();
         }
     } else if (m_isAudibleActivity) {
         RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because we are no longer playing audio");
@@ -1957,7 +1957,7 @@ void WebPageProxy::updateThrottleState()
     if (isCapturingMedia) {
         if (!m_isCapturingActivity || !m_isCapturingActivity->isValid()) {
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is taking a foreground assertion because media capture is active");
-            m_isCapturingActivity = m_process->throttler().foregroundActivity("View is capturing media"_s);
+            m_isCapturingActivity = m_process->throttler().foregroundActivity("View is capturing media"_s).moveToUniquePtr();
         }
     } else if (m_isCapturingActivity) {
         RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because media capture is no longer active");
@@ -1967,7 +1967,7 @@ void WebPageProxy::updateThrottleState()
     if (m_alwaysRunsAtForegroundPriority) {
         if (!m_alwaysRunsAtForegroundPriorityActivity || !m_alwaysRunsAtForegroundPriorityActivity->isValid()) {
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is taking a foreground assertion because m_alwaysRunsAtForegroundPriority is true");
-            m_alwaysRunsAtForegroundPriorityActivity = m_process->throttler().foregroundActivity("View always runs at foreground priority"_s);
+            m_alwaysRunsAtForegroundPriorityActivity = m_process->throttler().foregroundActivity("View always runs at foreground priority"_s).moveToUniquePtr();
         }
     } else if (m_alwaysRunsAtForegroundPriorityActivity) {
         RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateThrottleState: UIProcess is releasing a foreground assertion because m_alwaysRunsAtForegroundPriority is no longer true");
@@ -3699,9 +3699,22 @@ void WebPageProxy::findStringMatches(const String& string, FindOptions options, 
     m_process->send(Messages::WebPage::FindStringMatches(string, options, maxMatchCount), m_webPageID);
 }
 
-void WebPageProxy::findString(const String& string, FindOptions options, unsigned maxMatchCount)
+void WebPageProxy::findString(const String& string, FindOptions options, unsigned maxMatchCount, Function<void (bool, CallbackBase::Error)>&& callbackFunction)
 {
-    m_process->send(Messages::WebPage::FindString(string, options, maxMatchCount), m_webPageID);
+    Optional<CallbackID> callbackID;
+    if (callbackFunction)
+        callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivity("WebPageProxy::findString"_s));
+
+    m_process->send(Messages::WebPage::FindString(string, options, maxMatchCount, callbackID), m_webPageID);
+}
+
+void WebPageProxy::findStringCallback(bool found, CallbackID callbackID)
+{
+    auto callback = m_callbacks.take<BoolCallback>(callbackID);
+    if (!callback)
+        return;
+
+    callback->performCallbackWithReturnValue(found);
 }
 
 void WebPageProxy::getImageForFindMatch(int32_t matchIndex)
@@ -7159,6 +7172,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_hasNetworkRequestsOnSuspended = false;
     m_isKeyboardAnimatingIn = false;
     m_isScrollingOrZooming = false;
+    m_lastObservedStateWasBackground = false;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)

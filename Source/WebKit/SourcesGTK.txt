@@ -158,6 +158,7 @@ UIProcess/API/glib/WebKitNotificationPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitNotificationProvider.cpp @no-unify
 UIProcess/API/glib/WebKitPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitPlugin.cpp @no-unify
+UIProcess/API/glib/WebKitPointerLockPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitPolicyDecision.cpp @no-unify
 UIProcess/API/glib/WebKitPrivate.cpp @no-unify
 UIProcess/API/glib/WebKitProtocolHandler.cpp @no-unify
@@ -240,6 +241,9 @@ UIProcess/gtk/GestureController.cpp
 UIProcess/gtk/HardwareAccelerationManager.cpp
 UIProcess/gtk/InputMethodFilter.cpp
 UIProcess/gtk/KeyBindingTranslator.cpp
+UIProcess/gtk/PointerLockManager.cpp @no-unify
+UIProcess/gtk/PointerLockManagerWayland.cpp @no-unify
+UIProcess/gtk/PointerLockManagerX11.cpp @no-unify
 UIProcess/gtk/RemoteWebInspectorProxyGtk.cpp
 UIProcess/gtk/TextCheckerGtk.cpp @no-unify
 UIProcess/gtk/ViewGestureControllerGtk.cpp @no-unify

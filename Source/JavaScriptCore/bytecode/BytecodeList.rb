@@ -64,10 +64,6 @@ types [
     :ObjectAllocationProfile,
 ]
 
-namespace :Special do
-    types [ :Pointer ]
-end
-
 templates [
     :WriteBarrier,
     :WriteBarrierBase,
@@ -675,7 +671,7 @@ op :jnundefined_or_null,
 op :jneq_ptr,
     args: {
         value: VirtualRegister,
-        specialPointer: Special::Pointer,
+        specialPointer: VirtualRegister,
         targetLabel: BoundLabel,
     },
     metadata: {
@@ -1295,10 +1291,7 @@ op :jmp,
         targetLabel: WasmBoundLabel,
     }
 
-op :ret,
-    args: {
-        stackOffset: unsigned,
-    }
+op :ret
 
 op :switch,
     args: {

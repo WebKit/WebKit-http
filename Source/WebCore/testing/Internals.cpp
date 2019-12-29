@@ -28,6 +28,7 @@
 #include "Internals.h"
 
 #include "AXObjectCache.h"
+#include "AbstractEventLoop.h"
 #include "ActiveDOMCallbackMicrotask.h"
 #include "ActivityState.h"
 #include "AnimationTimeline.h"
@@ -4675,6 +4676,21 @@ void Internals::postTask(RefPtr<VoidCallback>&& callback)
     });
 }
 
+ExceptionOr<void> Internals::queueTask(ScriptExecutionContext& context, const String& taskSourceName, RefPtr<VoidCallback>&& callback)
+{
+    TaskSource source;
+    if (taskSourceName == "DOMManipulation")
+        source = TaskSource::DOMManipulation;
+    else
+        return Exception { NotSupportedError };
+
+    context.eventLoop().queueTask(source, context, [callback = WTFMove(callback)]() {
+        callback->handleEvent();
+    });
+
+    return { };
+}
+
 Vector<String> Internals::accessKeyModifiers() const
 {
     Vector<String> accessKeyModifierStrings;
@@ -4870,16 +4886,6 @@ void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& 
 void Internals::setMediaStreamSourceInterrupted(MediaStreamTrack& track, bool interrupted)
 {
     track.source().setInterruptedForTesting(interrupted);
-}
-
-void Internals::setDisableGetDisplayMediaUserGestureConstraint(bool value)
-{
-    Document* document = contextDocument();
-    if (!document || !document->domWindow())
-        return;
-
-    if (auto* mediaDevices = NavigatorMediaDevices::mediaDevices(document->domWindow()->navigator()))
-        mediaDevices->setDisableGetDisplayMediaUserGestureConstraint(value);
 }
 #endif
 

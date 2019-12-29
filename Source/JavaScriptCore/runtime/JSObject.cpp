@@ -838,9 +838,6 @@ bool JSObject::putInlineSlow(JSGlobalObject* globalObject, PropertyName property
             }
         }
         if (obj->type() == ProxyObjectType) {
-            // FIXME: We shouldn't unconditionally perform [[Set]] here.
-            // We need to do more because this is observable behavior.
-            // https://bugs.webkit.org/show_bug.cgi?id=155012
             ProxyObject* proxy = jsCast<ProxyObject*>(obj);
             RELEASE_AND_RETURN(scope, proxy->ProxyObject::put(proxy, globalObject, propertyName, value, slot));
         }
@@ -1210,9 +1207,9 @@ ArrayStorage* JSObject::constructConvertedArrayStorageWithoutCopyingElements(VM&
 
     Butterfly* newButterfly = Butterfly::createUninitialized(vm, this, 0, propertyCapacity, true, ArrayStorage::sizeFor(neededLength));
     
-    memcpy(
-        newButterfly->base(0, propertyCapacity),
-        m_butterfly->base(0, propertyCapacity),
+    gcSafeMemcpy(
+        static_cast<JSValue*>(newButterfly->base(0, propertyCapacity)),
+        static_cast<JSValue*>(m_butterfly->base(0, propertyCapacity)),
         propertyCapacity * sizeof(EncodedJSValue));
 
     ArrayStorage* newStorage = newButterfly->arrayStorage();
@@ -1503,7 +1500,7 @@ void JSObject::convertFromCopyOnWrite(VM& vm)
     unsigned newVectorLength = Butterfly::optimalContiguousVectorLength(propertyCapacity, std::min(oldButterfly->vectorLength() * 2, MAX_STORAGE_VECTOR_LENGTH));
     Butterfly* newButterfly = Butterfly::createUninitialized(vm, this, 0, propertyCapacity, hasIndexingHeader, newVectorLength * sizeof(JSValue));
 
-    memcpy(newButterfly->propertyStorage(), oldButterfly->propertyStorage(), oldButterfly->vectorLength() * sizeof(JSValue) + sizeof(IndexingHeader));
+    gcSafeMemcpy(newButterfly->propertyStorage(), oldButterfly->propertyStorage(), oldButterfly->vectorLength() * sizeof(JSValue) + sizeof(IndexingHeader));
 
     WTF::storeStoreFence();
     NonPropertyTransition transition = ([&] () {
@@ -3782,7 +3779,7 @@ void JSObject::shiftButterflyAfterFlattening(const GCSafeConcurrentJSLocker&, VM
     void* currentBase = oldButterfly->base(0, outOfLineCapacityAfter);
     void* newBase = newButterfly->base(0, outOfLineCapacityAfter);
 
-    memcpy(newBase, currentBase, Butterfly::totalSize(0, outOfLineCapacityAfter, hasIndexingHeader, indexingPayloadSizeInBytes));
+    gcSafeMemcpy(static_cast<JSValue*>(newBase), static_cast<JSValue*>(currentBase), Butterfly::totalSize(0, outOfLineCapacityAfter, hasIndexingHeader, indexingPayloadSizeInBytes));
     
     setButterfly(vm, newButterfly);
 }

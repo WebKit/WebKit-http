@@ -73,6 +73,7 @@ namespace JSC {
 
     enum class DebuggableCall { Yes, No };
     enum class ThisResolutionType { Local, Scoped };
+    enum class LinkTimeConstant : int32_t;
     
     class CallArguments {
     public:
@@ -1216,7 +1217,7 @@ namespace JSC {
         RegisterID* m_emptyValueRegister { nullptr };
         RegisterID* m_newTargetRegister { nullptr };
         RegisterID* m_isDerivedConstuctor { nullptr };
-        RegisterID* m_linkTimeConstantRegisters[LinkTimeConstantCount];
+        HashMap<LinkTimeConstant, RegisterID*, WTF::IntHash<LinkTimeConstant>, WTF::StrongEnumHashTraits<LinkTimeConstant>> m_linkTimeConstantRegisters;
         RegisterID* m_arrowFunctionContextLexicalEnvironmentRegister { nullptr };
         RegisterID* m_promiseRegister { nullptr };
 
@@ -1224,6 +1225,7 @@ namespace JSC {
 
         SegmentedVector<RegisterID, 32> m_parameters;
         SegmentedVector<LabelScope, 32> m_labelScopes;
+        SegmentedVector<RegisterID, 32> m_constantPoolRegisters;
         unsigned m_finallyDepth { 0 };
         unsigned m_localScopeDepth { 0 };
         const CodeType m_codeType;

@@ -81,6 +81,7 @@
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(GTK)
+#include "WebKitPointerLockPermissionRequest.h"
 #include "WebKitPrintOperationPrivate.h"
 #include "WebKitWebInspectorPrivate.h"
 #include "WebKitWebViewBasePrivate.h"
@@ -506,6 +507,13 @@ static gboolean webkitWebViewDecidePolicy(WebKitWebView*, WebKitPolicyDecision* 
 
 static gboolean webkitWebViewPermissionRequest(WebKitWebView*, WebKitPermissionRequest* request)
 {
+#if ENABLE(POINTER_LOCK)
+    if (WEBKIT_IS_POINTER_LOCK_PERMISSION_REQUEST(request)) {
+        webkit_permission_request_allow(request);
+        return TRUE;
+    }
+#endif
+
     webkit_permission_request_deny(request);
     return TRUE;
 }
@@ -2626,6 +2634,27 @@ void webkitWebViewDidReceiveUserMessage(WebKitWebView* webView, UserMessage&& me
     gboolean returnValue;
     g_signal_emit(webView, signals[USER_MESSAGE_RECEIVED], 0, userMessage.get(), &returnValue);
 }
+
+#if ENABLE(POINTER_LOCK)
+void webkitWebViewRequestPointerLock(WebKitWebView* webView)
+{
+#if PLATFORM(GTK)
+    webkitWebViewBaseRequestPointerLock(WEBKIT_WEB_VIEW_BASE(webView));
+#endif
+}
+
+void webkitWebViewDenyPointerLockRequest(WebKitWebView* webView)
+{
+    getPage(webView).didDenyPointerLock();
+}
+
+void webkitWebViewDidLosePointerLock(WebKitWebView* webView)
+{
+#if PLATFORM(GTK)
+    webkitWebViewBaseDidLosePointerLock(WEBKIT_WEB_VIEW_BASE(webView));
+#endif
+}
+#endif
 
 #if PLATFORM(WPE)
 /**

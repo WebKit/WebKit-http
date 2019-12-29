@@ -399,12 +399,6 @@
             }
         }
     },
-    "imported/w3c/webdriver/tests/get_page_source/source.py": {
-        "expected": {"all": {"status": ["SKIP"], "bug": "webkit.org/b/180399"}}
-    },
-    "imported/w3c/webdriver/tests/get_page_source/user_prompts.py": {
-        "expected": {"all": {"status": ["SKIP"], "bug": "webkit.org/b/180399"}}
-    },
     "imported/w3c/webdriver/tests/element_click/bubbling.py": {
         "subtests": {
             "test_spin_event_loop": {
@@ -542,18 +536,6 @@
     "imported/w3c/webdriver/tests/element_send_keys/interactability.py": {
         "subtests": {
             "test_document_element_is_interactable": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/188545"}}
-            },
-            "test_not_a_focusable_element": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/188545"}}
-            },
-            "test_not_displayed_element": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/188545"}}
-            },
-            "test_hidden_element": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/188545"}}
-            },
-            "test_disabled_element": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/188545"}}
             }
         }

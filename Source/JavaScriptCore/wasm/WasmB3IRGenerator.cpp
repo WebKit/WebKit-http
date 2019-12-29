@@ -243,6 +243,7 @@ public:
 
     void dump(const Vector<ControlEntry>& controlStack, const Stack* expressionStack);
     void setParser(FunctionParser<B3IRGenerator>* parser) { m_parser = parser; };
+    void didFinishParsingLocals() { }
 
     Value* constant(B3::Type, uint64_t bits, Optional<Origin> = WTF::nullopt);
     Value* framePointer();
@@ -1298,8 +1299,10 @@ auto B3IRGenerator::addLoop(BlockSignature signature, Stack& enclosingStack, Con
             B3::InsertionSet insertionSet(m_proc);
             for (unsigned i = 0; i < expressionStack.size(); i++) {
                 auto* value = expressionStack[i];
-                if (value->isConstant())
+                if (value->isConstant()) {
+                    ++indexInBuffer;
                     continue;
+                }
 
                 if (value->owner != sourceBlock) {
                     insertionSet.execute(sourceBlock);

@@ -175,15 +175,16 @@ void AuthenticatorManager::handleRequest(WebAuthenticationRequestData&& data, Ca
     runPanel();
 }
 
-void AuthenticatorManager::cancelRequest(const WebCore::PageIdentifier& pageID, const Optional<FrameIdentifier>& frameID)
+void AuthenticatorManager::cancelRequest(const PageIdentifier& pageID, const Optional<FrameIdentifier>& frameID)
 {
     if (!m_pendingCompletionHandler)
         return;
-    ASSERT(m_pendingRequestData.frameID);
-    if (m_pendingRequestData.frameID->pageID != pageID)
-        return;
-    if (frameID && frameID != m_pendingRequestData.frameID->frameID)
-        return;
+    if (auto pendingFrameID = m_pendingRequestData.frameID) {
+        if (pendingFrameID->pageID != pageID)
+            return;
+        if (frameID && frameID != pendingFrameID->frameID)
+            return;
+    }
     invokePendingCompletionHandler(ExceptionData { NotAllowedError, "Operation timed out."_s });
     clearState();
     m_requestTimeOutTimer.stop();
@@ -194,9 +195,12 @@ void AuthenticatorManager::cancelRequest(const WebCore::PageIdentifier& pageID, 
 // "If the user exercises a user agent user-interface option to cancel the process,".
 void AuthenticatorManager::cancelRequest(const API::WebAuthenticationPanel& panel)
 {
+    RELEASE_ASSERT(RunLoop::isMain());
     if (!m_pendingCompletionHandler || m_pendingRequestData.panel.get() != &panel)
         return;
-    resetState();
+    invokePendingCompletionHandler(ExceptionData { NotAllowedError, "This request has been cancelled by the user."_s });
+    clearState();
+    m_requestTimeOutTimer.stop();
 }
 
 void AuthenticatorManager::clearStateAsync()
@@ -212,7 +216,9 @@ void AuthenticatorManager::clearState()
 {
     if (m_pendingCompletionHandler)
         return;
-    resetState();
+    m_authenticators.clear();
+    m_services.clear();
+    m_pendingRequestData = { };
 }
 
 void AuthenticatorManager::authenticatorAdded(Ref<Authenticator>&& authenticator)
@@ -267,7 +273,7 @@ void AuthenticatorManager::authenticatorStatusUpdated(WebAuthenticationStatus st
         panel->client().updatePanel(status);
 }
 
-UniqueRef<AuthenticatorTransportService> AuthenticatorManager::createService(WebCore::AuthenticatorTransport transport, AuthenticatorTransportService::Observer& observer) const
+UniqueRef<AuthenticatorTransportService> AuthenticatorManager::createService(AuthenticatorTransport transport, AuthenticatorTransportService::Observer& observer) const
 {
     return AuthenticatorTransportService::create(transport, observer);
 }
@@ -343,21 +349,13 @@ void AuthenticatorManager::runPanel()
 void AuthenticatorManager::invokePendingCompletionHandler(Respond&& respond)
 {
     if (auto *panel = m_pendingRequestData.panel.get()) {
-        WTF::switchOn(respond, [&](const WebCore::PublicKeyCredentialData&) {
+        WTF::switchOn(respond, [&](const PublicKeyCredentialData&) {
             panel->client().dismissPanel(WebAuthenticationResult::Succeeded);
-        }, [&](const WebCore::ExceptionData&) {
+        }, [&](const ExceptionData&) {
             panel->client().dismissPanel(WebAuthenticationResult::Failed);
         });
     }
     m_pendingCompletionHandler(WTFMove(respond));
-}
-
-
-void AuthenticatorManager::resetState()
-{
-    m_authenticators.clear();
-    m_services.clear();
-    m_pendingRequestData = { };
 }
 
 void AuthenticatorManager::restartDiscovery()

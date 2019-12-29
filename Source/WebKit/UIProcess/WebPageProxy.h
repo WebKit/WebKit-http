@@ -337,6 +337,7 @@ typedef GenericCallback<const String&> StringCallback;
 typedef GenericCallback<API::SerializedScriptValue*, bool, const WebCore::ExceptionDetails&> ScriptValueCallback;
 typedef GenericCallback<const WebCore::FontAttributes&> FontAttributesCallback;
 typedef GenericCallback<const String&, const String&, const String&> SelectionContextCallback;
+typedef GenericCallback<bool> BoolCallback;
 
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
 using LayerHostingContextID = uint32_t;
@@ -736,6 +737,7 @@ public:
     void applicationDidEnterBackground();
     void applicationDidFinishSnapshottingAfterEnteringBackground();
     void applicationWillEnterForeground();
+    bool lastObservedStateWasBackground() const { return m_lastObservedStateWasBackground; }
     void applicationWillResignActive();
     void applicationDidBecomeActive();
     void commitPotentialTapFailed();
@@ -1018,7 +1020,7 @@ public:
     void pluginZoomFactorDidChange(double);
 
     // Find.
-    void findString(const String&, FindOptions, unsigned maxMatchCount);
+    void findString(const String&, FindOptions, unsigned maxMatchCount, Function<void (bool, CallbackBase::Error)>&& = nullptr);
     void findStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void getImageForFindMatch(int32_t matchIndex);
     void selectFindMatch(int32_t matchIndex);
@@ -1031,6 +1033,8 @@ public:
     void setTextIndicator(const WebCore::TextIndicatorData&, uint64_t /* WebCore::TextIndicatorWindowLifetime */ lifetime = 0 /* Permanent */);
     void setTextIndicatorAnimationProgress(float);
     void clearTextIndicator();
+
+    void findStringCallback(bool found, CallbackID);
     void didFindString(const String&, const Vector<WebCore::IntRect>&, uint32_t matchCount, int32_t matchIndex, bool didWrapAround);
     void didFailToFindString(const String&);
     void didFindStringMatches(const String&, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection);
@@ -2542,6 +2546,7 @@ private:
     double m_viewportConfigurationLayoutSizeScaleFactor { 1 };
     double m_viewportConfigurationMinimumEffectiveDeviceWidth { 0 };
     WebCore::FloatSize m_maximumUnobscuredSize;
+    bool m_lastObservedStateWasBackground { false };
 #endif
 
     Optional<WebCore::FontAttributes> m_cachedFontAttributesAtSelectionStart;

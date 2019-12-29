@@ -199,7 +199,7 @@ ALWAYS_INLINE bool speciesWatchpointIsValid(VM& vm, JSObject* thisObject)
 
     if (globalObject->arraySpeciesWatchpointSet().stateOnJSThread() == ClearWatchpoint) {
         dataLogLnIf(ArrayPrototypeInternal::verbose, "Initializing Array species watchpoints for Array.prototype: ", pointerDump(arrayPrototype), " with structure: ", pointerDump(arrayPrototype->structure(vm)), "\nand Array: ", pointerDump(globalObject->arrayConstructor()), " with structure: ", pointerDump(globalObject->arrayConstructor()->structure(vm)));
-        globalObject->tryInstallArraySpeciesWatchpoint(globalObject);
+        globalObject->tryInstallArraySpeciesWatchpoint();
         ASSERT(globalObject->arraySpeciesWatchpointSet().stateOnJSThread() != ClearWatchpoint);
     }
 
@@ -1487,10 +1487,10 @@ void clearElement(double& element)
 }
 
 template<typename T>
-ALWAYS_INLINE void copyElements(T* buffer, unsigned offset, void* source, unsigned sourceSize, IndexingType sourceType)
+ALWAYS_INLINE void copyElements(T* buffer, unsigned offset, T* source, unsigned sourceSize, IndexingType sourceType)
 {
     if (sourceType != ArrayWithUndecided) {
-        memcpy(buffer + offset, source, sizeof(JSValue) * sourceSize);
+        gcSafeMemcpy(buffer + offset, source, sizeof(JSValue) * sourceSize);
         return;
     }
 

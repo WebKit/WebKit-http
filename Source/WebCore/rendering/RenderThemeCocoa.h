@@ -39,7 +39,7 @@ private:
     bool shouldHaveCapsLockIndicator(const HTMLInputElement&) const final;
 
 #if ENABLE(APPLE_PAY)
-    void adjustApplePayButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustApplePayButtonStyle(RenderStyle&, const Element*) const override;
     bool paintApplePayButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 

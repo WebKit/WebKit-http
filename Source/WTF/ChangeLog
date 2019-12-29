@@ -1,3 +1,117 @@
+2019-11-07  Mark Lam  <mark.lam@apple.com>
+
+        Add a stack overflow check in Yarr::ByteCompiler::emitDisjunction().
+        https://bugs.webkit.org/show_bug.cgi?id=203936
+        <rdar://problem/56624724>
+
+        Reviewed by Saam Barati.
+
+        1. Add a StackCheck utility class so that we don't have to keep reinventing this
+           every time we need to add stack checking somewhere.
+        2. Rename some arguments and constants in StackBounds to be more descriptive of
+           what they actually are.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::recursionLimit const):
+        * wtf/StackCheck.h: Added.
+        (WTF::StackCheck::StackCheck):
+        (WTF::StackCheck::isSafeToRecurse):
+
+2019-11-06  Mark Lam  <mark.lam@apple.com>
+
+        Remove remnants of support code for an upwards growing stack.
+        https://bugs.webkit.org/show_bug.cgi?id=203942
+
+        Reviewed by Yusuke Suzuki.
+
+        We haven't supported an upwards growing stack in years, and a lot of code has
+        since been written specifically with only a downwards growing stack in mind (e.g.
+        the LLInt, the JITs).  Also, all our currently supported platforms use a downward
+        growing stack.
+
+        We should remove the remnants of support code for an upwards growing stack.  The
+        presence of that code is deceptive in that it conveys support for an upwards
+        growing stack where this hasn't been the case in years.
+
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::newThreadStackBounds):
+        (WTF::StackBounds::currentThreadStackBoundsInternal):
+        (WTF::StackBounds::stackDirection): Deleted.
+        (WTF::testStackDirection2): Deleted.
+        (WTF::testStackDirection): Deleted.
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::size const):
+        (WTF::StackBounds::contains const):
+        (WTF::StackBounds::recursionLimit const):
+        (WTF::StackBounds::StackBounds):
+        (WTF::StackBounds::isGrowingDownwards const):
+        (WTF::StackBounds::checkConsistency const):
+        (WTF::StackBounds::isGrowingDownward const): Deleted.
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+
+2019-11-05  Mark Lam  <mark.lam@apple.com>
+
+        WTF::RunLoop should not depend on isMainThread() idiom.
+        https://bugs.webkit.org/show_bug.cgi?id=203873
+        <rdar://problem/56524251>
+
+        Reviewed by Saam Barati, Ryosuke Niwa, and Devin Rousso.
+
+        The isMainThread() idiom is only meaningful for WebCore.  It is less meaningful
+        for JSC since a VM instance can be entered from multiple threads, as long as only
+        one thread enters it at any time.  Hence, the concept of a main thread doesn't
+        make sense at the JSC level.
+
+        Since r251036, we started using a WTF::String to represent the RunLoop mode.
+        This caused problems for JSC clients when USE(CF) since it necessitated the use of
+        StringWrapperCFAllocator to track the life cycle of the CFStringRef generated from
+        the WTF::String.
+
+        To fix this problem, we should restore the original behavior of using CFStringRefs
+        as the RunLoop mode token.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::cycle): Deleted.
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::cycle):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::cycle):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::cycle):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::cycle):
+
+2019-11-05  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        Add definitions of ANSI colors for colorful log output
+        https://bugs.webkit.org/show_bug.cgi?id=203805
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AnsiColors.h: Added.
+        * wtf/CMakeLists.txt:
+
+2019-11-05  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        move CrashReporterClientSPI.h and parts of WKCrashReporter to WTF so it can be used in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=203803
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/cocoa/CrashReporter.cpp: Added.
+        (WTF::setCrashLogMessage):
+        * wtf/cocoa/CrashReporter.h: Added.
+        * wtf/spi/cocoa/CrashReporterClientSPI.h: Renamed from Source/WebKit/Platform/spi/Cocoa/CrashReporterClientSPI.h.
+
 2019-11-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Add diagnostic logging for frontend feature usage

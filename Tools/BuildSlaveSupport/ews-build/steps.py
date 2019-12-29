@@ -31,6 +31,7 @@ from twisted.internet import defer
 from layout_test_failures import LayoutTestFailures
 
 import json
+import os
 import re
 import requests
 
@@ -39,6 +40,8 @@ S3URL = 'https://s3-us-west-2.amazonaws.com/'
 EWS_URL = 'https://ews-build.webkit.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
+RESULTS_WEBKIT_URL = 'https://results.webkit.org'
+RESULTS_SERVER_API_KEY = 'RESULTS_SERVER_API_KEY'
 
 
 class ConfigureBuild(buildstep.BuildStep):
@@ -46,7 +49,7 @@ class ConfigureBuild(buildstep.BuildStep):
     description = ['configuring build']
     descriptionDone = ['Configured build']
 
-    def __init__(self, platform, configuration, architectures, buildOnly, triggers, additionalArguments):
+    def __init__(self, platform, configuration, architectures, buildOnly, triggers, remotes, additionalArguments):
         super(ConfigureBuild, self).__init__()
         self.platform = platform
         if platform != 'jsc-only':
@@ -56,6 +59,7 @@ class ConfigureBuild(buildstep.BuildStep):
         self.architecture = ' '.join(architectures) if architectures else None
         self.buildOnly = buildOnly
         self.triggers = triggers
+        self.remotes = remotes
         self.additionalArguments = additionalArguments
 
     def start(self):
@@ -71,6 +75,8 @@ class ConfigureBuild(buildstep.BuildStep):
             self.setProperty('buildOnly', self.buildOnly, 'config.json')
         if self.triggers:
             self.setProperty('triggers', self.triggers, 'config.json')
+        if self.remotes:
+            self.setProperty('remotes', self.remotes, 'config.json')
         if self.additionalArguments:
             self.setProperty('additionalArguments', self.additionalArguments, 'config.json')
 
@@ -187,7 +193,7 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     command = ['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
 
     def __init__(self, **kwargs):
-        super(ApplyPatch, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
+        super(ApplyPatch, self).__init__(timeout=10 * 60, logEnviron=False, **kwargs)
 
     def _get_patch(self):
         sourcestamp = self.build.getSourceStamp(self.getProperty('codebase', ''))
@@ -320,6 +326,13 @@ class ValidatePatch(buildstep.BuildStep):
     bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
     bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
 
+    def __init__(self, verifyObsolete=True, verifyBugClosed=True, verifyReviewDenied=True, addURLs=True, **kwargs):
+        self.verifyObsolete = verifyObsolete
+        self.verifyBugClosed = verifyBugClosed
+        self.verifyReviewDenied = verifyReviewDenied
+        self.addURLs = addURLs
+        buildstep.BuildStep.__init__(self)
+
     @defer.inlineCallbacks
     def _addToLog(self, logName, message):
         try:
@@ -381,7 +394,8 @@ class ValidatePatch(buildstep.BuildStep):
             return -1
 
         patch_author = patch_json.get('creator')
-        self.addURL('Patch by: {}'.format(patch_author), 'mailto:{}'.format(patch_author))
+        if self.addURLs:
+            self.addURL('Patch by: {}'.format(patch_author), 'mailto:{}'.format(patch_author))
         return patch_json.get('is_obsolete')
 
     def _is_patch_review_denied(self, patch_id):
@@ -406,7 +420,8 @@ class ValidatePatch(buildstep.BuildStep):
             return -1
 
         bug_title = bug_json.get('summary')
-        self.addURL(u'Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
+        if self.addURLs:
+            self.addURL(u'Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
         if bug_json.get('status') in self.bug_closed_statuses:
             return 1
         return 0
@@ -433,17 +448,17 @@ class ValidatePatch(buildstep.BuildStep):
 
         bug_id = self.getProperty('bug_id', '') or self.get_bug_id_from_patch(patch_id)
 
-        bug_closed = self._is_bug_closed(bug_id)
+        bug_closed = self._is_bug_closed(bug_id) if self.verifyBugClosed else 0
         if bug_closed == 1:
             self.skip_build('Bug {} is already closed'.format(bug_id))
             return None
 
-        obsolete = self._is_patch_obsolete(patch_id)
+        obsolete = self._is_patch_obsolete(patch_id) if self.verifyObsolete else 0
         if obsolete == 1:
             self.skip_build('Patch {} is obsolete'.format(patch_id))
             return None
 
-        review_denied = self._is_patch_review_denied(patch_id)
+        review_denied = self._is_patch_review_denied(patch_id) if self.verifyReviewDenied else 0
         if review_denied == 1:
             self.skip_build('Patch {} is marked r-'.format(patch_id))
             return None
@@ -453,7 +468,12 @@ class ValidatePatch(buildstep.BuildStep):
             self.setProperty('validated', False)
             return None
 
-        self._addToLog('stdio', 'Bug is open.\nPatch is not obsolete.\nPatch is not marked r-.\n')
+        if self.verifyBugClosed:
+            self._addToLog('stdio', 'Bug is open.\n')
+        if self.verifyObsolete:
+            self._addToLog('stdio', 'Patch is not obsolete.\n')
+        if self.verifyReviewDenied:
+            self._addToLog('stdio', 'Patch is not marked r-.\n')
         self.finished(SUCCESS)
         return None
 
@@ -915,6 +935,11 @@ class RunJavaScriptCoreTests(shell.Test):
         shell.Test.__init__(self, logEnviron=False, **kwargs)
 
     def start(self):
+        # add remotes configuration file path to the command line if needed
+        remotesfile = self.getProperty('remotes', False)
+        if remotesfile:
+            self.command.append('--remote-config-file={0}'.format(remotesfile))
+
         appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
         return shell.Test.start(self)
 
@@ -942,12 +967,12 @@ class ReRunJavaScriptCoreTests(RunJavaScriptCoreTests):
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileJSCToT(), RunJavaScriptCoreTestsToT()])
+            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileJSCToT(), RunJSCTestsWithoutPatch()])
         return rc
 
 
-class RunJavaScriptCoreTestsToT(RunJavaScriptCoreTests):
-    name = 'jscore-test-tot'
+class RunJSCTestsWithoutPatch(RunJavaScriptCoreTests):
+    name = 'jscore-test-without-patch'
     jsonFileName = 'jsc_results.json'
 
     def evaluateCommand(self, cmd):
@@ -986,6 +1011,9 @@ class RunWebKitTests(shell.Test):
                '--exit-after-n-failures', '30',
                '--skip-failing-tests',
                WithProperties('--%(configuration)s')]
+
+    def __init__(self, **kwargs):
+        shell.Test.__init__(self, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
@@ -1090,7 +1118,7 @@ class RunWebKitTests(shell.Test):
             self.build.results = SUCCESS
             self.build.buildFinished([message], SUCCESS)
         else:
-            self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(), ExtractTestResults(), ReRunWebKitTests()])
+            self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(), ExtractTestResults(), ValidatePatch(verifyBugClosed=False, addURLs=False), ReRunWebKitTests()])
         return rc
 
     def getResultSummary(self):
@@ -1115,7 +1143,14 @@ class ReRunWebKitTests(RunWebKitTests):
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
-            self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='rerun'), ExtractTestResults(identifier='rerun'), UnApplyPatchIfRequired(), CompileWebKitToT(), RunWebKitTestsWithoutPatch()])
+            self.build.addStepsAfterCurrentStep([ArchiveTestResults(),
+                                                UploadTestResults(identifier='rerun'),
+                                                ExtractTestResults(identifier='rerun'),
+                                                UnApplyPatchIfRequired(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                CompileWebKitToT(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                RunWebKitTestsWithoutPatch()])
         return rc
 
     def commandComplete(self, cmd):
@@ -1133,6 +1168,16 @@ class ReRunWebKitTests(RunWebKitTests):
 
 class RunWebKitTestsWithoutPatch(RunWebKitTests):
     name = 'run-layout-tests-without-patch'
+
+    def start(self):
+        self.workerEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+        self.setCommand(self.command +
+            ['--buildbot-master', EWS_URL.replace('https://', '').strip('/'),
+            '--builder-name', self.getProperty('buildername'),
+            '--build-number', self.getProperty('buildnumber'),
+            '--buildbot-worker', self.getProperty('workername'),
+            '--report', RESULTS_WEBKIT_URL])
+        return super(RunWebKitTestsWithoutPatch, self).start()
 
     def evaluateCommand(self, cmd):
         rc = shell.Test.evaluateCommand(self, cmd)
@@ -1421,7 +1466,7 @@ class RunAPITests(TestWithFailureCount):
             self.build.results = SUCCESS
             self.build.buildFinished([message], SUCCESS)
         else:
-            self.build.addStepsAfterCurrentStep([ReRunAPITests()])
+            self.build.addStepsAfterCurrentStep([ValidatePatch(verifyBugClosed=False, addURLs=False), ReRunAPITests()])
         return rc
 
 
@@ -1437,7 +1482,12 @@ class ReRunAPITests(RunAPITests):
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT(), RunAPITestsWithoutPatch(), AnalyzeAPITestsResults()])
+            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                CompileWebKitToT(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                RunAPITestsWithoutPatch(),
+                                                AnalyzeAPITestsResults()])
         return rc
 
 
@@ -1446,6 +1496,16 @@ class RunAPITestsWithoutPatch(RunAPITests):
 
     def evaluateCommand(self, cmd):
         return TestWithFailureCount.evaluateCommand(self, cmd)
+
+    def start(self):
+        self.workerEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
+        self.setCommand(self.command +
+            ['--buildbot-master', EWS_URL.replace('https://', '').strip('/'),
+            '--builder-name', self.getProperty('buildername'),
+            '--build-number', self.getProperty('buildnumber'),
+            '--buildbot-worker', self.getProperty('workername'),
+            '--report', RESULTS_WEBKIT_URL])
+        return super(RunAPITestsWithoutPatch, self).start()
 
 
 class AnalyzeAPITestsResults(buildstep.BuildStep):

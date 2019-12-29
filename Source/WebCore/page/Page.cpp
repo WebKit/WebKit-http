@@ -62,6 +62,8 @@
 #include "FullscreenManager.h"
 #include "HTMLElement.h"
 #include "HTMLMediaElement.h"
+#include "HTMLTextAreaElement.h"
+#include "HTMLTextFormControlElement.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "InspectorClient.h"
@@ -111,6 +113,7 @@
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
+#include "StyleAdjuster.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "SubframeLoader.h"
@@ -124,6 +127,7 @@
 #include "VoidCallback.h"
 #include "WheelEventDeltaFilter.h"
 #include "Widget.h"
+#include <wtf/Deque.h>
 #include <wtf/FileSystem.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -567,7 +571,7 @@ void Page::updateStyleAfterChangeInEnvironment()
 {
     forEachDocument([](Document& document) {
         if (StyleResolver* styleResolver = document.styleScope().resolverIfExists())
-            styleResolver->invalidateMatchedPropertiesCache();
+            styleResolver->invalidateMatchedDeclarationsCache();
         document.scheduleFullStyleRebuild();
         document.styleScope().didChangeStyleSheetEnvironment();
         document.scheduleTimedRenderingUpdate();
@@ -910,6 +914,45 @@ void Page::unmarkAllTextMatches()
         frame->document()->markers().removeMarkers(DocumentMarker::TextMatch);
         frame = incrementFrame(frame, true, CanWrap::No);
     } while (frame);
+}
+
+static bool isEditableTextInputElement(const Element& element)
+{
+    if (is<HTMLTextFormControlElement>(element)) {
+        if (!element.isTextField() && !is<HTMLTextAreaElement>(element))
+            return false;
+        return downcast<HTMLTextFormControlElement>(element).isInnerTextElementEditable();
+    }
+    return element.isRootEditableElement();
+}
+
+Vector<Ref<Element>> Page::editableElementsInRect(const FloatRect& searchRectInRootViewCoordinates) const
+{
+    Vector<Ref<Element>> result;
+    for (auto* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        auto* document = frame->document();
+        if (!document)
+            continue;
+
+        Deque<Node*> nodesToSearch;
+        nodesToSearch.append(document);
+        while (!nodesToSearch.isEmpty()) {
+            auto* node = nodesToSearch.takeFirst();
+
+            // It is possible to have nested text input contexts (e.g. <input type='text'> inside contenteditable) but
+            // in this case we just take the outermost context and skip the rest.
+            if (!is<Element>(node) || !isEditableTextInputElement(downcast<Element>(*node))) {
+                for (auto* child = node->firstChild(); child; child = child->nextSibling())
+                    nodesToSearch.append(child);
+                continue;
+            }
+
+            auto& element = downcast<Element>(*node);
+            if (searchRectInRootViewCoordinates.intersects(element.clientRect()))
+                result.append(element);
+        }
+    }
+    return result;
 }
 
 const VisibleSelection& Page::selection() const
@@ -1290,11 +1333,15 @@ void Page::updateRendering()
 
     layoutIfNeeded();
 
+    // Flush autofocus candidates
+
     forEachDocument([&](Document& document) {
         document.runResizeSteps();
     });
 
-    // FIXME: Run the scroll steps
+    forEachDocument([&](Document& document) {
+        document.runScrollSteps();
+    });
 
     forEachDocument([&](Document& document) {
         document.evaluateMediaQueriesAndReportChanges();        
@@ -1318,9 +1365,6 @@ void Page::updateRendering()
     for (auto& document : documents)
         document->updateResizeObservations(*this);
 #endif
-
-    // FIXME: Flush autofocus candidates
-    // https://github.com/whatwg/html/issues/4992
 
     layoutIfNeeded();
 }
@@ -2869,12 +2913,8 @@ RenderingUpdateScheduler& Page::renderingUpdateScheduler()
 
 void Page::forEachDocument(const Function<void(Document&)>& functor)
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
-
-        functor(*frame->document());
-    }
+    for (auto& document : collectDocuments())
+        functor(document);
 }
 
 Vector<Ref<Document>> Page::collectDocuments()
@@ -3022,13 +3062,12 @@ void Page::recomputeTextAutoSizingInAllFrames()
         if (!frame->document())
             continue;
         auto& document = *frame->document();
-        if (!document.renderView() || !document.styleScope().resolverIfExists())
+        if (!document.renderView())
             continue;
 
-        auto& styleResolver = document.styleScope().resolver();
         for (auto& renderer : descendantsOfType<RenderElement>(*document.renderView())) {
             if (auto* element = renderer.element()) {
-                auto needsLayout = styleResolver.adjustRenderStyleForTextAutosizing(renderer.mutableStyle(), *element);
+                auto needsLayout = Style::Adjuster::adjustForTextAutosizing(renderer.mutableStyle(), *element);
                 if (needsLayout)
                     renderer.setNeedsLayout();
             }

@@ -47,9 +47,6 @@ public:
     bool cancelEvent(Event&) override;
     void close() override;
 
-    void enqueueOrDispatchScrollEvent(Node&);
-    void enqueueScrollEvent(EventTarget&, Event::CanBubble, Event::IsCancelable);
-    void enqueueResizeEvent(EventTarget&, Event::CanBubble, Event::IsCancelable);
 
 private:
     void pendingEventTimerFired();

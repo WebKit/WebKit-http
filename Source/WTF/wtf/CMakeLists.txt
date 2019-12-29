@@ -2,6 +2,7 @@ set(WTF_PUBLIC_HEADERS
     ASCIICType.h
     AggregateLogger.h
     Algorithms.h
+    AnsiColors.h
     Assertions.h
     Atomics.h
     AutodrainedPool.h
@@ -214,6 +215,7 @@ set(WTF_PUBLIC_HEADERS
     SpanningTree.h
     Spectrum.h
     StackBounds.h
+    StackCheck.h
     StackPointer.h
     StackShot.h
     StackShotProfiler.h

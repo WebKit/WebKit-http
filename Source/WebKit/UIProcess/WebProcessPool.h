@@ -45,7 +45,6 @@
 #include "WebsiteDataStore.h"
 #include <WebCore/CrossSiteNavigationDataTransfer.h>
 #include <WebCore/ProcessIdentifier.h>
-#include <WebCore/RegistrableDomain.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SharedStringHash.h>
 #include <pal/SessionID.h>
@@ -90,6 +89,7 @@ class PageConfiguration;
 }
 
 namespace WebCore {
+class RegistrableDomain;
 struct MockMediaDevice;
 }
 
@@ -283,6 +283,8 @@ public:
     VisitedLinkStore& visitedLinkStore() { return m_visitedLinkStore.get(); }
 
     void setCacheModel(CacheModel);
+    void setCacheModelSynchronouslyForTesting(CacheModel);
+
 
     void setDefaultRequestTimeoutInterval(double);
 
@@ -472,10 +474,10 @@ public:
     static uint64_t registerProcessPoolCreationListener(Function<void(WebProcessPool&)>&&);
     static void unregisterProcessPoolCreationListener(uint64_t identifier);
 
-#if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessToken foregroundWebProcessToken() const { return ForegroundWebProcessToken(m_foregroundWebProcessCounter.count()); }
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
-#endif
+    bool hasForegroundWebProcesses() const { return m_foregroundWebProcessCounter.value(); }
+    bool hasBackgroundWebProcesses() const { return m_backgroundWebProcessCounter.value(); }
 
     void processForNavigation(WebPageProxy&, const API::Navigation&, Ref<WebProcessProxy>&& sourceProcess, const URL& sourceURL, ProcessSwapRequestedByClient, Ref<WebsiteDataStore>&&, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
 
@@ -495,6 +497,7 @@ public:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID, const WebCore::RegistrableDomain& fromDomain, const WebCore::RegistrableDomain& toDomain, OptionSet<WebCore::CrossSiteNavigationDataTransfer::Flag>, WebPageProxyIdentifier, WebCore::PageIdentifier);
+    void seedResourceLoadStatisticsForTesting(const WebCore::RegistrableDomain& firstPartyDomain, const WebCore::RegistrableDomain& thirdPartyDomain, bool shouldScheduleNotification, CompletionHandler<void()>&&);
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
@@ -554,7 +557,6 @@ private:
     void processStoppedUsingGamepads(WebProcessProxy&);
 #endif
 
-    void reinstateNetworkProcessAssertionState(NetworkProcessProxy&);
     void updateProcessAssertions();
 
     // IPC::MessageReceiver.
@@ -638,11 +640,7 @@ private:
     PlugInAutoStartProvider m_plugInAutoStartProvider { this };
         
     HashSet<String> m_schemesToRegisterAsEmptyDocument;
-    HashSet<String> m_schemesToRegisterAsSecure;
-    HashSet<String> m_schemesToRegisterAsBypassingContentSecurityPolicy;
     HashSet<String> m_schemesToSetDomainRelaxationForbiddenFor;
-    HashSet<String> m_schemesToRegisterAsLocal;
-    HashSet<String> m_schemesToRegisterAsNoAccess;
     HashSet<String> m_schemesToRegisterAsDisplayIsolated;
     HashSet<String> m_schemesToRegisterAsCORSEnabled;
     HashSet<String> m_schemesToRegisterAsAlwaysRevalidated;
@@ -696,7 +694,6 @@ private:
 
     bool m_processTerminationEnabled { true };
 
-    bool m_didNetworkProcessCrash { false };
     std::unique_ptr<NetworkProcessProxy> m_networkProcess;
 
     HashMap<uint64_t, RefPtr<DictionaryCallback>> m_dictionaryCallbacks;
@@ -759,16 +756,8 @@ private:
     HashMap<PAL::SessionID, HashSet<WebPageProxyIdentifier>> m_sessionToPageIDsMap;
     RunLoop::Timer<WebProcessPool> m_serviceWorkerProcessesTerminationTimer;
 
-#if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessCounter m_foregroundWebProcessCounter;
     BackgroundWebProcessCounter m_backgroundWebProcessCounter;
-    std::unique_ptr<ProcessThrottler::ForegroundActivity> m_foregroundActivityForNetworkProcess;
-    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_backgroundActivityForNetworkProcess;
-#if ENABLE(SERVICE_WORKER)
-    HashMap<WebCore::RegistrableDomain, std::unique_ptr<ProcessThrottler::ForegroundActivity>> m_foregroundActivitiesForServiceWorkerProcesses;
-    HashMap<WebCore::RegistrableDomain, std::unique_ptr<ProcessThrottler::BackgroundActivity>> m_backgroundActivitiesForServiceWorkerProcesses;
-#endif
-#endif
 
     UniqueRef<WebBackForwardCache> m_backForwardCache;
 

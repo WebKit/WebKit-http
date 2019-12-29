@@ -521,7 +521,8 @@
       "expertise" : "Accessibility",
       "nicks" : [
          "andresg"
-      ]
+      ],
+      "status" : "committer"
    },
    "Andrew Lo" : {
       "emails" : [
@@ -3173,11 +3174,12 @@
    },
    "Katherine Cheney" : {
       "emails" : [
-	 "Katherine_cheney@apple.com"
+         "katherine_cheney@apple.com"
       ],
       "nicks" : [
          "kate"
-      ]
+      ],
+      "status" : "committer"
    },
    "Katie Madonna" : {
       "emails" : [

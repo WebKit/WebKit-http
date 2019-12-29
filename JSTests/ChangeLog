@@ -1,3 +1,104 @@
+2019-11-08  Guillaume Emont  <guijemont@igalia.com>
+
+        Temporarily skip another broken test on MIPS due to OSR exit to LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=204003
+
+        Unreviewed gardening.
+
+        * stress/global-import-function-should-return-a-promise-when-clearing-exceptions.js:
+
+2019-11-07  Mark Lam  <mark.lam@apple.com>
+
+        Add a stack overflow check in Yarr::ByteCompiler::emitDisjunction().
+        https://bugs.webkit.org/show_bug.cgi?id=203936
+        <rdar://problem/56624724>
+
+        Reviewed by Saam Barati.
+
+        This issue originally manifested as incorrect-exception-assertion-in-operationRegExpExecNonGlobalOrSticky.js
+        failing on iOS devices due to its smaller stack.  We adapted the original test
+        here using $vm.callWithStackSize() to reproduce the issue on x86_64 though it
+        has a much larger physical stack to work with.  This new test will crash while
+        stepping on the guard page beyond the end of the stack if the fix is not applied.
+
+        * stress/stack-overflow-in-yarr-byteCompile.js: Added.
+
+2019-11-07  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        didPassSomeTestsSilenty is misspelled in standalone-pre.js
+        https://bugs.webkit.org/show_bug.cgi?id=203948
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/resources/standalone-pre.js:
+
+2019-11-07  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unskip test262 tests for async-iteration
+        https://bugs.webkit.org/show_bug.cgi?id=203921
+
+        Reviewed by Keith Miller.
+
+        This should have been done two years ago, it seems.
+
+        * test262/config.yaml:
+        * test262/expectations.yaml:
+
+2019-11-07  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        [[HasProperty]] result of Proxy in prototype chain is ignored
+        https://bugs.webkit.org/show_bug.cgi?id=203560
+
+        Reviewed by Ross Kirsling.
+
+        * stress/proxy-get-prototype-of.js: Correct Proxy "has" trap test.
+        * test262/expectations.yaml: Mark 6 test cases as passing.
+
+2019-11-06  Mark Lam  <mark.lam@apple.com>
+
+        JSGlobalObject::fireWatchpointAndMakeAllArrayStructuresSlowPut() should fire its watchpoint as the last step.
+        https://bugs.webkit.org/show_bug.cgi?id=203867
+        <rdar://problem/56813514>
+
+        Reviewed by Saam Barati.
+
+        * stress/racy-slow-put-cloned-arguments-when-having-a-bad-time.js: Added.
+
+2019-11-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r251940.
+        https://bugs.webkit.org/show_bug.cgi?id=203920
+
+        "it introduced test262 failures" (Requested by rkirsling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[[HasProperty]] result of Proxy in prototype chain is
+        ignored"
+        https://bugs.webkit.org/show_bug.cgi?id=203560
+        https://trac.webkit.org/changeset/251940
+
+2019-11-04  Saam Barati  <sbarati@apple.com>
+
+        Don't use memmove/memcpy/memset for memory that can be scanned concurrently
+        https://bugs.webkit.org/show_bug.cgi?id=203228
+        <rdar://problem/56401852>
+
+        Reviewed by Robin Morisset.
+
+        * stress/torn-js-value-concurrent-collector.js: Added.
+        (foo):
+
+2019-11-03  Tadeu Zagallo  <tzagallo@apple.com>
+
+        LLIntGenerator should not allocate temporaries in between variables
+        https://bugs.webkit.org/show_bug.cgi?id=203787
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/stress/local-ref.js: Added.
+
 2019-11-02  Alexey Proskuryakov  <ap@apple.com>
 
         Revert http://trac.webkit.org/r251875

@@ -1,3 +1,226 @@
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251958): console prompt is automatically focused when page is reloaded
+        https://bugs.webkit.org/show_bug.cgi?id=203932
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI._restoreCookieForOpenTabs):
+        Only attempt to autofocus when Web Inspector is first opened.
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r250087): inspector/model/remote-object.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=202934
+        <rdar://problem/56270900>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WI.ObjectTreeView.addShowMoreIfNeeded):
+        Drive-by: ensure that the indeterminate progress spinner is added after the last button.
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r249451): missing "Reveal in DOM Tree" on nodes logged to the console
+        https://bugs.webkit.org/show_bug.cgi?id=203836
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.populateContextMenu):
+        DOM trees in the console are marked as being non-editable, which is intended to prevent
+        modifications (e.g. changing an attribute) from being made in the console as the DOM tree
+        there is not hooked up to the associated DOM agent. In r249451 however, this guard was over
+        expanded to include non-editing actions, like "Reveal in DOM Tree" and DOM breakpoints.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype._handleContextMenuEvent):
+        Drive-by: add a separator before "Copy Selected" so it doesn't end up in the same group as
+                  any "Collapse All" from a `WI.TreeOutline`.
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Local Resource Overrides: automatically show a file picker when attempting to create an override for non-text resources
+        https://bugs.webkit.org/show_bug.cgi?id=203917
+
+        Reviewed by Timothy Hatcher.
+
+        Since there's no way to edit non-text resources (e.g. images, fonts, etc.) in Web Inspector,
+        when creating a local override for non-text resources, default to showing a file picker and
+        creating a local override from the content and MIME type of whatever file is chosen.
+
+        Still provide a way (shift-click) to create a local override for non-text resources from the
+        resource's contents, as that can be useful if the user just wants to change some headers.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.async createLocalResourceOverride):
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView):
+        (WI.ResourceContentView.prototype.get createLocalResourceOverrideTooltip): Added.
+        (WI.ResourceContentView.prototype.requestLocalResourceOverrideInitialContent): Added.
+        (WI.ResourceContentView.prototype.async _getContentForLocalResourceOverrideFromFile): Added.
+        (WI.ResourceContentView.prototype._handleCreateLocalResourceOverride):
+        (WI.ResourceContentView.prototype._handleImportLocalResourceOverride):
+        (WI.ResourceContentView.prototype.localResourceOverrideInitialContent): Deleted.
+        (WI.ResourceContentView.prototype.async _handleCreateLocalResourceOverride): Deleted.
+
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView.prototype.get createLocalResourceOverrideTooltip): Added.
+        (WI.TextResourceContentView.prototype.requestLocalResourceOverrideInitialContent): Added.
+        (WI.TextResourceContentView.prototype.localResourceOverrideInitialContent): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: add a marker for when a stop was requested
+        https://bugs.webkit.org/show_bug.cgi?id=203935
+
+        Reviewed by Timothy Hatcher.
+
+        After r244195, the Web Inspector frontend doesn't stop updating the current time marker
+        until after it receives all of the corresponding `*.trackingComplete` events. This means
+        that sometimes, the current time marker can move far past the time at which the stop was
+        requested, such as if there's a blocking script.
+
+        We should indicate where the stop was requested, as that is often right after a particular
+        issue is reproduced during a timeline recording, rather than have the user try to figure out
+        where they stopped.
+
+        Only keep a marker for the last stop request, and hide the marker once capturing resumes.
+
+        It's still useful to have the current time marker continue updating, as we should show all
+        the information we have about captured things, such as blocking scripts.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype._handleTimelineCapturingStateChanged):
+
+        * UserInterface/Models/TimelineMarker.js:
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler.prototype.addMarker):
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .markers > .marker.stopping-time): Added.
+        (.timeline-ruler > .markers > .marker.current-time):
+        (.timeline-ruler > .markers > .marker:matches(.stopping-time, .current-time)::after): Added.
+        (@media (prefers-color-scheme: dark) .timeline-ruler > .markers > .marker.stopping-time): Added.
+        (.timeline-ruler > .markers > .marker.current-time::after): Deleted.
+        Make the current time marker always on top (`z-index`).
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251958): automatic console prompt focusing prevents any "space" shortcuts from working
+        https://bugs.webkit.org/show_bug.cgi?id=203939
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI.isShowingTimelineTab): Added.
+        (WI.isShowingAuditTab): Added.
+        (WI._restoreCookieForOpenTabs):
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: Unable to get object details - GlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=203930
+        <rdar://problem/56960937>
+
+        In r248286, calls to `Heap.snapshot`, `Heap.getPreview`, and `Heap.getRemoteObject` were
+        moved to the `WI.HeapManager` instead of being inside view code. During this move, extra
+        `WI.reportInternalError` calls were added, which wasn't entirely correct as it is fully
+        possible (and expected) that any of these commands are invoked with old heap snapshot nodes
+        that may no longer exist. As such, calling any error an "internal error" isn't strictly
+        correct, and instead should just be a log. Also, the frontend code that calls these commands
+        is able to handle errors, again because it is expected.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/HeapManager.js:
+        (WI.HeapManager.prototype.snapshot):
+        (WI.HeapManager.prototype.getPreview):
+        (WI.HeapManager.prototype.getRemoteObject):
+
+2019-11-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Display color picker for p3 colors
+        https://bugs.webkit.org/show_bug.cgi?id=203436
+        <rdar://problem/56635062>
+
+        Reviewed by Brian Burg.
+
+        For p3 colors, display ColorSquare with display-p3 gamut.
+        Continue showing ColorSquare with sRGB gamut by default.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Models/Color.js:
+        (WI.Color):
+        (WI.Color.rgb2hsv):
+        (WI.Color.hsv2rgb.fraction):
+        (WI.Color.hsv2rgb):
+        (WI.Color.prototype.get hsla):
+        (WI.Color.prototype.isKeyword):
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker > .hue):
+        (@media (color-gamut: p3)):
+        (.color-picker.gamut-p3 > .hue):
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker.prototype._updateColor):
+        (WI.ColorPicker.prototype._updateOpacitySlider):
+        (WI.ColorPicker.prototype._handleFormatChange):
+        Introduce `gamut` parameter. Previously, the only available `gamut` was sRGB.
+
+        * UserInterface/Views/ColorSquare.css:
+        (.color-square > .crosshair):
+        Update the crosshair style to look better for both light and dark backgrounds.
+
+        * UserInterface/Views/ColorSquare.js:
+        (WI.ColorSquare):
+        (WI.ColorSquare.prototype.get tintedColor):
+        (WI.ColorSquare.prototype.set tintedColor):
+        (WI.ColorSquare.prototype._setCrosshairPosition):
+        (WI.ColorSquare.prototype._updateBaseColor):
+        (WI.ColorSquare.prototype._updateCrosshairBackground):
+
+        * UserInterface/Views/InlineSwatch.js:
+        Make p3 color picker a preview (e.g. STP-only) feature.
+
+2019-11-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers: enable tab by default
+        https://bugs.webkit.org/show_bug.cgi?id=203833
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/LayersTabContentView.js:
+        (WI.LayersTabContentView.isTabAllowed):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2019-11-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Toggle Visibility" does not work for element inside Shadow DOM
+        https://bugs.webkit.org/show_bug.cgi?id=202218
+        <rdar://problem/55713078>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.toggleElementVisibility.inspectedPage_node_injectStyleAndToggleClass):
+        If the node is inside a shadow tree, store the `<style>` inside the shadow root instead of
+        always using `document.head`.
+
 2019-11-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Add diagnostic logging for frontend feature usage

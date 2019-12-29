@@ -103,7 +103,7 @@
         (allow file-read* asset-access-filter)
         (if (memq 'with-media-playback options)
             (play-media asset-access-filter))
-        (allow mach-lookup
+        (allow mach-lookup (with report) (with telemetry)
                (global-name "com.apple.mobileassetd" "com.apple.mobileassetd.v2"))
         (mobile-preferences-read "com.apple.MobileAsset")))
 
@@ -122,7 +122,8 @@
 
 (define-once (play-audio)
     (allow mach-lookup
-           (global-name "com.apple.audio.AURemoteIOServer")
+           (global-name "com.apple.audio.AURemoteIOServer"))
+    (allow mach-lookup (with report) (with telemetry)
            (xpc-service-name "com.apple.audio.toolbox.reporting.service")))
 
 (define-once (play-media . filters)
@@ -152,24 +153,26 @@
            (global-name "com.apple.coremedia.audioprocessingtap.xpc")
            (global-name "com.apple.coremedia.capturesession")      ; Actually for video capture
            (global-name "com.apple.coremedia.capturesource")       ; Also for video capture (<rdar://problem/15794291>).
-           (global-name "com.apple.coremedia.cpeprotector.xpc")
            (global-name "com.apple.coremedia.customurlloader.xpc") ; Needed for custom media loading
-           (global-name "com.apple.coremedia.endpoint.xpc")
-           (global-name "com.apple.coremedia.figcpecryptor")
-           (global-name "com.apple.coremedia.figcontentkeysession.xpc")
            (global-name "com.apple.coremedia.formatreader.xpc")
            (global-name "com.apple.coremedia.player.xpc")
            (global-name "com.apple.coremedia.remaker")
            (global-name "com.apple.coremedia.remotequeue")
            (global-name "com.apple.coremedia.routediscoverer.xpc")
            (global-name "com.apple.coremedia.routingcontext.xpc")
-           (global-name "com.apple.coremedia.routingsessionmanager.xpc")
            (global-name "com.apple.coremedia.samplebufferaudiorenderer.xpc")
            (global-name "com.apple.coremedia.samplebufferrendersynchronizer.xpc")
            (global-name "com.apple.coremedia.sandboxserver.xpc")
            (global-name "com.apple.coremedia.systemcontroller.xpc")
-           (global-name "com.apple.coremedia.sts")
            (global-name "com.apple.coremedia.volumecontroller.xpc"))
+
+    (allow mach-lookup (with report) (with telemetry)
+        (global-name "com.apple.coremedia.cpeprotector.xpc")
+        (global-name "com.apple.coremedia.endpoint.xpc")
+        (global-name "com.apple.coremedia.figcontentkeysession.xpc")
+        (global-name "com.apple.coremedia.figcpecryptor")
+        (global-name "com.apple.coremedia.routingsessionmanager.xpc")
+        (global-name "com.apple.coremedia.sts"))
 
     (mobile-preferences-read
         "com.apple.avfoundation"
@@ -182,8 +185,10 @@
 
     ;; Required by the MediaPlayer framework.
     (allow mach-lookup
-        (global-name "com.apple.airplay.apsynccontroller.xpc")
         (global-name "com.apple.audio.AudioSession"))
+
+    (allow mach-lookup (with report) (with telemetry)
+        (global-name "com.apple.airplay.apsynccontroller.xpc"))
 
     ;; Allow mediaserverd to issue file extensions for the purposes of reading media
     (allow file-issue-extension (require-all
@@ -197,6 +202,8 @@
         "com.apple.mobileipod")
     (allow mach-lookup
            (global-name "com.apple.mediaremoted.xpc"))
+    (allow mach-lookup (with report) (with telemetry)
+        (xpc-service-name "com.apple.MediaPlayer.RemotePlayerService"))
 )
 
 (define-once (media-capture-support)
@@ -346,7 +353,7 @@
         (allow-create-directory (literal base-directory))
         (allow file-read* file-write*
             (prefix (string-append base-directory "/awd-" daemon-name ".log")))
-        (allow mach-lookup
+        (allow mach-lookup (with report) (with telemetry)
                (global-name "com.apple.awdd"))))
 
 (define-once (logd-diagnostic-paths)
@@ -423,13 +430,15 @@
         "com.apple.mt"
         "com.apple.preferences.sounds")
 
-    (allow mach-lookup
+    (allow mach-lookup (with report) (with telemetry)
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
-        (global-name "com.apple.CARenderServer")
         (global-name "com.apple.iohideventsystem")
     )
 
-    (allow mach-lookup (with telemetry)
+    (allow mach-lookup
+        (global-name "com.apple.CARenderServer"))
+
+    (allow mach-lookup (with report) (with telemetry)
         (global-name-regex #"^com\.apple\.uikit\.viewservice\..+")
         (xpc-service-name-regex #"\.apple-extension-service$") ;; <rdar://problem/19525887>
         (xpc-service-name-regex #"\.viewservice$") ;; <rdar://problem/31252371>
@@ -621,7 +630,8 @@
 (allow ipc-posix-shm-read*
        (ipc-posix-name-prefix "apple.cfprefs."))
  
-(allow mach-lookup
+(allow mach-lookup (with report) (with telemetry)
+    (global-name "com.apple.lsd.open")
     (global-name "com.apple.lsd.mapdb"))
 
 ;; <rdar://problem/12413942>
@@ -637,6 +647,9 @@
     (deny ipc-posix-sem-create ipc-posix-sem-post ipc-posix-sem-unlink ipc-posix-sem-wait)
     (allow ipc-posix-sem-open))
 
+(allow mach-lookup (with report) (with telemetry)
+    (global-name "com.apple.runningboard"))
+
 (allow system-sched
        (require-entitlement "com.apple.private.kernel.override-cpumon"))
 
@@ -647,6 +660,9 @@
     (allow sysctl-read sysctl-write
            (sysctl-name "vm.footprint_suspend")))
 
+(allow mach-lookup (with report) (with telemetry)
+       (global-name "com.apple.system.logger"))
+
 (allow file-read-metadata network-outbound
        (literal "/private/var/run/syslog"))
 
@@ -654,6 +670,9 @@
        (global-name "com.apple.system.notification_center"))
 (allow ipc-posix-shm-read*
        (ipc-posix-name "apple.shm.notification_center"))
+
+(allow mach-lookup (with report) (with telemetry)
+    (global-name "com.apple.diagnosticd"))
 
 (logd-diagnostic-client)
 
@@ -704,14 +723,14 @@
 (url-translation)
 
 ;; TextInput framework
-(allow mach-lookup
+(allow mach-lookup (with report) (with telemetry)
     (global-name "com.apple.TextInput"))
 
 (mobile-preferences-read "com.apple.da")
 
 (speech-synthesis-and-voiceover)
 
-(allow mach-lookup
+(allow mach-lookup (with report) (with telemetry)
     (global-name "com.apple.audio.AudioComponentRegistrar"))
 
 ;; Permit reading assets via MobileAsset framework.
@@ -755,7 +774,7 @@
 ;; <rdar://problem/7344719&26323449> LaunchServices app icons
 (allow file-read*
     (well-known-system-group-container-subpath "/systemgroup.com.apple.lsd.iconscache"))
-(allow mach-lookup
+(allow mach-lookup (with report) (with telemetry)
     (xpc-service-name "com.apple.iconservices")
     (global-name "com.apple.iconservices"))
 

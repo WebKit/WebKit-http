@@ -2290,7 +2290,7 @@ void Document::fontsNeedUpdate(FontSelector&)
 void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
 {
     if (auto* resolver = styleScope().resolverIfExists())
-        resolver->invalidateMatchedPropertiesCache();
+        resolver->invalidateMatchedDeclarationsCache();
     if (backForwardCacheState() != NotInBackForwardCache || !renderView())
         return;
     scheduleFullStyleRebuild();
@@ -3962,7 +3962,7 @@ void Document::updateViewportUnitsOnResize()
     if (!hasStyleWithViewportUnits())
         return;
 
-    styleScope().resolver().clearCachedPropertiesAffectedByViewportUnits();
+    styleScope().resolver().clearCachedDeclarationsAffectedByViewportUnits();
 
     // FIXME: Ideally, we should save the list of elements that have viewport units and only iterate over those.
     for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::nextIncludingPseudo(*element)) {
@@ -3998,6 +3998,48 @@ void Document::runResizeSteps()
         m_needsVisualViewportResizeEvent = false;
         if (auto* window = domWindow())
             window->visualViewport().dispatchEvent(Event::create(eventNames().resizeEvent, Event::CanBubble::No, Event::IsCancelable::No));
+    }
+}
+
+void Document::addPendingScrollEventTarget(ContainerNode& target)
+{
+    if (m_pendingScrollEventTargets.contains(&target))
+        return;
+
+    if (m_pendingScrollEventTargets.isEmpty())
+        scheduleTimedRenderingUpdate();
+
+    m_pendingScrollEventTargets.append(makeWeakPtr(target));
+}
+
+void Document::setNeedsVisualViewportScrollEvent()
+{
+    if (!m_needsVisualViewportScrollEvent)
+        scheduleTimedRenderingUpdate();
+    m_needsVisualViewportScrollEvent = true;
+}
+
+// https://drafts.csswg.org/cssom-view/#run-the-scroll-steps
+void Document::runScrollSteps()
+{
+    // FIXME: The order of dispatching is not specified: https://github.com/WICG/visual-viewport/issues/66.
+    if (!m_pendingScrollEventTargets.isEmpty()) {
+        LOG_WITH_STREAM(Events, stream << "Document" << this << "sending scroll events to pending scroll event targets");
+        auto currentTargets = WTFMove(m_pendingScrollEventTargets);
+        for (auto target : currentTargets) {
+            auto protectedTarget = makeRefPtr(target.get());
+            ASSERT(protectedTarget);
+            if (!protectedTarget)
+                continue;
+            auto bubbles = protectedTarget->isDocumentNode() ? Event::CanBubble::Yes : Event::CanBubble::No;
+            protectedTarget->dispatchEvent(Event::create(eventNames().scrollEvent, bubbles, Event::IsCancelable::No));
+        }
+    }
+    if (m_needsVisualViewportScrollEvent) {
+        LOG_WITH_STREAM(Events, stream << "Document" << this << "sending scroll events to visualViewport");
+        m_needsVisualViewportResizeEvent = false;
+        if (auto* window = domWindow())
+            window->visualViewport().dispatchEvent(Event::create(eventNames().scrollEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 }
 
@@ -5161,10 +5203,19 @@ void Document::setBackForwardCacheState(BackForwardCacheState state)
         m_styleRecalcTimer.stop();
 
         clearSharedObjectPool();
+
+#if ENABLE(INDEXED_DATABASE)
+        if (m_idbConnectionProxy)
+            m_idbConnectionProxy->setContextSuspended(*scriptExecutionContext(), true);
+#endif
         break;
     case NotInBackForwardCache:
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
+#if ENABLE(INDEXED_DATABASE)
+        if (m_idbConnectionProxy)
+            m_idbConnectionProxy->setContextSuspended(*scriptExecutionContext(), false);
+#endif
         break;
     case AboutToEnterBackForwardCache:
         break;
@@ -6173,14 +6224,9 @@ void Document::pendingTasksTimerFired()
 AbstractEventLoop& Document::eventLoop()
 {
     ASSERT(isMainThread());
-    if (!m_eventLoop) {
-        if (m_contextDocument)
-            m_eventLoop = m_contextDocument->m_eventLoop;
-        else // FIXME: Documents of similar origin should share the same event loop.
-            m_eventLoop = WindowEventLoop::create();
-    }
+    if (UNLIKELY(!m_eventLoop))
+        m_eventLoop = WindowEventLoop::ensureForRegistrableDomain(RegistrableDomain { securityOrigin().data() });
     return *m_eventLoop;
-
 }
 
 void Document::suspendScheduledTasks(ReasonForSuspension reason)

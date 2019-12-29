@@ -89,10 +89,12 @@
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ProcessIdentifier.h>
 #include <WebCore/ProcessWarming.h>
+#include <WebCore/RegistrableDomain.h>
 #include <WebCore/RegistrationDatabase.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
 #include <pal/SessionID.h>
+#include <wtf/CallbackAggregator.h>
 #include <wtf/Language.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
@@ -234,10 +236,8 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_hiddenPageThrottlingAutoIncreasesCounter([this](RefCounterEvent) { m_hiddenPageThrottlingTimer.startOneShot(0_s); })
     , m_hiddenPageThrottlingTimer(RunLoop::main(), this, &WebProcessPool::updateHiddenPageThrottlingAutoIncreaseLimit)
     , m_serviceWorkerProcessesTerminationTimer(RunLoop::main(), this, &WebProcessPool::terminateServiceWorkerProcesses)
-#if PLATFORM(IOS_FAMILY)
     , m_foregroundWebProcessCounter([this](RefCounterEvent) { updateProcessAssertions(); })
     , m_backgroundWebProcessCounter([this](RefCounterEvent) { updateProcessAssertions(); })
-#endif
     , m_backForwardCache(makeUniqueRef<WebBackForwardCache>(*this))
     , m_webProcessCache(makeUniqueRef<WebProcessCache>(*this))
 {
@@ -520,10 +520,10 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     if (!parameters.hstsStorageDirectory.isNull())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.hstsStorageDirectory, parameters.hstsStorageDirectoryExtensionHandle);
 
-    parameters.urlSchemesRegisteredAsSecure = copyToVector(m_schemesToRegisterAsSecure);
-    parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy = copyToVector(m_schemesToRegisterAsBypassingContentSecurityPolicy);
-    parameters.urlSchemesRegisteredAsLocal = copyToVector(m_schemesToRegisterAsLocal);
-    parameters.urlSchemesRegisteredAsNoAccess = copyToVector(m_schemesToRegisterAsNoAccess);
+    parameters.urlSchemesRegisteredAsSecure = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsSecure());
+    parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsBypassingContentSecurityPolicy());
+    parameters.urlSchemesRegisteredAsLocal = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsLocal());
+    parameters.urlSchemesRegisteredAsNoAccess = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsNoAccess());
 
 #if ENABLE(INDEXED_DATABASE)
     // *********
@@ -632,10 +632,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     networkProcess->send(Messages::NetworkProcess::SetQOS(networkProcessLatencyQOS(), networkProcessThroughputQOS()), 0);
 #endif
 
-    if (m_didNetworkProcessCrash) {
-        m_didNetworkProcessCrash = false;
-        reinstateNetworkProcessAssertionState(*networkProcess);
-    }
+    networkProcess->updateProcessAssertion();
 
     if (withWebsiteDataStore) {
         networkProcess->addSession(makeRef(*withWebsiteDataStore));
@@ -656,7 +653,6 @@ void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessPr
 {
     ASSERT(m_networkProcess);
     ASSERT(&networkProcessProxy == m_networkProcess.get());
-    m_didNetworkProcessCrash = true;
 
     for (auto& supplement : m_supplements.values())
         supplement->processDidClose(&networkProcessProxy);
@@ -736,7 +732,6 @@ void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkPro
 
         RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ServiceWorker, "WebProcessPool::establishWorkerContextConnectionToNetworkProcess creating a new service worker process %p, process identifier %d", serviceWorkerProcessProxy, serviceWorkerProcessProxy->processIdentifier());
 
-        updateProcessAssertions();
         initializeNewWebProcess(newProcessProxy, websiteDataStore);
         m_processes.append(WTFMove(newProcessProxy));
     }
@@ -945,11 +940,11 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     parameters.languages = configuration().overrideLanguages().isEmpty() ? userPreferredLanguages() : configuration().overrideLanguages();
 
     parameters.urlSchemesRegisteredAsEmptyDocument = copyToVector(m_schemesToRegisterAsEmptyDocument);
-    parameters.urlSchemesRegisteredAsSecure = copyToVector(m_schemesToRegisterAsSecure);
-    parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy = copyToVector(m_schemesToRegisterAsBypassingContentSecurityPolicy);
+    parameters.urlSchemesRegisteredAsSecure = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsSecure());
+    parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsBypassingContentSecurityPolicy());
     parameters.urlSchemesForWhichDomainRelaxationIsForbidden = copyToVector(m_schemesToSetDomainRelaxationForbiddenFor);
-    parameters.urlSchemesRegisteredAsLocal = copyToVector(m_schemesToRegisterAsLocal);
-    parameters.urlSchemesRegisteredAsNoAccess = copyToVector(m_schemesToRegisterAsNoAccess);
+    parameters.urlSchemesRegisteredAsLocal = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsLocal());
+    parameters.urlSchemesRegisteredAsNoAccess = copyToVector(LegacyGlobalSettings::singleton().schemesToRegisterAsNoAccess());
     parameters.urlSchemesRegisteredAsDisplayIsolated = copyToVector(m_schemesToRegisterAsDisplayIsolated);
     parameters.urlSchemesRegisteredAsCORSEnabled = copyToVector(m_schemesToRegisterAsCORSEnabled);
     parameters.urlSchemesRegisteredAsAlwaysRevalidated = copyToVector(m_schemesToRegisterAsAlwaysRevalidated);
@@ -1130,7 +1125,6 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
         auto iterator = m_serviceWorkerProcesses.find(RegistrableDomainWithSessionID { process->registrableDomain(), process->websiteDataStore().sessionID() });
         if (iterator != m_serviceWorkerProcesses.end() && iterator->value == process)
             m_serviceWorkerProcesses.remove(iterator);
-        updateProcessAssertions();
     }
 #endif
 
@@ -1477,14 +1471,14 @@ void WebProcessPool::registerURLSchemeAsEmptyDocument(const String& urlScheme)
 
 void WebProcessPool::registerURLSchemeAsSecure(const String& urlScheme)
 {
-    m_schemesToRegisterAsSecure.add(urlScheme);
+    LegacyGlobalSettings::singleton().registerURLSchemeAsSecure(urlScheme);
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsSecure(urlScheme));
     sendToNetworkingProcess(Messages::NetworkProcess::RegisterURLSchemeAsSecure(urlScheme));
 }
 
 void WebProcessPool::registerURLSchemeAsBypassingContentSecurityPolicy(const String& urlScheme)
 {
-    m_schemesToRegisterAsBypassingContentSecurityPolicy.add(urlScheme);
+    LegacyGlobalSettings::singleton().registerURLSchemeAsBypassingContentSecurityPolicy(urlScheme);
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsBypassingContentSecurityPolicy(urlScheme));
     sendToNetworkingProcess(Messages::NetworkProcess::RegisterURLSchemeAsBypassingContentSecurityPolicy(urlScheme));
 }
@@ -1497,14 +1491,14 @@ void WebProcessPool::setDomainRelaxationForbiddenForURLScheme(const String& urlS
 
 void WebProcessPool::registerURLSchemeAsLocal(const String& urlScheme)
 {
-    m_schemesToRegisterAsLocal.add(urlScheme);
+    LegacyGlobalSettings::singleton().registerURLSchemeAsLocal(urlScheme);
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsLocal(urlScheme));
     sendToNetworkingProcess(Messages::NetworkProcess::RegisterURLSchemeAsLocal(urlScheme));
 }
 
 void WebProcessPool::registerURLSchemeAsNoAccess(const String& urlScheme)
 {
-    m_schemesToRegisterAsNoAccess.add(urlScheme);
+    LegacyGlobalSettings::singleton().registerURLSchemeAsNoAccess(urlScheme);
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsNoAccess(urlScheme));
     sendToNetworkingProcess(Messages::NetworkProcess::RegisterURLSchemeAsNoAccess(urlScheme));
 }
@@ -1578,6 +1572,14 @@ void WebProcessPool::setCacheModel(CacheModel cacheModel)
 
     if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::SetCacheModel(cacheModel, { }), 0);
+}
+
+void WebProcessPool::setCacheModelSynchronouslyForTesting(CacheModel cacheModel)
+{
+    updateBackForwardCacheCapacity();
+
+    if (m_networkProcess)
+        m_networkProcess->sendSync(Messages::NetworkProcess::SetCacheModelSynchronouslyForTesting(cacheModel), { }, { });
 }
 
 void WebProcessPool::setDefaultRequestTimeoutInterval(double timeoutInterval)
@@ -1709,7 +1711,6 @@ void WebProcessPool::terminateNetworkProcess()
     
     m_networkProcess->terminate();
     m_networkProcess = nullptr;
-    m_didNetworkProcessCrash = true;
 }
 
 void WebProcessPool::sendNetworkProcessWillSuspendImminentlyForTesting()
@@ -2045,72 +2046,11 @@ void WebProcessPool::reportWebContentCPUTime(Seconds cpuTime, uint64_t activityS
 
 void WebProcessPool::updateProcessAssertions()
 {
-#if PLATFORM(IOS_FAMILY)
 #if ENABLE(SERVICE_WORKER)
-    auto updateServiceWorkerProcessAssertion = [&] {
-        if (!m_serviceWorkerProcesses.isEmpty() && m_foregroundWebProcessCounter.value()) {
-            // FIXME: We can do better than this once we have process per origin.
-            for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values()) {
-                auto registrableDomain = serviceWorkerProcess->registrableDomain();
-                if (!m_foregroundActivitiesForServiceWorkerProcesses.contains(registrableDomain))
-                    m_foregroundActivitiesForServiceWorkerProcesses.add(WTFMove(registrableDomain), serviceWorkerProcess->throttler().foregroundActivity("Service Worker for visible view(s)"_s));
-            }
-            m_backgroundActivitiesForServiceWorkerProcesses.clear();
-            return;
-        }
-        if (!m_serviceWorkerProcesses.isEmpty() && m_backgroundWebProcessCounter.value()) {
-            // FIXME: We can do better than this once we have process per origin.
-            for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values()) {
-                auto registrableDomain = serviceWorkerProcess->registrableDomain();
-                if (!m_backgroundActivitiesForServiceWorkerProcesses.contains(registrableDomain))
-                    m_backgroundActivitiesForServiceWorkerProcesses.add(WTFMove(registrableDomain), serviceWorkerProcess->throttler().backgroundActivity("Service Worker for background view(s)"_s));
-            }
-            m_foregroundActivitiesForServiceWorkerProcesses.clear();
-            return;
-        }
-        m_foregroundActivitiesForServiceWorkerProcesses.clear();
-        m_backgroundActivitiesForServiceWorkerProcesses.clear();
-    };
-    updateServiceWorkerProcessAssertion();
+    for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values())
+        serviceWorkerProcess->updateServiceWorkerProcessAssertion();
 #endif
-
-    auto updateNetworkProcessAssertion = [&] {
-        auto& networkProcess = ensureNetworkProcess();
-
-        if (m_foregroundWebProcessCounter.value()) {
-            if (!m_foregroundActivityForNetworkProcess) {
-                m_foregroundActivityForNetworkProcess = networkProcess.throttler().foregroundActivity("Networking for foreground view(s)"_s);
-                networkProcess.sendProcessDidTransitionToForeground();
-            }
-            m_backgroundActivityForNetworkProcess = nullptr;
-            return;
-        }
-        if (m_backgroundWebProcessCounter.value()) {
-            if (!m_backgroundActivityForNetworkProcess) {
-                m_backgroundActivityForNetworkProcess = networkProcess.throttler().backgroundActivity("Networking for foreground background view(s)"_s);
-                networkProcess.sendProcessDidTransitionToBackground();
-            }
-            m_foregroundActivityForNetworkProcess = nullptr;
-            return;
-        }
-        m_foregroundActivityForNetworkProcess = nullptr;
-        m_backgroundActivityForNetworkProcess = nullptr;
-    };
-    updateNetworkProcessAssertion();
-#endif
-}
-
-void WebProcessPool::reinstateNetworkProcessAssertionState(NetworkProcessProxy& newNetworkProcessProxy)
-{
-#if PLATFORM(IOS_FAMILY)
-    // The network process crashed; take new activities for the new network process.
-    if (m_backgroundActivityForNetworkProcess)
-        m_backgroundActivityForNetworkProcess = newNetworkProcessProxy.throttler().backgroundActivity("Networking for background view(s)"_s);
-    else if (m_foregroundActivityForNetworkProcess)
-        m_foregroundActivityForNetworkProcess = newNetworkProcessProxy.throttler().foregroundActivity("Networking for foreground view(s)"_s);
-#else
-    UNUSED_PARAM(newNetworkProcessProxy);
-#endif
+    ensureNetworkProcess().updateProcessAssertion();
 }
 
 bool WebProcessPool::isServiceWorkerPageID(WebPageProxyIdentifier pageID) const
@@ -2345,6 +2285,14 @@ void WebProcessPool::didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessi
         return;
 
     m_networkProcess->didCommitCrossSiteLoadWithDataTransfer(sessionID, fromDomain, toDomain, navigationDataTransfer, webPageProxyID, webPageID);
+}
+
+void WebProcessPool::seedResourceLoadStatisticsForTesting(const RegistrableDomain& firstPartyDomain, const RegistrableDomain& thirdPartyDomain, bool shouldScheduleNotification, CompletionHandler<void()>&& completionHandler)
+{
+    auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
+
+    for (auto& process : processes())
+        process->sendWithAsyncReply(Messages::WebProcess::SeedResourceLoadStatisticsForTesting(firstPartyDomain, thirdPartyDomain, shouldScheduleNotification), [callbackAggregator = callbackAggregator.copyRef()] { });
 }
 #endif
 

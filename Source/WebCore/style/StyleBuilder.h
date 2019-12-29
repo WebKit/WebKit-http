@@ -35,7 +35,7 @@ namespace Style {
 class Builder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Builder(StyleResolver&, const MatchResult&, OptionSet<CascadeLevel>, PropertyCascade::IncludedProperties = PropertyCascade::IncludedProperties::All);
+    Builder(RenderStyle&, BuilderContext&&, const MatchResult&, OptionSet<CascadeLevel>, PropertyCascade::IncludedProperties = PropertyCascade::IncludedProperties::All);
     ~Builder();
 
     void applyAllProperties();
@@ -45,7 +45,7 @@ public:
     void applyProperty(CSSPropertyID propertyID) { applyProperties(propertyID, propertyID); }
     void applyCustomProperty(const String& name);
 
-    void applyPropertyValue(CSSPropertyID, CSSValue&);
+    void applyPropertyValue(CSSPropertyID, CSSValue*);
 
     BuilderState& state() { return m_state; }
 

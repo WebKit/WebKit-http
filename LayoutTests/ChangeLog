@@ -1,3 +1,1163 @@
+2019-11-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: fast/events/scroll-subframe-in-rendering-update.html always fails
+        https://bugs.webkit.org/show_bug.cgi?id=204045
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a failing test expectation for now while we investigate how to fix the test.
+
+        * platform/ios/TestExpectations:
+
+2019-11-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: fast/events/scroll-subframe-in-rendering-update.html always fails
+        https://bugs.webkit.org/show_bug.cgi?id=204045
+
+        Reviewed by Alexey Proskuryakov.
+
+        Disable the frame flattening to make the test work on iOS.
+
+        * fast/events/scroll-subframe-in-rendering-update.html:
+
+2019-11-08  Yury Semikhatsky  <yurys@chromium.org>
+
+        New test inspector-protocol/page/archive.html added in r154828 fails on EFL, Qt, GTK
+        https://bugs.webkit.org/show_bug.cgi?id=120682
+
+        Reviewed by Devin Rousso.
+
+        Generate custom expectations for inspector-protocol/page/archive.html on the platforms
+        where Page.archive is not supported yet.
+
+        * inspector/page/archive.html: 'Not supported' is a valid response on some platforms.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/inspector/page/archive-expected.txt: Added.
+
+2019-11-08  Peng Liu  <peng.liu6@apple.com>
+
+        Entering/Exiting Picture-in-Picture mode through webkitSetPresentationMode() does not fire events (enterpictureinpicture and leavepictureinpicture) defined in the spec
+        https://bugs.webkit.org/show_bug.cgi?id=203989
+
+        Reviewed by Eric Carlson.
+
+        Move all layout tests for Picture-in-Picture to folder media/picture-in-picture.
+        Add a layout test to verify the events defined in the spec are fired when we call the webkit prefixed API.
+        Update TestExpectations files since webkit.org/b/203614 has been fixed.
+
+        * TestExpectations:
+        * media/picture-in-picture/picture-in-picture-api-element-attributes-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-element-attributes-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-element-attributes.html: Renamed from LayoutTests/media/picture-in-picture-api-element-attributes.html.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-1-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-1-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-1.html: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-1.html.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-2-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-2-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-2.html: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-2.html.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-3-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-3-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-3.html: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-3.html.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-4-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-4-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-enter-pip-4.html: Renamed from LayoutTests/media/picture-in-picture-api-enter-pip-4.html.
+        * media/picture-in-picture/picture-in-picture-api-events-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-pip-events-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-events.html: Renamed from LayoutTests/media/picture-in-picture-api-pip-events.html.
+        * media/picture-in-picture/picture-in-picture-api-exit-pip-1-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-exit-pip-1-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-exit-pip-1.html: Renamed from LayoutTests/media/picture-in-picture-api-exit-pip-1.html.
+        * media/picture-in-picture/picture-in-picture-api-exit-pip-2-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-exit-pip-2-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-exit-pip-2.html: Renamed from LayoutTests/media/picture-in-picture-api-exit-pip-2.html.
+        * media/picture-in-picture/picture-in-picture-api-pip-window-expected.txt: Renamed from LayoutTests/media/picture-in-picture-api-pip-window-expected.txt.
+        * media/picture-in-picture/picture-in-picture-api-pip-window.html: Renamed from LayoutTests/media/picture-in-picture-api-pip-window.html.
+        * media/picture-in-picture/picture-in-picture-events-expected.txt: Added.
+        * media/picture-in-picture/picture-in-picture-events.html: Added.
+        * media/picture-in-picture/picture-in-picture-interruption-expected.txt: Renamed from LayoutTests/media/picture-in-picture-interruption-expected.txt.
+        * media/picture-in-picture/picture-in-picture-interruption.html: Renamed from LayoutTests/media/picture-in-picture-interruption.html.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ipad/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-11-08  Chris Dumez  <cdumez@apple.com>
+
+        Make DeferredPromise behave nicely with regards to the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203976
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test where ordering has changed slightly due to not queueing a task anymore before
+        resolving the promise. This restores pre-r251746 behavior.
+
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt:
+
+2019-11-08  Truitt Savell  <tsavell@apple.com>
+
+        Update expectations for 3 fast/events/ios/key-events-comprehensive tests
+        https://bugs.webkit.org/show_bug.cgi?id=204020
+
+        Unreviewed test gardening
+
+        * fast/events/ios/key-events-comprehensive/key-events-meta-control-expected.txt:
+        * fast/events/ios/key-events-comprehensive/key-events-meta-option-expected.txt:
+        * fast/events/ios/key-events-comprehensive/key-events-meta-shift-expected.txt:
+
+2019-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        'Strikethrough' editing command reported as 'formatUnderline'
+        https://bugs.webkit.org/show_bug.cgi?id=203944
+
+        Reviewed by Adrian Perez de Castro.
+
+        * fast/events/input-events-strikethrough-type-expected.txt: Added.
+        * fast/events/input-events-strikethrough-type.html: Added.
+
+2019-11-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Default NamepaceURI must be gotten from the topmost parent before the SVG <foreignObject>
+        https://bugs.webkit.org/show_bug.cgi?id=203868
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/foreignObject/foreign-object-dynamic-parsing-expected.svg: Added.
+        * svg/foreignObject/foreign-object-dynamic-parsing.svg: Added.
+
+2019-11-07  Chris Dumez  <cdumez@apple.com>
+
+        TestController may reuse a view that used window.open(), which prevents process-swapping and causes flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=203981
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop temporary flakiness workaround that was landed in r252214.
+
+        * http/tests/inspector/target/target-events-for-provisional-page.html:
+
+2019-11-07  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] Fixing WebGL tests: Add new baselines for iOS bots
+        https://bugs.webkit.org/show_bug.cgi?id=203938
+
+        Unreviewed test expectation gardening.
+
+        Follow-up to https://bugs.webkit.org/show_bug.cgi?id=203908.
+        New baselines for iOS tests generated from simulator.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ios/webgl/1.0.3/conformance/extensions/get-extension-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/extensions/oes-texture-float-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/extensions/webgl-compressed-texture-size-limit-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/extensions/webgl-draw-buffers-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/more/functions/readPixelsBadArgs-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/more/functions/texImage2DHTML-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/more/functions/texSubImage2DHTML-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/renderbuffers/framebuffer-object-attachment-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/textures/copy-tex-image-2d-formats-expected.txt: Added.
+        * platform/ios/webgl/1.0.3/conformance/textures/texture-npot-video-expected.txt: Added.
+        * platform/ios/webgl/2.0.0/conformance/extensions/angle-instanced-arrays-expected.txt: Added.
+        * platform/ios/webgl/2.0.0/conformance/extensions/oes-vertex-array-object-expected.txt: Added.
+
+2019-11-07  Justin Fan  <justin_fan@apple.com>
+
+        webgl/1.0.3/conformance/context/context-release-upon-reload.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203984
+
+        Unreviewed test expectation addition.
+
+        Skip context-release-upon-reload.html on High Sierra WK1 debug bots.
+
+        * platform/mac-highsierra-wk1/TestExpectations: Added.
+
+2019-11-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WindowEventLoop should be shared among similar origin documents
+        https://bugs.webkit.org/show_bug.cgi?id=203882
+
+        Reviewed by Wenson Hsieh.
+
+        Added some tests to make sure the event loop is shared among similar origin documents.
+
+        * http/tests/eventloop: Added.
+        * http/tests/eventloop/queue-task-across-cross-site-frames-expected.txt: Added.
+        * http/tests/eventloop/queue-task-across-cross-site-frames.html: Added.
+        * http/tests/eventloop/queue-task-across-frames-expected.txt: Added.
+        * http/tests/eventloop/queue-task-across-frames.html: Added.
+        * http/tests/eventloop/resources: Added.
+        * http/tests/eventloop/resources/eventloop-helper.html: Added.
+
+2019-11-07  youenn fablet  <youenn@apple.com>
+
+        Layout Test http/tests/appcache/remove-cache.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=199124
+        <rdar://problem/52008712>
+
+        Reviewed by Chris Dumez.
+
+        The flakiness probably comes from the use of a setTimeout that might kick in while in most runs, it never kicks in.
+        When the timer kicks in, the test is reloaded, which triggers a new console log line.
+        The current console lines do not bring more values than what the test checks with appcache events.
+        Removing console log lines from the expected file will fix the flakiness.
+
+        * TestExpectations:
+        * http/tests/appcache/remove-cache-expected.txt:
+        * platform/mac/TestExpectations:
+
+2019-11-07  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: http/tests/inspector/target/target-events-for-provisional-page.html is flaky when running with other tests
+        https://bugs.webkit.org/show_bug.cgi?id=203965
+        <rdar://problem/56988642>
+
+        Reviewed by Devin Rousso.
+
+        Enforce enableProcessSwapOnWindowOpen=true for the test so that it PSON is enabled regardless of other tests
+        that may run before (the test may reuse Page instance from the previous test on which
+        Page::openedByDOMWithOpener==true).
+
+        * http/tests/inspector/target/target-events-for-provisional-page.html:
+
+2019-11-07  Kate Cheney  <katherine_cheney@apple.com>
+
+       Many resourceLoadStatistics tests and storageAccess tests using the ITP
+       Database redirect to the corresponding memory store test after setting
+       a cookie
+       https://bugs.webkit.org/show_bug.cgi?id=203958
+       <rdar://problem/56984114>
+
+        Reviewed by John Wilander.
+
+        This patch fixes incorrect redirects in some ITP database store tests.
+        They should redirect back to themselves as opposed to corresponding
+        memory store tests to be sure they are testing the correct
+        functionality.
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-database.html:
+        * http/tests/resourceLoadStatistics/blocking-in-web-worker-script-import-database.html:
+        * http/tests/resourceLoadStatistics/cookie-deletion-database.html:
+        * http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction-database.html:
+        * http/tests/resourceLoadStatistics/do-not-capture-statistics-for-simple-top-navigations-database.html:
+        * http/tests/resourceLoadStatistics/downgraded-referrer-for-navigation-with-link-query-from-prevalent-resource-database.html:
+        * http/tests/resourceLoadStatistics/grandfathering-database.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-database.html:
+        * http/tests/resourceLoadStatistics/ping-to-prevalent-resource-database.html:
+        * http/tests/storageAccess/deny-due-to-no-interaction-under-general-third-party-cookie-blocking-database.html:
+        * http/tests/storageAccess/grant-with-prompt-under-general-third-party-cookie-blocking-database.html:
+        * http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-database.html:
+        * http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral-database.html:
+        * http/tests/storageAccess/has-storage-access-under-general-third-party-cookie-blocking-with-cookie-database.html:
+        * http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access-database.html:
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access-database.html:
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access-database.html:
+
+2019-11-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Integrate scroll event into HTML5 event loop
+        https://bugs.webkit.org/show_bug.cgi?id=203839
+        <rdar://problem/56890922>
+
+        Reviewed by Simon Fraser.
+
+        Added tests to test the timing at which scroll events are fired across multiple elements and documents,
+        and with visualViewport, and updated the existing tests to work with the new timing.
+
+        * editing/selection/overflow-scroll-while-selecting-text.html:
+        * fast/events/scroll-multiple-elements-in-rendering-update-expected.txt: Added.
+        * fast/events/scroll-multiple-elements-in-rendering-update.html: Added.
+        * fast/events/scroll-subframe-in-rendering-update-expected.txt: Added.
+        * fast/events/scroll-subframe-in-rendering-update.html: Added.
+        * fast/scrolling/programmatic-scroll-to-negative-offset.html:
+        * fast/shadow-dom/trusted-event-scoped-flags.html:
+        * fast/visual-viewport/visual-viewport-scroll-after-resize-in-subframe-expected.txt: Added.
+        * fast/visual-viewport/visual-viewport-scroll-after-resize-in-subframe.html: Added.
+        * tiled-drawing/scrolling/fast-scroll-div-latched-mainframe.html:
+
+2019-11-07  Justin Fan  <justin_fan@apple.com>
+
+        REGRESSION: r252121 introduced timeout in webgl/1.0.3/conformance/glsl/misc/shader-with-non-reserved-words.html
+        https://bugs.webkit.org/show_bug.cgi?id=203949
+
+        Unreviewed test expectation gardening.
+
+        shader-with-non-reserved-words takes dozens of minutes to pass. Skip everywhere.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-11-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r250087): inspector/model/remote-object.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=202934
+        <rdar://problem/56270900>
+
+        Reviewed by Timothy Hatcher.
+
+        Split inspector/model/remote-object.html into separate tests for each type of object being
+        tested, as well as specialized tests for extremely large values. This allows us to better
+        know which specific expression can cause a timeout.
+
+        * inspector/model/remote-object.html: Removed.
+        * inspector/model/remote-object-expected.txt: Removed.
+        * platform/mac-wk1/inspector/model/remote-object-expected.txt: Removed.
+
+        * inspector/model/remote-object/array.html: Added.
+        * inspector/model/remote-object/array-expected.txt: Added.
+        * inspector/model/remote-object/array-large.html: Added.
+        * inspector/model/remote-object/array-large-expected.txt: Added.
+        * inspector/model/remote-object/boolean.html: Added.
+        * inspector/model/remote-object/boolean-expected.txt: Added.
+        * inspector/model/remote-object/class.html: Added.
+        * inspector/model/remote-object/class-expected.txt: Added.
+        * inspector/model/remote-object/date.html: Added.
+        * inspector/model/remote-object/date-expected.txt: Added.
+        * inspector/model/remote-object/error.html: Added.
+        * inspector/model/remote-object/error-expected.txt: Added.
+        * inspector/model/remote-object/function.html: Added.
+        * inspector/model/remote-object/function-expected.txt: Added.
+        * inspector/model/remote-object/immutable.html: Added.
+        * inspector/model/remote-object/immutable-expected.txt: Added.
+        * inspector/model/remote-object/iterator.html: Added.
+        * inspector/model/remote-object/iterator-expected.txt:  Added.
+        * inspector/model/remote-object/iterator-large.html: Added.
+        * inspector/model/remote-object/iterator-large-expected.txt: Added.
+        * inspector/model/remote-object/map.html: Added.
+        * inspector/model/remote-object/map-expected.txt: Added.
+        * inspector/model/remote-object/map-large.html: Added.
+        * inspector/model/remote-object/map-large-expected.txt: Added.
+        * inspector/model/remote-object/null.html: Added.
+        * inspector/model/remote-object/null-expected.txt: Added.
+        * inspector/model/remote-object/number.html: Added.
+        * inspector/model/remote-object/number-expected.txt: Added.
+        * platform/mac-wk1/inspector/number-expected.txt: Added.
+        * inspector/model/remote-object/object.html: Added.
+        * inspector/model/remote-object/object-expected.txt: Added.
+        * inspector/model/remote-object/object-large.html: Added.
+        * inspector/model/remote-object/object-large-expected.txt: Added.
+        * inspector/model/remote-object/promise.html: Added.
+        * inspector/model/remote-object/promise-expected.txt: Added.
+        * inspector/model/remote-object/regexp.html: Added.
+        * inspector/model/remote-object/regexp-expected.txt: Added.
+        * inspector/model/remote-object/set.html: Added.
+        * inspector/model/remote-object/set-expected.txt: Added.
+        * inspector/model/remote-object/set-large.html: Added.
+        * inspector/model/remote-object/set-large-expected.txt: Added.
+        * inspector/model/remote-object/string.html: Added.
+        * inspector/model/remote-object/string-expected.txt: Added.
+        * inspector/model/remote-object/string-large.html: Added.
+        * inspector/model/remote-object/string-large-expected.txt: Added.
+        * inspector/model/remote-object/undefined.html: Added.
+        * inspector/model/remote-object/undefined-expected.txt: Added.
+
+        * inspector/model/remote-object/dom.html: Renamed from LayoutTests/inspector/model/remote-object-dom.html.
+        * inspector/model/remote-object/dom-expected.txt: Renamed from LayoutTests/inspector/model/remote-object-dom-expected.txt.
+        * inspector/model/remote-object/iterators-mutated.html: Renamed from LayoutTests/inspector/model/remote-object-mutated-iterators.html.
+        * inspector/model/remote-object/iterators-mutated-expected.txt: Renamed from LayoutTests/inspector/model/remote-object-mutated-iterators-expected.txt.
+
+        * inspector/model/remote-object/resources/remote-object-utilities.js: Renamed from LayoutTests/inspector/model/resources/remote-object-utilities.js.
+
+        * inspector/runtime/getDisplayableProperties.html:
+        * inspector/runtime/getDisplayableProperties-expected.txt:
+        * inspector/runtime/getProperties.html:
+        * inspector/runtime/getProperties-expected.txt:
+        Drive-by: fix assertion for when the `__proto__` is included if `fetchStart` is 0.
+
+        * TestExpectations:
+
+2019-11-07  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        didPassSomeTestsSilenty and didFaileSomeTests are misspelled in standalone-pre.js
+        https://bugs.webkit.org/show_bug.cgi?id=203948
+
+        Reviewed by Yusuke Suzuki.
+
+        * resources/standalone-pre.js:
+
+2019-11-07  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable NSURLSession isolation after r252116
+        https://bugs.webkit.org/show_bug.cgi?id=203934
+        <rdar://problem/56921584>
+
+        Reviewed by Chris Dumez.
+
+        * platform/wk2/TestExpectations:
+        Re-enable skipped tests.
+
+2019-11-06  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION: [ iOS ] ( r251015 ) Layout Test fast/text/whitespace/pre-wrap-overflow-selection.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=203366
+        <rdar://problem/56580680>
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios/TestExpectations:
+
+2019-11-07  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r252161): 3 transitions/ tests time-out
+        https://bugs.webkit.org/show_bug.cgi?id=203966
+
+        Reviewed by Dean Jackson.
+
+        Fix the shadow parsing code to deal with non-integral values.
+
+        * legacy-animation-engine/transitions/resources/transition-test-helpers.js:
+        (isShadow):
+        * transitions/resources/transition-test-helpers.js:
+        (isShadow):
+
+2019-11-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Display color picker for p3 colors
+        https://bugs.webkit.org/show_bug.cgi?id=203436
+        <rdar://problem/56635062>
+
+        Reviewed by Brian Burg.
+
+        Add tests for WI.Color.rgb2hsv and WI.Color.hsv2rgb.
+
+        * inspector/model/color-expected.txt:
+        * inspector/model/color.html:
+
+2019-11-06  Justin Fan  <justin_fan@apple.com>
+
+        REGRESSION: r252121 introduced new webgl/ failures
+        https://bugs.webkit.org/show_bug.cgi?id=203908
+
+        Unreviewed test gardening to quell the bots.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+
+2019-11-06  Jer Noble  <jer.noble@apple.com>
+
+        Screen locks while watching previously-muted-then-unmuted video
+        https://bugs.webkit.org/show_bug.cgi?id=203906
+        <rdar://problem/55821375>
+
+        Reviewed by Eric Carlson.
+
+        * media/video-unmuted-after-play-holds-sleep-assertion-expected.txt: Added.
+        * media/video-unmuted-after-play-holds-sleep-assertion.html: Added.
+
+2019-11-06  Daniel Bates  <dabates@apple.com>
+
+        Update SameSite tests for new semantics for empty and invalid SameSite attribute
+        https://bugs.webkit.org/show_bug.cgi?id=203755
+        <rdar://problem/50816282>
+
+        Reviewed by Brent Fulgham.
+
+        Update the tests and test expectations following CFNetwork change <rdar://problem/42290578> as we
+        now only recognize SameSite=Strict and SameSite=Lax. That is, we no longer treat SameSite= or
+        SameSite=<some garbage value> as SameSite=Strict.
+
+        MacOS Mojave does not have the fix for <rdar://problem/42290578> and so we land expected failure results.
+
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt:
+        * http/tests/cookies/same-site/popup-cross-site-post.html:
+        * http/tests/cookies/same-site/popup-cross-site.html:
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html:
+        * http/tests/cookies/same-site/resources/fetch-after-navigating-iframe-in-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-cross-origin-redirect.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-from-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-service-worker.html:
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-cross-site-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-cross-site-post-expected.txt:
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt:
+        * platform/mac/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+
+2019-11-06  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r252138.
+
+        Caused 8 http/tests/cookies/same-site/ to fail
+
+        Reverted changeset:
+
+        "Update SameSite tests for new semantics for empty and invalid
+        SameSite attribute"
+        https://bugs.webkit.org/show_bug.cgi?id=203755
+        https://trac.webkit.org/changeset/252138
+
+2019-11-06  Peng Liu  <peng.liu6@apple.com>
+
+        Layout tests in media/modern-media-controls/pip-placard are designed for MacOS only
+        https://bugs.webkit.org/show_bug.cgi?id=203859
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/TestExpectations:
+
+2019-11-05  Timothy Hatcher  <timothy@apple.com>
+
+        [ Mac Debug WK1 ] REGRESSION (r251262?): fast/scrolling/latching/scroll-select-bottom-test.html is a Flaky Failure
+        https://bugs.webkit.org/show_bug.cgi?id=203176
+        rdar://problem/56425901
+
+        Unreviewed test gardening.
+
+        This hasn't been flaky since r251565 when a related r251261 regression/bug was fixed.
+        I was also able to run it locally against r252065 a total of 1,100 times with no failures.
+
+        * platform/mac-wk1/TestExpectations: Removed scroll-select-bottom-test.html.
+
+2019-11-06  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION [ PHP ][ iOS ]: Two http/tests/cookies/same-site/set-first-party-* Tests are Failing
+        https://bugs.webkit.org/show_bug.cgi?id=203567
+        <rdar://problem/56708500>
+
+        Reviewed by Youenn Fablet.
+
+        A callable must be passed by string in PHP. Any other way seems to be non-standard and your
+        mileage may vary.
+
+        * http/tests/cookies/resources/cookie-utilities.php:
+        * http/tests/cookies/resources/cookie-utility.php:
+        * platform/ios-wk2/TestExpectations:
+
+2019-11-06  Daniel Bates  <dabates@apple.com>
+
+        http/tests/security/isolatedWorld/bypass-main-world-csp-worker.html is a Flakey Failure
+        https://bugs.webkit.org/show_bug.cgi?id=198924
+        <rdar://problem/51811010>
+
+        Reviewed by Brent Fulgham.
+
+        JavaScript alert() cannot be called from a Web Worker. Use postMessage() instead to post "PASS"
+        to the worker's owner document. The tests don't actually make use of this posted message, but
+        fixing the code to use postMessage() may come in handy for future tests.
+
+        * http/tests/security/contentSecurityPolicy/resources/worker.php:
+        * http/tests/security/contentSecurityPolicy/worker-script-src.html:
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-worker.html:
+
+2019-11-06  Daniel Bates  <dabates@apple.com>
+
+        Update SameSite tests for new semantics for empty and invalid SameSite attribute
+        https://bugs.webkit.org/show_bug.cgi?id=203755
+        <rdar://problem/50816282>
+
+        Reviewed by Brent Fulgham.
+
+        Update the tests and test expectations following CFNetwork change <rdar://problem/42290578> as we
+        now only recognize SameSite=Strict and SameSite=Lax. That is, we no longer treat SameSite= or
+        SameSite=<some garbage value> as SameSite=Strict.
+
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt:
+        * http/tests/cookies/same-site/popup-cross-site-post.html:
+        * http/tests/cookies/same-site/popup-cross-site.html:
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html:
+        * http/tests/cookies/same-site/resources/fetch-after-navigating-iframe-in-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-cross-origin-redirect.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-from-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.php:
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-service-worker.html:
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/ios-12/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/ios/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/mac-mojave/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-cross-site-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Removed.
+        * platform/mac/http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Removed.
+
+2019-11-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Implement support for Pointer Lock API
+        https://bugs.webkit.org/show_bug.cgi?id=202956
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Unskip Pointer Lock tests and update expectations for tests still failing.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/pointer-lock/mouse-event-delivery-expected.txt: Added.
+
+2019-11-05  Kate Cheney  <katherine_cheney@apple.com>
+
+        Layout test website-data-removal-for-site-navigated-to-with-link-decoration.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=203706
+        <rdar://problem/56801615> 
+
+        Reviewed by Chris Dumez. 
+
+        Since the state is reset between tests, the call to 
+        setUseITPDatabase(false) is redundant. 
+
+        * http/tests/resourceLoadStatistics/log-cross-site-load-with-link-decoration.html:
+        * http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html:
+
+2019-11-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Integrate visualViewport's resize event with HTML5 event loop
+        https://bugs.webkit.org/show_bug.cgi?id=203842
+
+        Reviewed by Simon Fraser.
+
+        Added a test to make sure resize event fires on visualViewport in the frame tree order.
+
+        * fast/visual-viewport/visual-viewport-resize-subframe-in-rendering-update-expected.txt: Added.
+        * fast/visual-viewport/visual-viewport-resize-subframe-in-rendering-update.html: Added.
+
+2019-11-05  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] Update WebGL 1 tests to prep for WebGL Conformance bot
+        https://bugs.webkit.org/show_bug.cgi?id=203763
+
+        Reviewed by Dean Jackson.
+
+        Remove the 1.0.2 suite and update 1.0.3 suite, which supercedes the former.
+
+        * webgl/1.0.2: Removed.
+        * webgl/1.0.3: Updated to latest Khronos version and expectations to match. Unskip all non-timeout/non-crashing tests.
+
+2019-11-05  John Wilander  <wilander@apple.com>
+
+        Temporarily turn off NSURLSession isolation
+        https://bugs.webkit.org/show_bug.cgi?id=201822
+
+        Reviewed by Chris Dumez.
+
+        Re-enabling it is tracked in rdar://problem/56921584.
+
+        * platform/wk2/TestExpectations:
+            Skipped the associated tests.
+
+2019-11-05  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-lists] Implement list-style-type: <string>
+        https://bugs.webkit.org/show_bug.cgi?id=167729
+
+        Reviewed by Antti Koivisto.
+
+        Most tests pass now, but some still fail because mixed-bidi is not
+        supported in markers (https://bugs.webkit.org/show_bug.cgi?id=202849).
+
+        iOS and Mac have some extra failures due to subpixel differences for the
+        marker position.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-11-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Content can disappear with a combination of <video> with controls and clipping
+        https://bugs.webkit.org/show_bug.cgi?id=203834
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/shared-backing/clipping-and-shared-backing-expected.html: Added.
+        * compositing/shared-backing/clipping-and-shared-backing.html: Added.
+
+2019-11-05  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Disabled SVG shapes should not be hit
+        https://bugs.webkit.org/show_bug.cgi?id=200140
+
+        Reviewed by Simon Fraser.
+
+        * platform/gtk/imported/w3c/web-platform-tests/svg/import/animate-elem-32-t-manual-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/import/shapes-circle-02-t-manual-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/import/shapes-ellipse-02-t-manual-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/import/shapes-intro-01-t-manual-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/import/shapes-rect-02-t-manual-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/shapes/circle-01-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/shapes/ellipse-04-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/shapes/ellipse-09-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/svg/shapes/rect-05-expected.txt:
+        * platform/gtk/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * platform/gtk/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * platform/gtk/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/animate-elem-32-t-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/shapes-circle-02-t-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/shapes-ellipse-02-t-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/shapes-intro-01-t-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/shapes-rect-02-t-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/import/types-dom-08-f-manual-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/shapes/circle-01-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/shapes/ellipse-04-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/shapes/ellipse-09-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/shapes/rect-05-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/svg/shapes/reftests/disabled-shapes-01-expected.txt:
+        * platform/ios/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * platform/ios/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * platform/ios/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * platform/ios/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * platform/ios/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/animate-elem-32-t-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/shapes-circle-02-t-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/shapes-ellipse-02-t-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/shapes-intro-01-t-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/shapes-rect-02-t-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/import/types-dom-08-f-manual-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/circle-01-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/ellipse-04-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/ellipse-09-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/rect-05-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/svg/shapes/reftests/disabled-shapes-01-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/animate-elem-32-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/shapes-circle-02-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/shapes-ellipse-02-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/shapes-intro-01-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/import/shapes-rect-02-t-manual-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/circle-01-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/ellipse-04-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/ellipse-09-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/rect-05-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/svg/shapes/reftests/disabled-shapes-01-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt:
+
+        * svg/custom/getBBox-js-circle-zerodimension-expected.txt: Removed.
+        * svg/custom/getBBox-js-circle-zerodimension.html: Removed.
+        * svg/custom/getBBox-js-ellipse-zerodimension-expected.txt: Removed.
+        * svg/custom/getBBox-js-ellipse-zerodimension.html: Removed.
+        * svg/custom/getBBox-js-rect-zerodimension-expected.txt: Removed.
+        * svg/custom/getBBox-js-rect-zerodimension.html: Removed.
+        These tests were added in r169522. They succeed in Safari and Chrome but
+        they fail in FireFox. The issue of calculating getBBox was discussed in:
+        https://lists.w3.org/Archives/Public/www-svg/2012Aug/0014.html. But no
+        resolution was reached. 
+
+2019-11-05  Devin Rousso  <drousso@apple.com>
+
+        Layout test http/tests/inspector/network/resource-response-source-memory-cache-revalidate-expired-only.html is a flakey failure
+        https://bugs.webkit.org/show_bug.cgi?id=203841
+        <rdar://problem/51752151>
+
+        Reviewed by Brian Burg.
+
+        * http/tests/inspector/network/resource-response-source-memory-cache-revalidate-expired-only.html:
+        Rewrite the test so it actually waits for the resource response information to be received
+        in the frontend before testing any information about the resource, as the response is what
+        contains the status code and source. Previously, we would only wait for the inspected page
+        to finish loading, which did guarantee that the inspector frontend at least knew about the
+        resource being loaded, but not necessarily that it had been told about the response.
+
+2019-11-05  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa] Right Command key should have location DOM_KEY_LOCATION_RIGHT instead of DOM_KEY_LOCATION_STANDARD
+        https://bugs.webkit.org/show_bug.cgi?id=202601
+        <rdar://problem/55992775>
+
+        Reviewed by Wenson Hsieh.
+
+        Update test to emit the location property of the DOM key event to ensure that we do not
+        regress the value of this property.
+
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element-expected.txt:
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element.html:
+
+2019-11-05  Chris Dumez  <cdumez@apple.com>
+
+        DatabaseContext should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203103
+        <rdar://problem/56592193>
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/history/page-cache-webdatabase-pending-transaction-expected.txt:
+        * fast/history/page-cache-webdatabase-pending-transaction.html:
+        Update existing test to reflect behavior change.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        Unmark test as flaky.
+
+2019-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Native text substitutions interfere with HTML <datalist> options resulting in crash
+        https://bugs.webkit.org/show_bug.cgi?id=203116
+        <rdar://problem/49875932>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to exercise the crash.
+
+        * fast/forms/datalist/datalist-click-crash-expected.txt: Added.
+        * fast/forms/datalist/datalist-click-crash.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.activateDataListSuggestion):
+
+2019-11-05  Andy Estes  <aestes@apple.com>
+
+        ApplePaySession should never prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203087
+        <rdar://problem/56744401>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/ssl/applepay/page-cache-active-apple-pay-session-expected.txt: Added.
+        * http/tests/ssl/applepay/page-cache-active-apple-pay-session.html: Added.
+        * http/tests/ssl/applepay/page-cache-inactive-apple-pay-session-expected.txt: Added.
+        * http/tests/ssl/applepay/page-cache-inactive-apple-pay-session.html: Added.
+
+2019-11-05  youenn fablet  <youenn@apple.com>
+
+        MessagePort::close cannot assume that is execution context is not null
+        https://bugs.webkit.org/show_bug.cgi?id=203843
+        <rdar://problem/55599877>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/basic-messageport-expected.txt:
+        * http/tests/workers/service/resources/basic-messageport.js:
+        (async.doLog):
+        (then):
+        (): Deleted.
+
+2019-11-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Update fast/forms/ios/file-upload-panel.html test and results
+        https://bugs.webkit.org/show_bug.cgi?id=203823
+        <rdar://problem/56080440>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/forms/ios/file-upload-panel-expected.txt:
+        * fast/forms/ios/file-upload-panel.html:
+
+2019-11-05  youenn fablet  <youenn@apple.com>
+
+        mp4 video element broken with service worker
+        https://bugs.webkit.org/show_bug.cgi?id=184447
+        <rdar://problem/39313155>
+
+        Reviewed by Chris Dumez.
+
+        Enable test for WK2, not WK1.
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2019-11-05  youenn fablet  <youenn@apple.com>
+
+        Enforce user gesture for getUserMedia in case a previous getUserMedia call was denied
+        https://bugs.webkit.org/show_bug.cgi?id=203362
+        <rdar://problem/56648232>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/constraint-intrinsic-size.html:
+        * fast/mediastream/get-display-media-muted.html:
+        * fast/mediastream/getUserMedia-deny-persistency5-expected.txt:
+        * fast/mediastream/getUserMedia-deny-persistency5.html:
+        * fast/mediastream/media-stream-page-muted.html:
+        Use user gesture simulation instead of disabling user gesture check.
+        * fast/mediastream/screencapture-user-gesture.html:
+        * fast/mediastream/screencapture-user-gesture-expected.txt:
+        * http/tests/media/media-stream/get-display-media-iframe-allow-attribute-expected.txt:
+        * http/tests/media/media-stream/get-display-media-prompt.html:
+        * http/tests/media/media-stream/resources/get-display-media-devices-iframe.html:
+        * resources/testharnessreport.js:
+
+2019-11-05  youenn fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/captureCanvas-webrtc.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181835
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations:
+        Test is no longer a flaky timeout.
+
+2019-11-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Skip fast/forms/ios/inputmode-change-update-keyboard.html on iPads as this test relies on iPhone's keyboard behavior.
+
+        * platform/ipad/TestExpectations:
+
+2019-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] LayoutTest fast/events/touch/ios/double-tap-for-double-click3.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=203835
+        <rdar://problem/56123067>
+
+        Unable to reproduce. Inserting a double-tap-delay between the events usually fixes these problems.
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/double-tap-for-double-click3.html:
+
+2019-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] fast/events/touch/ios/content-observation/click-event-suppression-on-content-change.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=203838
+        <rdar://problem/55664976>
+
+        Reviewed by Wenson Hsieh.
+
+        Unable to reproduce. Replace the magic 50ms timeouts with the more robust UIHelper.waitForDoubleTapDelay().
+
+        * fast/events/touch/ios/content-observation/click-event-suppression-on-content-change.html:
+
+2019-11-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Removed the flaky failure expectation from focusing-element-with-tabindex-by-tap-or-click.html
+        since it appears to be always passing now.
+
+        * platform/ios/TestExpectations:
+
+2019-11-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Rename ui-monospaced to ui-monospace to match the monospace generic font family
+        https://bugs.webkit.org/show_bug.cgi?id=203602
+
+        Reviewed by Simon Fraser.
+
+        Updated existing tests.
+
+        * fast/text/design-system-ui-12.html:
+        * fast/text/design-system-ui-15.html:
+        * fast/text/design-system-ui-2-expected.html:
+        * fast/text/design-system-ui-2.html:
+        * fast/text/design-system-ui-4-expected-mismatch.html:
+        * fast/text/design-system-ui-4.html:
+        * fast/text/design-system-ui-7-expected.html:
+        * fast/text/design-system-ui-7.html:
+        * fast/text/design-system-ui-9-expected-mismatch.html:
+        * fast/text/design-system-ui-9.html:
+
+2019-11-04  Chris Dumez  <cdumez@apple.com>
+
+        MediaKeySession / WebKitMediaKeySession should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203089
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * http/tests/navigation/page-cache-mediakeysession-expected.txt: Added.
+        * http/tests/navigation/page-cache-mediakeysession.html: Added.
+
+2019-11-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Introduce LinkTimeConstant mechanism
+        https://bugs.webkit.org/show_bug.cgi?id=153792
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/tail-deleted-frames/tail-deleted-frames-this-value-expected.txt:
+
+2019-11-04  Yury Semikhatsky  <yurys@chromium.org>
+
+        [GTK] Inspector protocol tests timing out on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=122571
+
+        Reviewed by Devin Rousso.
+
+        Mark more inspector tests as passing on GTK.
+
+        * inspector/dom/focus.html: Remove 'focus' event listener before closing dummy inspector
+        window. Otherwise it triggers a WebPage::setActivityState which in turn triggers focus
+        event on the page and on the focused element which results in two extra 'focus' lines printed.
+        To be clear this only avoids the extra text output that could be added to the output. Timeout
+        and crash problems must have been fixed before (likely by the recent changes in local inspector
+        client).
+        * platform/gtk/TestExpectations:
+
+2019-11-04  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r251993.
+
+        Broke platform/mac/media/encrypted-media/fps-
+        generateRequest.html on Mojave+
+
+        Reverted changeset:
+
+        "MediaKeySession / WebKitMediaKeySession should not prevent
+        entering the back/forward cache"
+        https://bugs.webkit.org/show_bug.cgi?id=203089
+        https://trac.webkit.org/changeset/251993
+
+2019-11-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Box-shadow spread radius does not transition or animate correctly with CSS Transitions & Animations
+        https://bugs.webkit.org/show_bug.cgi?id=202489
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/box-shadow/hidpi-box-shadow-expected.html: Added.
+        * fast/box-shadow/hidpi-box-shadow.html: Added.
+
+2019-11-04  Chris Dumez  <cdumez@apple.com>
+
+        MediaRecorder should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203093
+        <rdar://problem/56748870>
+
+        Reviewed by Eric Carlson.
+
+        Add layout test coverage.
+
+        * fast/history/page-cache-media-recorder-expected.txt: Added.
+        * fast/history/page-cache-media-recorder.html: Added.
+
+2019-11-04  Yury Semikhatsky  <yurys@chromium.org>
+
+        [GTK] inspector/runtime/getPreview.html timing out
+        https://bugs.webkit.org/show_bug.cgi?id=180096
+
+        Unreviewed. Mark the test as always passing on GTK (1k iterations passed with
+        no issues locally).
+
+        * platform/gtk/TestExpectations:
+
+2019-11-04  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failure after r251959
+
+        * inspector/timeline/timeline-recording.html:
+        `WI.TimelineRecording.import` was made `async`, so add an `await`.
+
+2019-11-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Flaky Test: imported/w3c/web-platform-tests/svg/text/visualtests/text-inline-size-003-visual.svg
+        https://bugs.webkit.org/show_bug.cgi?id=203172
+
+        Unreviewed Test Gardening.
+
+        * TestExpectations:
+        Mark the test as flaky.
+
+2019-11-04  Chris Dumez  <cdumez@apple.com>
+
+        MediaKeySession / WebKitMediaKeySession should not prevent entering the back/forward cache
+        https://bugs.webkit.org/show_bug.cgi?id=203089
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * http/tests/navigation/page-cache-mediakeysession-expected.txt: Added.
+        * http/tests/navigation/page-cache-mediakeysession.html: Added.
+
+2019-11-04  youenn fablet  <youenn@apple.com>
+
+        Layout Test webrtc/filtering-ice-candidate-after-reload.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=174471
+
+        Unreviewed.
+
+        * platform/wk2/TestExpectations:
+        Test is no longer flaky.
+
+2019-11-04  youenn fablet  <youenn@apple.com>
+
+        Layout Test http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=183801
+
+        Unreviewed.
+
+        * platform/wk2/TestExpectations:
+        Test is no longer a flaky failure.
+
+2019-11-04  youenn fablet  <youenn@apple.com>
+
+        Order of postMessage and fetch events should be preserved when going from client to service worker
+        https://bugs.webkit.org/show_bug.cgi?id=203236
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/service-worker/postMessage-fetch-order-worker.js: Added.
+        * http/wpt/service-workers/service-worker/postMessage-fetch-order.https-expected.txt: Added.
+        * http/wpt/service-workers/service-worker/postMessage-fetch-order.https.html: Added.
+
+2019-11-04  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-lists] Import tests for list-style-type: <string>
+        https://bugs.webkit.org/show_bug.cgi?id=203759
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Most tests fail because the feature hasn't been implemented yet
+        (https://bugs.webkit.org/show_bug.cgi?id=167729).
+
+        * TestExpectations:
+
+2019-11-04  youenn fablet  <youenn@apple.com>
+
+        Add a test verifying video plays well when switching from MediaStreams to regular videos
+        https://bugs.webkit.org/show_bug.cgi?id=203421
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/mediastream/stream-switch-expected.txt: Added.
+        * fast/mediastream/stream-switch.html: Added.
+
 2019-11-02  Yury Semikhatsky  <yurys@chromium.org>
 
         REGRESSION: [ Mac ] inspector/dom/getAccessibilityPropertiesForNode.html is failing

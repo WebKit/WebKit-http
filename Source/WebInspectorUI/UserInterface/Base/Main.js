@@ -1086,6 +1086,16 @@ WI.showTimelineTab = function()
     WI.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WI.isShowingTimelineTab = function()
+{
+    return WI.tabBrowser.selectedTabContentView instanceof WI.TimelineTabContentView;
+};
+
+WI.isShowingAuditTab = function()
+{
+    return WI.tabBrowser.selectedTabContentView instanceof WI.AuditTabContentView;
+}
+
 WI.showLayersTab = function(options = {})
 {
     let tabContentView = WI.tabBrowser.bestTabContentViewForClass(WI.LayersTabContentView);
@@ -1561,13 +1571,16 @@ WI._restoreCookieForOpenTabs = function(restorationType)
         tabContentView.restoreStateFromCookie(restorationType);
     }
 
-    window.requestAnimationFrame(() => {
-        if (WI.isContentAreaFocused())
-            return;
+    // Only attempt to autofocus when Web Inspector is first opened.
+    if (WI._didAutofocusConsolePrompt === undefined) {
+        window.requestAnimationFrame(() => {
+            if (WI.isContentAreaFocused() || WI.isShowingTimelineTab() || WI.isShowingAuditTab())
+                return;
 
-        WI.quickConsole.prompt.focus();
-        WI._didAutofocusConsolePrompt = true;
-    });
+            WI.quickConsole.prompt.focus();
+            WI._didAutofocusConsolePrompt = true;
+        });
+    }
 };
 
 WI._saveCookieForOpenTabs = function()

@@ -1369,6 +1369,10 @@ void WebsiteDataStore::isRegisteredAsSubresourceUnder(const URL& subresourceURL,
             process->isRegisteredAsSubresourceUnder(m_sessionID, WebCore::RegistrableDomain { subresourceURL }, WebCore::RegistrableDomain { topFrameURL }, WTFMove(completionHandler));
             ASSERT(processPools().size() == 1);
             break;
+        } else {
+            ASSERT_NOT_REACHED();
+            completionHandler(false);
+            break;
         }
     }
 }
@@ -1961,13 +1965,17 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
         
         resolveDirectoriesIfNecessary();
         
-        for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false))
+        for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false)) {
             processPool->sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(m_sessionID, true));
+            processPool->sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(true));
+        }
         return;
     }
 
-    for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false))
+    for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false)) {
         processPool->sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(m_sessionID, false));
+        processPool->sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(false));
+    }
 
     m_resourceLoadStatisticsEnabled = false;
 #else
@@ -2053,6 +2061,12 @@ uint64_t WebsiteDataStore::perThirdPartyOriginStorageQuota() const
 {
     // FIXME: Consider whether allowing to set a perThirdPartyOriginStorageQuota from a WebsiteDataStore.
     return WebCore::StorageQuotaManager::defaultThirdPartyQuotaFromPerOriginQuota(perOriginStorageQuota());
+}
+
+void WebsiteDataStore::setCacheModelSynchronouslyForTesting(CacheModel cacheModel)
+{
+    for (auto processPool : WebProcessPool::allProcessPools())
+        processPool->setCacheModelSynchronouslyForTesting(cacheModel);
 }
 
 #if !PLATFORM(COCOA)

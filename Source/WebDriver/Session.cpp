@@ -1756,11 +1756,13 @@ void Session::elementSendKeys(const String& elementID, const String& text, Funct
             "        prevActiveElement.blur();"
             "    element.focus();"
             "    let tagName = element.tagName.toUpperCase();"
+            "    if (tagName === 'BODY' || element === document.documentElement)"
+            "        return;"
             "    let isTextElement = tagName === 'TEXTAREA' || (tagName === 'INPUT' && element.type === 'text');"
             "    if (isTextElement && element.selectionEnd == 0)"
             "        element.setSelectionRange(element.value.length, element.value.length);"
             "    if (element != doc.activeElement)"
-            "        throw new Error('cannot focus element');"
+            "        throw {name: 'ElementNotInteractable', message: 'Element is not focusable.'};"
             "}";
 
         RefPtr<JSON::Array> arguments = JSON::Array::create();
@@ -1813,6 +1815,42 @@ void Session::elementSendKeys(const String& elementID, const String& text, Funct
             }
 
             performKeyboardInteractions(WTFMove(interactions), WTFMove(completionHandler));
+        });
+    });
+}
+
+void Session::getPageSource(Function<void (CommandResult&&)>&& completionHandler)
+{
+    if (!m_toplevelBrowsingContext) {
+        completionHandler(CommandResult::fail(CommandResult::ErrorCode::NoSuchWindow));
+        return;
+    }
+
+    handleUserPrompts([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        RefPtr<JSON::Object> parameters = JSON::Object::create();
+        parameters->setString("browsingContextHandle"_s, m_toplevelBrowsingContext.value());
+        parameters->setString("function"_s, "function() { return document.documentElement.outerHTML; }"_s);
+        parameters->setArray("arguments"_s, JSON::Array::create());
+        m_host->sendCommandToBackend("evaluateJavaScriptFunction"_s, WTFMove(parameters), [protectedThis = protectedThis.copyRef(), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
+            if (response.isError || !response.responseObject) {
+                completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
+                return;
+            }
+            String valueString;
+            if (!response.responseObject->getString("result"_s, valueString)) {
+                completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
+                return;
+            }
+            RefPtr<JSON::Value> resultValue;
+            if (!JSON::Value::parseJSON(valueString, resultValue)) {
+                completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
+                return;
+            }
+            completionHandler(CommandResult::success(WTFMove(resultValue)));
         });
     });
 }

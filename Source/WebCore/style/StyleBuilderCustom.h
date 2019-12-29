@@ -89,6 +89,7 @@ public:
 #if ENABLE(TEXT_AUTOSIZING)
     DECLARE_PROPERTY_CUSTOM_HANDLERS(LineHeight);
 #endif
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(ListStyleType);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(OutlineStyle);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Size);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Stroke);
@@ -679,6 +680,30 @@ inline void BuilderCustom::applyValueLineHeight(BuilderState& builderState, CSSV
 
 #endif
 
+inline void BuilderCustom::applyInheritListStyleType(BuilderState& builderState)
+{
+    builderState.style().setListStyleType(builderState.parentStyle().listStyleType());
+    builderState.style().setListStyleStringValue(builderState.parentStyle().listStyleStringValue());
+}
+
+inline void BuilderCustom::applyInitialListStyleType(BuilderState& builderState)
+{
+    builderState.style().setListStyleType(RenderStyle::initialListStyleType());
+    builderState.style().setListStyleStringValue(RenderStyle::initialListStyleStringValue());
+}
+
+inline void BuilderCustom::applyValueListStyleType(BuilderState& builderState, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.isValueID()) {
+        builderState.style().setListStyleType(primitiveValue);
+        builderState.style().setListStyleStringValue(RenderStyle::initialListStyleStringValue());
+        return;
+    }
+    builderState.style().setListStyleType(ListStyleType::String);
+    builderState.style().setListStyleStringValue(primitiveValue.stringValue());
+}
+
 inline void BuilderCustom::applyInheritOutlineStyle(BuilderState& builderState)
 {
     builderState.style().setOutlineStyleIsAuto(builderState.parentStyle().outlineStyleIsAuto());
@@ -804,17 +829,17 @@ inline void BuilderCustom::applyTextOrBoxShadowValue(BuilderState& builderState,
     for (auto& item : downcast<CSSValueList>(value)) {
         auto& shadowValue = downcast<CSSShadowValue>(item.get());
         auto conversionData = builderState.cssToLengthConversionData();
-        int x = shadowValue.x->computeLength<int>(conversionData);
-        int y = shadowValue.y->computeLength<int>(conversionData);
+        auto x = shadowValue.x->computeLength<LayoutUnit>(conversionData);
+        auto y = shadowValue.y->computeLength<LayoutUnit>(conversionData);
         int blur = shadowValue.blur ? shadowValue.blur->computeLength<int>(conversionData) : 0;
-        int spread = shadowValue.spread ? shadowValue.spread->computeLength<int>(conversionData) : 0;
-        ShadowStyle shadowStyle = shadowValue.style && shadowValue.style->valueID() == CSSValueInset ? Inset : Normal;
+        auto spread = shadowValue.spread ? shadowValue.spread->computeLength<LayoutUnit>(conversionData) : LayoutUnit(0);
+        ShadowStyle shadowStyle = shadowValue.style && shadowValue.style->valueID() == CSSValueInset ? ShadowStyle::Inset : ShadowStyle::Normal;
         Color color;
         if (shadowValue.color)
             color = builderState.colorFromPrimitiveValue(*shadowValue.color);
         else
             color = builderState.style().color();
-        auto shadowData = makeUnique<ShadowData>(IntPoint(x, y), blur, spread, shadowStyle, property == CSSPropertyWebkitBoxShadow, color.isValid() ? color : Color::transparent);
+        auto shadowData = makeUnique<ShadowData>(LayoutPoint(x, y), blur, spread, shadowStyle, property == CSSPropertyWebkitBoxShadow, color.isValid() ? color : Color::transparent);
         if (property == CSSPropertyTextShadow)
             builderState.style().setTextShadow(WTFMove(shadowData), !isFirstEntry); // add to the list if this is not the first entry
         else

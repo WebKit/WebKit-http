@@ -37,19 +37,13 @@
 #include "WasmContextInlines.h"
 #include "WasmFunctionCodeBlock.h"
 #include "WasmFunctionParser.h"
+#include "WasmGeneratorTraits.h"
 #include "WasmThunks.h"
 #include <wtf/RefPtr.h>
+#include <wtf/StdUnorderedMap.h>
 #include <wtf/Variant.h>
 
 namespace JSC { namespace Wasm {
-
-struct GeneratorTraits {
-    using OpcodeTraits = WasmOpcodeTraits;
-    using OpcodeID = WasmOpcodeID;
-    using OpNop = WasmNop;
-    using CodeBlock = std::unique_ptr<FunctionCodeBlock>;
-    static constexpr OpcodeID opcodeForDisablingOptimizations = wasm_unreachable;
-};
 
 class LLIntGenerator : public BytecodeGeneratorBase<GeneratorTraits> {
 public:
@@ -207,6 +201,8 @@ public:
     PartialResult WARN_UNUSED_RETURN addCallIndirect(unsigned tableIndex, const Signature&, Vector<ExpressionType>& args, ExpressionList& results);
     PartialResult WARN_UNUSED_RETURN addUnreachable();
 
+    void didFinishParsingLocals();
+
     void setParser(FunctionParser<LLIntGenerator>* parser) { m_parser = parser; };
 
     void dump(const Vector<ControlEntry>&, const ExpressionList*) { }
@@ -249,18 +245,6 @@ private:
         return m_jsNullConstant;
     }
 
-    bool isConstant(RefPtr<RegisterID> reg)
-    {
-        VirtualRegister virtualRegister = reg->virtualRegister();
-        if (virtualRegister.isConstant())
-            return true;
-        for (auto& constant : m_constantPoolRegisters) {
-            if (constant.virtualRegister() == virtualRegister)
-                return true;
-        }
-        return false;
-    }
-
     struct SwitchEntry {
         InstructionStream::Offset offset;
         InstructionStream::Offset* jumpTarget;
@@ -272,6 +256,8 @@ private:
     Vector<VirtualRegister> m_normalizedArguments;
     HashMap<Label*, Vector<SwitchEntry>> m_switches;
     ExpressionType m_jsNullConstant;
+    ExpressionList m_unitializedLocals;
+    StdUnorderedMap<uint64_t, VirtualRegister> m_constantMap;
 };
 
 Expected<std::unique_ptr<FunctionCodeBlock>, String> parseAndCompileBytecode(const uint8_t* functionStart, size_t functionLength, const Signature& signature, const ModuleInformation& info, uint32_t functionIndex, ThrowWasmException throwWasmException)
@@ -349,12 +335,16 @@ auto LLIntGenerator::callInformationFor(const Signature& signature, CallRole rol
     };
 
 
-    for (uint32_t i = 0; i < gprCount; i++)
-        registers.append(newTemporary());
-    for (uint32_t i = 0; i < fprCount; i++)
-        registers.append(newTemporary());
+    if (role == CallRole::Callee) {
+        // Reuse the slots we allocated to spill the registers in addArguments
+        for (uint32_t i = gprCount + fprCount; i--;)
+            registers.append(new RegisterID(::JSC::virtualRegisterForLocal(numberOfLLIntCalleeSaveRegisters + i)));
+    } else {
+        for (uint32_t i = 0; i < gprCount; i++)
+            registers.append(newTemporary());
+        for (uint32_t i = 0; i < fprCount; i++)
+            registers.append(newTemporary());
 
-    if (role == CallRole::Caller) {
         for (uint32_t i = 0; i < signature.argumentCount(); i++)
             allocateStackRegister(signature.argument(i));
         gprIndex = 0;
@@ -484,7 +474,7 @@ auto LLIntGenerator::addLocal(Type type, uint32_t count) -> PartialResult
         switch (type) {
         case Type::Anyref:
         case Type::Funcref:
-            WasmMov::emit(this, local, jsNullConstant());
+            m_unitializedLocals.append(local);
             break;
         default:
             break;
@@ -493,13 +483,25 @@ auto LLIntGenerator::addLocal(Type type, uint32_t count) -> PartialResult
     return { };
 }
 
-auto LLIntGenerator::addConstant(Type, uint64_t value) -> ExpressionType
+void LLIntGenerator::didFinishParsingLocals()
+{
+    auto null = jsNullConstant();
+    for (auto local : m_unitializedLocals)
+        WasmMov::emit(this, local, null);
+    m_unitializedLocals.clear();
+}
+
+auto LLIntGenerator::addConstant(Type type, uint64_t value) -> ExpressionType
 {
     VirtualRegister source(FirstConstantRegisterIndex + m_codeBlock->m_constants.size());
+    auto result = m_constantMap.emplace(value, source);
+    if (result.second) {
+        m_codeBlock->m_constants.append(value);
+        if (UNLIKELY(Options::dumpGeneratedWasmBytecodes()))
+            m_codeBlock->m_constantTypes.append(type);
+    } else
+        source = result.first->second;
     auto target = newTemporary();
-    target->ref();
-    m_constantPoolRegisters.append(target);
-    m_codeBlock->m_constants.append(value);
     WasmMov::emit(this, target, source);
     return target;
 }
@@ -555,11 +557,8 @@ auto LLIntGenerator::addLoop(BlockSignature signature, Stack& enclosingStack, Co
         osrEntryData.append(::JSC::virtualRegisterForLocal(i));
     for (unsigned controlIndex = 0; controlIndex < m_parser->controlStack().size(); ++controlIndex) {
         ExpressionList& expressionStack = m_parser->controlStack()[controlIndex].enclosedExpressionStack;
-        for (auto& expression : expressionStack) {
-            if (isConstant(expression))
-                continue;
+        for (auto& expression : expressionStack)
             osrEntryData.append(expression->virtualRegister());
-        }
     }
 
     WasmLoopHint::emit(this);
@@ -618,7 +617,7 @@ auto LLIntGenerator::addReturn(const ControlType& data, const ExpressionList& re
 
     LLIntCallInformation info = callInformationFor(*data.m_signature, CallRole::Callee);
     unifyValuesWithBlock(info.results, returnValues);
-    WasmRet::emit(this, info.stackOffset);
+    WasmRet::emit(this);
 
     return { };
 }
@@ -736,7 +735,7 @@ auto LLIntGenerator::addCallIndirect(unsigned tableIndex, const Signature& signa
 
 auto LLIntGenerator::addRefIsNull(ExpressionType value, ExpressionType& result) -> PartialResult
 {
-    result = newTemporary();
+    result = value;
     WasmRefIsNull::emit(this, result, value);
 
     return { };
@@ -752,7 +751,7 @@ auto LLIntGenerator::addRefFunc(uint32_t index, ExpressionType& result) -> Parti
 
 auto LLIntGenerator::addTableGet(unsigned tableIndex, ExpressionType index, ExpressionType& result) -> PartialResult
 {
-    result = newTemporary();
+    result = index;
     WasmTableGet::emit(this, result, index, tableIndex);
 
     return { };
@@ -775,7 +774,7 @@ auto LLIntGenerator::addTableSize(unsigned tableIndex, ExpressionType& result) -
 
 auto LLIntGenerator::addTableGrow(unsigned tableIndex, ExpressionType fill, ExpressionType delta, ExpressionType& result) -> PartialResult
 {
-    result = newTemporary();
+    result = fill;
     WasmTableGrow::emit(this, result, fill, delta, tableIndex);
 
     return { };
@@ -805,7 +804,7 @@ auto LLIntGenerator::addCurrentMemory(ExpressionType& result) -> PartialResult
 
 auto LLIntGenerator::addGrowMemory(ExpressionType delta, ExpressionType& result) -> PartialResult
 {
-    result = newTemporary();
+    result = delta;
     WasmGrowMemory::emit(this, result, delta);
 
     return { };
@@ -813,7 +812,7 @@ auto LLIntGenerator::addGrowMemory(ExpressionType delta, ExpressionType& result)
 
 auto LLIntGenerator::addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result) -> PartialResult
 {
-    result = newTemporary();
+    result = condition;
     WasmSelect::emit(this, result, condition, nonZero, zero);
 
     return { };
@@ -821,7 +820,7 @@ auto LLIntGenerator::addSelect(ExpressionType condition, ExpressionType nonZero,
 
 auto LLIntGenerator::load(LoadOpType op, ExpressionType pointer, ExpressionType& result, uint32_t offset) -> PartialResult
 {
-    result = newTemporary();
+    result = pointer;
     switch (op) {
     case LoadOpType::I32Load8S:
         WasmI32Load8S::emit(this, result, pointer, offset);

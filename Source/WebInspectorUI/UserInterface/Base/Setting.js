@@ -187,7 +187,6 @@ WI.settings = {
 
     // Experimental
     experimentalEnablePreviewFeatures: new WI.Setting("experimental-enable-preview-features", false),
-    experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
     experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
     experimentalEnableStylesJumpToEffective: new WI.Setting("experimental-styles-jump-to-effective", false),
 
@@ -212,7 +211,9 @@ WI.settings = {
     debugLayoutDirection: new WI.Setting("debug-layout-direction-override", "system"),
 };
 
-WI.previewFeatures = [];
+WI.previewFeatures = [
+    "p3-gamut-color-picker" // FIXME: <https://webkit.org/b/203931> Web Inspector: Enable p3 color picker by default
+];
 
 WI.isTechnologyPreviewBuild = function()
 {

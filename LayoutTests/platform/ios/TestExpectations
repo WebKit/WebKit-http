@@ -991,7 +991,7 @@ http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Skip
 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown-database.html [ Skip ]
 media/audio-playback-volume-changes-with-restrictions-and-user-gestures.html [ Skip ]
 media/audio-playback-volume-changes-with-restrictions.html [ Skip ]
-media/picture-in-picture-interruption.html [ Skip ]
+media/picture-in-picture/picture-in-picture-interruption.html [ Skip ]
 scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html [ Skip ]
 scrollbars/scrolling-backward-by-page-on-keyboard-spacebar.html [ Skip ]
 scrollbars/scrolling-by-page-accounting-oversized-fixed-elements-on-keyboard-spacebar.html [ Skip ]
@@ -2745,27 +2745,21 @@ fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.h
 fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Failure ]
 fast/canvas/webgl/webgl-draw-buffers.html [ Failure ]
 fast/canvas/webgl/webgl2-texture-upload-enums.html [ Failure ]
-webgl/1.0.2/conformance/context/context-attribute-preserve-drawing-buffer.html [ Failure ]
-webgl/1.0.2/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
-webgl/1.0.2/conformance/ogles/GL/build/build_009_to_016.html [ Failure ]
+webgl/1.0.3/conformance/context/context-attribute-preserve-drawing-buffer.html [ Failure ]
+webgl/1.0.3/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
 webgl/1.0.3/conformance/context/context-hidden-alpha.html [ Failure ]
 webgl/1.0.3/conformance/extensions/oes-texture-float-linear.html [ Failure ]
 webgl/1.0.3/conformance/extensions/oes-texture-half-float-linear.html [ Failure ]
-webgl/1.0.3/conformance/extensions/oes-texture-half-float.html [ Failure ]
 webgl/1.0.3/conformance/extensions/webgl-compressed-texture-pvrtc.html [ Failure ]
-webgl/1.0.3/conformance/glsl/misc/shader-struct-scope.html [ Failure ]
 webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance.html [ Failure ]
-webgl/1.0.3/conformance/glsl/misc/shaders-with-name-conflicts.html [ Failure ]
 webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Failure ]
-webgl/1.0.3/conformance/rendering/point-no-attributes.html [ Failure ]
-webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html [ Failure ]
 fast/canvas/webgl/read-pixels-test.html [ Skip ]
 fast/canvas/webgl/webglcontextchangedevent.html [ Skip ]
-webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Skip ]
-webgl/1.0.2/conformance/ogles/GL/sin/sin_001_to_006.html [ Skip ]
-webgl/1.0.2/conformance/reading/read-pixels-test.html [ Skip ]
-webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Skip ]
-webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Skip ]
+webgl/1.0.3/conformance/context/context-creation-and-destruction.html [ Skip ]
+webgl/1.0.3/conformance/ogles/GL/sin/sin_001_to_006.html [ Skip ]
+webgl/1.0.3/conformance/reading/read-pixels-test.html [ Skip ]
+webgl/1.0.3/conformance/rendering/multisample-corruption.html [ Skip ]
+webgl/1.0.3/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Skip ]
 
 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Skip ]
 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Skip ]
@@ -2896,11 +2890,11 @@ imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 
 # <rdar://problem/34209038>
-webgl/1.0.2/conformance/ogles/GL/log/log_001_to_008.html [ Skip ]
-webgl/1.0.2/conformance/ogles/GL/log2/log2_001_to_008.html [ Skip ]
+webgl/1.0.3/conformance/ogles/GL/log/log_001_to_008.html [ Skip ]
+webgl/1.0.3/conformance/ogles/GL/log2/log2_001_to_008.html [ Skip ]
 
 # <rdar://problem/33135669>
-webgl/1.0.2/conformance/textures/gl-teximage.html [ Failure ]
+webgl/1.0.3/conformance/textures/gl-teximage.html [ Failure ]
 fast/canvas/webgl/gl-teximage.html [ Failure ]
 
 # <rdar://problem/30517283>
@@ -2914,10 +2908,10 @@ svg/W3C-SVG-1.1/text-intro-03-b.svg [ Failure ]
 svg/W3C-SVG-1.1/text-intro-04-t.svg [ Failure ]
 svg/custom/acid3-test-77.html [ Failure ]
 
-# <rdar://problem/33381269> REGRESSION: Multiple Layout test from webgl/1.0.2/conformance are timing out.
-webgl/1.0.2/conformance/attribs/gl-vertex-attrib-zero-issues.html [ Skip  ]
-webgl/1.0.2/conformance/ogles/GL/acos/acos_001_to_006.html [ Skip  ]
-webgl/1.0.2/conformance/ogles/GL/asin/asin_001_to_006.html [ Skip  ]
+# <rdar://problem/33381269> REGRESSION: Multiple Layout test from webgl/1.0.3/conformance are timing out.
+webgl/1.0.3/conformance/attribs/gl-vertex-attrib-zero-issues.html [ Skip  ]
+webgl/1.0.3/conformance/ogles/GL/acos/acos_001_to_006.html [ Skip  ]
+webgl/1.0.3/conformance/ogles/GL/asin/asin_001_to_006.html [ Skip  ]
 
 # <rdar://problem/28504406> LayoutTest fast/attachment/attachment-folder-icon.html failing
 fast/attachment/attachment-folder-icon.html [ ImageOnlyFailure ]
@@ -3022,6 +3016,7 @@ media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html
 media/modern-media-controls/media-documents/media-document-video-mac-sizing.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-video-ipad-sizing.html [ Skip ]
 media/modern-media-controls/pip-support [ Skip ]
+media/modern-media-controls/pip-placard [ Skip ]
 media/modern-media-controls/playback-support/playback-support-button-click.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
@@ -3192,9 +3187,6 @@ fast/gradients/conic-two-hints.html [ Pass ]
 
 # <rdar://problem/36455339> LayoutTest compositing/ios/overflow-scroll-touch-tiles.html is a flaky failure
 compositing/ios/overflow-scroll-touch-tiles.html [ Pass Failure ]
-
-# <rdar://problem/37406043> LayoutTest fast/events/focusing-element-with-tabindex-by-tap-or-click.html is a flaky failure
-fast/events/focusing-element-with-tabindex-by-tap-or-click.html [ Pass Failure ]
 
 # <rdar://problem/41546970> REGRESSION: LayoutTest media/media-fullscreen-loop-inline.html is a flaky timeout
 media/media-fullscreen-loop-inline.html [ Pass Timeout ]
@@ -3464,10 +3456,13 @@ webkit.org/b/202958 css3/filters/svg-blur-filter-clipped.html [ ImageOnlyFailure
 webkit.org/b/203291 imported/w3c/web-platform-tests/css/css-transitions/before-load-001.html [ Failure ]
 webkit.org/b/203291 imported/w3c/web-platform-tests/css/css-transitions/properties-value-auto-001.html [ Failure ]
 
-webkit.org/b/203366 fast/text/whitespace/pre-wrap-overflow-selection.html [ Pass Failure ]
-
 webkit.org/b/203305 imported/w3c/web-platform-tests/css/css-transitions/properties-value-001.html [ Pass Failure ]
 webkit.org/b/203305 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-inherit-001.html [ Pass Failure ]
 webkit.org/b/203356 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-003.html [ Pass Failure ]
 webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/before-load-001.html [ Pass Failure ]
 webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/properties-value-auto-001.html [ Pass Failure ]
+
+# This test fails in iOS due to subpixel differences for the marker position
+imported/w3c/web-platform-tests/css/css-lists/list-style-type-string-002.html [ ImageOnlyFailure ]
+
+webkit.org/b/204045 fast/events/scroll-subframe-in-rendering-update.html [ Failure ]

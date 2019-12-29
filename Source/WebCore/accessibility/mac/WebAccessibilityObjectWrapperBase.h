@@ -29,19 +29,13 @@
 #ifndef WebAccessibilityObjectWrapperBase_h
 #define WebAccessibilityObjectWrapperBase_h
 
-#include "AXIsolatedTree.h"
-#include "AXIsolatedTreeNode.h"
-#include "AccessibilityObject.h"
+#include "AccessibilityObjectInterface.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Variant.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
-class AccessibilityObject;
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-class AXIsolatedTreeNode;
-#endif
 struct AccessibilitySearchCriteria;
 class IntRect;
 class FloatPoint;
@@ -51,28 +45,20 @@ class VisiblePosition;
 }
 
 @interface WebAccessibilityObjectWrapperBase : NSObject {
-    WebCore::AccessibilityObject* m_object;
+    WebCore::AXCoreObject* m_object;
     WebCore::AXID _identifier;
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    RefPtr<WebCore::AXIsolatedTreeNode> m_isolatedTreeNode;
-#endif
 }
- 
-- (id)initWithAccessibilityObject:(WebCore::AccessibilityObject*)axObject;
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-@property (nonatomic, readonly) RefPtr<WebCore::AXIsolatedTreeNode> isolatedTreeNode;
-@property (nonatomic, assign) WebCore::AXIsolatedTreeID isolatedTreeIdentifier;
-#endif
+- (id)initWithAccessibilityObject:(WebCore::AXCoreObject*)axObject;
 
 - (void)detach;
 
 @property (nonatomic, assign) WebCore::AXID identifier;
 
-- (WebCore::AccessibilityObject*)accessibilityObject;
+- (WebCore::AXCoreObject*)accessibilityObject;
 - (BOOL)updateObjectBackingStore;
 
-// This can be either an AccessibilityObject or an AXIsolatedTreeNode
+// This can be either an AccessibilityObject or an AXIsolatedObject
 - (WebCore::AXCoreObject*)axBackingObject;
 
 // These are pre-fixed with base so that AppKit does not end up calling into these directly (bypassing safety checks).
@@ -99,10 +85,7 @@ class VisiblePosition;
 
 extern WebCore::AccessibilitySearchCriteria accessibilitySearchCriteriaForSearchPredicateParameterizedAttribute(const NSDictionary *);
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-extern NSArray *convertToNSArray(const Vector<RefPtr<WebCore::AXIsolatedTreeNode>>&);
-#endif
-extern NSArray *convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChildrenVector&);
+extern NSArray *convertToNSArray(const WebCore::AXCoreObject::AccessibilityChildrenVector&);
 
 #if PLATFORM(IOS_FAMILY)
 - (id)_accessibilityWebDocumentView;

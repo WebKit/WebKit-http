@@ -30,6 +30,7 @@
 
 #import "HIDEventGenerator.h"
 #import "PencilKitTestSPI.h"
+#import "PlatformViewHelpers.h"
 #import "PlatformWebView.h"
 #import "StringFunctions.h"
 #import "TestController.h"
@@ -103,31 +104,6 @@ static Vector<String> parseModifierArray(JSContextRef context, JSValueRef arrayV
         modifiers.append(toWTFString(toWK(string.get())));
     }
     return modifiers;
-}
-
-static BOOL forEachViewInHierarchy(UIView *view, void(^mapFunction)(UIView *subview, BOOL *stop))
-{
-    BOOL stop = NO;
-    mapFunction(view, &stop);
-    if (stop)
-        return YES;
-
-    for (UIView *subview in view.subviews) {
-        stop = forEachViewInHierarchy(subview, mapFunction);
-        if (stop)
-            break;
-    }
-    return stop;
-}
-
-static NSArray<UIView *> *findAllViewsInHierarchyOfType(UIView *view, Class viewClass)
-{
-    __block RetainPtr<NSMutableArray> views = adoptNS([[NSMutableArray alloc] init]);
-    forEachViewInHierarchy(view, ^(UIView *subview, BOOL *stop) {
-        if ([subview isKindOfClass:viewClass])
-            [views addObject:subview];
-    });
-    return views.autorelease();
 }
 
 Ref<UIScriptController> UIScriptController::create(UIScriptContext& context)
@@ -1056,6 +1032,19 @@ void UIScriptControllerIOS::completeBackSwipe(JSValueRef callback)
     [webView() _completeBackSwipeForTesting];
 }
 
+void UIScriptControllerIOS::activateDataListSuggestion(long index, JSValueRef callback)
+{
+    // FIXME: Not implemented.
+    UNUSED_PARAM(index);
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
+}
+
 bool UIScriptControllerIOS::isShowingDataListSuggestions() const
 {
     Class remoteKeyboardWindowClass = NSClassFromString(@"UIRemoteKeyboardWindow");
@@ -1081,7 +1070,8 @@ bool UIScriptControllerIOS::isShowingDataListSuggestions() const
 }
 
 #if HAVE(PENCILKIT)
-static PKCanvasView *findEditableImageCanvas()
+
+PKCanvasView *UIScriptControllerIOS::findEditableImageCanvas() const
 {
     Class pkCanvasViewClass = NSClassFromString(@"PKCanvasView");
     __block PKCanvasView *canvasView = nil;
@@ -1094,7 +1084,8 @@ static PKCanvasView *findEditableImageCanvas()
     });
     return canvasView;
 }
-#endif
+
+#endif // HAVE(PENCILKIT)
 
 void UIScriptControllerIOS::drawSquareInEditableImage()
 {

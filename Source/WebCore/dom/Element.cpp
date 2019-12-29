@@ -3677,6 +3677,38 @@ IntersectionObserverData* Element::intersectionObserverData()
 }
 #endif
 
+KeyframeEffectStack& Element::ensureKeyframeEffectStack()
+{
+    auto& rareData = ensureElementRareData();
+    if (!rareData.keyframeEffectStack())
+        rareData.setKeyframeEffectStack(makeUnique<KeyframeEffectStack>());
+    return *rareData.keyframeEffectStack();
+}
+
+bool Element::hasKeyframeEffects() const
+{
+    if (!hasRareData())
+        return false;
+
+    auto* keyframeEffectStack = elementRareData()->keyframeEffectStack();
+    return keyframeEffectStack && keyframeEffectStack->hasEffects();
+}
+
+bool Element::applyKeyframeEffects(RenderStyle& targetStyle)
+{
+    bool hasNonAcceleratedAnimationProperty = false;
+
+    for (const auto& effect : ensureKeyframeEffectStack().sortedEffects()) {
+        ASSERT(effect->animation());
+        effect->animation()->resolve(targetStyle);
+
+        if (!hasNonAcceleratedAnimationProperty && !effect->isAccelerated())
+            hasNonAcceleratedAnimationProperty = true;
+    }
+
+    return !hasNonAcceleratedAnimationProperty;
+}
+
 #if ENABLE(RESIZE_OBSERVER)
 void Element::disconnectFromResizeObservers()
 {

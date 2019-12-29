@@ -522,6 +522,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/LLIntCallLinkInfo.h
     bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h
     bytecode/LazyOperandValueProfile.h
+    bytecode/LinkTimeConstant.h
     bytecode/MetadataTable.h
     bytecode/ObjectAllocationProfile.h
     bytecode/ObjectPropertyCondition.h
@@ -529,7 +530,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/OpcodeSize.h
     bytecode/PropertyCondition.h
     bytecode/PutByIdFlags.h
-    bytecode/SpecialPointer.h
     bytecode/SpeculatedType.h
     bytecode/StructureSet.h
     bytecode/SuperSampler.h
@@ -595,6 +595,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     heap/GCIncomingRefCountedInlines.h
     heap/GCIncomingRefCountedSet.h
     heap/GCLogging.h
+    heap/GCMemoryOperations.h
     heap/GCRequest.h
     heap/GCSegmentedArray.h
     heap/Handle.h
@@ -615,7 +616,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     heap/IsoSubspace.h
     heap/IsoSubspaceInlines.h
     heap/IsoSubspacePerVM.h
-    heap/LargeAllocation.h
     heap/LocalAllocator.h
     heap/LocalAllocatorInlines.h
     heap/LockDuringMarking.h
@@ -628,6 +628,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     heap/MarkingConstraint.h
     heap/MutatorState.h
     heap/PackedCellPtr.h
+    heap/PreciseAllocation.h
     heap/RegisterState.h
     heap/RunningScope.h
     heap/SimpleMarkingConstraint.h

@@ -46,6 +46,9 @@ def loadBuilderConfig(c, is_test_mode_enabled=False, master_prefix_path='./'):
         passwords = {}
     else:
         passwords = json.load(open(os.path.join(master_prefix_path, 'passwords.json')))
+    results_server_api_key = passwords.get('results-server-api-key')
+    if results_server_api_key:
+        os.environ['RESULTS_SERVER_API_KEY'] = results_server_api_key
 
     checkWorkersAndBuildersForConsistency(config, config['workers'], config['builders'])
     checkValidSchedulers(config, config['schedulers'])
@@ -62,7 +65,7 @@ def loadBuilderConfig(c, is_test_mode_enabled=False, master_prefix_path='./'):
         if 'icon' in builder:
             del builder['icon']
         factorykwargs = {}
-        for key in ['platform', 'configuration', 'architectures', 'triggers', 'additionalArguments', 'runTests']:
+        for key in ['platform', 'configuration', 'architectures', 'triggers', 'remotes', 'additionalArguments', 'runTests']:
             value = builder.pop(key, None)
             if value:
                 factorykwargs[key] = value
@@ -74,6 +77,7 @@ def loadBuilderConfig(c, is_test_mode_enabled=False, master_prefix_path='./'):
 
         c['builders'].append(builder)
 
+    c['prioritizeBuilders'] = prioritizeBuilders
     c['schedulers'] = []
     for scheduler in config['schedulers']:
         schedulerClassName = scheduler.pop('type')
@@ -86,6 +90,12 @@ def loadBuilderConfig(c, is_test_mode_enabled=False, master_prefix_path='./'):
             # FIXME: Read the credentials from local file on disk.
             scheduler['userpass'] = [(os.getenv('BUILDBOT_TRY_USERNAME', 'sampleuser'), os.getenv('BUILDBOT_TRY_PASSWORD', 'samplepass'))]
         c['schedulers'].append(schedulerClass(**scheduler))
+
+
+def prioritizeBuilders(buildmaster, builders):
+    # Prioritize builder queues over tester queues
+    builders.sort(key=lambda b: 'build' in b.name.lower(), reverse=True)
+    return builders
 
 
 def checkValidWorker(worker):
