@@ -28,15 +28,22 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "BreakLines.h"
 #include "FontCascade.h"
+#include "InlineTextItem.h"
 #include "RenderStyle.h"
 
 namespace WebCore {
 namespace Layout {
 
-Optional<unsigned> TextUtil::hyphenPositionBefore(const InlineItem&, unsigned, unsigned)
+InlineLayoutUnit TextUtil::width(const InlineTextItem& inlineTextItem, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft)
 {
-    return WTF::nullopt;
+    // Fast path for collapsed whitespace.
+    if (inlineTextItem.isCollapsible()) {
+        auto font = inlineTextItem.style().fontCascade();
+        return font.spaceWidth() + font.wordSpacing();
+    }
+    return TextUtil::width(inlineTextItem.layoutBox(), from, to, contentLogicalLeft);
 }
 
 InlineLayoutUnit TextUtil::width(const Box& inlineBox, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft)
@@ -124,7 +131,29 @@ TextUtil::SplitData TextUtil::split(const Box& inlineBox, unsigned startPosition
 bool TextUtil::shouldPreserveTrailingWhitespace(const RenderStyle& style)
 {
     auto whitespace = style.whiteSpace();
-    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap;
+    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
+}
+
+unsigned TextUtil::findNextBreakablePosition(LazyLineBreakIterator& lineBreakIterator, unsigned startPosition, const RenderStyle& style)
+{
+    auto keepAllWordsForCJK = style.wordBreak() == WordBreak::KeepAll;
+    auto breakNBSP = style.autoWrap() && style.nbspMode() == NBSPMode::Space;
+
+    if (keepAllWordsForCJK) {
+        if (breakNBSP)
+            return nextBreakablePositionKeepingAllWords(lineBreakIterator, startPosition);
+        return nextBreakablePositionKeepingAllWordsIgnoringNBSP(lineBreakIterator, startPosition);
+    }
+
+    if (lineBreakIterator.mode() == LineBreakIteratorMode::Default) {
+        if (breakNBSP)
+            return WebCore::nextBreakablePosition(lineBreakIterator, startPosition);
+        return nextBreakablePositionIgnoringNBSP(lineBreakIterator, startPosition);
+    }
+
+    if (breakNBSP)
+        return nextBreakablePositionWithoutShortcut(lineBreakIterator, startPosition);
+    return nextBreakablePositionIgnoringNBSPWithoutShortcut(lineBreakIterator, startPosition);
 }
 
 }

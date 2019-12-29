@@ -47,7 +47,7 @@ inline To jsCast(JSValue from)
 
 // Specific type overloads.
 #define FOR_EACH_JS_DYNAMIC_CAST_JS_TYPE_OVERLOAD(macro) \
-    macro(JSFixedArray, JSType::JSFixedArrayType, JSType::JSFixedArrayType) \
+    macro(JSImmutableButterfly, JSType::JSImmutableButterflyType, JSType::JSImmutableButterflyType) \
     macro(JSObject, FirstObjectType, LastObjectType) \
     macro(JSFinalObject, JSType::FinalObjectType, JSType::FinalObjectType) \
     macro(JSFunction, JSType::JSFunctionType, JSType::JSFunctionType) \
@@ -74,6 +74,7 @@ inline To jsCast(JSValue from)
     macro(JSLexicalEnvironment, JSType::LexicalEnvironmentType, JSType::ModuleEnvironmentType) \
     macro(JSSymbolTableObject, JSType::GlobalObjectType, JSType::ModuleEnvironmentType) \
     macro(JSScope, JSType::GlobalObjectType, JSType::WithScopeType) \
+    macro(StringObject, JSType::StringObjectType, JSType::DerivedStringObjectType) \
 
 
 // Forward declare the classes because they may not already exist.

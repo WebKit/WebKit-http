@@ -1591,7 +1591,7 @@ bool atBoundaryOfGranularity(const VisiblePosition& vp, TextGranularity granular
         break;
 
     case SentenceGranularity:
-        boundary = useDownstream ? endOfSentence(vp) : startOfSentence(vp);
+        boundary = useDownstream ? endOfSentence(previousSentencePosition(vp)) : startOfSentence(nextSentencePosition(vp));
         break;
 
     case LineGranularity:
@@ -1798,18 +1798,14 @@ static VisiblePosition nextLineBoundaryInDirection(const VisiblePosition& vp, Se
     return result;
 }
 
-static VisiblePosition nextParagraphBoundaryInDirection(const VisiblePosition& vp, SelectionDirection direction)
+static VisiblePosition nextParagraphBoundaryInDirection(const VisiblePosition& position, SelectionDirection direction)
 {
-    bool useDownstream = directionIsDownstream(direction);
-    bool withinUnitOfGranularity = withinTextUnitOfGranularity(vp, ParagraphGranularity, direction);
-    VisiblePosition result;
-
-    if (!withinUnitOfGranularity)
-        result =  useDownstream ? startOfParagraph(nextParagraphPosition(vp, vp.lineDirectionPointForBlockDirectionNavigation())) : endOfParagraph(previousParagraphPosition(vp, vp.lineDirectionPointForBlockDirectionNavigation()));
-    else
-        result = useDownstream ? endOfParagraph(vp) : startOfParagraph(vp);
-
-    return result;
+    auto useDownstream = directionIsDownstream(direction);
+    auto lineDirection = position.lineDirectionPointForBlockDirectionNavigation();
+    if (atBoundaryOfGranularity(position, ParagraphGranularity, direction))
+        return useDownstream ? startOfParagraph(nextParagraphPosition(position, lineDirection)) : endOfParagraph(previousParagraphPosition(position, lineDirection));
+    ASSERT(withinTextUnitOfGranularity(position, ParagraphGranularity, direction));
+    return useDownstream ? endOfParagraph(position) : startOfParagraph(position);
 }
 
 static VisiblePosition nextDocumentBoundaryInDirection(const VisiblePosition& vp, SelectionDirection direction)

@@ -37,11 +37,27 @@
 
 namespace WebCore {
 
+class MediaPlayerFactoryMediaSourceMock final : public MediaPlayerFactory {
+private:
+    MediaPlayerEnums::MediaEngineIdentifier identifier() const final { return MediaPlayerEnums::MediaEngineIdentifier::MockMSE; };
+
+    std::unique_ptr<MediaPlayerPrivateInterface> createMediaEnginePlayer(MediaPlayer* player) const final { return makeUnique<MockMediaPlayerMediaSource>(player); }
+
+    void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types) const final
+    {
+        return MockMediaPlayerMediaSource::getSupportedTypes(types);
+    }
+
+    MediaPlayer::SupportsType supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters) const final
+    {
+        return MockMediaPlayerMediaSource::supportsType(parameters);
+    }
+};
+
 // MediaPlayer Enigne Support
 void MockMediaPlayerMediaSource::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar([] (MediaPlayer* player) { return makeUnique<MockMediaPlayerMediaSource>(player); }, getSupportedTypes,
-        supportsType, 0, 0, 0, 0);
+    registrar(makeUnique<MediaPlayerFactoryMediaSourceMock>());
 }
 
 // FIXME: What does the word "cache" mean here?
@@ -62,27 +78,27 @@ void MockMediaPlayerMediaSource::getSupportedTypes(HashSet<String, ASCIICaseInse
 MediaPlayer::SupportsType MockMediaPlayerMediaSource::supportsType(const MediaEngineSupportParameters& parameters)
 {
     if (!parameters.isMediaSource)
-        return MediaPlayer::IsNotSupported;
+        return MediaPlayer::SupportsType::IsNotSupported;
 
     auto containerType = parameters.type.containerType();
     if (containerType.isEmpty() || !mimeTypeCache().contains(containerType))
-        return MediaPlayer::IsNotSupported;
+        return MediaPlayer::SupportsType::IsNotSupported;
 
     auto codecs = parameters.type.parameter(ContentType::codecsParameter());
     if (codecs.isEmpty())
-        return MediaPlayer::MayBeSupported;
+        return MediaPlayer::SupportsType::MayBeSupported;
 
     if (codecs == "mock" || codecs == "kcom")
-        return MediaPlayer::IsSupported;
+        return MediaPlayer::SupportsType::IsSupported;
 
-    return MediaPlayer::MayBeSupported;
+    return MediaPlayer::SupportsType::MayBeSupported;
 }
 
 MockMediaPlayerMediaSource::MockMediaPlayerMediaSource(MediaPlayer* player)
     : m_player(player)
     , m_currentTime(MediaTime::zeroTime())
-    , m_readyState(MediaPlayer::HaveNothing)
-    , m_networkState(MediaPlayer::Empty)
+    , m_readyState(MediaPlayer::ReadyState::HaveNothing)
+    , m_networkState(MediaPlayer::NetworkState::Empty)
     , m_playing(false)
     , m_seekCompleted(true)
 {

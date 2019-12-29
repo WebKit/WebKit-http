@@ -23,38 +23,21 @@
 * THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
+
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "config.h"
 #include "DisplayInlineContent.h"
 
 namespace WebCore {
 namespace Display {
 
-WTF::IteratorRange<const Run*> InlineContent::runsForRect(const LayoutRect& rect) const
+WTF::IteratorRange<const Run*> InlineContent::runsForRect(const LayoutRect&) const
 {
-    // FIXME: Do something efficient.
-    const Run* first = nullptr;
-    for (auto& run : runs) {
-        auto runRect = Layout::toLayoutRect(run.logicalRect());
-        if (runRect.intersects(rect)) {
-            first = &run;
-            break;
-        }
-    }
-    if (!first)
+    // FIXME: Do something efficient e.g. using line boxes.
+    if (runs.isEmpty())
         return { nullptr, nullptr };
-
-    const Run* last = nullptr;
-    for (auto& run : WTF::makeReversedRange(runs)) {
-        auto runRect = Layout::toLayoutRect(run.logicalRect());
-        if (runRect.intersects(rect)) {
-            last = &run;
-            break;
-        }
-    }
-
-    return { first, last + 1 };
+    return { &runs.first(), &runs.last() + 1 };
 }
 
 }

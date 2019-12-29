@@ -220,11 +220,32 @@ MediaPlayerPrivateMediaStreamAVFObjC::~MediaPlayerPrivateMediaStreamAVFObjC()
 #pragma mark -
 #pragma mark MediaPlayer Factory Methods
 
+class MediaPlayerFactoryMediaStreamAVFObjC final : public MediaPlayerFactory {
+private:
+    MediaPlayerEnums::MediaEngineIdentifier identifier() const final { return MediaPlayerEnums::MediaEngineIdentifier::AVFoundationMediaStream; };
+
+    std::unique_ptr<MediaPlayerPrivateInterface> createMediaEnginePlayer(MediaPlayer* player) const final
+    {
+        return makeUnique<MediaPlayerPrivateMediaStreamAVFObjC>(player);
+    }
+
+    void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types) const final
+    {
+        return MediaPlayerPrivateMediaStreamAVFObjC::getSupportedTypes(types);
+    }
+
+    MediaPlayer::SupportsType supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters) const final
+    {
+        return MediaPlayerPrivateMediaStreamAVFObjC::supportsType(parameters);
+    }
+};
+
 void MediaPlayerPrivateMediaStreamAVFObjC::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    if (isAvailable())
-        registrar([](MediaPlayer* player) { return makeUnique<MediaPlayerPrivateMediaStreamAVFObjC>(player); }, getSupportedTypes,
-            supportsType, 0, 0, 0, 0);
+    if (!isAvailable())
+        return;
+
+    registrar(makeUnique<MediaPlayerFactoryMediaStreamAVFObjC>());
 }
 
 bool MediaPlayerPrivateMediaStreamAVFObjC::isAvailable()
@@ -240,7 +261,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::getSupportedTypes(HashSet<String, ASC
 
 MediaPlayer::SupportsType MediaPlayerPrivateMediaStreamAVFObjC::supportsType(const MediaEngineSupportParameters& parameters)
 {
-    return parameters.isMediaStream ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
+    return parameters.isMediaStream ? MediaPlayer::SupportsType::IsSupported : MediaPlayer::SupportsType::IsNotSupported;
 }
 
 #pragma mark -
@@ -526,7 +547,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::load(const String&)
 {
     // This media engine only supports MediaStream URLs.
     scheduleDeferredTask([this] {
-        setNetworkState(MediaPlayer::FormatError);
+        setNetworkState(MediaPlayer::NetworkState::FormatError);
     });
 }
 
@@ -535,7 +556,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::load(const String&, MediaSourcePrivat
 {
     // This media engine only supports MediaStream URLs.
     scheduleDeferredTask([this] {
-        setNetworkState(MediaPlayer::FormatError);
+        setNetworkState(MediaPlayer::NetworkState::FormatError);
     });
 }
 #endif
@@ -552,7 +573,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::load(MediaStreamPrivate& stream)
 
     scheduleDeferredTask([this] {
         updateTracks();
-        setNetworkState(MediaPlayer::Idle);
+        setNetworkState(MediaPlayer::NetworkState::Idle);
         updateReadyState();
     });
 }

@@ -32,6 +32,7 @@
 #include "NetworkContentRuleListManager.h"
 #include "NetworkHTTPSUpgradeChecker.h"
 #include "SandboxExtension.h"
+#include "WebIDBServer.h"
 #include "WebPageProxyIdentifier.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include "WebsiteData.h"
@@ -41,7 +42,6 @@
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FetchIdentifier.h>
 #include <WebCore/IDBKeyData.h>
-#include <WebCore/IDBServer.h>
 #include <WebCore/MessagePortChannelRegistry.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
@@ -231,6 +231,7 @@ public:
     void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, CompletionHandler<void()>&&);
     void resetParametersToDefaultValues(PAL::SessionID, CompletionHandler<void()>&&);
     void scheduleClearInMemoryAndPersistent(PAL::SessionID, Optional<WallTime> modifiedSince, ShouldGrandfatherStatistics, CompletionHandler<void()>&&);
+    void getResourceLoadStatisticsDataSummary(PAL::SessionID, CompletionHandler<void(Vector<WebResourceLoadStatisticsStore::ThirdPartyData>&&)>&&);
     void scheduleCookieBlockingUpdate(PAL::SessionID, CompletionHandler<void()>&&);
     void scheduleStatisticsAndDataRecordsProcessing(PAL::SessionID, CompletionHandler<void()>&&);
     void submitTelemetry(PAL::SessionID, CompletionHandler<void()>&&);
@@ -270,7 +271,7 @@ public:
     void setSessionIsControlledByAutomation(PAL::SessionID, bool);
     bool sessionIsControlledByAutomation(PAL::SessionID) const;
 
-    void connectionToWebProcessClosed(IPC::Connection&);
+    void connectionToWebProcessClosed(IPC::Connection&, PAL::SessionID);
     void getLocalStorageOriginDetails(PAL::SessionID, CompletionHandler<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -278,7 +279,7 @@ public:
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
-    WebCore::IDBServer::IDBServer& idbServer(PAL::SessionID);
+    WebIDBServer& webIDBServer(PAL::SessionID);
 #endif
 
     void syncLocalStorage(CompletionHandler<void()>&&);
@@ -443,7 +444,7 @@ private:
     void addIndexedDatabaseSession(PAL::SessionID, String&, SandboxExtension::Handle&);
     void collectIndexedDatabaseOriginsForVersion(const String&, HashSet<WebCore::SecurityOriginData>&);
     HashSet<WebCore::SecurityOriginData> indexedDatabaseOrigins(const String& path);
-    Ref<WebCore::IDBServer::IDBServer> createIDBServer(PAL::SessionID);
+    Ref<WebIDBServer> createWebIDBServer(PAL::SessionID);
     void setSessionStorageQuotaManagerIDBRootPath(PAL::SessionID, const String& idbRootPath);
 #endif
 
@@ -549,7 +550,7 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     HashMap<PAL::SessionID, String> m_idbDatabasePaths;
-    HashMap<PAL::SessionID, RefPtr<WebCore::IDBServer::IDBServer>> m_idbServers;
+    HashMap<PAL::SessionID, RefPtr<WebIDBServer>> m_webIDBServers;
 #endif
 
     Deque<CrossThreadTask> m_storageTasks;

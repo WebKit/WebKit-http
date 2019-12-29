@@ -25,12 +25,11 @@
 
 #pragma once
 
+#include "DisplayList.h"
 #include "FloatPoint.h"
-#include "FloatRect.h"
 #include "FloatRoundedRect.h"
 #include "Font.h"
 #include "GlyphBuffer.h"
-#include "GraphicsContext.h"
 #include "Image.h"
 #include "Pattern.h"
 #include <wtf/RefCounted.h>
@@ -45,116 +44,6 @@ namespace WebCore {
 struct ImagePaintingOptions;
 
 namespace DisplayList {
-
-enum class ItemType : uint8_t {
-    Save,
-    Restore,
-    Translate,
-    Rotate,
-    Scale,
-    ConcatenateCTM,
-    SetState,
-    SetLineCap,
-    SetLineDash,
-    SetLineJoin,
-    SetMiterLimit,
-    ClearShadow,
-    Clip,
-    ClipOut,
-    ClipOutToPath,
-    ClipPath,
-    DrawGlyphs,
-    DrawImage,
-    DrawTiledImage,
-    DrawTiledScaledImage,
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
-    DrawNativeImage,
-#endif
-    DrawPattern,
-    DrawRect,
-    DrawLine,
-    DrawLinesForText,
-    DrawDotsForDocumentMarker,
-    DrawEllipse,
-    DrawPath,
-    DrawFocusRingPath,
-    DrawFocusRingRects,
-    FillRect,
-    FillRectWithColor,
-    FillRectWithGradient,
-    FillCompositedRect,
-    FillRoundedRect,
-    FillRectWithRoundedHole,
-    FillPath,
-    FillEllipse,
-    StrokeRect,
-    StrokePath,
-    StrokeEllipse,
-    ClearRect,
-    BeginTransparencyLayer,
-    EndTransparencyLayer,
-#if USE(CG)
-    ApplyStrokePattern, // FIXME: should not be a recorded item.
-    ApplyFillPattern, // FIXME: should not be a recorded item.
-#endif
-    ApplyDeviceScaleFactor,
-};
-
-class Item : public RefCounted<Item> {
-public:
-    Item() = delete;
-
-    WEBCORE_EXPORT Item(ItemType);
-    WEBCORE_EXPORT virtual ~Item();
-
-    ItemType type() const
-    {
-        return m_type;
-    }
-
-    virtual void apply(GraphicsContext&) const = 0;
-
-    static constexpr bool isDisplayListItem = true;
-
-    virtual bool isDrawingItem() const { return false; }
-    
-    // A state item is one preserved by Save/Restore.
-    bool isStateItem() const
-    {
-        return isStateItemType(m_type);
-    }
-
-    static bool isStateItemType(ItemType itemType)
-    {
-        switch (itemType) {
-        case ItemType::Translate:
-        case ItemType::Rotate:
-        case ItemType::Scale:
-        case ItemType::ConcatenateCTM:
-        case ItemType::SetState:
-        case ItemType::SetLineCap:
-        case ItemType::SetLineDash:
-        case ItemType::SetLineJoin:
-        case ItemType::SetMiterLimit:
-        case ItemType::ClearShadow:
-            return true;
-        default:
-            return false;
-        }
-        return false;
-    }
-
-#if !defined(NDEBUG) || !LOG_DISABLED
-    WTF::CString description() const;
-#endif
-    static size_t sizeInBytes(const Item&);
-
-    template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static Optional<Ref<Item>> decode(Decoder&);
-
-private:
-    ItemType m_type;
-};
 
 class DrawingItem : public Item {
 public:
@@ -373,6 +262,45 @@ Optional<Ref<Scale>> Scale::decode(Decoder& decoder)
         return WTF::nullopt;
 
     return Scale::create(*scale);
+}
+
+class SetCTM : public Item {
+public:
+    static Ref<SetCTM> create(const AffineTransform& matrix)
+    {
+        return adoptRef(*new SetCTM(matrix));
+    }
+
+    WEBCORE_EXPORT virtual ~SetCTM();
+
+    const AffineTransform& transform() const { return m_transform; }
+
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static Optional<Ref<SetCTM>> decode(Decoder&);
+
+private:
+    WEBCORE_EXPORT SetCTM(const AffineTransform&);
+
+    void apply(GraphicsContext&) const override;
+
+    AffineTransform m_transform;
+};
+
+template<class Encoder>
+void SetCTM::encode(Encoder& encoder) const
+{
+    encoder << m_transform;
+}
+
+template<class Decoder>
+Optional<Ref<SetCTM>> SetCTM::decode(Decoder& decoder)
+{
+    Optional<AffineTransform> transform;
+    decoder >> transform;
+    if (!transform)
+        return WTF::nullopt;
+
+    return SetCTM::create(*transform);
 }
 
 class ConcatenateCTM : public Item {
@@ -1401,24 +1329,80 @@ public:
         return adoptRef(*new DrawNativeImage(image, imageSize, destRect, srcRect, options));
     }
 
+    WEBCORE_EXPORT virtual ~DrawNativeImage();
+
     FloatRect source() const { return m_srcRect; }
-    FloatRect destination() const { return m_destination; }
+    FloatRect destinationRect() const { return m_destinationRect; }
+
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static Optional<Ref<DrawNativeImage>> decode(Decoder&);
 
 private:
-    DrawNativeImage(const NativeImagePtr&, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions&);
+    WEBCORE_EXPORT DrawNativeImage(const NativeImagePtr&, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions&);
 
     void apply(GraphicsContext&) const override;
 
-    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destinationRect; }
 
 #if USE(CG)
-    RetainPtr<CGImageRef> m_image;
+    NativeImagePtr m_image;
 #endif
     FloatSize m_imageSize;
-    FloatRect m_destination;
+    FloatRect m_destinationRect;
     FloatRect m_srcRect;
     ImagePaintingOptions m_options;
 };
+
+template<class Encoder>
+void DrawNativeImage::encode(Encoder& encoder) const
+{
+#if USE(CG)
+    NativeImageHandle handle { m_image };
+    encoder << handle;
+#endif
+    encoder << m_imageSize;
+    encoder << m_destinationRect;
+    encoder << m_srcRect;
+    encoder << m_options;
+}
+
+template<class Decoder>
+Optional<Ref<DrawNativeImage>> DrawNativeImage::decode(Decoder& decoder)
+{
+#if USE(CG)
+    Optional<NativeImageHandle> handle;
+    decoder >> handle;
+    if (!handle)
+        return WTF::nullopt;
+#endif
+
+    Optional<FloatSize> imageSize;
+    decoder >> imageSize;
+    if (!imageSize)
+        return WTF::nullopt;
+
+    Optional<FloatRect> destinationRect;
+    decoder >> destinationRect;
+    if (!destinationRect)
+        return WTF::nullopt;
+
+    Optional<FloatRect> srcRect;
+    decoder >> srcRect;
+    if (!srcRect)
+        return WTF::nullopt;
+
+    Optional<ImagePaintingOptions> options;
+    decoder >> options;
+    if (!options)
+        return WTF::nullopt;
+
+#if USE(CG)
+    NativeImagePtr image = handle->image;
+#else
+    NativeImagePtr image = nullptr;
+#endif
+    return DrawNativeImage::create(image, *imageSize, *destinationRect, *srcRect, *options);
+}
 #endif
 
 class DrawPattern : public DrawingItem {
@@ -2701,6 +2685,9 @@ void Item::encode(Encoder& encoder) const
     case ItemType::Scale:
         encoder << downcast<Scale>(*this);
         break;
+    case ItemType::SetCTM:
+        encoder << downcast<SetCTM>(*this);
+        break;
     case ItemType::ConcatenateCTM:
         encoder << downcast<ConcatenateCTM>(*this);
         break;
@@ -2748,7 +2735,7 @@ void Item::encode(Encoder& encoder) const
         break;
 #if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
     case ItemType::DrawNativeImage:
-        WTFLogAlways("DisplayList::Item::encode cannot yet encode DrawNativeImage");
+        encoder << downcast<DrawNativeImage>(*this);
         break;
 #endif
     case ItemType::DrawPattern:
@@ -2863,6 +2850,10 @@ Optional<Ref<Item>> Item::decode(Decoder& decoder)
         if (auto item = Scale::decode(decoder))
             return static_reference_cast<Item>(WTFMove(*item));
         break;
+    case ItemType::SetCTM:
+        if (auto item = SetCTM::decode(decoder))
+            return static_reference_cast<Item>(WTFMove(*item));
+        break;
     case ItemType::ConcatenateCTM:
         if (auto item = ConcatenateCTM::decode(decoder))
             return static_reference_cast<Item>(WTFMove(*item));
@@ -2924,7 +2915,8 @@ Optional<Ref<Item>> Item::decode(Decoder& decoder)
         break;
 #if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
     case ItemType::DrawNativeImage:
-        WTFLogAlways("DisplayList::Item::decode cannot yet decode DrawNativeImage");
+        if (auto item = DrawNativeImage::decode(decoder))
+            return static_reference_cast<Item>(WTFMove(*item));
         break;
 #endif
     case ItemType::DrawPattern:
@@ -3059,6 +3051,7 @@ SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(Restore)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(Translate)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(Rotate)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(Scale)
+SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(SetCTM)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(ConcatenateCTM)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(SetState)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(SetLineCap)
@@ -3116,6 +3109,7 @@ template<> struct EnumTraits<WebCore::DisplayList::ItemType> {
     WebCore::DisplayList::ItemType::Translate,
     WebCore::DisplayList::ItemType::Rotate,
     WebCore::DisplayList::ItemType::Scale,
+    WebCore::DisplayList::ItemType::SetCTM,
     WebCore::DisplayList::ItemType::ConcatenateCTM,
     WebCore::DisplayList::ItemType::SetState,
     WebCore::DisplayList::ItemType::SetLineCap,

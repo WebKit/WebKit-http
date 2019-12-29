@@ -1,3 +1,376 @@
+2019-12-16  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: [ Mac wk2 ] imported/w3c/web-platform-tests/service-workers/service-worker/update-no-cache-request-headers.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205286
+        <rdar://problem/57976344>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The test triggers a registration update and then expects registration.installing to be non-null
+        once the registration update promise is resolved. This is only true if the content of the service
+        worker script is different since last update. The script included a timestamp to try and make
+        the script different every time but it would sometimes not suffice if the update happens quickly
+        enough. To address the issue, include a UUID in the script instead of a timestamp.
+
+        Upstream PR: https://github.com/web-platform-tests/wpt/pull/20797
+
+        * web-platform-tests/service-workers/service-worker/resources/test-request-headers-worker.js:
+        * web-platform-tests/service-workers/service-worker/resources/test-request-headers-worker.py:
+        (main):
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Implement PostMessageOptions for postMessage
+        https://bugs.webkit.org/show_bug.cgi?id=191028
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT tests now that we have more passes.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        * web-platform-tests/html/browsers/windows/document-access/document_access_parent_access.tentative-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-frozen.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage.https-expected.txt:
+        * web-platform-tests/webmessaging/message-channels/dictionary-transferrable-expected.txt:
+        * web-platform-tests/webmessaging/message-channels/user-activation.tentative-expected.txt:
+        * web-platform-tests/webmessaging/postMessage_MessagePorts_xsite.sub.window-expected.txt:
+        * web-platform-tests/webmessaging/with-options/host-specific-origin-expected.txt:
+        * web-platform-tests/webmessaging/with-options/message-channel-transferable-expected.txt:
+        * web-platform-tests/webmessaging/with-options/no-target-origin-expected.txt:
+        * web-platform-tests/webmessaging/with-options/null-transfer-expected.txt:
+        * web-platform-tests/webmessaging/with-options/one-arg-expected.txt:
+        * web-platform-tests/webmessaging/with-options/slash-origin-expected.txt:
+        * web-platform-tests/webmessaging/with-options/undefined-transferable-expected.txt:
+        * web-platform-tests/webmessaging/with-options/unknown-parameter-expected.txt:
+        * web-platform-tests/webmessaging/without-ports/008-expected.txt:
+        * web-platform-tests/webmessaging/worker_postMessage_user_activation.tentative-expected.txt:
+        * web-platform-tests/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-dictionary-expected.txt:
+        * web-platform-tests/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-null-expected.txt:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: (r251677) imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/form-double-submit-3.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205164
+        <rdar://problem/57879042>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT tests now that they are passing.
+
+        * web-platform-tests/html/semantics/forms/form-submission-0/form-double-submit-3-expected.txt:
+        * web-platform-tests/html/semantics/forms/form-submission-0/form-double-submit-expected.txt:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Behavior of [[GetOwnProperty]] for cross-origin windows is not spec-compliant
+        https://bugs.webkit.org/show_bug.cgi?id=205184
+
+        Reviewed by Darin Adler.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2019-12-13  Chris Lord  <clord@igalia.com>
+
+        Implement OffscreenCanvas.convertToBlob
+        https://bugs.webkit.org/show_bug.cgi?id=202573
+
+        Reviewed by Darin Adler.
+
+        Update with fixed worker tests and SecurityError checks. See wpe
+        issues #20694 and #20698.
+
+        * web-platform-tests/offscreen-canvas/convert-to-blob/offscreencanvas.convert.to.blob-expected.txt:
+        * web-platform-tests/offscreen-canvas/convert-to-blob/offscreencanvas.convert.to.blob.html:
+        * web-platform-tests/offscreen-canvas/convert-to-blob/offscreencanvas.convert.to.blob.w-expected.txt:
+        * web-platform-tests/offscreen-canvas/convert-to-blob/offscreencanvas.convert.to.blob.w.html:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync service-workers web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205181
+
+        Reviewed by Alex Christensen.
+
+        Resync service-workers web-platform-tests from upstream 178762b6fce688979.
+
+        * web-platform-tests/service-workers/*: Updated
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, land missing baselines from r253453.
+
+        * web-platform-tests/workers/SharedWorker-MessageEvent-source.any-expected.txt: Added.
+        * web-platform-tests/workers/SharedWorker-MessageEvent-source.any.worker-expected.txt: Added.
+        * web-platform-tests/workers/SharedWorker-replace-EventHandler.any-expected.txt: Added.
+        * web-platform-tests/workers/SharedWorker-replace-EventHandler.any.worker-expected.txt: Added.
+        * web-platform-tests/workers/examples/onconnect.any-expected.txt: Added.
+        * web-platform-tests/workers/examples/onconnect.any.worker-expected.txt: Added.
+        * web-platform-tests/workers/semantics/interface-objects/003.any-expected.txt: Added.
+        * web-platform-tests/workers/semantics/interface-objects/003.any.worker-expected.txt: Added.
+        * web-platform-tests/workers/semantics/interface-objects/004.any-expected.txt: Added.
+        * web-platform-tests/workers/semantics/interface-objects/004.any.worker-expected.txt: Added.
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync workers web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205180
+
+        Reviewed by Alex Christensen.
+
+        Re-sync workers web-platform-tests from upstream 178762b6fce688979e261f3ac8.
+
+        * web-platform-tests/workers/*: Updated.
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync webmessaging web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205178
+
+        Reviewed by Alex Christensen.
+
+        Re-sync webmessaging web-platform-tests from upstream ab28e18f067f17a.
+
+        * web-platform-tests/webmessaging/*: Updated
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        window.AudioContext / window.OfflineAudioContext should not be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=205163
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2019-12-11  Chris Dumez  <cdumez@apple.com>
+
+        Trying to set toString / valueOf on a cross-origin Location object should throw a SecurityError
+        https://bugs.webkit.org/show_bug.cgi?id=205143
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/frame.html:
+        Resync from upstream ab28e18f067f17a76d9. This was causing 3 sanity checks in cross-origin-objects.html
+        to fail.
+
+2019-12-11  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] Cross-origin checks happen too late for overloaded methods
+        https://bugs.webkit.org/show_bug.cgi?id=205092
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline WPT test now that it is failing a bit later.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2019-12-10  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync imported/w3c/web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects.html from usptream
+        https://bugs.webkit.org/show_bug.cgi?id=205070
+
+        Reviewed by Alex Christensen.
+
+        Re-sync imported/w3c/web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects.html from usptream
+        ab28e18f067f17a76d9c32.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects.html:
+
+2019-12-10  youenn fablet  <youenn@apple.com>
+
+        Mark some WPT test folders as DumpJSConsoleLogInStdErr
+        https://bugs.webkit.org/show_bug.cgi?id=204793
+
+        Reviewed by Eric Carlson.
+
+        Updated tests with removed console log lines.
+
+        * web-platform-tests/cors/304-expected.txt:
+        * web-platform-tests/cors/basic-expected.txt:
+        * web-platform-tests/cors/client-hint-request-headers-expected.txt:
+        * web-platform-tests/cors/cors-safelisted-request-header.any-expected.txt:
+        * web-platform-tests/cors/cors-safelisted-request-header.any.worker-expected.txt:
+        * web-platform-tests/cors/origin-expected.txt:
+        * web-platform-tests/cors/preflight-failure-expected.txt:
+        * web-platform-tests/cors/redirect-origin-expected.txt:
+        * web-platform-tests/cors/redirect-preflight-2-expected.txt:
+        * web-platform-tests/cors/remote-origin-expected.txt:
+        * web-platform-tests/cors/simple-requests-expected.txt:
+        * web-platform-tests/cors/status-async-expected.txt:
+        * web-platform-tests/cors/status-expected.txt:
+        * web-platform-tests/fetch/api/abort/general.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/integrity.sub.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-blob.sub.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-data.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-others.sub.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-star.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-star.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-status.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-preflight.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/sandboxed-iframe-expected.txt:
+        * web-platform-tests/fetch/api/policies/csp-blocked-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location.any-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-mode.any-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-mode.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-schemes-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-to-dataurl.any-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-to-dataurl.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-bad-port-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt:
+        * web-platform-tests/fetch/api/request/request-keepalive-quota-expected.txt:
+        * web-platform-tests/fetch/api/response/response-stream-with-broken-then.any-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/fetch-in-iframe-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/fetch.any-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/fetch.any.worker-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/iframe-loads-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/image-loads-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/scheme-restriction.any-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/scheme-restriction.any.worker-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/scheme-restriction.https.window-expected.txt:
+        * web-platform-tests/fetch/cross-origin-resource-policy/script-loads-expected.txt:
+        * web-platform-tests/fetch/data-urls/base64.any-expected.txt:
+        * web-platform-tests/fetch/data-urls/processing.any-expected.txt:
+        * web-platform-tests/fetch/images/canvas-remote-read-remote-image-redirect-expected.txt:
+        * web-platform-tests/fetch/security/redirect-to-url-with-credentials.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-fetch-with-appcache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/controller-with-no-fetch-event-handler.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/embed-and-object-are-not-intercepted.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-image-cache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-image.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-csp.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-network-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-referrer-policy.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-argument.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-inscope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-outscope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-cross-origin.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-fallback.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/invalid-header.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/opaque-response-preloaded.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-recovery.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/webvtt-cross-origin.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/worker-client-id.https-expected.txt:
+        * web-platform-tests/service-workers/stub-3.1-service-worker-obj-expected.txt:
+        * web-platform-tests/service-workers/stub-3.2-navigator-service-worker-expected.txt:
+        * web-platform-tests/service-workers/stub-4.1-service-worker-global-scope-expected.txt:
+        * web-platform-tests/service-workers/stub-4.4-request-objects-expected.txt:
+        * web-platform-tests/service-workers/stub-4.5-response-objects-expected.txt:
+        * web-platform-tests/service-workers/stub-4.6.3-cache-storage-expected.txt:
+        * web-platform-tests/service-workers/stub-4.7.4.1-fetch-event-section-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-answer-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt:
+        * web-platform-tests/xhr/access-control-basic-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-basic-non-cors-safelisted-content-type-expected.txt:
+        * web-platform-tests/xhr/access-control-basic-preflight-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-request-invalid-status-301-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-request-invalid-status-400-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-request-invalid-status-501-expected.txt:
+        * web-platform-tests/xhr/access-control-recursive-failed-request-expected.txt:
+        * web-platform-tests/xhr/access-control-sandboxed-iframe-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-sandboxed-iframe-denied-without-wildcard-expected.txt:
+        * web-platform-tests/xhr/getresponseheader-error-state-expected.txt:
+        * web-platform-tests/xhr/open-method-responsetype-set-sync-expected.txt:
+        * web-platform-tests/xhr/open-url-redirected-sharedworker-origin-expected.txt:
+        * web-platform-tests/xhr/responsetype.any-expected.txt:
+        * web-platform-tests/xhr/security-consideration.sub-expected.txt:
+        * web-platform-tests/xhr/send-authentication-basic-cors-expected.txt:
+        * web-platform-tests/xhr/send-data-arraybuffer-expected.txt:
+        * web-platform-tests/xhr/send-network-error-async-events.sub-expected.txt:
+        * web-platform-tests/xhr/send-non-same-origin-expected.txt:
+        * web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+        * web-platform-tests/xhr/setrequestheader-header-forbidden-expected.txt:
+        * web-platform-tests/xhr/timeout-cors-async-expected.txt:
+        * web-platform-tests/xhr/timeout-sync-expected.txt:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-synconmain-expected.txt:
+
+2019-12-09  Patrick Griffis  <pgriffis@igalia.com>
+
+        Import secure cookie tests from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=204193
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/cookies/resources/cookie-helper.sub.js: Added.
+        (credFetch):
+        (assert_dom_cookie):
+        (assert_cookie):
+        (resetSameSiteCookies):
+        (resetSecureCookies):
+        * web-platform-tests/cookies/resources/drop.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/dropSameSite.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/dropSecure.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/echo-cookie.html: Added.
+        * web-platform-tests/cookies/resources/echo-json.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/helpers.py: Added.
+        (setNoCacheAndCORSHeaders):
+        (makeCookieHeader):
+        (makeCookieHeader.makeAV):
+        (makeDropCookie):
+        (readParameter):
+        (readCookies):
+        * web-platform-tests/cookies/resources/imgIfMatch.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/list.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/postToParent.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/redirectWithCORSHeaders.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/set-cookie.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/set.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/setSameSite.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/setSecure.py: Added.
+        (main):
+        * web-platform-tests/cookies/resources/testharness-helpers.js: Added.
+        (executeNextTest):
+        (executeTestsSerially):
+        * web-platform-tests/cookies/secure/set-from-dom.https.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-dom.https.sub.html: Added.
+        * web-platform-tests/cookies/secure/set-from-dom.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-dom.sub.html: Added.
+        * web-platform-tests/cookies/secure/set-from-http.https.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-http.https.sub.html: Added.
+        * web-platform-tests/cookies/secure/set-from-http.https.sub.html.headers: Added.
+        * web-platform-tests/cookies/secure/set-from-http.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-http.sub.html: Added.
+        * web-platform-tests/cookies/secure/set-from-http.sub.html.headers: Added.
+        * web-platform-tests/cookies/secure/set-from-ws.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-ws.sub.html: Added.
+        * web-platform-tests/cookies/secure/set-from-wss.https.sub-expected.txt: Added.
+        * web-platform-tests/cookies/secure/set-from-wss.https.sub.html: Added.
+
 2019-12-09  youenn fablet  <youenn@apple.com>
 
         NetworkResourceLoader should consume its sandbox extensions when starting a fetch through service worker

@@ -45,7 +45,7 @@
 #import "WKPreferencesInternal.h"
 #import "WKProcessGroupPrivate.h"
 #import "WKWebViewConfiguration.h"
-#import "WKWebViewInternal.h"
+#import "WKWebViewIOS.h"
 #import "WebFrameProxy.h"
 #import "WebKit2Initialize.h"
 #import "WebPageGroup.h"
@@ -223,12 +223,16 @@ static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
     ASSERT(!_visibilityPropagationView);
     // Propagate the view's visibility state to the WebContent process so that it is marked as "Foreground Running" when necessary.
     _visibilityPropagationView = adoptNS([[_UILayerHostView alloc] initWithFrame:CGRectZero pid:processIdentifier contextID:contextID]);
-    RELEASE_LOG(Process, "Created visibility propagation view %p for WebContent process with PID %d", _visibilityPropagationView.get(), processIdentifier);
+    RELEASE_LOG(Process, "Created visibility propagation view %p (contextID: %u) for WebContent process with PID %d", _visibilityPropagationView.get(), contextID, processIdentifier);
     [self addSubview:_visibilityPropagationView.get()];
 }
 
 - (void)_removeVisibilityPropagationView
 {
+    if (!_visibilityPropagationView)
+        return;
+
+    RELEASE_LOG(Process, "Removing visibility propagation view %p", _visibilityPropagationView.get());
     [_visibilityPropagationView removeFromSuperview];
     _visibilityPropagationView = nullptr;
 }
@@ -407,7 +411,7 @@ static WebCore::FloatBoxExtent floatBoxExtent(UIEdgeInsets insets)
     }
 
     CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:unobscuredContentRect inputViewBounds:inputViewBounds];
-    WebCore::FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
+    WebCore::FloatRect fixedPositionRectForLayout = _page->computeLayoutViewportRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->layoutViewportRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
 
     WebKit::VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
         visibleContentRect,
@@ -624,8 +628,8 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     }
     
     if (boundsChanged) {
-        // FIXME: factor computeCustomFixedPositionRect() into something that gives us this rect.
-        WebCore::FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), [[_webView scrollView] zoomScale]);
+        // FIXME: factor computeLayoutViewportRect() into something that gives us this rect.
+        WebCore::FloatRect fixedPositionRect = _page->computeLayoutViewportRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->layoutViewportRect(), [[_webView scrollView] zoomScale]);
         [self updateFixedClippingView:fixedPositionRect];
 
         // We need to push the new content bounds to the webview to update fixed position rects.

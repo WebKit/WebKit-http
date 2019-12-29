@@ -28,6 +28,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "InlineItem.h"
+#include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
 
@@ -37,8 +38,8 @@ namespace Layout {
 
 class TextUtil {
 public:
+    static InlineLayoutUnit width(const InlineTextItem&, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft = 0);
     static InlineLayoutUnit width(const Box&, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft = 0);
-    static Optional<unsigned> hyphenPositionBefore(const InlineItem&, unsigned from, unsigned length);
     struct SplitData {
         unsigned start { 0 };
         unsigned length { 0 };
@@ -46,6 +47,7 @@ public:
     };
     static SplitData split(const Box&, unsigned startPosition, unsigned length, InlineLayoutUnit textWidth, InlineLayoutUnit availableWidth, InlineLayoutUnit contentLogicalLeft);
     static bool shouldPreserveTrailingWhitespace(const RenderStyle&);
+    static unsigned findNextBreakablePosition(LazyLineBreakIterator&, unsigned startPosition, const RenderStyle&);
 
 private:
     static InlineLayoutUnit fixedPitchWidth(const StringView&, const RenderStyle&, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft);

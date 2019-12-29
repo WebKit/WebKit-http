@@ -56,7 +56,20 @@ namespace JSC {
 
 template <> const ClassInfo JSCallbackObject<JSAPIWrapperGlobalObject>::s_info = { "JSAPIWrapperGlobalObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSCallbackObject) };
 
-template<> const bool JSCallbackObject<JSAPIWrapperGlobalObject>::needsDestruction = false;
+template<> const bool JSCallbackObject<JSAPIWrapperGlobalObject>::needsDestruction = true;
+
+template <>
+IsoSubspace* JSCallbackObject<JSAPIWrapperGlobalObject>::subspaceForImpl(VM& vm, SubspaceAccess mode)
+{
+    switch (mode) {
+    case SubspaceAccess::OnMainThread:
+        return vm.callbackAPIWrapperGlobalObjectSpace<SubspaceAccess::OnMainThread>();
+    case SubspaceAccess::Concurrently:
+        return vm.callbackAPIWrapperGlobalObjectSpace<SubspaceAccess::Concurrently>();
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return nullptr;
+}
 
 template <>
 Structure* JSCallbackObject<JSAPIWrapperGlobalObject>::createStructure(VM& vm, JSGlobalObject*, JSValue proto)

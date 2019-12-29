@@ -257,9 +257,10 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     [m_swipeTransitionContext _setAnimator:animationController.get()];
     [m_swipeTransitionContext _setInteractor:transition];
     [m_swipeTransitionContext _setTransitionIsInFlight:YES];
+    m_didCallWillEndSwipeGesture = false;
     [m_swipeTransitionContext _setInteractiveUpdateHandler:^(BOOL finish, CGFloat percent, BOOL transitionCompleted, _UIViewControllerTransitionContext *) {
         if (finish)
-            m_webPageProxyForBackForwardListForCurrentSwipe->navigationGestureWillEnd(transitionCompleted, *targetItem);
+            willEndSwipeGesture(*targetItem, !transitionCompleted);
     }];
     auto pageID = m_webPageProxy.identifier();
     GestureID gestureID = m_currentGestureID;
@@ -272,8 +273,49 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     [transition startInteractiveTransition:m_swipeTransitionContext.get()];
 }
 
+void ViewGestureController::willEndSwipeGesture(WebBackForwardListItem& targetItem, bool cancelled)
+{
+    m_didCallWillEndSwipeGesture = true;
+    m_webPageProxyForBackForwardListForCurrentSwipe->navigationGestureWillEnd(!cancelled, targetItem);
+
+    if (cancelled)
+        return;
+
+    m_snapshotRemovalTargetRenderTreeSize = 0;
+    if (ViewSnapshot* snapshot = targetItem.snapshot())
+        m_snapshotRemovalTargetRenderTreeSize = snapshot->renderTreeSize() * swipeSnapshotRemovalRenderTreeSizeTargetFraction;
+
+    m_didStartProvisionalLoad = false;
+    m_webPageProxyForBackForwardListForCurrentSwipe->goToBackForwardItem(targetItem);
+
+    auto* currentItem = m_webPageProxyForBackForwardListForCurrentSwipe->backForwardList().currentItem();
+    // The main frame will not be navigated so hide the snapshot right away.
+    if (currentItem && currentItem->itemIsClone(targetItem)) {
+        removeSwipeSnapshot();
+        return;
+    }
+
+    // FIXME: Should we wait for VisuallyNonEmptyLayout like we do on Mac?
+    m_snapshotRemovalTracker.start(SnapshotRemovalTracker::RenderTreeSizeThreshold
+        | SnapshotRemovalTracker::RepaintAfterNavigation
+        | SnapshotRemovalTracker::MainFrameLoad
+        | SnapshotRemovalTracker::SubresourceLoads
+        | SnapshotRemovalTracker::ScrollPositionRestoration, [this] {
+        this->removeSwipeSnapshot();
+    });
+
+    if (ViewSnapshot* snapshot = targetItem.snapshot()) {
+        m_backgroundColorForCurrentSnapshot = snapshot->backgroundColor();
+        m_webPageProxy.didChangeBackgroundColor();
+    }
+}
+
 void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, _UIViewControllerTransitionContext *context, bool cancelled)
 {
+    // At least in the context of a simulated swipe, it is possible that endSwipeGesture() gets called but not willEndSwipeGesture().
+    if (!m_didCallWillEndSwipeGesture)
+        willEndSwipeGesture(*targetItem, cancelled);
+
     [context _setTransitionIsInFlight:NO];
     [context _setInteractor:nil];
     [context _setAnimator:nil];
@@ -295,46 +337,20 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
         return;
     }
 
-    m_snapshotRemovalTargetRenderTreeSize = 0;
-    if (ViewSnapshot* snapshot = targetItem->snapshot())
-        m_snapshotRemovalTargetRenderTreeSize = snapshot->renderTreeSize() * swipeSnapshotRemovalRenderTreeSizeTargetFraction;
-
     m_webPageProxyForBackForwardListForCurrentSwipe->navigationGestureDidEnd(true, *targetItem);
     if (&m_webPageProxy != m_webPageProxyForBackForwardListForCurrentSwipe)
         m_webPageProxy.navigationGestureDidEnd();
 
-    m_webPageProxyForBackForwardListForCurrentSwipe->goToBackForwardItem(*targetItem);
-
-    if (!m_webPageProxy.drawingArea()) {
+    if (!m_webPageProxy.provisionalDrawingArea()) {
         removeSwipeSnapshot();
         return;
-    }
-
-    auto* currentItem = m_webPageProxyForBackForwardListForCurrentSwipe->backForwardList().currentItem();
-    // The main frame will not be navigated so hide the snapshot right away.
-    if (currentItem && currentItem->itemIsClone(*targetItem)) {
-        removeSwipeSnapshot();
-        return;
-    }
-
-    // FIXME: Should we wait for VisuallyNonEmptyLayout like we do on Mac?
-    m_snapshotRemovalTracker.start(SnapshotRemovalTracker::RenderTreeSizeThreshold
-        | SnapshotRemovalTracker::RepaintAfterNavigation
-        | SnapshotRemovalTracker::MainFrameLoad
-        | SnapshotRemovalTracker::SubresourceLoads
-        | SnapshotRemovalTracker::ScrollPositionRestoration, [this] {
-            this->removeSwipeSnapshot();
-    });
-
-    if (ViewSnapshot* snapshot = targetItem->snapshot()) {
-        m_backgroundColorForCurrentSnapshot = snapshot->backgroundColor();
-        m_webPageProxy.didChangeBackgroundColor();
     }
 
     auto pageID = m_webPageProxy.identifier();
     GestureID gestureID = m_currentGestureID;
-    m_loadCallback = [this, pageID, gestureID] {
-        auto drawingArea = m_webPageProxy.provisionalDrawingArea();
+
+    auto doAfterLoadStart = [this, pageID, gestureID] {
+        auto* drawingArea = m_webPageProxy.provisionalDrawingArea();
         if (!drawingArea) {
             removeSwipeSnapshot();
             return;
@@ -346,6 +362,11 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
         });
         drawingArea->hideContentUntilPendingUpdate();
     };
+
+    if (m_didStartProvisionalLoad)
+        doAfterLoadStart();
+    else
+        m_loadCallback = WTFMove(doAfterLoadStart);
 }
 
 void ViewGestureController::setRenderTreeSize(uint64_t renderTreeSize)

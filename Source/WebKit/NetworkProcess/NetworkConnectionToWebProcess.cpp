@@ -54,8 +54,7 @@
 #include "ServiceWorkerFetchTaskMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
-#include "WebIDBConnectionToClient.h"
-#include "WebIDBConnectionToClientMessages.h"
+#include "WebIDBServerMessages.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebResourceLoadStatisticsStore.h"
@@ -220,9 +219,8 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
     }
 
 #if ENABLE(INDEXED_DATABASE)
-    if (decoder.messageReceiverName() == Messages::WebIDBConnectionToClient::messageReceiverName()) {
-        if (m_webIDBConnection)
-            m_webIDBConnection->didReceiveMessage(connection, decoder);
+    if (decoder.messageReceiverName() == Messages::WebIDBServer::messageReceiverName()) {
+        m_networkProcess->webIDBServer(m_sessionID).didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -314,7 +312,7 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection& connection)
     // root activity trackers.
     stopAllNetworkActivityTracking();
 
-    m_networkProcess->connectionToWebProcessClosed(connection);
+    m_networkProcess->connectionToWebProcessClosed(connection, m_sessionID);
 
     m_networkProcess->removeNetworkConnectionToWebProcess(*this);
 
@@ -325,11 +323,6 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection& connection)
     }
 #endif
 
-#if ENABLE(INDEXED_DATABASE)
-    if (auto idbConnection = std::exchange(m_webIDBConnection, { }))
-        idbConnection->disconnectedFromWebProcess();
-#endif
-    
 #if ENABLE(SERVICE_WORKER)
     unregisterSWConnection();
 #endif
@@ -505,13 +498,18 @@ void NetworkConnectionToWebProcess::prefetchDNS(const String& hostname)
     m_networkProcess->prefetchDNS(hostname);
 }
 
-void NetworkConnectionToWebProcess::preconnectTo(uint64_t preconnectionIdentifier, NetworkResourceLoadParameters&& parameters)
+void NetworkConnectionToWebProcess::preconnectTo(Optional<uint64_t> preconnectionIdentifier, NetworkResourceLoadParameters&& parameters)
 {
     ASSERT(!parameters.request.httpBody());
 
+    auto completionHandler = [this, protectedThis = makeRef(*this), preconnectionIdentifier = WTFMove(preconnectionIdentifier)](const ResourceError& error) {
+        if (preconnectionIdentifier)
+            didFinishPreconnection(*preconnectionIdentifier, error);
+    };
+
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     if (networkProcess().supplement<LegacyCustomProtocolManager>()->supportsScheme(parameters.request.url().protocol().toString())) {
-        didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
+        completionHandler(internalError(parameters.request.url()));
         return;
     }
 #endif
@@ -519,13 +517,13 @@ void NetworkConnectionToWebProcess::preconnectTo(uint64_t preconnectionIdentifie
 #if ENABLE(SERVER_PRECONNECT)
     auto* session = networkSession();
     if (session && session->allowsServerPreconnect()) {
-        new PreconnectTask(networkProcess(), sessionID(), WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
-            didFinishPreconnection(identifier, error);
+        new PreconnectTask(networkProcess(), sessionID(), WTFMove(parameters), [completionHandler = WTFMove(completionHandler)] (const ResourceError& error) {
+            completionHandler(error);
         });
         return;
     }
 #endif
-    didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
+    completionHandler(internalError(parameters.request.url()));
 }
 
 void NetworkConnectionToWebProcess::didFinishPreconnection(uint64_t preconnectionIdentifier, const ResourceError& error)
@@ -903,16 +901,6 @@ size_t NetworkConnectionToWebProcess::findNetworkActivityTracker(ResourceLoadIde
         return item.resourceID == resourceID;
     });
 }
-
-#if ENABLE(INDEXED_DATABASE)
-void NetworkConnectionToWebProcess::establishIDBConnectionToServer()
-{
-    LOG(IndexedDB, "NetworkConnectionToWebProcess::establishIDBConnectionToServer - %" PRIu64, m_sessionID.toUInt64());
-    ASSERT(!m_webIDBConnection);
-    
-    m_webIDBConnection = makeUnique<WebIDBConnectionToClient>(*this, m_webProcessIdentifier);
-}
-#endif
     
 #if ENABLE(SERVICE_WORKER)
 void NetworkConnectionToWebProcess::unregisterSWConnection()

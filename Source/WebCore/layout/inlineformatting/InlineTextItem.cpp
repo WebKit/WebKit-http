@@ -28,9 +28,9 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "BreakLines.h"
 #include "FontCascade.h"
 #include "InlineSoftLineBreakItem.h"
+#include "TextUtil.h"
 
 namespace WebCore {
 namespace Layout {
@@ -48,33 +48,12 @@ static unsigned moveToNextNonWhitespacePosition(const StringView& textContent, u
     return nextNonWhiteSpacePosition - startPosition;
 }
 
-static unsigned moveToNextBreakablePosition(unsigned startPosition, LazyLineBreakIterator lineBreakIterator, const RenderStyle& style)
+static unsigned moveToNextBreakablePosition(unsigned startPosition, LazyLineBreakIterator& lineBreakIterator, const RenderStyle& style)
 {
-    auto findNextBreakablePosition = [&](auto startPosition) {
-        auto keepAllWordsForCJK = style.wordBreak() == WordBreak::KeepAll;
-        auto breakNBSP = style.autoWrap() && style.nbspMode() == NBSPMode::Space;
-
-        if (keepAllWordsForCJK) {
-            if (breakNBSP)
-                return nextBreakablePositionKeepingAllWords(lineBreakIterator, startPosition);
-            return nextBreakablePositionKeepingAllWordsIgnoringNBSP(lineBreakIterator, startPosition);
-        }
-
-        if (lineBreakIterator.mode() == LineBreakIteratorMode::Default) {
-            if (breakNBSP)
-                return WebCore::nextBreakablePosition(lineBreakIterator, startPosition);
-            return nextBreakablePositionIgnoringNBSP(lineBreakIterator, startPosition);
-        }
-
-        if (breakNBSP)
-            return nextBreakablePositionWithoutShortcut(lineBreakIterator, startPosition);
-        return nextBreakablePositionIgnoringNBSPWithoutShortcut(lineBreakIterator, startPosition);
-    };
-
     auto textLength = lineBreakIterator.stringView().length();
     auto startPositionForNextBreakablePosition = startPosition;
     while (startPositionForNextBreakablePosition < textLength) {
-        auto nextBreakablePosition = findNextBreakablePosition(startPositionForNextBreakablePosition);
+        auto nextBreakablePosition = TextUtil::findNextBreakablePosition(lineBreakIterator, startPositionForNextBreakablePosition, style);
         // Oftentimes the next breakable position comes back as the start position (most notably hyphens).
         if (nextBreakablePosition != startPosition)
             return nextBreakablePosition - startPosition;
@@ -114,10 +93,21 @@ void InlineTextItem::createAndAppendTextItems(InlineItems& inlineContent, const 
         }
 
         if (isWhitespaceCharacter(text[currentPosition], style.preserveNewline())) {
+            auto appendWhitespaceItem = [&] (auto startPosition, auto itemLength) {
+                auto simpleSingleWhitespaceContent = textContext.canUseSimplifiedContentMeasuring && (itemLength == 1 || style.collapseWhiteSpace());
+                auto width = simpleSingleWhitespaceContent ? makeOptional(InlineLayoutUnit { font.spaceWidth() }) : inlineItemWidth(startPosition, itemLength);
+                inlineContent.append(InlineTextItem::createWhitespaceItem(inlineBox, startPosition, itemLength, width));
+            };
+
             auto length = moveToNextNonWhitespacePosition(text, currentPosition, style.preserveNewline());
-            auto simpleSingleWhitespaceContent = textContext.canUseSimplifiedContentMeasuring && (length == 1 || style.collapseWhiteSpace());
-            auto width = simpleSingleWhitespaceContent ? makeOptional(InlineLayoutUnit { font.spaceWidth() }) : inlineItemWidth(currentPosition, length);
-            inlineContent.append(InlineTextItem::createWhitespaceItem(inlineBox, currentPosition, length, width));
+            if (style.whiteSpace() == WhiteSpace::BreakSpaces) {
+                // https://www.w3.org/TR/css-text-3/#white-space-phase-1
+                // For break-spaces, a soft wrap opportunity exists after every space and every tab.
+                // FIXME: if this turns out to be a perf hit with too many individual whitespace inline items, we should transition this logic to line breaking.
+                for (unsigned i = 0; i < length; ++i)
+                    appendWhitespaceItem(currentPosition + i, 1);
+            } else
+                appendWhitespaceItem(currentPosition, length);
             currentPosition += length;
             continue;
         }

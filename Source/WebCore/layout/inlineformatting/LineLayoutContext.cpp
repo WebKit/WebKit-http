@@ -42,13 +42,10 @@ static InlineLayoutUnit inlineItemWidth(const FormattingContext& formattingConte
 
     if (is<InlineTextItem>(inlineItem)) {
         auto& inlineTextItem = downcast<InlineTextItem>(inlineItem);
-        auto contentWidth = inlineTextItem.width();
-        if (!contentWidth) {
-            auto end = inlineTextItem.isCollapsible() ? inlineTextItem.start() + 1 : inlineTextItem.end();
-            contentWidth = TextUtil::width(inlineTextItem.layoutBox(), inlineTextItem.start(), end, contentLogicalLeft);
-        }
-        auto wordSpacing = InlineLayoutUnit(inlineTextItem.isWhitespace() ? inlineTextItem.style().fontCascade().wordSpacing() : 0);
-        return *contentWidth + wordSpacing;
+        if (auto contentWidth = inlineTextItem.width())
+            return *contentWidth;
+        auto end = inlineTextItem.isCollapsible() ? inlineTextItem.start() + 1 : inlineTextItem.end();
+        return TextUtil::width(inlineTextItem, inlineTextItem.start(), end, contentLogicalLeft);
     }
 
     auto& layoutBox = inlineItem.layoutBox();
@@ -149,7 +146,7 @@ LineLayoutContext::LineContent LineLayoutContext::close(LineBuilder& line, unsig
 
 LineLayoutContext::IsEndOfLine LineLayoutContext::placeInlineItem(LineBuilder& line, const InlineItem& inlineItem)
 {
-    auto currentLogicalRight = line.lineBox().logicalRight();
+    auto currentLogicalRight = line.lineBox().logicalWidth() + m_uncommittedContent.width();
     auto itemLogicalWidth = inlineItemWidth(formattingContext(), inlineItem, currentLogicalRight);
 
     // Floats are special, they are intrusive but they don't really participate in the line layout context.
@@ -163,7 +160,7 @@ LineLayoutContext::IsEndOfLine LineLayoutContext::placeInlineItem(LineBuilder& l
                 return IsEndOfLine::Yes;
         }
         auto lineIsConsideredEmpty = line.isVisuallyEmpty() && !line.hasIntrusiveFloat();
-        if (LineBreaker().shouldWrapFloatBox(itemLogicalWidth, line.availableWidth() + line.trailingTrimmableWidth(), lineIsConsideredEmpty))
+        if (LineBreaker().shouldWrapFloatBox(itemLogicalWidth, line.availableWidth() + line.trailingCollapsibleWidth(), lineIsConsideredEmpty))
             return IsEndOfLine::Yes;
 
         // This float can sit on the current line.
@@ -177,7 +174,9 @@ LineLayoutContext::IsEndOfLine LineLayoutContext::placeInlineItem(LineBuilder& l
     }
     // Line breaks are also special.
     if (inlineItem.isLineBreak()) {
-        auto isEndOfLine = !m_uncommittedContent.isEmpty() ? processUncommittedContent(line) : IsEndOfLine::No;
+        auto isEndOfLine = IsEndOfLine::No;
+        if (!m_uncommittedContent.isEmpty())
+            isEndOfLine = processUncommittedContent(line);
         // When the uncommitted content fits(or the line is empty), add the line break to this line as well.
         if (isEndOfLine == IsEndOfLine::No) {
             m_uncommittedContent.append(inlineItem, itemLogicalWidth);
@@ -185,10 +184,9 @@ LineLayoutContext::IsEndOfLine LineLayoutContext::placeInlineItem(LineBuilder& l
         }
         return IsEndOfLine::Yes;
     }
-    //
     auto isEndOfLine = IsEndOfLine::No;
     // Can we commit the pending content already?
-    if (LineBreaker::Content::isAtContentBoundary(inlineItem, m_uncommittedContent))
+    if (LineBreaker::Content::isAtSoftWrapOpportunity(inlineItem, m_uncommittedContent))
         isEndOfLine = processUncommittedContent(line);
     // The current item might fit as well.
     if (isEndOfLine == IsEndOfLine::No)
@@ -209,43 +207,45 @@ LineLayoutContext::IsEndOfLine LineLayoutContext::processUncommittedContent(Line
     auto lineBreaker = LineBreaker { };
     if (shouldDisableHyphenation())
         lineBreaker.setHyphenationDisabled();
-    auto lineStatus = LineBreaker::LineStatus { line.availableWidth(), line.trailingTrimmableWidth(), line.isTrailingRunFullyTrimmable(), lineIsConsideredEmpty };
+    auto lineStatus = LineBreaker::LineStatus { line.availableWidth(), line.trailingCollapsibleWidth(), line.isTrailingRunFullyCollapsible(), lineIsConsideredEmpty };
     auto breakingContext = lineBreaker.breakingContextForInlineContent(m_uncommittedContent, lineStatus);
     // The uncommitted content can fully, partially fit the current line (commit/partial commit) or not at all (reset).
     if (breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Keep)
         commitPendingContent(line);
     else if (breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Split) {
         ASSERT(breakingContext.partialTrailingContent);
-        ASSERT(m_uncommittedContent.runs()[breakingContext.partialTrailingContent->runIndex].inlineItem.isText());
+        ASSERT(m_uncommittedContent.runs()[breakingContext.partialTrailingContent->triailingRunIndex].inlineItem.isText());
         // Turn the uncommitted trailing run into a partial trailing run.
-        auto trailingRunIndex = breakingContext.partialTrailingContent->runIndex;
+        auto trailingRunIndex = breakingContext.partialTrailingContent->triailingRunIndex;
         auto& trailingInlineTextItem = downcast<InlineTextItem>(m_uncommittedContent.runs()[trailingRunIndex].inlineItem);
 
         ASSERT(!m_partialTrailingTextItem);
         // Construct a partial trailing inline run only if there's a need for one.
         // When splitting multiple runs <span style="word-break: break-all">text</span><span>content</span>, we might end up splitting them at run boundary.
         // In such case we don't need to construct a partial trailing item since the trailing run is not partial at all.
-        if (trailingInlineTextItem.length() == breakingContext.partialTrailingContent->length) {
+        if (auto partialTrailingRun = breakingContext.partialTrailingContent->partialRun) {
+            m_partialTrailingTextItem = trailingInlineTextItem.left(partialTrailingRun->length);
+            m_partialContent = LineContent::PartialContent { partialTrailingRun->needsHyphen, trailingInlineTextItem.length() - partialTrailingRun->length };
+            // Keep the non-overflow part of the uncommitted runs and add the trailing partial content.
+            m_uncommittedContent.shrink(trailingRunIndex);
+            m_uncommittedContent.append(*m_partialTrailingTextItem, partialTrailingRun->logicalWidth);
+            // Adjust hyphenated line count.
+            if (partialTrailingRun->needsHyphen)
+                ++m_successiveHyphenatedLineCount;
+        } else {
             // Trim the overflown run and keep the trailing (non-partial) run in the queue.
             auto overflownRunIndex = trailingRunIndex + 1;
             ASSERT(overflownRunIndex < m_uncommittedContent.size());
-            m_uncommittedContent.trim(overflownRunIndex);
-        } else {
-            auto trailingContentLength = breakingContext.partialTrailingContent->length;
-            m_partialTrailingTextItem = trailingInlineTextItem.left(trailingContentLength);
-            m_partialContent = LineContent::PartialContent { breakingContext.partialTrailingContent->needsHyphen, trailingInlineTextItem.length() - trailingContentLength };
-            // Keep the non-overflow part of the uncommitted runs and add the trailing partial content.
-            m_uncommittedContent.trim(trailingRunIndex);
-            m_uncommittedContent.append(*m_partialTrailingTextItem, breakingContext.partialTrailingContent->logicalWidth);
+            m_uncommittedContent.shrink(overflownRunIndex);
         }
         commitPendingContent(line);
-    } else if (breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Push)
+    } else if (breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Push) {
         m_uncommittedContent.reset();
-    else
+        // Closing the line without any hyphen.
+        m_successiveHyphenatedLineCount = 0;
+    } else
         ASSERT_NOT_REACHED();
-    // Adjust hyphenated line count
-    m_successiveHyphenatedLineCount = breakingContext.partialTrailingContent && breakingContext.partialTrailingContent->needsHyphen ? m_successiveHyphenatedLineCount + 1 : 0;
-    return breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Keep ? IsEndOfLine::No :IsEndOfLine::Yes;
+    return breakingContext.contentWrappingRule == LineBreaker::BreakingContext::ContentWrappingRule::Keep ? IsEndOfLine::No : IsEndOfLine::Yes;
 }
 
 }

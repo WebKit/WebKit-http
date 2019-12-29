@@ -72,7 +72,6 @@ class NetworkResourceLoadParameters;
 class NetworkSession;
 class NetworkSocketChannel;
 class NetworkSocketStream;
-class WebIDBConnectionToClient;
 class WebSWServerConnection;
 class WebSWServerToContextConnection;
 typedef uint64_t ResourceLoadIdentifier;
@@ -188,7 +187,7 @@ private:
     void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebPageProxyIdentifier, Messages::NetworkConnectionToWebProcess::TestProcessIncomingSyncMessagesWhenWaitingForSyncReplyDelayedReply&&);
     void loadPing(NetworkResourceLoadParameters&&);
     void prefetchDNS(const String&);
-    void preconnectTo(uint64_t preconnectionIdentifier, NetworkResourceLoadParameters&&);
+    void preconnectTo(Optional<uint64_t> preconnectionIdentifier, NetworkResourceLoadParameters&&);
 
     void removeLoadIdentifier(ResourceLoadIdentifier);
     void pageLoadCompleted(WebCore::PageIdentifier);
@@ -219,11 +218,6 @@ private:
     void createSocketStream(URL&&, String cachePartition, uint64_t);
 
     void createSocketChannel(const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
-
-#if ENABLE(INDEXED_DATABASE)
-    // Messages handlers (Modern IDB).
-    void establishIDBConnectionToServer();
-#endif
 
 #if ENABLE(SERVICE_WORKER)
     void establishSWServerConnection();
@@ -334,10 +328,6 @@ private:
     bool m_captureExtraNetworkLoadMetricsEnabled { false };
 
     RefPtr<CacheStorageEngineConnection> m_cacheStorageConnection;
-
-#if ENABLE(INDEXED_DATABASE)
-    std::unique_ptr<WebIDBConnectionToClient> m_webIDBConnection;
-#endif
 
 #if ENABLE(SERVICE_WORKER)
     WeakPtr<WebSWServerConnection> m_swConnection;

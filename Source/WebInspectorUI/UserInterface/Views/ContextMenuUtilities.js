@@ -77,14 +77,27 @@ WI.appendContextMenuItemsForSourceCode = function(contextMenu, sourceCodeOrLocat
                 let resource = sourceCode;
                 let localResourceOverride = await resource.createLocalResourceOverride();
                 WI.networkManager.addLocalResourceOverride(localResourceOverride);
-                WI.showLocalResourceOverride(localResourceOverride);
+                WI.showLocalResourceOverride(localResourceOverride, {
+                    initiatorHint: WI.TabBrowser.TabNavigationInitiator.ContextMenu,
+                });
             });
         } else {
             let localResourceOverride = WI.networkManager.localResourceOverrideForURL(sourceCode.url);
             if (localResourceOverride) {
                 contextMenu.appendSeparator();
+
                 contextMenu.appendItem(WI.UIString("Reveal Local Override"), () => {
-                    WI.showLocalResourceOverride(localResourceOverride);
+                    WI.showLocalResourceOverride(localResourceOverride, {
+                        initiatorHint: WI.TabBrowser.TabNavigationInitiator.ContextMenu,
+                    });
+                });
+
+                contextMenu.appendItem(localResourceOverride.disabled ? WI.UIString("Enable Local Override") : WI.UIString("Disable Local Override"), () => {
+                    localResourceOverride.disabled = !localResourceOverride.disabled;
+                });
+
+                contextMenu.appendItem(WI.UIString("Delete Local Override"), () => {
+                    WI.networkManager.removeLocalResourceOverride(localResourceOverride);
                 });
             }
         }
@@ -108,13 +121,14 @@ WI.appendContextMenuItemsForSourceCode = function(contextMenu, sourceCodeOrLocat
     if (sourceCode.supportsScriptBlackboxing) {
         let blackboxData = WI.debuggerManager.blackboxDataForSourceCode(sourceCode);
         if (blackboxData && blackboxData.type === WI.DebuggerManager.BlackboxType.Pattern) {
-            contextMenu.appendItem(WI.UIString("Reveal blackbox pattern"), () => {
+            contextMenu.appendItem(WI.UIString("Reveal Blackbox Pattern"), () => {
                 WI.showSettingsTab({
                     blackboxPatternToSelect: blackboxData.regex,
+                    initiatorHint: WI.TabBrowser.TabNavigationInitiator.ContextMenu,
                 });
             });
         } else {
-            contextMenu.appendItem(blackboxData ? WI.UIString("Unblackbox script to include it when debugging") : WI.UIString("Blackbox script to ignore it when debugging"), () => {
+            contextMenu.appendItem(blackboxData ? WI.UIString("Unblackbox Script") : WI.UIString("Blackbox Script"), () => {
                 WI.debuggerManager.setShouldBlackboxScript(sourceCode, !blackboxData);
             });
         }
@@ -173,6 +187,7 @@ WI.appendContextMenuItemsForURL = function(contextMenu, url, options = {})
         return;
 
     function showResourceWithOptions(options) {
+        options.initiatorHint = WI.TabBrowser.TabNavigationInitiator.ContextMenu;
         if (options.location)
             WI.showSourceCodeLocation(options.location, options);
         else if (options.sourceCode)
@@ -310,13 +325,18 @@ WI.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {
 
         if (!options.excludeRevealElement && InspectorBackend.hasDomain("DOM") && attached) {
             contextMenu.appendItem(WI.repeatedUIString.revealInDOMTree(), () => {
-                WI.domManager.inspectElement(domNode.id);
+                WI.domManager.inspectElement(domNode.id, {
+                    initiatorHint: WI.TabBrowser.TabNavigationInitiator.ContextMenu,
+                });
             });
         }
 
         if (InspectorBackend.hasDomain("LayerTree") && attached) {
             contextMenu.appendItem(WI.UIString("Reveal in Layers Tab", "Open Layers tab and select the layer corresponding to this node"), () => {
-                WI.showLayersTab({nodeToSelect: domNode});
+                WI.showLayersTab({
+                    nodeToSelect: domNode,
+                    initiatorHint: WI.TabBrowser.TabNavigationInitiator.ContextMenu,
+                });
             });
         }
 

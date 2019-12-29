@@ -314,6 +314,7 @@ $(PROJECT_DIR)/Modules/webaudio/ScriptProcessorNode.idl
 $(PROJECT_DIR)/Modules/webaudio/WaveShaperNode.idl
 $(PROJECT_DIR)/Modules/webauthn/AttestationConveyancePreference.idl
 $(PROJECT_DIR)/Modules/webauthn/AuthenticationExtensionsClientInputs.idl
+$(PROJECT_DIR)/Modules/webauthn/AuthenticationExtensionsClientOutputs.idl
 $(PROJECT_DIR)/Modules/webauthn/AuthenticatorAssertionResponse.idl
 $(PROJECT_DIR)/Modules/webauthn/AuthenticatorAttestationResponse.idl
 $(PROJECT_DIR)/Modules/webauthn/AuthenticatorResponse.idl
@@ -913,6 +914,7 @@ $(PROJECT_DIR)/page/PerformanceObserverEntryList.idl
 $(PROJECT_DIR)/page/PerformanceResourceTiming.idl
 $(PROJECT_DIR)/page/PerformanceServerTiming.idl
 $(PROJECT_DIR)/page/PerformanceTiming.idl
+$(PROJECT_DIR)/page/PostMessageOptions.idl
 $(PROJECT_DIR)/page/RemoteDOMWindow.idl
 $(PROJECT_DIR)/page/ResizeObserver.idl
 $(PROJECT_DIR)/page/ResizeObserverCallback.idl

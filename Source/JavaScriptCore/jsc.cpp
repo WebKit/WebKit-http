@@ -70,6 +70,7 @@
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypedArrayInlines.h"
+#include "VMInspector.h"
 #include "WasmCapabilities.h"
 #include "WasmContext.h"
 #include "WasmFaultSignalHandler.h"
@@ -84,6 +85,7 @@
 #include <thread>
 #include <type_traits>
 #include <wtf/Box.h>
+#include <wtf/CPUTime.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
@@ -482,7 +484,7 @@ static inline String stringFromUTF(const Vector& utf8)
     return String::fromUTF8WithLatin1Fallback(utf8.data(), utf8.size());
 }
 
-class GlobalObject : public JSGlobalObject {
+class GlobalObject final : public JSGlobalObject {
 private:
     GlobalObject(VM&, Structure*);
 
@@ -495,8 +497,6 @@ public:
         object->finishCreation(vm, arguments);
         return object;
     }
-
-    static constexpr bool needsDestruction = false;
 
     DECLARE_INFO;
     static const GlobalObjectMethodTable s_globalObjectMethodTable;
@@ -664,6 +664,7 @@ protected:
     static JSInternalPromise* moduleLoaderFetch(JSGlobalObject*, JSModuleLoader*, JSValue, JSValue, JSValue);
     static JSObject* moduleLoaderCreateImportMetaProperties(JSGlobalObject*, JSModuleLoader*, JSValue, JSModuleRecord*, JSValue);
 };
+STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(GlobalObject, JSGlobalObject);
 
 static bool supportsRichSourceInfo = true;
 static bool shellSupportsRichSourceInfo(const JSGlobalObject*)
@@ -2428,22 +2429,56 @@ int jscmain(int argc, char** argv);
 
 static double s_desiredTimeout;
 static double s_timeoutMultiplier = 1.0;
+static Seconds s_timeoutDuration;
+static Seconds s_maxAllowedCPUTime;
+static VM* s_vm;
 
-static void startTimeoutThreadIfNeeded()
+static void startTimeoutTimer(Seconds duration)
+{
+    Thread::create("jsc Timeout Thread", [=] () {
+        sleep(duration);
+        VMInspector::forEachVM([&] (VM& vm) -> VMInspector::FunctorStatus {
+            if (&vm != s_vm)
+                return VMInspector::FunctorStatus::Continue;
+            vm.notifyNeedShellTimeoutCheck();
+            return VMInspector::FunctorStatus::Done;
+        });
+    });
+}
+
+static void timeoutCheckCallback(VM& vm)
+{
+    RELEASE_ASSERT(&vm == s_vm);
+    auto cpuTime = CPUTime::forCurrentThread();
+    if (cpuTime >= s_maxAllowedCPUTime) {
+        dataLog("Timed out after ", s_timeoutDuration, " seconds!\n");
+        CRASH();
+    }
+    auto remainingTime = s_maxAllowedCPUTime - cpuTime;
+    startTimeoutTimer(remainingTime);
+}
+
+static void initializeTimeoutIfNeeded()
 {
     if (char* timeoutString = getenv("JSCTEST_timeout")) {
         if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
             dataLog("WARNING: timeout string is malformed, got ", timeoutString,
                 " but expected a number. Not using a timeout.\n");
-        } else {
-            Thread::create("jsc Timeout Thread", [] () {
-                Seconds timeoutDuration(s_desiredTimeout * s_timeoutMultiplier);
-                sleep(timeoutDuration);
-                dataLog("Timed out after ", timeoutDuration, " seconds!\n");
-                CRASH();
-            });
-        }
+        } else
+            g_jscConfig.shellTimeoutCheckCallback = timeoutCheckCallback;
     }
+}
+
+static void startTimeoutThreadIfNeeded(VM& vm)
+{
+    if (!g_jscConfig.shellTimeoutCheckCallback)
+        return;
+
+    s_vm = &vm;
+    s_timeoutDuration = Seconds(s_desiredTimeout * s_timeoutMultiplier);
+    s_maxAllowedCPUTime = CPUTime::forCurrentThread() + s_timeoutDuration;
+    Seconds timeoutDuration(s_desiredTimeout * s_timeoutMultiplier);
+    startTimeoutTimer(timeoutDuration);
 }
 
 int main(int argc, char** argv)
@@ -2515,6 +2550,7 @@ static void dumpException(GlobalObject* globalObject, JSValue exception)
     } while (false)
 
     auto exceptionString = exception.toWTFString(globalObject);
+    CHECK_EXCEPTION();
     Expected<CString, UTF8ConversionError> expectedCString = exceptionString.tryGetUtf8();
     if (expectedCString)
         printf("Exception: %s\n", expectedCString.value().data());
@@ -2539,16 +2575,20 @@ static void dumpException(GlobalObject* globalObject, JSValue exception)
     JSValue stackValue = exception.get(globalObject, stackID);
     CHECK_EXCEPTION();
     
-    if (nameValue.toWTFString(globalObject) == "SyntaxError"
-        && (!fileNameValue.isUndefinedOrNull() || !lineNumberValue.isUndefinedOrNull())) {
-        printf(
-            "at %s:%s\n",
-            fileNameValue.toWTFString(globalObject).utf8().data(),
-            lineNumberValue.toWTFString(globalObject).utf8().data());
+    auto nameString = nameValue.toWTFString(globalObject);
+    CHECK_EXCEPTION();
+
+    if (nameString == "SyntaxError" && (!fileNameValue.isUndefinedOrNull() || !lineNumberValue.isUndefinedOrNull())) {
+        auto fileNameString = fileNameValue.toWTFString(globalObject);
+        CHECK_EXCEPTION();
+        auto lineNumberString = lineNumberValue.toWTFString(globalObject);
+        CHECK_EXCEPTION();
+        printf("at %s:%s\n", fileNameString.utf8().data(), lineNumberString.utf8().data());
     }
     
     if (!stackValue.isUndefinedOrNull()) {
         auto stackString = stackValue.toWTFString(globalObject);
+        CHECK_EXCEPTION();
         if (stackString.length())
             printf("%s\n", stackString.utf8().data());
     }
@@ -2995,6 +3035,7 @@ int runJSC(const CommandLine& options, bool isWorker, const Func& func)
     {
         JSLockHolder locker(vm);
 
+        startTimeoutThreadIfNeeded(vm);
         if (options.m_profile && !vm.m_perBytecodeProfiler)
             vm.m_perBytecodeProfiler = makeUnique<Profiler::Database>(vm);
 
@@ -3095,7 +3136,7 @@ int jscmain(int argc, char** argv)
 
     // Initialize JSC before getting VM.
     JSC::initializeThreading();
-    startTimeoutThreadIfNeeded();
+    initializeTimeoutIfNeeded();
 #if ENABLE(WEBASSEMBLY)
     JSC::Wasm::enableFastMemory();
 #endif

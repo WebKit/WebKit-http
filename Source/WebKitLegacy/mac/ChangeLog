@@ -1,3 +1,87 @@
+2019-12-16  Antti Koivisto  <antti@apple.com>
+
+        Remove display:contents feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=205276
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences displayContentsEnabled]): Deleted.
+        (-[WebPreferences setDisplayContentsEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Add release assert for selectedIndex in WebKit::WebPopupMenu::show()
+        <https://webkit.org/b/205223>
+        <rdar://problem/57929078>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/PopupMenuMac.h:
+        (PopupMenuMac::show):
+        - Rename `index` parameter to `selectedIndex`.
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+        - Rename `index` parameter to `selectedIndex`.
+
+2019-12-13  Brady Eidson  <beidson@apple.com>
+
+        Refactor ScriptController's proliferation of ExceptionDetails*.
+        https://bugs.webkit.org/show_bug.cgi?id=205151
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (WebInspectorFrontendClient::append):
+        
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+
+        * WebView/WebView.mm:
+        (-[WebView aeDescByEvaluatingJavaScriptFromString:]):
+
+2019-12-12  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r229930, r231063): WebKitLegacy.xcconfig overwrites OTHER_CFLAGS, OTHER_CPLUSPLUSFLAGS and OTHER_LDFLAGS from Base.xcconfig
+        <https://webkit.org/b/205144>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        (OTHER_CFLAGS): Add back $(inherited) to fix the bug.
+        (OTHER_CFLAGS_COCOA_TOUCH): Add variable to hold value.
+        (OTHER_CFLAGS_COCOA_TOUCH_YES): Remove unused $(inherited).
+        (OTHER_CFLAGS_COCOA_TOUCH_NO): Ditto.
+        (OTHER_CPLUSPLUSFLAGS): Add back $(inherited) to fix the
+        bug, and don't assume $(OTHER_CFLAGS) is identical to this.
+        (OTHER_LDFLAGS): Add back $(inherited) to fix the bug.
+
+2019-12-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Rename media in the GPU process preference
+        https://bugs.webkit.org/show_bug.cgi?id=205013
+        <rdar://problem/57755319>
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences useGPUProcessForMedia]):
+        (-[WebPreferences setUseGPUProcessForMedia:]):
+        (-[WebPreferences outOfProcessMediaEnabled]): Deleted.
+        (-[WebPreferences setOutOfProcessMediaEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2019-12-09  Alex Christensen  <achristensen@webkit.org>
 
         Re-disable TLS1.0 and TLS1.1 by default

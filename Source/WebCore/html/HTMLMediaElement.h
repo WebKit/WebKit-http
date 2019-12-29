@@ -149,6 +149,7 @@ class HTMLMediaElement
 #if !RELEASE_LOG_DISABLED
     , private LoggerHelper
 #endif
+    , public CanMakeWeakPtr<HTMLMediaElement, WeakPtrFactoryInitialization::Eager>
 {
     WTF_MAKE_ISO_ALLOCATED(HTMLMediaElement);
 public:
@@ -187,8 +188,8 @@ public:
     PlatformLayer* videoFullscreenLayer() const { return m_videoFullscreenLayer.get(); }
 #endif
     virtual void setVideoFullscreenFrame(FloatRect);
-    void setVideoFullscreenGravity(MediaPlayerEnums::VideoGravity);
-    MediaPlayerEnums::VideoGravity videoFullscreenGravity() const { return m_videoFullscreenGravity; }
+    void setVideoFullscreenGravity(MediaPlayer::VideoGravity);
+    MediaPlayer::VideoGravity videoFullscreenGravity() const { return m_videoFullscreenGravity; }
 #endif
 
     void scheduleCheckPlaybackTargetCompatability();
@@ -201,7 +202,7 @@ public:
     void scheduleNotifyAboutPlaying();
     void notifyAboutPlaying(PlayPromiseVector&&);
     
-    MediaPlayerEnums::MovieLoadType movieLoadType() const;
+    MediaPlayer::MovieLoadType movieLoadType() const;
     
     bool inActiveDocument() const { return m_inActiveDocument; }
 
@@ -495,8 +496,8 @@ public:
 
     unsigned long long fileSize() const;
 
-    void mediaLoadingFailed(MediaPlayerEnums::NetworkState);
-    void mediaLoadingFailedFatally(MediaPlayerEnums::NetworkState);
+    void mediaLoadingFailed(MediaPlayer::NetworkState);
+    void mediaLoadingFailedFatally(MediaPlayer::NetworkState);
 
 #if ENABLE(MEDIA_SESSION)
     WEBCORE_EXPORT double playerVolume() const;
@@ -515,7 +516,7 @@ public:
 
     RefPtr<VideoPlaybackQuality> getVideoPlaybackQuality();
 
-    MediaPlayerEnums::Preload preloadValue() const { return m_preload; }
+    MediaPlayer::Preload preloadValue() const { return m_preload; }
     MediaElementSession& mediaSession() const { return *m_mediaSession; }
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -650,8 +651,8 @@ private:
 
     virtual void updateDisplayState() { }
     
-    void setReadyState(MediaPlayerEnums::ReadyState);
-    void setNetworkState(MediaPlayerEnums::NetworkState);
+    void setReadyState(MediaPlayer::ReadyState);
+    void setNetworkState(MediaPlayer::NetworkState);
 
     double effectivePlaybackRate() const;
     double requestedPlaybackRate() const;
@@ -865,7 +866,7 @@ private:
     bool isBlocked() const;
     bool isBlockedOnMediaController() const;
     bool hasCurrentSrc() const override { return !m_currentSrc.isEmpty(); }
-    bool isLiveStream() const override { return movieLoadType() == MediaPlayerEnums::LiveStream; }
+    bool isLiveStream() const override { return movieLoadType() == MovieLoadType::LiveStream; }
 
     void updateSleepDisabling();
     enum class SleepType { None, Display, System };
@@ -953,6 +954,9 @@ private:
     const Logger& mediaPlayerLogger() final { return logger(); }
 #endif
 
+    friend class TaskDispatcher<HTMLMediaElement>;
+    void enqueueTaskForDispatcher(Function<void()>&&);
+
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
@@ -962,7 +966,7 @@ private:
     DeferrableTask<Timer> m_checkPlaybackTargetCompatablityTask;
     DeferrableTask<Timer> m_updateMediaStateTask;
     DeferrableTask<Timer> m_mediaEngineUpdatedTask;
-    DeferrableTask<Timer> m_updatePlayStateTask;
+    DeferrableTask<HTMLMediaElement> m_updatePlayStateTask;
     DeferrableTask<Timer> m_resumeTaskQueue;
     DeferrableTask<Timer> m_seekTaskQueue;
     DeferrableTask<Timer> m_playbackControlsManagerBehaviorRestrictionsQueue;
@@ -1037,12 +1041,12 @@ private:
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RetainPtr<PlatformLayer> m_videoFullscreenLayer;
     FloatRect m_videoFullscreenFrame;
-    MediaPlayerEnums::VideoGravity m_videoFullscreenGravity { MediaPlayer::VideoGravityResizeAspect };
+    MediaPlayer::VideoGravity m_videoFullscreenGravity { MediaPlayer::VideoGravity::ResizeAspect };
 #endif
 
     RefPtr<MediaPlayer> m_player;
 
-    MediaPlayerEnums::Preload m_preload { MediaPlayer::Auto };
+    MediaPlayer::Preload m_preload { Preload::Auto };
 
     DisplayMode m_displayMode { Unknown };
 

@@ -76,8 +76,8 @@ public:
 
     bool paused() const final { return false; };
 
-    MediaPlayer::NetworkState networkState() const final { return MediaPlayer::Empty; };
-    MediaPlayer::ReadyState readyState() const final { return MediaPlayer::HaveMetadata; };
+    MediaPlayer::NetworkState networkState() const final { return MediaPlayer::NetworkState::Empty; };
+    MediaPlayer::ReadyState readyState() const final { return MediaPlayer::ReadyState::HaveMetadata; };
 
     std::unique_ptr<PlatformTimeRanges> buffered() const final { return makeUnique<PlatformTimeRanges>(); };
 
@@ -98,6 +98,7 @@ public:
 #endif
 
 private:
+    friend class MediaPlayerFactoryHolePunch;
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 

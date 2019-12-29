@@ -116,7 +116,10 @@ public:
     static constexpr bool needsDestruction = true;
 
     template<typename, SubspaceAccess>
-    static IsoSubspace* subspaceFor(VM&) { return nullptr; }
+    static void subspaceFor(VM&)
+    {
+        RELEASE_ASSERT_NOT_REACHED();
+    }
     // GC strongly assumes CodeBlock is not a PreciseAllocation for now.
     static constexpr uint8_t numberOfLowerTierCells = 0;
 
@@ -371,6 +374,10 @@ public:
     void linkIncomingCall(CallFrame* callerFrame, LLIntCallLinkInfo*);
 
     const Instruction* outOfLineJumpTarget(const Instruction* pc);
+    int outOfLineJumpOffset(InstructionStream::Offset offset)
+    {
+        return m_unlinkedCode->outOfLineJumpOffset(offset);
+    }
     int outOfLineJumpOffset(const Instruction* pc);
     int outOfLineJumpOffset(const InstructionStream::Ref& instruction)
     {

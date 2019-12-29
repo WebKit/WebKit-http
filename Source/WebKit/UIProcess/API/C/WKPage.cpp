@@ -1212,7 +1212,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         milestones.add(WebCore::DidFirstVisuallyNonEmptyLayout);
 
     if (milestones)
-        webPageProxy->process().send(Messages::WebPage::ListenForLayoutMilestones(milestones), webPageProxy->webPageID());
+        webPageProxy->send(Messages::WebPage::ListenForLayoutMilestones(milestones));
 
     webPageProxy->setLoaderClient(WTFMove(loaderClient));
 }
@@ -2472,7 +2472,7 @@ void WKPageSetPageStateClient(WKPageRef page, WKPageStateClientBase* client)
 
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)
 {
-    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), true, [context, callback](API::SerializedScriptValue* returnValue, bool, const WebCore::ExceptionDetails&, CallbackBase::Error error) {
+    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), true, [context, callback](API::SerializedScriptValue* returnValue, Optional<WebCore::ExceptionDetails>, CallbackBase::Error error) {
         callback(toAPI(returnValue), (error != CallbackBase::Error::None) ? toAPI(API::Error::create().ptr()) : 0, context);
     });
 }

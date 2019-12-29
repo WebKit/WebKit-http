@@ -34,8 +34,10 @@
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Variant.h>
+#include <wtf/WeakObjCPtr.h>
 
 #if PLATFORM(IOS_FAMILY)
+#import "DynamicViewportSizeUpdate.h"
 #import "UIKitSPI.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
@@ -64,121 +66,185 @@ class Attachment;
 
 namespace WebKit {
 enum class ContinueUnsafeLoad : bool;
+class IconLoadingDelegate;
+class NavigationState;
 class SafeBrowsingWarning;
 class ViewSnapshot;
 class WebPageProxy;
+class UIDelegate;
 struct PrintInfo;
+#if PLATFORM(MAC)
+class WebViewImpl;
+#endif
+#if PLATFORM(IOS_FAMILY)
+class ViewGestureController;
+#endif
 }
 
 @class WKWebViewContentProviderRegistry;
 @class WKPasswordView;
 @class _WKFrameHandle;
+@class WKSafeBrowsingWarning;
+
+#if PLATFORM(IOS_FAMILY)
+@class WKScrollView;
+@class WKFullScreenWindowController;
+@protocol WKWebViewContentProvider;
+#endif
+
+#if PLATFORM(MAC)
+@class WKTextFinderClient;
+#endif
+
+@protocol _WKTextManipulationDelegate;
+@protocol _WKInputDelegate;
 
 @interface WKWebView () WK_WEB_VIEW_PROTOCOLS {
 
 @package
     RetainPtr<WKWebViewConfiguration> _configuration;
-
     RefPtr<WebKit::WebPageProxy> _page;
-}
+
+    std::unique_ptr<WebKit::NavigationState> _navigationState;
+    std::unique_ptr<WebKit::UIDelegate> _uiDelegate;
+    std::unique_ptr<WebKit::IconLoadingDelegate> _iconLoadingDelegate;
+
+    WeakObjCPtr<id <_WKTextManipulationDelegate>> _textManipulationDelegate;
+    WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
+
+    RetainPtr<WKSafeBrowsingWarning> _safeBrowsingWarning;
+
+    Optional<BOOL> _resolutionForShareSheetImmediateCompletionForTesting;
+
+    _WKSelectionAttributes _selectionAttributes;
+    _WKRenderingProgressEvents _observedRenderingProgressEvents;
+    BOOL _usePlatformFindUI;
+
+#if PLATFORM(MAC)
+    std::unique_ptr<WebKit::WebViewImpl> _impl;
+    RetainPtr<WKTextFinderClient> _textFinderClient;
+#endif
 
 #if PLATFORM(IOS_FAMILY)
-- (void)_processDidExit;
-- (void)_processWillSwap;
-- (void)_didRelaunchProcess;
+    RetainPtr<WKScrollView> _scrollView;
+    RetainPtr<WKContentView> _contentView;
+    std::unique_ptr<WebKit::ViewGestureController> _gestureController;
+    Vector<BlockPtr<void ()>> _visibleContentRectUpdateCallbacks;
 
-- (void)_didCommitLoadForMainFrame;
-- (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
-- (void)_layerTreeCommitComplete;
+#if ENABLE(FULLSCREEN_API)
+    RetainPtr<WKFullScreenWindowController> _fullScreenWindowController;
+#endif
 
-- (void)_couldNotRestorePageState;
-- (void)_restorePageScrollPosition:(Optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatBoxExtent)insets scale:(double)scale;
-- (void)_restorePageStateToUnobscuredCenter:(Optional<WebCore::FloatPoint>)center scale:(double)scale; // FIXME: needs scroll origin?
+    RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
 
-- (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot;
+    Optional<CGSize> _viewLayoutSizeOverride;
+    Optional<WebCore::FloatSize> _lastSentViewLayoutSize;
+    Optional<CGSize> _maximumUnobscuredSizeOverride;
+    Optional<WebCore::FloatSize> _lastSentMaximumUnobscuredSize;
+    CGRect _inputViewBounds;
 
-- (void)_scrollToContentScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::IntPoint)scrollOrigin;
-- (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance;
-- (double)_initialScaleFactor;
-- (double)_contentZoomScale;
-- (double)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale;
-- (void)_zoomToFocusRect:(const WebCore::FloatRect&)focusedElementRect selectionRect:(const WebCore::FloatRect&)selectionRectInDocumentCoordinates insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
-- (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance;
-- (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
-- (void)_zoomToInitialScaleWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
-- (void)_didFinishScrolling;
+    CGFloat _viewportMetaTagWidth;
+    BOOL _viewportMetaTagWidthWasExplicit;
+    BOOL _viewportMetaTagCameFromImageDocument;
+    CGFloat _initialScaleFactor;
+    BOOL _fastClickingIsDisabled;
 
-- (void)_setHasCustomContentView:(BOOL)hasCustomContentView loadedMIMEType:(const WTF::String&)mimeType;
-- (void)_didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:(const WTF::String&)suggestedFilename data:(NSData *)data;
+    BOOL _allowsLinkPreview;
 
-- (void)_willInvokeUIScrollViewDelegateCallback;
-- (void)_didInvokeUIScrollViewDelegateCallback;
+    UIEdgeInsets _obscuredInsets;
+    BOOL _haveSetObscuredInsets;
+    BOOL _isChangingObscuredInsetsInteractively;
 
-- (void)_scheduleVisibleContentRectUpdate;
+    UIEdgeInsets _unobscuredSafeAreaInsets;
+    BOOL _haveSetUnobscuredSafeAreaInsets;
+    BOOL _avoidsUnsafeArea;
+    UIRectEdge _obscuredInsetEdgesAffectedBySafeArea;
 
-- (void)_didCompleteAnimatedResize;
+    UIInterfaceOrientation _interfaceOrientationOverride;
+    BOOL _overridesInterfaceOrientation;
+    Optional<int32_t> _lastSentDeviceOrientation;
 
-- (void)_didStartProvisionalLoadForMainFrame;
-- (void)_didFinishLoadForMainFrame;
-- (void)_didFailLoadForMainFrame;
-- (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType;
+    BOOL _allowsViewportShrinkToFit;
 
-- (BOOL)_isShowingVideoPictureInPicture;
-- (BOOL)_mayAutomaticallyShowVideoPictureInPicture;
+    BOOL _hasCommittedLoadForMainFrame;
+    BOOL _needsResetViewStateAfterCommitLoadForMainFrame;
+    WebKit::TransactionID _firstPaintAfterCommitLoadTransactionID;
+    WebKit::TransactionID _lastTransactionID;
+    WebKit::DynamicViewportUpdateMode _dynamicViewportUpdateMode;
+    WebKit::DynamicViewportSizeUpdateID _currentDynamicViewportSizeUpdateID;
+    CATransform3D _resizeAnimationTransformAdjustments;
+    CGFloat _animatedResizeOriginalContentWidth;
+    RetainPtr<UIView> _resizeAnimationView;
+    CGFloat _lastAdjustmentForScroller;
+    Optional<CGRect> _frozenVisibleContentRect;
+    Optional<CGRect> _frozenUnobscuredContentRect;
 
-- (void)_updateScrollViewBackground;
+    BOOL _commitDidRestoreScrollPosition;
+    Optional<WebCore::FloatPoint> _scrollOffsetToRestore;
+    WebCore::FloatBoxExtent _obscuredInsetsWhenSaved;
 
-- (void)_videoControlsManagerDidChange;
+    Optional<WebCore::FloatPoint> _unobscuredCenterToRestore;
+    Optional<WebKit::TransactionID> _firstTransactionIDAfterPageRestore;
+    double _scaleToRestore;
 
-- (void)_navigationGestureDidBegin;
-- (void)_navigationGestureDidEnd;
-- (BOOL)_isNavigationSwipeGestureRecognizer:(UIGestureRecognizer *)recognizer;
+    BOOL _allowsBackForwardNavigationGestures;
 
-- (void)_showPasswordViewWithDocumentName:(NSString *)documentName passwordHandler:(void (^)(NSString *))passwordHandler;
-- (void)_hidePasswordView;
+    RetainPtr<UIView <WKWebViewContentProvider>> _customContentView;
+    RetainPtr<UIView> _customContentFixedOverlayView;
 
+    RetainPtr<NSTimer> _enclosingScrollViewScrollTimer;
+    BOOL _didScrollSinceLastTimerFire;
+
+    WebCore::Color _scrollViewBackgroundColor;
+
+    // This value tracks the current adjustment added to the bottom inset due to the keyboard sliding out from the bottom
+    // when computing obscured content insets. This is used when updating the visible content rects where we should not
+    // include this adjustment.
+    CGFloat _totalScrollViewBottomInsetAdjustmentForKeyboard;
+    BOOL _currentlyAdjustingScrollViewInsetsForKeyboard;
+
+    BOOL _invokingUIScrollViewDelegateCallback;
+    BOOL _didDeferUpdateVisibleContentRectsForUIScrollViewDelegateCallback;
+    BOOL _didDeferUpdateVisibleContentRectsForAnyReason;
+    BOOL _didDeferUpdateVisibleContentRectsForUnstableScrollView;
+
+    BOOL _waitingForEndAnimatedResize;
+    BOOL _waitingForCommitAfterAnimatedResize;
+
+    Vector<WTF::Function<void ()>> _callbacksDeferredDuringResize;
+    RetainPtr<NSMutableArray> _stableStatePresentationUpdateCallbacks;
+
+    RetainPtr<WKPasswordView> _passwordView;
+
+    BOOL _hasScheduledVisibleRectUpdate;
+    BOOL _visibleContentRectUpdateScheduledFromScrollViewInStableState;
+
+    _WKDragInteractionPolicy _dragInteractionPolicy;
+
+    // For release-logging for <rdar://problem/39281269>.
+    MonotonicTime _timeOfRequestForVisibleContentRectUpdate;
+    MonotonicTime _timeOfLastVisibleContentRectUpdate;
+
+    Optional<MonotonicTime> _timeOfFirstVisibleContentRectUpdateWithPendingCommit;
+
+    NSUInteger _focusPreservationCount;
+    NSUInteger _activeFocusedStateRetainCount;
+
+    BOOL _hasEnteredDealloc;
+
+#endif
+}
+
+- (BOOL)_isValid;
 - (void)_didChangeEditorState;
-
-- (void)_addShortcut:(id)sender;
-- (void)_define:(id)sender;
-- (void)_lookup:(id)sender;
-- (void)_share:(id)sender;
-- (void)_showTextStyleOptions:(id)sender;
-- (void)_promptForReplace:(id)sender;
-- (void)_transliterateChinese:(id)sender;
-- (void)replace:(id)sender;
-
-- (void)_nextAccessoryTab:(id)sender;
-- (void)_previousAccessoryTab:(id)sender;
-
-- (void)_incrementFocusPreservationCount;
-- (void)_decrementFocusPreservationCount;
-- (void)_resetFocusPreservationCount;
-
-@property (nonatomic, readonly) WKPasswordView *_passwordView;
-
-@property (nonatomic, readonly) BOOL _isBackground;
-
-@property (nonatomic, readonly) WKWebViewContentProviderRegistry *_contentProviderRegistry;
-
-@property (nonatomic, readonly) WKSelectionGranularity _selectionGranularity;
-
-@property (nonatomic, readonly) BOOL _allowsDoubleTapGestures;
-@property (nonatomic, readonly) BOOL _stylusTapGestureShouldCreateEditableImage;
-@property (nonatomic, readonly) BOOL _haveSetObscuredInsets;
-@property (nonatomic, readonly) UIEdgeInsets _computedObscuredInset;
-@property (nonatomic, readonly) UIEdgeInsets _computedUnobscuredSafeAreaInset;
-@property (nonatomic, readonly, getter=_isRetainingActiveFocusedState) BOOL _retainingActiveFocusedState;
-
-- (BOOL)_effectiveAppearanceIsDark;
-- (BOOL)_effectiveUserInterfaceLevelIsElevated;
-#endif // PLATFORM(IOS_FAMILY)
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 - (void)_didRemoveAttachment:(API::Attachment&)attachment;
 - (void)_didInsertAttachment:(API::Attachment&)attachment withSource:(NSString *)source;
 - (void)_didInvalidateDataForAttachment:(API::Attachment&)attachment;
 #endif
+
+- (void)_internalDoAfterNextPresentationUpdate:(void (^)(void))updateBlock withoutWaitingForPainting:(BOOL)withoutWaitingForPainting withoutWaitingForAnimatedResize:(BOOL)withoutWaitingForAnimatedResize;
 
 - (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, URL>&&)>&&)completionHandler;
 - (void)_clearSafeBrowsingWarning;
@@ -188,10 +254,6 @@ struct PrintInfo;
 
 - (WKPageRef)_pageForTesting;
 - (WebKit::WebPageProxy*)_page;
-
-#if PLATFORM(MAC)
-- (void)_web_grantDOMPasteAccess;
-#endif
 
 @end
 

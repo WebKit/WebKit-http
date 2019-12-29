@@ -38,11 +38,11 @@ class DeferredPromise;
 class Frame;
 class SecurityOrigin;
 
+struct AuthenticatorResponseData;
 struct PublicKeyCredentialCreationOptions;
-struct PublicKeyCredentialData;
 struct PublicKeyCredentialRequestOptions;
 
-using RequestCompletionHandler = CompletionHandler<void(WebCore::PublicKeyCredentialData&&, WebCore::ExceptionData&&)>;
+using RequestCompletionHandler = CompletionHandler<void(WebCore::AuthenticatorResponseData&&, WebCore::ExceptionData&&)>;
 using QueryCompletionHandler = CompletionHandler<void(bool)>;
 
 class WEBCORE_EXPORT AuthenticatorCoordinatorClient : public CanMakeWeakPtr<AuthenticatorCoordinatorClient> {

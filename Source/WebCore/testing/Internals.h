@@ -913,6 +913,9 @@ public:
     Ref<InternalsSetLike> createInternalsSetLike();
     Ref<InternalsMapLike> createInternalsMapLike();
 
+    bool hasSandboxMachLookupAccessToGlobalName(const String& process, const String& service);
+    bool hasSandboxMachLookupAccessToXPCServiceName(const String& process, const String& service);
+
     String highlightPseudoElementColor(const String& highlightName, Element&);
 
 private:

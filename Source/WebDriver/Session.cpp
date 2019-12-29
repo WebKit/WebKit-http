@@ -728,7 +728,7 @@ void Session::getToplevelBrowsingContextRect(Function<void (CommandResult&&)>&& 
             return;
         }
         RefPtr<JSON::Object> windowOrigin;
-        double x, y;
+        double x = 0, y = 0;
         if (!browsingContext->getObject("windowOrigin"_s, windowOrigin)
             || !windowOrigin->getDouble("x"_s, x)
             || !windowOrigin->getDouble("y"_s, y)) {
@@ -736,7 +736,7 @@ void Session::getToplevelBrowsingContextRect(Function<void (CommandResult&&)>&& 
             return;
         }
         RefPtr<JSON::Object> windowSize;
-        double width, height;
+        double width = 0, height = 0;
         if (!browsingContext->getObject("windowSize"_s, windowSize)
             || !windowSize->getDouble("width"_s, width)
             || !windowSize->getDouble("height"_s, height)) {
@@ -996,7 +996,7 @@ void Session::computeElementLayout(const String& elementID, OptionSet<ElementLay
             completionHandler(rect, WTF::nullopt, isObscured, nullptr);
             return;
         }
-        int inViewCenterPointX, inViewCenterPointY;
+        int inViewCenterPointX = 0, inViewCenterPointY = 0;
         if (!inViewCenterPointObject->getInteger("x"_s, inViewCenterPointX)
             || !inViewCenterPointObject->getInteger("y"_s, inViewCenterPointY)) {
             completionHandler(WTF::nullopt, WTF::nullopt, isObscured, nullptr);
@@ -1307,7 +1307,7 @@ void Session::isElementEnabled(const String& elementID, Function<void (CommandRe
         parameters->setString("browsingContextHandle"_s, m_toplevelBrowsingContext.value());
         if (m_currentBrowsingContext)
             parameters->setString("frameHandle"_s, m_currentBrowsingContext.value());
-        parameters->setString("function"_s, "function(element) { return element.disabled === undefined ? true : !element.disabled }"_s);
+        parameters->setString("function"_s, String(ElementEnabledJavaScript, sizeof(ElementEnabledJavaScript)));
         parameters->setArray("arguments"_s, WTFMove(arguments));
         m_host->sendCommandToBackend("evaluateJavaScriptFunction"_s, WTFMove(parameters), [protectedThis = protectedThis.copyRef(), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
             if (response.isError || !response.responseObject) {

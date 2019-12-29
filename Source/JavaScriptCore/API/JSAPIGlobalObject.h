@@ -31,12 +31,19 @@ OBJC_CLASS JSScript;
 
 namespace JSC {
 
-class JSAPIGlobalObject : public JSGlobalObject {
+class JSAPIGlobalObject final : public JSGlobalObject {
 public:
     using Base = JSGlobalObject;
 
     DECLARE_EXPORT_INFO;
     static const GlobalObjectMethodTable s_globalObjectMethodTable;
+
+    static constexpr bool needsDestruction = true;
+    template<typename CellType, SubspaceAccess mode>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return vm.apiGlobalObjectSpace<mode>();
+    }
 
     static JSAPIGlobalObject* create(VM& vm, Structure* structure)
     {

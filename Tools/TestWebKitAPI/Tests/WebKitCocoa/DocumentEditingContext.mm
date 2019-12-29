@@ -146,10 +146,10 @@ constexpr unsigned glyphWidth { 25 }; // pixels
 
 static NSString *applyAhemStyle(NSString *htmlString)
 {
-    return [NSString stringWithFormat:@"<style>@font-face { font-family: Ahem; src: url(Ahem.ttf); } body { margin: 0; font: %upx/1 Ahem; -webkit-text-size-adjust: 100%%; }</style><meta name='viewport' content='width=980, initial-scale=1.0'>%@", glyphWidth, htmlString];
+    return [NSString stringWithFormat:@"<style>@font-face { font-family: Ahem; src: url(Ahem.ttf); } body { margin: 0; } * { font: %upx/1 Ahem; -webkit-text-size-adjust: 100%%; }</style><meta name='viewport' content='width=980, initial-scale=1.0'>%@", glyphWidth, htmlString];
 }
 
-TEST(WebKit, DocumentEditingContext)
+TEST(DocumentEditingContext, Simple)
 {
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
@@ -200,7 +200,7 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NULL(context.contextAfter);
 
     // Spatial requests.
-    context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestSpatial, UITextGranularityWord, 1, CGRectMake(0, 0, 10, 10))];
+    context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestSpatial, UITextGranularityWord, 2, CGRectMake(0, 0, 10, 10))];
     EXPECT_NOT_NULL(context);
     EXPECT_NULL(context.contextBefore);
     EXPECT_NULL(context.selectedText);
@@ -272,7 +272,7 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NSSTRING_EQ(" world", context.contextAfter);
 }
 
-TEST(WebKit, DocumentEditingContextWithMarkedText)
+TEST(DocumentEditingContext, RequestMarkedText)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
     auto *contentView = [webView textInputContentView];
@@ -370,7 +370,7 @@ TEST(WebKit, DocumentEditingContextWithMarkedText)
     }
 }
 
-TEST(WebKit, DocumentEditingContextSpatialRequestInTextField)
+TEST(DocumentEditingContext, SpatialRequestInTextField)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
@@ -393,6 +393,341 @@ TEST(WebKit, DocumentEditingContextSpatialRequestInTextField)
         EXPECT_EQ(CGRectMake(207, 9, 6, 19), textRects[8].CGRectValue);
         EXPECT_EQ(CGRectMake(212, 9, 9, 19), textRects[9].CGRectValue);
     }
+}
+
+// MARK: Tests using word granularity
+
+TEST(DocumentEditingContext, RequestFirstTwoWords)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(@"<p id='text' contenteditable>The quick brown fox jumps over the lazy dog.</p>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestRects, UITextGranularityWord, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The quick", context.contextAfter);
+
+    auto *textRects = context.textRects;
+    ASSERT_EQ(9U, textRects.count);
+    EXPECT_EQ(CGRectMake(0, 0, 25, 25), textRects[0].CGRectValue); // T
+    EXPECT_EQ(CGRectMake(25, 0, 25, 25), textRects[1].CGRectValue); // h
+    EXPECT_EQ(CGRectMake(50, 0, 25, 25), textRects[2].CGRectValue); // e
+    EXPECT_EQ(CGRectMake(75, 0, 25, 25), textRects[3].CGRectValue); //
+    EXPECT_EQ(CGRectMake(100, 0, 25, 25), textRects[4].CGRectValue); // q
+    EXPECT_EQ(CGRectMake(125, 0, 25, 25), textRects[5].CGRectValue); // u
+    EXPECT_EQ(CGRectMake(150, 0, 25, 25), textRects[6].CGRectValue); // i
+    EXPECT_EQ(CGRectMake(175, 0, 25, 25), textRects[7].CGRectValue); // c
+    EXPECT_EQ(CGRectMake(200, 0, 25, 25), textRects[8].CGRectValue); // k
+}
+
+TEST(DocumentEditingContext, RequestFirstTwoWordWithLeadingNonBreakableSpace)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(@"<p id='text' contenteditable>&nbsp;The quick brown fox jumps over the lazy dog.</p>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestRects, UITextGranularityWord, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ(" The", context.contextAfter);
+
+    auto *textRects = context.textRects;
+    ASSERT_EQ(4U, textRects.count);
+    EXPECT_EQ(CGRectMake(0, 0, 25, 25), textRects[0].CGRectValue); //
+    EXPECT_EQ(CGRectMake(25, 0, 25, 25), textRects[1].CGRectValue); // T
+    EXPECT_EQ(CGRectMake(50, 0, 25, 25), textRects[2].CGRectValue); // h
+    EXPECT_EQ(CGRectMake(75, 0, 25, 25), textRects[3].CGRectValue); // e
+}
+
+TEST(DocumentEditingContext, RequestLastWord)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(@"<p id='text' contenteditable>The quick brown fox jumps over the lazy dog.</p>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestRects, UITextGranularityWord, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("dog.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+
+    auto *textRects = context.textRects;
+    ASSERT_EQ(4U, textRects.count);
+    EXPECT_EQ(CGRectMake(0, 25, 25, 25), textRects[0].CGRectValue); // d
+    EXPECT_EQ(CGRectMake(25, 25, 25, 25), textRects[1].CGRectValue); // o
+    EXPECT_EQ(CGRectMake(50, 25, 25, 25), textRects[2].CGRectValue); // g
+    EXPECT_EQ(CGRectMake(75, 25, 25, 25), textRects[3].CGRectValue); // .
+}
+
+TEST(DocumentEditingContext, RequestLastWordWithTrailingNonBreakableSpace)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(@"<p id='text' contenteditable>The quick brown fox jumps over the lazy dog.&nbsp;</p>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText | UIWKDocumentRequestRects, UITextGranularityWord, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("dog. ", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+
+    auto *textRects = context.textRects;
+    ASSERT_EQ(5U, textRects.count);
+    EXPECT_EQ(CGRectMake(0, 25, 25, 25), textRects[0].CGRectValue); // d
+    EXPECT_EQ(CGRectMake(25, 25, 25, 25), textRects[1].CGRectValue); // o
+    EXPECT_EQ(CGRectMake(50, 25, 25, 25), textRects[2].CGRectValue); // g
+    EXPECT_EQ(CGRectMake(75, 25, 25, 25), textRects[3].CGRectValue); // .
+    EXPECT_EQ(CGRectMake(100, 25, 25, 25), textRects[4].CGRectValue); //
+}
+
+TEST(DocumentEditingContext, RequestTwoWordsAroundSelection)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(@"<span id='the'>The</span> quick brown fox <span id='jumps'>jumps</span> over the lazy <span id='dog'>dog.</span>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(jumps, 0, jumps, 1)"];
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityWord, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("brown fox ", context.contextBefore);
+    EXPECT_NSSTRING_EQ("jumps", context.selectedText);
+    EXPECT_NSSTRING_EQ(" over the", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestThreeWordsAroundSelection)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(@"<span id='the'>The</span> quick brown fox <span id='jumps'>jumps</span> over the lazy <span id='dog'>dog.</span>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(jumps, 0, jumps, 1)"];
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityWord, 3)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("quick brown fox ", context.contextBefore);
+    EXPECT_NSSTRING_EQ("jumps", context.selectedText);
+    EXPECT_NSSTRING_EQ(" over the lazy", context.contextAfter);
+}
+
+// MARK: Tests using sentence granularity
+
+constexpr NSString * const threeSentencesExample = @"<p id='text' contenteditable>The first sentence. The second sentence. The third sentence.</p>";
+
+TEST(DocumentEditingContext, RequestFirstTwoSentences)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeSentencesExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularitySentence, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence. The second sentence. ", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestFirstTwoSentencesNoSpaces)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(@"<p id='text' contenteditable>The first sentence.The second sentence.The third sentence.</p>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularitySentence, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence.The second sentence.The third sentence.", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastSentence)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeSentencesExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularitySentence, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("The third sentence.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastTwoSentences)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeSentencesExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularitySentence, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("The second sentence. The third sentence.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+}
+
+// MARK: Tests using paragraph granularity
+
+constexpr NSString * const threeParagraphsExample = @"<pre id='text' style='width: 32em' contenteditable>The first sentence in the first paragraph. The second sentence in the first paragraph. The third sentence in the first paragraph.\nThe first sentence in the second paragraph. The second sentence in the second paragraph. The third sentence in the second paragraph.\nThe first sentence in the third paragraph. The second sentence in the third paragraph. The third sentence in the third paragraph.</pre>";
+
+TEST(DocumentEditingContext, RequestFirstParagraph)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityParagraph, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence in the first paragraph. The second sentence in the first paragraph. The third sentence in the first paragraph.", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestFirstTwoParagraphs)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityParagraph, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence in the first paragraph. The second sentence in the first paragraph. The third sentence in the first paragraph.\nThe first sentence in the second paragraph. The second sentence in the second paragraph. The third sentence in the second paragraph.", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastParagraph)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityParagraph, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("The first sentence in the third paragraph. The second sentence in the third paragraph. The third sentence in the third paragraph.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastTwoParagraphs)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityParagraph, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("The first sentence in the second paragraph. The second sentence in the second paragraph. The third sentence in the second paragraph.\nThe first sentence in the third paragraph. The second sentence in the third paragraph. The third sentence in the third paragraph.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastTwoParagraphsWithSelectiontWithinParagraph)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(@"<span id='the'>The</span> quick brown fox <span id='jumps'>jumps</span> over the lazy <span id='dog'>dog.</span>")];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(jumps, 0, jumps, 1)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityParagraph, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("The quick brown fox ", context.contextBefore);
+    EXPECT_NSSTRING_EQ("jumps", context.selectedText);
+    EXPECT_NSSTRING_EQ(" over the lazy dog.", context.contextAfter);
+}
+
+// MARK: Tests using character granularity
+// Note that we always return results with respect to the nearest word boundary in the direction of the selection.
+
+TEST(DocumentEditingContext, RequestFirstCharacter)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityCharacter, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestFirstWordUsingCharacterGranularity)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityCharacter, 3)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestFirstWordPlusTrailingSpaceUsingCharacterGranularity)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityCharacter, 4)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first", context.contextAfter);
+}
+
+// MARK: Tests using line granularity
+
+TEST(DocumentEditingContext, RequestFirstLine)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityLine, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence in the first paragraph", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestFirstTwoLines)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, 0, text.firstChild, 0)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityLine, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NULL(context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NSSTRING_EQ("The first sentence in the first paragraph. The second sentence in", context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastLine)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityLine, 1)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("third sentence in the third paragraph.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
+}
+
+TEST(DocumentEditingContext, RequestLastTwoLines)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:applyAhemStyle(threeParagraphsExample)];
+    [webView stringByEvaluatingJavaScript:@"getSelection().setBaseAndExtent(text.firstChild, text.firstChild.length, text.firstChild, text.firstChild.length)"]; // Will focus <p>.
+
+    auto *context = [webView synchronouslyRequestDocumentContext:makeRequest(UIWKDocumentRequestText, UITextGranularityLine, 2)];
+    EXPECT_NOT_NULL(context);
+    EXPECT_NSSTRING_EQ("in the third paragraph. The third sentence in the third paragraph.", context.contextBefore);
+    EXPECT_NULL(context.selectedText);
+    EXPECT_NULL(context.contextAfter);
 }
 
 #endif // PLATFORM(IOS_FAMILY) && HAVE(UI_WK_DOCUMENT_CONTEXT)

@@ -69,7 +69,18 @@
 #endif
 
 #if PLATFORM(IOS)
+#import <pal/spi/cocoa/WebFilterEvaluatorSPI.h>
 #import <sys/utsname.h>
+
+SOFT_LINK_PRIVATE_FRAMEWORK(WebContentAnalysis);
+SOFT_LINK_CLASS(WebContentAnalysis, WebFilterEvaluator);
+#endif
+
+#if PLATFORM(COCOA)
+#import <pal/spi/cocoa/NEFilterSourceSPI.h>
+
+SOFT_LINK_FRAMEWORK_OPTIONAL(NetworkExtension);
+SOFT_LINK_CLASS_OPTIONAL(NetworkExtension, NEFilterSource);
 #endif
 
 NSString *WebServiceWorkerRegistrationDirectoryDefaultsKey = @"WebServiceWorkerRegistrationDirectory";
@@ -294,6 +305,28 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::createHandleForMachLookup("com.apple.AGXCompilerService", WTF::nullopt, compilerServiceExtensionHandle);
         parameters.compilerServiceExtensionHandle = WTFMove(compilerServiceExtensionHandle);
     }
+#endif
+    
+#if PLATFORM(COCOA)
+    if ([getNEFilterSourceClass() filterRequired]) {
+        SandboxExtension::Handle handle;
+        SandboxExtension::createHandleForMachLookup("com.apple.nehelper", WTF::nullopt, handle);
+        parameters.neHelperExtensionHandle = WTFMove(handle);
+        SandboxExtension::createHandleForMachLookup("com.apple.nesessionmanager.content-filter", WTF::nullopt, handle);
+        parameters.neSessionManagerExtensionHandle = WTFMove(handle);
+    }
+#endif
+    
+#if PLATFORM(IOS)
+    if ([getWebFilterEvaluatorClass() isManagedSession]) {
+        SandboxExtension::Handle handle;
+        SandboxExtension::createHandleForMachLookup("com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI", WTF::nullopt, handle);
+        parameters.contentFilterExtensionHandle = WTFMove(handle);
+    }
+#endif
+    
+#if PLATFORM(IOS)
+    parameters.cssValueToSystemColorMap = RenderThemeIOS::getOrCreateCSSValueToSystemColorMap();
 #endif
 }
 

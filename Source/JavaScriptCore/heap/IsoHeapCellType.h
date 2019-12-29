@@ -28,31 +28,28 @@
 
 namespace JSC {
 
-template<typename CellType>
 class IsoHeapCellType final : public HeapCellType {
 public:
-    IsoHeapCellType()
-        : HeapCellType(CellAttributes(CellType::needsDestruction ? NeedsDestruction : DoesNotNeedDestruction, HeapCell::JSCell))
+    using DestroyFunctionPtr = void (*)(JSCell*);
+
+    JS_EXPORT_PRIVATE IsoHeapCellType(DestructionMode, DestroyFunctionPtr);
+
+    template<typename CellType>
+    static std::unique_ptr<IsoHeapCellType> create()
     {
+        return makeUnique<IsoHeapCellType>(CellType::needsDestruction ? NeedsDestruction : DoesNotNeedDestruction, &CellType::destroy);
     }
 
-    struct DestroyFunc {
-        ALWAYS_INLINE void operator()(VM&, JSCell* cell) const
-        {
-            CellType::destroy(cell);
-        }
-    };
+    JS_EXPORT_PRIVATE void finishSweep(MarkedBlock::Handle&, FreeList*) override;
+    JS_EXPORT_PRIVATE void destroy(VM&, JSCell*) override;
 
-    void finishSweep(MarkedBlock::Handle& handle, FreeList* freeList) override
+    ALWAYS_INLINE void operator()(VM&, JSCell* cell) const
     {
-        handle.finishSweepKnowingHeapCellType(freeList, DestroyFunc());
+        m_destroy(cell);
     }
 
-    void destroy(VM&, JSCell* cell) override
-    {
-        CellType::destroy(cell);
-    }
+private:
+    DestroyFunctionPtr WTF_VTBL_FUNCPTR_PTRAUTH_STR("IsoHeapCellType.destroy") m_destroy;
 };
 
 } // namespace JSC
-

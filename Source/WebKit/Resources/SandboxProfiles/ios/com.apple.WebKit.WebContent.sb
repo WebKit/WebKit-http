@@ -112,7 +112,7 @@
             (iokit-user-client-class "AppleKeyStoreUserClient")))
 
 (define-once (location-services)
-    (allow mach-lookup
+    (allow mach-lookup (with report) (with telemetry)
            (global-name "com.apple.locationd.registration"))
     (allow-carrier-bundle) ;; <rdar://problem/21192365>
     (mobile-preferences-read
@@ -443,8 +443,6 @@
 
     (allow mach-lookup (with report) (with telemetry)
         (global-name-regex #"^com\.apple\.uikit\.viewservice\..+")
-        (xpc-service-name-regex #"\.apple-extension-service$") ;; <rdar://problem/19525887>
-        (xpc-service-name-regex #"\.viewservice$") ;; <rdar://problem/31252371>
     )
 
     ; UIKit-required IOKit nodes.
@@ -477,7 +475,7 @@
 
 (define-once (network-extensions-support)
     ;; Network Extensions / VPN helper.
-    (allow mach-lookup
+    (allow mach-lookup (with report) (with telemetry)
         (global-name "com.apple.nehelper")
         (global-name "com.apple.nesessionmanager.content-filter")) ;; <rdar://problem/48442387>
 )
@@ -626,11 +624,12 @@
 (allow mach-lookup
     (global-name "com.apple.logd")
     (global-name "com.apple.logd.events")
-    (global-name "com.apple.distributed_notifications@1v3")
-    (global-name "com.apple.aggregated")
     (global-name "com.apple.cfprefsd.daemon"))
 
 (allow mach-lookup (with report) (with telemetry)
+    (global-name "com.apple.aggregated")
+    (global-name "com.apple.distributed_notifications@1v3")
+    (global-name "com.apple.pluginkit.pkd")
     (global-name "com.apple.tccd"))
 
 (allow ipc-posix-shm-read*
@@ -753,7 +752,7 @@
     (home-subpath "/Library/Caches/com.apple.keyboards"))
 
 ;; Power logging
-(allow mach-lookup
+(allow mach-lookup (with report) (with telemetry)
     (global-name "com.apple.powerlog.plxpclogger.xpc")) ;;  <rdar://problem/36442803>
 
 (mobile-preferences-read
@@ -944,8 +943,11 @@
 
 ;; Various services required by CFNetwork and other frameworks
 (allow mach-lookup
-    (global-name "com.apple.PowerManagement.control")
     (global-name "com.apple.analyticsd"))
+
+(allow mach-lookup (with report) (with telemetry)
+    (global-name "com.apple.cookied")
+    (global-name "com.apple.PowerManagement.control"))
 
 (deny file-write-create (vnode-type SYMLINK))
 (deny file-read-xattr file-write-xattr (xattr-regex #"^com\.apple\.security\.private\."))
@@ -966,7 +968,12 @@
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
-        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.AGXCompilerService")))
+        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI")))
+
+(allow mach-lookup
+    (require-all
+        (extension "com.apple.webkit.extension.mach")
+        (xpc-service-name-prefix "com.apple.AGXCompilerService")))
 
 (media-capture-support)
 

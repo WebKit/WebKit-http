@@ -55,6 +55,33 @@ static ALWAYS_INLINE bool isConstantRegisterIndex(int index)
     return index >= FirstConstantRegisterIndex;
 }
 
+void BytecodeDumperBase::printLocationAndOp(InstructionStream::Offset location, const char* op)
+{
+    m_currentLocation = location;
+    m_out.printf("[%4u] %-18s ", location, op);
+}
+
+void BytecodeDumperBase::dumpValue(VirtualRegister reg)
+{
+    m_out.printf("%s", registerName(reg.offset()).data());
+}
+
+template<typename Traits>
+void BytecodeDumperBase::dumpValue(GenericBoundLabel<Traits> label)
+{
+    int target = label.target();
+    if (!target)
+        target = outOfLineJumpOffset(m_currentLocation);
+    InstructionStream::Offset targetOffset = target + m_currentLocation;
+    m_out.print(target, "(->", targetOffset, ")");
+}
+
+template void BytecodeDumperBase::dumpValue(GenericBoundLabel<JSGeneratorTraits>);
+
+#if ENABLE(WEBASSEMBLY)
+template void BytecodeDumperBase::dumpValue(GenericBoundLabel<Wasm::GeneratorTraits>);
+#endif // ENABLE(WEBASSEMBLY)
+
 template<class Block>
 CString BytecodeDumper<Block>::registerName(int r) const
 {
@@ -64,24 +91,17 @@ CString BytecodeDumper<Block>::registerName(int r) const
     return toCString(VirtualRegister(r));
 }
 
+template <class Block>
+int BytecodeDumper<Block>::outOfLineJumpOffset(InstructionStream::Offset offset) const
+{
+    return m_block->outOfLineJumpOffset(offset);
+}
+
 template<class Block>
 CString BytecodeDumper<Block>::constantName(int index) const
 {
     auto value = block()->getConstant(index);
     return toCString(value, "(", VirtualRegister(index), ")");
-}
-
-template<class Block>
-void BytecodeDumper<Block>::printLocationAndOp(InstructionStream::Offset location, const char* op)
-{
-    m_currentLocation = location;
-    m_out.printf("[%4u] %-18s ", location, op);
-}
-
-template<class Block>
-void BytecodeDumper<Block>::dumpValue(VirtualRegister reg)
-{
-    m_out.printf("%s", registerName(reg.offset()).data());
 }
 
 template<class Block>

@@ -59,6 +59,8 @@ NetworkProcess/webrtc/NetworkRTCSocket.cpp
 
 GPUProcess/ios/GPUProcessIOS.mm
 GPUProcess/mac/GPUProcessMac.mm
+GPUProcess/media/RemoteMediaPlayerProxy.cpp
+GPUProcess/media/RemoteMediaPlayerManagerProxy.cpp
 GPUProcess/EntryPoint/Cocoa/XPCService/GPUServiceEntryPoint.mm
 
 Platform/cf/ModuleCF.cpp
@@ -322,11 +324,17 @@ UIProcess/API/Cocoa/WKUserScript.mm
 UIProcess/API/Cocoa/WKWebsiteDataRecord.mm
 UIProcess/API/Cocoa/WKWebsiteDataStore.mm
 UIProcess/API/Cocoa/WKWebView.mm
+UIProcess/API/Cocoa/WKWebViewTesting.mm
 UIProcess/API/Cocoa/WKWebViewConfiguration.mm
 UIProcess/API/Cocoa/WKWebpagePreferences.mm
 UIProcess/API/Cocoa/WKWindowFeatures.mm
 
+UIProcess/API/ios/WKWebViewIOS.mm
+UIProcess/API/ios/WKWebViewTestingIOS.mm
+
 UIProcess/API/mac/WKView.mm
+UIProcess/API/mac/WKWebViewMac.mm
+UIProcess/API/mac/WKWebViewTestingMac.mm
 
 UIProcess/Authentication/cocoa/AuthenticationChallengeProxyCocoa.mm
 UIProcess/Authentication/cocoa/SecKeyProxyStore.mm
@@ -624,5 +632,7 @@ EditableImageControllerMessageReceiver.cpp
 GPUConnectionToWebProcessMessageReceiver.cpp
 GPUProcessProxyMessageReceiver.cpp
 GPUProcessMessageReceiver.cpp
+//RemoteMediaPlayerManagerMessageReceiver.cpp
+//RemoteMediaPlayerManagerProxyMessageReceiver.cpp
 ServiceWorkerFetchTaskMessageReceiver.cpp
 TextCheckingControllerProxyMessageReceiver.cpp

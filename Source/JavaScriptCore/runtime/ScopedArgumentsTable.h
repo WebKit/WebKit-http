@@ -27,6 +27,7 @@
 
 #include "JSCast.h"
 #include "ScopeOffset.h"
+#include "VM.h"
 #include <wtf/Assertions.h>
 #include <wtf/CagedUniquePtr.h>
 
@@ -42,8 +43,15 @@ class ScopedArgumentsTable final : public JSCell {
     friend class CachedScopedArgumentsTable;
 
 public:
-    typedef JSCell Base;
+    using Base = JSCell;
     static constexpr unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+    static constexpr bool needsDestruction = true;
+
+    template<typename CellType, SubspaceAccess mode>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return vm.scopedArgumentsTableSpace<mode>();
+    }
     
 private:
     ScopedArgumentsTable(VM&);
@@ -53,7 +61,6 @@ public:
     static ScopedArgumentsTable* create(VM&);
     static ScopedArgumentsTable* create(VM&, uint32_t length);
     
-    static constexpr bool needsDestruction = true;
     static void destroy(JSCell*);
 
     ScopedArgumentsTable* clone(VM&);

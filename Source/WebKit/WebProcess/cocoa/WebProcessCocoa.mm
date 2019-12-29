@@ -81,6 +81,7 @@
 
 #if PLATFORM(IOS)
 #import "UIKitSPI.h"
+#import <WebCore/ParentalControlsContentFilter.h>
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -114,6 +115,10 @@
 
 #if USE(OS_STATE)
 #import <os/state_private.h>
+#endif
+
+#if PLATFORM(COCOA)
+#import <WebCore/NetworkExtensionContentFilter.h>
 #endif
 
 #if HAVE(CSCHECKFIXDISABLE)
@@ -225,6 +230,22 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #if PLATFORM(IOS)
     if (parameters.compilerServiceExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.compilerServiceExtensionHandle);
+
+    if (parameters.contentFilterExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.contentFilterExtensionHandle);
+    ParentalControlsContentFilter::setHasConsumedSandboxExtension(parameters.contentFilterExtensionHandle.hasValue());
+#endif
+    
+#if PLATFORM(COCOA)
+    if (parameters.neHelperExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.neHelperExtensionHandle);
+    if (parameters.neSessionManagerExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.neSessionManagerExtensionHandle);
+    NetworkExtensionContentFilter::setHasConsumedSandboxExtensions(parameters.neHelperExtensionHandle.hasValue() && parameters.neSessionManagerExtensionHandle.hasValue());
+#endif
+
+#if PLATFORM(IOS)
+    RenderThemeIOS::setCSSValueToSystemColorMap(WTFMove(parameters.cssValueToSystemColorMap));
 #endif
 }
 

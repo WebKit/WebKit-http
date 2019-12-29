@@ -1399,6 +1399,7 @@ JSArrayBufferView* Graph::tryGetFoldableView(JSValue value)
     if (!view->length())
         return nullptr;
     WTF::loadLoadFence();
+    freeze(view);
     watchpoints().addLazily(view);
     return view;
 }
@@ -1633,20 +1634,24 @@ MethodOfGettingAValueProfile Graph::methodOfGettingAValueProfileFor(Node* curren
     // This represents IR like `CurrentNode(@operandNode)`. For example: `GetByVal(..., Int32:@GetLocal)`.
 
     for (Node* node = operandNode; node;) {
+        if (node->accessesStack(*this)) {
+            if (m_form != SSA && node->local().isArgument()) {
+                int argument = node->local().toArgument();
+                Node* argumentNode = m_rootToArguments.find(block(0))->value[argument];
+                // FIXME: We should match SetArgumentDefinitely nodes at other entrypoints as well:
+                // https://bugs.webkit.org/show_bug.cgi?id=175841
+                if (argumentNode && node->variableAccessData() == argumentNode->variableAccessData()) {
+                    CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
+                    return &profiledBlock->valueProfileForArgument(argument);
+                }
+            }
+        }
+
         // currentNode is null when we're doing speculation checks for checkArgumentTypes().
         if (!currentNode || node->origin.semantic != currentNode->origin.semantic || !currentNode->hasResult()) {
             CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
 
             if (node->accessesStack(*this)) {
-                if (m_form != SSA && node->local().isArgument()) {
-                    int argument = node->local().toArgument();
-                    Node* argumentNode = m_rootToArguments.find(block(0))->value[argument];
-                    // FIXME: We should match SetArgumentDefinitely nodes at other entrypoints as well:
-                    // https://bugs.webkit.org/show_bug.cgi?id=175841
-                    if (argumentNode && node->variableAccessData() == argumentNode->variableAccessData())
-                        return &profiledBlock->valueProfileForArgument(argument);
-                }
-
                 if (node->op() == GetLocal) {
                     return MethodOfGettingAValueProfile::fromLazyOperand(
                         profiledBlock,

@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "PredictionFileCreatingFuzzerAgent.h"
+#include <wtf/DataLog.h>
 
 namespace JSC {
 
@@ -63,7 +64,7 @@ SpeculatedType PredictionFileCreatingFuzzerAgent::getPredictionInternal(CodeBloc
         break;
 
     default:
-        RELEASE_ASSERT_WITH_MESSAGE(false, "unhandled opcode: %s", toString(predictionTarget.opcodeId).utf8().data());
+        RELEASE_ASSERT_WITH_MESSAGE(false, "unhandled opcode: %s", opcodeNames[predictionTarget.opcodeId]);
     }
     return original;
 }

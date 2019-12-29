@@ -1,3 +1,399 @@
+2019-12-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add TabNavigation diagnostic event and related hooks
+        https://bugs.webkit.org/show_bug.cgi?id=205138
+        <rdar://problem/57855456>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds a new recorder for the TabNavigation diagnostic event.
+
+        The bulk of this patch is to find all callsites that can possibly change the active
+        tab and annotate them with the type of interaction (tab click, link click,
+        keyboard shortcut, inspect, and others). This patch was developed through
+        trial and error by logging the diagnostic events and debugging any scenarios
+        where a tab navigation is not correctly annotated with the initiating interaction.
+
+        * UserInterface/Main.html: Add new file.
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded): Register new recorder.
+        (WI._handleSettingsKeyboardShortcut): Annotate as keyboard shortcut.
+        - Add options argument to most WI.show*Tab functions, and forward to the underlying
+        TabBrowser or TabBar calls. This allows initiatorHint to be used in these cases.
+        - Add other annotations to linkifyElement
+
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.showTabForContentView):
+        (WI.TabBrowser.prototype._tabBarItemSelected):
+        - Try to infer an initiator for the tab navigation from TabBrowser API arguments or from TabBar's event.
+        - Add an enum with TabNavigationInitiator values.
+
+        * UserInterface/Base/DOMUtilities.js:
+        Clickable element links should be reported as link clicks. Add an annotation
+        so that it isn't reported as "Inspect" (due to going through DOMManager.inspectElement).
+
+        * UserInterface/Controllers/CallFrameTreeController.js:
+        (WI.CallFrameTreeController):
+        (WI.CallFrameTreeController.prototype._showSourceCodeLocation):
+        This is mainly used by Canvas tab. Annotate call frame links as link clicks.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.inspectElement):
+        Accept an options argument. This is used to forward the initiatorHint to
+        the listener of this event, WI._domNodeWasInspected, so it can forward the
+        initiatorHint further on.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled):
+        (InspectorFrontendAPI.showConsole):
+        (InspectorFrontendAPI.showResources):
+        (InspectorFrontendAPI.showTimelines):
+        (InspectorFrontendAPI.showMainResourceForFrame):
+        Annotate these as FrontendAPI calls. Mainly used by Develop menu items in Safari.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        (WI.appendContextMenuItemsForURL):
+        Annotate as context menu.
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement):
+        (WI.DOMNodeTreeElement.prototype.populateContextMenu):
+        Annotate as context menu.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._buildTagDOM):
+
+
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WI.DefaultDashboardView.prototype._resourcesItemWasClicked):
+        (WI.DefaultDashboardView.prototype._networkItemWasClicked):
+        (WI.DefaultDashboardView.prototype._timelineItemWasClicked):
+        (WI.DefaultDashboardView.prototype._consoleItemWasClicked):
+        Annotate as dashboard.
+
+        * UserInterface/Views/LegacyTabBar.js:
+        (WI.LegacyTabBar.prototype.set selectedTabBarItem):
+        Include the inferred initiator in the event that is dispatched.
+
+        (WI.LegacyTabBar.prototype.selectTabBarItemWithInitiator):
+        Added. This is a convenience method that temporarily sets the
+        initiator before invoking the setter (which reads the initator).
+
+        (WI.LegacyTabBar.prototype._handleMouseDown):
+        (WI.LegacyTabBar.prototype._handleClick):
+        (WI.LegacyTabBar.prototype._handleNewTabClick):
+        Treat these as "tab clicks".
+
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar.prototype.set selectedTabBarItem):
+        (WI.TabBar.prototype.selectTabBarItemWithInitiator):
+        (WI.TabBar.prototype._handleMouseDown):
+        (WI.TabBar.prototype._handleClick):
+        Changes from LegacyTabBar have been copied to this version, as it's a
+        drop-in replacement.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype._showConsoleTab):
+        Treat the console chevron as a "button click".
+
+        * UserInterface/Views/NewTabContentView.js:
+        (WI.NewTabContentView.prototype._createNewTabWithType):
+        Treat each tab button as a "button click".
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.populateContextMenu):
+        Annotate as context menu.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode.prototype._dataGridNodeGoToArrowClicked):
+        Annotate as link click.
+
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WI.SearchResultTreeElement):
+        (WI.SearchResultTreeElement.prototype.populateContextMenu):
+        Annotate as context menu.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        Annotate as context menu.
+
+        (WI.SourceCodeTextEditor.prototype._showPopoverForObject.):
+        (WI.SourceCodeTextEditor.prototype._showPopoverForObject):
+        Annotate elements in popover as link click.
+
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WI.SourceCodeTreeElement):
+        (WI.SourceCodeTreeElement.prototype._handleToggleBlackboxedImageElementClicked):
+        Annotate as context menu.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._populateIconElementContextMenu):
+        Annotate as context menu.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._setupJumpToSymbol):
+        Annotate as link click.
+
+2019-12-15  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Remove -webkit-marquee.
+        https://bugs.webkit.org/show_bug.cgi?id=117769
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2019-12-12  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: Error: Can't make a ContentView for an unknown representedObject of type: CallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=204823
+
+        Reviewed by Devin Rousso.
+
+        If no type is stored in the cookie matching by type should fail.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie.treeElementMatchesCookie):
+        (WI.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie):
+
+2019-12-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251227): Uncaught Exception: undefined is not an object (evaluating 'target.DOMAgent.setInspectModeEnabled')
+        https://bugs.webkit.org/show_bug.cgi?id=205148
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled):
+        (InspectorFrontendAPI.setElementSelectionEnabled):
+        If there are no targets available yet (`WI.targetsAvailable()`), then wait for targets to
+        be available (`WI.whenTargetsAvailable()`) before performing the intended logic, as the
+        `InspectorFrontendAPI` only waits for the backend connection to be established before
+        dispatching, meaning that there may not be a page target yet. Other `InspectorFrontendAPI`
+        functions don't need to be changed because they don't cause commands to be invoked.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.set inspectModeEnabled):
+        Drive-by: don't assume that inspect mode is disabled if an error is thrown.
+
+        * UserInterface/Base/Main.js:
+        Drive-by: remove duplicate function `WI._toggleInspectMode` as it already exists.
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Console: unable to switch execution contexts
+        https://bugs.webkit.org/show_bug.cgi?id=205102
+        <rdar://problem/57748393>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole):
+        Wait to initialize the main execution context path component until we actually have a main
+        execution context.
+
+        (WI.QuickConsole.prototype._pageTargetTransitioned):
+        Remove unnecessary duplicate early return.
+
+        (WI.QuickConsole.prototype._initializeMainExecutionContextPathComponent):
+        Restore the link to the next path component if the main execution context path component is
+        recreated when there already exist other execution contexts.
+
+        (WI.QuickConsole.prototype._selectExecutionContext):
+        Remove unnecessary assertion.
+
+        (WI.QuickConsole.prototype._removeExecutionContextPathComponentForFrame):
+        When the execution context of the main frame changes, recreate the main execution context
+        path component so it has the right `representedObject`.
+
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem.prototype.update):
+        Only hide the tooltip if we're not `sizeToFit` as otherwise we never unhide it due to an
+        early return (`sizeToFit` just makes everything visible).
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Styles: hovering over an invalid value while holding ⌘ doesn't change the color of the text
+        https://bugs.webkit.org/show_bug.cgi?id=205039
+
+        Reviewed by Brian Burg.
+
+        Only apply a `color` or `-webkit-text-decoration-color` when either the ⌘ key is not pressed
+        or if the mouse is not actively hovering over the node when the ⌘ is pressed.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .name:not(.editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .name:not(:hover, .editing)): Added.
+        (.spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value): Added.
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(.editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(:hover, .editing)): Added.
+        (.spreadsheet-style-declaration-editor .property.disabled):
+        (.spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > *:not(.name, .value-container), .spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > .value-container > *:not(.value), body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > :matches(.name,  value-container):not(.editing), body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > .value-container >  value:not(.editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > :matches(.name,  value-container):not(:hover, .editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) > .content > .value-container > .value:not(:hover, .editing)): Added.
+        (.spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > *:not(.name, .value-container), .spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > .value-container > *:not(.value), body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > :matches(.name, .value-container):not(.editing), body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > .value-container > .value:not(.editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > :matches(.name, .value-container):not(:hover, .editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property.invalid-name:not(.disabled) > .content > .value-container > .value:not(:hover, .editing)): Added.
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property.invalid-value:not(.disabled) > .content > .value:not(.editing), body.meta-key-pressed .spreadsheet-style-declaration-editor > .property.invalid-value:not(.disabled) > .content > .value:not(:hover, .editing)): Added.
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(.editing) .token-link, body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(:hover, .editing) .token-link): Added.
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(.editing) .token-string, body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(:hover, .editing) .token-string): Added.
+        (body.meta-key-pressed .spreadsheet-css-declaration:not(.locked) > .spreadsheet-style-declaration-editor > .property > .content :matches(.name, .value):not(.editing):hover): Added.
+        (body:not(.meta-key-pressed) .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(.editing) .token-comment, body.meta-key-pressed .spreadsheet-style-declaration-editor > .property:not(.disabled) > .content > .value:not(:hover, .editing) .token-comment): Added.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .name): Deleted.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .value): Deleted.
+        (.spreadsheet-style-declaration-editor .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) .content > *): Deleted.
+        (.spreadsheet-style-declaration-editor .property.invalid-name:not(.disabled) .content > *): Deleted.
+        (.spreadsheet-style-declaration-editor .property.invalid-value:not(.disabled) .content .value): Deleted.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-link): Deleted.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-string): Deleted.
+        (.meta-key-pressed .spreadsheet-css-declaration:not(.locked) :matches(.name, .value):not(.editing):hover): Deleted.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-comment): Deleted.
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r253173): Console: evaluating a command should automatically scroll to it's result
+        https://bugs.webkit.org/show_bug.cgi?id=205105
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        (WI.LogContentView.prototype.get scrollableElements):
+        (WI.LogContentView.prototype._updateMessagesSelection):
+        (WI.LogContentView.prototype._highlightSearchMatchAtIndex):
+        (WI.LogContentView.prototype.layout): Deleted.
+        (WI.LogContentView.prototype._ensureMessageIsVisible): Deleted.
+        (WI.LogContentView.prototype._positionForMessage): Deleted.
+        Now that this uses `display: flex;`, the actual scrollable element is the `messagesElement`,
+        so use that instead when manually setting the `scrollTop`. Use `scrollIntoViewIfNeeded` when
+        revealing search results instead of any custom scroll offset calculations.
+
+        * UserInterface/Views/LogContentView.css:
+        (.content-view.log > .hidden-messages-banner):
+        Drive-by: ensure that the hidden messages banner doesn't shrink.
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: simplify the text of the script blackboxing context menu item
+        https://bugs.webkit.org/show_bug.cgi?id=205099
+
+        Reviewed by Brian Burg.
+
+        "Blackbox script to ignore it when debugging" is a bit too long for a context menu item.
+        We should use something simpler, like "Blackbox Script".
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace all "Remove" context menu items with "Delete" to be consistent
+        https://bugs.webkit.org/show_bug.cgi?id=205098
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BlackboxSettingsView.js:
+        (WI.BlackboxSettingsView.prototype._addRow):
+        * UserInterface/Views/BootstrapScriptTreeElement.js:
+        (WI.BootstrapScriptTreeElement.prototype.populateContextMenu):
+        * UserInterface/Views/BreakpointActionView.js:
+        (WI.BreakpointActionView):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        Drive-by: if a local override exists for the given source code, add an item for
+                  enabling/disabling and deleting it.
+        * UserInterface/Views/LocalResourceOverrideTreeElement.js:
+        (WI.LocalResourceOverrideTreeElement.prototype.populateContextMenu):
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WI.ProbeSetDetailsSection):
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WI.ScopeChainDetailsSidebarPanel.prototype._objectTreeElementAddContextMenuItems):
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-12-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: Missing frame for given frameId (on techcrunch.com)
+        https://bugs.webkit.org/show_bug.cgi?id=205130
+        <rdar://problem/57847699>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/ApplicationCacheManager.js:
+        (WI.ApplicationCacheManager.prototype._manifestForFrameLoaded):
+        A frame can go away between `ApplicationCache.getManifestForFrame` being called and the
+        response being received, so don't re-throw the error if the frontend no longer has a
+        matching `WI.Frame` for the given `frameId`.
+
+2019-12-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r251038): Elements: Computed: implicit shorthands are not shown when "Prefer Shorthands" is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=205035
+        <rdar://problem/57773470>
+
+        Reviewed by Brian Burg.
+
+        The computed style treats most shorthand properties as "implicit", meaning that if "Prefer
+        Shorthands" is enabled, we won't show the shorthand properties unless "Show All" is also
+        enabled. The frontend can fix this by checking to see if there are any non-implicit longhand
+        values for each shorthand value, and therefore decide not to hide the "implicit" shorthand.
+
+        * UserInterface/Views/ComputedStyleSection.js:
+        (WI.ComputedStyleSection.prototype.get propertiesToRender):
+        (WI.ComputedStyleSection.prototype.get propertiesToRender.hasNonImplicitLonghand): Added.
+        Drive-by: filter the list of properties to render before sorting them for performance.
+
+2019-12-10  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION(r252523): Web Inspector: Styles: semicolon is wrongly positioned in multiline values
+        https://bugs.webkit.org/show_bug.cgi?id=205034
+        <rdar://problem/57772846>
+
+        Reviewed by Brian Burg.
+
+        Wrap the value node in another `<span class="value-container">` so that the semicolon can be
+        included as part of the `display: inline-block;` when there are multiple lines in the value.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.update):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property:not(.disabled).has-newline .value-container): Added.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled).has-newline .value): Deleted.
+
+2019-12-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Styles: there is a double border between the last rule and the class list area or filter area
+        https://bugs.webkit.org/show_bug.cgi?id=205040
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style.style-rules > .content ~ :matches(.options-container, .class-list-container)): Added.
+        (.sidebar > .panel.details.css-style > .content ~ .options-container):
+        Use a CSS transform to move the class list area and filter area up when the Styles panel is
+        selected in the details sidebar of the Elements Tab.
+
+2019-12-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r253167): Elements: class list toggle doesn't stay sticky to the bottom of the sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=205033
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content):
+        Ensure that the main content of the sidebar panel takes up as much space as possible.
+
+2019-12-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: this._objectTree.resetPropertyPath is not a function. (In 'this._objectTree.resetPropertyPath()', 'this._objectTree.resetPropertyPath' is undefined)
+        https://bugs.webkit.org/show_bug.cgi?id=205026
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype.clearSessionState):
+        The `_objectTree` can also be an `WI.ErrorObjectView`, which doesn't have a property path.
+
 2019-12-06  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Uncaught Exception: Missing node for given nodeId

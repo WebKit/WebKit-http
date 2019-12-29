@@ -36,6 +36,12 @@
 namespace WebCore {
 namespace Layout {
 
+static inline bool isWhitespacePreserved(const RenderStyle& style)
+{
+    auto whitespace = style.whiteSpace();
+    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
+}
+
 struct LineBuilder::ContinousContent {
 public:
     ContinousContent(const InlineItemRun&, bool textIsAlignJustify);
@@ -48,7 +54,7 @@ private:
     bool canBeMerged(const InlineItemRun& run) const { return run.isText() && !run.isCollapsedToZeroAdvanceWidth() && &m_initialInlineRun.layoutBox() == &run.layoutBox(); }
 
     const InlineItemRun& m_initialInlineRun;
-    const bool m_textIsAlignJustify { false };
+    const bool m_collectExpansionOpportunities { false };
     unsigned m_expandedLength { 0 };
     InlineLayoutUnit m_expandedWidth { 0 };
     bool m_trailingRunCanBeExpanded { false };
@@ -58,7 +64,7 @@ private:
 
 LineBuilder::ContinousContent::ContinousContent(const InlineItemRun& initialInlineRun, bool textIsAlignJustify)
     : m_initialInlineRun(initialInlineRun)
-    , m_textIsAlignJustify(textIsAlignJustify)
+    , m_collectExpansionOpportunities(textIsAlignJustify && !isWhitespacePreserved(m_initialInlineRun.style())) // Do not collect expansion data on preserved whitespace content (we should not mutate the spacing between runs in such cases).
     , m_trailingRunCanBeExpanded(canBeExpanded(initialInlineRun))
 {
 }
@@ -77,7 +83,7 @@ bool LineBuilder::ContinousContent::append(const InlineItemRun& inlineItemRun)
     m_expandedLength += inlineItemRun.textContext()->length();
     m_expandedWidth += inlineItemRun.logicalWidth();
 
-    if (m_textIsAlignJustify) {
+    if (m_collectExpansionOpportunities) {
         m_hasTrailingExpansionOpportunity = inlineItemRun.hasExpansionOpportunity();
         if (m_hasTrailingExpansionOpportunity)
             ++m_expansionOpportunityCount;
@@ -95,7 +101,7 @@ LineBuilder::Run LineBuilder::ContinousContent::close()
     auto length = textContext.length() + m_expandedLength;
     textContext.expand(length);
 
-    if (m_textIsAlignJustify) {
+    if (m_collectExpansionOpportunities) {
         // FIXME: This is a very simple expansion merge. We should eventually switch over to FontCascade::expansionOpportunityCount.
         ExpansionBehavior expansionBehavior = m_hasTrailingExpansionOpportunity ? (ForbidLeadingExpansion | AllowTrailingExpansion) : (AllowLeadingExpansion | AllowTrailingExpansion);
         if (m_initialInlineRun.hasExpansionOpportunity())
@@ -152,11 +158,11 @@ void LineBuilder::Run::setComputedHorizontalExpansion(InlineLayoutUnit logicalEx
     m_textContext->setExpansion({ m_textContext->expansion()->behavior, logicalExpansion });
 }
 
-LineBuilder::LineBuilder(const InlineFormattingContext& inlineFormattingContext, Optional<TextAlignMode> horizontalAlignment, SkipAlignment skipAlignment)
+LineBuilder::LineBuilder(const InlineFormattingContext& inlineFormattingContext, Optional<TextAlignMode> horizontalAlignment, IntrinsicSizing intrinsicSizing)
     : m_inlineFormattingContext(inlineFormattingContext)
-    , m_trimmableContent(m_inlineItemRuns)
+    , m_collapsibleContent(m_inlineItemRuns)
     , m_horizontalAlignment(horizontalAlignment)
-    , m_skipAlignment(skipAlignment == SkipAlignment::Yes)
+    , m_isIntrinsicSizing(intrinsicSizing == IntrinsicSizing::Yes)
 {
 }
 
@@ -166,7 +172,7 @@ LineBuilder::~LineBuilder()
 
 void LineBuilder::initialize(const Constraints& constraints)
 {
-    ASSERT(m_skipAlignment || constraints.heightAndBaseline);
+    ASSERT(m_isIntrinsicSizing || constraints.heightAndBaseline);
 
     InlineLayoutUnit initialLineHeight = 0;
     InlineLayoutUnit initialBaselineOffset = 0;
@@ -184,8 +190,9 @@ void LineBuilder::initialize(const Constraints& constraints)
     m_hasIntrusiveFloat = constraints.lineIsConstrainedByFloat;
 
     m_inlineItemRuns.clear();
-    m_trimmableContent.reset();
-    m_lineIsVisuallyEmptyBeforeTrimmableContent = { };
+    m_collapsibleContent.reset();
+    m_hangingContent.reset();
+    m_lineIsVisuallyEmptyBeforeCollapsibleContent = { };
 }
 
 static bool shouldPreserveLeadingContent(const InlineTextItem& inlineTextItem)
@@ -198,10 +205,11 @@ static bool shouldPreserveLeadingContent(const InlineTextItem& inlineTextItem)
 
 LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWithInlineContent)
 {
-    // 1. Remove trimmable trailing content.
+    // 1. Remove collapsible trailing content.
     // 2. Join text runs together when possible [foo][ ][bar] -> [foo bar].
     // 3. Align merged runs both vertically and horizontally.
-    removeTrailingTrimmableContent();
+    removeTrailingCollapsibleContent();
+    collectHangingContent(isLastLineWithInlineContent);
     RunList runList;
     unsigned runIndex = 0;
     while (runIndex < m_inlineItemRuns.size()) {
@@ -214,7 +222,7 @@ LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWi
         runList.append(continousContent.close());
     }
 
-    if (!m_skipAlignment) {
+    if (!m_isIntrinsicSizing) {
         for (auto& run : runList) {
             adjustBaselineAndLineHeight(run);
             run.setLogicalHeight(runContentHeight(run));
@@ -236,7 +244,7 @@ LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWi
 
 void LineBuilder::alignContentVertically(RunList& runList)
 {
-    ASSERT(!m_skipAlignment);
+    ASSERT(!m_isIntrinsicSizing);
     for (auto& run : runList) {
         InlineLayoutUnit logicalTop = 0;
         auto& layoutBox = run.layoutBox();
@@ -323,8 +331,9 @@ void LineBuilder::justifyRuns(RunList& runList) const
 
 void LineBuilder::alignContentHorizontally(RunList& runList, IsLastLineWithInlineContent lastLine) const
 {
-    ASSERT(!m_skipAlignment);
-    if (runList.isEmpty() || availableWidth() <= 0)
+    ASSERT(!m_isIntrinsicSizing);
+    auto availableWidth = this->availableWidth() + m_hangingContent.width();
+    if (runList.isEmpty() || availableWidth <= 0)
         return;
 
     if (isTextAlignJustify()) {
@@ -343,10 +352,10 @@ void LineBuilder::alignContentHorizontally(RunList& runList, IsLastLineWithInlin
         case TextAlignMode::Right:
         case TextAlignMode::WebKitRight:
         case TextAlignMode::End:
-            return std::max<InlineLayoutUnit>(availableWidth(), 0);
+            return std::max<InlineLayoutUnit>(availableWidth, 0);
         case TextAlignMode::Center:
         case TextAlignMode::WebKitCenter:
-            return std::max<InlineLayoutUnit>(availableWidth() / 2, 0);
+            return std::max<InlineLayoutUnit>(availableWidth / 2, 0);
         case TextAlignMode::Justify:
             ASSERT_NOT_REACHED();
             break;
@@ -363,16 +372,16 @@ void LineBuilder::alignContentHorizontally(RunList& runList, IsLastLineWithInlin
         run.moveHorizontally(*adjustment);
 }
 
-void LineBuilder::removeTrailingTrimmableContent()
+void LineBuilder::removeTrailingCollapsibleContent()
 {
-    if (m_trimmableContent.isEmpty() || m_inlineItemRuns.isEmpty())
+    if (m_collapsibleContent.isEmpty() || m_inlineItemRuns.isEmpty())
         return;
 
-    m_lineBox.shrinkHorizontally(m_trimmableContent.trim());
-    // If we trimmed the first visible run on the line, we need to re-check the visibility status.
-    if (!m_lineIsVisuallyEmptyBeforeTrimmableContent)
+    m_lineBox.shrinkHorizontally(m_collapsibleContent.collapse());
+    // If we collapsed the first visible run on the line, we need to re-check the visibility status.
+    if (!m_lineIsVisuallyEmptyBeforeCollapsibleContent)
         return;
-    // Just because the line was visually empty before the trimmed content, it does not necessarily mean it is still visually empty.
+    // Just because the line was visually empty before the collapsed content, it does not necessarily mean it is still visually empty.
     // <span>  </span><span style="padding-left: 10px"></span>  <- non-empty
     auto lineIsVisuallyEmpty = [&] {
         for (auto& run : m_inlineItemRuns) {
@@ -381,10 +390,33 @@ void LineBuilder::removeTrailingTrimmableContent()
         }
         return true;
     };
-    // We could only go from visually non empty -> to visually empty. Trimming runs should never make the line visible.
+    // We could only go from visually non empty -> to visually empty. Collapsed runs should never make the line visible.
     if (lineIsVisuallyEmpty())
         m_lineBox.setIsConsideredEmpty();
-    m_lineIsVisuallyEmptyBeforeTrimmableContent = { };
+    m_lineIsVisuallyEmptyBeforeCollapsibleContent = { };
+}
+
+void LineBuilder::collectHangingContent(IsLastLineWithInlineContent isLastLineWithInlineContent)
+{
+    // Can't setup hanging content with removable trailing whitspaces.
+    ASSERT(m_collapsibleContent.isEmpty());
+    if (isLastLineWithInlineContent == IsLastLineWithInlineContent::Yes)
+        m_hangingContent.setIsConditional();
+    for (auto& inlineItemRun : WTF::makeReversedRange(m_inlineItemRuns)) {
+        if (inlineItemRun.isContainerStart() || inlineItemRun.isContainerEnd())
+            continue;
+        if (inlineItemRun.isLineBreak()) {
+            m_hangingContent.setIsConditional();
+            continue;
+        }
+        if (!inlineItemRun.isText() || !inlineItemRun.isWhitespace() || inlineItemRun.isCollapsible())
+            break;
+        // Check if we have a preserved or hung whitespace.
+        if (inlineItemRun.style().whiteSpace() != WhiteSpace::PreWrap)
+            break;
+        // This is either a normal or conditionally hanging trailing whitespace.
+        m_hangingContent.expand(inlineItemRun.logicalWidth());
+    }
 }
 
 void LineBuilder::moveLogicalLeft(InlineLayoutUnit delta)
@@ -440,14 +472,14 @@ void LineBuilder::appendInlineContainerStart(const InlineItem& inlineItem, Inlin
 void LineBuilder::appendInlineContainerEnd(const InlineItem& inlineItem, InlineLayoutUnit logicalWidth)
 {
     // This is really just a placeholder to mark the end of the inline level container </span>.
-    auto trimTrailingLetterSpacing = [&] {
-        if (!m_trimmableContent.isTrailingRunPartiallyTrimmable())
+    auto collapseTrailingLetterSpacing = [&] {
+        if (!m_collapsibleContent.isTrailingRunPartiallyCollapsible())
             return;
-        m_lineBox.shrinkHorizontally(m_trimmableContent.trimTrailingRun());
+        m_lineBox.shrinkHorizontally(m_collapsibleContent.collapseTrailingRun());
     };
     // Prevent trailing letter-spacing from spilling out of the inline container.
     // https://drafts.csswg.org/css-text-3/#letter-spacing-property See example 21.
-    trimTrailingLetterSpacing();
+    collapseTrailingLetterSpacing();
     appendNonBreakableSpace(inlineItem, contentLogicalRight(), logicalWidth);
 }
 
@@ -497,16 +529,16 @@ void LineBuilder::appendTextContent(const InlineTextItem& inlineItem, InlineLayo
 
     m_lineBox.expandHorizontally(lineRun.logicalWidth());
 
-    // Existing trailing trimmable content can only be expanded if the current rus is fully trimmable.
-    auto trimmableListNeedsReset = !m_trimmableContent.isEmpty() && !lineRun.isTrimmableWhitespace();
-    if (trimmableListNeedsReset)
-        m_trimmableContent.reset();
-    auto isTrimmable = lineRun.isTrimmableWhitespace() || lineRun.hasTrailingLetterSpacing();
-    if (isTrimmable) {
-        // If we ever trim this content, we need to know if the line visibility state needs to be recomputed.
-        if (m_trimmableContent.isEmpty())
-            m_lineIsVisuallyEmptyBeforeTrimmableContent = isVisuallyEmpty();
-        m_trimmableContent.append(m_inlineItemRuns.size() - 1);
+    // Existing trailing collapsible content can only be expanded if the current run is fully collapsible.
+    auto collapsibleListNeedsReset = !m_collapsibleContent.isEmpty() && !lineRun.isCollapsibleWhitespace();
+    if (collapsibleListNeedsReset)
+        m_collapsibleContent.reset();
+    auto isCollapsible = lineRun.isCollapsibleWhitespace() || lineRun.hasTrailingLetterSpacing();
+    if (isCollapsible) {
+        // If we ever collapse this content, we need to know if the line visibility state needs to be recomputed.
+        if (m_collapsibleContent.isEmpty())
+            m_lineIsVisuallyEmptyBeforeCollapsibleContent = isVisuallyEmpty();
+        m_collapsibleContent.append(m_inlineItemRuns.size() - 1);
     }
 }
 
@@ -517,7 +549,7 @@ void LineBuilder::appendNonReplacedInlineBox(const InlineItem& inlineItem, Inlin
     auto horizontalMargin = boxGeometry.horizontalMargin();
     m_inlineItemRuns.append({ inlineItem, contentLogicalWidth() + horizontalMargin.start, logicalWidth });
     m_lineBox.expandHorizontally(logicalWidth + horizontalMargin.start + horizontalMargin.end);
-    m_trimmableContent.reset();
+    m_collapsibleContent.reset();
 }
 
 void LineBuilder::appendReplacedInlineBox(const InlineItem& inlineItem, InlineLayoutUnit logicalWidth)
@@ -626,7 +658,7 @@ void LineBuilder::adjustBaselineAndLineHeight(const Run& run)
 
 InlineLayoutUnit LineBuilder::runContentHeight(const Run& run) const
 {
-    ASSERT(!m_skipAlignment);
+    ASSERT(!m_isIntrinsicSizing);
     auto& fontMetrics = run.style().fontMetrics();
     if (run.isText() || run.isLineBreak())
         return fontMetrics.height();
@@ -668,7 +700,7 @@ bool LineBuilder::isVisuallyNonEmpty(const InlineItemRun& run) const
         ASSERT(run.layoutBox().isInlineBlockBox());
         if (!run.logicalWidth())
             return false;
-        if (m_skipAlignment || formattingContext().geometryForBox(run.layoutBox()).height())
+        if (m_isIntrinsicSizing || formattingContext().geometryForBox(run.layoutBox()).height())
             return true;
         return false;
     }
@@ -699,94 +731,90 @@ const InlineFormattingContext& LineBuilder::formattingContext() const
     return m_inlineFormattingContext;
 }
 
-LineBuilder::TrimmableContent::TrimmableContent(InlineItemRunList& inlineItemRunList)
+LineBuilder::CollapsibleContent::CollapsibleContent(InlineItemRunList& inlineItemRunList)
     : m_inlineitemRunList(inlineItemRunList)
 {
 }
 
-void LineBuilder::TrimmableContent::append(size_t runIndex)
+void LineBuilder::CollapsibleContent::append(size_t runIndex)
 {
-    auto& trimmableRun = m_inlineitemRunList[runIndex];
-    InlineLayoutUnit trimmableWidth = 0;
-    auto isFullyTrimmable = trimmableRun.isTrimmableWhitespace();
-    if (isFullyTrimmable)
-        trimmableWidth = trimmableRun.logicalWidth();
+    auto& collapsibleRun = m_inlineitemRunList[runIndex];
+    InlineLayoutUnit collapsibleWidth = 0;
+    auto isFullyCollapsible = collapsibleRun.isCollapsibleWhitespace();
+    if (isFullyCollapsible)
+        collapsibleWidth = collapsibleRun.logicalWidth();
     else {
-        ASSERT(trimmableRun.hasTrailingLetterSpacing());
-        trimmableWidth = trimmableRun.trailingLetterSpacing();
+        ASSERT(collapsibleRun.hasTrailingLetterSpacing());
+        collapsibleWidth = collapsibleRun.trailingLetterSpacing();
     }
-    // word-spacing could very well be negative, but it does not mean that the line gains that much extra space when the content is trimmed.
-    trimmableWidth = std::max<InlineLayoutUnit>(0, trimmableWidth);
-
-    ASSERT(trimmableWidth >= 0);
-    m_width += trimmableWidth;
-    m_lastRunIsFullyTrimmable = isFullyTrimmable;
+    m_width += collapsibleWidth;
+    m_lastRunIsFullyCollapsible = isFullyCollapsible;
     m_firstRunIndex = m_firstRunIndex.valueOr(runIndex);
 }
 
-InlineLayoutUnit LineBuilder::TrimmableContent::trim()
+InlineLayoutUnit LineBuilder::CollapsibleContent::collapse()
 {
     ASSERT(!isEmpty());
 #ifndef NDEBUG
     auto hasSeenNonWhitespaceTextContent = false;
 #endif
-    // Collapse trimmable trailing content and move all the other trailing runs.
+    // Collapse collapsible trailing content and move all the other trailing runs.
     // <span> </span><span></span> ->
     // [whitespace][container end][container start][container end]
-    // Trim the whitespace run and move the trailing inline container runs to the left.
-    InlineLayoutUnit accumulatedTrimmedWidth = 0;
+    // Collapse the whitespace run and move the trailing inline container runs to the left.
+    InlineLayoutUnit accumulatedCollapsedWidth = 0;
     for (auto index = *m_firstRunIndex; index < m_inlineitemRunList.size(); ++index) {
         auto& run = m_inlineitemRunList[index];
-        run.moveHorizontally(-accumulatedTrimmedWidth);
+        run.moveHorizontally(-accumulatedCollapsedWidth);
         if (!run.isText()) {
             ASSERT(run.isContainerStart() || run.isContainerEnd() || run.isLineBreak());
             continue;
         }
         if (run.isWhitespace()) {
-            accumulatedTrimmedWidth += run.logicalWidth();
+            accumulatedCollapsedWidth += run.logicalWidth();
             run.setCollapsesToZeroAdvanceWidth();
         } else {
             ASSERT(!hasSeenNonWhitespaceTextContent);
 #ifndef NDEBUG
             hasSeenNonWhitespaceTextContent = true;
 #endif
-            // Must be a letter spacing trim.
+            // Must be a letter spacing collapse.
             ASSERT(run.hasTrailingLetterSpacing());
-            accumulatedTrimmedWidth += run.trailingLetterSpacing();
+            accumulatedCollapsedWidth += run.trailingLetterSpacing();
             run.removeTrailingLetterSpacing();
         }
     }
-    ASSERT(accumulatedTrimmedWidth == width());
+    ASSERT(accumulatedCollapsedWidth == width());
     reset();
-    return accumulatedTrimmedWidth;
+    return accumulatedCollapsedWidth;
 }
 
-InlineLayoutUnit LineBuilder::TrimmableContent::trimTrailingRun()
+InlineLayoutUnit LineBuilder::CollapsibleContent::collapseTrailingRun()
 {
     ASSERT(!isEmpty());
-    // Find the last trimmable run (it is not necessarily the last run e.g [container start][whitespace][container end])
+    // Find the last collapsible run (it is not necessarily the last run e.g [container start][whitespace][container end])
     for (auto index = m_inlineitemRunList.size(); index-- && *m_firstRunIndex >= index;) {
         auto& run = m_inlineitemRunList[index];
         if (!run.isText()) {
             ASSERT(run.isContainerStart() || run.isContainerEnd());
             continue;
         }
-        InlineLayoutUnit trimmedWidth = 0;
+        InlineLayoutUnit collapsedWidth = 0;
         if (run.isWhitespace()) {
-            trimmedWidth = run.logicalWidth();
+            collapsedWidth = run.logicalWidth();
             run.setCollapsesToZeroAdvanceWidth();
         } else {
             ASSERT(run.hasTrailingLetterSpacing());
-            trimmedWidth = run.trailingLetterSpacing();
+            collapsedWidth = run.trailingLetterSpacing();
             run.removeTrailingLetterSpacing();
         }
-        m_width -= trimmedWidth;
-        // We managed to trim the last trimmable run.
+        m_width -= collapsedWidth;
+        // We managed to remove the last collapsible run.
         if (index == *m_firstRunIndex) {
             ASSERT(!m_width);
             m_firstRunIndex = { };
         }
-        return trimmedWidth;
+        return collapsedWidth;
     }
     ASSERT_NOT_REACHED();
     return 0_lu;
@@ -800,8 +828,10 @@ LineBuilder::InlineItemRun::InlineItemRun(const InlineItem& inlineItem, InlineLa
 {
 }
 
-bool LineBuilder::InlineItemRun::isTrimmableWhitespace() const
+bool LineBuilder::InlineItemRun::isCollapsibleWhitespace() const
 {
+    // Return true if the "end-of-line spaces" can be removed.
+    // See https://www.w3.org/TR/css-text-3/#white-space-property matrix.
     if (!isWhitespace())
         return false;
     return !TextUtil::shouldPreserveTrailingWhitespace(style());

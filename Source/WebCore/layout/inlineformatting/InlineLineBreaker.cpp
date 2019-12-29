@@ -54,25 +54,14 @@ static inline bool isContentSplitAllowed(const LineBreaker::Content::Run& run)
     return isTextContentWrappingAllowed(run.inlineItem.style());
 }
 
-static inline bool isTextSplitAtArbitraryPositionAllowed(const RenderStyle& style, bool lineIsEmpty)
+static inline bool shouldKeepEndOfLineWhitespace(const LineBreaker::Content& candidateRuns)
 {
-    if (style.wordBreak() == WordBreak::BreakAll)
-        return true;
-    // For compatibility with legacy content, the word-break property also supports a deprecated break-word keyword.
-    // When specified, this has the same effect as word-break: normal and overflow-wrap: anywhere, regardless of the actual value of the overflow-wrap property.
-    if (style.wordBreak() == WordBreak::BreakWord && lineIsEmpty)
-        return true;
-    // OverflowWrap::Break -> An otherwise unbreakable sequence of characters may be broken at an arbitrary point if there are no otherwise-acceptable break points in the line.
-    if (style.overflowWrap() == OverflowWrap::Break && lineIsEmpty)
-        return true;
-    return false;
-}
-
-static inline bool isTrailingWhitespaceWithPreWrap(const InlineItem& trailingInlineItem)
-{
-    if (!trailingInlineItem.isText())
-        return false;
-    return trailingInlineItem.style().whiteSpace() == WhiteSpace::PreWrap && downcast<InlineTextItem>(trailingInlineItem).isWhitespace();
+    // Grab the style and check for white-space property to decided whether we should let this whitespace content overflow the current line.
+    // Note that the "keep" in the context means we let the whitespace content sit on the current line.
+    // It might very well get collapsed when we close the line (normal/nowrap/pre-line).
+    // See https://www.w3.org/TR/css-text-3/#white-space-property
+    auto whitespace = candidateRuns.runs()[*candidateRuns.firstTextRunIndex()].inlineItem.style().whiteSpace();
+    return whitespace == WhiteSpace::Normal || whitespace == WhiteSpace::NoWrap || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::PreLine;
 }
 
 LineBreaker::BreakingContext LineBreaker::breakingContextForInlineContent(const Content& candidateRuns, const LineStatus& lineStatus)
@@ -80,27 +69,32 @@ LineBreaker::BreakingContext LineBreaker::breakingContextForInlineContent(const 
     ASSERT(!candidateRuns.isEmpty());
     if (candidateRuns.width() <= lineStatus.availableWidth)
         return { BreakingContext::ContentWrappingRule::Keep, { } };
-    if (candidateRuns.hasTrailingTrimmableContent()) {
-        // First check if the content fits without the trailing trimmable part.
-        if (candidateRuns.nonTrimmableWidth() <= lineStatus.availableWidth)
+    if (candidateRuns.hasTrailingCollapsibleContent()) {
+        // First check if the content fits without the trailing collapsible part.
+        if (candidateRuns.nonCollapsibleWidth() <= lineStatus.availableWidth)
             return { BreakingContext::ContentWrappingRule::Keep, { } };
         // Now check if we can trim the line too.
-        if (lineStatus.lineHasFullyTrimmableTrailingRun && candidateRuns.isTrailingContentFullyTrimmable()) {
-            // If this new content is fully trimmable, it shoud surely fit.
+        if (lineStatus.lineHasFullyCollapsibleTrailingRun && candidateRuns.isTrailingContentFullyCollapsible()) {
+            // If this new content is fully collapsible, it shoud surely fit.
             return { BreakingContext::ContentWrappingRule::Keep, { } };
         }
-    } else if (lineStatus.trimmableWidth && candidateRuns.hasNonContentRunsOnly()) {
-        // Let's see if the non-content runs fit when the line has trailing trimmable content
-        // "text content <span style="padding: 1px"></span>" <- the <span></span> runs could fit after trimming the trailing whitespace.
-        if (candidateRuns.width() <= lineStatus.availableWidth + lineStatus.trimmableWidth)
+    } else if (lineStatus.collapsibleWidth && candidateRuns.hasNonContentRunsOnly()) {
+        // Let's see if the non-content runs fit when the line has trailing collapsible content
+        // "text content <span style="padding: 1px"></span>" <- the <span></span> runs could fit after collapsing the trailing whitespace.
+        if (candidateRuns.width() <= lineStatus.availableWidth + lineStatus.collapsibleWidth)
             return { BreakingContext::ContentWrappingRule::Keep, { } };
+    }
+    if (candidateRuns.isVisuallyEmptyWhitespaceContentOnly() && shouldKeepEndOfLineWhitespace(candidateRuns)) {
+        // This overflowing content apparently falls into the remove/hang end-of-line-spaces catergory.
+        // see https://www.w3.org/TR/css-text-3/#white-space-property matrix
+        return { BreakingContext::ContentWrappingRule::Keep, { } };
     }
 
     if (candidateRuns.hasTextContentOnly()) {
         auto& runs = candidateRuns.runs();
-        if (auto partialTrailingContent = wordBreakingBehavior(runs, lineStatus)) {
-            // We tried to split the content but the available space can't even accommodate the first character.
-            if (!partialTrailingContent->length) {
+        if (auto wrappedTextContent = wrapTextContent(runs, lineStatus)) {
+            if (!wrappedTextContent->trailingRunIndex && wrappedTextContent->contentOverflows) {
+                // We tried to split the content but the available space can't even accommodate the first character.
                 // 1. Push the content over to the next line when we've got content on the line already.
                 // 2. Keep the first character on the empty line (or keep the whole run if it has only one character).
                 if (!lineStatus.lineIsEmpty)
@@ -110,17 +104,15 @@ LineBreaker::BreakingContext LineBreaker::breakingContextForInlineContent(const 
                 ASSERT(inlineTextItem.length());
                 if (inlineTextItem.length() == 1)
                     return { BreakingContext::ContentWrappingRule::Keep, { } };
-                auto firstCharacterWidth = TextUtil::width(inlineTextItem.layoutBox(), inlineTextItem.start(), inlineTextItem.start() + 1);
-                return { BreakingContext::ContentWrappingRule::Split, BreakingContext::PartialTrailingContent { firstTextRunIndex, 1, firstCharacterWidth, false } };
+                auto firstCharacterWidth = TextUtil::width(inlineTextItem, inlineTextItem.start(), inlineTextItem.start() + 1);
+                auto firstCharacterRun = PartialRun { 1, firstCharacterWidth, false };
+                return { BreakingContext::ContentWrappingRule::Split, BreakingContext::PartialTrailingContent { firstTextRunIndex, firstCharacterRun } };
             }
-            return { BreakingContext::ContentWrappingRule::Split, partialTrailingContent };
+            auto splitContent = BreakingContext::PartialTrailingContent { wrappedTextContent->trailingRunIndex, wrappedTextContent->partialTrailingRun };
+            return { BreakingContext::ContentWrappingRule::Split, splitContent };
         }
         // If we are not allowed to break this content, we still need to decide whether keep it or push it to the next line.
         auto contentShouldOverflow = lineStatus.lineIsEmpty || !isTextContentWrappingAllowed(runs[0].inlineItem.style());
-        // FIXME: white-space: pre-wrap needs clarification. According to CSS Text Module Level 3, content wrapping is as 'normal' but apparently
-        // we need to keep the overlapping whitespace on the line (and hang it I'd assume).
-        if (isTrailingWhitespaceWithPreWrap(runs.last().inlineItem))
-            contentShouldOverflow = true;
         return { contentShouldOverflow ? BreakingContext::ContentWrappingRule::Keep : BreakingContext::ContentWrappingRule::Push, { } };
     }
     // First non-text inline content always stays on line.
@@ -132,7 +124,7 @@ bool LineBreaker::shouldWrapFloatBox(InlineLayoutUnit floatLogicalWidth, InlineL
     return !lineIsEmpty && floatLogicalWidth > availableWidth;
 }
 
-Optional<LineBreaker::BreakingContext::PartialTrailingContent> LineBreaker::wordBreakingBehavior(const Content::RunList& runs, const LineStatus& lineStatus) const
+Optional<LineBreaker::WrappedTextContent> LineBreaker::wrapTextContent(const Content::RunList& runs, const LineStatus& lineStatus) const
 {
     // Check where the overflow occurs and use the corresponding style to figure out the breaking behaviour.
     // <span style="word-break: normal">first</span><span style="word-break: break-all">second</span><span style="word-break: normal">third</span>
@@ -146,8 +138,15 @@ Optional<LineBreaker::BreakingContext::PartialTrailingContent> LineBreaker::word
             // <span style="word-break: keep-all">textcontentwithnobreak</span><span>textcontentwithyesbreak</span>
             // When the first span computes longer than the available space, by the time we get to the second span, the adjusted available space becomes negative.
             auto adjustedAvailableWidth = std::max<InlineLayoutUnit>(0, lineStatus.availableWidth - accumulatedRunWidth);
-            if (auto leftSide = tryBreakingTextRun(run, adjustedAvailableWidth, lineStatus.lineIsEmpty))
-                return BreakingContext::PartialTrailingContent { index, leftSide->length, leftSide->logicalWidth, leftSide->needsHyphen };
+             if (auto partialRun = tryBreakingTextRun(run, adjustedAvailableWidth, lineStatus.lineIsEmpty)) {
+                 if (partialRun->length)
+                     return WrappedTextContent { index, false, partialRun };
+                 // When the content is wrapped at the run boundary, the trailing run is the previous run.
+                 if (index)
+                     return WrappedTextContent { index - 1, false, { } };
+                 // Sometimes we can't accommodate even the very first character.
+                 return WrappedTextContent { 0, true, { } };
+             }
             // If this run is not breakable, we need to check if any previous run is breakable
             break;
         }
@@ -160,9 +159,10 @@ Optional<LineBreaker::BreakingContext::PartialTrailingContent> LineBreaker::word
         auto& run = runs[index];
         if (isContentSplitAllowed(run)) {
             ASSERT(run.inlineItem.isText());
-            if (auto leftSide = tryBreakingTextRun(run, maxInlineLayoutUnit(), lineStatus.lineIsEmpty)) {
-                // This run itself might not be partial but the content (series of runs) definitely is.
-                return BreakingContext::PartialTrailingContent { index, leftSide->length, leftSide->logicalWidth, leftSide->needsHyphen };
+            if (auto partialRun = tryBreakingTextRun(run, maxInlineLayoutUnit(), lineStatus.lineIsEmpty)) {
+                 // We know this run fits, so if wrapping is allowed on the run, it should return a non-empty left-side.
+                 ASSERT(partialRun->length);
+                 return WrappedTextContent { index, false, partialRun };
             }
         }
     }
@@ -170,148 +170,217 @@ Optional<LineBreaker::BreakingContext::PartialTrailingContent> LineBreaker::word
     return { };
 }
 
-Optional<LineBreaker::LeftSide> LineBreaker::tryBreakingTextRun(const Content::Run& overflowRun, InlineLayoutUnit availableWidth, bool lineIsEmpty) const
+LineBreaker::WordBreakRule LineBreaker::wordBreakBehavior(const RenderStyle& style, bool lineIsEmpty) const
 {
-    ASSERT(overflowRun.inlineItem.isText());
-    auto& style = overflowRun.inlineItem.style();
+    // Disregard any prohibition against line breaks mandated by the word-break property.
+    // The different wrapping opportunities must not be prioritized. Hyphenation is not applied.
+    if (style.lineBreak() == LineBreak::Anywhere)
+        return WordBreakRule::AtArbitraryPosition;
+    // Breaking is allowed within “words”.
+    if (style.wordBreak() == WordBreak::BreakAll)
+        return WordBreakRule::AtArbitraryPosition;
+    // Breaking is forbidden within “words”.
     if (style.wordBreak() == WordBreak::KeepAll)
-        return { };
+        return WordBreakRule::NoBreak;
+    // For compatibility with legacy content, the word-break property also supports a deprecated break-word keyword.
+    // When specified, this has the same effect as word-break: normal and overflow-wrap: anywhere, regardless of the actual value of the overflow-wrap property.
+    if (style.wordBreak() == WordBreak::BreakWord && lineIsEmpty)
+        return WordBreakRule::AtArbitraryPosition;
+    // OverflowWrap::Break: An otherwise unbreakable sequence of characters may be broken at an arbitrary point if there are no otherwise-acceptable break points in the line.
+    if (style.overflowWrap() == OverflowWrap::Break && lineIsEmpty)
+        return WordBreakRule::AtArbitraryPosition;
 
-    auto findLastBreakablePosition = availableWidth == maxInlineLayoutUnit();
-    auto& inlineTextItem = downcast<InlineTextItem>(overflowRun.inlineItem);
-    if (isTextSplitAtArbitraryPositionAllowed(style, lineIsEmpty)) {
-        // When the run can be split at arbitrary positions, let's just return the entire run when it is intended to fit on the line.
-        if (findLastBreakablePosition)
-            return LeftSide { inlineTextItem.length(), overflowRun.logicalWidth, false };
-        // FIXME: Pass in the content logical left to be able to measure tabs.
-        auto splitData = TextUtil::split(inlineTextItem.layoutBox(), inlineTextItem.start(), inlineTextItem.length(), overflowRun.logicalWidth, availableWidth, { });
-        return LeftSide { splitData.length, splitData.logicalWidth, false };
-    }
-    // Find the hyphen position as follows:
-    // 1. Split the text by taking the hyphen width into account
-    // 2. Find the last hyphen position before the split position
-    if (n_hyphenationIsDisabled || style.hyphens() != Hyphens::Auto || !canHyphenate(style.locale()))
-        return { };
+    if (!n_hyphenationIsDisabled && style.hyphens() == Hyphens::Auto && canHyphenate(style.locale()))
+        return WordBreakRule::OnlyHyphenationAllowed;
 
-    auto runLength = inlineTextItem.length();
-    unsigned limitBefore = style.hyphenationLimitBefore() == RenderStyle::initialHyphenationLimitBefore() ? 0 : style.hyphenationLimitBefore();
-    unsigned limitAfter = style.hyphenationLimitAfter() == RenderStyle::initialHyphenationLimitAfter() ? 0 : style.hyphenationLimitAfter();
-    // Check if this run can accommodate the before/after limits at all before start measuring text.
-    if (limitBefore >= runLength || limitAfter >= runLength || limitBefore + limitAfter > runLength)
-        return { };
-
-    unsigned leftSideLength = runLength;
-    if (!findLastBreakablePosition) {
-        auto& fontCascade = style.fontCascade();
-        // FIXME: We might want to cache the hyphen width.
-        auto hyphenWidth = InlineLayoutUnit { fontCascade.width(TextRun { StringView { style.hyphenString() } }) };
-        auto availableWidthExcludingHyphen = availableWidth - hyphenWidth;
-
-        // For spaceWidth() see webkit.org/b/169613
-        if (availableWidthExcludingHyphen <= 0 || !enoughWidthForHyphenation(availableWidthExcludingHyphen + fontCascade.spaceWidth(), fontCascade.pixelSize()))
-            return { };
-
-        leftSideLength = TextUtil::split(inlineTextItem.layoutBox(), inlineTextItem.start(), runLength, overflowRun.logicalWidth, availableWidthExcludingHyphen, { }).length;
-    }
-    if (leftSideLength < limitBefore)
-        return { };
-
-    auto textContent = inlineTextItem.layoutBox().textContext()->content;
-    // Adjust before index to accommodate the limit-after value (it's the last potential hyphen location in this run).
-    auto hyphenBefore = std::min(leftSideLength, runLength - limitAfter) + 1;
-    unsigned hyphenLocation = lastHyphenLocation(StringView(textContent).substring(inlineTextItem.start(), inlineTextItem.length()), hyphenBefore, style.locale());
-    if (!hyphenLocation || hyphenLocation < limitBefore)
-        return { };
-    return LeftSide { hyphenLocation, TextUtil::width(inlineTextItem.layoutBox(), inlineTextItem.start(), hyphenLocation), true };
+    return WordBreakRule::NoBreak;
 }
 
-bool LineBreaker::Content::isAtContentBoundary(const InlineItem& inlineItem, const Content& content)
+Optional<LineBreaker::PartialRun> LineBreaker::tryBreakingTextRun(const Content::Run& overflowRun, InlineLayoutUnit availableWidth, bool lineIsEmpty) const
+{
+    ASSERT(overflowRun.inlineItem.isText());
+    auto& inlineTextItem = downcast<InlineTextItem>(overflowRun.inlineItem);
+    auto& style = inlineTextItem.style();
+    auto findLastBreakablePosition = availableWidth == maxInlineLayoutUnit();
+
+    auto breakRule = wordBreakBehavior(style, lineIsEmpty);
+    if (breakRule == WordBreakRule::AtArbitraryPosition) {
+        if (findLastBreakablePosition) {
+            // When the run can be split at arbitrary position,
+            // let's just return the entire run when it is intended to fit on the line.
+            return PartialRun { inlineTextItem.length(), overflowRun.logicalWidth, false };
+        }
+        // FIXME: Pass in the content logical left to be able to measure tabs.
+        auto splitData = TextUtil::split(inlineTextItem.layoutBox(), inlineTextItem.start(), inlineTextItem.length(), overflowRun.logicalWidth, availableWidth, { });
+        return PartialRun { splitData.length, splitData.logicalWidth, false };
+    }
+
+    if (breakRule == WordBreakRule::OnlyHyphenationAllowed) {
+        // Find the hyphen position as follows:
+        // 1. Split the text by taking the hyphen width into account
+        // 2. Find the last hyphen position before the split position
+        auto runLength = inlineTextItem.length();
+        unsigned limitBefore = style.hyphenationLimitBefore() == RenderStyle::initialHyphenationLimitBefore() ? 0 : style.hyphenationLimitBefore();
+        unsigned limitAfter = style.hyphenationLimitAfter() == RenderStyle::initialHyphenationLimitAfter() ? 0 : style.hyphenationLimitAfter();
+        // Check if this run can accommodate the before/after limits at all before start measuring text.
+        if (limitBefore >= runLength || limitAfter >= runLength || limitBefore + limitAfter > runLength)
+            return { };
+
+        unsigned leftSideLength = runLength;
+        // FIXME: We might want to cache the hyphen width.
+        auto& fontCascade = style.fontCascade();
+        auto hyphenWidth = InlineLayoutUnit { fontCascade.width(TextRun { StringView { style.hyphenString() } }) };
+        if (!findLastBreakablePosition) {
+            auto availableWidthExcludingHyphen = availableWidth - hyphenWidth;
+            if (availableWidthExcludingHyphen <= 0 || !enoughWidthForHyphenation(availableWidthExcludingHyphen, fontCascade.pixelSize()))
+                return { };
+            leftSideLength = TextUtil::split(inlineTextItem.layoutBox(), inlineTextItem.start(), runLength, overflowRun.logicalWidth, availableWidthExcludingHyphen, { }).length;
+        }
+        if (leftSideLength < limitBefore)
+            return { };
+        auto textContent = inlineTextItem.layoutBox().textContext()->content;
+        // Adjust before index to accommodate the limit-after value (it's the last potential hyphen location in this run).
+        auto hyphenBefore = std::min(leftSideLength, runLength - limitAfter) + 1;
+        unsigned hyphenLocation = lastHyphenLocation(StringView(textContent).substring(inlineTextItem.start(), inlineTextItem.length()), hyphenBefore, style.locale());
+        if (!hyphenLocation || hyphenLocation < limitBefore)
+            return { };
+        // hyphenLocation is relative to the start of this InlineItemText.
+        auto trailingPartialRunWidthWithHyphen = TextUtil::width(inlineTextItem, inlineTextItem.start(), inlineTextItem.start() + hyphenLocation) + hyphenWidth; 
+        return PartialRun { hyphenLocation, trailingPartialRunWidthWithHyphen, true };
+    }
+
+    ASSERT(breakRule == WordBreakRule::NoBreak);
+    return { };
+}
+
+static bool endsWithSoftWrapOpportunity(const InlineTextItem& previousTextItem, const InlineTextItem& nextInlineTextItem)
+{
+    ASSERT(!previousTextItem.isWhitespace());
+    ASSERT(!nextInlineTextItem.isWhitespace());
+    // When both these non-whitespace runs belong to the same layout box, it's guaranteed that
+    // they are split at a soft breaking opportunity. See InlineTextItem::moveToNextBreakablePosition.
+    if (&previousTextItem.layoutBox() == &nextInlineTextItem.layoutBox())
+        return true;
+    // Now we need to collect at least 3 adjacent characters to be able to make a descision whether the previous text item ends with breaking opportunity.
+    // [ex-][ample] <- second to last[x] last[-] current[a]
+    // We need at least 1 character in the current inline text item and 2 more from previous inline items.
+    auto previousContent = previousTextItem.layoutBox().textContext()->content;
+    auto lineBreakIterator = LazyLineBreakIterator { nextInlineTextItem.layoutBox().textContext()->content };
+    auto previousContentLength = previousContent.length();
+    // FIXME: We should look into the entire uncommitted content for more text context.
+    UChar lastCharacter = previousContentLength ? previousContent[previousContentLength - 1] : 0;
+    UChar secondToLastCharacter = previousContentLength > 1 ? previousContent[previousContentLength - 2] : 0;
+    lineBreakIterator.setPriorContext(lastCharacter, secondToLastCharacter);
+    // Now check if we can break right at the inline item boundary.
+    // With the [ex-ample], findNextBreakablePosition should return the startPosition (0).
+    // FIXME: Check if there's a more correct way of finding breaking opportunities.
+    return !TextUtil::findNextBreakablePosition(lineBreakIterator, 0, nextInlineTextItem.style());
+}
+
+bool LineBreaker::Content::isAtSoftWrapOpportunity(const InlineItem& inlineItem, const Content& priorContent)
 {
     // https://drafts.csswg.org/css-text-3/#line-break-details
-    // Figure out if the new incoming content puts the uncommitted content on commit boundary.
-    // e.g. <span>continuous</span> <- uncomitted content ->
-    // [inline container start][text content][inline container end]
-    // An incoming <img> box would enable us to commit the "<span>continuous</span>" content
-    // while additional text content would not.
+    // Figure out if the new incoming content puts the uncommitted content on a soft wrap opportunity.
+    // e.g. [container start][prior_continuous_content][container end] (<span>prior_continuous_content</span>)
+    // An incoming <img> box would enable us to commit the "<span>prior_continuous_content</span>" content
+    // but an incoming text content would not necessarily.
     ASSERT(!inlineItem.isFloat() && !inlineItem.isLineBreak());
-    if (content.isEmpty()) {
+    if (priorContent.isEmpty()) {
         // Can't decide it yet.
         return false;
     }
-    auto* lastUncomittedContent = &content.runs().last().inlineItem;
+    auto* lastUncomittedContent = &priorContent.runs().last().inlineItem;
     if (inlineItem.isText()) {
-        // any content' ' -> whitespace is always a commit boundary.
-        if (downcast<InlineTextItem>(inlineItem).isWhitespace())
+        if (inlineItem.style().lineBreak() == LineBreak::Anywhere) {
+            // There is a soft wrap opportunity around every typographic character unit, including around any punctuation character
+            // or preserved white spaces, or in the middle of words.
             return true;
-        // <span>text -> the inline container start and the text content form an unbreakable continuous content.
-        if (lastUncomittedContent->isContainerStart())
+        }
+        if (downcast<InlineTextItem>(inlineItem).isWhitespace()) {
+            // [prior content][ ] (<span>some_content</span> )
+            // white-space: break-spaces: line breaking opportunity exists after every preserved white space character, but not before.
+            auto isAtSoftWrapOpportunityBeforeWhitespace = inlineItem.style().whiteSpace() != WhiteSpace::BreakSpaces;
+            // [ ][ ] : adjacent whitespace content has soft wrap opportunity.
+            if (lastUncomittedContent->isText() && downcast<InlineTextItem>(*lastUncomittedContent).isWhitespace())
+                isAtSoftWrapOpportunityBeforeWhitespace = true;
+            return isAtSoftWrapOpportunityBeforeWhitespace;
+        }
+        if (lastUncomittedContent->isContainerStart()) {
+            // [container start][text] (<span>text) : the [container start] and the [text] content form a continuous content.
             return false;
-        // </span>text -> need to check what's before the </span>.
-        // text</span>text -> continuous content
-        // <img></span>text -> commit bounday
+        }
         if (lastUncomittedContent->isContainerEnd()) {
-            auto& runs = content.runs();
-            // text</span><span></span></span>text -> check all the way back until we hit either a box or some text
-            for (auto i = content.size(); i--;) {
+            // [container end][text] (</span>text)
+            // Need to check what's before the </span> to be able to decide whether it's a continuous content.
+            // e.g.
+            // [text][container end][text] (text</span>text) : there's no soft wrap opportunity here.
+            // [inline box][container end][text] (<img></span>text) : after [container end] position is a soft wrap opportunity.
+            auto& runs = priorContent.runs();
+            auto didFindContent = false;
+            for (auto i = priorContent.size(); i--;) {
                 auto& previousInlineItem = runs[i].inlineItem;
                 if (previousInlineItem.isContainerStart() || previousInlineItem.isContainerEnd())
                     continue;
-                ASSERT(previousInlineItem.isText() || previousInlineItem.isBox());
-                lastUncomittedContent = &previousInlineItem;
-                break;
+                if (previousInlineItem.isText() || previousInlineItem.isBox()) {
+                    lastUncomittedContent = &previousInlineItem;
+                    didFindContent = true;
+                    break;
+                }
+                ASSERT_NOT_REACHED();
             }
-            // Did not find any content (e.g. <span></span>text)
-            if (lastUncomittedContent->isContainerEnd())
+            // Did not find any content at all (e.g. [container start][container end][text] (<span></span>text)).
+            if (!didFindContent)
                 return false;
         }
-        // texttext -> continuous content.
-        // text-text -> commit boundary.
-        // ' 'text -> commit boundary.
         if (lastUncomittedContent->isText()) {
-            auto& previousInlineTextItem = downcast<InlineTextItem>(*lastUncomittedContent);
-            if (previousInlineTextItem.isWhitespace())
+            // [text][text] : is a continuous content.
+            // [text-][text] : after [hyphen] position is a soft wrap opportunity.
+            // [ ][text] : after [whitespace] position is a soft wrap opportunity.
+            auto& lastInlineTextItem = downcast<InlineTextItem>(*lastUncomittedContent);
+            if (lastInlineTextItem.isWhitespace())
                 return true;
-            // When both these non-whitespace runs belong to the same layout box, it's guaranteed that
-            // they are split at a soft breaking opportunity. See InlineTextItem::moveToNextBreakablePosition.
-            if (&inlineItem.layoutBox() == &lastUncomittedContent->layoutBox())
-                return true;
-            // FIXME: check if <span>text-</span><span>text</span> should be handled here as well.
-            return false;
+            return endsWithSoftWrapOpportunity(lastInlineTextItem, downcast<InlineTextItem>(inlineItem));
         }
-        // <img>text -> the inline box is on a commit boundary.
-        if (lastUncomittedContent->isBox())
+        if (lastUncomittedContent->isBox()) {
+            // [inline box][text] (<img>text) : after [inline box] position is a soft wrap opportunity.
             return true;
+        }
         ASSERT_NOT_REACHED();
     }
-
     if (inlineItem.isBox()) {
-        // <span><img> -> the inline container start and the content form an unbreakable continuous content.
-        if (lastUncomittedContent->isContainerStart())
+        if (lastUncomittedContent->isContainerStart()) {
+            // [container start][inline box] (<spam><img>) : the [container start] and the [inline box] form a continuous content.
             return false;
-        // </span><img> -> ok to commit the </span>.
-        if (lastUncomittedContent->isContainerEnd())
+        }
+        if (lastUncomittedContent->isContainerEnd()) {
+            // [container end][inline box] (</span><img>) : after [container end] position is a soft wrap opportunity.
             return true;
-        // <img>text and <img><img> -> these combinations are ok to commit.
-        if (lastUncomittedContent->isText() || lastUncomittedContent->isBox())
+        }
+        if (lastUncomittedContent->isText() || lastUncomittedContent->isBox()) {
+            // [inline box][text] (<img>text) and [inline box][inline box] (<img><img>) : after first [inline box] position is a soft wrap opportunity.
             return true;
+        }
         ASSERT_NOT_REACHED();
     }
 
     if (inlineItem.isContainerStart() || inlineItem.isContainerEnd()) {
-        // <span><span> or </span><span> -> can't commit the previous content yet.
-        if (lastUncomittedContent->isContainerStart() || lastUncomittedContent->isContainerEnd())
+        if (lastUncomittedContent->isContainerStart() || lastUncomittedContent->isContainerEnd()) {
+            // [container start][container end] (<span><span>) or
+            // [container end][container start] (</span><span>) : need more content to decide.
             return false;
-        // ' '<span> -> let's commit the whitespace
-        // text<span> -> but not yet the non-whitespace; we need to know what comes next (e.g. text<span>text or text<span><img>).
-        if (lastUncomittedContent->isText())
+        }
+        if (lastUncomittedContent->isText()) {
+            // [ ][container start] ( <span>) : after [whitespace] position is a soft wrap opportunity.
+            // [text][container start] (text<span>) : Need more content to decide (e.g. text<span>text vs. text<span><img>).
             return downcast<InlineTextItem>(*lastUncomittedContent).isWhitespace();
-        // <img><span> -> it's ok to commit the inline box content.
-        // <img></span> -> the inline box and the closing inline container form an unbreakable continuous content.
-        if (lastUncomittedContent->isBox())
+        }
+        if (lastUncomittedContent->isBox()) {
+            // [inline box][container start] (<img><span>) : after [inline box] position is a soft wrap opportunity.
+            // [inline box][container end] (<img></span>) : the [inline box] and the [container end] form a continuous content.
             return inlineItem.isContainerStart();
+        }
         ASSERT_NOT_REACHED();
     }
-
     ASSERT_NOT_REACHED();
     return true;
 }
@@ -319,36 +388,36 @@ bool LineBreaker::Content::isAtContentBoundary(const InlineItem& inlineItem, con
 void LineBreaker::Content::append(const InlineItem& inlineItem, InlineLayoutUnit logicalWidth)
 {
     ASSERT(!inlineItem.isFloat());
-    ASSERT(inlineItem.isLineBreak() || !isAtContentBoundary(inlineItem, *this));
+    ASSERT(inlineItem.isLineBreak() || !isAtSoftWrapOpportunity(inlineItem, *this));
     m_continousRuns.append({ inlineItem, logicalWidth });
     m_width += logicalWidth;
-    // Figure out the trailing trimmable state.
+    // Figure out the trailing collapsible state.
     if (inlineItem.isBox() || inlineItem.isLineBreak())
-        m_trailingTrimmableContent.reset();
+        m_trailingCollapsibleContent.reset();
     else if (inlineItem.isText()) {
         auto& inlineTextItem = downcast<InlineTextItem>(inlineItem);
-        auto isFullyTrimmable = [&] {
+        auto isFullyCollapsible = [&] {
             return inlineTextItem.isWhitespace() && !TextUtil::shouldPreserveTrailingWhitespace(inlineTextItem.style());
         };
-        if (isFullyTrimmable()) {
-            m_trailingTrimmableContent.width += logicalWidth;
-            m_trailingTrimmableContent.isFullyTrimmable = true;
-        } else if (auto trimmableWidth = inlineTextItem.style().letterSpacing()) {
-            m_trailingTrimmableContent.width = trimmableWidth;
-            m_trailingTrimmableContent.isFullyTrimmable = false;
+        if (isFullyCollapsible()) {
+            m_trailingCollapsibleContent.width += logicalWidth;
+            m_trailingCollapsibleContent.isFullyCollapsible = true;
+        } else if (auto collapsibleWidth = inlineTextItem.style().letterSpacing()) {
+            m_trailingCollapsibleContent.width = collapsibleWidth;
+            m_trailingCollapsibleContent.isFullyCollapsible = false;
         } else
-            m_trailingTrimmableContent.reset();
+            m_trailingCollapsibleContent.reset();
     }
 }
 
 void LineBreaker::Content::reset()
 {
     m_continousRuns.clear();
-    m_trailingTrimmableContent.reset();
+    m_trailingCollapsibleContent.reset();
     m_width = 0_lu;
 }
 
-void LineBreaker::Content::trim(unsigned newSize)
+void LineBreaker::Content::shrink(unsigned newSize)
 {
     for (auto i = m_continousRuns.size(); i--;)
         m_width -= m_continousRuns[i].logicalWidth;
@@ -364,6 +433,21 @@ bool LineBreaker::Content::hasTextContentOnly() const
         if (inlineItem.isContainerStart() || inlineItem.isContainerEnd())
             continue;
         return inlineItem.isText();
+    }
+    return false;
+}
+
+bool LineBreaker::Content::isVisuallyEmptyWhitespaceContentOnly() const
+{
+    // [<span></span> ] [<span> </span>] [ <span style="padding: 0px;"></span>] are all considered visually empty whitespace content.
+    // [<span style="border: 1px solid red"></span> ] while this is whitespace content only, it is not considered visually empty.
+    // Due to commit boundary rules, we just need to check the first non-typeless inline item (can't have both [img] and [text])
+    for (auto& run : m_continousRuns) {
+        auto& inlineItem = run.inlineItem;
+        // FIXME: check for padding border etc.
+        if (inlineItem.isContainerStart() || inlineItem.isContainerEnd())
+            continue;
+        return inlineItem.isText() && downcast<InlineTextItem>(inlineItem).isWhitespace();
     }
     return false;
 }
@@ -389,9 +473,9 @@ bool LineBreaker::Content::hasNonContentRunsOnly() const
     return true;
 }
 
-void LineBreaker::Content::TrailingTrimmableContent::reset()
+void LineBreaker::Content::TrailingCollapsibleContent::reset()
 {
-    isFullyTrimmable = false;
+    isFullyCollapsible = false;
     width = 0_lu;
 }
 

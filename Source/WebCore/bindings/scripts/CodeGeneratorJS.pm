@@ -2622,8 +2622,6 @@ sub GenerateHeader
         push(@headerContent, "    }\n\n");
     }
 
-    push(@headerContent, "    static constexpr bool needsDestruction = false;\n\n") if IsDOMGlobalObject($interface);
-
     $structureFlags{"JSC::HasStaticPropertyTable"} = 1 if InstancePropertyCount($interface) > 0;
     $structureFlags{"JSC::NewImpurePropertyFiresWatchpoints"} = 1 if $interface->extendedAttributes->{NewImpurePropertyFiresWatchpoints};
     $structureFlags{"JSC::IsImmutablePrototypeExoticObject"} = 1 if $interface->extendedAttributes->{IsImmutablePrototypeExoticObject};
@@ -2793,6 +2791,13 @@ sub GenerateHeader
         }
     }
 
+    # FIXME: We put this unconditionally to put all the WebCore JS wrappers in each IsoSubspace.
+    # https://bugs.webkit.org/show_bug.cgi?id=205107
+    if (IsDOMGlobalObject($interface)) {
+        push(@headerContent, "    template<typename, JSC::SubspaceAccess> static JSC::IsoSubspace* subspaceFor(JSC::VM& vm) { return subspaceForImpl(vm); }\n");
+        push(@headerContent, "    static JSC::IsoSubspace* subspaceForImpl(JSC::VM& vm);\n");
+    }
+
     # visit function
     if ($needsVisitChildren) {
         push(@headerContent, "    static void visitChildren(JSCell*, JSC::SlotVisitor&);\n");
@@ -2812,8 +2817,9 @@ sub GenerateHeader
             # program resumed since the last call to visitChildren or visitOutputConstraints. Since
             # this just calls visitAdditionalChildren, you usually don't have to worry about this.
             push(@headerContent, "    static void visitOutputConstraints(JSCell*, JSC::SlotVisitor&);\n");
-            my $subspaceFunc = IsDOMGlobalObject($interface) ? "globalObjectOutputConstraintSubspaceFor" : "outputConstraintSubspaceFor";
-            push(@headerContent, "    template<typename, JSC::SubspaceAccess> static JSC::CompleteSubspace* subspaceFor(JSC::VM& vm) { return $subspaceFunc(vm); }\n");
+            if (!IsDOMGlobalObject($interface)) {
+                push(@headerContent, "    template<typename, JSC::SubspaceAccess> static JSC::CompleteSubspace* subspaceFor(JSC::VM& vm) { return outputConstraintSubspaceFor(vm); }\n");
+            }
         }
     }
 
@@ -4614,6 +4620,14 @@ sub GenerateImplementation
     GenerateIterableDefinition($interface) if $interface->iterable;
     GenerateSerializerDefinition($interface, $className) if $interface->serializable;
 
+    if (IsDOMGlobalObject($interface)) {
+        AddToImplIncludes("WebCoreJSClientData.h");
+        push(@implContent, "JSC::IsoSubspace* ${className}::subspaceForImpl(JSC::VM& vm)\n");
+        push(@implContent, "{\n");
+        push(@implContent, "    return &static_cast<JSVMClientData*>(vm.clientData)->subspaceFor${className}();\n");
+        push(@implContent, "}\n\n");
+    }
+
     if ($needsVisitChildren) {
         push(@implContent, "void ${className}::visitChildren(JSCell* cell, SlotVisitor& visitor)\n");
         push(@implContent, "{\n");
@@ -5222,7 +5236,7 @@ sub GenerateOperationTrampolineDefinition
 
 sub GenerateOperationBodyDefinition
 {
-    my ($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $functionBodyName, $generatingOverloadDispatcher) = @_;
+    my ($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $functionBodyName, $isOverloaded, $generatingOverloadDispatcher) = @_;
 
     my $hasPromiseReturnType = $codeGenerator->IsPromiseType($operation->type);
     my $idlOperationType = $hasPromiseReturnType ? "IDLOperationReturningPromise" : "IDLOperation";
@@ -5241,9 +5255,11 @@ sub GenerateOperationBodyDefinition
     push(@$outputArray, "    UNUSED_PARAM(callFrame);\n");
     push(@$outputArray, "    UNUSED_PARAM(throwScope);\n");
 
-    if (!$generatingOverloadDispatcher) {
-        GenerateCustomElementReactionsStackIfNeeded($outputArray, $operation, "*lexicalGlobalObject");
+    GenerateCustomElementReactionsStackIfNeeded($outputArray, $operation, "*lexicalGlobalObject") unless $generatingOverloadDispatcher;
 
+    # For overloads, we generate the security check in the overload dispatcher, instead of the body of each overload, as per specification:
+    # https://heycam.github.io/webidl/#dfn-create-operation-function
+    if (!$isOverloaded || $generatingOverloadDispatcher) {
         if ($interface->extendedAttributes->{CheckSecurity} and !$operation->extendedAttributes->{DoNotCheckSecurity}) {
             assert("Security checks are not supported for static operations.") if $operation->isStatic;
             
@@ -5335,7 +5351,7 @@ sub GenerateOperationDefinition
     my $functionImplementationName = $operation->extendedAttributes->{ImplementedAs} || $codeGenerator->WK_lcfirst($operation->name);
     my $functionBodyName = ($isOverloaded ? $functionName . $operation->{overloadIndex} : $functionName) . "Body";
 
-    GenerateOperationBodyDefinition($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $functionBodyName);
+    GenerateOperationBodyDefinition($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $functionBodyName, $isOverloaded);
 
     # Overloaded operations don't generate a trampoline for each overload, and instead have a single dispatch trampoline
     # that gets generated after the last overload body has been generated.
@@ -5352,7 +5368,7 @@ sub GenerateOperationDefinition
         push(@$outputArray, "#if ${overloadsConditionalString}\n\n") if $overloadsConditionalString;
 
         my $overloadDispatcherFunctionBodyName = $functionName . "OverloadDispatcher";
-        GenerateOperationBodyDefinition($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $overloadDispatcherFunctionBodyName, 1);
+        GenerateOperationBodyDefinition($outputArray, $interface, $className, $operation, $functionName, $functionImplementationName, $overloadDispatcherFunctionBodyName, $isOverloaded, 1);
         GenerateOperationTrampolineDefinition($outputArray, $interface, $className, $operation, $functionName, $overloadDispatcherFunctionBodyName);
     
         push(@$outputArray, "#endif\n\n") if $overloadsConditionalString;
@@ -7188,7 +7204,8 @@ sub GeneratePrototypeDeclaration
         push(@$outputArray, ";\n");
     }
 
-    push(@$outputArray, "};\n\n");
+    push(@$outputArray, "};\n");
+    push(@$outputArray, "STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(${prototypeClassName}, ${prototypeClassName}::Base);\n\n");
 }
 
 sub GetConstructorTemplateClassName

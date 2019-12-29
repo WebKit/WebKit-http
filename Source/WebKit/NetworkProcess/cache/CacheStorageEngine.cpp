@@ -246,7 +246,7 @@ uint64_t Engine::diskUsage(const String& rootPath, const WebCore::ClientOrigin& 
     return getDirectorySize(directoryPath);
 }
 
-void Engine::requestSpace(const ClientOrigin& origin, uint64_t spaceRequested, CompletionHandler<void(WebCore::StorageQuotaManager::Decision)>&& callback)
+void Engine::requestSpace(const WebCore::ClientOrigin& origin, uint64_t spaceRequested, CompletionHandler<void(WebCore::StorageQuotaManager::Decision)>&& callback)
 {
     ASSERT(isMainThread());
 
@@ -802,6 +802,9 @@ void Engine::unlock(uint64_t cacheIdentifier)
 
 String Engine::representation()
 {
+    ASSERT(m_pendingClearCallbacks.isEmpty());
+    ASSERT(m_initializationCallbacks.isEmpty());
+
     bool isFirst = true;
     StringBuilder builder;
     builder.append("{ \"path\": \"");

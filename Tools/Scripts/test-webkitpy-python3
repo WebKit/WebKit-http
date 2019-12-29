@@ -42,11 +42,13 @@ PYTHON3_COMPATIBLE_DIRECTORIES = [
   'webkitpy.layout_tests.models',
   'webkitpy.layout_tests.servers',
   'webkitpy.layout_tests.views',
+  'webkitpy.performance_tests',
   'webkitpy.port',
   'webkitpy.results',
   'webkitpy.style',
   'webkitpy.test',
   'webkitpy.tool',
+  'webkitpy.w3c',
   'webkitpy.xcode',
 ]
 SLOW_TESTS = [

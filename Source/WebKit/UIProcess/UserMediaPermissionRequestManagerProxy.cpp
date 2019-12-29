@@ -84,7 +84,7 @@ UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy(W
 
 UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy()
 {
-    m_page.process().send(Messages::WebPage::StopMediaCapture { }, m_page.webPageID());
+    m_page.send(Messages::WebPage::StopMediaCapture { });
 #if ENABLE(MEDIA_STREAM)
     UserMediaProcessManager::singleton().revokeSandboxExtensionsIfNeeded(page().process());
     proxies().remove(this);
@@ -259,12 +259,15 @@ void UserMediaPermissionRequestManagerProxy::finishGrantingRequest(UserMediaPerm
     processNextUserMediaRequestIfNeeded();
 }
 
-void UserMediaPermissionRequestManagerProxy::resetAccess(FrameIdentifier frameID)
+void UserMediaPermissionRequestManagerProxy::resetAccess(Optional<FrameIdentifier> frameID)
 {
-    ALWAYS_LOG(LOGIDENTIFIER, frameID.loggingString());
-    m_grantedRequests.removeAllMatching([frameID](const auto& grantedRequest) {
-        return grantedRequest->mainFrameID() == frameID;
-    });
+    if (frameID) {
+        ALWAYS_LOG(LOGIDENTIFIER, frameID ? frameID->loggingString() : String { });
+        m_grantedRequests.removeAllMatching([frameID](const auto& grantedRequest) {
+            return grantedRequest->mainFrameID() == frameID;
+        });
+    } else
+        m_grantedRequests.clear();
     m_pregrantedRequests.clear();
     m_deniedRequests.clear();
     m_hasFilteredDeviceList = false;

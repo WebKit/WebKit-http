@@ -29,18 +29,16 @@
 #include "APICast.h"
 #include "JSCInlines.h"
 
-using namespace JSC;
-
 void JSContextGroupAddHeapFinalizer(JSContextGroupRef group, JSHeapFinalizer finalizer, void *userData)
 {
-    VM* vm = toJS(group);
-    JSLockHolder locker(vm);
-    vm->heap.addHeapFinalizerCallback(HeapFinalizerCallback(finalizer, userData));
+    JSC::VM* vm = toJS(group);
+    JSC::JSLockHolder locker(vm);
+    vm->heap.addHeapFinalizerCallback(JSC::HeapFinalizerCallback(finalizer, userData));
 }
 
 void JSContextGroupRemoveHeapFinalizer(JSContextGroupRef group, JSHeapFinalizer finalizer, void *userData)
 {
-    VM* vm = toJS(group);
-    JSLockHolder locker(vm);
-    vm->heap.removeHeapFinalizerCallback(HeapFinalizerCallback(finalizer, userData));
+    JSC::VM* vm = toJS(group);
+    JSC::JSLockHolder locker(vm);
+    vm->heap.removeHeapFinalizerCallback(JSC::HeapFinalizerCallback(finalizer, userData));
 }

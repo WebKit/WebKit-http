@@ -464,26 +464,49 @@ bool MediaPlayerPrivateGStreamer::isAvailable()
     return factory;
 }
 
+class MediaPlayerFactoryGStreamer final : public MediaPlayerFactory {
+private:
+    MediaPlayerEnums::MediaEngineIdentifier identifier() const final { return MediaPlayerEnums::MediaEngineIdentifier::GStreamer; };
+
+    std::unique_ptr<MediaPlayerPrivateInterface> createMediaEnginePlayer(MediaPlayer* player) const final
+    {
+        return makeUnique<MediaPlayerPrivateGStreamer>(player);
+    }
+
+    void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types) const final
+    {
+        return MediaPlayerPrivateGStreamer::getSupportedTypes(types);
+    }
+
+    MediaPlayer::SupportsType supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters) const final
+    {
+        return MediaPlayerPrivateGStreamer::supportsType(parameters);
+    }
+
+    bool supportsKeySystem(const String& keySystem, const String& mimeType) const final
+    {
+        return MediaPlayerPrivateGStreamer::supportsKeySystem(keySystem, mimeType);
+    }
+};
+
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     initializeDebugCategory();
 
-    if (isAvailable()) {
-        registrar([](MediaPlayer* player) { return makeUnique<MediaPlayerPrivateGStreamer>(player); },
-            getSupportedTypes, supportsType, nullptr, nullptr, nullptr, supportsKeySystem);
-    }
+    if (isAvailable())
+        registrar(makeUnique<MediaPlayerFactoryGStreamer>());
 }
 
 void MediaPlayerPrivateGStreamer::loadFull(const String& urlString, const String& pipelineName)
 {
     if (m_player->contentMIMEType() == "image/gif") {
-        loadingFailed(MediaPlayer::FormatError, MediaPlayer::HaveNothing, true);
+        loadingFailed(MediaPlayer::NetworkState::FormatError, MediaPlayer::ReadyState::HaveNothing, true);
         return;
     }
 
     URL url(URL(), urlString);
     if (url.protocolIsAbout()) {
-        loadingFailed(MediaPlayer::FormatError, MediaPlayer::HaveNothing, true);
+        loadingFailed(MediaPlayer::NetworkState::FormatError, MediaPlayer::ReadyState::HaveNothing, true);
         return;
     }
 
@@ -498,16 +521,16 @@ void MediaPlayerPrivateGStreamer::loadFull(const String& urlString, const String
     setPlaybinURL(url);
 
     GST_DEBUG_OBJECT(pipeline(), "preload: %s", convertEnumerationToString(m_preload).utf8().data());
-    if (m_preload == MediaPlayer::None) {
+    if (m_preload == MediaPlayer::Preload::None) {
         GST_INFO_OBJECT(pipeline(), "Delaying load.");
         m_isDelayingLoad = true;
     }
 
     // Reset network and ready states. Those will be set properly once
     // the pipeline pre-rolled.
-    m_networkState = MediaPlayer::Loading;
+    m_networkState = MediaPlayer::NetworkState::Loading;
     m_player->networkStateChanged();
-    m_readyState = MediaPlayer::HaveNothing;
+    m_readyState = MediaPlayer::ReadyState::HaveNothing;
     m_player->readyStateChanged();
     m_areVolumeAndMuteInitialized = false;
     m_hasTaintedOrigin = WTF::nullopt;
@@ -525,7 +548,7 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 void MediaPlayerPrivateGStreamer::load(const String&, MediaSourcePrivateClient*)
 {
     // Properly fail so the global MediaPlayer tries to fallback to the next MediaPlayerPrivate.
-    m_networkState = MediaPlayer::FormatError;
+    m_networkState = MediaPlayer::NetworkState::FormatError;
     m_player->networkStateChanged();
 }
 #endif
@@ -546,7 +569,7 @@ void MediaPlayerPrivateGStreamer::load(MediaStreamPrivate& stream)
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
 {
-    if (m_networkState < MediaPlayer::Loading || m_networkState == MediaPlayer::Loaded)
+    if (m_networkState < MediaPlayer::NetworkState::Loading || m_networkState == MediaPlayer::NetworkState::Loaded)
         return;
 
     if (m_pipeline)
@@ -556,7 +579,7 @@ void MediaPlayerPrivateGStreamer::cancelLoad()
 void MediaPlayerPrivateGStreamer::prepareToPlay()
 {
     GST_DEBUG_OBJECT(pipeline(), "Prepare to play");
-    m_preload = MediaPlayer::Auto;
+    m_preload = MediaPlayer::Preload::Auto;
     if (m_isDelayingLoad) {
         m_isDelayingLoad = false;
         commitLoad();
@@ -573,11 +596,11 @@ void MediaPlayerPrivateGStreamer::play()
     if (changePipelineState(GST_STATE_PLAYING)) {
         m_isEndReached = false;
         m_isDelayingLoad = false;
-        m_preload = MediaPlayer::Auto;
+        m_preload = MediaPlayer::Preload::Auto;
         updateDownloadBufferingFlag();
         GST_INFO_OBJECT(pipeline(), "Play");
     } else
-        loadingFailed(MediaPlayer::Empty);
+        loadingFailed(MediaPlayer::NetworkState::Empty);
 }
 
 void MediaPlayerPrivateGStreamer::pause()
@@ -591,7 +614,7 @@ void MediaPlayerPrivateGStreamer::pause()
     if (changePipelineState(GST_STATE_PAUSED))
         GST_INFO_OBJECT(pipeline(), "Pause");
     else
-        loadingFailed(MediaPlayer::Empty);
+        loadingFailed(MediaPlayer::NetworkState::Empty);
 }
 
 bool MediaPlayerPrivateGStreamer::paused() const
@@ -676,7 +699,7 @@ void MediaPlayerPrivateGStreamer::seek(const MediaTime& mediaTime)
             GST_DEBUG_OBJECT(pipeline(), "[Seek] reset pipeline");
             m_shouldResetPipeline = true;
             if (!changePipelineState(GST_STATE_PAUSED))
-                loadingFailed(MediaPlayer::Empty);
+                loadingFailed(MediaPlayer::NetworkState::Empty);
         }
     } else {
         // We can seek now.
@@ -808,13 +831,13 @@ void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 void MediaPlayerPrivateGStreamer::setPreload(MediaPlayer::Preload preload)
 {
     GST_DEBUG_OBJECT(pipeline(), "Setting preload to %s", convertEnumerationToString(preload).utf8().data());
-    if (preload == MediaPlayer::Auto && m_isLiveStream)
+    if (preload == MediaPlayer::Preload::Auto && m_isLiveStream)
         return;
 
     m_preload = preload;
     updateDownloadBufferingFlag();
 
-    if (m_isDelayingLoad && m_preload != MediaPlayer::None) {
+    if (m_isDelayingLoad && m_preload != MediaPlayer::Preload::None) {
         m_isDelayingLoad = false;
         commitLoad();
     }
@@ -1982,23 +2005,23 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, "webkit-video.error");
 
-        error = MediaPlayer::Empty;
+        error = MediaPlayer::NetworkState::Empty;
         if (g_error_matches(err.get(), GST_STREAM_ERROR, GST_STREAM_ERROR_CODEC_NOT_FOUND)
             || g_error_matches(err.get(), GST_STREAM_ERROR, GST_STREAM_ERROR_WRONG_TYPE)
             || g_error_matches(err.get(), GST_STREAM_ERROR, GST_STREAM_ERROR_FAILED)
             || g_error_matches(err.get(), GST_CORE_ERROR, GST_CORE_ERROR_MISSING_PLUGIN)
             || g_error_matches(err.get(), GST_RESOURCE_ERROR, GST_RESOURCE_ERROR_NOT_FOUND))
-            error = MediaPlayer::FormatError;
+            error = MediaPlayer::NetworkState::FormatError;
         else if (g_error_matches(err.get(), GST_STREAM_ERROR, GST_STREAM_ERROR_TYPE_NOT_FOUND)) {
             // Let the mediaPlayerClient handle the stream error, in this case the HTMLMediaElement will emit a stalled event.
             GST_ERROR("Decode error, let the Media element emit a stalled event.");
             m_loadingStalled = true;
             break;
         } else if (err->domain == GST_STREAM_ERROR) {
-            error = MediaPlayer::DecodeError;
+            error = MediaPlayer::NetworkState::DecodeError;
             attemptNextLocation = true;
         } else if (err->domain == GST_RESOURCE_ERROR)
-            error = MediaPlayer::NetworkError;
+            error = MediaPlayer::NetworkState::NetworkError;
 
         if (attemptNextLocation)
             issueError = !loadNextLocation();
@@ -2048,7 +2071,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 gst_element_state_get_name(requestedState));
             m_requestedState = requestedState;
             if (!changePipelineState(requestedState))
-                loadingFailed(MediaPlayer::Empty);
+                loadingFailed(MediaPlayer::NetworkState::Empty);
         }
         break;
     case GST_MESSAGE_CLOCK_LOST:
@@ -2531,12 +2554,12 @@ void MediaPlayerPrivateGStreamer::updateStates()
         // Update ready and network states.
         switch (m_currentState) {
         case GST_STATE_NULL:
-            m_readyState = MediaPlayer::HaveNothing;
-            m_networkState = MediaPlayer::Empty;
+            m_readyState = MediaPlayer::ReadyState::HaveNothing;
+            m_networkState = MediaPlayer::NetworkState::Empty;
             break;
         case GST_STATE_READY:
-            m_readyState = MediaPlayer::HaveMetadata;
-            m_networkState = MediaPlayer::Empty;
+            m_readyState = MediaPlayer::ReadyState::HaveMetadata;
+            m_networkState = MediaPlayer::NetworkState::Empty;
             break;
         case GST_STATE_PAUSED:
         case GST_STATE_PLAYING:
@@ -2544,18 +2567,18 @@ void MediaPlayerPrivateGStreamer::updateStates()
                 if (m_bufferingPercentage == 100) {
                     GST_DEBUG_OBJECT(pipeline(), "[Buffering] Complete.");
                     m_isBuffering = false;
-                    m_readyState = MediaPlayer::HaveEnoughData;
-                    m_networkState = m_didDownloadFinish ? MediaPlayer::Idle : MediaPlayer::Loading;
+                    m_readyState = MediaPlayer::ReadyState::HaveEnoughData;
+                    m_networkState = m_didDownloadFinish ? MediaPlayer::NetworkState::Idle : MediaPlayer::NetworkState::Loading;
                 } else {
-                    m_readyState = MediaPlayer::HaveCurrentData;
-                    m_networkState = MediaPlayer::Loading;
+                    m_readyState = MediaPlayer::ReadyState::HaveCurrentData;
+                    m_networkState = MediaPlayer::NetworkState::Loading;
                 }
             } else if (m_didDownloadFinish) {
-                m_readyState = MediaPlayer::HaveEnoughData;
-                m_networkState = MediaPlayer::Loaded;
+                m_readyState = MediaPlayer::ReadyState::HaveEnoughData;
+                m_networkState = MediaPlayer::NetworkState::Loaded;
             } else {
-                m_readyState = MediaPlayer::HaveFutureData;
-                m_networkState = MediaPlayer::Loading;
+                m_readyState = MediaPlayer::ReadyState::HaveFutureData;
+                m_networkState = MediaPlayer::NetworkState::Loading;
             }
 
             break;
@@ -2619,9 +2642,9 @@ void MediaPlayerPrivateGStreamer::updateStates()
         updateDownloadBufferingFlag();
 
         if (m_currentState == GST_STATE_READY)
-            m_readyState = MediaPlayer::HaveNothing;
+            m_readyState = MediaPlayer::ReadyState::HaveNothing;
         else if (m_currentState == GST_STATE_PAUSED) {
-            m_readyState = MediaPlayer::HaveEnoughData;
+            m_readyState = MediaPlayer::ReadyState::HaveEnoughData;
             m_isPaused = true;
         } else if (m_currentState == GST_STATE_PLAYING)
             m_isPaused = false;
@@ -2629,7 +2652,7 @@ void MediaPlayerPrivateGStreamer::updateStates()
         if (!m_isPaused && m_playbackRate)
             changePipelineState(GST_STATE_PLAYING);
 
-        m_networkState = MediaPlayer::Loading;
+        m_networkState = MediaPlayer::NetworkState::Loading;
         break;
     default:
         GST_DEBUG_OBJECT(pipeline(), "Else : %d", getStateResult);
@@ -2741,9 +2764,9 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
             GST_INFO_OBJECT(pipeline(), "New media url: %s", newUrl.string().utf8().data());
 
             // Reset player states.
-            m_networkState = MediaPlayer::Loading;
+            m_networkState = MediaPlayer::NetworkState::Loading;
             m_player->networkStateChanged();
-            m_readyState = MediaPlayer::HaveNothing;
+            m_readyState = MediaPlayer::ReadyState::HaveNothing;
             m_player->readyStateChanged();
 
             // Reset pipeline state.
@@ -2796,7 +2819,7 @@ void MediaPlayerPrivateGStreamer::getSupportedTypes(HashSet<String, ASCIICaseIns
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
 {
-    MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
+    MediaPlayer::SupportsType result = MediaPlayer::SupportsType::IsNotSupported;
 #if ENABLE(MEDIA_SOURCE)
     // MediaPlayerPrivateGStreamerMSE is in charge of mediasource playback, not us.
     if (parameters.isMediaSource)
@@ -2817,7 +2840,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (gstRegistryScanner.isContainerTypeSupported(containerType)) {
         // Spec says we should not return "probably" if the codecs string is empty.
         Vector<String> codecs = parameters.type.codecs();
-        result = codecs.isEmpty() ? MediaPlayer::MayBeSupported : (gstRegistryScanner.areAllCodecsSupported(codecs) ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported);
+        result = codecs.isEmpty() ? MediaPlayer::SupportsType::MayBeSupported : (gstRegistryScanner.areAllCodecsSupported(codecs) ? MediaPlayer::SupportsType::IsSupported : MediaPlayer::SupportsType::IsNotSupported);
     }
 
     auto finalResult = extendedSupportsType(parameters, result);
@@ -2836,12 +2859,12 @@ void MediaPlayerPrivateGStreamer::updateDownloadBufferingFlag()
     unsigned flagDownload = getGstPlayFlag("download");
 
     // We don't want to stop downloading if we already started it.
-    if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_shouldResetPipeline) {
+    if (flags & flagDownload && m_readyState > MediaPlayer::ReadyState::HaveNothing && !m_shouldResetPipeline) {
         GST_DEBUG_OBJECT(pipeline(), "Download already started, not starting again");
         return;
     }
 
-    bool shouldDownload = !m_isLiveStream && m_preload == MediaPlayer::Auto;
+    bool shouldDownload = !m_isLiveStream && m_preload == MediaPlayer::Preload::Auto;
     if (shouldDownload) {
         GST_INFO_OBJECT(pipeline(), "Enabling on-disk buffering");
         g_object_set(m_pipeline.get(), "flags", flags | flagDownload, nullptr);
@@ -3373,13 +3396,13 @@ bool MediaPlayerPrivateGStreamer::supportsFullscreen() const
 
 MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamer::movieLoadType() const
 {
-    if (m_readyState == MediaPlayer::HaveNothing)
-        return MediaPlayer::Unknown;
+    if (m_readyState == MediaPlayer::ReadyState::HaveNothing)
+        return MediaPlayer::MovieLoadType::Unknown;
 
     if (m_isLiveStream)
-        return MediaPlayer::LiveStream;
+        return MediaPlayer::MovieLoadType::LiveStream;
 
-    return MediaPlayer::Download;
+    return MediaPlayer::MovieLoadType::Download;
 }
 
 #if USE(GSTREAMER_GL)

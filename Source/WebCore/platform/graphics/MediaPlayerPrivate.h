@@ -38,7 +38,9 @@ public:
     MediaPlayerPrivateInterface() = default;
     virtual ~MediaPlayerPrivateInterface() = default;
 
-    virtual void load(const String& url) = 0;
+    virtual void load(const String&) { }
+    virtual void load(const URL& url, const ContentType&, const String&) { load(url.string()); }
+
 #if ENABLE(MEDIA_SOURCE)
     virtual void load(const String& url, MediaSourcePrivateClient*) = 0;
 #endif
@@ -46,6 +48,15 @@ public:
     virtual void load(MediaStreamPrivate&) = 0;
 #endif
     virtual void cancelLoad() = 0;
+
+    virtual void prepareForPlayback(bool privateMode, MediaPlayer::Preload preload, bool preservesPitch, bool prepare)
+    {
+        setPrivateBrowsingMode(privateMode);
+        setPreload(preload);
+        setPreservesPitch(preservesPitch);
+        if (prepare)
+            prepareForRendering();
+    }
     
     virtual void prepareToPlay() { }
     virtual PlatformLayer* platformLayer() const { return 0; }
@@ -151,7 +162,7 @@ public:
 
     virtual void setPreload(MediaPlayer::Preload) { }
 
-    virtual bool hasAvailableVideoFrame() const { return readyState() >= MediaPlayer::HaveCurrentData; }
+    virtual bool hasAvailableVideoFrame() const { return readyState() >= MediaPlayer::ReadyState::HaveCurrentData; }
 
     virtual bool canLoadPoster() const { return false; }
     virtual void setPoster(const String&) { }
@@ -192,7 +203,7 @@ public:
     virtual bool didPassCORSAccessCheck() const { return false; }
     virtual Optional<bool> wouldTaintOrigin(const SecurityOrigin&) const { return WTF::nullopt; }
 
-    virtual MediaPlayer::MovieLoadType movieLoadType() const { return MediaPlayer::Unknown; }
+    virtual MediaPlayer::MovieLoadType movieLoadType() const { return MediaPlayer::MovieLoadType::Unknown; }
 
     virtual void prepareForRendering() { }
 

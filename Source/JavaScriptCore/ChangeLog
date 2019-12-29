@@ -1,3 +1,953 @@
+2019-12-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put DebuggerScope in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=205303
+
+        Reviewed by Mark Lam.
+
+        Put DebuggerScope in IsoSubspace, and refine empty `subspaceFor` implementations.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::subspaceFor):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::subspaceFor):
+        * debugger/DebuggerScope.h:
+        * runtime/AbstractModuleRecord.h:
+        (JSC::AbstractModuleRecord::subspaceFor):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::subspaceFor):
+        * runtime/JSInternalFieldObjectImpl.h:
+        (JSC::JSInternalFieldObjectImpl::subspaceFor):
+        * runtime/JSWrapperObject.h:
+        (JSC::JSWrapperObject::subspaceFor):
+        * runtime/VM.cpp:
+        * runtime/VM.h:
+
+2019-12-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Move JSCell::subspaceFor to JSObject::subspaceFor, removing destructibleCellSpace
+        https://bugs.webkit.org/show_bug.cgi?id=205300
+
+        Reviewed by Mark Lam.
+
+        All non-JSObject JSCells have their own IsoSubspace / CompleteSubspace. We remove JSCell::subspaceFor function,
+        and move it to JSObject::subspaceFor. And we remove destructibleCellSpace since nobody uses it.
+
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::subspaceFor): Deleted.
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::subspaceFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-16  Mark Lam  <mark.lam@apple.com>
+
+        Changed jsc shell timeout mechanism to leverage the VMTraps and use CPUTime.
+        https://bugs.webkit.org/show_bug.cgi?id=205279
+        <rdar://problem/57971874>
+
+        Reviewed by Saam Barati.
+
+        This fixes all the timeouts that occur due to CPU time starvation when
+        running JSC tests on a debug build.
+
+        What this means is that the timeout mechanism may trigger asynchronous
+        OSR exits.  If a test requires no OSR exits, that test should
+        requireOption("--usePollingTraps=true") so that the VMTraps will use its
+        polling implementation instead.
+
+        I've tested this with a full run of the JSC stress tests with a debug
+        build and saw 0 timeouts.  I've also tested it with a contrived tests that
+        loops forever, and saw the expected timeout crash.
+
+        Will look into re-tuning needed timeout value (and other JSC tests timeout
+        cleanup) in https://bugs.webkit.org/show_bug.cgi?id=205298.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeModuleProgram):
+        * interpreter/InterpreterInlines.h:
+        (JSC::Interpreter::execute):
+        * jsc.cpp:
+        (timeoutCheckCallback):
+        (initializeTimeoutIfNeeded):
+        (startTimeoutThreadIfNeeded):
+        (runJSC):
+        (jscmain):
+        * runtime/JSCConfig.h:
+        * runtime/VM.h:
+        (JSC::VM::notifyNeedShellTimeoutCheck):
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::handleTraps):
+        * runtime/VMTraps.h:
+        (JSC::VMTraps::Mask::Mask):
+        (JSC::VMTraps::Mask::allEventTypes):
+        (JSC::VMTraps::Mask::init):
+        (JSC::VMTraps::interruptingTraps):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::forEachVM):
+        * tools/VMInspector.h:
+
+2019-12-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove ArrayBufferNeuteringWatchpointSet
+        https://bugs.webkit.org/show_bug.cgi?id=205194
+
+        Reviewed by Saam Barati.
+
+        This patch removes ArrayBufferNeuteringWatchpointSet, and instead putting InlineWatchpointSet directly into ArrayBuffer, since this is much simpler.
+        The main reason why we are using ArrayBufferNeuteringWatchpointSet is not to increase sizeof(ArrayBuffer). But this complicates the implementation.
+        So, not to increase sizeof(ArrayBuffer), we use PackedRefPtr in ArrayBuffer, which is RefPtr while the pointer is packed. This gives us 8 bytes which is
+        suitable for placing InlineWatchpointSet without increasing sizeof(ArrayBuffer). We also convert Function<> in ArrayBuffer to PackedRefPtr<SharedTask<>>,
+        and share Gigacage::free destructor by multiple ArrayBuffer. This is memory efficient since this is the common case, and we can pack this field easily.
+
+        * API/JSTypedArray.cpp:
+        (JSObjectMakeTypedArrayWithBytesNoCopy):
+        (JSObjectMakeArrayBufferWithBytesNoCopy):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::ArrayBufferViewWatchpointAdaptor::add):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::tryGetFoldableView):
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBuffer::primitiveGigacageDestructor):
+        (JSC::SharedArrayBufferContents::~SharedArrayBufferContents):
+        (JSC::ArrayBufferContents::destroy):
+        (JSC::ArrayBufferContents::reset):
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::makeShared):
+        (JSC::ArrayBufferContents::shareWith):
+        (JSC::ArrayBuffer::createAdopted):
+        (JSC::ArrayBuffer::transferTo):
+        (JSC::ArrayBuffer::neuter):
+        (JSC::ArrayBuffer::notifyIncommingReferencesOfTransfer):
+        * runtime/ArrayBuffer.h:
+        (JSC::ArrayBuffer::neuteringWatchpointSet):
+        * runtime/ArrayBufferNeuteringWatchpointSet.cpp: Removed.
+        * runtime/FileBasedFuzzerAgent.cpp:
+        (JSC::FileBasedFuzzerAgent::getPredictionInternal):
+        * runtime/FileBasedFuzzerAgentBase.cpp:
+        (JSC::FileBasedFuzzerAgentBase::createLookupKey):
+        * runtime/PredictionFileCreatingFuzzerAgent.cpp:
+        (JSC::PredictionFileCreatingFuzzerAgent::getPredictionInternal):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::buffer):
+
+2019-12-14  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][WPE] Fix various non-unified build issues introduced since r251698
+        https://bugs.webkit.org/show_bug.cgi?id=204891
+
+        Reviewed by Alex Christensen.
+
+        * API/JSCallbackConstructor.h: Add missing inclusion of JSObject.h
+        * bytecompiler/BytecodeGeneratorBaseInlines.h: Add missing "#pragma once", which
+        caused build breakage when the same unified source would result in multiple inclusions of
+        the header.
+        * bytecompiler/NodesCodegen.cpp: Add missing inclusion of BytecodeGeneratorBaseInlines.h
+        * dfg/DFGDesiredIdentifiers.h: Add missing inclusion of Identifier.h
+        * heap/IsoSubspacePerVM.cpp: Add missing inclusion of MarkedSpaceInlines.h
+        * jit/GCAwareJITStubRoutine.h: Add missing forward declaration for CallLinkInfo.
+        * runtime/PredictionFileCreatingFuzzerAgent.cpp: Add missing inclusion of wtf/DataLog.h
+        * runtime/ScopedArgumentsTable.h: Add missing inclusion of VM.h
+        * wasm/WasmCallee.cpp: Add missing inclusion of WasmCallingConvention.h
+        * wasm/WasmLLIntTierUpCounter.h: Add missing inclusion of InstructionStream.h
+        * wasm/WasmSlowPaths.cpp: Add missing inclusion of WasmSignatureInlines.h
+
+2019-12-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove JSFixedArray, and use JSImmutableButterfly instead
+        https://bugs.webkit.org/show_bug.cgi?id=204402
+
+        Reviewed by Mark Lam.
+
+        This patch removes JSFixedArray, and use JSImmutableButterfly instead. JSFixedArray can be replaced by
+        JSImmutableButterfly with Contiguous shape. And further, we can create an array from JSImmutableButterfly
+        generated by Spread node in NewArrayBufferWithSpread.
+
+        Currently, we are always creating contiguous JSImmutableButterfly from Spread. If it takes contiguous CoW
+        array, we can reuse JSImmutableButterfly of the input. But if it is CoW and not contiguous shape (like,
+        CopyOnWriteArrayWithInt32), we create a JSImmutableButterfly and copy it to this new butterfly. We can
+        extend it to accept non-contiguous JSImmutableButterfly in the future.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecompiler/BytecodeGenerator.cpp:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileSpread):
+        (JSC::DFG::SpeculativeJIT::compileNewArrayWithSpread):
+        (JSC::DFG::SpeculativeJIT::compileObjectKeys):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::toButterfly):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * interpreter/Interpreter.cpp:
+        (JSC::sizeOfVarargs):
+        (JSC::loadVarargs):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSCast.h:
+        * runtime/JSFixedArray.cpp: Removed.
+        * runtime/JSFixedArray.h: Removed.
+        * runtime/JSImmutableButterfly.h:
+        (JSC::JSImmutableButterfly::createFromArray):
+        (JSC::JSImmutableButterfly::offsetOfPublicLength):
+        (JSC::JSImmutableButterfly::offsetOfVectorLength):
+        * runtime/JSType.cpp:
+        (WTF::printInternal):
+        * runtime/JSType.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-13  Saam Barati  <sbarati@apple.com>
+
+        Structure should have a bloom filter of seen identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=205182
+
+        Reviewed by Yusuke Suzuki and Tadeu Zagallo.
+
+        This patch adds a bloom filter of seen identifiers to Structure. This usually allows
+        us to quickly determine if a Structure *has not* seen a particular property. Based
+        on some logging I added in JetStream2 and Speedometer2, 70% of calls to Structure::get 
+        result in us returning invalidOffset (e.g, the property does not exist). This patch
+        allows that path to be even faster. This bloom filter is just modeling what goes inside
+        Structure's property table. For that reason, we don't need to consider things inside 
+        the static property table. We reason about the static  property table inside JSObject's
+        property lookup.
+        
+        This patch appears to be a 0.5% progression on Speedometer2.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::get):
+        (JSC::Structure::add):
+
+2019-12-13  Mark Lam  <mark.lam@apple.com>
+
+        Fix bad exception assertion in ExceptionHelpers.cpp's createError().
+        https://bugs.webkit.org/show_bug.cgi?id=205230
+        <rdar://problem/57875688>
+
+        Reviewed by Yusuke Suzuki.
+
+        The code in createError() was doing the following:
+
+            String valueDescription = errorDescriptionForValue(globalObject, value);
+            EXCEPTION_ASSERT(scope.exception() || !!valueDescription);
+            if (!valueDescription) {
+                scope.clearException();
+                return createOutOfMemoryError(globalObject);
+            }
+
+        If errorDescriptionForValue() throws an exception, then we expect the
+        valueDescription string to be null so that we can throw an OutOfMemoryError.
+        However, errorDescriptionForValue() can detect an imminent overflow in String
+        length and just return a null string without throwing an exception which fails
+        the above assertion.
+
+        The fix is to simply do an explicit exception check in addition to the null string
+        check and remove the assertion.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+
+2019-12-13  Saam Barati  <sbarati@apple.com>
+
+        Add a Heap::finalize function that takes WTF::Function<void()>
+        https://bugs.webkit.org/show_bug.cgi?id=205211
+
+        Reviewed by Geoffrey Garen.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::addFinalizer):
+        (JSC::Heap::FinalizerOwner::finalize):
+        * heap/Heap.h:
+
+2019-12-13  Jim Mason  <jmason@ibinx.com>
+
+        [GTK] WebKitGTK build hangs on g-ir-scanner
+        https://bugs.webkit.org/show_bug.cgi?id=204715
+
+        This patch fixes the static initialization order problem
+        introduced by Bug 204503.
+
+        The patch replaces the static data members with statics that
+        are constructed only upon first access (i.e., the 'construct
+        on first use' idiom).
+
+        Reviewed by Carlos Garcia Campos.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        (Inspector::RemoteInspector::start):
+        (Inspector::RemoteInspector::messageHandlers):
+        * inspector/remote/glib/RemoteInspectorServer.cpp:
+        (Inspector::RemoteInspectorServer::messageHandlers):
+        (Inspector::RemoteInspectorServer::incomingConnectionCallback):
+        * inspector/remote/glib/RemoteInspectorServer.h:
+
+2019-12-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Puts fixed-sized cells into IsoSubspace more
+        https://bugs.webkit.org/show_bug.cgi?id=205183
+
+        Reviewed by Saam Barati.
+
+        This patch puts many of fixed-sized cells into IsoSubspace.
+
+            - Exception
+            - JSPropertyNameEnumerator
+            - RegExp
+            - StructureChain
+            - MapBucket
+            - JSMapIterator
+            - ScopedArgumentsTable
+            - SetBucket
+            - JSSetIterator
+            - JSScriptFetchParameters
+            - JSScriptFetcher
+            - JSSourceCode
+            - JSTemplateObjectDescriptor
+
+        * runtime/Exception.h:
+        * runtime/HashMapImpl.h:
+        (JSC::HashMapBucket::selectStructure): Deleted.
+        (JSC::HashMapBucket::info): Deleted.
+        (JSC::HashMapBucket::createStructure): Deleted.
+        (JSC::HashMapBucket::create): Deleted.
+        (JSC::HashMapBucket::createSentinel): Deleted.
+        (JSC::HashMapBucket::HashMapBucket): Deleted.
+        (JSC::HashMapBucket::setNext): Deleted.
+        (JSC::HashMapBucket::setPrev): Deleted.
+        (JSC::HashMapBucket::setKey): Deleted.
+        (JSC::HashMapBucket::setValue): Deleted.
+        (JSC::HashMapBucket::key const): Deleted.
+        (JSC::HashMapBucket::value const): Deleted.
+        (JSC::HashMapBucket::next const): Deleted.
+        (JSC::HashMapBucket::prev const): Deleted.
+        (JSC::HashMapBucket::deleted const): Deleted.
+        (JSC::HashMapBucket::makeDeleted): Deleted.
+        (JSC::HashMapBucket::offsetOfKey): Deleted.
+        (JSC::HashMapBucket::offsetOfValue): Deleted.
+        (JSC::HashMapBucket::offsetOfNext): Deleted.
+        (JSC::HashMapBucket::extractValue): Deleted.
+        * runtime/JSMapIterator.h:
+        * runtime/JSPropertyNameEnumerator.h:
+        * runtime/JSScriptFetchParameters.h:
+        * runtime/JSScriptFetcher.h:
+        * runtime/JSSetIterator.h:
+        * runtime/JSSourceCode.h:
+        * runtime/JSTemplateObjectDescriptor.h:
+        * runtime/RegExp.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/StructureChain.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Wasm init-expr should reject mutable globals
+        https://bugs.webkit.org/show_bug.cgi?id=205191
+
+        Reviewed by Mark Lam.
+
+        For init-expr, expr must be a constant[1]. Constant expr, which is defined in Wasm spec, requires that, if the expr is GetGlobal,
+        global's mutability is immutable. Previously our imported globals are always immutable, so we are using ASSERT instead of checking
+        mutability in WasmSectionParser. But now, we have ability to import mutable globals. We should check mutability when parsing init-expr.
+        We do not have this check previously, which leads to spec-correctness issue that we can initialize globals/elements/data-segments
+        with snapshot values of mutable globals (this is safe, but this is not spec-compliant, and it is not reasonable semantics), while
+        such an attempt should be rejected when compiling Wasm modules.
+
+        This patch adds necessary checks.
+
+        [1]: https://webassembly.github.io/spec/core/valid/instructions.html#valid-constant
+
+        * wasm/WasmSectionParser.cpp:
+        (JSC::Wasm::SectionParser::parseInitExpr):
+
+2019-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception in JSValue::toWTFStringSlowCase().
+        https://bugs.webkit.org/show_bug.cgi?id=205176
+        <rdar://problem/57871899>
+
+        Reviewed by Yusuke Suzuki.
+
+        Also fix all the new exception check failures that fall out of change.
+        Also replaced some ASSERTs with EXCEPTION_ASSERT so that we can run the exception
+        check validation on a release build.
+
+        * dfg/DFGOperations.cpp:
+        * jsc.cpp:
+        (dumpException):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncPush):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::toWTFStringSlowCase const):
+
+2019-12-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Lock-down JSGlobalObject and derived classes in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=205108
+
+        Reviewed by Mark Lam.
+
+        This patch puts JSGlobalLexicalEnvironment and JSGlobalObject (and its derived classes including JSDOMWindow etc.) in IsoSubspace.
+        We were using `addFinalizer` feature to call destructors for these objects since they do not inherit JSDestructibleObject. But now
+        each derived classes has its IsoSubspace. So we do not need to use finalizer feature: just setting specialized HeapCellType works.
+
+        * API/JSAPIGlobalObject.h:
+        * API/JSCallbackObject.cpp:
+        * API/glib/JSAPIWrapperGlobalObject.cpp:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/SuperSampler.h:
+        * heap/CellAttributes.h:
+        * heap/FreeList.h:
+        * heap/IsoHeapCellType.cpp:
+        (JSC::IsoHeapCellType::IsoHeapCellType):
+        * heap/IsoHeapCellType.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::setIsFreeListed): Deleted.
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::setIsFreeListed):
+        * jsc.cpp:
+        (GlobalObject::create): Deleted.
+        (GlobalObject::createStructure): Deleted.
+        (GlobalObject::javaScriptRuntimeFlags): Deleted.
+        (GlobalObject::finishCreation): Deleted.
+        (GlobalObject::addFunction): Deleted.
+        * runtime/JSGlobalLexicalEnvironment.h:
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::subspaceFor):
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::JSSegmentedVariableObject):
+        (JSC::JSSegmentedVariableObject::finishCreation):
+        (JSC::JSSegmentedVariableObject::destroy): Deleted.
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::subspaceFor):
+        (JSC::JSSegmentedVariableObject::classInfo const): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * testRegExp.cpp:
+        (GlobalObject::create): Deleted.
+        (GlobalObject::createStructure): Deleted.
+        (GlobalObject::finishCreation): Deleted.
+
+2019-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception check in JSON Stringifier's gap function.
+        https://bugs.webkit.org/show_bug.cgi?id=205171
+        <rdar://problem/57871842>
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/JSONObject.cpp:
+        (JSC::gap):
+
+2019-12-12  Mark Lam  <mark.lam@apple.com>
+
+        DFG and FTL expects String.prototype to not qualify for StringObjectUse.
+        https://bugs.webkit.org/show_bug.cgi?id=205147
+        <rdar://problem/57748888>
+
+        Reviewed by Saam Barati.
+
+        Currently, String.prototype's JSType is StringObjectType.
+
+        However, in the compiler, there are a few places that expect that the
+        String.prototype value to not qualify as StringObjectUse.  These places are:
+        1. SpeculatedType.cpp's speculationFromClassInfo() will speculate SpecObjectOther
+           for the StringPrototype object.
+        2. DFGFixupPhase.cpp's addCheckStructureForOriginalStringObjectUse() only emits a
+           CheckStructure against globalObject->stringObjectStructure().  It does not
+           check against String.prototype's structure.
+
+        To resolve this discrepancy, we can either do:
+        a. change String.prototype's JSType to something else.
+        b. fix the places in the compiler to accept String.prototype as StringObjectUse.
+
+        (a) is trivial and cheap to do.  (b) is doable but will result in less optimal
+        compiled code.  Since passing String.prototype as a StringObject is expected to
+        be a rare thing in JS code, it's not worth incurring the cost for (b).  In this
+        patch, we apply (a) to fix the discrepancy.
+
+        Also added a specialization case to FOR_EACH_JS_DYNAMIC_CAST_JS_TYPE_OVERLOAD
+        for jsDynamicCast<StringObject> for completeness.
+
+        * runtime/JSCast.h:
+        * runtime/JSType.cpp:
+        (WTF::printInternal):
+        * runtime/JSType.h:
+        * runtime/StringPrototype.h:
+
+2019-12-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] IsoHeapCellType should have destroy function member instead of specializing template function
+        https://bugs.webkit.org/show_bug.cgi?id=205152
+
+        Reviewed by Saam Barati.
+
+        We were specializing MarkedBlock::Handle::specializedSweep in 5 different ways for each IsoSubspace-ed cell.
+        This bloats binary. Instead of specializing it with CellType, we specialize it with one functor, which invokes
+        function pointer held by IsoHeapCellType. This requires one indirect function call per cell. But this is OK since,
+
+        1. We were using JSDestructibleObject's cell->classInfo->methodTable.destroy function call to dispatch destruction,
+           before IsoSubspace replaces them with IsoHeapCellType-based destruction. Compared to that, the new one is still
+           saving one pointer chasing basically (classInfo dereference, we assume cell deference is no cost since it will
+           be done anyway).
+        2. We still keep JSString's destroy function inlining by using IsoInlinedHeapCellType. This is important since
+           it is critical to performance and we had JSStringHeapCellType before we replaced it with IsoHeapCellType.
+           But IsoInlinedHeapCellType specialization is for only one class so generated binary size is the same to the
+           old code using JSStringHeapCellType.
+
+        This saves 480KB binary-size in JavaScriptCore. And more importantly, after this patch, adding IsoSubspace
+        will not bloat code, so we can simply put things into IsoSubspace.
+
+        This patch also removes `using namespace JSC;` in global code in JavaScriptCore except for API codes, since
+        it starts causing build failure due to unified builds: API defines JSType enum in a global scope, which is
+        different from our JSC::JSType. If we do `using namespace JSC;` in a global scope, it can lead to ambiguity of
+        looking up.
+
+        * API/JSHeapFinalizerPrivate.cpp:
+        (JSContextGroupAddHeapFinalizer):
+        (JSContextGroupRemoveHeapFinalizer):
+        * API/JSHeapFinalizerPrivate.h:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/AbstractMacroAssembler.cpp:
+        * bindings/ScriptFunctionCall.cpp:
+        * bindings/ScriptObject.cpp:
+        * bindings/ScriptValue.cpp:
+        * heap/IsoHeapCellType.cpp: Copied from Source/JavaScriptCore/assembler/AbstractMacroAssembler.cpp.
+        (JSC::IsoHeapCellType::finishSweep):
+        (JSC::IsoHeapCellType::destroy):
+        * heap/IsoHeapCellType.h:
+        * heap/IsoInlinedHeapCellType.h: Copied from Source/JavaScriptCore/heap/IsoHeapCellType.h.
+        * heap/MutatorState.cpp:
+        * heap/Synchronousness.cpp:
+        * inspector/InjectedScriptHost.cpp:
+        * inspector/InjectedScriptManager.cpp:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        * inspector/JSGlobalObjectScriptDebugServer.cpp:
+        * inspector/JSInjectedScriptHost.cpp:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        * inspector/JavaScriptCallFrame.cpp:
+        * inspector/PerGlobalObjectWrapperWorld.cpp:
+        * inspector/ScriptCallStackFactory.cpp:
+        * inspector/ScriptDebugServer.cpp:
+        * inspector/agents/InspectorHeapAgent.cpp:
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        * inspector/agents/JSGlobalObjectAuditAgent.cpp:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.cpp:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put all API related JS cells into IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=205097
+
+        Reviewed by Mark Lam.
+
+        This patch puts API related JS cells into IsoSubspace.
+
+        * API/JSAPIGlobalObject.h:
+        (JSC::JSAPIGlobalObject::create): Deleted.
+        (JSC::JSAPIGlobalObject::createStructure): Deleted.
+        (JSC::JSAPIGlobalObject::JSAPIGlobalObject): Deleted.
+        * API/JSAPIValueWrapper.h:
+        * API/JSAPIWrapperObject.h:
+        (JSC::JSAPIWrapperObject::subspaceFor):
+        * API/JSAPIWrapperObject.mm:
+        (JSC::JSCallbackObject<JSAPIWrapperObject>::subspaceForImpl):
+        * API/JSCallbackConstructor.cpp:
+        (JSC::JSCallbackConstructor::JSCallbackConstructor):
+        * API/JSCallbackConstructor.h:
+        * API/JSCallbackObject.cpp:
+        (JSC::JSCallbackObject<JSNonFinalObject>::createStructure):
+        (JSC::JSCallbackObject<JSNonFinalObject>::subspaceForImpl):
+        (JSC::JSCallbackObject<JSGlobalObject>::subspaceForImpl):
+        (JSC::JSCallbackObject<JSDestructibleObject>::createStructure): Deleted.
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::init):
+        * API/JSClassRef.cpp:
+        (OpaqueJSClass::prototype):
+        * API/JSObjectRef.cpp:
+        (JSObjectMake):
+        (JSObjectGetPrivate):
+        (JSObjectSetPrivate):
+        (JSObjectGetPrivateProperty):
+        (JSObjectSetPrivateProperty):
+        (JSObjectDeletePrivateProperty):
+        * API/JSValueRef.cpp:
+        (JSValueIsObjectOfClass):
+        * API/JSWeakObjectMapRefPrivate.cpp:
+        * API/glib/JSAPIWrapperGlobalObject.cpp:
+        (JSC::JSCallbackObject<JSAPIWrapperGlobalObject>::subspaceForImpl):
+        * API/glib/JSAPIWrapperGlobalObject.h:
+        (JSC::JSAPIWrapperGlobalObject::subspaceFor):
+        * API/glib/JSAPIWrapperObjectGLib.cpp:
+        (JSC::JSCallbackObject<JSAPIWrapperObject>::subspaceForImpl):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::finishCreation):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::classInfo const):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-10  Saam Barati  <sbarati@apple.com>
+
+        BytecodeDumper should print out of line jump targets
+        https://bugs.webkit.org/show_bug.cgi?id=205091
+
+        Reviewed by Tadeu Zagallo and Yusuke Suzuki.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumperBase::dumpValue):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::outOfLineJumpOffset):
+
+2019-12-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Adhocly created CallLinkInfo in GetterSetterAccess should be owned by GCAwareJITStubRoutine
+        https://bugs.webkit.org/show_bug.cgi?id=204876
+
+        Reviewed by Saam Barati.
+
+        When emitting GetterSetterAccessCase code in IC, we dynamically create CallLinkInfo which is owned by GetterSetterAccessCase,
+        and we use this pointer for GetterSetter calls (like, operationLinkCall etc.). The problem is that IC code is not destroyed
+        so long as it is live in the stack. For example, GetterSetterAccessCase might be destroyed when the StructureStubInfo is reset,
+        while executing the emitted code. So, the code is still pointing already-destroyed CallLinkInfo.
+
+        In this patch, CallLinkInfo used for GetterSetterAccessCase code is owned by emitted code, which means, owned by
+        MarkingGCAwareJITStubRoutine. So it is kept so long as the code is live. We use Bag<CallLinkInfo> to create a CallLinkInfo,
+        and MarkingGCAwareJITStubRoutine owns it.
+
+        The important question is whether we should call CallLinkInfo::visitWeak when the associated GetterSetterAccessCase is already
+        destroyed. We do not need to call it since (1) it is just clearing CallLinkInfo, and (2) this information will not be used
+        by anyone since associated GetterSetterAccessCase is already destroyed.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/GetterSetterAccessCase.h:
+        (JSC::GetterSetterAccessCase::callLinkInfo const):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitDumbVirtualCall):
+        * jit/GCAwareJITStubRoutine.cpp:
+        (JSC::MarkingGCAwareJITStubRoutine::MarkingGCAwareJITStubRoutine):
+        (JSC::GCAwareJITStubRoutineWithExceptionHandler::GCAwareJITStubRoutineWithExceptionHandler):
+        (JSC::createJITStubRoutine):
+        * jit/GCAwareJITStubRoutine.h:
+        (JSC::GCAwareJITStubRoutine::create):
+        (JSC::createJITStubRoutine): Deleted.
+        * jit/Repatch.cpp:
+        (JSC::linkSlowFor):
+        (JSC::linkVirtualFor):
+
+2019-12-10  Mark Lam  <mark.lam@apple.com>
+
+        Worklist::deleteCancelledPlansForVM() should not assume that a cancelled plan is ready for deletion.
+        https://bugs.webkit.org/show_bug.cgi?id=205086
+        <rdar://problem/57795002>
+
+        Reviewed by Saam Barati.
+
+        Consider this race scenario:
+        1. The DFG thread finds a plan and started compiling, and it's holding a ref to
+           the plan while it's compiling.
+        2. The GC thread discovers that we no longer need the plan and cancels it.
+        3. After the plan is cancelled but while the DFG thread is still compiling, the
+           mutator thread calls Worklist::deleteCancelledPlansForVM().
+
+           Worklist::deleteCancelledPlansForVM() was assuming that by the time it is
+           called, Worklist::m_cancelledPlansPendingDestruction will contain the last ref
+           to the cancelled plan.  However, this is an incorrect assumption, and the
+           assertion there that asserts refCount == 1 will fail.
+
+        This patch fixes Worklist::deleteCancelledPlansForVM() to append the cancelled
+        plan back into m_cancelledPlansPendingDestruction if its refCount is not 1
+        (implying that the compiler thread still has a ref to it), and defer deletion of
+        the plan to a subsequent call to deleteCancelledPlansForVM().
+
+        This patch also adds a WTFMove to Worklist::removeDeadPlans() when we append the
+        cancelled plan to m_cancelledPlansPendingDestruction there.  This saves us one
+        unnecessary ref and deref of the plan.
+
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::deleteCancelledPlansForVM):
+        (JSC::DFG::Worklist::removeDeadPlans):
+
+2019-12-10  Saam Barati  <sbarati@apple.com>
+
+        methodOfGettingAValueProfileFor should return argument value profiles even when node and operandNode are the same origin
+        https://bugs.webkit.org/show_bug.cgi?id=205083
+
+        Reviewed by Yusuke Suzuki.
+
+        Inside methodOfGettingAValueProfileFor, we only grab profiles when the child
+        node and the parent node were from different code origins. This policy doesn't
+        make sense when the child node is the load of an argument value. In that case,
+        we can always just grab the argument profile.
+        
+        We might want to reconsider this policy in general, since it's common for a
+        node to emit a GetLocal to grab its incoming arguments (this is frequently
+        done in the DFG when reloading locals across basic blocks).
+        
+        This fixes an OSR exit compile loop inside Speedometer 2's React-Redux-TodoMVC
+        benchmark. That benchmark would repeatedly exit inside CompareStrictEq by
+        repeatedly speculating Object. That node would run with 95% incoming Objects,
+        and 5% incoming strings, and because we didn't grab the argument value profile
+        during exit, we never updated the profile with the String type information.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+
+2019-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r253321.
+        https://bugs.webkit.org/show_bug.cgi?id=205084
+
+        1% regression in RAMification (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Put JSArray in IsoSubspace"
+        https://bugs.webkit.org/show_bug.cgi?id=205049
+        https://trac.webkit.org/changeset/253321
+
+2019-12-10  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Reduce JSC's binary size
+        https://bugs.webkit.org/show_bug.cgi?id=204549
+
+        Reviewed by Saam Barati.
+
+        The Wasm interpreter landed in r251886 and significantly increased JSC's binary size. To try and
+        offset that, here and some easy fixes that get us ~200kb back:
+        - We were generating 2 instances of dumpBytecode, at 30kb each. I changed the generator to emit a cpp
+          file instead, avoiding the duplication.
+        - We had 3 instances of computeUsesForBytecodeIndex at 11kb each. I kept the work that depended on the
+         template type in the template function and moved the massive switch into computeUsesForBytecodeIndexImpl.
+         I also did the same for computeDefsForBytecodeIndex.
+        - We had 8 instances of emit_compareAndJump(Slow) at 8kb (7kb for Slow) each. I kept the code
+          that extracts the data from the bytecode in the template, but moved the bulk of the function
+          into emit_compareAndJump(Slow)Impl.
+
+        * CMakeLists.txt:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Sources.txt:
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumperBase::printLocationAndOp):
+        (JSC::BytecodeDumperBase::dumpValue):
+        * bytecode/BytecodeDumper.h:
+        (JSC::BytecodeDumperBase::~BytecodeDumperBase):
+        (JSC::BytecodeDumperBase::dumpValue):
+        (JSC::BytecodeDumperBase::BytecodeDumperBase):
+        (JSC::BytecodeDumper::BytecodeDumper):
+        * bytecode/BytecodeUseDef.cpp: Copied from Source/JavaScriptCore/bytecode/BytecodeUseDef.h.
+        (JSC::computeUsesForBytecodeIndexImpl):
+        (JSC::computeDefsForBytecodeIndexImpl):
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeIndex):
+        (JSC::computeDefsForBytecodeIndex):
+        * generator/DSL.rb:
+        * generator/Opcode.rb:
+        * generator/Options.rb:
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareAndJumpImpl):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsignedAndJumpImpl):
+        (JSC::JIT::emit_compareUnsigned):
+        (JSC::JIT::emit_compareUnsignedImpl):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        (JSC::JIT::emit_compareAndJumpSlowImpl):
+
+2019-12-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put JSArray in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=205049
+
+        Reviewed by Mark Lam.
+
+        Put JSArray in IsoSubspace.
+
+        * runtime/ArrayPrototype.h:
+        * runtime/JSArray.h:
+        (JSC::JSArray::subspaceFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * tools/JSDollarVM.cpp:
+
+2019-12-09  Mark Lam  <mark.lam@apple.com>
+
+        Fix the x86_64 probe so that we can get a full stack trace with libunwind and lldb.
+        https://bugs.webkit.org/show_bug.cgi?id=205050
+
+        Reviewed by Michael Saboff.
+
+        Before this patch, the stack trace from inside a probe function is cut off at ctiMasmProbeTrampoline:
+
+            (lldb) bt
+            * thread #1, queue = 'com.apple.main-thread', stop reason = EXC_BAD_ACCESS (code=1, address=0xbbadbeef)
+                ...
+                frame #4: 0x0000000100824607 JavaScriptCore`WTF::Function<void (JSC::Probe::Context&)>::operator(this=0x000000010b88bd00, in=0x00007ffeefbfd400)(JSC::Probe::Context&) const at Function.h:79:35
+                frame #5: 0x0000000100823996 JavaScriptCore`JSC::stdFunctionCallback(context=0x00007ffeefbfd400) at MacroAssembler.cpp:53:5
+                frame #6: 0x000000010082701e JavaScriptCore`JSC::Probe::executeProbe(state=0x00007ffeefbfd480) at ProbeContext.cpp:51:5
+                frame #7: 0x000000010082614b JavaScriptCore`ctiMasmProbeTrampoline + 299
+            (lldb) 
+
+        After this patch, we'll now get the full stack trace from inside the probe function:
+
+            (lldb) bt
+            * thread #1, queue = 'com.apple.main-thread', stop reason = EXC_BAD_ACCESS (code=1, address=0xbbadbeef)
+                ...
+                frame #4: 0x0000000100826d17 JavaScriptCore`WTF::Function<void (JSC::Probe::Context&)>::operator(this=0x0000000106b878f8, in=0x00007ffeefbfd400)(JSC::Probe::Context&) const at Function.h:79:35
+                frame #5: 0x0000000100826106 JavaScriptCore`JSC::stdFunctionCallback(context=0x00007ffeefbfd400) at MacroAssembler.cpp:53:5
+                frame #6: 0x000000010082986e JavaScriptCore`JSC::Probe::executeProbe(state=0x00007ffeefbfd480) at ProbeContext.cpp:51:5
+                frame #7: 0x00000001008289a2 JavaScriptCore`ctiMasmProbeTrampoline + 338
+                frame #8: 0x0000466db28025be
+                frame #9: 0x0000000100754ffc JavaScriptCore`llint_entry at LowLevelInterpreter.asm:994
+                frame #10: 0x0000000100738173 JavaScriptCore`vmEntryToJavaScript at LowLevelInterpreter64.asm:307
+                frame #11: 0x0000000101489307 JavaScriptCore`JSC::JITCode::execute(this=0x0000000106ba1520, vm=0x0000000106d00000, protoCallFrame=0x00007ffeefbfd9b8) at JITCodeInlines.h:38:38
+                frame #12: 0x0000000101488982 JavaScriptCore`JSC::Interpreter::executeProgram(this=0x0000000106bfd1f8, source=0x00007ffeefbff090, (null)=0x000000010d0e0000, thisObj=0x000000010d0e8020) at Interpreter.cpp:847:51
+                frame #13: 0x00000001017d1f9c JavaScriptCore`JSC::evaluate(globalObject=0x000000010d0e0000, source=0x00007ffeefbff090, thisValue=JSValue @ 0x00007ffeefbfef60, returnedException=0x00007ffeefbff0b0) at Completion.cpp:146:38
+                frame #14: 0x000000010005838f jsc`runWithOptions(globalObject=0x000000010d0e0000, options=0x00007ffeefbff620, success=0x00007ffeefbff48b) at jsc.cpp:2670:35
+                frame #15: 0x000000010002a0da jsc`jscmain(this=0x00007ffeefbff5a0, vm=0x0000000106d00000, globalObject=0x000000010d0e0000, success=0x00007ffeefbff48b)::$_6::operator()(JSC::VM&, GlobalObject*, bool&) const at jsc.cpp:3157:13
+                frame #16: 0x0000000100006eff jsc`int runJSC<jscmain(int, char**)::$_6>(options=0x00007ffeefbff620, isWorker=false, func=0x00007ffeefbff5a0)::$_6 const&) at jsc.cpp:3003:9
+                frame #17: 0x0000000100005988 jsc`jscmain(argc=10, argv=0x00007ffeefbff6c8) at jsc.cpp:3150:18
+                frame #18: 0x000000010000575e jsc`main(argc=10, argv=0x00007ffeefbff6c8) at jsc.cpp:2498:15
+                frame #19: 0x00007fff6cfc4da9 libdyld.dylib`start + 1
+                frame #20: 0x00007fff6cfc4da9 libdyld.dylib`start + 1
+            (lldb)
+
+        The difference is that the x86_64 ctiMasmProbeTrampoline now uses the standard
+        function prologue, and keeps %rbp pointing to trampoline function's semblance of
+        a frame that libunwind can understand while it calls the probe function.
+
+        * assembler/MacroAssemblerX86Common.cpp:
+
+2019-12-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put CustomGetterSetter and DOMAttributeGetterSetter in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=205044
+
+        Reviewed by Sam Weinig.
+
+        Put CustomGetterSetter and DOMAttributeGetterSetter in IsoSubspace.
+
+        * runtime/CustomGetterSetter.h:
+        (JSC::CustomGetterSetter::subspaceFor):
+        * runtime/DOMAttributeGetterSetter.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove NativeStdFunctionCell
+        https://bugs.webkit.org/show_bug.cgi?id=205045
+
+        Reviewed by Sam Weinig.
+
+        NativeStdFunctionCell is introduced because we were not able to make derived classes of JSFunction destructible.
+        But now we can do that by using IsoSubspace. And we already have IsoSubspace for JSNativeStdFunction. So we do
+        not need to have NativeStdFunctionCell cell. This patch removes it. And making JSNativeStdFunction destructible.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeAsyncCall):
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::JSNativeStdFunction):
+        (JSC::JSNativeStdFunction::visitChildren):
+        (JSC::JSNativeStdFunction::finishCreation):
+        (JSC::runStdFunction):
+        (JSC::JSNativeStdFunction::create):
+        * runtime/JSNativeStdFunction.h:
+        * runtime/NativeStdFunctionCell.cpp: Removed.
+        * runtime/NativeStdFunctionCell.h: Removed.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-12-09  Tadeu Zagallo  <tzagallo@apple.com>
+
+        [WebAssembly] Remove WasmValidate
+        https://bugs.webkit.org/show_bug.cgi?id=205037
+
+        Reviewed by Saam Barati.
+
+        It's currently only used when JSC_useWasmLLInt is false and it creates an additional instantiation
+        of Wasm::FunctionParser, which adds about 100kb to the binary size. This does not introduce any
+        behavior changes with the default options, but it means that we'll generate bytecode when calling
+        WebAssembly.validate/new WebAssembly.Module even when the WasmLLInt is disabled.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::didReceiveFunctionData):
+        * wasm/WasmEntryPlan.cpp:
+        * wasm/WasmLLIntPlan.cpp:
+        * wasm/WasmModule.cpp:
+        (JSC::Wasm::makeValidationResult):
+        (JSC::Wasm::makeValidationCallback):
+        (JSC::Wasm::Module::validateSync):
+        (JSC::Wasm::Module::validateAsync):
+        * wasm/WasmModule.h:
+        * wasm/WasmOMGForOSREntryPlan.cpp:
+        (JSC::Wasm::OMGForOSREntryPlan::work):
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+        * wasm/WasmPlan.cpp:
+        * wasm/WasmValidate.cpp: Removed.
+        * wasm/WasmValidate.h: Removed.
+
 2019-12-09  Tadeu Zagallo  <tzagallo@apple.com>
 
         REGRESSION(r253140): WebAssembly validation should check for unmatched else before calling addElse/addElseToUnreachable

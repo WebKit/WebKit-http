@@ -1,3 +1,588 @@
+2019-12-16  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION (r253312): imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html is super flaky
+        https://bugs.webkit.org/show_bug.cgi?id=205216
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-12-16  Truitt Savell  <tsavell@apple.com>
+
+        [ Catalina ] imported/w3c/web-platform-tests/css/css-images/multiple-position-color-stop-conic.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=204250
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-12-16  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [ Mojave+ WK2 ] inspector/canvas/requestShaderSource-webgpu.html is a flakey failure
+        https://bugs.webkit.org/show_bug.cgi?id=205301
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-12-16  Truitt Savell  <tsavell@apple.com>
+
+        [ Catalina ] webaudio/silence-after-playback.html is failing on Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=204247
+
+        Unreviewed test gardneing.
+
+        * platform/mac/TestExpectations:
+
+2019-12-16  Truitt Savell  <tsavell@apple.com>
+
+        [ Catalina ] editing/mac/selection/context-menu-select-editability.html is failing on Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=204246
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-12-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark animations/leak-document-with-css-animation.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=205299
+
+        * TestExpectations:
+
+2019-12-16  youenn fablet  <youenn@apple.com>
+
+        Consider top-level context whose origin is unique as insecure
+        https://bugs.webkit.org/show_bug.cgi?id=205111
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/top-level-unique-origin.https-expected.txt: Added.
+        * http/tests/security/top-level-unique-origin.https.html: Added.
+        * http/tests/security/top-level-unique-origin2.https-expected.txt: Added.
+        * http/tests/security/top-level-unique-origin2.https.html: Added.
+        * platform/win/TestExpectations: Skipping second test as timing out in windows.
+
+2019-12-16  youenn fablet  <youenn@apple.com>
+
+        fast/mediastream/change-tracks-media-stream-being-played.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=205277
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/change-tracks-media-stream-being-played.html:
+        Make sure unhandled promise rejection messages do not make the test flaky.
+
+2019-12-16  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html is a flaky failure (test harness timeout)
+        https://bugs.webkit.org/show_bug.cgi?id=200794
+        <rdar://problem/54367769>
+
+        Reviewed by Youenn Fablet.
+
+        Skip imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html on all platforms as it contains some subtests
+        that are not valid in any browser and which cause flaky timeouts.
+
+        To restore test coverage for the ready promise, import work-in-progress test from:
+        https://github.com/web-platform-tests/wpt/pull/20655 (except for the last subtest that is still flaky in Gecko and WebKit)
+
+        * TestExpectations:
+        * http/wpt/service-workers/ready.https.window-expected.txt: Added.
+        * http/wpt/service-workers/ready.https.window.html: Added.
+        * http/wpt/service-workers/ready.https.window.js: Added.
+        (test):
+        (promise_test.async.t.t.add_cleanup.async):
+        * http/wpt/service-workers/resources/empty-worker.js: Added.
+        * http/wpt/service-workers/resources/register-iframe.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-12-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout test imported/blink/fast/sub-pixel/negative-composited-offset.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=205273
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-12-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test js/integer-division-neg2tothe32-by-neg1.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205272
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-12-16  youenn fablet  <youenn@apple.com>
+
+        SecurityOrigin should be unique for null blob URLs that have been unregistered
+        https://bugs.webkit.org/show_bug.cgi?id=205169
+
+        Reviewed by Darin Adler.
+
+        * http/tests/security/blob-null-url-location-origin-expected.txt: Added.
+        * http/tests/security/blob-null-url-location-origin.html: Added.
+        * platform/win/TestExpectations: Skipping test as timing out in windows.
+
+2019-12-15  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Remove -webkit-marquee.
+        https://bugs.webkit.org/show_bug.cgi?id=117769
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-length-unit-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-length-unit.html:
+        * fast/css/getComputedStyle/getComputedStyle-zoom-and-background-size-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-zoom-and-background-size.html:
+        * fast/css/getComputedStyle/resources/property-names.js:
+        * fast/css/getPropertyValue-webkit-marquee-expected.txt: Removed.
+        * fast/css/getPropertyValue-webkit-marquee.html: Removed.
+        * fast/css/inherit-initial-shorthand-values-expected.txt:
+        * fast/css/inherit-initial-shorthand-values.html:
+        * fast/css/remove-shorthand-expected.txt:
+        * fast/css/remove-shorthand.html:
+        * legacy-animation-engine/fast/css/getComputedStyle/resources/property-names.js:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/gtk/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/wpe/svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2019-12-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Deny mach lookup access to "*.viewservice" in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=205240
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-expected.txt:
+        * fast/sandbox/ios/sandbox-mach-lookup.html:
+
+2019-12-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [watchOS] Apple.com is rendered in Times New Roman
+        https://bugs.webkit.org/show_bug.cgi?id=205179
+        <rdar://problem/57233936>
+
+        Reviewed by Tim Horton.
+
+        * fast/text/smiley-local-font-src-expected.html: Added.
+        * fast/text/smiley-local-font-src.html: Added.
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Implement PostMessageOptions for postMessage
+        https://bugs.webkit.org/show_bug.cgi?id=191028
+
+        Reviewed by Alex Christensen.
+
+        Update a few existing tests due to the behavior change.
+
+        * TestExpectations:
+        * fast/dom/Window/post-message-crash.html:
+        * fast/events/message-port-multi-expected.txt:
+        * fast/events/resources/message-port-multi.js:
+        * fast/workers/resources/worker-context-thread-multi-port.js:
+        * fast/workers/resources/worker-multi-port.js:
+        * fast/workers/worker-multi-port-expected.txt:
+        * http/tests/security/postMessage/target-origin-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+
+2019-12-13  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer][EME] Update expectation for media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse.html
+        https://bugs.webkit.org/show_bug.cgi?id=205215
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Update bug URL to new failure reason.
+
+2019-12-13  youenn fablet  <youenn@apple.com>
+
+        Add support for WebIDL set-like forEach
+        https://bugs.webkit.org/show_bug.cgi?id=204847
+
+        Reviewed by Chris Dumez.
+
+        * js/dom/maplike.html:
+        * js/dom/setlike.html:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: (r251677) imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/form-double-submit-3.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205164
+        <rdar://problem/57879042>
+
+        Reviewed by Alex Christensen.
+
+        Unskip test that should no longer be flaky.
+
+        * platform/mac/TestExpectations:
+
+2019-12-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Deny mach lookup access to "*.apple-extension-service" in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=205134
+        <rdar://problem/56984257>
+
+        Reviewed by Brent Fulgham.
+
+        Add test for mach lookup access to "*.apple-extension-service".
+
+        * TestExpectations:
+        * fast/sandbox: Added.
+        * fast/sandbox/ios: Added.
+        * fast/sandbox/ios/sandbox-mach-lookup-expected.txt: Added.
+        * fast/sandbox/ios/sandbox-mach-lookup.html: Added.
+        * platform/ios-device-wk2/TestExpectations:
+
+2019-12-13  youenn fablet  <youenn@apple.com>
+
+        Help debugging flaky http/tests/cache-storage/page-cache-domcachestorage-pending-promise.html
+        https://bugs.webkit.org/show_bug.cgi?id=205209
+
+        Reviewed by Chris Dumez.
+
+        In case of error, query the cache representation.
+        This will help debugging the flaky tests and ensure that no pending activity is happening in error cases.
+
+        * http/tests/cache-storage/page-cache-domcache-pending-promise.html:
+        * http/tests/cache-storage/page-cache-domcachestorage-pending-promise.html:
+
+2019-12-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Clipboard API] Sanitize HTML and image data written using clipboard.write
+        https://bugs.webkit.org/show_bug.cgi?id=205188
+        <rdar://problem/57612968>
+
+        Reviewed by Darin Adler.
+
+        * editing/async-clipboard/sanitize-when-reading-markup-expected.txt: Added.
+        * editing/async-clipboard/sanitize-when-reading-markup.html: Added.
+
+        Add a test to verify that markup is sanitized when copying and pasting across different security origins.
+
+        * editing/async-clipboard/sanitize-when-writing-image-expected.txt: Added.
+        * editing/async-clipboard/sanitize-when-writing-image.html: Added.
+
+        Add a test to verify that "image/png" data is sanitized, and one or more written image data that cannot be
+        decoded results in the promise being rejected.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Behavior of [[GetOwnProperty]] for cross-origin windows is not spec-compliant
+        https://bugs.webkit.org/show_bug.cgi?id=205184
+
+        Reviewed by Darin Adler.
+
+        * http/tests/security/document-all-expected.txt:
+        The test is accessing the "alert" property on a cross-origin window. We used to throw a SecurityError,
+        but we now return a Window object since there is a Window whose name is "alert". The test still passes
+        as it is not able to call alert() cross-origin. 
+
+        * http/tests/security/xss-DENIED-window-name-navigator-expected.txt:
+        * http/tests/security/xss-DENIED-window-name-navigator.html:
+        Update test to use console.log() to print the result instead of alert() since alert() is not allowed
+        in a sandbox iframe. I updated the expectation so that top.navigator returns the window with the
+        name "navigator" instead of undefined, as per the behavior change in this patch. I have verified that
+        our behavior on this test is consistent with Firefox and Chrome.
+
+2019-12-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Fix some errors on the TestExpectations files.
+
+        Unreviewed gardening.
+
+        * TestExpectations: Add missing expectation.
+        * platform/gtk/TestExpectations: Remove repeated entries
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, address flakiness of fast/scrolling/ios/scroll-event-from-scrollTo.html
+
+        * fast/scrolling/ios/scroll-event-from-scrollTo.html:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline a couple of iOS swiping tests after r253450
+
+        * platform/ios/swipe/main-frame-pinning-requirement-expected.txt:
+        * platform/ios/swipe/pushState-cached-back-swipe-expected.txt:
+
+2019-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip several SharedWorkers tests as we do not support this feature.
+
+        * TestExpectations:
+
+2019-12-13  Ali Juma  <ajuma@chromium.org>
+
+        Crash in RenderLayerBacking::updateCompositedBounds from using cleared WeakPtr from m_backingSharingLayers
+        https://bugs.webkit.org/show_bug.cgi?id=204648
+
+        Reviewed by Simon Fraser.
+
+        * compositing/shared-backing/move-sharing-child-expected.txt: Added.
+        * compositing/shared-backing/move-sharing-child.html: Added.
+
+2019-12-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Several tests crashing after r247898 "Reorganize UIScriptController into platform-specific subclasses"
+        https://bugs.webkit.org/show_bug.cgi?id=200534
+
+        Reviewed by Alejandro G. Castro.
+
+        Update expectations.
+
+        * platform/gtk/TestExpectations:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync service-workers web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205181
+
+        Reviewed by Alex Christensen.
+
+        * tests-options.json:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync workers web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205180
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync webmessaging web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205178
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r253394) swipe/basic-cached-back-swipe.html is timing out on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=205173
+
+        Reviewed by Tim Horton.
+
+        * platform/ios/swipe/basic-cached-back-swipe-expected.txt:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, try to address flakiness of http/tests/cache-storage/page-cache-domcache-pending-promise.html on EWS
+
+        * http/tests/cache-storage/page-cache-domcache-pending-promise.html:
+
+2019-12-12  Chris Dumez  <cdumez@apple.com>
+
+        window.AudioContext / window.OfflineAudioContext should not be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=205163
+
+        Reviewed by Youenn Fablet.
+
+        * resources/testharnessreport.js:
+
+2019-12-12  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [Mac wk1] imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html is a flakey failure
+        https://bugs.webkit.org/show_bug.cgi?id=205168
+
+        Unreviewed test gardneing
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-12-12  Patrick Griffis  <pgriffis@igalia.com>
+
+        [SOUP] Use new API for strict secure cookies
+        https://bugs.webkit.org/show_bug.cgi?id=169356
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expected failures for secure cookie tests
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-12-12  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: (r251677) imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/form-double-submit-3.html is a flakey failure
+        https://bugs.webkit.org/show_bug.cgi?id=205164
+
+        Unreviewed test gardening
+
+        * platform/mac/TestExpectations:
+
+2019-12-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed test gardening for WinCairo
+
+        * platform/wincairo/TestExpectations: Unskip fast/text.
+
+2019-12-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed test gardening for WinCairo
+
+        * platform/wincairo/TestExpectations: Skip editing/async-clipboard.
+
+2019-12-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement DisplayListRecorder::Recorder::getCTM and DisplayListRecorder::Recorder::setCTM
+        https://bugs.webkit.org/show_bug.cgi?id=205139
+
+        Reviewed by Simon Fraser.
+
+        * displaylists/extent-includes-transforms-expected.txt:
+        * platform/mac-wk1/displaylists/extent-includes-transforms-expected.txt:
+
+2019-12-11  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] Cross-origin checks happen too late for overloaded methods
+        https://bugs.webkit.org/show_bug.cgi?id=205092
+
+        Reviewed by Sam Weinig.
+
+        Extend layout test coverage.
+
+        * http/tests/security/cross-origin-window-property-access-expected.txt:
+        * http/tests/security/cross-origin-window-property-access.html:
+
+2019-12-11  youenn fablet  <youenn@apple.com>
+
+        (r252889) webrtc/peerconnection-page-cache.html is crashing on iOS Debug
+        https://bugs.webkit.org/show_bug.cgi?id=205017
+        <rdar://problem/57757026>
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/TestExpectations:
+
+2019-12-11  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK gardening after r253360.
+
+        * platform/gtk/TestExpectations:
+
+2019-12-11  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][MediaStream] Fix GStreamer capturer mock
+        https://bugs.webkit.org/show_bug.cgi?id=205066
+
+        - Presets where wrongly generated based on GStreamer capabilities
+        - Audio capturer was not taking into account echo cancellation
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Updated expectations as required
+        * platform/wpe/TestExpectations: Updated expectations as required
+
+2019-12-10  Peng Liu  <peng.liu6@apple.com>
+
+        Create a TestExpectations file for the GPU process related work
+        https://bugs.webkit.org/show_bug.cgi?id=205088
+
+        Reviewed by Tim Horton.
+
+        * gpu-process/TestExpectations: Added.
+
+2019-12-10  youenn fablet  <youenn@apple.com>
+
+        Mark some WPT test folders as DumpJSConsoleLogInStdErr
+        https://bugs.webkit.org/show_bug.cgi?id=204793
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+        Remove no longer needed DumpJSConsoleLogInStdErr expectations.
+
+2019-12-10  Antti Koivisto  <antti@apple.com>
+
+        Remove hack that makes <br> boxes 0-height in quirks mode
+        https://bugs.webkit.org/show_bug.cgi?id=205004
+
+        Reviewed by Zalan Bujtas.
+
+        A few changes due to aligning simple line path with complex, rounding, and some vertical text details.
+
+        * fast/multicol/pagination-h-horizontal-bt-expected.txt:
+        * fast/multicol/pagination-v-horizontal-bt-expected.txt:
+        * fast/ruby/position-after-expected.txt:
+        * platform/ios/fast/writing-mode/border-styles-vertical-lr-expected.txt:
+        * platform/ios/fast/writing-mode/english-bt-text-expected.txt:
+        * platform/ios/tables/mozilla_expected_failures/bugs/bug56024-expected.txt:
+        * platform/mac/fast/text/international/bidi-layout-across-linebreak-expected.txt:
+        * platform/mac/fast/text/svg-font-face-with-kerning-expected.txt:
+        * platform/mac/fast/writing-mode/border-styles-vertical-lr-expected.txt:
+        * platform/mac/fast/writing-mode/english-bt-text-expected.txt:
+        * platform/mac/fast/writing-mode/text-orientation-basic-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug56024-expected.txt:
+        * platform/win/fast/text/international/bidi-layout-across-linebreak-expected.txt:
+        * platform/win/fast/writing-mode/english-bt-text-expected.txt:
+        * platform/win/fast/writing-mode/text-orientation-basic-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug56024-expected.txt:
+        
+2019-12-09  Patrick Griffis  <pgriffis@igalia.com>
+
+        Import secure cookie tests from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=204193
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Mark newly imported test as failing.
+        Pending fix for WPE/GTK in webkit.org/b/169356
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies-expected.txt: Added.
+
+2019-12-09  Megan Gardner  <megan_gardner@apple.com>
+
+        Fill HighlightRangeGroup and HighlightMap with values from JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=204934
+
+        Reviewed by Simon Fraser.
+
+        * highlight/highlight-map-and-group-expected.txt: Added.
+        * highlight/highlight-map-and-group.html: Added.
+
+2019-12-09  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r253299.
+
+        Casued 30+ imported/ test failures on Mac wk2
+
+        Reverted changeset:
+
+        "Throttling requestAnimationFrame should be controlled by
+        RenderingUpdateScheduler"
+        https://bugs.webkit.org/show_bug.cgi?id=204713
+        https://trac.webkit.org/changeset/253299
+
 2019-12-09  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Finish encoding/decoding support for DisplayList::SetState
@@ -38,6 +623,19 @@
         * http/wpt/service-workers/file-upload-expected.txt: Added.
         * http/wpt/service-workers/file-upload-worker.js: Added.
         * http/wpt/service-workers/file-upload.html: Added.
+
+2019-12-09  Simon Fraser  <simon.fraser@apple.com>
+
+        compositing/video/video-border-radius-clipping.html is a flaky Image Failure
+        https://bugs.webkit.org/show_bug.cgi?id=204951
+        rdar://problem/57703078
+
+        Unreviewed test gardening. Make the test seek so we have a higher chance
+        of getting a video frame. It's apparently impossible to know when we have
+        a frame for ref testing.
+
+        * compositing/video/video-border-radius-clipping-expected.html:
+        * compositing/video/video-border-radius-clipping.html:
 
 2019-12-09  Truitt Savell  <tsavell@apple.com>
 

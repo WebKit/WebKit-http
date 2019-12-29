@@ -1,10 +1,32 @@
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: line 287: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: line 287: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://localhost:8800". The frame being accessed set "document.domain" to "localhost", but the frame requesting access did not. Both must set "document.domain" to the same value to allow access.
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://localhost:8800". The frame being accessed set "document.domain" to "localhost", but the frame requesting access did not. Both must set "document.domain" to the same value to allow access.
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://localhost:8800". The frame being accessed set "document.domain" to "localhost", but the frame requesting access did not. Both must set "document.domain" to the same value to allow access.
+CONSOLE MESSAGE: line 287: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: line 302: Blocked a frame with origin "http://localhost:8800" from accessing a frame with origin "http://127.0.0.1:8800". Protocols, domains, and ports must match.
+CONSOLE MESSAGE: Unable to post message to http://does-not.exist. Recipient has origin http://127.0.0.1:8800.
+
+CONSOLE MESSAGE: Unable to post message to http://localhost:8800. Recipient has origin http://127.0.0.1:8800.
+
+CONSOLE MESSAGE: Unable to post message to http://does-not.exist. Recipient has origin http://localhost:8800.
+
+CONSOLE MESSAGE: Unable to post message to http://does-not.exist. Recipient has origin http://127.0.0.1:8800.
+
+CONSOLE MESSAGE: Unable to post message to http://localhost:8800. Recipient has origin http://127.0.0.1:8800.
+
 
 PASS Basic sanity-checking (cross-origin) 
 PASS Basic sanity-checking (same-origin + document.domain) 
 PASS Basic sanity-checking (cross-site) 
-FAIL Only whitelisted properties are accessible cross-origin (cross-origin) assert_throws: Should throw when writing to toString on Location function "function () { win.location[prop] = undefined; }" did not throw
-FAIL Only whitelisted properties are accessible cross-origin (same-origin + document.domain) assert_throws: Should throw when writing to toString on Location function "function () { win.location[prop] = undefined; }" did not throw
-FAIL Only whitelisted properties are accessible cross-origin (cross-site) assert_throws: Should throw when writing to toString on Location function "function () { win.location[prop] = undefined; }" did not throw
+PASS Only whitelisted properties are accessible cross-origin (cross-origin) 
+PASS Only whitelisted properties are accessible cross-origin (same-origin + document.domain) 
+PASS Only whitelisted properties are accessible cross-origin (cross-site) 
+PASS Only whitelisted properties are usable as cross-origin this objects (cross-origin) 
+PASS Only whitelisted properties are usable as cross-origin this objects (same-origin + document.domain) 
+PASS Only whitelisted properties are usable as cross-origin this objects (cross-site) 
 PASS [[GetPrototypeOf]] should return null (cross-origin) 
 PASS [[GetPrototypeOf]] should return null (same-origin + document.domain) 
 PASS [[GetPrototypeOf]] should return null (cross-site) 
@@ -50,9 +72,9 @@ PASS [[GetOwnProperty]] - Property descriptors for cross-origin properties shoul
 PASS [[GetOwnProperty]] - Subframe named 'then' should shadow the default 'then' value (cross-origin) 
 PASS [[GetOwnProperty]] - Subframe named 'then' should shadow the default 'then' value (same-origin + document.domain) 
 PASS [[GetOwnProperty]] - Subframe named 'then' should shadow the default 'then' value (cross-site) 
-FAIL [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (cross-origin) Blocked a frame with origin "http://localhost:8800" from accessing a cross-origin frame. Protocols, domains, and ports must match.
-FAIL [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (same-origin + document.domain) Blocked a frame with origin "http://localhost:8800" from accessing a cross-origin frame. Protocols, domains, and ports must match.
-FAIL [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (cross-site) Blocked a frame with origin "http://localhost:8800" from accessing a cross-origin frame. Protocols, domains, and ports must match.
+PASS [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (cross-origin) 
+PASS [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (same-origin + document.domain) 
+PASS [[GetOwnProperty]] - Subframes should be visible cross-origin only if their names don't match the names of cross-origin-exposed IDL properties (cross-site) 
 PASS [[GetOwnProperty]] - Should be able to get a property descriptor for an indexed property only if it corresponds to a child window. (cross-origin) 
 PASS [[GetOwnProperty]] - Should be able to get a property descriptor for an indexed property only if it corresponds to a child window. (same-origin + document.domain) 
 PASS [[GetOwnProperty]] - Should be able to get a property descriptor for an indexed property only if it corresponds to a child window. (cross-site) 
@@ -98,22 +120,16 @@ PASS Same-origin observers get different accessors for cross-origin Location (cr
 PASS {}.toString.call() does the right thing on cross-origin objects (cross-origin) 
 PASS {}.toString.call() does the right thing on cross-origin objects (same-origin + document.domain) 
 PASS {}.toString.call() does the right thing on cross-origin objects (cross-site) 
-PASS Cross-origin behavior of Window and Location 
-PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (cross-origin). 
-PASS Cross-origin behavior of Window and Location 1 
-PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (same-origin + document.domain). 
-PASS Cross-origin behavior of Window and Location 2 
-PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (cross-site). 
-PASS Cross-origin behavior of Window and Location 3 
-PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (cross-origin). 
-PASS Cross-origin behavior of Window and Location 4 
-PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (same-origin + document.domain). 
-PASS Cross-origin behavior of Window and Location 5 
-PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (cross-site). 
-PASS Cross-origin behavior of Window and Location 6 
-PASS Resolving a promise with a cross-origin location should work (cross-origin). 
-PASS Cross-origin behavior of Window and Location 7 
-PASS Resolving a promise with a cross-origin location should work (same-origin + document.domain). 
-PASS Cross-origin behavior of Window and Location 8 
-PASS Resolving a promise with a cross-origin location should work (cross-site). 
+PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (cross-origin) 
+PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (same-origin + document.domain) 
+PASS Resolving a promise with a cross-origin window without a 'then' subframe should work (cross-site) 
+PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (cross-origin) 
+PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (same-origin + document.domain) 
+PASS Resolving a promise with a cross-origin window with a 'then' subframe should work (cross-site) 
+PASS Resolving a promise with a cross-origin location should work (cross-origin) 
+PASS Resolving a promise with a cross-origin location should work (same-origin + document.domain) 
+PASS Resolving a promise with a cross-origin location should work (cross-site) 
+PASS LenientThis behavior (cross-origin) 
+PASS LenientThis behavior (same-origin + document.domain) 
+PASS LenientThis behavior (cross-site) 
       

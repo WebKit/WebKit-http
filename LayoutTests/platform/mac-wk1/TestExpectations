@@ -72,6 +72,7 @@ editing/async-clipboard/clipboard-change-data-while-reading.html [ Skip ]
 editing/async-clipboard/clipboard-do-not-read-text-from-platform-if-text-changes.html [ Skip ]
 editing/async-clipboard/clipboard-read-text-from-platform.html [ Skip ]
 editing/async-clipboard/clipboard-read-text-same-origin.html [ Skip ]
+editing/async-clipboard/sanitize-when-reading-markup.html [ Skip ]
 
 imported/w3c/web-platform-tests/websockets/Close-1000-reason.any.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/Close-1000-reason.any.worker.html [ Pass Failure ]
@@ -394,6 +395,10 @@ webkit.org/b/152178 fast/replaced/replaced-breaking.html [ Failure ]
 # DRT can open way more files than the DatabaseProcess with WebKitTestRunner, and the number is reasonable.
 # So we shouldn't bother with this test in WebKit1.
 storage/indexeddb/modern/exceed-open-file-limit.html
+
+# Only fails in WK1
+imported/w3c/web-platform-tests/cookies/secure/set-from-wss.https.sub.html [ Failure ]
+imported/w3c/web-platform-tests/cookies/secure/set-from-ws.sub.html [ Failure ]
 
 ### END OF (2) Failures without bug reports
 ########################################
@@ -826,3 +831,5 @@ webkit.org/b/203517 imported/w3c/web-platform-tests/css/css-sizing/dynamic-avail
 
 # Stale-while-revalidate is not supported on WK1
 imported/w3c/web-platform-tests/fetch/stale-while-revalidate [ Skip ]
+
+webkit.org/b/205168 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html [ Pass Failure ]
