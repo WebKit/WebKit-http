@@ -25,16 +25,16 @@
 
 #pragma once
 
-#import "UIScriptController.h"
+#import "UIScriptControllerCocoa.h"
 
 #if PLATFORM(MAC)
 
 namespace WTR {
 
-class UIScriptControllerMac : public UIScriptController {
+class UIScriptControllerMac : public UIScriptControllerCocoa {
 public:
     explicit UIScriptControllerMac(UIScriptContext& context)
-        : UIScriptController(context)
+        : UIScriptControllerCocoa(context)
     {
     }
 

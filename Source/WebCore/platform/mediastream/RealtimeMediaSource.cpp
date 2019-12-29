@@ -90,18 +90,23 @@ void RealtimeMediaSource::setInterrupted(bool interrupted, bool pageMuted)
 
 void RealtimeMediaSource::setMuted(bool muted)
 {
-    ALWAYS_LOG_IF(m_logger, LOGIDENTIFIER, muted);
-
-    if (muted)
-        stop();
-    else {
-        if (interrupted())
-            return;
-
-        start();
+    if (!muted && interrupted()) {
+        ALWAYS_LOG_IF(m_logger, LOGIDENTIFIER, "ignoring unmute because of interruption");
+        return;
     }
 
-    notifyMutedChange(muted);
+    ALWAYS_LOG_IF(m_logger, LOGIDENTIFIER, muted);
+
+    // Changed m_muted before calling start/stop so muted() will reflect the correct state.
+    bool changed = m_muted != muted;
+    m_muted = muted;
+    if (muted)
+        stop();
+    else
+        start();
+
+    if (changed)
+        notifyMutedObservers();
 }
 
 void RealtimeMediaSource::notifyMutedChange(bool muted)

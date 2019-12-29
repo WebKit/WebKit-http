@@ -475,6 +475,25 @@ public:
         m_assembler.subu(dest, MIPSRegisters::zero, src);
     }
 
+    void or16(TrustedImm32 imm, AbsoluteAddress dest)
+    {
+        if (!imm.m_value && !m_fixedWidth)
+            return;
+
+        if (m_fixedWidth) {
+            // TODO: Swap dataTempRegister and immTempRegister usage
+            load16(dest.m_ptr, immTempRegister);
+            or32(imm, immTempRegister);
+            store16(immTempRegister, dest.m_ptr);
+        } else {
+            uintptr_t adr = reinterpret_cast<uintptr_t>(dest.m_ptr);
+            m_assembler.lui(addrTempRegister, (adr + 0x8000) >> 16);
+            m_assembler.lhu(immTempRegister, addrTempRegister, adr & 0xffff);
+            or32(imm, immTempRegister);
+            m_assembler.sh(immTempRegister, addrTempRegister, adr & 0xffff);
+        }
+    }
+
     void or32(RegisterID src, RegisterID dest)
     {
         m_assembler.orInsn(dest, dest, src);
@@ -1172,6 +1191,22 @@ public:
         return dataLabel;
     }
 
+    void load16(const void* address, RegisterID dest)
+    {
+        if (m_fixedWidth) {
+            /*
+                li  addrTemp, address
+                lhu  dest, 0(addrTemp)
+            */
+            move(TrustedImmPtr(address), addrTempRegister);
+            m_assembler.lhu(dest, addrTempRegister, 0);
+        } else {
+            uintptr_t adr = reinterpret_cast<uintptr_t>(address);
+            m_assembler.lui(addrTempRegister, (adr + 0x8000) >> 16);
+            m_assembler.lhu(dest, addrTempRegister, adr & 0xffff);
+        }
+    }
+
     /* Need to use zero-extened load half-word for load16.  */
     void load16(ImplicitAddress address, RegisterID dest)
     {
@@ -1337,6 +1372,22 @@ public:
                 move(imm8, immTempRegister);
                 m_assembler.sb(immTempRegister, addrTempRegister, address.offset);
             }
+        }
+    }
+
+    void store16(RegisterID src, const void* address)
+    {
+        if (m_fixedWidth) {
+            /*
+                li  addrTemp, address
+                sh  src, 0(addrTemp)
+            */
+            move(TrustedImmPtr(address), addrTempRegister);
+            m_assembler.sh(src, addrTempRegister, 0);
+        } else {
+            uintptr_t adr = reinterpret_cast<uintptr_t>(address);
+            m_assembler.lui(addrTempRegister, (adr + 0x8000) >> 16);
+            m_assembler.sh(src, addrTempRegister, adr & 0xffff);
         }
     }
 

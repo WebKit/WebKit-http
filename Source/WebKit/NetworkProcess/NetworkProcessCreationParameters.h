@@ -68,8 +68,12 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
     uint32_t uiProcessSDKVersion { 0 };
+#if PLATFORM(IOS_FAMILY)
+    String ctDataConnectionServiceType;
+#endif
     RetainPtr<CFDataRef> networkATSContext;
     bool storageAccessAPIEnabled;
+    bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
     WebsiteDataStoreParameters defaultDataStoreParameters;

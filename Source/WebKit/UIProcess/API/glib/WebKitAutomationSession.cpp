@@ -90,10 +90,11 @@ private:
 #endif
     }
 
-    void requestNewPageWithOptions(WebAutomationSession&, API::AutomationSessionBrowsingContextOptions, CompletionHandler<void(WebPageProxy*)>&& completionHandler) override
+    void requestNewPageWithOptions(WebAutomationSession&, API::AutomationSessionBrowsingContextOptions options, CompletionHandler<void(WebPageProxy*)>&& completionHandler) override
     {
         WebKitWebView* webView = nullptr;
-        g_signal_emit(m_session, signals[CREATE_WEB_VIEW], 0, &webView);
+        GQuark detail = options & API::AutomationSessionBrowsingContextOptionsPreferNewTab ? g_quark_from_string("tab") : g_quark_from_string("window");
+        g_signal_emit(m_session, signals[CREATE_WEB_VIEW], detail, &webView);
         if (!webView || !webkit_web_view_is_controlled_by_automation(webView))
             completionHandler(nullptr);
         else
@@ -187,6 +188,22 @@ private:
         return WTF::nullopt;
     }
 
+    API::AutomationSessionClient::BrowsingContextPresentation currentPresentationOfPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return API::AutomationSessionClient::BrowsingContextPresentation::Window;
+
+        switch (webkit_web_view_get_automation_presentation_type(webView)) {
+        case WEBKIT_AUTOMATION_BROWSING_CONTEXT_PRESENTATION_WINDOW:
+            return API::AutomationSessionClient::BrowsingContextPresentation::Window;
+        case WEBKIT_AUTOMATION_BROWSING_CONTEXT_PRESENTATION_TAB:
+            return API::AutomationSessionClient::BrowsingContextPresentation::Tab;
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+
     WebKitAutomationSession* m_session;
 };
 
@@ -273,8 +290,15 @@ static void webkit_automation_session_class_init(WebKitAutomationSessionClass* s
      * This signal is emitted when the automation client requests a new
      * browsing context to interact with it. The callback handler should
      * return a #WebKitWebView created with #WebKitWebView:is-controlled-by-automation
-     * construct property enabled. The returned #WebKitWebView could be an existing
-     * web view or a new one created and added to a new tab or window.
+     * construct property enabled and #WebKitWebView:automation-presentation-type construct
+     * property set if needed.
+     *
+     * If the signal is emitted with "tab" detail, the returned #WebKitWebView should be
+     * a new web view added to a new tab of the current browsing context window.
+     * If the signal is emitted with "window" detail, the returned #WebKitWebView should be
+     * a new web view added to a new window.
+     * When creating a new web view and there's an active browsing context, the new window
+     * or tab shouldn't be focused.
      *
      * Returns: (transfer none): a #WebKitWebView widget.
      *
@@ -283,7 +307,7 @@ static void webkit_automation_session_class_init(WebKitAutomationSessionClass* s
     signals[CREATE_WEB_VIEW] = g_signal_new(
         "create-web-view",
         G_TYPE_FROM_CLASS(sessionClass),
-        G_SIGNAL_RUN_LAST,
+        static_cast<GSignalFlags>(G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED),
         0,
         nullptr, nullptr,
         g_cclosure_marshal_generic,
@@ -292,6 +316,35 @@ static void webkit_automation_session_class_init(WebKitAutomationSessionClass* s
 }
 
 #if ENABLE(REMOTE_INSPECTOR)
+static WebKitNetworkProxyMode parseProxyCapabilities(const Inspector::RemoteInspector::Client::SessionCapabilities::Proxy& proxy, WebKitNetworkProxySettings** settings)
+{
+    if (proxy.type == "system")
+        return WEBKIT_NETWORK_PROXY_MODE_DEFAULT;
+
+    if (proxy.type == "direct")
+        return WEBKIT_NETWORK_PROXY_MODE_NO_PROXY;
+
+    if (!proxy.ignoreAddressList.isEmpty()) {
+        GUniquePtr<char*> ignoreAddressList(static_cast<char**>(g_new0(char*, proxy.ignoreAddressList.size() + 1)));
+        unsigned i = 0;
+        for (const auto& ignoreAddress : proxy.ignoreAddressList)
+            ignoreAddressList.get()[i++] = g_strdup(ignoreAddress.utf8().data());
+        *settings = webkit_network_proxy_settings_new(nullptr, ignoreAddressList.get());
+    } else
+        *settings = webkit_network_proxy_settings_new(nullptr, nullptr);
+
+    if (proxy.ftpURL)
+        webkit_network_proxy_settings_add_proxy_for_scheme(*settings, "ftp", proxy.ftpURL->utf8().data());
+    if (proxy.httpURL)
+        webkit_network_proxy_settings_add_proxy_for_scheme(*settings, "http", proxy.httpURL->utf8().data());
+    if (proxy.httpsURL)
+        webkit_network_proxy_settings_add_proxy_for_scheme(*settings, "https", proxy.httpsURL->utf8().data());
+    if (proxy.socksURL)
+        webkit_network_proxy_settings_add_proxy_for_scheme(*settings, "socks", proxy.socksURL->utf8().data());
+
+    return WEBKIT_NETWORK_PROXY_MODE_CUSTOM;
+}
+
 WebKitAutomationSession* webkitAutomationSessionCreate(WebKitWebContext* webContext, const char* sessionID, const Inspector::RemoteInspector::Client::SessionCapabilities& capabilities)
 {
     auto* session = WEBKIT_AUTOMATION_SESSION(g_object_new(WEBKIT_TYPE_AUTOMATION_SESSION, "id", sessionID, nullptr));
@@ -302,6 +355,13 @@ WebKitAutomationSession* webkitAutomationSessionCreate(WebKitWebContext* webCont
         GRefPtr<GTlsCertificate> tlsCertificate = adoptGRef(g_tls_certificate_new_from_file(certificate.second.utf8().data(), nullptr));
         if (tlsCertificate)
             webkit_web_context_allow_tls_certificate_for_host(webContext, tlsCertificate.get(), certificate.first.utf8().data());
+    }
+    if (capabilities.proxy) {
+        WebKitNetworkProxySettings* proxySettings = nullptr;
+        auto proxyMode = parseProxyCapabilities(*capabilities.proxy, &proxySettings);
+        webkit_web_context_set_network_proxy_settings(webContext, proxyMode, proxySettings);
+        if (proxySettings)
+            webkit_network_proxy_settings_free(proxySettings);
     }
     return session;
 }

@@ -1,3 +1,80 @@
+2019-11-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: duration can be undefined in pause actions
+        https://bugs.webkit.org/show_bug.cgi?id=204152
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Make duration optional in pause actions.
+
+        Fixes: imported/w3c/webdriver/tests/perform_actions/validity.py::test_pause_without_duration[none]
+               imported/w3c/webdriver/tests/perform_actions/validity.py::test_pause_without_duration[key]
+               imported/w3c/webdriver/tests/perform_actions/validity.py::test_pause_without_duration[pointer]
+
+        * Session.cpp:
+        (WebDriver::Session::performActions):
+        * WebDriverService.cpp:
+        (WebDriver::processPauseAction):
+
+2019-11-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: check the frameID parameter before running switch to frame command
+        https://bugs.webkit.org/show_bug.cgi?id=204150
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        We should check it's either null, a number (unsigned sort) or an object referencing a web element.
+
+        Fixes: imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_invalid_types[foo]
+               imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_invalid_types[True]
+               imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_invalid_types[value2]
+               imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_invalid_types[value3]
+               imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_out_of_bounds[-1]
+               imported/w3c/webdriver/tests/switch_to_frame/switch.py::test_frame_id_out_of_bounds[65536]
+
+        * Session.cpp:
+        (WebDriver::Session::switchToFrame): Remove the validation here. Also remove the case of being a frame name,
+        since that's not in the spec.
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::switchToFrame): Check frameID type before calling Session::switchToFrame().
+
+2019-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: implement new window command
+        https://bugs.webkit.org/show_bug.cgi?id=203994
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Session.cpp:
+        (WebDriver::Session::newWindow):
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::newWindow):
+        * WebDriverService.h:
+
+2019-11-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement proxy support
+        https://bugs.webkit.org/show_bug.cgi?id=180408
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Handle proxy object in capabilities.
+
+        * Capabilities.h: Add Proxy struct.
+        * WebDriverService.cpp:
+        (WebDriver::deserializeProxy): Deserialize the proxy from capabilities.
+        (WebDriver::WebDriverService::parseCapabilities const): Get the deserialized proxy.
+        (WebDriver::WebDriverService::validatedCapabilities const): Ensure proxy object is valid.
+        (WebDriver::WebDriverService::matchCapabilities const): Check proxy type is supported by the platform.
+        (WebDriver::WebDriverService::createSession): Only set an empty proxy object in capabilities if we don't have a
+        deserialized proxy.
+        * WebDriverService.h:
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::buildSessionCapabilities const): Send the proxy settings to the browser.
+        * glib/WebDriverServiceGLib.cpp:
+        (WebDriver::WebDriverService::platformSupportProxyType const): Return false if proxy type is "pac".
+
 2019-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: implement get page source command

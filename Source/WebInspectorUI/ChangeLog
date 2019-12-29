@@ -1,3 +1,144 @@
+2019-11-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Styles: support multiline CSS property values
+        https://bugs.webkit.org/show_bug.cgi?id=203754
+        <rdar://problem/56819044>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.update):
+        (WI.CSSProperty.prototype._updateStyleText):
+        When the property is updated from the backend, find the first newline inside the value and
+        preserve the indent string so it can be re-added when updating the backend.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .value):
+        (.spreadsheet-style-declaration-editor .property:not(.disabled).has-newline .value): Added.
+        (.spreadsheet-style-declaration-editor .property:not(.disabled).has-newline .semicolon): Added.
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldAllowsNewlines): Added.
+        (WI.SpreadsheetStyleProperty.prototype._handleValueChange):
+        Support shift-enter when editing a CSS property's value to insert a newline.
+
+2019-11-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: move the "Local Override..." creation context menu item from the Breakpoints section options menu to the Create Resource menu
+        https://bugs.webkit.org/show_bug.cgi?id=204178
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissLocalOverridePopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._addLocalOverride):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateBreakpointContextMenu):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateResourceContextMenu):
+        If the Local Overrides section isn't already visible, show it. Use the Local Overrides title
+        as the anchor for the configuration popover. If there are no existing Local Overrides, show
+        placeholder "No Overrides" text temporarily.
+
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover.prototype._showSuggestionsView):
+        * UserInterface/Views/LocalResourceOverridePopover.js:
+        (WI.LocalResourceOverridePopover.prototype._presentOverTargetElement):
+        * UserInterface/Views/URLBreakpointPopover.js:
+        (WI.URLBreakpointPopover.prototype._presentOverTargetElement):
+        Add some padding around the popover's anchor so the arrow doesn't overlap it.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-11-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Local Overrides: add context menu item to reveal the local override when a resource is loaded from it
+        https://bugs.webkit.org/show_bug.cgi?id=204206
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-11-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: "Style Sheet" appears twice in the resource type scope bar
+        https://bugs.webkit.org/show_bug.cgi?id=204172
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+        (WI.Resource.prototype.updateForResponse):
+        Remove compatibility `WI.Resource.Type.Stylesheet` (which previously existed since the
+        protocol values for `Page.ResourceType` match the keys) and instead add compatibility cases
+        at the necessary callsites.
+
+2019-11-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: "aqua" and "fuchsia" aren't detected as colors
+        https://bugs.webkit.org/show_bug.cgi?id=204085
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Color.js:
+
+2019-11-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: Invalid type of argument 'eventName' for command 'DOMDebugger.setEventBreakpoint' call. It must be 'string' but it is 'object'.
+        https://bugs.webkit.org/show_bug.cgi?id=204176
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover.prototype.dismiss):
+        Only create the `WI.EventBreakpoint` if the <input> has a value.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addURLBreakpoint):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissEventBreakpointPopover):
+        (WI.SourcesNavigationSidebarPanel.prototype._willDismissURLBreakpointPopover):
+        Drive-by: if the configuration isn't valid (e.g. no breakpoint) or the breakpoint already
+                  exists, beep.
+
+2019-11-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Local Overrides: drop zone overlay doesn't take up the full content area
+        https://bugs.webkit.org/show_bug.cgi?id=204093
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FontResourceContentView.css:
+        (.content-view.resource.font > :matches(.local-resource-override-label-view, .local-resource-override-warning-view):not([hidden]) ~ .drop-zone): Added.
+        (.content-view.resource.font > .drop-zone): Deleted.
+        * UserInterface/Views/ImageResourceContentView.css:
+        (.content-view.resource.image > :matches(.local-resource-override-label-view, .local-resource-override-warning-view):not([hidden]) ~ .drop-zone): Added.
+        (.content-view.resource.image > .drop-zone): Deleted.
+
+2019-11-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: create/update local override drop zone shown in image collection view
+        https://bugs.webkit.org/show_bug.cgi?id=204097
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CollectionContentView.js:
+        (WI.CollectionContentView):
+        (WI.CollectionContentView.prototype.get contentViewConstructorOptions): Added.
+        (WI.CollectionContentView.prototype.addContentViewForItem):
+        * UserInterface/Views/ResourceCollectionContentView.js:
+        (WI.ResourceCollectionContentView.prototype.get contentViewConstructorOptions): Added.
+        Provide a way to pass options when instantiating the content view from the constructor.
+
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WI.ImageResourceContentView.prototype.contentAvailable):
+        Support an optional object parameter that can be used to disable the `WI.DropZone`.
+
 2019-11-07  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: REGRESSION(r251958): console prompt is automatically focused when page is reloaded

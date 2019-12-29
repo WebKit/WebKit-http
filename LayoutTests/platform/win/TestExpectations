@@ -224,10 +224,6 @@ webkit.org/b/29287 http/tests/local/formdata/ [ Skip ]
 fast/events/autoscroll-with-software-keyboard.html [ Skip ]
 fast/events/autoscroll-when-input-is-offscreen.html [ Skip ]
 
-# UIScriptController::zoomToScale is not supported.
-fast/visual-viewport/client-coordinates-relative-to-layout-viewport.html [ Skip ]
-fast/visual-viewport/client-rects-relative-to-layout-viewport.html [ Skip ]
-
 # UIScriptController::removeViewFromWindow/addViewToWindow is not supported.
 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]
 
@@ -236,9 +232,6 @@ http/tests/local/blob/send-sliced-data-blob.html [ Skip ]
 
 # TODO BlodBuilder is not enabled
 http/tests/local/blob/send-data-blob.html [ Skip ]
-
-# TODO A test that failed because eventSender cannot send function-key events.
-fast/events/keydown-function-keys.html [ Skip ]
 
 # TODO No support for WebArchives in WebKitWin <rdar://problem/6436020>
 webarchive [ Skip ]
@@ -691,21 +684,8 @@ http/wpt/credential-management/ [ Skip ]
 http/wpt/webauthn/ [ Skip ]
 imported/w3c/web-platform-tests/credential-management/ [ Skip ]
 
-# UIScriptController::zoomToScale is not implemented on Windows.
-webkit.org/b/180424 fast/visual-viewport/resize-event-fired.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/rtl-zoomed-rects.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/scroll-event-fired.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/viewport-dimensions-exclude-custom-scrollbars.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/viewport-dimensions-exclude-scrollbars.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/viewport-dimensions-iframe.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/viewport-dimensions-under-page-zoom.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/viewport-dimensions.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/zoomed-fixed-header-and-footer.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/zoomed-fixed-scroll-down-then-up.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/zoomed-fixed.html [ Skip ]
-webkit.org/b/180424 fast/visual-viewport/zoomed-rects.html [ Skip ]
-webkit.org/b/180424 fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
-webkit.org/b/180424 fast/zooming/uiscript-zooming.html [ Skip ]
+fast/visual-viewport/client-coordinates-relative-to-layout-viewport.html [ Failure ]
+fast/visual-viewport/zoomed-fixed-scroll-down-then-up.html [ Failure ]
 
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
@@ -912,6 +892,8 @@ webkit.org/b/161906 imported/w3c/web-platform-tests/media-source [ Skip ]
 media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
+
+webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html [ Skip ]
 
 # No CORS support for media elements is implemented yet.
 webkit.org/b/176626 http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Crash Failure ]
@@ -1208,6 +1190,9 @@ webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-reading.
 webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-getting-type.html [ Skip ]
 webkit.org/b/203100 editing/async-clipboard/clipboard-item-get-type-basic.html [ Skip ]
 webkit.org/b/203100 editing/async-clipboard/clipboard-get-type-with-old-items.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-writing.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-write-basic.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-write-items-twice.html [ Skip ]
 
 webkit.org/b/140783 [ Release ] editing/pasteboard/copy-standalone-image.html [ Failure ImageOnlyFailure ]
 webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Skip ] # Debug Assertion
@@ -1320,6 +1305,7 @@ editing/spelling/spellcheck-paste.html [ Skip ]
 editing/spelling/spellcheck-paste-disabled.html [ Skip ]
 editing/spelling/spelling-unified-emulation.html [ Skip ]
 editing/spelling/grammar-markers.html [ Skip ]
+editing/spelling/toggle-spellchecking.html [ Skip ]
 
 # No concept of secure text input
 editing/secure-input [ Skip ]
@@ -2800,8 +2786,6 @@ fast/dynamic/window-resize-scrollbars-test.html [ Failure Timeout ]
 fast/encoding/parser-tests-110.html [ Pass Timeout ]
 
 webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Skip ]
-webkit.org/b/97026 [ Release ] fast/events/keydown-leftright-keys.html [ Failure ]
-webkit.org/b/97026 [ Debug ] fast/events/keydown-leftright-keys.html [ Skip ] # Debug Assertion
 # fast/events/page-visibility tests timeout.
 webkit.org/b/121509 fast/events/wheelevent-mousewheel-interaction.html [ Skip ] #  [ Timeout ]
 fast/events/special-key-events-in-input-text.html [ Failure ]
@@ -4470,3 +4454,18 @@ webkit.org/b/202951 fast/canvas/drawImage-animated-gif-draws-first-frame-and-no-
 webkit.org/b/202952 http/tests/security/navigate-when-restoring-cached-page.html [ Timeout ]
 
 webkit.org/b/202953 http/tests/websocket/tests/hybi/non-document-mixed-content-blocked-https-with-embedded-http-with-embedded-https.https.html [ Timeout ]
+
+webkit.org/b/204153 fast/scrolling/momentum-scroll-with-borders.html [ Failure ]
+webkit.org/b/204153 fast/scrolling/overflow-scroll-past-max.html [ Failure ]
+webkit.org/b/204153 http/tests/navigation/page-cache-mediakeysession.html [ Failure ]
+webkit.org/b/204153 http/tests/xmlhttprequest/access-control-and-redirects-async.html [ Failure ]
+webkit.org/b/204153 ietestcenter/Javascript/15.4.4.14-3-28.html [ Failure ]
+webkit.org/b/204153 ietestcenter/Javascript/15.4.4.14-3-29.html [ Failure ]
+webkit.org/b/204153 ietestcenter/Javascript/15.4.4.15-3-28.html [ Failure ]
+
+webkit.org/b/204153 fast/scrolling/iframe-scrollable-after-back.html [ Timeout ]
+webkit.org/b/204153 fast/scrolling/overflow-scrollable-after-back.html [ Timeout ]
+webkit.org/b/204153 http/tests/navigation/page-cache-mediastream.html [ Timeout ]
+webkit.org/b/204153 ietestcenter/Javascript/15.4.4.15-3-29.html [ Timeout ]
+
+webkit.org/b/204253 animations/no-style-recalc-during-accelerated-animation.html [ Failure ]

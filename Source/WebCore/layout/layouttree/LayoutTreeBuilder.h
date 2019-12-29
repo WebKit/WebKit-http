@@ -27,6 +27,9 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include <wtf/IsoMalloc.h>
+#include <wtf/WeakPtr.h>
+
 namespace WebCore {
 
 class RenderElement;
@@ -40,14 +43,38 @@ class Box;
 class Container;
 class LayoutState;
 
-class TreeBuilder {
+class LayoutTreeContent : public CanMakeWeakPtr<LayoutTreeContent> {
+    WTF_MAKE_ISO_ALLOCATED(LayoutTreeContent);
 public:
-    static std::unique_ptr<Container> createLayoutTree(const RenderView&);
+    LayoutTreeContent(const RenderBox&, std::unique_ptr<Container>);
+
+    const Container& rootLayoutBox() const { return *m_rootLayoutBox; }
+    Container& rootLayoutBox() { return *m_rootLayoutBox; }
+    const RenderBox& rootRenderer() const { return m_rootRenderer; }
+
+    using RenderObjectToLayoutBoxMap = HashMap<const RenderObject*, Box*>;
+    Box* layoutBoxForRenderer(const RenderObject& renderer) { return m_renderObjectToLayoutBox.get(&renderer); }
+    void addLayoutBoxForRenderer(const RenderObject& renderer, Box& layoutBox) { m_renderObjectToLayoutBox.add(&renderer, &layoutBox); }
 
 private:
-    static void createSubTree(const RenderElement& rootRenderer, Container& rootContainer);
-    static void createTableStructure(const RenderTable& tableRenderer, Container& tableWrapperBox);
-    static std::unique_ptr<Box> createLayoutBox(const RenderElement& parentRenderer, const RenderObject& childRenderer);
+    const RenderBox& m_rootRenderer;
+    std::unique_ptr<Container> m_rootLayoutBox;
+    RenderObjectToLayoutBoxMap m_renderObjectToLayoutBox;
+};
+
+class TreeBuilder {
+public:
+    static std::unique_ptr<Layout::LayoutTreeContent> buildLayoutTree(const RenderView&);
+
+private:
+    TreeBuilder(LayoutTreeContent&);
+
+    void buildTree();
+    void buildSubTree(const RenderElement& rootRenderer, Container& rootContainer);
+    void buildTableStructure(const RenderTable& tableRenderer, Container& tableWrapperBox);
+    std::unique_ptr<Box> createLayoutBox(const RenderElement& parentRenderer, const RenderObject& childRenderer);
+
+    LayoutTreeContent& m_layoutTreeContent;
 };
 
 #if ENABLE(TREE_DEBUGGING)

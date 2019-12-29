@@ -1305,13 +1305,7 @@ void KeyframeEffect::updateAcceleratedAnimationState()
     }
 
     if (playState == WebAnimation::PlayState::Finished) {
-        if (isRunningAccelerated())
-            addPendingAcceleratedAction(AcceleratedAction::Stop);
-        else {
-            m_lastRecordedAcceleratedAction = AcceleratedAction::Stop;
-            m_pendingAcceleratedActions.clear();
-            animation()->acceleratedStateDidChange();
-        }
+        addPendingAcceleratedAction(AcceleratedAction::Stop);
         return;
     }
 
@@ -1338,6 +1332,12 @@ void KeyframeEffect::animationDidSeek()
     // means we're moving into an active lexicalGlobalObject, we'll pick this up in apply().
     if (m_shouldRunAccelerated && isRunningAccelerated())
         addPendingAcceleratedAction(AcceleratedAction::Seek);
+}
+
+void KeyframeEffect::animationWasCanceled()
+{
+    if (m_shouldRunAccelerated && isRunningAccelerated())
+        addPendingAcceleratedAction(AcceleratedAction::Stop);
 }
 
 void KeyframeEffect::animationSuspensionStateDidChange(bool animationIsSuspended)

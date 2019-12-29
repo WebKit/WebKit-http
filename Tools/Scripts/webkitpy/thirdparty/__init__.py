@@ -152,16 +152,18 @@ class AutoinstallImportHook(object):
                              "keyring-7.3.1/keyring")
 
     def _install_pep8(self):
-        self._install("https://files.pythonhosted.org/packages/source/p/pep8/pep8-0.5.0.tar.gz",
-                             "pep8-0.5.0/pep8.py")
+        self._install("https://files.pythonhosted.org/packages/01/a0/64ba19519db49e4094d82599412a9660dee8c26a7addbbb1bf17927ceefe/pep8-1.7.1.tar.gz",
+                             "pep8-1.7.1/pep8.py")
     def _install_pycodestyle(self):
         self._install("https://files.pythonhosted.org/packages/source/p/pycodestyle/pycodestyle-2.5.0.tar.gz",
                              "pycodestyle-2.5.0/pycodestyle.py")
 
     def _install_mozlog(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()
-        self._install("https://files.pythonhosted.org/packages/10/d5/d286b5dc3f40e32d2a9b3cab0b5b20a05d704958b44b4c5a9aed6472deab/mozlog-3.5.tar.gz",
-                              "mozlog-3.5/mozlog")
+        self._install("https://files.pythonhosted.org/packages/a0/69/5ff6001df98cf1894e6fb4aa74eda1504f830515e52fc6b0a3acc8c1a788/mozterm-1.0.0.tar.gz",
+                              "mozterm-1.0.0/mozterm")
+        self._install("https://files.pythonhosted.org/packages/6b/7d/30d52c3b2cc022280c41f47f0499afc6d87116b23051bf69c683aaa1cdcb/mozlog-5.0.tar.gz",
+                              "mozlog-5.0/mozlog")
 
     def _install_mozprocess(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()

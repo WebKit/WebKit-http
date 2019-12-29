@@ -454,6 +454,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 @interface WKWebView (WKTesting)
 
+- (void)_setContinuousSpellCheckingEnabledForTesting:(BOOL)enabled WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem WK_API_AVAILABLE(macos(10.12.3), ios(10.3));
 
 #if TARGET_OS_IPHONE
@@ -581,5 +582,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 - (void)_processWillSuspendImminentlyForTesting;
 - (void)_processDidResumeForTesting;
+@property (nonatomic, readonly) BOOL _hasServiceWorkerBackgroundActivityForTesting WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, readonly) BOOL _hasServiceWorkerForegroundActivityForTesting WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_setAssertionStateForTesting:(int)state WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end

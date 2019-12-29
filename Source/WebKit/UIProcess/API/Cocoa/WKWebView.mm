@@ -49,6 +49,8 @@
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
 #import "SafeBrowsingWarning.h"
+#import "TextChecker.h"
+#import "TextCheckerState.h"
 #import "UIDelegate.h"
 #import "UserMediaProcessManager.h"
 #import "VersionChecks.h"
@@ -3805,12 +3807,16 @@ WEBCORE_COMMAND(yankAndSelect)
     return _impl->readSelectionFromPasteboard(pasteboard);
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)changeFont:(id)sender
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     _impl->changeFontFromFontManager();
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)changeColor:(id)sender
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 {
     _impl->changeFontColorFromSender(sender);
 }
@@ -4345,17 +4351,23 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
     _impl->removeTrackingRects(tags, count);
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (NSString *)view:(NSView *)view stringForToolTip:(NSToolTipTag)tag point:(NSPoint)point userData:(void *)data
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     return _impl->stringForToolTip(tag);
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)pasteboardChangedOwner:(NSPasteboard *)pasteboard
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     _impl->pasteboardChangedOwner(pasteboard);
 }
 
+ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)pasteboard:(NSPasteboard *)pasteboard provideDataForType:(NSString *)type
+ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     _impl->provideDataForPasteboard(pasteboard, type);
 }
@@ -4428,16 +4440,6 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
     _impl->rotateWithEvent(event);
 }
 #endif
-
-- (void)setPageZoom:(CGFloat)pageZoom
-{
-    _page->setPageZoomFactor(pageZoom);
-}
-
-- (CGFloat)pageZoom
-{
-    return _page->pageZoomFactor();
-}
 
 - (BOOL)_usePlatformFindUI
 {
@@ -4772,6 +4774,16 @@ inline WebKit::FindOptions toFindOptions(WKFindConfiguration *configuration)
     _page->findString(string, toFindOptions(configuration), 1, [handler = makeBlockPtr(completionHandler)](bool found, WebKit::CallbackBase::Error error) {
         handler([[[WKFindResult alloc] _initWithMatchFound:(error == WebKit::CallbackBase::Error::None && found)] autorelease]);
     });
+}
+
+- (void)setMediaType:(NSString *)mediaStyle
+{
+    _page->setOverriddenMediaType(mediaStyle);
+}
+
+- (NSString *)mediaType
+{
+    return _page->overriddenMediaType().isNull() ? nil : (NSString *)_page->overriddenMediaType();
 }
 
 @end
@@ -5686,6 +5698,16 @@ static inline OptionSet<WebCore::LayoutMilestone> layoutMilestones(_WKRenderingP
 - (void)_setTextZoomFactor:(double)zoomFactor
 {
     _page->setTextZoomFactor(zoomFactor);
+}
+
+- (void)setPageZoom:(CGFloat)pageZoom
+{
+    _page->setPageZoomFactor(pageZoom);
+}
+
+- (CGFloat)pageZoom
+{
+    return _page->pageZoomFactor();
 }
 
 - (double)_pageZoomFactor
@@ -6897,6 +6919,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 @implementation WKWebView (WKTesting)
 
+- (void)_setContinuousSpellCheckingEnabledForTesting:(BOOL)enabled
+{
+#if PLATFORM(IOS_FAMILY)
+    [_contentView setContinuousSpellCheckingEnabled:enabled];
+#else
+    _impl->setContinuousSpellCheckingEnabled(enabled);
+#endif
+}
+
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem
 {
     if ([userInterfaceItem isEqualToString:@"validationBubble"]) {
@@ -7692,6 +7723,32 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     if (_page)
         _page->process().sendProcessDidResume();
+}
+
+- (void)_setAssertionStateForTesting:(int)value
+{
+    if (!_page)
+        return;
+
+    _page->process().setAssertionStateForTesting(static_cast<WebKit::AssertionState>(value));
+}
+
+- (BOOL)_hasServiceWorkerBackgroundActivityForTesting
+{
+#if ENABLE(SERVICE_WORKER)
+    return _page ? _page->process().processPool().hasServiceWorkerBackgroundActivityForTesting() : false;
+#else
+    return false;
+#endif
+}
+
+- (BOOL)_hasServiceWorkerForegroundActivityForTesting
+{
+#if ENABLE(SERVICE_WORKER)
+    return _page ? _page->process().processPool().hasServiceWorkerForegroundActivityForTesting() : false;
+#else
+    return false;
+#endif
 }
 
 - (void)_denyNextUserMediaRequest

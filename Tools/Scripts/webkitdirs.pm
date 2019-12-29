@@ -1581,10 +1581,10 @@ sub splitVersionString
     my $versionString = shift;
     my @splitVersion = split(/\./, $versionString);
     @splitVersion >= 2 or die "Invalid version $versionString";
-    $osXVersion = {
-            "major" => $splitVersion[0],
-            "minor" => $splitVersion[1],
-            "subminor" => (defined($splitVersion[2]) ? $splitVersion[2] : 0),
+    return {
+        "major" => $splitVersion[0],
+        "minor" => $splitVersion[1],
+        "subminor" => (defined($splitVersion[2]) ? $splitVersion[2] : 0),
     };
 }
 
@@ -1597,7 +1597,7 @@ sub determineOSXVersion()
         return;
     }
 
-    my $versionString = `sw_vers -productVersion`;
+    chomp(my $versionString = `sw_vers -productVersion`);
     $osXVersion = splitVersionString($versionString);
 }
 

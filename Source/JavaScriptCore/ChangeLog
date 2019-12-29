@@ -1,3 +1,828 @@
+2019-11-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Remove index-masking on ScopedArguments and put it in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=204269
+
+        Reviewed by Saam Barati.
+
+        We should remove index-masking for ScopedArguments. This patch reverts it.
+        We still use AuxiliaryBuffer, and avoid using variable sized cell. Then,
+        this patch also puts ScopedArguments in IsoSubspace.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateWithGuard):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnScopedArguments):
+        (JSC::DFG::SpeculativeJIT::compileGetArrayLength):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::LowerDFGToB3):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArrayLength):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMyArgumentByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::preciseIndexMask64): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::preciseIndexMask32): Deleted.
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitPreparePreciseIndexMask32): Deleted.
+        * jit/AssemblyHelpers.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+        * jit/JIT.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitScopedArgumentsGetByVal):
+        * runtime/ScopedArguments.cpp:
+        (JSC::ScopedArguments::ScopedArguments):
+        (JSC::ScopedArguments::createUninitialized):
+        (JSC::ScopedArguments::create):
+        (JSC::ScopedArguments::createByCopyingFrom):
+        (JSC::ScopedArguments::visitChildren):
+        (JSC::ScopedArguments::overrideThings):
+        (JSC::ScopedArguments::overrideThingsIfNecessary):
+        (JSC::ScopedArguments::unmapArgument):
+        * runtime/ScopedArguments.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-11-15  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't use AVCapture on watchOS and tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=204254
+        <rdar://problem/45508044>
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-11-15  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Anonymous built-in functions should have empty string for a name
+        https://bugs.webkit.org/show_bug.cgi?id=204214
+
+        Reviewed by Yusuke Suzuki.
+
+        Ensure that Function.prototype.name (exists and) is an empty string for various anonymous built-in functions,
+        following https://github.com/tc39/ecma262/pull/1490.
+
+        Specifically:
+        1. for promises, resolve / reject / executor elements are lacking a name property
+        2. for proxies, the revocation function is lacking a name property
+        3. for certain Intl objects, function getters return a bound function named "bound <name>" instead of ""
+
+        This change also means that we no longer need the NameVisibility enum or isAnonymousBuiltinFunction logic.
+
+        * builtins/PromiseConstructor.js:
+        * builtins/PromiseOperations.js:
+        Ensure resolve / reject / executor elements have a name property.
+        (They were @-named, which resulted in no name property at all.)
+
+        * runtime/ProxyRevoke.cpp:
+        (JSC::ProxyRevoke::create):
+        (JSC::ProxyRevoke::finishCreation):
+        * runtime/ProxyRevoke.h:
+        Ensure revocation functions have a name property.
+        (NameVisibility existed solely to ensure this *wasn't* the case.)
+
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototypeGetterCompare):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeGetterFormat):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototypeGetterFormat):
+        Give these bound functions an empty name.
+
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * runtime/FunctionExecutable.h:
+        * runtime/FunctionRareData.cpp:
+        (JSC::FunctionRareData::create):
+        (JSC::FunctionRareData::FunctionRareData):
+        * runtime/FunctionRareData.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::allocateRareData):
+        (JSC::JSFunction::allocateAndInitializeRareData):
+        (JSC::JSFunction::reifyLazyBoundNameIfNeeded):
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::hasReifiedName const): Ensure bound anonymous built-in functions can have an empty name.
+        (JSC::JSFunction::isAnonymousBuiltinFunction const): Deleted.
+        Get rid of isAnonymousBuiltinFunction logic.
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/AsyncFunctionConstructor.cpp:
+        (JSC::AsyncFunctionConstructor::finishCreation):
+        * runtime/AsyncGeneratorFunctionConstructor.cpp:
+        (JSC::AsyncGeneratorFunctionConstructor::finishCreation):
+        * runtime/BigIntConstructor.cpp:
+        (JSC::BigIntConstructor::finishCreation):
+        * runtime/BooleanConstructor.cpp:
+        (JSC::BooleanConstructor::finishCreation):
+        * runtime/DateConstructor.cpp:
+        (JSC::DateConstructor::finishCreation):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::finishCreation):
+        * runtime/GeneratorFunctionConstructor.cpp:
+        (JSC::GeneratorFunctionConstructor::finishCreation):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::finishCreation):
+        * runtime/InternalFunction.h:
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::IntlCollatorConstructor::finishCreation):
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::IntlDateTimeFormatConstructor::finishCreation):
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::IntlNumberFormatConstructor::finishCreation):
+        * runtime/IntlPluralRulesConstructor.cpp:
+        (JSC::IntlPluralRulesConstructor::finishCreation):
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::finishCreation):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::JSGenericTypedArrayViewConstructor<ViewClass>::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/MapConstructor.cpp:
+        (JSC::MapConstructor::finishCreation):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructorBase::finishCreation):
+        * runtime/NullGetterFunction.h:
+        * runtime/NullSetterFunction.h:
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        * runtime/ProxyConstructor.cpp:
+        (JSC::ProxyConstructor::finishCreation):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/SetConstructor.cpp:
+        (JSC::SetConstructor::finishCreation):
+        * runtime/StringConstructor.cpp:
+        (JSC::StringConstructor::finishCreation):
+        * runtime/SymbolConstructor.cpp:
+        (JSC::SymbolConstructor::finishCreation):
+        * runtime/WeakMapConstructor.cpp:
+        (JSC::WeakMapConstructor::finishCreation):
+        * runtime/WeakObjectRefConstructor.cpp:
+        (JSC::WeakObjectRefConstructor::finishCreation):
+        * runtime/WeakSetConstructor.cpp:
+        (JSC::WeakSetConstructor::finishCreation):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        Get rid of NameVisibility enum.
+
+2019-11-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Apple] Enable variation fonts on all Apple platforms
+        https://bugs.webkit.org/show_bug.cgi?id=198100
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-11-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG strength reduction should define "groups" for RegExp constant-folded result
+        https://bugs.webkit.org/show_bug.cgi?id=204264
+
+        Reviewed by Michael Saboff.
+
+        We always define "groups" property in the result of RegExp matching.
+        But we do not define it when DFG performs strength-reduction for the RegExp matching node.
+        This patch adds "groups" field correctly.
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createEmptyRegExpMatchesArray):
+
+2019-11-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Wasm error message should be cross-thread-copied
+        https://bugs.webkit.org/show_bug.cgi?id=204143
+
+        Reviewed by Mark Lam.
+
+        It is shared by multiple threads, so we should copy it via crossThreadCopy.
+
+        * wasm/WasmCodeBlock.h:
+        (JSC::Wasm::CodeBlock::errorMessage):
+        * wasm/WasmEntryPlan.cpp:
+        (JSC::Wasm::EntryPlan::parseAndValidateModule):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::errorMessage const):
+        (JSC::Wasm::Plan::failed const):
+        * wasm/WasmStreamingParser.h:
+        (JSC::Wasm::StreamingParser::errorMessage const):
+
+2019-11-15  Mark Lam  <mark.lam@apple.com>
+
+        Rename InPlaceAbstractState's m_foundConstant to m_shouldTryConstantFolding.
+        https://bugs.webkit.org/show_bug.cgi?id=204244
+
+        Reviewed by Saam Barati.
+
+        m_shouldTryConstantFolding is a more accurate description of what this flag really
+        means i.e. that the AbstractInterpreter thinks that we may benefit from constant
+        folding, and therefore, should attempt it.  It doesn't always mean that it found
+        constants to be folded.  It also doesn't guarantee that the constant folding phase
+        will succeed in folding any constants.
+
+        * dfg/DFGAbstractInterpreter.h:
+        (JSC::DFG::AbstractInterpreter::setConstant):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAtTailAbstractState.h:
+        (JSC::DFG::AtTailAbstractState::setShouldTryConstantFolding):
+        (JSC::DFG::AtTailAbstractState::setFoundConstants): Deleted.
+        * dfg/DFGBasicBlock.cpp:
+        (JSC::DFG::BasicBlock::BasicBlock):
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::run):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        (JSC::DFG::InPlaceAbstractState::initialize):
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+        * dfg/DFGInPlaceAbstractState.h:
+        (JSC::DFG::InPlaceAbstractState::setShouldTryConstantFolding):
+        (JSC::DFG::InPlaceAbstractState::setFoundConstants): Deleted.
+
+2019-11-14  Saam Barati  <sbarati@apple.com>
+
+        Make gcSafeMemcpy/gcSafeMemmove/gcSafeZeroMemory work properly on arm64_32
+        https://bugs.webkit.org/show_bug.cgi?id=204217
+
+        Reviewed by Mark Lam.
+
+        We need to be explicit in the code about using 64-bit types and pointer types.
+
+        * heap/GCMemoryOperations.h:
+        (JSC::gcSafeMemcpy):
+        (JSC::gcSafeMemmove):
+        (JSC::gcSafeZeroMemory):
+
+2019-11-14  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Use toLength() and getIndexQuickly() in JSON.stringify
+        https://bugs.webkit.org/show_bug.cgi?id=204122
+
+        Reviewed by Yusuke Suzuki.
+
+        Using toLength() is semantically equivalent and performance-neutral, while adding
+        JSObject::getIndexQuickly() advances microbenchmarks/json-stringify-array-replacer.js
+        by 34%.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Stringifier):
+        (JSC::Stringifier::Holder::appendNextProperty):
+
+2019-11-14  Caio Lima  <ticaiolima@gmail.com>
+
+        Support or16(TrustedImm32, AbsoluteAddress) in the MIPS MacroAssembler
+        https://bugs.webkit.org/show_bug.cgi?id=204126
+
+        Reviewed by Mark Lam.
+
+        This is adjusting the implementation of `or16` for MIPS. This required
+        the addition of `load16` and `store16` for this macro assembler as
+        well. This is also fixing build issue on ARMv7 `or16` implementation.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::or16):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::or16):
+        (JSC::MacroAssemblerMIPS::load16):
+        (JSC::MacroAssemblerMIPS::store16):
+
+2019-11-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] BlockDirectory's bits should be compact
+        https://bugs.webkit.org/show_bug.cgi?id=204149
+
+        Reviewed by Robin Morisset.
+
+        We start applying IsoSubspace to all JSCells. This means that IsoSubspace should be small enough,
+        so that we can hold many IsoSubspaces without considering about memory regression.
+
+        In this patch, we introduce several things to shrink sizeof(IsoSubspace) from 528 to 384.
+
+        1. Adjusting members to remove some paddings.
+        2. Remove m_heap field since this can be got from the caller easily.
+        3. Make MarkedSpace::heap() efficient: just doing pointer arithmetic.
+        4. Remove m_size field from IsoSubspace since BlockDirectory knows cellSize.
+        5. Introduce BlockDirectoryBits, which repalces 9 FastBitVector in BlockDirectory to this one class.
+           Since all FastBitVector has the same size, we should not have a size field for each FastBitVector.
+           We reuse FastBitVector's View mechanism to keep the same ergonomics while making BlockDirectoryBits
+           much smaller. We put 9 uint32_t as Segment, and manage Vector<Segment> in this data structure. Since
+           we touch several bits at the same time for the same block-index, this data structure is compact and
+           efficient.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/AlignedMemoryAllocator.cpp:
+        (JSC::AlignedMemoryAllocator::registerDirectory):
+        * heap/AlignedMemoryAllocator.h:
+        * heap/Allocator.h:
+        * heap/AllocatorInlines.h:
+        (JSC::Allocator::allocate const):
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::BlockDirectory):
+        (JSC::BlockDirectory::findEmptyBlockToSteal):
+        (JSC::BlockDirectory::findBlockForAllocation):
+        (JSC::BlockDirectory::tryAllocateBlock):
+        (JSC::BlockDirectory::addBlock):
+        (JSC::BlockDirectory::removeBlock):
+        (JSC::BlockDirectory::prepareForAllocation):
+        (JSC::BlockDirectory::beginMarkingForFullCollection):
+        (JSC::BlockDirectory::endMarking):
+        (JSC::BlockDirectory::snapshotUnsweptForEdenCollection):
+        (JSC::BlockDirectory::snapshotUnsweptForFullCollection):
+        (JSC::BlockDirectory::findBlockToSweep):
+        (JSC::BlockDirectory::sweep):
+        (JSC::BlockDirectory::shrink):
+        (JSC::BlockDirectory::assertNoUnswept):
+        (JSC::BlockDirectory::parallelNotEmptyBlockSource):
+        (JSC::BlockDirectory::dumpBits):
+        * heap/BlockDirectory.h:
+        (JSC::BlockDirectory::cellKind const):
+        (JSC::BlockDirectory::forEachBitVector):
+        (JSC::BlockDirectory::forEachBitVectorWithName):
+        (JSC::BlockDirectory::heap): Deleted.
+        * heap/BlockDirectoryBits.h: Added.
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::BlockDirectoryBitVectorWordView):
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::numBits const):
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::word const):
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::word):
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::clearAll):
+        (JSC::BlockDirectoryBits::BlockDirectoryBitVectorWordView::view const):
+        (JSC::BlockDirectoryBits::numBits const):
+        (JSC::BlockDirectoryBits::resize):
+        (JSC::BlockDirectoryBits::forEachSegment):
+        * heap/BlockDirectoryInlines.h:
+        (JSC::BlockDirectory::forEachBlock):
+        (JSC::BlockDirectory::forEachNotEmptyBlock):
+        * heap/CompleteSubspace.cpp:
+        (JSC::CompleteSubspace::allocatorForSlow):
+        (JSC::CompleteSubspace::tryAllocateSlow):
+        * heap/CompleteSubspaceInlines.h:
+        (JSC::CompleteSubspace::allocateNonVirtual):
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::parallelNotEmptyMarkedBlockSource):
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::forEachMarkedCell):
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::IsoSubspace):
+        (JSC::IsoSubspace::tryAllocateFromLowerTier):
+        * heap/IsoSubspace.h:
+        (JSC::IsoSubspace::cellSize):
+        (JSC::IsoSubspace::allocatorForNonVirtual):
+        (JSC::IsoSubspace::size const): Deleted.
+        (): Deleted.
+        * heap/IsoSubspaceInlines.h:
+        (JSC::IsoSubspace::allocateNonVirtual):
+        * heap/IsoSubspacePerVM.cpp:
+        (JSC::IsoSubspacePerVM::AutoremovingIsoSubspace::~AutoremovingIsoSubspace):
+        * heap/LocalAllocator.cpp:
+        (JSC::LocalAllocator::allocateSlowCase):
+        (JSC::LocalAllocator::doTestCollectionsIfNeeded):
+        * heap/LocalAllocator.h:
+        * heap/LocalAllocatorInlines.h:
+        (JSC::LocalAllocator::allocate):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::dumpState):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::MarkedSpace):
+        (JSC::MarkedSpace::sweepBlocks):
+        (JSC::MarkedSpace::prepareForAllocation):
+        (JSC::MarkedSpace::visitWeakSets):
+        (JSC::MarkedSpace::reapWeakSets):
+        (JSC::MarkedSpace::prepareForMarking):
+        (JSC::MarkedSpace::beginMarking):
+        (JSC::MarkedSpace::snapshotUnswept):
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::heap const): Deleted.
+        * heap/MarkedSpaceInlines.h:
+        (JSC::MarkedSpace::heap const):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::initialize):
+        * heap/Subspace.h:
+
+2019-11-13  Robin Morisset  <rmorisset@apple.com>
+
+        Split ArithProfile into a Unary and a Binary version
+        https://bugs.webkit.org/show_bug.cgi?id=202832
+        <rdar://problem/56266847>
+
+        Reviewed by Keith Miller.
+
+        ArithProfile was for a long time only used for add/sub/mul/div, but recently it started being used for negate. And it will soon also have to be used for inc and dec due to BigInt.
+        So in this patch I make a separate version that only has the data for a single argument, and thus takes half as much memory.
+
+        After discussing this change with Phil I realized that the ResultType(s) that were taking space in ArithProfile are not needed: they never change and a copy is already in the bytecode instruction itself.
+        Removing them allowed shrinking both kinds of ArithProfile to fit in 16 bits (9 and 13 respectively).
+        I kept the two kinds separate because they may shrink or grow independently in the future.
+
+        This also required adding the "orh" instruction to the offline assembler, to set bits in the ArithProfile.
+        This in turn motivated the addition of "storeh", as on RISC platforms "orh" on a memory location is actually loadh -> orh -> storeh.
+
+        Finally it required adding support for or16(TrustedImm32, AbsoluteAddress) in the MacroAssembler for the ICs.
+        Instead of directly calling it (like we used to do with or32), I introduced ArithProfile::emitUnconditionalSet, so that if either ArithProfile ever changes in size again we'll have fewer places to change.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::or16):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::or16):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::or16):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::or16):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::or16):
+        * assembler/testmasm.cpp:
+        (JSC::testOrImmMem):
+        (JSC::run):
+        * bytecode/ArithProfile.cpp:
+        (JSC::ArithProfile<BitfieldType>::emitObserveResult):
+        (JSC::ArithProfile<BitfieldType>::shouldEmitSetDouble const):
+        (JSC::ArithProfile<BitfieldType>::emitSetDouble const):
+        (JSC::ArithProfile<BitfieldType>::shouldEmitSetNonNumeric const):
+        (JSC::ArithProfile<BitfieldType>::emitSetNonNumeric const):
+        (JSC::ArithProfile<BitfieldType>::shouldEmitSetBigInt const):
+        (JSC::ArithProfile<BitfieldType>::emitSetBigInt const):
+        (JSC::ArithProfile<BitfieldType>::emitUnconditionalSet const):
+        (WTF::printInternal):
+        * bytecode/ArithProfile.h:
+        (JSC::ArithProfile::didObserveNonInt32 const):
+        (JSC::ArithProfile::didObserveDouble const):
+        (JSC::ArithProfile::didObserveNonNegZeroDouble const):
+        (JSC::ArithProfile::didObserveNegZeroDouble const):
+        (JSC::ArithProfile::didObserveNonNumeric const):
+        (JSC::ArithProfile::didObserveBigInt const):
+        (JSC::ArithProfile::didObserveInt32Overflow const):
+        (JSC::ArithProfile::didObserveInt52Overflow const):
+        (JSC::ArithProfile::setObservedNonNegZeroDouble):
+        (JSC::ArithProfile::setObservedNegZeroDouble):
+        (JSC::ArithProfile::setObservedNonNumeric):
+        (JSC::ArithProfile::setObservedBigInt):
+        (JSC::ArithProfile::setObservedInt32Overflow):
+        (JSC::ArithProfile::setObservedInt52Overflow):
+        (JSC::ArithProfile::observeResult):
+        (JSC::ArithProfile::addressOfBits const):
+        (JSC::ArithProfile::bits const):
+        (JSC::ArithProfile::ArithProfile):
+        (JSC::ArithProfile::hasBits const):
+        (JSC::ArithProfile::setBit):
+        (JSC::UnaryArithProfile::UnaryArithProfile):
+        (JSC::UnaryArithProfile::observedIntBits):
+        (JSC::UnaryArithProfile::observedNumberBits):
+        (JSC::UnaryArithProfile::argObservedType const):
+        (JSC::UnaryArithProfile::setArgObservedType):
+        (JSC::UnaryArithProfile::argSawInt32):
+        (JSC::UnaryArithProfile::argSawNumber):
+        (JSC::UnaryArithProfile::argSawNonNumber):
+        (JSC::UnaryArithProfile::observeArg):
+        (JSC::UnaryArithProfile::isObservedTypeEmpty):
+        (JSC::BinaryArithProfile::BinaryArithProfile):
+        (JSC::BinaryArithProfile::observedIntIntBits):
+        (JSC::BinaryArithProfile::observedNumberIntBits):
+        (JSC::BinaryArithProfile::observedIntNumberBits):
+        (JSC::BinaryArithProfile::observedNumberNumberBits):
+        (JSC::BinaryArithProfile::setLhsObservedType):
+        (JSC::BinaryArithProfile::setRhsObservedType):
+        (JSC::BinaryArithProfile::observeLHS):
+        (JSC::BinaryArithProfile::observeLHSAndRHS):
+        (JSC::BinaryArithProfile::isObservedTypeEmpty):
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::addJITAddIC):
+        (JSC::CodeBlock::addJITMulIC):
+        (JSC::CodeBlock::addJITSubIC):
+        (JSC::CodeBlock::addJITNegIC):
+        (JSC::CodeBlock::binaryArithProfileForBytecodeIndex):
+        (JSC::CodeBlock::unaryArithProfileForBytecodeIndex):
+        (JSC::CodeBlock::binaryArithProfileForPC):
+        (JSC::CodeBlock::unaryArithProfileForPC):
+        (JSC::CodeBlock::couldTakeSpecialArithFastCase):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addMathIC):
+        * bytecode/Fits.h:
+        * bytecode/MethodOfGettingAValueProfile.cpp:
+        (JSC::MethodOfGettingAValueProfile::emitReportValue const):
+        (JSC::MethodOfGettingAValueProfile::reportValue):
+        * bytecode/MethodOfGettingAValueProfile.h:
+        (JSC::MethodOfGettingAValueProfile::MethodOfGettingAValueProfile):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitUnaryOp):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::UnaryOpNode::emitBytecode):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        (JSC::DFG::ByteCodeParser::makeDivSafe):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueAdd):
+        (JSC::DFG::SpeculativeJIT::compileValueSub):
+        (JSC::DFG::SpeculativeJIT::compileValueNegate):
+        (JSC::DFG::SpeculativeJIT::compileValueMul):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueAdd):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueMul):
+        (JSC::FTL::DFG::LowerDFGToB3::compileUnaryMathIC):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBinaryMathIC):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithAddOrSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueNegate):
+        * jit/JIT.h:
+        * jit/JITAddGenerator.cpp:
+        (JSC::JITAddGenerator::generateInline):
+        (JSC::JITAddGenerator::generateFastPath):
+        * jit/JITAddGenerator.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_negate):
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emitMathICFast):
+        (JSC::JIT::emitMathICSlow):
+        (JSC::JIT::emit_op_div):
+        (JSC::JIT::emit_op_mul):
+        (JSC::JIT::emit_op_sub):
+        * jit/JITDivGenerator.cpp:
+        (JSC::JITDivGenerator::generateFastPath):
+        * jit/JITDivGenerator.h:
+        (JSC::JITDivGenerator::JITDivGenerator):
+        * jit/JITInlines.h:
+        (JSC::JIT::copiedArithProfile):
+        * jit/JITMathIC.h:
+        (JSC::JITMathIC::JITMathIC):
+        (JSC::JITMathIC::generateInline):
+        (JSC::JITMathIC::arithProfile const):
+        (JSC::JITBinaryMathIC::JITBinaryMathIC):
+        (JSC::JITUnaryMathIC::JITUnaryMathIC):
+        * jit/JITMulGenerator.cpp:
+        (JSC::JITMulGenerator::generateInline):
+        (JSC::JITMulGenerator::generateFastPath):
+        * jit/JITMulGenerator.h:
+        * jit/JITNegGenerator.cpp:
+        (JSC::JITNegGenerator::generateInline):
+        (JSC::JITNegGenerator::generateFastPath):
+        * jit/JITNegGenerator.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITSubGenerator.cpp:
+        (JSC::JITSubGenerator::generateInline):
+        (JSC::JITSubGenerator::generateFastPath):
+        * jit/JITSubGenerator.h:
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntOffsetsExtractor.cpp:
+        (JSC::LLIntOffsetsExtractor::dummy):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/arm.rb:
+        * offlineasm/arm64.rb:
+        * offlineasm/cloop.rb:
+        * offlineasm/instructions.rb:
+        * offlineasm/mips.rb:
+        * offlineasm/risc.rb:
+        * offlineasm/x86.rb:
+        * parser/ResultType.h:
+        (JSC::ResultType::ResultType):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::updateArithProfileForUnaryArithOp):
+        (JSC::updateArithProfileForBinaryArithOp):
+        (JSC::SLOW_PATH_DECL):
+
+2019-11-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put more into IsoSubspace part 2
+        https://bugs.webkit.org/show_bug.cgi?id=204144
+
+        Reviewed by Mark Lam.
+
+        We are doing this step by step to carefully watch the bot status.
+        This patch puts following things into IsoSubspace.
+
+            1. FunctionRareData
+            2. ProxyObject
+            3. SparseArrayValueMap
+
+        * runtime/FunctionRareData.h:
+        * runtime/ProxyObject.h:
+        * runtime/SparseArrayValueMap.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-11-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] AI should convert IsCellWithType to constant when Structure set is finite
+        https://bugs.webkit.org/show_bug.cgi?id=204141
+
+        Reviewed by Saam Barati.
+
+        We should fold IsCellWithType if Structure set is finite since we have a chance to know what JSType is.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2019-11-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Put more things in IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=204039
+
+        Reviewed by Keith Miller and Saam Barati.
+
+        This patch puts following things into IsoSubspace.
+
+            1. UnlinkedEvalCodeBlock
+            2. UnlinkedFunctionCodeBlock
+            3. UnlinkedModuleProgramCodeBlock
+            4. UnlinkedModuleProgramCodeBlock
+            5. Symbol
+            6. JSString
+            7. JSRopeString
+            8. GetterSetter
+
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::subspaceFor):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecode/UnlinkedFunctionCodeBlock.h:
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * runtime/GetterSetter.h:
+        * runtime/JSString.h:
+        (JSC::JSString::subspaceFor):
+        * runtime/Symbol.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-11-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSC GC relies on CodeBlock is not PreciseAllocation
+        https://bugs.webkit.org/show_bug.cgi?id=204124
+
+        Reviewed by Saam Barati.
+
+        This is a follow-up patch after r252298. This patch fixes several GC issues.
+
+        1. We found that CodeBlock heavily relies on the fact that this is never getting PreciseAllocation.
+           For example, in our GC, we scan conservative roots to collect currently-executing CodeBlocks.
+           But if this is done in an Eden cycle, this can only find PreciseAllocation CodeBlocks allocated
+           in this current Eden cycle, since we only use Eden PreciseAllocation vector to find these cells.
+           This means some CodeBlocks that are PreciseAllocation and allocated in the past Eden cycle can
+           be missed in this currently-executing set. But we do not want to sort all the PreciseAllocation
+           vector every time Eden cycle happens. So, for now, we make # of lower-tier cells of CodeBlocks 0
+           so that CodeBlocks are always allocated as non PreciseAllocation.
+
+        2. We had an pre-existing PreciseAllocation bug: when Weak<> is pointing PreciseAllocation, we keep
+           PreciseAllocation in m_preciseAllocations vector while the cell inside it is destroyed. This is OK.
+           But HeapUtil::findGCObjectPointersForMarking can populate this PreciseAllocation when performing
+           conservative root scanning. This means that HeapUtil::findGCObjectPointersForMarking can populate
+           destroyed cells. We insert hasValidCell check to avoid this issue.
+
+        3. Subspace::sweep only sweeps non PreciseAllocation blocks despite of this name. This is a problem
+           since we are explicitly calling Subspace::sweep to sweep ScriptExecutables, CodeBlocks, and JIT
+           stubs in a defined order. We rename Subspace::sweep to Subspace::sweepBlocks, and introduce
+           IsoSubspace::sweep which also sweeps PreciseAllocations for lower-tier cells correctly.
+           We are calling PreciseAllocation::sweep, but we still leave PreciseAllocation in m_preciseAllocations.
+           This is OK since PreciseAllocation::sweep can be called multiple times. Destroying / Reusing PreciseAllocations
+           are done by MarkedSpace::sweepPreciseAllocations.
+
+        4. We clear IsoCellSet's bit as soon as PreciseAllocation's cell is destroyed. This is aligned to the
+           behavior of MarkedBlocks.
+
+        * bytecode/CodeBlock.h:
+        * heap/CodeBlockSetInlines.h:
+        (JSC::CodeBlockSet::mark):
+        * heap/Heap.cpp:
+        (JSC::Heap::sweepSynchronously):
+        (JSC::Heap::sweepInFinalize):
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+        * heap/IsoCellSet.h:
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::clearLowerTierCell):
+        (JSC::IsoCellSet::sweepLowerTierCell): Deleted.
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::IsoSubspace):
+        (JSC::IsoSubspace::tryAllocateFromLowerTier):
+        (JSC::IsoSubspace::sweepLowerTierCell):
+        * heap/IsoSubspace.h:
+        * heap/IsoSubspaceInlines.h:
+        (JSC::IsoSubspace::clearIsoCellSetBit):
+        (JSC::IsoSubspace::sweep):
+        * heap/IsoSubspacePerVM.cpp:
+        (JSC::IsoSubspacePerVM::AutoremovingIsoSubspace::AutoremovingIsoSubspace):
+        * heap/MarkedBlock.h:
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::sweepBlocks):
+        (JSC::MarkedSpace::sweep): Deleted.
+        * heap/MarkedSpace.h:
+        * heap/PreciseAllocation.cpp:
+        (JSC::PreciseAllocation::PreciseAllocation):
+        (JSC::PreciseAllocation::sweep):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::sweepBlocks):
+        (JSC::Subspace::sweep): Deleted.
+        * heap/Subspace.h:
+        * runtime/JSCell.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyMemory.h:
+
+2019-11-12  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        RegExpBuiltinExec should create "groups" property unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=204067
+
+        Reviewed by Ross Kirsling.
+
+        After RegExp named capture groups were initially implemented in JSC, the spec was changed
+        to unconditionally create "groups" property.
+        (https://github.com/tc39/proposal-regexp-named-groups/issues/34)
+
+        This patch implements the change (that was shipped by V8), reducing number of structures
+        we use for RegExpMatchesArray, and also sets [[Prototype]] of "groups" object to `null`.
+        (step 24 of https://tc39.es/ecma262/#sec-regexpbuiltinexec)
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::fireWatchpointAndMakeAllArrayStructuresSlowPut):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::regExpMatchesArrayStructure const):
+        (JSC::JSGlobalObject::regExpMatchesArrayWithGroupsStructure const): Deleted.
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createStructureImpl):
+        (JSC::createRegExpMatchesArrayWithGroupsStructure): Deleted.
+        (JSC::createRegExpMatchesArrayWithGroupsSlowPutStructure): Deleted.
+        * runtime/RegExpMatchesArray.h:
+        (JSC::createRegExpMatchesArray):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+
+2019-11-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix incorrect assertion
+        https://bugs.webkit.org/show_bug.cgi?id=201908
+
+        * heap/PreciseAllocation.cpp:
+        (JSC::PreciseAllocation::reuseForLowerTier):
+
+2019-11-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix alignment adjustment when reusing PreciseAllocation
+        https://bugs.webkit.org/show_bug.cgi?id=201908
+
+        * heap/PreciseAllocation.cpp:
+        (JSC::PreciseAllocation::reuseForLowerTier):
+
+2019-11-11  Tuomas Karkkainen  <tuomas.webkit@apple.com>
+
+        Typo in assertion in validateCPS in DFGValidate.cpp ("Unexecpted")
+        https://bugs.webkit.org/show_bug.cgi?id=204066
+
+        Reviewed by Antti Koivisto.
+
+        * dfg/DFGValidate.cpp:
+
+2019-11-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement proxy support
+        https://bugs.webkit.org/show_bug.cgi?id=180408
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add optional Proxy struct to session capabilities.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/glib/RemoteInspectorServer.cpp:
+        (Inspector::processSessionCapabilities):
+
 2019-11-09  Tadeu Zagallo  <tzagallo@apple.com>
 
         [WebAssembly] Improve bytecode dumping

@@ -197,9 +197,6 @@ fast/events/touch/gesture/resources/drag-inside-nested-iframes3.html [ Skip ]
 # ENABLE_DARK_MODE_CSS is OFF in WPE.
 css-dark-mode [ Skip ]
 
-# ENABLE(CSS_PAINTING_API) is disabled
-webkit.org/b/190710 fast/css-custom-paint [ Skip ]
-
 # Tests below are copied from wk2 expectations, because we've marked
 #  as passing the whole fast/events directory.
 
@@ -383,9 +380,11 @@ fast/dom/Window/watchos [ Skip ]
 
 fast/dom/Window/Plug-ins.html [ Failure ]
 
-webkit.org/b/99036 pointer-lock/ [ Skip ]
-webkit.org/b/99036 fast/shadow-dom/pointerlockelement-in-shadow-tree.html [ Skip ]
-webkit.org/b/99036 fast/shadow-dom/pointerlockelement-in-slot.html [ Skip ]
+# Pointer Lock API not implemented
+webkit.org/b/204001 pointer-lock/ [ Skip ]
+webkit.org/b/204001 fast/shadow-dom/pointerlockelement-in-shadow-tree.html [ Skip ]
+webkit.org/b/204001 fast/shadow-dom/pointerlockelement-in-slot.html [ Skip ]
+webkit.org/b/204001 imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_coordinates_when_locked.html [ Skip ]
 
 webkit.org/b/153833 fast/shadow-dom/touch-event-ios.html [ Skip ]
 
@@ -754,6 +753,20 @@ imported/w3c/web-platform-tests/css/css-values/ch-unit-010.html [ Pass ]
 imported/w3c/web-platform-tests/css/css-values/ch-unit-011.html [ Pass ]
 imported/w3c/web-platform-tests/css/css-values/ch-unit-012.html [ Pass ]
 
+# PointerEvents not enabled globally, but enabled for WPE (EXPERIMENTAL_FEATURES)
+pointerevents/mouse [ Pass ]
+imported/w3c/web-platform-tests/pointerevents [ Pass ]
+# PointerEvents currently only supports mouse on WPE (no Touch/Pen support)
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_change-touch-action-onpointerdown_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointercancel_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerleave_after_pointercancel_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerout_after_pointercancel_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_releasepointercapture_onpointercancel_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-auto-css_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-inherit_highest-parent-none_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch.html [ Skip ]
+webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerout_pen.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # 5. TESTS CRASHING
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -772,6 +785,10 @@ webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-true.html
 webkit.org/b/199440 fast/mediastream/mediastreamtrack-video-clone.html [ Failure Timeout Crash ]
 
 webkit.org/b/200534 fast/events/focus-anchor-with-tabindex-hang.html [ Crash ]
+
+webkit.org/b/204112 editing/async-clipboard/clipboard-change-data-while-getting-type.html [ Crash ]
+webkit.org/b/204112 editing/async-clipboard/clipboard-change-data-while-reading.html [ Crash ]
+webkit.org/b/204112 editing/async-clipboard/clipboard-get-type-with-old-items.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # 6. FLAKY TESTS

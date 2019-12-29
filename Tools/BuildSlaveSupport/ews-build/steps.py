@@ -618,7 +618,8 @@ class RunWebKitPerlTests(shell.ShellCommand):
     name = 'webkitperl-tests'
     description = ['webkitperl-tests running']
     descriptionDone = ['webkitperl-tests']
-    flunkOnFailure = True
+    flunkOnFailure = False
+    haltOnFailure = False
     command = ['perl', 'Tools/Scripts/test-webkitperl']
 
     def __init__(self, **kwargs):
@@ -630,6 +631,21 @@ class RunWebKitPerlTests(shell.ShellCommand):
             self.build.buildFinished([message], SUCCESS)
             return {u'step': unicode(message)}
         return {u'step': u'Failed webkitperl tests'}
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        if rc == FAILURE:
+            self.build.addStepsAfterCurrentStep([ReRunWebKitPerlTests()])
+        return rc
+
+
+class ReRunWebKitPerlTests(RunWebKitPerlTests):
+    name = 're-run-webkitperl-tests'
+    flunkOnFailure = True
+    haltOnFailure = True
+
+    def evaluateCommand(self, cmd):
+        return shell.ShellCommand.evaluateCommand(self, cmd)
 
 
 class RunBuildWebKitOrgUnitTests(shell.ShellCommand):
@@ -930,11 +946,18 @@ class RunJavaScriptCoreTests(shell.Test):
     jsonFileName = 'jsc_results.json'
     logfiles = {'json': jsonFileName}
     command = ['perl', 'Tools/Scripts/run-javascriptcore-tests', '--no-build', '--no-fail-fast', '--json-output={0}'.format(jsonFileName), WithProperties('--%(configuration)s')]
+    prefix = 'jsc_'
+    NUM_FAILURES_TO_DISPLAY_IN_STATUS = 5
 
     def __init__(self, **kwargs):
         shell.Test.__init__(self, logEnviron=False, **kwargs)
+        self.binaryFailures = []
+        self.stressTestFailures = []
 
     def start(self):
+        self.log_observer_json = logobserver.BufferLogObserver()
+        self.addLogObserver('json', self.log_observer_json)
+
         # add remotes configuration file path to the command line if needed
         remotesfile = self.getProperty('remotes', False)
         if remotesfile:
@@ -951,12 +974,68 @@ class RunJavaScriptCoreTests(shell.Test):
             self.build.results = SUCCESS
             self.build.buildFinished([message], SUCCESS)
         else:
-            self.build.addStepsAfterCurrentStep([ReRunJavaScriptCoreTests()])
+            self.build.addStepsAfterCurrentStep([ValidatePatch(verifyBugClosed=False, addURLs=False), ReRunJavaScriptCoreTests()])
         return rc
+
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        logLines = self.log_observer_json.getStdout()
+        json_text = ''.join([line for line in logLines.splitlines()])
+        try:
+            jsc_results = json.loads(json_text)
+        except Exception as ex:
+            self._addToLog('stderr', 'ERROR: unable to parse data, exception: {}'.format(ex))
+            return
+
+        if jsc_results.get('allMasmTestsPassed') == False:
+            self.binaryFailures.append('testmasm')
+        if jsc_results.get('allAirTestsPassed') == False:
+            self.binaryFailures.append('testair')
+        if jsc_results.get('allB3TestsPassed') == False:
+            self.binaryFailures.append('testb3')
+        if jsc_results.get('allDFGTestsPassed') == False:
+            self.binaryFailures.append('testdfg')
+        if jsc_results.get('allApiTestsPassed') == False:
+            self.binaryFailures.append('testapi')
+
+        self.stressTestFailures = jsc_results.get('stressTestFailures')
+        if self.stressTestFailures:
+            self.setProperty(self.prefix + 'stress_test_failures', self.stressTestFailures)
+        if self.binaryFailures:
+            self.setProperty(self.prefix + 'binary_failures', self.binaryFailures)
+
+    def getResultSummary(self):
+        if self.results != SUCCESS and (self.stressTestFailures or self.binaryFailures):
+            status = ''
+            if self.stressTestFailures:
+                num_failures = len(self.stressTestFailures)
+                pluralSuffix = 's' if num_failures > 1 else ''
+                failures_to_display = self.stressTestFailures[:self.NUM_FAILURES_TO_DISPLAY_IN_STATUS]
+                status = 'Found {} jsc stress test failure{}: '.format(num_failures, pluralSuffix) + ', '.join(failures_to_display)
+                if num_failures > self.NUM_FAILURES_TO_DISPLAY_IN_STATUS:
+                    status += ' ...'
+            if self.binaryFailures:
+                if status:
+                    status += ', '
+                pluralSuffix = 's' if len(self.binaryFailures) > 1 else ''
+                status += 'JSC test binary failure{}: {}'.format(pluralSuffix, ', '.join(self.binaryFailures))
+
+            return {u'step': unicode(status)}
+
+        return shell.Test.getResultSummary(self)
+
+    @defer.inlineCallbacks
+    def _addToLog(self, logName, message):
+        try:
+            log = self.getLog(logName)
+        except KeyError:
+            log = yield self.addLog(logName)
+        log.addStdout(message)
 
 
 class ReRunJavaScriptCoreTests(RunJavaScriptCoreTests):
     name = 'jscore-test-rerun'
+    prefix = 'jsc_rerun_'
 
     def evaluateCommand(self, cmd):
         rc = shell.Test.evaluateCommand(self, cmd)
@@ -967,16 +1046,97 @@ class ReRunJavaScriptCoreTests(RunJavaScriptCoreTests):
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileJSCToT(), RunJSCTestsWithoutPatch()])
+            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                CompileJSCToT(),
+                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
+                                                RunJSCTestsWithoutPatch(),
+                                                AnalyzeJSCTestsResults()])
         return rc
 
 
 class RunJSCTestsWithoutPatch(RunJavaScriptCoreTests):
     name = 'jscore-test-without-patch'
-    jsonFileName = 'jsc_results.json'
+    prefix = 'jsc_clean_tree_'
 
     def evaluateCommand(self, cmd):
         return shell.Test.evaluateCommand(self, cmd)
+
+
+class AnalyzeJSCTestsResults(buildstep.BuildStep):
+    name = 'analyze-jsc-tests-results'
+    description = ['analyze-jsc-test-results']
+    descriptionDone = ['analyze-jsc-tests-results']
+    NUM_FAILURES_TO_DISPLAY = 10
+
+    def start(self):
+        first_run_stress_failures = set(self.getProperty('jsc_stress_test_failures', []))
+        first_run_binary_failures = set(self.getProperty('jsc_binary_failures', []))
+        second_run_stress_failures = set(self.getProperty('jsc_rerun_stress_test_failures', []))
+        second_run_binary_failures = set(self.getProperty('jsc_rerun_binary_failures', []))
+        clean_tree_stress_failures = set(self.getProperty('jsc_clean_tree_stress_test_failures', []))
+        clean_tree_binary_failures = set(self.getProperty('jsc_clean_tree_binary_failures', []))
+        clean_tree_failures = list(clean_tree_binary_failures) + list(clean_tree_stress_failures)
+        clean_tree_failures_string = ', '.join(clean_tree_failures)
+
+        stress_failures_with_patch = first_run_stress_failures.intersection(second_run_stress_failures)
+        binary_failures_with_patch = first_run_binary_failures.intersection(second_run_binary_failures)
+
+        flaky_stress_failures = first_run_stress_failures.union(second_run_stress_failures) - first_run_stress_failures.intersection(second_run_stress_failures)
+        flaky_binary_failures = first_run_binary_failures.union(second_run_binary_failures) - first_run_binary_failures.intersection(second_run_binary_failures)
+        flaky_failures = list(flaky_binary_failures) + list(flaky_stress_failures)
+        flaky_failures_string = ', '.join(flaky_failures)
+
+        new_stress_failures = stress_failures_with_patch - clean_tree_stress_failures
+        new_binary_failures = binary_failures_with_patch - clean_tree_binary_failures
+        new_stress_failures_to_display = ', '.join(list(new_stress_failures)[:self.NUM_FAILURES_TO_DISPLAY])
+        new_binary_failures_to_display = ', '.join(list(new_binary_failures)[:self.NUM_FAILURES_TO_DISPLAY])
+
+        self._addToLog('stderr', '\nFailures in first run: {}'.format(list(first_run_binary_failures) + list(first_run_stress_failures)))
+        self._addToLog('stderr', '\nFailures in second run: {}'.format(list(second_run_binary_failures) + list(second_run_stress_failures)))
+        self._addToLog('stderr', '\nFlaky Tests: {}'.format(flaky_failures_string))
+        self._addToLog('stderr', '\nFailures on clean tree: {}'.format(list(clean_tree_stress_failures) + list(clean_tree_binary_failures)))
+
+        if new_stress_failures or new_binary_failures:
+            self._addToLog('stderr', '\nNew failures: {}\n'.format(list(new_binary_failures) + list(new_stress_failures)))
+            self.finished(FAILURE)
+            self.build.results = FAILURE
+            message = ''
+            if new_binary_failures:
+                pluralSuffix = 's' if len(new_binary_failures) > 1 else ''
+                message = 'Found {} new JSC binary failure{}: {}'.format(len(new_binary_failures), pluralSuffix, new_binary_failures_to_display)
+            if new_stress_failures:
+                if message:
+                    message += ', '
+                pluralSuffix = 's' if len(new_stress_failures) > 1 else ''
+                message += 'Found {} new JSC stress test failure{}: {}'.format(len(new_stress_failures), pluralSuffix, new_stress_failures_to_display)
+                if len(new_stress_failures) > self.NUM_FAILURES_TO_DISPLAY:
+                    message += ' ...'
+            self.descriptionDone = message
+            self.build.buildFinished([message], FAILURE)
+        else:
+            self._addToLog('stderr', '\nNo new failures\n')
+            self.finished(SUCCESS)
+            self.build.results = SUCCESS
+            self.descriptionDone = 'Passed JSC tests'
+            pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
+            message = ''
+            if clean_tree_failures:
+                message = 'Found {} pre-existing JSC test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
+            if len(clean_tree_failures) > self.NUM_FAILURES_TO_DISPLAY:
+                message += ' ...'
+            if flaky_failures:
+                message += ' Found flaky tests: {}'.format(flaky_failures_string)
+            self.build.buildFinished([message], SUCCESS)
+        return defer.succeed(None)
+
+    @defer.inlineCallbacks
+    def _addToLog(self, logName, message):
+        try:
+            log = self.getLog(logName)
+        except KeyError:
+            log = yield self.addLog(logName)
+        log.addStdout(message)
 
 
 class CleanBuild(shell.Compile):
@@ -994,6 +1154,16 @@ class KillOldProcesses(shell.Compile):
 
     def __init__(self, **kwargs):
         super(KillOldProcesses, self).__init__(timeout=60, logEnviron=False, **kwargs)
+
+    def evaluateCommand(self, cmd):
+        if cmd.didFail():
+            self.build.buildFinished(['Failed to kill old processes, retrying build'], RETRY)
+        return shell.Compile.evaluateCommand(self, cmd)
+
+    def getResultSummary(self):
+        if self.results == FAILURE:
+            return {u'step': u'Failed to kill old processes'}
+        return shell.Compile.getResultSummary(self)
 
 
 class RunWebKitTests(shell.Test):

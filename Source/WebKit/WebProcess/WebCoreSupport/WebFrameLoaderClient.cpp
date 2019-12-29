@@ -1729,7 +1729,11 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
 
 String WebFrameLoaderClient::overrideMediaType() const
 {
-    notImplemented();
+    if (m_frame) {
+        if (auto* page = m_frame->page())
+            return page->overriddenMediaType();
+    }
+
     return String();
 }
 

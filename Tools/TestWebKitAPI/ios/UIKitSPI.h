@@ -36,6 +36,7 @@
 #import <UIKit/UIKeyboard_Private.h>
 #import <UIKit/UIResponder_Private.h>
 #import <UIKit/UIScreen_Private.h>
+#import <UIKit/UITextAutofillSuggestion.h>
 #import <UIKit/UITextInputMultiDocument.h>
 #import <UIKit/UITextInputTraits_Private.h>
 #import <UIKit/UITextInput_Private.h>
@@ -56,7 +57,7 @@ IGNORE_WARNINGS_END
 #import <UIKit/UIDragInteraction_Private.h>
 #endif // PLATFORM(IOS)
 
-#else
+#else // USE(APPLE_INTERNAL_SDK)
 
 WTF_EXTERN_C_BEGIN
 
@@ -87,6 +88,7 @@ WTF_EXTERN_C_END
 @class UITextInputArrowKeyHistory;
 
 @protocol UITextInputPrivate <UITextInput, UITextInputTraits_Private>
+@property (nonatomic, readonly) BOOL supportsImagePaste;
 - (UITextInputTraits *)textInputTraits;
 - (void)insertTextSuggestion:(UITextSuggestion *)textSuggestion;
 - (void)handleKeyWebEvent:(WebEvent *)theEvent withCompletionHandler:(void (^)(WebEvent *, BOOL))completionHandler;
@@ -96,6 +98,7 @@ WTF_EXTERN_C_END
 @end
 
 @interface UIWebFormAccessory : UIInputView
+- (void)setNextPreviousItemsVisible:(BOOL)visible;
 @end
 
 @interface UIBarButtonItemGroup ()
@@ -107,6 +110,11 @@ WTF_EXTERN_C_END
 - (void)_preserveFocusWithToken:(id <NSCopying, NSSecureCoding>)token destructively:(BOOL)destructively;
 - (BOOL)_restoreFocusWithToken:(id <NSCopying, NSSecureCoding>)token;
 - (void)_clearToken:(id <NSCopying, NSSecureCoding>)token;
+@end
+
+@interface UITextAutofillSuggestion : UITextSuggestion
+@property (nonatomic, assign) NSString *username;
+@property (nonatomic, assign) NSString *password;
 @end
 
 @interface NSURL ()
@@ -128,6 +136,7 @@ WTF_EXTERN_C_END
 @property (nonatomic, copy) NSObject *markedText;
 @property (nonatomic, assign) NSRange selectedRangeInMarkedText;
 @property (nonatomic, copy) NSAttributedString *annotatedText;
+@property (nonatomic, readonly) NSRange markedTextRange;
 
 - (NSArray<NSValue *> *)characterRectsForCharacterRange:(NSRange)range;
 
@@ -143,13 +152,11 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 };
 
 @interface UIWKDocumentRequest : NSObject
-
 @property (nonatomic, assign) UIWKDocumentRequestFlags flags;
 @property (nonatomic, assign) UITextGranularity surroundingGranularity;
 @property (nonatomic, assign) NSInteger granularityCount;
 @property (nonatomic, assign) CGRect documentRect;
 @property (nonatomic, retain) id <NSCopying> inputElementIdentifier;
-
 @end
 
 @interface UIWKAutocorrectionRects : NSObject
@@ -161,9 +168,15 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @end
 
 @protocol UIWKInteractionViewProtocol
+- (void)pasteWithCompletionHandler:(void (^)(void))completionHandler;
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler;
 - (void)requestAutocorrectionContextWithCompletionHandler:(void (^)(UIWKAutocorrectionContext *autocorrectionContext))completionHandler;
+- (void)selectWordBackward;
 @property (nonatomic, readonly) NSString *selectedText;
+@end
+
+@interface UIViewController ()
++ (UIViewController *)_viewControllerForFullScreenPresentationFromView:(UIView *)view;
 @end
 
 IGNORE_WARNINGS_BEGIN("deprecated-implementations")
@@ -181,28 +194,16 @@ IGNORE_WARNINGS_END
 @property (nonatomic, readonly) CGRect _referenceBounds;
 @end
 
-#endif
+#endif // USE(APPLE_INTERNAL_SDK)
 
-#if __has_include(<UIKit/UITextAutofillSuggestion.h>)
-// FIXME: Move this import under USE(APPLE_INTERNAL_SDK) once <rdar://problem/34583628> lands in the SDK.
-#import <UIKit/UITextAutofillSuggestion.h>
+#define UIWKDocumentRequestMarkedTextRects (1 << 5)
+
 @interface UITextAutofillSuggestion ()
 + (instancetype)autofillSuggestionWithUsername:(NSString *)username password:(NSString *)password;
 @end
-#else
-@interface UITextAutofillSuggestion : UITextSuggestion
-@property (nonatomic, assign) NSString *username;
-@property (nonatomic, assign) NSString *password;
-+ (instancetype)autofillSuggestionWithUsername:(NSString *)username password:(NSString *)password;
-@end
-#endif
 
 @interface NSURL (UIKitSPI)
 @property (nonatomic, copy, setter=_setTitle:) NSString *_title;
-@end
-
-@interface UIViewController (UIKitSPI)
-+ (UIViewController *)_viewControllerForFullScreenPresentationFromView:(UIView *)view;
 @end
 
 @interface UIResponder (UIKitSPI)
@@ -214,21 +215,9 @@ IGNORE_WARNINGS_END
 + (BOOL)isInHardwareKeyboardMode;
 @end
 
-@protocol UIWKInteractionViewProtocol_Staging_49236384 <UIWKInteractionViewProtocol>
-- (void)pasteWithCompletionHandler:(void (^)(void))completionHandler;
-@end
-
-@protocol UITextInputPrivate_Staging_54140418 <UITextInputPrivate>
-@property (nonatomic, readonly) BOOL supportsImagePaste;
-@end
-
-@interface UIWebFormAccessory (Staging_49666643)
-- (void)setNextPreviousItemsVisible:(BOOL)visible;
-@end
-
 #if PLATFORM(IOS)
 
-@protocol UIDropInteractionDelegate_Staging_31075005 <UIDropInteractionDelegate>
+@protocol UIDropInteractionDelegate_Private <UIDropInteractionDelegate>
 - (void)_dropInteraction:(UIDropInteraction *)interaction delayedPreviewProviderForDroppingItem:(UIDragItem *)item previewProvider:(void(^)(UITargetedDragPreview *preview))previewProvider;
 @end
 

@@ -864,6 +864,9 @@ static bool backingProviderLayerCanIncludeLayer(const RenderLayer& sharedLayer, 
 
 void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer& layer, LayerOverlapMap& overlapMap, CompositingState& compositingState, BackingSharingState& backingSharingState, bool& descendantHas3DTransform)
 {
+    layer.updateDescendantDependentFlags();
+    layer.updateLayerListsIfNeeded();
+
     if (!layer.hasDescendantNeedingCompositingRequirementsTraversal()
         && !layer.needsCompositingRequirementsTraversal()
         && !compositingState.fullPaintOrderTraversalRequired
@@ -877,9 +880,6 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     // FIXME: maybe we can avoid updating all remaining layers in paint order.
     compositingState.fullPaintOrderTraversalRequired |= layer.needsCompositingRequirementsTraversal();
     compositingState.descendantsRequireCompositingUpdate |= layer.descendantsNeedCompositingRequirementsTraversal();
-
-    layer.updateDescendantDependentFlags();
-    layer.updateLayerListsIfNeeded();
 
     layer.setHasCompositingDescendant(false);
 
@@ -1105,14 +1105,14 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 // We have to traverse unchanged layers to fill in the overlap map.
 void RenderLayerCompositor::traverseUnchangedSubtree(RenderLayer* ancestorLayer, RenderLayer& layer, LayerOverlapMap& overlapMap, CompositingState& compositingState, BackingSharingState& backingSharingState, bool& descendantHas3DTransform)
 {
+    layer.updateDescendantDependentFlags();
+    layer.updateLayerListsIfNeeded();
+
     ASSERT(!compositingState.fullPaintOrderTraversalRequired);
     ASSERT(!layer.hasDescendantNeedingCompositingRequirementsTraversal());
     ASSERT(!layer.needsCompositingRequirementsTraversal());
 
     LOG_WITH_STREAM(Compositing, stream << TextStream::Repeat(compositingState.depth * 2, ' ') << &layer << (layer.isNormalFlowOnly() ? " n" : " s") << " traverseUnchangedSubtree");
-
-    layer.updateDescendantDependentFlags();
-    layer.updateLayerListsIfNeeded();
 
     bool layerIsComposited = layer.isComposited();
     bool layerPaintsIntoProvidedBacking = false;
@@ -2106,6 +2106,7 @@ void RenderLayerCompositor::rootLayerConfigurationChanged()
 
 String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
 {
+    LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " layerTreeAsText");
     updateCompositingLayers(CompositingUpdateType::AfterLayout);
 
     if (!m_rootContentsLayer)
@@ -2425,6 +2426,10 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
     if (layer.isComposited() && layer.backing()->hasBackingSharingLayers())
         return true;
 
+    // FIXME: We really need to keep track of the ancestor layer that has its own backing store.
+    if (!ancestorCompositedBounds.contains(layerCompositedBoundsInAncestor))
+        return true;
+
     if (layer.mustCompositeForIndirectReasons()) {
         IndirectCompositingReason reason = layer.indirectCompositingReason();
         return reason == IndirectCompositingReason::Overlap
@@ -2434,10 +2439,6 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
             || reason == IndirectCompositingReason::GraphicalEffect
             || reason == IndirectCompositingReason::Preserve3D; // preserve-3d has to create backing store to ensure that 3d-transformed elements intersect.
     }
-
-    // FIXME: We really need to keep track of the ancestor layer that has its own backing store.
-    if (!ancestorCompositedBounds.contains(layerCompositedBoundsInAncestor))
-        return true;
 
     return false;
 }

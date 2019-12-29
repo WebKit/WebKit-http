@@ -1,3 +1,298 @@
+2019-11-07  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc to M78
+        https://bugs.webkit.org/show_bug.cgi?id=203897
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-createDataChannel-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getStats.https-expected.txt:
+
+2019-11-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The CSSParser should not consume negative or unit-less lengths for the SVG properties 'r', 'rx' and 'ry'
+        https://bugs.webkit.org/show_bug.cgi?id=204200
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/geometry/parsing/r-computed-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/r-invalid-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/rx-computed-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/rx-invalid-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/ry-computed-expected.txt:
+        * web-platform-tests/svg/geometry/parsing/ry-invalid-expected.txt:
+
+2019-11-14  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Accelerated transitions do not always remove their backing accelerated animation
+        https://bugs.webkit.org/show_bug.cgi?id=204198
+        <rdar://problem/45847205>
+
+        Reviewed by Dean Jackson.
+
+        Mark some WPT progressions.
+
+        * web-platform-tests/dom/events/Event-dispatch-on-disabled-elements-expected.txt:
+
+2019-11-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [SVG2] Add the 'orient' property of the interface SVGMarkerElement
+        https://bugs.webkit.org/show_bug.cgi?id=203646
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/svg/idlharness.window-expected.txt:
+        * web-platform-tests/svg/types/scripted/SVGAnimatedEnumeration-SVGMarkerElement-expected.txt:
+
+2019-11-13  youenn fablet  <youenn@apple.com>
+
+        Layout Tests in imported/w3c/web-platform-tests/websockets/ are flakey failures after r246406
+        https://bugs.webkit.org/show_bug.cgi?id=199013
+        <rdar://problem/51902173>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/websockets/Close-undefined.any-expected.txt:
+
+2019-11-13  Youenn Fablet  <youenn@apple.com>
+
+        Several XHR and CORS tests are flaky due to inconsistent order of console messages
+        https://bugs.webkit.org/show_bug.cgi?id=179607
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/xhr/access-control-and-redirects-async-expected.txt:
+        * web-platform-tests/xhr/access-control-and-redirects-async-same-origin-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-header-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-method-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-not-supported-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-header-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-method-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-not-supported-expected.txt:
+        * web-platform-tests/xhr/event-error.sub-expected.txt:
+        * web-platform-tests/xhr/send-conditional-cors-expected.txt:
+
+2019-11-13  Rob Buis  <rbuis@igalia.com>
+
+        Support stale-while-revalidate cache strategy
+        https://bugs.webkit.org/show_bug.cgi?id=201461
+
+        Reviewed by Youenn Fablet.
+
+        Import stale-while-revalidate WPT tests.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/fetch/stale-while-revalidate/fetch-expected.txt: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/fetch-sw.https-expected.txt: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/fetch-sw.https.html: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/fetch.html: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/resources/stale-css.py: Added.
+        (main):
+        * web-platform-tests/fetch/stale-while-revalidate/resources/stale-image.py: Added.
+        (main):
+        * web-platform-tests/fetch/stale-while-revalidate/resources/stale-script.py: Added.
+        (id_token):
+        (main):
+        * web-platform-tests/fetch/stale-while-revalidate/resources/w3c-import.log: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-css-expected.txt: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-css.html: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-image-expected.txt: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-image.html: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-script-expected.txt: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/stale-script.html: Added.
+        * web-platform-tests/fetch/stale-while-revalidate/sw-intercept.js: Added.
+        (async.broadcast):
+        * web-platform-tests/fetch/stale-while-revalidate/w3c-import.log: Added.
+
+2019-11-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Support Pointer Events
+        https://bugs.webkit.org/show_bug.cgi?id=202789
+
+        Reviewed by Carlos Garcia Campos.
+
+        * web-platform-tests/resources/testdriver-vendor.js:
+        The fix for iOS added in r245639 triggers a call to sendEventStream in
+        UIScriptController that crashes on GTK because that function is only
+        implemented for iOS. For Mac this was not an issue because the Mac port
+        doesn't enable TouchEvent support ("createTouch" in document).
+        However TouchEvent support is enabled for GTK. Fix this by only
+        trigerring the call to dispatchTouchActions when TouchEvent support
+        is enabled _and_ its iOS.
+
+2019-11-12  Rob Buis  <rbuis@igalia.com>
+
+        Unskip some fetch tests
+        https://bugs.webkit.org/show_bug.cgi?id=204047
+
+        Reviewed by Youenn Fablet.
+
+        Add expectation for bad-gzip-body.any.worker.html.
+
+        * web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https-expected.txt: Added.
+        * web-platform-tests/fetch/content-encoding/bad-gzip-body.any.worker-expected.txt:
+
+2019-11-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Pointer Events WPT] Delete manual tests imported as layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=203996
+
+        Reviewed by Youenn Fablet.
+
+        Manual tests should not be imported as layout tests.
+
+        * web-platform-tests/pointerevents/compat/pointerevent_touch-action_two-finger_interaction-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_coalesced_events_attributes-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_getCoalescedEvents_when_pointerlocked-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_getPredictedEvents_when_pointerlocked-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_pointerrawmove-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_pointerrawmove_in_pointerlock-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_predicted_events_attributes-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-down-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-left-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-right-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-up-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/html/pointerevent_drag_interaction-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_attributes_hoverable_pointers-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_attributes_nohover_pointers-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_boundary_events_in_capturing-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_capture_suppressing_mouse-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_disabled_form_control-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_element_haspointercapture-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_element_haspointercapture_release_pending_capture-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_fractional_coordinates-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_multiple_primary_pointers_boundary_events-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_pointerId_scope-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_pen-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_events_to_original_target-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_release_right_after_capture-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_click-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_drag-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_override_pending_capture_element-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_to_same_element_twice-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-button-test_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-auto-child-none_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-none_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-x_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-y_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_parent-none_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-keyboard-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-mouse-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-none-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y-pan-y_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-y-css_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-rotated-divs_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-span-test_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-svg-test_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-table-test_touch-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy_when_locked-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_after_pointercapture-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_supercedes_capture-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_in_pointerlock-manual.html: Removed.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_on_chorded_mouse_button_when_locked-manual.html: Removed.
+
+2019-11-11  Youenn Fablet  <youenn@apple.com>
+
+        DOMFormData should be available in workers
+        https://bugs.webkit.org/show_bug.cgi?id=176674
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/FileAPI/file/Worker-read-file-constructor.worker-expected.txt:
+        * web-platform-tests/FileAPI/idlharness.worker-expected.txt:
+        * web-platform-tests/FileAPI/url/sandboxed-iframe-expected.txt:
+        * web-platform-tests/FileAPI/url/url-format.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/abort/serviceworker-intercepted.https-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker-expected.txt:
+        * web-platform-tests/xhr/access-control-and-redirects-async-same-origin-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-header-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-method-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-async-not-supported-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-header-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-method-denied-expected.txt:
+        * web-platform-tests/xhr/access-control-preflight-sync-not-supported-expected.txt:
+        * web-platform-tests/xhr/event-error.sub-expected.txt:
+        * web-platform-tests/xhr/idlharness.any.worker-expected.txt:
+        * web-platform-tests/xhr/send-conditional-cors-expected.txt:
+        * web-platform-tests/workers/semantics/interface-objects/001.worker-expected.txt:
+
+2019-11-11  Youenn Fablet  <youenn@apple.com>
+
+        Fail cross-origin redirection loads in case of CORS with redirection URLs having credentials
+        https://bugs.webkit.org/show_bug.cgi?id=204036
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/cors/redirect-userinfo-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location.any-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-schemes-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-to-dataurl.any-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-to-dataurl.any.worker-expected.txt:
+        * web-platform-tests/fetch/security/redirect-to-url-with-credentials.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https-expected.txt:
+        * web-platform-tests/xhr/access-control-and-redirects-async-expected.txt:
+
+2019-11-11  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r252076.
+
+        This broke internal builds and tests. For more information
+        discuss with your reviewers.
+
+        * web-platform-tests/css/css-lists/parsing/list-style-type-computed-expected.txt:
+        * web-platform-tests/css/css-lists/parsing/list-style-type-valid-expected.txt:
+
+2019-11-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Update WPT mediacapture-streams tests
+        https://bugs.webkit.org/show_bug.cgi?id=204073
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/mediacapture-streams/GUM-deny.https.html:
+        * web-platform-tests/mediacapture-streams/GUM-impossible-constraint.https.html:
+        * web-platform-tests/mediacapture-streams/GUM-optional-constraint.https.html:
+        * web-platform-tests/mediacapture-streams/GUM-trivial-constraint.https.html:
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-all-expected.txt: Removed.
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-all.html: Removed.
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-enumerateDevices-expected.txt: Removed.
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-enumerateDevices.html: Removed.
+        * web-platform-tests/mediacapture-streams/MediaDevices-enumerateDevices.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaDevices-enumerateDevices.https.html:
+        * web-platform-tests/mediacapture-streams/MediaDevices-getUserMedia.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaDevices-getUserMedia.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-preload-none.https-expected.txt: Removed.
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-preload-none.https.html: Removed.
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-add-audio-track.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-audio-only.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-default-feature-policy.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStream-default-feature-policy.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-finished-add.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-gettrackid.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-idl.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-removetrack.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStream-removetrack.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-audio-is-silence.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-end-manual.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-end-manual.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStreamTrack-id.https.html:
+        * web-platform-tests/mediacapture-streams/OWNERS: Removed.
+        * web-platform-tests/mediacapture-streams/historical.html: Removed.
+        * web-platform-tests/mediacapture-streams/w3c-import.log:
+
 2019-11-08  youenn fablet  <youenn@apple.com>
 
         XMLHttpRequestUpload should be exposed in dedicated workers

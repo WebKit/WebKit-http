@@ -75,6 +75,7 @@ private:
     void closeWindow(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void switchToWindow(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getWindowHandles(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
+    void newWindow(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void switchToFrame(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void switchToParentFrame(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getWindowRect(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
@@ -123,6 +124,7 @@ private:
     RefPtr<JSON::Object> matchCapabilities(const JSON::Object&) const;
     bool platformValidateCapability(const String&, const RefPtr<JSON::Value>&) const;
     bool platformMatchCapability(const String&, const RefPtr<JSON::Value>&) const;
+    bool platformSupportProxyType(const String&) const;
     void parseCapabilities(const JSON::Object& desiredCapabilities, Capabilities&) const;
     void platformParseCapabilities(const JSON::Object& desiredCapabilities, Capabilities&) const;
     void connectToBrowser(Vector<Capabilities>&&, Function<void (CommandResult&&)>&&);

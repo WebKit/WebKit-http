@@ -28,6 +28,7 @@
 
 #include "AlignedMemoryAllocator.h"
 #include "Heap.h"
+#include "IsoCellSetInlines.h"
 #include "JSCInlines.h"
 #include "Operations.h"
 #include "SubspaceInlines.h"
@@ -152,9 +153,14 @@ PreciseAllocation* PreciseAllocation::reuseForLowerTier()
     Subspace* subspace = m_subspace;
     bool adjustedAlignment = m_adjustedAlignment;
     uint8_t lowerTierIndex = m_lowerTierIndex;
+    void* basePointer = this->basePointer();
 
-    void* space = this->basePointer();
     this->~PreciseAllocation();
+
+    void* space = basePointer;
+    ASSERT((!isAlignedForPreciseAllocation(basePointer)) == adjustedAlignment);
+    if (adjustedAlignment)
+        space = bitwise_cast<void*>(bitwise_cast<uintptr_t>(basePointer) + halfAlignment);
 
     PreciseAllocation* preciseAllocation = new (NotNull, space) PreciseAllocation(heap, size, subspace, 0, adjustedAlignment);
     preciseAllocation->m_lowerTierIndex = lowerTierIndex;
@@ -173,6 +179,7 @@ PreciseAllocation::PreciseAllocation(Heap& heap, size_t size, Subspace* subspace
     , m_weakSet(heap.vm())
 {
     m_isMarked.store(0);
+    ASSERT(cell()->isPreciseAllocation());
 }
 
 PreciseAllocation::~PreciseAllocation()
@@ -222,6 +229,10 @@ void PreciseAllocation::sweep()
     if (m_hasValidCell && !isLive()) {
         if (m_attributes.destruction == NeedsDestruction)
             m_subspace->destroy(vm(), static_cast<JSCell*>(cell()));
+        // We should clear IsoCellSet's bit before actually destroying PreciseAllocation
+        // since PreciseAllocation's destruction can be delayed until its WeakSet is cleared.
+        if (isLowerTier())
+            static_cast<IsoSubspace*>(m_subspace)->clearIsoCellSetBit(this);
         m_hasValidCell = false;
     }
 }

@@ -181,6 +181,7 @@
         "com.apple.corevideo"
         "com.apple.itunesstored" ; Needed by MediaPlayer framework
         "com.apple.mobileipod" ; Ditto
+        "com.apple.audio.virtualaudio" ; <rdar://problem/57170333>
     )
 
     ;; Required by the MediaPlayer framework.
@@ -627,6 +628,9 @@
     (global-name "com.apple.aggregated")
     (global-name "com.apple.cfprefsd.daemon"))
 
+(allow mach-lookup
+    (global-name "com.apple.tccd"))
+
 (allow ipc-posix-shm-read*
        (ipc-posix-name-prefix "apple.cfprefs."))
  
@@ -842,6 +846,7 @@
         "hw.memsize"
         "hw.model"
         "hw.pagesize_compat"
+        "hw.physicalcpu"
         "hw.physicalcpu_max"
         "kern.bootargs"
         "kern.memorystatus_level"
@@ -1129,5 +1134,6 @@
         (syscall-number SYS_kqueue) ;; <rdar://problem/49609201>
         (syscall-number SYS_kqueue_workloop_ctl) ;; <rdar://problem/50999499>
         (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/51134351>
+        (syscall-number SYS_faccessat) ;; <rdar://problem/56998930>
     )
 )

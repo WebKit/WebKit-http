@@ -1061,4 +1061,27 @@ window.UIHelper = class UIHelper {
         const copyTextScript = `uiController.copyText(\`${text.replace(/`/g, "\\`")}\`)()`;
         return new Promise(resolve => testRunner.runUIScript(copyTextScript, resolve));
     }
+
+    static async setContinuousSpellCheckingEnabled(enabled) {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`uiController.setContinuousSpellCheckingEnabled(${enabled})`, resolve);
+        });
+    }
+
+    static async longPressElement(element)
+    {
+        return this.longPressAtPoint(element.offsetLeft + element.offsetWidth / 2, element.offsetTop + element.offsetHeight / 2);
+    }
+
+    static async longPressAtPoint(x, y)
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    uiController.longPressAtPoint(${x}, ${y}, function() {
+                        uiController.uiScriptComplete();
+                    });
+                })();`, resolve);
+        });
+    }
 }

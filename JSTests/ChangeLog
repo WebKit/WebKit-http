@@ -1,3 +1,117 @@
+2019-11-15  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Anonymous built-in functions should have empty string for a name
+        https://bugs.webkit.org/show_bug.cgi?id=204214
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        Mark 20 test cases as passing.
+
+        * stress/builtin-function-name.js:
+        (shouldThrow):
+        * stress/private-name-as-anonymous-builtin.js:
+        Fix tests which are no longer accurate.
+
+2019-11-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG strength reduction should define "groups" for RegExp constant-folded result
+        https://bugs.webkit.org/show_bug.cgi?id=204264
+
+        Reviewed by Michael Saboff.
+
+        * stress/dfg-strength-reduction-for-regexp-should-include-groups-property.js: Added.
+        (shouldBe):
+        (test):
+
+2019-11-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Wasm error message should be cross-thread-copied
+        https://bugs.webkit.org/show_bug.cgi?id=204143
+
+        Reviewed by Mark Lam.
+
+        * stress/wasm-error-message-cross-threads.js: Added.
+        (f):
+
+2019-11-14  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Use toLength() and getIndexQuickly() in JSON.stringify
+        https://bugs.webkit.org/show_bug.cgi?id=204122
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/json-stringify-array-replacer.js: Added.
+        * microbenchmarks/json-stringify-empty-array.js: Added.
+
+2019-11-14  Caio Lima  <ticaiolima@gmail.com>
+
+        Support or16(TrustedImm32, AbsoluteAddress) in the MIPS MacroAssembler
+        https://bugs.webkit.org/show_bug.cgi?id=204126
+
+        Reviewed by Mark Lam.
+
+        Decreasing the number of iterations of test to avoid timeout into slow
+        ports.
+
+        * stress/regress-57020338.js:
+
+2019-11-13  Robin Morisset  <rmorisset@apple.com>
+
+        Split ArithProfile into a Unary and a Binary version
+        https://bugs.webkit.org/show_bug.cgi?id=202832
+        <rdar://problem/56266847>
+
+        Reviewed by Keith Miller.
+
+        The new test (kindly provided by Mark Lam) catches the metadata corruption that used to happen in the previous version of this patch.
+
+        * stress/regress-57020338.js: Added.
+
+2019-11-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] AI should convert IsCellWithType to constant when Structure set is finite
+        https://bugs.webkit.org/show_bug.cgi?id=204141
+
+        Reviewed by Saam Barati.
+
+        * stress/generator-cell-with-type.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (test):
+        (i.shouldThrow):
+
+2019-11-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSC GC relies on CodeBlock is not PreciseAllocation
+        https://bugs.webkit.org/show_bug.cgi?id=204124
+
+        Reviewed by Saam Barati.
+
+        * stress/ensure-code-block-is-not-precise-allocation.js: Added.
+        (foo):
+        (get for):
+
+2019-11-12  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        RegExpBuiltinExec should create "groups" property unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=204067
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2019-11-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        UTC offset for Samoa is miscalculated when !HAVE(TIMEGM)
+        https://bugs.webkit.org/show_bug.cgi?id=204032
+
+        Reviewed by Yusuke Suzuki.
+
+        * complex.yaml:
+        * complex/timezone-offset-apia.js: Added.
+        Add test to verify Date.prototype.getTimezoneOffset for TZ=Pacific/Apia.
+
 2019-11-08  Guillaume Emont  <guijemont@igalia.com>
 
         Temporarily skip another broken test on MIPS due to OSR exit to LLInt

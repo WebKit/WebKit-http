@@ -530,13 +530,8 @@ void NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
         return;
     }
 
-    if (m_isKeptAlive) {
-        m_responseCompletionHandler = WTFMove(completionHandler);
-        RunLoop::main().dispatch([protectedThis = makeRef(*this)] {
-            protectedThis->didFinishLoading(NetworkLoadMetrics { });
-        });
-        return;
-    }
+    if (m_isKeptAlive)
+        return completionHandler(PolicyAction::Ignore);
 
     completionHandler(PolicyAction::Use);
 }
@@ -694,6 +689,7 @@ void NetworkResourceLoader::willSendRedirectedRequest(ResourceRequest&& request,
             if (this->isSynchronous()) {
                 if (storedCredentialsPolicy != m_networkLoadChecker->storedCredentialsPolicy()) {
                     // We need to restart the load to update the session according the new credential policy.
+                    RELEASE_LOG_IF_ALLOWED("willSendRedirectedRequest: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ") Restarting network load due to credential policy change for synchronous load", m_parameters.webPageID.toUInt64(), m_parameters.webFrameID.toUInt64(), m_parameters.identifier);
                     this->restartNetworkLoad(WTFMove(result->redirectRequest));
                     return;
                 }
@@ -757,6 +753,8 @@ ResourceResponse NetworkResourceLoader::sanitizeResponseIfPossible(ResourceRespo
 
 void NetworkResourceLoader::restartNetworkLoad(WebCore::ResourceRequest&& newRequest)
 {
+    RELEASE_LOG_IF_ALLOWED("restartNetworkLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_parameters.webPageID.toUInt64(), m_parameters.webFrameID.toUInt64(), m_parameters.identifier);
+
     if (m_networkLoad)
         m_networkLoad->cancel();
 
@@ -787,6 +785,7 @@ void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest
         if (m_networkLoad)
             m_networkLoad->updateRequestAfterRedirection(newRequest);
 
+        RELEASE_LOG_IF_ALLOWED("continueWillSendRequest: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ") Restarting network load", m_parameters.webPageID.toUInt64(), m_parameters.webFrameID.toUInt64(), m_parameters.identifier);
         restartNetworkLoad(WTFMove(newRequest));
         return;
     }
@@ -1262,6 +1261,8 @@ void NetworkResourceLoader::serviceWorkerDidNotHandle()
 
         if (m_networkLoad)
             m_networkLoad->updateRequestAfterRedirection(newRequest);
+
+        RELEASE_LOG_IF_ALLOWED("serviceWorkerDidNotHandle: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ") Restarting network load", m_parameters.webPageID.toUInt64(), m_parameters.webFrameID.toUInt64(), m_parameters.identifier);
         restartNetworkLoad(WTFMove(newRequest));
         return;
     }

@@ -35,6 +35,7 @@ namespace WebCore {
 namespace Layout {
 
 class InlineFormattingState;
+class InvalidationState;
 
 // This class implements the layout logic for inline formatting contexts.
 // https://www.w3.org/TR/CSS22/visuren.html#inline-formatting
@@ -42,7 +43,7 @@ class InlineFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingContext);
 public:
     InlineFormattingContext(const Container& formattingContextRoot, InlineFormattingState&);
-    void layoutInFlowContent() override;
+    void layoutInFlowContent(InvalidationState&) override;
 
 private:
     IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
@@ -76,7 +77,7 @@ private:
     InlineFormattingContext::Geometry geometry() const { return Geometry(*this); }
 
     void lineLayout(UsedHorizontalValues);
-    void layoutFormattingContextRoot(const Box&, UsedHorizontalValues, UsedVerticalValues);
+    void layoutFormattingContextRoot(const Box&, InvalidationState&, UsedHorizontalValues, UsedVerticalValues);
     void computeHorizontalAndVerticalGeometry(const Box&, UsedHorizontalValues, UsedVerticalValues);
 
     void computeIntrinsicWidthForFormattingRoot(const Box&, UsedHorizontalValues);
@@ -90,6 +91,7 @@ private:
     void collectInlineContent();
     Line::InitialConstraints initialConstraintsForLine(UsedHorizontalValues, const LayoutUnit lineLogicalTop);
     void setDisplayBoxesForLine(const LineLayout::LineContent&, UsedHorizontalValues);
+    void invalidateFormattingState(const InvalidationState&);
 
     const InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }
     InlineFormattingState& formattingState() { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }

@@ -92,7 +92,7 @@ public:
     template<typename Func>
     void forEachLiveCell(const Func&);
     
-    void sweep();
+    void sweepBlocks();
     
     Subspace* nextSubspaceInAlignedMemoryAllocator() const { return m_nextSubspaceInAlignedMemoryAllocator; }
     void setNextSubspaceInAlignedMemoryAllocator(Subspace* subspace) { m_nextSubspaceInAlignedMemoryAllocator = subspace; }
@@ -119,6 +119,8 @@ protected:
     CString m_name;
 
     bool m_isIsoSubspace { false };
+protected:
+    uint8_t m_remainingLowerTierCellCount { 0 };
 };
 
 } // namespace JSC

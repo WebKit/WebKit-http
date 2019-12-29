@@ -33,7 +33,7 @@ namespace JSC {
 class IsoSubspacePerVM::AutoremovingIsoSubspace : public IsoSubspace {
 public:
     AutoremovingIsoSubspace(IsoSubspacePerVM& perVM, CString name, Heap& heap, HeapCellType* heapCellType, size_t size)
-        : IsoSubspace(name, heap, heapCellType, size)
+        : IsoSubspace(name, heap, heapCellType, size, /* numberOfLowerTierCells */ 0)
         , m_perVM(perVM)
     {
     }
@@ -41,7 +41,7 @@ public:
     ~AutoremovingIsoSubspace()
     {
         auto locker = holdLock(m_perVM.m_lock);
-        m_perVM.m_subspacePerVM.remove(&space().heap()->vm());
+        m_perVM.m_subspacePerVM.remove(&space().heap().vm());
     }
 
 private:

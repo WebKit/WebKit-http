@@ -314,16 +314,17 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
 bool WebProcessProxy::shouldSendPendingMessage(const PendingMessage& message)
 {
 #if HAVE(SANDBOX_ISSUE_READ_EXTENSION_TO_PROCESS_BY_AUDIT_TOKEN)
-    if (message.encoder->messageName() == "LoadRequestWaitingForPID") {
+    if (message.encoder->messageName() == "LoadRequestWaitingForProcessLaunch") {
         auto buffer = message.encoder->buffer();
         auto bufferSize = message.encoder->bufferSize();
         std::unique_ptr<IPC::Decoder> decoder = makeUnique<IPC::Decoder>(buffer, bufferSize, nullptr, Vector<IPC::Attachment> { });
         LoadParameters loadParameters;
         URL resourceDirectoryURL;
         WebPageProxyIdentifier pageID;
-        if (decoder->decode(loadParameters) && decoder->decode(resourceDirectoryURL) && decoder->decode(pageID)) {
+        bool checkAssumedReadAccessToResourceURL;
+        if (decoder->decode(loadParameters) && decoder->decode(resourceDirectoryURL) && decoder->decode(pageID) && decoder->decode(checkAssumedReadAccessToResourceURL)) {
             if (auto* page = WebProcessProxy::webPage(pageID)) {
-                page->maybeInitializeSandboxExtensionHandle(static_cast<WebProcessProxy&>(*this), loadParameters.request.url(), resourceDirectoryURL, loadParameters.sandboxExtensionHandle);
+                page->maybeInitializeSandboxExtensionHandle(static_cast<WebProcessProxy&>(*this), loadParameters.request.url(), resourceDirectoryURL, loadParameters.sandboxExtensionHandle, checkAssumedReadAccessToResourceURL);
                 send(Messages::WebPage::LoadRequest(loadParameters), decoder->destinationID());
             }
         } else
@@ -1565,18 +1566,52 @@ void WebProcessProxy::updateServiceWorkerProcessAssertion()
     if (!m_serviceWorkerInformation)
         return;
 
-    // FIXME: We could do better if we knew which WebContent processes needed this service worker process.
-    if (processPool().hasForegroundWebProcesses()) {
+    bool shouldTakeForegroundActivity = WTF::anyOf(m_serviceWorkerInformation->clientProcesses, [](auto& process) {
+        return !!process.m_foregroundToken;
+    });
+    if (shouldTakeForegroundActivity) {
         if (!ProcessThrottler::isValidForegroundActivity(m_serviceWorkerInformation->activity))
             m_serviceWorkerInformation->activity = m_throttler.foregroundActivity("Service Worker for foreground view(s)"_s);
         return;
     }
-    if (processPool().hasBackgroundWebProcesses()) {
+
+    bool shouldTakeBackgroundActivity = WTF::anyOf(m_serviceWorkerInformation->clientProcesses, [](auto& process) {
+        return !!process.m_backgroundToken;
+    });
+    if (shouldTakeBackgroundActivity) {
         if (!ProcessThrottler::isValidBackgroundActivity(m_serviceWorkerInformation->activity))
             m_serviceWorkerInformation->activity = m_throttler.backgroundActivity("Service Worker for background view(s)"_s);
         return;
     }
     m_serviceWorkerInformation->activity = nullptr;
+}
+
+void WebProcessProxy::registerServiceWorkerClientProcess(WebProcessProxy& proxy)
+{
+    if (!m_serviceWorkerInformation)
+        return;
+
+    m_serviceWorkerInformation->clientProcesses.add(proxy);
+    updateServiceWorkerProcessAssertion();
+}
+
+void WebProcessProxy::unregisterServiceWorkerClientProcess(WebProcessProxy& proxy)
+{
+    if (!m_serviceWorkerInformation)
+        return;
+
+    m_serviceWorkerInformation->clientProcesses.remove(proxy);
+    updateServiceWorkerProcessAssertion();
+}
+
+bool WebProcessProxy::hasServiceWorkerForegroundActivityForTesting() const
+{
+    return m_serviceWorkerInformation ? ProcessThrottler::isValidForegroundActivity(m_serviceWorkerInformation->activity) : false;
+}
+
+bool WebProcessProxy::hasServiceWorkerBackgroundActivityForTesting() const
+{
+    return m_serviceWorkerInformation ? ProcessThrottler::isValidBackgroundActivity(m_serviceWorkerInformation->activity) : false;
 }
 #endif // ENABLE(SERVICE_WORKER)
 
@@ -1627,8 +1662,11 @@ void WebProcessProxy::enableServiceWorkers(const Optional<UserContentControllerI
 #endif
         },
         nullptr,
+        { }
     };
+#if ENABLE(SERVICE_WORKER)
     updateServiceWorkerProcessAssertion();
+#endif
 }
 
 } // namespace WebKit
