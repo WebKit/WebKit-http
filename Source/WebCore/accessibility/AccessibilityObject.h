@@ -715,7 +715,7 @@ public:
     void setWrapper(AccessibilityObjectWrapper* wrapper) override { m_wrapper = wrapper; }
 #else
     AccessibilityObjectWrapper* wrapper() const override { return nullptr; }
-    void setWrapper(AccessibilityObjectWrapper*) override { }
+    //void setWrapper(AccessibilityObjectWrapper*) override { }
 #endif
 
 #if PLATFORM(COCOA)
