@@ -16,25 +16,25 @@ can also use github for that, or download parts of the history later.
 
 ### Requirements ###
 
-- You need a recent version of Haiku with the GCC 4 development tools
-- The following dependencies: `CMake, GPerf, ICU, libxml, sqlite3, libxslt, Perl, Python, Ruby`
-- And a fast computer!
+- You need a recent version of Haiku with the GCC8 development tools
+- The dependencies as listed below
+- At least about 2G of RAM
+- Preferrably a fast computer!
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
     $ pkgman install cmake_x86 gcc_x86 gperf haiku_x86_devel jpeg_x86_devel \
         sqlite_x86_devel libpng16_x86_devel libxml2_x86_devel \
         libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 \
-        libexecinfo_x86_devel libwebp_x86_devel lighttpd_x86 php \
-        pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel
-        
+        libexecinfo_x86_devel libwebp_x86_devel \
+        pkgconfig_x86 pywebsocket gnutls_x86 gnutls_x86_devel
+
+Additionally if you want to run the tests:
+
+    $ pkgman install php lighttpd_x86
+
 ##### NOTE :
 If you get an _Ruby missng error_ even after you have installed ruby, similar to <br>`Could NOT find Ruby  (missing: RUBY_INCLUDE_DIR RUBY_LIBRARY RUBY_CONFIG_INCLUDE_DIR)  (found suitable version "2.2.0", minimum required is "1.9")`, you can skip that.
-
-
-Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
-
-    AddHaikuImagePackages cmake_x86 gcc_x86 gperf haiku_x86_devel jpeg_x86_devel sqlite_x86_devel libpng16_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel lighttpd_x86 php pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel ;
 
 Packages for other flavors of Haiku may or may not be available. Use [haikuporter](http://haikuports.org) to build them if needed.
 
@@ -106,7 +106,7 @@ It is a good idea to set the NUMBER\_OF\_PROCESSORS environment variable as well
 the local CPUs will be counted, leading to a sub-optimal distcc distribution.
 
 distcc will look for a compiler named gcc-x86 and g++-x86. You'll need to adjust
-the path on the slaves to get that pointing to the gcc4 version (the gcc4 compiler
+the path on the slaves to get that pointing to the gcc8 version (the gcc8 compiler
 is already visible under this name on the local machine and haiku slaves).
 CMake usually tries to resolve the compiler to an absolute path on the first
 time it is called, but this doesn't work when the compiler is called through
