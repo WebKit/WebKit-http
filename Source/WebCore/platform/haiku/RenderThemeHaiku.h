@@ -64,22 +64,22 @@ protected:
     bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 
-    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustTextFieldStyle(RenderStyle&, const Element*) const override;
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustTextAreaStyle(RenderStyle&, const Element*) const override;
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustMenuListStyle(RenderStyle&, const Element*) const override;
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustMenuListButtonStyle(RenderStyle&, const Element*) const override;
     bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustSliderTrackStyle(RenderStyle&, const Element*) const override;
     bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    void adjustSliderThumbStyle(RenderStyle&, const Element*) const override;
 
     void adjustSliderThumbSize(RenderStyle&, const Element*) const override;
 

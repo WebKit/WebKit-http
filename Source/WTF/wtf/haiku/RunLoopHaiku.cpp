@@ -160,9 +160,10 @@ void RunLoop::iterate()
 	RunLoop::current().performWork();
 }
 
-RunLoop::CycleResult RunLoop::cycle(const String&)
+RunLoop::CycleResult RunLoop::cycle(RunLoopMode)
 {
     iterate();
+    return CycleResult::Continue;
 }
 
 void RunLoop::dispatchAfter(Seconds delay, Function<void()>&& function)
