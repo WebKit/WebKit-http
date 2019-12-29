@@ -29,6 +29,7 @@
 
 #include "APINavigation.h"
 #include "APIProcessPoolConfiguration.h"
+#include "APIUIClient.h"
 #include "WebAutomationSession.h"
 #include "WebFrameProxy.h"
 #include "WebInspectorInterruptDispatcherMessages.h"
@@ -444,6 +445,13 @@ void WebInspectorProxy::openLocalInspectorFrontend(bool canAttach, bool underTes
         m_inspectorPage->process().send(Messages::WebInspectorUI::SetDockingUnavailable(!m_canAttach), m_inspectorPage->webPageID());
     }
 
+    // Notify WebKit client when a local inspector attaches so that it may install delegates prior to the _WKInspector loading its frontend.
+    m_inspectedPage->uiClient().didAttachInspector(*m_inspectedPage, *this);
+
+    // Bail out if the client closed the inspector from the delegate method.
+    if (!m_inspectorPage)
+        return;
+
     m_inspectorPage->loadRequest(URL(URL(), m_underTest ? WebInspectorProxy::inspectorTestPageURL() : WebInspectorProxy::inspectorPageURL()));
 }
 
@@ -599,6 +607,15 @@ void WebInspectorProxy::setMockCaptureDevicesEnabledOverride(Optional<bool> enab
     m_inspectedPage->setMockCaptureDevicesEnabledOverride(enabled);
 #else
     UNUSED_PARAM(enabled);
+#endif
+}
+
+void WebInspectorProxy::setDiagnosticLoggingAvailable(bool available)
+{
+#if ENABLE(INSPECTOR_TELEMETRY)
+    m_inspectorPage->process().send(Messages::WebInspectorUI::SetDiagnosticLoggingAvailable(available), m_inspectorPage->webPageID());
+#else
+    UNUSED_PARAM(available);
 #endif
 }
 

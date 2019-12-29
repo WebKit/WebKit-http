@@ -30,22 +30,22 @@
 namespace WebCore {
 
 class Document;
-class DocumentRuleSets;
 class Element;
 class Node;
 class RenderStyle;
-class RuleSet;
 class SelectorFilter;
 class SpaceSplitString;
 class StyledElement;
 
 namespace Style {
 
+class RuleSet;
+class ScopeRuleSets;
 class Update;
 
 class SharingResolver {
 public:
-    SharingResolver(const Document&, const DocumentRuleSets&, const SelectorFilter&);
+    SharingResolver(const Document&, const ScopeRuleSets&, const SelectorFilter&);
 
     std::unique_ptr<RenderStyle> resolve(const Element&, const Update&);
 
@@ -60,7 +60,7 @@ private:
     bool classNamesAffectedByRules(const SpaceSplitString& classNames) const;
 
     const Document& m_document;
-    const DocumentRuleSets& m_ruleSets;
+    const ScopeRuleSets& m_ruleSets;
     const SelectorFilter& m_selectorFilter;
 
     HashMap<const Element*, const Element*> m_elementsSharingStyle;

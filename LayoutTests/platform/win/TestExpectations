@@ -1193,6 +1193,11 @@ webkit.org/b/203100 editing/async-clipboard/clipboard-get-type-with-old-items.ht
 webkit.org/b/203100 editing/async-clipboard/clipboard-change-data-while-writing.html [ Skip ]
 webkit.org/b/203100 editing/async-clipboard/clipboard-write-basic.html [ Skip ]
 webkit.org/b/203100 editing/async-clipboard/clipboard-write-items-twice.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-write-text.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-do-not-read-text-from-platform-if-text-changes.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-read-text-from-platform.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-read-text-same-origin.html [ Skip ]
+webkit.org/b/203100 editing/async-clipboard/clipboard-read-text.html [ Skip ]
 
 webkit.org/b/140783 [ Release ] editing/pasteboard/copy-standalone-image.html [ Failure ImageOnlyFailure ]
 webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Skip ] # Debug Assertion
@@ -1854,11 +1859,13 @@ fast/canvas/canvas-draw-canvas-on-canvas-shadow.html [ Failure ]
 fast/canvas/canvas-scale-drawImage-shadow.html [ Failure ]
 fast/canvas/canvas-scale-fillPath-shadow.html [ Failure ]
 fast/canvas/canvas-scale-fillRect-shadow.html [ Failure ]
+fast/canvas/canvas-fillPath-shadow.html [ Failure ]
 fast/canvas/canvas-transforms-fillRect-shadow.html [ Failure ]
 fast/canvas/canvas-blending-pattern-over-gradient.html [ Pass Timeout ]
 fast/canvas/canvas-composite-fill-repaint.html [ Pass Timeout ]
 fast/canvas/draw-focus-if-needed-with-path.html [ Failure ]
 fast/canvas/draw-focus-if-needed.html [ Failure ]
+
 webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.cone.front.html [ Failure ]
 webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.cone.top.html [ Failure ]
 webkit.org/b/138862 imported/w3c/canvas/2d.gradient.radial.inside2.html [ Failure ]
@@ -1946,7 +1953,6 @@ svg/text/font-size-below-point-five.svg [ Failure ]
 webkit.org/b/116564 transitions/svg-text-shadow-transition.html [ Failure ]
 webkit.org/b/116564 legacy-animation-engine/transitions/svg-text-shadow-transition.html [ Failure ]
 webkit.org/b/117322 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
-webkit.org/b/117322 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
 
 # Subpixel rendering: borders are reporting float values.
 webkit.org/b/128061 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ Failure ]

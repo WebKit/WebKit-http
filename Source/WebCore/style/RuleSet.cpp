@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 2004-2005 Allan Sandfeld Jensen (kde@carewolf.com)
  * Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com)
- * Copyright (C) 2005-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
@@ -49,128 +49,9 @@
 #endif
 
 namespace WebCore {
+namespace Style {
 
 using namespace HTMLNames;
-
-// -----------------------------------------------------------------
-
-static inline MatchBasedOnRuleHash computeMatchBasedOnRuleHash(const CSSSelector& selector)
-{
-    if (selector.tagHistory())
-        return MatchBasedOnRuleHash::None;
-
-    if (selector.match() == CSSSelector::Tag) {
-        const QualifiedName& tagQualifiedName = selector.tagQName();
-        const AtomString& selectorNamespace = tagQualifiedName.namespaceURI();
-        if (selectorNamespace == starAtom() || selectorNamespace == xhtmlNamespaceURI) {
-            if (tagQualifiedName == anyQName())
-                return MatchBasedOnRuleHash::Universal;
-            return MatchBasedOnRuleHash::ClassC;
-        }
-        return MatchBasedOnRuleHash::None;
-    }
-    if (SelectorChecker::isCommonPseudoClassSelector(&selector))
-        return MatchBasedOnRuleHash::ClassB;
-    if (selector.match() == CSSSelector::Id)
-        return MatchBasedOnRuleHash::ClassA;
-    if (selector.match() == CSSSelector::Class)
-        return MatchBasedOnRuleHash::ClassB;
-    return MatchBasedOnRuleHash::None;
-}
-
-static bool selectorCanMatchPseudoElement(const CSSSelector& rootSelector)
-{
-    const CSSSelector* selector = &rootSelector;
-    do {
-        if (selector->matchesPseudoElement())
-            return true;
-
-        if (const CSSSelectorList* selectorList = selector->selectorList()) {
-            for (const CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-                if (selectorCanMatchPseudoElement(*subSelector))
-                    return true;
-            }
-        }
-
-        selector = selector->tagHistory();
-    } while (selector);
-    return false;
-}
-
-static inline bool isCommonAttributeSelectorAttribute(const QualifiedName& attribute)
-{
-    // These are explicitly tested for equality in canShareStyleWithElement.
-    return attribute == typeAttr || attribute == readonlyAttr;
-}
-
-static bool containsUncommonAttributeSelector(const CSSSelector& rootSelector, bool matchesRightmostElement)
-{
-    const CSSSelector* selector = &rootSelector;
-    do {
-        if (selector->isAttributeSelector()) {
-            // FIXME: considering non-rightmost simple selectors is necessary because of the style sharing of cousins.
-            // It is a primitive solution which disable a lot of style sharing on pages that rely on attributes for styling.
-            // We should investigate better ways of doing this.
-            if (!isCommonAttributeSelectorAttribute(selector->attribute()) || !matchesRightmostElement)
-                return true;
-        }
-
-        if (const CSSSelectorList* selectorList = selector->selectorList()) {
-            for (const CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-                if (containsUncommonAttributeSelector(*subSelector, matchesRightmostElement))
-                    return true;
-            }
-        }
-
-        if (selector->relation() != CSSSelector::Subselector)
-            matchesRightmostElement = false;
-
-        selector = selector->tagHistory();
-    } while (selector);
-    return false;
-}
-
-static inline bool containsUncommonAttributeSelector(const CSSSelector& rootSelector)
-{
-    return containsUncommonAttributeSelector(rootSelector, true);
-}
-
-static inline PropertyWhitelistType determinePropertyWhitelistType(const CSSSelector* selector)
-{
-    for (const CSSSelector* component = selector; component; component = component->tagHistory()) {
-#if ENABLE(VIDEO_TRACK)
-        if (component->match() == CSSSelector::PseudoElement && (component->pseudoElementType() == CSSSelector::PseudoElementCue || component->value() == TextTrackCue::cueShadowPseudoId()))
-            return PropertyWhitelistCue;
-#endif
-        if (component->match() == CSSSelector::PseudoElement && component->pseudoElementType() == CSSSelector::PseudoElementMarker)
-            return PropertyWhitelistMarker;
-
-        if (const auto* selectorList = selector->selectorList()) {
-            for (const auto* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-                auto whitelistType = determinePropertyWhitelistType(subSelector);
-                if (whitelistType != PropertyWhitelistNone)
-                    return whitelistType;
-            }
-        }
-    }
-    return PropertyWhitelistNone;
-}
-
-RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned selectorListIndex, unsigned position)
-    : m_rule(rule)
-    , m_selectorIndex(selectorIndex)
-    , m_selectorListIndex(selectorListIndex)
-    , m_position(position)
-    , m_matchBasedOnRuleHash(static_cast<unsigned>(computeMatchBasedOnRuleHash(*selector())))
-    , m_canMatchPseudoElement(selectorCanMatchPseudoElement(*selector()))
-    , m_containsUncommonAttributeSelector(WebCore::containsUncommonAttributeSelector(*selector()))
-    , m_linkMatchType(SelectorChecker::determineLinkMatchType(selector()))
-    , m_propertyWhitelistType(determinePropertyWhitelistType(selector()))
-    , m_descendantSelectorIdentifierHashes(SelectorFilter::collectHashes(*selector()))
-{
-    ASSERT(m_position == position);
-    ASSERT(m_selectorIndex == selectorIndex);
-}
 
 RuleSet::RuleSet() = default;
 
@@ -384,7 +265,7 @@ void RuleSet::addPageRule(StyleRulePage* rule)
     m_pageRules.append(rule);
 }
 
-void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase>>& rules, const MediaQueryEvaluator& medium, StyleResolver* resolver, bool isInitiatingElementInUserAgentShadowTree)
+void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase>>& rules, const MediaQueryEvaluator& medium, Resolver* resolver, bool isInitiatingElementInUserAgentShadowTree)
 {
     for (auto& rule : rules) {
         if (is<StyleRule>(*rule))
@@ -404,14 +285,13 @@ void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase>>& rules, const Me
         else if (is<StyleRuleSupports>(*rule) && downcast<StyleRuleSupports>(*rule).conditionIsSupported())
             addChildRules(downcast<StyleRuleSupports>(*rule).childRules(), medium, resolver, isInitiatingElementInUserAgentShadowTree);
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-        else if (is<StyleRuleViewport>(*rule) && resolver) {
+        else if (is<StyleRuleViewport>(*rule) && resolver)
             resolver->viewportStyleResolver()->addViewportRule(downcast<StyleRuleViewport>(rule.get()));
-        }
 #endif
     }
 }
 
-void RuleSet::addRulesFromSheet(StyleSheetContents& sheet, const MediaQueryEvaluator& medium, StyleResolver* resolver)
+void RuleSet::addRulesFromSheet(StyleSheetContents& sheet, const MediaQueryEvaluator& medium, Resolver* resolver)
 {
     for (auto& rule : sheet.importRules()) {
         if (rule->styleSheet() && (!rule->mediaQueries() || medium.evaluate(*rule->mediaQueries(), resolver)))
@@ -470,4 +350,5 @@ void RuleSet::shrinkToFit()
     m_features.shrinkToFit();
 }
 
+} // namespace Style
 } // namespace WebCore

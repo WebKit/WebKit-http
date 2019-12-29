@@ -31,7 +31,6 @@ from twisted.internet import defer
 from layout_test_failures import LayoutTestFailures
 
 import json
-import os
 import re
 import requests
 
@@ -40,8 +39,6 @@ S3URL = 'https://s3-us-west-2.amazonaws.com/'
 EWS_URL = 'https://ews-build.webkit.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
-RESULTS_WEBKIT_URL = 'https://results.webkit.org'
-RESULTS_SERVER_API_KEY = 'RESULTS_SERVER_API_KEY'
 
 
 class ConfigureBuild(buildstep.BuildStep):
@@ -963,6 +960,9 @@ class RunJavaScriptCoreTests(shell.Test):
         if remotesfile:
             self.command.append('--remote-config-file={0}'.format(remotesfile))
 
+        platform = self.getProperty('platform')
+        if platform == 'jsc-only' and remotesfile:
+            self.command.extend(['--no-testmasm', '--no-testair', '--no-testb3', '--no-testdfg', '--no-testapi', '--memory-limited'])
         appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
         return shell.Test.start(self)
 
@@ -1339,16 +1339,6 @@ class ReRunWebKitTests(RunWebKitTests):
 class RunWebKitTestsWithoutPatch(RunWebKitTests):
     name = 'run-layout-tests-without-patch'
 
-    def start(self):
-        self.workerEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
-        self.setCommand(self.command +
-            ['--buildbot-master', EWS_URL.replace('https://', '').strip('/'),
-            '--builder-name', self.getProperty('buildername'),
-            '--build-number', self.getProperty('buildnumber'),
-            '--buildbot-worker', self.getProperty('workername'),
-            '--report', RESULTS_WEBKIT_URL])
-        return super(RunWebKitTestsWithoutPatch, self).start()
-
     def evaluateCommand(self, cmd):
         rc = shell.Test.evaluateCommand(self, cmd)
         self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree'), AnalyzeLayoutTestsResults()])
@@ -1667,16 +1657,6 @@ class RunAPITestsWithoutPatch(RunAPITests):
     def evaluateCommand(self, cmd):
         return TestWithFailureCount.evaluateCommand(self, cmd)
 
-    def start(self):
-        self.workerEnvironment[RESULTS_SERVER_API_KEY] = os.getenv(RESULTS_SERVER_API_KEY)
-        self.setCommand(self.command +
-            ['--buildbot-master', EWS_URL.replace('https://', '').strip('/'),
-            '--builder-name', self.getProperty('buildername'),
-            '--build-number', self.getProperty('buildnumber'),
-            '--buildbot-worker', self.getProperty('workername'),
-            '--report', RESULTS_WEBKIT_URL])
-        return super(RunAPITestsWithoutPatch, self).start()
-
 
 class AnalyzeAPITestsResults(buildstep.BuildStep):
     name = 'analyze-api-tests-results'
@@ -1887,10 +1867,11 @@ class PrintConfiguration(steps.ShellSequence):
     def run(self):
         command_list = list(self.command_list_generic)
         platform = self.getProperty('platform', '*')
-        platform = platform.split('-')[0]
+        if platform != 'jsc-only':
+            platform = platform.split('-')[0]
         if platform in ('mac', 'ios', '*'):
             command_list.extend(self.command_list_apple)
-        elif platform in ('gtk', 'wpe'):
+        elif platform in ('gtk', 'wpe', 'jsc-only'):
             command_list.extend(self.command_list_linux)
         elif platform in ('win', 'wincairo'):
             command_list.extend(self.command_list_win)

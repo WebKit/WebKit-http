@@ -48,7 +48,7 @@ ExceptionOr<void> DOMCSSRegisterCustomProperty::registerProperty(Document& docum
     RefPtr<CSSCustomPropertyValue> initialValue;
     if (!descriptor.initialValue.isEmpty()) {
         CSSTokenizer tokenizer(descriptor.initialValue);
-        StyleResolver styleResolver(document);
+        Style::Resolver styleResolver(document);
 
         // We need to initialize this so that we can successfully parse computationally dependent values (like em units).
         // We don't actually need the values to be accurate, since they will be rejected later anyway
@@ -61,7 +61,7 @@ ExceptionOr<void> DOMCSSRegisterCustomProperty::registerProperty(Document& docum
             return Exception { SyntaxError, "The given initial value must be computationally independent." };
 
 
-        MatchResult matchResult;
+        Style::MatchResult matchResult;
 
         auto parentStyle = RenderStyle::clone(*style);
         Style::Builder dummyBuilder(*style, { document, parentStyle }, matchResult, { });

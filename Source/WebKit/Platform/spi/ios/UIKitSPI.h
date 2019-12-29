@@ -449,11 +449,9 @@ typedef enum {
 @interface UITextInteractionAssistant ()
 - (void)activateSelection;
 - (void)deactivateSelection;
-- (void)didEndScrollingOrZooming;
 - (void)didEndScrollingOverflow;
 - (void)selectionChanged;
 - (void)setGestureRecognizers;
-- (void)willStartScrollingOrZooming;
 - (void)willStartScrollingOverflow;
 @end
 
@@ -709,7 +707,6 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 
 @interface UIWebGeolocationPolicyDecider ()
 + (instancetype)sharedPolicyDecider;
-- (void)decidePolicyForGeolocationRequestFromOrigin:(id)securityOrigin requestingURL:(NSURL *)requestingURL view:(UIView *)view listener:(id)listener;
 - (void)decidePolicyForGeolocationRequestFromOrigin:(id)securityOrigin requestingURL:(NSURL *)requestingURL window:(UIWindow *)window listener:(id)listener;
 @end
 
@@ -1112,6 +1109,11 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 
 #define UIWKDocumentRequestMarkedTextRects (1 << 5)
 
+@interface UITextInteractionAssistant (Staging_55645619)
+- (void)didEndScrollingOrZooming;
+- (void)willStartScrollingOrZooming;
+@end
+
 #if HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)
 @interface UIContextMenuConfiguration (IPI)
 @property (nonatomic, copy) UIContextMenuContentPreviewProvider previewProvider;
@@ -1149,7 +1151,11 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @property (nonatomic, readonly) NSInteger _gsModifierFlags;
 @end
 
-@interface UIColor (IPI)
+@interface UIWebGeolocationPolicyDecider (Staging_25963823)
+- (void)decidePolicyForGeolocationRequestFromOrigin:(id)securityOrigin requestingURL:(NSURL *)requestingURL view:(UIView *)view listener:(id)listener;
+@end
+
+ @interface UIColor (IPI)
 + (UIColor *)insertionPointColor;
 @end
 

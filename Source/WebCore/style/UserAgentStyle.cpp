@@ -27,7 +27,7 @@
  */
 
 #include "config.h"
-#include "CSSDefaultStyleSheets.h"
+#include "UserAgentStyle.h"
 
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -56,29 +56,30 @@
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+namespace Style {
 
 using namespace HTMLNames;
 
-RuleSet* CSSDefaultStyleSheets::defaultStyle;
-RuleSet* CSSDefaultStyleSheets::defaultQuirksStyle;
-RuleSet* CSSDefaultStyleSheets::defaultPrintStyle;
-unsigned CSSDefaultStyleSheets::defaultStyleVersion;
+RuleSet* UserAgentStyle::defaultStyle;
+RuleSet* UserAgentStyle::defaultQuirksStyle;
+RuleSet* UserAgentStyle::defaultPrintStyle;
+unsigned UserAgentStyle::defaultStyleVersion;
 
-StyleSheetContents* CSSDefaultStyleSheets::simpleDefaultStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::defaultStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::quirksStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::svgStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::mathMLStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::mediaControlsStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::fullscreenStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::plugInsStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::imageControlsStyleSheet;
-StyleSheetContents* CSSDefaultStyleSheets::mediaQueryStyleSheet;
+StyleSheetContents* UserAgentStyle::simpleDefaultStyleSheet;
+StyleSheetContents* UserAgentStyle::defaultStyleSheet;
+StyleSheetContents* UserAgentStyle::quirksStyleSheet;
+StyleSheetContents* UserAgentStyle::svgStyleSheet;
+StyleSheetContents* UserAgentStyle::mathMLStyleSheet;
+StyleSheetContents* UserAgentStyle::mediaControlsStyleSheet;
+StyleSheetContents* UserAgentStyle::fullscreenStyleSheet;
+StyleSheetContents* UserAgentStyle::plugInsStyleSheet;
+StyleSheetContents* UserAgentStyle::imageControlsStyleSheet;
+StyleSheetContents* UserAgentStyle::mediaQueryStyleSheet;
 #if ENABLE(DATALIST_ELEMENT)
-StyleSheetContents* CSSDefaultStyleSheets::dataListStyleSheet;
+StyleSheetContents* UserAgentStyle::dataListStyleSheet;
 #endif
 #if ENABLE(INPUT_TYPE_COLOR)
-StyleSheetContents* CSSDefaultStyleSheets::colorInputStyleSheet;
+StyleSheetContents* UserAgentStyle::colorInputStyleSheet;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -128,7 +129,7 @@ static StyleSheetContents* parseUASheet(const char* characters, unsigned size)
     return parseUASheet(String(characters, size));
 }
 
-void CSSDefaultStyleSheets::initDefaultStyle(const Element* root)
+void UserAgentStyle::initDefaultStyle(const Element* root)
 {
     if (!defaultStyle) {
         if (!root || elementCanUseSimpleDefaultStyle(*root))
@@ -138,7 +139,7 @@ void CSSDefaultStyleSheets::initDefaultStyle(const Element* root)
     }
 }
 
-void CSSDefaultStyleSheets::addToDefaultStyle(StyleSheetContents& sheet)
+void UserAgentStyle::addToDefaultStyle(StyleSheetContents& sheet)
 {
     defaultStyle->addRulesFromSheet(sheet, screenEval());
     defaultPrintStyle->addRulesFromSheet(sheet, printEval());
@@ -162,7 +163,7 @@ void CSSDefaultStyleSheets::addToDefaultStyle(StyleSheetContents& sheet)
     ++defaultStyleVersion;
 }
 
-void CSSDefaultStyleSheets::loadFullDefaultStyle()
+void UserAgentStyle::loadFullDefaultStyle()
 {
     if (defaultStyle && !simpleDefaultStyleSheet)
         return;
@@ -193,7 +194,7 @@ void CSSDefaultStyleSheets::loadFullDefaultStyle()
     defaultQuirksStyle->addRulesFromSheet(*quirksStyleSheet, screenEval());
 }
 
-void CSSDefaultStyleSheets::loadSimpleDefaultStyle()
+void UserAgentStyle::loadSimpleDefaultStyle()
 {
     ASSERT(!defaultStyle);
     ASSERT(!simpleDefaultStyleSheet);
@@ -209,7 +210,7 @@ void CSSDefaultStyleSheets::loadSimpleDefaultStyle()
     // No need to initialize quirks sheet yet as there are no quirk rules for elements allowed in simple default style.
 }
 
-void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(const Element& element)
+void UserAgentStyle::ensureDefaultStyleSheetsForElement(const Element& element)
 {
     if (simpleDefaultStyleSheet && !elementCanUseSimpleDefaultStyle(element)) {
         loadFullDefaultStyle();
@@ -292,4 +293,5 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(const Element& el
     ASSERT(mathMLStyleSheet || defaultStyle->features().siblingRules.isEmpty());
 }
 
+} // namespace Style
 } // namespace WebCore

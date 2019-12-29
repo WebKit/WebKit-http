@@ -25,10 +25,13 @@
 namespace WebCore {
 
 class Element;
-class RuleSet;
 class StyleSheetContents;
 
-class CSSDefaultStyleSheets {
+namespace Style {
+
+class RuleSet;
+
+class UserAgentStyle {
 public:
     static RuleSet* defaultStyle;
     static RuleSet* defaultQuirksStyle;
@@ -62,4 +65,5 @@ private:
     static void addToDefaultStyle(StyleSheetContents&);
 };
 
+} // namespace Style
 } // namespace WebCore

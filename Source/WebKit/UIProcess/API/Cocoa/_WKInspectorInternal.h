@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "_WKInspector.h"
+#import "_WKInspectorPrivate.h"
 
 #import "WKObject.h"
 #import "WebInspectorProxy.h"

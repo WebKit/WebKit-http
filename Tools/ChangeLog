@@ -1,3 +1,265 @@
+2019-11-19  Aakash Jain  <aakash_jain@apple.com>
+
+        Disable reporting EWS test failures from clean-tree to results.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=204369
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitTestsWithoutPatch):
+        (RunAPITestsWithoutPatch.evaluateCommand):
+        (RunWebKitTestsWithoutPatch.start): Deleted.
+        (RunAPITestsWithoutPatch.start): Deleted.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+
+2019-11-19  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Add WKUIDelegate SPI to inform clients when a _WKInspector attaches to a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=204300
+        <rdar://problem/57136993>
+
+        Reviewed by Devin Rousso.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[InspectorDelegate _webView:didAttachInspector:]):
+        (TEST): Add new test to ensure the delegate is called as expected.
+
+2019-11-19  Sihui Liu  <sihui_liu@apple.com>
+
+        Update expectations for bufferedAmount-unchanged-by-sync-xhr.any.worker.html
+        https://bugs.webkit.org/show_bug.cgi?id=204313
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2019-11-19  Paulo Matos  <pmatos@igalia.com>
+
+        Setup EWS queues for JSConly 32bits ARMv7 and MIPSel
+        https://bugs.webkit.org/show_bug.cgi?id=203946
+
+        Reviewed by Aakash Jain.
+
+        Naming of queues follow old EWS: jsc-mips for MIPSel
+        and jsc-armv7 for ARMv7.
+
+        * BuildSlaveSupport/ews-build/config.json:
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunJavaScriptCoreTests.start):
+        (PrintConfiguration.run):
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+        (TestRunJavaScriptCoreTests.test_remote_success):
+
+2019-11-18  John Wilander  <wilander@apple.com>
+
+        Check if ITP is on before applying third-party cookie blocking
+        https://bugs.webkit.org/show_bug.cgi?id=204322
+        <rdar://problem/57120772>
+
+        Reviewed by Chris Dumez and Alexey Proskuryakov.
+
+        This is test infrastructure to allow a layout test to
+        disable ITP in the network process.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsEnabled):
+        (WTR::TestRunner::setStatisticsDebugMode):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsEnabled):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2019-11-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] kill-old-processes should kill WebKitWebProcess.exe and WebKitNetworkProcess.exe
+        https://bugs.webkit.org/show_bug.cgi?id=204337
+
+        Reviewed by Ross Kirsling.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main): Removed WebKit2WebProcess.exe, and added WebKitWebProcess.exe and WebKitNetworkProcess.exe to
+        tasksToKillWin.
+
+2019-11-18  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Support run-api-tests
+        https://bugs.webkit.org/show_bug.cgi?id=204252
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager._collect_tests): Use items over iteritems.
+        (Manager._print_tests_result_with_status): Use compatible iteritems.
+        (Manager.run): Use range over xrange, use compatible iteritems.
+        * Scripts/webkitpy/api_tests/runner.py:
+        (Runner.run): Use compatible iteritems.
+        (Runner.result_map_by_status): Ditto.
+        (_Worker._run_single_test): Server process returns byte arrays, not strings.
+        (_Worker.handle): Use items over iteritems, use range over xrange.
+        * Scripts/webkitpy/common/message_pool.py:
+        (_MessagePool.run): Use range over xrange.
+        (_MessagePool._start_workers): Ditto.
+        * Scripts/webkitpy/common/multiprocessing_bootstrap.py: Remove version check.
+        * Scripts/webkitpy/port/base.py:
+        (Port.check_api_test_build):Use items over iteritems.
+        (Port.commits_for_upload): Ditto.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._reset): Use byte array over string.
+        (ServerProcess._pop_stdout_line_if_ready): Check for bytes newline.
+        (ServerProcess._pop_stderr_line_if_ready): Ditto.
+
+2019-11-18  Andres Gonzalez  <andresg_22@apple.com>
+
+        Run AccessibilityController::rootElement on secondary thread to simulate HIServices during LayoutTests.
+        https://bugs.webkit.org/show_bug.cgi?id=204226
+
+        Reviewed by Chris Fleizach.
+
+        HIServices _AXUIElementUseSecondaryAXThread and _AXUIElementRequestServicedBySecondaryAXThread
+        do not work for WebKitTestRunner since this is calling directly into
+        WebCore/accessibility via JavaScript without going through HIServices.
+        Thus to simulate the behavior of HIServices, AccessibilityController is
+        spawning a secondary thread to service the JavaScript requests.
+        The very first request needs to be serviced in the main thread,
+        and all subsequent requests in the secondary thread. this is what
+        the behavior would be if using HIServices.
+        Once the IsolatedTree would be enabled, the first request has to be
+        served in the main thread in order to build the AXIsolatedTree.
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        (WTR::AccessibilityController::rootElement):
+        (WTR::AXThread::AXThread):
+        (WTR::AXThread::isCurrentThread):
+        (WTR::AXThread::dispatch):
+        (WTR::AXThread::dispatchBarrier):
+        (WTR::AXThread::singleton):
+        (WTR::AXThread::createThreadIfNeeded):
+        (WTR::AXThread::dispatchFunctionsFromAXThread):
+        (WTR::AXThread::initializeRunLoop):
+        (WTR::AXThread::wakeUpRunLoop):
+        (WTR::AXThread::threadRunLoopSourceCallback):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.h:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityControllerMac.mm:
+        (WTR::AXThread::initializeRunLoop):
+        (WTR::AXThread::wakeUpRunLoop):
+        (WTR::AXThread::threadRunLoopSourceCallback):
+
+2019-11-18  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Uncollapsed failures shouldn't include runs with no failures
+        https://bugs.webkit.org/show_bug.cgi?id=204315
+
+        Rubber-stamped by Aakash Jain.
+
+        * resultsdbpy/resultsdbpy/model/failure_context.py:
+        (FailureContext): Do not include test runs which have no failed tests.
+        * resultsdbpy/resultsdbpy/model/failure_context_unittest.py:
+        (FailureContextTest):
+        (FailureContextTest.test_no_failures):
+
+2019-11-18  Aakash Jain  <aakash_jain@apple.com>
+
+        Dedicate ews116 to macOS-High-Sierra-Debug-Build-EWS queue
+        https://bugs.webkit.org/show_bug.cgi?id=204256
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/config.json:
+
+2019-11-18  Chris Dumez  <cdumez@apple.com>
+
+        TestWebKitAPI.ProcessSwap.QuickBackForwardNavigationWithPSON is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=199645
+        <rdar://problem/52856112>
+
+        Reviewed by Alex Christensen.
+
+        Make sure the test waits for the history navigations to complete before checking the
+        back/forward list.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-11-18  Keith Rollin  <krollin@apple.com>
+
+        Move jsc from Resources to Helpers
+        https://bugs.webkit.org/show_bug.cgi?id=203970
+        <rdar://problem/55917748>
+
+        Reviewed by Keith Miller.
+
+        'jsc' is a supporting application or tool, not a resource. As such, it
+        should go into Helpers, per
+        <https://developer.apple.com/library/archive/technotes/tn2206/_index.html#//apple_ref/doc/uid/DTS40007919-CH1-TNTAG201>
+
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/run-layout-jsc:
+        * Scripts/sunspider-compare-results:
+        (pathToSystemJSC):
+        * Scripts/test262/Runner.pm:
+        (getBuildPath):
+        * Scripts/webkitdirs.pm:
+        (jscPath):
+
+2019-11-18  Jonathan Bedard  <jbedard@apple.com>
+
+        Python 3: Add support in webkitpy.layout_tests.views
+        https://bugs.webkit.org/show_bug.cgi?id=204227
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/test-webkitpy-python3: Add webkitpy.layout_tests.views.
+        * Scripts/webkitpy/layout_tests/views/buildbot_results.py:
+        (BuildBotPrinter.print_unexpected_results): Use compatible iteritems.
+        * Scripts/webkitpy/layout_tests/views/buildbot_results_unittest.py:
+        (BuildBotPrinterTests.get_printer): Use compatible StringIO object.
+        * Scripts/webkitpy/layout_tests/views/metered_stream.py:
+        (MeteredStream.__init__): Use maxsize instead of maxint.
+        * Scripts/webkitpy/layout_tests/views/metered_stream_unittest.py:
+        (RegularTest.setUp): Use compatible StringIO, remove buflist.
+        (RegularTest.test_logging_not_included): Ditto.
+        (RegularTest._basic): Remove buflist.
+        (RegularTest.test_basic): Compare against stream value instead of buflist.
+        (RegularTest._log_after_update): Remove buflist.
+        (RegularTest.test_log_after_update): Compare against stream value
+        instead of buflist.
+        (RegularTest.test_log_args): Ditto.
+        (RegularTest.test_unicode): We can't join unicode strings and standard strings
+        in Python 2.
+        (RegularTest.test_stream_with_encoding): Use compatible StringIO, Python 3 uses
+        unicode strings.
+        (TtyTest.test_basic): Compare against stream value instead of buflist.
+        (TtyTest.test_log_after_update): Ditto.
+        (VerboseTest.test_basic): Ditto.
+        (VerboseTest.test_log_after_update): Ditto.
+        (VerboseTest.test_log_args): Ditto.
+        (VerboseWithOutTimestamp.test_basic): Ditto.
+        * Scripts/webkitpy/layout_tests/views/printing_unittest.py:
+        (Testprinter.assertWritten): Use stream value instead of buflist.
+        (Testprinter.reset): Use Python 3 compatible steam reset.
+        (Testprinter.get_printer): Use compatible StringIO.
+        (Testprinter.test_print_one_line_summary): Compare against stream value instead
+        of buflist.
+        (Testprinter.test_test_status_line): Ditto.
+        (Testprinter.test_print_found): Ditto.
+
+2019-11-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix alpha value rounding to match the CSS Color spec
+        https://bugs.webkit.org/show_bug.cgi?id=203597
+        <rdar://problem/56728546>
+
+        Reviewed by Tim Horton.
+
+        Fix the test for rounding.
+
+        * TestWebKitAPI/Tests/mac/FontManagerTests.mm:
+        (TestWebKitAPI::TEST):
+
 2019-11-16  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] [UIWKDocumentContext] Add the ability to request all marked text rects

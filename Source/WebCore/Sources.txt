@@ -682,7 +682,6 @@ css/CSSCrossfadeValue.cpp
 css/CSSCursorImageValue.cpp
 css/CSSCustomIdentValue.cpp
 css/CSSCustomPropertyValue.cpp
-css/CSSDefaultStyleSheets.cpp
 css/CSSFilterImageValue.cpp
 css/FontFaceSet.cpp
 css/FontFace.cpp
@@ -755,10 +754,7 @@ css/DOMMatrixReadOnly.cpp
 css/DeprecatedCSSOMPrimitiveValue.cpp
 css/DeprecatedCSSOMValue.cpp
 css/DeprecatedCSSOMValueList.cpp
-css/DocumentRuleSets.cpp
-css/ElementRuleCollector.cpp
 css/FontVariantBuilder.cpp
-css/InspectorCSSOMWrappers.cpp
 css/LengthFunctions.cpp
 css/MediaFeatureNames.cpp
 css/MediaList.cpp
@@ -768,11 +764,8 @@ css/MediaQueryExpression.cpp
 css/MediaQueryList.cpp
 css/MediaQueryMatcher.cpp
 css/MediaQueryParserContext.cpp
-css/PageRuleCollector.cpp
 css/PropertySetCSSStyleDeclaration.cpp
 css/RGBColor.cpp
-css/RuleFeature.cpp
-css/RuleSet.cpp
 css/SVGCSSComputedStyleDeclaration.cpp
 css/SelectorChecker.cpp
 css/SelectorFilter.cpp
@@ -780,7 +773,6 @@ css/StyleColor.cpp
 css/StyleMedia.cpp
 css/StyleProperties.cpp
 css/StylePropertyShorthand.cpp
-css/StyleResolver.cpp
 css/StyleRule.cpp
 css/StyleRuleImport.cpp
 css/StyleSheet.cpp
@@ -2344,10 +2336,16 @@ storage/StorageNamespaceProvider.cpp
 
 style/AttributeChangeInvalidation.cpp
 style/ClassChangeInvalidation.cpp
+style/ElementRuleCollector.cpp
 style/IdChangeInvalidation.cpp
 style/InlineTextBoxStyle.cpp
+style/InspectorCSSOMWrappers.cpp
 style/MatchedDeclarationsCache.cpp
+style/PageRuleCollector.cpp
 style/PropertyCascade.cpp
+style/RuleData.cpp
+style/RuleFeature.cpp
+style/RuleSet.cpp
 style/StyleAdjuster.cpp
 style/StyleBuilder.cpp
 style/StyleBuilderState.cpp
@@ -2356,11 +2354,14 @@ style/StyleFontSizeFunctions.cpp
 style/StyleInvalidator.cpp
 style/StylePendingResources.cpp
 style/StyleRelations.cpp
+style/StyleResolver.cpp
 style/StyleResolveForDocument.cpp
 style/StyleScope.cpp
+style/StyleScopeRuleSets.cpp
 style/StyleSharingResolver.cpp
 style/StyleTreeResolver.cpp
 style/StyleUpdate.cpp
+style/UserAgentStyle.cpp
 
 svg/SVGAElement.cpp
 svg/SVGAltGlyphDefElement.cpp

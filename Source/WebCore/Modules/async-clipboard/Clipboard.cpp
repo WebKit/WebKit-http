@@ -27,6 +27,7 @@
 #include "Clipboard.h"
 
 #include "ClipboardItem.h"
+#include "Document.h"
 #include "Frame.h"
 #include "JSBlob.h"
 #include "JSClipboardItem.h"
@@ -43,6 +44,25 @@
 namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(Clipboard);
+
+static bool shouldProceedWithClipboardWrite(const Frame& frame)
+{
+    auto& settings = frame.settings();
+    if (settings.javaScriptCanAccessClipboard())
+        return true;
+
+    switch (settings.clipboardAccessPolicy()) {
+    case ClipboardAccessPolicy::Allow:
+        return true;
+    case ClipboardAccessPolicy::RequiresUserGesture:
+        return UserGestureIndicator::processingUserGesture();
+    case ClipboardAccessPolicy::Deny:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
 
 Ref<Clipboard> Clipboard::create(Navigator& navigator)
 {
@@ -77,13 +97,55 @@ ScriptExecutionContext* Clipboard::scriptExecutionContext() const
 
 void Clipboard::readText(Ref<DeferredPromise>&& promise)
 {
-    promise->reject(NotSupportedError);
+    auto frame = makeRefPtr(this->frame());
+    if (!frame) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    auto pasteboard = Pasteboard::createForCopyAndPaste();
+    auto changeCountAtStart = pasteboard->changeCount();
+    if (!frame->requestDOMPasteAccess()) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    auto allInfo = pasteboard->allPasteboardItemInfo();
+    if (!allInfo) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    String text;
+    for (size_t index = 0; index < allInfo->size(); ++index) {
+        if (allInfo->at(index).webSafeTypesByFidelity.contains("text/plain"_s)) {
+            PasteboardPlainText plainTextReader;
+            pasteboard->read(plainTextReader, PlainTextURLReadingPolicy::IgnoreURL, index);
+            text = WTFMove(plainTextReader.text);
+            break;
+        }
+    }
+
+    if (changeCountAtStart == pasteboard->changeCount())
+        promise->resolve<IDLDOMString>(WTFMove(text));
+    else
+        promise->reject(NotAllowedError);
 }
 
 void Clipboard::writeText(const String& data, Ref<DeferredPromise>&& promise)
 {
-    UNUSED_PARAM(data);
-    promise->reject(NotSupportedError);
+    auto frame = makeRefPtr(this->frame());
+    auto document = makeRefPtr(frame ? frame->document() : nullptr);
+    if (!document || !frame || !shouldProceedWithClipboardWrite(*frame)) {
+        promise->reject(NotAllowedError);
+        return;
+    }
+
+    PasteboardCustomData customData;
+    customData.writeString("text/plain"_s, data);
+    customData.setOrigin(document->originIdentifierForPasteboard());
+    Pasteboard::createForCopyAndPaste()->writeCustomData({ WTFMove(customData) });
+    promise->resolve();
 }
 
 void Clipboard::read(Ref<DeferredPromise>&& promise)
@@ -184,25 +246,6 @@ void Clipboard::getType(ClipboardItem& item, const String& type, Ref<DeferredPro
         promise->resolve<IDLInterface<Blob>>(ClipboardItem::blobFromString(resultAsString, type));
     else
         promise->reject(NotAllowedError);
-}
-
-static bool shouldProceedWithClipboardWrite(const Frame& frame)
-{
-    auto& settings = frame.settings();
-    if (settings.javaScriptCanAccessClipboard())
-        return true;
-
-    switch (settings.clipboardAccessPolicy()) {
-    case ClipboardAccessPolicy::Allow:
-        return true;
-    case ClipboardAccessPolicy::RequiresUserGesture:
-        return UserGestureIndicator::processingUserGesture();
-    case ClipboardAccessPolicy::Deny:
-        return false;
-    }
-
-    ASSERT_NOT_REACHED();
-    return false;
 }
 
 void Clipboard::write(const Vector<RefPtr<ClipboardItem>>& items, Ref<DeferredPromise>&& promise)

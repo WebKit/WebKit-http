@@ -1,3 +1,316 @@
+2019-11-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Fix sysctl-read sandbox violation
+        https://bugs.webkit.org/show_bug.cgi?id=204358
+        <rdar://problem/57298313>
+
+        Reviewed by Brent Fulgham.
+
+        The WebContent sandbox should allow sysctl-read of "kern.hostname", "kern.osrelease", and "kern.version".
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2019-11-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Count third-party script loads under top frame
+        https://bugs.webkit.org/show_bug.cgi?id=204262
+        <rdar://problem/57244945>
+
+        Reviewed by Alex Christensen.
+
+        Third-party scripts running in the first-party context are a significant privacy
+        and security risk. This change captures the number of such script loads which will
+        allow ITP to take action.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.cpp:
+        (WebKit::ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::createUniqueIndices):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::createSchema):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::prepareStatements):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::insertDomainRelationships):
+        (WebKit::ResourceLoadStatisticsDatabaseStore::getSubStatisticStatement):
+            Addition of the new category TopFrameLoadedThirdPartyScripts.
+        (WebKit::ResourceLoadStatisticsDatabaseStore::resourceToString):
+            Removed the lastSeen output since it may differ between test runs.
+        * NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.h:
+        * NetworkProcess/Classifier/ResourceLoadStatisticsMemoryStore.cpp:
+            Bumped statisticsModelVersion to 17.
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::encode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+            Encoding and decoding of the new category topFrameLoadedThirdPartyScripts.
+        * WebProcess/WebCoreSupport/WebResourceLoadObserver.cpp:
+        (WebKit::WebResourceLoadObserver::logSubresourceLoading):
+            Now takes an additional enum parameter FetchDestinationIsScriptLike which
+            is used to detect third-party script-like loads (script, worker, or
+            service worker) from third-parties. If one is detected, it is stored
+            in the new topFrameLoadedThirdPartyScripts category.
+        * WebProcess/WebCoreSupport/WebResourceLoadObserver.h:
+
+2019-11-19  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Add _WKInspector SPI to set diagnostic logging delegate for a local Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=204323
+
+        Reviewed by Devin Rousso.
+
+        Testing this end-to-end isn't quite possible yet because WebInspectorUI does not
+        yet send any dummy diagnostic events that we can use for testing purposes.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+        * UIProcess/API/Cocoa/_WKInspectorInternal.h: Fix include.
+        * UIProcess/API/Cocoa/_WKInspectorPrivate.h: Added.
+        * UIProcess/API/Cocoa/_WKInspector.mm: Fix include.
+        (-[_WKInspector _setDiagnosticLoggingDelegate:]):
+        Allow clients to set the diagnosticLoggingDelegate directly on _WKInspector.
+        The implementation forwards this setter to the Inspector's WKWebView and notifies
+        the frontend that diagnostic logging availability did change.
+
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::setDiagnosticLoggingAvailable):
+        Plumbing.
+
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        (WebKit::WebInspectorUI::setDiagnosticLoggingAvailable):
+        * WebProcess/WebPage/WebInspectorUI.h:
+        * WebProcess/WebPage/WebInspectorUI.messages.in:
+        More plumbing.
+
+2019-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Make sendWithAsyncReply() safe to call from any thread
+        https://bugs.webkit.org/show_bug.cgi?id=204355
+
+        Reviewed by Alex Christensen.
+
+        Make sendWithAsyncReply() safe to call from any thread, similarly to the regular send().
+        Also start using it in WebProcess::processTaskStateDidChange() now that it is safe.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::asyncReplyHandlerMapLock):
+        (IPC::asyncReplyHandlerMap):
+        (IPC::nextAsyncReplyHandlerID):
+        (IPC::addAsyncReplyHandler):
+        (IPC::clearAsyncReplyHandlers):
+        (IPC::CompletionHandler<void):
+        * UIProcess/Cocoa/WebProcessProxyCocoa.mm:
+        (WebKit::WebProcessProxy::processWasResumed):
+        * UIProcess/WebProcessProxy.h:
+        (WebKit::WebProcessProxy::hasServiceWorkerPageProxy): Deleted.
+        (WebKit::WebProcessProxy::setAssertionStateForTesting): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::WeakOrStrongPtr): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::setIsWeak): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::get const): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::operator-> const): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::operator* const): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::operator bool const): Deleted.
+        (WebKit::WebProcessProxy::WeakOrStrongPtr::updateStrongReference): Deleted.
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::processTaskStateDidChange):
+        (WebKit::WebProcess::parentProcessDidHandleProcessWasResumed): Deleted.
+
+2019-11-19  Megan Gardner  <megan_gardner@apple.com>
+
+        <rdar://problem/57323799>
+
+        Unreviwed build fix for older bots.
+
+        * Platform/spi/ios/UIKitSPI.h:
+
+2019-11-19  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Add WKUIDelegate SPI to inform clients when a _WKInspector attaches to a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=204300
+        <rdar://problem/57136993>
+
+        Reviewed by Devin Rousso.
+
+        Add a new UI delegate method to notify clients when local Web Inspector is about to be loaded.
+        This can be triggered by -[_WKInspector show] in the Cocoa API, or via the WebCore-controlled 
+        Inspect context menu item.
+
+        The client can then configure Web Inspector using delegates or by setting _WKInspector properties.
+
+        Covered by new API test WebKit.DidNotifyWhenInspectorAttached.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::didAttachInspector):
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate):
+        (WebKit::UIDelegate::UIClient::didAttachInspector):
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::openLocalInspectorFrontend):
+
+2019-11-18  John Wilander  <wilander@apple.com>
+
+        Check if ITP is on before applying third-party cookie blocking
+        https://bugs.webkit.org/show_bug.cgi?id=204322
+        <rdar://problem/57120772>
+
+        Reviewed by Chris Dumez and Alexey Proskuryakov.
+
+        This change makes sure WebCore::NetworkStorageSession knows
+        whether ITP is on or off and checks that first thing in
+        WebCore::NetworkStorageSession::shouldBlockCookies().
+
+        This check was never needed before since if ITP was off,
+        there would be no classified domains and thus the function
+        would always return false. However,
+        https://trac.webkit.org/changeset/251353/webkit introduced
+        full third-party cookie blocking for websites without user
+        interaction and that rule is checked before checking domain
+        classification. The effect was unconditional third-party
+        cookie blocking if ITP is off. This changes fixes that bug.
+
+        Note that this patch already landed as branch-specific in
+        https://trac.webkit.org/changeset/252549/webkit
+
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::setResourceLoadStatisticsEnabled):
+            Now tells WebCore::NetworkStorageSession the status of
+            ITP.
+
+2019-11-18  David Kilzer  <ddkilzer@apple.com>
+
+        IPC::Decoder should use nullptr as invalid value
+        <https://webkit.org/b/203880>
+        <rdar://problem/53159906>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * Platform/IPC/Decoder.cpp:
+        (IPC::alignedBufferIsLargeEnoughToContain): Add bufferStart
+        parameter to add beginning bounds check now that m_bufferPos
+        uses nullptr for an invalid value.
+        (IPC::Decoder::alignBufferPosition): Update to pass m_buffer to
+        IPC::alignedBufferIsLargeEnoughToContain().
+        (IPC::Decoder::bufferIsLargeEnoughToContain const): Ditto.
+        * Platform/IPC/Decoder.h:
+        (IPC::Decoder::isInvalid const): Add beginning bounds check now
+        that m_bufferPos uses nullptr for an invalid value.
+        (IPC::Decoder::markInvalid): Make nullptr the invalid value for
+        m_bufferPos.
+
+2019-11-18  Andres Gonzalez  <andresg_22@apple.com>
+
+        Run AccessibilityController::rootElement on secondary thread to simulate HIServices during LayoutTests.
+        https://bugs.webkit.org/show_bug.cgi?id=204226
+
+        Reviewed by Chris Fleizach.
+
+        Added WKAccessibilityCanUseSecondaryAXThread to support
+        WTR::AccessibilityController spawning of a secondary thread to simulate
+        execution of isolated tree code.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKAccessibilityCanUseSecondaryAXThread):
+        * WebProcess/InjectedBundle/API/c/WKBundlePagePrivate.h:
+
+2019-11-18  Chris Dumez  <cdumez@apple.com>
+
+        Promote main thread assertions related to sendWithAsyncReply() to be release assertions
+        https://bugs.webkit.org/show_bug.cgi?id=204298
+
+        Reviewed by Wenson Hsieh.
+
+        Promote main thread assertions related to sendWithAsyncReply() to be release assertions, to help identify
+        threading bugs such as <rdar://problem/57231170>.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::addAsyncReplyHandler):
+        (IPC::clearAsyncReplyHandlers):
+        (IPC::CompletionHandler<void):
+
+2019-11-18  Alex Christensen  <achristensen@webkit.org>
+
+        Fix assertion in layout test after r252492.
+        https://bugs.webkit.org/show_bug.cgi?id=204199
+
+        There is still a case in a test where there is no frame identifier, so keep the status quo.
+        This is a partial revert of r252492.
+        This fixes layout test http/tests/navigation/window-open-redirect-and-remove-opener.html
+
+        * Shared/FrameInfoData.cpp:
+        (WebKit::FrameInfoData::decode):
+        * Shared/FrameInfoData.h:
+        * UIProcess/API/APIFrameInfo.cpp:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::createNewPage):
+
+2019-11-18  Alex Christensen  <achristensen@webkit.org>
+
+        Use SecTrustEvaluateWithError instead of SecTrustEvaluate where available
+        https://bugs.webkit.org/show_bug.cgi?id=204159
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/ios/fullscreen/WKFullScreenWindowControllerIOS.mm:
+        (-[WKFullScreenWindowController _EVOrganizationName]):
+
+2019-11-18  Darin Adler  <darin@apple.com>
+
+        WKWebView.mediaType is nullable, not null_resettable
+        https://bugs.webkit.org/show_bug.cgi?id=204297
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.h: Use nullable for mediaType since this
+        property returns a null value when the media type is not being overridden.
+
+2019-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Automation: scrollIntoView should do nothing if element is visible
+        https://bugs.webkit.org/show_bug.cgi?id=204194
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        "To scroll into view an element perform the following steps only if the element is not already in view"
+        https://w3c.github.io/webdriver/#dfn-scrolls-into-view
+
+        Fixes: imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[9]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[8]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[7]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[6]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[5]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[4]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[3]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[2]
+               imported/w3c/webdriver/tests/element_click/scroll_into_view.py::test_partially_visible_does_not_scroll[1]
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::WebAutomationSessionProxy::computeElementLayout): Use scrollIntoViewIfNotVisible instead of
+        scrollIntoViewIfNeeded.
+
+2019-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Better build fix attempt after r252434. 
+
+        We do need this variant, it was a mistake to claim that it's "old".
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/WKGeolocationProviderIOSObjCSecurityOrigin.mm:
+        (WebKit::decidePolicyForGeolocationRequestFromOrigin):
+
+2019-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix attempt after r252434.
+
+        This variant of decidePolicyForGeolocationRequestFromOrigin doesn't exist in UIKit.
+        Removing dead code, but someone needs to take a look at what the original intent here was.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/WKGeolocationProviderIOSObjCSecurityOrigin.mm:
+        (WebKit::decidePolicyForGeolocationRequestFromOrigin):
+
 2019-11-16  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         REGRESSION (r243606): Interacting with date and time pickers hangs the UI process on watchOS
@@ -251,7 +564,6 @@
         * NetworkProcess/NetworkResourceLoader.cpp:
         (WebKit::NetworkResourceLoader::didReceiveResponse):
 
->>>>>>> .r252470
 2019-11-14  Chris Dumez  <cdumez@apple.com>
 
         [iOS] Crash under WebProcess::processTaskStateDidChange(WebKit::ProcessTaskStateObserver::TaskState)

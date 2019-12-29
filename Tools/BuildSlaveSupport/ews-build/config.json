@@ -6,6 +6,14 @@
       "max_builds": 3
     },
     {
+      "name": "igalia-jsc32-armv7-ews",
+      "platform": "jsc-only"
+    },
+    {
+      "name": "igalia-jsc32-mipsel-ews",
+      "platform": "jsc-only"
+    },
+    {
       "name": "igalia1-gtk-wk2-ews",
       "platform": "gtk"
     },
@@ -374,7 +382,7 @@
       "platform": "mac-highsierra",
       "configuration": "debug",
       "architectures": ["x86_64"],
-      "workernames": ["ews113", "ews114", "ews115", "ews116", "ews117"]
+      "workernames": ["ews112", "ews113", "ews114", "ews115", "ews117"]
     },
     {
       "name": "Windows-EWS",
@@ -415,6 +423,28 @@
       "configuration": "release",
       "runTests": "true",
       "workernames": ["ews127", "ews128"]
+    },
+    {
+      "name": "JSC-MIPSEL-32bits-EWS",
+      "shortname": "jsc-mips",
+      "icon": "buildAndTest",
+      "factory": "JSCTestsFactory",
+      "platform": "jsc-only",
+      "configuration": "release",
+      "architectures": ["mipsel"],
+      "workernames": ["igalia-jsc32-mipsel-ews"],
+      "remotes": "../../EWS-test-devices.json"
+    },
+    {
+      "name": "JSC-ARMv7-32bits-EWS",
+      "shortname": "jsc-armv7",
+      "icon": "buildAndTest",
+      "factory": "JSCTestsFactory",
+      "platform": "jsc-only",
+      "configuration": "release",
+      "architectures": ["armv7"],
+      "workernames": ["igalia-jsc32-armv7-ews"],
+      "remotes": "../../EWS-test-devices.json"
     },
     {
       "name": "Bindings-Tests-EWS",
@@ -471,7 +501,7 @@
       "name": "try",
       "port": 5555,
       "builderNames": ["Apply-WatchList-EWS", "Bindings-Tests-EWS", "GTK-Webkit2-EWS", "iOS-13-Build-EWS", "iOS-13-Simulator-Build-EWS",
-                       "JSC-Tests-EWS", "macOS-High-Sierra-Debug-Build-EWS", "macOS-High-Sierra-Release-Build-EWS",
+                       "JSC-ARMv7-32bits-EWS", "JSC-MIPSEL-32bits-EWS", "JSC-Tests-EWS", "macOS-High-Sierra-Debug-Build-EWS", "macOS-High-Sierra-Release-Build-EWS",
                        "Services-EWS", "Style-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS", "WPE-EWS", "WinCairo-EWS"]
     },
     {

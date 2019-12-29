@@ -27,7 +27,7 @@
  */
 
 #include "config.h"
-#include "DocumentRuleSets.h"
+#include "StyleScopeRuleSets.h"
 
 #include "CSSStyleSheet.h"
 #include "ExtensionStyleSheets.h"
@@ -36,20 +36,21 @@
 #include "StyleSheetContents.h"
 
 namespace WebCore {
+namespace Style {
 
-DocumentRuleSets::DocumentRuleSets(StyleResolver& styleResolver)
+ScopeRuleSets::ScopeRuleSets(Resolver& styleResolver)
     : m_styleResolver(styleResolver)
 {
     m_authorStyle = makeUnique<RuleSet>();
     m_authorStyle->disableAutoShrinkToFit();
 }
 
-DocumentRuleSets::~DocumentRuleSets()
+ScopeRuleSets::~ScopeRuleSets()
 {
     RELEASE_ASSERT(!m_isInvalidatingStyleWithRuleSets);
 }
 
-RuleSet* DocumentRuleSets::userAgentMediaQueryStyle() const
+RuleSet* ScopeRuleSets::userAgentMediaQueryStyle() const
 {
     // FIXME: We should have a separate types for document rule sets and shadow tree rule sets.
     if (m_isForShadowScope)
@@ -59,12 +60,12 @@ RuleSet* DocumentRuleSets::userAgentMediaQueryStyle() const
     return m_userAgentMediaQueryStyle.get();
 }
 
-void DocumentRuleSets::updateUserAgentMediaQueryStyleIfNeeded() const
+void ScopeRuleSets::updateUserAgentMediaQueryStyleIfNeeded() const
 {
-    if (!CSSDefaultStyleSheets::mediaQueryStyleSheet)
+    if (!UserAgentStyle::mediaQueryStyleSheet)
         return;
 
-    auto ruleCount = CSSDefaultStyleSheets::mediaQueryStyleSheet->ruleCount();
+    auto ruleCount = UserAgentStyle::mediaQueryStyleSheet->ruleCount();
     if (m_userAgentMediaQueryStyle && ruleCount == m_userAgentMediaQueryRuleCountOnUpdate)
         return;
     m_userAgentMediaQueryRuleCountOnUpdate = ruleCount;
@@ -76,20 +77,20 @@ void DocumentRuleSets::updateUserAgentMediaQueryStyleIfNeeded() const
     // Media queries on user agent sheet need to evaluated in document context. They behave like author sheets in this respect.
     auto& mediaQueryEvaluator = m_styleResolver.mediaQueryEvaluator();
     m_userAgentMediaQueryStyle = makeUnique<RuleSet>();
-    m_userAgentMediaQueryStyle->addRulesFromSheet(*CSSDefaultStyleSheets::mediaQueryStyleSheet, mediaQueryEvaluator, &m_styleResolver);
+    m_userAgentMediaQueryStyle->addRulesFromSheet(*UserAgentStyle::mediaQueryStyleSheet, mediaQueryEvaluator, &m_styleResolver);
 
     // Viewport dependent queries are currently too inefficient to allow on UA sheet.
     ASSERT(!m_styleResolver.hasViewportDependentMediaQueries() || hadViewportDependentMediaQueries);
 }
 
-RuleSet* DocumentRuleSets::userStyle() const
+RuleSet* ScopeRuleSets::userStyle() const
 {
     if (m_usesSharedUserStyle)
         return m_styleResolver.document().styleScope().resolver().ruleSets().userStyle();
     return m_userStyle.get();
 }
 
-void DocumentRuleSets::initializeUserStyle()
+void ScopeRuleSets::initializeUserStyle()
 {
     auto& extensionStyleSheets = m_styleResolver.document().extensionStyleSheets();
     auto& mediaQueryEvaluator = m_styleResolver.mediaQueryEvaluator();
@@ -102,7 +103,7 @@ void DocumentRuleSets::initializeUserStyle()
         m_userStyle = WTFMove(tempUserStyle);
 }
 
-void DocumentRuleSets::collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& userSheets, RuleSet& userStyle, const MediaQueryEvaluator& medium, StyleResolver& resolver)
+void ScopeRuleSets::collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& userSheets, RuleSet& userStyle, const MediaQueryEvaluator& medium, Resolver& resolver)
 {
     for (unsigned i = 0; i < userSheets.size(); ++i) {
         ASSERT(userSheets[i]->contents().isUserStyleSheet());
@@ -122,19 +123,19 @@ static std::unique_ptr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
     return ruleSet;
 }
 
-void DocumentRuleSets::resetAuthorStyle()
+void ScopeRuleSets::resetAuthorStyle()
 {
     m_isAuthorStyleDefined = true;
     m_authorStyle = makeUnique<RuleSet>();
     m_authorStyle->disableAutoShrinkToFit();
 }
 
-void DocumentRuleSets::resetUserAgentMediaQueryStyle()
+void ScopeRuleSets::resetUserAgentMediaQueryStyle()
 {
     m_userAgentMediaQueryStyle = nullptr;
 }
 
-void DocumentRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets, MediaQueryEvaluator* medium, InspectorCSSOMWrappers& inspectorCSSOMWrappers, StyleResolver* resolver)
+void ScopeRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets, MediaQueryEvaluator* medium, InspectorCSSOMWrappers& inspectorCSSOMWrappers, Resolver* resolver)
 {
     // This handles sheets added to the end of the stylesheet list only. In other cases the style resolver
     // needs to be reconstructed. To handle insertions too the rule order numbers would need to be updated.
@@ -149,7 +150,7 @@ void DocumentRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet
     collectFeatures();
 }
 
-void DocumentRuleSets::collectFeatures() const
+void ScopeRuleSets::collectFeatures() const
 {
     RELEASE_ASSERT(!m_isInvalidatingStyleWithRuleSets);
 
@@ -157,9 +158,9 @@ void DocumentRuleSets::collectFeatures() const
     // Collect all ids and rules using sibling selectors (:first-child and similar)
     // in the current set of stylesheets. Style sharing code uses this information to reject
     // sharing candidates.
-    if (CSSDefaultStyleSheets::defaultStyle)
-        m_features.add(CSSDefaultStyleSheets::defaultStyle->features());
-    m_defaultStyleVersionOnFeatureCollection = CSSDefaultStyleSheets::defaultStyleVersion;
+    if (UserAgentStyle::defaultStyle)
+        m_features.add(UserAgentStyle::defaultStyle->features());
+    m_defaultStyleVersionOnFeatureCollection = UserAgentStyle::defaultStyleVersion;
 
     if (auto* userAgentMediaQueryStyle = this->userAgentMediaQueryStyle())
         m_features.add(userAgentMediaQueryStyle->features());
@@ -206,17 +207,17 @@ static Vector<InvalidationRuleSet>* ensureInvalidationRuleSets(const AtomString&
     }).iterator->value.get();
 }
 
-const Vector<InvalidationRuleSet>* DocumentRuleSets::classInvalidationRuleSets(const AtomString& className) const
+const Vector<InvalidationRuleSet>* ScopeRuleSets::classInvalidationRuleSets(const AtomString& className) const
 {
     return ensureInvalidationRuleSets(className, m_classInvalidationRuleSets, m_features.classRules);
 }
 
-const Vector<InvalidationRuleSet>* DocumentRuleSets::attributeInvalidationRuleSets(const AtomString& attributeName) const
+const Vector<InvalidationRuleSet>* ScopeRuleSets::attributeInvalidationRuleSets(const AtomString& attributeName) const
 {
     return ensureInvalidationRuleSets(attributeName, m_attributeInvalidationRuleSets, m_features.attributeRules);
 }
 
-bool DocumentRuleSets::hasComplexSelectorsForStyleAttribute() const
+bool ScopeRuleSets::hasComplexSelectorsForStyleAttribute() const
 {
     auto compute = [&] {
         auto* ruleSets = attributeInvalidationRuleSets(HTMLNames::styleAttr->localName());
@@ -235,4 +236,5 @@ bool DocumentRuleSets::hasComplexSelectorsForStyleAttribute() const
     return *m_cachedHasComplexSelectorsForStyleAttribute;
 }
 
+} // namespace Style
 } // namespace WebCore
