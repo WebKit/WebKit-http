@@ -76,6 +76,7 @@
 #include "PlugInClient.h"
 #include "PluginInfoProvider.h"
 #include "PointerLockController.h"
+#include "ProgressTracker.h"
 #include "ProgressTrackerClient.h"
 #include "ProgressTrackerHaiku.h"
 #include "ResourceHandle.h"
@@ -246,8 +247,6 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     , fStatusbarVisible(true)
     , fMenubarVisible(true)
 {
-    fProgressTracker = new ProgressTrackerClientHaiku(this);
-
     // FIXME we should get this from the page settings, but they are created
     // after the page, and we need this before the page is created.
     BPath storagePath;
@@ -265,15 +264,16 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 		SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
 		CacheStorageProvider::create(),
-		BackForwardList::create(), CookieJar::create(storageProvider.copyRef()));
+		BackForwardList::create(), CookieJar::create(storageProvider.copyRef()),
+    	makeUniqueRef<ProgressTrackerClientHaiku>(this)
+		);
 
 	// alternativeText
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
-    pageClients.dragClient = new DragClientHaiku(webView);
+    pageClients.dragClient = std::make_unique<DragClientHaiku>(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
-    pageClients.progressTrackerClient = fProgressTracker;
 	pageClients.diagnosticLoggingClient = std::make_unique<WebKit::WebDiagnosticLoggingClient>();
     pageClients.applicationCacheStorage = &WebApplicationCache::storage();
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
@@ -351,7 +351,7 @@ void BWebPage::SetListener(const BMessenger& listener)
 {
 	fListener = listener;
     fMainFrame->SetListener(listener);
-    fProgressTracker->setDispatchTarget(listener);
+	static_cast<ProgressTrackerClientHaiku&>(fPage->progress().client()).setDispatchTarget(listener);
 }
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)

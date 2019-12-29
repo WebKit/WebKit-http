@@ -369,7 +369,7 @@ void ChromeClientHaiku::scrollRectIntoView(const IntRect&) const
     // NOTE: Used for example to make the view scroll with the mouse when selecting.
 }
 
-void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, unsigned /*modifierFlags*/)
+void ChromeClientHaiku::mouseDidMoveOverElement(const WebCore::HitTestResult& result, unsigned int, const WTF::String& tip, WebCore::TextDirection)
 {
     TextDirection dir;
     if (result.absoluteLinkURL() != lastHoverURL
@@ -380,10 +380,7 @@ void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, uns
         lastHoverContent = result.textContent();
         m_webPage->linkHovered(lastHoverURL.string(), lastHoverTitle, lastHoverContent);
     }
-}
 
-void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
-{
 	if (!m_webView->LockLooper())
 		return;
 

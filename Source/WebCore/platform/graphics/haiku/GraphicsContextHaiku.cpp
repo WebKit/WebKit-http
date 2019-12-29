@@ -60,7 +60,7 @@ public:
     struct CustomGraphicsState {
         CustomGraphicsState()
             : previous(0)
-            , imageInterpolationQuality(InterpolationDefault)
+            , imageInterpolationQuality(InterpolationQuality::Default)
             , globalAlpha(1.0f)
         {
         }
@@ -716,36 +716,36 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
 
     drawing_mode mode = B_OP_COPY;
     switch (op) {
-    case CompositeClear:
-    case CompositeCopy:
+	case CompositeOperator::Clear:
+	case CompositeOperator::Copy:
         // Use the default above
         break;
-    case CompositeSourceOver:
+	case CompositeOperator::SourceOver:
         mode = B_OP_ALPHA;
         break;
-    case CompositePlusLighter:
+	case CompositeOperator::PlusLighter:
         mode = B_OP_ADD;
         break;
-    case CompositeDifference:
-    case CompositePlusDarker:
+	case CompositeOperator::Difference:
+	case CompositeOperator::PlusDarker:
         mode = B_OP_SUBTRACT;
         break;
-    case CompositeDestinationOut:
+	case CompositeOperator::DestinationOut:
         mode = B_OP_ERASE;
         break;
-    case CompositeSourceAtop:
+	case CompositeOperator::SourceAtop:
         // Draw source only where destination isn't transparent
-    case CompositeSourceIn:
+	case CompositeOperator::SourceIn:
         // Like B_OP_ALPHA, but don't touch destination alpha channel
-    case CompositeSourceOut:
+	case CompositeOperator::SourceOut:
         // Erase everything, draw source only where destination was transparent
-    case CompositeDestinationOver:
+	case CompositeOperator::DestinationOver:
         // Draw source only where destination is transparent
-    case CompositeDestinationAtop:
+	case CompositeOperator::DestinationAtop:
         // Draw source only where destination is transparent, erase where source is transparent
-    case CompositeDestinationIn:
+	case CompositeOperator::DestinationIn:
         // Mask destination with source alpha channel. Don't use source colors.
-    case CompositeXOR:
+	case CompositeOperator::XOR:
         // Draw source where destination is transparent, erase intersection of source and dest.
     default:
         fprintf(stderr, "GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",

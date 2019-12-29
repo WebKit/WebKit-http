@@ -44,12 +44,7 @@ ProgressTrackerClientHaiku::ProgressTrackerClientHaiku(BWebPage* view)
 {
     ASSERT(m_view);
 }
-    
-void ProgressTrackerClientHaiku::progressTrackerDestroyed()
-{
-    delete this;
-}
-    
+
 void ProgressTrackerClientHaiku::progressStarted(Frame& originatingProgressFrame)
 {
     BMessage message(LOAD_STARTED);

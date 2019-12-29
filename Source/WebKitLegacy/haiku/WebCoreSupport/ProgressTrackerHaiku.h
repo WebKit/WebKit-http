@@ -46,7 +46,6 @@ public:
     
 private:
     // ProgressTrackerClient API
-    void progressTrackerDestroyed() override;
     void progressStarted(WebCore::Frame& originatingProgressFrame) override;
     void progressEstimateChanged(WebCore::Frame& originatingProgressFrame) override;
     void progressFinished(WebCore::Frame& originatingProgressFrame) override;

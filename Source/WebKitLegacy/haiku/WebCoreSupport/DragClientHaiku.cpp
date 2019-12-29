@@ -42,11 +42,6 @@ void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, co
     notImplemented();
 }
 
-void DragClientHaiku::dragControllerDestroyed()
-{
-    delete this;
-}
-
 DragSourceAction DragClientHaiku::dragSourceActionMaskForPoint(const IntPoint&)
 {
     notImplemented();

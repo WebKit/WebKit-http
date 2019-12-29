@@ -46,7 +46,7 @@ std::unique_ptr<TextureMapper> TextureMapper::create()
 
 TextureMapper::TextureMapper(AccelerationMode accelerationMode)
     : m_context(0)
-    , m_interpolationQuality(InterpolationDefault)
+    , m_interpolationQuality(InterpolationQuality::Default)
     , m_textDrawingMode(TextModeFill)
     , m_accelerationMode(accelerationMode)
     , m_isMaskMode(false)

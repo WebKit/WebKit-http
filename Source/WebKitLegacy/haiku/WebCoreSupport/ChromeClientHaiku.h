@@ -127,9 +127,7 @@ namespace WebCore {
         void scheduleAnimation() override;
 #endif
 
-        void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags) override;
-
-        void setToolTip(const String&, TextDirection) override;
+        void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned int, const WTF::String&, WebCore::TextDirection) override;
 
         void print(Frame&) override;
 

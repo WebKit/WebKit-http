@@ -84,7 +84,7 @@ void TextureMapperImageBuffer::drawTexture(const BitmapTexture& texture, const F
     const BitmapTextureImageBuffer& textureImageBuffer = static_cast<const BitmapTextureImageBuffer&>(texture);
     ImageBuffer* image = textureImageBuffer.image();
     context->save();
-    context->setCompositeOperation(isInMaskMode() ? CompositeDestinationIn : CompositeSourceOver);
+    context->setCompositeOperation(isInMaskMode() ? CompositeOperator::DestinationIn : CompositeOperator::SourceOver);
     context->setAlpha(opacity);
 #if ENABLE(3D_TRANSFORMS)
     context->concat3DTransform(matrix);
@@ -102,7 +102,7 @@ void TextureMapperImageBuffer::drawSolidColor(const FloatRect& rect, const Trans
         return;
 
     context->save();
-    context->setCompositeOperation(isInMaskMode() ? CompositeDestinationIn : CompositeSourceOver);
+    context->setCompositeOperation(isInMaskMode() ? CompositeOperator::DestinationIn : CompositeOperator::SourceOver);
 #if ENABLE(3D_TRANSFORMS)
     context->concat3DTransform(matrix);
 #else

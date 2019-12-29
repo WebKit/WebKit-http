@@ -73,8 +73,8 @@ void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
     // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
     ctxt.platformContext()->SetDrawingMode(B_OP_ALPHA);
     uint32 flags = 0;
-    if (ctxt.imageInterpolationQuality() == InterpolationDefault
-        || ctxt.imageInterpolationQuality() > InterpolationLow) {
+    if (ctxt.imageInterpolationQuality() == InterpolationQuality::Default
+        || ctxt.imageInterpolationQuality() > InterpolationQuality::Low) {
         flags |= B_FILTER_BITMAP_BILINEAR;
     }
     ctxt.platformContext()->DrawBitmapAsync(image.get(), srcRect, dstRect, flags);

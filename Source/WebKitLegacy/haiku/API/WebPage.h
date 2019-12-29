@@ -238,7 +238,6 @@ private:
             BUrlContext*        fContext;
 			WebCore::Page*		fPage;
             WebCore::DumpRenderTreeClient* fDumpRenderTree;
-            WebCore::ProgressTrackerClientHaiku* fProgressTracker;
 
 			float				fLoadingProgress;
 			BString				fStatusMessage;

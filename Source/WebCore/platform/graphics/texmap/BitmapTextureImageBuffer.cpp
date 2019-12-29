@@ -69,7 +69,7 @@ void BitmapTextureImageBuffer::didReset()
 
 void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset)
 {
-    m_image->context().drawImage(*image, targetRect, IntRect(offset, targetRect.size()), CompositeCopy);
+    m_image->context().drawImage(*image, targetRect, IntRect(offset, targetRect.size()), {});
 }
 
 } // namespace WebCore
