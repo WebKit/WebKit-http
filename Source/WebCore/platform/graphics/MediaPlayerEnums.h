@@ -98,6 +98,7 @@ public:
         HolePunch,
         MediaFoundation,
         MockMSE,
+		Haiku,
     };
 };
 

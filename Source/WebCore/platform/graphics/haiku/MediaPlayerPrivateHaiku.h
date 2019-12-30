@@ -39,9 +39,13 @@ struct media_raw_audio_format;
 
 namespace WebCore {
 
+class MediaPlayerFactoryHaiku;
+
 class MediaPlayerPrivate : public MediaPlayerPrivateInterface,
 	public CanMakeWeakPtr<MediaPlayerPrivate> {
     public:
+		friend class MediaPlayerFactoryHaiku;
+
         static void registerMediaEngine(MediaEngineRegistrar);
 
         MediaPlayerPrivate(MediaPlayer*);

@@ -41,10 +41,35 @@
 
 namespace WebCore {
 
+class MediaPlayerFactoryHaiku final : public MediaPlayerFactory {
+private:
+    MediaPlayerEnums::MediaEngineIdentifier identifier() const final { return MediaPlayerEnums::MediaEngineIdentifier::Haiku; };
+
+    std::unique_ptr<MediaPlayerPrivateInterface> createMediaEnginePlayer(MediaPlayer* player) const final
+    {
+        return makeUnique<MediaPlayerPrivate>(player);
+    }
+
+    void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types) const final
+    {
+        return MediaPlayerPrivate::getSupportedTypes(types);
+    }
+
+    MediaPlayer::SupportsType supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters) const final
+    {
+        return MediaPlayerPrivate::supportsType(parameters);
+    }
+
+    bool supportsKeySystem(const String& keySystem, const String& mimeType) const final
+    {
+		return false;
+        //return MediaPlayerPrivate::supportsKeySystem(keySystem, mimeType);
+    }
+};
+
 void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivate>(player); },
-        getSupportedTypes, supportsType, 0, 0, 0, 0);
+    registrar(makeUnique<MediaPlayerFactoryHaiku>());
 }
 
 MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
@@ -55,8 +80,8 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     , m_soundPlayer(nullptr)
     , m_frameBuffer(nullptr)
     , m_player(player)
-    , m_networkState(MediaPlayer::Empty)
-    , m_readyState(MediaPlayer::HaveNothing)
+    , m_networkState(MediaPlayer::NetworkState::Empty)
+    , m_readyState(MediaPlayer::ReadyState::HaveNothing)
     , m_volume(1.0)
     , m_currentTime(0.f)
     , m_paused(true)
@@ -106,11 +131,11 @@ void MediaPlayerPrivate::load(const String& url)
 
         //m_readyState = MediaPlayer::HaveMetadata;
         //m_readyState = MediaPlayer::HaveFutureData;
-        m_readyState = MediaPlayer::HaveEnoughData;
-        m_networkState = MediaPlayer::Loaded; // Loading;
+        m_readyState = MediaPlayer::ReadyState::HaveEnoughData;
+        m_networkState = MediaPlayer::NetworkState::Loaded; // Loading;
     } else {
-        m_networkState = MediaPlayer::FormatError;
-        m_readyState = MediaPlayer::HaveMetadata;
+        m_readyState = MediaPlayer::ReadyState::HaveMetadata;
+        m_networkState = MediaPlayer::NetworkState::FormatError;
     }
     m_player->networkStateChanged();
     m_player->readyStateChanged();
@@ -396,14 +421,14 @@ void MediaPlayerPrivate::getSupportedTypes(HashSet<String, WTF::ASCIICaseInsensi
 MediaPlayer::SupportsType MediaPlayerPrivate::supportsType(const MediaEngineSupportParameters& parameters)
 {
     if (parameters.type.isEmpty())
-        return MediaPlayer::IsNotSupported;
+        return MediaPlayer::SupportsType::IsNotSupported;
 
     // spec says we should not return "probably" if the codecs string is empty
     if (mimeTypeCache().contains(parameters.type.containerType())) {
-        return parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+        return parameters.type.codecs().isEmpty() ? MediaPlayer::SupportsType::MayBeSupported : MediaPlayer::SupportsType::IsSupported;
     }
 
-    return MediaPlayer::IsNotSupported;
+    return MediaPlayer::SupportsType::IsNotSupported;
 }
 
 }
