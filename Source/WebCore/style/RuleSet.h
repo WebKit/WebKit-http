@@ -21,12 +21,14 @@
 
 #pragma once
 
+#include "MediaList.h"
 #include "RuleData.h"
 #include "RuleFeature.h"
 #include "SelectorCompiler.h"
 #include "StyleRule.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
+#include <wtf/VectorHash.h>
 #include <wtf/text/AtomString.h>
 #include <wtf/text/AtomStringHash.h>
 
@@ -35,41 +37,83 @@ namespace WebCore {
 class CSSSelector;
 class MediaQueryEvaluator;
 class StyleSheetContents;
-struct MediaQueryDynamicResults;
 
 namespace Style {
 
 class Resolver;
+class RuleSet;
 
-class RuleSet {
-    WTF_MAKE_NONCOPYABLE(RuleSet); WTF_MAKE_FAST_ALLOCATED;
-public:
-    struct RuleSetSelectorPair {
-        RuleSetSelectorPair(const CSSSelector* selector, std::unique_ptr<RuleSet> ruleSet)
-            : selector(selector), ruleSet(WTFMove(ruleSet))
-        { }
-        RuleSetSelectorPair(const RuleSetSelectorPair& pair)
-            : selector(pair.selector), ruleSet(const_cast<RuleSetSelectorPair*>(&pair)->ruleSet.release())
-        { }
+using InvalidationRuleSetVector = Vector<RefPtr<const RuleSet>, 1>;
 
-        const CSSSelector* selector;
-        std::unique_ptr<RuleSet> ruleSet;
+struct DynamicMediaQueryEvaluationChanges {
+    enum class Type { InvalidateStyle, ResetStyle };
+    Type type;
+    InvalidationRuleSetVector invalidationRuleSets { };
+
+    void append(DynamicMediaQueryEvaluationChanges&& other)
+    {
+        type = std::max(type, other.type);
+        if (type == Type::ResetStyle)
+            invalidationRuleSets.clear();
+        else
+            invalidationRuleSets.appendVector(WTFMove(other.invalidationRuleSets));
     };
+};
 
-    RuleSet();
+class RuleSet : public RefCounted<RuleSet> {
+    WTF_MAKE_NONCOPYABLE(RuleSet);
+public:
+    static Ref<RuleSet> create() { return adoptRef(*new RuleSet); }
+
     ~RuleSet();
 
     typedef Vector<RuleData, 1> RuleDataVector;
     typedef HashMap<AtomString, std::unique_ptr<RuleDataVector>> AtomRuleMap;
 
-    void addRulesFromSheet(StyleSheetContents&, const MediaQueryEvaluator&, Style::Resolver* = nullptr);
+    struct DynamicMediaQueryRules {
+        Vector<Ref<const MediaQuerySet>> mediaQuerySets;
+        HashSet<size_t, DefaultHash<size_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<size_t>> affectedRulePositions;
+        Vector<RuleFeature> ruleFeatures;
+        bool requiresFullReset { false };
+        bool result { true };
+    };
 
-    void addStyleRule(StyleRule*);
-    void addRule(StyleRule*, unsigned selectorIndex, unsigned selectorListIndex);
-    void addPageRule(StyleRulePage*);
+    struct MediaQueryCollector {
+        ~MediaQueryCollector();
+
+        const MediaQueryEvaluator& evaluator;
+        const bool collectDynamic { false };
+
+        struct DynamicContext {
+            Ref<const MediaQuerySet> set;
+            Vector<size_t> affectedRulePositions { };
+            Vector<RuleFeature> ruleFeatures { };
+        };
+        Vector<DynamicContext> dynamicContextStack { };
+
+        Vector<DynamicMediaQueryRules> dynamicMediaQueryRules { };
+        bool didMutateResolverWithinDynamicMediaQuery { false };
+        bool hasViewportDependentMediaQueries { false };
+
+        bool pushAndEvaluate(const MediaQuerySet*);
+        void pop(const MediaQuerySet*);
+        void didMutateResolver();
+        void addRuleIfNeeded(const RuleData&);
+    };
+
+    void addRulesFromSheet(StyleSheetContents&, const MediaQueryEvaluator&);
+    void addRulesFromSheet(StyleSheetContents&, MediaQuerySet* sheetQuery, const MediaQueryEvaluator&, Style::Resolver&);
+
+    void addStyleRule(StyleRule&, MediaQueryCollector&);
+    void addRule(StyleRule&, unsigned selectorIndex, unsigned selectorListIndex, MediaQueryCollector* = nullptr);
+    void addPageRule(StyleRulePage&);
     void addToRuleSet(const AtomString& key, AtomRuleMap&, const RuleData&);
     void shrinkToFit();
     void disableAutoShrinkToFit() { m_autoShrinkToFitEnabled = false; }
+
+    bool hasViewportDependentMediaQueries() const { return m_hasViewportDependentMediaQueries; }
+
+    Optional<DynamicMediaQueryEvaluationChanges> evaluteDynamicMediaQueryRules(const MediaQueryEvaluator&);
 
     const RuleFeatureSet& features() const { return m_features; }
 
@@ -95,7 +139,20 @@ public:
     bool hasHostPseudoClassRulesMatchingInShadowTree() const { return m_hasHostPseudoClassRulesMatchingInShadowTree; }
 
 private:
-    void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, Style::Resolver*, MediaQueryDynamicResults&);
+    RuleSet();
+
+    enum class AddRulesMode { Normal, ResolverMutationScan };
+    void addRulesFromSheet(StyleSheetContents&, MediaQueryCollector&, Style::Resolver*, AddRulesMode);
+    void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, MediaQueryCollector&, Style::Resolver*, AddRulesMode);
+    struct CollectedMediaQueryChanges {
+        bool requiredFullReset { false };
+        Vector<size_t> changedQueryIndexes { };
+        Vector<const Vector<RuleFeature>*> ruleFeatures { };
+    };
+    CollectedMediaQueryChanges evaluteDynamicMediaQueryRules(const MediaQueryEvaluator&, size_t startIndex);
+
+    template<typename Function> void traverseRuleDatas(Function&&);
+
 
     AtomRuleMap m_idRules;
     AtomRuleMap m_classRules;
@@ -116,6 +173,9 @@ private:
     bool m_hasHostPseudoClassRulesMatchingInShadowTree { false };
     bool m_autoShrinkToFitEnabled { true };
     RuleFeatureSet m_features;
+    bool m_hasViewportDependentMediaQueries { false };
+    Vector<DynamicMediaQueryRules> m_dynamicMediaQueryRules;
+    HashMap<Vector<size_t>, Ref<const RuleSet>> m_mediaQueryInvalidationRuleSetCache;
 };
 
 inline const RuleSet::RuleDataVector* RuleSet::tagRules(const AtomString& key, bool isHTMLName) const

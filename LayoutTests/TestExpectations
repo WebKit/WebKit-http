@@ -29,6 +29,7 @@ fast/forms/select/mac-wk2 [ Skip ]
 fast/forms/textarea/ios [ Skip ]
 fast/forms/watchos [ Skip ]
 fast/sandbox/ios [ Skip ]
+fast/sandbox/mac [ Skip ]
 fast/viewport/watchos [ Skip ]
 fast/visual-viewport/watchos [ Skip ]
 fast/visual-viewport/tiled-drawing [ Skip ]
@@ -62,6 +63,7 @@ pointerevents/ios [ Skip ]
 editing/pasteboard/dom-paste [ Skip ]
 editing/pasteboard/mac [ Skip ]
 fast/media/ios [ Skip ]
+fast/dom/Range/mac [ Skip ]
 
 # Requires async overflow scrolling
 compositing/shared-backing/overflow-scroll [ Skip ]
@@ -223,9 +225,9 @@ imported/w3c/web-platform-tests/referrer-policy [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/dedicated-worker-service-worker-interception.https.html [ Skip ]
 webkit.org/b/201665 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-video.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/multipart-image.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/worker-in-sandboxed-iframe-by-csp-fetch-event.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-worker-timing-frame.tentative.https.html [ Skip ]
+imported/w3c/web-platform-tests/service-workers/service-worker/client-navigate.https.html [ Skip ]
 
 # This test is a flaky timeout.
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-video-cache.https.html [ Skip ]
@@ -247,7 +249,6 @@ imported/w3c/web-platform-tests/service-workers/service-worker/update.https.html
 # Skip service worker tests that are timing out.
 imported/w3c/web-platform-tests/service-workers/service-worker/sandboxed-iframe-fetch-event.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/update-bytecheck.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/client-navigate.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-include-uncontrolled.https.html [ Skip ]
 
 # Skip html/webappapis that are timing out.
@@ -257,6 +258,8 @@ imported/w3c/web-platform-tests/html/webappapis/dynamic-markup-insertion/opening
 imported/w3c/web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/ignore-opens-during-unload.window.html [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/tasks.window.html [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/scripting/event-loops/fully_active_document.window.html [ Skip ]
+
+webkit.org/b/176929 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html [ Pass Failure ]
 
 # Requires BroadcastChannel.
 imported/w3c/web-platform-tests/html/browsers/the-window-object/noopener-noreferrer-BarProp.window.html [ Skip ]
@@ -274,10 +277,6 @@ imported/w3c/web-platform-tests/server-timing/test_server_timing.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/test_server_timing.https.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/navigation_timing_idl.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/navigation_timing_idl.https.html [ Skip ]
-
-# This test seems wrong as the order of setting ServiceWorker#state to 'activated' and resolving skipWaiting() promise is not deterministic.
-# Run this test to ensure this test does not crash.
-webkit.org/b/188246 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-installed.https.html [ Pass Failure ]
 
 # Console log lines may appear in a different order so we silence them.
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr Failure Pass ]
@@ -305,7 +304,6 @@ imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/hist
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/traverse_the_history_3.html [ Skip ]
 imported/w3c/web-platform-tests/html/browsers/offline/appcache/appcache-iframe.https.html [ Skip ]
 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_feature_policy.tentative.sub.html [ Skip ]
-imported/w3c/web-platform-tests/html/browsers/windows/document-access/document_access_feature_policy.tentative.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/infrastructure/urls/resolving-urls/query-encoding/windows-1251.html [ Skip ]
 imported/w3c/web-platform-tests/html/infrastructure/urls/resolving-urls/query-encoding/windows-1252.html [ Skip ]
 imported/w3c/web-platform-tests/html/interaction/focus/focus-01.html [ Skip ]
@@ -324,7 +322,6 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-eleme
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/srcdoc_change_hash.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/select-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setRangeText.html [ Skip ]
-imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/json-module/parse-error.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/no-active-script-manual-module.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/referrer-no-referrer.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/referrer-origin-when-cross-origin.sub.html [ Skip ]
@@ -347,6 +344,20 @@ imported/w3c/web-platform-tests/cors/image-tainting-in-cross-origin-iframe.sub.h
 imported/w3c/web-platform-tests/dom/events/EventListener-incumbent-global-1.sub.html [ Skip ]
 imported/w3c/web-platform-tests/dom/events/EventListener-incumbent-global-2.sub.html [ Skip ]
 imported/w3c/web-platform-tests/webmessaging/broadcastchannel/origin.window.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-style-element/style-error-01.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/form-submission-algorithm.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_access_details.sub.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/sandboxing/sandbox-disallow-scripts-via-unsandboxed-popup.tentative.html [ Skip ]
+imported/w3c/web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/video-aspect-ratio.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-multiple-error-events.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-multiple-load-events.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_navigate_ancestor-1.sub.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/forms/historical-search-event.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/checkbox-detached-change-event.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/radio-detached-change-event.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-summary-element/anchor-with-inline-element.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/json-module/parse-error.tentative.html [ Skip ]
+imported/w3c/web-platform-tests/2dcontext/wide-gamut-canvas/canvas-createImageBitmap-e_srgb.html [ Skip ]
 
 # Newly imported WPT ref tests failures.
 imported/w3c/web-platform-tests/html/dom/elements/requirements-relating-to-bidirectional-algorithm-formatting-characters/dir-isolation-001a.html [ ImageOnlyFailure ]
@@ -410,6 +421,12 @@ imported/w3c/web-platform-tests/html/semantics/forms/the-textarea-element/multil
 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-b-element/b-usage.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-ruby-element/ruby-usage.html [ ImageOnlyFailure ]
 [ Release ] imported/w3c/web-platform-tests/html/rendering/replaced-elements/embedded-content/video-controls-vertical-writing-mode.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-rel-attribute-ascii-case-insensitive.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/form-controls/select-sizing-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/phrasing-content-0/font-element-text-decoration-color/001-x.xhtml [ ImageOnlyFailure ]
+
+# Sometimes prints weird output at the beginning of the tests.
+imported/w3c/web-platform-tests/2dcontext/wide-gamut-canvas [ Failure Pass ]
 
 # Newly imported WPT tests that are crashing.
 [ Debug ] imported/w3c/web-platform-tests/html/rendering/replaced-elements/embedded-content/video-controls-vertical-writing-mode.html [ Crash ]
@@ -428,13 +445,15 @@ imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/comb
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/combination_history_003.html [ Failure Pass ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/execution-timing/058.html [ Failure Pass ]
 imported/w3c/web-platform-tests/html/interaction/focus/the-autofocus-attribute/update-the-rendering.html [ Failure Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom.window.html [ Failure Pass ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom-part-2.window.html [ Failure Pass ]
+imported/w3c/web-platform-tests/beacon/beacon-redirect.window.html [ Failure Pass ]
 
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-load-error-events.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-load-error-events.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-01.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-limited-quirks.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-quirks.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/json-module/invalid-content-type.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/dom/idlharness.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/dom/idlharness.worker.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/error-type-1.html [ DumpJSConsoleLogInStdErr ]
@@ -442,6 +461,10 @@ imported/w3c/web-platform-tests/html/cross-origin-embedder-policy/sandbox.https.
 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/browsers/offline/application-cache-api/api_update_error.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/css/css-properties-values-api/url-resolution.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/json-module/invalid-content-type.tentative.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/css-module/css-module-worker-test.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/subresource-integrity [ DumpJSConsoleLogInStdErr ]
 
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-order.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/getregistrations.https.html [ Slow ]
@@ -1785,7 +1808,6 @@ imported/w3c/web-platform-tests/webrtc/RTCDataChannel-bufferedAmount.html [ Skip
 imported/w3c/web-platform-tests/webrtc/RTCTrackEvent-fire.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/iceGatheringState.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/RTCIceConnectionState-candidate-pair.https.html [ Skip ]
-imported/w3c/web-platform-tests/dom/nodes/remove-and-adopt-crash.html [ Skip ]
 
 # Uses legacy WebRTC API.
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Skip ]
@@ -2095,6 +2117,7 @@ workers/sab/no-transfer.html [ Skip ]
 workers/sab/postMessage-clones.html [ Skip ]
 workers/sab/postMessage-transfer-type-error.html [ Skip ]
 workers/sab/sent-from-worker-no-transfer.html [ Skip ]
+imported/w3c/web-platform-tests/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/ [ Skip ]
 
 # These tests are slow by design.
 workers/wasm-hashset-many.html [ Slow ]
@@ -2651,8 +2674,6 @@ webkit.org/b/182177 imported/w3c/web-platform-tests/html/semantics/scripting-1/t
 imported/w3c/web-platform-tests/service-workers/service-worker/svg-target-reftest.https.html [ ImageOnlyFailure ]
 
 webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
-
-webkit.org/b/182928 http/tests/cache-storage/cache-representation.https.html [ Pass Failure ]
 
 webkit.org/b/116621 fast/replaced/preferred-widths.html [ Pass Failure ]
 
@@ -3815,4 +3836,4 @@ webgl/1.0.3/conformance/textures/copy-tex-image-2d-formats.html [ Skip ]
 webgl/1.0.3/conformance/canvas/rapid-resizing.html [ Skip ]
 webgl/1.0.3/conformance/extensions/webgl-draw-buffers.html [ Skip ]
 
-webkit.org/b/205299 animations/leak-document-with-css-animation.html [ Pass Failure ]
+webkit.org/b/197673 http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable.html [ Pass Failure Timeout ]

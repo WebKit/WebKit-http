@@ -111,9 +111,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     // scan would read. That's what this does.
     for (InlineCallFrame* inlineCallFrame = node->origin.semantic.inlineCallFrame(); inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame()) {
         if (inlineCallFrame->isClosureCall)
-            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + CallFrameSlot::callee));
+            read(AbstractHeap(Stack, VirtualRegister(inlineCallFrame->stackOffset + CallFrameSlot::callee)));
         if (inlineCallFrame->isVarargs())
-            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + CallFrameSlot::argumentCount));
+            read(AbstractHeap(Stack, VirtualRegister(inlineCallFrame->stackOffset + CallFrameSlot::argumentCountIncludingThis)));
     }
 
     // We don't want to specifically account which nodes can read from the scope
@@ -441,7 +441,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case KillStack:
-        write(AbstractHeap(Stack, node->unlinkedLocal()));
+        write(AbstractHeap(Stack, node->unlinkedOperand()));
         return;
          
     case MovHint:
@@ -497,7 +497,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case Flush:
-        read(AbstractHeap(Stack, node->local()));
+        read(AbstractHeap(Stack, node->operand()));
         write(SideState);
         return;
 
@@ -524,6 +524,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
+    case CreateArgumentsButterfly:
         read(Stack);
         read(HeapObjectCount);
         write(HeapObjectCount);
@@ -764,23 +765,23 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case GetCallee:
-        read(AbstractHeap(Stack, CallFrameSlot::callee));
-        def(HeapLocation(StackLoc, AbstractHeap(Stack, CallFrameSlot::callee)), LazyNode(node));
+        read(AbstractHeap(Stack, VirtualRegister(CallFrameSlot::callee)));
+        def(HeapLocation(StackLoc, AbstractHeap(Stack, VirtualRegister(CallFrameSlot::callee))), LazyNode(node));
         return;
 
     case SetCallee:
-        write(AbstractHeap(Stack, CallFrameSlot::callee));
+        write(AbstractHeap(Stack, VirtualRegister(CallFrameSlot::callee)));
         return;
         
     case GetArgumentCountIncludingThis: {
-        auto heap = AbstractHeap(Stack, remapOperand(node->argumentsInlineCallFrame(), VirtualRegister(CallFrameSlot::argumentCount)));
+        auto heap = AbstractHeap(Stack, remapOperand(node->argumentsInlineCallFrame(), VirtualRegister(CallFrameSlot::argumentCountIncludingThis)));
         read(heap);
         def(HeapLocation(StackPayloadLoc, heap), LazyNode(node));
         return;
     }
 
     case SetArgumentCountIncludingThis:
-        write(AbstractHeap(Stack, CallFrameSlot::argumentCount));
+        write(AbstractHeap(Stack, VirtualRegister(CallFrameSlot::argumentCountIncludingThis)));
         return;
 
     case GetRestLength:
@@ -788,36 +789,42 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case GetLocal:
-        read(AbstractHeap(Stack, node->local()));
-        def(HeapLocation(StackLoc, AbstractHeap(Stack, node->local())), LazyNode(node));
+        read(AbstractHeap(Stack, node->operand()));
+        def(HeapLocation(StackLoc, AbstractHeap(Stack, node->operand())), LazyNode(node));
         return;
         
     case SetLocal:
-        write(AbstractHeap(Stack, node->local()));
-        def(HeapLocation(StackLoc, AbstractHeap(Stack, node->local())), LazyNode(node->child1().node()));
+        write(AbstractHeap(Stack, node->operand()));
+        def(HeapLocation(StackLoc, AbstractHeap(Stack, node->operand())), LazyNode(node->child1().node()));
         return;
         
     case GetStack: {
-        AbstractHeap heap(Stack, node->stackAccessData()->local);
+        AbstractHeap heap(Stack, node->stackAccessData()->operand);
         read(heap);
         def(HeapLocation(StackLoc, heap), LazyNode(node));
         return;
     }
         
     case PutStack: {
-        AbstractHeap heap(Stack, node->stackAccessData()->local);
+        AbstractHeap heap(Stack, node->stackAccessData()->operand);
         write(heap);
         def(HeapLocation(StackLoc, heap), LazyNode(node->child1().node()));
         return;
     }
         
+    case VarargsLength: {
+        read(World);
+        write(Heap);
+        return;  
+    }
+
     case LoadVarargs: {
         read(World);
         write(Heap);
         LoadVarargsData* data = node->loadVarargsData();
-        write(AbstractHeap(Stack, data->count.offset()));
+        write(AbstractHeap(Stack, data->count));
         for (unsigned i = data->limit; i--;)
-            write(AbstractHeap(Stack, data->start.offset() + static_cast<int>(i)));
+            write(AbstractHeap(Stack, data->start + static_cast<int>(i)));
         return;
     }
         
@@ -826,9 +833,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(Stack);
         
         LoadVarargsData* data = node->loadVarargsData();
-        write(AbstractHeap(Stack, data->count.offset()));
+        write(AbstractHeap(Stack, data->count));
         for (unsigned i = data->limit; i--;)
-            write(AbstractHeap(Stack, data->start.offset() + static_cast<int>(i)));
+            write(AbstractHeap(Stack, data->start + static_cast<int>(i)));
         return;
     }
         

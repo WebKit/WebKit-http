@@ -122,7 +122,7 @@ struct MediaEngineSupportParameters {
         if (!typesRequiringHardware)
             return WTF::nullopt;
 
-        return {{ WTFMove(*type), WTFMove(*url), WTFMove(*isMediaSource), WTFMove(*isMediaStream), WTFMove(*typesRequiringHardware) }};
+        return {{ WTFMove(*type), WTFMove(*url), *isMediaSource, *isMediaStream, *typesRequiringHardware }};
     }
 };
 
@@ -161,11 +161,6 @@ public:
 
     // the play/pause status changed
     virtual void mediaPlayerPlaybackStateChanged() { }
-
-    // The MediaPlayer has found potentially problematic media content.
-    // This is used internally to trigger swapping from a <video>
-    // element to an <embed> in standalone documents
-    virtual void mediaPlayerSawUnsupportedTracks() { }
 
     // The MediaPlayer could not discover an engine which supports the requested resource.
     virtual void mediaPlayerResourceNotSupported() { }
@@ -226,11 +221,9 @@ public:
     virtual bool mediaPlayerIsVideo() const { return false; }
     virtual LayoutRect mediaPlayerContentBoxRect() const { return LayoutRect(); }
     virtual float mediaPlayerContentsScale() const { return 1; }
-    virtual void mediaPlayerSetSize(const IntSize&) { }
     virtual void mediaPlayerPause() { }
     virtual void mediaPlayerPlay() { }
     virtual bool mediaPlayerPlatformVolumeConfigurationRequired() const { return false; }
-    virtual bool mediaPlayerIsPaused() const { return true; }
     virtual bool mediaPlayerIsLooping() const { return false; }
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() { return nullptr; }
     virtual RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() { return nullptr; }
@@ -258,11 +251,8 @@ public:
     virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const { return false; }
 #endif
 
-    virtual void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType) { }
-
     virtual String mediaPlayerSourceApplicationIdentifier() const { return emptyString(); }
 
-    virtual bool mediaPlayerIsInMediaDocument() const { return false; }
     virtual void mediaPlayerEngineFailedToLoad() const { }
 
     virtual double mediaPlayerRequestedPlaybackRate() const { return 0; }
@@ -277,6 +267,9 @@ public:
     virtual bool mediaPlayerShouldDisableSleep() const { return false; }
     virtual const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const = 0;
     virtual bool mediaPlayerShouldCheckHardwareSupport() const { return false; }
+
+    virtual void mediaPlayerBufferedTimeRangesChanged() { }
+    virtual void mediaPlayerSeekableTimeRangesChanged() { }
 
 #if !RELEASE_LOG_DISABLED
     virtual const void* mediaPlayerLogIdentifier() { return nullptr; }
@@ -333,8 +326,6 @@ public:
     FloatSize naturalSize();
     bool hasVideo() const;
     bool hasAudio() const;
-
-    bool inMediaDocument() const;
 
     IntSize size() const { return m_size; }
     void setSize(const IntSize& size);
@@ -397,6 +388,8 @@ public:
 
     std::unique_ptr<PlatformTimeRanges> buffered();
     std::unique_ptr<PlatformTimeRanges> seekable();
+    void bufferedTimeRangesChanged();
+    void seekableTimeRangesChanged();
     MediaTime minTimeSeekable();
     MediaTime maxTimeSeekable();
 
@@ -460,9 +453,6 @@ public:
 
     bool hasAvailableVideoFrame() const;
     void prepareForRendering();
-
-    bool canLoadPoster() const;
-    void setPoster(const String&);
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)
     void enterFullscreen();
@@ -588,7 +578,6 @@ public:
 
     Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
 
-    void handlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType);
     String sourceApplicationIdentifier() const;
     Vector<String> preferredAudioCharacteristics() const;
 
@@ -631,6 +620,8 @@ public:
     bool isVideoPlayer() const { return client().mediaPlayerIsVideo(); }
     void mediaEngineUpdated() { client().mediaPlayerEngineUpdated(); }
     bool isLooping() const { return client().mediaPlayerIsLooping(); }
+
+    void remoteEngineFailedToLoad();
 
 #if USE(GSTREAMER)
     void requestInstallMissingPlugins(const String& details, const String& description, MediaPlayerRequestInstallMissingPluginsCallback& callback) { client().requestInstallMissingPlugins(details, description, callback); }

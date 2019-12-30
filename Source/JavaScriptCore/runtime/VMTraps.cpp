@@ -358,16 +358,16 @@ void VMTraps::handleTraps(JSGlobalObject* globalObject, CallFrame* callFrame, VM
             invalidateCodeBlocksOnStack(callFrame);
             break;
 
+        case NeedShellTimeoutCheck:
+            RELEASE_ASSERT(g_jscConfig.shellTimeoutCheckCallback);
+            g_jscConfig.shellTimeoutCheckCallback(vm);
+            break;
+
         case NeedWatchdogCheck:
             ASSERT(vm.watchdog());
             if (LIKELY(!vm.watchdog()->shouldTerminate(globalObject)))
                 continue;
             FALLTHROUGH;
-
-        case NeedShellTimeoutCheck:
-            RELEASE_ASSERT(g_jscConfig.shellTimeoutCheckCallback);
-            g_jscConfig.shellTimeoutCheckCallback(vm);
-            break;
 
         case NeedTermination:
             throwException(globalObject, scope, createTerminatedExecutionException(&vm));

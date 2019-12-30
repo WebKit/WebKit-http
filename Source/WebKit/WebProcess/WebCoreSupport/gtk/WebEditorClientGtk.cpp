@@ -132,13 +132,6 @@ void WebEditorClient::handleKeyboardEvent(KeyboardEvent& event)
         event.setDefaultHandled();
 }
 
-void WebEditorClient::handleInputMethodKeydown(KeyboardEvent& event)
-{
-    auto* platformEvent = event.underlyingPlatformEvent();
-    if (platformEvent && platformEvent->handledByInputMethod())
-        event.setDefaultHandled();
-}
-
 void WebEditorClient::updateGlobalSelection(Frame* frame)
 {
     if (!frame->selection().isRange())

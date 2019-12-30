@@ -197,6 +197,11 @@ void ScrollView::setDelegatesScrolling(bool delegatesScrolling)
     delegatesScrollingDidChange();
 }
 
+void ScrollView::setDelegatesPageScaling(bool delegatesPageScaling)
+{
+    m_delegatesPageScaling = delegatesPageScaling;
+}
+
 IntPoint ScrollView::contentsScrollPosition() const
 {
 #if PLATFORM(IOS_FAMILY)
@@ -215,12 +220,64 @@ void ScrollView::setContentsScrollPosition(const IntPoint& position)
     setScrollPosition(position);
 }
 
-#if !PLATFORM(IOS_FAMILY)
+FloatRect ScrollView::exposedContentRect() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (platformWidget())
+        return platformExposedContentRect();
+#endif
+    
+    const ScrollView* parent = this->parent();
+    if (!parent)
+        return m_delegatedScrollingGeometry ? m_delegatedScrollingGeometry->exposedContentRect : FloatRect();
+
+    IntRect parentViewExtentContentRect = enclosingIntRect(parent->exposedContentRect());
+    IntRect selfExtentContentRect = rootViewToContents(parentViewExtentContentRect);
+    selfExtentContentRect.intersect(boundsRect());
+    return selfExtentContentRect;
+}
+
+void ScrollView::setExposedContentRect(const FloatRect& rect)
+{
+    ASSERT(!platformWidget());
+
+    if (!m_delegatedScrollingGeometry)
+        m_delegatedScrollingGeometry = DelegatedScrollingGeometry();
+
+    m_delegatedScrollingGeometry->exposedContentRect = rect;
+}
+
+FloatSize ScrollView::unobscuredContentSize() const
+{
+    ASSERT(m_delegatedScrollingGeometry);
+    if (m_delegatedScrollingGeometry)
+        return m_delegatedScrollingGeometry->unobscuredContentSize;
+    return { };
+}
+
+void ScrollView::setUnobscuredContentSize(const FloatSize& size)
+{
+    ASSERT(!platformWidget());
+    if (m_delegatedScrollingGeometry && size == m_delegatedScrollingGeometry->unobscuredContentSize)
+        return;
+
+    if (!m_delegatedScrollingGeometry)
+        m_delegatedScrollingGeometry = DelegatedScrollingGeometry();
+
+    m_delegatedScrollingGeometry->unobscuredContentSize = size;
+    unobscuredContentSizeChanged();
+}
+
 IntRect ScrollView::unobscuredContentRect(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
+    if (platformWidget())
+        return platformUnobscuredContentRect(scrollbarInclusion);
+
+    if (m_delegatedScrollingGeometry)
+        return IntRect(m_scrollPosition, roundedIntSize(m_delegatedScrollingGeometry->unobscuredContentSize));
+
     return unobscuredContentRectInternal(scrollbarInclusion);
 }
-#endif
 
 IntRect ScrollView::unobscuredContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
@@ -1528,7 +1585,7 @@ bool ScrollView::platformCanBlitOnScroll() const
 
 IntRect ScrollView::platformVisibleContentRect(bool) const
 {
-    return IntRect();
+    return { };
 }
 
 float ScrollView::platformTopContentInset() const
@@ -1542,17 +1599,27 @@ void ScrollView::platformSetTopContentInset(float)
 
 IntSize ScrollView::platformVisibleContentSize(bool) const
 {
-    return IntSize();
+    return { };
 }
 
 IntRect ScrollView::platformVisibleContentRectIncludingObscuredArea(bool) const
 {
-    return IntRect();
+    return { };
 }
 
 IntSize ScrollView::platformVisibleContentSizeIncludingObscuredArea(bool) const
 {
-    return IntSize();
+    return { };
+}
+
+IntRect ScrollView::platformUnobscuredContentRect(VisibleContentRectIncludesScrollbars) const
+{
+    return { };
+}
+
+FloatRect ScrollView::platformExposedContentRect() const
+{
+    return { };
 }
 
 void ScrollView::platformSetContentsSize()

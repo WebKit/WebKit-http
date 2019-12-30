@@ -28,8 +28,11 @@
 #if ENABLE(GPU_PROCESS)
 
 #include "MediaPlayerPrivateRemoteIdentifier.h"
+#include "RemoteMediaPlayerProxyConfiguration.h"
+#include "RemoteMediaPlayerState.h"
 #include <wtf/LoggerHelper.h>
 #include <wtf/RefPtr.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Vector.h>
 
 namespace IPC {
@@ -48,23 +51,34 @@ class RemoteMediaPlayerProxy
     : public MediaPlayerClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    RemoteMediaPlayerProxy(RemoteMediaPlayerManagerProxy&, MediaPlayerPrivateRemoteIdentifier, Ref<IPC::Connection>&&, MediaPlayerEnums::MediaEngineIdentifier);
+    RemoteMediaPlayerProxy(RemoteMediaPlayerManagerProxy&, MediaPlayerPrivateRemoteIdentifier, Ref<IPC::Connection>&&, MediaPlayerEnums::MediaEngineIdentifier, RemoteMediaPlayerProxyConfiguration&&);
     virtual ~RemoteMediaPlayerProxy()
     {
     }
 
     void invalidate();
 
+    void getConfiguration(RemoteMediaPlayerConfiguration&);
+
     void prepareForPlayback(bool privateMode, WebCore::MediaPlayerEnums::Preload, bool preservesPitch, bool prepareForRendering);
 
     void load(const URL&, const ContentType&, const String&);
     void cancelLoad();
 
+    void prepareToPlay();
+
     void play();
     void pause();
 
+    void seek(MediaTime&&);
+    void seekWithTolerance(MediaTime&&, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance);
+
     void setVolume(double);
     void setMuted(bool);
+
+    void setPreload(WebCore::MediaPlayerEnums::Preload);
+    void setPrivateBrowsingMode(bool);
+    void setPreservesPitch(bool);
 
 private:
     // MediaPlayerClient
@@ -75,19 +89,19 @@ private:
     void mediaPlayerTimeChanged() final;
     void mediaPlayerDurationChanged() final;
     void mediaPlayerRateChanged() final;
+    void mediaPlayerPlaybackStateChanged() final;
+    void mediaPlayerEngineFailedToLoad() const final;
+    void mediaPlayerBufferedTimeRangesChanged() final;
+    void mediaPlayerSeekableTimeRangesChanged() final;
 
     // Not implemented
-    void mediaPlayerPlaybackStateChanged() final;
-    void mediaPlayerSawUnsupportedTracks() final;
     void mediaPlayerResourceNotSupported() final;
-    void mediaPlayerRepaint() final;
     void mediaPlayerSizeChanged() final;
     void mediaPlayerEngineUpdated() final;
     void mediaPlayerFirstVideoFrameAvailable() final;
     void mediaPlayerCharacteristicChanged() final;
     bool mediaPlayerRenderingCanBeAccelerated() final;
     void mediaPlayerRenderingModeChanged() final;
-    bool mediaPlayerAcceleratedCompositingEnabled() final;
     void mediaPlayerActiveSourceBuffersChanged() final;
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -112,12 +126,9 @@ private:
     bool mediaPlayerIsVideo() const final;
     LayoutRect mediaPlayerContentBoxRect() const final;
     float mediaPlayerContentsScale() const final;
-    void mediaPlayerSetSize(const IntSize&) final;
     void mediaPlayerPause() final;
     void mediaPlayerPlay() final;
     bool mediaPlayerPlatformVolumeConfigurationRequired() const final;
-    bool mediaPlayerIsPaused() const final;
-    bool mediaPlayerIsLooping() const final;
     CachedResourceLoader* mediaPlayerCachedResourceLoader() final;
     RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() final;
     bool doesHaveAttribute(const AtomString&, AtomString* = nullptr) const final;
@@ -142,12 +153,7 @@ private:
     bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const final;
 #endif
 
-    void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType) final;
-
     String mediaPlayerSourceApplicationIdentifier() const final;
-
-    bool mediaPlayerIsInMediaDocument() const final;
-    void mediaPlayerEngineFailedToLoad() const final;
 
     double mediaPlayerRequestedPlaybackRate() const final;
     MediaPlayerEnums::VideoFullscreenMode mediaPlayerFullscreenMode() const final;
@@ -158,8 +164,14 @@ private:
     const Vector<WebCore::ContentType>& mediaContentTypesRequiringHardwareSupport() const final;
     bool mediaPlayerShouldCheckHardwareSupport() const final;
 
+    void startUpdateCachedStateMessageTimer();
+    void updateCachedState();
+    void sendCachedState();
+    void timerFired();
+
 #if !RELEASE_LOG_DISABLED
     const Logger& mediaPlayerLogger() final { return m_logger; }
+    const void* mediaPlayerLogIdentifier() { return reinterpret_cast<const void*>(m_configuration.logIdentifier); }
 #endif
 
     MediaPlayerPrivateRemoteIdentifier m_id;
@@ -168,12 +180,17 @@ private:
     RemoteMediaPlayerManagerProxy& m_manager;
     MediaPlayerEnums::MediaEngineIdentifier m_engineIdentifier;
     Vector<WebCore::ContentType> m_typesRequiringHardwareSupport;
+    RunLoop::Timer<RemoteMediaPlayerProxy> m_updateCachedStateMessageTimer;
+    RemoteMediaPlayerState m_cachedState;
+    RemoteMediaPlayerProxyConfiguration m_configuration;
+    bool m_seekableChanged { true };
+    bool m_bufferedChanged { true };
 
 #if !RELEASE_LOG_DISABLED
     const Logger& m_logger;
 #endif
 };
 
-}
+} // namespace WebKit
 
 #endif

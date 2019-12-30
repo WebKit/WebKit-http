@@ -43,6 +43,12 @@
         "subtests": {
             "/webkit/WebKitWebView/install-missing-plugins-permission-request": {
                 "expected": {"gtk": {"status": ["TIMEOUT"], "bug": "webkit.org/b/147822"}}
+            },
+            "/webkit/WebKitWebExtension/form-submission-steps": {
+                "expected": {"gtk": {"status": ["TIMEOUT"], "bug": "webkit.org/b/205333"}}
+            },
+            "/webkit/WebKitWebExtension/form-controls-associated-signal": {
+                "expected": {"gtk": {"status": ["FAIL", "PASS"], "bug": "webkit.org/b/205380"}}
             }
         }
     },
@@ -59,6 +65,9 @@
             },
             "/webkit/WebKitWebsiteData/resource-load-statistics": {
                 "expected": {"wpe": {"status": ["PASS", "FAIL"]}}
+            },
+            "/webkit/WebKitWebsiteData/configuration": {
+                "expected": {"gtk": {"status": ["PASS", "FAIL"], "bug": "webkit.org/b/205441"}}
             }
         }
     },
@@ -77,6 +86,13 @@
         "subtests": {
             "/webkit/WebKitWebInspectorServer/test-page-list": {
                 "expected": {"all": {"status": ["FAIL", "PASS"], "bug": "webkit.org/b/188115"}}
+            }
+        }
+    },
+    "TestWebKitFaviconDatabase": {
+        "subtests": {
+            "/webkit/WebKitFaviconDatabase/get-favicon": {
+                "expected": {"gtk": {"status": ["FAIL", "PASS"], "bug": "webkit.org/b/205381"}}
             }
         }
     },
@@ -111,34 +127,46 @@
             },
             "WebKit.HitTestResultNodeHandle": {
                 "expected": {"wpe": {"status": ["TIMEOUT"]}}
+            },
+            "WebKit.FocusedFrameAfterCrash": {
+                "expected": {"gtk": {"status": ["TIMEOUT"], "bug": "webkit.org/b/205336"}}
             }
         }
     },
     "TestWTF": {
         "subtests": {
             "ThreadMessage.MultipleSenders": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_Condition.TenProducersTenConsumersHundredSlotsNotifyOne": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_Condition.TenProducersTenConsumersHundredSlotsNotifyAll": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Condition.TenProducersTenConsumersOneSlot": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Condition.TenProducersOneConsumerOneSlot": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_Condition.OneProducerOneConsumerHundredSlots": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Condition.OneProducerOneConsumerOneSlot": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Condition.OneProducerOneConsumerOneSlotTimeout": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_DateMath.calculateLocalTimeOffset": {
                 "expected": {"wpe": {"status": ["FAIL"]}}
             },
             "WTF_Lock.ContendedShortSection": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Lock.ContendedLongSection": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_Lock.ManyContendedLongSections": {
                 "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
@@ -146,17 +174,32 @@
             "WTF_Lock.ManyContendedShortSections": {
                 "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
+            "WTF_ParkingLot.HundredUnparkAllOneFast": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
             "WTF_ParkingLot.UnparkAllHundred": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_ParkingLot.UnparkAllHundredFast": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_ParkingLot.UnparkAllOneFast": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_ParkingLot.UnparkOneFiftyThenFiftyAllFast": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
+            },
+            "WTF_ParkingLot.UnparkOneHundredFast": {
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_WordLock.ContendedShortSection": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_WordLock.ContendedLongSection": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             },
             "WTF_WordLock.ManyContendedShortSections": {
-                "expected": {"all": {"slow": true}}
+                "expected": {"all": {"slow": true, "status": ["TIMEOUT", "PASS"]}}
             }
         }
     },
@@ -170,7 +213,7 @@
     "TestJSC": {
         "subtests": {
             "/jsc/vm": {
-                "expected": {"all@Debug": {"slow": true}}
+                "expected": {"all": {"slow": true}}
             }
         }
     }

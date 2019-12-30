@@ -80,6 +80,7 @@ private:
 
     bool supportsAsyncScrolling() const override { return true; }
     bool usesDelegatedScrolling() const override { return true; }
+    bool usesDelegatedPageScaling() const override { return true; }
 
     void setLayerTreeStateIsFrozen(bool) override;
     bool layerTreeStateIsFrozen() const override { return m_isFlushingSuspended; }
@@ -94,10 +95,8 @@ private:
     void acceleratedAnimationDidStart(uint64_t layerID, const String& key, MonotonicTime startTime) override;
     void acceleratedAnimationDidEnd(uint64_t layerID, const String& key) override;
 
-#if PLATFORM(IOS_FAMILY)
     WebCore::FloatRect exposedContentRect() const override;
     void setExposedContentRect(const WebCore::FloatRect&) override;
-#endif
 
     void didUpdate() override;
 

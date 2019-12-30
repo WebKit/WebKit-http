@@ -177,8 +177,8 @@ const CallerFrame = 0
 const ReturnPC = CallerFrame + MachineRegisterSize
 const CodeBlock = ReturnPC + MachineRegisterSize
 const Callee = CodeBlock + SlotSize
-const ArgumentCount = Callee + SlotSize
-const ThisArgumentOffset = ArgumentCount + SlotSize
+const ArgumentCountIncludingThis = Callee + SlotSize
+const ThisArgumentOffset = ArgumentCountIncludingThis + SlotSize
 const FirstArgumentOffset = ThisArgumentOffset + SlotSize
 const CallFrameHeaderSize = ThisArgumentOffset
 
@@ -213,8 +213,6 @@ if JSVALUE64
     const NumberOfStructureIDEntropyBits = constexpr StructureIDTable::s_numberOfEntropyBits
     const StructureEntropyBitsShift = constexpr StructureIDTable::s_entropyBitsShiftForStructurePointer
 end
-
-const CallOpCodeSize = constexpr op_call_length
 
 const maxFrameExtentForSlowPathCall = constexpr maxFrameExtentForSlowPathCall
 
@@ -306,6 +304,12 @@ if GIGACAGE_ENABLED
     const GigacageJSValueBasePtrOffset = constexpr Gigacage::offsetOfJSValueGigacageBasePtr
 end
 
+# Opcode offsets
+const OpcodeIDNarrowSize = 1 # OpcodeID
+const OpcodeIDWide16Size = 2 # Wide16 Prefix + OpcodeID
+const OpcodeIDWide32Size = 2 # Wide32 Prefix + OpcodeID
+
+
 macro dispatch(advanceReg)
     addp advanceReg, PC
     nextInstruction()
@@ -317,15 +321,15 @@ end
 
 macro genericDispatchOp(dispatch, size, opcodeName)
     macro dispatchNarrow()
-        dispatch(constexpr %opcodeName%_length)
+        dispatch((constexpr %opcodeName%_length - 1) * 1 + OpcodeIDNarrowSize)
     end
 
     macro dispatchWide16()
-        dispatch(constexpr %opcodeName%_length * 2 + 1)
+        dispatch((constexpr %opcodeName%_length - 1) * 2 + OpcodeIDWide16Size)
     end
 
     macro dispatchWide32()
-        dispatch(constexpr %opcodeName%_length * 4 + 1)
+        dispatch((constexpr %opcodeName%_length - 1) * 4 + OpcodeIDWide32Size)
     end
 
     size(dispatchNarrow, dispatchWide16, dispatchWide32, macro (dispatch) dispatch() end)
@@ -530,7 +534,7 @@ const FunctionCode = constexpr FunctionCode
 const ModuleCode = constexpr ModuleCode
 
 # The interpreter steals the tag word of the argument count.
-const LLIntReturnPC = ArgumentCount + TagOffset
+const LLIntReturnPC = ArgumentCountIncludingThis + TagOffset
 
 # String flags.
 const isRopeInPointer = constexpr JSString::isRopeInPointer
@@ -1015,7 +1019,7 @@ end
 macro prepareForTailCall(callee, temp1, temp2, temp3, callPtrTag)
     restoreCalleeSavesUsedByLLInt()
 
-    loadi PayloadOffset + ArgumentCount[cfr], temp2
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], temp2
     loadp CodeBlock[cfr], temp1
     loadi CodeBlock::m_numParameters[temp1], temp1
     bilteq temp1, temp2, .noArityFixup
@@ -1030,7 +1034,7 @@ macro prepareForTailCall(callee, temp1, temp2, temp3, callPtrTag)
     move cfr, temp1
     addp temp2, temp1
 
-    loadi PayloadOffset + ArgumentCount[sp], temp2
+    loadi PayloadOffset + ArgumentCountIncludingThis[sp], temp2
     # We assume < 2^28 arguments
     muli SlotSize, temp2
     addi StackAlignment - 1 + CallFrameHeaderSize, temp2
@@ -1091,7 +1095,7 @@ macro getterSetterOSRExitReturnPoint(opName, size)
     defineOSRExitReturnLabel(opName, size)
 
     restoreStackPointerAfterCall()
-    loadi ArgumentCount + TagOffset[cfr], PC
+    loadi LLIntReturnPC[cfr], PC
 end
 
 macro arrayProfile(offset, cellAndIndexingType, metadata, scratch)
@@ -1140,7 +1144,10 @@ macro functionForCallCodeBlockGetter(targetRegister)
     else
         loadp Callee + PayloadOffset[cfr], targetRegister
     end
-    loadp JSFunction::m_executable[targetRegister], targetRegister
+    loadp JSFunction::m_executableOrRareData[targetRegister], targetRegister
+    btpz targetRegister, (constexpr JSFunction::rareDataTag), .isExecutable
+    loadp (FunctionRareData::m_executable - (constexpr JSFunction::rareDataTag))[targetRegister], targetRegister
+.isExecutable:
     loadp FunctionExecutable::m_codeBlockForCall[targetRegister], targetRegister
     loadp ExecutableToCodeBlockEdge::m_codeBlock[targetRegister], targetRegister
 end
@@ -1151,7 +1158,10 @@ macro functionForConstructCodeBlockGetter(targetRegister)
     else
         loadp Callee + PayloadOffset[cfr], targetRegister
     end
-    loadp JSFunction::m_executable[targetRegister], targetRegister
+    loadp JSFunction::m_executableOrRareData[targetRegister], targetRegister
+    btpz targetRegister, (constexpr JSFunction::rareDataTag), .isExecutable
+    loadp (FunctionRareData::m_executable - (constexpr JSFunction::rareDataTag))[targetRegister], targetRegister
+.isExecutable:
     loadp FunctionExecutable::m_codeBlockForConstruct[targetRegister], targetRegister
     loadp ExecutableToCodeBlockEdge::m_codeBlock[targetRegister], targetRegister
 end
@@ -1588,6 +1598,7 @@ macro slowPathOp(opcodeName)
 end
 
 slowPathOp(create_cloned_arguments)
+slowPathOp(create_arguments_butterfly)
 slowPathOp(create_direct_arguments)
 slowPathOp(create_lexical_environment)
 slowPathOp(create_rest)
@@ -1839,13 +1850,17 @@ end)
 callOp(construct, OpConstruct, prepareForRegularCall, macro (getu, metadata) end)
 
 
-macro doCallVarargs(opcodeName, size, opcodeStruct, dispatch, frameSlowPath, slowPath, prepareCall)
-    callSlowPath(frameSlowPath)
+macro branchIfException(exceptionTarget)
     loadp CodeBlock[cfr], t3
     loadp CodeBlock::m_vm[t3], t3
     btpz VM::m_exception[t3], .noException
-    jmp _llint_throw_from_slow_path_trampoline
-.noException:
+    jmp exceptionTarget
+.noException:    
+end
+
+macro doCallVarargs(opcodeName, size, opcodeStruct, dispatch, frameSlowPath, slowPath, prepareCall)
+    callSlowPath(frameSlowPath)
+    branchIfException(_llint_throw_from_slow_path_trampoline)
     # calleeFrame in r1
     if JSVALUE64
         move r1, sp
@@ -1999,6 +2014,39 @@ op(llint_internal_function_construct_trampoline, macro ()
     internalFunctionCallTrampoline(InternalFunction::m_functionForConstruct)
 end)
 
+
+op(checkpoint_osr_exit_from_inlined_call_trampoline, macro ()
+    if JSVALUE64 and not (C_LOOP or C_LOOP_WIN)
+        restoreStackPointerAfterCall()
+
+        move cfr, a0
+        move r0, a1
+        # We don't call saveStateForCCall() because we are going to use the bytecodeIndex from our side state.
+        cCall2(_slow_path_checkpoint_osr_exit_from_inlined_call)
+        restoreStateAfterCCall()
+        branchIfException(_llint_throw_from_slow_path_trampoline)
+        jmp r1, JSEntryPtrTag
+    else
+        notSupported()
+    end
+end)
+
+op(checkpoint_osr_exit_trampoline, macro ()
+    # FIXME: We can probably dispatch to the checkpoint handler directly but this was easier 
+    # and probably doesn't matter for performance.
+    if JSVALUE64 and not (C_LOOP or C_LOOP_WIN)
+        restoreStackPointerAfterCall()
+
+        move cfr, a0
+        # We don't call saveStateForCCall() because we are going to use the bytecodeIndex from our side state.
+        cCall2(_slow_path_checkpoint_osr_exit)
+        restoreStateAfterCCall()
+        branchIfException(_llint_throw_from_slow_path_trampoline)
+        jmp r1, JSEntryPtrTag
+    else
+        notSupported()
+    end
+end)
 
 # Lastly, make sure that we can link even though we don't support all opcodes.
 # These opcodes should never arise when using LLInt or either JIT. We assert

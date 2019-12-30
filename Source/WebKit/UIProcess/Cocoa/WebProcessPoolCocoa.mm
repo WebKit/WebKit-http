@@ -35,6 +35,7 @@
 #import "PluginProcessManager.h"
 #import "SandboxUtilities.h"
 #import "TextChecker.h"
+#import "UserInterfaceIdiom.h"
 #import "VersionChecks.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WebBackForwardCache.h"
@@ -66,10 +67,13 @@
 #else
 #import "AccessibilitySupportSPI.h"
 #import "UIKitSPI.h"
+#import <pal/ios/ManagedConfigurationSoftLink.h>
+#import <pal/spi/ios/ManagedConfigurationSPI.h>
 #endif
 
 #if PLATFORM(IOS)
 #import <pal/spi/cocoa/WebFilterEvaluatorSPI.h>
+#import <pal/spi/ios/MobileGestaltSPI.h>
 #import <sys/utsname.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(WebContentAnalysis);
@@ -199,6 +203,12 @@ static bool deviceHasAGXCompilerService()
         });
     return deviceHasAGXCompilerService;
 }
+
+static bool isInternalInstall()
+{
+    static bool isInternal = MGGetBoolAnswer(kMGQAppleInternalInstallCapability);
+    return isInternal;
+}
 #endif
 
 void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process, WebProcessCreationParameters& parameters)
@@ -305,6 +315,12 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::createHandleForMachLookup("com.apple.AGXCompilerService", WTF::nullopt, compilerServiceExtensionHandle);
         parameters.compilerServiceExtensionHandle = WTFMove(compilerServiceExtensionHandle);
     }
+    
+    if (isInternalInstall()) {
+        SandboxExtension::Handle diagnosticsExtensionHandle;
+        SandboxExtension::createHandleForMachLookup("com.apple.diagnosticd", WTF::nullopt, diagnosticsExtensionHandle);
+        parameters.diagnosticsExtensionHandle = WTFMove(diagnosticsExtensionHandle);
+    }
 #endif
     
 #if PLATFORM(COCOA)
@@ -325,8 +341,8 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     }
 #endif
     
-#if PLATFORM(IOS)
-    parameters.cssValueToSystemColorMap = RenderThemeIOS::getOrCreateCSSValueToSystemColorMap();
+#if PLATFORM(IOS_FAMILY)
+    parameters.currentUserInterfaceIdiomIsPad = currentUserInterfaceIdiomIsPad();
 #endif
 }
 
@@ -353,6 +369,13 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.enableLegacyTLS = false;
     if (id value = [defaults objectForKey:@"WebKitEnableLegacyTLS"])
         parameters.enableLegacyTLS = [value boolValue];
+    if (!parameters.enableLegacyTLS) {
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
+        parameters.enableLegacyTLS = [[PAL::getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:@"allowDeprecatedWebKitTLS"] == MCRestrictedBoolExplicitYes;
+#elif PLATFORM(MAC)
+        parameters.enableLegacyTLS = CFPreferencesGetAppBooleanValue(CFSTR("allowDeprecatedWebKitTLS"), CFSTR("com.apple.applicationaccess"), nullptr);
+#endif
+    }
     parameters.defaultDataStoreParameters.networkSessionParameters.enableLegacyTLS = parameters.enableLegacyTLS;
 
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());

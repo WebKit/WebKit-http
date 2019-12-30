@@ -2070,7 +2070,7 @@ def check_spacing(file_extension, clean_lines, line_number, file_state, error):
     # 'delete []' or 'new char * []'. Objective-C can't follow this rule
     # because of method calls.
     if file_extension != 'mm' and file_extension != 'm':
-        if search(r'\w\s+\[', line) and not search(r'(delete|return)\s+\[', line):
+        if search(r'\w\s+\[', line) and not search(r'(delete|return|auto)\s+\[', line):
             error(line_number, 'whitespace/brackets', 5,
                   'Extra space before [.')
 
@@ -3638,6 +3638,7 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
             # Various exceptions to the rule: JavaScript op codes functions, const_iterator.
             if (not (filename.find('JavaScriptCore') >= 0 and (modified_identifier.find('op_') >= 0 or modified_identifier.find('intrinsic_') >= 0))
                 and not (('gtk' in filename or 'glib' in filename or 'wpe' in filename or 'atk' in filename) and modified_identifier.startswith('webkit_'))
+                and not ('glib' in filename and modified_identifier.startswith('jsc_'))
                 and not modified_identifier.startswith('tst_')
                 and not modified_identifier.startswith('webkit_dom_object_')
                 and not modified_identifier.startswith('webkit_soup')

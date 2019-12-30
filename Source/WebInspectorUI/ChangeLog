@@ -1,3 +1,277 @@
+2019-12-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add InspectedTargetTypes diagnostic event and related hooks
+        https://bugs.webkit.org/show_bug.cgi?id=205174
+        <rdar://problem/57887953>
+
+        Reviewed by Devin Rousso.
+
+        This change adds a new diagnostic recorder that reports information about
+        inspected targets and their type / version information.
+
+        * UserInterface/Base/DebuggableType.js:
+        (WI.DebuggableType.fromString):
+        Move the static parsing factory method to DebuggableType class.
+
+        * UserInterface/Main.html: Add new files.
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded): Add new diagnostic recorder.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.activateDomain):
+        Adapt to InspectorFrontendHost changes.
+
+        * UserInterface/Test/TestAppController.js:
+        (WI.TestAppController):
+        * UserInterface/Controllers/AppController.js:
+        (WI.AppController):
+        Adapt to InspectorFrontendHost changes.
+
+2019-12-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Gradient editor: opacity slider is too close to the right edge of the popover
+        https://bugs.webkit.org/show_bug.cgi?id=203643
+        <rdar://problem/56762879>
+
+        Reviewed by Devin Rousso.
+
+        Replace absolute positioning in the color picker with static layout.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker .wrapper):
+        (.color-picker :matches(.color-square, .slider)):
+        (.color-picker .slider):
+        (.color-picker .hue):
+        (@media (color-gamut: p3) .color-picker.gamut-p3 > .hue):
+        (.color-picker > .color-inputs):
+        (.color-picker > .color-inputs > div):
+        (.color-picker > .color-inputs > div:not([hidden]) + div):
+        The 1st visible div should have no left margin even if it's preceded by a hidden div.
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        (WI.ColorPicker.prototype._updateOpacitySlider):
+        * UserInterface/Views/GradientEditor.css:
+        (.gradient-editor.editing-color):
+        (.gradient-editor > .color-picker .slider):
+        * UserInterface/Views/GradientEditor.js:
+        (WI.GradientEditor):
+        * UserInterface/Views/Slider.css:
+        (.slider):
+        (.slider > img):
+        (body[dir=ltr] .slider > img):
+        (body[dir=rtl] .slider > img):
+        * UserInterface/Views/Slider.js:
+        (WI.Slider):
+        (WI.Slider.prototype.set value):
+        (WI.Slider.prototype.set knobY):
+        (WI.Slider.prototype.get maxY):
+        (WI.Slider.prototype.recalculateKnobY):
+        (WI.Slider.prototype._handleMousedown):
+        (WI.Slider.prototype._handleMousemove):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Convert WI.Slider to be vertical by default. WI.Slider used to define a hozirontal slider.
+        It is only used by the color picker, where it's vertical. The slider was rotated with CSS
+        transformation. This made it problematic to use in the static layout.
+
+2019-12-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: convert some InspectorFrontendHost methods to getters
+        https://bugs.webkit.org/show_bug.cgi?id=205475
+
+        Reviewed by Devin Rousso.
+
+        No reason for these to be method calls, so expose as getters / attributes instead.
+
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore.get _databaseName):
+        * UserInterface/Base/Platform.js:
+        * UserInterface/Base/Setting.js:
+        (WI.Setting._localStorageKey):
+        * UserInterface/Debug/Bootstrap.js:
+        (WI.runBootstrapOperations):
+        * UserInterface/Protocol/LoadInspectorBackendCommands.js:
+
+2019-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Enable p3 color picker by default
+        https://bugs.webkit.org/show_bug.cgi?id=203931
+        <rdar://problem/56965236>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/InlineSwatch.js:
+
+2019-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console: the clear console button is hidden at smaller widths
+        https://bugs.webkit.org/show_bug.cgi?id=205438
+
+        Reviewed by Brian Burg.
+
+        Ever since r242604, we no longer "need" to show the text filter bar or message type scope
+        bar since new messages will show a warning banner that there's an active filter. Instead, we
+        should prefer showing the navigation items that control functionality that cannot be reached
+        anywhere else (visually), such as clearing the console or evaluating as a user gesture.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        Make the text find banner and type scope bar both low priority, the preserve log and
+        evaluate as user gesture toggles normal priority, and the clear log high priority.
+
+2019-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: exiting edit mode with the same selection as before entering edit mode doesn't reselect
+        https://bugs.webkit.org/show_bug.cgi?id=205435
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype.initialLayout):
+        Set `allowsRepeatSelection` so that selecting the previously selected tree element after
+        leaving edit mode will actually work.
+
+2019-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: Styles: bezier keywords don't show a swatch
+        https://bugs.webkit.org/show_bug.cgi?id=205436
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._addTimingFunctionTokens):
+        Check if the current token is a direct match with one of the timing function keywords.
+
+2019-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: importing a result with DOM nodes that don't match the inspected page appear as empty lines
+        https://bugs.webkit.org/show_bug.cgi?id=205437
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/AuditTestCaseContentView.js:
+        (WI.AuditTestCaseContentView.prototype.layout):
+        Call `refresh` on the `CodeMirror` instance after a timeout to give it a chance to be added
+        to the DOM tree.
+
+2019-12-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: restrict showing paint flashing and compositing borders to the Web Inspector session
+        https://bugs.webkit.org/show_bug.cgi?id=205201
+
+        Reviewed by Timothy Hatcher.
+
+        We often get bugs from users who turn on paint flashing or compositing borders, close Web
+        Inspector, reopen Web Inspector, and are then surprised when the page flashes red or these
+        borders exist all over the page.
+
+        Given that the dark mode and print styles toggles are limited to the Web Inspector session,
+        we should make these have the same behavior.
+
+        * UserInterface/Base/Main.js:
+        (WI.initializeTarget):
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WI.LayerTreeManager): Added.
+        (WI.LayerTreeManager.prototype.initializeTarget):
+        (WI.LayerTreeManager.supportsShowingPaintRects): Added.
+        (WI.LayerTreeManager.supportsVisibleCompositingBorders): Added.
+        (WI.LayerTreeManager.prototype.get showPaintRects): Added.
+        (WI.LayerTreeManager.prototype.set showPaintRects): Added.
+        (WI.LayerTreeManager.prototype.get compositingBordersVisible): Added.
+        (WI.LayerTreeManager.prototype.set compositingBordersVisible): Added.
+        (WI.LayerTreeManager.prototype.updateCompositingBordersVisibleFromPageIfNeeded): Added.
+        Use `WI.LayerTreeManager` to control the state of paint flashing and compositing borders, as
+        they're both related to the concept of layers.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.shown):
+        (WI.DOMTreeContentView.prototype.closed):
+        (WI.DOMTreeContentView.prototype.attached): Added.
+        (WI.DOMTreeContentView.prototype.detached): Added.
+        (WI.DOMTreeContentView.prototype._handleCompositingBordersVisibleChanged): Added.
+        (WI.DOMTreeContentView.prototype._handleCompositingBordersButtonClicked): Added.
+        (WI.DOMTreeContentView.prototype._handleShowPaintRectsChanged): Added.
+        (WI.DOMTreeContentView.prototype._handlePaingFlashingButtonClicked): Added.
+        (WI.DOMTreeContentView.prototype._toggleCompositingBorders): Deleted.
+        (WI.DOMTreeContentView.prototype._togglePaintFlashing): Deleted.
+        (WI.DOMTreeContentView.prototype._updateCompositingBordersButtonToMatchPageSettings): Deleted.
+        (WI.DOMTreeContentView.prototype._showPaintRectsSettingChanged): Deleted.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.shown):
+        (WI.Layers3DContentView.prototype.hidden):
+        (WI.Layers3DContentView.prototype.attached): Added.
+        (WI.Layers3DContentView.prototype.detached): Added.
+        (WI.Layers3DContentView.prototype._handleCompositingBordersVisibleChanged): Added.
+        (WI.Layers3DContentView.prototype._handleCompositingBordersButtonClicked): Added.
+        (WI.Layers3DContentView.prototype._handleShowPaintRectsChanged): Added.
+        (WI.Layers3DContentView.prototype._handlePaingFlashingButtonClicked): Added.
+        (WI.Layers3DContentView.prototype.closed): Deleted.
+        (WI.Layers3DContentView.prototype._showPaintRectsSettingChanged): Deleted.
+        (WI.Layers3DContentView.prototype._togglePaintFlashing): Deleted.
+        (WI.Layers3DContentView.prototype._updateCompositingBordersButtonState): Deleted.
+        (WI.Layers3DContentView.prototype._toggleCompositingBorders): Deleted.
+
+2019-12-18  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: Runtime.enable reports duplicates (non existent) contexts
+        https://bugs.webkit.org/show_bug.cgi?id=204859
+
+        Reviewed by Devin Rousso.
+
+        Assert that all contexts added to the list are unique.
+
+        * UserInterface/Models/ExecutionContextList.js:
+        (WI.ExecutionContextList.prototype.add):
+
+2019-12-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: remove the "Show/Hide Shadow DOM" navigation item
+        https://bugs.webkit.org/show_bug.cgi?id=205199
+
+        Reviewed by Timothy Hatcher.
+
+        There's really no good reason to hide shadow DOM, especially for non-user-agent shadow trees.
+        The user has full control over whether to expand/collapse shadow trees (and their hosts), so
+        having a setting that entirely removes the shadow trees from view throughout Web Inspector
+        seems overkill.
+
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode):
+        (WI.DOMNode.prototype.get nextSibling):
+        (WI.DOMNode.prototype.get previousSibling):
+        (WI.DOMNode.prototype.get children):
+        (WI.DOMNode.prototype.get childNodeCount):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        (WI.DOMTreeContentView.prototype.closed):
+        (WI.DOMTreeContentView.prototype._showShadowDOMSettingChanged): Deleted.
+        (WI.DOMTreeContentView.prototype._toggleShowsShadowDOMSetting): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.close):
+        (WI.DOMTreeOutline.prototype._revealAndSelectNode):
+        (WI.DOMTreeOutline.prototype._showShadowDOMSettingChanged): Deleted.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype.initialLayout):
+        (WI.LayerTreeDetailsSidebarPanel.prototype._updateDisplayWithLayers):
+        (WI.LayerTreeDetailsSidebarPanel.prototype._showShadowDOMSettingChanged): Deleted.
+
+        * UserInterface/Images/ShadowDOM.svg: Removed.
+        * Localizations/en.lproj/localizedStrings.js:
+
 2019-12-11  Brian Burg  <bburg@apple.com>
 
         Web Inspector: add TabNavigation diagnostic event and related hooks

@@ -12,6 +12,7 @@ editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 media/mac [ Pass ]
 editing/pasteboard/mac [ Pass ]
+fast/dom/Range/mac [ Pass ]
 
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
@@ -292,8 +293,6 @@ webkit.org/b/82665 webarchive/test-css-url-resources-in-stylesheets.html [ Failu
 webkit.org/b/82665 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 
 webkit.org/b/82762 fast/animation/request-animation-frame-during-modal.html
-
-webkit.org/b/82805 fast/canvas/webgl/framebuffer-object-attachment.html [ Failure ]
 
 webkit.org/b/82972 plugins/keyboard-events.html [ Pass Failure ]
 webkit.org/b/82972 plugins/layout-in-beforeload-listener-affects-plugin-loading.html [ Pass Failure ]
@@ -791,7 +790,7 @@ webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
 webkit.org/b/141084 http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
-webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Timeout ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 webkit.org/b/147944 media/video-seek-to-current-time.html [ Pass Failure ]
 webkit.org/b/150408 http/tests/media/video-load-suspend.html [ Pass Timeout ]
 webkit.org/b/155956 media/track/track-remove-track.html [ Pass Failure Timeout ]
@@ -1009,8 +1008,6 @@ http/tests/media/video-cancel-load.html [ Skip ]
 http/tests/media/video-served-as-text.html [ Failure ]
 http/tests/media/video-throttled-load-metadata.html [ Failure ]
 http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
-
-webkit.org/b/150978 fast/canvas/webgl/oes-texture-half-float-linear.html [ Pass Failure ]
 
 webkit.org/b/174066 inspector/canvas/console-record-webgl2.html [ Pass Timeout ]
 webkit.org/b/173931 inspector/canvas/context-attributes.html [ Pass Timeout ]
@@ -1414,8 +1411,6 @@ crypto/subtle/ecdsa-import-key-sign-p521.html
 crypto/subtle/ecdsa-import-key-verify-p521.html
 crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html
 
-webkit.org/b/176444 fast/canvas/webgl/webgl2-getActiveUniforms.html [ Failure ]
-
 webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failure ]
 
 webkit.org/b/172052 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
@@ -1601,8 +1596,6 @@ webkit.org/b/181969 fast/events/message-port.html [ Skip ]
 
 webkit.org/b/181831 [ HighSierra+ ] fast/forms/searchfield-heights.html [ Pass Failure ]
 
-webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
-
 webkit.org/b/173946 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Pass Failure ]
 
 webkit.org/b/183490 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Failure ]
@@ -1730,9 +1723,7 @@ webgl/2.0.0/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Slo
 webgl/2.0.0/conformance/rendering/many-draw-calls.html [ Slow ]
 webgl/2.0.0/conformance/rendering/multisample-corruption.html [ Slow ]
 webgl/2.0.0/conformance2/attribs/gl-vertexattribipointer.html [ Slow ]
-[ HighSierra ] webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Slow ]
-
-webkit.org/b/176929 [ Mojave+ ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html [ Pass Failure ]
+webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Slow ]
 
 webkit.org/b/170877 [ Debug ] webgl/1.0.3/conformance/glsl/misc/shader-with-reserved-words.html [ Pass Timeout ]
 
@@ -1800,41 +1791,6 @@ imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerout_pen.html [
 webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
 
 webkit.org/b/136627 [ Mojave+ ] media/track/track-cue-rendering-vertical.html [ Failure ]
-
-# <rdar://problem/46000736>
-[ Mojave+ ] webgl/2.0.0/conformance/extensions/angle-instanced-arrays.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/extensions/promoted-extensions-in-shaders.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-as-return-value.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-assign-constructor.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-assign.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-complex-indexing.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-element-increment.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-equality.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/array-in-complex-expression.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/bool-type-cast-bug-uint-ivec-uvec.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/compare-structs-containing-arrays.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/const-array-init.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/frag-depth.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/loops-with-side-effects.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/short-circuiting-in-loop-condition.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/tricky-loop-conditions.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/unary-minus-operator-in-dynamic-loop.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-nv-driver-bug.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/reading/read-pixels-pack-parameters.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/renderbuffers/multisample-with-full-sample-counts.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/rendering/blitframebuffer-test.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/rendering/instanced-arrays.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/rendering/instanced-rendering-bug.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Slow Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/integer-cubemap-specification-order-bug.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/integer-cubemap-texture-sampling.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/tex-mipmap-levels.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/tex-srgb-mipmap.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/tex-storage-2d.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/texel-fetch-undefined.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/textures/misc/texture-npot.html [ Failure ]
-[ Mojave+ ] webgl/2.0.0/conformance2/vertex_arrays/vertex-array-object.html [ Failure ]
 
 # <rdar://problem/47088939>
 [ Mojave+ ] imported/w3c/web-platform-tests/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest.html  [ Failure ]
@@ -1916,6 +1872,9 @@ webgpu/whlsl/separate-shader-modules/separate-shader-modules-19.html [ Pass Imag
 webgpu/whlsl/separate-shader-modules/separate-shader-modules-24.html [ Pass ImageOnlyFailure ]
 webgpu/whlsl/separate-shader-modules/separate-shader-modules-26.html [ Pass ImageOnlyFailure ]
 
+webkit.org/b/205524 webgpu/whlsl/loops-continue.html [ Pass Failure ]
+webkit.org/b/205525 webgpu/whlsl/buffer-fragment.html [ Pass Failure ]
+
 # The test runner is failing in an unrelated, unexplained, invisible to the human eye, 2 pixels difference.
 webkit.org/b/201401 imported/w3c/web-platform-tests/media-source/mediasource-video-is-visible.html [ Skip ]
 
@@ -1964,3 +1923,9 @@ webkit.org/b/204246 [ Catalina ] editing/mac/selection/context-menu-select-edita
 webkit.org/b/204247 [ Catalina ] webaudio/silence-after-playback.html [ Failure ]
 
 webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure ]
+
+webkit.org/b/205361 [ Release ] crypto/workers/subtle/aes-indexeddb.html [ Pass Timeout ]
+
+webkit.org/b/205403 accessibility/presentation-role-iframe.html [ Pass Failure ]
+
+webkit.org/b/202064 webaudio/silent-audio-interrupted-in-background.html [ Pass Crash ]

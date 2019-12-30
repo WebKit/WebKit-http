@@ -30,39 +30,39 @@ macro nextInstruction()
 end
 
 macro nextInstructionWide16()
-    loadh 1[PC], t0
+    loadb OpcodeIDNarrowSize[PC], t0
     leap _g_opcodeMapWide16, t1
     jmp [t1, t0, 4], BytecodePtrTag
 end
 
 macro nextInstructionWide32()
-    loadi 1[PC], t0
+    loadb OpcodeIDNarrowSize[PC], t0
     leap _g_opcodeMapWide32, t1
     jmp [t1, t0, 4], BytecodePtrTag
 end
 
 macro getuOperandNarrow(opcodeStruct, fieldName, dst)
-    loadb constexpr %opcodeStruct%_%fieldName%_index[PC], dst
+    loadb constexpr %opcodeStruct%_%fieldName%_index + OpcodeIDNarrowSize[PC], dst
 end
 
 macro getOperandNarrow(opcodeStruct, fieldName, dst)
-    loadbsi constexpr %opcodeStruct%_%fieldName%_index[PC], dst
+    loadbsi constexpr %opcodeStruct%_%fieldName%_index + OpcodeIDNarrowSize[PC], dst
 end
 
 macro getuOperandWide16(opcodeStruct, fieldName, dst)
-    loadh constexpr %opcodeStruct%_%fieldName%_index * 2 + 1[PC], dst
+    loadh constexpr %opcodeStruct%_%fieldName%_index * 2 + OpcodeIDWide16Size[PC], dst
 end
 
 macro getOperandWide16(opcodeStruct, fieldName, dst)
-    loadhsi constexpr %opcodeStruct%_%fieldName%_index * 2 + 1[PC], dst
+    loadhsi constexpr %opcodeStruct%_%fieldName%_index * 2 + OpcodeIDWide16Size[PC], dst
 end
 
 macro getuOperandWide32(opcodeStruct, fieldName, dst)
-    loadi constexpr %opcodeStruct%_%fieldName%_index * 4 + 1[PC], dst
+    loadi constexpr %opcodeStruct%_%fieldName%_index * 4 + OpcodeIDWide32Size[PC], dst
 end
 
 macro getOperandWide32(opcodeStruct, fieldName, dst)
-    loadis constexpr %opcodeStruct%_%fieldName%_index * 4 + 1[PC], dst
+    loadis constexpr %opcodeStruct%_%fieldName%_index * 4 + OpcodeIDWide32Size[PC], dst
 end
 
 macro makeReturn(get, dispatch, fn)
@@ -93,7 +93,7 @@ end
 
 # After calling, calling bytecode is claiming input registers are not used.
 macro dispatchAfterCall(size, opcodeStruct, dispatch)
-    loadi ArgumentCount + TagOffset[cfr], PC
+    loadi ArgumentCountIncludingThis + TagOffset[cfr], PC
     get(size, opcodeStruct, m_dst, t3)
     storei r1, TagOffset[cfr, t3, 8]
     storei r0, PayloadOffset[cfr, t3, 8]
@@ -143,11 +143,19 @@ macro cCall4(function)
     end
 end
 
+macro prepareStateForCCall()
+    move PC, a1
+end
+
+macro restoreStateAfterCCall()
+    move r0, PC
+end
+
 macro callSlowPath(slowPath)
     move cfr, a0
-    move PC, a1
+    prepareStateForCCall()
     cCall2(slowPath)
-    move r0, PC
+    restoreStateAfterCCall()
 end
 
 macro doVMEntry(makeCall)
@@ -433,7 +441,7 @@ end
 
 # Call a slowPath for call opcodes.
 macro callCallSlowPath(slowPath, action)
-    storep PC, ArgumentCount + TagOffset[cfr]
+    storep PC, ArgumentCountIncludingThis + TagOffset[cfr]
     move cfr, a0
     move PC, a1
     cCall2(slowPath)
@@ -441,19 +449,19 @@ macro callCallSlowPath(slowPath, action)
 end
 
 macro callTrapHandler(throwHandler)
-    storei PC, ArgumentCount + TagOffset[cfr]
+    storei PC, ArgumentCountIncludingThis + TagOffset[cfr]
     move cfr, a0
     move PC, a1
     cCall2(_llint_slow_path_handle_traps)
     btpnz r0, throwHandler
-    loadi ArgumentCount + TagOffset[cfr], PC
+    loadi ArgumentCountIncludingThis + TagOffset[cfr], PC
 end
 
 macro checkSwitchToJITForLoop()
     checkSwitchToJIT(
         1,
         macro ()
-            storei PC, ArgumentCount + TagOffset[cfr]
+            storei PC, ArgumentCountIncludingThis + TagOffset[cfr]
             move cfr, a0
             move PC, a1
             cCall2(_llint_loop_osr)
@@ -461,7 +469,7 @@ macro checkSwitchToJITForLoop()
             move r1, sp
             jmp r0
         .recover:
-            loadi ArgumentCount + TagOffset[cfr], PC
+            loadi ArgumentCountIncludingThis + TagOffset[cfr], PC
         end)
 end
 
@@ -637,7 +645,7 @@ end
 
 # Expects that CodeBlock is in t1, which is what prologue() leaves behind.
 macro functionArityCheck(doneLabel, slowPath)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     biaeq t0, CodeBlock::m_numParameters[t1], doneLabel
     move cfr, a0
     move PC, a1
@@ -655,7 +663,7 @@ macro functionArityCheck(doneLabel, slowPath)
 .noError:
     move r1, t1 # r1 contains slotsToAdd.
     btiz t1, .continue
-    loadi PayloadOffset + ArgumentCount[cfr], t2
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t2
     addi CallFrameHeaderSlots, t2
 
     // Check if there are some unaligned slots we can use
@@ -733,7 +741,7 @@ _llint_op_enter:
 
 llintOpWithProfile(op_get_argument, OpGetArgument, macro (size, get, dispatch, return)
     get(m_index, t2)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     bilteq t0, t2, .opGetArgumentOutOfBounds
     loadi ThisArgumentOffset + TagOffset[cfr, t2, 8], t0
     loadi ThisArgumentOffset + PayloadOffset[cfr, t2, 8], t3
@@ -745,7 +753,7 @@ end)
 
 
 llintOpWithReturn(op_argument_count, OpArgumentCount, macro (size, get, dispatch, return)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     subi 1, t0
     return(Int32Tag, t0)
 end)
@@ -1925,8 +1933,8 @@ macro commonCallOp(opcodeName, slowPath, opcodeStruct, prepareCall, prologue)
         addp cfr, t3  # t3 contains the new value of cfr
         storei t2, Callee + PayloadOffset[t3]
         getu(size, opcodeStruct, m_argc, t2)
-        storei PC, ArgumentCount + TagOffset[cfr]
-        storei t2, ArgumentCount + PayloadOffset[t3]
+        storei PC, ArgumentCountIncludingThis + TagOffset[cfr]
+        storei t2, ArgumentCountIncludingThis + PayloadOffset[t3]
         storei CellTag, Callee + TagOffset[t3]
         move t3, sp
         prepareCall(%opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], t2, t3, t4, JSEntryPtrTag)
@@ -2054,8 +2062,11 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     end
 
     loadp Callee + PayloadOffset[cfr], a0
-    loadp JSFunction::m_executable[a0], a2
-    loadp JSFunction::m_globalObject[a0], a0
+    loadp JSFunction::m_executableOrRareData[a0], a2
+    btpz a2, (constexpr JSFunction::rareDataTag), .isExecutable
+    loadp (FunctionRareData::m_executable - (constexpr JSFunction::rareDataTag))[a2], a2
+.isExecutable:
+    loadp JSFunction::m_scope[a0], a0
     loadp JSGlobalObject::m_vm[a0], a1
     storep cfr, VM::topCallFrame[a1]
     move cfr, a1
@@ -2068,7 +2079,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     end
 
     loadp Callee + PayloadOffset[cfr], t3
-    loadp JSFunction::m_globalObject[t3], t3
+    loadp JSFunction::m_scope[t3], t3
     loadp JSGlobalObject::m_vm[t3], t3
 
     if MIPS
@@ -2534,7 +2545,7 @@ end)
 
 
 llintOpWithReturn(op_get_rest_length, OpGetRestLength, macro (size, get, dispatch, return)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     subi 1, t0
     getu(size, OpGetRestLength, m_numParametersToSkip, t1)
     bilteq t0, t1, .storeZero

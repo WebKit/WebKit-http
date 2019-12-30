@@ -31,39 +31,47 @@ macro nextInstruction()
 end
 
 macro nextInstructionWide16()
-    loadh 1[PB, PC, 1], t0
+    loadb OpcodeIDNarrowSize[PB, PC, 1], t0
     leap _g_opcodeMapWide16, t1
     jmp [t1, t0, PtrSize], BytecodePtrTag
 end
 
 macro nextInstructionWide32()
-    loadi 1[PB, PC, 1], t0
+    loadb OpcodeIDNarrowSize[PB, PC, 1], t0
     leap _g_opcodeMapWide32, t1
     jmp [t1, t0, PtrSize], BytecodePtrTag
 end
 
+macro storePC()
+    storei PC, LLIntReturnPC[cfr]
+end
+
+macro loadPC()
+    loadi LLIntReturnPC[cfr], PC
+end
+
 macro getuOperandNarrow(opcodeStruct, fieldName, dst)
-    loadb constexpr %opcodeStruct%_%fieldName%_index[PB, PC, 1], dst
+    loadb constexpr %opcodeStruct%_%fieldName%_index + OpcodeIDNarrowSize[PB, PC, 1], dst
 end
 
 macro getOperandNarrow(opcodeStruct, fieldName, dst)
-    loadbsq constexpr %opcodeStruct%_%fieldName%_index[PB, PC, 1], dst
+    loadbsq constexpr %opcodeStruct%_%fieldName%_index + OpcodeIDNarrowSize[PB, PC, 1], dst
 end
 
 macro getuOperandWide16(opcodeStruct, fieldName, dst)
-    loadh constexpr %opcodeStruct%_%fieldName%_index * 2 + 1[PB, PC, 1], dst
+    loadh constexpr %opcodeStruct%_%fieldName%_index * 2 + OpcodeIDWide16Size[PB, PC, 1], dst
 end
 
 macro getOperandWide16(opcodeStruct, fieldName, dst)
-    loadhsq constexpr %opcodeStruct%_%fieldName%_index * 2 + 1[PB, PC, 1], dst
+    loadhsq constexpr %opcodeStruct%_%fieldName%_index * 2 + OpcodeIDWide16Size[PB, PC, 1], dst
 end
 
 macro getuOperandWide32(opcodeStruct, fieldName, dst)
-    loadi constexpr %opcodeStruct%_%fieldName%_index * 4 + 1[PB, PC, 1], dst
+    loadi constexpr %opcodeStruct%_%fieldName%_index * 4 + OpcodeIDWide32Size[PB, PC, 1], dst
 end
 
 macro getOperandWide32(opcodeStruct, fieldName, dst)
-    loadis constexpr %opcodeStruct%_%fieldName%_index * 4 + 1[PB, PC, 1], dst
+    loadis constexpr %opcodeStruct%_%fieldName%_index * 4 + OpcodeIDWide32Size[PB, PC, 1], dst
 end
 
 macro makeReturn(get, dispatch, fn)
@@ -92,7 +100,7 @@ end
 
 # After calling, calling bytecode is claiming input registers are not used.
 macro dispatchAfterCall(size, opcodeStruct, dispatch)
-    loadi ArgumentCount + TagOffset[cfr], PC
+    loadPC()
     loadp CodeBlock[cfr], PB
     loadp CodeBlock::m_instructionsRawPointer[PB], PB
     get(size, opcodeStruct, m_dst, t1)
@@ -217,7 +225,7 @@ macro doVMEntry(makeCall)
     move (constexpr ProtoCallFrame::numberOfRegisters), t3
 
 .copyHeaderLoop:
-    # Copy the CodeBlock/Callee/ArgumentCount/|this| from protoCallFrame into the callee frame.
+    # Copy the CodeBlock/Callee/ArgumentCountIncludingThis/|this| from protoCallFrame into the callee frame.
     subi 1, t3
     loadq [protoCallFrame, t3, 8], extraTempReg
     storeq extraTempReg, CodeBlock[sp, t3, 8]
@@ -390,7 +398,7 @@ end
 
 # Call a slow path for call opcodes.
 macro callCallSlowPath(slowPath, action)
-    storei PC, ArgumentCount + TagOffset[cfr]
+    storePC()
     prepareStateForCCall()
     move cfr, a0
     move PC, a1
@@ -399,20 +407,20 @@ macro callCallSlowPath(slowPath, action)
 end
 
 macro callTrapHandler(throwHandler)
-    storei PC, ArgumentCount + TagOffset[cfr]
+    storePC()
     prepareStateForCCall()
     move cfr, a0
     move PC, a1
     cCall2(_llint_slow_path_handle_traps)
     btpnz r0, throwHandler
-    loadi ArgumentCount + TagOffset[cfr], PC
+    loadi LLIntReturnPC[cfr], PC
 end
 
 macro checkSwitchToJITForLoop()
     checkSwitchToJIT(
         1,
         macro()
-            storei PC, ArgumentCount + TagOffset[cfr]
+            storePC()
             prepareStateForCCall()
             move cfr, a0
             move PC, a1
@@ -421,7 +429,7 @@ macro checkSwitchToJITForLoop()
             move r1, sp
             jmp r0, JSEntryPtrTag
         .recover:
-            loadi ArgumentCount + TagOffset[cfr], PC
+            loadPC()
         end)
 end
 
@@ -619,7 +627,7 @@ end
 
 # Expects that CodeBlock is in t1, which is what prologue() leaves behind.
 macro functionArityCheck(doneLabel, slowPath)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     biaeq t0, CodeBlock::m_numParameters[t1], doneLabel
     prepareStateForCCall()
     move cfr, a0
@@ -638,7 +646,7 @@ macro functionArityCheck(doneLabel, slowPath)
 .noError:
     move r1, t1 # r1 contains slotsToAdd.
     btiz t1, .continue
-    loadi PayloadOffset + ArgumentCount[cfr], t2
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t2
     addi CallFrameHeaderSlots, t2
 
     // Check if there are some unaligned slots we can use
@@ -723,7 +731,7 @@ _llint_op_enter:
 
 llintOpWithProfile(op_get_argument, OpGetArgument, macro (size, get, dispatch, return)
     get(m_index, t2)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     bilteq t0, t2, .opGetArgumentOutOfBounds
     loadq ThisArgumentOffset[cfr, t2, 8], t0
     return(t0)
@@ -734,7 +742,7 @@ end)
 
 
 llintOpWithReturn(op_argument_count, OpArgumentCount, macro (size, get, dispatch, return)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     subi 1, t0
     orq TagNumber, t0
     return(t0)
@@ -1440,10 +1448,19 @@ llintOpWithMetadata(op_put_by_id, OpPutById, macro (size, get, dispatch, metadat
     loadp OpPutById::Metadata::m_structureChain[t5], t3
     btpz t3, .opPutByIdTransitionDirect
 
-    structureIDToStructureWithScratch(t2, t1, t3)
+    loadp CodeBlock[cfr], t1
+    loadp CodeBlock::m_vm[t1], t1
+    loadp VM::heap + Heap::m_structureIDTable + StructureIDTable::m_table[t1], t1
 
-    # reload the StructureChain since we used t3 as a scratch above
-    loadp OpPutById::Metadata::m_structureChain[t5], t3
+    macro structureIDToStructureWithScratchAndTable(structureIDThenStructure, table, scratch)
+        move structureIDThenStructure, scratch
+        rshifti NumberOfStructureIDEntropyBits, scratch
+        loadp [table, scratch, PtrSize], scratch
+        lshiftp StructureEntropyBitsShift, structureIDThenStructure
+        xorp scratch, structureIDThenStructure
+    end
+
+    structureIDToStructureWithScratchAndTable(t2, t1, t0)
 
     loadp StructureChain::m_vector[t3], t3
     assert(macro (ok) btpnz t3, ok end)
@@ -1451,20 +1468,19 @@ llintOpWithMetadata(op_put_by_id, OpPutById, macro (size, get, dispatch, metadat
     loadq Structure::m_prototype[t2], t2
     bqeq t2, ValueNull, .opPutByIdTransitionChainDone
 .opPutByIdTransitionChainLoop:
-    # At this point, t2 contains a prototye, and [t3] contains the Structure* that we want that
-    # prototype to have. We don't want to have to load the Structure* for t2. Instead, we load
-    # the Structure* from [t3], and then we compare its id to the id in the header of t2.
-    loadp [t3], t1
     loadi JSCell::m_structureID[t2], t2
-    # Now, t1 has the Structure* and t2 has the StructureID that we want that Structure* to have.
-    bineq t2, Structure::m_blob + StructureIDBlob::u.fields.structureID[t1], .opPutByIdSlow
-    addp PtrSize, t3
-    loadq Structure::m_prototype[t1], t2
+    bineq t2, [t3], .opPutByIdSlow
+    addp 4, t3
+    structureIDToStructureWithScratchAndTable(t2, t1, t0)
+    loadq Structure::m_prototype[t2], t2
     bqneq t2, ValueNull, .opPutByIdTransitionChainLoop
 
 .opPutByIdTransitionChainDone:
     # Reload the new structure, since we clobbered it above.
     loadi OpPutById::Metadata::m_newStructureID[t5], t1
+    # Reload base into t0
+    get(m_base, t3)
+    loadConstantOrVariable(size, t3, t0)
 
 .opPutByIdTransitionDirect:
     storei t1, JSCell::m_structureID[t0]
@@ -2057,8 +2073,8 @@ macro commonCallOp(opcodeName, slowPath, opcodeStruct, prepareCall, prologue)
         addp cfr, t3
         storeq t2, Callee[t3]
         getu(size, opcodeStruct, m_argc, t2)
-        storei PC, ArgumentCount + TagOffset[cfr]
-        storei t2, ArgumentCount + PayloadOffset[t3]
+        storePC()
+        storei t2, ArgumentCountIncludingThis + PayloadOffset[t3]
         move t3, sp
         prepareCall(%opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], t2, t3, t4, JSEntryPtrTag)
         callTargetFunction(opcodeName, size, opcodeStruct, dispatch, %opcodeStruct%::Metadata::m_callLinkInfo.m_machineCodeTarget[t5], JSEntryPtrTag)
@@ -2169,8 +2185,11 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     functionPrologue()
     storep 0, CodeBlock[cfr]
     loadp Callee[cfr], a0
-    loadp JSFunction::m_executable[a0], a2
-    loadp JSFunction::m_globalObject[a0], a0
+    loadp JSFunction::m_executableOrRareData[a0], a2
+    btpz a2, (constexpr JSFunction::rareDataTag), .isExecutable
+    loadp (FunctionRareData::m_executable - (constexpr JSFunction::rareDataTag))[a2], a2
+.isExecutable:
+    loadp JSFunction::m_scope[a0], a0
     loadp JSGlobalObject::m_vm[a0], a1
     storep cfr, VM::topCallFrame[a1]
     if ARM64 or ARM64E or C_LOOP or C_LOOP_WIN
@@ -2191,7 +2210,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     end
 
     loadp Callee[cfr], t3
-    loadp JSFunction::m_globalObject[t3], t3
+    loadp JSFunction::m_scope[t3], t3
     loadp JSGlobalObject::m_vm[t3], t3
 
     btpnz VM::m_exception[t3], .handleException
@@ -2624,7 +2643,7 @@ end)
 
 
 llintOpWithReturn(op_get_rest_length, OpGetRestLength, macro (size, get, dispatch, return)
-    loadi PayloadOffset + ArgumentCount[cfr], t0
+    loadi PayloadOffset + ArgumentCountIncludingThis[cfr], t0
     subi 1, t0
     getu(size, OpGetRestLength, m_numParametersToSkip, t1)
     bilteq t0, t1, .storeZero

@@ -2759,6 +2759,22 @@ InteractionInformationAtPosition WebPage::positionInformation(const InteractionI
     info.adjustedPointForNodeRespondingToClickEvents = adjustedPoint;
     info.nodeAtPositionHasDoubleClickHandler = m_page->mainFrame().nodeRespondingToDoubleClickEvent(request.point, adjustedPoint);
 
+    auto& eventHandler = m_page->mainFrame().eventHandler();
+    HitTestResult hitTestResult = eventHandler.hitTestResultAtPoint(request.point, HitTestRequest::ReadOnly | HitTestRequest::AllowFrameScrollbars);
+    info.cursor = eventHandler.selectCursor(hitTestResult, false);
+    if (request.includeCaretContext) {
+        if (auto* frame = hitTestResult.innerNodeFrame()) {
+            if (auto* frameView = frame->view()) {
+                VisiblePosition position = frame->visiblePositionForPoint(request.point);
+                info.caretHeight = frameView->contentsToRootView(position.absoluteCaretBounds()).height();
+
+                VisiblePosition startPosition = startOfLine(position);
+                VisiblePosition endPosition = endOfLine(position);
+                info.lineCaretExtent = unionRect(frameView->contentsToRootView(startPosition.absoluteCaretBounds()), frameView->contentsToRootView(endPosition.absoluteCaretBounds()));
+            }
+        }
+    }
+
 #if ENABLE(DATA_INTERACTION)
     info.hasSelectionAtPosition = m_page->hasSelectionAtPosition(adjustedPoint);
 #endif
@@ -3999,12 +4015,21 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
 
     VisiblePosition contextBeforeStart;
     VisiblePosition contextAfterEnd;
+    auto compositionRange = frame->editor().compositionRange();
     if (request.granularityCount) {
         contextBeforeStart = moveByGranularityRespectingWordBoundary(rangeOfInterestStart, request.surroundingGranularity, request.granularityCount, DirectionBackward);
         contextAfterEnd = moveByGranularityRespectingWordBoundary(rangeOfInterestEnd, request.surroundingGranularity, request.granularityCount, DirectionForward);
     } else {
         contextBeforeStart = rangeOfInterestStart;
         contextAfterEnd = rangeOfInterestEnd;
+        if (wantsMarkedTextRects && compositionRange) {
+            // In the case where the client has requested marked text rects, additionally make sure that the
+            // context range encompasses the entire marked text range.
+            auto compositionStart = compositionRange->startPosition();
+            auto compositionEnd = compositionRange->endPosition();
+            contextBeforeStart = contextBeforeStart > compositionStart ? compositionStart : contextBeforeStart;
+            contextAfterEnd = contextAfterEnd < compositionEnd ? compositionEnd : contextAfterEnd;
+        }
     }
 
     auto makeString = [&](VisiblePosition& start, VisiblePosition& end) -> NSAttributedString * {
@@ -4017,17 +4042,11 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
     context.contextBefore = makeString(contextBeforeStart, startOfRangeOfInterestInSelection);
     context.selectedText = makeString(startOfRangeOfInterestInSelection, endOfRangeOfInterestInSelection);
     context.contextAfter = makeString(endOfRangeOfInterestInSelection, contextAfterEnd);
-
-    auto compositionRange = frame->editor().compositionRange();
     if (compositionRange && rangesOverlap(rangeOfInterest.get(), compositionRange.get())) {
         VisiblePosition compositionStart(compositionRange->startPosition());
         VisiblePosition compositionEnd(compositionRange->endPosition());
-
-        VisiblePosition relevantCompositionStart = rangeOfInterestStart > compositionStart ? rangeOfInterestStart : compositionStart;
-        VisiblePosition relevantCompositionEnd = rangeOfInterestEnd < compositionEnd ? rangeOfInterestEnd : compositionEnd;
-
-        context.markedText = makeString(relevantCompositionStart, relevantCompositionEnd);
-        context.selectedRangeInMarkedText.location = distanceBetweenPositions(relevantCompositionStart, startOfRangeOfInterestInSelection);
+        context.markedText = makeString(compositionStart, compositionEnd);
+        context.selectedRangeInMarkedText.location = distanceBetweenPositions(startOfRangeOfInterestInSelection, compositionStart);
         context.selectedRangeInMarkedText.length = [context.selectedText.string length];
     }
 

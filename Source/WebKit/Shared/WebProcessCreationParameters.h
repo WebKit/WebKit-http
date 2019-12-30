@@ -51,10 +51,6 @@
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
-#if PLATFORM(IOS)
-#include <WebCore/RenderThemeIOS.h>
-#endif
-
 namespace API {
 class Data;
 }
@@ -205,6 +201,7 @@ struct WebProcessCreationParameters {
 #if PLATFORM(IOS)
     Optional<SandboxExtension::Handle> compilerServiceExtensionHandle;
     Optional<SandboxExtension::Handle> contentFilterExtensionHandle;
+    Optional<SandboxExtension::Handle> diagnosticsExtensionHandle;
 #endif
 
 #if PLATFORM(COCOA)
@@ -212,8 +209,8 @@ struct WebProcessCreationParameters {
     Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
 #endif
 
-#if PLATFORM(IOS)
-    HashMap<WebCore::CSSValueKey, WebCore::Color> cssValueToSystemColorMap;
+#if PLATFORM(IOS_FAMILY)
+    bool currentUserInterfaceIdiomIsPad { false };
 #endif
 };
 

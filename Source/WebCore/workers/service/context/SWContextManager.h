@@ -56,7 +56,7 @@ public:
         virtual void didFinishActivation(ServiceWorkerIdentifier) = 0;
         virtual void setServiceWorkerHasPendingEvents(ServiceWorkerIdentifier, bool) = 0;
         virtual void workerTerminated(ServiceWorkerIdentifier) = 0;
-        virtual void skipWaiting(ServiceWorkerIdentifier, Function<void()>&&) = 0;
+        virtual void skipWaiting(ServiceWorkerIdentifier, CompletionHandler<void()>&&) = 0;
         virtual void setScriptResource(ServiceWorkerIdentifier, const URL&, const ServiceWorkerContextData::ImportedScript&) = 0;
 
         using FindClientByIdentifierCallback = CompletionHandler<void(ExceptionOr<Optional<ServiceWorkerClientData>>&&)>;
@@ -64,15 +64,20 @@ public:
         virtual void matchAll(ServiceWorkerIdentifier, const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&) = 0;
         virtual void claim(ServiceWorkerIdentifier, CompletionHandler<void()>&&) = 0;
 
+        virtual void didFailHeartBeatCheck(ServiceWorkerIdentifier) = 0;
+
         virtual bool isThrottleable() const = 0;
 
         bool isClosed() const { return m_isClosed; }
+        bool shouldUseShortTimeout() const { return m_shouldUseShortTimeout; }
 
     protected:
         void setAsClosed() { m_isClosed = true; }
+        void setShouldUseShortTimeout(bool value) { m_shouldUseShortTimeout = value; }
 
     private:
         bool m_isClosed { false };
+        bool m_shouldUseShortTimeout { false };
     };
 
     WEBCORE_EXPORT void setConnection(std::unique_ptr<Connection>&&);

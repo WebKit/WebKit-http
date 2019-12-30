@@ -228,7 +228,7 @@ bool ElementRuleCollector::matchesAnyAuthorRules()
 void ElementRuleCollector::collectMatchingAuthorRules()
 {
     {
-        MatchRequest matchRequest(&m_authorStyle);
+        MatchRequest matchRequest(m_authorStyle.ptr());
         collectMatchingRules(matchRequest);
     }
 
@@ -354,8 +354,8 @@ std::unique_ptr<RuleSet::RuleDataVector> ElementRuleCollector::collectSlottedPse
     m_mode = SelectorChecker::Mode::CollectingRules;
 
     // Match global author rules.
-    MatchRequest matchRequest(&m_authorStyle);
-    collectMatchingRulesForList(&m_authorStyle.slottedPseudoElementRules(), matchRequest);
+    MatchRequest matchRequest(m_authorStyle.ptr());
+    collectMatchingRulesForList(&m_authorStyle->slottedPseudoElementRules(), matchRequest);
 
     if (m_matchedRules.isEmpty())
         return { };
@@ -375,7 +375,7 @@ void ElementRuleCollector::matchUserRules()
     
     clearMatchedRules();
 
-    MatchRequest matchRequest(m_userStyle);
+    MatchRequest matchRequest(m_userStyle.get());
     collectMatchingRules(matchRequest);
 
     sortAndTransferMatchedRules(DeclarationOrigin::User);
@@ -523,6 +523,9 @@ void ElementRuleCollector::collectMatchingRulesForList(const RuleSet::RuleDataVe
 
     for (unsigned i = 0, size = rules->size(); i < size; ++i) {
         const auto& ruleData = rules->data()[i];
+
+        if (UNLIKELY(!ruleData.isEnabled()))
+            continue;
 
         if (!ruleData.canMatchPseudoElement() && m_pseudoElementRequest.pseudoId != PseudoId::None)
             continue;

@@ -30,6 +30,7 @@
 
 #include "CacheStorageProvider.h"
 #include "ContentSecurityPolicyResponseHeaders.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "ExtendableMessageEvent.h"
 #include "JSDOMPromise.h"
@@ -75,6 +76,8 @@ ServiceWorkerThread::ServiceWorkerThread(const ServiceWorkerContextData& data, S
     : WorkerThread(data.scriptURL, emptyString(), "serviceworker:" + Inspector::IdentifiersFactory::createIdentifier(), WTFMove(userAgent), platformStrategies()->loaderStrategy()->isOnLine(), data.script, loaderProxy, debuggerProxy, DummyServiceWorkerThreadProxy::shared(), WorkerThreadStartMode::Normal, data.contentSecurityPolicy, false, data.registration.key.topOrigin().securityOrigin().get(), MonotonicTime::now(), idbConnectionProxy, socketProvider, JSC::RuntimeFlags::createAllEnabled())
     , m_data(data.isolatedCopy())
     , m_workerObjectProxy(DummyServiceWorkerThreadProxy::shared())
+    , m_heartBeatTimeout(SWContextManager::singleton().connection()->shouldUseShortTimeout() ? heartBeatTimeoutForTest : heartBeatTimeout)
+    , m_heartBeatTimer { *this, &ServiceWorkerThread::heartBeatTimerFired }
 {
     AtomString::init();
 }
@@ -93,13 +96,12 @@ void ServiceWorkerThread::runEventLoop()
     WorkerThread::runEventLoop();
 }
 
-void ServiceWorkerThread::postFetchTask(Ref<ServiceWorkerFetch::Client>&& client, Optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
+void ServiceWorkerThread::queueTaskToFireFetchEvent(Ref<ServiceWorkerFetch::Client>&& client, Optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
 {
-    // FIXME: instead of directly using runLoop(), we should be using something like WorkerGlobalScopeProxy.
-    // FIXME: request and options come straigth from IPC so are already isolated. We should be able to take benefit of that.
-    runLoop().postTaskForMode([client = WTFMove(client), clientId, request = request.isolatedCopy(), referrer = referrer.isolatedCopy(), options = options.isolatedCopy()] (ScriptExecutionContext& context) mutable {
-        ServiceWorkerFetch::dispatchFetchEvent(WTFMove(client), downcast<ServiceWorkerGlobalScope>(context), clientId, WTFMove(request), WTFMove(referrer), WTFMove(options));
-    }, WorkerRunLoop::defaultMode());
+    auto serviceWorkerGlobalScope = makeRef(downcast<ServiceWorkerGlobalScope>(*workerGlobalScope()));
+    serviceWorkerGlobalScope->eventLoop().queueTask(TaskSource::DOMManipulation, [serviceWorkerGlobalScope = serviceWorkerGlobalScope.copyRef(), client = WTFMove(client), clientId, request = WTFMove(request), referrer = WTFMove(referrer), options = WTFMove(options)]() mutable {
+        ServiceWorkerFetch::dispatchFetchEvent(WTFMove(client), serviceWorkerGlobalScope, clientId, WTFMove(request), WTFMove(referrer), WTFMove(options));
+    });
 }
 
 static void fireMessageEvent(ServiceWorkerGlobalScope& scope, MessageWithMessagePorts&& message, ExtendableMessageEventSource&& source, const URL& sourceURL)
@@ -111,37 +113,41 @@ static void fireMessageEvent(ServiceWorkerGlobalScope& scope, MessageWithMessage
     scope.updateExtendedEventsSet(messageEvent.ptr());
 }
 
-void ServiceWorkerThread::postMessageToServiceWorker(MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
+void ServiceWorkerThread::queueTaskToPostMessage(MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
 {
-    runLoop().postTask([message = WTFMove(message), sourceData = WTFMove(sourceData)] (auto& context) mutable {
-        auto& serviceWorkerGlobalScope = downcast<ServiceWorkerGlobalScope>(context);
+    auto serviceWorkerGlobalScope = makeRef(downcast<ServiceWorkerGlobalScope>(*workerGlobalScope()));
+    serviceWorkerGlobalScope->eventLoop().queueTask(TaskSource::DOMManipulation, [serviceWorkerGlobalScope = serviceWorkerGlobalScope.copyRef(), message = WTFMove(message), sourceData = WTFMove(sourceData), serviceWorkerIdentifier = this->identifier()]() mutable {
         URL sourceURL;
         ExtendableMessageEventSource source;
         if (WTF::holds_alternative<ServiceWorkerClientData>(sourceData)) {
             RefPtr<ServiceWorkerClient> sourceClient = ServiceWorkerClient::getOrCreate(serviceWorkerGlobalScope, WTFMove(WTF::get<ServiceWorkerClientData>(sourceData)));
 
-            RELEASE_ASSERT(!sourceClient->url().protocolIsInHTTPFamily() || !serviceWorkerGlobalScope.url().protocolIsInHTTPFamily() || protocolHostAndPortAreEqual(serviceWorkerGlobalScope.url(), sourceClient->url()));
+            RELEASE_ASSERT(!sourceClient->url().protocolIsInHTTPFamily() || !serviceWorkerGlobalScope->url().protocolIsInHTTPFamily() || protocolHostAndPortAreEqual(serviceWorkerGlobalScope->url(), sourceClient->url()));
 
             sourceURL = sourceClient->url();
             source = WTFMove(sourceClient);
         } else {
             RefPtr<ServiceWorker> sourceWorker = ServiceWorker::getOrCreate(serviceWorkerGlobalScope, WTFMove(WTF::get<ServiceWorkerData>(sourceData)));
 
-            RELEASE_ASSERT(!sourceWorker->scriptURL().protocolIsInHTTPFamily() || !serviceWorkerGlobalScope.url().protocolIsInHTTPFamily() || protocolHostAndPortAreEqual(serviceWorkerGlobalScope.url(), sourceWorker->scriptURL()));
+            RELEASE_ASSERT(!sourceWorker->scriptURL().protocolIsInHTTPFamily() || !serviceWorkerGlobalScope->url().protocolIsInHTTPFamily() || protocolHostAndPortAreEqual(serviceWorkerGlobalScope->url(), sourceWorker->scriptURL()));
 
             sourceURL = sourceWorker->scriptURL();
             source = WTFMove(sourceWorker);
         }
         fireMessageEvent(serviceWorkerGlobalScope, WTFMove(message), ExtendableMessageEventSource { source }, sourceURL);
+        callOnMainThread([serviceWorkerIdentifier] {
+            if (auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(serviceWorkerIdentifier))
+                serviceWorkerThreadProxy->thread().finishedFiringMessageEvent();
+        });
     });
 }
 
-void ServiceWorkerThread::fireInstallEvent()
+void ServiceWorkerThread::queueTaskToFireInstallEvent()
 {
-    runLoop().postTask([jobDataIdentifier = m_data.jobDataIdentifier, serviceWorkerIdentifier = this->identifier()] (ScriptExecutionContext& context) mutable {
-        auto& serviceWorkerGlobalScope = downcast<ServiceWorkerGlobalScope>(context);
+    auto serviceWorkerGlobalScope = makeRef(downcast<ServiceWorkerGlobalScope>(*workerGlobalScope()));
+    serviceWorkerGlobalScope->eventLoop().queueTask(TaskSource::DOMManipulation, [serviceWorkerGlobalScope = serviceWorkerGlobalScope.copyRef(), jobDataIdentifier = m_data.jobDataIdentifier, serviceWorkerIdentifier = this->identifier()] {
         auto installEvent = ExtendableEvent::create(eventNames().installEvent, { }, ExtendableEvent::IsTrusted::Yes);
-        serviceWorkerGlobalScope.dispatchEvent(installEvent);
+        serviceWorkerGlobalScope->dispatchEvent(installEvent);
 
         installEvent->whenAllExtendLifetimePromisesAreSettled([jobDataIdentifier, serviceWorkerIdentifier](HashSet<Ref<DOMPromise>>&& extendLifetimePromises) {
             bool hasRejectedAnyPromise = false;
@@ -151,25 +157,25 @@ void ServiceWorkerThread::fireInstallEvent()
                     break;
                 }
             }
-            callOnMainThread([jobDataIdentifier, serviceWorkerIdentifier, hasRejectedAnyPromise] () mutable {
-                if (auto* connection = SWContextManager::singleton().connection())
-                    connection->didFinishInstall(jobDataIdentifier, serviceWorkerIdentifier, !hasRejectedAnyPromise);
+            callOnMainThread([serviceWorkerIdentifier, hasRejectedAnyPromise] {
+                if (auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(serviceWorkerIdentifier))
+                    serviceWorkerThreadProxy->thread().finishedFiringInstallEvent(hasRejectedAnyPromise);
             });
         });
     });
 }
 
-void ServiceWorkerThread::fireActivateEvent()
+void ServiceWorkerThread::queueTaskToFireActivateEvent()
 {
-    runLoop().postTask([serviceWorkerIdentifier = this->identifier()] (ScriptExecutionContext& context) mutable {
-        auto& serviceWorkerGlobalScope = downcast<ServiceWorkerGlobalScope>(context);
+    auto serviceWorkerGlobalScope = makeRef(downcast<ServiceWorkerGlobalScope>(*workerGlobalScope()));
+    serviceWorkerGlobalScope->eventLoop().queueTask(TaskSource::DOMManipulation, [serviceWorkerGlobalScope = serviceWorkerGlobalScope.copyRef(), serviceWorkerIdentifier = this->identifier()]() mutable {
         auto activateEvent = ExtendableEvent::create(eventNames().activateEvent, { }, ExtendableEvent::IsTrusted::Yes);
-        serviceWorkerGlobalScope.dispatchEvent(activateEvent);
+        serviceWorkerGlobalScope->dispatchEvent(activateEvent);
 
         activateEvent->whenAllExtendLifetimePromisesAreSettled([serviceWorkerIdentifier](HashSet<Ref<DOMPromise>>&&) {
-            callOnMainThread([serviceWorkerIdentifier] () mutable {
-                if (auto* connection = SWContextManager::singleton().connection())
-                    connection->didFinishActivation(serviceWorkerIdentifier);
+            callOnMainThread([serviceWorkerIdentifier] {
+                if (auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(serviceWorkerIdentifier))
+                    serviceWorkerThreadProxy->thread().finishedFiringActivateEvent();
             });
         });
     });
@@ -177,17 +183,119 @@ void ServiceWorkerThread::fireActivateEvent()
 
 void ServiceWorkerThread::finishedEvaluatingScript()
 {
+    ASSERT(!isMainThread());
     m_doesHandleFetch = workerGlobalScope()->hasEventListeners(eventNames().fetchEvent);
 }
 
 void ServiceWorkerThread::start(Function<void(const String&, bool)>&& callback)
 {
+    m_state = State::Starting;
+    startHeartBeatTimer();
+
     WorkerThread::start([callback = WTFMove(callback), serviceWorkerIdentifier = this->identifier()](auto& errorMessage) mutable {
         bool doesHandleFetch = true;
-        if (auto* threadProxy = SWContextManager::singleton().workerByID(serviceWorkerIdentifier))
+        if (auto* threadProxy = SWContextManager::singleton().workerByID(serviceWorkerIdentifier)) {
+            threadProxy->thread().finishedStarting();
             doesHandleFetch = threadProxy->thread().doesHandleFetch();
+        }
         callback(errorMessage, doesHandleFetch);
     });
+}
+
+void ServiceWorkerThread::finishedStarting()
+{
+    m_state = State::Idle;
+}
+
+void ServiceWorkerThread::startFetchEventMonitoring()
+{
+    m_isHandlingFetchEvent = true;
+    startHeartBeatTimer();
+}
+
+void ServiceWorkerThread::startHeartBeatTimer()
+{
+    if (m_heartBeatTimer.isActive())
+        return;
+
+    m_ongoingHeartBeatCheck = true;
+    runLoop().postTask([this, protectedThis = makeRef(*this)](auto&) mutable {
+        callOnMainThread([this, protectedThis = WTFMove(protectedThis)]() {
+            m_ongoingHeartBeatCheck = false;
+        });
+    });
+
+    m_heartBeatTimer.startOneShot(m_heartBeatTimeout);
+}
+
+void ServiceWorkerThread::heartBeatTimerFired()
+{
+    if (!m_ongoingHeartBeatCheck) {
+        if (m_state == State::Installing || m_state == State::Activating || m_isHandlingFetchEvent || m_messageEventCount)
+            startHeartBeatTimer();
+        return;
+    }
+
+    auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(identifier());
+    if (!serviceWorkerThreadProxy || serviceWorkerThreadProxy->isTerminatingOrTerminated())
+        return;
+
+    auto* connection = SWContextManager::singleton().connection();
+    if (!connection)
+        return;
+
+    switch (m_state) {
+    case State::Idle:
+    case State::Activating:
+        connection->didFailHeartBeatCheck(identifier());
+        break;
+    case State::Starting:
+        connection->serviceWorkerFailedToStart(m_data.jobDataIdentifier, identifier(), "Service Worker script execution timed out"_s);
+        break;
+    case State::Installing:
+        connection->didFinishInstall(m_data.jobDataIdentifier, identifier(), false);
+        break;
+    }
+}
+
+void ServiceWorkerThread::willPostTaskToFireInstallEvent()
+{
+    m_state = State::Installing;
+    startHeartBeatTimer();
+}
+
+void ServiceWorkerThread::finishedFiringInstallEvent(bool hasRejectedAnyPromise)
+{
+    m_state = State::Idle;
+
+    if (auto* connection = SWContextManager::singleton().connection())
+        connection->didFinishInstall(m_data.jobDataIdentifier, identifier(), !hasRejectedAnyPromise);
+}
+
+void ServiceWorkerThread::willPostTaskToFireActivateEvent()
+{
+    m_state = State::Activating;
+    startHeartBeatTimer();
+}
+
+void ServiceWorkerThread::finishedFiringActivateEvent()
+{
+    m_state = State::Idle;
+
+    if (auto* connection = SWContextManager::singleton().connection())
+        connection->didFinishActivation(identifier());
+}
+
+void ServiceWorkerThread::willPostTaskToFireMessageEvent()
+{
+    if (!m_messageEventCount++)
+        startHeartBeatTimer();
+}
+
+void ServiceWorkerThread::finishedFiringMessageEvent()
+{
+    ASSERT(m_messageEventCount);
+    --m_messageEventCount;
 }
 
 } // namespace WebCore

@@ -28,8 +28,6 @@
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
 #include "AXIsolatedTreeNode.h"
 
-#include "AccessibilityObject.h"
-
 namespace WebCore {
 
 AXIsolatedObject::AXIsolatedObject(AXCoreObject& object, bool isRoot)
@@ -37,9 +35,7 @@ AXIsolatedObject::AXIsolatedObject(AXCoreObject& object, bool isRoot)
 {
     ASSERT(isMainThread());
     initializeAttributeData(object, isRoot);
-#if !ASSERT_DISABLED
     m_initialized = true;
-#endif
 }
 
 Ref<AXIsolatedObject> AXIsolatedObject::create(AXCoreObject& object, bool isRoot)
@@ -160,6 +156,7 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::SupportsCurrent, object.supportsCurrent());
     setProperty(AXPropertyName::KeyShortcutsValue, object.keyShortcutsValue());
     setProperty(AXPropertyName::SupportsSetSize, object.supportsSetSize());
+    setProperty(AXPropertyName::SupportsPath, object.supportsPath());
     setProperty(AXPropertyName::SupportsPosInSet, object.supportsPosInSet());
     setProperty(AXPropertyName::SetSize, object.setSize());
     setProperty(AXPropertyName::PosInSet, object.posInSet());
@@ -188,7 +185,9 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::ReadOnlyValue, object.readOnlyValue());
     setProperty(AXPropertyName::AutoCompleteValue, object.autoCompleteValue());
     setProperty(AXPropertyName::SpeakAs, object.speakAsProperty());
+#if PLATFORM(COCOA) && !PLATFORM(IOS_FAMILY)
     setProperty(AXPropertyName::CaretBrowsingEnabled, object.caretBrowsingEnabled());
+#endif
     setObjectProperty(AXPropertyName::FocusableAncestor, object.focusableAncestor());
     setObjectProperty(AXPropertyName::EditableAncestor, object.editableAncestor());
     setObjectProperty(AXPropertyName::HighestEditableAncestor, object.highestEditableAncestor());
@@ -269,6 +268,11 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
         isolatedTexts.uncheckedAppend(isolatedText);
     }
     setProperty(AXPropertyName::AccessibilityText, isolatedTexts);
+
+    // Spin button support.
+    setObjectProperty(AXPropertyName::DecrementButton, object.decrementButton());
+    setObjectProperty(AXPropertyName::IncrementButton, object.incrementButton());
+    setProperty(AXPropertyName::IsIncrementor, object.isIncrementor());
 
     Vector<String> classList;
     object.classList(classList);
@@ -425,8 +429,7 @@ const AXCoreObject::AccessibilityChildrenVector& AXIsolatedObject::children(bool
 
 bool AXIsolatedObject::isDetachedFromParent()
 {
-    ASSERT_NOT_REACHED();
-    return false;
+    return parent() == InvalidAXID && tree()->rootNode()->objectID() != m_id;
 }
 
 void AXIsolatedObject::accessibilityText(Vector<AccessibilityText>& texts) const
@@ -515,6 +518,92 @@ AXCoreObject* AXIsolatedObject::parentObjectUnignored() const
 AXCoreObject* AXIsolatedObject::scrollBar(AccessibilityOrientation orientation)
 {
     return objectAttributeValue(orientation == AccessibilityOrientation::Vertical ? AXPropertyName::VerticalScrollBar : AXPropertyName::HorizontalScrollBar);
+}
+
+template<typename U>
+void AXIsolatedObject::performFunctionOnMainThread(U&& lambda)
+{
+    Accessibility::performFunctionOnMainThread([&lambda, this] () {
+        if (auto object = associatedAXObject())
+            lambda(object);
+    });
+}
+
+void AXIsolatedObject::setARIAGrabbed(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setARIAGrabbed(value);
+    });
+}
+
+void AXIsolatedObject::setIsExpanded(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setIsExpanded(value);
+    });
+}
+void AXIsolatedObject::setValue(float value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setValue(value);
+    });
+}
+
+void AXIsolatedObject::setSelected(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setSelected(value);
+    });
+}
+void AXIsolatedObject::setSelectedRows(AccessibilityChildrenVector& value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setSelectedRows(value);
+    });
+}
+
+void AXIsolatedObject::setFocused(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setFocused(value);
+    });
+}
+
+void AXIsolatedObject::setSelectedText(const String& value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setSelectedText(value);
+    });
+}
+
+void AXIsolatedObject::setSelectedTextRange(const PlainTextRange& value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setSelectedTextRange(value);
+    });
+}
+
+void AXIsolatedObject::setValue(const String& value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setValue(value);
+    });
+}
+
+#if PLATFORM(COCOA) && !PLATFORM(IOS_FAMILY)
+void AXIsolatedObject::setCaretBrowsingEnabled(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setCaretBrowsingEnabled(value);
+    });
+}
+#endif
+
+void AXIsolatedObject::setPreventKeyboardDOMEventDispatch(bool value)
+{
+    performFunctionOnMainThread([&value](AXCoreObject* object) {
+        object->setPreventKeyboardDOMEventDispatch(value);
+    });
 }
 
 void AXIsolatedObject::colorValue(int& r, int& g, int& b) const
@@ -686,7 +775,9 @@ void AXIsolatedObject::fillChildrenVectorForProperty(AXPropertyName propertyName
 
 void AXIsolatedObject::updateBackingStore()
 {
-    ASSERT(!isMainThread());
+    // This method can be called on either the main or the AX threads.
+    // It can be called in the main thread from [WebAccessibilityObjectWrapper accessibilityFocusedUIElement].
+    // Update the IsolatedTree only if it is called on the AX thread.
     if (!isMainThread()) {
         if (auto tree = this->tree())
             tree->applyPendingChanges();
@@ -695,16 +786,30 @@ void AXIsolatedObject::updateBackingStore()
 
 Vector<RefPtr<Range>> AXIsolatedObject::findTextRanges(AccessibilitySearchTextCriteria const& criteria) const
 {
-    return Accessibility::retrieveValueFromMainThread<Vector<RefPtr<Range>>>([&criteria, axID = objectID(), this] () -> Vector<RefPtr<Range>> {
-        return axObjectCache()->objectFromAXID(axID)->findTextRanges(criteria);
+    return Accessibility::retrieveValueFromMainThread<Vector<RefPtr<Range>>>([&criteria, this] () -> Vector<RefPtr<Range>> {
+        if (auto object = associatedAXObject())
+            return object->findTextRanges(criteria);
+        return Vector<RefPtr<Range>>();
     });
 }
 
 Vector<String> AXIsolatedObject::performTextOperation(AccessibilityTextOperation const& textOperation)
 {
-    return Accessibility::retrieveValueFromMainThread<Vector<String>>([&textOperation, axID = objectID(), this] () -> Vector<String> {
-        return axObjectCache()->objectFromAXID(axID)->performTextOperation(textOperation);
+    return Accessibility::retrieveValueFromMainThread<Vector<String>>([&textOperation, this] () -> Vector<String> {
+        if (auto object = associatedAXObject())
+            return object->performTextOperation(textOperation);
+        return Vector<String>();
     });
+}
+
+void AXIsolatedObject::findMatchingObjects(AccessibilitySearchCriteria* criteria, AccessibilityChildrenVector& results)
+{
+    ASSERT(criteria);
+    if (!criteria)
+        return;
+
+    criteria->anchorObject = this;
+    Accessibility::findMatchingObjects(*criteria, results);
 }
 
 bool AXIsolatedObject::replaceTextInRange(const String&, const PlainTextRange&)
@@ -757,7 +862,9 @@ bool AXIsolatedObject::isAccessibilityScrollbar() const
 
 bool AXIsolatedObject::isAccessibilityScrollView() const
 {
-    ASSERT_NOT_REACHED();
+    // FIXME: this should be ASSERT_NOT_REACHED, but it is called by
+    // AXObjectCache::rootWebArea, that in turn is called by
+    // AXObjectCache::postTextStateChangePlatformNotification.
     return false;
 }
 
@@ -773,7 +880,7 @@ bool AXIsolatedObject::isAccessibilitySVGElement() const
     return false;
 }
 
-bool AXIsolatedObject::containsText(String*) const
+bool AXIsolatedObject::containsText(String const&) const
 {
     ASSERT_NOT_REACHED();
     return false;
@@ -924,12 +1031,6 @@ bool AXIsolatedObject::isHovered() const
 }
 
 bool AXIsolatedObject::isIndeterminate() const
-{
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
-bool AXIsolatedObject::isLoaded() const
 {
     ASSERT_NOT_REACHED();
     return false;
@@ -1345,6 +1446,7 @@ void AXIsolatedObject::elementsFromAttribute(Vector<Element*>&, const QualifiedN
 
 AXObjectCache* AXIsolatedObject::axObjectCache() const
 {
+    ASSERT(isMainThread());
     return tree()->axObjectCache();
 }
 
@@ -1366,12 +1468,6 @@ Path AXIsolatedObject::elementPath() const
     return Path();
 }
 
-bool AXIsolatedObject::supportsPath() const
-{
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
 TextIteratorBehavior AXIsolatedObject::textIteratorBehaviorForTextRange() const
 {
     ASSERT_NOT_REACHED();
@@ -1380,7 +1476,8 @@ TextIteratorBehavior AXIsolatedObject::textIteratorBehaviorForTextRange() const
 
 Widget* AXIsolatedObject::widget() const
 {
-    ASSERT_NOT_REACHED();
+    if (auto object = associatedAXObject())
+        return object->widget();
     return nullptr;
 }
 
@@ -1398,13 +1495,15 @@ Page* AXIsolatedObject::page() const
 
 Document* AXIsolatedObject::document() const
 {
-    ASSERT_NOT_REACHED();
+    if (auto object = associatedAXObject())
+        return object->document();
     return nullptr;
 }
 
 FrameView* AXIsolatedObject::documentFrameView() const
 {
-    ASSERT_NOT_REACHED();
+    if (auto object = associatedAXObject())
+        return object->documentFrameView();
     return nullptr;
 }
 

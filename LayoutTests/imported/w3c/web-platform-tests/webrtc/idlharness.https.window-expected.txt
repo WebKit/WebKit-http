@@ -1,13 +1,19 @@
 
 FAIL idl_test setup promise_test: Unhandled rejection with value: object "RTCError inherits DOMException, but DOMException is undefined."
+PASS idl_test validation 
 PASS Test driver for asyncInitCertificate 
 FAIL Test driver for asyncInitTransports assert_unreached: Failed to run asyncInitTransports: ReferenceError: Can't find variable: RTCSctpTransport Reached unreachable code
 PASS Test driver for asyncInitMediaStreamTrack 
-PASS Partial interface RTCPeerConnection: original interface defined 
 PASS Partial dictionary RTCOfferOptions: original dictionary defined 
+PASS Partial dictionary RTCOfferOptions: member names are unique 
+PASS Partial interface RTCPeerConnection: original interface defined 
+PASS Partial interface RTCPeerConnection: member names are unique 
 PASS Partial interface RTCPeerConnection[2]: original interface defined 
+PASS Partial interface RTCPeerConnection[2]: member names are unique 
 PASS Partial interface RTCPeerConnection[3]: original interface defined 
-PASS Partial interface RTCPeerConnection[4]: original interface defined 
+PASS Partial interface RTCPeerConnection[3]: member names are unique 
 PASS Partial interface RTCRtpSender: original interface defined 
-PASS Partial interface RTCPeerConnection[5]: original interface defined 
+PASS Partial interface RTCRtpSender: member names are unique 
+PASS Partial interface RTCPeerConnection[4]: original interface defined 
+PASS Partial interface RTCPeerConnection[4]: member names are unique 
 

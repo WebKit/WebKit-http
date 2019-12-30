@@ -1,3 +1,64 @@
+2019-12-23  Keith Miller  <keith_miller@apple.com>
+
+        DFG/FTL should be able to exit to the middle of a bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=205232
+
+        Reviewed by Saam Barati.
+
+        * stress/apply-osr-exit-should-get-length-once-exceptions-occasionally.js: Added.
+        (expectedArgCount):
+        (callee):
+        (test):
+        (let.array.get length):
+        * stress/apply-osr-exit-should-get-length-once.js: Added.
+        (expectedArgCount):
+        (callee):
+        (test):
+        (let.array.get length):
+        * stress/load-varargs-then-inlined-call-and-exit-strict.js:
+        (checkEqual):
+        * stress/recursive-tail-call-with-different-argument-count.js:
+        * stress/rest-varargs-osr-exit-to-checkpoint.js: Added.
+        (foo):
+        (bar):
+
+2019-12-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Wasm OSR entry should capture top-most enclosing-stack
+        https://bugs.webkit.org/show_bug.cgi?id=205571
+
+        Reviewed by Keith Miller.
+
+        * wasm/stress/top-most-enclosing-stack.js: Added.
+
+2019-12-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve our bound function implementation
+        https://bugs.webkit.org/show_bug.cgi?id=205327
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/function-bind-no-inlining-repeat-call.js: Added.
+        (assert):
+        (test):
+        (test2):
+        (foo):
+        (let.start.Date.now):
+        * stress/bind-args.js: Added.
+        (shouldBe):
+        (test):
+        (test2):
+
+2019-12-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] 8Bit JSRopeString can contain 16Bit string in its rope
+        https://bugs.webkit.org/show_bug.cgi?id=205323
+
+        Reviewed by Mark Lam.
+
+        * stress/8bit-resolve-can-encounter-16bit-string.js: Added.
+        (foo):
+
 2019-12-13  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Remove JSFixedArray, and use JSImmutableButterfly instead

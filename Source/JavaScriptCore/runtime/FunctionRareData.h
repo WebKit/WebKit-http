@@ -33,6 +33,7 @@
 
 namespace JSC {
 
+class ExecutableBase;
 class JSGlobalObject;
 class LLIntOffsetsExtractor;
 namespace DFG {
@@ -50,7 +51,7 @@ public:
     typedef JSCell Base;
     static constexpr unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static FunctionRareData* create(VM&);
+    static FunctionRareData* create(VM&, ExecutableBase*);
 
     static constexpr bool needsDestruction = true;
 
@@ -72,9 +73,8 @@ public:
     static inline ptrdiff_t offsetOfAllocationProfileWatchpointSet() { return OBJECT_OFFSETOF(FunctionRareData, m_allocationProfileWatchpointSet); }
     static inline ptrdiff_t offsetOfInternalFunctionAllocationProfile() { return OBJECT_OFFSETOF(FunctionRareData, m_internalFunctionAllocationProfile); }
     static inline ptrdiff_t offsetOfBoundFunctionStructure() { return OBJECT_OFFSETOF(FunctionRareData, m_boundFunctionStructure); }
+    static inline ptrdiff_t offsetOfExecutable() { return OBJECT_OFFSETOF(FunctionRareData, m_executable); }
     static inline ptrdiff_t offsetOfAllocationProfileClearingWatchpoint() { return OBJECT_OFFSETOF(FunctionRareData, m_allocationProfileClearingWatchpoint); }
-    static inline ptrdiff_t offsetOfHasReifiedLength() { return OBJECT_OFFSETOF(FunctionRareData, m_hasReifiedLength); }
-    static inline ptrdiff_t offsetOfHasReifiedName() { return OBJECT_OFFSETOF(FunctionRareData, m_hasReifiedName); }
 
     ObjectAllocationProfileWithPrototype* objectAllocationProfile()
     {
@@ -116,17 +116,30 @@ public:
     Structure* getBoundFunctionStructure() { return m_boundFunctionStructure.get(); }
     void setBoundFunctionStructure(VM& vm, Structure* structure) { m_boundFunctionStructure.set(vm, this, structure); }
 
+    ExecutableBase* executable() const { return m_executable.get(); }
+
     bool hasReifiedLength() const { return m_hasReifiedLength; }
     void setHasReifiedLength() { m_hasReifiedLength = true; }
     bool hasReifiedName() const { return m_hasReifiedName; }
     void setHasReifiedName() { m_hasReifiedName = true; }
+
+    bool hasModifiedLength() const { return m_hasModifiedLength; }
+    void setHasModifiedLength()
+    {
+        m_hasModifiedLength = true;
+    }
+    bool hasModifiedName() const { return m_hasModifiedName; }
+    void setHasModifiedName()
+    {
+        m_hasModifiedName = true;
+    }
 
     bool hasAllocationProfileClearingWatchpoint() const { return !!m_allocationProfileClearingWatchpoint; }
     Watchpoint* createAllocationProfileClearingWatchpoint();
     class AllocationProfileClearingWatchpoint;
 
 protected:
-    explicit FunctionRareData(VM&);
+    explicit FunctionRareData(VM&, ExecutableBase*);
     ~FunctionRareData();
 
 private:
@@ -149,9 +162,12 @@ private:
     InlineWatchpointSet m_allocationProfileWatchpointSet;
     InternalFunctionAllocationProfile m_internalFunctionAllocationProfile;
     WriteBarrier<Structure> m_boundFunctionStructure;
+    WriteBarrier<ExecutableBase> m_executable;
     std::unique_ptr<AllocationProfileClearingWatchpoint> m_allocationProfileClearingWatchpoint;
-    bool m_hasReifiedLength { false };
-    bool m_hasReifiedName { false };
+    bool m_hasReifiedLength : 1;
+    bool m_hasReifiedName : 1;
+    bool m_hasModifiedLength : 1;
+    bool m_hasModifiedName : 1;
 };
 
 class FunctionRareData::AllocationProfileClearingWatchpoint final : public Watchpoint {

@@ -144,9 +144,11 @@ acceleratedCompositedAnimationsEnabled:
 showDebugBorders:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
+  inspectorOverride: true
 showRepaintCounter:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
+  inspectorOverride: true
 visibleDebugOverlayRegions:
   type: DebugOverlayRegions
   initial: 0
@@ -377,9 +379,6 @@ windowFocusRestricted:
   initial: true
 
 diagnosticLoggingEnabled:
-  initial: false
-
-delegatesPageScaling:
   initial: false
 
 plugInSnapshottingEnabled:
@@ -909,6 +908,9 @@ legacyGetUserMediaEnabled:
   initial: false
   conditional: MEDIA_STREAM
 
+isInAppBrowserPrivacyEnabled:
+  initial: false
+
 # Deprecated
 
 iceCandidateFilteringEnabled:
@@ -926,3 +928,6 @@ mediaCaptureRequiresSecureConnection:
   initial: true
   conditional: MEDIA_STREAM
   inspectorOverride: true
+
+shouldUseServiceWorkerShortTimeout:
+  initial: false

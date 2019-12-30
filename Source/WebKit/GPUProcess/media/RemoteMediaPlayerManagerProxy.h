@@ -30,6 +30,7 @@
 #include "Connection.h"
 #include "MediaPlayerPrivateRemoteIdentifier.h"
 #include "MessageReceiver.h"
+#include "RemoteMediaPlayerProxyConfiguration.h"
 #include <WebCore/MediaPlayer.h>
 #include <wtf/LoggerHelper.h>
 
@@ -37,6 +38,7 @@ namespace WebKit {
 
 class GPUConnectionToWebProcess;
 class RemoteMediaPlayerProxy;
+struct RemoteMediaPlayerConfiguration;
 
 class RemoteMediaPlayerManagerProxy
     : private IPC::MessageReceiver
@@ -67,7 +69,7 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) final;
 
-    void createMediaPlayer(MediaPlayerPrivateRemoteIdentifier, WebCore::MediaPlayerEnums::MediaEngineIdentifier, CompletionHandler<void(bool)>&&);
+    void createMediaPlayer(MediaPlayerPrivateRemoteIdentifier, WebCore::MediaPlayerEnums::MediaEngineIdentifier, RemoteMediaPlayerProxyConfiguration&&, CompletionHandler<void(RemoteMediaPlayerConfiguration&)>&&);
     void deleteMediaPlayer(MediaPlayerPrivateRemoteIdentifier);
 
     // Media player factory
@@ -79,15 +81,22 @@ private:
     void supportsKeySystem(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const String&&, const String&&, CompletionHandler<void(bool)>&&);
 
     void load(MediaPlayerPrivateRemoteIdentifier, URL&&, WebCore::ContentType&&, String&&);
-    void cancelLoad(MediaPlayerPrivateRemoteIdentifier);
-
     void prepareForPlayback(MediaPlayerPrivateRemoteIdentifier, bool privateMode, WebCore::MediaPlayerEnums::Preload, bool preservesPitch, bool prepareForRendering);
+    void cancelLoad(MediaPlayerPrivateRemoteIdentifier);
+    void prepareToPlay(MediaPlayerPrivateRemoteIdentifier);
 
     void play(MediaPlayerPrivateRemoteIdentifier);
     void pause(MediaPlayerPrivateRemoteIdentifier);
 
+    void seek(MediaPlayerPrivateRemoteIdentifier, MediaTime&&);
+    void seekWithTolerance(MediaPlayerPrivateRemoteIdentifier, MediaTime&&, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance);
+
     void setVolume(MediaPlayerPrivateRemoteIdentifier, double);
     void setMuted(MediaPlayerPrivateRemoteIdentifier, bool);
+
+    void setPreload(MediaPlayerPrivateRemoteIdentifier, WebCore::MediaPlayerEnums::Preload);
+    void setPrivateBrowsingMode(MediaPlayerPrivateRemoteIdentifier, bool);
+    void setPreservesPitch(MediaPlayerPrivateRemoteIdentifier, bool);
 
     HashMap<MediaPlayerPrivateRemoteIdentifier, std::unique_ptr<RemoteMediaPlayerProxy>> m_proxies;
     GPUConnectionToWebProcess& m_gpuConnectionToWebProcess;
@@ -97,6 +106,6 @@ private:
 #endif
 };
 
-}
+} // namespace WebKit
 
 #endif

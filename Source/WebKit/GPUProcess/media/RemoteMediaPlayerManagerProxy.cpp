@@ -29,6 +29,7 @@
 #if ENABLE(GPU_PROCESS)
 
 #include "GPUConnectionToWebProcess.h"
+#include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerManagerMessages.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
 #include "RemoteMediaPlayerProxy.h"
@@ -42,14 +43,6 @@
 namespace WebKit {
 using namespace WebCore;
 
-#if !RELEASE_LOG_DISABLED
-static RefPtr<Logger>& nullLogger()
-{
-    static NeverDestroyed<RefPtr<Logger>> logger;
-    return logger;
-}
-#endif
-
 RemoteMediaPlayerManagerProxy::RemoteMediaPlayerManagerProxy(GPUConnectionToWebProcess& connection)
     : m_gpuConnectionToWebProcess(connection)
 #if !RELEASE_LOG_DISABLED
@@ -62,14 +55,19 @@ RemoteMediaPlayerManagerProxy::~RemoteMediaPlayerManagerProxy()
 {
 }
 
-void RemoteMediaPlayerManagerProxy::createMediaPlayer(MediaPlayerPrivateRemoteIdentifier id, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier, CompletionHandler<void(bool succeeded)>&& completionHandler)
+void RemoteMediaPlayerManagerProxy::createMediaPlayer(MediaPlayerPrivateRemoteIdentifier id, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier, RemoteMediaPlayerProxyConfiguration&& proxyConfiguration, CompletionHandler<void(RemoteMediaPlayerConfiguration&)>&& completionHandler)
 {
     MESSAGE_CHECK_CONTEXTID(id);
 
     ASSERT(!m_proxies.contains(id));
-    m_proxies.add(id, makeUnique<RemoteMediaPlayerProxy>(*this, id, m_gpuConnectionToWebProcess.connection(), engineIdentifier));
 
-    completionHandler(true);
+    RemoteMediaPlayerConfiguration playerConfiguration;
+
+    auto proxy = makeUnique<RemoteMediaPlayerProxy>(*this, id, m_gpuConnectionToWebProcess.connection(), engineIdentifier, WTFMove(proxyConfiguration));
+    proxy->getConfiguration(playerConfiguration);
+    m_proxies.add(id, WTFMove(proxy));
+
+    completionHandler(playerConfiguration);
 }
 
 void RemoteMediaPlayerManagerProxy::deleteMediaPlayer(MediaPlayerPrivateRemoteIdentifier id)
@@ -184,6 +182,12 @@ void RemoteMediaPlayerManagerProxy::cancelLoad(MediaPlayerPrivateRemoteIdentifie
         player->cancelLoad();
 }
 
+void RemoteMediaPlayerManagerProxy::prepareToPlay(MediaPlayerPrivateRemoteIdentifier id)
+{
+    if (auto player = m_proxies.get(id))
+        player->prepareToPlay();
+}
+
 void RemoteMediaPlayerManagerProxy::play(MediaPlayerPrivateRemoteIdentifier id)
 {
     if (auto player = m_proxies.get(id))
@@ -194,6 +198,18 @@ void RemoteMediaPlayerManagerProxy::pause(MediaPlayerPrivateRemoteIdentifier id)
 {
     if (auto player = m_proxies.get(id))
         player->pause();
+}
+
+void RemoteMediaPlayerManagerProxy::seek(MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time)
+{
+    if (auto player = m_proxies.get(id))
+        player->seek(WTFMove(time));
+}
+
+void RemoteMediaPlayerManagerProxy::seekWithTolerance(MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance)
+{
+    if (auto player = m_proxies.get(id))
+        player->seekWithTolerance(WTFMove(time), WTFMove(negativeTolerance), WTFMove(positiveTolerance));
 }
 
 void RemoteMediaPlayerManagerProxy::setVolume(MediaPlayerPrivateRemoteIdentifier id, double volume)
@@ -208,25 +224,37 @@ void RemoteMediaPlayerManagerProxy::setMuted(MediaPlayerPrivateRemoteIdentifier 
         player->setMuted(muted);
 }
 
+void RemoteMediaPlayerManagerProxy::setPreload(MediaPlayerPrivateRemoteIdentifier id, WebCore::MediaPlayerEnums::Preload preload)
+{
+    if (auto player = m_proxies.get(id))
+        player->setPreload(preload);
+}
+
+void RemoteMediaPlayerManagerProxy::setPrivateBrowsingMode(MediaPlayerPrivateRemoteIdentifier id, bool privateMode)
+{
+    if (auto player = m_proxies.get(id))
+        player->setPrivateBrowsingMode(privateMode);
+}
+
+void RemoteMediaPlayerManagerProxy::setPreservesPitch(MediaPlayerPrivateRemoteIdentifier id, bool preservesPitch)
+{
+    if (auto player = m_proxies.get(id))
+        player->setPreservesPitch(preservesPitch);
+}
+
 #if !RELEASE_LOG_DISABLED
 const Logger& RemoteMediaPlayerManagerProxy::logger() const
 {
-    // FIXME: use a real logger
-    if (!nullLogger().get()) {
-        nullLogger() = Logger::create(this);
-        nullLogger()->setEnabled(this, false);
-    }
-
-    return *nullLogger().get();
+    return m_gpuConnectionToWebProcess.logger();
 }
 
 WTFLogChannel& RemoteMediaPlayerManagerProxy::logChannel() const
 {
-    return WebKit2LogWebRTC;
+    return WebKit2LogMedia;
 }
 #endif
 
-}
+} // namespace WebKit
 
 #undef MESSAGE_CHECK_CONTEXTID
 

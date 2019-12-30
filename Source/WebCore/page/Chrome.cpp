@@ -486,20 +486,12 @@ void Chrome::dispatchViewportPropertiesDidChange(const ViewportArguments& argume
 
 void Chrome::setCursor(const Cursor& cursor)
 {
-#if ENABLE(CURSOR_SUPPORT)
     m_client.setCursor(cursor);
-#else
-    UNUSED_PARAM(cursor);
-#endif
 }
 
 void Chrome::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
 {
-#if ENABLE(CURSOR_SUPPORT)
     m_client.setCursorHiddenUntilMouseMoves(hiddenUntilMouseMoves);
-#else
-    UNUSED_PARAM(hiddenUntilMouseMoves);
-#endif
 }
 
 PlatformDisplayID Chrome::displayID() const
@@ -519,6 +511,9 @@ void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
             frame->document()->windowScreenDidChange(displayID);
     }
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    m_page.renderingUpdateScheduler().windowScreenDidChange(displayID);
+#endif
     m_page.setNeedsRecalcStyleInAllFrames();
 
 #if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_3D)

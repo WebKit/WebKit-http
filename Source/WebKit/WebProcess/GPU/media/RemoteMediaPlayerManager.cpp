@@ -28,8 +28,10 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerManagerMessages.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
+#include "RemoteMediaPlayerProxyConfiguration.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
@@ -115,14 +117,31 @@ std::unique_ptr<MediaPlayerPrivateInterface> RemoteMediaPlayerManager::createRem
 {
     auto id = MediaPlayerPrivateRemoteIdentifier::generate();
 
-    bool haveRemoteProxy;
-    bool sendSucceeded = gpuProcessConnection().sendSync(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(id, remoteEngineIdentifier), Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer::Reply(haveRemoteProxy), 0);
-    if (!haveRemoteProxy || !sendSucceeded) {
+    RemoteMediaPlayerProxyConfiguration proxyConfiguration;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    proxyConfiguration.mediaKeysStorageDirectory = player->mediaKeysStorageDirectory();
+#endif
+    proxyConfiguration.referrer = player->referrer();
+    proxyConfiguration.userAgent = player->userAgent();
+    proxyConfiguration.sourceApplicationIdentifier = player->sourceApplicationIdentifier();
+#if PLATFORM(IOS_FAMILY)
+    proxyConfiguration.networkInterfaceName = player->mediaPlayerNetworkInterfaceName();
+#endif
+    proxyConfiguration.mediaCacheDirectory = player->mediaCacheDirectory();
+    proxyConfiguration.mediaContentTypesRequiringHardwareSupport = player->mediaContentTypesRequiringHardwareSupport();
+    proxyConfiguration.preferredAudioCharacteristics = player->preferredAudioCharacteristics();
+    proxyConfiguration.logIdentifier = reinterpret_cast<uint64_t>(player->mediaPlayerLogIdentifier());
+    proxyConfiguration.shouldUsePersistentCache = player->shouldUsePersistentCache();
+    proxyConfiguration.isVideo = player->isVideoPlayer();
+
+    RemoteMediaPlayerConfiguration playerConfiguration;
+    bool sendSucceeded = gpuProcessConnection().sendSync(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(id, remoteEngineIdentifier, proxyConfiguration), Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer::Reply(playerConfiguration), 0);
+    if (!sendSucceeded) {
         WTFLogAlways("Failed to create remote media player.");
         return nullptr;
     }
 
-    auto remotePlayer = MediaPlayerPrivateRemote::create(player, remoteEngineIdentifier, id, *this);
+    auto remotePlayer = MediaPlayerPrivateRemote::create(player, remoteEngineIdentifier, id, *this, playerConfiguration);
     m_players.add(id, makeWeakPtr(*remotePlayer));
     return remotePlayer;
 }
@@ -189,16 +208,16 @@ void RemoteMediaPlayerManager::clearMediaCacheForOrigins(MediaPlayerEnums::Media
     gpuProcessConnection().send(Messages::RemoteMediaPlayerManagerProxy::ClearMediaCacheForOrigins(remoteEngineIdentifier, path, originData), 0);
 }
 
-void RemoteMediaPlayerManager::networkStateChanged(MediaPlayerPrivateRemoteIdentifier id, MediaPlayerEnums::NetworkState state)
+void RemoteMediaPlayerManager::networkStateChanged(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
 {
     if (auto player = m_players.get(id))
-        player->networkStateChanged(state);
+        player->networkStateChanged(WTFMove(state));
 }
 
-void RemoteMediaPlayerManager::readyStateChanged(MediaPlayerPrivateRemoteIdentifier id, MediaPlayerEnums::ReadyState state)
+void RemoteMediaPlayerManager::readyStateChanged(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
 {
     if (auto player = m_players.get(id))
-        player->readyStateChanged(state);
+        player->readyStateChanged(WTFMove(state));
 }
 
 void RemoteMediaPlayerManager::volumeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, double volume)
@@ -213,16 +232,16 @@ void RemoteMediaPlayerManager::muteChanged(WebKit::MediaPlayerPrivateRemoteIdent
         player->muteChanged(mute);
 }
 
-void RemoteMediaPlayerManager::timeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time)
+void RemoteMediaPlayerManager::timeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
 {
     if (auto player = m_players.get(id))
-        player->timeChanged(WTFMove(time));
+        player->timeChanged(WTFMove(state));
 }
 
-void RemoteMediaPlayerManager::durationChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time)
+void RemoteMediaPlayerManager::durationChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
 {
     if (auto player = m_players.get(id))
-        player->durationChanged(WTFMove(time));
+        player->durationChanged(WTFMove(state));
 }
 
 void RemoteMediaPlayerManager::rateChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, double rate)
@@ -237,6 +256,18 @@ void RemoteMediaPlayerManager::playbackStateChanged(WebKit::MediaPlayerPrivateRe
         player->playbackStateChanged(paused);
 }
 
+void RemoteMediaPlayerManager::engineFailedToLoad(WebKit::MediaPlayerPrivateRemoteIdentifier id, long platformErrorCode)
+{
+    if (auto player = m_players.get(id))
+        player->engineFailedToLoad(platformErrorCode);
+}
+
+void RemoteMediaPlayerManager::characteristicChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool hasAudio, bool hasVideo, WebCore::MediaPlayerEnums::MovieLoadType loadType)
+{
+    if (auto player = m_players.get(id))
+        player->characteristicChanged(hasAudio, hasVideo, loadType);
+}
+
 void RemoteMediaPlayerManager::updatePreferences(const Settings& settings)
 {
     auto registerEngine = [this](MediaEngineRegistrar registrar, MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier) {
@@ -246,11 +277,17 @@ void RemoteMediaPlayerManager::updatePreferences(const Settings& settings)
     RemoteMediaPlayerSupport::setRegisterRemotePlayerCallback(settings.useGPUProcessForMedia() ? WTFMove(registerEngine) : RemoteMediaPlayerSupport::RegisterRemotePlayerCallback());
 }
 
+void RemoteMediaPlayerManager::updateCachedState(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
+{
+    if (auto player = m_players.get(id))
+        player->updateCachedState(WTFMove(state));
+}
+
 IPC::Connection& RemoteMediaPlayerManager::gpuProcessConnection() const
 {
     return WebProcess::singleton().ensureGPUProcessConnection().connection();
 }
 
-}
+} // namespace WebKit
 
 #endif

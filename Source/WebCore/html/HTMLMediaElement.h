@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 #if ENABLE(VIDEO)
 
 #include "ActiveDOMObject.h"
-#include "ApplicationStateChangeListener.h"
 #include "AutoplayEvent.h"
 #include "DeferrableTask.h"
 #include "GenericEventQueue.h"
@@ -134,7 +133,6 @@ class HTMLMediaElement
     , private MediaPlayerClient
     , private MediaProducer
     , private VisibilityChangeClient
-    , private ApplicationStateChangeListener
 #if ENABLE(VIDEO_TRACK)
     , private AudioTrackClient
     , private TextTrackClient
@@ -405,6 +403,8 @@ public:
     bool requiresTextTrackRepresentation() const;
     void setTextTrackRepresentation(TextTrackRepresentation*);
     void syncTextTrackBounds();
+
+    void captionPreferencesChanged();
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -458,8 +458,6 @@ public:
 
     void sourceWasRemoved(HTMLSourceElement&);
     void sourceWasAdded(HTMLSourceElement&);
-
-    void privateBrowsingStateDidChange(PAL::SessionID) override;
 
     // Media cache management.
     WEBCORE_EXPORT static void setMediaCacheDirectory(const String&);
@@ -559,7 +557,7 @@ public:
     WEBCORE_EXPORT const MediaResourceLoader* lastMediaResourceLoaderForTesting() const;
 
 #if ENABLE(MEDIA_STREAM)
-    void mediaStreamCaptureStarted() { resumeAutoplaying(); }
+    void mediaStreamCaptureStarted();
     bool hasMediaStreamSrcObject() const { return m_mediaProvider && WTF::holds_alternative<RefPtr<MediaStream>>(*m_mediaProvider); }
 #endif
 
@@ -589,6 +587,11 @@ public:
     RemotePlayback& remote() { return m_remote; }
     void remoteHasAvailabilityCallbacksChanged();
 #endif
+
+    void privateBrowsingStateDidChange(PAL::SessionID);
+    void mediaVolumeDidChange();
+    void applicationWillResignActive();
+    void applicationDidBecomeActive();
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
@@ -645,9 +648,7 @@ private:
     void stopWithoutDestroyingMediaPlayer();
     void contextDestroyed() override;
     
-    void mediaVolumeDidChange() override;
-
-    void visibilityStateChanged() override;
+    void visibilityStateChanged() final;
 
     virtual void updateDisplayState() { }
     
@@ -665,7 +666,6 @@ private:
     void mediaPlayerDurationChanged() final;
     void mediaPlayerRateChanged() final;
     void mediaPlayerPlaybackStateChanged() final;
-    void mediaPlayerSawUnsupportedTracks() final;
     void mediaPlayerResourceNotSupported() final;
     void mediaPlayerRepaint() final;
     void mediaPlayerSizeChanged() final;
@@ -719,11 +719,9 @@ private:
     bool mediaPlayerIsVideo() const override;
     LayoutRect mediaPlayerContentBoxRect() const override;
     float mediaPlayerContentsScale() const override;
-    void mediaPlayerSetSize(const IntSize&) override;
     void mediaPlayerPause() override;
     void mediaPlayerPlay() override;
     bool mediaPlayerPlatformVolumeConfigurationRequired() const override;
-    bool mediaPlayerIsPaused() const override;
     bool mediaPlayerIsLooping() const override;
     CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
     RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() override;
@@ -736,7 +734,6 @@ private:
 
     void mediaPlayerActiveSourceBuffersChanged() override;
 
-    void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
     String sourceApplicationIdentifier() const override;
     String mediaPlayerSourceApplicationIdentifier() const override { return sourceApplicationIdentifier(); }
     Vector<String> mediaPlayerPreferredAudioCharacteristics() const override;
@@ -746,7 +743,6 @@ private:
     bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const override;
 #endif
 
-    bool mediaPlayerIsInMediaDocument() const final;
     void mediaPlayerEngineFailedToLoad() const final;
 
     double mediaPlayerRequestedPlaybackRate() const final;
@@ -806,7 +802,6 @@ private:
 
     enum ReconfigureMode { Immediately, AfterDelay };
     void markCaptionAndSubtitleTracksAsUnconfigured(ReconfigureMode);
-    void captionPreferencesChanged() override;
     CaptionUserPreferences::CaptionDisplayMode captionDisplayMode();
 #endif
 
@@ -943,9 +938,6 @@ private:
     void addBehaviorRestrictionsOnEndIfNecessary();
     void handleSeekToPlaybackPosition(double);
     void seekToPlaybackPositionEndedTimerFired();
-
-    void applicationWillResignActive() final;
-    void applicationDidBecomeActive() final;
 
     void setInActiveDocument(bool);
 

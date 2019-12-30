@@ -424,7 +424,7 @@ void FrameLoader::urlSelected(FrameLoadRequest&& frameRequest, Event* triggering
 
     Ref<Frame> protect(m_frame);
 
-    if (m_frame.script().executeIfJavaScriptURL(frameRequest.resourceRequest().url(), frameRequest.shouldReplaceDocumentIfJavaScriptURL())) {
+    if (m_frame.script().executeIfJavaScriptURL(frameRequest.resourceRequest().url(), &frameRequest.requester().securityOrigin(), frameRequest.shouldReplaceDocumentIfJavaScriptURL())) {
         m_quickRedirectComing = false;
         return;
     }
@@ -462,7 +462,7 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
             return;
         m_isExecutingJavaScriptFormAction = true;
         Ref<Frame> protect(m_frame);
-        m_frame.script().executeIfJavaScriptURL(submission->action(), DoNotReplaceDocumentIfJavaScriptURL);
+        m_frame.script().executeIfJavaScriptURL(submission->action(), nullptr, DoNotReplaceDocumentIfJavaScriptURL);
         m_isExecutingJavaScriptFormAction = false;
         return;
     }
@@ -485,23 +485,8 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
     if (!targetFrame->page())
         return;
 
-    // FIXME: We'd like to remove this altogether and fix the multiple form submission issue another way.
-
-    // We do not want to submit more than one form from the same page, nor do we want to submit a single
-    // form more than once. This flag prevents these from happening; not sure how other browsers prevent this.
-    // The flag is reset in each time we start dispatching a new mouse or key down event, and
-    // also in setView since this part may get reused for a page from the back/forward cache.
-    // The form multi-submit logic here is only needed when we are submitting a form that affects this frame.
-
-    // FIXME: Frame targeting is only one of the ways the submission could end up doing something other
-    // than replacing this frame's content, so this check is flawed. On the other hand, the check is hardly
-    // needed any more now that we reset m_submittedFormURL on each mouse or key down event.
-
-    if (m_frame.tree().isDescendantOf(targetFrame)) {
-        if (m_submittedFormURL == submission->requestURL())
-            return;
+    if (m_frame.tree().isDescendantOf(targetFrame))
         m_submittedFormURL = submission->requestURL();
-    }
 
     submission->setReferrer(outgoingReferrer());
     submission->setOrigin(outgoingOrigin());
@@ -904,18 +889,6 @@ void FrameLoader::checkCompleted()
     m_isComplete = true;
     m_requestedHistoryItem = nullptr;
     m_frame.document()->setReadyState(Document::Complete);
-
-#if PLATFORM(IOS_FAMILY)
-    if (m_frame.document()->url().isEmpty()) {
-        // We need to update the document URL of a PDF document to be non-empty so that both back/forward history navigation
-        // between PDF pages and fragment navigation works. See <rdar://problem/9544769> for more details.
-        // FIXME: Is there a better place for this code, say DocumentLoader? Also, we should explicitly only update the URL
-        // of the document when it's a PDFDocument object instead of assuming that a Document object with an empty URL is a PDFDocument.
-        // FIXME: This code is incorrect for a synthesized document (which also has an empty URL). The URL for a synthesized
-        // document should be the URL specified to FrameLoader::initForSynthesizedDocument().
-        m_frame.document()->setURL(activeDocumentLoader()->documentURL());
-    }
-#endif
 
     checkCallImplicitClose(); // if we didn't do it before
 

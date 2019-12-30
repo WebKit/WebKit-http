@@ -384,7 +384,7 @@ public:
     void setPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(API::Dictionary&, WallTime);
 
 #if ENABLE(GPU_PROCESS)
-    GPUProcessProxy& ensureGPUProcess();
+    void gpuProcessCrashed();
     void getGPUProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetGPUProcessConnectionDelayedReply&&);
 #endif
 
@@ -407,6 +407,7 @@ public:
     bool hasServiceWorkerForegroundActivityForTesting() const;
     bool hasServiceWorkerBackgroundActivityForTesting() const;
 #endif
+    void serviceWorkerProcessCrashed(WebProcessProxy&);
 
 #if PLATFORM(COCOA)
     bool processSuppressionEnabled() const;

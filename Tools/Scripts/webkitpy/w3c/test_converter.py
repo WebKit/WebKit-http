@@ -48,9 +48,15 @@ def convert_for_webkit(new_path, filename, reference_support_info, host=Host(), 
 
     Returns the list of modified properties and the modified text if the file was modifed, None otherwise."""
     contents = host.filesystem.read_text_file(filename)
+
+    # WebKit does not have a www test domain.
+    contents = contents.replace('{{domains[www]}}', '{{hosts[alt][]}}')
+
     converter = _W3CTestConverter(new_path, filename, reference_support_info, host, convert_test_harness_links, webkit_test_runner_options)
     if filename.endswith('.css'):
         return converter.add_webkit_prefix_to_unprefixed_properties_and_values(contents)
+    elif filename.endswith('.js'):
+        return ([], [], contents)
     else:
         converter.feed(contents)
         converter.close()
@@ -258,7 +264,7 @@ class _W3CTestConverter(HTMLParser):
         self.converted_data.extend(['&#', name, ';'])
 
     def handle_comment(self, data):
-        self.converted_data.extend(['<!-- ', data, ' -->'])
+        self.converted_data.extend(['<!--', data, '-->'])
         self.add_webkit_test_runner_options_if_needed()
 
     def handle_decl(self, decl):

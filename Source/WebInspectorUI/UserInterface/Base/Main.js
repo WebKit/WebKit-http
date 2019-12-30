@@ -552,6 +552,7 @@ WI.contentLoaded = function()
 
     if (InspectorFrontendHost.supportsDiagnosticLogging) {
         WI.diagnosticController = new WI.DiagnosticController;
+        WI.diagnosticController.addRecorder(new WI.InspectedTargetTypesDiagnosticEventRecorder(WI.diagnosticController));
         WI.diagnosticController.addRecorder(new WI.TabActivityDiagnosticEventRecorder(WI.diagnosticController));
         WI.diagnosticController.addRecorder(new WI.TabNavigationDiagnosticEventRecorder(WI.diagnosticController));
     }
@@ -583,13 +584,9 @@ WI.initializeTarget = function(target)
                 target.PageAgent.overrideSetting(setting, value);
         }
 
-        // COMPATIBILITY (iOS 11.3)
+        // COMPATIBILITY (iOS 11.3): Page.setShowRuleers did not exist yet.
         if (target.hasCommand("Page.setShowRulers") && WI.settings.showRulers.value)
             target.PageAgent.setShowRulers(true);
-
-        // COMPATIBILITY (iOS 8): Page.setShowPaintRects did not exist.
-        if (target.hasCommand("Page.setShowPaintRects") && WI.settings.showPaintRects.value)
-            target.PageAgent.setShowPaintRects(true);
     }
 };
 
@@ -2276,7 +2273,7 @@ WI._reloadPage = function(event)
 
     event.preventDefault();
 
-    if (InspectorFrontendHost.inspectionLevel() > 1) {
+    if (InspectorFrontendHost.inspectionLevel > 1) {
         WI._reloadInspectedInspector();
         return;
     }
@@ -2292,7 +2289,7 @@ WI._reloadPageFromOrigin = function(event)
 
     event.preventDefault();
 
-    if (InspectorFrontendHost.inspectionLevel() > 1) {
+    if (InspectorFrontendHost.inspectionLevel > 1) {
         WI._reloadInspectedInspector();
         return;
     }
@@ -2302,7 +2299,7 @@ WI._reloadPageFromOrigin = function(event)
 
 WI._reloadToolbarButtonClicked = function(event)
 {
-    if (InspectorFrontendHost.inspectionLevel() > 1) {
+    if (InspectorFrontendHost.inspectionLevel > 1) {
         WI._reloadInspectedInspector();
         return;
     }

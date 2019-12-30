@@ -293,6 +293,7 @@ enum class AccessibilitySearchKey {
 };
 
 struct AccessibilitySearchCriteria {
+    AXCoreObject* anchorObject { nullptr };
     AXCoreObject* startObject;
     AccessibilitySearchDirection searchDirection;
     Vector<AccessibilitySearchKey> searchKeys;
@@ -488,7 +489,7 @@ public:
     virtual bool isAccessibilitySVGRoot() const = 0;
     virtual bool isAccessibilitySVGElement() const = 0;
 
-    virtual bool containsText(String *) const = 0;
+    virtual bool containsText(String const&) const = 0;
     virtual bool isAttachmentElement() const = 0;
     virtual bool isHeading() const = 0;
     virtual bool isLink() const = 0;
@@ -535,9 +536,15 @@ public:
     virtual bool isMenuList() const = 0;
     virtual bool isMenuListPopup() const = 0;
     virtual bool isMenuListOption() const = 0;
+
+    // Native spin buttons.
     bool isSpinButton() const { return roleValue() == AccessibilityRole::SpinButton; }
     virtual bool isNativeSpinButton() const = 0;
+    virtual AXCoreObject* incrementButton() = 0;
+    virtual AXCoreObject* decrementButton() = 0;
     virtual bool isSpinButtonPart() const = 0;
+    virtual bool isIncrementor() const = 0;
+
     virtual bool isMockObject() const = 0;
     virtual bool isMediaObject() const = 0;
     bool isSwitch() const { return roleValue() == AccessibilityRole::Switch; }
@@ -1127,6 +1134,8 @@ T* findAncestor(const T& object, bool includeSelf, const F& matches)
 
     return nullptr;
 }
+
+void findMatchingObjects(AccessibilitySearchCriteria const&, AXCoreObject::AccessibilityChildrenVector&);
 
 template<typename U> inline void performFunctionOnMainThread(U&& lambda)
 {

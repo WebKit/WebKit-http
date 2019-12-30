@@ -407,6 +407,10 @@ private:
     // WKContextClient
     static void networkProcessDidCrash(WKContextRef, const void*);
     void networkProcessDidCrash();
+    static void serviceWorkerProcessDidCrash(WKContextRef, const void*);
+    void serviceWorkerProcessDidCrash();
+    static void gpuProcessDidCrash(WKContextRef, const void*);
+    void gpuProcessDidCrash();
 
     // WKPageNavigationClient
     static void didCommitNavigation(WKPageRef, WKNavigationRef, WKTypeRef userData, const void*);
@@ -505,8 +509,8 @@ private:
     bool m_createdOtherPage { false };
     std::vector<std::string> m_paths;
     std::set<std::string> m_allowedHosts;
-    std::set<std::string> m_internalFeatures;
-    std::set<std::string> m_experimentalFeatures;
+    HashMap<String, bool> m_internalFeatures;
+    HashMap<String, bool> m_experimentalFeatures;
 
     WKRetainPtr<WKStringRef> m_injectedBundlePath;
     WKRetainPtr<WKStringRef> m_testPluginDirectory;

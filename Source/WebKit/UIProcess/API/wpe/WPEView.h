@@ -26,6 +26,7 @@
 #pragma once
 
 #include "APIObject.h"
+#include "InputMethodFilter.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include <WebCore/ActivityState.h>
@@ -39,16 +40,23 @@
 #endif
 
 typedef struct OpaqueJSContext* JSGlobalContextRef;
+typedef struct _WebKitInputMethodContext WebKitInputMethodContext;
+struct wpe_input_keyboard_event;
 struct wpe_view_backend;
 
 namespace API {
 class ViewClient;
 }
 
+namespace WebCore {
+struct CompositionUnderline;
+}
+
 namespace WebKit {
 class DownloadProxy;
 class WebPageGroup;
 class WebProcessPool;
+struct EditingRange;
 struct UserMessage;
 }
 
@@ -70,6 +78,13 @@ public:
     void willStartLoad();
     void didChangePageID();
     void didReceiveUserMessage(WebKit::UserMessage&&, CompletionHandler<void(WebKit::UserMessage&&)>&&);
+
+    void setInputMethodContext(WebKitInputMethodContext*);
+    WebKitInputMethodContext* inputMethodContext() const;
+    void setInputMethodState(bool);
+    void synthesizeCompositionKeyPress(const String&, Optional<Vector<WebCore::CompositionUnderline>>&&, Optional<WebKit::EditingRange>&&);
+
+    void selectionDidChange();
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
@@ -95,6 +110,7 @@ private:
 
     void setSize(const WebCore::IntSize&);
     void setViewState(OptionSet<WebCore::ActivityState::Flag>);
+    void handleKeyboardEvent(struct wpe_input_keyboard_event*);
 
     std::unique_ptr<API::ViewClient> m_client;
 
@@ -112,6 +128,8 @@ private:
 #if ENABLE(ACCESSIBILITY)
     mutable GRefPtr<WebKitWebViewAccessible> m_accessible;
 #endif
+
+    WebKit::InputMethodFilter m_inputMethodFilter;
 };
 
 } // namespace WKWPE

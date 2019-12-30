@@ -137,6 +137,9 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
     WEBCORE_EXPORT void setDelegatesScrolling(bool);
 
+    bool delegatesPageScaling() const { return m_delegatesPageScaling; }
+    WEBCORE_EXPORT void setDelegatesPageScaling(bool);
+
     // Overridden by FrameView to create custom CSS scrollbars if applicable.
     virtual Ref<Scrollbar> createScrollbar(ScrollbarOrientation);
 
@@ -176,21 +179,23 @@ public:
     // contribute to painting but not to the scrollable area.
     // The unobscuredContentRect is the area that is not covered by UI elements.
     WEBCORE_EXPORT IntRect unobscuredContentRect(VisibleContentRectIncludesScrollbars = ExcludeScrollbars) const;
+
 #if PLATFORM(IOS_FAMILY)
     IntRect unobscuredContentRectIncludingScrollbars() const { return unobscuredContentRect(IncludeScrollbars); }
 #else
     IntRect unobscuredContentRectIncludingScrollbars() const { return visibleContentRectIncludingScrollbars(); }
 #endif
 
-#if PLATFORM(IOS_FAMILY)
     // This is the area that is partially or fully exposed, and may extend under overlapping UI elements.
     WEBCORE_EXPORT FloatRect exposedContentRect() const;
 
     // The given rects are only used if there is no platform widget.
     WEBCORE_EXPORT void setExposedContentRect(const FloatRect&);
-    const FloatSize& unobscuredContentSize() const { return m_unobscuredContentSize; }
+
+    WEBCORE_EXPORT FloatSize unobscuredContentSize() const;
     WEBCORE_EXPORT void setUnobscuredContentSize(const FloatSize&);
 
+#if PLATFORM(IOS_FAMILY)
     void setActualScrollPosition(const IntPoint&);
     LegacyTileCache* legacyTileCache();
 #endif
@@ -425,9 +430,7 @@ protected:
 
     virtual void scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset&, const ScrollOffset&) = 0;
 
-#if PLATFORM(IOS_FAMILY)
     virtual void unobscuredContentSizeChanged() = 0;
-#endif
 
 #if PLATFORM(COCOA) && defined __OBJC__
 public:
@@ -465,13 +468,20 @@ private:
     void platformScrollbarModes(ScrollbarMode& horizontal, ScrollbarMode& vertical) const;
     void platformSetCanBlitOnScroll(bool);
     bool platformCanBlitOnScroll() const;
+    
     IntRect platformVisibleContentRect(bool includeScrollbars) const;
     IntSize platformVisibleContentSize(bool includeScrollbars) const;
     IntRect platformVisibleContentRectIncludingObscuredArea(bool includeScrollbars) const;
     IntSize platformVisibleContentSizeIncludingObscuredArea(bool includeScrollbars) const;
+
+    IntRect platformUnobscuredContentRect(VisibleContentRectIncludesScrollbars) const;
+    FloatRect platformExposedContentRect() const;
+
     void platformSetContentsSize();
+
     IntRect platformContentsToScreen(const IntRect&) const;
     IntPoint platformScreenToContents(const IntPoint&) const;
+
     void platformSetScrollPosition(const IntPoint&);
     bool platformScroll(ScrollDirection, ScrollGranularity);
     void platformSetScrollbarsSuppressed(bool repaintOnUnsuppress);
@@ -490,13 +500,17 @@ private:
     ScrollbarMode m_horizontalScrollbarMode { ScrollbarAuto };
     ScrollbarMode m_verticalScrollbarMode { ScrollbarAuto };
 
-#if PLATFORM(IOS_FAMILY)
+
+    // FIXME: More things will move into here.
+    struct DelegatedScrollingGeometry {
+        FloatSize unobscuredContentSize;
+        FloatRect exposedContentRect;
+    };
+    Optional<DelegatedScrollingGeometry> m_delegatedScrollingGeometry;
+
+#if USE(COORDINATED_GRAPHICS)
     // FIXME: exposedContentRect is a very similar concept to fixedVisibleContentRect except it does not differentiate
     // between exposed and unobscured areas. The two attributes should eventually be merged.
-    FloatRect m_exposedContentRect;
-    FloatSize m_unobscuredContentSize;
-    // This is only used for history scroll position restoration.
-#else
     IntRect m_fixedVisibleContentRect;
 #endif
     ScrollPosition m_scrollPosition;
@@ -529,6 +543,8 @@ private:
 
     bool m_paintsEntireContents { false };
     bool m_delegatesScrolling { false };
+    bool m_delegatesPageScaling { false };
+
 }; // class ScrollView
 
 } // namespace WebCore

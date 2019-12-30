@@ -120,7 +120,7 @@ public:
     bool isAccessibilitySVGRoot() const override { return false; }
     bool isAccessibilitySVGElement() const override { return false; }
 
-    bool containsText(String *) const override;
+    bool containsText(String const&) const override;
 
     bool isAttachmentElement() const override { return false; }
     bool isHeading() const override { return false; }
@@ -164,7 +164,10 @@ public:
     bool isMenuListPopup() const override { return false; }
     bool isMenuListOption() const override { return false; }
     bool isNativeSpinButton() const override { return false; }
+    AXCoreObject* incrementButton() override { return nullptr; }
+    AXCoreObject* decrementButton() override { return nullptr; }
     bool isSpinButtonPart() const override { return false; }
+    bool isIncrementor() const override { return false; }
     bool isMockObject() const override { return false; }
     virtual bool isMediaControlLabel() const { return false; }
     bool isMediaObject() const override { return false; }
@@ -762,10 +765,6 @@ protected:
     ScrollableArea* scrollableAreaAncestor() const;
     void scrollAreaAndAncestor(std::pair<ScrollableArea*, AccessibilityObject*>&) const;
 
-    static bool isAccessibilityObjectSearchMatchAtIndex(AXCoreObject*, AccessibilitySearchCriteria*, size_t);
-    static bool isAccessibilityObjectSearchMatch(AXCoreObject*, AccessibilitySearchCriteria*);
-    static bool isAccessibilityTextSearchMatch(AXCoreObject*, AccessibilitySearchCriteria*);
-    static bool objectMatchesSearchCriteriaWithResultLimit(AXCoreObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
     virtual AccessibilityRole buttonRoleType() const;
     String rolePlatformDescription() const;
     bool isOnScreen() const override;

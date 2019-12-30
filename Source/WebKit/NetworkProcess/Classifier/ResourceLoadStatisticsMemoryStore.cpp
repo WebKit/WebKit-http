@@ -105,7 +105,7 @@ void ResourceLoadStatisticsMemoryStore::calculateAndSubmitTelemetry() const
 
 static void ensureThirdPartyDataForSpecificFirstPartyDomain(Vector<WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty>& thirdPartyDataForSpecificFirstPartyDomain, const RegistrableDomain& firstPartyDomain, bool thirdPartyHasStorageAccess)
 {
-    WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty thirdPartyDataForSpecificFirstParty { firstPartyDomain, thirdPartyHasStorageAccess };
+    WebResourceLoadStatisticsStore::ThirdPartyDataForSpecificFirstParty thirdPartyDataForSpecificFirstParty { firstPartyDomain, thirdPartyHasStorageAccess, Seconds { ResourceLoadStatistics::NoExistingTimestamp }};
     thirdPartyDataForSpecificFirstPartyDomain.appendIfNotContains(thirdPartyDataForSpecificFirstParty);
 }
 
@@ -136,7 +136,7 @@ Vector<WebResourceLoadStatisticsStore::ThirdPartyData> ResourceLoadStatisticsMem
 
     Vector<WebResourceLoadStatisticsStore::ThirdPartyData> thirdPartyDataList;
     for (auto& statistic : m_resourceStatisticsMap.values()) {
-        if (hasBeenThirdParty(statistic))
+        if (hasBeenThirdParty(statistic) && statistic.isPrevalentResource)
             thirdPartyDataList.append(WebResourceLoadStatisticsStore::ThirdPartyData { statistic.registrableDomain, getThirdPartyDataForSpecificFirstPartyDomains(statistic) });
     }
     std::sort(thirdPartyDataList.rbegin(), thirdPartyDataList.rend());

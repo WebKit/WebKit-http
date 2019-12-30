@@ -1053,7 +1053,6 @@ void MediaPlayerPrivateAVFoundationObjC::beginLoadingMetadata()
     dispatch_group_enter(metadataLoadingGroup.get());
     auto weakThis = makeWeakPtr(*this);
     [m_avAsset.get() loadValuesAsynchronouslyForKeys:assetMetadataKeyNames() completionHandler:^{
-
         callOnMainThread([weakThis, metadataLoadingGroup] {
             if (weakThis && [weakThis->m_avAsset.get() statusOfValueForKey:@"tracks" error:nil] == AVKeyValueStatusLoaded) {
                 for (AVAssetTrack *track in [weakThis->m_avAsset.get() tracks]) {
@@ -1337,16 +1336,6 @@ void MediaPlayerPrivateAVFoundationObjC::setMuted(bool muted)
         return;
 
     [m_avPlayer.get() setMuted:m_muted];
-}
-
-void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCaptionsVisible)
-{
-    UNUSED_PARAM(closedCaptionsVisible);
-
-    if (!metaDataAvailable())
-        return;
-
-    ALWAYS_LOG(LOGIDENTIFIER, closedCaptionsVisible);
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setRateDouble(double rate)
@@ -1811,11 +1800,6 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::mediaTimeForTimeValue(const MediaT
 
     // FIXME - impossible to implement until rdar://8721510 is fixed.
     return timeValue;
-}
-
-double MediaPlayerPrivateAVFoundationObjC::maximumDurationToCacheMediaTime() const
-{
-    return 0;
 }
 
 void MediaPlayerPrivateAVFoundationObjC::updateVideoLayerGravity()

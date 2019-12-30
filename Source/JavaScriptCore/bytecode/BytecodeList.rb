@@ -59,7 +59,7 @@ types [
     :WatchpointSet,
 
     :ValueProfile,
-    :ValueProfileAndOperandBuffer,
+    :ValueProfileAndVirtualRegisterBuffer,
     :UnaryArithProfile,
     :BinaryArithProfile,
     :ArrayProfile,
@@ -104,6 +104,11 @@ op :create_scoped_arguments,
     }
 
 op :create_cloned_arguments,
+    args: {
+        dst: VirtualRegister,
+    }
+
+op :create_arguments_butterfly,
     args: {
         dst: VirtualRegister,
     }
@@ -791,6 +796,13 @@ op :call_varargs,
     metadata: {
         arrayProfile: ArrayProfile,
         profile: ValueProfile,
+    },
+    tmps: {
+        argCountIncludingThis: unsigned,
+    },
+    checkpoints: {
+        determiningArgCount: nil,
+        makeCall: nil,
     }
 
 op :tail_call_varargs,
@@ -805,6 +817,13 @@ op :tail_call_varargs,
     metadata: {
         arrayProfile: ArrayProfile,
         profile: ValueProfile,
+    },
+    tmps: {
+        argCountIncludingThis: unsigned
+    },
+    checkpoints: {
+        determiningArgCount: nil,
+        makeCall: nil,
     }
 
 op :tail_call_forward_arguments,
@@ -845,6 +864,13 @@ op :construct_varargs,
     metadata: {
         arrayProfile: ArrayProfile,
         profile: ValueProfile,
+    },
+    tmps: {
+        argCountIncludingThis: unsigned
+    },
+    checkpoints: {
+        determiningArgCount: nil,
+        makeCall: nil,
     }
 
 op :ret,
@@ -992,7 +1018,7 @@ op :catch,
         thrownValue: VirtualRegister,
     },
     metadata: {
-        buffer: ValueProfileAndOperandBuffer.*,
+        buffer: ValueProfileAndVirtualRegisterBuffer.*,
     }
 
 op :throw,
@@ -1238,6 +1264,8 @@ op :llint_native_call_trampoline
 op :llint_native_construct_trampoline
 op :llint_internal_function_call_trampoline
 op :llint_internal_function_construct_trampoline
+op :checkpoint_osr_exit_from_inlined_call_trampoline
+op :checkpoint_osr_exit_trampoline
 op :handleUncaughtException
 op :op_call_return_location
 op :op_construct_return_location

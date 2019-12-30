@@ -30,6 +30,7 @@ class Opcode
     attr_reader :args
     attr_reader :metadata
     attr_reader :extras
+    attr_reader :checkpoints
 
     module Size
         Narrow = "OpcodeSize::Narrow"
@@ -45,12 +46,14 @@ class Opcode
         tid
     end
 
-    def initialize(section, name, extras, args, metadata, metadata_initializers)
+    def initialize(section, name, extras, args, metadata, metadata_initializers, tmps, checkpoints)
         @section = section
         @name = name
         @extras = extras || {}
         @metadata = Metadata.new metadata, metadata_initializers
-        @args = args.map.with_index { |(arg_name, type), index| Argument.new arg_name, type, index + 1 } unless args.nil?
+        @args = args.map.with_index { |(arg_name, type), index| Argument.new arg_name, type, index } unless args.nil?
+        @tmps = tmps
+        @checkpoints = checkpoints.map { |(checkpoint, _)| checkpoint } unless checkpoints.nil?
     end
 
     def create_id!
@@ -114,10 +117,21 @@ class Opcode
         args.map { |arg| "#{prefix}#{block.call(arg, size)}" }
     end
 
+    def map_operands_with_size(prefix, size, &block)
+        args = []
+        args += @args.dup if @args
+        unless @metadata.empty?
+            args << @metadata.emitter_local
+        end
+        args.map { |arg| "#{prefix}#{block.call(arg, size)}" }
+    end
+
     def struct
         <<-EOF
 struct #{capitalized_name} : public Instruction {
     #{opcodeID}
+    #{temps}
+    #{checkpointValues}
 
 #{emitter}
 #{dumper}
@@ -130,6 +144,18 @@ EOF
 
     def opcodeID
         "static constexpr #{opcodeIDType} opcodeID = #{name};"
+    end
+
+    def checkpointValues
+        return if @checkpoints.nil?
+
+        ["enum Checkpoints : uint8_t {"].concat(checkpoints.map{ |checkpoint| "        #{checkpoint}," }).concat(["        numberOfCheckpoints,", "    };"]).join("\n")
+    end
+
+    def temps
+        return if @tmps.nil?
+
+        ["enum Tmps : uint8_t {"].concat(@tmps.map {|(tmp, type)| "        #{tmp},"}).push("    };").join("\n")
     end
 
     def emitter
@@ -200,6 +226,7 @@ private:
     template<OpcodeSize __size, bool recordOpcode, typename BytecodeGenerator>
     static bool emitImpl(BytecodeGenerator* gen#{typed_args}#{metadata_param})
     {
+        #{!@checkpoints.nil? ? "gen->setUsesCheckpoints();" : ""}
         if (__size == OpcodeSize::Wide16)
             gen->alignWideOpcode16();
         else if (__size == OpcodeSize::Wide32)
@@ -211,7 +238,8 @@ private:
                 #{op_wide16.fits_write Size::Narrow}
             else if (__size == OpcodeSize::Wide32)
                 #{op_wide32.fits_write Size::Narrow}
-#{map_fields_with_size("            ", "__size", &:fits_write).join "\n"}
+            #{Argument.new("opcodeID", opcodeIDType, 0).fits_write Size::Narrow}
+#{map_operands_with_size("            ", "__size", &:fits_write).join "\n"}
             return true;
         }
         return false;
@@ -228,7 +256,7 @@ EOF
         dumper->printLocationAndOp(__location, &"**#{@name}"[2 - __sizeShiftAmount]);
 #{print_args { |arg|
 <<-EOF.chomp
-        dumper->dumpOperand(#{arg.field_name}, #{arg.index == 1});
+        dumper->dumpOperand(#{arg.field_name}, #{arg.index == 0});
 EOF
     }}
     }
@@ -237,35 +265,36 @@ EOF
 
     def constructors
         fields = (@args || []) + (@metadata.empty? ? [] : [@metadata])
-        init = ->(size) { fields.empty?  ? "" : ": #{fields.map.with_index { |arg, i| arg.load_from_stream(i + 1, size) }.join "\n        , " }" }
+        init = ->(size) { fields.empty?  ? "" : ": #{fields.map.with_index { |arg, i| arg.load_from_stream(i, size) }.join "\n        , " }" }
 
         <<-EOF
     #{capitalized_name}(const uint8_t* stream)
         #{init.call("OpcodeSize::Narrow")}
     {
-        ASSERT_UNUSED(stream, stream[0] == opcodeID);
+        ASSERT_UNUSED(stream, bitwise_cast<const uint8_t*>(stream)[-1] == opcodeID);
     }
 
     #{capitalized_name}(const uint16_t* stream)
         #{init.call("OpcodeSize::Wide16")}
     {
-        ASSERT_UNUSED(stream, stream[0] == opcodeID);
+        ASSERT_UNUSED(stream, bitwise_cast<const uint8_t*>(stream)[-1] == opcodeID);
     }
 
 
     #{capitalized_name}(const uint32_t* stream)
         #{init.call("OpcodeSize::Wide32")}
     {
-        ASSERT_UNUSED(stream, stream[0] == opcodeID);
+        ASSERT_UNUSED(stream, bitwise_cast<const uint8_t*>(stream)[-1] == opcodeID);
     }
 
     static #{capitalized_name} decode(const uint8_t* stream)
     {
+        // A pointer is pointing to the first operand (opcode and prefix are not included).
         if (*stream == #{wide32})
-            return { bitwise_cast<const uint32_t*>(stream + 1) };
+            return { bitwise_cast<const uint32_t*>(stream + 2) };
         if (*stream == #{wide16})
-            return { bitwise_cast<const uint16_t*>(stream + 1) };
-        return { stream };
+            return { bitwise_cast<const uint16_t*>(stream + 2) };
+        return { stream + 1 };
     }
 EOF
     end
@@ -303,7 +332,7 @@ EOF
         out += @args.map(&:field_name) unless @args.nil?
         out << Metadata.field_name unless @metadata.empty?
         out.map.with_index do |name, index|
-            "const unsigned #{capitalized_name}_#{name}_index = #{index + 1};"
+            "const unsigned #{capitalized_name}_#{name}_index = #{index};"
         end
     end
 

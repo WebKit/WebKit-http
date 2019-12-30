@@ -152,6 +152,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
+    case CreateArgumentsButterfly:
     case GetFromArguments:
     case PutToArguments:
     case GetArgument:
@@ -191,6 +192,7 @@ inline CapabilityLevel canCompile(Node* node)
     case TailCallForwardVarargs:
     case TailCallForwardVarargsInlinedCaller:
     case ConstructForwardVarargs:
+    case VarargsLength:
     case LoadVarargs:
     case ValueToInt32:
     case Branch:

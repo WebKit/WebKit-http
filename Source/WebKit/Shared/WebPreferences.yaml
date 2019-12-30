@@ -501,6 +501,9 @@ ThreadedScrollingEnabled:
 SimpleLineLayoutEnabled:
   type: bool
   defaultValue: true
+  humanReadableName: "Simple line layout"
+  humanReadableDescription: "Enable simple line layout path (SLL)"
+  category: internal
 
 ContentChangeObserverEnabled:
   type: bool
@@ -861,7 +864,7 @@ CustomPasteboardDataEnabled:
 
 AsyncClipboardAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_ASYNC_CLIPBOARD_API_ENABLED
   humanReadableName: "Async clipboard API"
   humanReadableDescription: "Enable the async clipboard API"
   category: experimental
@@ -1207,11 +1210,6 @@ SourceBufferChangeTypeEnabled:
   defaultValue: true
   condition: ENABLE(MEDIA_SOURCE)
 
-DialogElementEnabled:
-  type: bool
-  defaultValue: false
-  webcoreBinding: RuntimeEnabledFeatures
-
 KeygenElementEnabled:
   type: bool
   defaultValue: false
@@ -1236,6 +1234,10 @@ EditableImagesEnabled:
   defaultValue: false
 
 ShouldDecidePolicyBeforeLoadingQuickLookPreview:
+  defaultValue: false
+  type: bool
+
+ShouldUseServiceWorkerShortTimeout:
   defaultValue: false
   type: bool
 
@@ -1436,7 +1438,7 @@ MediaCapabilitiesExtensionsEnabled:
 
 HDRMediaCapabilitiesEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "HDR Media Capabilities"
   humanReadableDescription: "HDR Media Capabilities"
   category: experimental
@@ -1484,7 +1486,7 @@ CSSShadowPartsEnabled:
 
 GenericCueAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   condition: ENABLE(VIDEO_TRACK)
   humanReadableName: "Generic Text Track Cue API"
   humanReadableDescription: "Enable Generic Text Track Cue API"
@@ -1876,6 +1878,22 @@ UseGPUProcessForMedia:
     humanReadableDescription: "Do all media loading and playback in the GPU process"
     category: internal
     webcoreName: useGPUProcessForMedia
+
+IsInAppBrowserPrivacyEnabled:
+    type: bool
+    defaultValue: true
+    humanReadableName: "In-App Browser Privacy"
+    humanReadableDescription: "Enable In-App Browser Privacy"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: internal
+
+DialogElementEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Dialog Element"
+    humanReadableDescription: "Enable the Dialog Element"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: experimental
 
 # Deprecated
 

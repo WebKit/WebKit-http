@@ -98,8 +98,8 @@ namespace JSC {
     BEGIN_NO_SET_PC();                    \
     SET_PC_FOR_STUBS()
 
-#define GET(operand) (callFrame->uncheckedR(operand.offset()))
-#define GET_C(operand) (callFrame->r(operand.offset()))
+#define GET(operand) (callFrame->uncheckedR(operand))
+#define GET_C(operand) (callFrame->r(operand))
 
 #define RETURN_TWO(first, second) do {       \
         return encodeResult(first, second);        \
@@ -220,6 +220,19 @@ SLOW_PATH_DECL(slow_path_create_cloned_arguments)
     BEGIN();
     auto bytecode = pc->as<OpCreateClonedArguments>();
     RETURN(ClonedArguments::createWithMachineFrame(globalObject, callFrame, ArgumentsMode::Cloned));
+}
+
+SLOW_PATH_DECL(slow_path_create_arguments_butterfly)
+{
+    BEGIN();
+    auto bytecode = pc->as<OpCreateArgumentsButterfly>();
+    int32_t argumentCount = callFrame->argumentCount();
+    JSImmutableButterfly* butterfly = JSImmutableButterfly::tryCreate(vm, vm.immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithContiguous) - NumberOfIndexingShapes].get(), argumentCount);
+    if (!butterfly)
+        THROW(createOutOfMemoryError(globalObject));
+    for (int32_t index = 0; index < argumentCount; ++index)
+        butterfly->setIndex(vm, index, callFrame->uncheckedArgument(index));
+    RETURN(butterfly);
 }
 
 SLOW_PATH_DECL(slow_path_create_this)
@@ -1139,8 +1152,7 @@ SLOW_PATH_DECL(slow_path_create_lexical_environment)
 {
     BEGIN();
     auto bytecode = pc->as<OpCreateLexicalEnvironment>();
-    int scopeReg = bytecode.m_scope.offset();
-    JSScope* currentScope = callFrame->uncheckedR(scopeReg).Register::scope();
+    JSScope* currentScope = callFrame->uncheckedR(bytecode.m_scope).Register::scope();
     SymbolTable* symbolTable = jsCast<SymbolTable*>(GET_C(bytecode.m_symbolTable).jsValue());
     JSValue initialValue = GET_C(bytecode.m_initialValue).jsValue();
     ASSERT(initialValue == jsUndefined() || initialValue == jsTDZValue());
@@ -1155,8 +1167,7 @@ SLOW_PATH_DECL(slow_path_push_with_scope)
     JSObject* newScope = GET_C(bytecode.m_newScope).jsValue().toObject(globalObject);
     CHECK_EXCEPTION();
 
-    int scopeReg = bytecode.m_currentScope.offset();
-    JSScope* currentScope = callFrame->uncheckedR(scopeReg).Register::scope();
+    JSScope* currentScope = callFrame->uncheckedR(bytecode.m_currentScope).Register::scope();
     RETURN(JSWithScope::create(vm, globalObject, currentScope, newScope));
 }
 
@@ -1165,7 +1176,7 @@ SLOW_PATH_DECL(slow_path_resolve_scope_for_hoisting_func_decl_in_eval)
     BEGIN();
     auto bytecode = pc->as<OpResolveScopeForHoistingFuncDeclInEval>();
     const Identifier& ident = codeBlock->identifier(bytecode.m_property);
-    JSScope* scope = callFrame->uncheckedR(bytecode.m_scope.offset()).Register::scope();
+    JSScope* scope = callFrame->uncheckedR(bytecode.m_scope).Register::scope();
     JSValue resolvedScope = JSScope::resolveScopeForHoistingFuncDeclInEval(globalObject, scope, ident);
 
     CHECK_EXCEPTION();
@@ -1179,7 +1190,7 @@ SLOW_PATH_DECL(slow_path_resolve_scope)
     auto bytecode = pc->as<OpResolveScope>();
     auto& metadata = bytecode.metadata(codeBlock);
     const Identifier& ident = codeBlock->identifier(bytecode.m_var);
-    JSScope* scope = callFrame->uncheckedR(bytecode.m_scope.offset()).Register::scope();
+    JSScope* scope = callFrame->uncheckedR(bytecode.m_scope).Register::scope();
     JSObject* resolvedScope = JSScope::resolve(globalObject, scope, ident);
     // Proxy can throw an error here, e.g. Proxy in with statement's @unscopables.
     CHECK_EXCEPTION();
@@ -1424,7 +1435,7 @@ SLOW_PATH_DECL(slow_path_new_array_buffer)
 {
     BEGIN();
     auto bytecode = pc->as<OpNewArrayBuffer>();
-    ASSERT(codeBlock->isConstantRegisterIndex(bytecode.m_immutableButterfly.offset()));
+    ASSERT(bytecode.m_immutableButterfly.isConstant());
     JSImmutableButterfly* immutableButterfly = bitwise_cast<JSImmutableButterfly*>(GET_C(bytecode.m_immutableButterfly).jsValue().asCell());
     auto& profile = bytecode.metadata(codeBlock).m_arrayAllocationProfile;
 
@@ -1443,7 +1454,7 @@ SLOW_PATH_DECL(slow_path_new_array_buffer)
         // We also cannot allocate a new butterfly from compilation threads since it's invalid to allocate cells from
         // a compilation thread.
         WTF::storeStoreFence();
-        codeBlock->constantRegister(bytecode.m_immutableButterfly.offset()).set(vm, codeBlock, immutableButterfly);
+        codeBlock->constantRegister(bytecode.m_immutableButterfly).set(vm, codeBlock, immutableButterfly);
         WTF::storeStoreFence();
     }
 

@@ -157,9 +157,6 @@ public:
 
     void paint(GraphicsContext&, const FloatRect&) final { }
 
-    bool canLoadPoster() const final { return false; }
-    void setPoster(const String&) final { }
-
     bool hasSingleSecurityOrigin() const final { return true; }
 };
 
@@ -598,16 +595,6 @@ void MediaPlayer::prepareForRendering()
     m_private->prepareForRendering();
 }
 
-bool MediaPlayer::canLoadPoster() const
-{
-    return m_private->canLoadPoster();
-}
-
-void MediaPlayer::setPoster(const String& url)
-{
-    m_private->setPoster(url);
-}    
-
 void MediaPlayer::cancelLoad()
 {
     m_private->cancelLoad();
@@ -751,11 +738,6 @@ bool MediaPlayer::hasVideo() const
 bool MediaPlayer::hasAudio() const
 {
     return m_private->hasAudio();
-}
-
-bool MediaPlayer::inMediaDocument() const
-{
-    return m_visible && client().mediaPlayerIsInMediaDocument();
 }
 
 PlatformLayer* MediaPlayer::platformLayer() const
@@ -918,6 +900,16 @@ MediaTime MediaPlayer::minTimeSeekable()
 double MediaPlayer::seekableTimeRangesLastModifiedTime()
 {
     return m_private->seekableTimeRangesLastModifiedTime();
+}
+
+void MediaPlayer::bufferedTimeRangesChanged()
+{
+    client().mediaPlayerBufferedTimeRangesChanged();
+}
+
+void MediaPlayer::seekableTimeRangesChanged()
+{
+    client().mediaPlayerSeekableTimeRangesChanged();
 }
 
 double MediaPlayer::liveUpdateInterval()
@@ -1534,11 +1526,6 @@ Optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
     return m_private->videoPlaybackQualityMetrics();
 }
 
-void MediaPlayer::handlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command)
-{
-    client().mediaPlayerHandlePlaybackCommand(command);
-}
-
 String MediaPlayer::sourceApplicationIdentifier() const
 {
     return client().mediaPlayerSourceApplicationIdentifier();
@@ -1619,6 +1606,11 @@ bool MediaPlayer::performTaskAtMediaTime(WTF::Function<void()>&& task, MediaTime
 bool MediaPlayer::shouldIgnoreIntrinsicSize()
 {
     return m_private->shouldIgnoreIntrinsicSize();
+}
+
+void MediaPlayer::remoteEngineFailedToLoad()
+{
+    client().mediaPlayerEngineFailedToLoad();
 }
 
 #if !RELEASE_LOG_DISABLED

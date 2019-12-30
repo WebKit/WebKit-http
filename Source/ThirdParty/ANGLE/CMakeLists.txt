@@ -1,3 +1,13 @@
+if (UNIX AND NOT APPLE)
+    set(is_linux TRUE)
+endif()
+if (WIN32)
+    set(is_win TRUE)
+endif()
+if (APPLE)
+    set(is_mac TRUE)
+endif()
+
 include(Compiler.cmake)
 include(GLESv2.cmake)
 
@@ -57,21 +67,9 @@ set(ANGLE_SOURCES
     ${angle_translator_essl_sources}
     ${angle_translator_glsl_sources}
     ${angle_translator_sources}
-    ${libangle_capture_sources}
+    ${angle_system_utils_sources}
+    "src/libANGLE/FrameCapture_mock.cpp"
 )
-
-if (UNIX)
-    list(APPEND ANGLE_SOURCES ${angle_system_utils_sources_posix})
-    if (APPLE)
-        list(APPEND ANGLE_SOURCES ${angle_system_utils_sources_mac})
-    else()
-        list(APPEND ANGLE_SOURCES ${angle_system_utils_sources_linux})
-    endif()
-endif()
-
-if (WIN32)
-    list(APPEND ANGLE_SOURCES ${angle_system_utils_sources_win})
-endif()
 
 set(ANGLEGLESv2_LIBRARIES
     ANGLE
@@ -139,6 +137,13 @@ else ()
 endif ()
 
 if (USE_ANGLE_WEBGL)
+    set(libglesv2_entry_points_headers
+        src/libGLESv2/entry_points_egl.h
+        src/libGLESv2/entry_points_gles_2_0_autogen.h
+        src/libGLESv2/entry_points_gles_3_0_autogen.h
+        src/libGLESv2/entry_points_gles_ext_autogen.h
+    )
+
     WEBKIT_COPY_FILES(LibGLESv2EntryPointsHeaders
         DESTINATION ${ANGLE_FRAMEWORK_HEADERS_DIR}/ANGLE
         FILES ${libglesv2_entry_points_headers}
@@ -148,7 +153,7 @@ if (USE_ANGLE_WEBGL)
     add_custom_command(
         OUTPUT ${ANGLE_FRAMEWORK_HEADERS_DIR}/ANGLE/angle.timestamp
         DEPENDS LibGLESv2EntryPointsHeaders ANGLEWebGLHeaders
-        COMMAND BUILT_PRODUCTS_DIR=${ANGLE_FRAMEWORK_HEADERS_DIR}
+        COMMAND BUILT_PRODUCTS_DIR=${ANGLE_FRAMEWORK_HEADERS_DIR}/
             PUBLIC_HEADERS_FOLDER_PATH=ANGLE
             ${CMAKE_CURRENT_SOURCE_DIR}/adjust-angle-include-paths.sh
         VERBATIM

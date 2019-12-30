@@ -31,6 +31,8 @@
 #include "GPUConnectionToWebProcessMessagesReplies.h"
 #include <WebCore/DisplayListItems.h>
 #include <WebCore/ProcessIdentifier.h>
+#include <pal/SessionID.h>
+#include <wtf/Logger.h>
 #include <wtf/RefCounted.h>
 #include <wtf/UniqueRef.h>
 
@@ -38,12 +40,13 @@ namespace WebKit {
 
 class GPUProcess;
 class RemoteMediaPlayerManagerProxy;
+class UserMediaCaptureManagerProxy;
 
 class GPUConnectionToWebProcess
     : public RefCounted<GPUConnectionToWebProcess>
     , IPC::Connection::Client {
 public:
-    static Ref<GPUConnectionToWebProcess> create(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier);
+    static Ref<GPUConnectionToWebProcess> create(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier, PAL::SessionID);
     virtual ~GPUConnectionToWebProcess();
 
     IPC::Connection& connection() { return m_connection.get(); }
@@ -54,21 +57,32 @@ public:
 
     WebCore::ProcessIdentifier webProcessIdentifier() const { return m_webProcessIdentifier; }
 
+    Logger& logger();
+
 private:
-    GPUConnectionToWebProcess(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier);
+    GPUConnectionToWebProcess(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier, PAL::SessionID);
 
     RemoteMediaPlayerManagerProxy& remoteMediaPlayerManagerProxy();
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    UserMediaCaptureManagerProxy& userMediaCaptureManagerProxy();
+#endif
 
     // IPC::Connection::Client
-    void didClose(IPC::Connection&) override;
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
+    void didClose(IPC::Connection&) final;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) final;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) final;
+
+    RefPtr<Logger> m_logger;
 
     Ref<IPC::Connection> m_connection;
     Ref<GPUProcess> m_gpuProcess;
     const WebCore::ProcessIdentifier m_webProcessIdentifier;
     std::unique_ptr<RemoteMediaPlayerManagerProxy> m_remoteMediaPlayerManagerProxy;
+    PAL::SessionID m_sessionID;
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
+#endif
 };
 
 } // namespace WebKit

@@ -27,7 +27,9 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerManager.h"
+#include "RemoteMediaPlayerState.h"
 #include <WebCore/MediaPlayerPrivate.h>
 #include <wtf/LoggerHelper.h>
 #include <wtf/MediaTime.h>
@@ -43,26 +45,29 @@ class MediaPlayerPrivateRemote final
 #endif
 {
 public:
-    static std::unique_ptr<MediaPlayerPrivateRemote> create(MediaPlayer* player, MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, MediaPlayerPrivateRemoteIdentifier identifier, RemoteMediaPlayerManager& manager)
+    static std::unique_ptr<MediaPlayerPrivateRemote> create(MediaPlayer* player, MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, MediaPlayerPrivateRemoteIdentifier identifier, RemoteMediaPlayerManager& manager, const RemoteMediaPlayerConfiguration& configuration)
     {
-        return makeUnique<MediaPlayerPrivateRemote>(player, remoteEngineIdentifier, identifier, manager);
+        return makeUnique<MediaPlayerPrivateRemote>(player, remoteEngineIdentifier, identifier, manager, configuration);
     }
 
-    explicit MediaPlayerPrivateRemote(MediaPlayer*, MediaPlayerEnums::MediaEngineIdentifier, MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerManager&);
+    explicit MediaPlayerPrivateRemote(MediaPlayer*, MediaPlayerEnums::MediaEngineIdentifier, MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerManager&, const RemoteMediaPlayerConfiguration&);
     virtual ~MediaPlayerPrivateRemote();
 
     void invalidate() { m_invalid = true; }
     MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier() const { return m_remoteEngineIdentifier; }
     MediaPlayerPrivateRemoteIdentifier playerItentifier() const { return m_id; }
 
-    void networkStateChanged(WebCore::MediaPlayerEnums::NetworkState);
-    void readyStateChanged(WebCore::MediaPlayerEnums::ReadyState);
+    void networkStateChanged(RemoteMediaPlayerState&&);
+    void readyStateChanged(RemoteMediaPlayerState&&);
     void volumeChanged(double);
     void muteChanged(bool);
-    void timeChanged(MediaTime);
-    void durationChanged(MediaTime);
+    void timeChanged(RemoteMediaPlayerState&&);
+    void durationChanged(RemoteMediaPlayerState&&);
     void rateChanged(double);
     void playbackStateChanged(bool);
+    void engineFailedToLoad(long);
+    void updateCachedState(RemoteMediaPlayerState&&);
+    void characteristicChanged(bool hasAudio, bool hasVideo, WebCore::MediaPlayerEnums::MovieLoadType);
 
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return *m_logger; }
@@ -83,7 +88,19 @@ private:
 #endif
     void cancelLoad() final;
 
+    void play() final;
+    void pause() final;
+
     void prepareToPlay() final;
+    long platformErrorCode() const final { return m_platformErrorCode; }
+
+    double rate() const final { return m_rate; }
+    void setVolumeDouble(double) final;
+    void setMuted(bool) final;
+    void setPrivateBrowsingMode(bool) final;
+    void setPreservesPitch(bool) final;
+
+    // Unimplemented
     PlatformLayer* platformLayer() const final;
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -100,16 +117,12 @@ private:
     String accessLog() const final;
     String errorLog() const final;
 #endif
-    long platformErrorCode() const final;
 
-    void play() final;
-    void pause() final;
     void setBufferingPolicy(MediaPlayer::BufferingPolicy) final;
 
     bool supportsPictureInPicture() const final;
     bool supportsFullscreen() const final;
     bool supportsScanning() const final;
-    bool requiresImmediateCompositing() const final;
 
     bool canSaveMediaData() const final;
 
@@ -120,32 +133,25 @@ private:
 
     void setVisible(bool) final;
 
-    MediaTime durationMediaTime() const final { return m_duration; }
+    MediaTime durationMediaTime() const final { return m_cachedState.duration; }
     MediaTime currentMediaTime() const final;
 
     MediaTime getStartDate() const final;
 
     void seek(const MediaTime&) final;
-    void seekWithTolerance(const MediaTime&, const MediaTime&, const MediaTime&) final;
+    void seekWithTolerance(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance) final;
 
-    bool seeking() const final;
+    bool seeking() const final { return m_seeking; }
 
     MediaTime startTime() const final;
 
     void setRateDouble(double) final;
-    double rate() const final { return m_rate; }
 
-    void setPreservesPitch(bool) final;
-
-    bool paused() const final { return m_paused; }
-
-    void setVolumeDouble(double) final;
+    bool paused() const final { return m_cachedState.paused; }
 
 #if PLATFORM(IOS_FAMILY) || USE(GSTREAMER)
     float volume() const final { return 1; }
 #endif
-
-    void setMuted(bool) final;
 
     bool hasClosedCaptions() const final;
     void setClosedCaptionsVisible(bool) final;
@@ -153,8 +159,8 @@ private:
     double maxFastForwardRate() const final;
     double minFastReverseRate() const final;
 
-    MediaPlayer::NetworkState networkState() const final { return m_networkState; }
-    MediaPlayer::ReadyState readyState() const final { return m_readyState; }
+    MediaPlayer::NetworkState networkState() const final { return m_cachedState.networkState; }
+    MediaPlayer::ReadyState readyState() const final { return m_cachedState.readyState; }
 
     std::unique_ptr<PlatformTimeRanges> seekable() const final;
 
@@ -178,9 +184,6 @@ private:
     void setPreload(MediaPlayer::Preload) final;
 
     bool hasAvailableVideoFrame() const final;
-
-    bool canLoadPoster() const final;
-    void setPoster(const String&) final;
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)
     void enterFullscreen() final;
@@ -228,7 +231,6 @@ private:
     unsigned audioDecodedByteCount() const final;
     unsigned videoDecodedByteCount() const final;
 
-    void setPrivateBrowsingMode(bool) final;
     String engineDescription() const final;
 
 #if ENABLE(WEB_AUDIO)
@@ -295,14 +297,19 @@ private:
     RemoteMediaPlayerManager m_manager;
     MediaPlayerEnums::MediaEngineIdentifier m_remoteEngineIdentifier;
     MediaPlayerPrivateRemoteIdentifier m_id;
+    RemoteMediaPlayerConfiguration m_configuration;
 
-    MediaPlayer::NetworkState m_networkState { MediaPlayer::NetworkState::Empty };
-    MediaPlayer::ReadyState m_readyState { MediaPlayer::ReadyState::HaveNothing };
+    RemoteMediaPlayerState m_cachedState;
+    std::unique_ptr<PlatformTimeRanges> m_cachedBufferedTimeRanges;
+
     double m_volume { 1 };
-    bool m_muted { false };
-    MediaTime m_duration;
     double m_rate { 1 };
-    bool m_paused { false };
+    long m_platformErrorCode { 0 };
+    MediaPlayerEnums::MovieLoadType m_movieLoadType { MediaPlayerEnums::MovieLoadType::Unknown };
+    bool m_hasAudio { false };
+    bool m_hasVideo { false };
+    bool m_muted { false };
+    bool m_seeking { false };
 
 #if !RELEASE_LOG_DISABLED
     RefPtr<const Logger> m_logger;

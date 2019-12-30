@@ -29,6 +29,7 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "CacheStorageProvider.h"
+#include "EventLoop.h"
 #include "EventNames.h"
 #include "FetchLoader.h"
 #include "Frame.h"
@@ -186,7 +187,9 @@ void ServiceWorkerThreadProxy::notifyNetworkStateChange(bool isOnline)
     postTaskForModeToWorkerGlobalScope([isOnline] (ScriptExecutionContext& context) {
         auto& globalScope = downcast<WorkerGlobalScope>(context);
         globalScope.setIsOnline(isOnline);
-        globalScope.dispatchEvent(Event::create(isOnline ? eventNames().onlineEvent : eventNames().offlineEvent, Event::CanBubble::No, Event::IsCancelable::No));
+        globalScope.eventLoop().queueTask(TaskSource::DOMManipulation, [globalScope = makeRef(globalScope), isOnline] {
+            globalScope->dispatchEvent(Event::create(isOnline ? eventNames().onlineEvent : eventNames().offlineEvent, Event::CanBubble::No, Event::IsCancelable::No));
+        });
     }, WorkerRunLoop::defaultMode());
 }
 
@@ -194,9 +197,14 @@ void ServiceWorkerThreadProxy::startFetch(SWServerConnectionIdentifier connectio
 {
     auto key = std::make_pair(connectionIdentifier, fetchIdentifier);
 
+    if (m_ongoingFetchTasks.isEmpty())
+        thread().startFetchEventMonitoring();
+
     ASSERT(!m_ongoingFetchTasks.contains(key));
     m_ongoingFetchTasks.add(key, client.copyRef());
-    thread().postFetchTask(WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(referrer), WTFMove(options));
+    postTaskForModeToWorkerGlobalScope([this, protectedThis = makeRef(*this), client = WTFMove(client), clientId, request = request.isolatedCopy(), referrer = referrer.isolatedCopy(), options = options.isolatedCopy()](auto&) mutable {
+        thread().queueTaskToFireFetchEvent(WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(referrer), WTFMove(options));
+    }, WorkerRunLoop::defaultMode());
 }
 
 void ServiceWorkerThreadProxy::cancelFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
@@ -204,6 +212,9 @@ void ServiceWorkerThreadProxy::cancelFetch(SWServerConnectionIdentifier connecti
     auto client = m_ongoingFetchTasks.take(std::make_pair(connectionIdentifier, fetchIdentifier));
     if (!client)
         return;
+
+    if (m_ongoingFetchTasks.isEmpty())
+        thread().stopFetchEventMonitoring();
 
     postTaskForModeToWorkerGlobalScope([client = WTFMove(client.value())] (ScriptExecutionContext&) {
         client->cancel();
@@ -224,6 +235,33 @@ void ServiceWorkerThreadProxy::continueDidReceiveFetchResponse(SWServerConnectio
 void ServiceWorkerThreadProxy::removeFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
 {
     m_ongoingFetchTasks.remove(std::make_pair(connectionIdentifier, fetchIdentifier));
+
+    if (m_ongoingFetchTasks.isEmpty())
+        thread().stopFetchEventMonitoring();
+}
+
+void ServiceWorkerThreadProxy::postMessageToServiceWorker(MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
+{
+    thread().willPostTaskToFireMessageEvent();
+    thread().runLoop().postTask([this, protectedThis = makeRef(*this), message = WTFMove(message), sourceData = WTFMove(sourceData)](auto&) mutable {
+        thread().queueTaskToPostMessage(WTFMove(message), WTFMove(sourceData));
+    });
+}
+
+void ServiceWorkerThreadProxy::fireInstallEvent()
+{
+    thread().willPostTaskToFireInstallEvent();
+    thread().runLoop().postTask([this, protectedThis = makeRef(*this)](auto&) mutable {
+        thread().queueTaskToFireInstallEvent();
+    });
+}
+
+void ServiceWorkerThreadProxy::fireActivateEvent()
+{
+    thread().willPostTaskToFireActivateEvent();
+    thread().runLoop().postTask([this, protectedThis = makeRef(*this)](auto&) mutable {
+        thread().queueTaskToFireActivateEvent();
+    });
 }
 
 } // namespace WebCore

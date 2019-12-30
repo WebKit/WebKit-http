@@ -5,7 +5,8 @@
 # OffscreenCanvas
 webkit.org/b/203146 fast/canvas/offscreen-enabled.html [ Pass ]
 webkit.org/b/203146 http/wpt/offscreen-canvas [ Pass ]
-webkit.org/b/203146 imported/w3c/web-platform-tests/offscreen-canvas [ Pass ]
+# See webkit.org/b/205445 before enabling this back
+# webkit.org/b/203146 imported/w3c/web-platform-tests/offscreen-canvas [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -125,6 +126,9 @@ webkit.org/b/169811 fast/mediastream/captureStream/canvas2d.html [ Crash Timeout
 webkit.org/b/169811 fast/mediastream/captureStream/canvas3d.html [ Crash Timeout ]
 
 webkit.org/b/190576 fast/mediastream/get-user-media-device-id.html [ Failure ]
+
+# No support for GPUProcess yet
+fast/mediastream/captureAudioInGPUProcess.html [ Skip ]
 
 # MediaRecorder is not currently implemented
 http/wpt/mediarecorder [ Skip ]
@@ -766,6 +770,8 @@ webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_t
 webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch.html [ Skip ]
 webkit.org/b/204115 imported/w3c/web-platform-tests/pointerevents/pointerevent_pointerout_pen.html [ Skip ]
 
+fast/gradients/conic-gradient-alpha.html [ Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # 5. TESTS CRASHING
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -782,8 +788,6 @@ webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-false.htm
 webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-true.html [ Crash ]
 
 webkit.org/b/199440 fast/mediastream/mediastreamtrack-video-clone.html [ Failure Timeout Crash ]
-
-webkit.org/b/200534 fast/events/focus-anchor-with-tabindex-hang.html [ Crash ]
 
 webkit.org/b/204112 editing/async-clipboard/clipboard-change-data-while-getting-type.html [ Crash ]
 webkit.org/b/204112 editing/async-clipboard/clipboard-change-data-while-reading.html [ Crash ]

@@ -116,9 +116,15 @@
         (iokit-registry-entry-class "IOSurfaceSendRight"))
     ;; CoreVideo CVCGDisplayLink
     (allow iokit-open
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+        (with report) (with telemetry)
+#endif
         (iokit-registry-entry-class "IOFramebufferSharedUserClient"))
     ;; H.264 Acceleration
     (allow iokit-open
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+        (with report) (with telemetry)
+#endif
         (iokit-registry-entry-class "AppleIntelMEUserClient")
         (iokit-registry-entry-class "AppleSNBFBUserClient"))
     ;; QuartzCore
@@ -396,9 +402,15 @@
     (xpc-service-name "com.apple.audio.SandboxHelper")
     (xpc-service-name "com.apple.coremedia.videodecoder")
     (xpc-service-name "com.apple.coremedia.videoencoder")
-    (xpc-service-name-regex #"\.apple-extension-service$")
     (xpc-service-name "com.apple.hiservices-xpcservice")
     (xpc-service-name "com.apple.print.normalizerd")
+)
+
+(allow mach-lookup
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    (with report) (with telemetry)
+#endif
+    (xpc-service-name-regex #"\.apple-extension-service$")
 )
 
 ;; Utility functions for home directory relative path filters
@@ -554,6 +566,9 @@
 
 ;; IOKit user clients
 (allow iokit-open
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    (with report) (with telemetry)
+#endif
     (iokit-user-client-class "AppleMultitouchDeviceUserClient")
     (iokit-user-client-class "AppleUpstreamUserClient")
     (iokit-user-client-class "IOHIDParamUserClient")
@@ -593,14 +608,12 @@
 #endif
     (global-name "com.apple.audio.AudioComponentRegistrar")
     (global-name "com.apple.awdd")
-    (global-name "com.apple.cfprefsd.agent")
     (global-name "com.apple.cookied")
     (global-name "com.apple.diagnosticd")
     (global-name "com.apple.iconservices")
     (global-name "com.apple.iconservices.store")
     (global-name "com.apple.mobileassetd")
     (global-name "com.apple.powerlog.plxpclogger.xpc")
-    (global-name "com.apple.system.logger")
 )
 
 ;; Various services required by AppKit and other frameworks
@@ -608,29 +621,35 @@
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101400
        (global-name "com.apple.FontObjectsServer")
 #endif
-       (global-name "com.apple.PowerManagement.control")
        (global-name "com.apple.SystemConfiguration.configd")
        (global-name "com.apple.analyticsd")
        (global-name "com.apple.assertiond.processassertionconnection")
        (global-name "com.apple.audio.SystemSoundServer-OSX")
        (global-name "com.apple.audio.audiohald")
-       (global-name "com.apple.cfprefsd.daemon")
        (global-name "com.apple.cmio.registerassistantservice") ;; Needed by CoreMedia for plugin drivers
-       (global-name "com.apple.coreservices.launchservicesd")
        (global-name "com.apple.fonts")
        (global-name "com.apple.mediaremoted.xpc")
        (global-name "com.apple.logd")
        (global-name "com.apple.logd.events")
-       (global-name "com.apple.lsd.mapdb")
        (global-name "com.apple.lskdd") ;; <rdar://problem/49123855>
-       (global-name "com.apple.tccd")
-       (global-name "com.apple.tccd.system")
-       (global-name "com.apple.trustd.agent")
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400 || PLATFORM(MACCATALYST)
        (global-name "com.apple.CARenderServer") ; Needed for [CAContext remoteContextWithOptions]
 #else
        (global-name "com.apple.windowserver.active")
 #endif
+)
+
+(allow mach-lookup
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    (with report) (with telemetry)
+#endif
+    (global-name "com.apple.PowerManagement.control")
+    (global-name "com.apple.cfprefsd.daemon")
+    (global-name "com.apple.coreservices.launchservicesd")
+    (global-name "com.apple.lsd.mapdb")
+    (global-name "com.apple.tccd")
+    (global-name "com.apple.tccd.system")
+    (global-name "com.apple.trustd.agent")
 )
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400 || PLATFORM(MACCATALYST)
@@ -692,6 +711,9 @@
 
 ;; Network Extensions / VPN helper.
 (allow mach-lookup
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    (with report) (with telemetry)
+#endif
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500 || PLATFORM(MACCATALYST)
     (global-name "com.apple.nesessionmanager.content-filter") ;; <rdar://problem/48442387>
 #else
@@ -702,8 +724,10 @@
 #if PLATFORM(MAC)
 ;; FIXME should be removed when <rdar://problem/9347205> + related radar in Safari is fixed
 (allow mach-lookup
-       (global-name "com.apple.system.logger")
-       (global-name "com.apple.system.notification_center"))
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    (with report) (with telemetry)
+#endif
+    (global-name "com.apple.system.notification_center"))
 #endif
 
 (if (defined? 'vnode-type)
@@ -827,6 +851,9 @@
         ;; QuickTimeIIDCDigitizer assistant
         (global-name "com.apple.IIDCAssistant"))
     (allow iokit-open
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+        (with report) (with telemetry)
+#endif
         ;; QuickTimeUSBVDCDigitizer
         (iokit-user-client-class "IOUSBDeviceUserClientV2")
         (iokit-user-client-class "IOUSBInterfaceUserClientV2"))

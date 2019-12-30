@@ -1,3 +1,220 @@
+2019-12-25  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Enable ANGLE by default for Cocoa platforms (except simulator)
+        https://bugs.webkit.org/show_bug.cgi?id=205483
+        rdar://56925821
+
+        Reviewed by Simon Fraser.
+
+        Turn USE_ANGLE on for Cocoa, with the exception of the simulator.
+
+        * wtf/Platform.h:
+
+2019-12-24  Eric Carlson  <eric.carlson@apple.com>
+
+        [Media in GPU process] Enable media player proxy logging
+        https://bugs.webkit.org/show_bug.cgi?id=205557
+        <rdar://problem/58160932>
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/Logger.h:
+        (WTF::Logger::willLog const): Minor optimization: don't check m_enabled unnecessarily.
+
+2019-12-23  Keith Miller  <keith_miller@apple.com>
+
+        DFG/FTL should be able to exit to the middle of a bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=205232
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Bitmap.h:
+        (WTF::WordType>::invert):
+        (WTF::WordType>::operator):
+        (WTF::WordType>::operator const const):
+        * wtf/CMakeLists.txt:
+        * wtf/EnumClassOperatorOverloads.h: Added.
+        * wtf/FastBitVector.h:
+        (WTF::FastBitReference::operator bool const):
+        (WTF::FastBitReference::operator|=):
+        (WTF::FastBitReference::operator&=):
+        (WTF::FastBitVector::fill):
+        (WTF::FastBitVector::grow):
+        * wtf/UnalignedAccess.h:
+        (WTF::unalignedLoad):
+        (WTF::unalignedStore):
+
+2019-12-21  Antti Koivisto  <antti@apple.com>
+
+        Move Vector HashTraits to HashTraits.h to fix GCC build
+        https://bugs.webkit.org/show_bug.cgi?id=205540
+
+        Reviewed by Zalan Bujtas.
+
+        GCC is stricter than LLVM with partial specializations
+
+        Error: partial specialization of struct WTF::HashTraits<WTF::Vector<U, otherCapacity, WTF::CrashOnOverflow, 16> >
+        after instantiation of struct WTF::HashTraits<WTF::Vector<WTF::String> >
+
+        * wtf/HashTraits.h:
+        * wtf/VectorHash.h:
+
+2019-12-20  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r253820.
+
+        Broke Mac testing
+
+        Reverted changeset:
+
+        "Invalidate only affected elements after media query
+        evaluation changes"
+        https://bugs.webkit.org/show_bug.cgi?id=205392
+        https://trac.webkit.org/changeset/253820
+
+2019-12-20  Antti Koivisto  <antti@apple.com>
+
+        Invalidate only affected elements after media query evaluation changes
+        https://bugs.webkit.org/show_bug.cgi?id=205392
+
+        Reviewed by Zalan Bujtas.
+
+        Fix GCC build error
+
+        Error: partial specialization of ‘struct WTF::HashTraits<WTF::Vector<U, otherCapacity, WTF::CrashOnOverflow, 16> >’
+               after instantiation of ‘struct WTF::HashTraits<WTF::Vector<WTF::String> >’
+
+        * wtf/HashTraits.h:
+        * wtf/VectorHash.h:
+
+        Move to HashTraits to HashTraits.h so it gets specialized before any instantiation.
+
+2019-12-19  Antti Koivisto  <antti@apple.com>
+
+        Allow Vectors as hash keys
+        https://bugs.webkit.org/show_bug.cgi?id=205449
+
+        Reviewed by Geoff Garen.
+
+        Add traits to allow Vectors of hashable types to act as hash keys.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Vector.h:
+        (WTF::Vector::Vector):
+        (WTF::Vector::~Vector):
+        (WTF::Vector::isHashTableDeletedValue const):
+
+        Use m_size = numeric_limits::max() as the deleted value.
+
+        * wtf/VectorHash.h: Added.
+        (WTF::VectorHash::hash):
+        (WTF::VectorHash::equal):
+
+        Add traits. Empty Vector is the empty value.
+
+2019-12-19  Jer Noble  <jer.noble@apple.com>
+
+        Safely iterate observers in languageDidChange()
+        https://bugs.webkit.org/show_bug.cgi?id=205452
+        <rdar://problem/57937765>
+
+        Reviewed by Eric Carlson.
+
+        Use the "copyToVector() then verify each item is still in the original
+        map" pattern to safely iterate over the observerMap().
+
+        * wtf/Language.cpp:
+        (WTF::languageDidChange):
+
+2019-12-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix after r253730
+        https://bugs.webkit.org/show_bug.cgi?id=204398
+
+        Thread::destructTLS is always required in POSIX environments
+
+        * wtf/Threading.h:
+
+2019-12-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Use thread_local to hold Ref<WTF::Thread> in the thread rather than using FLS
+        https://bugs.webkit.org/show_bug.cgi?id=204398
+
+        Reviewed by Yusuke Suzuki.
+
+        Use thread_local which is faster than FLS.
+
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::current):
+        * wtf/ThreadingPrimitives.h: Deleted threadSpecificKeyCreate and
+        related functions which aren't used now in Windows port. Deleted
+        THREAD_SPECIFIC_CALL macro which isn't used now.
+        * wtf/win/ThreadingWin.cpp: Added a thread_local variable s_threadHolder.
+        (WTF::Thread::ThreadHolder::~ThreadHolder): Added.
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initializeTLS): Store a reference of Thread into s_threadHolder.
+        (WTF::Thread::initializeTLSKey): Deleted.
+        (WTF::Thread::destructTLS): Deleted.
+
+2019-12-18  Ben Nham  <nham@apple.com>
+
+        Add network loading signposts
+        https://bugs.webkit.org/show_bug.cgi?id=204822
+        <rdar://problem/57608824>
+
+        Reviewed by Alex Christensen.
+
+        This adds os_signposts related to network loads to aid in debugging networking performance
+        issues. Since URLs are logged in the signposts, this capability is only enabled on Apple
+        internal builds when an environment variable is set.
+
+        * wtf/Platform.h:
+        Add HAVE_OS_SIGNPOST.
+
+2019-12-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Update to use CTFontCreateForCharactersWithLanguageAndOption()
+        https://bugs.webkit.org/show_bug.cgi?id=205310
+
+        Reviewed by Simon Fraser.
+
+        All our bots are on the appropriate OS version.
+
+        * wtf/Platform.h:
+
+2019-12-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] 8Bit JSRopeString can contain 16Bit string in its rope
+        https://bugs.webkit.org/show_bug.cgi?id=205323
+
+        Reviewed by Mark Lam.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::copyCharacters):
+
+2019-12-17  Tim Horton  <timothy_horton@apple.com>
+
+        macCatalyst: Cursor should update on mouse movement and style change
+        https://bugs.webkit.org/show_bug.cgi?id=205317
+        <rdar://problem/46793696>
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FeatureDefines.h:
+        Make ENABLE_CURSOR_SUPPORT true on iOS, for macCatalyst. This results
+        in it being true everywhere, so remove it.
+
+        Add a new ENABLE_CUSTOM_CURSOR_SUPPORT, indicating whether we support
+        custom bitmap cursors. It covers the subset of ENABLE_CURSOR_SUPPORT
+        code that we still don't support in macCatalyst.
+
+        * wtf/Platform.h:
+        Add HAVE_HISERVICES (true on macOS but not macCatalyst) and
+        HAVE_NSCURSOR (true on macOS and macCatalyst but not e.g. iOS).
+
 2019-12-16  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Remove ArrayBufferNeuteringWatchpointSet

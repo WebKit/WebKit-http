@@ -29,6 +29,7 @@
 
 #include "AuxiliaryProcess.h"
 #include "WebPageProxyIdentifier.h"
+#include <pal/SessionID.h>
 #include <wtf/Function.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/WeakPtr.h>
@@ -41,7 +42,7 @@ struct GPUProcessCreationParameters;
 class GPUProcess : public AuxiliaryProcess, public ThreadSafeRefCounted<GPUProcess>, public CanMakeWeakPtr<GPUProcess> {
     WTF_MAKE_NONCOPYABLE(GPUProcess);
 public:
-    GPUProcess(AuxiliaryProcessInitializationParameters&&);
+    explicit GPUProcess(AuxiliaryProcessInitializationParameters&&);
     ~GPUProcess();
     static constexpr ProcessType processType = ProcessType::GPU;
 
@@ -70,10 +71,11 @@ private:
 
     // Message Handlers
     void initializeGPUProcess(GPUProcessCreationParameters&&);
-    void createGPUConnectionToWebProcess(WebCore::ProcessIdentifier, CompletionHandler<void(Optional<IPC::Attachment>&&)>&&);
+    void createGPUConnectionToWebProcess(WebCore::ProcessIdentifier, PAL::SessionID, CompletionHandler<void(Optional<IPC::Attachment>&&)>&&);
 
     void processDidTransitionToForeground();
     void processDidTransitionToBackground();
+    void setMockCaptureDevicesEnabled(bool);
 
     // Connections to WebProcesses.
     HashMap<WebCore::ProcessIdentifier, Ref<GPUConnectionToWebProcess>> m_webProcessConnections;

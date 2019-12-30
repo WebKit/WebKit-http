@@ -286,6 +286,7 @@ Modules/webauthn/fido/FidoConstants.cpp
 Modules/webauthn/fido/FidoHidMessage.cpp
 Modules/webauthn/fido/FidoHidPacket.cpp
 Modules/webauthn/fido/FidoParsingUtils.cpp
+Modules/webauthn/fido/Pin.cpp
 Modules/webauthn/fido/U2fCommandConstructor.cpp
 Modules/webauthn/fido/U2fResponseConverter.cpp
 
@@ -1855,6 +1856,7 @@ platform/graphics/GeometryUtilities.cpp
 platform/graphics/Gradient.cpp
 platform/graphics/GradientImage.cpp
 platform/graphics/GraphicsContext.cpp
+platform/graphics/GraphicsContext3DBase.cpp
 platform/graphics/GraphicsContext3DManager.cpp
 platform/graphics/GraphicsContextImpl.cpp
 platform/graphics/GraphicsLayer.cpp

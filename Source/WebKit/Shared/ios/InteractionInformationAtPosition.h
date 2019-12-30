@@ -30,6 +30,7 @@
 #include "ArgumentCoders.h"
 #include "InteractionInformationRequest.h"
 #include "ShareableBitmap.h"
+#include <WebCore/Cursor.h>
 #include <WebCore/ElementContext.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/ScrollTypes.h>
@@ -82,6 +83,11 @@ struct InteractionInformationAtPosition {
     RefPtr<ShareableBitmap> image;
     String textBefore;
     String textAfter;
+
+    float caretHeight { 0 };
+    WebCore::FloatRect lineCaretExtent;
+
+    Optional<WebCore::Cursor> cursor;
 
     WebCore::TextIndicatorData linkIndicator;
 #if ENABLE(DATA_DETECTION)

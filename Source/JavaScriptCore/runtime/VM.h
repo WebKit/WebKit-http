@@ -103,10 +103,12 @@ namespace JSC {
 class BuiltinExecutables;
 class BytecodeIntrinsicRegistry;
 class CallFrame;
+struct CheckpointOSRExitSideState;
 class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
 class CompactVariableMap;
+class ConservativeRoots;
 class CustomGetterSetter;
 class DOMAttributeGetterSetter;
 class DateInstance;
@@ -524,6 +526,7 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setBucketSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setIteratorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(strictEvalActivationSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(sourceCodeSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolObjectSpace)
@@ -539,6 +542,7 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakObjectRefSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakSetSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakMapSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(withScopeSpace)
 #if ENABLE(INTL)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlCollatorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(intlDateTimeFormatSpace)
@@ -692,6 +696,11 @@ public:
     Strong<JSCell> m_sentinelSetBucket;
     Strong<JSCell> m_sentinelMapBucket;
 
+    Weak<NativeExecutable> m_fastBoundExecutable;
+    Weak<NativeExecutable> m_fastCanConstructBoundExecutable;
+    Weak<NativeExecutable> m_slowBoundExecutable;
+    Weak<NativeExecutable> m_slowCanConstructBoundExecutable;
+
     Ref<PromiseTimer> promiseTimer;
     
     JSCell* currentlyDestructingCallbackObject;
@@ -829,6 +838,8 @@ public:
     NativeExecutable* getHostFunction(NativeFunction, NativeFunction constructor, const String& name);
     NativeExecutable* getHostFunction(NativeFunction, Intrinsic, NativeFunction constructor, const DOMJIT::Signature*, const String& name);
 
+    NativeExecutable* getBoundFunction(bool isJSFunction, bool canConstruct);
+
     MacroAssemblerCodePtr<JSEntryPtrTag> getCTIInternalFunctionTrampolineFor(CodeSpecializationKind);
 
     static ptrdiff_t exceptionOffset()
@@ -946,6 +957,11 @@ public:
     }
 
     void gatherScratchBufferRoots(ConservativeRoots&);
+
+    void addCheckpointOSRSideState(CallFrame*, std::unique_ptr<CheckpointOSRExitSideState>&&);
+    std::unique_ptr<CheckpointOSRExitSideState> findCheckpointOSRSideState(CallFrame*);
+    bool hasCheckpointOSRSideState() const { return m_checkpointSideState.size(); }
+    void scanSideState(ConservativeRoots&) const;
 
     VMEntryScope* entryScope;
 
@@ -1198,6 +1214,7 @@ private:
     Lock m_scratchBufferLock;
     Vector<ScratchBuffer*> m_scratchBuffers;
     size_t m_sizeOfLastScratchBuffer { 0 };
+    HashMap<CallFrame*, std::unique_ptr<CheckpointOSRExitSideState>> m_checkpointSideState;
     InlineWatchpointSet m_primitiveGigacageEnabled;
     FunctionHasExecutedCache m_functionHasExecutedCache;
     std::unique_ptr<ControlFlowProfiler> m_controlFlowProfiler;

@@ -2014,6 +2014,7 @@ http/tests/webgl/ [ Skip ]
 http/tests/canvas/webgl/ [ Skip ]
 compositing/webgl/webgl-background-color.html [ Skip ]
 compositing/webgl/webgl-reflection.html [ Skip ]
+fast/images/exif-orientation-webgl-texture.html [ Skip ]
 fast/images/webgl-teximage2d.html [ Skip ]
 #[ Release ] fast/canvas/webgl [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-allowed.html [ Skip ]
@@ -3155,7 +3156,7 @@ webkit.org/b/137096 svg/text/text-altglyph-01-b.svg [ Failure ]
 webkit.org/b/137093 svg/custom/glyph-selection-lang-attribute.svg [ Failure ]
 
 # This test relies on iOS-specific font fallback.
-fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
+fast/text/arabic-blacklisted.html [ Pass ImageOnlyFailure ]
 
 # dumpPolicyDelegateCallbacks is not supported in DumpRenderTree
 fast/loader/iframe-src-invalid-url.html [ Skip ]

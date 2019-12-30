@@ -787,12 +787,13 @@ public:
 
     bool updateLayoutViewportParameters(const WebKit::RemoteLayerTreeTransaction&);
 
-#if PLATFORM(GTK)
-    void setComposition(const String&, const Vector<WebCore::CompositionUnderline>&, const EditingRange& selectionRange);
-    void confirmComposition(const String& compositionString);
+#if PLATFORM(GTK) || PLATFORM(WPE)
+    void cancelComposition(const String& compositionString);
 
     void setInputMethodState(bool enabled);
+#endif
 
+#if PLATFORM(GTK)
     void getCenterForZoomGesture(const WebCore::IntPoint& centerInViewCoordinates, WebCore::IntPoint& center);
 #endif
 

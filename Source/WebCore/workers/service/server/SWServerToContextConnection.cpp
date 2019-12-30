@@ -109,18 +109,24 @@ void SWServerToContextConnection::claim(uint64_t requestIdentifier, ServiceWorke
     }
 }
 
-void SWServerToContextConnection::skipWaiting(ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t callbackID)
+void SWServerToContextConnection::skipWaiting(ServiceWorkerIdentifier serviceWorkerIdentifier, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* worker = SWServerWorker::existingWorkerForIdentifier(serviceWorkerIdentifier))
         worker->skipWaiting();
 
-    didFinishSkipWaiting(callbackID);
+    completionHandler();
 }
 
 void SWServerToContextConnection::setScriptResource(ServiceWorkerIdentifier serviceWorkerIdentifier, URL&& scriptURL, String&& script, URL&& responseURL, String&& mimeType)
 {
     if (auto* worker = SWServerWorker::existingWorkerForIdentifier(serviceWorkerIdentifier))
         worker->setScriptResource(WTFMove(scriptURL), ServiceWorkerContextData::ImportedScript { WTFMove(script), WTFMove(responseURL), WTFMove(mimeType) });
+}
+
+void SWServerToContextConnection::didFailHeartBeatCheck(ServiceWorkerIdentifier identifier)
+{
+    if (auto* worker = SWServerWorker::existingWorkerForIdentifier(identifier))
+        worker->didFailHeartBeatCheck();
 }
 
 } // namespace WebCore

@@ -2125,6 +2125,7 @@ class CppStyleTest(CppStyleTestBase):
 
     def test_spacing_before_brackets(self):
         self.assert_lint('delete [] base;', '')
+        self.assert_lint('auto [foo, bar] = getFooAndBar();', '')
         # See SOFT_LINK_CLASS_FOR_HEADER() macro in SoftLinking.h.
         self.assert_lint('        return [get_##framework##_##className##Class() alloc]; \\', '')
         self.assert_lint('        m_taskFunction = [callee, method, arguments...] {', '')
@@ -5470,6 +5471,15 @@ class WebKitStyleTest(CppStyleTestBase):
         self.assert_lint_one_of_many_errors_re('void otherkit_web_view_load(int var1, int var2)',
             'otherkit_web_view_load is incorrectly named. Don\'t use underscores in your identifier names.'
             '  [readability/naming/underscores] [4]', 'Source/Webkit/webkit/foo.cpp')
+
+        # There is an exception for GLib JavaScriptCore API.
+        self.assert_lint('JSCValue* jsc_value_new_null(JSCContext* context)', '', 'Source/JavaScriptCore/API/glib/JSCValue.cpp')
+        self.assert_lint('void my_function(int variable_1)',
+                         ['my_function' + name_underscore_error_message,
+                          'variable_1' + name_underscore_error_message],
+                         'Source/JavaScriptCore/API/glib/JSCValue.cpp')
+        self.assert_lint('gboolean jsc_value_is_undefined(JSCValue* value)',
+                         'jsc_value_is_undefined' + name_underscore_error_message)
 
         # There is an exception for some unit tests that begin with "tst_".
         self.assert_lint('void tst_QWebFrame::arrayObjectEnumerable(int var1, int var2)', '')

@@ -29,6 +29,7 @@
 #if ENABLE(GPU_PROCESS)
 
 #include "RemoteMediaPlayerManagerProxy.h"
+#include "RemoteMediaPlayerState.h"
 #include <WebCore/MediaPlayer.h>
 #include <WebCore/MediaPlayerPrivate.h>
 #include <WebCore/NotImplemented.h>
@@ -37,21 +38,35 @@ namespace WebKit {
 
 using namespace WebCore;
 
-RemoteMediaPlayerProxy::RemoteMediaPlayerProxy(RemoteMediaPlayerManagerProxy& manager, MediaPlayerPrivateRemoteIdentifier id, Ref<IPC::Connection>&& connection, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier)
+RemoteMediaPlayerProxy::RemoteMediaPlayerProxy(RemoteMediaPlayerManagerProxy& manager, MediaPlayerPrivateRemoteIdentifier id, Ref<IPC::Connection>&& connection, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier, RemoteMediaPlayerProxyConfiguration&& configuration)
     : m_id(id)
     , m_webProcessConnection(WTFMove(connection))
     , m_manager(manager)
     , m_engineIdentifier(engineIdentifier)
+    , m_updateCachedStateMessageTimer(RunLoop::main(), this, &RemoteMediaPlayerProxy::timerFired)
+    , m_configuration(configuration)
 #if !RELEASE_LOG_DISABLED
     , m_logger(m_manager.logger())
 #endif
 {
+    m_typesRequiringHardwareSupport = m_configuration.mediaContentTypesRequiringHardwareSupport;
     m_player = MediaPlayer::create(*this, m_engineIdentifier);
 }
 
 void RemoteMediaPlayerProxy::invalidate()
 {
+    m_updateCachedStateMessageTimer.stop();
     m_player->invalidate();
+}
+
+void RemoteMediaPlayerProxy::getConfiguration(RemoteMediaPlayerConfiguration& configuration)
+{
+    configuration.engineDescription = m_player->engineDescription();
+    configuration.supportsScanning = m_player->supportsScanning();
+    configuration.supportsFullscreen = m_player->supportsFullscreen();
+    configuration.supportsPictureInPicture = m_player->supportsPictureInPicture();
+    configuration.supportsAcceleratedRendering = m_player->supportsAcceleratedRendering();
+    configuration.canPlayToWirelessPlaybackTarget = m_player->canPlayToWirelessPlaybackTarget();
 }
 
 void RemoteMediaPlayerProxy::load(const URL& url, const ContentType& contentType, const String& keySystem)
@@ -69,17 +84,38 @@ void RemoteMediaPlayerProxy::prepareForPlayback(bool privateMode, WebCore::Media
 
 void RemoteMediaPlayerProxy::cancelLoad()
 {
+    m_updateCachedStateMessageTimer.stop();
     m_player->cancelLoad();
+}
+
+void RemoteMediaPlayerProxy::prepareToPlay()
+{
+    m_player->prepareToPlay();
 }
 
 void RemoteMediaPlayerProxy::play()
 {
+    if (m_player->movieLoadType() != WebCore::MediaPlayerEnums::MovieLoadType::LiveStream)
+        startUpdateCachedStateMessageTimer();
     m_player->play();
+    sendCachedState();
 }
 
 void RemoteMediaPlayerProxy::pause()
 {
+    m_updateCachedStateMessageTimer.stop();
     m_player->pause();
+    sendCachedState();
+}
+
+void RemoteMediaPlayerProxy::seek(MediaTime&& time)
+{
+    m_player->seek(time);
+}
+
+void RemoteMediaPlayerProxy::seekWithTolerance(MediaTime&& time, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance)
+{
+    m_player->seekWithTolerance(time, negativeTolerance, positiveTolerance);
 }
 
 void RemoteMediaPlayerProxy::setVolume(double volume)
@@ -92,15 +128,32 @@ void RemoteMediaPlayerProxy::setMuted(bool muted)
     m_player->setMuted(muted);
 }
 
+void RemoteMediaPlayerProxy::setPreload(WebCore::MediaPlayerEnums::Preload preload)
+{
+    m_player->setPreload(preload);
+}
+
+void RemoteMediaPlayerProxy::setPrivateBrowsingMode(bool privateMode)
+{
+    m_player->setPrivateBrowsingMode(privateMode);
+}
+
+void RemoteMediaPlayerProxy::setPreservesPitch(bool preservesPitch)
+{
+    m_player->setPreservesPitch(preservesPitch);
+}
+
 // MediaPlayerClient
 void RemoteMediaPlayerProxy::mediaPlayerNetworkStateChanged()
 {
-    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::NetworkStateChanged(m_id, m_player->networkState()), 0);
+    updateCachedState();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::NetworkStateChanged(m_id, m_cachedState), 0);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerReadyStateChanged()
 {
-    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::ReadyStateChanged(m_id, m_player->readyState()), 0);
+    updateCachedState();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::ReadyStateChanged(m_id, m_cachedState), 0);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerVolumeChanged()
@@ -115,36 +168,104 @@ void RemoteMediaPlayerProxy::mediaPlayerMuteChanged()
 
 void RemoteMediaPlayerProxy::mediaPlayerTimeChanged()
 {
-    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::TimeChanged(m_id, m_player->currentTime()), 0);
+    updateCachedState();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::TimeChanged(m_id, m_cachedState), 0);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerDurationChanged()
 {
-    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::DurationChanged(m_id, m_player->duration()), 0);
+    updateCachedState();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::DurationChanged(m_id, m_cachedState), 0);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerRateChanged()
 {
+    sendCachedState();
     m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::RateChanged(m_id, m_player->rate()), 0);
+}
+
+void RemoteMediaPlayerProxy::mediaPlayerEngineFailedToLoad() const
+{
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::EngineFailedToLoad(m_id, m_player->platformErrorCode()), 0);
+}
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+String RemoteMediaPlayerProxy::mediaPlayerMediaKeysStorageDirectory() const
+{
+    return m_configuration.mediaKeysStorageDirectory;
+}
+#endif
+
+String RemoteMediaPlayerProxy::mediaPlayerReferrer() const
+{
+    return m_configuration.referrer;
+}
+
+String RemoteMediaPlayerProxy::mediaPlayerUserAgent() const
+{
+    return m_configuration.userAgent;
+}
+
+String RemoteMediaPlayerProxy::mediaPlayerSourceApplicationIdentifier() const
+{
+    return m_configuration.sourceApplicationIdentifier;
+}
+
+#if PLATFORM(IOS_FAMILY)
+String RemoteMediaPlayerProxy::mediaPlayerNetworkInterfaceName() const
+{
+    return m_configuration.networkInterfaceName;
+}
+#endif
+
+const String& RemoteMediaPlayerProxy::mediaPlayerMediaCacheDirectory() const
+{
+    return m_configuration.mediaCacheDirectory;
+}
+
+const Vector<WebCore::ContentType>& RemoteMediaPlayerProxy::mediaContentTypesRequiringHardwareSupport() const
+{
+    return m_typesRequiringHardwareSupport;
+}
+
+Vector<String> RemoteMediaPlayerProxy::mediaPlayerPreferredAudioCharacteristics() const
+{
+    return m_configuration.preferredAudioCharacteristics;
+}
+
+bool RemoteMediaPlayerProxy::mediaPlayerShouldUsePersistentCache() const
+{
+    return m_configuration.shouldUsePersistentCache;
+}
+
+bool RemoteMediaPlayerProxy::mediaPlayerIsVideo() const
+{
+    return m_configuration.isVideo;
 }
 
 // FIXME: Unimplemented
 void RemoteMediaPlayerProxy::mediaPlayerPlaybackStateChanged()
 {
-    notImplemented();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::PlaybackStateChanged(m_id, m_player->paused()), 0);
 }
 
-void RemoteMediaPlayerProxy::mediaPlayerSawUnsupportedTracks()
+void RemoteMediaPlayerProxy::mediaPlayerBufferedTimeRangesChanged()
 {
-    notImplemented();
+    m_bufferedChanged = true;
 }
 
+void RemoteMediaPlayerProxy::mediaPlayerSeekableTimeRangesChanged()
+{
+    m_seekableChanged = true;
+}
+
+void RemoteMediaPlayerProxy::mediaPlayerCharacteristicChanged()
+{
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::CharacteristicChanged(m_id, m_player->hasAudio(), m_player->hasVideo(), m_player->movieLoadType()), 0);
+}
+
+// FIXME: Unimplemented
 void RemoteMediaPlayerProxy::mediaPlayerResourceNotSupported()
-{
-    notImplemented();
-}
-
-void RemoteMediaPlayerProxy::mediaPlayerRepaint()
 {
     notImplemented();
 }
@@ -164,12 +285,6 @@ void RemoteMediaPlayerProxy::mediaPlayerFirstVideoFrameAvailable()
     notImplemented();
 }
 
-void RemoteMediaPlayerProxy::mediaPlayerCharacteristicChanged()
-{
-    notImplemented();
-}
-
-
 bool RemoteMediaPlayerProxy::mediaPlayerRenderingCanBeAccelerated()
 {
     notImplemented();
@@ -179,12 +294,6 @@ bool RemoteMediaPlayerProxy::mediaPlayerRenderingCanBeAccelerated()
 void RemoteMediaPlayerProxy::mediaPlayerRenderingModeChanged()
 {
     notImplemented();
-}
-
-bool RemoteMediaPlayerProxy::mediaPlayerAcceleratedCompositingEnabled()
-{
-    notImplemented();
-    return false;
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerActiveSourceBuffersChanged()
@@ -204,13 +313,6 @@ bool RemoteMediaPlayerProxy::mediaPlayerKeyNeeded(Uint8Array*)
     notImplemented();
     return false;
 }
-
-String RemoteMediaPlayerProxy::mediaPlayerMediaKeysStorageDirectory() const
-{
-    notImplemented();
-    return emptyString();
-}
-
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -228,18 +330,6 @@ void RemoteMediaPlayerProxy::mediaPlayerWaitingForKeyChanged()
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 void RemoteMediaPlayerProxy::mediaPlayerCurrentPlaybackTargetIsWirelessChanged() { };
 #endif
-
-String RemoteMediaPlayerProxy::mediaPlayerReferrer() const
-{
-    notImplemented();
-    return String();
-}
-
-String RemoteMediaPlayerProxy::mediaPlayerUserAgent() const
-{
-    notImplemented();
-    return String();
-}
 
 void RemoteMediaPlayerProxy::mediaPlayerEnterFullscreen()
 {
@@ -262,12 +352,6 @@ bool RemoteMediaPlayerProxy::mediaPlayerIsFullscreenPermitted() const
     return false;
 }
 
-bool RemoteMediaPlayerProxy::mediaPlayerIsVideo() const
-{
-    notImplemented();
-    return false;
-}
-
 LayoutRect RemoteMediaPlayerProxy::mediaPlayerContentBoxRect() const
 {
     notImplemented();
@@ -278,11 +362,6 @@ float RemoteMediaPlayerProxy::mediaPlayerContentsScale() const
 {
     notImplemented();
     return 1;
-}
-
-void RemoteMediaPlayerProxy::mediaPlayerSetSize(const IntSize&)
-{
-    notImplemented();
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerPause()
@@ -296,18 +375,6 @@ void RemoteMediaPlayerProxy::mediaPlayerPlay()
 }
 
 bool RemoteMediaPlayerProxy::mediaPlayerPlatformVolumeConfigurationRequired() const
-{
-    notImplemented();
-    return false;
-}
-
-bool RemoteMediaPlayerProxy::mediaPlayerIsPaused() const
-{
-    notImplemented();
-    return true;
-}
-
-bool RemoteMediaPlayerProxy::mediaPlayerIsLooping() const
 {
     notImplemented();
     return false;
@@ -329,18 +396,6 @@ bool RemoteMediaPlayerProxy::doesHaveAttribute(const AtomString&, AtomString*) c
 {
     notImplemented();
     return false;
-}
-
-bool RemoteMediaPlayerProxy::mediaPlayerShouldUsePersistentCache() const
-{
-    notImplemented();
-    return true;
-}
-
-const String& RemoteMediaPlayerProxy::mediaPlayerMediaCacheDirectory() const
-{
-    notImplemented();
-    return emptyString();
 }
 
 #if ENABLE(VIDEO_TRACK)
@@ -391,41 +446,12 @@ Vector<RefPtr<PlatformTextTrack>> RemoteMediaPlayerProxy::outOfBandTrackSources(
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-String RemoteMediaPlayerProxy::mediaPlayerNetworkInterfaceName() const
-{
-    notImplemented();
-    return String();
-}
-
 bool RemoteMediaPlayerProxy::mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const
 {
     notImplemented();
     return false;
 }
-
 #endif
-
-void RemoteMediaPlayerProxy::mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType)
-{
-    notImplemented();
-}
-
-String RemoteMediaPlayerProxy::mediaPlayerSourceApplicationIdentifier() const
-{
-    notImplemented();
-    return emptyString();
-}
-
-bool RemoteMediaPlayerProxy::mediaPlayerIsInMediaDocument() const
-{
-    notImplemented();
-    return false;
-}
-
-void RemoteMediaPlayerProxy::mediaPlayerEngineFailedToLoad() const
-{
-    notImplemented();
-}
 
 double RemoteMediaPlayerProxy::mediaPlayerRequestedPlaybackRate() const
 {
@@ -445,28 +471,59 @@ bool RemoteMediaPlayerProxy::mediaPlayerIsVideoFullscreenStandby() const
     return false;
 }
 
-Vector<String> RemoteMediaPlayerProxy::mediaPlayerPreferredAudioCharacteristics() const
-{
-    notImplemented();
-    return Vector<String>();
-}
-
 bool RemoteMediaPlayerProxy::mediaPlayerShouldDisableSleep() const
 {
     notImplemented();
     return false;
 }
 
-const Vector<WebCore::ContentType>& RemoteMediaPlayerProxy::mediaContentTypesRequiringHardwareSupport() const
-{
-    notImplemented();
-    return m_typesRequiringHardwareSupport;
-}
-
 bool RemoteMediaPlayerProxy::mediaPlayerShouldCheckHardwareSupport() const
 {
     notImplemented();
     return false;
+}
+
+void RemoteMediaPlayerProxy::startUpdateCachedStateMessageTimer()
+{
+    static const Seconds maxTimeupdateEventFrequency { 100_ms };
+
+    if (m_updateCachedStateMessageTimer.isActive())
+        return;
+
+    m_updateCachedStateMessageTimer.startRepeating(maxTimeupdateEventFrequency);
+}
+
+void RemoteMediaPlayerProxy::timerFired()
+{
+    sendCachedState();
+}
+
+void RemoteMediaPlayerProxy::updateCachedState()
+{
+    m_cachedState.currentTime = m_player->currentTime();
+    m_cachedState.duration = m_player->duration();
+    m_cachedState.networkState = m_player->networkState();
+    m_cachedState.readyState = m_player->readyState();
+    m_cachedState.paused = m_player->paused();
+    m_cachedState.loadingProgressed = m_player->didLoadingProgress();
+
+    if (m_seekableChanged) {
+        m_seekableChanged = false;
+        m_cachedState.minTimeSeekable = m_player->minTimeSeekable();
+        m_cachedState.maxTimeSeekable = m_player->maxTimeSeekable();
+    }
+
+    if (m_bufferedChanged) {
+        m_bufferedChanged = false;
+        m_cachedState.bufferedRanges = *m_player->buffered();
+    }
+}
+
+void RemoteMediaPlayerProxy::sendCachedState()
+{
+    updateCachedState();
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::UpdateCachedState(m_id, m_cachedState), 0);
+    m_cachedState.bufferedRanges.clear();
 }
 
 } // namespace WebKit

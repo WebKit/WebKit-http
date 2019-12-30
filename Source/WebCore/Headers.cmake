@@ -658,6 +658,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     inspector/InspectorClient.h
     inspector/InspectorController.h
+    inspector/InspectorDebuggableType.h
     inspector/InspectorFrontendClient.h
     inspector/InspectorFrontendClientLocal.h
     inspector/InspectorFrontendHost.h
@@ -749,7 +750,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/ActivityStateChangeObserver.h
     page/AdjustViewSizeOrNot.h
     page/AlternativeTextClient.h
-    page/ApplicationStateChangeListener.h
     page/AutoplayEvent.h
     page/Base64Utilities.h
     page/CacheStorageProvider.h
@@ -1057,6 +1057,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/Gradient.h
     platform/graphics/GraphicsContext.h
     platform/graphics/GraphicsContext3D.h
+    platform/graphics/GraphicsContext3DBase.h
     platform/graphics/GraphicsContext3DAttributes.h
     platform/graphics/GraphicsContext3DManager.h
     platform/graphics/GraphicsContextImpl.h

@@ -12,6 +12,7 @@ editing/find [ Pass ]
 editing/undo-manager [ Pass ]
 editing/pasteboard/dom-paste [ Pass ]
 fast/forms/select/mac-wk2 [ Pass ]
+fast/sandbox/mac [ Pass ]
 fast/visual-viewport/tiled-drawing [ Pass ]
 fast/web-share [ Pass ]
 scrollingcoordinator [ Pass ]
@@ -659,8 +660,6 @@ webkit.org/b/171763 compositing/tiling/non-active-window-tiles-size.html [ Pass 
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
 
-webkit.org/b/171935 [ Sierra ] tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html [ Pass Failure ]
-
 webkit.org/b/171939 [ Sierra Release ] media/track/track-cue-rendering-on-resize.html [ Pass Timeout ]
 
 webkit.org/b/171947 [ Sierra Release ] transitions/extra-transition.html [ Pass Failure ]
@@ -922,9 +921,9 @@ webkit.org/b/199651 [ Mojave Debug ] webgpu/whlsl/builtin-vectors-2.html [ Slow 
 
 webkit.org/b/199089 [ Mojave+ Debug ] plugins/window-open.html [ Skip ]
 
-webkit.org/b/202500 [ Mojave ] crypto/workers/subtle/aes-indexeddb.html [ Timeout ]
-
 # <rdar://problem/56506063> Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html is a flaky failure (203256)
 webkit.org/b/203256 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Pass Failure ]
 
 webkit.org/b/205301 [ Mojave+ ] inspector/canvas/requestShaderSource-webgpu.html [ Pass Failure ]
+
+webkit.org/b/171784 fast/shadow-dom/link-element-in-shadow-tree.html [ Pass Failure ]

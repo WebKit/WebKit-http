@@ -75,7 +75,7 @@ WI.Setting = class Setting extends WI.Object
 
     static _localStorageKey(name)
     {
-        let inspectionLevel = InspectorFrontendHost ? InspectorFrontendHost.inspectionLevel() : 1;
+        let inspectionLevel = InspectorFrontendHost ? InspectorFrontendHost.inspectionLevel : 1;
         let levelString = inspectionLevel > 1 ? "-" + inspectionLevel : "";
         return `com.apple.WebInspector${levelString}.${name}`;
     }
@@ -206,11 +206,9 @@ WI.settings = {
     showImageGrid: new WI.Setting("show-image-grid", true),
     showInvisibleCharacters: new WI.Setting("show-invisible-characters", !!WI.Setting.migrateValue("show-invalid-characters")),
     showJavaScriptTypeInformation: new WI.Setting("show-javascript-type-information", false),
-    showPaintRects: new WI.Setting("show-paint-rects", false),
     showRulers: new WI.Setting("show-rulers", false),
     showRulersDuringElementSelection: new WI.Setting("show-rulers-during-element-selection", true),
     showScopeChainOnPause: new WI.Setting("show-scope-chain-sidebar", true),
-    showShadowDOM: new WI.Setting("show-shadow-dom", true),
     showWhitespaceCharacters: new WI.Setting("show-whitespace-characters", false),
     tabSize: new WI.Setting("tab-size", 4),
     timelinesAutoStop: new WI.Setting("timelines-auto-stop", true),
@@ -245,9 +243,7 @@ WI.settings = {
     debugLayoutDirection: new WI.DebugSetting("debug-layout-direction-override", "system"),
 };
 
-WI.previewFeatures = [
-    "p3-gamut-color-picker" // FIXME: <https://webkit.org/b/203931> Web Inspector: Enable p3 color picker by default
-];
+WI.previewFeatures = [];
 
 WI.isTechnologyPreviewBuild = function()
 {

@@ -163,6 +163,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(IOS)
     encoder << compilerServiceExtensionHandle;
     encoder << contentFilterExtensionHandle;
+    encoder << diagnosticsExtensionHandle;
 #endif
     
 #if PLATFORM(COCOA)
@@ -170,8 +171,8 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << neSessionManagerExtensionHandle;
 #endif
 
-#if PLATFORM(IOS)
-    encoder << cssValueToSystemColorMap;
+#if PLATFORM(IOS_FAMILY)
+    encoder << currentUserInterfaceIdiomIsPad;
 #endif
 }
 
@@ -417,6 +418,12 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!contentFilterExtensionHandle)
         return false;
     parameters.contentFilterExtensionHandle = WTFMove(*contentFilterExtensionHandle);
+
+    Optional<Optional<SandboxExtension::Handle>> diagnosticsExtensionHandle;
+    decoder >> diagnosticsExtensionHandle;
+    if (!diagnosticsExtensionHandle)
+        return false;
+    parameters.diagnosticsExtensionHandle = WTFMove(*diagnosticsExtensionHandle);
 #endif
 
 #if PLATFORM(COCOA)
@@ -433,12 +440,9 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     parameters.neSessionManagerExtensionHandle = WTFMove(*neSessionManagerExtensionHandle);
 #endif
 
-#if PLATFORM(IOS)
-    Optional<HashMap<WebCore::CSSValueKey, WebCore::Color>> cssValueToSystemColorMap;
-    decoder >> cssValueToSystemColorMap;
-    if (!cssValueToSystemColorMap)
+#if PLATFORM(IOS_FAMILY)
+    if (!decoder.decode(parameters.currentUserInterfaceIdiomIsPad))
         return false;
-    parameters.cssValueToSystemColorMap = WTFMove(*cssValueToSystemColorMap);
 #endif
 
     return true;

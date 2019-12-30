@@ -1,3 +1,63 @@
+2019-12-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: convert some InspectorFrontendHost methods to getters
+        https://bugs.webkit.org/show_bug.cgi?id=205475
+
+        Reviewed by Devin Rousso.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::localizedStringsURL const):
+        (WebInspectorFrontendClient::localizedStringsURL): Deleted.
+
+2019-12-20  Alex Christensen  <achristensen@webkit.org>
+
+        Allow a managed configuration to re-enable TLS 1.0 and 1.1
+        https://bugs.webkit.org/show_bug.cgi?id=205479
+        <rdar://problem/54493516>
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2019-12-17  Kate Cheney  <katherine_cheney@apple.com>
+
+        Add run-time flag for in-app browser privacy
+        https://bugs.webkit.org/show_bug.cgi?id=205288
+        <rdar://problem/57569206>
+
+        Reviewed by John Wilander.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences isInAppBrowserPrivacyEnabled]):
+        (-[WebPreferences setInAppBrowserPrivacyEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-12-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Change 'delegatesPageScaling' from a Setting to a flag on ScrollView
+        https://bugs.webkit.org/show_bug.cgi?id=205319
+
+        Reviewed by Tim Horton.
+
+        delegatesPageScaling() is never toggled at runtime (even by tests), and it should
+        be a flag on FrameView just like delegatesScrolling (maybe in future the flags can merge).
+
+        So remove the Setting, and have DrawingArea control whether page scaling is delegated.
+        
+        In WebKit1, WebFrameLoaderClient::transitionToCommittedForNewPage() turns on delegated
+        page scaling for iOS.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2019-12-16  Antti Koivisto  <antti@apple.com>
 
         Remove display:contents feature flag

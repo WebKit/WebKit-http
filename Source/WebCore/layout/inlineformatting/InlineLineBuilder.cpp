@@ -30,6 +30,7 @@
 
 #include "InlineFormattingContext.h"
 #include "InlineSoftLineBreakItem.h"
+#include "RuntimeEnabledFeatures.h"
 #include "TextUtil.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -40,6 +41,27 @@ static inline bool isWhitespacePreserved(const RenderStyle& style)
 {
     auto whitespace = style.whiteSpace();
     return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
+}
+
+struct HangingContent {
+public:
+    void reset();
+
+    InlineLayoutUnit width() const { return m_width; }
+    bool isConditional() const { return m_isConditional; }
+
+    void setIsConditional() { m_isConditional = true; }
+    void expand(InlineLayoutUnit width) { m_width += width; }
+
+private:
+    bool m_isConditional { false };
+    InlineLayoutUnit m_width { 0 };
+};
+
+void HangingContent::reset()
+{
+    m_isConditional = false;
+    m_width =  0;
 }
 
 struct LineBuilder::ContinousContent {
@@ -191,7 +213,6 @@ void LineBuilder::initialize(const Constraints& constraints)
 
     m_inlineItemRuns.clear();
     m_collapsibleContent.reset();
-    m_hangingContent.reset();
     m_lineIsVisuallyEmptyBeforeCollapsibleContent = { };
 }
 
@@ -209,7 +230,7 @@ LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWi
     // 2. Join text runs together when possible [foo][ ][bar] -> [foo bar].
     // 3. Align merged runs both vertically and horizontally.
     removeTrailingCollapsibleContent();
-    collectHangingContent(isLastLineWithInlineContent);
+    auto hangingContent = collectHangingContent(isLastLineWithInlineContent);
     RunList runList;
     unsigned runIndex = 0;
     while (runIndex < m_inlineItemRuns.size()) {
@@ -237,9 +258,59 @@ LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWi
             m_lineBox.resetDescent();
         }
         alignContentVertically(runList);
-        alignContentHorizontally(runList, isLastLineWithInlineContent);
+        alignHorizontally(runList, hangingContent, isLastLineWithInlineContent);
     }
     return runList;
+}
+
+void LineBuilder::revert(const InlineItem& revertTo)
+{
+    // 1. Remove and shrink the trailing content.
+    // 2. Rebuild collapsible trailing whitespace content.
+    ASSERT(!m_inlineItemRuns.isEmpty());
+    ASSERT(m_inlineItemRuns.last() != revertTo);
+    auto revertedWidth = InlineLayoutUnit { };
+    int64_t index = static_cast<int64_t>(m_inlineItemRuns.size() - 1);
+    while (index >= 0 && m_inlineItemRuns[index] != revertTo)
+        revertedWidth += m_inlineItemRuns[index--].logicalWidth();
+    m_lineBox.shrinkHorizontally(revertedWidth);
+    m_inlineItemRuns.shrink(index + 1);
+    // Should never need to clear the line.
+    ASSERT(!m_inlineItemRuns.isEmpty());
+
+    // It's easier just to rebuild trailing collapsible content.
+    m_collapsibleContent.reset();
+    m_lineIsVisuallyEmptyBeforeCollapsibleContent = isVisuallyEmpty();
+    // Find the first collapsible run.
+    Optional<size_t> firstCollapsibleRunIndex;
+    for (auto index = m_inlineItemRuns.size(); index--;) {
+        auto& inlineItemRun = m_inlineItemRuns[index];
+        if (inlineItemRun.isContainerStart() || inlineItemRun.isContainerEnd())
+            continue;
+        auto hasCollapsibleContent = inlineItemRun.isCollapsibleWhitespace() || inlineItemRun.hasTrailingLetterSpacing();
+        if (!hasCollapsibleContent)
+            break;
+        if (inlineItemRun.isCollapsibleWhitespace()) {
+            firstCollapsibleRunIndex = index;
+            continue;
+        }
+        if (inlineItemRun.hasTrailingLetterSpacing()) {
+            // While trailing letter spacing is considered collapsible, it is supposed to be last one in the list.
+            firstCollapsibleRunIndex = index;
+            break;
+        }
+    }
+    // Forward-append runs to m_collapsibleContent. 
+    if (firstCollapsibleRunIndex) {
+        for (auto index = *firstCollapsibleRunIndex; index < m_inlineItemRuns.size(); ++index) {
+            auto& inlineItemRun = m_inlineItemRuns[index];
+            if (inlineItemRun.isContainerStart() || inlineItemRun.isContainerEnd())
+                continue;
+            ASSERT(inlineItemRun.isText());
+            m_collapsibleContent.append(index);
+        }
+    }
+    // Consider alternative solutions if the (edge case)revert gets overly complicated.  
 }
 
 void LineBuilder::alignContentVertically(RunList& runList)
@@ -329,10 +400,10 @@ void LineBuilder::justifyRuns(RunList& runList) const
     }
 }
 
-void LineBuilder::alignContentHorizontally(RunList& runList, IsLastLineWithInlineContent lastLine) const
+void LineBuilder::alignHorizontally(RunList& runList, const HangingContent& hangingContent, IsLastLineWithInlineContent lastLine)
 {
     ASSERT(!m_isIntrinsicSizing);
-    auto availableWidth = this->availableWidth() + m_hangingContent.width();
+    auto availableWidth = this->availableWidth() + hangingContent.width();
     if (runList.isEmpty() || availableWidth <= 0)
         return;
 
@@ -367,7 +438,11 @@ void LineBuilder::alignContentHorizontally(RunList& runList, IsLastLineWithInlin
     auto adjustment = adjustmentForAlignment();
     if (!adjustment)
         return;
-
+    // Horizontal alignment means that we not only adjust the runs but also make sure
+    // that the line box is aligned as well
+    // e.g. <div style="text-align: center; width: 100px;">centered text</div> : the line box will also be centered
+    // as opposed to start at 0px all the way to [centered text] run's right edge.
+    m_lineBox.moveHorizontally(*adjustment);
     for (auto& run : runList)
         run.moveHorizontally(*adjustment);
 }
@@ -376,6 +451,14 @@ void LineBuilder::removeTrailingCollapsibleContent()
 {
     if (m_collapsibleContent.isEmpty() || m_inlineItemRuns.isEmpty())
         return;
+
+    // Complex line layout quirk: keep the trailing whitespace around when it is followed by a line break, unless the content overflows the line.
+    if (RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled()) {
+        if (m_inlineItemRuns.last().isLineBreak() && availableWidth() >= 0) {
+            m_collapsibleContent.reset();
+            return;
+        }
+    }
 
     m_lineBox.shrinkHorizontally(m_collapsibleContent.collapse());
     // If we collapsed the first visible run on the line, we need to re-check the visibility status.
@@ -396,17 +479,18 @@ void LineBuilder::removeTrailingCollapsibleContent()
     m_lineIsVisuallyEmptyBeforeCollapsibleContent = { };
 }
 
-void LineBuilder::collectHangingContent(IsLastLineWithInlineContent isLastLineWithInlineContent)
+HangingContent LineBuilder::collectHangingContent(IsLastLineWithInlineContent isLastLineWithInlineContent)
 {
+    auto hangingContent = HangingContent { };
     // Can't setup hanging content with removable trailing whitspaces.
     ASSERT(m_collapsibleContent.isEmpty());
     if (isLastLineWithInlineContent == IsLastLineWithInlineContent::Yes)
-        m_hangingContent.setIsConditional();
+        hangingContent.setIsConditional();
     for (auto& inlineItemRun : WTF::makeReversedRange(m_inlineItemRuns)) {
         if (inlineItemRun.isContainerStart() || inlineItemRun.isContainerEnd())
             continue;
         if (inlineItemRun.isLineBreak()) {
-            m_hangingContent.setIsConditional();
+            hangingContent.setIsConditional();
             continue;
         }
         if (!inlineItemRun.isText() || !inlineItemRun.isWhitespace() || inlineItemRun.isCollapsible())
@@ -415,8 +499,9 @@ void LineBuilder::collectHangingContent(IsLastLineWithInlineContent isLastLineWi
         if (inlineItemRun.style().whiteSpace() != WhiteSpace::PreWrap)
             break;
         // This is either a normal or conditionally hanging trailing whitespace.
-        m_hangingContent.expand(inlineItemRun.logicalWidth());
+        hangingContent.expand(inlineItemRun.logicalWidth());
     }
+    return hangingContent;
 }
 
 void LineBuilder::moveLogicalLeft(InlineLayoutUnit delta)
@@ -486,17 +571,11 @@ void LineBuilder::appendInlineContainerEnd(const InlineItem& inlineItem, InlineL
 void LineBuilder::appendTextContent(const InlineTextItem& inlineItem, InlineLayoutUnit logicalWidth)
 {
     auto willCollapseCompletely = [&] {
-        // Empty run.
-        if (!inlineItem.length()) {
-            ASSERT(!logicalWidth);
-            return true;
-        }
+        if (!inlineItem.isCollapsible())
+            return false;
         // Leading whitespace.
         if (m_inlineItemRuns.isEmpty())
             return !shouldPreserveLeadingContent(inlineItem);
-
-        if (!inlineItem.isCollapsible())
-            return false;
         // Check if the last item is collapsed as well.
         for (auto i = m_inlineItemRuns.size(); i--;) {
             auto& run = m_inlineItemRuns[i];
@@ -678,7 +757,7 @@ InlineLayoutUnit LineBuilder::runContentHeight(const Run& run) const
 bool LineBuilder::isVisuallyNonEmpty(const InlineItemRun& run) const
 {
     if (run.isText())
-        return !run.isCollapsedToZeroAdvanceWidth();
+        return !run.hasEmptyTextContent();
 
     // Note that this does not check whether the inline container has content. It simply checks if the container itself is considered non-empty.
     if (run.isContainerStart() || run.isContainerEnd()) {
@@ -839,6 +918,9 @@ bool LineBuilder::InlineItemRun::isCollapsibleWhitespace() const
 
 bool LineBuilder::InlineItemRun::hasTrailingLetterSpacing() const
 {
+    // Complex line layout does not keep track of trailing letter spacing.
+    if (RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled())
+        return false;
     return !isWhitespace() && style().letterSpacing() > 0;
 }
 
@@ -860,6 +942,12 @@ void LineBuilder::InlineItemRun::removeTrailingLetterSpacing()
     ASSERT(hasTrailingLetterSpacing());
     m_logicalWidth -= trailingLetterSpacing();
     ASSERT(m_logicalWidth > 0 || (!m_logicalWidth && style().letterSpacing() >= intMaxForLayoutUnit));
+}
+
+bool LineBuilder::InlineItemRun::hasEmptyTextContent() const
+{
+    ASSERT(isText());
+    return isCollapsedToZeroAdvanceWidth() || downcast<InlineTextItem>(m_inlineItem).isEmptyContent();
 }
 
 }

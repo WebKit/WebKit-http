@@ -534,7 +534,9 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     // *********
     // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
     // *********
-    if (WebKit::WebsiteDataStore::defaultDataStoreExists())
+    if (m_websiteDataStore)
+        parameters.defaultDataStoreParameters.indexedDatabaseDirectory = m_websiteDataStore->resolvedIndexedDatabaseDirectory();
+    else if (WebKit::WebsiteDataStore::defaultDataStoreExists())
         parameters.defaultDataStoreParameters.indexedDatabaseDirectory = WebKit::WebsiteDataStore::defaultDataStore()->parameters().indexedDatabaseDirectory;
     
     if (!parameters.defaultDataStoreParameters.indexedDatabaseDirectory.isEmpty()) {
@@ -694,6 +696,13 @@ void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessPr
 #endif
 }
 
+void WebProcessPool::serviceWorkerProcessCrashed(WebProcessProxy& proxy)
+{
+#if ENABLE(SERVICE_WORKER)
+    m_client.serviceWorkerProcessDidCrash(this);
+#endif
+}
+
 void WebProcessPool::getNetworkProcessConnection(WebProcessProxy& webProcessProxy, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&& reply)
 {
     ensureNetworkProcess();
@@ -703,6 +712,12 @@ void WebProcessPool::getNetworkProcessConnection(WebProcessProxy& webProcessProx
 }
 
 #if ENABLE(GPU_PROCESS)
+void WebProcessPool::gpuProcessCrashed()
+{
+    m_client.gpuProcessDidCrash(this);
+    terminateAllWebContentProcesses();
+}
+
 void WebProcessPool::getGPUProcessConnection(WebProcessProxy& webProcessProxy, Messages::WebProcessProxy::GetGPUProcessConnection::DelayedReply&& reply)
 {
     GPUProcessProxy::singleton().getGPUProcessConnection(webProcessProxy, WTFMove(reply));

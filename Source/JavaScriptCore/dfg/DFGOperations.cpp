@@ -2134,6 +2134,23 @@ JSCell* JIT_OPERATION operationCreateClonedArguments(JSGlobalObject* globalObjec
         globalObject, structure, argumentStart, length, callee);
 }
 
+JSCell* JIT_OPERATION operationCreateArgumentsButterfly(JSGlobalObject* globalObject, Register* argumentStart, uint32_t argumentCount)
+{
+    VM& vm = globalObject->vm();
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSImmutableButterfly* butterfly = JSImmutableButterfly::tryCreate(vm, vm.immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithContiguous) - NumberOfIndexingShapes].get(), argumentCount);
+    if (!butterfly) {
+        throwOutOfMemoryError(globalObject, scope);
+        return nullptr;
+    }
+    for (unsigned index = 0; index < argumentCount; ++index)
+        butterfly->setIndex(vm, index, argumentStart[index].jsValue());
+    return butterfly;
+}
+
 JSCell* JIT_OPERATION operationCreateDirectArgumentsDuringExit(VM* vmPointer, InlineCallFrame* inlineCallFrame, JSFunction* callee, uint32_t argumentCount)
 {
     VM& vm = *vmPointer;
@@ -2944,17 +2961,18 @@ int32_t JIT_OPERATION operationArrayIndexOfValueDouble(JSGlobalObject* globalObj
     return -1;
 }
 
-void JIT_OPERATION operationLoadVarargs(JSGlobalObject* globalObject, int32_t firstElementDest, EncodedJSValue encodedArguments, uint32_t offset, uint32_t length, uint32_t mandatoryMinimum)
+void JIT_OPERATION operationLoadVarargs(JSGlobalObject* globalObject, int32_t firstElementDest, EncodedJSValue encodedArguments, uint32_t offset, uint32_t lengthIncludingThis, uint32_t mandatoryMinimum)
 {
+    VirtualRegister firstElement { firstElementDest };
     VM& vm = globalObject->vm();
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
     JSValue arguments = JSValue::decode(encodedArguments);
     
-    loadVarargs(globalObject, callFrame, VirtualRegister(firstElementDest), arguments, offset, length);
+    loadVarargs(globalObject, bitwise_cast<JSValue*>(&callFrame->r(firstElement)), arguments, offset, lengthIncludingThis - 1);
     
-    for (uint32_t i = length; i < mandatoryMinimum; ++i)
-        callFrame->r(firstElementDest + i) = jsUndefined();
+    for (uint32_t i = lengthIncludingThis - 1; i < mandatoryMinimum; ++i)
+        callFrame->r(firstElement + i) = jsUndefined();
 }
 
 double JIT_OPERATION operationFModOnInts(int32_t a, int32_t b)

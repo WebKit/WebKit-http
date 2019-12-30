@@ -41,7 +41,7 @@ namespace Style {
 ScopeRuleSets::ScopeRuleSets(Resolver& styleResolver)
     : m_styleResolver(styleResolver)
 {
-    m_authorStyle = makeUnique<RuleSet>();
+    m_authorStyle = RuleSet::create();
     m_authorStyle->disableAutoShrinkToFit();
 }
 
@@ -52,10 +52,6 @@ ScopeRuleSets::~ScopeRuleSets()
 
 RuleSet* ScopeRuleSets::userAgentMediaQueryStyle() const
 {
-    // FIXME: We should have a separate types for document rule sets and shadow tree rule sets.
-    if (m_isForShadowScope)
-        return m_styleResolver.document().styleScope().resolver().ruleSets().userAgentMediaQueryStyle();
-
     updateUserAgentMediaQueryStyleIfNeeded();
     return m_userAgentMediaQueryStyle.get();
 }
@@ -70,18 +66,11 @@ void ScopeRuleSets::updateUserAgentMediaQueryStyleIfNeeded() const
         return;
     m_userAgentMediaQueryRuleCountOnUpdate = ruleCount;
 
-#if !ASSERT_DISABLED
-    bool hadViewportDependentMediaQueries = m_styleResolver.hasViewportDependentMediaQueries();
-#endif
-
     // Media queries on user agent sheet need to evaluated in document context. They behave like author sheets in this respect.
     auto& mediaQueryEvaluator = m_styleResolver.mediaQueryEvaluator();
-    m_userAgentMediaQueryStyle = makeUnique<RuleSet>();
+    m_userAgentMediaQueryStyle = RuleSet::create();
     
-    m_userAgentMediaQueryStyle->addRulesFromSheet(*UserAgentStyle::mediaQueryStyleSheet, mediaQueryEvaluator, &m_styleResolver);
-
-    // Viewport dependent queries are currently too inefficient to allow on UA sheet.
-    ASSERT(!m_styleResolver.hasViewportDependentMediaQueries() || hadViewportDependentMediaQueries);
+    m_userAgentMediaQueryStyle->addRulesFromSheet(*UserAgentStyle::mediaQueryStyleSheet, nullptr, mediaQueryEvaluator, m_styleResolver);
 }
 
 RuleSet* ScopeRuleSets::userStyle() const
@@ -95,11 +84,11 @@ void ScopeRuleSets::initializeUserStyle()
 {
     auto& extensionStyleSheets = m_styleResolver.document().extensionStyleSheets();
     auto& mediaQueryEvaluator = m_styleResolver.mediaQueryEvaluator();
-    auto tempUserStyle = makeUnique<RuleSet>();
+    auto tempUserStyle = RuleSet::create();
     if (CSSStyleSheet* pageUserSheet = extensionStyleSheets.pageUserSheet())
-        tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), mediaQueryEvaluator, &m_styleResolver);
-    collectRulesFromUserStyleSheets(extensionStyleSheets.injectedUserStyleSheets(), *tempUserStyle, mediaQueryEvaluator);
-    collectRulesFromUserStyleSheets(extensionStyleSheets.documentUserStyleSheets(), *tempUserStyle, mediaQueryEvaluator);
+        tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), nullptr, mediaQueryEvaluator, m_styleResolver);
+    collectRulesFromUserStyleSheets(extensionStyleSheets.injectedUserStyleSheets(), tempUserStyle.get(), mediaQueryEvaluator);
+    collectRulesFromUserStyleSheets(extensionStyleSheets.documentUserStyleSheets(), tempUserStyle.get(), mediaQueryEvaluator);
     if (tempUserStyle->ruleCount() > 0 || tempUserStyle->pageRules().size() > 0)
         m_userStyle = WTFMove(tempUserStyle);
 }
@@ -108,18 +97,18 @@ void ScopeRuleSets::collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyle
 {
     for (unsigned i = 0; i < userSheets.size(); ++i) {
         ASSERT(userSheets[i]->contents().isUserStyleSheet());
-        userStyle.addRulesFromSheet(userSheets[i]->contents(), medium, &m_styleResolver);
+        userStyle.addRulesFromSheet(userSheets[i]->contents(), nullptr, medium, m_styleResolver);
     }
 }
 
-static std::unique_ptr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
+static RefPtr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
 {
     size_t size = rules.size();
     if (!size)
         return nullptr;
-    auto ruleSet = makeUnique<RuleSet>();
+    auto ruleSet = RuleSet::create();
     for (size_t i = 0; i < size; ++i)
-        ruleSet->addRule(rules[i].rule, rules[i].selectorIndex, rules[i].selectorListIndex);
+        ruleSet->addRule(*rules[i].rule, rules[i].selectorIndex, rules[i].selectorListIndex);
     ruleSet->shrinkToFit();
     return ruleSet;
 }
@@ -127,7 +116,7 @@ static std::unique_ptr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
 void ScopeRuleSets::resetAuthorStyle()
 {
     m_isAuthorStyleDefined = true;
-    m_authorStyle = makeUnique<RuleSet>();
+    m_authorStyle = RuleSet::create();
     m_authorStyle->disableAutoShrinkToFit();
 }
 
@@ -136,21 +125,47 @@ void ScopeRuleSets::resetUserAgentMediaQueryStyle()
     m_userAgentMediaQueryStyle = nullptr;
 }
 
+bool ScopeRuleSets::hasViewportDependentMediaQueries() const
+{
+    if (m_authorStyle->hasViewportDependentMediaQueries())
+        return true;
+    if (m_userStyle && m_userStyle->hasViewportDependentMediaQueries())
+        return true;
+    if (m_userAgentMediaQueryStyle && m_userAgentMediaQueryStyle->hasViewportDependentMediaQueries())
+        return true;
+
+    return false;
+}
+
+Optional<DynamicMediaQueryEvaluationChanges> ScopeRuleSets::evaluteDynamicMediaQueryRules(const MediaQueryEvaluator& evaluator)
+{
+    Optional<DynamicMediaQueryEvaluationChanges> evaluationChanges;
+
+    auto evaluate = [&](auto* ruleSet) {
+        if (!ruleSet)
+            return;
+        if (auto changes = ruleSet->evaluteDynamicMediaQueryRules(evaluator)) {
+            if (evaluationChanges)
+                evaluationChanges->append(WTFMove(*changes));
+            else
+                evaluationChanges = changes;
+        }
+    };
+
+    evaluate(&authorStyle());
+    evaluate(userStyle());
+    evaluate(userAgentMediaQueryStyle());
+
+    return evaluationChanges;
+}
+
 void ScopeRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets, MediaQueryEvaluator* medium, InspectorCSSOMWrappers& inspectorCSSOMWrappers)
 {
-    // This handles sheets added to the end of the stylesheet list only. In other cases the style resolver
-    // needs to be reconstructed. To handle insertions too the rule order numbers would need to be updated.
-    MediaQueryDynamicResults mediaQueryDynamicResults;
-
     for (auto& cssSheet : styleSheets) {
         ASSERT(!cssSheet->disabled());
-        if (cssSheet->mediaQueries() && !medium->evaluate(*cssSheet->mediaQueries(), &mediaQueryDynamicResults))
-            continue;
-        m_authorStyle->addRulesFromSheet(cssSheet->contents(), *medium, &m_styleResolver);
+        m_authorStyle->addRulesFromSheet(cssSheet->contents(), cssSheet->mediaQueries(), *medium, m_styleResolver);
         inspectorCSSOMWrappers.collectFromStyleSheetIfNeeded(cssSheet.get());
     }
-
-    m_styleResolver.addMediaQueryDynamicResults(mediaQueryDynamicResults);
 
     m_authorStyle->shrinkToFit();
     collectFeatures();
@@ -193,21 +208,21 @@ static Vector<InvalidationRuleSet>* ensureInvalidationRuleSets(const AtomString&
         if (!features)
             return nullptr;
 
-        std::array<std::unique_ptr<RuleSet>, matchElementCount> matchElementArray;
+        std::array<RefPtr<RuleSet>, matchElementCount> matchElementArray;
         std::array<Vector<const CSSSelector*>, matchElementCount> invalidationSelectorArray;
         for (auto& feature : *features) {
             auto arrayIndex = static_cast<unsigned>(*feature.matchElement);
             auto& ruleSet = matchElementArray[arrayIndex];
             if (!ruleSet)
-                ruleSet = makeUnique<RuleSet>();
-            ruleSet->addRule(feature.rule, feature.selectorIndex, feature.selectorListIndex);
+                ruleSet = RuleSet::create();
+            ruleSet->addRule(*feature.rule, feature.selectorIndex, feature.selectorListIndex);
             if (feature.invalidationSelector)
                 invalidationSelectorArray[arrayIndex].append(feature.invalidationSelector);
         }
         auto invalidationRuleSets = makeUnique<Vector<InvalidationRuleSet>>();
         for (unsigned i = 0; i < matchElementArray.size(); ++i) {
             if (matchElementArray[i])
-                invalidationRuleSets->append({ static_cast<MatchElement>(i), WTFMove(matchElementArray[i]), WTFMove(invalidationSelectorArray[i]) });
+                invalidationRuleSets->append({ static_cast<MatchElement>(i), *matchElementArray[i], WTFMove(invalidationSelectorArray[i]) });
         }
         return invalidationRuleSets;
     }).iterator->value.get();

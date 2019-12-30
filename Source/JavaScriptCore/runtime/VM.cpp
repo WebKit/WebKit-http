@@ -34,6 +34,7 @@
 #include "BooleanObject.h"
 #include "BuiltinExecutables.h"
 #include "BytecodeIntrinsicRegistry.h"
+#include "CheckpointOSRExitSideState.h"
 #include "ClonedArguments.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
@@ -766,8 +767,8 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
         return imulThunkGenerator;
     case RandomIntrinsic:
         return randomThunkGenerator;
-    case BoundThisNoArgsFunctionCallIntrinsic:
-        return boundThisNoArgsFunctionCallGenerator;
+    case BoundFunctionCallIntrinsic:
+        return boundFunctionCallGenerator;
     default:
         return nullptr;
     }
@@ -813,6 +814,31 @@ NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrins
     UNUSED_PARAM(intrinsic);
     UNUSED_PARAM(signature);
     return NativeExecutable::create(*this, jitCodeForCallTrampoline(), function, jitCodeForConstructTrampoline(), constructor, name);
+}
+
+NativeExecutable* VM::getBoundFunction(bool isJSFunction, bool canConstruct)
+{
+    bool slowCase = !isJSFunction;
+
+    auto getOrCreate = [&] (Weak<NativeExecutable>& slot) -> NativeExecutable* {
+        if (auto* cached = slot.get())
+            return cached;
+        NativeExecutable* result = getHostFunction(
+            slowCase ? boundFunctionCall : boundThisNoArgsFunctionCall,
+            slowCase ? NoIntrinsic : BoundFunctionCallIntrinsic,
+            canConstruct ? (slowCase ? boundFunctionConstruct : boundThisNoArgsFunctionConstruct) : callHostFunctionAsConstructor, nullptr, String());
+        slot = Weak<NativeExecutable>(result);
+        return result;
+    };
+
+    if (slowCase) {
+        if (canConstruct)
+            return getOrCreate(m_slowCanConstructBoundExecutable);
+        return getOrCreate(m_slowBoundExecutable);
+    }
+    if (canConstruct)
+        return getOrCreate(m_fastCanConstructBoundExecutable);
+    return getOrCreate(m_fastBoundExecutable);
 }
 
 MacroAssemblerCodePtr<JSEntryPtrTag> VM::getCTIInternalFunctionTrampolineFor(CodeSpecializationKind kind)
@@ -1025,7 +1051,27 @@ void VM::gatherScratchBufferRoots(ConservativeRoots& conservativeRoots)
         }
     }
 }
+
+void VM::scanSideState(ConservativeRoots& roots) const
+{
+    for (const auto& iter : m_checkpointSideState)
+        roots.add(iter.value->tmps, iter.value->tmps + sizeof(iter.value->tmps));
+}
 #endif
+
+void VM::addCheckpointOSRSideState(CallFrame* callFrame, std::unique_ptr<CheckpointOSRExitSideState>&& payload)
+{
+    ASSERT(currentThreadIsHoldingAPILock());
+    auto addResult = m_checkpointSideState.add(callFrame, WTFMove(payload));
+    ASSERT_UNUSED(addResult, addResult.isNewEntry);
+}
+
+std::unique_ptr<CheckpointOSRExitSideState> VM::findCheckpointOSRSideState(CallFrame* callFrame)
+{
+    ASSERT(currentThreadIsHoldingAPILock());
+    auto sideState = m_checkpointSideState.take(callFrame);
+    return sideState;
+}
 
 void logSanitizeStack(VM& vm)
 {
@@ -1420,6 +1466,7 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(scriptFetcherSpace, destructibleCellHeap
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setBucketSpace, cellHeapCellType.get(), JSSet::BucketType)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setIteratorSpace, cellHeapCellType.get(), JSSetIterator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setSpace, cellHeapCellType.get(), JSSet)
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(strictEvalActivationSpace, cellHeapCellType.get(), StrictEvalActivation)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(sourceCodeSpace, destructibleCellHeapCellType.get(), JSSourceCode)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(symbolSpace, destructibleCellHeapCellType.get(), Symbol)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(symbolObjectSpace, cellHeapCellType.get(), SymbolObject)
@@ -1435,6 +1482,7 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(unlinkedProgramCodeBlockSpace, destructi
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakMapSpace, weakMapHeapCellType.get(), JSWeakMap) // Hash:0x662b12a3
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakSetSpace, weakSetHeapCellType.get(), JSWeakSet) // Hash:0x4c781b30
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakObjectRefSpace, cellHeapCellType.get(), JSWeakObjectRef) // Hash:0x8ec68f1f
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(withScopeSpace, cellHeapCellType.get(), JSWithScope)
 #if JSC_OBJC_API_ENABLED
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiWrapperObjectSpace, apiWrapperObjectHeapCellType.get(), JSCallbackObject<JSAPIWrapperObject>)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(objCCallbackFunctionSpace, objCCallbackFunctionHeapCellType.get(), ObjCCallbackFunction) // Hash:0x10f610b8

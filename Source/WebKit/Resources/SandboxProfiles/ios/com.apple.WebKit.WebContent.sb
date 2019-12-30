@@ -87,9 +87,22 @@
     (allow user-preference-read user-preference-write (apply preference-domain domains)))
 
 (define-once (framebuffer-access)
-    (allow iokit-open
+    (allow iokit-open (with report) (with telemetry)
            (iokit-user-client-class "IOMobileFramebufferUserClient"))
-    (mobile-preferences-read "com.apple.iokit.IOMobileGraphicsFamily"))
+
+    ; IOMobileFramebuffer
+    (with-filter (iokit-registry-entry-class "IOMobileFramebuffer")
+        (allow iokit-get-properties
+               (iokit-property "AppleTV"
+                               "DisplayPipePlaneBaseAlignment"
+                               "DisplayPipeStrideRequirements"
+                               "PerformanceStatistics"
+                               "appleTV-VID0"
+                               "appleTV-VID1"
+                               "hdcp-hoover-protocol")))
+
+    (mobile-preferences-read "com.apple.iokit.IOMobileGraphicsFamily")
+)
 
 (define-once (asset-access . options)
     (let ((asset-access-filter
@@ -108,7 +121,7 @@
         (mobile-preferences-read "com.apple.MobileAsset")))
 
 (define-once (mobile-keybag-access)
-     (allow iokit-open
+     (allow iokit-open (with report) (with telemetry)
             (iokit-user-client-class "AppleKeyStoreUserClient")))
 
 (define-once (location-services)
@@ -412,7 +425,7 @@
             (iokit-property "gyro-interrupt-calibration")))
     (with-filter
         (iokit-registry-entry-class "IOHIDEventServiceFastPathUserClient")
-        (allow iokit-open)
+        (allow iokit-open (with report) (with telemetry))
         (allow iokit-get-properties iokit-set-properties
             (iokit-property "interval"
                             "mode"
@@ -449,7 +462,8 @@
     (allow iokit-open
         (iokit-user-client-class "AppleJPEGDriverUserClient")
         (iokit-user-client-class "IOSurfaceAcceleratorClient")
-        (iokit-user-client-class "IOSurfaceSendRight")
+        (iokit-user-client-class "IOSurfaceSendRight"))
+    (allow iokit-open (with report) (with telemetry)
         ;; Requires by UIView -> UITextMagnifierRenderer -> UIWindow
         (iokit-user-client-class "IOSurfaceRootUserClient"))
 
@@ -629,7 +643,6 @@
 (allow mach-lookup (with report) (with telemetry)
     (global-name "com.apple.aggregated")
     (global-name "com.apple.distributed_notifications@1v3")
-    (global-name "com.apple.pluginkit.pkd")
     (global-name "com.apple.tccd"))
 
 (allow ipc-posix-shm-read*
@@ -664,9 +677,6 @@
 (with-filter (system-attribute apple-internal)
     (allow sysctl-read sysctl-write
            (sysctl-name "vm.footprint_suspend")))
-
-(allow mach-lookup (with report) (with telemetry)
-       (global-name "com.apple.system.logger"))
 
 (allow file-read-metadata network-outbound
        (literal "/private/var/run/syslog"))
@@ -726,10 +736,6 @@
 (media-remote)
 
 (url-translation)
-
-;; TextInput framework
-(allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.TextInput"))
 
 (mobile-preferences-read "com.apple.da")
 
@@ -968,7 +974,7 @@
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
-        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI")))
+        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd")))
 
 (allow mach-lookup
     (require-all

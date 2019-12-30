@@ -44,6 +44,7 @@
 #include "Frame.h"
 #include "HitTestResult.h"
 #include "InspectorController.h"
+#include "InspectorDebuggableType.h"
 #include "InspectorFrontendClient.h"
 #include "JSDOMConvertInterface.h"
 #include "JSDOMExceptionHandling.h"
@@ -271,30 +272,56 @@ void InspectorFrontendHost::moveWindowBy(float x, float y) const
 
 bool InspectorFrontendHost::isRemote() const
 {
-    return m_client ? m_client->isRemote() : false;
+    return m_client && m_client->isRemote();
 }
 
-String InspectorFrontendHost::localizedStringsURL()
+String InspectorFrontendHost::localizedStringsURL() const
 {
     return m_client ? m_client->localizedStringsURL() : String();
 }
 
-String InspectorFrontendHost::backendCommandsURL()
+String InspectorFrontendHost::backendCommandsURL() const
 {
     return m_client ? m_client->backendCommandsURL() : String();
 }
 
-String InspectorFrontendHost::debuggableType()
+static String debuggableTypeToString(DebuggableType debuggableType)
 {
-    return m_client ? m_client->debuggableType() : String();
+    switch (debuggableType) {
+    case DebuggableType::JavaScript:
+        return "javascript"_s;
+    case DebuggableType::Page:
+        return "page"_s;
+    case DebuggableType::ServiceWorker:
+        return "service-worker"_s;
+    case DebuggableType::WebPage:
+        return "web-page"_s;
+    }
+
+    ASSERT_NOT_REACHED();
+    return String();
 }
 
-unsigned InspectorFrontendHost::inspectionLevel()
+InspectorFrontendHost::DebuggableInfo InspectorFrontendHost::debuggableInfo() const
+{
+    if (!m_client)
+        return {debuggableTypeToString(DebuggableType::JavaScript), "Unknown"_s, "Unknown"_s, "Unknown"_s, false};
+
+    return {
+        debuggableTypeToString(m_client->debuggableType()),
+        m_client->targetPlatformName(),
+        m_client->targetBuildVersion(),
+        m_client->targetProductVersion(),
+        m_client->targetIsSimulator(),
+    };
+}
+
+unsigned InspectorFrontendHost::inspectionLevel() const
 {
     return m_client ? m_client->inspectionLevel() : 1;
 }
 
-String InspectorFrontendHost::platform()
+String InspectorFrontendHost::platform() const
 {
 #if PLATFORM(COCOA)
     return "mac"_s;
@@ -311,7 +338,7 @@ String InspectorFrontendHost::platform()
 #endif
 }
 
-String InspectorFrontendHost::port()
+String InspectorFrontendHost::port() const
 {
 #if PLATFORM(GTK)
     return "gtk"_s;

@@ -622,38 +622,54 @@ void Scope::scheduleUpdate(UpdateType update)
 void Scope::evaluateMediaQueriesForViewportChange()
 {
     evaluateMediaQueries([] (Resolver& resolver) {
-        return resolver.hasMediaQueriesAffectedByViewportChange();
+        return resolver.evaluateDynamicMediaQueries();
     });
 }
 
 void Scope::evaluateMediaQueriesForAccessibilitySettingsChange()
 {
     evaluateMediaQueries([] (Resolver& resolver) {
-        return resolver.hasMediaQueriesAffectedByAccessibilitySettingsChange();
+        return resolver.evaluateDynamicMediaQueries();
     });
 }
 
 void Scope::evaluateMediaQueriesForAppearanceChange()
 {
     evaluateMediaQueries([] (Resolver& resolver) {
-        return resolver.hasMediaQueriesAffectedByAppearanceChange();
+        return resolver.evaluateDynamicMediaQueries();
     });
 }
 
 template <typename TestFunction>
 void Scope::evaluateMediaQueries(TestFunction&& testFunction)
 {
+    auto* resolver = resolverIfExists();
+    if (!resolver)
+        return;
+
+    auto evaluationChanges = testFunction(*resolver);
+    if (evaluationChanges) {
+        switch (evaluationChanges->type) {
+        case DynamicMediaQueryEvaluationChanges::Type::InvalidateStyle: {
+            Invalidator invalidator(evaluationChanges->invalidationRuleSets);
+            if (m_shadowRoot)
+                invalidator.invalidateStyle(*m_shadowRoot);
+            else
+                invalidator.invalidateStyle(m_document);
+            break;
+        }
+        case DynamicMediaQueryEvaluationChanges::Type::ResetStyle:
+            scheduleUpdate(UpdateType::ContentsOrInterpretation);
+            break;
+        }
+
+        InspectorInstrumentation::mediaQueryResultChanged(m_document);
+    }
+
     if (!m_shadowRoot) {
         for (auto* descendantShadowRoot : m_document.inDocumentShadowRoots())
             descendantShadowRoot->styleScope().evaluateMediaQueries(testFunction);
     }
-    auto* resolver = resolverIfExists();
-    if (!resolver)
-        return;
-    if (!testFunction(*resolver))
-        return;
-    scheduleUpdate(UpdateType::ContentsOrInterpretation);
-    InspectorInstrumentation::mediaQueryResultChanged(m_document);
 }
 
 void Scope::didChangeActiveStyleSheetCandidates()
@@ -677,6 +693,18 @@ void Scope::didChangeStyleSheetEnvironment()
     }
     scheduleUpdate(UpdateType::ContentsOrInterpretation);
 }
+
+void Scope::invalidateMatchedDeclarationsCache()
+{
+    if (!m_shadowRoot) {
+        for (auto* descendantShadowRoot : m_document.inDocumentShadowRoots())
+            descendantShadowRoot->styleScope().invalidateMatchedDeclarationsCache();
+    }
+
+    if (auto* resolver = resolverIfExists())
+        resolver->invalidateMatchedDeclarationsCache();
+}
+
 
 void Scope::pendingUpdateTimerFired()
 {

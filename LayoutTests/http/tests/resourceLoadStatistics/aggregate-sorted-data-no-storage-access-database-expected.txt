@@ -13,7 +13,7 @@ Registrable domain: subframe1
         topframe1
     SubresourceUniqueRedirectsTo:
         topframe2
-    isPrevalentResource: No
+    isPrevalentResource: Yes
     isVeryPrevalentResource: No
     dataRecordsRemoved: 0
 Registrable domain: subframe2
@@ -23,7 +23,7 @@ Registrable domain: subframe2
     IsScheduledForAllButCookieDataRemoval: No
     SubframeUnderTopFrameDomains:
         topframe1
-    isPrevalentResource: No
+    isPrevalentResource: Yes
     isVeryPrevalentResource: No
     dataRecordsRemoved: 0
 Registrable domain: subframe3
@@ -38,7 +38,7 @@ Registrable domain: subframe3
         topframe3
     SubresourceUniqueRedirectsTo:
         topframe2
-    isPrevalentResource: No
+    isPrevalentResource: Yes
     isVeryPrevalentResource: No
     dataRecordsRemoved: 0
 Registrable domain: topframe1
@@ -76,8 +76,8 @@ Registrable domain: topframe4
 
 ITP Data:
 Third Party Registrable Domain: subframe3
-    {{ Has been granted storage access under topframe1: 0 },{ Has been granted storage access under topframe4: 0 },{ Has been granted storage access under topframe3: 0 },{ Has been granted storage access under topframe2: 0 },}
+    {{ Has been granted storage access under topframe1: 0; Has been seen under topframe1 in the last 24 hours: 1 },{ Has been granted storage access under topframe4: 0; Has been seen under topframe4 in the last 24 hours: 1 },{ Has been granted storage access under topframe3: 0; Has been seen under topframe3 in the last 24 hours: 1 },{ Has been granted storage access under topframe2: 0; Has been seen under topframe2 in the last 24 hours: 1 },}
 Third Party Registrable Domain: subframe1
-    {{ Has been granted storage access under topframe1: 0 },{ Has been granted storage access under topframe2: 0 },}
+    {{ Has been granted storage access under topframe1: 0; Has been seen under topframe1 in the last 24 hours: 1 },{ Has been granted storage access under topframe2: 0; Has been seen under topframe2 in the last 24 hours: 1 },}
 Third Party Registrable Domain: subframe2
-    {{ Has been granted storage access under topframe1: 0 },}
+    {{ Has been granted storage access under topframe1: 0; Has been seen under topframe1 in the last 24 hours: 1 },}

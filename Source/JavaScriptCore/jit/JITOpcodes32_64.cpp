@@ -933,7 +933,7 @@ void JIT::emit_op_catch(const Instruction* currentInstruction)
     // https://bugs.webkit.org/show_bug.cgi?id=175598
 
     auto& metadata = bytecode.metadata(m_codeBlock);
-    ValueProfileAndOperandBuffer* buffer = metadata.m_buffer;
+    ValueProfileAndVirtualRegisterBuffer* buffer = metadata.m_buffer;
     if (buffer || !shouldEmitProfiling())
         callOperation(operationTryOSREnterAtCatch, &vm(), m_bytecodeIndex.asBits());
     else
@@ -943,7 +943,7 @@ void JIT::emit_op_catch(const Instruction* currentInstruction)
     farJump(returnValueGPR, NoPtrTag);
     skipOSREntry.link(this);
     if (buffer && shouldEmitProfiling()) {
-        buffer->forEach([&] (ValueProfileAndOperand& profile) {
+        buffer->forEach([&] (ValueProfileAndVirtualRegister& profile) {
             JSValueRegs regs(regT1, regT0);
             emitGetVirtualRegister(profile.m_operand, regs);
             emitValueProfilingSite(static_cast<ValueProfile&>(profile));
@@ -1065,10 +1065,10 @@ void JIT::emit_op_create_this(const Instruction* currentInstruction)
 
     emitLoadPayload(callee, calleeReg);
     addSlowCase(branchIfNotFunction(calleeReg));
-    loadPtr(Address(calleeReg, JSFunction::offsetOfRareData()), rareDataReg);
-    addSlowCase(branchTestPtr(Zero, rareDataReg));
-    load32(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfAllocator()), allocatorReg);
-    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfStructure()), structureReg);
+    loadPtr(Address(calleeReg, JSFunction::offsetOfExecutableOrRareData()), rareDataReg);
+    addSlowCase(branchTestPtr(Zero, rareDataReg, TrustedImm32(JSFunction::rareDataTag)));
+    load32(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfAllocator() - JSFunction::rareDataTag), allocatorReg);
+    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfStructure() - JSFunction::rareDataTag), structureReg);
 
     loadPtr(cachedFunction, cachedFunctionReg);
     Jump hasSeenMultipleCallees = branchPtr(Equal, cachedFunctionReg, TrustedImmPtr(JSCell::seenMultipleCalleeObjects()));

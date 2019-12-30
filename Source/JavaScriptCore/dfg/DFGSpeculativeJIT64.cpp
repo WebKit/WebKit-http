@@ -693,7 +693,7 @@ void SpeculativeJIT::emitCall(Node* node)
 
             shuffleData.setupCalleeSaveRegisters(m_jit.codeBlock());
         } else {
-            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(CallFrameSlot::argumentCount));
+            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(CallFrameSlot::argumentCountIncludingThis));
 
             for (unsigned i = 0; i < numPassedArgs; i++) {
                 Edge argEdge = m_jit.graph().m_varArgChildren[node->firstChild() + 1 + i];
@@ -1936,7 +1936,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case GetLocal: {
-        AbstractValue& value = m_state.operand(node->local());
+        AbstractValue& value = m_state.operand(node->operand());
 
         // If the CFA is tracking this variable and it found that the variable
         // cannot have been assigned, then don't attempt to proceed.
@@ -2007,7 +2007,7 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case ZombieHint: {
-        recordSetLocal(m_currentNode->unlinkedLocal(), VirtualRegister(), DataFormatDead);
+        recordSetLocal(m_currentNode->unlinkedOperand(), VirtualRegister(), DataFormatDead);
         noResult(node);
         break;
     }
@@ -4464,6 +4464,11 @@ void SpeculativeJIT::compile(Node* node)
         emitCall(node);
         break;
 
+    case VarargsLength: {
+        compileVarargsLength(node);
+        break;
+    }
+
     case LoadVarargs: {
         compileLoadVarargs(node);
         break;
@@ -4513,6 +4518,12 @@ void SpeculativeJIT::compile(Node* node)
         compileCreateClonedArguments(node);
         break;
     }
+
+    case CreateArgumentsButterfly: {
+        compileCreateArgumentsButterfly(node);
+        break;
+    }
+
     case CreateRest: {
         compileCreateRest(node);
         break;

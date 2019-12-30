@@ -1125,6 +1125,11 @@ private:
             setPrediction(SpecObjectOther);
             break;
         }
+
+        case CreateArgumentsButterfly: {
+            setPrediction(SpecCellOther);
+            break;
+        }
             
         case FiatInt52: {
             RELEASE_ASSERT(enableInt52());
@@ -1365,6 +1370,7 @@ private:
         case MovHint:
         case ZombieHint:
         case ExitOK:
+        case VarargsLength:
         case LoadVarargs:
         case ForwardVarargs:
         case PutDynamicVar:

@@ -19,7 +19,7 @@ Registrable domain: localhost
     gotLinkDecorationFromPrevalentResource: No
     subframeUnderTopFrameDomains:
         127.0.0.1
-    isPrevalentResource: No
+    isPrevalentResource: Yes
     isVeryPrevalentResource: No
     dataRecordsRemoved: 0
 Registrable domain: 127.0.0.1
@@ -33,4 +33,4 @@ Registrable domain: 127.0.0.1
 
 ITP Data:
 Third Party Registrable Domain: localhost
-    {{ Has been granted storage access under 127.0.0.1: 1 },}
+    {{ Has been granted storage access under 127.0.0.1: 1; Has been seen under 127.0.0.1 in the last 24 hours: 0 },}

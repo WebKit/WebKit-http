@@ -575,12 +575,14 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(co
     };
     WKContextSetInjectedBundleClient(m_context.get(), &injectedBundleClient.base);
 
-    WKContextClientV2 contextClient = {
-        { 2, this },
+    WKContextClientV3 contextClient = {
+        { 3, this },
         0, // plugInAutoStartOriginHashesChanged
         networkProcessDidCrash,
         0, // plugInInformationBecameAvailable
         0, // copyWebCryptoMasterKey
+        serviceWorkerProcessDidCrash,
+        gpuProcessDidCrash
     };
     WKContextSetClient(m_context.get(), &contextClient.base);
 
@@ -929,6 +931,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetMediaPlaybackRequiresUserGesture(preferences, false);
     WKPreferencesSetVideoPlaybackRequiresUserGesture(preferences, false);
     WKPreferencesSetAudioPlaybackRequiresUserGesture(preferences, false);
+
+    WKPreferencesSetShouldUseServiceWorkerShortTimeout(preferences, true);
 
     platformResetPreferencesToConsistentValues();
 }
@@ -1469,9 +1473,9 @@ TestOptions TestController::testOptionsForTest(const TestCommand& command) const
     options.shouldShowWebView = m_shouldShowWebView;
 
     for (auto& feature : m_internalFeatures)
-        options.internalDebugFeatures.add(feature.c_str(), true);
+        options.internalDebugFeatures.add(feature.key, feature.value);
     for (auto& feature : m_experimentalFeatures)
-        options.experimentalFeatures.add(feature.c_str(), true);
+        options.experimentalFeatures.add(feature.key, feature.value);
 
     updatePlatformSpecificTestOptionsForTest(options, command.pathOrURL);
     updateTestOptionsFromTestHeader(options, command.pathOrURL, command.absolutePath);
@@ -1824,6 +1828,16 @@ void TestController::didReceiveSynchronousPageMessageFromInjectedBundleWithListe
 void TestController::networkProcessDidCrash(WKContextRef context, const void *clientInfo)
 {
     static_cast<TestController*>(const_cast<void*>(clientInfo))->networkProcessDidCrash();
+}
+
+void TestController::serviceWorkerProcessDidCrash(WKContextRef context, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->serviceWorkerProcessDidCrash();
+}
+
+void TestController::gpuProcessDidCrash(WKContextRef context, const void *clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->gpuProcessDidCrash();
 }
 
 void TestController::didReceiveKeyDownMessageFromInjectedBundle(WKDictionaryRef messageBodyDictionary, bool synchronous)
@@ -2183,6 +2197,20 @@ void TestController::networkProcessDidCrash()
     pid_t pid = WKContextGetNetworkProcessIdentifier(m_context.get());
     fprintf(stderr, "#CRASHED - %s (pid %ld)\n", networkProcessName(), static_cast<long>(pid));
     exit(1);
+}
+
+void TestController::serviceWorkerProcessDidCrash()
+{
+    fprintf(stderr, "#CRASHED - ServiceWorkerProcess\n");
+    if (m_shouldExitWhenWebProcessCrashes)
+        exit(1);
+}
+
+void TestController::gpuProcessDidCrash()
+{
+    fprintf(stderr, "#CRASHED - GPUProcess\n");
+    if (m_shouldExitWhenWebProcessCrashes)
+        exit(1);
 }
 
 // WKPageNavigationClient

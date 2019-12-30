@@ -1,3 +1,7 @@
+#ifdef WK_DISABLE_HARDWARE_ACCELERATION
+#include "vp8_rtcd_no_acceleration.h"
+#else
+
 // This file is generated. Do not edit.
 #ifndef VP8_RTCD_H_
 #define VP8_RTCD_H_
@@ -672,3 +676,5 @@ static void setup_rtcd_internal(void) {
 #endif
 
 #endif
+
+#endif // WK_DISABLE_HARDWARE_ACCELERATION

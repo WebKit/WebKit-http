@@ -408,11 +408,6 @@ MediaTime MediaPlayerPrivateAVFoundation::minMediaTimeSeekable() const
     return m_cachedMinTimeSeekable;
 }
 
-double MediaPlayerPrivateAVFoundation::requestedRate() const
-{
-    return m_player->requestedRate();
-}
-
 MediaTime MediaPlayerPrivateAVFoundation::maxTimeLoaded() const
 {
     if (!metaDataAvailable())
@@ -572,10 +567,6 @@ void MediaPlayerPrivateAVFoundation::updateStates()
     setReadyState(newReadyState);
 }
 
-void MediaPlayerPrivateAVFoundation::setSize(const IntSize&) 
-{ 
-}
-
 void MediaPlayerPrivateAVFoundation::setVisible(bool visible)
 {
     if (m_visible == visible)
@@ -620,12 +611,14 @@ void MediaPlayerPrivateAVFoundation::loadedTimeRangesChanged()
     m_cachedLoadedTimeRanges = nullptr;
     m_cachedMaxTimeLoaded = MediaTime::zeroTime();
     invalidateCachedDuration();
+    m_player->bufferedTimeRangesChanged();
 }
 
 void MediaPlayerPrivateAVFoundation::seekableTimeRangesChanged()
 {
     m_cachedMaxTimeSeekable = MediaTime::zeroTime();
     m_cachedMinTimeSeekable = MediaTime::zeroTime();
+    m_player->seekableTimeRangesChanged();
 }
 
 void MediaPlayerPrivateAVFoundation::timeChanged(const MediaTime& time)
@@ -683,11 +676,6 @@ void MediaPlayerPrivateAVFoundation::invalidateCachedDuration()
         m_reportedDuration = duration;
     }
     
-}
-
-void MediaPlayerPrivateAVFoundation::repaint()
-{
-    m_player->repaint();
 }
 
 MediaPlayer::MovieLoadType MediaPlayerPrivateAVFoundation::movieLoadType() const

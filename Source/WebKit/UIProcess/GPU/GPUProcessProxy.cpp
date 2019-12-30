@@ -40,6 +40,7 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include "WebProcessProxyMessages.h"
+#include <WebCore/MockRealtimeMediaSourceCenter.h>
 #include <wtf/CompletionHandler.h>
 
 #if PLATFORM(IOS_FAMILY)
@@ -62,7 +63,9 @@ GPUProcessProxy& GPUProcessProxy::singleton()
         gpuProcess.construct();
 
         GPUProcessCreationParameters parameters;
-
+#if ENABLE(MEDIA_STREAM)
+        parameters.useMockCaptureDevices = MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled();
+#endif
         // Initialize the GPU process.
         gpuProcess->send(Messages::GPUProcess::InitializeGPUProcess(parameters), 0);
         gpuProcess->updateProcessAssertion();
@@ -109,7 +112,7 @@ void GPUProcessProxy::getGPUProcessConnection(WebProcessProxy& webProcessProxy, 
 
 void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
 {
-    connection()->sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
+    connection()->sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
         if (!weakThis)
             return;
 
@@ -136,7 +139,7 @@ void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier conne
 void GPUProcessProxy::gpuProcessCrashed()
 {
     for (auto& processPool : WebProcessPool::allProcessPools())
-        processPool->terminateAllWebContentProcesses();
+        processPool->gpuProcessCrashed();
 }
 
 void GPUProcessProxy::didClose(IPC::Connection&)

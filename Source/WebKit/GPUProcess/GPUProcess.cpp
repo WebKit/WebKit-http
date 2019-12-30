@@ -38,6 +38,7 @@
 #include "WebPageProxyMessages.h"
 #include "WebProcessPoolMessages.h"
 #include <WebCore/LogInitialization.h>
+#include <WebCore/MockAudioSharedUnit.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
@@ -59,7 +60,7 @@ GPUProcess::~GPUProcess()
 {
 }
 
-void GPUProcess::createGPUConnectionToWebProcess(ProcessIdentifier identifier, CompletionHandler<void(Optional<IPC::Attachment>&&)>&& completionHandler)
+void GPUProcess::createGPUConnectionToWebProcess(ProcessIdentifier identifier, PAL::SessionID sessionID, CompletionHandler<void(Optional<IPC::Attachment>&&)>&& completionHandler)
 {
     auto ipcConnection = createIPCConnectionPair();
     if (!ipcConnection) {
@@ -67,7 +68,7 @@ void GPUProcess::createGPUConnectionToWebProcess(ProcessIdentifier identifier, C
         return;
     }
 
-    auto newConnection = GPUConnectionToWebProcess::create(*this, identifier, ipcConnection->first);
+    auto newConnection = GPUConnectionToWebProcess::create(*this, identifier, ipcConnection->first, sessionID);
 
     ASSERT(!m_webProcessConnections.contains(identifier));
     m_webProcessConnections.add(identifier, WTFMove(newConnection));
@@ -104,6 +105,8 @@ void GPUProcess::initializeGPUProcess(GPUProcessCreationParameters&& parameters)
 {
     WTF::Thread::setCurrentThreadIsUserInitiated();
     AtomString::init();
+
+    setMockCaptureDevicesEnabled(parameters.useMockCaptureDevices);
 }
 
 void GPUProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<void()>&& completionHandler)
@@ -134,6 +137,15 @@ void GPUProcess::processDidTransitionToBackground()
 GPUConnectionToWebProcess* GPUProcess::webProcessConnection(ProcessIdentifier identifier) const
 {
     return m_webProcessConnections.get(identifier);
+}
+
+void GPUProcess::setMockCaptureDevicesEnabled(bool isEnabled)
+{
+#if ENABLE(MEDIA_STREAM)
+    // FIXME: Enable the audio session check by implementing an AudioSession for the GPUProcess.
+    MockAudioSharedUnit::singleton().setDisableAudioSessionCheck(isEnabled);
+    MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(isEnabled);
+#endif
 }
 
 } // namespace WebKit

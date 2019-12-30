@@ -177,7 +177,6 @@ private:
     bool platformPaused() const override;
     void setVolume(float) override;
     void setMuted(bool) override;
-    void setClosedCaptionsVisible(bool) override;
     void paint(GraphicsContext&, const FloatRect&) override;
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
     PlatformLayer* platformLayer() const override;
@@ -197,7 +196,6 @@ private:
 
     bool supportsAcceleratedRendering() const override { return true; }
     MediaTime mediaTimeForTimeValue(const MediaTime&) const override;
-    double maximumDurationToCacheMediaTime() const override;
 
     void createAVPlayer() override;
     void createAVPlayerItem() override;
