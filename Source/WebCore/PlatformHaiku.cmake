@@ -35,7 +35,6 @@ list(APPEND WebCore_SOURCES
   platform/haiku/DragDataHaiku.cpp
   platform/haiku/ErrorsHaiku.cpp
   platform/haiku/FileSystemHaiku.cpp
-  platform/haiku/KeyboardUtilities.cpp
   platform/haiku/KeyedDecoderHaiku.cpp
   platform/haiku/KeyedEncoderHaiku.cpp
   platform/haiku/KURLHaiku.cpp
