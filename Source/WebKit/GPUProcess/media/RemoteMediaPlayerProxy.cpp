@@ -28,8 +28,16 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "GPUConnectionToWebProcess.h"
+#include "RemoteMediaPlayerManagerMessages.h"
 #include "RemoteMediaPlayerManagerProxy.h"
+#include "RemoteMediaPlayerProxyConfiguration.h"
 #include "RemoteMediaPlayerState.h"
+#include "RemoteMediaResource.h"
+#include "RemoteMediaResourceIdentifier.h"
+#include "RemoteMediaResourceLoader.h"
+#include "RemoteMediaResourceManager.h"
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/MediaPlayer.h>
 #include <WebCore/MediaPlayerPrivate.h>
 #include <WebCore/NotImplemented.h>
@@ -53,6 +61,10 @@ RemoteMediaPlayerProxy::RemoteMediaPlayerProxy(RemoteMediaPlayerManagerProxy& ma
     m_player = MediaPlayer::create(*this, m_engineIdentifier);
 }
 
+RemoteMediaPlayerProxy::~RemoteMediaPlayerProxy()
+{
+}
+
 void RemoteMediaPlayerProxy::invalidate()
 {
     m_updateCachedStateMessageTimer.stop();
@@ -69,9 +81,13 @@ void RemoteMediaPlayerProxy::getConfiguration(RemoteMediaPlayerConfiguration& co
     configuration.canPlayToWirelessPlaybackTarget = m_player->canPlayToWirelessPlaybackTarget();
 }
 
-void RemoteMediaPlayerProxy::load(const URL& url, const ContentType& contentType, const String& keySystem)
+void RemoteMediaPlayerProxy::load(const URL& url, const ContentType& contentType, const String& keySystem, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&& completionHandler)
 {
     m_player->load(url, contentType, keySystem);
+
+    RemoteMediaPlayerConfiguration configuration;
+    getConfiguration(configuration);
+    completionHandler(WTFMove(configuration));
 }
 
 void RemoteMediaPlayerProxy::prepareForPlayback(bool privateMode, WebCore::MediaPlayerEnums::Preload preload, bool preservesPitch, bool prepareForRendering)
@@ -141,6 +157,25 @@ void RemoteMediaPlayerProxy::setPrivateBrowsingMode(bool privateMode)
 void RemoteMediaPlayerProxy::setPreservesPitch(bool preservesPitch)
 {
     m_player->setPreservesPitch(preservesPitch);
+}
+
+Ref<PlatformMediaResource> RemoteMediaPlayerProxy::requestResource(ResourceRequest&& request, PlatformMediaResourceLoader::LoadOptions options)
+{
+    auto& remoteMediaResourceManager = m_manager.gpuConnectionToWebProcess().remoteMediaResourceManager();
+    auto remoteMediaResourceIdentifier = RemoteMediaResourceIdentifier::generate();
+    auto remoteMediaResource = RemoteMediaResource::create(remoteMediaResourceManager, *this, remoteMediaResourceIdentifier);
+    remoteMediaResourceManager.addMediaResource(remoteMediaResourceIdentifier, remoteMediaResource);
+
+    m_webProcessConnection->sendWithAsyncReply(Messages::RemoteMediaPlayerManager::RequestResource(m_id, remoteMediaResourceIdentifier, request, options), [remoteMediaResource = remoteMediaResource.copyRef()]() {
+        remoteMediaResource->setReady(true);
+    });
+
+    return remoteMediaResource;
+}
+
+void RemoteMediaPlayerProxy::removeResource(RemoteMediaResourceIdentifier remoteMediaResourceIdentifier)
+{
+    m_webProcessConnection->send(Messages::RemoteMediaPlayerManager::RemoveResource(m_id, remoteMediaResourceIdentifier), 0);
 }
 
 // MediaPlayerClient
@@ -388,8 +423,7 @@ CachedResourceLoader* RemoteMediaPlayerProxy::mediaPlayerCachedResourceLoader()
 
 RefPtr<PlatformMediaResourceLoader> RemoteMediaPlayerProxy::mediaPlayerCreateResourceLoader()
 {
-    notImplemented();
-    return nullptr;
+    return adoptRef(*new RemoteMediaResourceLoader(*this));
 }
 
 bool RemoteMediaPlayerProxy::doesHaveAttribute(const AtomString&, AtomString*) const

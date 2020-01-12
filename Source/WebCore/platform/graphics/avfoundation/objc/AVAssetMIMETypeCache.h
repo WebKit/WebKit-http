@@ -27,37 +27,33 @@
 
 #if PLATFORM(COCOA)
 
-#include <wtf/Forward.h>
-#include <wtf/HashSet.h>
-#include <wtf/text/StringHash.h>
+#include "MIMETypeCache.h"
 
 namespace WebCore {
 
 class ContentType;
 
-class AVAssetMIMETypeCache {
+class WEBCORE_EXPORT AVAssetMIMETypeCache final : public MIMETypeCache {
 public:
-    WEBCORE_EXPORT static AVAssetMIMETypeCache& singleton();
+    static AVAssetMIMETypeCache& singleton();
 
-    bool supportsContentType(const ContentType&);
-    bool canDecodeType(const String&);
-
-    const HashSet<String, ASCIICaseInsensitiveHash>& types();
-    bool isEmpty();
-    bool isAvailable() const;
+    bool isAvailable() const final;
 
     using CacheMIMETypesCallback = std::function<void(const Vector<String>&)>;
     void setCacheMIMETypesCallback(CacheMIMETypesCallback&& callback) { m_cacheTypeCallback = WTFMove(callback); }
 
-    WEBCORE_EXPORT void setSupportedTypes(const Vector<String>&);
+    const HashSet<String, ASCIICaseInsensitiveHash>& staticContainerTypeList() final;
+    bool isUnsupportedContainerType(const String&) final;
+
+    void addSupportedTypes(const Vector<String>&) final;
 
 private:
     friend NeverDestroyed<AVAssetMIMETypeCache>;
     AVAssetMIMETypeCache() = default;
 
-    void loadMIMETypes();
+    bool canDecodeExtendedType(const ContentType&) final;
+    void initializeCache(HashSet<String, ASCIICaseInsensitiveHash>&) final;
 
-    Optional<HashSet<String, ASCIICaseInsensitiveHash>> m_cache;
     CacheMIMETypesCallback m_cacheTypeCallback;
 };
 

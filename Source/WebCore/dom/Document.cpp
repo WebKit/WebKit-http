@@ -63,6 +63,7 @@
 #include "DocumentSharedObjectPool.h"
 #include "DocumentTimeline.h"
 #include "DocumentType.h"
+#include "DragEvent.h"
 #include "Editing.h"
 #include "Editor.h"
 #include "ElementIterator.h"
@@ -3235,6 +3236,9 @@ void Document::setURL(const URL& url)
         return;
 
     m_url = newURL;
+    if (SecurityOrigin::shouldIgnoreHost(m_url))
+        m_url.removeHostAndPort();
+
     m_documentURI = m_url.string();
     updateBaseURL();
 }
@@ -4790,6 +4794,8 @@ ExceptionOr<Ref<Event>> Document::createEvent(const String& type)
         return Ref<Event> { CompositionEvent::createForBindings() };
     if (equalLettersIgnoringASCIICase(type, "customevent"))
         return Ref<Event> { CustomEvent::create() };
+    if (equalLettersIgnoringASCIICase(type, "dragevent"))
+        return Ref<Event> { DragEvent::createForBindings() };
     if (equalLettersIgnoringASCIICase(type, "event") || equalLettersIgnoringASCIICase(type, "events") || equalLettersIgnoringASCIICase(type, "htmlevents") || equalLettersIgnoringASCIICase(type, "svgevents"))
         return Event::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "focusevent"))
@@ -5637,9 +5643,11 @@ Document& Document::topDocument() const
     return *document;
 }
 
-ExceptionOr<Ref<Attr>> Document::createAttribute(const String& name)
+ExceptionOr<Ref<Attr>> Document::createAttribute(const String& localName)
 {
-    return createAttributeNS({ }, isHTMLDocument() ? name.convertToASCIILowercase() : name, true);
+    if (!isValidName(localName))
+        return Exception { InvalidCharacterError };
+    return Attr::create(*this, QualifiedName { nullAtom(), isHTMLDocument() ? localName.convertToASCIILowercase() : localName, nullAtom() }, emptyString());
 }
 
 ExceptionOr<Ref<Attr>> Document::createAttributeNS(const AtomString& namespaceURI, const String& qualifiedName, bool shouldIgnoreNamespaceChecks)
@@ -5845,7 +5853,7 @@ ExceptionOr<Ref<XPathExpression>> Document::createExpression(const String& expre
     return m_xpathEvaluator->createExpression(expression, WTFMove(resolver));
 }
 
-Ref<XPathNSResolver> Document::createNSResolver(Node* nodeResolver)
+Ref<XPathNSResolver> Document::createNSResolver(Node& nodeResolver)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();

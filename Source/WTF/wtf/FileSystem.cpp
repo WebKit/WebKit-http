@@ -129,11 +129,11 @@ String encodeForFileName(const String& inputString)
         if (shouldEscapeUChar(character, previousCharacter, nextCharacter)) {
             if (character <= 255) {
                 result.append('%');
-                appendByteAsHex(character, result);
+                result.append(hex(static_cast<unsigned char>(character), 2));
             } else {
                 result.appendLiteral("%+");
-                appendByteAsHex(character >> 8, result);
-                appendByteAsHex(character, result);
+                result.append(hex(static_cast<unsigned char>(character >> 8), 2));
+                result.append(hex(static_cast<unsigned char>(character), 2));
             }
         } else
             result.append(character);
@@ -186,8 +186,8 @@ String decodeFromFilename(const String& inputString)
         if (!isASCIIHexDigit(inputString[i + 5]))
             return { };
 
-        UChar hexDigit = toASCIIHexValue(inputString[i + 2], inputString[i + 3]) << 8 | toASCIIHexValue(inputString[i + 4], inputString[i + 5]);
-        result.append(hexDigit);
+        UChar encodedCharacter = toASCIIHexValue(inputString[i + 2], inputString[i + 3]) << 8 | toASCIIHexValue(inputString[i + 4], inputString[i + 5]);
+        result.append(encodedCharacter);
         i += 5;
     }
 

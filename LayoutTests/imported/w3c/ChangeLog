@@ -1,3 +1,219 @@
+2020-01-05  Rob Buis  <rbuis@igalia.com>
+
+        Tighten up stylesheet loading
+        https://bugs.webkit.org/show_bug.cgi?id=189913
+
+        Reviewed by Antti Koivisto.
+
+        Update improved test result.
+
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/link-load-error-events.https-expected.txt:
+
+2020-01-03  Rob Buis  <rbuis@igalia.com>
+
+        Make text track loading set same-origin fallback flag
+        https://bugs.webkit.org/show_bug.cgi?id=205744
+
+        Reviewed by Darin Adler.
+
+        Adjust test result to new behavior for text track loading.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/cloneNode-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/track-data-url-expected.txt:
+        * web-platform-tests/service-workers/service-worker/webvtt-cross-origin.https-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Add support for DragEvent
+        https://bugs.webkit.org/show_bug.cgi?id=205758
+
+        Reviewed by Darin Adler.
+
+        Rebaseline WPT tests now that more checks are passing.
+
+        * web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createEvent.https-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        dom/nodes/Document-createElement-namespace.html WPT test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205748
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline WPT test that is now passing.
+
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Document.createAttribute() should take in a localName, not a qualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=205752
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline WPT test now that it is passing. This test was failing in WebKit but passing
+        in Blink & Gecko.
+
+        * web-platform-tests/dom/nodes/Document-createAttribute-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Align Range.intersectsNode() with the DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=205745
+
+        Reviewed by Darin Adler.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/dom/ranges/Range-intersectsNode-2-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        dispatchEvent() should not clear the event's isTrusted flag when it returns early
+        https://bugs.webkit.org/show_bug.cgi?id=205731
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/dom/events/Event-dispatch-redispatch-expected.txt:
+
+2020-01-03  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed, add missing expectation file.
+        https://bugs.webkit.org/show_bug.cgi?id=205728
+
+        * web-platform-tests/media-source/mediasource-h264-play-starved-expected.txt: Added.
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Align XPathEvaluator.createNSResolver() / XPathResult.snapshotItem() with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=205699
+
+        Reviewed by Alex Christensen.
+
+        Rebaselined existing test now that more checks are passing.
+
+        * web-platform-tests/dom/idlharness.window-expected.txt:
+
+2020-01-03  Cathie Chen  <cathiechen@igalia.com>
+
+        Import WPT test cases for apect-ratio generated from attribute width and height
+        https://bugs.webkit.org/show_bug.cgi?id=205678
+
+        Reviewed by Manuel Rego Casasnovas
+
+        Import web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/ from WPT.
+        Also import web-platform-tests/media/ which is needed by video-aspect-ratio.html.
+        Update video_loop_base-expected.txt, resize-during-playback-expected.txt and wpt-server-http.sub-expected.txt
+        which include resources in web-platform-tests/media/.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/align.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/canvas-aspect-ratio-expected.txt:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/canvas-aspect-ratio.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/content-aspect-ratio-expected.txt: Added.
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/content-aspect-ratio.html: Added.
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-aspect-ratio-expected.txt:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-aspect-ratio.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-no-alt-replaced.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-replaced-box-while-loading.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/video-aspect-ratio-expected.txt:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/video-aspect-ratio.html:
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/video_loop_base-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-video-element/resize-during-playback-expected.txt:
+        * web-platform-tests/infrastructure/server/wpt-server-http.sub-expected.txt:
+        * web-platform-tests/media/1x1-green.png: Added.
+        * web-platform-tests/media/2x2-green.mp4: Added.
+        * web-platform-tests/media/2x2-green.ogv: Added.
+        * web-platform-tests/media/400x300-red-resize-200x150-green.mp4: Added.
+        * web-platform-tests/media/400x300-red-resize-200x150-green.webm: Added.
+        * web-platform-tests/media/META.yml: Added.
+        * web-platform-tests/media/OWNERS: Removed.
+        * web-platform-tests/media/counting.mp4: Added.
+        * web-platform-tests/media/counting.ogv: Added.
+        * web-platform-tests/media/foo-no-cors.vtt: Added.
+        * web-platform-tests/media/sound_0.mp3: Added.
+        * web-platform-tests/media/sound_0.oga: Added.
+        * web-platform-tests/media/test.mp4: Added.
+        * web-platform-tests/media/test.ogv: Added.
+        * web-platform-tests/media/video.ogv: Added.
+        * web-platform-tests/media/w3c-import.log:
+
+2020-01-03  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer][MSE] Player stalling too soon
+        https://bugs.webkit.org/show_bug.cgi?id=205117
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Added the testcase used to report the bug, cleaned and adapted for
+        WPT.
+
+        * web-platform-tests/media-source/mediasource-h264-play-starved.html: Added.
+        * web-platform-tests/media-source/mp4/h264-starvation-init.mp4: Added.
+        * web-platform-tests/media-source/mp4/h264-starvation-media.mp4: Added.
+
+2020-01-03  Rob Buis  <rbuis@igalia.com>
+
+        <link> with non-CSS type should not be retrieved
+        https://bugs.webkit.org/show_bug.cgi?id=88157
+
+        Reviewed by Youenn Fablet.
+
+        Import test for various type attribute values for rel=stylesheet link elements.
+
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/link-type-attribute-expected.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/link-type-attribute.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/w3c-import.log:
+
+2020-01-02  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync web-platform-tests/domparsing from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=205696
+
+        Reviewed by Alex Christensen.
+
+        Re-sync web-platform-tests/domparsing from upstream cb0d9cacbbf30a4cae79faa2.
+
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html-expected.txt:
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html.html:
+        * web-platform-tests/domparsing/XMLSerializer-serializeToString-expected.txt:
+        * web-platform-tests/domparsing/XMLSerializer-serializeToString.html:
+        * web-platform-tests/domparsing/idlharness.window-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/domparsing/interfaces.any-expected.txt.
+        * web-platform-tests/domparsing/idlharness.window.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/domparsing/interfaces.any.html.
+        * web-platform-tests/domparsing/idlharness.window.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/domparsing/interfaces.any.js.
+        * web-platform-tests/domparsing/interfaces.any.worker-expected.txt: Removed.
+        * web-platform-tests/domparsing/interfaces.any.worker.html: Removed.
+        * web-platform-tests/domparsing/w3c-import.log:
+
+2020-01-02  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Perform payment method data IDL conversion in the PaymentRequest constructor
+        https://bugs.webkit.org/show_bug.cgi?id=199225
+        <rdar://problem/52217847>
+
+        Reviewed by Darin Adler.
+
+        Imported test web-platform-tests/payment-request/constructor_convert_method_data.https.html
+        using Tools/Scripts/import-w3c-tests.
+
+        * web-platform-tests/payment-request/constructor_convert_method_data.https-expected.txt: Added.
+        * web-platform-tests/payment-request/constructor_convert_method_data.https.html: Added.
+        * web-platform-tests/payment-request/w3c-import.log: 
+
+2020-01-01  youenn fablet  <youenn@apple.com>
+
+        Implement transceiver setCodecPreferences
+        https://bugs.webkit.org/show_bug.cgi?id=190840
+        <rdar://problem/45496326>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpTransceiver-setCodecPreferences-expected.txt:
+
 2019-12-27  Rossana Monteriso  <rmonteriso@igalia.com>
 
         [css-grid] Move some alignment tests to the WPT folder and add width-keyword-classes.css

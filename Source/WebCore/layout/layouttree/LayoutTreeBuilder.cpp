@@ -102,24 +102,6 @@ static Optional<LayoutSize> accumulatedOffsetForInFlowPositionedContinuation(con
     return block.relativePositionOffset();
 }
 
-static String applyTextTransform(const String& text, const RenderStyle& style)
-{
-    switch (style.textTransform()) {
-    case TextTransform::None:
-        return text;
-    case TextTransform::Capitalize: {
-        ASSERT_NOT_IMPLEMENTED_YET();
-        return text;
-    }
-    case TextTransform::Uppercase:
-        return text.convertToUppercaseWithLocale(style.locale());
-    case TextTransform::Lowercase:
-        return text.convertToLowercaseWithLocale(style.locale());
-    }
-    ASSERT_NOT_REACHED();
-    return text;
-}
-
 static bool canUseSimplifiedTextMeasuring(const StringView& content, const FontCascade& font, bool whitespaceIsCollapsed)
 {
     if (font.codePath(TextRun(content)) == FontCascade::Complex)
@@ -155,7 +137,11 @@ std::unique_ptr<Layout::LayoutTreeContent> TreeBuilder::buildLayoutTreeForIntegr
     auto clonedStyle = RenderStyle::clone(renderBlockFlow.style());
     clonedStyle.setDisplay(DisplayType::Block);
 
-    auto layoutTreeContent = makeUnique<LayoutTreeContent>(renderBlockFlow, makeUnique<Container>(WTF::nullopt, WTFMove(clonedStyle)));
+    auto rootLayoutContainer = makeUnique<Container>(Box::ElementAttributes { Box::ElementType::GenericElement }, WTFMove(clonedStyle));
+    if (renderBlockFlow.isAnonymous())
+        rootLayoutContainer->setIsAnonymous();
+
+    auto layoutTreeContent = makeUnique<LayoutTreeContent>(renderBlockFlow, WTFMove(rootLayoutContainer));
     TreeBuilder(*layoutTreeContent).buildTree();
     return layoutTreeContent;
 }
@@ -193,13 +179,14 @@ std::unique_ptr<Box> TreeBuilder::createLayoutBox(const Container& parentContain
     std::unique_ptr<Box> childLayoutBox;
     if (is<RenderText>(childRenderer)) {
         auto& textRenderer = downcast<RenderText>(childRenderer);
-        auto text = applyTextTransform(textRenderer.text(), parentContainer.style());
-        // FIXME: Clearly there must be a helper function for this.
+        // RenderText::text() has already applied text-transform and text-security properties.
+        String text = textRenderer.text();
         auto textContent = TextContext { text, canUseSimplifiedTextMeasuring(text, parentContainer.style().fontCascade(), parentContainer.style().collapseWhiteSpace()) };
         if (parentContainer.style().display() == DisplayType::Inline)
             childLayoutBox = makeUnique<Box>(WTFMove(textContent), RenderStyle::clone(parentContainer.style()));
         else
             childLayoutBox = makeUnique<Box>(WTFMove(textContent), RenderStyle::createAnonymousStyleWithDisplay(parentContainer.style(), DisplayType::Inline));
+        childLayoutBox->setIsAnonymous();
     } else {
         auto& renderer = downcast<RenderElement>(childRenderer);
         auto displayType = renderer.style().display();

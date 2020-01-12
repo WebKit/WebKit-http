@@ -878,6 +878,7 @@ dom/DocumentSharedObjectPool.cpp
 dom/DocumentStorageAccess.cpp
 dom/DocumentTouch.cpp @no-unify
 dom/DocumentType.cpp
+dom/DragEvent.cpp
 dom/Element.cpp
 dom/ElementData.cpp
 dom/ElementRareData.cpp
@@ -1856,8 +1857,7 @@ platform/graphics/GeometryUtilities.cpp
 platform/graphics/Gradient.cpp
 platform/graphics/GradientImage.cpp
 platform/graphics/GraphicsContext.cpp
-platform/graphics/GraphicsContext3DBase.cpp
-platform/graphics/GraphicsContext3DManager.cpp
+platform/graphics/GraphicsContextGL.cpp
 platform/graphics/GraphicsContextImpl.cpp
 platform/graphics/GraphicsLayer.cpp
 platform/graphics/GraphicsLayerTransform.cpp
@@ -1877,6 +1877,7 @@ platform/graphics/LayoutPoint.cpp
 platform/graphics/LayoutRect.cpp
 platform/graphics/LayoutSize.cpp
 platform/graphics/MediaPlayer.cpp
+platform/graphics/MIMETypeCache.cpp
 platform/graphics/NamedImageGeneratedImage.cpp
 platform/graphics/Path.cpp
 platform/graphics/PathTraversalState.cpp
@@ -1944,6 +1945,8 @@ platform/graphics/iso/ISOSchemeInformationBox.cpp
 platform/graphics/iso/ISOSchemeTypeBox.cpp
 platform/graphics/iso/ISOTrackEncryptionBox.cpp
 platform/graphics/iso/ISOVTTCue.cpp
+
+platform/graphics/opengl/GraphicsContextGLOpenGL.cpp
 
 platform/graphics/opentype/OpenTypeMathData.cpp
 
@@ -2196,6 +2199,7 @@ rendering/SimpleLineLayoutFunctions.cpp
 rendering/SimpleLineLayoutPagination.cpp
 rendering/SimpleLineLayoutResolver.cpp
 rendering/SimpleLineLayoutTextFragmentIterator.cpp
+rendering/TableLayout.cpp
 rendering/TextDecorationPainter.cpp
 rendering/TextPaintStyle.cpp
 rendering/TextPainter.cpp
@@ -2831,6 +2835,7 @@ JSDocumentOrShadowRoot.cpp
 JSDocumentPictureInPicture.cpp
 JSDocumentType.cpp
 JSDoubleRange.cpp
+JSDragEvent.cpp
 JSDynamicsCompressorNode.cpp
 JSEcKeyParams.cpp
 JSEcdhKeyDeriveParams.cpp
@@ -3193,6 +3198,7 @@ JSRTCPeerConnectionIceEvent.cpp
 JSRTCPeerConnectionState.cpp
 JSRTCPriorityType.cpp
 JSRTCRtpCapabilities.cpp
+JSRTCRtpCodecCapability.cpp
 JSRTCRtpCodecParameters.cpp
 JSRTCRtpContributingSource.cpp
 JSRTCRtpEncodingParameters.cpp

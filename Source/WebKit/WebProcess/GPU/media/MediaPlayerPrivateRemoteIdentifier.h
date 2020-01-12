@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(GPU_PROCESS)
+
 #include <wtf/ObjectIdentifier.h>
 
 namespace WebKit {
@@ -33,3 +35,5 @@ enum MediaPlayerPrivateRemoteIdentifierType { };
 using MediaPlayerPrivateRemoteIdentifier = ObjectIdentifier<MediaPlayerPrivateRemoteIdentifierType>;
 
 } // namespace WebKit
+
+#endif

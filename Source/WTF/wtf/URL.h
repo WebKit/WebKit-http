@@ -149,6 +149,7 @@ public:
 
     // Input is like "foo.com" or "foo.com:8000".
     void setHostAndPort(const String&);
+    void removeHostAndPort();
 
     void setUser(const String&);
     void setPass(const String&);

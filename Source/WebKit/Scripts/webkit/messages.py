@@ -220,6 +220,9 @@ def types_that_cannot_be_forward_declared():
         'WebKit::ActivityStateChangeID',
         'WebKit::LayerHostingContextID',
         'WebKit::MediaPlayerPrivateRemoteIdentifier',
+        'WebKit::RemoteMediaResourceIdentifier',
+        'WebKit::RTCDecoderIdentifier',
+        'WebKit::RTCEncoderIdentifier',
         'WebKit::StorageAreaIdentifier',
         'WebKit::StorageAreaImplIdentifier',
         'WebKit::StorageNamespaceIdentifier',
@@ -609,6 +612,8 @@ def headers_for_type(type):
         'struct WebKit::WebUserScriptData': ['"WebUserContentControllerDataTypes.h"'],
         'struct WebKit::WebUserStyleSheetData': ['"WebUserContentControllerDataTypes.h"'],
         'struct WebKit::WebScriptMessageHandlerData': ['"WebUserContentControllerDataTypes.h"'],
+        'webrtc::WebKitEncodedFrameInfo': ['<webrtc/sdk/WebKit/WebKitEncoder.h>'],
+        'webrtc::WebKitRTPFragmentationHeader': ['<webrtc/sdk/WebKit/WebKitEncoder.h>'],
     }
 
     headers = []

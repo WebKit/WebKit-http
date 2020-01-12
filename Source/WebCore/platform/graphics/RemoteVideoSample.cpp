@@ -42,7 +42,7 @@ namespace WebCore {
 using namespace PAL;
 
 #if HAVE(IOSURFACE)
-std::unique_ptr<RemoteVideoSample> RemoteVideoSample::create(MediaSample&& sample)
+std::unique_ptr<RemoteVideoSample> RemoteVideoSample::create(MediaSample& sample)
 {
     ASSERT(sample.platformSample().type == PlatformSample::CMSampleBufferType);
 
@@ -59,6 +59,17 @@ std::unique_ptr<RemoteVideoSample> RemoteVideoSample::create(MediaSample&& sampl
     }
 
     return std::unique_ptr<RemoteVideoSample>(new RemoteVideoSample(surface, sRGBColorSpaceRef(), sample.presentationTime(), sample.videoRotation(), sample.videoMirrored()));
+}
+
+std::unique_ptr<RemoteVideoSample> RemoteVideoSample::create(CVPixelBufferRef imageBuffer, MediaTime&& presentationTime, MediaSample::VideoRotation rotation)
+{
+    auto surface = CVPixelBufferGetIOSurface(imageBuffer);
+    if (!surface) {
+        RELEASE_LOG_ERROR(Media, "RemoteVideoSample::create: CVPixelBufferGetIOSurface returned nullptr");
+        return nullptr;
+    }
+
+    return std::unique_ptr<RemoteVideoSample>(new RemoteVideoSample(surface, sRGBColorSpaceRef(), WTFMove(presentationTime), rotation, false));
 }
 
 RemoteVideoSample::RemoteVideoSample(IOSurfaceRef surface, CGColorSpaceRef colorSpace, MediaTime&& time, MediaSample::VideoRotation rotation, bool mirrored)

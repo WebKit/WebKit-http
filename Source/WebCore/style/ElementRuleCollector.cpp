@@ -104,7 +104,7 @@ const MatchResult& ElementRuleCollector::matchResult() const
     return m_result;
 }
 
-const Vector<RefPtr<StyleRule>>& ElementRuleCollector::matchedRuleList() const
+const Vector<RefPtr<const StyleRule>>& ElementRuleCollector::matchedRuleList() const
 {
     ASSERT(m_mode == SelectorChecker::Mode::CollectingRules);
     return m_matchedRuleList;
@@ -193,12 +193,12 @@ void ElementRuleCollector::transferMatchedRules(DeclarationOrigin declarationOri
             break;
 
         if (m_mode == SelectorChecker::Mode::CollectingRules) {
-            m_matchedRuleList.append(matchedRule.ruleData->rule());
+            m_matchedRuleList.append(&matchedRule.ruleData->styleRule());
             continue;
         }
 
         addMatchedProperties({
-            &matchedRule.ruleData->rule()->properties(),
+            &matchedRule.ruleData->styleRule().properties(),
             static_cast<uint16_t>(matchedRule.ruleData->linkMatchType()),
             static_cast<uint16_t>(matchedRule.ruleData->propertyWhitelistType()),
             matchedRule.styleScopeOrdinal
@@ -448,22 +448,18 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, unsigned
     }
 
 #if ENABLE(CSS_SELECTOR_JIT)
-    auto& compiledSelector = ruleData.rule()->compiledSelectorForListIndex(ruleData.selectorListIndex());
-    void* compiledSelectorChecker = compiledSelector.codeRef.code().executableAddress();
-    if (!compiledSelectorChecker && compiledSelector.status == SelectorCompilationStatus::NotCompiled) {
-        compiledSelector.status = SelectorCompiler::compileSelector(ruleData.selector(), SelectorCompiler::SelectorContext::RuleCollector, compiledSelector.codeRef);
+    auto& compiledSelector = ruleData.compiledSelector();
 
-        compiledSelectorChecker = compiledSelector.codeRef.code().executableAddress();
-    }
+    if (compiledSelector.status == SelectorCompilationStatus::NotCompiled)
+        SelectorCompiler::compileSelector(compiledSelector, ruleData.selector(), SelectorCompiler::SelectorContext::RuleCollector);
 
-    if (compiledSelectorChecker && compiledSelector.status == SelectorCompilationStatus::SimpleSelectorChecker) {
-        auto selectorChecker = SelectorCompiler::ruleCollectorSimpleSelectorCheckerFunction(compiledSelectorChecker, compiledSelector.status);
+    if (compiledSelector.status == SelectorCompilationStatus::SimpleSelectorChecker) {
+        compiledSelector.wasUsed();
+
+        auto selectorChecker = SelectorCompiler::ruleCollectorSimpleSelectorCheckerFunction(compiledSelector);
 #if !ASSERT_MSG_DISABLED
         unsigned ignoreSpecificity;
         ASSERT_WITH_MESSAGE(!selectorChecker(&element(), &ignoreSpecificity) || m_pseudoElementRequest.pseudoId == PseudoId::None, "When matching pseudo elements, we should never compile a selector checker without context unless it cannot match anything.");
-#endif
-#if CSS_SELECTOR_JIT_PROFILING
-        ruleData.compiledSelectorUsed();
 #endif
         bool selectorMatches = selectorChecker(&element(), &specificity);
 
@@ -483,14 +479,10 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, unsigned
 
     bool selectorMatches;
 #if ENABLE(CSS_SELECTOR_JIT)
-    if (compiledSelectorChecker) {
-        ASSERT(compiledSelector.status == SelectorCompilationStatus::SelectorCheckerWithCheckingContext);
+    if (compiledSelector.status == SelectorCompilationStatus::SelectorCheckerWithCheckingContext) {
+        compiledSelector.wasUsed();
 
-        auto selectorChecker = SelectorCompiler::ruleCollectorSelectorCheckerFunctionWithCheckingContext(compiledSelectorChecker, compiledSelector.status);
-
-#if CSS_SELECTOR_JIT_PROFILING
-        compiledSelector.useCount++;
-#endif
+        auto selectorChecker = SelectorCompiler::ruleCollectorSelectorCheckerFunctionWithCheckingContext(compiledSelector);
         selectorMatches = selectorChecker(&element(), &context, &specificity);
     } else
 #endif // ENABLE(CSS_SELECTOR_JIT)
@@ -533,12 +525,12 @@ void ElementRuleCollector::collectMatchingRulesForList(const RuleSet::RuleDataVe
         if (m_selectorFilter && m_selectorFilter->fastRejectSelector(ruleData.descendantSelectorIdentifierHashes()))
             continue;
 
-        StyleRule* rule = ruleData.rule();
+        auto& rule = ruleData.styleRule();
 
         // If the rule has no properties to apply, then ignore it in the non-debug mode.
         // Note that if we get null back here, it means we have a rule with deferred properties,
         // and that means we always have to consider it.
-        const StyleProperties* properties = rule->propertiesWithoutDeferredParsing();
+        const StyleProperties* properties = rule.propertiesWithoutDeferredParsing();
         if (properties && properties->isEmpty() && !m_shouldIncludeEmptyRules)
             continue;
 

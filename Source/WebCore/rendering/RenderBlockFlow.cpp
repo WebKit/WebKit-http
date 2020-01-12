@@ -2086,8 +2086,19 @@ void RenderBlockFlow::styleDidChange(StyleDifference diff, const RenderStyle* ol
     }
 
     if (diff >= StyleDifference::Repaint) {
-        // FIXME: This could use a cheaper style-only test instead of SimpleLineLayout::canUseFor.
-        if (selfNeedsLayout() || !simpleLineLayout() || !SimpleLineLayout::canUseFor(*this))
+        auto shouldInvalidateLineLayoutPath = [&] {
+            if (selfNeedsLayout() || complexLineLayout())
+                return true;
+            // FIXME: This could use a cheaper style-only test instead of SimpleLineLayout::canUseFor.
+            if (simpleLineLayout() && !SimpleLineLayout::canUseFor(*this))
+                return true;
+#if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+            if (layoutFormattingContextLineLayout() && !LayoutIntegration::LineLayout::canUseFor(*this))
+                return true;
+#endif
+            return false;
+        };
+        if (shouldInvalidateLineLayoutPath())
             invalidateLineLayoutPath();
     }
 
@@ -3705,14 +3716,13 @@ void RenderBlockFlow::layoutLFCLines(bool, LayoutUnit& repaintLogicalTop, Layout
     layoutFormattingContextLineLayout.layout();
 
     auto contentHeight = layoutFormattingContextLineLayout.contentLogicalHeight();
-    auto contentTop = borderAndPaddingBefore();
-    auto contentBottom = contentTop + contentHeight;
-    auto totalHeight = contentBottom + borderAndPaddingAfter();
+    auto contentBoxTop = borderAndPaddingBefore();
+    auto contentBoxBottom = contentBoxTop + contentHeight;
+    auto borderBoxBottom = contentBoxBottom + borderAndPaddingAfter();
 
-    repaintLogicalTop = contentTop;
-    repaintLogicalBottom = contentBottom;
-
-    setLogicalHeight(totalHeight);
+    repaintLogicalTop = contentBoxTop;
+    repaintLogicalBottom = borderBoxBottom;
+    setLogicalHeight(borderBoxBottom);
 }
 #endif
 

@@ -114,7 +114,7 @@ public:
     void play() final { }
     void pause() final { }
 
-    PlatformLayer* platformLayer() const final { return 0; }
+    PlatformLayer* platformLayer() const final { return nullptr; }
 
     FloatSize naturalSize() const final { return FloatSize(); }
 
@@ -960,7 +960,7 @@ void MediaPlayer::paintCurrentFrameInContext(GraphicsContext& p, const FloatRect
     m_private->paintCurrentFrameInContext(p, r);
 }
 
-bool MediaPlayer::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject texture, GC3Denum target, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
+bool MediaPlayer::copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL* context, Platform3DObject texture, GC3Denum target, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
     return m_private->copyVideoTextureToPlatformTexture(context, texture, target, level, internalFormat, format, type, premultiplyAlpha, flipY);
 }

@@ -38,6 +38,7 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTTPHeaderNames.h"
+#include "HTTPHeaderValues.h"
 #include "InspectorInstrumentation.h"
 #include "LegacySchemeRegistry.h"
 #include "LoaderStrategy.h"
@@ -63,6 +64,8 @@
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(cachedResourceLoader.isAlwaysOnLoggingAllowed(), Network, "%p - CachedResource::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
+
+DEFINE_ALLOCATOR_WITH_HEAP_IDENTIFIER(CachedResource);
 
 ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
 {
@@ -244,7 +247,7 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
         if (!lastModified.isEmpty() || !eTag.isEmpty()) {
             ASSERT(cachedResourceLoader.cachePolicy(type(), url()) != CachePolicyReload);
             if (cachedResourceLoader.cachePolicy(type(), url()) == CachePolicyRevalidate)
-                m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
+                m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::CacheControl, HTTPHeaderValues::maxAge0());
             if (!lastModified.isEmpty())
                 m_resourceRequest.setHTTPHeaderField(HTTPHeaderName::IfModifiedSince, lastModified);
             if (!eTag.isEmpty())

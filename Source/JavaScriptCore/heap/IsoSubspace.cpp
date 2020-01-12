@@ -40,7 +40,7 @@ IsoSubspace::IsoSubspace(CString name, Heap& heap, HeapCellType* heapCellType, s
     : Subspace(name, heap)
     , m_directory(WTF::roundUpToMultipleOf<MarkedBlock::atomSize>(size))
     , m_localAllocator(&m_directory)
-    , m_isoAlignedMemoryAllocator(makeUnique<IsoAlignedMemoryAllocator>())
+    , m_isoAlignedMemoryAllocator(makeUnique<IsoAlignedMemoryAllocator>(name))
 {
     m_remainingLowerTierCellCount = numberOfLowerTierCells;
     ASSERT(WTF::roundUpToMultipleOf<MarkedBlock::atomSize>(size) == cellSize());
@@ -69,7 +69,7 @@ void* IsoSubspace::allocate(VM& vm, size_t size, GCDeferralContext* deferralCont
     return allocateNonVirtual(vm, size, deferralContext, failureMode);
 }
 
-void IsoSubspace::didResizeBits(size_t blockIndex)
+void IsoSubspace::didResizeBits(unsigned blockIndex)
 {
     m_cellSets.forEach(
         [&] (IsoCellSet* set) {
@@ -77,7 +77,7 @@ void IsoSubspace::didResizeBits(size_t blockIndex)
         });
 }
 
-void IsoSubspace::didRemoveBlock(size_t blockIndex)
+void IsoSubspace::didRemoveBlock(unsigned blockIndex)
 {
     m_cellSets.forEach(
         [&] (IsoCellSet* set) {

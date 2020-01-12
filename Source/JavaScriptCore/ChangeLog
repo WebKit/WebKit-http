@@ -1,3 +1,412 @@
+2020-01-05  Sam Weinig  <weinig@apple.com>
+
+        Further simplify StringBuilder usage by standardizing hex formating to a single hex() function
+        https://bugs.webkit.org/show_bug.cgi?id=205759
+
+        Reviewed by Dean Jackson.
+
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::json):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode):
+        (JSC::globalFuncEscape):
+        Replace appendUnsignedAsHex() and appendByteAsHex() with append(hex()).
+
+2020-01-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        JavaScript: Invalid date parse for ISO 8601 strings when no timezone given
+        https://bugs.webkit.org/show_bug.cgi?id=89071
+
+        Reviewed by Darin Adler.
+
+        Since ES2016, the specification for Date.parse has included the following statement:
+          When the UTC offset representation is absent, date-only forms are interpreted as a UTC time
+          and date-time forms are interpreted as a local time.
+
+        This patch updates us from the old ES5 behavior, which treated offsetless date-time forms as UTC.
+
+        * runtime/JSDateMath.cpp:
+        (JSC::parseDateFromNullTerminatedCharacters):
+        (JSC::parseES5DateFromNullTerminatedCharacters): Added.
+        (JSC::parseDate):
+        * runtime/JSDateMath.h:
+        Make a local time adjustment if necessary after calling WTF::parseES5DateFromNullTerminatedCharacters.
+
+2020-01-04  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.parse should initialize wrapper object with [[DefineOwnProperty]]
+        https://bugs.webkit.org/show_bug.cgi?id=205767
+
+        Reviewed by Darin Adler.
+
+        This patch makes JSON.parse use [[DefineOwnProperty]] instead of [[Set]] to initialize wrapper object,
+        aligning JSC with the spec (step 7.c of https://tc39.es/ecma262/#sec-json.parse) and other engines.
+        Performing [[Set]] was observable by a setter on Object.prototype (with empty String key).
+        Also removes two extra exceptions checks.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::stringify):
+        (JSC::Walker::walk):
+
+2020-01-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] MarkedBlock::Handle and BlockDirectory should be shrunk
+        https://bugs.webkit.org/show_bug.cgi?id=205712
+
+        Reviewed by Mark Lam.
+
+        This patch shrinks MarkedBlock::Handle and BlockDirectory by leveraging the fact that Vector's size and capacity is unsigned.
+        In these data structures, we use `size_t` to hold a index, but this can be converted to unsigned since we guarantee that this
+        never exceeds unsigned since these numbers are derived from Vector's size / capacity, or index inside MarkedBlock (which is up
+        to 64KB in some architectures). MarkedBlock::Handle is allocated per MarkedBlock, and in Gmail, it takes 1MB. We can save
+        some bytes just using `unsigned`. In addition, this patch removes `m_prev` and `m_next` fields in MarkedBlock::Handle since
+        it is never used.
+
+        * heap/AtomIndices.h:
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::findBlockForAllocation):
+        (JSC::BlockDirectory::addBlock):
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::addSlow):
+        (JSC::IsoCellSet::didResizeBits):
+        (JSC::IsoCellSet::didRemoveBlock):
+        * heap/IsoCellSet.h:
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::forEachMarkedCell):
+        (JSC::IsoCellSet::forEachMarkedCellInParallel):
+        (JSC::IsoCellSet::forEachLiveCell):
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::didResizeBits):
+        (JSC::IsoSubspace::didRemoveBlock):
+        * heap/IsoSubspace.h:
+        * heap/LocalAllocator.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToDirectory):
+        (JSC::MarkedBlock::Handle::didRemoveFromDirectory):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::index const):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::didResizeBits):
+        (JSC::Subspace::didRemoveBlock):
+        * heap/Subspace.h:
+
+2020-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Add some shared schemes to the WebKit.xcworkspace
+        https://bugs.webkit.org/show_bug.cgi?id=205698
+
+        Reviewed by Tim Horton.
+
+        Make WebKit.xcworkspace show the following schemes by default:
+            All Source
+            All Tools
+            WTF
+            JavaScriptCore
+            WebCore
+            WebKit
+            WebKitLegacy
+            DumpRenderTree
+            WebKitTestRunner
+            TestWebKitAPI
+            MiniBrowser
+            MobileMiniBrowser.
+            
+        Also remove the MobileMiniBrowserUITests scheme.
+
+        * JavaScriptCore.xcodeproj/xcshareddata/xcschemes/JavaScriptCore.xcscheme: Copied from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+
+2020-01-03  Saam Barati  <sbarati@apple.com>
+
+        B3::ReduceLoopStrength should not do range based iteration on a vector it's mutating
+        https://bugs.webkit.org/show_bug.cgi?id=205703
+        <rdar://problem/56459483>
+
+        Reviewed by Mark Lam.
+
+        B3::ReduceLoopStrength had code that did:
+        ```
+        for (BasicBlock* pred : loopPostfooter->predecessors())
+            loopPostfooter->removePredecessor(pred);
+        ```
+        
+        This is wrong, since it's doing a range based iteration over the vector it is
+        mutating. The fix is to just do:
+        ```
+        while (loopPostfooter->predecessors().size()) 
+            loopPostfooter->removePredecessor(loopPostfooter->predecessors()[0]);
+        ```
+
+        * b3/B3ReduceLoopStrength.cpp:
+        (JSC::B3::ReduceLoopStrength::reduceByteCopyLoopsToMemcpy):
+
+2020-01-03  Saam Barati  <sbarati@apple.com>
+
+        AI rule for PutById can only observe transitions when it watches the condition
+        https://bugs.webkit.org/show_bug.cgi?id=205697
+        <rdar://problem/56814254>
+
+        Reviewed by Yusuke Suzuki.
+
+        There was a bug in AI where we were capturing a PutByIdStatus and
+        emitting a structure transition in AI state based on the variants inside this
+        PutByIdStatus. This, in principal, is a valid static analysis to perform.
+        However, we can only do this if we ensure that the snapshot we have in the
+        PutByIdStatus holds at runtime. We can do this by watching the property conditions
+        for the various variants. AI forgot to watch these conditions. This patch fixes that.
+        In practice, this also means we need to be slightly more strict about stating to
+        AI when we transition since some object property conditions aren't watchable, and need
+        to be verified at runtime via structure checks. This is ok in practice, since
+        we'll emit the code to do that inside constant folding (constant folding was
+        already doing this), which will continue to report the precise transition in
+        the abstract state.
+
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+
+2020-01-02  Yusuke Suzuki  <ysuzuki@apple.com> and Simon Fraser  <simon.fraser@apple.com>
+
+        Experiment: create lots of different malloc zones for easier accounting of memory use
+        https://bugs.webkit.org/show_bug.cgi?id=186422
+
+        Reviewed by Saam Barati.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/AssemblerBuffer.cpp: Copied from Source/JavaScriptCore/bytecode/InstructionStream.cpp.
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerData::AssemblerData):
+        (JSC::AssemblerData::operator=):
+        (JSC::AssemblerData::~AssemblerData):
+        (JSC::AssemblerData::grow):
+        * bytecode/AccessCase.cpp:
+        * bytecode/AccessCase.h:
+        * bytecode/BytecodeBasicBlock.cpp:
+        * bytecode/BytecodeBasicBlock.h:
+        * bytecode/CodeBlock.cpp:
+        * bytecode/CodeBlock.h:
+        * bytecode/InstructionStream.cpp:
+        * bytecode/InstructionStream.h:
+        * bytecode/PolymorphicAccess.cpp:
+        * bytecode/PolymorphicAccess.h:
+        * bytecode/UnlinkedMetadataTable.cpp:
+        (JSC::UnlinkedMetadataTable::finalize):
+        * bytecode/UnlinkedMetadataTable.h:
+        * bytecode/UnlinkedMetadataTableInlines.h:
+        (JSC::UnlinkedMetadataTable::UnlinkedMetadataTable):
+        (JSC::UnlinkedMetadataTable::~UnlinkedMetadataTable):
+        (JSC::UnlinkedMetadataTable::link):
+        (JSC::UnlinkedMetadataTable::unlink):
+        * bytecode/ValueProfile.h:
+        (JSC::ValueProfileAndVirtualRegisterBuffer::ValueProfileAndVirtualRegisterBuffer):
+        * bytecode/Watchpoint.cpp:
+        * bytecode/Watchpoint.h:
+        * dfg/DFGBasicBlock.cpp:
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGNode.cpp:
+        * dfg/DFGNode.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        * dfg/DFGSpeculativeJIT.h:
+        * heap/BlockDirectory.cpp:
+        * heap/BlockDirectory.h:
+        * heap/FastMallocAlignedMemoryAllocator.cpp:
+        (JSC::FastMallocAlignedMemoryAllocator::FastMallocAlignedMemoryAllocator):
+        (JSC::FastMallocAlignedMemoryAllocator::tryAllocateAlignedMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::freeAlignedMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::tryAllocateMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::freeMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::tryReallocateMemory):
+        * heap/FastMallocAlignedMemoryAllocator.h:
+        * heap/GCSegmentedArray.cpp: Copied from Source/JavaScriptCore/parser/SourceProviderCache.cpp.
+        * heap/GCSegmentedArray.h:
+        * heap/GCSegmentedArrayInlines.h:
+        (JSC::GCArraySegment<T>::create):
+        (JSC::GCArraySegment<T>::destroy):
+        * heap/GigacageAlignedMemoryAllocator.cpp:
+        (JSC::GigacageAlignedMemoryAllocator::GigacageAlignedMemoryAllocator):
+        (JSC::GigacageAlignedMemoryAllocator::tryAllocateAlignedMemory):
+        (JSC::GigacageAlignedMemoryAllocator::freeAlignedMemory):
+        (JSC::GigacageAlignedMemoryAllocator::tryAllocateMemory):
+        (JSC::GigacageAlignedMemoryAllocator::freeMemory):
+        (JSC::GigacageAlignedMemoryAllocator::tryReallocateMemory):
+        * heap/GigacageAlignedMemoryAllocator.h:
+        * heap/IsoAlignedMemoryAllocator.cpp:
+        (JSC::IsoAlignedMemoryAllocator::IsoAlignedMemoryAllocator):
+        (JSC::IsoAlignedMemoryAllocator::~IsoAlignedMemoryAllocator):
+        (JSC::IsoAlignedMemoryAllocator::tryAllocateAlignedMemory):
+        (JSC::IsoAlignedMemoryAllocator::freeAlignedMemory):
+        (JSC::IsoAlignedMemoryAllocator::tryAllocateMemory):
+        (JSC::IsoAlignedMemoryAllocator::freeMemory):
+        * heap/IsoAlignedMemoryAllocator.h:
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::IsoSubspace):
+        * heap/MarkedBlock.cpp:
+        * heap/MarkedBlock.h:
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::create):
+        (JSC::WeakBlock::destroy):
+        * heap/WeakBlock.h:
+        * jit/JITCode.cpp:
+        * jit/JITCode.h:
+        * jit/RegisterAtOffsetList.cpp:
+        * jit/RegisterAtOffsetList.h:
+        * parser/Nodes.cpp:
+        * parser/Nodes.h:
+        * parser/ParserArena.cpp:
+        (JSC::ParserArena::deallocateObjects):
+        (JSC::ParserArena::allocateFreeablePool):
+        * parser/ParserArena.h:
+        * parser/SourceProvider.cpp:
+        * parser/SourceProvider.h:
+        * parser/SourceProviderCache.cpp:
+        * parser/SourceProviderCache.h:
+        * parser/SourceProviderCacheItem.h:
+        (JSC::SourceProviderCacheItem::create):
+        * runtime/CachePayload.cpp:
+        (JSC::CachePayload::makeMallocPayload):
+        * runtime/CachePayload.h:
+        * runtime/CachedBytecode.h:
+        (JSC::CachedBytecode::create):
+        * runtime/CachedTypes.cpp:
+        (JSC::Encoder::release):
+        (JSC::Encoder::Page::Page):
+        (JSC::CachedVector::encode):
+        (JSC::CachedVector::decode const):
+        (JSC::CachedInstructionStream::decode const):
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::rehash):
+        * runtime/PropertyTable.cpp:
+        (JSC::PropertyTable::PropertyTable):
+        (JSC::PropertyTable::~PropertyTable):
+        * runtime/SymbolTable.cpp:
+        * runtime/SymbolTable.h:
+        * runtime/VM.cpp:
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        (JSC::ScratchBuffer::create):
+        (JSC::VM::exceptionFuzzingBuffer):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::Instance::Instance):
+        * wasm/WasmInstance.h:
+        * wasm/WasmTable.cpp:
+        (JSC::Wasm::Table::Table):
+        (JSC::Wasm::FuncRefTable::FuncRefTable):
+        * wasm/WasmTable.h:
+
+2020-01-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION (r253867): Six test262 tests broken
+        https://bugs.webkit.org/show_bug.cgi?id=205583
+
+        Reviewed by Mark Lam.
+
+        If a function has empty name, a bound function should have "bound " name.
+        But Intl prototypes' bound functions are exceptions: these JSBoundFunctions have empty name.
+        In this patch, we pass `nullptr` for the JSBoundFunction::create's nameMayBeNull parameter of Intl prototypes' bound functions,
+        to generate empty string name for these bound functions instead of "bound "[1].
+        This fixes test262 failures.
+
+        [1]: https://tc39.es/ecma402/#sec-collator-compare-functions
+
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototypeGetterCompare):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeGetterFormat):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototypeGetterFormat):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::create):
+        (JSC::JSBoundFunction::JSBoundFunction):
+        (JSC::JSBoundFunction::visitChildren):
+        * runtime/JSBoundFunction.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::reifyLazyBoundNameIfNeeded):
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::initializeCommonStrings):
+        * runtime/SmallStrings.h:
+        (JSC::SmallStrings::boundPrefixString const):
+
+2020-01-02  Sam Weinig  <weinig@apple.com>
+
+        Simplify StringBuilder API/align with makeString by removing appendFixed* functions and using FormatNumber struct instead
+        https://bugs.webkit.org/show_bug.cgi?id=205671
+
+        Reviewed by Alex Christensen.
+
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        (testExecutionTimeLimit):
+        * runtime/Options.cpp:
+        (JSC::OptionReader::Option::dump const):
+        Replace all uses of builder.appendFixedPrecisionNumber(...) with builder.append(FormattedNumber::fixedPrecision(...)).
+
+2020-01-01  Mark Lam  <mark.lam@apple.com>
+
+        Declare some classes as final.
+        https://bugs.webkit.org/show_bug.cgi?id=205670
+
+        Reviewed by Sam Weinig.
+
+        There are a few "Status" classes, all of whom have static computeFor() methods.
+        All of these classes do not have derived classes, and are independent of each
+        others in terms of inheritance relationships.  By explicitly declaring them as
+        final, we can make it clear that a call to any unqualified computeFor() methods
+        within one of these classes must be from the self class, and that external calls
+        to any given computeFor() method qualified with a class name is defined in that
+        class (and is not inherited from another class).
+
+        This detail may already be known to folks who are familiar with these classes.
+        Declaring them as final helps surface this independence for readers of the code
+        who is not already in the know.
+
+        * bytecode/CallLinkStatus.h:
+        * bytecode/ComplexGetStatus.h:
+        * bytecode/GetByStatus.h:
+        * bytecode/InByIdStatus.h:
+        * bytecode/InstanceOfStatus.h:
+        * bytecode/PutByIdStatus.h:
+
+2019-12-22  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2020
+        https://bugs.webkit.org/show_bug.cgi?id=205552
+
+        Reviewed by Darin Adler.
+
+        * Info.plist:
+
+2019-12-20  Darin Adler  <darin@apple.com>
+
+        Tidy a bit of StringBuilder usage
+        https://bugs.webkit.org/show_bug.cgi?id=205509
+
+        Reviewed by Sam Weinig.
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode): Remove unneeded check that
+        duplicates range checking that StringBuilder::appendSubstring does.
+
+2019-12-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix after r253904
+        https://bugs.webkit.org/show_bug.cgi?id=205553
+
+        * bytecompiler/BytecodeGeneratorBaseInlines.h:
+        (JSC::BytecodeGeneratorBase<Traits>::alignWideOpcode16):
+        (JSC::BytecodeGeneratorBase<Traits>::alignWideOpcode32):
+
+2019-12-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r253896): [GTK][WPE] Broke the build with GCC-7
+        https://bugs.webkit.org/show_bug.cgi?id=205649
+
+        Reviewed by Mark Lam.
+
+        Add WTF_INTERNAL macro to explicitly adjust the symbol visibility.
+
+        * llint/LLIntSlowPaths.h:
+
 2019-12-29  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Remove WTF::loadLoadFence from JSFunction::rareData()

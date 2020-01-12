@@ -78,6 +78,7 @@ class InspectorStubFrontend;
 class InternalsMapLike;
 class InternalSettings;
 class InternalsSetLike;
+class Location;
 class MallocStatistics;
 class MediaSession;
 class MediaStream;
@@ -558,6 +559,7 @@ public:
     void applyRotationForOutgoingVideoSources(RTCPeerConnection&);
     void setEnableWebRTCEncryption(bool);
     void setUseDTLS10(bool);
+    void setUseGPUProcessForWebRTC(bool);
 #endif
 
     String getImageSourceURL(Element&);
@@ -918,6 +920,8 @@ public:
     bool hasSandboxMachLookupAccessToXPCServiceName(const String& process, const String& service);
 
     String highlightPseudoElementColor(const String& highlightName, Element&);
+
+    String windowLocationHost(DOMWindow&);
 
 private:
     explicit Internals(Document&);

@@ -1,3 +1,311 @@
+2020-01-05  Dean Jackson  <dino@apple.com>
+
+        Rename GraphicsContext3D to GraphicsContextGL
+        https://bugs.webkit.org/show_bug.cgi?id=205778
+        <rdar://problem/58327597>
+
+        Reviewed by Sam Weinig.
+
+        Rename all the GraphicsContext3D things to GraphicsContextGL
+        (includes Extensions3D and GRAPHICS_CONTEXT_3D).
+
+        GraphicsContext3DBase now becomes GraphicsContextGL.
+        GraphicsContext3D is now GraphicsContextGLOpenGL (since it represents
+        the OpenGL implementation of the API).
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2020-01-06  Paulo Matos  <pmatos@igalia.com>
+
+        Remove unused variable jsDriverArgs from script
+        https://bugs.webkit.org/show_bug.cgi?id=205797
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/run-javascriptcore-tests:
+
+2020-01-06  Paulo Matos  <pmatos@igalia.com>
+
+        Add support for passing test arguments in envvar TEST_JSC_ARGS
+        https://bugs.webkit.org/show_bug.cgi?id=205800
+
+        Reviewed by Žan Doberšek.
+
+        Similarly to what is done in build-jsc, we add support to pass
+        extra command line arguments in environment variable TEST_JSC_ARGS.
+
+        * Scripts/run-javascriptcore-tests:
+
+2020-01-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue mach lookup extension to launch services daemon for Mail
+        https://bugs.webkit.org/show_bug.cgi?id=205316
+
+        Reviewed by Brent Fulgham.
+
+        Add test option to set bundle identifier. Using this, WebKitTestRunner can pretend to be any client, e.g. Mail.
+
+        Test: fast/sandbox/ios/sandbox-mach-lookup-mail.html
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::setApplicationBundleIdentifier):
+
+2020-01-06  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE][Qt] TestRunJavaScript failure
+        https://bugs.webkit.org/show_bug.cgi?id=205766
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WPEQt/TestRunJavaScript.cpp:
+        (TestRunJavaScript::main): Surround JS function with parentheses
+        to comply with the ECMAScript specification.
+
+2020-01-05  Sam Weinig  <weinig@apple.com>
+
+        Further simplify StringBuilder usage by standardizing hex formating to a single hex() function
+        https://bugs.webkit.org/show_bug.cgi?id=205759
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/HexNumber.cpp: Added.
+        Add testing for hex formatting of integers.
+
+2020-01-05  Simon Fraser  <simon.fraser@apple.com>
+
+        DumpRenderTree doesn't always call updateRendering() when a test completes
+        https://bugs.webkit.org/show_bug.cgi?id=205761
+
+        Reviewed by Darin Adler.
+        
+        Some animation tests (and possibly many others) are flakey or broken in WK1 because
+        there was no code to guarantee that Page::updateRendering() was called at notifyDone()
+        time.
+
+        WK2 calls DrawingArea::forceRepaint(), which does updateRendering(), flushes layers,
+        and flushes a CATransaction.
+
+        In WK1, we historically relied in AppKit to call -viewWillDraw on WebView and/or WebHTMLView,
+        and just called [webView display] to make this happen. However, with layer backing, AppKit behavior
+        changes, and WebCore changes that make more things happen with HTML event loop timing, this
+        approach no longer works. The fix is to add WebView SPI, _forceRepaintForTesting, which emulates what
+        WK2 is doing.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (updateDisplay):
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+
+2020-01-03  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION: 150+ flaky failures on some bots (color mismatches)
+        https://bugs.webkit.org/show_bug.cgi?id=205755
+        <rdar://problem/58248136>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (colorProfileURLForDisplay):
+        (displayUUIDStrings):
+        Use CGGetOnlineDisplayList instead of CGGetActiveDisplayList; we want
+        all attached displays, even if they are sleeping.
+
+2020-01-03  Keith Miller  <keith_miller@apple.com>
+
+        Update test262 tests to commit 157b18d
+        https://bugs.webkit.org/show_bug.cgi?id=205741
+
+        Reviewed by Yusuke Suzuki.
+
+        Using --save and --latest-import should update expectations rather than overwrite.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+
+2020-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Add some shared schemes to the WebKit.xcworkspace
+        https://bugs.webkit.org/show_bug.cgi?id=205698
+
+        Reviewed by Tim Horton.
+        
+        Make WebKit.xcworkspace show the following schemes by default:
+            All Source
+            All Tools
+            WTF
+            JavaScriptCore
+            WebCore
+            WebKit
+            WebKitLegacy
+            DumpRenderTree
+            WebKitTestRunner
+            TestWebKitAPI
+            MiniBrowser
+            MobileMiniBrowser.
+            
+        Also remove the MobileMiniBrowserUITests scheme.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/xcshareddata/xcschemes/DumpRenderTree.xcscheme: Copied from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+        * MiniBrowser/MiniBrowser.xcodeproj/xcshareddata/xcschemes/MiniBrowser.xcscheme: Copied from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowser.xcscheme: Copied from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/xcshareddata/xcschemes/TestWebKitAPI.xcscheme: Copied from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/xcshareddata/xcschemes/WebKitTestRunner.xcscheme: Renamed from Tools/MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme.
+
+2020-01-03  youenn fablet  <youenn@apple.com>
+
+        Provide pid to crashing service worker process and GPU process
+        https://bugs.webkit.org/show_bug.cgi?id=205564
+
+        Reviewed by Alex Christensen.
+
+        Exposing the pid allows WebKitTestRunner to provide better information.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::serviceWorkerProcessDidCrash):
+        (WTR::TestController::gpuProcessDidCrash):
+        * WebKitTestRunner/TestController.h:
+
+2020-01-03  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate _WKWebsitePolicies
+        https://bugs.webkit.org/show_bug.cgi?id=205539
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+        (-[SWCustomUserAgentDelegate _webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:]):
+        (-[SWCustomUserAgentDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (-[ContentBlockingWebsitePoliciesDelegate webView:decidePolicyForNavigationAction:preferences:decisionHandler:]):
+        (TEST):
+        (-[AutoplayPoliciesDelegate webView:decidePolicyForNavigationAction:preferences:decisionHandler:]):
+        (-[AsyncAutoplayPoliciesDelegate webView:decidePolicyForNavigationAction:preferences:decisionHandler:]):
+        (-[WebsitePoliciesNavigationDelegate _webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:]):
+        (-[CustomUserAgentDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]):
+        (-[CustomJavaScriptUserAgentDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]):
+        (-[CustomNavigatorPlatformDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]):
+        (-[WebsitePoliciesDeviceOrientationDelegate _webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:]):
+        (-[PopUpPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[WebsitePoliciesWebsiteDataStoreDelegate webView:decidePolicyForNavigationAction:preferences:decisionHandler:]):
+        (-[ContentBlockingWebsitePoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+        (-[AutoplayPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+        (-[AsyncAutoplayPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+        (-[WebsitePoliciesNavigationDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]): Deleted.
+        (-[WebsitePoliciesDeviceOrientationDelegate _webView:decidePolicyForNavigationAction:userInfo:decisionHandler:]): Deleted.
+        (-[WebsitePoliciesWebsiteDataStoreDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+
+2020-01-03  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer][MSE] Player stalling too soon
+        https://bugs.webkit.org/show_bug.cgi?id=205117
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Backported patch to jhbuild.
+
+        Small modifications were necessary to make it apply on 1.16.1.
+
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/libav-0001-gstavviddec-Limit-default-number-of-decoder-threads.patch: Added.
+
+2020-01-02  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to disable CORS on requests to URLs matching a pattern
+        https://bugs.webkit.org/show_bug.cgi?id=205534
+        <rdar://problem/58011337>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2020-01-02  Sam Weinig  <weinig@apple.com>
+
+        Simplify StringBuilder API/align with makeString by removing appendFixed* functions and using FormatNumber struct instead
+        https://bugs.webkit.org/show_bug.cgi?id=205671
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        Replace all uses of builder.appendFixedPrecisionNumber(...) with builder.append(FormattedNumber::fixedPrecision(...)).
+
+2019-12-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] OpenJPEG missing in install dependencies script.
+        https://bugs.webkit.org/show_bug.cgi?id=205647
+
+        Unreviewed follow-up fix.
+
+        Add also the OpenJPEG-2 package to the WPE install list.
+
+        * wpe/install-dependencies:
+
+2019-12-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] OpenJPEG missing in install dependencies script
+        https://bugs.webkit.org/show_bug.cgi?id=205647
+
+        Reviewed by Adrian Perez de Castro.
+
+        * gtk/install-dependencies: Add OpenJPEG-2 package to the list.
+
+2019-12-30  Brady Eidson  <beidson@apple.com>
+
+        Add WKWebView SPI to evaluate a function with arguments
+        https://bugs.webkit.org/show_bug.cgi?id=205239
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/AsyncFunction.mm: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[WKWebView objectByCallingAsyncFunction:withArguments:error:]):
+
+2019-12-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Report number of total tests run and failed in API test runner like run-api-tests does
+        https://bugs.webkit.org/show_bug.cgi?id=205608
+
+        Reviewed by Carlos Garcia Campos.
+
+        Calculate the total number of tests (including subtests) executed
+        and report it at the end of the step in the same format than run-api-tests does.
+
+        * glib/api_test_runner.py:
+        (TestRunner._run_test_glib): Pass the list of skipped tests instead of calculating it here to avoid calculating it twice.
+        (TestRunner._get_tests_from_google_test_suite): Ditto.
+        (TestRunner._run_google_test_suite): Ditto.
+        (TestRunner._run_test): Ditto.
+        (TestRunner.run_tests):
+        (TestRunner.run_tests.number_of_tests):
+        (TestRunner.run_tests.report):
+
+2019-12-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] support output of results in json format in API test runner.
+        https://bugs.webkit.org/show_bug.cgi?id=205579
+
+        Reviewed by Carlos Garcia Campos.
+
+        Write the results of the tests in json format when the option --json-output
+        is passed to run-gtk-tests or run-wpe-tests. Use the same format than mac's
+        run-api-tests.
+
+        * glib/api_test_runner.py:
+        (TestRunner.run_tests):
+        (TestRunner.run_tests.generate_test_list_for_json_output):
+        (TestRunner):
+        (add_options):
+
 2019-12-28  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r253804.

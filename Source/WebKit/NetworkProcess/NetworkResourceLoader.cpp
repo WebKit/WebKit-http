@@ -496,7 +496,7 @@ void NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
         bool validationSucceeded = m_response.httpStatusCode() == 304; // 304 Not Modified
         RELEASE_LOG_IF_ALLOWED("didReceiveResponse: Received revalidation response (validationSucceeded=%d, wasOriginalRequestConditional=%d)", validationSucceeded, originalRequest().isConditional());
         if (validationSucceeded) {
-            m_cacheEntryForValidation = m_cache->update(originalRequest(), globalFrameID(), *m_cacheEntryForValidation, m_response);
+            m_cacheEntryForValidation = m_cache->update(originalRequest(), *m_cacheEntryForValidation, m_response);
             // If the request was conditional then this revalidation was not triggered by the network cache and we pass the 304 response to WebCore.
             if (originalRequest().isConditional())
                 m_cacheEntryForValidation = nullptr;
@@ -767,7 +767,7 @@ void NetworkResourceLoader::didFinishWithRedirectResponse(WebCore::ResourceReque
     if (!isCrossOriginPrefetch())
         didReceiveResponse(WTFMove(redirectResponse), [] (auto) { });
     else if (auto* session = m_connection->networkProcess().networkSession(sessionID()))
-        session->prefetchCache().storeRedirect(m_networkLoad->currentRequest().url(), WTFMove(redirectResponse), WTFMove(redirectRequest));
+        session->prefetchCache().storeRedirect(request.url(), WTFMove(redirectResponse), WTFMove(redirectRequest));
 
     WebCore::NetworkLoadMetrics networkLoadMetrics;
     networkLoadMetrics.markComplete();

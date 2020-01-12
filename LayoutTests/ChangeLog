@@ -1,3 +1,540 @@
+2020-01-06  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [ Catalina wk1 ] editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-2.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205814
+
+        unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-01-06  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [ Mac WK2 ] fast/text/international/unicode-bidi-other-neutrals.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205808
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-01-06  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [ Mac Debug ] inspector/page/setBootstrapScript-main-frame.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205807
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-01-06  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION: [ Mojave ]  tables/mozilla_expected_failures/bugs/bug2479-5.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205805
+        <rdar://problem/58342884>
+
+        Unreviewed.
+
+        Rebaseline after r254044.
+
+        * platform/mac-mojave/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+
+2020-01-05  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r252724): Unable to tap on play button on google video 'See the top search trends of 2019'
+        https://bugs.webkit.org/show_bug.cgi?id=205694
+        <rdar://problem/58062987>
+
+        Reviewed by Zalan Bujtas.
+
+        * animations/z-index-in-keyframe-expected.html: Added.
+        * animations/z-index-in-keyframe.html: Added.
+
+2020-01-06  Chris Dumez  <cdumez@apple.com>
+
+        Regression r254029: imported/w3c/web-platform-tests/html/dom/idlharness.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205803
+
+        Unreviewed, rebaseline WPT test on iOS after r254029, now that more checks are passing.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+
+2020-01-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue mach lookup extension to launch services daemon for Mail
+        https://bugs.webkit.org/show_bug.cgi?id=205316
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-mail-expected.txt: Added.
+        * fast/sandbox/ios/sandbox-mach-lookup-mail.html: Added.
+
+2020-01-05  Zalan Bujtas  <zalan@apple.com>
+
+        [SLL] Generate runs for preserved new lines
+        https://bugs.webkit.org/show_bug.cgi?id=205762
+        <rdar://problem/58311927>
+
+        Reviewed by Antti Koivisto.
+
+        * platform/mac/css1/basic/containment-expected.txt:
+        * platform/mac/css1/basic/contextual_selectors-expected.txt:
+        * platform/mac/css1/basic/grouping-expected.txt:
+        * platform/mac/css1/basic/id_as_selector-expected.txt:
+        * platform/mac/css1/basic/inheritance-expected.txt:
+        * platform/mac/css1/box_properties/border-expected.txt:
+        * platform/mac/css1/box_properties/border_bottom-expected.txt:
+        * platform/mac/css1/box_properties/border_bottom_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_bottom_width-expected.txt:
+        * platform/mac/css1/box_properties/border_bottom_width_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_color-expected.txt:
+        * platform/mac/css1/box_properties/border_color_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_left-expected.txt:
+        * platform/mac/css1/box_properties/border_left_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_left_width-expected.txt:
+        * platform/mac/css1/box_properties/border_left_width_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_right-expected.txt:
+        * platform/mac/css1/box_properties/border_right_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_right_width-expected.txt:
+        * platform/mac/css1/box_properties/border_right_width_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_style-expected.txt:
+        * platform/mac/css1/box_properties/border_style_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_top-expected.txt:
+        * platform/mac/css1/box_properties/border_top_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_top_width-expected.txt:
+        * platform/mac/css1/box_properties/border_top_width_inline-expected.txt:
+        * platform/mac/css1/box_properties/border_width-expected.txt:
+        * platform/mac/css1/box_properties/border_width_inline-expected.txt:
+        * platform/mac/css1/box_properties/clear-expected.txt:
+        * platform/mac/css1/box_properties/clear_float-expected.txt:
+        * platform/mac/css1/box_properties/float-expected.txt:
+        * platform/mac/css1/box_properties/float_elements_in_series-expected.txt:
+        * platform/mac/css1/box_properties/float_margin-expected.txt:
+        * platform/mac/css1/box_properties/height-expected.txt:
+        * platform/mac/css1/box_properties/margin-expected.txt:
+        * platform/mac/css1/box_properties/margin_bottom-expected.txt:
+        * platform/mac/css1/box_properties/margin_bottom_inline-expected.txt:
+        * platform/mac/css1/box_properties/margin_inline-expected.txt:
+        * platform/mac/css1/box_properties/margin_left-expected.txt:
+        * platform/mac/css1/box_properties/margin_left_inline-expected.txt:
+        * platform/mac/css1/box_properties/margin_right-expected.txt:
+        * platform/mac/css1/box_properties/margin_right_inline-expected.txt:
+        * platform/mac/css1/box_properties/margin_top-expected.txt:
+        * platform/mac/css1/box_properties/margin_top_inline-expected.txt:
+        * platform/mac/css1/box_properties/padding-expected.txt:
+        * platform/mac/css1/box_properties/padding_bottom-expected.txt:
+        * platform/mac/css1/box_properties/padding_bottom_inline-expected.txt:
+        * platform/mac/css1/box_properties/padding_inline-expected.txt:
+        * platform/mac/css1/box_properties/padding_left-expected.txt:
+        * platform/mac/css1/box_properties/padding_left_inline-expected.txt:
+        * platform/mac/css1/box_properties/padding_right-expected.txt:
+        * platform/mac/css1/box_properties/padding_right_inline-expected.txt:
+        * platform/mac/css1/box_properties/padding_top-expected.txt:
+        * platform/mac/css1/box_properties/padding_top_inline-expected.txt:
+        * platform/mac/css1/box_properties/width-expected.txt:
+        * platform/mac/css1/cascade/cascade_order-expected.txt:
+        * platform/mac/css1/cascade/important-expected.txt:
+        * platform/mac/css1/classification/display-expected.txt:
+        * platform/mac/css1/classification/list_style-expected.txt:
+        * platform/mac/css1/classification/list_style_image-expected.txt:
+        * platform/mac/css1/classification/list_style_position-expected.txt:
+        * platform/mac/css1/classification/list_style_type-expected.txt:
+        * platform/mac/css1/classification/white_space-expected.txt:
+        * platform/mac/css1/color_and_background/background-expected.txt:
+        * platform/mac/css1/color_and_background/background_attachment-expected.txt:
+        * platform/mac/css1/color_and_background/background_color-expected.txt:
+        * platform/mac/css1/color_and_background/background_image-expected.txt:
+        * platform/mac/css1/color_and_background/background_position-expected.txt:
+        * platform/mac/css1/color_and_background/background_repeat-expected.txt:
+        * platform/mac/css1/color_and_background/color-expected.txt:
+        * platform/mac/css1/conformance/forward_compatible_parsing-expected.txt:
+        * platform/mac/css1/font_properties/font-expected.txt:
+        * platform/mac/css1/font_properties/font_family-expected.txt:
+        * platform/mac/css1/font_properties/font_size-expected.txt:
+        * platform/mac/css1/font_properties/font_style-expected.txt:
+        * platform/mac/css1/font_properties/font_variant-expected.txt:
+        * platform/mac/css1/font_properties/font_weight-expected.txt:
+        * platform/mac/css1/formatting_model/canvas-expected.txt:
+        * platform/mac/css1/formatting_model/floating_elements-expected.txt:
+        * platform/mac/css1/formatting_model/height_of_lines-expected.txt:
+        * platform/mac/css1/formatting_model/inline_elements-expected.txt:
+        * platform/mac/css1/formatting_model/replaced_elements-expected.txt:
+        * platform/mac/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/mac/css1/pseudo/anchor-expected.txt:
+        * platform/mac/css1/pseudo/firstletter-expected.txt:
+        * platform/mac/css1/pseudo/firstline-expected.txt:
+        * platform/mac/css1/pseudo/multiple_pseudo_elements-expected.txt:
+        * platform/mac/css1/pseudo/pseudo_elements_in_selectors-expected.txt:
+        * platform/mac/css1/text_properties/letter_spacing-expected.txt:
+        * platform/mac/css1/text_properties/line_height-expected.txt:
+        * platform/mac/css1/text_properties/text_align-expected.txt:
+        * platform/mac/css1/text_properties/text_decoration-expected.txt:
+        * platform/mac/css1/text_properties/text_indent-expected.txt:
+        * platform/mac/css1/text_properties/text_transform-expected.txt:
+        * platform/mac/css1/text_properties/vertical_align-expected.txt:
+        * platform/mac/css1/text_properties/word_spacing-expected.txt:
+        * platform/mac/css1/units/color_units-expected.txt:
+        * platform/mac/css1/units/length_units-expected.txt:
+        * platform/mac/css1/units/percentage_units-expected.txt:
+        * platform/mac/css1/units/urls-expected.txt:
+        * platform/mac/css2.1/t100801-c548-ln-ht-00-c-a-expected.txt:
+        * platform/mac/css2.1/t1606-c562-white-sp-00-b-ag-expected.txt:
+        * platform/mac/fast/css/empty-pseudo-class-expected.txt:
+        * platform/mac/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/mac/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/mac/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/mac/fast/frames/onlyCommentInIFrame-expected.txt:
+        * platform/mac/fast/html/listing-expected.txt:
+        * platform/mac/fast/invalid/junk-data-expected.txt:
+        * platform/mac/fast/invalid/missing-end-tag-expected.txt:
+        * platform/mac/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/mac/fast/parser/xhtml-alternate-entities-expected.txt:
+        * platform/mac/fast/table/border-collapsing/004-expected.txt:
+        * platform/mac/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/mac/fast/text/whitespace/001-expected.txt:
+        * platform/mac/fast/text/whitespace/013-expected.txt:
+        * platform/mac/fast/text/whitespace/014-expected.txt:
+        * platform/mac/fast/text/whitespace/022-expected.txt:
+        * platform/mac/fast/text/whitespace/023-expected.txt: Added.
+        * platform/mac/fast/text/whitespace/024-expected.txt:
+        * platform/mac/fast/text/whitespace/030-expected.txt:
+        * platform/mac/fast/text/word-break-expected.txt:
+        * platform/mac/fast/xsl/xslt-extra-content-at-end-expected.txt:
+        * platform/mac/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt:
+        * platform/mac/svg/custom/bug45331-expected.txt:
+        * platform/mac/svg/custom/junk-data-expected.txt:
+        * platform/mac/svg/custom/missing-xlink-expected.txt:
+        * platform/mac/svg/custom/path-bad-data-expected.txt:
+        * platform/mac/svg/custom/use-font-face-crash-expected.txt:
+        * platform/mac/svg/hixie/error/012-expected.txt:
+        * platform/mac/tables/mozilla/bugs/45621-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug139524-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug157890-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug1055-2-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug21518-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug22122-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+
+2020-01-05  Rob Buis  <rbuis@igalia.com>
+
+        Tighten up stylesheet loading
+        https://bugs.webkit.org/show_bug.cgi?id=189913
+
+        Reviewed by Antti Koivisto.
+
+        Adjust test to new behavior.
+
+        * http/tests/security/mixedContent/insecure-stylesheet-redirects-to-basic-auth-secure-stylesheet-expected.txt:
+        * http/tests/security/mixedContent/resources/frame-with-insecure-stylesheet-redirects-to-basic-auth-secure-stylesheet.html:
+
+2020-01-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        JavaScript: Invalid date parse for ISO 8601 strings when no timezone given
+        https://bugs.webkit.org/show_bug.cgi?id=89071
+
+        Reviewed by Darin Adler.
+
+        * js/date-parse-test-expected.txt:
+        * js/script-tests/date-parse-test.js:
+        Update test to match new behavior.
+
+        * storage/indexeddb/modern/resources/date-basic.js:
+        * storage/indexeddb/modern/resources/get-keyrange.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-1.js:
+        Fix tests relying on obsolete behavior.
+
+2020-01-04  Dean Jackson  <dino@apple.com>
+
+        REGRESSION: [ Mac ] webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205756
+        <rdar://problem/58309241>
+
+        Marking this as Pass Failure.
+
+        * platform/mac/TestExpectations:
+
+2020-01-03  Rob Buis  <rbuis@igalia.com>
+
+        Make text track loading set same-origin fallback flag
+        https://bugs.webkit.org/show_bug.cgi?id=205744
+
+        Reviewed by Darin Adler.
+
+        Adjusts test to same-origin fallback behavior for text track
+        loading by using CORS.
+
+        * http/tests/security/contentSecurityPolicy/resources/track.php: Added.
+        * http/tests/security/contentSecurityPolicy/track-redirect-allowed.html:
+        * http/tests/security/contentSecurityPolicy/track-redirect-allowed2.html:
+        * http/tests/security/contentSecurityPolicy/track-redirect-blocked.html:
+        * http/tests/security/text-track-crossorigin-expected.txt:
+        * http/tests/security/text-track-crossorigin.html:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Add support for DragEvent
+        https://bugs.webkit.org/show_bug.cgi?id=205758
+
+        Reviewed by Darin Adler.
+
+        Extend test coverage.
+
+        * editing/pasteboard/can-read-in-dragstart-event-expected.txt:
+        * editing/pasteboard/can-read-in-dragstart-event.html:
+        * editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave-expected.txt:
+        * editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave.html:
+        * fast/events/constructors/mouse-event-constructor-expected.txt:
+        * fast/events/constructors/mouse-event-constructor.html:
+        * fast/events/init-events-expected.txt:
+        * fast/events/init-events.html:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+
+2020-01-03  Chris Dumez  <cdumez@apple.com>
+
+        dom/nodes/Document-createElement-namespace.html WPT test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205748
+
+        Reviewed by Sam Weinig.
+
+        Unskip test as it does not appear to be flaky locally.
+
+        * TestExpectations:
+
+2020-01-03  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: [ Mac ] webgl/1.0.3/conformance/textures/texture-upload-size.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=205757
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-01-03  Peng Liu  <peng.liu6@apple.com>
+
+        Update the RemoteMediaPlayerManagerProxy::Load XPC message to provide the updated RemoteMediaPlayerConfiguration to the web process
+        https://bugs.webkit.org/show_bug.cgi?id=205740
+
+        Reviewed by Eric Carlson.
+
+        * gpu-process/TestExpectations:
+
+2020-01-03  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Enable ANGLE by default for Cocoa platforms (except simulator)
+        https://bugs.webkit.org/show_bug.cgi?id=205483
+        <rdar://problem/58097701>
+
+        Reverting this from trunk (was r253926) due to the number of
+        flakey tests and failures.
+
+        * fast/canvas/webgl/array-bounds-clamping-expected.txt:
+        * fast/canvas/webgl/array-bounds-clamping.html:
+        * fast/canvas/webgl/copy-tex-image-and-sub-image-2d-bad-input-expected.txt:
+        * fast/canvas/webgl/draw-elements-out-of-bounds-uint-index-expected.txt:
+        * fast/canvas/webgl/drawElements-empty-vertex-data-expected.txt:
+        * fast/canvas/webgl/oes-texture-half-float-uint16-expected.txt: Removed.
+        * fast/canvas/webgl/oes-texture-half-float-uint16.html: Removed.
+        * fast/canvas/webgl/readPixels-float-expected.txt:
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies-expected.txt:
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html:
+        * fast/canvas/webgl/vertexAttribPointer-with-bad-offset-expected.txt:
+        * fast/canvas/webgl/webgl-drawarrays-crash-2-expected.txt:
+        * fast/canvas/webgl/webgl-drawarrays-crash-expected.txt:
+        * fast/canvas/webgl/webgl2-texture-upload-enums-expected.txt:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+        * webgl/1.0.3/conformance/context/context-lost-restored-expected.txt:
+        * webgl/1.0.3/conformance/extensions/oes-texture-float-expected.txt:
+        * webgl/1.0.3/conformance/extensions/oes-texture-half-float-expected.txt:
+        * webgl/1.0.3/conformance/glsl/misc/shader-struct-scope-expected.txt:
+        * webgl/1.0.3/conformance/glsl/misc/shader-with-reserved-words-expected.txt:
+        * webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance-expected.txt:
+        * webgl/1.0.3/conformance/glsl/misc/shaders-with-name-conflicts-expected.txt:
+        * webgl/1.0.3/conformance/misc/webgl-specific-expected.txt:
+        * webgl/1.0.3/conformance/rendering/point-no-attributes-expected.txt:
+        * webgl/1.0.3/conformance/textures/texture-copying-feedback-loops-expected.txt:
+        * webgl/2.0.0/conformance/context/context-lost-restored-expected.txt:
+        * webgl/2.0.0/conformance/extensions/ext-sRGB-expected.txt:
+        * webgl/2.0.0/conformance/extensions/oes-texture-float-expected.txt:
+        * webgl/2.0.0/conformance/extensions/oes-texture-half-float-expected.txt:
+        * webgl/2.0.0/conformance/extensions/oes-vertex-array-object-expected.txt:
+        * webgl/2.0.0/conformance/extensions/webgl-depth-texture-expected.txt:
+        * webgl/2.0.0/conformance/extensions/webgl-draw-buffers-framebuffer-unsupported-expected.txt:
+        * webgl/2.0.0/conformance/glsl/misc/shader-struct-scope-expected.txt:
+        * webgl/2.0.0/conformance/glsl/misc/shaders-with-invariance-expected.txt:
+        * webgl/2.0.0/conformance/glsl/misc/shaders-with-name-conflicts-expected.txt:
+        * webgl/2.0.0/conformance/limits/gl-line-width-expected.txt:
+        * webgl/2.0.0/conformance/misc/webgl-specific-expected.txt:
+        * webgl/2.0.0/conformance/ogles/GL/biuDepthRange/biuDepthRange_001_to_002-expected.txt:
+        * webgl/2.0.0/conformance/ogles/GL/gl_FragCoord/gl_FragCoord_001_to_003-expected.txt:
+        * webgl/2.0.0/conformance/reading/read-pixels-test-expected.txt:
+        * webgl/2.0.0/conformance/rendering/point-no-attributes-expected.txt:
+        * webgl/2.0.0/conformance/textures/misc/cube-incomplete-fbo-expected.txt:
+        * webgl/2.0.0/conformance/textures/misc/texture-copying-feedback-loops-expected.txt:
+        * webgl/2.0.0/conformance2/buffers/get-buffer-sub-data-expected.txt:
+        * webgl/2.0.0/conformance2/buffers/one-large-uniform-buffer-expected.txt:
+        * webgl/2.0.0/conformance2/context/context-attributes-depth-stencil-antialias-obeyed-expected.txt:
+        * webgl/2.0.0/conformance2/extensions/ext-color-buffer-float-expected.txt:
+        * webgl/2.0.0/conformance2/extensions/promoted-extensions-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-linking-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-invalid-characters-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-mis-matching-uniform-block-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/valid-invariant-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/attrib-type-match-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/blitframebuffer-stencil-only-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/blitframebuffer-test-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/clear-func-buffer-type-match-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/clear-srgb-color-buffer-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/clipping-wide-points-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/framebuffer-unsupported-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/fs-color-type-mismatch-color-buffer-type-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/instanced-arrays-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/instanced-rendering-bug-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/rendering-sampling-feedback-loop-expected.txt:
+        * webgl/2.0.0/conformance2/state/gl-get-calls-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/copy-texture-image-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-image-with-bad-args-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-mipmap-levels-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-new-formats-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-storage-2d-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/texture-npot-expected.txt:
+        * webgl/2.0.0/conformance2/vertex_arrays/vertex-array-object-expected.txt:
+
+2020-01-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        highlight/highlight-world-leak.html frequently times out
+        https://bugs.webkit.org/show_bug.cgi?id=205643
+        <rdar://problem/58263350>
+
+        Reviewed by Megan Gardner.
+
+        The main logic in this test is executed inside a load event handler to a subframe, which is set in a script
+        element. However, in the case where the subframe finishes loading before we execute the inline script, the test
+        will never run, since the load event handler won't be called again.
+
+        Fix this by waiting for the load event of the page instead.
+
+        * highlight/highlight-world-leak.html:
+
+2020-01-03  youenn fablet  <youenn@apple.com>
+
+        REGRESSION: [iOS 13] webrtc/datachannel/mdns-ice-candidates.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=201900
+        <rdar://problem/55466061>
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/TestExpectations:
+        Reenable test.
+
+2020-01-03  youenn fablet  <youenn@apple.com>
+
+        NetworkResourceLoader::didFinishWithRedirectResponse should not assume the load is coming from network
+        https://bugs.webkit.org/show_bug.cgi?id=205715
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/prefetch/link-prefetch-main-resource-redirect.html:
+
+2020-01-03  Cathie Chen  <cathiechen@igalia.com>
+
+        Import WPT test cases for apect-ratio generated from attribute width and height
+        https://bugs.webkit.org/show_bug.cgi?id=205678
+
+        Reviewed by Manuel Rego Casasnovas
+
+        video-aspect-ratio.html passes the test after importing web-platform-tests/media/
+
+        * TestExpectations:
+
+2020-01-02  Chris Dumez  <cdumez@apple.com>
+
+        XMLSerializer doesn't correctly encode entities in <style> element
+        https://bugs.webkit.org/show_bug.cgi?id=205635
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/dom/xmlserializer-ampersand-in-style-expected.txt: Added.
+        * fast/dom/xmlserializer-ampersand-in-style.html: Added.
+
+2020-01-02  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Perform payment method data IDL conversion in the PaymentRequest constructor
+        https://bugs.webkit.org/show_bug.cgi?id=199225
+        <rdar://problem/52217847>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/ssl/applepay/PaymentRequest.https-expected.txt:
+        * http/tests/ssl/applepay/PaymentRequest.https.html: Changed some tests to expect exceptions
+        from the constructor rather than promise rejections after calling show(). Removed a bogus
+        test for applicationData. Cleaned up numerous tests by moving setup code to the correct
+        location.
+
+2020-01-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed test gardening for iPad
+
+        * platform/ipad/TestExpectations:
+
+        Skip this layout test on iPad, where the zoom scale is not expected to change after focusing a text field.
+
+2020-01-01  youenn fablet  <youenn@apple.com>
+
+        Implement transceiver setCodecPreferences
+        https://bugs.webkit.org/show_bug.cgi?id=190840
+        <rdar://problem/45496326>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-mute-vp8.html:
+
+2019-12-31  Peng Liu  <peng.liu6@apple.com>
+
+        Add remote media resource loader for the GPU process
+        https://bugs.webkit.org/show_bug.cgi?id=205379
+
+        Reviewed by Youenn Fablet.
+
+        * gpu-process/TestExpectations:
+        * media/audio-play-expected.txt: Added.
+        * media/audio-play-with-video-element-expected.txt: Added.
+        * media/audio-play-with-video-element.html: Added.
+        * media/audio-play.html: Added.
+
+2019-12-31  youenn fablet  <youenn@apple.com>
+
+        Implement RTC VTB decoders in GPUProcess
+        https://bugs.webkit.org/show_bug.cgi?id=205607
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-gpuProcess-expected.txt: Added.
+        * webrtc/video-gpuProcess.html: Added.
+
+2019-12-30  youenn fablet  <youenn@apple.com>
+
+        Ignore URL host for schemes that are not using host information
+        https://bugs.webkit.org/show_bug.cgi?id=205157
+
+        Reviewed by Darin Adler.
+
+        * http/tests/local/file-url-host-expected.txt: Added.
+        * http/tests/local/file-url-host.html: Added.
+        * http/tests/security/about-url-host-expected.txt: Added.
+        * http/tests/security/about-url-host.html: Added.
+        * http/tests/security/data-url-host-expected.txt: Added.
+        * http/tests/security/data-url-host.html: Added.
+        * http/tests/security/javascript-url-host-expected.txt: Added.
+        * http/tests/security/javascript-url-host.html: Added.
+
 2019-12-27  Dean Jackson  <dino@apple.com>
 
         [WebGL] Add a pure virtual base class for GraphicsContext3D

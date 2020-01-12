@@ -271,6 +271,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionState.idl \
     $(WebCore)/Modules/mediastream/RTCPriorityType.idl \
     $(WebCore)/Modules/mediastream/RTCRtpCapabilities.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpCodecCapability.idl \
     $(WebCore)/Modules/mediastream/RTCRtpCodecParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpContributingSource.idl \
     $(WebCore)/Modules/mediastream/RTCRtpEncodingParameters.idl \
@@ -614,6 +615,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DocumentOrShadowRoot.idl \
     $(WebCore)/dom/DocumentStorageAccess.idl \
     $(WebCore)/dom/DocumentType.idl \
+    $(WebCore)/dom/DragEvent.idl \
     $(WebCore)/dom/Element.idl \
     $(WebCore)/dom/ErrorEvent.idl \
     $(WebCore)/dom/Event.idl \

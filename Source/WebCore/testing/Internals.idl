@@ -632,6 +632,7 @@ enum CompositingPolicy {
     [Conditional=WEB_RTC] void clearPeerConnectionFactory();
     [Conditional=WEB_RTC] void setEnableWebRTCEncryption(boolean enabled);
     [Conditional=WEB_RTC] void setUseDTLS10(boolean use);
+    [Conditional=WEB_RTC] void setUseGPUProcessForWebRTC(boolean use);
 
     [Conditional=VIDEO] void simulateSystemSleep();
     [Conditional=VIDEO] void simulateSystemWake();
@@ -769,6 +770,8 @@ enum CompositingPolicy {
     [CallWith=ScriptExecutionContext, MayThrowException] void queueTask(DOMString source, VoidCallback callback);
     [CallWith=Document] void queueTaskToQueueMicrotask(DOMString source, VoidCallback callback);
     [MayThrowException] boolean hasSameEventLoopAs(WindowProxy windowProxy);
+
+    DOMString windowLocationHost(DOMWindow window);
 
     void markContextAsInsecure();
 

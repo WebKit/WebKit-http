@@ -40,7 +40,7 @@ class InlineFormattingContext;
 
 class LineBuilder {
     class InlineItemRun;
-    struct ContinousContent;
+    struct ContinuousContent;
 
 public:
     struct Constraints {
@@ -115,7 +115,7 @@ public:
     using RunList = Vector<Run, 50>;
     enum class IsLastLineWithInlineContent { No, Yes };
     RunList close(IsLastLineWithInlineContent = IsLastLineWithInlineContent::No);
-    void revert(const InlineItem& revertTo);
+    size_t revert(const InlineItem& revertTo);
 
     static Display::LineBox::Baseline halfLeadingMetrics(const FontMetrics&, InlineLayoutUnit lineLogicalHeight);
 
@@ -150,7 +150,8 @@ private:
     InlineLayoutUnit runContentHeight(const Run&) const;
 
     bool isTextAlignJustify() const { return m_horizontalAlignment == TextAlignMode::Justify; };
-    void justifyRuns(RunList&) const;
+    bool isTextAlignRight() const { return m_horizontalAlignment == TextAlignMode::Right || m_horizontalAlignment == TextAlignMode::WebKitRight || m_horizontalAlignment == TextAlignMode::End; }
+    void justifyRuns(RunList&, InlineLayoutUnit availableWidth) const;
 
     bool isVisuallyNonEmpty(const InlineItemRun&) const;
 

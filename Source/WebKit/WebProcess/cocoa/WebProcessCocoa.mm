@@ -91,6 +91,7 @@
 #if PLATFORM(IOS_FAMILY)
 #import "AccessibilitySupportSPI.h"
 #import "AssertionServicesSPI.h"
+#import "RunningBoardServicesSPI.h"
 #import "UserInterfaceIdiom.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import <UIKit/UIAccessibility.h>
@@ -109,7 +110,7 @@
 #if PLATFORM(MAC)
 #import "WKAccessibilityWebPageObjectMac.h"
 #import "WebSwitchingGPUClient.h"
-#import <WebCore/GraphicsContext3DManager.h>
+#import <WebCore/GraphicsContextGLOpenGLManager.h>
 #import <WebCore/ScrollbarThemeMac.h>
 #import <pal/spi/mac/NSScrollerImpSPI.h>
 #endif
@@ -125,6 +126,10 @@
 #if HAVE(CSCHECKFIXDISABLE)
 extern "C" void _CSCheckFixDisable();
 #endif
+
+#define RELEASE_LOG_SESSION_ID (m_sessionID ? m_sessionID->toUInt64() : 0)
+#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
 
 namespace WebKit {
 using namespace WebCore;
@@ -236,6 +241,9 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     if (parameters.compilerServiceExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.compilerServiceExtensionHandle);
 
+    if (parameters.launchServicesOpenExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.launchServicesOpenExtensionHandle);
+
     if (parameters.diagnosticsExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.diagnosticsExtensionHandle);
 
@@ -310,7 +318,7 @@ void WebProcess::updateProcessName()
         auto error = _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
         ASSERT(!error);
         if (error) {
-            RELEASE_LOG_ERROR(Process, "Failed to set the display name of the WebContent process, error code: %ld", static_cast<long>(error));
+            RELEASE_LOG_ERROR_IF_ALLOWED(Process, "updateProcessName: Failed to set the display name of the WebContent process, error code: %ld", static_cast<long>(error));
             return;
         }
 #if !ASSERT_DISABLED
@@ -321,61 +329,6 @@ void WebProcess::updateProcessName()
     });
 #endif // PLATFORM(MAC)
 }
-
-#if PLATFORM(IOS_FAMILY)
-void WebProcess::processTaskStateDidChange(ProcessTaskStateObserver::TaskState taskState)
-{
-    // NOTE: This will be called from a background thread.
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() - taskState(%d)", this, taskState);
-    if (taskState != ProcessTaskStateObserver::Running)
-        return;
-
-    LockHolder holder(m_processWasResumedAssertionsLock);
-    if (m_processWasResumedUIAssertion && m_processWasResumedOwnAssertion)
-        return;
-
-    // We were awakened from suspension unexpectedly. Notify the WebProcessProxy, but take a process assertion on our parent PID
-    // to ensure that it too is awakened.
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Taking 'WebProcess was resumed' assertion on behalf on UIProcess", this);
-    m_processWasResumedUIAssertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:parentProcessConnection()->remoteProcessID() flags:BKSProcessAssertionPreventTaskSuspend reason:BKSProcessAssertionReasonFinishTask name:@"WebProcess was resumed" withHandler:^(BOOL acquired) {
-        if (!acquired)
-            RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() failed to take 'WebProcess was resumed' assertion for parent process", this);
-    }]);
-    m_processWasResumedUIAssertion.get().invalidationHandler = [this] {
-        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Releasing 'WebProcess was resumed' assertion on behalf on UIProcess due to invalidation", this);
-        releaseProcessWasResumedAssertions();
-    };
-    m_processWasResumedOwnAssertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:getpid() flags:BKSProcessAssertionPreventTaskSuspend reason:BKSProcessAssertionReasonFinishTask name:@"WebProcess was resumed" withHandler:^(BOOL acquired) {
-        if (!acquired)
-            RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() failed to take 'WebProcess was resumed' assertion for WebContent process", this);
-    }]);
-    m_processWasResumedOwnAssertion.get().invalidationHandler = [this] {
-        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Releasing 'WebProcess was resumed' assertion on behalf on WebContent process due to invalidation", this);
-        releaseProcessWasResumedAssertions();
-    };
-
-    parentProcessConnection()->sendWithAsyncReply(Messages::WebProcessProxy::ProcessWasResumed(), [this] {
-        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() Parent process handled ProcessWasResumed IPC, releasing our assertions", this);
-        releaseProcessWasResumedAssertions();
-    });
-}
-
-void WebProcess::releaseProcessWasResumedAssertions()
-{
-    LockHolder holder(m_processWasResumedAssertionsLock);
-    if (m_processWasResumedUIAssertion) {
-        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::releaseProcessWasResumedAssertions() Releasing parent process 'WebProcess was resumed' assertion", this);
-        [m_processWasResumedUIAssertion invalidate];
-        m_processWasResumedUIAssertion = nullptr;
-    }
-    if (m_processWasResumedOwnAssertion) {
-        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::releaseProcessWasResumedAssertions() Releasing WebContent process 'WebProcess was resumed' assertion", this);
-        [m_processWasResumedOwnAssertion invalidate];
-        m_processWasResumedOwnAssertion = nullptr;
-    }
-}
-
-#endif
 
 #if PLATFORM(IOS_FAMILY)
 static NSString *webProcessLoaderAccessibilityBundlePath()
@@ -691,9 +644,9 @@ void WebProcess::updateCPUMonitorState(CPUMonitorUpdateReason reason)
     if (!m_cpuMonitor) {
         m_cpuMonitor = makeUnique<CPUMonitor>(cpuMonitoringInterval, [this](double cpuUsage) {
             if (m_processType == ProcessType::ServiceWorker)
-                RELEASE_LOG_ERROR(PerformanceLogging, "%p - Service worker process exceeded CPU limit of %.1f%% (was using %.1f%%)", this, m_cpuLimit.value() * 100, cpuUsage * 100);
+                RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "updateCPUMonitorState: Service worker process exceeded CPU limit of %.1f%% (was using %.1f%%)", m_cpuLimit.value() * 100, cpuUsage * 100);
             else
-                RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcess exceeded CPU limit of %.1f%% (was using %.1f%%) hasVisiblePages? %d", this, m_cpuLimit.value() * 100, cpuUsage * 100, hasVisibleWebPage());
+                RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "updateCPUMonitorState: WebProcess exceeded CPU limit of %.1f%% (was using %.1f%%) hasVisiblePages? %d", m_cpuLimit.value() * 100, cpuUsage * 100, hasVisibleWebPage());
             parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedCPULimit(), 0);
         });
     } else if (reason == CPUMonitorUpdateReason::VisibilityHasChanged) {
@@ -789,7 +742,7 @@ void WebProcess::destroyRenderingResources()
 #if !RELEASE_LOG_DISABLED
     MonotonicTime endTime = MonotonicTime::now();
 #endif
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::destroyRenderingResources() took %.2fms", this, (endTime - startTime).milliseconds());
+    RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "destroyRenderingResources: took %.2fms", (endTime - startTime).milliseconds());
 }
 
 // FIXME: This should live somewhere else, and it should have the implementation in line instead of calling out to WKSI.
@@ -830,9 +783,9 @@ void WebProcess::updateFreezerStatus()
     bool isFreezable = shouldFreezeOnSuspension();
     auto result = memorystatus_control(MEMORYSTATUS_CMD_SET_PROCESS_IS_FREEZABLE, getpid(), isFreezable ? 1 : 0, nullptr, 0);
     if (result)
-        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::updateFreezerStatus() isFreezable: %d, error: %d", this, isFreezable, result);
+        RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "updateFreezerStatus: isFreezable: %d, error: %d", isFreezable, result);
     else
-        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::updateFreezerStatus() isFreezable: %d, success", this, isFreezable);
+        RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "updateFreezerStatus: isFreezable: %d, success", isFreezable);
 }
 #endif
 
@@ -853,7 +806,7 @@ void WebProcess::scrollerStylePreferenceChanged(bool useOverlayScrollbars)
 
 void WebProcess::displayConfigurationChanged(CGDirectDisplayID displayID, CGDisplayChangeSummaryFlags flags)
 {
-    GraphicsContext3DManager::displayWasReconfigured(displayID, flags, nullptr);
+    GraphicsContextGLOpenGLManager::displayWasReconfigured(displayID, flags, nullptr);
 }
     
 void WebProcess::displayWasRefreshed(CGDirectDisplayID displayID)
@@ -884,7 +837,13 @@ void WebProcess::backlightLevelDidChange(float backlightLevel)
 
 void WebProcess::setMediaMIMETypes(const Vector<String> types)
 {
-    AVAssetMIMETypeCache::singleton().setSupportedTypes(types);
+    auto& cache = AVAssetMIMETypeCache::singleton();
+    if (cache.isEmpty())
+        cache.addSupportedTypes(types);
 }
 
 } // namespace WebKit
+
+#undef RELEASE_LOG_SESSION_ID
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ERROR_IF_ALLOWED

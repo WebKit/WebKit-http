@@ -28,7 +28,8 @@ messages -> RemoteMediaPlayerManagerProxy NotRefCounted {
     DeleteMediaPlayer(WebKit::MediaPlayerPrivateRemoteIdentifier id)
 
     GetSupportedTypes(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier) -> (Vector<String> types) Synchronous
-    SupportsType(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, struct WebCore::MediaEngineSupportParameters type) -> (enum:uint8_t WebCore::MediaPlayerEnums::SupportsType support) Synchronous
+    SupportsTypeAndCodecs(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, struct WebCore::MediaEngineSupportParameters type) -> (enum:uint8_t WebCore::MediaPlayerEnums::SupportsType support) Synchronous
+    CanDecodeExtendedType(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String mimeType) -> (bool supports) Synchronous
     OriginsInMediaCache(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String path) -> (Vector<WebCore::SecurityOriginData> origins) Synchronous
     ClearMediaCache(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String path, WallTime modifiedSince)
     ClearMediaCacheForOrigins(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String path, Vector<WebCore::SecurityOriginData> origins)
@@ -36,7 +37,7 @@ messages -> RemoteMediaPlayerManagerProxy NotRefCounted {
 
     PrepareForPlayback(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool privateMode, enum:uint8_t WebCore::MediaPlayerEnums::Preload preload, bool preservesPitch, bool prepareForRendering)
 
-    Load(WebKit::MediaPlayerPrivateRemoteIdentifier id, URL url, WebCore::ContentType contentType, String keySystem)
+    Load(WebKit::MediaPlayerPrivateRemoteIdentifier id, URL url, WebCore::ContentType contentType, String keySystem) -> (struct WebKit::RemoteMediaPlayerConfiguration playerConfiguration) Async
     CancelLoad(WebKit::MediaPlayerPrivateRemoteIdentifier id)
 
     PrepareToPlay(WebKit::MediaPlayerPrivateRemoteIdentifier id)

@@ -33,10 +33,14 @@
 #include "GPUProcess.h"
 #include "GPUProcessMessages.h"
 #include "GPUProcessProxyMessages.h"
+#include "LibWebRTCCodecsProxy.h"
+#include "LibWebRTCCodecsProxyMessages.h"
 #include "Logging.h"
 #include "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #include "RemoteMediaPlayerManagerProxy.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
+#include "RemoteMediaResourceManager.h"
+#include "RemoteMediaResourceManagerMessages.h"
 #include "RemoteScrollingCoordinatorTransaction.h"
 #include "UserMediaCaptureManagerProxy.h"
 #include "UserMediaCaptureManagerProxyMessages.h"
@@ -109,6 +113,14 @@ void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connec
     CRASH();
 }
 
+RemoteMediaResourceManager& GPUConnectionToWebProcess::remoteMediaResourceManager()
+{
+    if (!m_remoteMediaResourceManager)
+        m_remoteMediaResourceManager = makeUnique<RemoteMediaResourceManager>();
+
+    return *m_remoteMediaResourceManager;
+}
+
 RemoteMediaPlayerManagerProxy& GPUConnectionToWebProcess::remoteMediaPlayerManagerProxy()
 {
     if (!m_remoteMediaPlayerManagerProxy)
@@ -127,15 +139,34 @@ UserMediaCaptureManagerProxy& GPUConnectionToWebProcess::userMediaCaptureManager
 }
 #endif
 
+#if PLATFORM(COCOA) && USE(LIBWEBRTC)
+LibWebRTCCodecsProxy& GPUConnectionToWebProcess::libWebRTCCodecsProxy()
+{
+    if (!m_libWebRTCCodecsProxy)
+        m_libWebRTCCodecsProxy = makeUnique<LibWebRTCCodecsProxy>(*this);
+
+    return *m_libWebRTCCodecsProxy;
+}
+#endif
+
 void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveMessageFromWebProcess(connection, decoder);
         return;
+    } else if (decoder.messageReceiverName() == Messages::RemoteMediaResourceManager::messageReceiverName()) {
+        remoteMediaResourceManager().didReceiveMessage(connection, decoder);
+        return;
     }
 #if ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManagerProxy::messageReceiverName()) {
         userMediaCaptureManagerProxy().didReceiveMessageFromGPUProcess(connection, decoder);
+        return;
+    }
+#endif
+#if PLATFORM(COCOA) && USE(LIBWEBRTC)
+    if (decoder.messageReceiverName() == Messages::LibWebRTCCodecsProxy::messageReceiverName()) {
+        libWebRTCCodecsProxy().didReceiveMessageFromWebProcess(connection, decoder);
         return;
     }
 #endif

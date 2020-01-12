@@ -96,7 +96,7 @@ class GraphicsContextPlatformPrivate;
 class ImageBuffer;
 class IntRect;
 class RoundedRect;
-class GraphicsContext3D;
+class GraphicsContextGLOpenGL;
 class Path;
 class TextRun;
 class TransformationMatrix;

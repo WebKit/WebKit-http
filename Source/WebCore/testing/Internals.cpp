@@ -116,6 +116,7 @@
 #include "LegacySchemeRegistry.h"
 #include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
+#include "Location.h"
 #include "MallocStatistics.h"
 #include "MediaDevices.h"
 #include "MediaEngineConfigurationFactory.h"
@@ -301,7 +302,7 @@
 #endif
 
 #if PLATFORM(MAC)
-#include "GraphicsContext3DManager.h"
+#include "GraphicsContextGLOpenGLManager.h"
 #endif
 
 #if PLATFORM(COCOA)
@@ -537,6 +538,7 @@ void Internals::resetToConsistentState(Page& page)
     rtcProvider.disableNonLocalhostConnections();
     RuntimeEnabledFeatures::sharedFeatures().setWebRTCVP8CodecEnabled(true);
     page.settings().setWebRTCEncryptionEnabled(true);
+    rtcProvider.setUseGPUProcess(false);
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
@@ -1550,6 +1552,15 @@ void Internals::setUseDTLS10(bool useDTLS10)
 #endif
 }
 
+void Internals::setUseGPUProcessForWebRTC(bool useGPUProcess)
+{
+#if USE(LIBWEBRTC)
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return;
+    document->page()->libWebRTCProvider().setUseGPUProcess(useGPUProcess);
+#endif
+}
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1676,13 +1687,13 @@ ExceptionOr<String> Internals::dumpMarkerRects(const String& markerTypeString)
     rectString.appendLiteral("marker rects: ");
     for (const auto& rect : rects) {
         rectString.append('(');
-        rectString.appendFixedPrecisionNumber(rect.x());
+        rectString.append(FormattedNumber::fixedPrecision(rect.x()));
         rectString.appendLiteral(", ");
-        rectString.appendFixedPrecisionNumber(rect.y());
+        rectString.append(FormattedNumber::fixedPrecision(rect.y()));
         rectString.appendLiteral(", ");
-        rectString.appendFixedPrecisionNumber(rect.width());
+        rectString.append(FormattedNumber::fixedPrecision(rect.width()));
         rectString.appendLiteral(", ");
-        rectString.appendFixedPrecisionNumber(rect.height());
+        rectString.append(FormattedNumber::fixedPrecision(rect.height()));
         rectString.appendLiteral(") ");
     }
     return rectString.toString();
@@ -3436,14 +3447,14 @@ ExceptionOr<String> Internals::getCurrentCursorInfo()
     if (cursor.image()) {
         FloatSize size = cursor.image()->size();
         result.appendLiteral(" image=");
-        result.appendFixedPrecisionNumber(size.width());
+        result.append(FormattedNumber::fixedPrecision(size.width()));
         result.append('x');
-        result.appendFixedPrecisionNumber(size.height());
+        result.append(FormattedNumber::fixedPrecision(size.height()));
     }
 #if ENABLE(MOUSE_CURSOR_SCALE)
     if (cursor.imageScaleFactor() != 1) {
         result.appendLiteral(" scale=");
-        result.appendFixedPrecisionNumber(cursor.imageScaleFactor(), 8);
+        result.append(FormattedNumber::fixedPrecision(cursor.imageScaleFactor(), 8));
     }
 #endif
     return result.toString();
@@ -5390,6 +5401,11 @@ bool Internals::hasSandboxMachLookupAccessToXPCServiceName(const String& process
     UNUSED_PARAM(service);
     return false;
 #endif
+}
+
+String Internals::windowLocationHost(DOMWindow& window)
+{
+    return window.location().host();
 }
 
 } // namespace WebCore

@@ -328,6 +328,15 @@ void LibWebRTCProvider::setUseDTLS10(bool useDTLS10)
     m_factory->SetOptions(options);
 }
 
+void LibWebRTCProvider::setUseGPUProcess(bool value)
+{
+    if (m_useGPUProcess == value)
+        return;
+
+    m_useGPUProcess = value;
+    m_factory = nullptr;
+}
+
 rtc::scoped_refptr<webrtc::PeerConnectionInterface> LibWebRTCProvider::createPeerConnection(webrtc::PeerConnectionObserver& observer, rtc::NetworkManager& networkManager, rtc::PacketSocketFactory& packetSocketFactory, webrtc::PeerConnectionInterface::RTCConfiguration&& configuration, std::unique_ptr<webrtc::AsyncResolverFactory>&& asyncResolveFactory)
 {
     auto& factoryAndThreads = getStaticFactoryAndThreads(m_useNetworkThreadWithSocketServer);
@@ -387,7 +396,7 @@ static inline RTCRtpCapabilities toRTCRtpCapabilities(const webrtc::RtpCapabilit
 
     capabilities.codecs.reserveInitialCapacity(rtpCapabilities.codecs.size());
     for (auto& codec : rtpCapabilities.codecs)
-        capabilities.codecs.uncheckedAppend(RTCRtpCapabilities::CodecCapability { fromStdString(codec.mime_type()), static_cast<uint32_t>(codec.clock_rate ? *codec.clock_rate : 0), toChannels(codec.num_channels), { } });
+        capabilities.codecs.uncheckedAppend(RTCRtpCodecCapability { fromStdString(codec.mime_type()), static_cast<uint32_t>(codec.clock_rate ? *codec.clock_rate : 0), toChannels(codec.num_channels), { } });
 
     capabilities.headerExtensions.reserveInitialCapacity(rtpCapabilities.header_extensions.size());
     for (auto& header : rtpCapabilities.header_extensions)

@@ -108,7 +108,7 @@ static RefPtr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
         return nullptr;
     auto ruleSet = RuleSet::create();
     for (size_t i = 0; i < size; ++i)
-        ruleSet->addRule(*rules[i].rule, rules[i].selectorIndex, rules[i].selectorListIndex);
+        ruleSet->addRule(*rules[i].styleRule, rules[i].selectorIndex, rules[i].selectorListIndex);
     ruleSet->shrinkToFit();
     return ruleSet;
 }
@@ -201,7 +201,8 @@ void ScopeRuleSets::collectFeatures() const
     m_features.shrinkToFit();
 }
 
-static Vector<InvalidationRuleSet>* ensureInvalidationRuleSets(const AtomString& key, HashMap<AtomString, std::unique_ptr<Vector<InvalidationRuleSet>>>& ruleSetMap, const HashMap<AtomString, std::unique_ptr<Vector<RuleFeature>>>& ruleFeatures)
+template<typename RuleFeatureType>
+static Vector<InvalidationRuleSet>* ensureInvalidationRuleSets(const AtomString& key, HashMap<AtomString, std::unique_ptr<Vector<InvalidationRuleSet>>>& ruleSetMap, const HashMap<AtomString, std::unique_ptr<Vector<RuleFeatureType>>>& ruleFeatures)
 {
     return ruleSetMap.ensure(key, [&] () -> std::unique_ptr<Vector<InvalidationRuleSet>> {
         auto* features = ruleFeatures.get(key);
@@ -215,9 +216,11 @@ static Vector<InvalidationRuleSet>* ensureInvalidationRuleSets(const AtomString&
             auto& ruleSet = matchElementArray[arrayIndex];
             if (!ruleSet)
                 ruleSet = RuleSet::create();
-            ruleSet->addRule(*feature.rule, feature.selectorIndex, feature.selectorListIndex);
-            if (feature.invalidationSelector)
-                invalidationSelectorArray[arrayIndex].append(feature.invalidationSelector);
+            ruleSet->addRule(*feature.styleRule, feature.selectorIndex, feature.selectorListIndex);
+            if constexpr (std::is_same<RuleFeatureType, RuleFeatureWithInvalidationSelector>::value) {
+                if (feature.invalidationSelector)
+                    invalidationSelectorArray[arrayIndex].append(feature.invalidationSelector);
+            }
         }
         auto invalidationRuleSets = makeUnique<Vector<InvalidationRuleSet>>();
         for (unsigned i = 0; i < matchElementArray.size(); ++i) {

@@ -362,6 +362,7 @@ private:
 #if PLATFORM(COCOA)
     void cocoaPlatformInitialize();
     void cocoaResetStateToConsistentValues(const TestOptions&);
+    void setApplicationBundleIdentifier(const String&);
 #endif
     void platformConfigureViewForTest(const TestInvocation&);
     void platformWillRunTest(const TestInvocation&);
@@ -407,10 +408,10 @@ private:
     // WKContextClient
     static void networkProcessDidCrash(WKContextRef, const void*);
     void networkProcessDidCrash();
-    static void serviceWorkerProcessDidCrash(WKContextRef, const void*);
-    void serviceWorkerProcessDidCrash();
-    static void gpuProcessDidCrash(WKContextRef, const void*);
-    void gpuProcessDidCrash();
+    static void serviceWorkerProcessDidCrash(WKContextRef, WKProcessID, const void*);
+    void serviceWorkerProcessDidCrash(WKProcessID);
+    static void gpuProcessDidCrash(WKContextRef, WKProcessID, const void*);
+    void gpuProcessDidCrash(WKProcessID);
 
     // WKPageNavigationClient
     static void didCommitNavigation(WKPageRef, WKNavigationRef, WKTypeRef userData, const void*);
@@ -616,6 +617,10 @@ private:
     bool m_allowsAnySSLCertificate { true };
     bool m_shouldSwapToEphemeralSessionOnNextNavigation { false };
     bool m_shouldSwapToDefaultSessionOnNextNavigation { false };
+    
+#if PLATFORM(COCOA)
+    bool m_hasSetApplicationBundleIdentifier { false };
+#endif
 };
 
 struct TestCommand {

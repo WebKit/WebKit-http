@@ -55,7 +55,7 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
-    // The connection from a web process to this GPU process.
+    // The connection from the web process to the GPU process.
     Ref<IPC::Connection> m_connection;
 };
 

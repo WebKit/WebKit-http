@@ -491,7 +491,7 @@ std::unique_ptr<Entry> Cache::storeRedirect(const WebCore::ResourceRequest& requ
     return cacheEntry;
 }
 
-std::unique_ptr<Entry> Cache::update(const WebCore::ResourceRequest& originalRequest, const GlobalFrameID& frameID, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
+std::unique_ptr<Entry> Cache::update(const WebCore::ResourceRequest& originalRequest, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
 {
     LOG(NetworkCache, "(NetworkProcess) updating %s", originalRequest.url().string().latin1().data());
 
@@ -588,7 +588,7 @@ void Cache::dumpContentsToFile()
             epilogue.appendNumber(totals.bodySize);
             epilogue.appendLiteral(",\n");
             epilogue.appendLiteral("\"averageWorth\": ");
-            epilogue.appendFixedPrecisionNumber(totals.count ? totals.worth / totals.count : 0);
+            epilogue.append(FormattedNumber::fixedPrecision(totals.count ? totals.worth / totals.count : 0));
             epilogue.appendLiteral("\n");
             epilogue.appendLiteral("}\n}\n");
             auto writeData = epilogue.toString().utf8();

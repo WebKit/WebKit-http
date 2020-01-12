@@ -38,11 +38,11 @@
 #import "CDMSessionAVFoundationObjC.h"
 #import "Cookie.h"
 #import "DeprecatedGlobalSettings.h"
-#import "Extensions3D.h"
+#import "ExtensionsGL.h"
 #import "FloatConversion.h"
 #import "GraphicsContext.h"
-#import "GraphicsContext3D.h"
 #import "GraphicsContextCG.h"
+#import "GraphicsContextGLOpenGL.h"
 #import "ImageRotationSessionVT.h"
 #import "InbandMetadataTextTrackPrivateAVF.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
@@ -289,7 +289,7 @@ private:
 
     MediaPlayer::SupportsType supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters) const final
     {
-        return MediaPlayerPrivateAVFoundationObjC::supportsType(parameters);
+        return MediaPlayerPrivateAVFoundationObjC::supportsTypeAndCodecs(parameters);
     }
 
     HashSet<RefPtr<SecurityOrigin>> originsInMediaCache(const String& path) const final
@@ -1605,7 +1605,7 @@ RetainPtr<CGImageRef> MediaPlayerPrivateAVFoundationObjC::createImageForTimeInRe
 
 void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& supportedTypes)
 {
-    supportedTypes = AVAssetMIMETypeCache::singleton().types();
+    supportedTypes = AVAssetMIMETypeCache::singleton().supportedTypes();
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -1617,7 +1617,7 @@ static bool keySystemIsSupported(const String& keySystem)
 }
 #endif
 
-MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const MediaEngineSupportParameters& parameters)
+MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsTypeAndCodecs(const MediaEngineSupportParameters& parameters)
 {
 #if ENABLE(MEDIA_SOURCE)
     if (parameters.isMediaSource)
@@ -1628,23 +1628,14 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
         return MediaPlayer::SupportsType::IsNotSupported;
 #endif
 
-    auto containerType = parameters.type.containerType();
-    if (isUnsupportedMIMEType(containerType))
-        return MediaPlayer::SupportsType::IsNotSupported;
-
-    if (!staticMIMETypeList().contains(containerType) && !AVAssetMIMETypeCache::singleton().canDecodeType(containerType))
-        return MediaPlayer::SupportsType::IsNotSupported;
-
-    // The spec says:
-    // "Implementors are encouraged to return "maybe" unless the type can be confidently established as being supported or not."
-    if (parameters.type.codecs().isEmpty())
-        return MediaPlayer::SupportsType::MayBeSupported;
+    auto supported = AVAssetMIMETypeCache::singleton().canDecodeType(parameters.type.raw());
+    if (supported != MediaPlayer::SupportsType::IsSupported)
+        return supported;
 
     if (!contentTypeMeetsHardwareDecodeRequirements(parameters.type, parameters.contentTypesRequiringHardwareSupport))
         return MediaPlayer::SupportsType::IsNotSupported;
 
-    NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)containerType, (NSString *)parameters.type.parameter(ContentType::codecsParameter())];
-    return [PAL::getAVURLAssetClass() isPlayableExtendedMIMEType:typeString] ? MediaPlayer::SupportsType::IsSupported : MediaPlayer::SupportsType::MayBeSupported;
+    return MediaPlayer::SupportsType::IsSupported;
 }
 
 bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySystem, const String& mimeType)
@@ -1658,10 +1649,7 @@ bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySyst
         if (!keySystemIsSupported(keySystem))
             return false;
 
-        if (!mimeType.isEmpty() && isUnsupportedMIMEType(mimeType))
-            return false;
-
-        if (!mimeType.isEmpty() && !staticMIMETypeList().contains(mimeType) && !AVAssetMIMETypeCache::singleton().canDecodeType(mimeType))
+        if (!mimeType.isEmpty() && AVAssetMIMETypeCache::singleton().canDecodeType(mimeType) == MediaPlayerEnums::SupportsType::IsNotSupported)
             return false;
 
         return true;
@@ -2307,7 +2295,7 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext& c
 
 }
 
-bool MediaPlayerPrivateAVFoundationObjC::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
+bool MediaPlayerPrivateAVFoundationObjC::copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
     ASSERT(context);
 

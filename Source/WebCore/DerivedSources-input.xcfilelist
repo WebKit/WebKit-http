@@ -197,6 +197,7 @@ $(PROJECT_DIR)/Modules/mediastream/RTCPeerConnectionInternals.js
 $(PROJECT_DIR)/Modules/mediastream/RTCPeerConnectionState.idl
 $(PROJECT_DIR)/Modules/mediastream/RTCPriorityType.idl
 $(PROJECT_DIR)/Modules/mediastream/RTCRtpCapabilities.idl
+$(PROJECT_DIR)/Modules/mediastream/RTCRtpCodecCapability.idl
 $(PROJECT_DIR)/Modules/mediastream/RTCRtpCodecParameters.idl
 $(PROJECT_DIR)/Modules/mediastream/RTCRtpContributingSource.idl
 $(PROJECT_DIR)/Modules/mediastream/RTCRtpEncodingParameters.idl
@@ -599,6 +600,7 @@ $(PROJECT_DIR)/dom/DocumentOrShadowRoot.idl
 $(PROJECT_DIR)/dom/DocumentStorageAccess.idl
 $(PROJECT_DIR)/dom/DocumentTouch.idl
 $(PROJECT_DIR)/dom/DocumentType.idl
+$(PROJECT_DIR)/dom/DragEvent.idl
 $(PROJECT_DIR)/dom/Element.idl
 $(PROJECT_DIR)/dom/ErrorEvent.idl
 $(PROJECT_DIR)/dom/Event.idl

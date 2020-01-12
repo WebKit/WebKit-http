@@ -240,13 +240,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::getSupportedTypes(HashSet<String, ASC
 {
     auto& streamDataParserCache = AVStreamDataParserMIMETypeCache::singleton();
     if (streamDataParserCache.isAvailable()) {
-        types = streamDataParserCache.types();
+        types = streamDataParserCache.supportedTypes();
         return;
     }
 
     auto& assetCache = AVAssetMIMETypeCache::singleton();
     if (assetCache.isAvailable())
-        types = assetCache.types();
+        types = assetCache.supportedTypes();
 }
 
 MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(const MediaEngineSupportParameters& parameters)
@@ -254,40 +254,24 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
     // This engine does not support non-media-source sources.
     if (!parameters.isMediaSource)
         return MediaPlayer::SupportsType::IsNotSupported;
-#if ENABLE(MEDIA_STREAM)
-    if (parameters.isMediaStream)
-        return MediaPlayer::SupportsType::IsNotSupported;
-#endif
 
-    if (parameters.type.isEmpty())
-        return MediaPlayer::SupportsType::IsNotSupported;
+    auto supported = MediaPlayer::SupportsType::IsNotSupported;
+    auto& streamDataParserCache = AVStreamDataParserMIMETypeCache::singleton();
+    if (streamDataParserCache.isAvailable())
+        supported = streamDataParserCache.canDecodeType(parameters.type.raw());
+    else {
+        auto& assetCache = AVAssetMIMETypeCache::singleton();
+        if (assetCache.isAvailable())
+            supported = assetCache.canDecodeType(parameters.type.raw());
+    }
 
-    if (AVStreamDataParserMIMETypeCache::singleton().isAvailable()) {
-        if (!AVStreamDataParserMIMETypeCache::singleton().supportsContentType(parameters.type))
-            return MediaPlayer::SupportsType::IsNotSupported;
-    } else if (AVAssetMIMETypeCache::singleton().isAvailable()) {
-        if (!AVAssetMIMETypeCache::singleton().supportsContentType(parameters.type))
-            return MediaPlayer::SupportsType::IsNotSupported;
-    } else
-        return MediaPlayer::SupportsType::IsNotSupported;
-
-    // The spec says:
-    // "Implementors are encouraged to return "maybe" unless the type can be confidently established as being supported or not."
-    auto codecs = parameters.type.parameter(ContentType::codecsParameter());
-    if (codecs.isEmpty())
-        return MediaPlayer::SupportsType::MayBeSupported;
-
-    String outputCodecs = codecs;
-    if ([PAL::getAVStreamDataParserClass() respondsToSelector:@selector(outputMIMECodecParameterForInputMIMECodecParameter:)])
-        outputCodecs = [PAL::getAVStreamDataParserClass() outputMIMECodecParameterForInputMIMECodecParameter:outputCodecs];
+    if (supported != MediaPlayer::SupportsType::IsSupported)
+        return supported;
 
     if (!contentTypeMeetsHardwareDecodeRequirements(parameters.type, parameters.contentTypesRequiringHardwareSupport))
         return MediaPlayer::SupportsType::IsNotSupported;
 
-    String type = makeString(parameters.type.containerType(), "; codecs=\"", outputCodecs, "\"");
-    if (AVStreamDataParserMIMETypeCache::singleton().isAvailable())
-        return AVStreamDataParserMIMETypeCache::singleton().canDecodeType(type) ? MediaPlayer::SupportsType::IsSupported : MediaPlayer::SupportsType::MayBeSupported;
-    return AVAssetMIMETypeCache::singleton().canDecodeType(type) ? MediaPlayer::SupportsType::IsSupported : MediaPlayer::SupportsType::MayBeSupported;
+    return MediaPlayer::SupportsType::IsSupported;
 }
 
 #pragma mark -
@@ -643,7 +627,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::paintCurrentFrameInContext(GraphicsCo
     context.drawNativeImage(image, imageRect.size(), outputRect, imageRect);
 }
 
-bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
+bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
     // We have been asked to paint into a WebGL canvas, so take that as a signal to create
     // a decompression session, even if that means the native video can't also be displayed

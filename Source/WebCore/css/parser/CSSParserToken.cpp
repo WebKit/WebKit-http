@@ -421,22 +421,22 @@ void CSSParserToken::serialize(StringBuilder& builder) const
         // These won't properly preserve the NumericValueType flag
         if (m_numericSign == PlusSign)
             builder.append('+');
-        builder.appendFixedPrecisionNumber(numericValue());
+        builder.append(FormattedNumber::fixedPrecision(numericValue()));
         break;
     case PercentageToken:
-        builder.appendFixedPrecisionNumber(numericValue());
+        builder.append(FormattedNumber::fixedPrecision(numericValue()));
         builder.append('%');
         break;
     case DimensionToken:
         // This will incorrectly serialize e.g. 4e3e2 as 4000e2
-        builder.appendFixedPrecisionNumber(numericValue());
+        builder.append(FormattedNumber::fixedPrecision(numericValue()));
         serializeIdentifier(value().toString(), builder);
         break;
     case UnicodeRangeToken:
         builder.appendLiteral("U+");
-        appendUnsignedAsHex(unicodeRangeStart(), builder);
+        builder.append(hex(unicodeRangeStart()));
         builder.append('-');
-        appendUnsignedAsHex(unicodeRangeEnd(), builder);
+        builder.append(hex(unicodeRangeEnd()));
         break;
     case StringToken:
         serializeString(value().toString(), builder);

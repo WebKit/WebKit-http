@@ -372,6 +372,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCPeerConnectionState.idl
     Modules/mediastream/RTCPriorityType.idl
     Modules/mediastream/RTCRtpCapabilities.idl
+    Modules/mediastream/RTCRtpCodecCapability.idl
     Modules/mediastream/RTCRtpCodecParameters.idl
     Modules/mediastream/RTCRtpContributingSource.idl
     Modules/mediastream/RTCRtpEncodingParameters.idl
@@ -723,6 +724,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DocumentOrShadowRoot.idl
     dom/DocumentTouch.idl
     dom/DocumentType.idl
+    dom/DragEvent.idl
     dom/Element.idl
     dom/ErrorEvent.idl
     dom/Event.idl
@@ -1494,11 +1496,11 @@ if (ENABLE_QUOTA)
     )
 endif ()
 
-if (ENABLE_GRAPHICS_CONTEXT_3D)
+if (ENABLE_GRAPHICS_CONTEXT_GL)
     list(APPEND WebCore_SOURCES
         platform/graphics/ANGLEWebKitBridge.cpp
         platform/graphics/FormatConverter.cpp
-        platform/graphics/GraphicsContext3D.cpp
+        platform/graphics/opengl/GraphicsContextGLOpenGLBase.cpp
     )
 
     list(APPEND WebCore_LIBRARIES ANGLEFramework)

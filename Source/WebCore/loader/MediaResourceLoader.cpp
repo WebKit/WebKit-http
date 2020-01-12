@@ -95,7 +95,7 @@ RefPtr<PlatformMediaResource> MediaResourceLoader::requestResource(ResourceReque
         DefersLoadingPolicy::AllowDefersLoading,
         cachingPolicy };
     loaderOptions.destination = m_mediaElement && !m_mediaElement->isVideo() ? FetchOptions::Destination::Audio : FetchOptions::Destination::Video;
-    auto cachedRequest = createPotentialAccessControlRequest(WTFMove(request), *m_document, m_crossOriginMode, WTFMove(loaderOptions));
+    auto cachedRequest = createPotentialAccessControlRequest(WTFMove(request), WTFMove(loaderOptions), *m_document, m_crossOriginMode);
     if (m_mediaElement)
         cachedRequest.setInitiator(*m_mediaElement);
 
@@ -172,10 +172,10 @@ void MediaResource::responseReceived(CachedResource& resource, const ResourceRes
 
     m_didPassAccessControlCheck = m_resource->options().mode == FetchOptions::Mode::Cors;
     if (m_client)
-        m_client->responseReceived(*this, response, [this, protectedThis = makeRef(*this), completionHandler = completionHandlerCaller.release()] (ShouldContinue shouldContinue) mutable {
+        m_client->responseReceived(*this, response, [this, protectedThis = makeRef(*this), completionHandler = completionHandlerCaller.release()] (auto shouldContinue) mutable {
             if (completionHandler)
                 completionHandler();
-            if (shouldContinue == ShouldContinue::No)
+            if (shouldContinue == PolicyChecker::ShouldContinue::No)
                 stop();
         });
 

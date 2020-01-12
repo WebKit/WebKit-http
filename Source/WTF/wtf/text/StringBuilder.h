@@ -142,18 +142,16 @@ public:
     void append(NSString *string) { append((__bridge CFStringRef)string); }
 #endif
     
-    void appendSubstring(const String& string, unsigned offset, unsigned length)
+    void appendSubstring(const String& string, unsigned offset, unsigned length = String::MaxLength)
     {
-        if (!string.length())
+        if (offset >= string.length())
             return;
 
-        if ((offset + length) > string.length())
-            return;
-
+        unsigned clampedLength = std::min(length, string.length() - offset);
         if (string.is8Bit())
-            appendCharacters(string.characters8() + offset, length);
+            appendCharacters(string.characters8() + offset, clampedLength);
         else
-            appendCharacters(string.characters16() + offset, length);
+            appendCharacters(string.characters16() + offset, clampedLength);
     }
 
     void append(const char* characters)
@@ -229,11 +227,6 @@ public:
     WTF_EXPORT_PRIVATE void appendNumber(unsigned long long);
     WTF_EXPORT_PRIVATE void appendNumber(float);
     WTF_EXPORT_PRIVATE void appendNumber(double);
-
-    WTF_EXPORT_PRIVATE void appendFixedPrecisionNumber(float, unsigned precision = 6, TrailingZerosTruncatingPolicy = TruncateTrailingZeros);
-    WTF_EXPORT_PRIVATE void appendFixedPrecisionNumber(double, unsigned precision = 6, TrailingZerosTruncatingPolicy = TruncateTrailingZeros);
-    WTF_EXPORT_PRIVATE void appendFixedWidthNumber(float, unsigned decimalPlaces);
-    WTF_EXPORT_PRIVATE void appendFixedWidthNumber(double, unsigned decimalPlaces);
 
     template<typename... StringTypes> void append(StringTypes...);
 

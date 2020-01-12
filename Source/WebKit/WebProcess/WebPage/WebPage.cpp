@@ -168,7 +168,7 @@
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/FullscreenManager.h>
-#include <WebCore/GraphicsContext3D.h>
+#include <WebCore/GraphicsContextGLOpenGL.h>
 #include <WebCore/HTMLAttachmentElement.h>
 #include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLImageElement.h>
@@ -214,6 +214,7 @@
 #include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
+#include <WebCore/RunJavaScriptParameters.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SWClientConnection.h>
 #include <WebCore/ScriptController.h>
@@ -324,8 +325,8 @@ static const Seconds pageScrollHysteresisDuration { 300_ms };
 static const Seconds initialLayerVolatilityTimerInterval { 20_ms };
 static const Seconds maximumLayerVolatilityTimerInterval { 2_s };
 
-#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - WebPage::" fmt, this, ##__VA_ARGS__)
-#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - WebPage::" fmt, this, ##__VA_ARGS__)
+#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [webPageID=%" PRIu64 "] WebPage::" fmt, this, m_identifier.toUInt64(), ##__VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [webPageID=%" PRIu64 "] WebPage::" fmt, this, m_identifier.toUInt64(), ##__VA_ARGS__)
 
 class SendStopResponsivenessTimer {
 public:
@@ -515,6 +516,8 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
     pageConfiguration.deviceOrientationUpdateProvider = WebDeviceOrientationUpdateProvider::create(*this);
 #endif
 
+    pageConfiguration.corsDisablingPatterns = WTFMove(parameters.corsDisablingPatterns);
+
     m_page = makeUnique<Page>(WTFMove(pageConfiguration));
 
     updatePreferences(parameters.store);
@@ -699,7 +702,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
     m_contextForVisibilityPropagation = LayerHostingContext::createForExternalHostingProcess({
         m_canShowWhileLocked
     });
-    RELEASE_LOG(Process, "Created context with ID %d for visibility propagation from UIProcess", m_contextForVisibilityPropagation->contextID());
+    RELEASE_LOG_IF_ALLOWED(Process, "WebPage: Created context with ID %d for visibility propagation from UIProcess", m_contextForVisibilityPropagation->contextID());
     send(Messages::WebPageProxy::DidCreateContextForVisibilityPropagation(m_contextForVisibilityPropagation->contextID()));
 #endif
 
@@ -997,7 +1000,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
         return nullptr;
 
     if (m_page->settings().blockingOfSmallPluginsEnabled() && pluginIsSmall(*pluginElement)) {
-        RELEASE_LOG(Plugins, "Blocking a plugin because it is too small");
+        RELEASE_LOG_IF_ALLOWED(Plugins, "createPlugin: Blocking a plugin because it is too small");
         pluginElement->setReplacement(RenderEmbeddedObject::PluginTooSmall, pluginTooSmallText());
         return nullptr;
     }
@@ -1630,7 +1633,7 @@ void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint do
     // FIXME: Set modifier keys.
     // FIXME: This should probably set IsSimulated::Yes.
     auto mouseEvent = MouseEvent::create(eventNames().clickEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, Event::IsComposed::Yes,
-        MonotonicTime::now(), nullptr, singleClick, screenPoint, documentPoint, { }, { }, 0, 0, nullptr, 0, WebCore::NoTap, nullptr);
+        MonotonicTime::now(), nullptr, singleClick, screenPoint, documentPoint, { }, { }, 0, 0, nullptr, 0, WebCore::NoTap);
 
     mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.ptr(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::NeverSendReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 }
@@ -2523,7 +2526,7 @@ void WebPage::freezeLayerTree(LayerTreeFreezeReason reason)
     auto oldReasons = m_layerTreeFreezeReasons.toRaw();
     UNUSED_PARAM(oldReasons);
     m_layerTreeFreezeReasons.add(reason);
-    RELEASE_LOG(ProcessSuspension, "%p - WebPage (webPageID=%llu) - Adding a reason %d to freeze layer tree (now %d); old reasons were %d", this, m_identifier.toUInt64(), static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw(), oldReasons);
+    RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "freezeLayerTree: Adding a reason to freeze layer tree (reason=%d, new=%d, old=%d)", static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw(), oldReasons);
     updateDrawingAreaLayerTreeFreezeState();
 }
 
@@ -2532,7 +2535,7 @@ void WebPage::unfreezeLayerTree(LayerTreeFreezeReason reason)
     auto oldReasons = m_layerTreeFreezeReasons.toRaw();
     UNUSED_PARAM(oldReasons);
     m_layerTreeFreezeReasons.remove(reason);
-    RELEASE_LOG(ProcessSuspension, "%p - WebPage (webPageID=%llu) - Removing a reason %d to freeze layer tree (now %d); old reasons were %d", this, m_identifier.toUInt64(), static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw(), oldReasons);
+    RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "unfreezeLayerTree: Removing a reason to freeze layer tree (reason=%d, new=%d, old=%d)", static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw(), oldReasons);
     updateDrawingAreaLayerTreeFreezeState();
 }
 
@@ -2575,7 +2578,7 @@ bool WebPage::markLayersVolatileImmediatelyIfPossible()
 
 void WebPage::markLayersVolatile(WTF::Function<void (bool)>&& completionHandler)
 {
-    RELEASE_LOG_IF_ALLOWED(Layers, "markLayersVolatile");
+    RELEASE_LOG_IF_ALLOWED(Layers, "markLayersVolatile:");
 
     if (m_layerVolatilityTimer.isActive())
         m_layerVolatilityTimer.stop();
@@ -2601,7 +2604,7 @@ void WebPage::markLayersVolatile(WTF::Function<void (bool)>&& completionHandler)
 
 void WebPage::cancelMarkLayersVolatile()
 {
-    RELEASE_LOG_IF_ALLOWED(Layers, "cancelMarkLayersVolatile");
+    RELEASE_LOG_IF_ALLOWED(Layers, "cancelMarkLayersVolatile:");
     m_layerVolatilityTimer.stop();
     m_markLayersAsVolatileCompletionHandlers.clear();
 }
@@ -2909,7 +2912,7 @@ void WebPage::touchEventSync(const WebTouchEvent& touchEvent, CompletionHandler<
 {
     // Avoid UIProcess hangs when the WebContent process is stuck on a sync IPC.
     if (IPC::UnboundedSynchronousIPCScope::hasOngoingUnboundedSyncIPC()) {
-        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "touchEventSync - Not processing because the process is stuck on unbounded sync IPC");
+        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "touchEventSync: Not processing because the process is stuck on unbounded sync IPC");
         return reply(true);
     }
 
@@ -3352,45 +3355,49 @@ KeyboardUIMode WebPage::keyboardUIMode()
     return static_cast<KeyboardUIMode>((fullKeyboardAccessEnabled ? KeyboardAccessFull : KeyboardAccessDefault) | (m_tabToLinks ? KeyboardAccessTabsToLinks : 0));
 }
 
-void WebPage::runJavaScript(WebFrame* frame, const String& script, bool forceUserGesture, const Optional<String>& worldName, CallbackID callbackID)
+void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameters, const Optional<String>& worldName, CallbackID callbackID)
 {
     // NOTE: We need to be careful when running scripts that the objects we depend on don't
     // disappear during script execution.
 
-    JSLockHolder lock(commonVM());
-    ValueOrException result;
-    RefPtr<SerializedScriptValue> serializedResultValue;
-
     auto* world = worldName ? InjectedBundleScriptWorld::find(worldName.value()) : &InjectedBundleScriptWorld::normalWorld();
-    if (frame && frame->coreFrame() && world) {
-        result = frame->coreFrame()->script().executeUserAgentScriptInWorld(world->coreWorld(), script, forceUserGesture);
-        if (result) {
-            serializedResultValue = SerializedScriptValue::create(frame->jsContextForWorld(world),
-                toRef(frame->coreFrame()->script().globalObject(world->coreWorld()), result.value()), nullptr);
-        }
+    if (!frame || !frame->coreFrame() || !world) {
+        send(Messages::WebPageProxy::ScriptValueCallback({ }, ExceptionDetails { "Unable to execute JavaScript: Page is in invalid state"_s }, callbackID));
+        return;
     }
 
-    IPC::DataReference dataReference;
-    if (serializedResultValue)
-        dataReference = serializedResultValue->data();
+    auto resolveFunction = [protectedThis = makeRef(*this), this, world = makeRef(*world), frame = makeRef(*frame), callbackID](ValueOrException result) {
+        RefPtr<SerializedScriptValue> serializedResultValue;
+        if (result) {
+            serializedResultValue = SerializedScriptValue::create(frame->jsContextForWorld(world.ptr()),
+                toRef(frame->coreFrame()->script().globalObject(world->coreWorld()), result.value()), nullptr);
+        }
 
-    Optional<ExceptionDetails> details;
-    if (!result)
-        details = result.error();
+        IPC::DataReference dataReference;
+        if (serializedResultValue)
+            dataReference = serializedResultValue->data();
 
-    send(Messages::WebPageProxy::ScriptValueCallback(dataReference, details, callbackID));
+        Optional<ExceptionDetails> details;
+        if (!result)
+            details = result.error();
+
+        send(Messages::WebPageProxy::ScriptValueCallback(dataReference, details, callbackID));
+    };
+
+    JSLockHolder lock(commonVM());
+    frame->coreFrame()->script().executeAsynchronousUserAgentScriptInWorld(world->coreWorld(), WTFMove(parameters), WTFMove(resolveFunction));
 }
 
-void WebPage::runJavaScriptInMainFrameScriptWorld(const String& script, bool forceUserGesture, const Optional<String>& worldName, CallbackID callbackID)
+void WebPage::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const Optional<String>& worldName, CallbackID callbackID)
 {
-    runJavaScript(mainWebFrame(), script, forceUserGesture, worldName, callbackID);
+    runJavaScript(mainWebFrame(), WTFMove(parameters), worldName, callbackID);
 }
 
 void WebPage::runJavaScriptInFrame(FrameIdentifier frameID, const String& script, bool forceUserGesture, CallbackID callbackID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     ASSERT(mainWebFrame() != frame);
-    runJavaScript(frame, script, forceUserGesture, WTF::nullopt, callbackID);
+    runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, WTF::nullopt, callbackID);
 }
 
 void WebPage::getContentsAsString(CallbackID callbackID)

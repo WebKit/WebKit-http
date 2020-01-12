@@ -30,6 +30,8 @@
 
 #include "DataReference.h"
 #include "GPUConnectionToWebProcessMessages.h"
+#include "LibWebRTCCodecs.h"
+#include "LibWebRTCCodecsMessages.h"
 #include "RemoteMediaPlayerManager.h"
 #include "RemoteMediaPlayerManagerMessages.h"
 #include "UserMediaCaptureManager.h"
@@ -65,13 +67,19 @@ void GPUProcessConnection::didReceiveInvalidMessage(IPC::Connection&, IPC::Strin
 void GPUProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManager::messageReceiverName()) {
-        WebProcess::singleton().supplement<RemoteMediaPlayerManager>()->didReceiveMessageFromWebProcess(connection, decoder);
+        WebProcess::singleton().supplement<RemoteMediaPlayerManager>()->didReceiveMessageFromGPUProcess(connection, decoder);
         return;
     }
 #if ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManager::messageReceiverName()) {
         if (auto* captureManager = WebProcess::singleton().supplement<UserMediaCaptureManager>())
             captureManager->didReceiveMessageFromGPUProcess(connection, decoder);
+        return;
+    }
+#endif
+#if USE(LIBWEBRTC) && PLATFORM(COCOA)
+    if (decoder.messageReceiverName() == Messages::LibWebRTCCodecs::messageReceiverName()) {
+        WebProcess::singleton().libWebRTCCodecs().didReceiveMessage(connection, decoder);
         return;
     }
 #endif

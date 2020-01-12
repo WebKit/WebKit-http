@@ -30,15 +30,16 @@
 #include "Connection.h"
 #include "MediaPlayerPrivateRemoteIdentifier.h"
 #include "MessageReceiver.h"
-#include "RemoteMediaPlayerProxyConfiguration.h"
 #include <WebCore/MediaPlayer.h>
 #include <wtf/LoggerHelper.h>
 
 namespace WebKit {
 
 class GPUConnectionToWebProcess;
+class RemoteMediaResourceManager;
 class RemoteMediaPlayerProxy;
 struct RemoteMediaPlayerConfiguration;
+struct RemoteMediaPlayerProxyConfiguration;
 
 class RemoteMediaPlayerManagerProxy
     : private IPC::MessageReceiver
@@ -74,13 +75,14 @@ private:
 
     // Media player factory
     void getSupportedTypes(WebCore::MediaPlayerEnums::MediaEngineIdentifier, CompletionHandler<void(Vector<String>&&)>&&);
-    void supportsType(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const WebCore::MediaEngineSupportParameters&&, CompletionHandler<void(WebCore::MediaPlayer::SupportsType)>&&);
+    void supportsTypeAndCodecs(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const WebCore::MediaEngineSupportParameters&&, CompletionHandler<void(WebCore::MediaPlayer::SupportsType)>&&);
+    void canDecodeExtendedType(WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, const String&&, CompletionHandler<void(bool)>&&);
     void originsInMediaCache(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const String&&, CompletionHandler<void(Vector<WebCore::SecurityOriginData>&&)>&&);
     void clearMediaCache(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const String&&, WallTime);
     void clearMediaCacheForOrigins(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const String&&, Vector<WebCore::SecurityOriginData>&&);
     void supportsKeySystem(WebCore::MediaPlayerEnums::MediaEngineIdentifier, const String&&, const String&&, CompletionHandler<void(bool)>&&);
 
-    void load(MediaPlayerPrivateRemoteIdentifier, URL&&, WebCore::ContentType&&, String&&);
+    void load(MediaPlayerPrivateRemoteIdentifier, URL&&, WebCore::ContentType&&, String&&, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&&);
     void prepareForPlayback(MediaPlayerPrivateRemoteIdentifier, bool privateMode, WebCore::MediaPlayerEnums::Preload, bool preservesPitch, bool prepareForRendering);
     void cancelLoad(MediaPlayerPrivateRemoteIdentifier);
     void prepareToPlay(MediaPlayerPrivateRemoteIdentifier);

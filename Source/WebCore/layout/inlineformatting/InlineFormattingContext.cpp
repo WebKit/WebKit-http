@@ -36,6 +36,7 @@
 #include "LayoutContext.h"
 #include "LayoutState.h"
 #include "Logging.h"
+#include "RuntimeEnabledFeatures.h"
 #include "TextUtil.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/TextStream.h>
@@ -374,7 +375,7 @@ void InlineFormattingContext::collectInlineContentIfNeeded()
 LineBuilder::Constraints InlineFormattingContext::constraintsForLine(const UsedHorizontalValues& usedHorizontalValues, InlineLayoutUnit lineLogicalTop)
 {
     auto lineLogicalLeft = geometryForBox(root()).contentBoxLeft();
-    auto availableWidth = usedHorizontalValues.constraints.width;
+    auto lineLogicalRight = lineLogicalLeft + usedHorizontalValues.constraints.width;
     auto lineIsConstrainedByFloat = false;
 
     auto floatingContext = FloatingContext { root(), *this, formattingState().floatingState() };
@@ -393,15 +394,14 @@ LineBuilder::Constraints InlineFormattingContext::constraintsForLine(const UsedH
 
         if (floatConstraints.left && floatConstraints.right) {
             ASSERT(floatConstraints.left->x <= floatConstraints.right->x);
-            availableWidth = floatConstraints.right->x - floatConstraints.left->x;
+            lineLogicalRight = floatConstraints.right->x;
             lineLogicalLeft = floatConstraints.left->x;
         } else if (floatConstraints.left) {
             ASSERT(floatConstraints.left->x >= lineLogicalLeft);
-            availableWidth -= (floatConstraints.left->x - lineLogicalLeft);
             lineLogicalLeft = floatConstraints.left->x;
         } else if (floatConstraints.right) {
             ASSERT(floatConstraints.right->x >= lineLogicalLeft);
-            availableWidth = floatConstraints.right->x - lineLogicalLeft;
+            lineLogicalRight = floatConstraints.right->x;
         }
     }
 
@@ -413,7 +413,14 @@ LineBuilder::Constraints InlineFormattingContext::constraintsForLine(const UsedH
         // FIXME: Add support for each-line.
         // [Integration] root()->parent() would normally produce a valid layout box.
         auto& root = this->root();
-        auto isFormattingContextRootCandidateToTextIndent = !root.isAnonymous() || !root.parent() || root.parent()->firstInFlowChild() == &root;
+        auto isFormattingContextRootCandidateToTextIndent = !root.isAnonymous();
+        if (root.isAnonymous()) {
+            // Unless otherwise specified by the each-line and/or hanging keywords, only lines that are the first formatted line
+            // of an element are affected.
+            // For example, the first line of an anonymous block box is only affected if it is the first child of its parent element.
+            isFormattingContextRootCandidateToTextIndent = RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled() ?
+            layoutState().isIntegratedRootBoxFirstChild() : root.parent()->firstInFlowChild() == &root;
+        }
         if (!isFormattingContextRootCandidateToTextIndent)
             return InlineLayoutUnit { };
         auto invertLineRange = false;
@@ -430,7 +437,7 @@ LineBuilder::Constraints InlineFormattingContext::constraintsForLine(const UsedH
         return geometry().computedTextIndent(root, usedHorizontalValues.constraints).valueOr(InlineLayoutUnit { });
     };
     lineLogicalLeft += computedTextIndent();
-    return LineBuilder::Constraints { { lineLogicalLeft, lineLogicalTop }, availableWidth, lineIsConstrainedByFloat, quirks().lineHeightConstraints(root()) };
+    return LineBuilder::Constraints { { lineLogicalLeft, lineLogicalTop }, lineLogicalRight - lineLogicalLeft, lineIsConstrainedByFloat, quirks().lineHeightConstraints(root()) };
 }
 
 void InlineFormattingContext::setDisplayBoxesForLine(const LineLayoutContext::LineContent& lineContent, const UsedHorizontalValues& usedHorizontalValues)
@@ -452,9 +459,16 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayoutContext::Li
         }
     }
 
+    auto initialContaingBlockSize = LayoutSize { };
+    if (RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled()) {
+        // ICB is not the real ICB when lyoutFormattingContextIntegrationEnabled is on.
+        initialContaingBlockSize = layoutState().viewportSize();
+    } else
+        initialContaingBlockSize = geometryForBox(root().initialContainingBlock()).contentBox().size();
     auto& inlineContent = formattingState.ensureDisplayInlineContent();
     auto lineIndex = inlineContent.lineBoxes.size();
-    inlineContent.lineBoxes.append(Display::LineBox { lineContent.lineBox });
+    inlineContent.lineBoxes.append(lineContent.lineBox);
+    auto lineInkOverflow = lineContent.lineBox.scrollableOverflow();
     Optional<unsigned> lastTextItemIndex;
     // Compute box final geometry.
     auto& lineRuns = lineContent.runList;
@@ -467,8 +481,27 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayoutContext::Li
         // Add final display runs to state first.
         // Inline level containers (<span>) don't generate display runs and neither do completely collapsed runs.
         auto initiatesInlineRun = !lineRun.isContainerStart() && !lineRun.isContainerEnd() && !lineRun.isCollapsedToVisuallyEmpty();
-        if (initiatesInlineRun)
-            inlineContent.runs.append({ lineIndex, lineRun.layoutBox(), lineRun.logicalRect(), lineRun.textContext() });
+        if (initiatesInlineRun) {
+            auto computedInkOverflow = [&] {
+                // FIXME: Add support for non-text ink overflow.
+                if (!lineRun.isText())
+                    return logicalRect;
+                auto& style = lineRun.style();
+                auto inkOverflow = logicalRect;
+                auto strokeOverflow = std::ceil(style.computedStrokeWidth(ceiledIntSize(initialContaingBlockSize)));
+                inkOverflow.inflate(strokeOverflow);
+
+                auto letterSpacing = style.fontCascade().letterSpacing();
+                if (letterSpacing < 0) {
+                    // Last letter's negative spacing shrinks logical rect. Push it to ink overflow.
+                    inkOverflow.expandHorizontally(-letterSpacing);
+                }
+                return inkOverflow;
+            };
+            auto inkOverflow = computedInkOverflow();
+            lineInkOverflow.expandToContain(inkOverflow);
+            inlineContent.runs.append({ lineIndex, lineRun.layoutBox(), logicalRect, inkOverflow, lineRun.textContext() });
+        }
 
         if (lineRun.isLineBreak()) {
             displayBox.setTopLeft(toLayoutPoint(logicalRect.topLeft()));
@@ -526,6 +559,7 @@ void InlineFormattingContext::setDisplayBoxesForLine(const LineLayoutContext::Li
     // Make sure the trailing text run gets a hyphen when it needs one.
     if (lineContent.partialContent && lineContent.partialContent->trailingContentNeedsHyphen)
         inlineContent.runs[*lastTextItemIndex].textContext()->setNeedsHyphen();
+    inlineContent.lineBoxes.last().setInkOverflow(lineInkOverflow);
 }
 
 void InlineFormattingContext::invalidateFormattingState(const InvalidationState&)

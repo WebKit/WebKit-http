@@ -39,8 +39,10 @@
 namespace WebKit {
 
 class GPUProcess;
+class LibWebRTCCodecsProxy;
 class RemoteMediaPlayerManagerProxy;
 class UserMediaCaptureManagerProxy;
+class RemoteMediaResourceManager;
 
 class GPUConnectionToWebProcess
     : public RefCounted<GPUConnectionToWebProcess>
@@ -56,6 +58,7 @@ public:
     void endSuspension();
 
     WebCore::ProcessIdentifier webProcessIdentifier() const { return m_webProcessIdentifier; }
+    RemoteMediaResourceManager& remoteMediaResourceManager();
 
     Logger& logger();
 
@@ -63,6 +66,9 @@ private:
     GPUConnectionToWebProcess(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier, PAL::SessionID);
 
     RemoteMediaPlayerManagerProxy& remoteMediaPlayerManagerProxy();
+#if PLATFORM(COCOA) && USE(LIBWEBRTC)
+    LibWebRTCCodecsProxy& libWebRTCCodecsProxy();
+#endif
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     UserMediaCaptureManagerProxy& userMediaCaptureManagerProxy();
 #endif
@@ -78,10 +84,14 @@ private:
     Ref<IPC::Connection> m_connection;
     Ref<GPUProcess> m_gpuProcess;
     const WebCore::ProcessIdentifier m_webProcessIdentifier;
+    std::unique_ptr<RemoteMediaResourceManager> m_remoteMediaResourceManager;
     std::unique_ptr<RemoteMediaPlayerManagerProxy> m_remoteMediaPlayerManagerProxy;
     PAL::SessionID m_sessionID;
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
+#endif
+#if PLATFORM(COCOA) && USE(LIBWEBRTC)
+    std::unique_ptr<LibWebRTCCodecsProxy> m_libWebRTCCodecsProxy;
 #endif
 };
 
