@@ -34,6 +34,8 @@
 #include <wtf/SentinelLinkedList.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
+#include "JSExportMacros.h"
+
 namespace JSC {
 
 class VM;
@@ -248,7 +250,7 @@ public:
     {
         if (LIKELY(m_state != IsWatched))
             return;
-        fireAllSlow(vm, fireDetails);
+        this->fireAllSlow(vm, fireDetails);
     }
 
     void touch(VM& vm, const FireDetail& detail)

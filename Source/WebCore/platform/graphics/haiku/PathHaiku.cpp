@@ -233,12 +233,10 @@ bool Path::contains(const FloatPoint& point, WindRule rule) const
     return gHitTestBitmap.hitTest(m_path, point.x(), point.y(), rule);
 }
 
-bool Path::strokeContains(StrokeStyleApplier* applier, const FloatPoint& point) const
+bool Path::strokeContains(StrokeStyleApplier& applier, const FloatPoint& point) const
 {
-    ASSERT(applier);
-
     gHitTestBitmap.init();
-    return gHitTestBitmap.hitTest(m_path, point.x(), point.y(), applier);
+    return gHitTestBitmap.hitTest(m_path, point.x(), point.y(), &applier);
 }
 
 void Path::translate(const FloatSize& size)
@@ -543,9 +541,8 @@ void Path::apply(const PathApplierFunction& function) const
         virtual status_t IterateMoveTo(BPoint* point)
         {
             PathElement pathElement;
-            pathElement.type = PathElementMoveToPoint;
-            pathElement.points = m_pathPoints;
-            m_pathPoints[0] = point[0];
+            pathElement.type = PathElement::Type::MoveToPoint;
+            pathElement.points[0] = point[0];
             m_function(pathElement);
             return B_OK;
         }
@@ -553,10 +550,9 @@ void Path::apply(const PathApplierFunction& function) const
         virtual status_t IterateLineTo(int32 lineCount, BPoint* linePts)
         {
             PathElement pathElement;
-            pathElement.type = PathElementAddLineToPoint;
-            pathElement.points = m_pathPoints;
+            pathElement.type = PathElement::Type::AddLineToPoint;
             while (lineCount--) {
-                m_pathPoints[0] = linePts[0];
+                pathElement.points[0] = linePts[0];
                 m_function(pathElement);
                 linePts++;
             }
@@ -566,12 +562,11 @@ void Path::apply(const PathApplierFunction& function) const
         virtual status_t IterateBezierTo(int32 bezierCount, BPoint* bezierPts)
         {
             PathElement pathElement;
-            pathElement.type = PathElementAddCurveToPoint;
-            pathElement.points = m_pathPoints;
+            pathElement.type = PathElement::Type::AddCurveToPoint;
             while (bezierCount--) {
-                m_pathPoints[0] = bezierPts[0];
-                m_pathPoints[1] = bezierPts[1];
-                m_pathPoints[2] = bezierPts[2];
+                pathElement.points[0] = bezierPts[0];
+            	pathElement.points[1] = bezierPts[1];
+                pathElement.points[2] = bezierPts[2];
                 m_function(pathElement);
                 bezierPts += 3;
             }
@@ -591,15 +586,13 @@ void Path::apply(const PathApplierFunction& function) const
         virtual status_t IterateClose()
         {
             PathElement pathElement;
-            pathElement.type = PathElementCloseSubpath;
-            pathElement.points = m_pathPoints;
+            pathElement.type = PathElement::Type::CloseSubpath;
             m_function(pathElement);
             return B_OK;
         }
 
     private:
         const PathApplierFunction& m_function;
-        FloatPoint m_pathPoints[3];
     } applyIterator(function);
 
     applyIterator.Iterate(m_path);

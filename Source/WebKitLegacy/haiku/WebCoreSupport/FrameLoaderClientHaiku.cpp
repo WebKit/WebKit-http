@@ -68,6 +68,7 @@
 #include "WebViewConstants.h"
 
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/JSContextRef.h>
 #include <wtf/CompletionHandler.h>
 
 #include <Alert.h>

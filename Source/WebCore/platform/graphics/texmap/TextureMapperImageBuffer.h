@@ -43,7 +43,7 @@ public:
     IntRect clipBounds() override { return currentContext()->clipBounds(); }
     IntSize maxTextureSize() const override;
     Ref<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
-    Ref<BitmapTexture> createTexture(GC3Dint) override { return BitmapTextureImageBuffer::create(); }
+    Ref<BitmapTexture> createTexture(int) override { return BitmapTextureImageBuffer::create(); }
 	void clearColor(const WebCore::Color&) override;
 
     inline GraphicsContext* currentContext()
