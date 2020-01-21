@@ -90,6 +90,16 @@ void WKWebsiteDataStoreConfigurationSetWebSQLDatabaseDirectory(WKWebsiteDataStor
     WebKit::toImpl(configuration)->setWebSQLDatabaseDirectory(WebKit::toImpl(directory)->string());
 }
 
+WKStringRef WKWebsiteDataStoreConfigurationCopyCacheStorageDirectory(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    return WebKit::toCopiedAPI(WebKit::toImpl(configuration)->cacheStorageDirectory());
+}
+
+void WKWebsiteDataStoreConfigurationSetCacheStorageDirectory(WKWebsiteDataStoreConfigurationRef configuration, WKStringRef directory)
+{
+    WebKit::toImpl(configuration)->setCacheStorageDirectory(WebKit::toImpl(directory)->string());
+}
+
 WKStringRef WKWebsiteDataStoreConfigurationCopyMediaKeysStorageDirectory(WKWebsiteDataStoreConfigurationRef configuration)
 {
     return WebKit::toCopiedAPI(WebKit::toImpl(configuration)->mediaKeysStorageDirectory());
@@ -108,6 +118,16 @@ WKStringRef WKWebsiteDataStoreConfigurationCopyResourceLoadStatisticsDirectory(W
 void WKWebsiteDataStoreConfigurationSetResourceLoadStatisticsDirectory(WKWebsiteDataStoreConfigurationRef configuration, WKStringRef directory)
 {
     WebKit::toImpl(configuration)->setResourceLoadStatisticsDirectory(WebKit::toImpl(directory)->string());
+}
+
+WKStringRef WKWebsiteDataStoreConfigurationCopyServiceWorkerRegistrationDirectory(WKWebsiteDataStoreConfigurationRef configuration)
+{
+    return WebKit::toCopiedAPI(WebKit::toImpl(configuration)->serviceWorkerRegistrationDirectory());
+}
+
+void WKWebsiteDataStoreConfigurationSetServiceWorkerRegistrationDirectory(WKWebsiteDataStoreConfigurationRef configuration, WKStringRef directory)
+{
+    WebKit::toImpl(configuration)->setServiceWorkerRegistrationDirectory(WebKit::toImpl(directory)->string());
 }
 
 uint64_t WKWebsiteDataStoreConfigurationGetPerOriginStorageQuota(WKWebsiteDataStoreConfigurationRef configuration)

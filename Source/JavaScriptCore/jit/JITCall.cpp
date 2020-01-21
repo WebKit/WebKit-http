@@ -189,7 +189,7 @@ bool JIT::compileTailCall(const OpTailCall& bytecode, CallLinkInfo* info, unsign
     for (unsigned i = 0; i < bytecode.m_argc; ++i) {
         shuffleData.args[i] =
             ValueRecovery::displacedInJSStack(
-                virtualRegisterForArgument(i) - bytecode.m_argv,
+                virtualRegisterForArgumentIncludingThis(i) - bytecode.m_argv,
                 DataFormatJS);
     }
     shuffleData.callee =

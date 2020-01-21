@@ -32,8 +32,8 @@
 
 #include "AXObjectCache.h"
 
+#include "AXIsolatedObject.h"
 #include "AXIsolatedTree.h"
-#include "AXIsolatedTreeNode.h"
 #include "AccessibilityARIAGrid.h"
 #include "AccessibilityARIAGridCell.h"
 #include "AccessibilityARIAGridRow.h"
@@ -95,6 +95,7 @@
 #include "RenderTableCell.h"
 #include "RenderTableRow.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGElement.h"
 #include "ScriptDisallowedScope.h"
 #include "ScrollView.h"
@@ -231,6 +232,12 @@ AXObjectCache::~AXObjectCache()
     m_liveRegionChangedPostTimer.stop();
     m_focusModalNodeTimer.stop();
     m_performCacheUpdateTimer.stop();
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    // Destroy the IsolatedTree before destroying the live tree.
+    if (m_pageID)
+        AXIsolatedTree::removeTreeForPageID(*m_pageID);
+#endif
 
     for (const auto& object : m_objects.values()) {
         detachWrapper(object.get(), AccessibilityDetachmentType::CacheDestroyed);
@@ -712,11 +719,13 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
 bool AXObjectCache::clientSupportsIsolatedTree()
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().isAccessibilityIsolatedTreeEnabled())
+        return false;
+
     AXClientType type = _AXGetClientForCurrentRequestUntrusted();
-    // FIXME: Remove unknown client before enabling ACCESSIBILITY_ISOLATED_TREE.
+    // FIXME: Remove unknown client before setting isAccessibilityIsolatedTreeEnabled initial value = true.
     return type == kAXClientTypeVoiceOver
-        || type == kAXClientTypeUnknown
-        || type == kAXClientTypeNoActiveRequestFound; // For LayoutTests.
+        || type == kAXClientTypeUnknown;
 }
 #endif
 
@@ -740,8 +749,11 @@ AXCoreObject* AXObjectCache::isolatedTreeRootObject()
         return nullptr;
 
     auto tree = AXIsolatedTree::treeForPageID(*m_pageID);
-    if (!tree && isMainThread()) {
-        tree = generateIsolatedTree(*m_pageID, m_document);
+    if (!tree) {
+        tree = Accessibility::retrieveValueFromMainThread<RefPtr<AXIsolatedTree>>([this] () -> RefPtr<AXIsolatedTree> {
+            return generateIsolatedTree(*m_pageID, m_document);
+        });
+
         // Now that we have created our tree, initialize the secondary thread,
         // so future requests come in on the other thread.
         _AXUIElementUseSecondaryAXThread(true);
@@ -834,6 +846,13 @@ void AXObjectCache::remove(AXID axID)
     if (!axID)
         return;
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    if (m_pageID) {
+        if (auto tree = AXIsolatedTree::treeForPageID(*m_pageID))
+            tree->removeNode(axID);
+    }
+#endif
+
     auto object = m_objects.take(axID);
     if (!object)
         return;
@@ -843,13 +862,6 @@ void AXObjectCache::remove(AXID axID)
     object->setObjectID(0);
 
     m_idsInUse.remove(axID);
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (m_pageID) {
-        if (auto tree = AXIsolatedTree::treeForPageID(*m_pageID))
-            tree->removeNode(axID);
-    }
-#endif
-
     ASSERT(m_objects.size() >= m_idsInUse.size());
 }
     
@@ -1930,7 +1942,7 @@ RefPtr<Range> AXObjectCache::rangeMatchesTextNearRange(RefPtr<Range> originalRan
         return nullptr;
     
     auto range = Range::create(m_document, startPosition, originalRange->startPosition());
-    unsigned targetOffset = TextIterator::rangeLength(range.ptr(), true);
+    unsigned targetOffset = TextIterator::rangeLength(range.ptr(), { TextIteratorLengthOption::GenerateSpacesForReplacedElements });
     return findClosestPlainText(searchRange.get(), matchText, { }, targetOffset);
 }
 
@@ -3068,6 +3080,7 @@ Ref<AXIsolatedObject> AXObjectCache::createIsolatedTreeHierarchy(AXCoreObject& o
 
     isolatedTreeNode->setTreeIdentifier(tree.treeIdentifier());
     isolatedTreeNode->setParent(parentID);
+    axObjectCache->detachWrapper(&object, AccessibilityDetachmentType::ElementChange);
     axObjectCache->attachWrapper(&isolatedTreeNode.get());
 
     for (const auto& child : object.children()) {
@@ -3082,9 +3095,7 @@ Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, D
 {
     RELEASE_ASSERT(isMainThread());
 
-    auto tree = AXIsolatedTree::treeForPageID(pageID);
-    if (!tree)
-        tree = AXIsolatedTree::createTreeForPageID(pageID);
+    RefPtr<AXIsolatedTree> tree(AXIsolatedTree::createTreeForPageID(pageID));
 
     // Set the root and focused objects in the isolated tree. For that, we need
     // the root and the focused object in the AXObject tree.

@@ -120,6 +120,11 @@ struct EditorState {
         String paragraphContextForCandidateRequest;
         String stringForCandidateRequest;
 #endif
+#if PLATFORM(GTK) || PLATFORM(WPE)
+        String paragraphContext;
+        uint64_t paragraphContextCursorPosition { 0 };
+        uint64_t paragraphContextSelectionPosition { 0 };
+#endif
 
         Optional<WebCore::FontAttributes> fontAttributes;
 

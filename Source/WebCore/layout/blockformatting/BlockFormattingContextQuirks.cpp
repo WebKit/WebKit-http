@@ -28,6 +28,8 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "BlockFormattingState.h"
+#include "DisplayBox.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
 #include "LayoutState.h"
@@ -67,9 +69,9 @@ ContentHeightAndMargin BlockFormattingContext::Quirks::stretchedInFlowHeight(con
 
     auto& formattingContext = this->formattingContext();
     auto& documentBox = layoutBox.isDocumentBox() ? layoutBox : *layoutBox.parent();
-    auto& documentBoxGeometry = formattingContext.geometryForBox(documentBox);
+    auto& documentBoxGeometry = formattingContext.geometryForBox(documentBox, EscapeReason::BodyStrechesToViewportQuirk);
 
-    auto& initialContainingBlockGeometry = formattingContext.geometryForBox(initialContainingBlock(layoutBox));
+    auto& initialContainingBlockGeometry = formattingContext.geometryForBox(initialContainingBlock(layoutBox), EscapeReason::BodyStrechesToViewportQuirk);
     auto strechedHeight = initialContainingBlockGeometry.contentBoxHeight();
     strechedHeight -= documentBoxGeometry.verticalBorder() + documentBoxGeometry.verticalPadding().valueOr(0);
 
@@ -82,7 +84,7 @@ ContentHeightAndMargin BlockFormattingContext::Quirks::stretchedInFlowHeight(con
         // Here is the quirky part for body box:
         // Stretch the body using the initial containing block's height and shrink it with document box's margin/border/padding.
         // This looks extremely odd when html has non-auto height.
-        auto documentBoxVerticalMargin = formattingContext.geometry().computedVerticalMargin(documentBox, UsedHorizontalValues { UsedHorizontalValues::Constraints { initialContainingBlockGeometry } });
+        auto documentBoxVerticalMargin = formattingContext.geometry().computedVerticalMargin(documentBox, Geometry::horizontalConstraintsForInFlow(initialContainingBlockGeometry));
         strechedHeight -= (documentBoxVerticalMargin.before.valueOr(0) + documentBoxVerticalMargin.after.valueOr(0));
 
         auto& bodyBoxGeometry = formattingContext.geometryForBox(layoutBox);

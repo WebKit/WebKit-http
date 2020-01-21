@@ -43,7 +43,7 @@ class InlineFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingContext);
 public:
     InlineFormattingContext(const Container& formattingContextRoot, InlineFormattingState&);
-    void layoutInFlowContent(InvalidationState&) override;
+    void layoutInFlowContent(InvalidationState&, const HorizontalConstraints&, const VerticalConstraints&) override;
 
 private:
     IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
@@ -64,9 +64,9 @@ private:
 
     class Geometry : public FormattingContext::Geometry {
     public:
-        ContentHeightAndMargin inlineBlockHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&) const;
-        ContentWidthAndMargin inlineBlockWidthAndMargin(const Box&, const UsedHorizontalValues&);
-        Optional<InlineLayoutUnit> computedTextIndent(const Container& formattingContextRoot, const UsedHorizontalValues::Constraints&) const;
+        ContentHeightAndMargin inlineBlockHeightAndMargin(const Box&, const HorizontalConstraints&, const OverrideVerticalValues&) const;
+        ContentWidthAndMargin inlineBlockWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&);
+        Optional<InlineLayoutUnit> computedTextIndent(const Container& formattingContextRoot, const HorizontalConstraints&) const;
 
     private:
         friend class InlineFormattingContext;
@@ -77,21 +77,21 @@ private:
     };
     InlineFormattingContext::Geometry geometry() const { return Geometry(*this); }
 
-    void lineLayout(const UsedHorizontalValues&);
-    void layoutFormattingContextRoot(const Box&, InvalidationState&, const UsedHorizontalValues&, const UsedVerticalValues&);
-    void computeHorizontalAndVerticalGeometry(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
+    void lineLayout(const HorizontalConstraints&, const VerticalConstraints&);
+    void layoutFormattingContextRoot(const Box&, InvalidationState&, const HorizontalConstraints&, const VerticalConstraints&);
+    void computeHorizontalAndVerticalGeometry(const Box&, const HorizontalConstraints&);
 
-    void computeIntrinsicWidthForFormattingRoot(const Box&, const UsedHorizontalValues&);
-    void computeWidthAndHeightForReplacedInlineBox(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
-    InlineLayoutUnit computedIntrinsicWidthForConstraint(const UsedHorizontalValues&) const;
+    void computeIntrinsicWidthForFormattingRoot(const Box&, const HorizontalConstraints&);
+    void computeWidthAndHeightForReplacedInlineBox(const Box&, const HorizontalConstraints&);
+    InlineLayoutUnit computedIntrinsicWidthForConstraint(const HorizontalConstraints&) const;
 
-    void computeHorizontalMargin(const Box&, const UsedHorizontalValues&);
-    void computeHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
-    void computeWidthAndMargin(const Box&, const UsedHorizontalValues&);
+    void computeHorizontalMargin(const Box&, const HorizontalConstraints&);
+    void computeHeightAndMargin(const Box&, const HorizontalConstraints&);
+    void computeWidthAndMargin(const Box&, const HorizontalConstraints&);
 
     void collectInlineContentIfNeeded();
-    LineBuilder::Constraints constraintsForLine(const UsedHorizontalValues&, InlineLayoutUnit lineLogicalTop);
-    void setDisplayBoxesForLine(const LineLayoutContext::LineContent&, const UsedHorizontalValues&);
+    LineBuilder::Constraints constraintsForLine(const HorizontalConstraints&, InlineLayoutUnit lineLogicalTop);
+    void setDisplayBoxesForLine(const LineLayoutContext::LineContent&, const HorizontalConstraints&);
     void invalidateFormattingState(const InvalidationState&);
 
     const InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }

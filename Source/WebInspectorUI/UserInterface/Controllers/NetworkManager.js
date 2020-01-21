@@ -315,8 +315,10 @@ WI.NetworkManager = class NetworkManager extends WI.Object
  * ${WI.UIString("Some examples of ways to use this script include (but are not limited to):")}
  *  - ${WI.UIString("overriding built-in functions to log call traces or add `debugger` statements")}
  *  - ${WI.UIString("ensuring that common debugging functions are available on every page via the Console")}
+ * 
+ * ${WI.UIString("More information is available at <https://webkit.org/web-inspector/inspector-bootstrap-script/>.")}
  */
-`;
+`.trimStart();
         }
 
         const target = null;
@@ -324,9 +326,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         const sourceURL = NetworkManager.bootstrapScriptURL;
         this._bootstrapScript = new WI.LocalScript(target, url, sourceURL, WI.Script.SourceType.Program, source, {injected: true, editable: true});
         this._bootstrapScript.addEventListener(WI.SourceCode.Event.ContentDidChange, this._handleBootstrapScriptContentDidChange, this);
-
-        if (!this._bootstrapScript.content)
-            WI.objectStores.general.put("", NetworkManager.bootstrapScriptSourceObjectStoreKey);
+        this._handleBootstrapScriptContentDidChange();
 
         this.dispatchEventToListeners(NetworkManager.Event.BootstrapScriptCreated, {bootstrapScript: this._bootstrapScript});
     }
@@ -1431,7 +1431,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
 
     _handleBootstrapScriptContentDidChange(event)
     {
-        let source = this._bootstrapScript.content;
+        let source = this._bootstrapScript.content || "";
 
         WI.objectStores.general.put(source, NetworkManager.bootstrapScriptSourceObjectStoreKey);
 

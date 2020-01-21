@@ -309,6 +309,11 @@ ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebReso
 
 void ResourceLoadStatisticsDatabaseStore::openITPDatabase()
 {
+    if (!FileSystem::fileExists(m_storageDirectoryPath))
+        m_isNewResourceLoadStatisticsDatabaseFile = true;
+    else
+        m_isNewResourceLoadStatisticsDatabaseFile = false;
+
     if (!m_database.open(m_storageDirectoryPath)) {
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::open failed, error message: %{public}s, database path: %{public}s", this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
         ASSERT_NOT_REACHED();
@@ -1508,7 +1513,7 @@ Vector<RegistrableDomain> ResourceLoadStatisticsDatabaseStore::ensurePrevalentRe
     return primaryDomainsToBlock;
 }
 
-void ResourceLoadStatisticsDatabaseStore::logFrameNavigation(const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, const RegistrableDomain& sourceDomain, bool isRedirect, bool isMainFrame)
+void ResourceLoadStatisticsDatabaseStore::logFrameNavigation(const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, const RegistrableDomain& sourceDomain, bool isRedirect, bool isMainFrame, Seconds delayAfterMainFrameDocumentLoad, bool wasPotentiallyInitiatedByUser)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -1523,19 +1528,23 @@ void ResourceLoadStatisticsDatabaseStore::logFrameNavigation(const RegistrableDo
         statisticsWereUpdated = true;
     }
 
-    if (isRedirect && !areTargetAndSourceDomainsSameSite) {
+    if (!areTargetAndSourceDomainsSameSite) {
         if (isMainFrame) {
-            auto redirectingDomainResult = ensureResourceStatisticsForRegistrableDomain(sourceDomain);
-            auto targetResult = ensureResourceStatisticsForRegistrableDomain(targetDomain);
-            insertDomainRelationshipList(topFrameUniqueRedirectsToQuery, HashSet<RegistrableDomain>({ targetDomain }), redirectingDomainResult.second);
-            insertDomainRelationshipList(topFrameUniqueRedirectsFromQuery, HashSet<RegistrableDomain>({ sourceDomain }), targetResult.second);
-        } else {
+            bool wasNavigatedAfterShortDelayWithoutUserInteraction = !wasPotentiallyInitiatedByUser && delayAfterMainFrameDocumentLoad < parameters().minDelayAfterMainFrameDocumentLoadToNotBeARedirect;
+            if (isRedirect || wasNavigatedAfterShortDelayWithoutUserInteraction) {
+                auto redirectingDomainResult = ensureResourceStatisticsForRegistrableDomain(sourceDomain);
+                auto targetResult = ensureResourceStatisticsForRegistrableDomain(targetDomain);
+                insertDomainRelationshipList(topFrameUniqueRedirectsToQuery, HashSet<RegistrableDomain>({ targetDomain }), redirectingDomainResult.second);
+                insertDomainRelationshipList(topFrameUniqueRedirectsFromQuery, HashSet<RegistrableDomain>({ sourceDomain }), targetResult.second);
+                statisticsWereUpdated = true;
+            }
+        } else if (isRedirect) {
             auto redirectingDomainResult = ensureResourceStatisticsForRegistrableDomain(sourceDomain);
             auto targetResult = ensureResourceStatisticsForRegistrableDomain(targetDomain);
             insertDomainRelationshipList(subresourceUniqueRedirectsToQuery, HashSet<RegistrableDomain>({ targetDomain }), redirectingDomainResult.second);
             insertDomainRelationshipList(subresourceUniqueRedirectsFromQuery, HashSet<RegistrableDomain>({ sourceDomain }), targetResult.second);
+            statisticsWereUpdated = true;
         }
-        statisticsWereUpdated = true;
     }
 
     if (statisticsWereUpdated)

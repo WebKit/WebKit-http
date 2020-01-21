@@ -630,11 +630,15 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (void)setCSSShadowPartsEnabled:(BOOL)flag;
 - (BOOL)cssShadowPartsEnabled;
 
+- (void)setLayoutFormattingContextIntegrationEnabled:(BOOL)flag;
+- (BOOL)layoutFormattingContextIntegrationEnabled;
+
 - (BOOL)isInAppBrowserPrivacyEnabled;
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag;
 
 @property (nonatomic) BOOL visualViewportAPIEnabled;
 @property (nonatomic) BOOL CSSOMViewScrollingAPIEnabled;
+@property (nonatomic) BOOL CSSOMViewSmoothScrollingEnabled;
 @property (nonatomic) BOOL largeImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL animatedImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
@@ -673,6 +677,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 @property (nonatomic) BOOL requestIdleCallbackEnabled;
 @property (nonatomic) BOOL asyncClipboardAPIEnabled;
 @property (nonatomic) BOOL linkPreloadResponsiveImagesEnabled;
+@property (nonatomic) BOOL aspectRatioOfImgFromWidthAndHeightEnabled;
 
 #if TARGET_OS_IPHONE
 @property (nonatomic) BOOL quickLookDocumentSavingEnabled;

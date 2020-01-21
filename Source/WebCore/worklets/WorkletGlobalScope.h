@@ -62,7 +62,6 @@ public:
     EventLoopTaskGroup& eventLoop() final;
 
     const URL& url() const final { return m_code.url(); }
-    String origin() const final;
 
     void evaluate();
 
@@ -121,7 +120,7 @@ private:
     bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) final { RELEASE_ASSERT_NOT_REACHED(); return false; }
     bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) final { RELEASE_ASSERT_NOT_REACHED(); return false; }
 #endif
-    URL completeURL(const String&) const final;
+    URL completeURL(const String&, ForceUTF8 = ForceUTF8::No) const final;
     String userAgent(const URL&) const final;
     void disableEval(const String&) final;
     void disableWebAssembly(const String&) final;

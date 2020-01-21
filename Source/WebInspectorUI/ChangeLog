@@ -1,3 +1,432 @@
+2020-01-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Unchecking Enable Preview Features on Engineering and Preview builds does not affect WI.arePreviewFeaturesEnabled()
+        https://bugs.webkit.org/show_bug.cgi?id=204026
+
+        Reviewed by Brian Burg.
+
+        Make `WI.arePreviewFeaturesEnabled()` return false when Enable Preview Features is unchecked.
+
+        * UserInterface/Base/Setting.js:
+        (WI.canShowPreviewFeatures):
+        (WI.arePreviewFeaturesEnabled):
+        (WI.isTechnologyPreviewBuild): Deleted.
+        (WI.canShowPreviewFeatures): Added.
+        * UserInterface/Views/SettingsTabContentView.js:
+
+2020-01-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add links to reference pages
+        https://bugs.webkit.org/show_bug.cgi?id=206309
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI._handleDeviceSettingsToolbarButtonClicked):
+        (WI.createReferencePageLink): Added.
+        * UserInterface/Views/Main.css:
+        (.reference-page-link): Added.
+        (.reference-page-link:active): Added.
+        (@media (-webkit-device-pixel-ratio: 1) .reference-page-link): Added.
+        (@media (prefers-color-scheme: dark) .reference-page-link): Added.
+        (@media (prefers-color-scheme: dark) .reference-page-link:active): Added.
+        (.device-settings-content):
+        (.device-settings-content > table): Added.
+        (.device-settings-content > table > tr > td:first-child): Added.
+        (.device-settings-content > .reference-page-link-container): Added.
+        (body[dir=ltr] .device-settings-content > .reference-page-link-container): Added.
+        (body[dir=rtl] .device-settings-content > .reference-page-link-container): Added.
+        (.device-settings-content > tr > td:first-child): Deleted.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.async createBootstrapScript):
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WI.BreakpointPopoverController.prototype._createPopoverContent):
+        (WI.BreakpointPopoverController.prototype._popoverActionsCreateAddActionButton):
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (.popover .edit-breakpoint-popover-content > table > tr > td.options): Added.
+        (.popover .edit-breakpoint-popover-content > table > tr > td.options > .reference-page-link-container): Added.
+        (body[dir=ltr] .popover .edit-breakpoint-popover-content > table > tr > td.options > .reference-page-link-container): Added.
+        (body[dir=rtl] .popover .edit-breakpoint-popover-content > table > tr > td.options > .reference-page-link-container): Added.
+        (body[dir=ltr] .popover .edit-breakpoint-popover-content .reference-page-link-container): Added.
+        (body[dir=rtl] .popover .edit-breakpoint-popover-content .reference-page-link-container): Added.
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover.prototype.show):
+        * UserInterface/Views/EventBreakpointPopover.css:
+        (.popover .event-breakpoint-content .reference-page-link-container): Added.
+        * UserInterface/Views/URLBreakpointPopover.js:
+        (WI.URLBreakpointPopover.prototype.show):
+        * UserInterface/Views/URLBreakpointPopover.css:
+        (.popover .url-breakpoint-content .reference-page-link-container): Added.
+
+        * UserInterface/Views/LocalResourceOverridePopover.js:
+        (WI.LocalResourceOverridePopover.prototype.show):
+        * UserInterface/Views/LocalResourceOverridePopover.css:
+        (.popover .local-resource-override-popover-content .reference-page-link-container): Added.
+        (body[dir=ltr] .popover .local-resource-override-popover-content .reference-page-link-container): Added.
+        (body[dir=rtl] .popover .local-resource-override-popover-content .reference-page-link-container): Added.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype.initialLayout):
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        (WI.SettingsTabContentView.prototype._createElementsSettingsView):
+        (WI.SettingsTabContentView.prototype._createSourcesSettingsView):
+        (WI.SettingsTabContentView.prototype._createConsoleSettingsView):
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        (WI.SettingsTabContentView.prototype._createReferenceLink): Added.
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.tab.settings): Added.
+        (.content-view.tab.settings .navigation-bar): Added.
+        (.content-view.tab.settings .navigation-bar.invisible): Added.
+        (.content-view.tab.settings .navigation-bar .item.radio.button.text-only): Added.
+        (.content-view.tab.settings .navigation-bar .item.radio.button.text-only:before): Added.
+        (.content-view.tab.settings .navigation-bar .item.radio.button.text-only.selected): Added.
+        (.content-view.tab.settings > .settings-view): Added.
+        (.content-view.tab.settings > .settings-view > .separator): Added.
+        (.content-view.tab.settings > .settings-view > .container): Added.
+        (.content-view.tab.settings > .settings-view > .container.hidden): Added.
+        (.content-view.tab.settings > .settings-view > .container-centered): Added.
+        (.content-view.tab.settings > .settings-view > .container button): Added.
+        (.content-view.tab.settings > .settings-view > .container > .title): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor:first-child > *): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor input): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"]): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor select): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor input[type="number"]): Added.
+        (.content-view.tab.settings > .settings-view > .container > .editor-group > .editor input[type="text"]): Added.
+        (.content-view.tab.settings > .settings-view > .container.reference): Added.
+        (.content-view.tab.settings > .settings-view > .container.reference > .reference-page-link): Added.
+        (.content-view.tab.settings > .settings-view > .container.reference > .reference-page-link > .go-to-arrow): Added.
+        (.content-view.settings .navigation-bar): Deleted.
+        (.content-view.settings .navigation-bar.invisible): Deleted.
+        (.content-view.settings .navigation-bar .item.radio.button.text-only): Deleted.
+        (.content-view.settings .navigation-bar .item.radio.button.text-only:before): Deleted.
+        (.content-view.settings .navigation-bar .item.radio.button.text-only.selected): Deleted.
+        (.content-view.settings > .settings-view): Deleted.
+        (.content-view.settings > .settings-view > .separator): Deleted.
+        (.content-view.settings > .settings-view > .container): Deleted.
+        (.content-view.settings > .settings-view > .container.hidden): Deleted.
+        (.content-view.settings > .settings-view > .container-centered): Deleted.
+        (.content-view.settings > .settings-view > .container button): Deleted.
+        (.content-view.settings > .settings-view > .container > .title): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor:first-child > *): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"]): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor select): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input[type="number"]): Deleted.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input[type="text"]): Deleted.
+        (@media (prefers-color-scheme: dark) .content-view.settings .navigation-bar): Deleted.
+        (@media (prefers-color-scheme: dark) .content-view.settings .navigation-bar .item.radio.button.text-only.selected): Deleted.
+        * UserInterface/Views/BlackboxSettingsView.js:
+        (WI.BlackboxSettingsView.prototype.initialLayout):
+        * UserInterface/Views/BlackboxSettingsView.css:
+        (.settings-view.blackbox > table > tbody td.url): Added.
+        (.settings-view.blackbox > table > tbody td.url > .CodeMirror):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2020-01-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show the device settings menu when Web Inspector's debug mode is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=206311
+
+        Reviewed by Brian Burg.
+
+        This only has an effect when Web Inspector is opened and the debug mode is enabled. If so,
+        the device settings toolbar icon will appear regardless of whether the inspected target is
+        a remote device or not. Disabling debug mode will not immediately remove the device settings
+        toolbar icon, but it will not reappear when Web Inspector is next opened (to allow for taking
+        screenshots and other such things).
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+
+2020-01-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r251487): Web Inspector: selected color in color picker has wrong lightness
+        https://bugs.webkit.org/show_bug.cgi?id=206202
+
+        Reviewed by Devin Rousso.
+
+        Currently, tintedColor setter has two code paths:
+        - rgb2hsv convertion if the color is defined using color(...) syntax.
+        - HSL to HSV convertion for any other color.
+
+        The latter was defined in the view, was untested, and incorrect.
+        This patch uses WI.Color.rgb2hsv convertion for all colors. This method is
+        already covered by tests.
+
+        * UserInterface/Views/ColorSquare.js:
+        (WI.ColorSquare.prototype.set tintedColor):
+
+2020-01-16  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wconditional-uninitialized in WebInspectorUI, WebKitLegacy, WebKit projects
+        <https://webkit.org/b/206270>
+        <rdar://problem/58589767>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        (WARNING_CFLAGS): Add -Wconditional-uninitialized switch.
+
+2020-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: collapsing a virtualized folder in a `WI.TreeOutline` doesn't updated the DOM
+        https://bugs.webkit.org/show_bug.cgi?id=206302
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._updateVirtualizedElements):
+        When collapsing a currently visible `WI.TreeElement`, it will still be in the cached set of
+        visible and attached `WI.TreeElement`s, meaning that `_updateVirtualizedElements` will early
+        return since it thinks that the same `WI.TreeElement` are being shown. Add another check to
+        ensure that it only thinks that if the same number of `WI.TreeElement` are visible.
+
+2020-01-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Enable Local Override" and "Delete Local Override" are displayed twice in the contextual menu
+        https://bugs.webkit.org/show_bug.cgi?id=206184
+        <rdar://problem/58409880>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        * UserInterface/Views/LocalResourceOverrideTreeElement.js:
+        (WI.LocalResourceOverrideTreeElement.prototype.populateContextMenu):
+        Add an expando flag  that can be set by `WI.LocalResourceOverrideTreeElement` to ensure that
+        the local override context menu items aren't added again by `WI.ResourceTreeElement`.
+
+2020-01-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: suggest "color()" when defining color in CSS value
+        https://bugs.webkit.org/show_bug.cgi?id=205976
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2020-01-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: not all injected scripts and style sheets are from extensions
+        https://bugs.webkit.org/show_bug.cgi?id=205955
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        (isWebKitExtensionScheme): Added.
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WI.CSSStyleSheet.prototype.get injected):
+        * .eslintrc:
+        Move the logic for detecting an extension injected resource to its own function.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WI.SourcesNavigationSidebarPanel.prototype._addStyleSheet):
+        (WI.SourcesNavigationSidebarPanel.prototype._addScript):
+        Only show the Anonymous Style Sheets folder once the user tries to show a style sheet that
+        would be in it.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype.didPresentDialog):
+        (WI.OpenResourceDialog.prototype._addScriptsForTarget):
+        (WI.OpenResourceDialog.prototype._handleStyleSheetAdded):
+        (WI.OpenResourceDialog.prototype._handleStyleSheetRemoved):
+        Ignore anonymous scripts, and allow injected style sheets to be added after presenting.
+
+2020-01-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Show RGBA input fields for p3 color picker
+        https://bugs.webkit.org/show_bug.cgi?id=203928
+        <rdar://problem/56963805>
+
+        Reviewed by Brian Burg.
+
+        Display numeric input fields for colors defined via `color(...)` CSS syntax.
+
+        * UserInterface/Controllers/CodeMirrorColorEditingController.js:
+        (WI.CodeMirrorColorEditingController.prototype.popoverWillPresent):
+        Remove unnecessary WI.ColorPicker.Event.FormatChanged event.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker > .color-inputs > div + div):
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        Don't append inputs of all possible color formats to DOM on instantiation.
+
+        (WI.ColorPicker.prototype.set color):
+        (WI.ColorPicker.prototype.set enableColorComponentInputs):
+        (WI.ColorPicker.prototype._updateColor):
+        (WI.ColorPicker.prototype._updateColorGamut):
+        (WI.ColorPicker.prototype._createColorInputsIfNeeded):
+        (WI.ColorPicker.prototype._showColorComponentInputs):
+        (WI.ColorPicker.prototype._handleColorInputsContainerInput):
+        * UserInterface/Views/InlineSwatch.js:
+        Remove unnecessary WI.ColorPicker.Event.FormatChanged event.
+
+2020-01-08  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION: (r254186) [ Mac ] inspector/css/add-rule.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=205938
+        <rdar://problem/58413597>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WI.CSSStyleSheet.prototype.get injected):
+        `scheme` can be `null`, so check that it exists before calling `String.prototype` functions.
+
+2020-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: unable to edit or view the source of style sheets injected by safari app extensions
+        https://bugs.webkit.org/show_bug.cgi?id=205900
+        <rdar://problem/57898773>
+
+        Reviewed by Timothy Hatcher.
+
+        Remove the restrictions around `CSS.StyleSheetOrigin.User` style sheets, thereby allowing
+        Web Inspector to get the source information that is necessary to show the "resource" in the
+        Sources Tab.
+
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WI.CSSStyleSheet.prototype.get displayName):
+        (WI.CSSStyleSheet.prototype.get injected): Added.
+        (WI.CSSStyleSheet.prototype.get anonymous): Added.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._parseRulePayload):
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule):
+        (WI.CSSRule.prototype.get editable):
+        (WI.CSSRule.prototype._selectorResolved):
+        Attempt to create a source code location for any style sheet with a source range, not just
+        for the Inspector Style Sheet.
+
+        * UserInterface/Views/CSSStyleSheetTreeElement.js:
+        (WI.CSSStyleSheetTreeElement):
+        Instead of hardcoding "Inspector Style Sheet", use the associated `WI.CSSStyleSheet`'s info.
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WI.FrameTreeElement):
+        (WI.FrameTreeElement.prototype.onattach):
+        (WI.FrameTreeElement.prototype.ondetach):
+        (WI.FrameTreeElement.prototype._styleSheetAdded):
+        (WI.FrameTreeElement.prototype._styleSheetRemoved): Added.
+        Ensure that only non-injected non-anonymous style sheets are shown under frames.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._compareTreeElements):
+        (WI.SourcesNavigationSidebarPanel.prototype._addResource):
+        (WI.SourcesNavigationSidebarPanel.prototype._addStyleSheet): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeChanged):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCSSStyleSheetAdded): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCSSStyleSheetRemoved): Added.
+        Add "Extension Style Sheets", "Extra Style Sheets", and "Anonymous Style Sheets" folders,
+        just like for scripts, with a similar logic as to when style sheets are added to each.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog):
+        (WI.OpenResourceDialog.prototype.representedObjectIsValid): Added.
+        (WI.OpenResourceDialog.prototype._populateResourceTreeOutline):
+        (WI.OpenResourceDialog.prototype._populateResourceTreeOutline.createTreeElement):
+        (WI.OpenResourceDialog.prototype.didDismissDialog):
+        (WI.OpenResourceDialog.prototype.didPresentDialog):
+        (WI.OpenResourceDialog.prototype._removeResource): Added.
+        (WI.OpenResourceDialog.prototype._resourceWasRemoved): Added.
+        (WI.OpenResourceDialog.prototype._scriptAdded):
+        (WI.OpenResourceDialog.prototype._scriptRemoved): Added.
+        (WI.OpenResourceDialog.prototype._handleStyleSheetAdded): Added.
+        (WI.OpenResourceDialog.prototype._handleStyleSheetRemoved): Added.
+        Add any non-injected non-anonymous style sheets when populating the list of resources.
+        Drive-by: remove listings for any resources that are removed from the inspected page.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.compareResourceTreeElements):
+        (WI.ResourceTreeElement.compareResourceTreeElements.resolvedType): Added.
+        Support comparisons against non-resource tree elements.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2020-01-07  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION: [ Mac Debug ] inspector/page/setBootstrapScript-main-frame.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205807
+        <rdar://problem/58344669>
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.async createBootstrapScript):
+        (WI.NetworkManager.prototype._handleBootstrapScriptContentDidChange):
+        Ensure that `Page.setBootstrapScript` is called when restoring the bootstrap script from the
+        IndexedDB storage. Otherwise, in situations like when Web Inspector is first opened, we will
+        show the Inspector Bootstrap Script in the UI, but not actually set it on the inspected page.
+
+2020-01-06  Yury Semikhatsky  <yurys@chromium.org>
+
+        REGRESSION: [ Mac wk2 ] http/tests/inspector/target/provisional-load-cancels-previous-load.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=205473
+        <rdar://problem/58093690>
+
+        The failure was due to attempts to add output to the test page which could be not fully
+        loaded after navigation. To make it deterministic it is now possible to keep provisional
+        navigation paused and to defer output until the test page is ready.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.initialize):
+        (WI.Target.prototype._resumeIfPaused): extracted resume logic in a method that
+        can be overridden in the tests.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.deferOutputUntilTestPageIsReloaded): allow to pause
+        output when navigation is started via protocol commands rather than the test harness.
+
+2020-01-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Color picker: make it keyboard accessible
+        https://bugs.webkit.org/show_bug.cgi?id=205572
+        <rdar://problem/58169943>
+
+        Reviewed by Brian Burg.
+
+        For the color square, make up, down, left, and right keys move the crosshair.
+
+        For the hue and opacity sliders:
+        - Pressing up and down keys should adjust the value by 1%.
+        - When holding Shift, up and down keys adjust the value by 10%.
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker.prototype.focus):
+        * UserInterface/Views/ColorSquare.css:
+        (.color-square):
+        Match the border of the hue and opacity sliders.
+
+        * UserInterface/Views/ColorSquare.js:
+        (WI.ColorSquare):
+        Make the color square focusable.
+
+        (WI.ColorSquare.prototype._handleMousedown):
+        (WI.ColorSquare.prototype._handleKeyDown):
+        * UserInterface/Views/InlineSwatch.js:
+        * UserInterface/Views/Slider.css:
+        (.slider:focus):
+        * UserInterface/Views/Slider.js:
+        (WI.Slider):
+        (WI.Slider.prototype._handleMousedown):
+        Drive-by: right clicking the slider shouldn't move the thumb.
+
+        (WI.Slider.prototype._handleKeyDown):
+
 2020-01-06  Nikita Vasilyev  <nvasilyev@apple.com>
 
         REGRESSION(r218839): Web Inspector: Color picker: pressing Esc should hide color picker

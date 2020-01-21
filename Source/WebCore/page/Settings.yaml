@@ -621,6 +621,9 @@ syntheticEditingCommandsEnabled:
 CSSOMViewScrollingAPIEnabled:
   initial: false
 
+CSSOMViewSmoothScrollingEnabled:
+  initial: false
+
 inputEventsEnabled:
   initial: true
 
@@ -728,6 +731,9 @@ scriptEnabled:
   initial: false
   getter: isScriptEnabled
   inspectorOverride: true
+parserScriptingFlagPolicy:
+  type: ParserScriptingFlagPolicy
+  initial: ParserScriptingFlagPolicy::OnlyIfScriptIsEnabled
 pluginsEnabled:
   initial: false
   getter: arePluginsEnabled
@@ -886,11 +892,11 @@ webRTCEncryptionEnabled:
   initial: true
   inspectorOverride: true
 
-isThirdPartyCookieBlockingEnabled:
-  initial: true
+isThirdPartyCookieBlockingDisabled:
+  initial: false
 
-isFirstPartyWebsiteDataRemovalEnabled:
-  initial: true
+isFirstPartyWebsiteDataRemovalDisabled:
+  initial: false
 
 isFirstPartyWebsiteDataRemovalLiveOnTestingEnabled:
   initial: false
@@ -909,6 +915,12 @@ legacyGetUserMediaEnabled:
   conditional: MEDIA_STREAM
 
 isInAppBrowserPrivacyEnabled:
+  initial: false
+
+isAccessibilityIsolatedTreeEnabled:
+  initial: false
+
+aspectRatioOfImgFromWidthAndHeightEnabled:
   initial: false
 
 # Deprecated

@@ -1,3 +1,284 @@
+2020-01-17  Cathie Chen  <cathiechen@igalia.com>
+
+        Add support for scroll behavior parsing
+        https://bugs.webkit.org/show_bug.cgi?id=205009
+
+        Reviewed by Frédéric Wang.
+
+        Based on the patch by Frédéric Wang.
+
+        Add run time flag for CSSOMViewSmoothScrolling.
+
+        * WebView/WebPreferenceKeysPrivate.h: Handle CSSOMViewSmoothScrolling by.
+        * WebView/WebPreferences.mm:
+        ([WebPreferences initialize]): Disable CSSOMViewSmoothScrolling by default.
+        (-[WebPreferences CSSOMViewSmoothScrollingEnabled]): Getter.
+        (-[WebPreferences setCSSOMViewSmoothScrollingEnabled:]): Setter.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2020-01-16  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wconditional-uninitialized in WebInspectorUI, WebKitLegacy, WebKit projects
+        <https://webkit.org/b/206270>
+        <rdar://problem/58589767>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        (WARNING_CFLAGS): Add -Wconditional-uninitialized switch.
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView scheduleTimerWithInterval:repeat:timerFunc:]):
+        Initialize `slot` stack variable.
+        * WebView/WebPDFDocumentExtras.mm:
+        (allScriptsInPDFDocument): Initialize `length` stack variable.
+        Also add check that `length` is non-zero.
+
+2020-01-16  Cathie Chen  <cathiechen@igalia.com>
+
+        Mapping HTML attributes width/height to the default aspect ratio of <img>
+        https://bugs.webkit.org/show_bug.cgi?id=201641
+
+        Reviewed by Frédéric Wang
+
+        Add experimental flag: AspectRatioOfImgFromWidthAndHeightEnabled.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        ([WebPreferences initialize]):
+        (-[WebPreferences aspectRatioOfImgFromWidthAndHeightEnabled]):
+        (-[WebPreferences setAspectRatioOfImgFromWidthAndHeightEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2020-01-14  Antti Koivisto  <antti@apple.com>
+
+        [LFC][Integration] Support the feature flag in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=206218
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences layoutFormattingContextIntegrationEnabled]):
+        (-[WebPreferences setLayoutFormattingContextIntegrationEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2020-01-09  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt TARGET_OS_MACCATALYST in more places
+        https://bugs.webkit.org/show_bug.cgi?id=206040
+        <rdar://problem/57127108>
+
+        Reviewed by Simon Fraser.
+
+        * Misc/WebDownload.h:
+
+2020-01-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Reduce binary size by purging C++ type information in Objective-C fields and parameters
+        https://bugs.webkit.org/show_bug.cgi?id=205905
+
+        Reviewed by Saam Barati.
+
+        * Plugins/WebBaseNetscapePluginView.h:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView element]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (_WebCreateFragment):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+        (-[WebFramePolicyListener initWithFrame:identifier:policyFunction:defaultPolicy:]):
+        (-[WebFramePolicyListener initWithFrame:identifier:policyFunction:defaultPolicy:appLinkURL:]):
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (-[WebGeolocationPolicyListener initWithGeolocation:]):
+        (-[WebGeolocationPolicyListener initWithGeolocation:forWebView:]):
+        (-[WebGeolocationProviderInitializationListener initWithGeolocation:]):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::resetState):
+        (-[WebInspectorWindowController setFrontendClient:]):
+        (-[WebInspectorWindowController setInspectorClient:]):
+        (-[WebInspectorWindowController inspectorClient]):
+        * WebInspector/WebInspectorFrontend.h:
+        * WebInspector/WebInspectorFrontend.mm:
+        * WebInspector/WebNodeHighlight.h:
+        * WebInspector/WebNodeHighlight.mm:
+        (-[WebNodeHighlight initWithTargetView:inspectorController:]):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _documentLoader]):
+        (-[WebDataSource addSubresource:]):
+        * WebView/WebDataSourceInternal.h:
+        * WebView/WebFrame.mm:
+        (getWebView):
+        (-[WebFrame _updateBackgroundAndUpdatesWhileOffscreen]):
+        (-[WebFrame _unmarkAllBadGrammar]):
+        (-[WebFrame _unmarkAllMisspellings]):
+        (-[WebFrame _hasSelection]):
+        (-[WebFrame _atMostOneFrameHasSelection]):
+        (-[WebFrame _findFrameWithSelection]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+        (-[WebFrame _documentFragmentWithMarkupString:baseURLString:]):
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+        (-[WebFrame _canProvideDocumentSource]):
+        (-[WebFrame _isDescendantOfFrame:]):
+        (-[WebFrame _recursive_resumeNullEventsForAllNetscapePlugins]):
+        (-[WebFrame _recursive_pauseNullEventsForAllNetscapePlugins]):
+        (-[WebFrame setTimeoutsPaused:]):
+        (-[WebFrame prepareForPause]):
+        (-[WebFrame resumeFromPause]):
+        (-[WebFrame resetTextAutosizingBeforeLayout]):
+        (-[WebFrame _globalContextForScriptWorld:]):
+        (-[WebFrame _layerTreeAsText]):
+        (-[WebFrame _clearOpener]):
+        (-[WebFrame focusedNodeHasContent]):
+        (-[WebFrame _dispatchDidReceiveTitle:]):
+        (-[WebFrame jsWrapperForNode:inScriptWorld:]):
+        (-[WebFrame elementAtPoint:]):
+        (-[WebFrame name]):
+        (-[WebFrame DOMDocument]):
+        (-[WebFrame frameElement]):
+        (-[WebFrame provisionalDataSource]):
+        (-[WebFrame dataSource]):
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame findFrameNamed:]):
+        (-[WebFrame parentFrame]):
+        (-[WebFrame childFrames]):
+        (-[WebFrame windowObject]):
+        (-[WebFrame globalContext]):
+        (-[WebFrame javaScriptContext]):
+        * WebView/WebFrameInternal.h:
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _web_frame]):
+        (-[WebFrameView _frameSizeChanged]):
+        (-[WebFrameView _isVerticalDocument]):
+        (-[WebFrameView _isFlippedDocument]):
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController _document]):
+        * WebView/WebHTMLView.mm:
+        (-[WebMenuTarget menuController]):
+        (-[WebMenuTarget setMenuController:]):
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+        (-[WebHTMLView _interpretKeyEvent:savingCommands:]):
+        (-[WebHTMLView setPromisedDragTIFFDataSource:]):
+        * WebView/WebHTMLViewInternal.h:
+        * WebView/WebNotification.mm:
+        (-[WebNotification initWithCoreNotification:notificationID:]):
+        * WebView/WebNotificationInternal.h:
+        * WebView/WebResource.mm:
+        (-[WebResource _coreResource]):
+        * WebView/WebResourceInternal.h:
+        * WebView/WebVideoFullscreenController.h:
+        * WebView/WebVideoFullscreenController.mm:
+        (-[WebVideoFullscreenController videoElement]):
+        (-[WebVideoFullscreenController setVideoElement:]):
+        * WebView/WebVideoFullscreenHUDWindowController.h:
+        * WebView/WebView.mm:
+        (-[WebView page]):
+        (-[WebView _enterVideoFullscreenForVideoElement:mode:]):
+        (-[WebView _setUpPlaybackControlsManagerForMediaElement:]):
+        (-[WebView _supportsFullScreenForElement:withKeyboard:]):
+        (-[WebView _enterFullScreenForElement:]):
+        (-[WebView _exitFullScreenForElement:]):
+        * WebView/WebViewInternal.h:
+
+2020-01-08  youenn fablet  <youenn@apple.com>
+
+        Implement MediaRecorder backend in GPUProcess
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2020-01-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Implement css3-images image-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=89052
+
+        Reviewed by Simon Fraser.
+
+        Remove the ENABLE_CSS_IMAGE_ORIENTATION feature flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-01-07  Chris Dumez  <cdumez@apple.com>
+
+        Remove document.origin
+        https://bugs.webkit.org/show_bug.cgi?id=205681
+
+        Reviewed by Geoffrey Garen.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument origin]):
+
+2020-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r254132.
+        https://bugs.webkit.org/show_bug.cgi?id=205868
+
+        It is breaking WinCairo build and internal builds. (Requested
+        by youenn on #webkit).
+
+        Reverted changeset:
+
+        "Implement MediaRecorder backend in GPUProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+        https://trac.webkit.org/changeset/254132
+
+2020-01-07  youenn fablet  <youenn@apple.com>
+
+        Implement MediaRecorder backend in GPUProcess
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2020-01-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to set purpose and hints of active editable element to input methods
+        https://bugs.webkit.org/show_bug.cgi?id=205605
+
+        Reviewed by Žan Doberšek.
+
+        * DOM/DOMHTMLElement.mm: Use ENABLE(AUTOCORRECT) and ENABLE(AUTOCAPITALIZE).
+        * WebCoreSupport/WebEditorClient.h: Update tom the new API to WebEditorClient::setInputMethodState.
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::setInputMethodState): Ditto.
+
+2020-01-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Enable ACCESSIBILITY_ISOLATED_TREE
+        https://bugs.webkit.org/show_bug.cgi?id=205535
+        <rdar://problem/58131075>
+
+        Reviewed by Zalan Bujtas.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-01-06  Mark Lam  <mark.lam@apple.com>
+
+        Convert ASSERT_DISABLED to ASSERT_ENABLED, and fix some tests of NDEBUG that should actually test for ASSERT_ENABLED.
+        https://bugs.webkit.org/show_bug.cgi?id=205776
+
+        Reviewed by Saam Barati.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate removeItemForURLString:]):
+        * WebView/WebFrame.mm:
+
 2020-01-06  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Enable CSS Animations via Web Animations for WebKitLegacy

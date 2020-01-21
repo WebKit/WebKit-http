@@ -46,11 +46,6 @@ namespace JSC {
     JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
     macro(add) \
     macro(applyFunction) \
-    macro(arrayIteratorNextIndex) \
-    macro(arrayIterationKind) \
-    macro(arrayIteratorNext) \
-    macro(arrayIteratorIsDone) \
-    macro(arrayIteratorKind) \
     macro(arraySpeciesCreate) \
     macro(assert) \
     macro(callFunction) \
@@ -59,7 +54,6 @@ namespace JSC {
     macro(isView) \
     macro(iteratedObject) \
     macro(iteratedString) \
-    macro(stringIteratorNextIndex) \
     macro(promise) \
     macro(promiseOrCapability) \
     macro(Object) \
@@ -173,6 +167,7 @@ namespace JSC {
     macro(meta) \
     macro(webAssemblyCompileStreamingInternal) \
     macro(webAssemblyInstantiateStreamingInternal) \
+    macro(instanceFieldInitializer) 
 
 namespace Symbols {
 #define DECLARE_BUILTIN_STATIC_SYMBOLS(name) extern JS_EXPORT_PRIVATE SymbolImpl::StaticSymbolImpl name##Symbol;

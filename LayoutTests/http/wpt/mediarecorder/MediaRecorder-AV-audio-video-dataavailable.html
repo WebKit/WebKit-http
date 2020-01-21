@@ -20,6 +20,9 @@
     </canvas>
 </div>
 <script>
+    if (window.internals)
+        window.internals.setUseGPUProcessForWebRTC(false);
+
     var context;
     var drawStartTime;
 
@@ -77,15 +80,15 @@
             const resFrame = document.getElementById("frame");
             const resContext = resFrame.getContext('2d');
 
-            player.oncanplay = () => {
+            player.oncanplay = t.step_func(() => {
                 assert_greater_than(player.duration, 0.1, 'the duration should be greater than 100ms');
                 player.play();
-            };
+            });
             player.onplay = () => {
                 player.pause();
                 player.currentTime = 0.05;
             };
-            player.onseeked = () => {
+            player.onseeked = t.step_func(() => {
                 resContext.drawImage(player, 0, 0);
                 if (!mode) {
                     _assertPixelApprox(resFrame, 25, 25, 255, 0, 0, 255, "25, 25", "255, 0, 0, 255", 20);
@@ -97,7 +100,7 @@
                     _assertPixelApprox(resFrame, 199, 199, 0, 255, 0, 255, "199, 199", "0, 255, 0, 255", 20);
                     t.done();
                 }
-            };
+            });
             player.load();
         });
         drawStartTime = Date.now();

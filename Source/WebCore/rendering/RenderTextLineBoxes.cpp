@@ -350,8 +350,8 @@ void RenderTextLineBoxes::setSelectionState(RenderText& renderer, RenderObject::
         return;
     }
 
-    auto start = renderer.view().selection().startPosition();
-    auto end = renderer.view().selection().endPosition();
+    auto start = renderer.view().selection().startOffset();
+    auto end = renderer.view().selection().endOffset();
     if (state == RenderObject::SelectionStart) {
         end = renderer.text().length();
         // to handle selection from end of text to end of line
@@ -429,10 +429,12 @@ static FloatRect localQuadForTextBox(const InlineTextBox& box, unsigned start, u
     return boxSelectionRect;
 }
 
-Vector<FloatQuad> RenderTextLineBoxes::absoluteQuadsForRange(const RenderText& renderer, unsigned start, unsigned end, bool useSelectionHeight, bool* wasFixed) const
+Vector<FloatQuad> RenderTextLineBoxes::absoluteQuadsForRange(const RenderText& renderer, unsigned start, unsigned end, bool useSelectionHeight, bool ignoreEmptyTextSelections, bool* wasFixed) const
 {
     Vector<FloatQuad> quads;
     for (auto* box = m_first; box; box = box->nextTextBox()) {
+        if (ignoreEmptyTextSelections && !box->isSelected(start, end))
+            continue;
         if (start <= box->start() && box->end() <= end) {
             FloatRect boundaries = box->calculateBoundaries();
             if (useSelectionHeight) {
@@ -457,7 +459,7 @@ Vector<FloatQuad> RenderTextLineBoxes::absoluteQuadsForRange(const RenderText& r
 
 Vector<IntRect> RenderTextLineBoxes::absoluteRectsForRange(const RenderText& renderer, unsigned start, unsigned end, bool useSelectionHeight, bool* wasFixed) const
 {
-    return absoluteQuadsForRange(renderer, start, end, useSelectionHeight, wasFixed).map([](auto& quad) { return quad.enclosingBoundingBox(); });
+    return absoluteQuadsForRange(renderer, start, end, useSelectionHeight, false /* ignoreEmptyTextSelections */, wasFixed).map([](auto& quad) { return quad.enclosingBoundingBox(); });
 }
 
 Vector<FloatQuad> RenderTextLineBoxes::absoluteQuads(const RenderText& renderer, bool* wasFixed, ClippingOption option) const
@@ -562,7 +564,7 @@ bool RenderTextLineBoxes::dirtyRange(RenderText& renderer, unsigned start, unsig
 
 inline void RenderTextLineBoxes::checkConsistency() const
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 #ifdef CHECK_CONSISTENCY
     const InlineTextBox* prev = nullptr;
     for (auto* child = m_first; child; child = child->nextTextBox()) {
@@ -572,10 +574,10 @@ inline void RenderTextLineBoxes::checkConsistency() const
     }
     ASSERT(prev == m_last);
 #endif
-#endif
+#endif // ASSERT_ENABLED
 }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 RenderTextLineBoxes::~RenderTextLineBoxes()
 {
     ASSERT(!m_first);

@@ -203,6 +203,8 @@ static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:[UIApplication sharedApplication]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:[UIApplication sharedApplication]];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationDidEnterBackground:) name:UIApplicationDidEnterBackgroundNotification object:[UIApplication sharedApplication]];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:[UIApplication sharedApplication]];
 
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
     if (WebCore::IOSApplication::isEvernote() && !linkedOnOrAfter(WebKit::SDKVersion::FirstWhereWKContentViewDoesNotOverrideKeyCommands))
@@ -238,7 +240,7 @@ static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
 }
 #endif
 
-- (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView
+- (instancetype)initWithFrame:(CGRect)frame processPool:(NakedRef<WebKit::WebProcessPool>)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView
 {
     if (!(self = [super initWithFrame:frame webView:webView]))
         return nil;
@@ -718,6 +720,18 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     _page->applicationDidBecomeActive();
 }
 
+- (void)_applicationDidEnterBackground:(NSNotification*)notification
+{
+    if (!self.window)
+        _page->applicationDidEnterBackgroundForMedia();
+}
+
+- (void)_applicationWillEnterForeground:(NSNotification*)notification
+{
+    if (!self.window)
+        _page->applicationWillEnterForegroundForMedia();
+}
+
 @end
 
 #pragma mark Printing
@@ -734,7 +748,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
     WebCore::FrameIdentifier frameID;
     if (_WKFrameHandle *handle = printFormatter.frameToPrint)
-        frameID = WebCore::frameIdentifierFromID(handle._frameID);
+        frameID = handle->_frameHandle->frameID();
     else if (auto mainFrame = _page->mainFrame())
         frameID = mainFrame->frameID();
     else

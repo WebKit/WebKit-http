@@ -43,33 +43,6 @@
 
 namespace WebCore {
 
-#if PLATFORM(WIN) && !USE(DIRECT2D)
-
-class TextLayout {
-};
-
-void TextLayoutDeleter::operator()(TextLayout*) const
-{
-}
-
-std::unique_ptr<TextLayout, TextLayoutDeleter> FontCascade::createLayout(RenderText&, float, bool) const
-{
-    return nullptr;
-}
-
-float FontCascade::width(TextLayout&, unsigned, unsigned, HashSet<const Font*>*)
-{
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
-void ComplexTextController::collectComplexTextRunsForCharacters(const UChar*, unsigned, unsigned, const Font*)
-{
-    ASSERT_NOT_REACHED();
-}
-
-#else
-
 class TextLayout {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -206,7 +179,8 @@ unsigned ComplexTextController::offsetForPosition(float h, bool includePartialGl
         for (unsigned j = 0; j < complexTextRun.glyphCount(); ++j) {
             unsigned index = offsetIntoAdjustedGlyphs + j;
             float adjustedAdvance = m_adjustedBaseAdvances[index].width();
-            if (x < adjustedAdvance) {
+            bool hit = m_run.ltr() ? x < adjustedAdvance : (x <= adjustedAdvance && adjustedAdvance);
+            if (hit) {
                 unsigned hitGlyphStart = complexTextRun.indexAt(j);
                 unsigned hitGlyphEnd;
                 if (m_run.ltr())
@@ -216,7 +190,18 @@ unsigned ComplexTextController::offsetForPosition(float h, bool includePartialGl
 
                 // FIXME: Instead of dividing the glyph's advance equally between the characters, this
                 // could use the glyph's "ligature carets". This is available in CoreText via CTFontGetLigatureCaretPositions().
-                unsigned hitIndex = hitGlyphStart + (hitGlyphEnd - hitGlyphStart) * (m_run.ltr() ? x / adjustedAdvance : 1 - x / adjustedAdvance);
+                unsigned hitIndex;
+                if (m_run.ltr())
+                    hitIndex = hitGlyphStart + (hitGlyphEnd - hitGlyphStart) * (x / adjustedAdvance);
+                else {
+                    if (hitGlyphStart == hitGlyphEnd)
+                        hitIndex = hitGlyphStart;
+                    else if (x)
+                        hitIndex = hitGlyphEnd - (hitGlyphEnd - hitGlyphStart) * (x / adjustedAdvance);
+                    else
+                        hitIndex = hitGlyphEnd - 1;
+                }
+
                 unsigned stringLength = complexTextRun.stringLength();
                 CachedTextBreakIterator cursorPositionIterator(StringView(complexTextRun.characters(), stringLength), TextBreakIterator::Mode::Caret, nullAtom());
                 unsigned clusterStart;
@@ -893,7 +878,5 @@ ComplexTextController::ComplexTextRun::ComplexTextRun(const Vector<FloatSize>& a
     , m_isLTR(ltr)
 {
 }
-
-#endif
 
 } // namespace WebCore

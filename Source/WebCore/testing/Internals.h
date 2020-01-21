@@ -869,6 +869,7 @@ public:
     void testDictionaryLogging();
 
     void setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest&, double);
+    void setTransientActivationDuration(double seconds);
 
     void setIsPlayingToAutomotiveHeadUnit(bool);
     
@@ -922,6 +923,8 @@ public:
     String highlightPseudoElementColor(const String& highlightName, Element&);
 
     String windowLocationHost(DOMWindow&);
+
+    String systemColorForCSSValue(const String& cssValue, bool useDarkModeAppearance, bool useElevatedUserInterfaceLevel);
 
 private:
     explicit Internals(Document&);

@@ -6,6 +6,8 @@ Registrable domain: localhost
     hadUserInteraction: No
     mostRecentUserInteraction: -1
     grandfathered: No
+    topFrameUniqueRedirectsFrom:
+        127.0.0.1
     topFrameLinkDecorationsFrom:
         127.0.0.1
     gotLinkDecorationFromPrevalentResource: Yes
@@ -16,6 +18,8 @@ Registrable domain: 127.0.0.1
     hadUserInteraction: No
     mostRecentUserInteraction: -1
     grandfathered: No
+    topFrameUniqueRedirectsTo:
+        localhost
     gotLinkDecorationFromPrevalentResource: No
     isPrevalentResource: Yes
     isVeryPrevalentResource: No

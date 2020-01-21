@@ -30,7 +30,9 @@
 
 #import "AppKitSPI.h"
 #import "VersionChecks.h"
+#import "WKContentViewMac.h"
 #import "WKSafeBrowsingWarning.h"
+#import "WKScrollViewMac.h"
 #import "WKTextFinderClient.h"
 #import "WKUIDelegatePrivate.h"
 #import "WebBackForwardList.h"
@@ -1207,6 +1209,34 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
     _impl->insertText(string, replacementRange);
 }
 
+#pragma mark - WKScrollViewDelegate
+
+- (void)scrollViewDidScroll:(NSScrollView *)scrollView
+{
+    // Only called with UI-side compositing.
+}
+
+- (void)scrollViewContentInsetsDidChange:(NSScrollView *)scrollView
+{
+    // Only called with UI-side compositing.
+}
+
+#pragma mark -
+
+- (void)_setupScrollAndContentViews
+{
+    if (!_impl->isUsingUISideCompositing())
+        return;
+
+    _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:[self bounds]]);
+    [_scrollView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [self addSubview:_scrollView.get() positioned:NSWindowBelow relativeTo:nil];
+
+    // The content view will get resized to fit the content.
+    [_scrollView setDocumentView:_contentView.get()];
+    [_scrollView setDelegate:self];
+}
+
 @end
 
 #pragma mark -
@@ -1461,7 +1491,7 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
 - (BOOL)_canChangeFrameLayout:(_WKFrameHandle *)frameHandle
 {
-    if (auto* webFrameProxy = _page->process().webFrame(WebCore::frameIdentifierFromID(frameHandle._frameID)))
+    if (auto* webFrameProxy = _page->process().webFrame(frameHandle->_frameHandle->frameID()))
         return _impl->canChangeFrameLayout(*webFrameProxy);
     return false;
 }
@@ -1548,7 +1578,7 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(_WKFrameHandle *)frameHandle
 {
-    if (auto* webFrameProxy = _page->process().webFrame(WebCore::frameIdentifierFromID(frameHandle._frameID)))
+    if (auto* webFrameProxy = _page->process().webFrame(frameHandle->_frameHandle->frameID()))
         return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
     return nil;
 }

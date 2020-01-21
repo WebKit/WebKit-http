@@ -209,6 +209,7 @@
 #define WebKitServerTimingEnabledPreferenceKey "WebKitServerTimingEnabled"
 
 #define WebKitCSSOMViewScrollingAPIEnabledPreferenceKey "WebKitCSSOMViewScrollingAPIEnabled"
+#define WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey "WebKitCSSOMViewSmoothScrollingEnabled"
 
 #define WebKitResizeObserverEnabledPreferenceKey "WebKitResizeObserverEnabled"
 
@@ -217,3 +218,5 @@
 #define WebKitRequestIdleCallbackEnabledPreferenceKey "WebKitRequestIdleCallbackEnabled"
 
 #define WebKitAsyncClipboardAPIEnabledPreferenceKey "WebKitAsyncClipboardAPIEnabled"
+
+#define WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey "WebKitAspectRatioOfImgFromWidthAndHeightEnabled"

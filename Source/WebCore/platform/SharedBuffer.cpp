@@ -29,7 +29,9 @@
 #include "SharedBuffer.h"
 
 #include <algorithm>
+#include <wtf/HexNumber.h>
 #include <wtf/persistence/PersistentCoders.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/UTF8Conversion.h>
 
 namespace WebCore {
@@ -93,7 +95,7 @@ Ref<SharedBuffer> SharedBuffer::create(Vector<uint8_t>&& vector)
 
 void SharedBuffer::combineIntoOneSegment() const
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     // FIXME: We ought to be able to set this to true and have no assertions fire.
     // Remove all instances of appending after calling this, because they are all O(n^2) algorithms since r215686.
     // m_hasBeenCombinedIntoOneSegment = true;
@@ -130,6 +132,16 @@ SharedBufferDataView SharedBuffer::getSomeData(size_t position) const
     const DataSegmentVectorEntry* element = std::upper_bound(m_segments.begin(), m_segments.end(), position, comparator);
     element--; // std::upper_bound gives a pointer to the element that is greater than position. We want the element just before that.
     return { element->segment.copyRef(), position - element->beginPosition };
+}
+
+String SharedBuffer::toHexString() const
+{
+    StringBuilder stringBuilder;
+    for (unsigned byteOffset = 0; byteOffset < size(); byteOffset++) {
+        const uint8_t byte = data()[byteOffset];
+        stringBuilder.append(pad('0', 2, hex(byte)));
+    }
+    return stringBuilder.toString();
 }
 
 RefPtr<ArrayBuffer> SharedBuffer::tryCreateArrayBuffer() const
@@ -200,7 +212,7 @@ Ref<SharedBuffer> SharedBuffer::copy() const
     return clone;
 }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 bool SharedBuffer::internallyConsistent() const
 {
     size_t position = 0;
@@ -211,7 +223,7 @@ bool SharedBuffer::internallyConsistent() const
     }
     return position == m_size;
 }
-#endif
+#endif // ASSERT_ENABLED
 
 const char* SharedBuffer::DataSegment::data() const
 {

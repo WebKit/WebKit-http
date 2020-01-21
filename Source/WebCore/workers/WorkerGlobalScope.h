@@ -69,7 +69,7 @@ public:
     EventLoopTaskGroup& eventLoop() final;
 
     const URL& url() const final { return m_url; }
-    String origin() const final;
+    String origin() const;
     const String& identifier() const { return m_identifier; }
 
 #if ENABLE(INDEXED_DATABASE)
@@ -160,7 +160,7 @@ private:
     bool isWorkerGlobalScope() const final { return true; }
 
     ScriptExecutionContext* scriptExecutionContext() const final { return const_cast<WorkerGlobalScope*>(this); }
-    URL completeURL(const String&) const final;
+    URL completeURL(const String&, ForceUTF8 = ForceUTF8::No) const final;
     String userAgent(const URL&) const final;
     void disableEval(const String& errorMessage) final;
     void disableWebAssembly(const String& errorMessage) final;

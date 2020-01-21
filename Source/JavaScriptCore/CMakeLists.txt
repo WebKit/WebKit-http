@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 include(WebKitCommon)
+include(target/TargetWTF)
 set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
 list(APPEND JavaScriptCore_UNIFIED_SOURCE_LIST_FILES
@@ -785,6 +786,8 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/BytecodeCacheError.h
     runtime/CachePayload.h
     runtime/CacheUpdate.h
+    runtime/CacheableIdentifier.h
+    runtime/CacheableIdentifierInlines.h
     runtime/CachedBytecode.h
     runtime/CachedTypes.h
     runtime/CagedBarrierPtr.h
@@ -900,7 +903,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSModuleLoader.h
     runtime/JSModuleRecord.h
     runtime/JSNativeStdFunction.h
-    runtime/JSNonDestructibleProxy.h
     runtime/JSONObject.h
     runtime/JSObject.h
     runtime/JSObjectInlines.h

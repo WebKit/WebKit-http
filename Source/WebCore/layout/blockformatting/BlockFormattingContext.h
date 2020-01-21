@@ -48,38 +48,44 @@ class BlockFormattingContext : public FormattingContext {
 public:
     BlockFormattingContext(const Container& formattingContextRoot, BlockFormattingState&);
 
-    void layoutInFlowContent(InvalidationState&) override;
+    void layoutInFlowContent(InvalidationState&, const HorizontalConstraints&, const VerticalConstraints&) override;
 
 private:
-    void layoutFormattingContextRoot(FloatingContext&, const Box&, InvalidationState&);
-    void placeInFlowPositionedChildren(const Box&);
 
-    void computeWidthAndMargin(const Box&, Optional<LayoutUnit> usedAvailableWidth = { });
-    void computeHeightAndMargin(const Box&);
+    template<typename T>
+    struct ConstraintsPair {
+        const T root;
+        const T containingBlock;
+    };
+    void layoutFormattingContextRoot(const Box&, FloatingContext&, InvalidationState&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+    void placeInFlowPositionedChildren(const Box&, const ConstraintsPair<HorizontalConstraints>&);
 
-    void computeStaticHorizontalPosition(const Box&);
-    void computeStaticVerticalPosition(const FloatingContext&, const Box&);
-    void computeStaticPosition(const FloatingContext&, const Box&);
+    void computeWidthAndMargin(const Box&, const ConstraintsPair<HorizontalConstraints>&);
+    void computeHeightAndMargin(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+
+    void computeStaticHorizontalPosition(const Box&, const ConstraintsPair<HorizontalConstraints>&);
+    void computeStaticVerticalPosition(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+    void computeStaticPosition(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
     void computeFloatingPosition(const FloatingContext&, const Box&);
     void computePositionToAvoidFloats(const FloatingContext&, const Box&);
 
-    void computeEstimatedVerticalPosition(const Box&);
-    void computeEstimatedVerticalPositionForAncestors(const Box&);
-    void computeEstimatedVerticalPositionForFormattingRoot(const Box&);
-    void computeEstimatedVerticalPositionForFloatClear(const FloatingContext&, const Box&);
+    void computeEstimatedVerticalPosition(const Box&, const HorizontalConstraints&, const VerticalConstraints&);
+    void computeEstimatedVerticalPositionForAncestors(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+    void computeEstimatedVerticalPositionForFormattingRoot(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+    void computeEstimatedVerticalPositionForFloatClear(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
 
     IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
-    LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&) const;
+    LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&, const VerticalConstraints&) const;
 
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry : public FormattingContext::Geometry {
     public:
-        ContentHeightAndMargin inFlowHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
-        ContentWidthAndMargin inFlowWidthAndMargin(const Box&, const UsedHorizontalValues&);
+        ContentHeightAndMargin inFlowHeightAndMargin(const Box&, const HorizontalConstraints&, const OverrideVerticalValues&);
+        ContentWidthAndMargin inFlowWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&);
 
-        Point staticPosition(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&) const;
-        LayoutUnit staticVerticalPosition(const Box&, const UsedVerticalValues&) const;
-        LayoutUnit staticHorizontalPosition(const Box&, const UsedHorizontalValues&) const;
+        Point staticPosition(const Box&, const HorizontalConstraints&, const VerticalConstraints&) const;
+        LayoutUnit staticVerticalPosition(const Box&, const VerticalConstraints&) const;
+        LayoutUnit staticHorizontalPosition(const Box&, const HorizontalConstraints&) const;
 
         IntrinsicWidthConstraints intrinsicWidthConstraints(const Box&);
 
@@ -87,9 +93,9 @@ private:
         friend class BlockFormattingContext;
         Geometry(const BlockFormattingContext&);
 
-        ContentHeightAndMargin inFlowNonReplacedHeightAndMargin(const Box&, const UsedHorizontalValues&, const UsedVerticalValues&);
-        ContentWidthAndMargin inFlowNonReplacedWidthAndMargin(const Box&, const UsedHorizontalValues&) const;
-        ContentWidthAndMargin inFlowReplacedWidthAndMargin(const Box&, const UsedHorizontalValues&) const;
+        ContentHeightAndMargin inFlowNonReplacedHeightAndMargin(const Box&, const HorizontalConstraints&, const OverrideVerticalValues&);
+        ContentWidthAndMargin inFlowNonReplacedWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&) const;
+        ContentWidthAndMargin inFlowReplacedWidthAndMargin(const Box&, const HorizontalConstraints&, const OverrideHorizontalValues&) const;
         Point staticPositionForOutOfFlowPositioned(const Box&) const;
 
         const BlockFormattingContext& formattingContext() const { return downcast<BlockFormattingContext>(FormattingContext::Geometry::formattingContext()); }
@@ -159,7 +165,7 @@ private:
     void removeEstimatedMarginBefore(const Box& layoutBox) { m_estimatedMarginBeforeList.remove(&layoutBox); }
     bool hasEstimatedMarginBefore(const Box&) const;
     Optional<LayoutUnit> usedAvailableWidthForFloatAvoider(const FloatingContext&, const Box&) const;
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     EstimatedMarginBefore estimatedMarginBefore(const Box& layoutBox) const { return m_estimatedMarginBeforeList.get(&layoutBox); }
     bool hasPrecomputedMarginBefore(const Box&) const;
 #endif

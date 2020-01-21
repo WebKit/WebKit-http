@@ -195,7 +195,7 @@ def forward_declaration(namespace, kind_and_type):
 def forward_declarations_for_namespace(namespace, kind_and_types):
     result = []
     result.append('namespace %s {\n' % namespace)
-    result += ['%s;\n' % forward_declaration(namespace, x) for x in kind_and_types]
+    result += ['%s;\n' % forward_declaration(namespace, x) for x in sorted(kind_and_types)]
     result.append('}\n')
     return ''.join(result)
 
@@ -218,14 +218,18 @@ def types_that_cannot_be_forward_declared():
         'WebCore::ServiceWorkerRegistrationIdentifier',
         'WebCore::SWServerConnectionIdentifier',
         'WebKit::ActivityStateChangeID',
+        'WebKit::AudioMediaStreamTrackRendererIdentifier',
         'WebKit::LayerHostingContextID',
         'WebKit::MediaPlayerPrivateRemoteIdentifier',
+        'WebKit::MediaRecorderIdentifier',
         'WebKit::RemoteMediaResourceIdentifier',
         'WebKit::RTCDecoderIdentifier',
         'WebKit::RTCEncoderIdentifier',
+        'WebKit::SampleBufferDisplayLayerIdentifier',
         'WebKit::StorageAreaIdentifier',
         'WebKit::StorageAreaImplIdentifier',
         'WebKit::StorageNamespaceIdentifier',
+        'WebKit::TrackPrivateRemoteIdentifier',
         'WebKit::TransactionID',
         'WebKit::UserContentControllerIdentifier',
         'WebKit::WebPageProxyIdentifier',
@@ -234,6 +238,7 @@ def types_that_cannot_be_forward_declared():
 
 def conditions_for_header(header):
     conditions = {
+        '"InputMethodState.h"': ["PLATFORM(GTK)", "PLATFORM(WPE)"],
         '"LayerHostingContext.h"': ["PLATFORM(COCOA)", ],
     }
     if not header in conditions:
@@ -288,7 +293,7 @@ def forward_declarations_and_headers(receiver):
     for header in sorted(headers):
         conditions = conditions_for_header(header)
         if conditions and not None in conditions:
-            header_include = '#if %s\n' % ' || '.join(set(conditions))
+            header_include = '#if %s\n' % ' || '.join(sorted(set(conditions)))
             header_include += '#include %s\n' % header
             header_include += '#endif\n'
             header_includes.append(header_include)
@@ -345,7 +350,7 @@ def forward_declarations_and_headers_for_replies(receiver):
     for header in sorted(headers):
         conditions = conditions_for_header(header)
         if conditions and not None in conditions:
-            header_include = '#if %s\n' % ' || '.join(set(conditions))
+            header_include = '#if %s\n' % ' || '.join(sorted(set(conditions)))
             header_include += '#include %s\n' % header
             header_include += '#endif\n'
             header_includes.append(header_include)
@@ -582,6 +587,7 @@ def headers_for_type(type):
         'WebCore::ServiceWorkerState': ['<WebCore/ServiceWorkerTypes.h>'],
         'WebCore::ShippingContactUpdate': ['<WebCore/ApplePaySessionPaymentRequest.h>'],
         'WebCore::ShippingMethodUpdate': ['<WebCore/ApplePaySessionPaymentRequest.h>'],
+        'WebCore::ShouldAskITP': ['<WebCore/NetworkStorageSession.h>'],
         'WebCore::ShouldNotifyWhenResolved': ['<WebCore/ServiceWorkerTypes.h>'],
         'WebCore::ShouldSample': ['<WebCore/DiagnosticLoggingClient.h>'],
         'WebCore::StorageAccessPromptWasShown': ['<WebCore/DocumentStorageAccess.h>'],
@@ -700,7 +706,7 @@ def generate_message_handler(receiver):
     result.append('#include "%s.h"\n\n' % receiver.name)
     for header in sorted(header_conditions):
         if header_conditions[header] and not None in header_conditions[header]:
-            result.append('#if %s\n' % ' || '.join(set(header_conditions[header])))
+            result.append('#if %s\n' % ' || '.join(sorted(set(header_conditions[header]))))
             result += ['#include %s\n' % header]
             result.append('#endif\n')
         else:

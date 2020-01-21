@@ -64,12 +64,15 @@ namespace WebKit {
 class DownloadProxy;
 class DownloadProxyMap;
 class WebProcessPool;
+class WebUserContentControllerProxy;
+
 enum class ShouldGrandfatherStatistics : bool;
 enum class StorageAccessStatus : uint8_t;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
+
 struct NetworkProcessCreationParameters;
-class WebUserContentControllerProxy;
+struct ResourceLoadInfo;
 struct WebsiteData;
 
 class NetworkProcessProxy final : public AuxiliaryProcessProxy, private ProcessThrottlerClient, public CanMakeWeakPtr<NetworkProcessProxy> {
@@ -171,6 +174,7 @@ public:
     void didSyncAllCookies();
 
     void testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebPageProxyIdentifier, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReplyDelayedReply&&);
+    void terminateUnresponsiveServiceWorkerProcesses(WebCore::RegistrableDomain&&, PAL::SessionID);
 
     ProcessThrottler& throttler() { return m_throttler; }
     void updateProcessAssertion();
@@ -201,8 +205,16 @@ public:
 
     void resetQuota(PAL::SessionID, CompletionHandler<void()>&&);
 
+    void resourceLoadDidSendRequest(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceRequest&&);
+    void resourceLoadDidPerformHTTPRedirection(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceResponse&&, WebCore::ResourceRequest&&);
+    void resourceLoadDidReceiveChallenge(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::AuthenticationChallenge&&);
+    void resourceLoadDidReceiveResponse(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceResponse&&);
+    void resourceLoadDidCompleteWithError(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceError&&);
+
 private:
     // AuxiliaryProcessProxy
+    ASCIILiteral processName() const final { return "Networking"_s; }
+
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void connectionWillOpen(IPC::Connection&) override;
     void processWillShutDown(IPC::Connection&) override;

@@ -1293,8 +1293,6 @@ void WebViewImpl::updateMediaTouchBar()
 #endif
 }
 
-#if HAVE(TOUCH_BAR)
-
 bool WebViewImpl::canTogglePictureInPicture()
 {
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
@@ -1304,14 +1302,10 @@ bool WebViewImpl::canTogglePictureInPicture()
 #endif
 }
 
-#endif // HAVE(TOUCH_BAR)
-
 void WebViewImpl::forceRequestCandidatesForTesting()
 {
     m_canCreateTouchBars = true;
-#if HAVE(TOUCH_BAR)
     updateTouchBar();
-#endif
 }
 
 bool WebViewImpl::shouldRequestCandidates() const
@@ -1323,15 +1317,15 @@ void WebViewImpl::setEditableElementIsFocused(bool editableElementIsFocused)
 {
     m_editableElementIsFocused = editableElementIsFocused;
 
-#if HAVE(TOUCH_BAR)
     // If the editable elements have blurred, then we might need to get rid of the editing function bar.
     if (!m_editableElementIsFocused)
         updateTouchBar();
-#endif
 }
 
 } // namespace WebKit
+
 #else // !HAVE(TOUCH_BAR)
+
 namespace WebKit {
 
 void WebViewImpl::forceRequestCandidatesForTesting()
@@ -1349,6 +1343,7 @@ void WebViewImpl::setEditableElementIsFocused(bool editableElementIsFocused)
 }
 
 } // namespace WebKit
+
 #endif // HAVE(TOUCH_BAR)
 
 namespace WebKit {
@@ -1370,7 +1365,7 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
     , m_page(processPool.createWebPage(*m_pageClient, WTFMove(configuration)))
     , m_needsViewFrameInWindowCoordinates(m_page->preferences().pluginsEnabled())
     , m_intrinsicContentSize(CGSizeMake(NSViewNoIntrinsicMetric, NSViewNoIntrinsicMetric))
-    , m_layoutStrategy([WKViewLayoutStrategy layoutStrategyWithPage:m_page view:view viewImpl:*this mode:kWKLayoutModeViewSize])
+    , m_layoutStrategy([WKViewLayoutStrategy layoutStrategyWithPage:m_page.get() view:view viewImpl:*this mode:kWKLayoutModeViewSize])
     , m_undoTarget(adoptNS([[WKEditorUndoTarget alloc] init]))
     , m_windowVisibilityObserver(adoptNS([[WKWindowVisibilityObserver alloc] initWithView:view impl:*this]))
     , m_accessibilitySettingsObserver(adoptNS([[WKAccessibilitySettingsObserver alloc] initWithImpl:*this]))
@@ -1403,7 +1398,7 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
         m_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
-        m_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:m_page view:view viewImpl:*this recognizer:m_immediateActionGestureRecognizer.get()]);
+        m_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:m_page.get() view:view viewImpl:*this recognizer:m_immediateActionGestureRecognizer.get()]);
         [m_immediateActionGestureRecognizer setDelegate:m_immediateActionController.get()];
         [m_immediateActionGestureRecognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
@@ -1987,7 +1982,7 @@ void WebViewImpl::setLayoutMode(WKLayoutMode layoutMode)
         return;
 
     [m_layoutStrategy willChangeLayoutStrategy];
-    m_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:m_page view:m_view.getAutoreleased() viewImpl:*this mode:layoutMode];
+    m_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:m_page.get() view:m_view.getAutoreleased() viewImpl:*this mode:layoutMode];
 }
 
 bool WebViewImpl::supportsArbitraryLayoutModes() const
@@ -2640,7 +2635,7 @@ bool WebViewImpl::hasFullScreenWindowController() const
 WKFullScreenWindowController *WebViewImpl::fullScreenWindowController()
 {
     if (!m_fullScreenWindowController)
-        m_fullScreenWindowController = adoptNS([[WKFullScreenWindowController alloc] initWithWindow:fullScreenWindow() webView:m_view.getAutoreleased() page:m_page]);
+        m_fullScreenWindowController = adoptNS([[WKFullScreenWindowController alloc] initWithWindow:fullScreenWindow() webView:m_view.getAutoreleased() page:m_page.get()]);
 
     return m_fullScreenWindowController.get();
 }
@@ -3883,7 +3878,7 @@ NSView *WebViewImpl::inspectorAttachmentView()
 _WKRemoteObjectRegistry *WebViewImpl::remoteObjectRegistry()
 {
     if (!m_remoteObjectRegistry) {
-        m_remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithWebPageProxy:m_page]);
+        m_remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithWebPageProxy:m_page.get()]);
         m_page->process().processPool().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), m_page->identifier(), [m_remoteObjectRegistry remoteObjectRegistry]);
     }
 
@@ -5213,69 +5208,124 @@ void WebViewImpl::flagsChanged(NSEvent *event)
     });
 }
 
-#define NATIVE_MOUSE_EVENT_HANDLER(EventName) \
-    void WebViewImpl::EventName(NSEvent *event) \
-    { \
-        if (m_ignoresNonWheelEvents) \
-            return; \
-        if (NSTextInputContext *context = [m_view inputContext]) { \
-            auto weakThis = makeWeakPtr(*this); \
-            RetainPtr<NSEvent> retainedEvent = event; \
-            [context handleEvent:event completionHandler:[weakThis, retainedEvent] (BOOL handled) { \
-                if (!weakThis) \
-                    return; \
-                if (handled) \
-                    LOG(TextInput, "%s was handled by text input context", String(#EventName).substring(0, String(#EventName).find("Internal")).ascii().data()); \
-                else { \
-                    NativeWebMouseEvent webEvent(retainedEvent.get(), weakThis->m_lastPressureEvent.get(), weakThis->m_view.getAutoreleased()); \
-                    weakThis->m_page->handleMouseEvent(webEvent); \
-                } \
-            }]; \
-            return; \
-        } \
-        NativeWebMouseEvent webEvent(event, m_lastPressureEvent.get(), m_view.getAutoreleased()); \
-        m_page->handleMouseEvent(webEvent); \
-    }
-#define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(EventName) \
-    void WebViewImpl::EventName(NSEvent *event) \
-    { \
-        if (m_ignoresNonWheelEvents || m_safeBrowsingWarning) \
-            return; \
-        if (NSTextInputContext *context = [m_view inputContext]) { \
-            auto weakThis = makeWeakPtr(*this); \
-            RetainPtr<NSEvent> retainedEvent = event; \
-            [context handleEvent:event completionHandler:[weakThis, retainedEvent] (BOOL handled) { \
-                if (!weakThis) \
-                    return; \
-                if (handled) \
-                    LOG(TextInput, "%s was handled by text input context", String(#EventName).substring(0, String(#EventName).find("Internal")).ascii().data()); \
-                else { \
-                    NativeWebMouseEvent webEvent(retainedEvent.get(), weakThis->m_lastPressureEvent.get(), weakThis->m_view.getAutoreleased()); \
-                    weakThis->m_page->handleMouseEvent(webEvent); \
-                } \
-            }]; \
-            return; \
-        } \
-        NativeWebMouseEvent webEvent(event, m_lastPressureEvent.get(), m_view.getAutoreleased()); \
-        m_page->handleMouseEvent(webEvent); \
+#if !LOG_DISABLED
+static TextStream& operator<<(TextStream& ts, NSEventType eventType)
+{
+    switch (eventType) {
+    case NSEventTypeLeftMouseDown: ts << "NSEventTypeLeftMouseDown"; break;
+    case NSEventTypeLeftMouseUp: ts << "NSEventTypeLeftMouseUp"; break;
+    case NSEventTypeRightMouseDown: ts << "NSEventTypeRightMouseDown"; break;
+    case NSEventTypeRightMouseUp: ts << "NSEventTypeRightMouseUp"; break;
+    case NSEventTypeMouseMoved: ts << "NSEventTypeMouseMoved"; break;
+    case NSEventTypeLeftMouseDragged: ts << "NSEventTypeLeftMouseDragged"; break;
+    case NSEventTypeRightMouseDragged: ts << "NSEventTypeRightMouseDragged"; break;
+    case NSEventTypeMouseEntered: ts << "NSEventTypeMouseEntered"; break;
+    case NSEventTypeMouseExited: ts << "NSEventTypeMouseExited"; break;
+    case NSEventTypeKeyDown: ts << "NSEventTypeKeyDown"; break;
+    case NSEventTypeKeyUp: ts << "NSEventTypeKeyUp"; break;
+    case NSEventTypeScrollWheel: ts << "NSEventTypeScrollWheel"; break;
+    case NSEventTypeOtherMouseDown: ts << "NSEventTypeOtherMouseDown"; break;
+    case NSEventTypeOtherMouseUp: ts << "NSEventTypeOtherMouseUp"; break;
+    case NSEventTypeOtherMouseDragged: ts << "NSEventTypeOtherMouseDragged"; break;
+    default:
+        ts << "Other";
     }
 
-NATIVE_MOUSE_EVENT_HANDLER(mouseEntered)
-NATIVE_MOUSE_EVENT_HANDLER(mouseExited)
-NATIVE_MOUSE_EVENT_HANDLER(otherMouseDown)
-NATIVE_MOUSE_EVENT_HANDLER(otherMouseDragged)
-NATIVE_MOUSE_EVENT_HANDLER(otherMouseUp)
-NATIVE_MOUSE_EVENT_HANDLER(rightMouseDown)
-NATIVE_MOUSE_EVENT_HANDLER(rightMouseDragged)
-NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
+    return ts;
+}
+#endif
 
-NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseMovedInternal)
-NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDownInternal)
-NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseUpInternal)
-NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
+void WebViewImpl::nativeMouseEventHandler(NSEvent *event)
+{
+    if (m_ignoresNonWheelEvents)
+        return;
 
-#undef NATIVE_MOUSE_EVENT_HANDLER
-#undef NATIVE_MOUSE_EVENT_HANDLER_INTERNAL
+    if (NSTextInputContext *context = [m_view inputContext]) {
+        auto weakThis = makeWeakPtr(*this);
+        RetainPtr<NSEvent> retainedEvent = event;
+        [context handleEvent:event completionHandler:[weakThis, retainedEvent] (BOOL handled) {
+            if (!weakThis)
+                return;
+            if (handled)
+                LOG_WITH_STREAM(TextInput, stream << "Event " << [retainedEvent type] << " was handled by text input context");
+            else {
+                NativeWebMouseEvent webEvent(retainedEvent.get(), weakThis->m_lastPressureEvent.get(), weakThis->m_view.getAutoreleased());
+                weakThis->m_page->handleMouseEvent(webEvent);
+            }
+        }];
+        return;
+    }
+    NativeWebMouseEvent webEvent(event, m_lastPressureEvent.get(), m_view.getAutoreleased());
+    m_page->handleMouseEvent(webEvent);
+}
+
+void WebViewImpl::nativeMouseEventHandlerInternal(NSEvent *event)
+{
+    if (m_safeBrowsingWarning)
+        return;
+
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::mouseEntered(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::mouseExited(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::otherMouseDown(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::otherMouseDragged(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::otherMouseUp(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::rightMouseDown(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::rightMouseDragged(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::rightMouseUp(NSEvent *event)
+{
+    nativeMouseEventHandler(event);
+}
+
+void WebViewImpl::mouseMovedInternal(NSEvent *event)
+{
+    nativeMouseEventHandlerInternal(event);
+}
+
+void WebViewImpl::mouseDownInternal(NSEvent *event)
+{
+    nativeMouseEventHandlerInternal(event);
+}
+
+void WebViewImpl::mouseUpInternal(NSEvent *event)
+{
+    nativeMouseEventHandlerInternal(event);
+}
+
+void WebViewImpl::mouseDraggedInternal(NSEvent *event)
+{
+    nativeMouseEventHandlerInternal(event);
+}
 
 void WebViewImpl::mouseMoved(NSEvent *event)
 {

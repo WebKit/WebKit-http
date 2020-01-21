@@ -46,15 +46,15 @@ public:
         };
         Optional<unsigned> trailingInlineItemIndex;
         Optional<PartialContent> partialContent;
-        Vector<WeakPtr<InlineItem>> floats;
+        Vector<const InlineItem*> floats;
         const LineBuilder::RunList runList;
         const Display::LineBox lineBox;
     };
     LineContent layoutLine(LineBuilder&, unsigned leadingInlineItemIndex, Optional<unsigned> partialLeadingContentLength);
-    using FloatList = Vector<WeakPtr<InlineItem>>;
+    using FloatList = Vector<const InlineItem*>;
 
 private:
-    LineCandidateContent nextContentForLine(unsigned inlineItemIndex, Optional<unsigned> overflowLength, InlineLayoutUnit currentLogicalRight);
+    void nextContentForLine(LineCandidateContent&, unsigned inlineItemIndex, Optional<unsigned> overflowLength, InlineLayoutUnit currentLogicalRight);
     struct Result {
         LineBreaker::IsEndOfLine isEndOfLine { LineBreaker::IsEndOfLine::No };
         size_t committedCount { 0 };
@@ -63,8 +63,11 @@ private:
     };
     Result tryAddingFloatItems(LineBuilder&, const FloatList&);
     Result tryAddingInlineItems(LineBreaker&, LineBuilder&, const LineCandidateContent&);
-    void commitContent(LineBuilder&, const LineBreaker::RunList&, Optional<LineBreaker::Result::PartialTrailingContent>);
+    void rebuildLineForRevert(LineBuilder&, const InlineItem& revertTo, unsigned leadingInlineItemIndex);
+    void commitPartialContent(LineBuilder&, const LineBreaker::RunList&, const LineBreaker::Result::PartialTrailingContent&);
     LineContent close(LineBuilder&, unsigned leadingInlineItemIndex, unsigned committedInlineItemCount, Optional<LineContent::PartialContent>);
+
+    InlineLayoutUnit inlineItemWidth(const InlineItem&, InlineLayoutUnit contentLogicalLeft) const;
 
     const InlineFormattingContext& formattingContext() const { return m_inlineFormattingContext; }
     const Container& root() const { return m_formattingContextRoot; }
@@ -73,8 +76,8 @@ private:
     const Container& m_formattingContextRoot;
     const InlineItems& m_inlineItems;
     FloatList m_floats;
-    std::unique_ptr<InlineTextItem> m_partialLeadingTextItem;
-    std::unique_ptr<InlineTextItem> m_partialTrailingTextItem;
+    Optional<InlineTextItem> m_partialLeadingTextItem;
+    Optional<InlineTextItem> m_partialTrailingTextItem;
     unsigned m_successiveHyphenatedLineCount { 0 };
 };
 

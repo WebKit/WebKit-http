@@ -56,6 +56,17 @@ std::ostream& operator<<(std::ostream& out, const MediaTime& val)
 
 namespace TestWebKitAPI {
 
+// MediaTime values should be able to be declared static anywhere, just like you can do so with integers.
+// This should not require global constructors or destructors.
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic error "-Wglobal-constructors"
+#endif
+static const MediaTime oneSecond(1, 1);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+
 TEST(WTF, MediaTime)
 {
     // Comparison Operators
@@ -97,6 +108,7 @@ TEST(WTF, MediaTime)
     EXPECT_TRUE(!MediaTime::createWithDouble(0.0, 1));
     EXPECT_FALSE(!MediaTime(1, 1));
     EXPECT_FALSE((bool)MediaTime::invalidTime());
+    EXPECT_EQ(MediaTime(10, 10), oneSecond);
 
     // Addition Operators
     EXPECT_EQ(MediaTime::positiveInfiniteTime() + MediaTime::positiveInfiniteTime(), MediaTime::positiveInfiniteTime());

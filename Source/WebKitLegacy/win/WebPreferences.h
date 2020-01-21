@@ -271,6 +271,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setVisualViewportAPIEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE CSSOMViewScrollingAPIEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setCSSOMViewScrollingAPIEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE CSSOMViewSmoothScrollingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCSSOMViewSmoothScrollingEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE fetchAPIKeepAliveEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setFetchAPIKeepAliveEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE spatialNavigationEnabled(_Out_ BOOL*);
@@ -295,6 +297,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setAsyncClipboardAPIEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE webAnimationsCompositeOperationsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setWebAnimationsCompositeOperationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE aspectRatioOfImgFromWidthAndHeightEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setAspectRatioOfImgFromWidthAndHeightEnabled(BOOL);
 
     // WebPreferences
 

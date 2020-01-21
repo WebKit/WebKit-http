@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include "Length.h"
 #include "TransformOperations.h"
 
 namespace WebCore {
@@ -36,9 +37,6 @@ namespace WebCore {
 class CSSPrimitiveValue;
 class CSSToLengthConversionData;
 class CSSValue;
-class RenderStyle;
-
-struct Length;
 
 bool transformsForValue(const CSSValue&, const CSSToLengthConversionData&, TransformOperations&);
 Length convertToFloatLength(const CSSPrimitiveValue*, const CSSToLengthConversionData&);

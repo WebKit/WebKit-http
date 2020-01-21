@@ -45,6 +45,7 @@
 #include "LibWebRTCProvider.h"
 #include "LoadParameters.h"
 #include "Logging.h"
+#include "MediaRecorderProvider.h"
 #include "NetscapePlugin.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
@@ -261,14 +262,18 @@
 #include "RemoteLayerTreeTransaction.h"
 #include "RemoteObjectRegistryMessages.h"
 #include "TextCheckingControllerProxy.h"
-#include "TouchBarMenuData.h"
-#include "TouchBarMenuItemData.h"
+#include "UserMediaCaptureManager.h"
 #include "VideoFullscreenManager.h"
 #include "WKStringCF.h"
 #include "WebRemoteObjectRegistry.h"
 #include <WebCore/LegacyWebArchive.h>
 #include <WebCore/UTIRegistry.h>
 #include <wtf/MachSendRight.h>
+#endif
+
+#if HAVE(TOUCH_BAR)
+#include "TouchBarMenuData.h"
+#include "TouchBarMenuItemData.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -417,8 +422,10 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
     , m_pageScrolledHysteresis([this](PAL::HysteresisState state) { if (state == PAL::HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
-#if PLATFORM(IOS_FAMILY)
+#if ENABLE(META_VIEWPORT)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
+#endif
+#if PLATFORM(IOS_FAMILY)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_overrideScreenSize(parameters.overrideScreenSize)
@@ -460,7 +467,8 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
         WebProcess::singleton().cacheStorageProvider(),
         WebBackForwardListProxy::create(*this),
         WebCookieJar::create(),
-        makeUniqueRef<WebProgressTrackerClient>(*this)
+        makeUniqueRef<WebProgressTrackerClient>(*this),
+        makeUniqueRef<MediaRecorderProvider>()
     );
     pageConfiguration.chromeClient = new WebChromeClient(*this);
 #if ENABLE(CONTEXT_MENUS)
@@ -558,6 +566,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 #endif
 
     m_page->setControlledByAutomation(parameters.controlledByAutomation);
+    m_page->setHasResourceLoadClient(parameters.hasResourceLoadClient);
 
     m_page->setCanStartMedia(false);
     m_mayStartMediaWhenInWindow = parameters.mayStartMediaWhenInWindow;
@@ -675,6 +684,10 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 #if USE(LIBWEBRTC)
     if (parameters.enumeratingAllNetworkInterfacesEnabled)
         enableEnumeratingAllNetworkInterfaces();
+#endif
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    if (auto* captureManager = WebProcess::singleton().supplement<UserMediaCaptureManager>())
+        captureManager->setupCaptureProcesses(parameters.shouldCaptureAudioInUIProcess, parameters.shouldCaptureAudioInGPUProcess, parameters.shouldCaptureVideoInUIProcess, parameters.shouldCaptureVideoInGPUProcess, parameters.shouldCaptureDisplayInUIProcess);
 #endif
 #endif
 
@@ -1214,6 +1227,12 @@ uint64_t WebPage::renderTreeSize() const
     if (!m_page)
         return 0;
     return m_page->renderTreeSize();
+}
+
+void WebPage::setHasResourceLoadClient(bool has)
+{
+    if (m_page)
+        m_page->setHasResourceLoadClient(has);
 }
 
 void WebPage::setTracksRepaints(bool trackRepaints)
@@ -3259,18 +3278,24 @@ void WebPage::didStartPageTransition()
 #endif
     m_hasEverFocusedElementDueToUserInteractionSincePageTransition = false;
     m_lastEditorStateWasContentEditable = EditorStateIsContentEditable::Unset;
+
 #if PLATFORM(MAC)
     if (hasPreviouslyFocusedDueToUserInteraction)
         send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasEverFocusedElementDueToUserInteractionSincePageTransition));
+#endif
+
+#if HAVE(TOUCH_BAR)
     if (m_isTouchBarUpdateSupressedForHiddenContentEditable) {
         m_isTouchBarUpdateSupressedForHiddenContentEditable = false;
         send(Messages::WebPageProxy::SetIsTouchBarUpdateSupressedForHiddenContentEditable(m_isTouchBarUpdateSupressedForHiddenContentEditable));
     }
+
     if (m_isNeverRichlyEditableForTouchBar) {
         m_isNeverRichlyEditableForTouchBar = false;
         send(Messages::WebPageProxy::SetIsNeverRichlyEditableForTouchBar(m_isNeverRichlyEditableForTouchBar));
     }
 #endif
+
 #if PLATFORM(IOS_FAMILY)
     m_isShowingInputViewForFocusedElement = false;
 #endif
@@ -3355,14 +3380,20 @@ KeyboardUIMode WebPage::keyboardUIMode()
     return static_cast<KeyboardUIMode>((fullKeyboardAccessEnabled ? KeyboardAccessFull : KeyboardAccessDefault) | (m_tabToLinks ? KeyboardAccessTabsToLinks : 0));
 }
 
-void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameters, const Optional<String>& worldName, CallbackID callbackID)
+void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameters, uint64_t worldIdentifier, CallbackID callbackID)
 {
     // NOTE: We need to be careful when running scripts that the objects we depend on don't
     // disappear during script execution.
 
-    auto* world = worldName ? InjectedBundleScriptWorld::find(worldName.value()) : &InjectedBundleScriptWorld::normalWorld();
-    if (!frame || !frame->coreFrame() || !world) {
+    if (!frame || !frame->coreFrame()) {
         send(Messages::WebPageProxy::ScriptValueCallback({ }, ExceptionDetails { "Unable to execute JavaScript: Page is in invalid state"_s }, callbackID));
+        return;
+    }
+
+    ASSERT(worldIdentifier);
+    auto* world = m_userContentController->worldForIdentifier(worldIdentifier);
+    if (!world) {
+        send(Messages::WebPageProxy::ScriptValueCallback({ }, ExceptionDetails { "Unable to execute JavaScript: Cannot find specified content world"_s }, callbackID));
         return;
     }
 
@@ -3388,16 +3419,17 @@ void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameter
     frame->coreFrame()->script().executeAsynchronousUserAgentScriptInWorld(world->coreWorld(), WTFMove(parameters), WTFMove(resolveFunction));
 }
 
-void WebPage::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const Optional<String>& worldName, CallbackID callbackID)
+void WebPage::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const std::pair<uint64_t, String>& worldData, CallbackID callbackID)
 {
-    runJavaScript(mainWebFrame(), WTFMove(parameters), worldName, callbackID);
+    m_userContentController->addUserContentWorld(worldData);
+    runJavaScript(mainWebFrame(), WTFMove(parameters), worldData.first, callbackID);
 }
 
 void WebPage::runJavaScriptInFrame(FrameIdentifier frameID, const String& script, bool forceUserGesture, CallbackID callbackID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     ASSERT(mainWebFrame() != frame);
-    runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, WTF::nullopt, callbackID);
+    runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, WebUserContentController::identifierForNormalWorld(), callbackID);
 }
 
 void WebPage::getContentsAsString(CallbackID callbackID)
@@ -5017,7 +5049,7 @@ void WebPage::runModal()
 
     m_isRunningModal = true;
     send(Messages::WebPageProxy::RunModal());
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     Ref<WebPage> protector(*this);
 #endif
     RunLoop::run();
@@ -5364,6 +5396,31 @@ void WebPage::cancelComposition(const String& compositionString)
     if (auto* targetFrame = targetFrameForEditing(*this))
         targetFrame->editor().confirmComposition(compositionString);
 }
+
+void WebPage::deleteSurrounding(int64_t offset, unsigned characterCount)
+{
+    auto* targetFrame = targetFrameForEditing(*this);
+    if (!targetFrame)
+        return;
+
+    const VisibleSelection& selection = targetFrame->selection().selection();
+    if (selection.isNone())
+        return;
+
+    auto selectionStart = selection.visibleStart();
+    auto paragraphRange = makeRange(startOfParagraph(selectionStart), selectionStart);
+    auto cursorPosition = TextIterator::rangeLength(paragraphRange.get());
+    auto& rootNode = paragraphRange->startContainer().treeScope().rootNode();
+    auto selectionRange = TextIterator::rangeFromLocationAndLength(&rootNode, cursorPosition + offset, characterCount);
+    if (!selectionRange)
+        return;
+
+    targetFrame->editor().setIgnoreSelectionChanges(true);
+    targetFrame->selection().setSelection(VisibleSelection(*selectionRange, SEL_DEFAULT_AFFINITY));
+    targetFrame->editor().deleteSelectionWithSmartDelete(false);
+    targetFrame->editor().setIgnoreSelectionChanges(false);
+    sendEditorStateUpdate();
+}
 #endif
 
 void WebPage::didApplyStyle()
@@ -5405,6 +5462,7 @@ void WebPage::didChangeSelectionOrOverflowScrollPosition()
     m_hasEverFocusedElementDueToUserInteractionSincePageTransition |= m_userIsInteracting;
 
     if (!hasPreviouslyFocusedDueToUserInteraction && m_hasEverFocusedElementDueToUserInteractionSincePageTransition) {
+#if HAVE(TOUCH_BAR)
         if (frame.document()->quirks().isTouchBarUpdateSupressedForHiddenContentEditable()) {
             m_isTouchBarUpdateSupressedForHiddenContentEditable = true;
             send(Messages::WebPageProxy::SetIsTouchBarUpdateSupressedForHiddenContentEditable(m_isTouchBarUpdateSupressedForHiddenContentEditable));
@@ -5414,6 +5472,7 @@ void WebPage::didChangeSelectionOrOverflowScrollPosition()
             m_isNeverRichlyEditableForTouchBar = true;
             send(Messages::WebPageProxy::SetIsNeverRichlyEditableForTouchBar(m_isNeverRichlyEditableForTouchBar));
         }
+#endif
 
         send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasEverFocusedElementDueToUserInteractionSincePageTransition));
     }
@@ -5767,6 +5826,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
         if (page && page->pageScaleFactor() != 1)
             scalePage(1, IntPoint());
     }
+
 #if PLATFORM(IOS_FAMILY)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_hasRestoredExposedContentRectAfterDidCommitLoad = false;
@@ -5778,7 +5838,9 @@ void WebPage::didCommitLoad(WebFrame* frame)
 #if ENABLE(IOS_TOUCH_EVENTS)
     WebProcess::singleton().eventDispatcher().clearQueuedTouchEventsForPage(*this);
 #endif
+#endif // PLATFORM(IOS_FAMILY)
 
+#if ENABLE(META_VIEWPORT)
     resetViewportDefaultConfiguration(frame);
     const Frame* coreFrame = frame->coreFrame();
     
@@ -5796,7 +5858,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
 
     if (viewportChanged)
         viewportConfigurationChanged();
-#endif
+#endif // ENABLE(META_VIEWPORT)
 
 #if ENABLE(VIEWPORT_RESIZING)
     m_shrinkToFitContentTimer.stop();
@@ -5853,7 +5915,7 @@ void WebPage::didFinishLoad(WebFrame& frame)
 
 void WebPage::didInsertMenuElement(HTMLMenuElement& element)
 {
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
     sendTouchBarMenuDataAddedUpdate(element);
 #else
     UNUSED_PARAM(element);
@@ -5862,7 +5924,7 @@ void WebPage::didInsertMenuElement(HTMLMenuElement& element)
 
 void WebPage::didRemoveMenuElement(HTMLMenuElement& element)
 {
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
     sendTouchBarMenuDataRemovedUpdate(element);
 #else
     UNUSED_PARAM(element);
@@ -5871,7 +5933,7 @@ void WebPage::didRemoveMenuElement(HTMLMenuElement& element)
 
 void WebPage::didInsertMenuItemElement(HTMLMenuItemElement& element)
 {
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
     sendTouchBarMenuItemDataAddedUpdate(element);
 #else
     UNUSED_PARAM(element);
@@ -5880,7 +5942,7 @@ void WebPage::didInsertMenuItemElement(HTMLMenuItemElement& element)
 
 void WebPage::didRemoveMenuItemElement(HTMLMenuItemElement& element)
 {
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
     sendTouchBarMenuItemDataRemovedUpdate(element);
 #else
     UNUSED_PARAM(element);
@@ -6128,7 +6190,7 @@ void WebPage::scheduleFullEditorStateUpdate()
     m_drawingArea->scheduleCompositingLayerFlush();
 }
 
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
 void WebPage::sendTouchBarMenuDataRemovedUpdate(HTMLMenuElement& element)
 {
     send(Messages::WebPageProxy::TouchBarMenuDataChanged(TouchBarMenuData { }));
@@ -6550,6 +6612,17 @@ void WebPage::requestStorageAccess(RegistrableDomain&& subFrameDomain, Registrab
             frame->frameLoaderClient()->setHasFrameSpecificStorageAccess({ frameID, pageID });
         completionHandler(wasGranted, promptWasShown);
     });
+}
+
+void WebPage::addDomainWithPageLevelStorageAccess(const RegistrableDomain& topLevelDomain, const RegistrableDomain& resourceDomain)
+{
+    m_domainsWithPageLevelStorageAccess.add(topLevelDomain, resourceDomain);
+}
+
+bool WebPage::hasPageLevelStorageAccess(const RegistrableDomain& topLevelDomain, const RegistrableDomain& resourceDomain) const
+{
+    auto it = m_domainsWithPageLevelStorageAccess.find(topLevelDomain);
+    return it != m_domainsWithPageLevelStorageAccess.end() && it->value == resourceDomain;
 }
 
 void WebPage::wasLoadedWithDataTransferFromPrevalentResource()

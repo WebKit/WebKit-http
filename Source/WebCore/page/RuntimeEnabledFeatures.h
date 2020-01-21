@@ -392,6 +392,11 @@ public:
     void setIsInAppBrowserPrivacyEnabled(bool isEnabled) { m_isInAppBrowserPrivacyEnabled = isEnabled; }
     bool isInAppBrowserPrivacyEnabled() const { return m_isInAppBrowserPrivacyEnabled; }
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    void setIsAccessibilityIsolatedTreeEnabled(bool isEnabled) { m_accessibilityIsolatedTree = isEnabled; }
+    bool isAccessibilityIsolatedTreeEnabled() const { return m_accessibilityIsolatedTree; }
+#endif
+
 private:
     // Never instantiate.
     RuntimeEnabledFeatures();
@@ -449,7 +454,7 @@ private:
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
     bool m_layoutFormattingContextEnabled { false };
-    bool m_layoutFormattingContextIntegrationEnabled { false };
+    bool m_layoutFormattingContextIntegrationEnabled { true };
 #endif
 
 #if ENABLE(CSS_PAINTING_API)
@@ -588,6 +593,10 @@ private:
     bool m_isCSSShadowPartsEnabled { true };
 
     bool m_isInAppBrowserPrivacyEnabled { false };
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    bool m_accessibilityIsolatedTree { false };
+#endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

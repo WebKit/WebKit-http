@@ -341,7 +341,7 @@ private:
 
     void checkConsistency()
     {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         // The rules for locals and constants in the stack are:
         // 1) Locals have to be materialized whenever a control entry is pushed to the control stack (i.e. every time we splitStack)
         //    NOTE: This is a trade-off so that set_local does not have to walk up the control stack looking for delayed get_locals
@@ -357,7 +357,7 @@ private:
         walkExpressionStack(m_parser->expressionStack(), [&](VirtualRegister expression, VirtualRegister slot) {
             ASSERT(expression == slot || expression.isConstant() || expression.isArgument() || expression.toLocal() < m_codeBlock->m_numVars);
         });
-#endif
+#endif // ASSERT_ENABLED
     }
 
     void materializeConstantsAndLocals(Stack& expressionStack)
@@ -631,14 +631,14 @@ auto LLIntGenerator::callInformationForCallee(const Signature& signature) -> Vec
             if (gprIndex < maxGPRIndex)
                 m_results.append(virtualRegisterForLocal(numberOfLLIntCalleeSaveRegisters + gprIndex++));
             else
-                m_results.append(virtualRegisterForArgument(stackIndex++));
+                m_results.append(virtualRegisterForArgumentIncludingThis(stackIndex++));
             break;
         case Type::F32:
         case Type::F64:
             if (fprIndex < maxFPRIndex)
                 m_results.append(virtualRegisterForLocal(numberOfLLIntCalleeSaveRegisters + fprIndex++));
             else
-                m_results.append(virtualRegisterForArgument(stackIndex++));
+                m_results.append(virtualRegisterForArgumentIncludingThis(stackIndex++));
             break;
         case Void:
         case Func:
@@ -673,7 +673,7 @@ auto LLIntGenerator::addArguments(const Signature& signature) -> PartialResult
         if (count < max)
             m_normalizedArguments[index] = registerArguments[count++];
         else
-            m_normalizedArguments[index] = virtualRegisterForArgument(stackIndex++);
+            m_normalizedArguments[index] = virtualRegisterForArgumentIncludingThis(stackIndex++);
     };
 
     for (uint32_t i = 0; i < signature.argumentCount(); i++) {

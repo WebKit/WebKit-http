@@ -60,6 +60,8 @@ public:
     bool shouldEnableCrossOriginResourcePolicy { false };
     Vector<RefPtr<WebCore::SecurityOrigin>> frameAncestorOrigins;
     bool isHTTPSUpgradeEnabled { false };
+    bool pageHasResourceLoadClient { false };
+    Optional<WebCore::FrameIdentifier> parentFrameID;
 
 #if ENABLE(SERVICE_WORKER)
     WebCore::ServiceWorkersMode serviceWorkersMode { WebCore::ServiceWorkersMode::None };

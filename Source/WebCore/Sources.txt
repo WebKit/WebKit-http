@@ -151,6 +151,7 @@ Modules/mediacontrols/MediaControlsHost.cpp
 
 Modules/mediarecorder/BlobEvent.cpp
 Modules/mediarecorder/MediaRecorder.cpp
+Modules/mediarecorder/MediaRecorderProvider.cpp
 Modules/mediarecorder/MediaRecorderErrorEvent.cpp
 
 Modules/mediasession/HTMLMediaElementMediaSession.cpp
@@ -450,8 +451,8 @@ accessibility/AccessibilityTableHeaderContainer.cpp
 accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
+accessibility/isolatedtree/AXIsolatedObject.cpp
 accessibility/isolatedtree/AXIsolatedTree.cpp
-accessibility/isolatedtree/AXIsolatedTreeNode.cpp
 
 animation/AnimationEffect.cpp
 animation/KeyframeEffectStack.cpp
@@ -1095,6 +1096,7 @@ history/CachedFrame.cpp
 history/CachedPage.cpp
 history/HistoryItem.cpp
 
+html/Autocapitalize.cpp
 html/Autofill.cpp
 html/BaseButtonInputType.cpp
 html/BaseCheckableInputType.cpp
@@ -1453,6 +1455,7 @@ layout/inlineformatting/InlineLineBuilder.cpp
 layout/inlineformatting/InlineTextItem.cpp
 layout/inlineformatting/LineLayoutContext.cpp
 layout/inlineformatting/text/TextUtil.cpp
+layout/integration/LayoutIntegrationBoxTree.cpp
 layout/integration/LayoutIntegrationLineLayout.cpp
 layout/invalidation/InvalidationContext.cpp
 layout/invalidation/InvalidationState.cpp
@@ -1653,6 +1656,7 @@ page/ResourceUsageOverlay.cpp
 page/ResourceUsageThread.cpp
 page/RuntimeEnabledFeatures.cpp
 page/Screen.cpp
+page/ScrollBehavior.cpp
 page/SecurityOrigin.cpp
 page/SecurityOriginData.cpp
 page/SecurityPolicy.cpp
@@ -1751,6 +1755,7 @@ platform/PlatformSpeechSynthesisUtterance.cpp
 platform/PlatformSpeechSynthesisVoice.cpp
 platform/PlatformSpeechSynthesizer.cpp
 platform/PlatformStrategies.cpp
+platform/PlatformWheelEvent.cpp
 platform/PreviewConverter.cpp
 platform/ProcessIdentifier.cpp
 platform/ReferrerPolicy.cpp
@@ -1758,6 +1763,7 @@ platform/RemoteCommandListener.cpp
 platform/RuntimeApplicationChecks.cpp
 platform/SSLKeyGenerator.cpp
 platform/ScrollAnimator.cpp
+platform/ScrollAnimationSmooth.cpp
 platform/ScrollView.cpp
 platform/ScrollableArea.cpp
 platform/Scrollbar.cpp
@@ -1968,6 +1974,8 @@ platform/mediacapabilities/MediaCapabilitiesLogging.cpp
 
 platform/mediarecorder/MediaRecorderPrivateMock.cpp
 
+platform/mediastream/AudioMediaStreamTrackRenderer.cpp
+platform/mediastream/AudioTrackPrivateMediaStream.cpp
 platform/mediastream/CaptureDeviceManager.cpp
 platform/mediastream/MediaConstraints.cpp
 platform/mediastream/MediaEndpointConfiguration.cpp
@@ -3391,8 +3399,10 @@ JSSVGZoomAndPan.cpp
 JSSVGZoomEvent.cpp
 JSScreen.cpp
 JSScriptProcessorNode.cpp
+JSScrollBehavior.cpp
 JSScrollIntoViewOptions.cpp
 JSScrollLogicalPosition.cpp
+JSScrollOptions.cpp
 JSScrollToOptions.cpp
 JSSecurityPolicyViolationEvent.cpp
 JSServiceWorker.cpp

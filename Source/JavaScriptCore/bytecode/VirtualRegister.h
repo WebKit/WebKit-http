@@ -47,7 +47,7 @@ class RegisterID;
 class VirtualRegister {
 public:
     friend VirtualRegister virtualRegisterForLocal(int);
-    friend VirtualRegister virtualRegisterForArgument(int, int);
+    friend VirtualRegister virtualRegisterForArgumentIncludingThis(int, int);
 
     static constexpr int invalidVirtualRegister = 0x3fffffff;
     static constexpr int firstConstantRegisterIndex = FirstConstantRegisterIndex;
@@ -128,7 +128,7 @@ inline VirtualRegister virtualRegisterForLocal(int local)
     return VirtualRegister(VirtualRegister::localToOperand(local));
 }
 
-inline VirtualRegister virtualRegisterForArgument(int argument, int offset = 0)
+inline VirtualRegister virtualRegisterForArgumentIncludingThis(int argument, int offset = 0)
 {
     return VirtualRegister(VirtualRegister::argumentToOperand(argument) + offset);
 }

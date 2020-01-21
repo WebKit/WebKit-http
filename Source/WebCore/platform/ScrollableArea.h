@@ -62,7 +62,11 @@ inline int offsetForOrientation(ScrollOffset offset, ScrollbarOrientation orient
 
 class ScrollableArea : public CanMakeWeakPtr<ScrollableArea> {
 public:
+    ScrollBehaviorStatus currentScrollBehaviorStatus() { return m_currentScrollBehaviorStatus; }
+    void setScrollBehaviorStatus(ScrollBehaviorStatus status) { m_currentScrollBehaviorStatus = status; }
+
     WEBCORE_EXPORT bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
+    WEBCORE_EXPORT void scrollToOffsetWithAnimation(const FloatPoint&, ScrollClamping = ScrollClamping::Clamped);
     WEBCORE_EXPORT void scrollToOffsetWithoutAnimation(const FloatPoint&, ScrollClamping = ScrollClamping::Clamped);
     void scrollToOffsetWithoutAnimation(ScrollbarOrientation, float offset);
 
@@ -120,6 +124,7 @@ public:
 
     virtual ScrollbarMode horizontalScrollbarMode() const { return ScrollbarAuto; }
     virtual ScrollbarMode verticalScrollbarMode() const { return ScrollbarAuto; }
+    bool canHaveScrollbars() const { return horizontalScrollbarMode() != ScrollbarAlwaysOff || verticalScrollbarMode() != ScrollbarAlwaysOff; }
 
     virtual bool horizontalScrollbarHiddenByStyle() const { return false; }
     virtual bool verticalScrollbarHiddenByStyle() const { return false; }
@@ -377,6 +382,8 @@ private:
     unsigned m_currentHorizontalSnapPointIndex { 0 };
     unsigned m_currentVerticalSnapPointIndex { 0 };
 #endif
+
+    ScrollBehaviorStatus m_currentScrollBehaviorStatus { ScrollBehaviorStatus::NotInAnimation };
 
     // There are 8 possible combinations of writing mode and direction. Scroll origin will be non-zero in the x or y axis
     // if there is any reversed direction or writing-mode. The combinations are:

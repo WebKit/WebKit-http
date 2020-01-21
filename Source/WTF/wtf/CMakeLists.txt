@@ -63,7 +63,6 @@ set(WTF_PUBLIC_HEADERS
     FastBitVector.h
     FastMalloc.h
     FastTLS.h
-    FeatureDefines.h
     FileMetadata.h
     FilePrintStream.h
     FileSystem.h
@@ -139,6 +138,7 @@ set(WTF_PUBLIC_HEADERS
     MetaAllocatorPtr.h
     MonotonicTime.h
     NakedPtr.h
+    NakedRef.h
     NaturalLoops.h
     NeverDestroyed.h
     NoLock.h
@@ -171,7 +171,14 @@ set(WTF_PUBLIC_HEADERS
     ParallelVectorIterator.h
     ParkingLot.h
     Platform.h
+    PlatformCallingConventions.h
+    PlatformCPU.h
+    PlatformEnable.h
+    PlatformHave.h
+    PlatformLegacy.h
+    PlatformOS.h
     PlatformRegisters.h
+    PlatformUse.h
     PointerComparison.h
     PointerPreparations.h
     PrintStream.h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,6 +66,7 @@ class ResourceRequest;
 struct PluginInfo;
 struct PrewarmInformation;
 struct SecurityOriginData;
+enum class ThirdPartyCookieBlockingMode : uint8_t;
 }
 
 namespace WebKit {
@@ -206,6 +207,8 @@ public:
 
     static void notifyWebsiteDataDeletionForRegistrableDomainsFinished();
     static void notifyWebsiteDataScanForRegistrableDomainsFinished();
+
+    void setShouldBlockThirdPartyCookiesForTesting(WebCore::ThirdPartyCookieBlockingMode, CompletionHandler<void()>&&);
 #endif
 
     void enableSuddenTermination();
@@ -351,6 +354,8 @@ protected:
     WebProcessProxy(WebProcessPool&, WebsiteDataStore*, IsPrewarmed);
 
     // AuxiliaryProcessProxy
+    ASCIILiteral processName() const final { return "WebContent"_s; }
+
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void connectionWillOpen(IPC::Connection&) override;

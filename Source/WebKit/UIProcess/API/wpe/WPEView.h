@@ -81,13 +81,14 @@ public:
 
     void setInputMethodContext(WebKitInputMethodContext*);
     WebKitInputMethodContext* inputMethodContext() const;
-    void setInputMethodState(bool);
+    void setInputMethodState(Optional<WebKit::InputMethodState>&&);
     void synthesizeCompositionKeyPress(const String&, Optional<Vector<WebCore::CompositionUnderline>>&&, Optional<WebKit::EditingRange>&&);
 
     void selectionDidChange();
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
+    API::ViewClient& client() const { return *m_client; }
     struct wpe_view_backend* backend() { return m_backend; }
 
     const WebCore::IntSize& size() const { return m_size; }

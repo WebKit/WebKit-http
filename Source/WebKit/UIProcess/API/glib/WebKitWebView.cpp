@@ -23,6 +23,7 @@
 #include "config.h"
 #include "WebKitWebView.h"
 
+#include "APIContentWorld.h"
 #include "APIData.h"
 #include "APINavigation.h"
 #include "APISerializedScriptValue.h"
@@ -91,9 +92,10 @@
 #endif
 
 #if PLATFORM(WPE)
-#include "APIViewClient.h"
 #include "WPEView.h"
+#include "WebKitOptionMenuPrivate.h"
 #include "WebKitWebViewBackendPrivate.h"
+#include "WebKitWebViewClient.h"
 #endif
 
 #if USE(LIBNOTIFY)
@@ -164,9 +166,8 @@ enum {
 
 #if PLATFORM(GTK)
     RUN_COLOR_CHOOSER,
-
-    SHOW_OPTION_MENU,
 #endif
+    SHOW_OPTION_MENU,
 
     USER_MESSAGE_RECEIVED,
 
@@ -411,55 +412,55 @@ private:
 };
 
 #if PLATFORM(WPE)
-class WebViewClient final : public API::ViewClient {
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    explicit WebViewClient(WebKitWebView* webView)
-        : m_webView(webView)
-    {
-    }
+WebKitWebViewClient::WebKitWebViewClient(WebKitWebView* webView)
+    : m_webView(webView)
+{ }
 
-private:
-    void handleDownloadRequest(WKWPE::View&, DownloadProxy& downloadProxy) override
-    {
-        webkitWebViewHandleDownloadRequest(m_webView, &downloadProxy);
-    }
+GRefPtr<WebKitOptionMenu> WebKitWebViewClient::showOptionMenu(WebKitPopupMenu& popupMenu, const WebCore::IntRect& rect, const Vector<WebPopupItem>& items, int32_t selectedIndex)
+{
+    GRefPtr<WebKitOptionMenu> menu = adoptGRef(webkitOptionMenuCreate(popupMenu, items, selectedIndex));
+    if (webkitWebViewShowOptionMenu(WEBKIT_WEB_VIEW(m_webView), rect, menu.get()))
+        return menu;
+    return nullptr;
+}
 
-    void frameDisplayed(WKWPE::View&) override
-    {
-        {
-            SetForScope<bool> inFrameDisplayedGuard(m_webView->priv->inFrameDisplayed, true);
-            for (const auto& callback : m_webView->priv->frameDisplayedCallbacks) {
-                if (!m_webView->priv->frameDisplayedCallbacksToRemove.contains(callback.id))
-                    callback.callback(m_webView, callback.userData);
-            }
-        }
+void WebKitWebViewClient::handleDownloadRequest(WKWPE::View&, DownloadProxy& downloadProxy)
+{
+    webkitWebViewHandleDownloadRequest(m_webView, &downloadProxy);
+}
 
-        while (!m_webView->priv->frameDisplayedCallbacksToRemove.isEmpty()) {
-            auto id = m_webView->priv->frameDisplayedCallbacksToRemove.takeAny();
-            m_webView->priv->frameDisplayedCallbacks.removeFirstMatching([id](const auto& item) {
-                return item.id == id;
-            });
+void WebKitWebViewClient::frameDisplayed(WKWPE::View&)
+{
+    {
+        SetForScope<bool> inFrameDisplayedGuard(m_webView->priv->inFrameDisplayed, true);
+        for (const auto& callback : m_webView->priv->frameDisplayedCallbacks) {
+            if (!m_webView->priv->frameDisplayedCallbacksToRemove.contains(callback.id))
+                callback.callback(m_webView, callback.userData);
         }
     }
 
-    void willStartLoad(WKWPE::View&) override
-    {
-        webkitWebViewWillStartLoad(m_webView);
+    while (!m_webView->priv->frameDisplayedCallbacksToRemove.isEmpty()) {
+        auto id = m_webView->priv->frameDisplayedCallbacksToRemove.takeAny();
+        m_webView->priv->frameDisplayedCallbacks.removeFirstMatching([id](const auto& item) {
+            return item.id == id;
+        });
     }
+}
 
-    void didChangePageID(WKWPE::View&) override
-    {
-        webkitWebViewDidChangePageID(m_webView);
-    }
+void WebKitWebViewClient::willStartLoad(WKWPE::View&)
+{
+    webkitWebViewWillStartLoad(m_webView);
+}
 
-    void didReceiveUserMessage(WKWPE::View&, UserMessage&& message, CompletionHandler<void(UserMessage&&)>&& completionHandler) override
-    {
-        webkitWebViewDidReceiveUserMessage(m_webView, WTFMove(message), WTFMove(completionHandler));
-    }
+void WebKitWebViewClient::didChangePageID(WKWPE::View&)
+{
+    webkitWebViewDidChangePageID(m_webView);
+}
 
-    WebKitWebView* m_webView;
-};
+void WebKitWebViewClient::didReceiveUserMessage(WKWPE::View&, UserMessage&& message, CompletionHandler<void(UserMessage&&)>&& completionHandler)
+{
+    webkitWebViewDidReceiveUserMessage(m_webView, WTFMove(message), WTFMove(completionHandler));
+}
 #endif
 
 static gboolean webkitWebViewLoadFail(WebKitWebView* webView, WebKitLoadEvent, const char* failingURI, GError* error)
@@ -776,7 +777,7 @@ static void webkitWebViewConstructed(GObject* object)
 #endif
 
 #if PLATFORM(WPE)
-    priv->view->setClient(makeUnique<WebViewClient>(webView));
+    priv->view->setClient(makeUnique<WebKitWebViewClient>(webView));
 #endif
 
     // This needs to be after attachUIClientToView() because WebPageProxy::setUIClient() calls setCanRunModal() with true.
@@ -2132,6 +2133,37 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
         GDK_TYPE_RECTANGLE | G_SIGNAL_TYPE_STATIC_SCOPE);
 #endif // PLATFORM(GTK)
 
+#if PLATFORM(WPE)
+    /**
+     * WebKitWebView::show-option-menu:
+     * @web_view: the #WebKitWebView on which the signal is emitted
+     * @menu: the #WebKitOptionMenu
+     * @rectangle: the option element area
+     *
+     * This signal is emitted when a select element in @web_view needs to display a
+     * dropdown menu. This signal can be used to show a custom menu, using @menu to get
+     * the details of all items that should be displayed. The area of the element in the
+     * #WebKitWebView is given as @rectangle parameter, it can be used to position the
+     * menu.
+     * To handle this signal asynchronously you should keep a ref of the @menu.
+     *
+     * Returns: %TRUE to stop other handlers from being invoked for the event.
+     *   %FALSE to propagate the event further.
+     *
+     * Since: 2.28
+     */
+    signals[SHOW_OPTION_MENU] = g_signal_new(
+        "show-option-menu",
+        G_TYPE_FROM_CLASS(webViewClass),
+        G_SIGNAL_RUN_LAST,
+        G_STRUCT_OFFSET(WebKitWebViewClass, show_option_menu),
+        g_signal_accumulator_true_handled, nullptr,
+        g_cclosure_marshal_generic,
+        G_TYPE_BOOLEAN, 2,
+        WEBKIT_TYPE_OPTION_MENU,
+        WEBKIT_TYPE_RECTANGLE | G_SIGNAL_TYPE_STATIC_SCOPE);
+#endif
+
     /**
      * WebKitWebView::user-message-received:
      * @web_view: the #WebKitWebView on which the signal is emitted
@@ -2714,6 +2746,22 @@ void webkitWebViewCancelComposition(WebKitWebView* webView, const String& text)
 {
     getPage(webView).cancelComposition(text);
 }
+
+void webkitWebViewDeleteSurrounding(WebKitWebView* webView, int offset, unsigned characterCount)
+{
+    getPage(webView).deleteSurrounding(offset, characterCount);
+}
+
+#if PLATFORM(WPE)
+bool webkitWebViewShowOptionMenu(WebKitWebView* webView, const IntRect& rect, WebKitOptionMenu* menu)
+{
+    WebKitRectangle rectangle { rect.x(), rect.y(), rect.width(), rect.height() };
+
+    gboolean handled;
+    g_signal_emit(webView, signals[SHOW_OPTION_MENU], 0, menu, &rectangle, &handled);
+    return handled;
+}
+#endif
 
 #if PLATFORM(WPE)
 /**
@@ -3737,7 +3785,8 @@ void webkit_web_view_run_javascript_in_world(WebKitWebView* webView, const gchar
     g_return_if_fail(worldName);
 
     GRefPtr<GTask> task = adoptGRef(g_task_new(webView, cancellable, callback, userData));
-    getPage(webView).runJavaScriptInMainFrameScriptWorld({ String::fromUTF8(script), false, WTF::nullopt, true }, String::fromUTF8(worldName), [task = WTFMove(task)](API::SerializedScriptValue* serializedScriptValue, Optional<ExceptionDetails> details, WebKit::CallbackBase::Error) {
+    auto world = API::ContentWorld::sharedWorldWithName(String::fromUTF8(worldName));
+    getPage(webView).runJavaScriptInMainFrameScriptWorld({ String::fromUTF8(script), false, WTF::nullopt, true }, world.get(), [task = WTFMove(task)](API::SerializedScriptValue* serializedScriptValue, Optional<ExceptionDetails> details, WebKit::CallbackBase::Error) {
         ExceptionDetails exceptionDetails;
         if (details)
             exceptionDetails = *details;

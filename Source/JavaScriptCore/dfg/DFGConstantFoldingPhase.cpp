@@ -401,7 +401,7 @@ private:
                         FlushedJSValue);
                 } else {
                     data = m_graph.m_stackAccessData.add(
-                        virtualRegisterForArgument(index + 1), FlushedJSValue);
+                        virtualRegisterForArgumentIncludingThis(index + 1), FlushedJSValue);
                 }
                 
                 if (inlineCallFrame && !inlineCallFrame->isVarargs() && index < static_cast<unsigned>(inlineCallFrame->argumentCountIncludingThis - 1)) {
@@ -712,6 +712,15 @@ private:
                 if (m_state.forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol | SpecBigInt))
                     break;
                 
+                node->convertToIdentity();
+                changed = true;
+                break;
+            }
+
+            case ToPropertyKey: {
+                if (m_state.forNode(node->child1()).m_type & ~(SpecString | SpecSymbol))
+                    break;
+
                 node->convertToIdentity();
                 changed = true;
                 break;
@@ -1074,6 +1083,7 @@ private:
             case PhantomNewGeneratorFunction:
             case PhantomNewAsyncGeneratorFunction:
             case PhantomNewAsyncFunction:
+            case PhantomNewArrayIterator:
             case PhantomCreateActivation:
             case PhantomDirectArguments:
             case PhantomClonedArguments:

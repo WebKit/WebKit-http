@@ -51,6 +51,7 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JSArrayInlines.h"
+#include "JSArrayIterator.h"
 #include "JSAsyncGenerator.h"
 #include "JSBigInt.h"
 #include "JSCInlines.h"
@@ -454,7 +455,7 @@ JSCell* JIT_OPERATION operationToObject(JSGlobalObject* globalObject, EncodedJSV
     ASSERT(!value.isObject());
 
     if (UNLIKELY(value.isUndefinedOrNull())) {
-        if (errorMessage->length()) {
+        if (errorMessage && errorMessage->length()) {
             throwVMTypeError(globalObject, scope, errorMessage);
             return nullptr;
         }
@@ -1648,6 +1649,15 @@ EncodedJSValue JIT_OPERATION operationToPrimitive(JSGlobalObject* globalObject, 
     return JSValue::encode(JSValue::decode(value).toPrimitive(globalObject));
 }
 
+EncodedJSValue JIT_OPERATION operationToPropertyKey(JSGlobalObject* globalObject, EncodedJSValue value)
+{
+    VM& vm = globalObject->vm();
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+
+    return JSValue::encode(JSValue::decode(value).toPropertyKeyValue(globalObject));
+}
+
 EncodedJSValue JIT_OPERATION operationToNumber(JSGlobalObject* globalObject, EncodedJSValue value)
 {
     VM& vm = globalObject->vm();
@@ -2085,6 +2095,15 @@ char* JIT_OPERATION operationNewFloat64ArrayWithOneArgument(
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
     return reinterpret_cast<char*>(constructGenericTypedArrayViewWithArguments<JSFloat64Array>(globalObject, structure, encodedValue, 0, WTF::nullopt));
+}
+
+JSCell* JIT_OPERATION operationNewArrayIterator(VM* vmPointer, Structure* structure)
+{
+    VM& vm = *vmPointer;
+    CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
+    JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
+
+    return JSArrayIterator::createWithInitialValues(vm, structure);
 }
 
 JSCell* JIT_OPERATION operationCreateActivationDirect(VM* vmPointer, Structure* structure, JSScope* scope, SymbolTable* table, EncodedJSValue initialValueEncoded)
@@ -3675,8 +3694,7 @@ void triggerReoptimizationNow(CodeBlock* codeBlock, CodeBlock* optimizedCodeBloc
     
     sanitizeStackForVM(codeBlock->vm());
 
-    if (Options::verboseOSR())
-        dataLog(*codeBlock, ": Entered reoptimize\n");
+    dataLogLnIf(Options::verboseOSR(), *codeBlock, ": Entered reoptimize");
     // We must be called with the baseline code block.
     ASSERT(JITCode::isBaselineCode(codeBlock->jitType()));
 
@@ -3687,8 +3705,7 @@ void triggerReoptimizationNow(CodeBlock* codeBlock, CodeBlock* optimizedCodeBloc
     // sure bet that we don't have anything else left to do.
     CodeBlock* replacement = codeBlock->replacement();
     if (!replacement || replacement == codeBlock) {
-        if (Options::verboseOSR())
-            dataLog(*codeBlock, ": Not reoptimizing because we've already been jettisoned.\n");
+        dataLogLnIf(Options::verboseOSR(), *codeBlock, ": Not reoptimizing because we've already been jettisoned.");
         return;
     }
     
@@ -3714,8 +3731,7 @@ void triggerReoptimizationNow(CodeBlock* codeBlock, CodeBlock* optimizedCodeBloc
         && optimizedCodeBlock->shouldReoptimizeFromLoopNow();
     
     if (!didExitABunch && !didGetStuckInLoop) {
-        if (Options::verboseOSR())
-            dataLog(*codeBlock, ": Not reoptimizing ", *optimizedCodeBlock, " because it either didn't exit enough or didn't loop enough after exit.\n");
+        dataLogLnIf(Options::verboseOSR(), *codeBlock, ": Not reoptimizing ", *optimizedCodeBlock, " because it either didn't exit enough or didn't loop enough after exit.");
         codeBlock->optimizeAfterLongWarmUp();
         return;
     }
@@ -3733,8 +3749,7 @@ static bool shouldTriggerFTLCompile(CodeBlock* codeBlock, JITCode* jitCode)
 {
     if (codeBlock->baselineVersion()->m_didFailFTLCompilation) {
         CODEBLOCK_LOG_EVENT(codeBlock, "abortFTLCompile", ());
-        if (Options::verboseOSR())
-            dataLog("Deferring FTL-optimization of ", *codeBlock, " indefinitely because there was an FTL failure.\n");
+        dataLogLnIf(Options::verboseOSR(), "Deferring FTL-optimization of ", *codeBlock, " indefinitely because there was an FTL failure.");
         jitCode->dontOptimizeAnytimeSoon(codeBlock);
         return false;
     }
@@ -3742,8 +3757,7 @@ static bool shouldTriggerFTLCompile(CodeBlock* codeBlock, JITCode* jitCode)
     if (!codeBlock->hasOptimizedReplacement()
         && !jitCode->checkIfOptimizationThresholdReached(codeBlock)) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayFTLCompile", ("counter = ", jitCode->tierUpCounter));
-        if (Options::verboseOSR())
-            dataLog("Choosing not to FTL-optimize ", *codeBlock, " yet.\n");
+        dataLogLnIf(Options::verboseOSR(), "Choosing not to FTL-optimize ", *codeBlock, " yet.");
         return false;
     }
     return true;
@@ -3785,8 +3799,7 @@ static void triggerFTLReplacementCompile(VM& vm, CodeBlock* codeBlock, JITCode* 
         CODEBLOCK_LOG_EVENT(codeBlock, "delayFTLCompile", ("compiled and failed"));
         // This means that we finished compiling, but failed somehow; in that case the
         // thresholds will be set appropriately.
-        if (Options::verboseOSR())
-            dataLog("Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.\n");
+        dataLogLnIf(Options::verboseOSR(), "Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.");
         return;
     }
 
@@ -3818,11 +3831,8 @@ void JIT_OPERATION operationTriggerTierUpNow(VM* vmPointer)
     
     JITCode* jitCode = codeBlock->jitCode()->dfg();
     
-    if (Options::verboseOSR()) {
-        dataLog(
-            *codeBlock, ": Entered triggerTierUpNow with executeCounter = ",
-            jitCode->tierUpCounter, "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(),
+        *codeBlock, ": Entered triggerTierUpNow with executeCounter = ", jitCode->tierUpCounter);
 
     if (shouldTriggerFTLCompile(codeBlock, jitCode))
         triggerFTLReplacementCompile(vm, codeBlock, jitCode);
@@ -3897,8 +3907,7 @@ static char* tierUpCommon(VM& vm, CallFrame* callFrame, BytecodeIndex originByte
         if (iter != jitCode->bytecodeIndexToStreamIndex.end()) {
             unsigned streamIndex = iter->value;
             if (CodeBlock* entryBlock = jitCode->osrEntryBlock()) {
-                if (Options::verboseOSR())
-                    dataLog("OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(entryBlock), "\n");
+                dataLogLnIf(Options::verboseOSR(), "OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(entryBlock));
                 if (void* address = FTL::prepareOSREntry(vm, callFrame, codeBlock, entryBlock, originBytecodeIndex, streamIndex)) {
                     CODEBLOCK_LOG_EVENT(entryBlock, "osrEntry", ("at ", originBytecodeIndex));
                     return retagCodePtr<char*>(address, JSEntryPtrTag, bitwise_cast<PtrTag>(callFrame));
@@ -3910,8 +3919,7 @@ static char* tierUpCommon(VM& vm, CallFrame* callFrame, BytecodeIndex originByte
     if (worklistState == Worklist::Compiled) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayFTLCompile", ("compiled and failed"));
         // This means that compilation failed and we already set the thresholds.
-        if (Options::verboseOSR())
-            dataLog("Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.\n");
+        dataLogLnIf(Options::verboseOSR(), "Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.");
         return nullptr;
     }
 
@@ -3996,8 +4004,7 @@ static char* tierUpCommon(VM& vm, CallFrame* callFrame, BytecodeIndex originByte
 
                 // This is where we ask the outer to loop to immediately compile itself if program
                 // control reaches it.
-                if (Options::verboseOSR())
-                    dataLog("Inner-loop ", originBytecodeIndex, " in ", *codeBlock, " setting parent loop ", osrEntryCandidate, "'s trigger and backing off.\n");
+                dataLogLnIf(Options::verboseOSR(), "Inner-loop ", originBytecodeIndex, " in ", *codeBlock, " setting parent loop ", osrEntryCandidate, "'s trigger and backing off.");
                 jitCode->tierUpEntryTriggers.set(osrEntryCandidate, JITCode::TriggerReason::StartCompilation);
                 return true;
             }
@@ -4051,8 +4058,7 @@ static char* tierUpCommon(VM& vm, CallFrame* callFrame, BytecodeIndex originByte
     // It's possible that the for-entry compile already succeeded. In that case OSR
     // entry will succeed unless we ran out of stack. It's not clear what we should do.
     // We signal to try again after a while if that happens.
-    if (Options::verboseOSR())
-        dataLog("Immediate OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(jitCode->osrEntryBlock()), "\n");
+    dataLogLnIf(Options::verboseOSR(), "Immediate OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(jitCode->osrEntryBlock()));
 
     void* address = FTL::prepareOSREntry(vm, callFrame, codeBlock, jitCode->osrEntryBlock(), originBytecodeIndex, streamIndex);
     if (!address)
@@ -4072,17 +4078,13 @@ void JIT_OPERATION operationTriggerTierUpNowInLoop(VM* vmPointer, unsigned bytec
     sanitizeStackForVM(vm);
 
     if (codeBlock->jitType() != JITType::DFGJIT) {
-        dataLog("Unexpected code block in DFG->FTL trigger tier up now in loop: ", *codeBlock, "\n");
+        dataLogLn("Unexpected code block in DFG->FTL trigger tier up now in loop: ", *codeBlock);
         RELEASE_ASSERT_NOT_REACHED();
     }
 
     JITCode* jitCode = codeBlock->jitCode()->dfg();
 
-    if (Options::verboseOSR()) {
-        dataLog(
-            *codeBlock, ": Entered triggerTierUpNowInLoop with executeCounter = ",
-            jitCode->tierUpCounter, "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(), *codeBlock, ": Entered triggerTierUpNowInLoop with executeCounter = ", jitCode->tierUpCounter);
 
     if (jitCode->tierUpInLoopHierarchy.contains(bytecodeIndex))
         tierUpCommon(vm, callFrame, bytecodeIndex, false);
@@ -4114,11 +4116,7 @@ char* JIT_OPERATION operationTriggerOSREntryNow(VM* vmPointer, unsigned bytecode
 
     JITCode* jitCode = codeBlock->jitCode()->dfg();
 
-    if (Options::verboseOSR()) {
-        dataLog(
-            *codeBlock, ": Entered triggerOSREntryNow with executeCounter = ",
-            jitCode->tierUpCounter, "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(), *codeBlock, ": Entered triggerOSREntryNow with executeCounter = ", jitCode->tierUpCounter);
 
     return tierUpCommon(vm, callFrame, bytecodeIndex, true);
 }

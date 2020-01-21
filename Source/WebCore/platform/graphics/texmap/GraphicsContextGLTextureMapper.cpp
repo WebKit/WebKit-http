@@ -284,7 +284,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
         // From version 3.2 on we use the OpenGL Core profile, and we need a VAO for rendering.
         // A VAO could be created and bound by each component using GL rendering (TextureMapper, WebGL, etc). This is
         // a simpler solution: the first GraphicsContextGLOpenGL created on a GLContext will create and bind a VAO for that context.
-        GC3Dint currentVAO = 0;
+        GCGLint currentVAO = 0;
         getIntegerv(GraphicsContextGLOpenGL::VERTEX_ARRAY_BINDING, &currentVAO);
         if (!currentVAO) {
             m_vao = createVertexArray();
@@ -317,7 +317,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     // Always set to 1 for OpenGL ES.
     ANGLEResources.MaxDrawBuffers = 1;
 
-    GC3Dint range[2], precision;
+    GCGLint range[2], precision;
     getShaderPrecisionFormat(GraphicsContextGLOpenGL::FRAGMENT_SHADER, GraphicsContextGLOpenGL::HIGH_FLOAT, range, &precision);
     ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
 
@@ -439,7 +439,7 @@ PlatformGraphicsContextGL GraphicsContextGLOpenGL::platformGraphicsContextGL() c
 #endif
 }
 
-Platform3DObject GraphicsContextGLOpenGL::platformTexture() const
+PlatformGLObject GraphicsContextGLOpenGL::platformTexture() const
 {
     return m_texture;
 }
@@ -475,42 +475,6 @@ ExtensionsGL& GraphicsContextGLOpenGL::getExtensions()
 #endif
     }
     return *m_extensions;
-}
-#endif
-
-#if (PLATFORM(GTK) && !USE(ANGLE)) || PLATFORM(WIN)
-void* GraphicsContextGLOpenGL::mapBufferRange(GC3Denum, GC3Dintptr, GC3Dsizeiptr, GC3Dbitfield)
-{
-    return nullptr;
-}
-
-GC3Dboolean GraphicsContextGLOpenGL::unmapBuffer(GC3Denum)
-{
-    return 0;
-}
-
-void GraphicsContextGLOpenGL::copyBufferSubData(GC3Denum, GC3Denum, GC3Dintptr, GC3Dintptr, GC3Dsizeiptr)
-{
-}
-
-void GraphicsContextGLOpenGL::getInternalformativ(GC3Denum, GC3Denum, GC3Denum, GC3Dsizei, GC3Dint*)
-{
-}
-
-void GraphicsContextGLOpenGL::renderbufferStorageMultisample(GC3Denum, GC3Dsizei, GC3Denum, GC3Dsizei, GC3Dsizei)
-{
-}
-
-void GraphicsContextGLOpenGL::texStorage2D(GC3Denum, GC3Dsizei, GC3Denum, GC3Dsizei, GC3Dsizei)
-{
-}
-
-void GraphicsContextGLOpenGL::texStorage3D(GC3Denum, GC3Dsizei, GC3Denum, GC3Dsizei, GC3Dsizei, GC3Dsizei)
-{
-}
-
-void GraphicsContextGLOpenGL::getActiveUniforms(Platform3DObject, const Vector<GC3Duint>&, GC3Denum, Vector<GC3Dint>&)
-{
 }
 #endif
 

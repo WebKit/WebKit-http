@@ -919,7 +919,7 @@ bool ProxyObject::defineOwnProperty(JSObject* object, JSGlobalObject* globalObje
     return thisObject->performDefineOwnProperty(globalObject, propertyName, descriptor, shouldThrow);
 }
 
-void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, PropertyNameArray& propertyNames, EnumerationMode enumerationMode)
+void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, PropertyNameArray& propertyNames)
 {
     NO_TAIL_CALLS();
 
@@ -941,6 +941,7 @@ void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, Prope
     JSValue ownKeysMethod = handler->getMethod(globalObject, callData, callType, makeIdentifier(vm, "ownKeys"), "'ownKeys' property of a Proxy's handler should be callable"_s);
     RETURN_IF_EXCEPTION(scope, void());
     JSObject* target = this->target();
+    EnumerationMode enumerationMode(DontEnumPropertiesMode::Include);
     if (ownKeysMethod.isUndefined()) {
         scope.release();
         target->methodTable(vm)->getOwnPropertyNames(target, globalObject, propertyNames, enumerationMode);
@@ -950,14 +951,11 @@ void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, Prope
     MarkedArgumentBuffer arguments;
     arguments.append(target);
     ASSERT(!arguments.hasOverflowed());
-    JSValue arrayLikeObject = call(globalObject, ownKeysMethod, callType, callData, handler, arguments);
+    JSValue trapResult = call(globalObject, ownKeysMethod, callType, callData, handler, arguments);
     RETURN_IF_EXCEPTION(scope, void());
 
-    PropertyNameArray trapResult(vm, propertyNames.propertyNameMode(), propertyNames.privateSymbolMode());
     HashSet<UniquedStringImpl*> uncheckedResultKeys;
     {
-        HashSet<RefPtr<UniquedStringImpl>> seenKeys;
-
         RuntimeTypeMask resultFilter = 0;
         switch (propertyNames.propertyNameMode()) {
         case PropertyNameMode::Symbols:
@@ -979,35 +977,26 @@ void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, Prope
             Identifier ident = value.toPropertyKey(globalObject);
             RETURN_IF_EXCEPTION(scope, doExitEarly);
 
-            // If trapResult contains any duplicate entries, throw a TypeError exception.
-            //    
-            // Per spec[1], filtering by type should occur _after_ [[OwnPropertyKeys]], so duplicates
-            // are tracked in a separate hashtable from uncheckedResultKeys (which only contain the
-            // keys filtered by type).
-            //
-            // [1] Per https://tc39.github.io/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeysmust not contain any duplicate names"_s);
-            if (!seenKeys.add(ident.impl()).isNewEntry) {
+            if (!uncheckedResultKeys.add(ident.impl()).isNewEntry) {
                 throwTypeError(globalObject, scope, "Proxy handler's 'ownKeys' trap result must not contain any duplicate names"_s);
                 return doExitEarly;
             }
 
-            if (!(type & resultFilter))
-                return dontExitEarly;
+            if (type & resultFilter)
+                propertyNames.add(ident.impl());
 
-            uncheckedResultKeys.add(ident.impl());
-            trapResult.add(ident.impl());
             return dontExitEarly;
         };
 
         RuntimeTypeMask dontThrowAnExceptionTypeFilter = TypeString | TypeSymbol;
-        createListFromArrayLike(globalObject, arrayLikeObject, dontThrowAnExceptionTypeFilter, "Proxy handler's 'ownKeys' method must return an object"_s, "Proxy handler's 'ownKeys' method must return an array-like object containing only Strings and Symbols"_s, addPropName);
+        createListFromArrayLike(globalObject, trapResult, dontThrowAnExceptionTypeFilter, "Proxy handler's 'ownKeys' method must return an object"_s, "Proxy handler's 'ownKeys' method must return an array-like object containing only Strings and Symbols"_s, addPropName);
         RETURN_IF_EXCEPTION(scope, void());
     }
 
     bool targetIsExensible = target->isExtensible(globalObject);
     RETURN_IF_EXCEPTION(scope, void());
 
-    PropertyNameArray targetKeys(vm, propertyNames.propertyNameMode(), propertyNames.privateSymbolMode());
+    PropertyNameArray targetKeys(vm, PropertyNameMode::StringsAndSymbols, PrivateSymbolMode::Exclude);
     target->methodTable(vm)->getOwnPropertyNames(target, globalObject, targetKeys, enumerationMode);
     RETURN_IF_EXCEPTION(scope, void());
     Vector<UniquedStringImpl*> targetConfigurableKeys;
@@ -1052,29 +1041,36 @@ void ProxyObject::performGetOwnPropertyNames(JSGlobalObject* globalObject, Prope
             return;
         }
     }
+}
 
-    if (!enumerationMode.includeDontEnumProperties()) {
-        // Filtering DontEnum properties is observable in proxies and must occur following the invariant checks above.
-        for (const auto& propertyName : trapResult) {
-            PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
-            auto result = getOwnPropertySlotCommon(globalObject, propertyName, slot);
-            RETURN_IF_EXCEPTION(scope, void());
-            if (!result)
-                continue;
-            if (slot.attributes() & PropertyAttribute::DontEnum)
-                continue;
-            propertyNames.add(propertyName.impl());
-        }
-    } else {
-        for (const auto& propertyName : trapResult)
-            propertyNames.add(propertyName.impl());
+void ProxyObject::performGetOwnEnumerablePropertyNames(JSGlobalObject* globalObject, PropertyNameArray& propertyNames)
+{
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    PropertyNameArray unfilteredNames(vm, propertyNames.propertyNameMode(), propertyNames.privateSymbolMode());
+    performGetOwnPropertyNames(globalObject, unfilteredNames);
+    RETURN_IF_EXCEPTION(scope, void());
+    // Filtering DontEnum properties is observable in proxies and must occur after the invariant checks pass.
+    for (const auto& propertyName : unfilteredNames) {
+        PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
+        auto isPropertyDefined = getOwnPropertySlotCommon(globalObject, propertyName, slot);
+        RETURN_IF_EXCEPTION(scope, void());
+        if (!isPropertyDefined)
+            continue;
+        if (slot.attributes() & PropertyAttribute::DontEnum)
+            continue;
+        propertyNames.add(propertyName.impl());
     }
 }
 
 void ProxyObject::getOwnPropertyNames(JSObject* object, JSGlobalObject* globalObject, PropertyNameArray& propertyNameArray, EnumerationMode enumerationMode)
 {
     ProxyObject* thisObject = jsCast<ProxyObject*>(object);
-    thisObject->performGetOwnPropertyNames(globalObject, propertyNameArray, enumerationMode);
+    if (enumerationMode.includeDontEnumProperties())
+        thisObject->performGetOwnPropertyNames(globalObject, propertyNameArray);
+    else
+        thisObject->performGetOwnEnumerablePropertyNames(globalObject, propertyNameArray);
 }
 
 void ProxyObject::getPropertyNames(JSObject* object, JSGlobalObject* globalObject, PropertyNameArray& propertyNameArray, EnumerationMode enumerationMode)

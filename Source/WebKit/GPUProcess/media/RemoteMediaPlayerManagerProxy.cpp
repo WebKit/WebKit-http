@@ -31,7 +31,6 @@
 #include "GPUConnectionToWebProcess.h"
 #include "Logging.h"
 #include "RemoteMediaPlayerConfiguration.h"
-#include "RemoteMediaPlayerManagerMessages.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
 #include "RemoteMediaPlayerProxy.h"
 #include "RemoteMediaPlayerProxyConfiguration.h"
@@ -197,82 +196,10 @@ void RemoteMediaPlayerManagerProxy::supportsKeySystem(MediaPlayerEnums::MediaEng
     completionHandler(result);
 }
 
-void RemoteMediaPlayerManagerProxy::prepareForPlayback(MediaPlayerPrivateRemoteIdentifier id, bool privateMode, WebCore::MediaPlayerEnums::Preload preload, bool preservesPitch, bool prepareForRendering)
+void RemoteMediaPlayerManagerProxy::didReceivePlayerMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
-    if (auto player = m_proxies.get(id))
-        player->prepareForPlayback(privateMode, preload, preservesPitch, prepareForRendering);
-}
-
-void RemoteMediaPlayerManagerProxy::load(MediaPlayerPrivateRemoteIdentifier id, URL&& url, WebCore::ContentType&& contentType, String&& keySystem, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&& completionHandler)
-{
-    if (auto player = m_proxies.get(id))
-        player->load(WTFMove(url), WTFMove(contentType), WTFMove(keySystem), WTFMove(completionHandler));
-}
-
-void RemoteMediaPlayerManagerProxy::cancelLoad(MediaPlayerPrivateRemoteIdentifier id)
-{
-    if (auto player = m_proxies.get(id))
-        player->cancelLoad();
-}
-
-void RemoteMediaPlayerManagerProxy::prepareToPlay(MediaPlayerPrivateRemoteIdentifier id)
-{
-    if (auto player = m_proxies.get(id))
-        player->prepareToPlay();
-}
-
-void RemoteMediaPlayerManagerProxy::play(MediaPlayerPrivateRemoteIdentifier id)
-{
-    if (auto player = m_proxies.get(id))
-        player->play();
-}
-
-void RemoteMediaPlayerManagerProxy::pause(MediaPlayerPrivateRemoteIdentifier id)
-{
-    if (auto player = m_proxies.get(id))
-        player->pause();
-}
-
-void RemoteMediaPlayerManagerProxy::seek(MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time)
-{
-    if (auto player = m_proxies.get(id))
-        player->seek(WTFMove(time));
-}
-
-void RemoteMediaPlayerManagerProxy::seekWithTolerance(MediaPlayerPrivateRemoteIdentifier id, MediaTime&& time, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance)
-{
-    if (auto player = m_proxies.get(id))
-        player->seekWithTolerance(WTFMove(time), WTFMove(negativeTolerance), WTFMove(positiveTolerance));
-}
-
-void RemoteMediaPlayerManagerProxy::setVolume(MediaPlayerPrivateRemoteIdentifier id, double volume)
-{
-    if (auto player = m_proxies.get(id))
-        player->setVolume(volume);
-}
-
-void RemoteMediaPlayerManagerProxy::setMuted(MediaPlayerPrivateRemoteIdentifier id, bool muted)
-{
-    if (auto player = m_proxies.get(id))
-        player->setMuted(muted);
-}
-
-void RemoteMediaPlayerManagerProxy::setPreload(MediaPlayerPrivateRemoteIdentifier id, WebCore::MediaPlayerEnums::Preload preload)
-{
-    if (auto player = m_proxies.get(id))
-        player->setPreload(preload);
-}
-
-void RemoteMediaPlayerManagerProxy::setPrivateBrowsingMode(MediaPlayerPrivateRemoteIdentifier id, bool privateMode)
-{
-    if (auto player = m_proxies.get(id))
-        player->setPrivateBrowsingMode(privateMode);
-}
-
-void RemoteMediaPlayerManagerProxy::setPreservesPitch(MediaPlayerPrivateRemoteIdentifier id, bool preservesPitch)
-{
-    if (auto player = m_proxies.get(id))
-        player->setPreservesPitch(preservesPitch);
+    if (auto* player = m_proxies.get(makeObjectIdentifier<MediaPlayerPrivateRemoteIdentifierType>(decoder.destinationID())))
+        player->didReceiveMessage(connection, decoder);
 }
 
 #if !RELEASE_LOG_DISABLED

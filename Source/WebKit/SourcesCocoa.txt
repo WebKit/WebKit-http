@@ -69,6 +69,7 @@ Platform/cg/CGUtilities.cpp
 Platform/classifier/cocoa/ResourceLoadStatisticsClassifierCocoa.cpp
 Platform/classifier/ResourceLoadStatisticsClassifier.cpp
 
+Platform/cocoa/LayerHostingContext.mm
 Platform/cocoa/PaymentAuthorizationPresenter.mm
 Platform/cocoa/PaymentAuthorizationViewController.mm
 Platform/cocoa/SharedMemoryCocoa.cpp
@@ -84,7 +85,6 @@ Platform/ios/PaymentAuthorizationController.mm
 Platform/IPC/cocoa/ConnectionCocoa.mm
 Platform/IPC/cocoa/MachMessage.cpp
 
-Platform/mac/LayerHostingContext.mm
 Platform/mac/MachUtilities.cpp
 Platform/mac/MenuUtilities.mm
 Platform/mac/StringUtilities.mm
@@ -264,6 +264,7 @@ UIProcess/API/Cocoa/_WKInternalDebugFeature.mm
 UIProcess/API/Cocoa/_WKLinkIconParameters.mm
 UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm
 UIProcess/API/Cocoa/_WKRemoteWebInspectorViewController.mm
+UIProcess/API/Cocoa/_WKResourceLoadInfo.mm
 UIProcess/API/Cocoa/_WKSessionState.mm
 UIProcess/API/Cocoa/_WKTextInputContext.mm
 UIProcess/API/Cocoa/_WKTextManipulationConfiguration.mm
@@ -277,6 +278,7 @@ UIProcess/API/Cocoa/_WKUserContentWorld.mm
 UIProcess/API/Cocoa/_WKUserInitiatedAction.mm
 UIProcess/API/Cocoa/_WKUserStyleSheet.mm
 UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
+UIProcess/API/Cocoa/_WKWebAuthenticationAssertionResponse.mm
 UIProcess/API/Cocoa/_WKWebAuthenticationPanel.mm
 UIProcess/API/Cocoa/_WKWebsiteDataSize.mm
 UIProcess/API/Cocoa/_WKWebsiteDataStore.mm
@@ -333,6 +335,8 @@ UIProcess/API/Cocoa/WKWindowFeatures.mm
 UIProcess/API/ios/WKWebViewIOS.mm
 UIProcess/API/ios/WKWebViewTestingIOS.mm
 
+UIProcess/API/mac/WKContentViewMac.mm
+UIProcess/API/mac/WKScrollViewMac.mm
 UIProcess/API/mac/WKView.mm
 UIProcess/API/mac/WKWebViewMac.mm
 UIProcess/API/mac/WKWebViewTestingMac.mm
@@ -367,10 +371,11 @@ UIProcess/Cocoa/FullscreenClient.mm
 UIProcess/Cocoa/GlobalFindInPageState.mm
 UIProcess/Cocoa/IconLoadingDelegate.mm
 UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
-UIProcess/Cocoa/MediaCaptureUtilities.mm
+UIProcess/Cocoa/MediaUtilities.mm
 UIProcess/Cocoa/NavigationState.mm
 UIProcess/Cocoa/PageClientImplCocoa.mm
 UIProcess/Cocoa/PlaybackSessionManagerProxy.mm
+UIProcess/Cocoa/ResourceLoadDelegate.mm
 UIProcess/Cocoa/SafeBrowsingWarningCocoa.mm
 UIProcess/Cocoa/SessionStateCoding.mm
 UIProcess/Cocoa/SystemPreviewControllerCocoa.mm
@@ -382,6 +387,7 @@ UIProcess/Cocoa/VersionChecks.mm
 UIProcess/Cocoa/VideoFullscreenManagerProxy.mm
 UIProcess/Cocoa/WebPageProxyCocoa.mm
 UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
+UIProcess/Cocoa/WebPreferencesCocoa.mm
 UIProcess/Cocoa/WebProcessCacheCocoa.mm
 UIProcess/Cocoa/WebProcessPoolCocoa.mm
 UIProcess/Cocoa/WebProcessProxyCocoa.mm
@@ -479,7 +485,6 @@ UIProcess/mac/WebDataListSuggestionsDropdownMac.mm
 UIProcess/mac/WebInspectorProxyMac.mm
 UIProcess/mac/WebPageProxyMac.mm
 UIProcess/mac/WebPopupMenuProxyMac.mm
-UIProcess/mac/WebPreferencesMac.mm
 UIProcess/mac/WebProcessProxyMac.mm
 UIProcess/mac/WindowServerConnection.mm
 UIProcess/mac/WKFullScreenWindowController.mm
@@ -635,5 +640,12 @@ GPUProcessProxyMessageReceiver.cpp
 GPUProcessMessageReceiver.cpp
 LibWebRTCCodecsProxyMessageReceiver.cpp
 LibWebRTCCodecsMessageReceiver.cpp
+RemoteAudioMediaStreamTrackRendererManagerMessageReceiver.cpp
+RemoteAudioMediaStreamTrackRendererMessageReceiver.cpp
+RemoteMediaRecorderMessageReceiver.cpp
+RemoteMediaRecorderManagerMessageReceiver.cpp
+RemoteSampleBufferDisplayLayerManagerMessageReceiver.cpp
+RemoteSampleBufferDisplayLayerMessageReceiver.cpp
+SampleBufferDisplayLayerMessageReceiver.cpp
 ServiceWorkerFetchTaskMessageReceiver.cpp
 TextCheckingControllerProxyMessageReceiver.cpp

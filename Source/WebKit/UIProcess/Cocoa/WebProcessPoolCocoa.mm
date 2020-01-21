@@ -102,10 +102,12 @@ static NSString * const WebKitSuppressMemoryPressureHandlerDefaultsKey = @"WebKi
 static NSString * const WebKitLogCookieInformationDefaultsKey = @"WebKitLogCookieInformation";
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 SOFT_LINK_PRIVATE_FRAMEWORK(BackBoardServices)
 SOFT_LINK(BackBoardServices, BKSDisplayBrightnessGetCurrent, float, (), ());
 #endif
+
+#define WEBPROCESSPOOL_RELEASE_LOG(channel, fmt, ...) RELEASE_LOG(channel, "%p - WebProcessPool::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
 using namespace WebCore;
@@ -295,7 +297,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
 #endif
 
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (isSafari && !parameters.shouldCaptureAudioInUIProcess && mediaDevicesEnabled)
+    if (isSafari && !m_configuration->shouldCaptureAudioInUIProcess() && !m_configuration->shouldCaptureAudioInGPUProcess() && mediaDevicesEnabled)
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
 #endif
 
@@ -334,7 +336,11 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::Handle handle;
         SandboxExtension::createHandleForMachLookup("com.apple.nehelper", WTF::nullopt, handle);
         parameters.neHelperExtensionHandle = WTFMove(handle);
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101500
+        SandboxExtension::createHandleForMachLookup("com.apple.nesessionmanager", WTF::nullopt, handle);
+#else
         SandboxExtension::createHandleForMachLookup("com.apple.nesessionmanager.content-filter", WTF::nullopt, handle);
+#endif
         parameters.neSessionManagerExtensionHandle = WTFMove(handle);
     }
 #endif
@@ -349,6 +355,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     
 #if PLATFORM(IOS_FAMILY)
     parameters.currentUserInterfaceIdiomIsPad = currentUserInterfaceIdiomIsPad();
+    parameters.cssValueToSystemColorMap = RenderThemeIOS::cssValueToSystemColorMap();
 #endif
 }
 
@@ -386,10 +393,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
-#if PLATFORM(IOS_FAMILY)
-    parameters.ctDataConnectionServiceType = m_configuration->ctDataConnectionServiceType();
-#endif
-
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
 
 #if PLATFORM(MAC)
@@ -399,9 +402,12 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
-    parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
-    parameters.shouldEnableITPDatabase = [defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isITPDatabaseEnabledKey().createCFString().get()]];
+    NSNumber *databaseEnabledValue = [defaults objectForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isITPDatabaseEnabledKey().createCFString().get()]];
+    if (databaseEnabledValue)
+        parameters.shouldEnableITPDatabase = databaseEnabledValue.boolValue;
+    else
+        parameters.shouldEnableITPDatabase = m_defaultPageGroup->preferences().isITPDatabaseEnabled();
 
     parameters.enableAdClickAttributionDebugMode = [defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::adClickAttributionDebugModeEnabledKey().createCFString().get()]];
 }
@@ -487,7 +493,7 @@ bool WebProcessPool::networkProcessHasEntitlementForTesting(const String& entitl
     return WTF::hasEntitlement(ensureNetworkProcess().connection()->xpcConnection(), entitlement.utf8().data());
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 float WebProcessPool::displayBrightness()
 {
     return BKSDisplayBrightnessGetCurrent();
@@ -546,12 +552,14 @@ void WebProcessPool::registerNotificationObservers()
     m_deactivationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidResignActiveNotification object:NSApp queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
         setApplicationIsActive(false);
     }];
-#elif PLATFORM(IOS)
+#elif !PLATFORM(MACCATALYST)
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, backlightLevelDidChangeCallback, static_cast<CFStringRef>(UIBacklightLevelChangedNotification), nullptr, CFNotificationSuspensionBehaviorCoalesce);
+#if PLATFORM(IOS)
     m_accessibilityEnabledObserver = [[NSNotificationCenter defaultCenter] addObserverForName:(__bridge id)kAXSApplicationAccessibilityEnabledNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *) {
         for (size_t i = 0; i < m_processes.size(); ++i)
             m_processes[i]->unblockAccessibilityServerIfNeeded();
     }];
+#endif // PLATFORM(IOS)
 #endif // !PLATFORM(IOS_FAMILY)
 }
 
@@ -682,7 +690,7 @@ int webProcessThroughputQOS()
 #if PLATFORM(IOS_FAMILY)
 void WebProcessPool::applicationIsAboutToSuspend()
 {
-    RELEASE_LOG(ProcessSuspension, "WebProcessPool::applicationIsAboutToSuspend() Terminating non-critical processes");
+    WEBPROCESSPOOL_RELEASE_LOG(ProcessSuspension, "applicationIsAboutToSuspend: Terminating non-critical processes");
 
     m_backForwardCache->pruneToSize(1);
     m_webProcessCache->clear();

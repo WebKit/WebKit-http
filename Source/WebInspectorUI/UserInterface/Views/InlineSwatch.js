@@ -212,7 +212,6 @@ WI.InlineSwatch = class InlineSwatch extends WI.Object
         case WI.InlineSwatch.Type.Color:
             this._valueEditor = new WI.ColorPicker;
             this._valueEditor.addEventListener(WI.ColorPicker.Event.ColorChanged, this._valueEditorValueDidChange, this);
-            this._valueEditor.addEventListener(WI.ColorPicker.Event.FormatChanged, (event) => popover.update());
             break;
 
         case WI.InlineSwatch.Type.Gradient:
@@ -269,6 +268,7 @@ WI.InlineSwatch = class InlineSwatch extends WI.Object
         switch (this._type) {
         case WI.InlineSwatch.Type.Color:
             this._valueEditor.color = value;
+            this._valueEditor.focus();
             break;
 
         case WI.InlineSwatch.Type.Gradient:

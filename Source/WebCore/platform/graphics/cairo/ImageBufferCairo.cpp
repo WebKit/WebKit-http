@@ -32,6 +32,7 @@
 #if USE(CAIRO)
 
 #include "BitmapImage.h"
+#include "CairoOperations.h"
 #include "CairoUtilities.h"
 #include "Color.h"
 #include "GraphicsContext.h"
@@ -485,7 +486,7 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const IntRect& logic
     if (imageSurface != data.m_surface.get()) {
         // This cairo surface operation is done in LogicalCoordinateSystem.
         IntRect logicalArea = intersection(logicalRect, IntRect(0, 0, logicalSize.width(), logicalSize.height()));
-        copyRectFromOneSurfaceToAnother(data.m_surface.get(), imageSurface.get(), IntSize(-logicalArea.x(), -logicalArea.y()), IntRect(IntPoint(), logicalArea.size()), IntSize(), CAIRO_OPERATOR_SOURCE);
+        copyRectFromOneSurfaceToAnother(data.m_surface.get(), imageSurface.get(), IntSize(-logicalArea.x(), -logicalArea.y()), IntRect(IntPoint(), logicalArea.size()), IntSize());
     }
 
     unsigned char* dataSrc = cairo_image_surface_get_data(imageSurface.get());
@@ -649,7 +650,7 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
 
     if (imageSurface != m_data.m_surface.get()) {
         // This cairo surface operation is done in LogicalCoordinateSystem.
-        copyRectFromOneSurfaceToAnother(imageSurface.get(), m_data.m_surface.get(), IntSize(), IntRect(0, 0, logicalNumColumns, logicalNumRows), IntSize(logicalDestPoint.x() + logicalSourceRect.x(), logicalDestPoint.y() + logicalSourceRect.y()), CAIRO_OPERATOR_SOURCE);
+        copyRectFromOneSurfaceToAnother(imageSurface.get(), m_data.m_surface.get(), IntSize(), IntRect(0, 0, logicalNumColumns, logicalNumRows), IntSize(logicalDestPoint.x() + logicalSourceRect.x(), logicalDestPoint.y() + logicalSourceRect.y()));
     }
 }
 
@@ -728,7 +729,7 @@ PlatformLayer* ImageBuffer::platformLayer() const
     return 0;
 }
 
-bool ImageBuffer::copyToPlatformTexture(GraphicsContextGLOpenGL&, GC3Denum target, Platform3DObject destinationTexture, GC3Denum internalformat, bool premultiplyAlpha, bool flipY)
+bool ImageBuffer::copyToPlatformTexture(GraphicsContextGLOpenGL&, GCGLenum target, PlatformGLObject destinationTexture, GCGLenum internalformat, bool premultiplyAlpha, bool flipY)
 {
 #if ENABLE(ACCELERATED_2D_CANVAS)
     ASSERT_WITH_MESSAGE(m_resolutionScale == 1.0, "Since the HiDPI Canvas feature is removed, the resolution factor here is always 1.");
@@ -738,7 +739,7 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContextGLOpenGL&, GC3Denum targe
     if (!m_data.m_texture)
         return false;
 
-    GC3Denum bindTextureTarget;
+    GCGLenum bindTextureTarget;
     switch (target) {
     case GL_TEXTURE_2D:
         bindTextureTarget = GL_TEXTURE_2D;

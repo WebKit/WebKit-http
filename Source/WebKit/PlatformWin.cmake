@@ -55,12 +55,10 @@ list(APPEND WebKit_SOURCES
     UIProcess/WebsiteData/win/WebsiteDataStoreWin.cpp
 
     UIProcess/win/PageClientImpl.cpp
-    UIProcess/win/TextCheckerWin.cpp
     UIProcess/win/WebContextMenuProxyWin.cpp
     UIProcess/win/WebInspectorProxyWin.cpp
     UIProcess/win/WebPageProxyWin.cpp
     UIProcess/win/WebPopupMenuProxyWin.cpp
-    UIProcess/win/WebPreferencesWin.cpp
     UIProcess/win/WebProcessPoolWin.cpp
     UIProcess/win/WebView.cpp
 
@@ -71,7 +69,6 @@ list(APPEND WebKit_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
     WebProcess/Plugins/Netscape/win/PluginProxyWin.cpp
 
-    WebProcess/WebCoreSupport/win/WebContextMenuClientWin.cpp
     WebProcess/WebCoreSupport/win/WebPopupMenuWin.cpp
 
     WebProcess/WebPage/AcceleratedSurface.cpp

@@ -37,9 +37,9 @@ namespace Layout {
 
 struct HangingContent;
 class InlineFormattingContext;
+class InlineSoftLineBreakItem;
 
 class LineBuilder {
-    class InlineItemRun;
     struct ContinuousContent;
 
 public:
@@ -61,12 +61,13 @@ public:
 
     void initialize(const Constraints&);
     void append(const InlineItem&, InlineLayoutUnit logicalWidth);
+    void resetContent();
     bool isVisuallyEmpty() const { return m_lineBox.isConsideredEmpty(); }
     bool hasIntrusiveFloat() const { return m_hasIntrusiveFloat; }
     InlineLayoutUnit availableWidth() const { return logicalWidth() - contentLogicalWidth(); }
 
-    InlineLayoutUnit trailingCollapsibleWidth() const { return m_collapsibleContent.width(); }
-    bool isTrailingRunFullyCollapsible() const { return m_collapsibleContent.isTrailingRunFullyCollapsible(); }
+    InlineLayoutUnit trimmableTrailingWidth() const { return m_trimmableTrailingContent.width(); }
+    bool isTrailingRunFullyTrimmable() const { return m_trimmableTrailingContent.isTrailingRunFullyTrimmable(); }
 
     const Display::LineBox& lineBox() const { return m_lineBox; }
     void moveLogicalLeft(InlineLayoutUnit);
@@ -74,11 +75,6 @@ public:
     void setHasIntrusiveFloat() { m_hasIntrusiveFloat = true; }
 
     struct Run {
-        Run(const InlineItemRun&);
-        Run(const InlineItemRun&, const Display::InlineRect&, const Display::Run::TextContext&, unsigned expansionOpportunityCount);
-        Run(Run&&) = default;
-        Run& operator=(Run&& other) = default;
-
         bool isText() const { return m_type == InlineItem::Type::Text; }
         bool isBox() const { return m_type == InlineItem::Type::Box; }
         bool isLineBreak() const { return m_type == InlineItem::Type::HardLineBreak || m_type == InlineItem::Type::SoftLineBreak; }
@@ -89,13 +85,25 @@ public:
         const RenderStyle& style() const { return m_layoutBox->style(); }
         const Display::InlineRect& logicalRect() const { return m_logicalRect; }
         const Optional<Display::Run::TextContext>& textContext() const { return m_textContext; }
-        bool isCollapsedToVisuallyEmpty() const { return m_isCollapsedToVisuallyEmpty; }
+
+        Run(Run&&) = default;
+        Run& operator=(Run&& other) = default;
 
     private:
         friend class LineBuilder;
 
-        void adjustLogicalTop(InlineLayoutUnit logicalTop) { m_logicalRect.setTop(logicalTop); }
+        Run(const InlineTextItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth);
+        Run(const InlineSoftLineBreakItem&, InlineLayoutUnit logicalLeft);
+        Run(const InlineItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth);
+
+        void expand(const InlineTextItem&, InlineLayoutUnit logicalWidth);
+
+        InlineLayoutUnit logicalWidth() const { return m_logicalRect.width(); }
+
         void moveHorizontally(InlineLayoutUnit offset) { m_logicalRect.moveHorizontally(offset); }
+        void shrinkHorizontally(InlineLayoutUnit width) { m_logicalRect.expandHorizontally(-width); }
+
+        void adjustLogicalTop(InlineLayoutUnit logicalTop) { m_logicalRect.setTop(logicalTop); }
         void moveVertically(InlineLayoutUnit offset) { m_logicalRect.moveVertically(offset); }
         void setLogicalHeight(InlineLayoutUnit logicalHeight) { m_logicalRect.setHeight(logicalHeight); }
 
@@ -105,17 +113,35 @@ public:
         void setComputedHorizontalExpansion(InlineLayoutUnit logicalExpansion);
         void adjustExpansionBehavior(ExpansionBehavior);
 
+        enum class TrailingWhitespace {
+            None,
+            NotCollapsible,
+            Collapsible,
+            Collapsed
+        };
+        bool hasTrailingWhitespace() const { return m_trailingWhitespaceType != TrailingWhitespace::None; }
+        bool hasCollapsibleTrailingWhitespace() const { return m_trailingWhitespaceType == TrailingWhitespace::Collapsible || hasCollapsedTrailingWhitespace(); }
+        bool hasCollapsedTrailingWhitespace() const { return m_trailingWhitespaceType == TrailingWhitespace::Collapsed; }
+        InlineLayoutUnit trailingWhitespaceWidth() const { return m_trailingWhitespaceWidth; }
+        TrailingWhitespace trailingWhitespaceType(const InlineTextItem&) const;
+        void removeTrailingWhitespace();
+        void visuallyCollapseTrailingWhitespace();
+
+        bool hasTrailingLetterSpacing() const;
+        InlineLayoutUnit trailingLetterSpacing() const;
+        void removeTrailingLetterSpacing();
+
+        InlineItem::Type m_type { InlineItem::Type::Text };
         const Box* m_layoutBox { nullptr };
-        InlineItem::Type m_type;
         Display::InlineRect m_logicalRect;
+        TrailingWhitespace m_trailingWhitespaceType { TrailingWhitespace::None };
+        InlineLayoutUnit m_trailingWhitespaceWidth { 0 };
         Optional<Display::Run::TextContext> m_textContext;
         unsigned m_expansionOpportunityCount { 0 };
-        bool m_isCollapsedToVisuallyEmpty { false };
     };
-    using RunList = Vector<Run, 50>;
+    using RunList = Vector<Run, 10>;
     enum class IsLastLineWithInlineContent { No, Yes };
     RunList close(IsLastLineWithInlineContent = IsLastLineWithInlineContent::No);
-    size_t revert(const InlineItem& revertTo);
 
     static Display::LineBox::Baseline halfLeadingMetrics(const FontMetrics&, InlineLayoutUnit lineLogicalHeight);
 
@@ -141,112 +167,77 @@ private:
     void appendInlineContainerEnd(const InlineItem&, InlineLayoutUnit logicalWidth);
     void appendLineBreak(const InlineItem&);
 
-    void removeTrailingCollapsibleContent();
+    void removeTrailingTrimmableContent();
+    void visuallyCollapsePreWrapOverflowContent();
     HangingContent collectHangingContent(IsLastLineWithInlineContent);
-    void alignHorizontally(RunList&, const HangingContent&, IsLastLineWithInlineContent);
-    void alignContentVertically(RunList&);
+    void alignHorizontally(const HangingContent&, IsLastLineWithInlineContent);
+    void alignContentVertically();
 
     void adjustBaselineAndLineHeight(const Run&);
     InlineLayoutUnit runContentHeight(const Run&) const;
 
     bool isTextAlignJustify() const { return m_horizontalAlignment == TextAlignMode::Justify; };
     bool isTextAlignRight() const { return m_horizontalAlignment == TextAlignMode::Right || m_horizontalAlignment == TextAlignMode::WebKitRight || m_horizontalAlignment == TextAlignMode::End; }
-    void justifyRuns(RunList&, InlineLayoutUnit availableWidth) const;
+    void justifyRuns(InlineLayoutUnit availableWidth);
 
-    bool isVisuallyNonEmpty(const InlineItemRun&) const;
+    bool isVisuallyNonEmpty(const Run&) const;
 
     LayoutState& layoutState() const;
     const InlineFormattingContext& formattingContext() const;
 
-    class InlineItemRun {
-    public:
-        InlineItemRun(const InlineItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth, WTF::Optional<Display::Run::TextContext> = WTF::nullopt);
+    struct TrimmableTrailingContent {
+        TrimmableTrailingContent(RunList&);
 
-        const Box& layoutBox() const { return m_inlineItem.layoutBox(); }
-        const RenderStyle& style() const { return layoutBox().style(); }
-        InlineLayoutUnit logicalLeft() const { return m_logicalLeft; }
-        InlineLayoutUnit logicalWidth() const { return m_logicalWidth; }
-        const Optional<Display::Run::TextContext>& textContext() const { return m_textContext; }
+        void addFullyTrimmableContent(size_t runIndex, InlineLayoutUnit trimmableWidth);
+        void addPartiallyTrimmableContent(size_t runIndex, InlineLayoutUnit trimmableWidth);
+        InlineLayoutUnit remove();
+        InlineLayoutUnit removePartiallyTrimmableContent();
 
-        bool isText() const { return m_inlineItem.isText(); }
-        bool isBox() const { return m_inlineItem.isBox(); }
-        bool isContainerStart() const { return m_inlineItem.isContainerStart(); }
-        bool isContainerEnd() const { return m_inlineItem.isContainerEnd(); }
-        bool isLineBreak() const { return m_inlineItem.isLineBreak(); }
-        InlineItem::Type type() const { return m_inlineItem.type(); }
+        InlineLayoutUnit width() const { return m_fullyTrimmableWidth + m_partiallyTrimmableWidth; }
+        bool isEmpty() const { return !m_firstRunIndex.hasValue(); }
+        bool isTrailingRunFullyTrimmable() const { return m_hasFullyTrimmableContent; }
+        bool isTrailingRunPartiallyTrimmable() const { return m_partiallyTrimmableWidth; }
 
-        void setIsCollapsed() { m_isCollapsed = true; }
-        bool isCollapsed() const { return m_isCollapsed; }
-
-        void moveHorizontally(InlineLayoutUnit offset) { m_logicalLeft += offset; }
-
-        bool isCollapsibleWhitespace() const;
-        bool hasTrailingLetterSpacing() const;
-
-        InlineLayoutUnit trailingLetterSpacing() const;
-        void removeTrailingLetterSpacing();
-
-        void setCollapsesToZeroAdvanceWidth();
-        bool isCollapsedToZeroAdvanceWidth() const { return m_collapsedToZeroAdvanceWidth; }
-
-        bool isCollapsible() const { return is<InlineTextItem>(m_inlineItem) && downcast<InlineTextItem>(m_inlineItem).isCollapsible(); }
-        bool isWhitespace() const { return is<InlineTextItem>(m_inlineItem) && downcast<InlineTextItem>(m_inlineItem).isWhitespace(); }
-        bool hasEmptyTextContent() const;
-
-        bool hasExpansionOpportunity() const { return isWhitespace() && !isCollapsedToZeroAdvanceWidth(); }
-
-        bool operator==(const InlineItem& other) const { return &other == &m_inlineItem; }
-        bool operator!=(const InlineItem& other) const { return !(*this == other); }
-
-    private:
-        const InlineItem& m_inlineItem;
-        InlineLayoutUnit m_logicalLeft { 0 };
-        InlineLayoutUnit m_logicalWidth { 0 };
-        const Optional<Display::Run::TextContext> m_textContext;
-        bool m_isCollapsed { false };
-        bool m_collapsedToZeroAdvanceWidth { false };
-    };
-
-    using InlineItemRunList = Vector<InlineItemRun, 50>;
-
-    struct CollapsibleContent {
-        CollapsibleContent(InlineItemRunList&);
-
-        void append(size_t runIndex);
-        InlineLayoutUnit collapse();
-        InlineLayoutUnit collapseTrailingRun();
         void reset();
 
-        InlineLayoutUnit width() const { return m_width; }
-        Optional<size_t> firstRunIndex() { return m_firstRunIndex; }
-        bool isEmpty() const { return !m_firstRunIndex.hasValue(); }
-        bool isTrailingRunFullyCollapsible() const { return m_lastRunIsFullyCollapsible; }
-        bool isTrailingRunPartiallyCollapsible() const { return !isEmpty() && !isTrailingRunFullyCollapsible(); }
-
     private:
-        InlineItemRunList& m_inlineitemRunList;
+        RunList& m_runs;
         Optional<size_t> m_firstRunIndex;
-        InlineLayoutUnit m_width { 0 };
-        bool m_lastRunIsFullyCollapsible { false };
+        bool m_hasFullyTrimmableContent { false };
+        InlineLayoutUnit m_fullyTrimmableWidth { 0 };
+        InlineLayoutUnit m_partiallyTrimmableWidth { 0 };
     };
 
     const InlineFormattingContext& m_inlineFormattingContext;
-    InlineItemRunList m_inlineItemRuns;
-    CollapsibleContent m_collapsibleContent;
+    RunList m_runs;
+    TrimmableTrailingContent m_trimmableTrailingContent;
     Optional<Display::LineBox::Baseline> m_initialStrut;
     InlineLayoutUnit m_lineLogicalWidth { 0 };
     Optional<TextAlignMode> m_horizontalAlignment;
     bool m_isIntrinsicSizing { false };
     bool m_hasIntrusiveFloat { false };
     Display::LineBox m_lineBox;
-    Optional<bool> m_lineIsVisuallyEmptyBeforeCollapsibleContent;
+    Optional<bool> m_lineIsVisuallyEmptyBeforeTrimmableTrailingContent;
+    bool m_shouldIgnoreTrailingLetterSpacing { false };
 };
 
-inline void LineBuilder::CollapsibleContent::reset()
+inline void LineBuilder::TrimmableTrailingContent::reset()
 {
+    m_hasFullyTrimmableContent = false;
     m_firstRunIndex = { };
-    m_width = 0_lu;
-    m_lastRunIsFullyCollapsible = false;
+    m_fullyTrimmableWidth = { };
+    m_partiallyTrimmableWidth = { };
+}
+
+inline LineBuilder::Run::TrailingWhitespace LineBuilder::Run::trailingWhitespaceType(const InlineTextItem& inlineTextItem) const
+{
+    if (!inlineTextItem.isWhitespace())
+        return TrailingWhitespace::None;
+    if (!inlineTextItem.isCollapsible())
+        return TrailingWhitespace::NotCollapsible;
+    if (inlineTextItem.length() == 1)
+        return TrailingWhitespace::Collapsible;
+    return TrailingWhitespace::Collapsed;
 }
 
 }

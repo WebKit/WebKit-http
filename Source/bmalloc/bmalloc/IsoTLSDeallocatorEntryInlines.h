@@ -28,7 +28,7 @@
 namespace bmalloc {
 
 template<typename Config>
-IsoTLSDeallocatorEntry<Config>::IsoTLSDeallocatorEntry(const std::lock_guard<Mutex>&)
+IsoTLSDeallocatorEntry<Config>::IsoTLSDeallocatorEntry(const LockHolder&)
 {
 }
 
@@ -41,6 +41,12 @@ template<typename Config>
 void IsoTLSDeallocatorEntry<Config>::construct(void* entry)
 {
     new (entry) IsoDeallocator<Config>(lock);
+}
+
+template<typename Config>
+void IsoTLSDeallocatorEntry<Config>::scavenge(void* entry)
+{
+    static_cast<IsoDeallocator<Config>*>(entry)->scavenge();
 }
 
 } // namespace bmalloc

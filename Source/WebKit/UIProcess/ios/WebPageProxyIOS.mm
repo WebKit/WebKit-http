@@ -48,6 +48,7 @@
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "ShareableResource.h"
+#import "UIKitSPI.h"
 #import "UserData.h"
 #import "UserInterfaceIdiom.h"
 #import "VersionChecks.h"
@@ -695,6 +696,22 @@ void WebPageProxy::applicationWillResignActive()
     m_process->send(Messages::WebPage::ApplicationWillResignActive(), m_webPageID);
 }
 
+void WebPageProxy::applicationDidEnterBackgroundForMedia()
+{
+    bool isSuspendedUnderLock = [UIApp isSuspendedUnderLock];
+    RELEASE_LOG_IF_ALLOWED(ViewState, "applicationWillEnterForegroundForMedia: isSuspendedUnderLock? %d", isSuspendedUnderLock);
+
+    m_process->send(Messages::WebPage::ApplicationDidEnterBackgroundForMedia(isSuspendedUnderLock), m_webPageID);
+}
+
+void WebPageProxy::applicationWillEnterForegroundForMedia()
+{
+    bool isSuspendedUnderLock = [UIApp isSuspendedUnderLock];
+    RELEASE_LOG_IF_ALLOWED(ViewState, "applicationDidEnterBackgroundForMedia: isSuspendedUnderLock? %d", isSuspendedUnderLock);
+
+    m_process->send(Messages::WebPage::ApplicationWillEnterForegroundForMedia(isSuspendedUnderLock), m_webPageID);
+}
+
 void WebPageProxy::applicationDidBecomeActive()
 {
 #if HAVE(AVKIT)
@@ -1298,8 +1315,6 @@ UIViewController *WebPageProxy::paymentCoordinatorPresentingViewController(const
 
 const String& WebPageProxy::paymentCoordinatorCTDataConnectionServiceType(const WebPaymentCoordinatorProxy&)
 {
-    if (!process().processPool().configuration().ctDataConnectionServiceType().isNull())
-        return process().processPool().configuration().ctDataConnectionServiceType();
     return websiteDataStore().configuration().dataConnectionServiceType();
 }
 

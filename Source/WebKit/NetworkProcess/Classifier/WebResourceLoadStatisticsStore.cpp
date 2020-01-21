@@ -230,7 +230,19 @@ void WebResourceLoadStatisticsStore::populateMemoryStoreFromDisk(CompletionHandl
             m_persistentStorage->populateMemoryStoreFromDisk([protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler)]() mutable {
                 postTaskReply(WTFMove(completionHandler));
             });
-        else
+        else if (is<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore)) {
+            auto& databaseStore = downcast<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore);
+            if (databaseStore.isNewResourceLoadStatisticsDatabaseFile()) {
+                m_statisticsStore->grandfatherExistingWebsiteData([protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler)]() mutable {
+                    postTaskReply(WTFMove(completionHandler));
+                });
+                databaseStore.setIsNewResourceLoadStatisticsDatabaseFile(false);
+            } else
+                postTaskReply([this, protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler)]() mutable {
+                    logTestingEvent("PopulatedWithoutGrandfathering"_s);
+                    completionHandler();
+                });
+        } else
             postTaskReply(WTFMove(completionHandler));
     });
 }
@@ -554,43 +566,13 @@ void WebResourceLoadStatisticsStore::submitTelemetry(CompletionHandler<void()>&&
     });
 }
 
-void WebResourceLoadStatisticsStore::logFrameNavigation(const WebFrameProxy& frame, const URL& pageURL, const WebCore::ResourceRequest& request, const URL& redirectURL)
+void WebResourceLoadStatisticsStore::logFrameNavigation(const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, const RegistrableDomain& sourceDomain, bool isRedirect, bool isMainFrame, Seconds delayAfterMainFrameDocumentLoad, bool wasPotentiallyInitiatedByUser)
 {
     ASSERT(RunLoop::isMain());
 
-    auto sourceURL = redirectURL;
-    bool isRedirect = !redirectURL.isNull();
-    if (!isRedirect) {
-        sourceURL = frame.url();
-        if (sourceURL.isNull())
-            sourceURL = pageURL;
-    }
-
-    auto& targetURL = request.url();
-
-    if (!targetURL.isValid() || !pageURL.isValid())
-        return;
-
-    auto targetHost = targetURL.host();
-    auto mainFrameHost = pageURL.host();
-
-    if (targetHost.isEmpty() || mainFrameHost.isEmpty() || targetHost == sourceURL.host())
-        return;
-
-    RegistrableDomain targetDomain { targetURL };
-    RegistrableDomain topFrameDomain { pageURL };
-    RegistrableDomain sourceDomain { sourceURL };
-
-    logFrameNavigation(targetDomain, topFrameDomain, sourceDomain, isRedirect, frame.isMainFrame());
-}
-
-void WebResourceLoadStatisticsStore::logFrameNavigation(const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, const RegistrableDomain& sourceDomain, bool isRedirect, bool isMainFrame)
-{
-    ASSERT(RunLoop::isMain());
-
-    postTask([this, targetDomain = targetDomain.isolatedCopy(), topFrameDomain = topFrameDomain.isolatedCopy(), sourceDomain = sourceDomain.isolatedCopy(), isRedirect, isMainFrame] {
+    postTask([this, targetDomain = targetDomain.isolatedCopy(), topFrameDomain = topFrameDomain.isolatedCopy(), sourceDomain = sourceDomain.isolatedCopy(), isRedirect, isMainFrame, delayAfterMainFrameDocumentLoad, wasPotentiallyInitiatedByUser] {
         if (m_statisticsStore)
-            m_statisticsStore->logFrameNavigation(targetDomain, topFrameDomain, sourceDomain, isRedirect, isMainFrame);
+            m_statisticsStore->logFrameNavigation(targetDomain, topFrameDomain, sourceDomain, isRedirect, isMainFrame, delayAfterMainFrameDocumentLoad, wasPotentiallyInitiatedByUser);
     });
 }
 
@@ -954,9 +936,11 @@ void WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent(ShouldGr
 
         m_statisticsStore->clear([this, protectedThis = protectedThis.copyRef(), shouldGrandfather, callbackAggregator = callbackAggregator.copyRef()] () mutable {
             if (shouldGrandfather == ShouldGrandfatherStatistics::Yes) {
-                if (m_statisticsStore)
+                if (m_statisticsStore) {
                     m_statisticsStore->grandfatherExistingWebsiteData([callbackAggregator = WTFMove(callbackAggregator)]() mutable { });
-                else
+                    if (is<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore))
+                        downcast<ResourceLoadStatisticsDatabaseStore>(*m_statisticsStore).setIsNewResourceLoadStatisticsDatabaseFile(true);
+                } else
                     RELEASE_LOG(ResourceLoadStatistics, "WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent After being cleared, m_statisticsStore is null when trying to grandfather data.");
             }
         });

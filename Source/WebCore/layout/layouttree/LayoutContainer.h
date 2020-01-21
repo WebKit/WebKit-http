@@ -48,12 +48,16 @@ public:
     const Box* lastInFlowChild() const;
     const Box* lastInFlowOrFloatingChild() const;
 
+    // FIXME: This is currently needed for style updates.
+    Box* firstChild() { return m_firstChild; }
+
     bool hasChild() const { return firstChild(); }
     bool hasInFlowChild() const { return firstInFlowChild(); }
     bool hasInFlowOrFloatingChild() const { return firstInFlowOrFloatingChild(); }
 
     void setFirstChild(Box&);
     void setLastChild(Box&);
+    void appendChild(Box&);
 
 private:
     Box* m_firstChild { nullptr };

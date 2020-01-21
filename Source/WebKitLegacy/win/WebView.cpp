@@ -130,6 +130,7 @@
 #include <WebCore/LogInitialization.h>
 #include <WebCore/Logging.h>
 #include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/MediaRecorderProvider.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/MemoryRelease.h>
 #include <WebCore/NetworkStorageSession.h>
@@ -2944,7 +2945,7 @@ ULONG WebView::Release()
 
     ULONG newRef = --m_refCount;
     if (!newRef) {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         m_deletionHasBegun = true;
 #endif
         delete(this);
@@ -3119,10 +3120,11 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
         makeUniqueRef<WebEditorClient>(this),
         SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
-        WebCore::CacheStorageProvider::create(),
+        CacheStorageProvider::create(),
         BackForwardList::create(),
         CookieJar::create(storageProvider.copyRef()),
-        makeUniqueRef<WebProgressTrackerClient>()
+        makeUniqueRef<WebProgressTrackerClient>(),
+        makeUniqueRef<MediaRecorderProvider>()
     );
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
@@ -5319,6 +5321,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setCSSOMViewScrollingAPIEnabled(!!enabled);
 
+    hr = prefsPrivate->CSSOMViewSmoothScrollingEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setCSSOMViewSmoothScrollingEnabled(!!enabled);
+
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5638,6 +5645,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setAsyncClipboardAPIEnabled(!!enabled);
+
+    hr = prefsPrivate->aspectRatioOfImgFromWidthAndHeightEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setAspectRatioOfImgFromWidthAndHeightEnabled(!!enabled);
 
     return S_OK;
 }

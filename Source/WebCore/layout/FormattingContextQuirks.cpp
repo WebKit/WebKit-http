@@ -28,6 +28,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "LayoutBox.h"
 
 namespace WebCore {
@@ -48,10 +49,11 @@ LayoutUnit FormattingContext::Quirks::heightValueOfNearestContainingBlockWithFix
         // If the only fixed value box we find is the ICB, then ignore the body and the document (vertical) margin, padding and border. So much quirkiness.
         // -and it's totally insane because now we freely travel across formatting context boundaries and computed margins are nonexistent.
         if (containingBlock->isBodyBox() || containingBlock->isDocumentBox()) {
-            auto& boxGeometry = formattingContext.geometryForBox(*containingBlock, FormattingContext::EscapeType::AccessAncestorFormattingContext);
+            auto& boxGeometry = formattingContext.geometryForBox(*containingBlock, FormattingContext::EscapeReason::FindFixedHeightAncestorQuirk);
 
-            auto usedValues = UsedHorizontalValues { UsedHorizontalValues::Constraints { formattingContext.geometryForBox(*containingBlock->containingBlock(), FormattingContext::EscapeType::AccessAncestorFormattingContext) } };
-            auto verticalMargin = formattingContext.geometry().computedVerticalMargin(*containingBlock, usedValues);
+            auto& containingBlockDisplayBox = formattingContext.geometryForBox(*containingBlock->containingBlock(), FormattingContext::EscapeReason::FindFixedHeightAncestorQuirk);
+            auto horizontalConstraints = Geometry::horizontalConstraintsForInFlow(containingBlockDisplayBox);
+            auto verticalMargin = formattingContext.geometry().computedVerticalMargin(*containingBlock, horizontalConstraints);
             auto verticalPadding = boxGeometry.paddingTop().valueOr(0) + boxGeometry.paddingBottom().valueOr(0);
             auto verticalBorder = boxGeometry.borderTop() + boxGeometry.borderBottom();
             bodyAndDocumentVerticalMarginPaddingAndBorder += verticalMargin.before.valueOr(0) + verticalMargin.after.valueOr(0) + verticalPadding + verticalBorder;
@@ -60,7 +62,7 @@ LayoutUnit FormattingContext::Quirks::heightValueOfNearestContainingBlockWithFix
         containingBlock = containingBlock->containingBlock();
     }
     // Initial containing block has to have a height.
-    return formattingContext.geometryForBox(layoutBox.initialContainingBlock(), FormattingContext::EscapeType::AccessAncestorFormattingContext).contentBox().height() - bodyAndDocumentVerticalMarginPaddingAndBorder;
+    return formattingContext.geometryForBox(layoutBox.initialContainingBlock(), FormattingContext::EscapeReason::FindFixedHeightAncestorQuirk).contentBox().height() - bodyAndDocumentVerticalMarginPaddingAndBorder;
 }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,11 @@
 
 #if ENABLE(GPU_PROCESS)
 
-#include "GPUProcessConnection.h"
+#include "AudioMediaStreamTrackRenderer.h"
 #include "MediaPlayerPrivateRemote.h"
+#include "RemoteAudioMediaStreamTrackRenderer.h"
 #include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerMIMETypeCache.h"
-#include "RemoteMediaPlayerManagerMessages.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
 #include "RemoteMediaPlayerProxyConfiguration.h"
 #include "WebCoreArgumentCoders.h"
@@ -164,7 +164,7 @@ std::unique_ptr<MediaPlayerPrivateInterface> RemoteMediaPlayerManager::createRem
     proxyConfiguration.isVideo = player->isVideoPlayer();
 
     RemoteMediaPlayerConfiguration playerConfiguration;
-    bool sendSucceeded = gpuProcessConnection().sendSync(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(id, remoteEngineIdentifier, proxyConfiguration), Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer::Reply(playerConfiguration), 0);
+    bool sendSucceeded = gpuProcessConnection().connection().sendSync(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(id, remoteEngineIdentifier, proxyConfiguration), Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer::Reply(playerConfiguration), 0);
     if (!sendSucceeded) {
         WTFLogAlways("Failed to create remote media player.");
         return nullptr;
@@ -178,7 +178,7 @@ std::unique_ptr<MediaPlayerPrivateInterface> RemoteMediaPlayerManager::createRem
 void RemoteMediaPlayerManager::deleteRemoteMediaPlayer(MediaPlayerPrivateRemoteIdentifier id)
 {
     m_players.take(id);
-    gpuProcessConnection().send(Messages::RemoteMediaPlayerManagerProxy::DeleteMediaPlayer(id), 0);
+    gpuProcessConnection().connection().send(Messages::RemoteMediaPlayerManagerProxy::DeleteMediaPlayer(id), 0);
 }
 
 void RemoteMediaPlayerManager::getSupportedTypes(MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, HashSet<String, ASCIICaseInsensitiveHash>& result)
@@ -192,7 +192,7 @@ void RemoteMediaPlayerManager::getSupportedTypes(MediaPlayerEnums::MediaEngineId
     }
 
     Vector<String> types;
-    if (!gpuProcessConnection().sendSync(Messages::RemoteMediaPlayerManagerProxy::GetSupportedTypes(remoteEngineIdentifier), Messages::RemoteMediaPlayerManagerProxy::GetSupportedTypes::Reply(types), 0))
+    if (!gpuProcessConnection().connection().sendSync(Messages::RemoteMediaPlayerManagerProxy::GetSupportedTypes(remoteEngineIdentifier), Messages::RemoteMediaPlayerManagerProxy::GetSupportedTypes::Reply(types), 0))
         return;
 
     result = HashSet<String, ASCIICaseInsensitiveHash>();
@@ -214,7 +214,7 @@ bool RemoteMediaPlayerManager::supportsKeySystem(MediaPlayerEnums::MediaEngineId
 HashSet<RefPtr<SecurityOrigin>> RemoteMediaPlayerManager::originsInMediaCache(MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, const String& path)
 {
     Vector<SecurityOriginData> originData;
-    if (!gpuProcessConnection().sendSync(Messages::RemoteMediaPlayerManagerProxy::OriginsInMediaCache(remoteEngineIdentifier, path), Messages::RemoteMediaPlayerManagerProxy::OriginsInMediaCache::Reply(originData), 0))
+    if (!gpuProcessConnection().connection().sendSync(Messages::RemoteMediaPlayerManagerProxy::OriginsInMediaCache(remoteEngineIdentifier, path), Messages::RemoteMediaPlayerManagerProxy::OriginsInMediaCache::Reply(originData), 0))
         return { };
 
     HashSet<RefPtr<SecurityOrigin>> origins;
@@ -226,7 +226,7 @@ HashSet<RefPtr<SecurityOrigin>> RemoteMediaPlayerManager::originsInMediaCache(Me
 
 void RemoteMediaPlayerManager::clearMediaCache(MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, const String& path, WallTime modifiedSince)
 {
-    gpuProcessConnection().send(Messages::RemoteMediaPlayerManagerProxy::ClearMediaCache(remoteEngineIdentifier, path, modifiedSince), 0);
+    gpuProcessConnection().connection().send(Messages::RemoteMediaPlayerManagerProxy::ClearMediaCache(remoteEngineIdentifier, path, modifiedSince), 0);
 }
 
 void RemoteMediaPlayerManager::clearMediaCacheForOrigins(MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, const String& path, const HashSet<RefPtr<SecurityOrigin>>& origins)
@@ -235,81 +235,13 @@ void RemoteMediaPlayerManager::clearMediaCacheForOrigins(MediaPlayerEnums::Media
         return origin->data();
     });
 
-    gpuProcessConnection().send(Messages::RemoteMediaPlayerManagerProxy::ClearMediaCacheForOrigins(remoteEngineIdentifier, path, originData), 0);
+    gpuProcessConnection().connection().send(Messages::RemoteMediaPlayerManagerProxy::ClearMediaCacheForOrigins(remoteEngineIdentifier, path, originData), 0);
 }
 
-void RemoteMediaPlayerManager::networkStateChanged(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
+void RemoteMediaPlayerManager::didReceivePlayerMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
-    if (const auto& player = m_players.get(id))
-        player->networkStateChanged(WTFMove(state));
-}
-
-void RemoteMediaPlayerManager::readyStateChanged(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
-{
-    if (const auto& player = m_players.get(id))
-        player->readyStateChanged(WTFMove(state));
-}
-
-void RemoteMediaPlayerManager::volumeChanged(MediaPlayerPrivateRemoteIdentifier id, double volume)
-{
-    if (const auto& player = m_players.get(id))
-        player->volumeChanged(volume);
-}
-
-void RemoteMediaPlayerManager::muteChanged(MediaPlayerPrivateRemoteIdentifier id, bool mute)
-{
-    if (const auto& player = m_players.get(id))
-        player->muteChanged(mute);
-}
-
-void RemoteMediaPlayerManager::timeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
-{
-    if (const auto& player = m_players.get(id))
-        player->timeChanged(WTFMove(state));
-}
-
-void RemoteMediaPlayerManager::durationChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
-{
-    if (const auto& player = m_players.get(id))
-        player->durationChanged(WTFMove(state));
-}
-
-void RemoteMediaPlayerManager::rateChanged(MediaPlayerPrivateRemoteIdentifier id, double rate)
-{
-    if (const auto& player = m_players.get(id))
-        player->rateChanged(rate);
-}
-
-void RemoteMediaPlayerManager::playbackStateChanged(MediaPlayerPrivateRemoteIdentifier id, bool paused)
-{
-    if (const auto& player = m_players.get(id))
-        player->playbackStateChanged(paused);
-}
-
-void RemoteMediaPlayerManager::engineFailedToLoad(WebKit::MediaPlayerPrivateRemoteIdentifier id, long platformErrorCode)
-{
-    if (const auto& player = m_players.get(id))
-        player->engineFailedToLoad(platformErrorCode);
-}
-
-void RemoteMediaPlayerManager::characteristicChanged(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool hasAudio, bool hasVideo, WebCore::MediaPlayerEnums::MovieLoadType loadType)
-{
-    if (auto player = m_players.get(id))
-        player->characteristicChanged(hasAudio, hasVideo, loadType);
-}
-    
-void RemoteMediaPlayerManager::requestResource(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaResourceIdentifier remoteMediaResourceIdentifier, ResourceRequest&& request, PlatformMediaResourceLoader::LoadOptions options, CompletionHandler<void()>&& completionHandler)
-{
-    if (const auto& player = m_players.get(id))
-        player->requestResource(remoteMediaResourceIdentifier, WTFMove(request), options);
-
-    completionHandler();
-}
-
-void RemoteMediaPlayerManager::removeResource(MediaPlayerPrivateRemoteIdentifier id, RemoteMediaResourceIdentifier remoteMediaResourceIdentifier)
-{
-    if (const auto& player = m_players.get(id))
-        player->removeResource(remoteMediaResourceIdentifier);
+    if (const auto& player = m_players.get(makeObjectIdentifier<MediaPlayerPrivateRemoteIdentifierType>(decoder.destinationID())))
+        player->didReceiveMessage(connection, decoder);
 }
 
 void RemoteMediaPlayerManager::updatePreferences(const Settings& settings)
@@ -319,17 +251,23 @@ void RemoteMediaPlayerManager::updatePreferences(const Settings& settings)
     };
 
     RemoteMediaPlayerSupport::setRegisterRemotePlayerCallback(settings.useGPUProcessForMedia() ? WTFMove(registerEngine) : RemoteMediaPlayerSupport::RegisterRemotePlayerCallback());
+
+#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
+    if (settings.useGPUProcessForMedia()) {
+        WebCore::AudioMediaStreamTrackRenderer::setCreator(WebKit::AudioMediaStreamTrackRenderer::create);
+        WebCore::SampleBufferDisplayLayer::setCreator([](auto& client, bool hideRootLayer, auto size) {
+            return WebProcess::singleton().ensureGPUProcessConnection().sampleBufferDisplayLayerManager().createLayer(client, hideRootLayer, size);
+        });
+    }
+#endif
 }
 
-void RemoteMediaPlayerManager::updateCachedState(WebKit::MediaPlayerPrivateRemoteIdentifier id, RemoteMediaPlayerState&& state)
+GPUProcessConnection& RemoteMediaPlayerManager::gpuProcessConnection() const
 {
-    if (auto player = m_players.get(id))
-        player->updateCachedState(WTFMove(state));
-}
+    if (!m_gpuProcessConnection)
+        m_gpuProcessConnection = &WebProcess::singleton().ensureGPUProcessConnection();
 
-IPC::Connection& RemoteMediaPlayerManager::gpuProcessConnection() const
-{
-    return WebProcess::singleton().ensureGPUProcessConnection().connection();
+    return *m_gpuProcessConnection;
 }
 
 } // namespace WebKit

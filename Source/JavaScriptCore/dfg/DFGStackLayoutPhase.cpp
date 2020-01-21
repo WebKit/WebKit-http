@@ -113,7 +113,7 @@ public:
             
             for (unsigned argument = inlineCallFrame->argumentsWithFixup.size(); argument--;) {
                 usedOperands.setOperand(VirtualRegister(
-                    virtualRegisterForArgument(argument).offset() +
+                    virtualRegisterForArgumentIncludingThis(argument).offset() +
                     inlineCallFrame->stackOffset), true);
             }
         }

@@ -216,16 +216,16 @@ ALWAYS_INLINE PropertyOffset JSObject::prepareToPutDirectWithoutTransition(VM& v
     PropertyOffset result;
     structure->addPropertyWithoutTransition(
         vm, propertyName, attributes,
-        [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, PropertyOffset newLastOffset) {
-            unsigned newOutOfLineCapacity = Structure::outOfLineCapacity(newLastOffset);
+        [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, PropertyOffset newMaxOffset) {
+            unsigned newOutOfLineCapacity = Structure::outOfLineCapacity(newMaxOffset);
             if (newOutOfLineCapacity != oldOutOfLineCapacity) {
                 Butterfly* butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, newOutOfLineCapacity);
                 nukeStructureAndSetButterfly(vm, structureID, butterfly);
-                structure->setLastOffset(newLastOffset);
+                structure->setMaxOffset(vm, newMaxOffset);
                 WTF::storeStoreFence();
                 setStructureIDDirectly(structureID);
             } else
-                structure->setLastOffset(newLastOffset);
+                structure->setMaxOffset(vm, newMaxOffset);
 
             // This assertion verifies that the concurrent GC won't read garbage if the concurrentGC
             // is running at the same time we put without transitioning.
@@ -477,7 +477,7 @@ inline void JSObject::setIndexQuicklyForTypedArray(unsigned i, JSValue value)
     
 inline void JSObject::validatePutOwnDataProperty(VM& vm, PropertyName propertyName, JSValue value)
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     ASSERT(value);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     unsigned attributes;
@@ -488,11 +488,11 @@ inline void JSObject::validatePutOwnDataProperty(VM& vm, PropertyName propertyNa
         if (auto entry = findPropertyHashEntry(vm, propertyName))
             ASSERT(!(entry->value->attributes() & (PropertyAttribute::Accessor | PropertyAttribute::CustomAccessor | PropertyAttribute::ReadOnly)));
     }
-#else
+#else // not ASSERT_ENABLED
     UNUSED_PARAM(vm);
     UNUSED_PARAM(propertyName);
     UNUSED_PARAM(value);
-#endif
+#endif // not ASSERT_ENABLED
 }
 
 inline bool JSObject::putOwnDataProperty(VM& vm, PropertyName propertyName, JSValue value, PutPropertySlot& slot)

@@ -125,8 +125,6 @@
             (iokit-user-client-class "AppleKeyStoreUserClient")))
 
 (define-once (location-services)
-    (allow mach-lookup (with report) (with telemetry)
-           (global-name "com.apple.locationd.registration"))
     (allow-carrier-bundle) ;; <rdar://problem/21192365>
     (mobile-preferences-read
         "com.apple.AppSupport"
@@ -180,12 +178,8 @@
            (global-name "com.apple.coremedia.volumecontroller.xpc"))
 
     (allow mach-lookup (with report) (with telemetry)
-        (global-name "com.apple.coremedia.cpeprotector.xpc")
         (global-name "com.apple.coremedia.endpoint.xpc")
-        (global-name "com.apple.coremedia.figcontentkeysession.xpc")
-        (global-name "com.apple.coremedia.figcpecryptor")
-        (global-name "com.apple.coremedia.routingsessionmanager.xpc")
-        (global-name "com.apple.coremedia.sts"))
+        (global-name "com.apple.coremedia.figcpecryptor"))
 
     (mobile-preferences-read
         "com.apple.avfoundation"
@@ -271,12 +265,12 @@
 ;;; Declare that the application uses the OpenGL, Metal, and CoreML hardware & frameworks.
 ;;;
 (define-once (opengl)
-    (allow iokit-open
+    ;; Items not seen in testing
+    (allow iokit-open (with report) (with telemetry)
            (iokit-connection "IOGPU")
            (iokit-user-client-class
                 "AGXCommandQueue"
                 "AGXDevice"
-                "AGXDeviceUserClient"
                 "AGXSharedUserClient"
                 "IOAccelContext"
                 "IOAccelDevice"
@@ -285,6 +279,13 @@
                 "IOAccelContext2"
                 "IOAccelDevice2"
                 "IOAccelSharedUserClient2"))
+
+    ;; Items with known uses
+    (allow iokit-open
+        (iokit-connection "IOGPU")
+        (iokit-user-client-class
+            "AGXDeviceUserClient" ;; Used by WebGL
+    ))
 
     (allow iokit-get-properties
         (iokit-property "IOGLBundleName")
@@ -297,9 +298,6 @@
 
     (allow sysctl-read
            (sysctl-name #"kern.bootsessionuuid"))
-
-    (allow mach-lookup (with report) (with telemetry)
-        (xpc-service-name-prefix "com.apple.AGXCompilerService"))
 
     (allow mach-lookup
        ;; <rdar://problem/47268166>
@@ -369,8 +367,7 @@
         (allow-create-directory (literal base-directory))
         (allow file-read* file-write*
             (prefix (string-append base-directory "/awd-" daemon-name ".log")))
-        (allow mach-lookup (with report) (with telemetry)
-               (global-name "com.apple.awdd"))))
+))
 
 (define-once (logd-diagnostic-paths)
     (require-any
@@ -412,29 +409,6 @@
         (home-subpath "/Library/Assets/com_apple_MobileAsset_VoiceServicesVocalizerVoice"))
 )
 
-(define-once (core-motion)
-    ;; CoreMotion
-    (mobile-preferences-read "com.apple.CoreMotion")
-
-    ;; CoreMotion’s deviceMotion API
-    (with-filter
-        (require-any
-            (iokit-registry-entry-class "AppleOscarNub")
-            (iokit-registry-entry-class "AppleSPUHIDInterface"))
-        (allow iokit-get-properties
-            (iokit-property "gyro-interrupt-calibration")))
-    (with-filter
-        (iokit-registry-entry-class "IOHIDEventServiceFastPathUserClient")
-        (allow iokit-open (with report) (with telemetry))
-        (allow iokit-get-properties iokit-set-properties
-            (iokit-property "interval"
-                            "mode"
-                            "QueueSize"
-                            "useMag"))
-        (allow iokit-get-properties
-            (iokit-property "client")))
-)
-
 ;; Things required by UIKit
 (define-once (uikit-requirements)
     (mobile-preferences-read
@@ -448,7 +422,6 @@
 
     (allow mach-lookup (with report) (with telemetry)
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
-        (global-name "com.apple.iohideventsystem")
     )
 
     (allow mach-lookup
@@ -459,13 +432,16 @@
     )
 
     ; UIKit-required IOKit nodes.
-    (allow iokit-open
+    (allow iokit-open  (with report) (with telemetry)
         (iokit-user-client-class "AppleJPEGDriverUserClient")
-        (iokit-user-client-class "IOSurfaceAcceleratorClient")
-        (iokit-user-client-class "IOSurfaceSendRight"))
-    (allow iokit-open (with report) (with telemetry)
-        ;; Requires by UIView -> UITextMagnifierRenderer -> UIWindow
-        (iokit-user-client-class "IOSurfaceRootUserClient"))
+        (iokit-user-client-class "IOSurfaceSendRight")
+    )
+
+    ; WebKit-required IOKit classes
+    (allow iokit-open
+        (iokit-user-client-class "IOSurfaceAcceleratorClient") ;; Media rendering into pixel buffers
+        (iokit-user-client-class "IOSurfaceRootUserClient") ;; Needed by Tiled Grid code.
+    )
 
     ;; Silence sandbox violations from apps trying to create the empty plist if it doesn't exist.
     ;; <rdar://problem/13796537>
@@ -485,13 +461,6 @@
         ; XXX - /Library ought to be allowed in all UI profiles but isn't (CF, MobileSafari)
         (subpath "/Library/Dictionaries")
         (home-subpath "/Library/Dictionaries"))
-)
-
-(define-once (network-extensions-support)
-    ;; Network Extensions / VPN helper.
-    (allow mach-lookup (with report) (with telemetry)
-        (global-name "com.apple.nehelper")
-        (global-name "com.apple.nesessionmanager.content-filter")) ;; <rdar://problem/48442387>
 )
 
 (deny file-map-executable)
@@ -665,8 +634,9 @@
     (deny ipc-posix-sem-create ipc-posix-sem-post ipc-posix-sem-unlink ipc-posix-sem-wait)
     (allow ipc-posix-sem-open))
 
-(allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.runningboard"))
+(allow mach-lookup (with telemetry)
+    (global-name "com.apple.runningboard") ;; Needed by process assertion code (ProcessTaskStateObserver).
+)
 
 (allow system-sched
        (require-entitlement "com.apple.private.kernel.override-cpumon"))
@@ -685,9 +655,6 @@
        (global-name "com.apple.system.notification_center"))
 (allow ipc-posix-shm-read*
        (ipc-posix-name "apple.shm.notification_center"))
-
-(allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.diagnosticd"))
 
 (logd-diagnostic-client)
 
@@ -747,8 +714,6 @@
 ;; Permit reading assets via MobileAsset framework.
 (asset-access 'with-media-playback)
 
-(network-extensions-support)
-
 ;; allow 3rd party applications to access nsurlstoraged's top level domain data cache
 (allow-well-known-system-group-container-literal-read
     "/systemgroup.com.apple.nsurlstoragedresources/Library/dafsaData.bin")
@@ -756,10 +721,6 @@
 ;; Access the keyboards
 (allow file-read*
     (home-subpath "/Library/Caches/com.apple.keyboards"))
-
-;; Power logging
-(allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.powerlog.plxpclogger.xpc")) ;;  <rdar://problem/36442803>
 
 (mobile-preferences-read
     "com.apple.EmojiPreferences"
@@ -790,8 +751,6 @@
     (global-name "com.apple.iconservices"))
 
 (allow-preferences-common)
-
-(core-motion)
 
 ;; Home Button
 (with-filter (iokit-registry-entry-class "IOPlatformDevice")
@@ -844,6 +803,7 @@
         "hw.activecpu"
         "hw.availcpu"
         "hw.cachelinesize"
+        "hw.cpufamily" ;; <rdar://problem/58416475>
         "hw.cputype"
         "hw.l2cachesize"
         "hw.logicalcpu"
@@ -952,7 +912,6 @@
     (global-name "com.apple.analyticsd"))
 
 (allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.cookied")
     (global-name "com.apple.PowerManagement.control"))
 
 (deny file-write-create (vnode-type SYMLINK))

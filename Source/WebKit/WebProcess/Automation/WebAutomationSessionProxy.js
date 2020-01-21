@@ -25,7 +25,7 @@
 
 //# sourceURL=__InjectedScript_WebAutomationSessionProxy.js
 
-(function (sessionIdentifier, evaluate, createUUID) {
+(function (sessionIdentifier, evaluate, createUUID, isValidNodeIdentifier) {
 
 const sessionNodePropertyName = "session-node-" + sessionIdentifier;
 
@@ -41,33 +41,9 @@ let AutomationSessionProxy = class AutomationSessionProxy
 
     evaluateJavaScriptFunction(functionString, argumentStrings, expectsImplicitCallbackArgument, frameID, callbackID, resultCallback, callbackTimeout)
     {
-        // The script is expected to be a function declaration. Evaluate it inside parenthesis to get the function value.
-        let functionValue = evaluate("(" + functionString + ")");
-        if (typeof functionValue !== "function")
-            throw new TypeError("Script did not evaluate to a function.");
-
-        this._clearStaleNodes();
-
-        let argumentValues = argumentStrings.map(this._jsonParse, this);
-
-        let timeoutIdentifier = 0;
-        let resultReported = false;
-
-        let reportResult = (result) => {
-            if (timeoutIdentifier)
-                clearTimeout(timeoutIdentifier);
-            resultCallback(frameID, callbackID, this._jsonStringify(result), false);
-            resultReported = true;
-        };
-        let reportTimeoutError = () => { resultCallback(frameID, callbackID, "JavaScriptTimeout", true); };
-
-        if (expectsImplicitCallbackArgument) {
-            argumentValues.push(reportResult);
-            functionValue.apply(null, argumentValues);
-            if (!resultReported && callbackTimeout >= 0)
-                timeoutIdentifier = setTimeout(reportTimeoutError, callbackTimeout);
-        } else
-            reportResult(functionValue.apply(null, argumentValues));
+        this._execute(functionString, argumentStrings, expectsImplicitCallbackArgument, callbackTimeout)
+            .then(result => { resultCallback(frameID, callbackID, this._jsonStringify(result)); })
+            .catch(error => { resultCallback(frameID, callbackID, error); });
     }
 
     nodeForIdentifier(identifier)
@@ -82,6 +58,59 @@ let AutomationSessionProxy = class AutomationSessionProxy
 
     // Private
 
+    _execute(functionString, argumentStrings, expectsImplicitCallbackArgument, callbackTimeout)
+    {
+        let timeoutPromise;
+        let timeoutIdentifier = 0;
+        if (callbackTimeout >= 0) {
+            timeoutPromise = new Promise((resolve, reject) => {
+                timeoutIdentifier = setTimeout(() => {
+                    reject({ name: "JavaScriptTimeout", message: "script timed out after " + callbackTimeout + "ms" });
+                }, callbackTimeout);
+            });
+        }
+
+        let promise = new Promise((resolve, reject) => {
+            // The script is expected to be a function declaration. Evaluate it inside parenthesis to get the function value.
+            let functionValue = evaluate("(async " + functionString + ")");
+            if (typeof functionValue !== "function")
+                reject(new TypeError("Script did not evaluate to a function."));
+
+            this._clearStaleNodes();
+
+            let argumentValues = argumentStrings.map(this._jsonParse, this);
+            if (expectsImplicitCallbackArgument)
+                argumentValues.push(resolve);
+            let resultPromise = functionValue.apply(null, argumentValues);
+
+            let promises = [resultPromise];
+            if (timeoutPromise)
+                promises.push(timeoutPromise);
+            Promise.race(promises)
+                .then(result => {
+                    if (!expectsImplicitCallbackArgument) {
+                        resolve(result);
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                });
+        });
+
+        // Async scripts can call Promise.resolve() in the function script, generating a new promise that is resolved in a
+        // timer (see w3c test execute_async_script/promise.py::test_promise_resolve_timeout). In that case, the internal race
+        // finishes resolved, so we need to start a new one here to wait for the second promise to be resolved or the timeout.
+        let promises = [promise];
+        if (timeoutPromise)
+            promises.push(timeoutPromise);
+        return Promise.race(promises)
+            .finally(() => {
+                if (timeoutIdentifier) {
+                    clearTimeout(timeoutIdentifier);
+                }
+            });
+    }
+
     _jsonParse(string)
     {
         if (!string)
@@ -89,9 +118,9 @@ let AutomationSessionProxy = class AutomationSessionProxy
         return JSON.parse(string, (key, value) => this._reviveJSONValue(key, value));
     }
 
-    _jsonStringify(original)
+    _jsonStringify(value)
     {
-        return JSON.stringify(original, (key, value) => this._replaceJSONValue(key, value)) || "null";
+        return JSON.stringify(this._jsonClone(value));
     }
 
     _reviveJSONValue(key, value)
@@ -101,24 +130,105 @@ let AutomationSessionProxy = class AutomationSessionProxy
         return value;
     }
 
-    _replaceJSONValue(key, value)
+    _isCollection(value) {
+        switch (Object.prototype.toString.call(value)) {
+        case "[object Arguments]":
+        case "[object Array]":
+        case "[object FileList]":
+        case "[object HTMLAllCollection]":
+        case "[object HTMLCollection]":
+        case "[object HTMLFormControlsCollection]":
+        case "[object HTMLOptionsCollection]":
+        case "[object NodeList]":
+            return true;
+        }
+        return false;
+    }
+
+    _checkCyclic(value, stack = [])
     {
+        function isCyclic(value, proxy, stack = []) {
+            if (value === undefined || value === null)
+                return false;
+
+            if (typeof value === "boolean" || typeof value === "number" || typeof value === "string")
+                return false;
+
+            if (value instanceof Node)
+                return false;
+
+            if (stack.includes(value))
+                return true;
+
+            if (proxy._isCollection(value)) {
+                stack.push(value);
+                for (let i = 0; i < value.length; i++) {
+                    if (isCyclic(value[i], proxy, stack))
+                        return true;
+                }
+
+                stack.pop();
+                return false;
+            }
+
+            stack.push(value);
+            for (let property in value) {
+                if (isCyclic(value[property], proxy, stack))
+                    return true;
+            }
+
+            stack.pop();
+            return false;
+        }
+
+        if (isCyclic(value, this))
+            throw new TypeError("cannot serialize cyclic structures.");
+    }
+
+    _jsonClone(value)
+    {
+        // Internal JSON clone algorithm.
+        // https://w3c.github.io/webdriver/#dfn-internal-json-clone-algorithm
+        if (value === undefined || value === null)
+            return null;
+
+        if (typeof value === "boolean" || typeof value === "number" || typeof value === "string")
+            return value;
+
+        if (this._isCollection(value)) {
+            this._checkCyclic(value);
+            return [...value].map(item => this._jsonClone(item));
+        }
+
         if (value instanceof Node)
             return this._createNodeHandle(value);
 
-        if (value instanceof NodeList || value instanceof HTMLCollection)
-            value = Array.from(value).map(this._createNodeHandle, this);
+        // FIXME: implement window proxy serialization.
 
-        return value;
+        if (typeof value.toJSON === "function")
+            return value.toJSON();
+
+        let customObject = {};
+        for (let property in value) {
+            this._checkCyclic(value);
+            customObject[property] = this._jsonClone(value[property]);
+        }
+        return customObject;
     }
 
     _createNodeHandle(node)
     {
+        if (node.ownerDocument !== window.document || !node.isConnected)
+            throw {name: "NodeNotFound", message: "Stale element found when trying to create the node handle"};
+
         return {[sessionNodePropertyName]: this._identifierForNode(node)};
     }
 
     _nodeForIdentifier(identifier)
     {
+        if (!isValidNodeIdentifier(identifier))
+            throw {name: "InvalidNodeIdentifier", message: "Node identifier '" + identifier + "' is invalid"};
+
         let node = this._idToNodeMap.get(identifier);
         if (node)
             return node;

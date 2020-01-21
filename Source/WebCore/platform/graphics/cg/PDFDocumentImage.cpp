@@ -42,13 +42,16 @@
 #include "SharedBuffer.h"
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPDFDocument.h>
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RAMSize.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/TextStream.h>
 
-#if !PLATFORM(COCOA)
+#if PLATFORM(COCOA)
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#else
 #include "ImageSourceCG.h"
 #endif
 

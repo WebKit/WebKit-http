@@ -119,6 +119,7 @@ MESSAGE_RECEIVERS = \
     LegacyCustomProtocolManagerProxy \
     LibWebRTCCodecs \
     LibWebRTCCodecsProxy \
+    MediaPlayerPrivateRemote \
     NPObjectMessageReceiver \
     NetworkConnectionToWebProcess \
     NetworkContentRuleListManager \
@@ -140,14 +141,22 @@ MESSAGE_RECEIVERS = \
     PluginProcessConnectionManager \
     PluginProcessProxy \
     PluginProxy \
+    RemoteAudioMediaStreamTrackRendererManager \
+    RemoteAudioMediaStreamTrackRenderer \
     RemoteLayerTreeDrawingAreaProxy \
     RemoteMediaPlayerManager \
     RemoteMediaPlayerManagerProxy \
+    RemoteMediaPlayerProxy \
+    RemoteMediaRecorder \
+    RemoteMediaRecorderManager \
     RemoteMediaResourceManager \
     RemoteObjectRegistry \
+    RemoteSampleBufferDisplayLayer \
+    RemoteSampleBufferDisplayLayerManager \
     RemoteScrollingCoordinator \
     RemoteWebInspectorProxy \
     RemoteWebInspectorUI \
+    SampleBufferDisplayLayer \
     SecItemShimProxy \
     ServiceWorkerFetchTask \
     SmartMagnificationController \

@@ -1119,15 +1119,9 @@ test/built-ins/Function/prototype/toString/unicode.js:
 test/built-ins/GeneratorFunction/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(«[object GeneratorFunction]», «[object GeneratorFunction]») to be true'
   strict mode: 'Test262Error: Expected SameValue(«[object GeneratorFunction]», «[object GeneratorFunction]») to be true'
-test/built-ins/JSON/parse/reviver-array-get-prop-from-prototype.js:
-  default: 'Test262Error: Expected true but got false'
-  strict mode: 'Test262Error: Expected true but got false'
 test/built-ins/JSON/parse/reviver-array-non-configurable-prop-create.js:
   default: 'Test262Error: Expected SameValue(«22», «2») to be true'
   strict mode: 'Test262Error: Expected SameValue(«22», «2») to be true'
-test/built-ins/JSON/parse/reviver-object-get-prop-from-prototype.js:
-  default: 'Test262Error: Expected true but got false'
-  strict mode: 'Test262Error: Expected true but got false'
 test/built-ins/JSON/parse/reviver-object-non-configurable-prop-create.js:
   default: 'Test262Error: Expected SameValue(«22», «2») to be true'
   strict mode: 'Test262Error: Expected SameValue(«22», «2») to be true'
@@ -1158,24 +1152,6 @@ test/built-ins/Number/bigint-conversion.js:
 test/built-ins/Number/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(«0», «0») to be true'
   strict mode: 'Test262Error: Expected SameValue(«0», «0») to be true'
-test/built-ins/Object/getOwnPropertyNames/proxy-invariant-absent-not-configurable-symbol-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/getOwnPropertyNames/proxy-invariant-not-extensible-absent-symbol-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/getOwnPropertyNames/proxy-invariant-not-extensible-extra-symbol-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/getOwnPropertySymbols/proxy-invariant-absent-not-configurable-string-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/getOwnPropertySymbols/proxy-invariant-not-extensible-absent-string-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/getOwnPropertySymbols/proxy-invariant-not-extensible-extra-string-key.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/Object/internals/DefineOwnProperty/consistent-value-function-arguments.js:
   default: 'Test262Error: Expected SameValue(«null», «[object Arguments]») to be true'
 test/built-ins/Object/internals/DefineOwnProperty/consistent-value-function-caller.js:
@@ -1183,21 +1159,6 @@ test/built-ins/Object/internals/DefineOwnProperty/consistent-value-function-call
 test/built-ins/Object/internals/DefineOwnProperty/consistent-value-regexp-dollar1.js:
   default: 'Test262Error: Expected SameValue(«», «x») to be true'
   strict mode: 'Test262Error: Expected SameValue(«», «x») to be true'
-test/built-ins/Object/keys/property-traps-order-with-proxied-array.js:
-  default: 'Test262Error: Expected [ownKeys, getOwnPropertyDescriptor] and [ownKeys] to have the same contents. '
-  strict mode: 'Test262Error: Expected [ownKeys, getOwnPropertyDescriptor] and [ownKeys] to have the same contents. '
-test/built-ins/Object/keys/proxy-non-enumerable-prop-invariant-1.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/keys/proxy-non-enumerable-prop-invariant-2.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/Object/keys/proxy-non-enumerable-prop-invariant-3.js:
-  default: "TypeError: Proxy handler's 'ownKeys' method returned a key that was not present in its non-extensible target"
-  strict mode: "TypeError: Proxy handler's 'ownKeys' method returned a key that was not present in its non-extensible target"
-test/built-ins/Object/preventExtensions/throws-when-false.js:
-  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/Object/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
   strict mode: 'Test262Error: Expected SameValue(«[object Object]», «[object Object]») to be true'
@@ -1276,15 +1237,6 @@ test/built-ins/Proxy/construct/return-not-object-throws-undefined-realm.js:
 test/built-ins/Proxy/construct/trap-is-not-callable-realm.js:
   default: 'Test262Error: Expected a TypeError but got a TypeError'
   strict mode: 'Test262Error: Expected a TypeError but got a TypeError'
-test/built-ins/RegExp/named-groups/groups-object-subclass-sans.js:
-  default: 'Test262Error: Expected SameValue(«b», «$<a>») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«b», «$<a>») to be true'
-test/built-ins/RegExp/named-groups/groups-object-subclass.js:
-  default: 'Test262Error: Expected SameValue(«b», «$<a>») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«b», «$<a>») to be true'
-test/built-ins/RegExp/named-groups/string-replace-nocaptures.js:
-  default: 'Test262Error: Expected SameValue(«$<snd>$<fst>cd», «$<$<fst>cd») to be true'
-  strict mode: 'Test262Error: Expected SameValue(«$<snd>$<fst>cd», «$<$<fst>cd») to be true'
 test/built-ins/RegExp/named-groups/unicode-property-names.js:
   default: 'SyntaxError: Invalid regular expression: invalid group specifier name'
   strict mode: 'SyntaxError: Invalid regular expression: invalid group specifier name'
@@ -1684,9 +1636,6 @@ test/built-ins/Set/proto-from-ctor-realm.js:
 test/built-ins/String/proto-from-ctor-realm.js:
   default: 'Test262Error: Expected SameValue(«», «») to be true'
   strict mode: 'Test262Error: Expected SameValue(«», «») to be true'
-test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call.js:
-  default: "Test262Error: sample 11: 'abcba'.replaceAll(/(?<named>b)/g, '($<named>)') Expected SameValue(«a($<named>)c($<named>)a», «a(b)c(b)a») to be true"
-  strict mode: "Test262Error: sample 11: 'abcba'.replaceAll(/(?<named>b)/g, '($<named>)') Expected SameValue(«a($<named>)c($<named>)a», «a(b)c(b)a») to be true"
 test/built-ins/ThrowTypeError/extensible.js:
   default: 'Test262Error: Expected SameValue(«true», «false») to be true'
   strict mode: 'Test262Error: Expected SameValue(«true», «false») to be true'
@@ -3519,8 +3468,6 @@ test/language/module-code/namespace/internals/get-nested-namespace-dflt-skip.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
 test/language/module-code/namespace/internals/get-nested-namespace-props-nrml.js:
   module: "SyntaxError: Unexpected identifier 'as'. Expected 'from' before exported module name."
-test/language/module-code/namespace/internals/object-keys-binding-uninit.js:
-  module: 'Test262Error: Expected a ReferenceError to be thrown but no exception was thrown at all'
 test/language/module-code/namespace/internals/set.js:
   module: 'Test262Error: Reflect.defineProperty: local1 Expected SameValue(«false», «true») to be true'
 test/language/module-code/parse-err-hoist-lex-fun.js:

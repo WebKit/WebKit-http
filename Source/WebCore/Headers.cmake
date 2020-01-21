@@ -80,6 +80,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/indexeddb/shared/IDBResultData.h
     Modules/indexeddb/shared/IDBTransactionInfo.h
 
+    Modules/mediarecorder/MediaRecorderProvider.h
+
     Modules/mediasession/MediaSessionEvents.h
     Modules/mediasession/MediaSessionMetadata.h
     Modules/mediasession/WebMediaSessionManager.h
@@ -169,8 +171,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     accessibility/AccessibilityRenderObject.h
     accessibility/AccessibilityScrollView.h
 
+    accessibility/isolatedtree/AXIsolatedObject.h
     accessibility/isolatedtree/AXIsolatedTree.h
-    accessibility/isolatedtree/AXIsolatedTreeNode.h
 
     animation/CSSPropertyBlendingClient.h
     animation/CompositeOperation.h
@@ -671,6 +673,20 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     inspector/agents/InspectorPageAgent.h
 
+    layout/LayoutUnits.h
+    layout/MarginTypes.h
+
+    layout/displaytree/DisplayBox.h
+    layout/displaytree/DisplayInlineContent.h
+    layout/displaytree/DisplayInlineRect.h
+    layout/displaytree/DisplayLineBox.h
+    layout/displaytree/DisplayRect.h
+    layout/displaytree/DisplayRun.h
+
+    layout/layouttree/LayoutBox.h
+    layout/layouttree/LayoutReplaced.h
+    layout/layouttree/TextContext.h
+
     loader/AdClickAttribution.h
     loader/CanvasActivityRecord.h
     loader/CookieJar.h
@@ -819,8 +835,10 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/RemoteFrame.h
     page/RenderingUpdateScheduler.h
     page/RuntimeEnabledFeatures.h
+    page/ScrollBehavior.h
     page/ScrollIntoViewOptions.h
     page/ScrollLogicalPosition.h
+    page/ScrollOptions.h
     page/ScrollToOptions.h
     page/SecurityOrigin.h
     page/SecurityOriginData.h
@@ -1066,7 +1084,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/GraphicsLayerTransform.h
     platform/graphics/GraphicsLayerUpdater.h
     platform/graphics/GraphicsTypes.h
-    platform/graphics/GraphicsTypes3D.h
+    platform/graphics/GraphicsTypesGL.h
     platform/graphics/Icon.h
     platform/graphics/Image.h
     platform/graphics/ImageBackingStore.h
@@ -1155,6 +1173,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/transforms/TransformOperations.h
     platform/graphics/transforms/TransformationMatrix.h
 
+    platform/mediarecorder/MediaRecorderPrivate.h
+
     platform/mediastream/CaptureDevice.h
     platform/mediastream/CaptureDeviceManager.h
     platform/mediastream/MediaConstraints.h
@@ -1227,6 +1247,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/network/SocketStreamHandleClient.h
     platform/network/StorageSessionProvider.h
     platform/network/StoredCredentialsPolicy.h
+    platform/network/SynchronousLoaderClient.h
 
     platform/sql/SQLValue.h
     platform/sql/SQLiteDatabase.h

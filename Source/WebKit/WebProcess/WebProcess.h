@@ -44,6 +44,7 @@
 #include "WebSocketChannelManager.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/FrameIdentifier.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
 #if PLATFORM(MAC)
@@ -100,7 +101,6 @@ struct ServiceWorkerContextData;
 
 namespace WebKit {
 
-class DependencyProcessAssertion;
 class EventDispatcher;
 class GamepadData;
 class GPUProcessConnection;
@@ -165,6 +165,10 @@ public:
     InjectedBundle* injectedBundle() const { return m_injectedBundle.get(); }
     
     PAL::SessionID sessionID() const { ASSERT(m_sessionID); return *m_sessionID; }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    WebCore::ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode() const { return m_thirdPartyCookieBlockingMode; }
+#endif
 
 #if PLATFORM(COCOA)
     const WTF::MachSendRight& compositingRenderServerPort() const { return m_compositingRenderServerPort; }
@@ -288,7 +292,7 @@ public:
     void unblockAccessibilityServer(const SandboxExtension::Handle&);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
     float backlightLevel() const { return m_backlightLevel; }
 #endif
 
@@ -438,6 +442,10 @@ private:
 
 #endif
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    void setShouldBlockThirdPartyCookiesForTesting(WebCore::ThirdPartyCookieBlockingMode, CompletionHandler<void()>&&);
+#endif
+
     void platformInitializeProcess(const AuxiliaryProcessInitializationParameters&);
 
     // IPC::Connection::Client
@@ -461,7 +469,7 @@ private:
     void updateProcessName();
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
     void backlightLevelDidChange(float backlightLevel);
 #endif
 
@@ -554,7 +562,6 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
-    std::unique_ptr<DependencyProcessAssertion> m_uiProcessDependencyProcessAssertion;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };
@@ -593,7 +600,7 @@ private:
     HashMap<String, RefPtr<SandboxExtension>> m_mediaCaptureSandboxExtensions;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
     float m_backlightLevel { 0 };
 #endif
 
@@ -606,6 +613,10 @@ private:
     // Prewarmed WebProcesses do not have an associated sessionID yet, which is why this is an optional.
     // By the time the WebProcess gets a WebPage, it is guaranteed to have a sessionID.
     Optional<PAL::SessionID> m_sessionID;
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::All };
+#endif
 };
 
 } // namespace WebKit

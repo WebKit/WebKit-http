@@ -120,6 +120,7 @@
 		26F52EB218288F240023D412 /* geolocationWatchPosition.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 26F52EB018288F0F0023D412 /* geolocationWatchPosition.html */; };
 		26F52EB318288F240023D412 /* geolocationWatchPositionWithHighAccuracy.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 26F52EB118288F0F0023D412 /* geolocationWatchPositionWithHighAccuracy.html */; };
 		272A691022F012DA000FDABB /* PageLoadState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 272A690F22F012C7000FDABB /* PageLoadState.cpp */; };
+		278E3E1923CD842F005A6B80 /* KeyedCoding.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1823CD82FA005A6B80 /* KeyedCoding.cpp */; };
 		290A9BB91735F63800D71BBC /* OpenNewWindow.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 290A9BB81735F42300D71BBC /* OpenNewWindow.html */; };
 		290F4275172A221C00939FF0 /* custom-protocol-sync-xhr.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 290F4274172A1FDE00939FF0 /* custom-protocol-sync-xhr.html */; };
 		297234B7173AFAC700983601 /* CustomProtocolsInvalidScheme_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 297234B5173AFAC700983601 /* CustomProtocolsInvalidScheme_Bundle.cpp */; };
@@ -240,6 +241,7 @@
 		46918EFC2237283C00468DFE /* DeviceOrientation.mm in Sources */ = {isa = PBXBuildFile; fileRef = 46918EFB2237283500468DFE /* DeviceOrientation.mm */; };
 		46A911592108E6780078D40D /* CustomUserAgent.mm in Sources */ = {isa = PBXBuildFile; fileRef = 46A911582108E66B0078D40D /* CustomUserAgent.mm */; };
 		46AE5A3720F9066D00E0873E /* SimpleServiceWorkerRegistrations-4.sqlite3 in Copy Resources */ = {isa = PBXBuildFile; fileRef = 4656A75720F9054F0002E21F /* SimpleServiceWorkerRegistrations-4.sqlite3 */; };
+		46C3AEB323D0E529001B0680 /* beforeunload.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 46C3AEB223D0E50F001B0680 /* beforeunload.html */; };
 		46C519DA1D355AB200DAA51A /* LocalStorageNullEntries.mm in Sources */ = {isa = PBXBuildFile; fileRef = 46C519D81D355A7300DAA51A /* LocalStorageNullEntries.mm */; };
 		46C519E61D3563FD00DAA51A /* LocalStorageNullEntries.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 46C519E21D35629600DAA51A /* LocalStorageNullEntries.html */; };
 		46C519E71D3563FD00DAA51A /* LocalStorageNullEntries.localstorage in Copy Resources */ = {isa = PBXBuildFile; fileRef = 46C519E31D35629600DAA51A /* LocalStorageNullEntries.localstorage */; };
@@ -327,6 +329,10 @@
 		55A817FF2181021A0004A39A /* 100x100-red.tga in Copy Resources */ = {isa = PBXBuildFile; fileRef = 55A817FE218101DF0004A39A /* 100x100-red.tga */; };
 		55A81800218102210004A39A /* 400x400-green.png in Copy Resources */ = {isa = PBXBuildFile; fileRef = 55A817FD218101DF0004A39A /* 400x400-green.png */; };
 		55F9D2E52205031800A9AB38 /* AdditionalSupportedImageTypes.mm in Sources */ = {isa = PBXBuildFile; fileRef = 55F9D2E42205031800A9AB38 /* AdditionalSupportedImageTypes.mm */; };
+		570D26F423C3CA6A00D5CF67 /* web-authentication-make-credential-hid-pin-get-key-agreement-error.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 570D26F323C3CA5500D5CF67 /* web-authentication-make-credential-hid-pin-get-key-agreement-error.html */; };
+		570D26F623C3D33000D5CF67 /* web-authentication-make-credential-hid-pin.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 570D26F523C3D32700D5CF67 /* web-authentication-make-credential-hid-pin.html */; };
+		570D26FA23C3F25100D5CF67 /* web-authentication-make-credential-hid-pin-get-pin-token-error.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 570D26F923C3F24500D5CF67 /* web-authentication-make-credential-hid-pin-get-pin-token-error.html */; };
+		570D26FC23C3F87000D5CF67 /* web-authentication-get-assertion-hid-pin.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 570D26FB23C3F86500D5CF67 /* web-authentication-get-assertion-hid-pin.html */; };
 		5714ECB91CA8B5B000051AC8 /* DownloadRequestOriginalURL.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5714ECB81CA8B58800051AC8 /* DownloadRequestOriginalURL.html */; };
 		5714ECBB1CA8BFE400051AC8 /* DownloadRequestOriginalURLFrame.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5714ECBA1CA8BFD100051AC8 /* DownloadRequestOriginalURLFrame.html */; };
 		5714ECBD1CA8C22A00051AC8 /* DownloadRequestOriginalURL2.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5714ECBC1CA8C21800051AC8 /* DownloadRequestOriginalURL2.html */; };
@@ -343,6 +349,7 @@
 		573255A722139BC700396AE8 /* load-web-archive-2.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 573255A322139B9000396AE8 /* load-web-archive-2.html */; };
 		574F55D2204D47F0002948C6 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 574F55D0204D471C002948C6 /* Security.framework */; };
 		5758597F23A2527A00C74572 /* CtapPinTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5758597E23A2527A00C74572 /* CtapPinTest.cpp */; };
+		5758598423C3C3A400C74572 /* web-authentication-make-credential-hid-pin-get-retries-error.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5758598323C3C36200C74572 /* web-authentication-make-credential-hid-pin-get-retries-error.html */; };
 		57599E211F07191900A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.mm in Sources */ = {isa = PBXBuildFile; fileRef = 57599E201F07191700A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.mm */; };
 		57599E271F071AA000A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.sqlite3 in Copy Resources */ = {isa = PBXBuildFile; fileRef = 57599E241F07192C00A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.sqlite3 */; };
 		57599E281F071AA000A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.sqlite3-shm in Copy Resources */ = {isa = PBXBuildFile; fileRef = 57599E261F07192C00A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.sqlite3-shm */; };
@@ -363,6 +370,7 @@
 		5797FE331EB15AB100B2F4A0 /* navigation-client-default-crypto.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5797FE321EB15A8900B2F4A0 /* navigation-client-default-crypto.html */; };
 		5798337E236019A4008E5547 /* web-authentication-make-credential-hid.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5798337D2360196D008E5547 /* web-authentication-make-credential-hid.html */; };
 		579833922368FA37008E5547 /* web-authentication-get-assertion-nfc-multiple-tags.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5798337B235EB65C008E5547 /* web-authentication-get-assertion-nfc-multiple-tags.html */; };
+		579F1C0123C93AF500C7D4B4 /* web-authentication-get-assertion-hid-multiple-accounts.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 579F1BFF23C92FD300C7D4B4 /* web-authentication-get-assertion-hid-multiple-accounts.html */; };
 		57A79857224AB34E00A7F6F1 /* WebCryptoMasterKey.mm in Sources */ = {isa = PBXBuildFile; fileRef = 57A79856224AB34E00A7F6F1 /* WebCryptoMasterKey.mm */; };
 		57C3FA661F7C248F009D4B80 /* WeakPtr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB9BC371A67482300FE5678 /* WeakPtr.cpp */; };
 		57C6244E2346BCFA00383FE7 /* _WKWebAuthenticationPanel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 57C6244D2346BCFA00383FE7 /* _WKWebAuthenticationPanel.mm */; };
@@ -375,7 +383,6 @@
 		5C0BF8921DD599B600B00328 /* EarlyKVOCrash.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1A9FB6CC1CA34BE500966124 /* EarlyKVOCrash.mm */; };
 		5C0BF8931DD599BD00B00328 /* IsNavigationActionTrusted.mm in Sources */ = {isa = PBXBuildFile; fileRef = 57F10D921C7E7B3800ECDF30 /* IsNavigationActionTrusted.mm */; };
 		5C0BF8941DD599C900B00328 /* MenuTypesForMouseEvents.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7A99D9931AD4A29D00373141 /* MenuTypesForMouseEvents.mm */; };
-		5C0BF8951DD599CD00B00328 /* NavigatorLanguage.mm in Sources */ = {isa = PBXBuildFile; fileRef = E19DB9781B32137C00DB38D4 /* NavigatorLanguage.mm */; };
 		5C16F8FC230C94370074C4A8 /* TextSize.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C16F8FB230C942B0074C4A8 /* TextSize.mm */; };
 		5C19A5241FD0F60100EEA323 /* CookiePrivateBrowsing.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C19A5231FD0F32600EEA323 /* CookiePrivateBrowsing.mm */; };
 		5C23DF0B2246015800F454B6 /* Challenge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C23DF0A2245C9D700F454B6 /* Challenge.mm */; };
@@ -419,6 +426,7 @@
 		5CB3CE391FA1697F00C3A2D6 /* WKWebViewConfiguration.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB3CE381FA1691700C3A2D6 /* WKWebViewConfiguration.mm */; };
 		5CB40B4E1F4B98D3007DC7B9 /* UIDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB40B4D1F4B98BE007DC7B9 /* UIDelegate.mm */; };
 		5CB5B3C21FFC55CF00C27BB0 /* FrameHandleSerialization.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB5B3BD1FFC517E00C27BB0 /* FrameHandleSerialization.mm */; };
+		5CB7AFDC23C4529700E49CF3 /* ResourceLoadDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB7AFDB23C451E400E49CF3 /* ResourceLoadDelegate.mm */; };
 		5CCB10E1213457D300AC5AF0 /* ResponsivenessTimer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB10E02134579D00AC5AF0 /* ResponsivenessTimer.mm */; };
 		5CCB10E2213457D500AC5AF0 /* ResponsivenessTimerDoesntFireEarly.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB10DD2134579C00AC5AF0 /* ResponsivenessTimerDoesntFireEarly.mm */; };
 		5CCB10E3213457D800AC5AF0 /* RestoreSessionStateWithoutNavigation.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB10DE2134579D00AC5AF0 /* RestoreSessionStateWithoutNavigation.mm */; };
@@ -900,6 +908,7 @@
 		CD0BD0A61F79924D001AB2CF /* ContextMenuImgWithVideo.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD0BD0A51F799220001AB2CF /* ContextMenuImgWithVideo.mm */; };
 		CD0BD0A81F79982D001AB2CF /* ContextMenuImgWithVideo.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = CD0BD0A71F7997C2001AB2CF /* ContextMenuImgWithVideo.html */; };
 		CD227E44211A4D5D00D285AF /* PreferredAudioBufferSize.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD227E43211A4D5D00D285AF /* PreferredAudioBufferSize.mm */; };
+		CD27A1C123C661ED006E11DD /* WKWebViewPausePlayingAudioTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD27A1C023C661ED006E11DD /* WKWebViewPausePlayingAudioTests.mm */; };
 		CD2D0D1A213465560018C784 /* NowPlaying.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD2D0D19213465560018C784 /* NowPlaying.mm */; };
 		CD3065E02165682E00E895DF /* VideoQualityDisplayCompositing.mm in Sources */ = {isa = PBXBuildFile; fileRef = CD3065DF2165682E00E895DF /* VideoQualityDisplayCompositing.mm */; };
 		CD321B041E3A85FA00EB21C8 /* video-with-muted-audio-and-webaudio.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = CD321B031E3A84B700EB21C8 /* video-with-muted-audio-and-webaudio.html */; };
@@ -1195,6 +1204,7 @@
 				2E14A5291D3FE96B0010F35B /* autoplaying-video-with-audio.html in Copy Resources */,
 				F41AB9A01EF4696B0083FA08 /* background-image-link-and-input.html in Copy Resources */,
 				464C764D230DF85C00AFB020 /* BadServiceWorkerRegistrations-4.sqlite3 in Copy Resources */,
+				46C3AEB323D0E529001B0680 /* beforeunload.html in Copy Resources */,
 				2DE71B001D49C3ED00904094 /* blinking-div.html in Copy Resources */,
 				7C486BA11AA12567003F6F9B /* bundle-file.html in Copy Resources */,
 				26DF5A6315A2A27E003689C2 /* CancelLoadFromResourceLoadDelegate.html in Copy Resources */,
@@ -1478,12 +1488,18 @@
 				2EBD9D0A2134730D002DA758 /* video.html in Copy Resources */,
 				CD577799211CE0E4001B371E /* web-audio-only.html in Copy Resources */,
 				57663DF32357E48900E85E09 /* web-authentication-get-assertion-hid-cancel.html in Copy Resources */,
+				579F1C0123C93AF500C7D4B4 /* web-authentication-get-assertion-hid-multiple-accounts.html in Copy Resources */,
 				577454D02359B378008E1ED7 /* web-authentication-get-assertion-hid-no-credentials.html in Copy Resources */,
+				570D26FC23C3F87000D5CF67 /* web-authentication-get-assertion-hid-pin.html in Copy Resources */,
 				57663DEC234F1F9300E85E09 /* web-authentication-get-assertion-hid.html in Copy Resources */,
 				579833922368FA37008E5547 /* web-authentication-get-assertion-nfc-multiple-tags.html in Copy Resources */,
 				57663DEA234EA66D00E85E09 /* web-authentication-get-assertion-nfc.html in Copy Resources */,
 				577454D22359BB01008E1ED7 /* web-authentication-get-assertion-u2f-no-credentials.html in Copy Resources */,
 				57C624502346C21E00383FE7 /* web-authentication-get-assertion.html in Copy Resources */,
+				570D26F423C3CA6A00D5CF67 /* web-authentication-make-credential-hid-pin-get-key-agreement-error.html in Copy Resources */,
+				570D26FA23C3F25100D5CF67 /* web-authentication-make-credential-hid-pin-get-pin-token-error.html in Copy Resources */,
+				5758598423C3C3A400C74572 /* web-authentication-make-credential-hid-pin-get-retries-error.html in Copy Resources */,
+				570D26F623C3D33000D5CF67 /* web-authentication-make-credential-hid-pin.html in Copy Resources */,
 				5798337E236019A4008E5547 /* web-authentication-make-credential-hid.html in Copy Resources */,
 				1C2B81861C89259D00A5529F /* webfont.html in Copy Resources */,
 				51714EB41CF8C78C004723C4 /* WebProcessKillIDBCleanup-1.html in Copy Resources */,
@@ -1616,6 +1632,7 @@
 		26F6E1EF1ADC749B00DE696B /* DFAMinimizer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DFAMinimizer.cpp; sourceTree = "<group>"; };
 		272A690F22F012C7000FDABB /* PageLoadState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageLoadState.cpp; sourceTree = "<group>"; };
 		278DE64B22B8D611004E0E7A /* CrossThreadCopier.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CrossThreadCopier.cpp; sourceTree = "<group>"; };
+		278E3E1823CD82FA005A6B80 /* KeyedCoding.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = KeyedCoding.cpp; sourceTree = "<group>"; };
 		290A9BB51735DE8A00D71BBC /* CloseNewWindowInNavigationPolicyDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CloseNewWindowInNavigationPolicyDelegate.mm; sourceTree = "<group>"; };
 		290A9BB81735F42300D71BBC /* OpenNewWindow.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = OpenNewWindow.html; sourceTree = "<group>"; };
 		290F4274172A1FDE00939FF0 /* custom-protocol-sync-xhr.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "custom-protocol-sync-xhr.html"; sourceTree = "<group>"; };
@@ -1780,6 +1797,7 @@
 		468F2F932368DAA700F4B864 /* window-open-then-document-open.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "window-open-then-document-open.html"; sourceTree = "<group>"; };
 		46918EFB2237283500468DFE /* DeviceOrientation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DeviceOrientation.mm; sourceTree = "<group>"; };
 		46A911582108E66B0078D40D /* CustomUserAgent.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CustomUserAgent.mm; sourceTree = "<group>"; };
+		46C3AEB223D0E50F001B0680 /* beforeunload.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = beforeunload.html; sourceTree = "<group>"; };
 		46C519D81D355A7300DAA51A /* LocalStorageNullEntries.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LocalStorageNullEntries.mm; sourceTree = "<group>"; };
 		46C519E21D35629600DAA51A /* LocalStorageNullEntries.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = LocalStorageNullEntries.html; sourceTree = "<group>"; };
 		46C519E31D35629600DAA51A /* LocalStorageNullEntries.localstorage */ = {isa = PBXFileReference; lastKnownFileType = file; path = LocalStorageNullEntries.localstorage; sourceTree = "<group>"; };
@@ -1892,6 +1910,10 @@
 		55A817FD218101DF0004A39A /* 400x400-green.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "400x400-green.png"; sourceTree = "<group>"; };
 		55A817FE218101DF0004A39A /* 100x100-red.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = "100x100-red.tga"; sourceTree = "<group>"; };
 		55F9D2E42205031800A9AB38 /* AdditionalSupportedImageTypes.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = AdditionalSupportedImageTypes.mm; sourceTree = "<group>"; };
+		570D26F323C3CA5500D5CF67 /* web-authentication-make-credential-hid-pin-get-key-agreement-error.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-make-credential-hid-pin-get-key-agreement-error.html"; sourceTree = "<group>"; };
+		570D26F523C3D32700D5CF67 /* web-authentication-make-credential-hid-pin.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-make-credential-hid-pin.html"; sourceTree = "<group>"; };
+		570D26F923C3F24500D5CF67 /* web-authentication-make-credential-hid-pin-get-pin-token-error.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-make-credential-hid-pin-get-pin-token-error.html"; sourceTree = "<group>"; };
+		570D26FB23C3F86500D5CF67 /* web-authentication-get-assertion-hid-pin.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-get-assertion-hid-pin.html"; sourceTree = "<group>"; };
 		5714ECB81CA8B58800051AC8 /* DownloadRequestOriginalURL.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = DownloadRequestOriginalURL.html; sourceTree = "<group>"; };
 		5714ECBA1CA8BFD100051AC8 /* DownloadRequestOriginalURLFrame.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = DownloadRequestOriginalURLFrame.html; sourceTree = "<group>"; };
 		5714ECBC1CA8C21800051AC8 /* DownloadRequestOriginalURL2.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = DownloadRequestOriginalURL2.html; sourceTree = "<group>"; };
@@ -1910,6 +1932,7 @@
 		574F55D0204D471C002948C6 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		5758597D23A2527A00C74572 /* CtapPinTest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CtapPinTest.h; sourceTree = "<group>"; };
 		5758597E23A2527A00C74572 /* CtapPinTest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CtapPinTest.cpp; sourceTree = "<group>"; };
+		5758598323C3C36200C74572 /* web-authentication-make-credential-hid-pin-get-retries-error.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-make-credential-hid-pin-get-retries-error.html"; sourceTree = "<group>"; };
 		57599E201F07191700A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = IndexedDBStructuredCloneBackwardCompatibility.mm; sourceTree = "<group>"; };
 		57599E231F07192C00A3FB8C /* IndexedDBStructuredCloneBackwardCompatibilityWrite.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = IndexedDBStructuredCloneBackwardCompatibilityWrite.html; sourceTree = "<group>"; };
 		57599E241F07192C00A3FB8C /* IndexedDBStructuredCloneBackwardCompatibility.sqlite3 */ = {isa = PBXFileReference; lastKnownFileType = file; path = IndexedDBStructuredCloneBackwardCompatibility.sqlite3; sourceTree = "<group>"; };
@@ -1933,6 +1956,7 @@
 		5798337B235EB65C008E5547 /* web-authentication-get-assertion-nfc-multiple-tags.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "web-authentication-get-assertion-nfc-multiple-tags.html"; sourceTree = "<group>"; };
 		5798337D2360196D008E5547 /* web-authentication-make-credential-hid.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "web-authentication-make-credential-hid.html"; sourceTree = "<group>"; };
 		5798E2AF1CAF5C2800C5CBA0 /* ProvisionalURLNotChange.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ProvisionalURLNotChange.mm; sourceTree = "<group>"; };
+		579F1BFF23C92FD300C7D4B4 /* web-authentication-get-assertion-hid-multiple-accounts.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "web-authentication-get-assertion-hid-multiple-accounts.html"; sourceTree = "<group>"; };
 		57A79856224AB34E00A7F6F1 /* WebCryptoMasterKey.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WebCryptoMasterKey.mm; sourceTree = "<group>"; };
 		57C6244D2346BCFA00383FE7 /* _WKWebAuthenticationPanel.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = _WKWebAuthenticationPanel.mm; sourceTree = "<group>"; };
 		57C6244F2346C1EC00383FE7 /* web-authentication-get-assertion.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "web-authentication-get-assertion.html"; sourceTree = "<group>"; };
@@ -1992,6 +2016,7 @@
 		5CB3CE381FA1691700C3A2D6 /* WKWebViewConfiguration.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKWebViewConfiguration.mm; sourceTree = "<group>"; };
 		5CB40B4D1F4B98BE007DC7B9 /* UIDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = UIDelegate.mm; sourceTree = "<group>"; };
 		5CB5B3BD1FFC517E00C27BB0 /* FrameHandleSerialization.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = FrameHandleSerialization.mm; sourceTree = "<group>"; };
+		5CB7AFDB23C451E400E49CF3 /* ResourceLoadDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ResourceLoadDelegate.mm; sourceTree = "<group>"; };
 		5CCB10DD2134579C00AC5AF0 /* ResponsivenessTimerDoesntFireEarly.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ResponsivenessTimerDoesntFireEarly.mm; sourceTree = "<group>"; };
 		5CCB10DE2134579D00AC5AF0 /* RestoreSessionStateWithoutNavigation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = RestoreSessionStateWithoutNavigation.mm; sourceTree = "<group>"; };
 		5CCB10DF2134579D00AC5AF0 /* ShouldGoToBackForwardListItem.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ShouldGoToBackForwardListItem.mm; sourceTree = "<group>"; };
@@ -2413,6 +2438,7 @@
 		CD0BD0A71F7997C2001AB2CF /* ContextMenuImgWithVideo.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ContextMenuImgWithVideo.html; sourceTree = "<group>"; };
 		CD225C071C45A69200140761 /* ParsedContentRange.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParsedContentRange.cpp; sourceTree = "<group>"; };
 		CD227E43211A4D5D00D285AF /* PreferredAudioBufferSize.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PreferredAudioBufferSize.mm; sourceTree = "<group>"; };
+		CD27A1C023C661ED006E11DD /* WKWebViewPausePlayingAudioTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WKWebViewPausePlayingAudioTests.mm; sourceTree = "<group>"; };
 		CD2D0D19213465560018C784 /* NowPlaying.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NowPlaying.mm; sourceTree = "<group>"; };
 		CD3065DF2165682E00E895DF /* VideoQualityDisplayCompositing.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = VideoQualityDisplayCompositing.mm; sourceTree = "<group>"; };
 		CD321B031E3A84B700EB21C8 /* video-with-muted-audio-and-webaudio.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "video-with-muted-audio-and-webaudio.html"; sourceTree = "<group>"; };
@@ -2496,7 +2522,6 @@
 		E1220DC9155B287D0013E2FC /* MemoryCacheDisableWithinResourceLoadDelegate.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = MemoryCacheDisableWithinResourceLoadDelegate.html; sourceTree = "<group>"; };
 		E194E1BA177E5145009C4D4E /* StopLoadingFromDidReceiveResponse.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = StopLoadingFromDidReceiveResponse.mm; sourceTree = "<group>"; };
 		E194E1BC177E534A009C4D4E /* StopLoadingFromDidReceiveResponse.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = StopLoadingFromDidReceiveResponse.html; sourceTree = "<group>"; };
-		E19DB9781B32137C00DB38D4 /* NavigatorLanguage.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = NavigatorLanguage.mm; sourceTree = "<group>"; };
 		E32B549122810AC0008AD702 /* Packed.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Packed.cpp; sourceTree = "<group>"; };
 		E35FC7B122B82A6D00F32F98 /* JSLockTakesWebThreadLock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = JSLockTakesWebThreadLock.mm; sourceTree = "<group>"; };
 		E388887020C9098100E632BC /* WorkerPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WorkerPool.cpp; sourceTree = "<group>"; };
@@ -2983,6 +3008,7 @@
 				2D08E9362267D0F3002518DA /* ReparentWebViewTimeout.mm */,
 				2D2BEB2C22324E5F005544CA /* RequestTextInputContext.mm */,
 				CD9E292B1C90A71F000BB800 /* RequiresUserActionForPlayback.mm */,
+				5CB7AFDB23C451E400E49CF3 /* ResourceLoadDelegate.mm */,
 				51C8E1A41F26AC5400BF731B /* ResourceLoadStatistics.mm */,
 				5CCB10E02134579D00AC5AF0 /* ResponsivenessTimer.mm */,
 				5CCB10DD2134579C00AC5AF0 /* ResponsivenessTimerDoesntFireEarly.mm */,
@@ -3129,6 +3155,7 @@
 				7A909A741D877475007E10F8 /* IntRect.cpp */,
 				7A909A751D877475007E10F8 /* IntSize.cpp */,
 				CD5FF4962162E27E004BD86F /* ISOBox.cpp */,
+				278E3E1823CD82FA005A6B80 /* KeyedCoding.cpp */,
 				14464012167A8305000BD218 /* LayoutUnit.cpp */,
 				6BF4A682239ED4CD00E2F45B /* LoggedInStatus.cpp */,
 				076E507E1F45031E006E9F5A /* Logging.cpp */,
@@ -3218,6 +3245,7 @@
 				F43E3BBE20DADA1E00A4E7ED /* WKScrollViewTests.mm */,
 				514958BD1F7427AC00E87BAD /* WKWebViewAutofillTests.mm */,
 				1CACADA0230620AD0007D54C /* WKWebViewOpaque.mm */,
+				CD27A1C023C661ED006E11DD /* WKWebViewPausePlayingAudioTests.mm */,
 			);
 			path = ios;
 			sourceTree = "<group>";
@@ -3482,12 +3510,18 @@
 				CD57779B211CE6CE001B371E /* video-with-audio-and-web-audio.html */,
 				CD577798211CDE8F001B371E /* web-audio-only.html */,
 				57663DF22357E45D00E85E09 /* web-authentication-get-assertion-hid-cancel.html */,
+				579F1BFF23C92FD300C7D4B4 /* web-authentication-get-assertion-hid-multiple-accounts.html */,
 				577454CF2359B338008E1ED7 /* web-authentication-get-assertion-hid-no-credentials.html */,
+				570D26FB23C3F86500D5CF67 /* web-authentication-get-assertion-hid-pin.html */,
 				57663DEB234F1F8000E85E09 /* web-authentication-get-assertion-hid.html */,
 				5798337B235EB65C008E5547 /* web-authentication-get-assertion-nfc-multiple-tags.html */,
 				57663DE9234EA60B00E85E09 /* web-authentication-get-assertion-nfc.html */,
 				577454D12359BAD5008E1ED7 /* web-authentication-get-assertion-u2f-no-credentials.html */,
 				57C6244F2346C1EC00383FE7 /* web-authentication-get-assertion.html */,
+				570D26F323C3CA5500D5CF67 /* web-authentication-make-credential-hid-pin-get-key-agreement-error.html */,
+				570D26F923C3F24500D5CF67 /* web-authentication-make-credential-hid-pin-get-pin-token-error.html */,
+				5758598323C3C36200C74572 /* web-authentication-make-credential-hid-pin-get-retries-error.html */,
+				570D26F523C3D32700D5CF67 /* web-authentication-make-credential-hid-pin.html */,
 				5798337D2360196D008E5547 /* web-authentication-make-credential-hid.html */,
 				51714EB21CF8C761004723C4 /* WebProcessKillIDBCleanup-1.html */,
 				51714EB31CF8C761004723C4 /* WebProcessKillIDBCleanup-2.html */,
@@ -3836,6 +3870,7 @@
 				C95984F31E36BC55002C0D45 /* autoplay-no-audio-check.html */,
 				C99B675A1E3971FC00FC6C80 /* autoplay-with-controls.html */,
 				C99BDF881E8097E300C7170E /* autoplay-zero-volume-check.html */,
+				46C3AEB223D0E50F001B0680 /* beforeunload.html */,
 				7C486BA01AA1254B003F6F9B /* bundle-file.html */,
 				9BD4239B1E04BFD000200395 /* chinese-character-with-image.html */,
 				1A50AA1F1A2A4EA500F4C345 /* close-from-within-create-page.html */,
@@ -4004,7 +4039,6 @@
 				517E7DFB15110EA600D0B008 /* MemoryCachePruneWithinResourceLoadDelegate.mm */,
 				5C0BF88C1DD5957400B00328 /* MemoryPressureHandler.mm */,
 				7A99D9931AD4A29D00373141 /* MenuTypesForMouseEvents.mm */,
-				E19DB9781B32137C00DB38D4 /* NavigatorLanguage.mm */,
 				83F22C6320B355EB0034277E /* NoPolicyDelegateResponse.mm */,
 				A57A34EF16AF677200C2501F /* PageVisibilityStateWithWindowChanges.mm */,
 				37C784DE197C8F2E0010A496 /* RenderedImageFromDOMNode.mm */,
@@ -4736,6 +4770,7 @@
 				E35FC7B222B82A7300F32F98 /* JSLockTakesWebThreadLock.mm in Sources */,
 				7CCE7EC41A411A7E00447C4C /* JSWrapperForNodeInWebFrame.mm in Sources */,
 				F45E15732112CE2900307E82 /* KeyboardInputTestsIOS.mm in Sources */,
+				278E3E1923CD842F005A6B80 /* KeyedCoding.cpp in Sources */,
 				7CCE7F061A411AE600447C4C /* LayoutMilestonesWithAllContentInFrame.cpp in Sources */,
 				7CCE7EDF1A411A9200447C4C /* LayoutUnit.cpp in Sources */,
 				F4BFA68E1E4AD08000154298 /* LegacyDragAndDropTests.mm in Sources */,
@@ -4775,7 +4810,6 @@
 				7CCE7F011A411AE600447C4C /* MouseMoveAfterCrash.cpp in Sources */,
 				7CCE7F241A411AF600447C4C /* Navigation.mm in Sources */,
 				6351992822275C6A00890AD3 /* NavigationAction.mm in Sources */,
-				5C0BF8951DD599CD00B00328 /* NavigatorLanguage.mm in Sources */,
 				5C8BC799218CF44700813886 /* NetworkProcess.mm in Sources */,
 				5CAE463820193B6A0051610F /* NetworkProcessCrashNonPersistentDataStore.mm in Sources */,
 				9B19CDA01F06DFE3000548DD /* NetworkProcessCrashWithPendingConnection.mm in Sources */,
@@ -4849,6 +4883,7 @@
 				7C83E0C41D0A654200FEBCF3 /* RequiresUserActionForPlayback.mm in Sources */,
 				7CCE7F0E1A411AE600447C4C /* ResizeReversePaginatedWebView.cpp in Sources */,
 				7CCE7F0F1A411AE600447C4C /* ResizeWindowAfterCrash.cpp in Sources */,
+				5CB7AFDC23C4529700E49CF3 /* ResourceLoadDelegate.mm in Sources */,
 				51C8E1A51F26AF4C00BF731B /* ResourceLoadStatistics.mm in Sources */,
 				5CCB10E1213457D300AC5AF0 /* ResponsivenessTimer.mm in Sources */,
 				512C4C9E20EAA40D004945EA /* ResponsivenessTimerCrash.mm in Sources */,
@@ -5028,6 +5063,7 @@
 				D34E08761E4E42E1005FF14A /* WKWebViewGetContents.mm in Sources */,
 				F4FA91811E61849B007B8C1D /* WKWebViewMacEditingTests.mm in Sources */,
 				1CACADA1230620AE0007D54C /* WKWebViewOpaque.mm in Sources */,
+				CD27A1C123C661ED006E11DD /* WKWebViewPausePlayingAudioTests.mm in Sources */,
 				2D01D06E23218FEE0039AA3A /* WKWebViewPrintFormatter.mm in Sources */,
 				37A9DBE9213B4C9300D261A2 /* WKWebViewServerTrustKVC.mm in Sources */,
 				93F56DA91E5F919D003EDE84 /* WKWebViewSnapshot.mm in Sources */,

@@ -1,3 +1,103 @@
+2020-01-17  Cathie Chen  <cathiechen@igalia.com>
+
+        Add support for scroll behavior parsing
+        https://bugs.webkit.org/show_bug.cgi?id=205009
+
+        Reviewed by Frédéric Wang.
+
+        Based on the patch by Frédéric Wang.
+
+        * Interfaces/IWebPreferencesPrivate.idl: Handle smooth scrolling option.
+        * WebPreferenceKeysPrivate.h: Ditto.
+        * WebPreferences.cpp: Ditto.
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::CSSOMViewSmoothScrollingEnabled):
+        (WebPreferences::setCSSOMViewSmoothScrollingEnabled):
+        * WebPreferences.h: Ditto.
+        * WebView.cpp: Ditto.
+        (WebView::notifyPreferencesChanged):
+
+2020-01-16  Cathie Chen  <cathiechen@igalia.com>
+
+        Mapping HTML attributes width/height to the default aspect ratio of <img>
+        https://bugs.webkit.org/show_bug.cgi?id=201641
+
+        Reviewed by Frédéric Wang
+
+        Add experimental flag: AspectRatioOfImgFromWidthAndHeightEnabled.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::aspectRatioOfImgFromWidthAndHeightEnabled):
+        (WebPreferences::setAspectRatioOfImgFromWidthAndHeightEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-01-08  youenn fablet  <youenn@apple.com>
+
+        Implement MediaRecorder backend in GPUProcess
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+
+        Reviewed by Eric Carlson.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2020-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r254132.
+        https://bugs.webkit.org/show_bug.cgi?id=205868
+
+        It is breaking WinCairo build and internal builds. (Requested
+        by youenn on #webkit).
+
+        Reverted changeset:
+
+        "Implement MediaRecorder backend in GPUProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+        https://trac.webkit.org/changeset/254132
+
+2020-01-07  youenn fablet  <youenn@apple.com>
+
+        Implement MediaRecorder backend in GPUProcess
+        https://bugs.webkit.org/show_bug.cgi?id=205802
+
+        Reviewed by Eric Carlson.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2020-01-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to set purpose and hints of active editable element to input methods
+        https://bugs.webkit.org/show_bug.cgi?id=205605
+
+        Reviewed by Žan Doberšek.
+
+        Update to the new API of WebEditorClient::setInputMethodState.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::setInputMethodState):
+        * WebCoreSupport/WebEditorClient.h:
+
+2020-01-06  Mark Lam  <mark.lam@apple.com>
+
+        Convert ASSERT_DISABLED to ASSERT_ENABLED, and fix some tests of NDEBUG that should actually test for ASSERT_ENABLED.
+        https://bugs.webkit.org/show_bug.cgi?id=205776
+
+        Reviewed by Saam Barati.
+
+        * WebKitQuartzCoreAdditions/CAD3DRenderer.cpp:
+        (WKQCA::CAD3DRenderer::swapChain):
+        (WKQCA::CAD3DRenderer::initialize):
+        * WebKitQuartzCoreAdditions/CAD3DRenderer.h:
+        * WebView.cpp:
+        (WebView::Release):
+        * WebView.h:
+
 2019-12-23  Darin Adler  <darin@apple.com>
 
         Refactor to simplify broadcasting to all media elements

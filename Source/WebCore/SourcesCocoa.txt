@@ -230,6 +230,7 @@ platform/graphics/angle/ExtensionsGLANGLE.cpp @no-unify
 platform/graphics/angle/GraphicsContextGLANGLE.cpp @no-unify
 platform/graphics/angle/TemporaryANGLESetting.cpp @no-unify
 
+platform/graphics/avfoundation/SampleBufferDisplayLayer.cpp
 platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm @no-unify
 platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm @no-unify
 platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm @no-unify
@@ -253,6 +254,7 @@ platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/ImageDecoderAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/InbandTextTrackPrivateAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/InbandTextTrackPrivateLegacyAVFObjC.mm @no-unify
+platform/graphics/avfoundation/objc/LocalSampleBufferDisplayLayer.mm @no-unify
 platform/graphics/avfoundation/objc/MediaPlaybackTargetPickerMac.mm @no-unify
 platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm @no-unify
 platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm @no-unify
@@ -489,7 +491,7 @@ platform/mediastream/ios/AVAudioSessionCaptureDevice.mm
 platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm @no-unify
 platform/mediastream/ios/CoreAudioCaptureSourceIOS.mm @no-unify
 
-platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.cpp
+platform/mediastream/mac/AudioMediaStreamTrackRendererCocoa.cpp
 platform/mediastream/mac/AVCaptureDeviceManager.mm @no-unify
 platform/mediastream/mac/AVVideoCaptureSource.mm @no-unify
 platform/mediastream/mac/MockRealtimeVideoSourceMac.mm

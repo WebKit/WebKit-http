@@ -29,6 +29,7 @@
 
 #include "LayoutUnit.h"
 #include "LayoutPoint.h"
+#include "LayoutRect.h"
 #include "MarginTypes.h"
 #include <wtf/Optional.h>
 
@@ -47,10 +48,6 @@ using InlineLayoutPoint = LayoutPoint;
 using InlineLayoutSize = LayoutSize;
 using InlineLayoutRect = LayoutRect;
 #endif
-
-namespace Display {
-class Box;
-}
 
 namespace Layout {
 
@@ -155,56 +152,23 @@ struct VerticalGeometry {
     ContentHeightAndMargin contentHeightAndMargin;
 };
 
-struct UsedHorizontalValues {
-    struct Constraints {
-        explicit Constraints(const Display::Box& containingBlockGeometry);
-        explicit Constraints(LayoutUnit contentBoxLeft, LayoutUnit horizontalConstraint)
-            : contentBoxLeft(contentBoxLeft)
-            , width(horizontalConstraint)
-        {
-        }
+struct HorizontalConstraints {
+    LayoutUnit logicalLeft;
+    LayoutUnit logicalWidth;
+};
 
-        LayoutUnit contentBoxLeft;
-        LayoutUnit width;
-    };
+struct VerticalConstraints {
+    LayoutUnit logicalTop;
+    Optional<LayoutUnit> logicalHeight;
+};
 
-    explicit UsedHorizontalValues(Constraints constraints)
-        : constraints(constraints)
-    {
-    }
-
-    explicit UsedHorizontalValues(Constraints constraints, Optional<LayoutUnit> width, Optional<UsedHorizontalMargin> margin)
-        : constraints(constraints)
-        , width(width)
-        , margin(margin)
-    {
-    }
-
-    Constraints constraints;
+struct OverrideHorizontalValues {
     Optional<LayoutUnit> width;
     Optional<UsedHorizontalMargin> margin;
 };
 
-struct UsedVerticalValues {
-    struct Constraints {
-        explicit Constraints(const Display::Box& containingBlockGeometry);
-        explicit Constraints(LayoutUnit contentBoxTop, Optional<LayoutUnit> verticalConstraint = WTF::nullopt)
-            : contentBoxTop(contentBoxTop)
-            , height(verticalConstraint)
-        {
-        }
-
-        LayoutUnit contentBoxTop;
-        Optional<LayoutUnit> height;
-    };
-
-    explicit UsedVerticalValues(Constraints constraints, Optional<LayoutUnit> height = { })
-        : constraints(constraints)
-        , height(height)
-    {
-    }
-
-    Constraints constraints;
+struct OverrideVerticalValues {
+    // Consider collapsing it.
     Optional<LayoutUnit> height;
 };
 

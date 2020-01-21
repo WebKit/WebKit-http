@@ -106,6 +106,8 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
 
     encoder << frameAncestorOrigins;
     encoder << isHTTPSUpgradeEnabled;
+    encoder << pageHasResourceLoadClient;
+    encoder << parentFrameID;
 
 #if ENABLE(SERVICE_WORKER)
     encoder << serviceWorkersMode;
@@ -248,6 +250,18 @@ Optional<NetworkResourceLoadParameters> NetworkResourceLoadParameters::decode(IP
     if (!isHTTPSUpgradeEnabled)
         return WTF::nullopt;
     result.isHTTPSUpgradeEnabled = *isHTTPSUpgradeEnabled;
+
+    Optional<bool> pageHasResourceLoadClient;
+    decoder >> pageHasResourceLoadClient;
+    if (!pageHasResourceLoadClient)
+        return WTF::nullopt;
+    result.pageHasResourceLoadClient = *pageHasResourceLoadClient;
+    
+    Optional<Optional<FrameIdentifier>> parentFrameID;
+    decoder >> parentFrameID;
+    if (!parentFrameID)
+        return WTF::nullopt;
+    result.parentFrameID = WTFMove(*parentFrameID);
 
 #if ENABLE(SERVICE_WORKER)
     Optional<ServiceWorkersMode> serviceWorkersMode;

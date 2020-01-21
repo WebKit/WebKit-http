@@ -112,8 +112,6 @@
             (iokit-user-client-class "AppleKeyStoreUserClient")))
 
 (define-once (location-services)
-    (allow mach-lookup
-           (global-name "com.apple.locationd.registration"))
     (allow-carrier-bundle) ;; <rdar://problem/21192365>
     (mobile-preferences-read
         "com.apple.AppSupport"
@@ -399,29 +397,6 @@
         (home-subpath "/Library/Assets/com_apple_MobileAsset_VoiceServicesVocalizerVoice"))
 )
 
-(define-once (core-motion)
-    ;; CoreMotion
-    (mobile-preferences-read "com.apple.CoreMotion")
-
-    ;; CoreMotion’s deviceMotion API
-    (with-filter
-        (require-any
-            (iokit-registry-entry-class "AppleOscarNub")
-            (iokit-registry-entry-class "AppleSPUHIDInterface"))
-        (allow iokit-get-properties
-            (iokit-property "gyro-interrupt-calibration")))
-    (with-filter
-        (iokit-registry-entry-class "IOHIDEventServiceFastPathUserClient")
-        (allow iokit-open)
-        (allow iokit-get-properties iokit-set-properties
-            (iokit-property "interval"
-                            "mode"
-                            "QueueSize"
-                            "useMag"))
-        (allow iokit-get-properties
-            (iokit-property "client")))
-)
-
 ;; Things required by UIKit
 (define-once (uikit-requirements)
     (mobile-preferences-read
@@ -435,7 +410,6 @@
 
     (allow mach-lookup (with report) (with telemetry)
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
-        (global-name "com.apple.iohideventsystem")
     )
 
     (allow mach-lookup
@@ -473,13 +447,6 @@
         ; XXX - /Library ought to be allowed in all UI profiles but isn't (CF, MobileSafari)
         (subpath "/Library/Dictionaries")
         (home-subpath "/Library/Dictionaries"))
-)
-
-(define-once (network-extensions-support)
-    ;; Network Extensions / VPN helper.
-    (allow mach-lookup
-        (global-name "com.apple.nehelper")
-        (global-name "com.apple.nesessionmanager.content-filter")) ;; <rdar://problem/48442387>
 )
 
 (deny file-map-executable)
@@ -742,8 +709,6 @@
 ;; Permit reading assets via MobileAsset framework.
 (asset-access 'with-media-playback)
 
-(network-extensions-support)
-
 ;; allow 3rd party applications to access nsurlstoraged's top level domain data cache
 (allow-well-known-system-group-container-literal-read
     "/systemgroup.com.apple.nsurlstoragedresources/Library/dafsaData.bin")
@@ -785,8 +750,6 @@
     (global-name "com.apple.iconservices"))
 
 (allow-preferences-common)
-
-(core-motion)
 
 ;; Home Button
 (with-filter (iokit-registry-entry-class "IOPlatformDevice")

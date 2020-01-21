@@ -51,6 +51,7 @@
 #include "Quirks.h"
 #include "RenderTheme.h"
 #include "RuleSet.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGElement.h"
 #include "StyleSheetContents.h"
 #include "UserAgentStyleSheets.h"
@@ -290,8 +291,6 @@ void UserAgentStyle::ensureDefaultStyleSheetsForElement(const Element& element)
         StringBuilder fullscreenRules;
         fullscreenRules.appendCharacters(fullscreenUserAgentStyleSheet, sizeof(fullscreenUserAgentStyleSheet));
         fullscreenRules.append(RenderTheme::singleton().extraFullScreenStyleSheet());
-        if (element.document().quirks().needsFullWidthHeightFullscreenStyleQuirk())
-            fullscreenRules.append(":-webkit-full-screen { width:100%; height:100%; }");
         fullscreenStyleSheet = parseUASheet(fullscreenRules.toString());
         addToDefaultStyle(*fullscreenStyleSheet);
     }

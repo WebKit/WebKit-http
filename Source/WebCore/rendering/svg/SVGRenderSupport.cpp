@@ -41,6 +41,7 @@
 #include "RenderSVGText.h"
 #include "RenderSVGTransformableContainer.h"
 #include "RenderSVGViewportContainer.h"
+#include "SVGGeometryElement.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 #include "TransformState.h"
@@ -64,6 +65,12 @@ LayoutRect SVGRenderSupport::clippedOverflowRectForRepaint(const RenderElement& 
 
 Optional<FloatRect> SVGRenderSupport::computeFloatVisibleRectInContainer(const RenderElement& renderer, const FloatRect& rect, const RenderLayerModelObject* container, RenderObject::VisibleRectContext context)
 {
+    // Ensure our parent is an SVG object.
+    ASSERT(renderer.parent());
+    auto& parent = *renderer.parent();
+    if (!is<SVGElement>(parent.element()))
+        return FloatRect();
+
     FloatRect adjustedRect = rect;
     const SVGRenderStyle& svgStyle = renderer.style().svgStyle();
     if (const ShadowData* shadow = svgStyle.shadow())
@@ -72,7 +79,8 @@ Optional<FloatRect> SVGRenderSupport::computeFloatVisibleRectInContainer(const R
 
     // Translate to coords in our parent renderer, and then call computeFloatVisibleRectInContainer() on our parent.
     adjustedRect = renderer.localToParentTransform().mapRect(adjustedRect);
-    return renderer.parent()->computeFloatVisibleRectInContainer(adjustedRect, container, context);
+
+    return parent.computeFloatVisibleRectInContainer(adjustedRect, container, context);
 }
 
 const RenderElement& SVGRenderSupport::localToParentTransform(const RenderElement& renderer, AffineTransform &transform)
@@ -416,8 +424,12 @@ bool SVGRenderSupport::pointInClippingArea(const RenderElement& renderer, const 
 void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const RenderStyle& style, const RenderElement& renderer)
 {
     ASSERT(context);
-    ASSERT(renderer.element());
-    ASSERT(renderer.element()->isSVGElement());
+    
+    Element* element = renderer.element();
+    if (!is<SVGElement>(element)) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
 
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
@@ -435,15 +447,23 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
         DashArray dashArray;
         dashArray.reserveInitialCapacity(dashes.size());
         bool canSetLineDash = false;
+        float scaleFactor = 1;
 
+        if (is<SVGGeometryElement>(element)) {
+            ASSERT(renderer.isSVGShape());
+            // FIXME: A value of zero is valid. Need to differentiate this case from being unspecified.
+            if (float pathLength = downcast<SVGGeometryElement>(element)->pathLength())
+                scaleFactor = downcast<RenderSVGShape>(renderer).getTotalLength() / pathLength;
+        }
+        
         for (auto& dash : dashes) {
-            dashArray.uncheckedAppend(dash.value(lengthContext));
+            dashArray.uncheckedAppend(dash.value(lengthContext) * scaleFactor);
             if (dashArray.last() > 0)
                 canSetLineDash = true;
         }
 
         if (canSetLineDash)
-            context->setLineDash(dashArray, lengthContext.valueForLength(svgStyle.strokeDashOffset()));
+            context->setLineDash(dashArray, lengthContext.valueForLength(svgStyle.strokeDashOffset()) * scaleFactor);
         else
             context->setStrokeStyle(SolidStroke);
     }

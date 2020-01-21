@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #include "ArithProfile.h"
 #include "ArrayConstructor.h"
+#include "CacheableIdentifierInlines.h"
 #include "CommonSlowPaths.h"
 #include "DFGCompilationMode.h"
 #include "DFGDriver.h"
@@ -1538,8 +1539,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
     if (!codeBlock->checkIfOptimizationThresholdReached()) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("counter = ", codeBlock->jitExecuteCounter()));
         codeBlock->updateAllPredictions();
-        if (UNLIKELY(Options::verboseOSR()))
-            dataLog("Choosing not to optimize ", *codeBlock, " yet, because the threshold hasn't been reached.\n");
+        dataLogLnIf(Options::verboseOSR(), "Choosing not to optimize ", *codeBlock, " yet, because the threshold hasn't been reached.");
         return encodeResult(0, 0);
     }
     
@@ -1553,8 +1553,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
     if (codeBlock->m_shouldAlwaysBeInlined) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("should always be inlined"));
         updateAllPredictionsAndOptimizeAfterWarmUp(codeBlock);
-        if (UNLIKELY(Options::verboseOSR()))
-            dataLog("Choosing not to optimize ", *codeBlock, " yet, because m_shouldAlwaysBeInlined == true.\n");
+        dataLogLnIf(Options::verboseOSR(), "Choosing not to optimize ", *codeBlock, " yet, because m_shouldAlwaysBeInlined == true.");
         return encodeResult(0, 0);
     }
 
@@ -1609,14 +1608,12 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
         if (!codeBlock->hasOptimizedReplacement()) {
             CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("compiled and failed"));
             codeBlock->updateAllPredictions();
-            if (UNLIKELY(Options::verboseOSR()))
-                dataLog("Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.\n");
+            dataLogLnIf(Options::verboseOSR(), "Code block ", *codeBlock, " was compiled but it doesn't have an optimized replacement.");
             return encodeResult(0, 0);
         }
     } else if (codeBlock->hasOptimizedReplacement()) {
         CodeBlock* replacement = codeBlock->replacement();
-        if (UNLIKELY(Options::verboseOSR()))
-            dataLog("Considering OSR ", codeBlock, " -> ", replacement, ".\n");
+        dataLogLnIf(Options::verboseOSR(), "Considering OSR ", codeBlock, " -> ", replacement, ".");
         // If we have an optimized replacement, then it must be the case that we entered
         // cti_optimize from a loop. That's because if there's an optimized replacement,
         // then all calls to this function will be relinked to the replacement and so
@@ -1632,27 +1629,22 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
         // additional checking anyway, to reduce the amount of recompilation thrashing.
         if (replacement->shouldReoptimizeFromLoopNow()) {
             CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("should reoptimize from loop now"));
-            if (UNLIKELY(Options::verboseOSR())) {
-                dataLog(
-                    "Triggering reoptimization of ", codeBlock,
-                    "(", replacement, ") (in loop).\n");
-            }
+            dataLogLnIf(Options::verboseOSR(),
+                "Triggering reoptimization of ", codeBlock,
+                "(", replacement, ") (in loop).");
             replacement->jettison(Profiler::JettisonDueToBaselineLoopReoptimizationTrigger, CountReoptimization);
             return encodeResult(0, 0);
         }
     } else {
         if (!codeBlock->shouldOptimizeNow()) {
             CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("insufficient profiling"));
-            if (UNLIKELY(Options::verboseOSR())) {
-                dataLog(
-                    "Delaying optimization for ", *codeBlock,
-                    " because of insufficient profiling.\n");
-            }
+            dataLogLnIf(Options::verboseOSR(),
+                "Delaying optimization for ", *codeBlock,
+                " because of insufficient profiling.");
             return encodeResult(0, 0);
         }
 
-        if (UNLIKELY(Options::verboseOSR()))
-            dataLog("Triggering optimized compilation of ", *codeBlock, "\n");
+        dataLogLnIf(Options::verboseOSR(), "Triggering optimized compilation of ", *codeBlock);
 
         unsigned numVarsWithValues = 0;
         if (bytecodeIndex)
@@ -1684,10 +1676,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
     
     if (void* dataBuffer = DFG::prepareOSREntry(vm, callFrame, optimizedCodeBlock, bytecodeIndex)) {
         CODEBLOCK_LOG_EVENT(optimizedCodeBlock, "osrEntry", ("at bc#", bytecodeIndex));
-        if (UNLIKELY(Options::verboseOSR())) {
-            dataLog(
-                "Performing OSR ", codeBlock, " -> ", optimizedCodeBlock, ".\n");
-        }
+        dataLogLnIf(Options::verboseOSR(), "Performing OSR ", codeBlock, " -> ", optimizedCodeBlock);
 
         codeBlock->optimizeSoon();
         codeBlock->unlinkedCodeBlock()->setDidOptimize(TrueTriState);
@@ -1696,12 +1685,10 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
         return encodeResult(targetPC, dataBuffer);
     }
 
-    if (UNLIKELY(Options::verboseOSR())) {
-        dataLog(
-            "Optimizing ", codeBlock, " -> ", codeBlock->replacement(),
-            " succeeded, OSR failed, after a delay of ",
-            codeBlock->optimizationDelayCounter(), ".\n");
-    }
+    dataLogLnIf(Options::verboseOSR(),
+        "Optimizing ", codeBlock, " -> ", codeBlock->replacement(),
+        " succeeded, OSR failed, after a delay of ",
+        codeBlock->optimizationDelayCounter());
 
     // Count the OSR failure as a speculation failure. If this happens a lot, then
     // reoptimize.
@@ -1717,11 +1704,9 @@ SlowPathReturnType JIT_OPERATION operationOptimize(VM* vmPointer, uint32_t bytec
     // reoptimization trigger.
     if (optimizedCodeBlock->shouldReoptimizeNow()) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("should reoptimize now"));
-        if (UNLIKELY(Options::verboseOSR())) {
-            dataLog(
-                "Triggering reoptimization of ", codeBlock, " -> ",
-                codeBlock->replacement(), " (after OSR fail).\n");
-        }
+        dataLogLnIf(Options::verboseOSR(),
+            "Triggering reoptimization of ", codeBlock, " -> ",
+            codeBlock->replacement(), " (after OSR fail).");
         optimizedCodeBlock->jettison(Profiler::JettisonDueToBaselineLoopReoptimizationTriggerOnOSREntryFail, CountReoptimization);
         return encodeResult(0, 0);
     }
@@ -2028,7 +2013,7 @@ EncodedJSValue JIT_OPERATION operationGetByValOptimize(JSGlobalObject* globalObj
         }
     }
 
-    if (baseValue.isCell() && isStringOrSymbol(subscript)) {
+    if (baseValue.isCell() && CacheableIdentifier::isCacheableIdentifierCell(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(globalObject);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         if (subscript.isSymbol() || !parseIndex(propertyName)) {
@@ -2037,7 +2022,7 @@ EncodedJSValue JIT_OPERATION operationGetByValOptimize(JSGlobalObject* globalObj
                 LOG_IC((ICEvent::OperationGetByValOptimize, baseValue.classInfoOrNull(vm), propertyName, baseValue == slot.slotBase())); 
                 
                 if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull(), propertyName.impl()))
-                    repatchGetBy(globalObject, codeBlock, baseValue, propertyName, slot, *stubInfo, GetByKind::NormalByVal);
+                    repatchGetBy(globalObject, codeBlock, baseValue, subscript.asCell(), slot, *stubInfo, GetByKind::NormalByVal);
                 return found ? slot.getValue(globalObject, propertyName) : jsUndefined();
             }));
         }

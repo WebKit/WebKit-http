@@ -21,7 +21,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-#if ENABLE(VIDEO)
+#if ENABLE(GPU_PROCESS)
 
 messages -> RemoteMediaPlayerManagerProxy NotRefCounted {
     CreateMediaPlayer(WebKit::MediaPlayerPrivateRemoteIdentifier id, enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, struct WebKit::RemoteMediaPlayerProxyConfiguration proxyConfiguration) -> (struct WebKit::RemoteMediaPlayerConfiguration playerConfiguration) Synchronous
@@ -34,26 +34,6 @@ messages -> RemoteMediaPlayerManagerProxy NotRefCounted {
     ClearMediaCache(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String path, WallTime modifiedSince)
     ClearMediaCacheForOrigins(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String path, Vector<WebCore::SecurityOriginData> origins)
     SupportsKeySystem(enum:uint8_t WebCore::MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, String keySystem, String mimeType) -> (bool supports) Synchronous
-
-    PrepareForPlayback(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool privateMode, enum:uint8_t WebCore::MediaPlayerEnums::Preload preload, bool preservesPitch, bool prepareForRendering)
-
-    Load(WebKit::MediaPlayerPrivateRemoteIdentifier id, URL url, WebCore::ContentType contentType, String keySystem) -> (struct WebKit::RemoteMediaPlayerConfiguration playerConfiguration) Async
-    CancelLoad(WebKit::MediaPlayerPrivateRemoteIdentifier id)
-
-    PrepareToPlay(WebKit::MediaPlayerPrivateRemoteIdentifier id)
-
-    Play(WebKit::MediaPlayerPrivateRemoteIdentifier id)
-    Pause(WebKit::MediaPlayerPrivateRemoteIdentifier id)
-
-    SetVolume(WebKit::MediaPlayerPrivateRemoteIdentifier id, double volume)
-    SetMuted(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool muted)
-
-    Seek(WebKit::MediaPlayerPrivateRemoteIdentifier id, MediaTime time)
-    SeekWithTolerance(WebKit::MediaPlayerPrivateRemoteIdentifier id, MediaTime time, MediaTime negativeTolerance, MediaTime positiveTolerance)
-
-    SetPreload(WebKit::MediaPlayerPrivateRemoteIdentifier id, enum:uint8_t WebCore::MediaPlayerEnums::Preload preload)
-    SetPrivateBrowsingMode(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool privateMode)
-    SetPreservesPitch(WebKit::MediaPlayerPrivateRemoteIdentifier id, bool preservesPitch)
 }
 
 #endif

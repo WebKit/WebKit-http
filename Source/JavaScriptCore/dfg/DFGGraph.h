@@ -955,7 +955,7 @@ public:
         
         // Report all arguments as being live.
         for (unsigned argument = block(0)->variablesAtHead.numberOfArguments(); argument--;)
-            functor(virtualRegisterForArgument(argument));
+            functor(virtualRegisterForArgumentIncludingThis(argument));
     }
     
     BytecodeKills& killsFor(CodeBlock*);

@@ -472,7 +472,7 @@ void _WebCreateFragment(Document& document, NSAttributedString *string, Fragment
         document:kit(&document) documentAttributes:documentAttributes subresources:&subresources];
     result.fragment = core(fragment);
     for (WebResource* resource in subresources)
-        result.resources.append([resource _coreResource]);
+        result.resources.append([resource _coreResource].get());
 }
 
 #endif
@@ -1098,7 +1098,7 @@ void WebEditorClient::willSetInputMethodState()
 {
 }
 
-void WebEditorClient::setInputMethodState(bool)
+void WebEditorClient::setInputMethodState(WebCore::Element*)
 {
 }
 

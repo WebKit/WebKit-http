@@ -81,6 +81,10 @@ typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
 
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+struct wpe_video_plane_display_dmabuf_source;
+#endif
+
 namespace WebCore {
 
 class BitmapTextureGL;
@@ -181,11 +185,7 @@ public:
     bool supportsFullscreen() const final;
     MediaPlayer::MovieLoadType movieLoadType() const final;
 
-    unsigned decodedFrameCount() const final;
-    unsigned droppedFrameCount() const final;
-    unsigned audioDecodedByteCount() const final;
-    unsigned videoDecodedByteCount() const final;
-
+    Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
     void acceleratedRenderingStateChanged() final;
 
 #if USE(TEXTURE_MAPPER_GL)
@@ -208,7 +208,7 @@ public:
 #endif
 
 #if USE(GSTREAMER_GL)
-    bool copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
+    bool copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL*, PlatformGLObject, GCGLenum, GCGLint, GCGLenum, GCGLenum, GCGLenum, bool, bool) override;
     NativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
@@ -521,6 +521,11 @@ private:
     Optional<bool> m_hasTaintedOrigin { WTF::nullopt };
 
     GRefPtr<GstElement> m_fpsSink { nullptr };
+
+private:
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+    GUniquePtr<struct wpe_video_plane_display_dmabuf_source> m_wpeVideoPlaneDisplayDmaBuf;
+#endif
 };
 
 }

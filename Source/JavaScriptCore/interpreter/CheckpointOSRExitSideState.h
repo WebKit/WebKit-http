@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BytecodeIndex.h"
+#include "Operands.h"
 
 namespace JSC {
 
@@ -34,7 +35,7 @@ struct CheckpointOSRExitSideState {
 public:
 
     BytecodeIndex bytecodeIndex;
-    JSValue tmps[maxNumCheckpointTmps];
+    JSValue tmps[maxNumCheckpointTmps] { };
 };
 
 }

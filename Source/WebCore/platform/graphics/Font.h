@@ -35,10 +35,12 @@
 #include "OpenTypeVerticalData.h"
 #endif
 #include <wtf/BitVector.h>
+#include <wtf/Hasher.h>
 #include <wtf/Optional.h>
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(COCOA)
+#include <CoreFoundation/CoreFoundation.h>
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -196,7 +198,7 @@ public:
 #endif
 #if PLATFORM(COCOA)
     CTFontRef getCTFont() const { return m_platformData.font(); }
-    CFDictionaryRef getCFStringAttributes(bool enableKerning, FontOrientation) const;
+    RetainPtr<CFDictionaryRef> getCFStringAttributes(bool enableKerning, FontOrientation, const AtomString& locale) const;
     const BitVector& glyphsSupportedBySmallCaps() const;
     const BitVector& glyphsSupportedByAllSmallCaps() const;
     const BitVector& glyphsSupportedByPetiteCaps() const;
@@ -208,7 +210,7 @@ public:
 #endif
 
     bool canRenderCombiningCharacterSequence(const UChar*, size_t) const;
-    bool applyTransforms(GlyphBufferGlyph*, GlyphBufferAdvance*, size_t glyphCount, bool enableKerning, bool requiresShaping) const;
+    void applyTransforms(GlyphBuffer&, unsigned beginningIndex, bool enableKerning, bool requiresShaping, const AtomString& locale) const;
 
 #if PLATFORM(WIN)
     SCRIPT_FONTPROPERTIES* scriptFontProperties() const;
@@ -218,8 +220,11 @@ public:
     static float ascentConsideringMacAscentHack(const WCHAR*, float ascent, float descent);
 #endif
 
+    SharedBuffer* fontFaceData() const { return m_fontFaceData.get(); }
+    void setFontFaceData(RefPtr<SharedBuffer>&&);
+
 private:
-    Font(const FontPlatformData&, Origin, Interstitial, Visibility, OrientationFallback);
+    WEBCORE_EXPORT Font(const FontPlatformData&, Origin, Interstitial, Visibility, OrientationFallback);
 
     void platformInit();
     void platformGlyphInit();
@@ -278,8 +283,6 @@ private:
     mutable std::unique_ptr<DerivedFonts> m_derivedFontData;
 
 #if PLATFORM(COCOA)
-    mutable RetainPtr<CFMutableDictionaryRef> m_nonKernedCFStringAttributes;
-    mutable RetainPtr<CFMutableDictionaryRef> m_kernedCFStringAttributes;
     mutable Optional<BitVector> m_glyphsSupportedBySmallCaps;
     mutable Optional<BitVector> m_glyphsSupportedByAllSmallCaps;
     mutable Optional<BitVector> m_glyphsSupportedByPetiteCaps;
@@ -290,6 +293,8 @@ private:
     mutable SCRIPT_CACHE m_scriptCache;
     mutable SCRIPT_FONTPROPERTIES* m_scriptFontProperties;
 #endif
+
+    RefPtr<SharedBuffer> m_fontFaceData;
 
     Glyph m_spaceGlyph { 0 };
     Glyph m_zeroGlyph { 0 };
@@ -319,6 +324,14 @@ private:
 #if PLATFORM(IOS_FAMILY)
     unsigned m_shouldNotBeUsedForArabic : 1;
 #endif
+};
+
+class FontHandle {
+public:
+    FontHandle() = default;
+    WEBCORE_EXPORT FontHandle(Ref<SharedBuffer>&& fontFaceData, Font::Origin, float fontSize, bool syntheticBold, bool syntheticItalic);
+
+    RefPtr<Font> font;
 };
 
 #if PLATFORM(IOS_FAMILY)

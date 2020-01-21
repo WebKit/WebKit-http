@@ -26,6 +26,7 @@
 #include "config.h"
 #include "PageClientImpl.h"
 
+#include "APIViewClient.h"
 #include "DrawingAreaProxyCoordinatedGraphics.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
@@ -33,6 +34,7 @@
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
 #include "WebContextMenuProxyWPE.h"
+#include "WebKitPopupMenu.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/DOMPasteAccess.h>
 #include <WebCore/NotImplemented.h>
@@ -253,9 +255,11 @@ void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&
 {
 }
 
-RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy&)
+RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& page)
 {
-    return nullptr;
+    if (!m_view.client().isGLibBasedAPI())
+        return nullptr;
+    return WebKitPopupMenu::create(m_view, page);
 }
 
 #if ENABLE(CONTEXT_MENUS)
@@ -430,9 +434,9 @@ void PageClientImpl::sendMessageToWebView(UserMessage&& message, CompletionHandl
     m_view.didReceiveUserMessage(WTFMove(message), WTFMove(completionHandler));
 }
 
-void PageClientImpl::setInputMethodState(bool enabled)
+void PageClientImpl::setInputMethodState(Optional<InputMethodState>&& state)
 {
-    m_view.setInputMethodState(enabled);
+    m_view.setInputMethodState(WTFMove(state));
 }
 
 void PageClientImpl::selectionDidChange()

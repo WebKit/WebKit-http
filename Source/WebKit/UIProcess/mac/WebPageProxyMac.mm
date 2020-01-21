@@ -314,7 +314,12 @@ void WebPageProxy::setPromisedDataForImage(const String& pasteboardName, const S
 {
     MESSAGE_CHECK_URL(url);
     MESSAGE_CHECK_URL(visibleURL);
+    MESSAGE_CHECK(!imageHandle.isNull());
+
     RefPtr<SharedMemory> sharedMemoryImage = SharedMemory::map(imageHandle, SharedMemory::Protection::ReadOnly);
+    if (!sharedMemoryImage)
+        return;
+
     auto imageBuffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryImage->data()), imageSize);
     RefPtr<SharedBuffer> archiveBuffer;
     
@@ -495,6 +500,8 @@ static NSString *pathToPDFOnDisk(const String& suggestedFilename)
 
 void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const IPC::DataReference& data, const String& pdfUUID)
 {
+    MESSAGE_CHECK(TemporaryPDFFileMap::isValidKey(pdfUUID));
+
     // FIXME: Write originatingURLString to the file's originating URL metadata (perhaps FileSystem::setMetadataURL()?).
     UNUSED_PARAM(originatingURLString);
 
@@ -532,6 +539,8 @@ void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplication(const St
 
 void WebPageProxy::openPDFFromTemporaryFolderWithNativeApplication(const String& pdfUUID)
 {
+    MESSAGE_CHECK(TemporaryPDFFileMap::isValidKey(pdfUUID));
+
     String pdfFilename = m_temporaryPDFFiles.get(pdfUUID);
 
     if (!pdfFilename.endsWithIgnoringASCIICase(".pdf"))

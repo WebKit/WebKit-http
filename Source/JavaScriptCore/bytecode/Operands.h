@@ -344,7 +344,7 @@ public:
     Operand operandForIndex(size_t index) const
     {
         if (index < numberOfArguments())
-            return virtualRegisterForArgument(index);
+            return virtualRegisterForArgumentIncludingThis(index);
         else if (index < numberOfLocals() + numberOfArguments())
             return virtualRegisterForLocal(index - numberOfArguments());
         return Operand::tmp(index - (numberOfLocals() + numberOfArguments()));

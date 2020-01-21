@@ -375,7 +375,7 @@ public:
         ASSERT(!m_deletionHasBegun || !m_referencingNodeCount);
         --m_referencingNodeCount;
         if (!m_referencingNodeCount && !refCount()) {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
             m_deletionHasBegun = true;
 #endif
             m_refCountAndParentBit = s_refCountIncrement; // Avoid double destruction through use of Ref<T>/RefPtr<T>. (This is a security mitigation in case of programmer error. It will ASSERT in debug builds.)
@@ -415,7 +415,7 @@ public:
     WEBCORE_EXPORT ViewportArguments viewportArguments() const;
 
     OptionSet<DisabledAdaptations> disabledAdaptations() const { return m_disabledAdaptations; }
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     bool didDispatchViewportPropertiesChanged() const { return m_didDispatchViewportPropertiesChanged; }
 #endif
 
@@ -687,8 +687,8 @@ public:
     const String& baseTarget() const { return m_baseTarget; }
     void processBaseElement();
 
-    WEBCORE_EXPORT URL completeURL(const String&) const final;
-    URL completeURL(const String&, const URL& baseURLOverride) const;
+    WEBCORE_EXPORT URL completeURL(const String&, ForceUTF8 = ForceUTF8::No) const final;
+    URL completeURL(const String&, const URL& baseURLOverride, ForceUTF8 = ForceUTF8::No) const;
 
     String userAgent(const URL&) const final;
 
@@ -761,6 +761,9 @@ public:
 
     void setFocusNavigationStartingNode(Node*);
     Element* focusNavigationStartingNode(FocusDirection) const;
+
+    void didRejectSyncXHRDuringPageDismissal();
+    bool shouldIgnoreSyncXHRs() const;
 
     enum class NodeRemoval { Node, ChildrenOfNode };
     void adjustFocusedNodeOnNodeRemoval(Node&, NodeRemoval = NodeRemoval::Node);
@@ -923,8 +926,6 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> setCookie(const String&);
 
     WEBCORE_EXPORT String referrer();
-
-    WEBCORE_EXPORT String origin() const final;
 
     WEBCORE_EXPORT String domain() const;
     ExceptionOr<void> setDomain(const String& newDomain);
@@ -1329,6 +1330,9 @@ public:
     SecurityOrigin& securityOrigin() const { return *SecurityContext::securityOrigin(); }
     SecurityOrigin& topOrigin() const final { return topDocument().securityOrigin(); }
 
+    void willLoadScriptElement(const URL&);
+    void willLoadFrameElement(const URL&);
+
     Ref<FontFaceSet> fonts();
 
     void ensurePlugInsInjectedScript(DOMWrapperWorld&);
@@ -1527,7 +1531,7 @@ public:
 
     WEBCORE_EXPORT bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool inHitTesting() const { return m_inHitTesting; }
 #endif
 
@@ -1546,6 +1550,7 @@ public:
     TextManipulationController* textManipulationControllerIfExists() { return m_textManipulationController.get(); }
         
     HighlightMap& highlightMap();
+    void updateHighlightPositions();
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -2004,7 +2009,7 @@ private:
 
     bool m_areDeviceMotionAndOrientationUpdatesSuspended { false };
     bool m_userDidInteractWithPage { false };
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool m_inHitTesting { false };
 #endif
 
@@ -2021,7 +2026,7 @@ private:
     bool m_hasHadCaptureMediaStreamTrack { false };
 #endif
 
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     bool m_didDispatchViewportPropertiesChanged { false };
 #endif
 
@@ -2052,11 +2057,13 @@ private:
     RefPtr<Worklet> m_paintWorklet;
     HashMap<String, Ref<PaintWorkletGlobalScope>> m_paintWorkletGlobalScopes;
 #endif
-
+    unsigned m_numberOfRejectedSyncXHRs { 0 };
     bool m_hasEvaluatedUserAgentScripts { false };
     bool m_isRunningUserScripts { false };
     bool m_mayBeDetachedFromFrame { true };
     bool m_shouldPreventEnteringBackForwardCacheForTesting { false };
+    bool m_hasLoadedThirdPartyScript { false };
+    bool m_hasLoadedThirdPartyFrame { false };
 #if ENABLE(APPLE_PAY)
     bool m_hasStartedApplePaySession { false };
 #endif

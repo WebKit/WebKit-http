@@ -39,6 +39,7 @@
 #import <wtf/MachSendRight.h>
 #import <wtf/RunLoop.h>
 #import <wtf/spi/darwin/XPCSPI.h>
+#import <wtf/text/StringConcatenate.h>
 
 #if PLATFORM(IOS_FAMILY)
 #import "ProcessAssertion.h"
@@ -272,8 +273,9 @@ bool Connection::sendMessage(std::unique_ptr<MachMessage> message)
         return false;
 
     default:
-        WebKit::setCrashReportApplicationSpecificInformation((__bridge CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x, message '%s::%s'", kr, message->messageReceiverName().data(), message->messageName().data()]);
-        CRASH();
+        CString messageName = makeString(message->messageReceiverName().data(), "::", message->messageName().data()).utf8();
+        WebKit::setCrashReportApplicationSpecificInformation((__bridge CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x, message '%s', hash %d", kr, messageName.data(), messageName.hash()]);
+        CRASH_WITH_INFO(kr, messageName.hash());
     }
 }
 
@@ -479,7 +481,7 @@ static mach_msg_header_t* readFromMachPort(mach_port_t machPort, ReceiveBuffer& 
     }
 
     if (kr != MACH_MSG_SUCCESS) {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         WebKit::setCrashReportApplicationSpecificInformation((__bridge CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x from mach_msg, receive port is %x", kr, machPort]);
 #endif
         ASSERT_NOT_REACHED();

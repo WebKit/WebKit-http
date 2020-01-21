@@ -168,6 +168,12 @@ class CleanWorkingDirectory(shell.ShellCommand):
     def __init__(self, **kwargs):
         super(CleanWorkingDirectory, self).__init__(logEnviron=False, **kwargs)
 
+    def start(self):
+        platform = self.getProperty('platform')
+        if platform in ('gtk', 'wpe'):
+            self.setCommand(self.command + ['--keep-jhbuild-directory'])
+        return shell.ShellCommand.start(self)
+
 
 class UpdateWorkingDirectory(shell.ShellCommand):
     name = 'update-working-directory'
@@ -687,17 +693,13 @@ class RunEWSBuildbotCheckConfig(shell.ShellCommand):
         return {u'step': u'Failed buildbot checkconfig'}
 
 
-class RunWebKitPyTests(shell.ShellCommand):
-    name = 'webkitpy-tests'
-    description = ['webkitpy-tests running']
+class WebKitPyTest(shell.ShellCommand):
+    language = 'python'
     descriptionDone = ['webkitpy-tests']
     flunkOnFailure = True
-    jsonFileName = 'webkitpy_test_results.json'
-    logfiles = {'json': jsonFileName}
-    command = ['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
 
     def __init__(self, **kwargs):
-        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+        super(WebKitPyTest, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver()
@@ -706,8 +708,7 @@ class RunWebKitPyTests(shell.ShellCommand):
 
     def getResultSummary(self):
         if self.results == SUCCESS:
-            message = 'Passed webkitpy tests'
-            self.build.buildFinished([message], SUCCESS)
+            message = 'Passed webkitpy {} tests'.format(self.language)
             return {u'step': unicode(message)}
 
         logLines = self.log_observer.getStdout()
@@ -716,15 +717,14 @@ class RunWebKitPyTests(shell.ShellCommand):
             webkitpy_results = json.loads(json_text)
         except Exception as ex:
             self._addToLog('stderr', 'ERROR: unable to parse data, exception: {}'.format(ex))
-            return super(RunWebKitPyTests, self).getResultSummary()
+            return super(WebKitPyTest, self).getResultSummary()
 
         failures = webkitpy_results.get('failures') + webkitpy_results.get('errors')
         if not failures:
-            return super(RunWebKitPyTests, self).getResultSummary()
+            return super(WebKitPyTest, self).getResultSummary()
         pluralSuffix = 's' if len(failures) > 1 else ''
         failures_string = ', '.join([failure.get('name').replace('webkitpy.', '') for failure in failures])
         message = 'Found {} WebKitPy test failure{}: {}'.format(len(failures), pluralSuffix, failures_string)
-        self.build.buildFinished([message], FAILURE)
         return {u'step': unicode(message)}
 
     @defer.inlineCallbacks
@@ -734,6 +734,24 @@ class RunWebKitPyTests(shell.ShellCommand):
         except KeyError:
             log = yield self.addLog(logName)
         log.addStdout(message)
+
+
+class RunWebKitPyPython2Tests(WebKitPyTest):
+    language = 'python2'
+    name = 'webkitpy-tests-{}'.format(language)
+    description = ['webkitpy-tests running ({})'.format(language)]
+    jsonFileName = 'webkitpy_test_{}_results.json'.format(language)
+    logfiles = {'json': jsonFileName}
+    command = ['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
+
+
+class RunWebKitPyPython3Tests(WebKitPyTest):
+    language = 'python3'
+    name = 'webkitpy-tests-{}'.format(language)
+    description = ['webkitpy-tests running ({})'.format(language)]
+    jsonFileName = 'webkitpy_test_{}_results.json'.format(language)
+    logfiles = {'json': jsonFileName}
+    command = ['python3', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
 
 
 class InstallGtkDependencies(shell.ShellCommand):
@@ -841,7 +859,7 @@ class CompileWebKit(shell.Compile):
     def evaluateCommand(self, cmd):
         if cmd.didFail():
             self.setProperty('patchFailedToBuild', True)
-            steps_to_add = [UnApplyPatchIfRequired()]
+            steps_to_add = [UnApplyPatchIfRequired(), ValidatePatch(verifyBugClosed=False, addURLs=False)]
             platform = self.getProperty('platform')
             if platform == 'wpe':
                 steps_to_add.append(InstallWpeDependencies())
@@ -1078,7 +1096,7 @@ class AnalyzeJSCTestsResults(buildstep.BuildStep):
         clean_tree_stress_failures = set(self.getProperty('jsc_clean_tree_stress_test_failures', []))
         clean_tree_binary_failures = set(self.getProperty('jsc_clean_tree_binary_failures', []))
         clean_tree_failures = list(clean_tree_binary_failures) + list(clean_tree_stress_failures)
-        clean_tree_failures_string = ', '.join(clean_tree_failures)
+        clean_tree_failures_string = ', '.join(clean_tree_failures[:self.NUM_FAILURES_TO_DISPLAY])
 
         stress_failures_with_patch = first_run_stress_failures.intersection(second_run_stress_failures)
         binary_failures_with_patch = first_run_binary_failures.intersection(second_run_binary_failures)
@@ -1867,7 +1885,7 @@ class PrintConfiguration(steps.ShellSequence):
     command_list_generic = [['hostname']]
     command_list_apple = [['df', '-hl'], ['date'], ['sw_vers'], ['xcodebuild', '-sdk', '-version'], ['uptime']]
     command_list_linux = [['df', '-hl'], ['date'], ['uname', '-a'], ['uptime']]
-    command_list_win = [[]]  # TODO: add windows specific commands here
+    command_list_win = [['df', '-hl']]
 
     def __init__(self, **kwargs):
         super(PrintConfiguration, self).__init__(timeout=60, **kwargs)
@@ -1884,7 +1902,7 @@ class PrintConfiguration(steps.ShellSequence):
             command_list.extend(self.command_list_apple)
         elif platform in ('gtk', 'wpe', 'jsc-only'):
             command_list.extend(self.command_list_linux)
-        elif platform in ('win', 'wincairo'):
+        elif platform in ('win'):
             command_list.extend(self.command_list_win)
 
         for command in command_list:

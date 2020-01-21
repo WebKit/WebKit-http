@@ -108,26 +108,6 @@ SUPPRESS_ASAN CallSiteIndex CallFrame::unsafeCallSiteIndex() const
     return CallSiteIndex::fromBits(unsafeCallSiteAsRawBits());
 }
 
-#if USE(JSVALUE32_64)
-const Instruction* CallFrame::currentVPC() const
-{
-    return bitwise_cast<Instruction*>(callSiteIndex().bits());
-}
-
-void CallFrame::setCurrentVPC(const Instruction* vpc)
-{
-    CallSiteIndex callSite(*vpc);
-    this[static_cast<int>(CallFrameSlot::argumentCountIncludingThis)].tag() = callSite.bits();
-}
-
-unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
-{
-    ASSERT(codeBlock());
-    ASSERT(callSiteBitsAreBytecodeOffset());
-    return codeBlock()->bytecodeOffset(currentVPC());     
-}
-
-#else // USE(JSVALUE32_64)
 const Instruction* CallFrame::currentVPC() const
 {
     ASSERT(callSiteBitsAreBytecodeOffset());
@@ -148,8 +128,6 @@ unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
     return callSiteIndex().bits();
 }
 
-#endif
-    
 BytecodeIndex CallFrame::bytecodeIndex()
 {
     ASSERT(!callee().isWasm());

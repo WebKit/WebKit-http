@@ -41,6 +41,7 @@ void InitializeWebKit2()
 {
     JSC::initializeThreading();
     RunLoop::initializeMainRunLoop();
+    AtomString::init();
 
     WTF::RefCountedBase::enableThreadingChecksGlobally();
 

@@ -30,6 +30,7 @@
 
 #include <wpe/WebKitAuthenticationRequest.h>
 #include <wpe/WebKitBackForwardList.h>
+#include <wpe/WebKitColor.h>
 #include <wpe/WebKitContextMenu.h>
 #include <wpe/WebKitDefines.h>
 #include <wpe/WebKitEditorState.h>
@@ -41,8 +42,10 @@
 #include <wpe/WebKitJavascriptResult.h>
 #include <wpe/WebKitNavigationAction.h>
 #include <wpe/WebKitNotification.h>
+#include <wpe/WebKitOptionMenu.h>
 #include <wpe/WebKitPermissionRequest.h>
 #include <wpe/WebKitPolicyDecision.h>
+#include <wpe/WebKitRectangle.h>
 #include <wpe/WebKitScriptDialog.h>
 #include <wpe/WebKitSettings.h>
 #include <wpe/WebKitURIRequest.h>
@@ -51,7 +54,6 @@
 #include <wpe/WebKitWebContext.h>
 #include <wpe/WebKitWebResource.h>
 #include <wpe/WebKitWebViewBackend.h>
-#include <wpe/WebKitColor.h>
 #include <wpe/WebKitWebViewSessionState.h>
 #include <wpe/WebKitWindowProperties.h>
 
@@ -245,7 +247,9 @@ struct _WebKitWebViewClass {
                                                     WebKitWebProcessTerminationReason reason);
     gboolean       (* user_message_received)       (WebKitWebView               *web_view,
                                                     WebKitUserMessage           *message);
-
+    gboolean       (* show_option_menu)            (WebKitWebView               *web_view,
+                                                    WebKitOptionMenu            *menu,
+                                                    WebKitRectangle             *rectangle);
 
     void (*_webkit_reserved0) (void);
     void (*_webkit_reserved1) (void);
@@ -253,7 +257,6 @@ struct _WebKitWebViewClass {
     void (*_webkit_reserved3) (void);
     void (*_webkit_reserved4) (void);
     void (*_webkit_reserved5) (void);
-    void (*_webkit_reserved6) (void);
 };
 
 WEBKIT_API GType

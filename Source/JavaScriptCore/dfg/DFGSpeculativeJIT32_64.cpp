@@ -2218,6 +2218,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
+    case CheckNeutered: {
+        compileCheckNeutered(node);
+        break;
+    }
+
     case CheckArray: {
         checkArray(node);
         break;
@@ -2778,7 +2783,7 @@ void SpeculativeJIT::compile(Node* node)
 
         flushRegisters();
         callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis,
-            NoResult, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), baseRegs, thisRegs, propertyRegs, valueRegs);
+            TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), baseRegs, thisRegs, propertyRegs, valueRegs);
         m_jit.exceptionCheck();
 
         noResult(node);
@@ -3090,6 +3095,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case ToPropertyKey: {
+        compileToPropertyKey(node);
+        break;
+    }
+
     case ToNumber: {
         JSValueOperand argument(this, node->child1());
         GPRTemporary resultTag(this, Reuse, argument, TagWord);
@@ -3247,6 +3257,11 @@ void SpeculativeJIT::compile(Node* node)
 
     case NewAsyncGenerator: {
         compileNewAsyncGenerator(node);
+        break;
+    }
+
+    case NewArrayIterator: {
+        compileNewArrayIterator(node);
         break;
     }
 
@@ -4197,10 +4212,12 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomNewAsyncFunction:
     case PhantomNewAsyncGeneratorFunction:
     case PhantomCreateActivation:
+    case PhantomNewArrayIterator:
     case PhantomNewRegexp:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeCreateActivation:
+    case MaterializeNewInternalFieldObject:
     case PutStack:
     case KillStack:
     case GetStack:

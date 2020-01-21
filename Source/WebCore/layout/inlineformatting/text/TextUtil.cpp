@@ -31,6 +31,7 @@
 #include "BreakLines.h"
 #include "FontCascade.h"
 #include "InlineTextItem.h"
+#include "RenderBox.h"
 #include "RenderStyle.h"
 
 namespace WebCore {
@@ -65,10 +66,10 @@ InlineLayoutUnit TextUtil::width(const Box& inlineBox, unsigned from, unsigned t
         if (font.isFixedPitch())
             width = fixedPitchWidth(text, style, from, to, contentLogicalLeft);
         else
-            width = font.widthForSimpleText(text.substring(from, to - from));
+            width = font.widthForSimpleText(StringView(text).substring(from, to - from));
     } else {
         auto tabWidth = style.collapseWhiteSpace() ? TabSize(0) : style.tabSize();
-        WebCore::TextRun run(text.substring(from, to - from), contentLogicalLeft);
+        WebCore::TextRun run(StringView(text).substring(from, to - from), contentLogicalLeft);
         if (tabWidth)
             run.setTabSize(true, tabWidth);
         width = font.width(run);
@@ -125,12 +126,6 @@ TextUtil::SplitData TextUtil::split(const Box& inlineBox, unsigned startPosition
         }
     }
     return { startPosition, right - startPosition, leftSideWidth };
-}
-
-bool TextUtil::shouldPreserveTrailingWhitespace(const RenderStyle& style)
-{
-    auto whitespace = style.whiteSpace();
-    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
 }
 
 unsigned TextUtil::findNextBreakablePosition(LazyLineBreakIterator& lineBreakIterator, unsigned startPosition, const RenderStyle& style)

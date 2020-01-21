@@ -27,7 +27,9 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "LayoutIntegrationBoxTree.h"
 #include "LayoutPoint.h"
+#include "LayoutState.h"
 #include "LineLayoutTraversal.h"
 #include "RenderObjectEnums.h"
 
@@ -47,7 +49,6 @@ struct InlineContent;
 
 namespace Layout {
 class LayoutTreeContent;
-class LayoutState;
 }
 
 namespace LayoutIntegration {
@@ -58,8 +59,9 @@ public:
     LineLayout(const RenderBlockFlow&);
     ~LineLayout();
 
-    static bool canUseFor(const RenderBlockFlow&);
+    static bool canUseFor(const RenderBlockFlow&, Optional<bool> couldUseSimpleLineLayout = { });
 
+    void updateStyle();
     void layout();
 
     LayoutUnit contentLogicalHeight() const { return m_contentLogicalHeight; }
@@ -80,12 +82,13 @@ public:
 
 private:
     const Layout::Container& rootLayoutBox() const;
+    Layout::Container& rootLayoutBox();
     void prepareRootGeometryForLayout();
     ShadowData* debugTextShadow();
 
     const RenderBlockFlow& m_flow;
-    std::unique_ptr<const Layout::LayoutTreeContent> m_treeContent;
-    std::unique_ptr<Layout::LayoutState> m_layoutState;
+    BoxTree m_boxTree;
+    Optional<Layout::LayoutState> m_layoutState;
     LayoutUnit m_contentLogicalHeight;
 };
 

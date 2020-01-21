@@ -119,9 +119,12 @@ set(WPE_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitNetworkProxySettings.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitNotificationPermissionRequest.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitNotification.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitOptionMenu.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitOptionMenuItem.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitPermissionRequest.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitPlugin.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitPolicyDecision.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitRectangle.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitResponsePolicyDecision.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitScriptDialog.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitSecurityManager.h

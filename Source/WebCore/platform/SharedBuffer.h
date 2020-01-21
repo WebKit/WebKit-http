@@ -198,6 +198,8 @@ public:
     // begin and end take O(1) time, this takes O(log(N)) time.
     SharedBufferDataView getSomeData(size_t position) const;
 
+    String toHexString() const;
+
     void hintMemoryNotNeededSoon() const;
 
     WTF::Persistence::Decoder decoder() const;
@@ -231,7 +233,7 @@ private:
     size_t m_size { 0 };
     mutable DataSegmentVector m_segments;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     mutable bool m_hasBeenCombinedIntoOneSegment { false };
     bool internallyConsistent() const;
 #endif

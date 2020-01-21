@@ -328,6 +328,15 @@ webkit_color_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitRectangle</FILE>
+WEBKIT_TYPE_RECTANGLE
+WebKitRectangle
+
+<SUBSECTION Private>
+webkit_rectangle_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitAuthenticationRequest</FILE>
 WebKitAuthenticationRequest
 WebKitAuthenticationScheme
@@ -1231,6 +1240,48 @@ webkit_context_menu_item_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitOptionMenu</FILE>
+WebKitOptionMenu
+webkit_option_menu_get_n_items
+webkit_option_menu_get_item
+webkit_option_menu_select_item
+webkit_option_menu_activate_item
+webkit_option_menu_close
+
+<SUBSECTION Standard>
+WebKitOptionMenuClass
+WEBKIT_TYPE_OPTION_MENU
+WEBKIT_OPTION_MENU
+WEBKIT_IS_OPTION_MENU
+WEBKIT_OPTION_MENU_CLASS
+WEBKIT_IS_OPTION_MENU_CLASS
+WEBKIT_OPTION_MENU_GET_CLASS
+
+<SUBSECTION Private>
+WebKitOptionMenuPrivate
+webkit_option_menu_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitOptionMenuItem</FILE>
+WebKitOptionMenuItem
+webkit_option_menu_item_copy
+webkit_option_menu_item_free
+webkit_option_menu_item_get_label
+webkit_option_menu_item_get_tooltip
+webkit_option_menu_item_is_group_label
+webkit_option_menu_item_is_group_child
+webkit_option_menu_item_is_enabled
+webkit_option_menu_item_is_selected
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_OPTION_MENU_ITEM
+
+<SUBSECTION Private>
+webkit_option_menu_item_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitFormSubmissionRequest</FILE>
 WebKitFormSubmissionRequest
 webkit_form_submission_request_list_text_fields
@@ -1445,13 +1496,20 @@ WEBKIT_TYPE_GEOLOCATION_POSITION
 <SECTION>
 <FILE>WebKitInputMethodContext</FILE>
 WebKitInputMethodContext
+WebKitInputPurpose
+WebKitInputHints
 webkit_input_method_context_set_enable_preedit
 webkit_input_method_context_get_preedit
 webkit_input_method_context_filter_key_event
 webkit_input_method_context_notify_focus_in
 webkit_input_method_context_notify_focus_out
 webkit_input_method_context_notify_cursor_area
+webkit_input_method_context_notify_surrounding
 webkit_input_method_context_reset
+webkit_input_method_context_get_input_purpose
+webkit_input_method_context_set_input_purpose
+webkit_input_method_context_get_input_hints
+webkit_input_method_context_set_input_hints
 
 <SUBSECTION Underline>
 WebKitInputMethodUnderline

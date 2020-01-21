@@ -126,12 +126,8 @@ public:
     uint64_t perOriginStorageQuota() const { return m_resolvedConfiguration->perOriginStorageQuota(); }
     uint64_t perThirdPartyOriginStorageQuota() const;
     const String& cacheStorageDirectory() const { return m_resolvedConfiguration->cacheStorageDirectory(); }
-    void setCacheStorageDirectory(String&& directory) { m_resolvedConfiguration->setCacheStorageDirectory(WTFMove(directory)); }
-    const String& serviceWorkerRegistrationDirectory() const { return m_resolvedConfiguration->serviceWorkerRegistrationDirectory(); }
-    void setServiceWorkerRegistrationDirectory(String&& directory) { m_resolvedConfiguration->setServiceWorkerRegistrationDirectory(WTFMove(directory)); }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    WebResourceLoadStatisticsStore* resourceLoadStatistics() const { return m_resourceLoadStatistics.get(); }
     void clearResourceLoadStatisticsInWebProcesses(CompletionHandler<void()>&&);
 #endif
 
@@ -198,6 +194,7 @@ public:
     void setResourceLoadStatisticsShouldDowngradeReferrerForTesting(bool, CompletionHandler<void()>&&);
     void setResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(bool enabled, bool onlyOnSitesWithoutUserInteraction, CompletionHandler<void()>&&);
     void setResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(bool enabled, CompletionHandler<void()>&&);
+    WebCore::ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode() const;
 #endif
     void setCacheMaxAgeCapForPrevalentResources(Seconds, CompletionHandler<void()>&&);
     void resetCacheMaxAgeCapForPrevalentResources(CompletionHandler<void()>&&);
@@ -336,7 +333,6 @@ private:
     const Ref<DeviceIdHashSaltStorage> m_deviceIdHashSaltStorage;
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    RefPtr<WebResourceLoadStatisticsStore> m_resourceLoadStatistics;
     bool m_resourceLoadStatisticsDebugMode { false };
     bool m_resourceLoadStatisticsEnabled { false };
     WTF::Function<void(const String&)> m_statisticsTestingCallback;
@@ -377,6 +373,9 @@ private:
 
 #if HAVE(APP_SSO)
     UniqueRef<SOAuthorizationCoordinator> m_soAuthorizationCoordinator;
+#endif
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    mutable Optional<WebCore::ThirdPartyCookieBlockingMode> m_thirdPartyCookieBlockingMode; // Lazily computed.
 #endif
 };
 

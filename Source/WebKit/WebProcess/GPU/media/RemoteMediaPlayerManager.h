@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +27,13 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "GPUProcessConnection.h"
 #include "MediaPlayerPrivateRemoteIdentifier.h"
 #include "MessageReceiver.h"
 #include "RemoteMediaPlayerState.h"
 #include "RemoteMediaResourceIdentifier.h"
 #include "SharedMemory.h"
+#include "TrackPrivateRemoteIdentifier.h"
 #include "WebProcessSupplement.h"
 #include <WebCore/MediaPlayer.h>
 #include <wtf/HashMap.h>
@@ -46,20 +48,23 @@ namespace WebKit {
 class MediaPlayerPrivateRemote;
 class RemoteMediaPlayerMIMETypeCache;
 class WebProcess;
+struct TrackPrivateRemoteConfiguration;
 
-class RemoteMediaPlayerManager : public WebProcessSupplement, public IPC::MessageReceiver {
+class RemoteMediaPlayerManager
+    : public WebProcessSupplement {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit RemoteMediaPlayerManager(WebProcess&);
     ~RemoteMediaPlayerManager();
 
     static const char* supplementName();
+    WebProcess& parentProcess() const { return m_process; }
 
     void updatePreferences(const WebCore::Settings&);
 
-    IPC::Connection& gpuProcessConnection() const;
+    GPUProcessConnection& gpuProcessConnection() const;
 
-    void didReceiveMessageFromGPUProcess(IPC::Connection& connection, IPC::Decoder& decoder) { didReceiveMessage(connection, decoder); }
+    void didReceivePlayerMessage(IPC::Connection&, IPC::Decoder&);
 
     void deleteRemoteMediaPlayer(MediaPlayerPrivateRemoteIdentifier);
 
@@ -68,24 +73,6 @@ private:
 
     // WebProcessSupplement
     void initialize(const WebProcessCreationParameters&) final;
-
-    // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
-
-    // Messages::RemoteMediaPlayerManager
-    void networkStateChanged(MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerState&&);
-    void readyStateChanged(MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerState&&);
-    void volumeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, double);
-    void muteChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, bool);
-    void timeChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerState&&);
-    void durationChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerState&&);
-    void rateChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, double);
-    void playbackStateChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, bool);
-    void engineFailedToLoad(WebKit::MediaPlayerPrivateRemoteIdentifier, long);
-    void updateCachedState(WebKit::MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerState&&);
-    void characteristicChanged(WebKit::MediaPlayerPrivateRemoteIdentifier, bool hasAudio, bool hasVideo, WebCore::MediaPlayerEnums::MovieLoadType);
-    void requestResource(MediaPlayerPrivateRemoteIdentifier, RemoteMediaResourceIdentifier, WebCore::ResourceRequest&&, WebCore::PlatformMediaResourceLoader::LoadOptions, CompletionHandler<void()>&&);
-    void removeResource(MediaPlayerPrivateRemoteIdentifier, RemoteMediaResourceIdentifier);
 
     friend class MediaPlayerRemoteFactory;
     void getSupportedTypes(WebCore::MediaPlayerEnums::MediaEngineIdentifier, HashSet<String, ASCIICaseInsensitiveHash>&);
@@ -99,6 +86,7 @@ private:
 
     HashMap<MediaPlayerPrivateRemoteIdentifier, WeakPtr<MediaPlayerPrivateRemote>> m_players;
     WebProcess& m_process;
+    mutable GPUProcessConnection* m_gpuProcessConnection { nullptr };
 };
 
 } // namespace WebKit

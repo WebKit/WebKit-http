@@ -442,6 +442,8 @@ const char* TestController::libraryPathForTesting()
 
 void TestController::initialize(int argc, const char* argv[])
 {
+    AutodrainedPool pool;
+
     JSC::initializeThreading();
     RunLoop::initializeMainRunLoop();
     WTF::setProcessPrivileges(allPrivileges());
@@ -527,11 +529,13 @@ WKWebsiteDataStoreRef TestController::websiteDataStore()
 
             WKWebsiteDataStoreConfigurationSetApplicationCacheDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ApplicationCache").get());
             WKWebsiteDataStoreConfigurationSetNetworkCacheDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Cache").get());
+            WKWebsiteDataStoreConfigurationSetCacheStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "CacheStorage").get());
             WKWebsiteDataStoreConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Databases" + pathSeparator + "IndexedDB").get());
             WKWebsiteDataStoreConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "LocalStorage").get());
             WKWebsiteDataStoreConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "Databases" + pathSeparator + "WebSQL").get());
             WKWebsiteDataStoreConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "MediaKeys").get());
             WKWebsiteDataStoreConfigurationSetResourceLoadStatisticsDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ResourceLoadStatistics").get());
+            WKWebsiteDataStoreConfigurationSetServiceWorkerRegistrationDirectory(configuration.get(), toWK(temporaryFolder + pathSeparator + "ServiceWorkers").get());
             WKWebsiteDataStoreConfigurationSetPerOriginStorageQuota(configuration.get(), 400 * 1024);
             WKWebsiteDataStoreConfigurationSetNetworkCacheSpeculativeValidationEnabled(configuration.get(), true);
             WKWebsiteDataStoreConfigurationSetStaleWhileRevalidateEnabled(configuration.get(), true);
@@ -830,6 +834,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
 #if PLATFORM(COCOA)
     WKPreferencesSetCaptureVideoInUIProcessEnabled(preferences, options.enableCaptureVideoInUIProcess);
+    WKPreferencesSetCaptureVideoInGPUProcessEnabled(preferences, options.enableCaptureVideoInGPUProcess);
     WKPreferencesSetCaptureAudioInGPUProcessEnabled(preferences, options.enableCaptureAudioInGPUProcess);
 #endif
     WKPreferencesSetProcessSwapOnNavigationEnabled(preferences, options.contextOptions.shouldEnableProcessSwapOnNavigation());
@@ -943,7 +948,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetVideoPlaybackRequiresUserGesture(preferences, false);
     WKPreferencesSetAudioPlaybackRequiresUserGesture(preferences, false);
 
-    WKPreferencesSetShouldUseServiceWorkerShortTimeout(preferences, true);
+    WKPreferencesSetShouldUseServiceWorkerShortTimeout(preferences, options.contextOptions.useServiceWorkerShortTimeout);
 
     platformResetPreferencesToConsistentValues();
 }
@@ -1081,7 +1086,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     setHidden(false);
 
-    platformResetStateToConsistentValues(options);
+    if (!platformResetStateToConsistentValues(options))
+        return false;
 
     m_shouldDecideNavigationPolicyAfterDelay = false;
     m_shouldDecideResponsePolicyAfterDelay = false;
@@ -1430,6 +1436,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contextOptions.enableProcessSwapOnNavigation = parseBooleanTestHeaderValue(value);
         else if (key == "enableProcessSwapOnWindowOpen")
             testOptions.contextOptions.enableProcessSwapOnWindowOpen = parseBooleanTestHeaderValue(value);
+        else if (key == "useServiceWorkerShortTimeout")
+            testOptions.contextOptions.useServiceWorkerShortTimeout = parseBooleanTestHeaderValue(value);
         else if (key == "enableColorFilter")
             testOptions.enableColorFilter = parseBooleanTestHeaderValue(value);
         else if (key == "punchOutWhiteBackgroundsInDarkMode")
@@ -1472,6 +1480,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.allowsLinkPreview = parseBooleanTestHeaderValue(value);
         else if (key == "enableCaptureVideoInUIProcess")
             testOptions.enableCaptureVideoInUIProcess = parseBooleanTestHeaderValue(value);
+        else if (key == "enableCaptureVideoInGPUProcess")
+            testOptions.enableCaptureVideoInGPUProcess = parseBooleanTestHeaderValue(value);
         else if (key == "enableCaptureAudioInGPUProcess")
             testOptions.enableCaptureAudioInGPUProcess = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
@@ -2299,7 +2309,8 @@ WKPluginLoadPolicy TestController::decidePolicyForPluginLoad(WKPageRef, WKPlugin
     if (WKStringIsEqualToUTF8CString(bundleIdentifier, "com.apple.testnetscapeplugin"))
         return currentPluginLoadPolicy;
 
-    RELEASE_ASSERT_NOT_REACHED(); // Please don't use any other plug-ins in tests, as they will not be installed on all machines.
+    // Please don't use any other plug-ins in tests, as they will not be installed on all machines.
+    RELEASE_ASSERT_NOT_REACHED_WITH_MESSAGE("Unexpected plugin bundle identifier: %s", toSTD(bundleIdentifier).c_str());
 #else
     return currentPluginLoadPolicy;
 #endif
@@ -3073,18 +3084,12 @@ WKContextRef TestController::platformAdjustContext(WKContextRef context, WKConte
 {
     auto* dataStore = TestController::websiteDataStore();
     WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(dataStore, true);
-
-    if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
-        String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
-
-        WKWebsiteDataStoreSetServiceWorkerRegistrationDirectory(dataStore, toWK(temporaryFolder + pathSeparator + "ServiceWorkers").get());
-    }
-
     return context;
 }
 
-void TestController::platformResetStateToConsistentValues(const TestOptions&)
+bool TestController::platformResetStateToConsistentValues(const TestOptions&)
 {
+    return true;
 }
 
 unsigned TestController::imageCountInGeneralPasteboard() const

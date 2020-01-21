@@ -13,6 +13,7 @@ media/ios [ Pass ]
 quicklook [ Pass ]
 swipe [ Pass ]
 
+fast/css/ios [ Pass ]
 fast/media/ios [ Pass ]
 
 fast/forms/textarea/ios [ Pass ]
@@ -3344,14 +3345,8 @@ legacy-animation-engine/fast/text/crash-complex-text-surrogate.html [ Failure ]
 fast/text/crash-complex-text-surrogate.html [ Failure ]
 fast/text/international/system-language/system-font-punctuation.html [ Failure ]
 
-# <rdar://problem/51756254>REGRESSION (r244582-r244596) Layout tests fast/scrolling/ios/touch-scroll-visibility-hidden.html fast/scrolling/ios/touch-scroll-pointer-events-none.html are failing
-fast/scrolling/ios/touch-scroll-pointer-events-none.html [ Failure ]
-fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
-
 # <rdar://problem/52962272> fast/scrolling/ios/body-overflow-hidden.html is an Image failure
 fast/scrolling/ios/body-overflow-hidden.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/201901 svg/custom/glyph-selection-arabic-forms.svg [ Failure ]
 
 webkit.org/b/202328 fast/images/async-image-multiple-clients-repaint.html [ Pass Failure ]
 
@@ -3458,4 +3453,8 @@ webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/properti
 
 webkit.org/b/204757 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https.html [ Pass Failure ]
 
-webkit.org/b/205309 scrollingcoordinator/ios/scroll-position-after-reattach.html [ ImageonlyFailure ]
+webkit.org/b/205309 scrollingcoordinator/ios/scroll-position-after-reattach.html [ ImageOnlyFailure ]
+
+webkit.org/b/200043 fast/text/international/system-language/navigator-language [ Pass Failure ]
+
+webkit.org/b/206291 storage/websql/statement-error-callback.html [ Pass Timeout ]

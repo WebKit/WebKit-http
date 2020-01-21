@@ -69,7 +69,7 @@ RenderInline::RenderInline(Document& document, RenderStyle&& style)
 
 void RenderInline::willBeDestroyed()
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     // Make sure we do not retain "this" in the continuation outline table map of our containing blocks.
     if (parent() && style().visibility() == Visibility::Visible && hasOutline()) {
         bool containingBlockPaintsContinuationOutline = continuation() || isContinuation();
@@ -80,7 +80,7 @@ void RenderInline::willBeDestroyed()
             }
         }
     }
-#endif
+#endif // ASSERT_ENABLED
 
     if (!renderTreeBeingDestroyed()) {
         if (firstLineBox()) {
@@ -412,11 +412,15 @@ private:
 
 void RenderInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 {
+    absoluteQuadsIgnoringContinuation({ }, quads, wasFixed);
+    if (continuation())
+        collectAbsoluteQuadsForContinuation(quads, wasFixed);
+}
+
+void RenderInline::absoluteQuadsIgnoringContinuation(const FloatRect&, Vector<FloatQuad>& quads, bool*) const
+{
     AbsoluteQuadsGeneratorContext context(this, quads);
     generateLineBoxRects(context);
-
-    if (RenderBoxModelObject* continuation = this->continuation())
-        continuation->absoluteQuads(quads, wasFixed);
 }
 
 #if PLATFORM(IOS_FAMILY)

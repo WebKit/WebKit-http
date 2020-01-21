@@ -34,9 +34,15 @@
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
+
+namespace Display {
+class Box;
+}
+
 namespace Layout {
 
 class Container;
+class LayoutState;
 class TreeBuilder;
 
 class Box : public CanMakeWeakPtr<Box> {
@@ -65,13 +71,15 @@ public:
 
     Box(Optional<ElementAttributes>, RenderStyle&&);
     Box(TextContext&&, RenderStyle&&);
-    virtual ~Box();
+    ~Box();
 
     bool establishesFormattingContext() const;
     bool establishesBlockFormattingContext() const;
-    bool establishesTableFormattingContext() const;
-    bool establishesBlockFormattingContextOnly() const;
     bool establishesInlineFormattingContext() const;
+    bool establishesTableFormattingContext() const;
+    bool establishesIndependentFormattingContext() const;
+
+    bool establishesBlockFormattingContextOnly() const;
     bool establishesInlineFormattingContextOnly() const;
 
     bool isInFlow() const { return !isFloatingOrOutOfFlowPositioned(); }
@@ -130,6 +138,9 @@ public:
     const Box* previousInFlowSibling() const;
     const Box* previousInFlowOrFloatingSibling() const;
 
+    // FIXME: This is currently needed for style updates.
+    Box* nextSibling() { return m_nextSibling; }
+
     bool isContainer() const { return m_baseTypeFlags & ContainerFlag; }
     bool isBlockContainer() const { return isBlockLevelBox() && isContainer(); }
     bool isInlineContainer() const { return isInlineLevelBox() && isContainer(); }
@@ -161,6 +172,10 @@ public:
     void setPreviousSibling(Box& previousSibling) { m_previousSibling = &previousSibling; }
 
     void setIsAnonymous() { m_isAnonymous = true; }
+
+    bool canCacheForLayoutState(const LayoutState&) const;
+    Display::Box* cachedDisplayBoxForLayoutState(const LayoutState&) const;
+    void setCachedDisplayBoxForLayoutState(LayoutState&, std::unique_ptr<Display::Box>) const;
 
 protected:
     Box(Optional<ElementAttributes>, Optional<TextContext>, RenderStyle&&, BaseTypeFlags);
@@ -195,6 +210,10 @@ private:
     Box* m_nextSibling { nullptr };
     
     const Optional<TextContext> m_textContext;
+
+    // First LayoutState gets a direct cache.
+    mutable WeakPtr<LayoutState> m_cachedLayoutState;
+    mutable std::unique_ptr<Display::Box> m_cachedDisplayBoxForLayoutState;
 
     unsigned m_baseTypeFlags : 6;
     bool m_hasRareData : 1;

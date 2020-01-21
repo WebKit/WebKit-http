@@ -963,7 +963,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     }
     case PolicyAction::StopAllLoads:
         ASSERT_NOT_REACHED();
-#if ASSERT_DISABLED
+#if !ASSERT_ENABLED
         FALLTHROUGH;
 #endif
     case PolicyAction::Ignore:
@@ -1092,9 +1092,6 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         if (!isLoading())
             return;
 
-        if (auto* window = m_frame->document()->domWindow())
-            window->prewarmLocalStorageIfNecessary();
-
         bool userChosen;
         String encoding;
         if (overrideEncoding().isNull()) {
@@ -1219,7 +1216,7 @@ void DocumentLoader::attachToFrame(Frame& frame)
     m_writer.setFrame(frame);
     attachToFrame();
 
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     m_hasEverBeenAttached = true;
 #endif
 
@@ -1233,7 +1230,7 @@ void DocumentLoader::attachToFrame()
 
 void DocumentLoader::detachFromFrame()
 {
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     if (m_hasEverBeenAttached)
         ASSERT_WITH_MESSAGE(m_frame, "detachFromFrame() is being called on a DocumentLoader twice without an attachToFrame() inbetween");
     else
@@ -1272,7 +1269,12 @@ void DocumentLoader::clearMainResourceLoader()
 {
     m_loadingMainResource = false;
 
-    if (this == frameLoader()->activeDocumentLoader())
+    auto* frameLoader = this->frameLoader();
+
+    if (!frameLoader)
+        return;
+
+    if (this == frameLoader->activeDocumentLoader())
         checkLoadComplete();
 }
 
@@ -1516,14 +1518,14 @@ void DocumentLoader::substituteResourceDeliveryTimerFired()
     }
 }
 
-#ifndef NDEBUG
+#if ASSERT_ENABLED
 
 bool DocumentLoader::isSubstituteLoadPending(ResourceLoader* loader) const
 {
     return m_pendingSubstituteResources.contains(loader);
 }
 
-#endif
+#endif // ASSERT_ENABLED
 
 void DocumentLoader::cancelPendingSubstituteLoad(ResourceLoader* loader)
 {
@@ -1690,7 +1692,7 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
     if (loader->options().applicationCacheMode == ApplicationCacheMode::Bypass)
         return;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     if (document()) {
         switch (document()->backForwardCacheState()) {
         case Document::NotInBackForwardCache:

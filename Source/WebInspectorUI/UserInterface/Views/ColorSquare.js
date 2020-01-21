@@ -37,6 +37,7 @@ WI.ColorSquare = class ColorSquare
 
         this._element = document.createElement("div");
         this._element.className = "color-square";
+        this._element.tabIndex = 0;
 
         let saturationGradientElement = this._element.appendChild(document.createElement("div"));
         saturationGradientElement.className = "saturation-gradient fill";
@@ -49,6 +50,7 @@ WI.ColorSquare = class ColorSquare
         this._polylineElement = null;
 
         this._element.addEventListener("mousedown", this);
+        this._element.addEventListener("keydown", this._handleKeyDown.bind(this));
 
         this._crosshairElement = this._element.appendChild(document.createElement("div"));
         this._crosshairElement.className = "crosshair";
@@ -104,29 +106,14 @@ WI.ColorSquare = class ColorSquare
 
         this._gamut = tintedColor.gamut;
 
-        if (tintedColor.format === WI.Color.Format.ColorFunction) {
-            // CSS color function only supports RGB. It doesn't support HSL.
-            let hsv = WI.Color.rgb2hsv(...tintedColor.normalizedRGB);
-            let x = hsv[1] / 100 * this._dimension;
-            let y = (1 - (hsv[2] / 100)) * this._dimension;
-            this._setCrosshairPosition(new WI.Point(x, y));
-            if (this._gamut === WI.Color.Gamut.DisplayP3)
-                this._drawSRGBOutline();
-        } else {
-            let hsl = tintedColor.hsl;
-            let saturation = Number.constrain(hsl[1], 0, 100);
-            let x = saturation / 100 * this._dimension;
+        let [hue, saturation, value] = WI.Color.rgb2hsv(...tintedColor.normalizedRGB);
+        let x = saturation / 100 * this._dimension;
+        let y = (1 - (value / 100)) * this._dimension;
 
-            let lightness = hsl[2];
+        if (this._gamut === WI.Color.Gamut.DisplayP3)
+            this._drawSRGBOutline();
 
-            // The color picker is HSV-based. (HSV is also known as HSB.)
-            // Derive lightness by using HSV to HSL equation.
-            let y = 2 * lightness / (200 - saturation);
-            y = -1 * (y - 1) * this._dimension;
-
-            this._setCrosshairPosition(new WI.Point(x, y));
-        }
-
+        this._setCrosshairPosition(new WI.Point(x, y));
         this._updateBaseColor();
     }
 
@@ -172,6 +159,7 @@ WI.ColorSquare = class ColorSquare
 
         // Prevent text selection.
         event.stop();
+        this._element.focus();
     }
 
     _handleMousemove(event)
@@ -183,6 +171,36 @@ WI.ColorSquare = class ColorSquare
     {
         window.removeEventListener("mousemove", this, true);
         window.removeEventListener("mouseup", this, true);
+    }
+
+    _handleKeyDown(event)
+    {
+        let dx = 0;
+        let dy = 0;
+        let step = event.shiftKey ? 10 : 1;
+
+        switch (event.keyIdentifier) {
+        case "Right":
+            dx += step;
+            break;
+        case "Left":
+            dx -= step;
+            break;
+        case "Down":
+            dy += step;
+            break;
+        case "Up":
+            dy -= step;
+            break;
+        }
+
+        if (dx || dy) {
+            event.preventDefault();
+            this._setCrosshairPosition(new WI.Point(this._x + dx, this._y + dy));
+
+            if (this._delegate && this._delegate.colorSquareColorDidChange)
+                this._delegate.colorSquareColorDidChange(this);
+        }
     }
 
     _updateColorForMouseEvent(event)

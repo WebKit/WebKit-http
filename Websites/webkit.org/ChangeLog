@@ -1,3 +1,145 @@
+2020-01-16  Jon Davis  <jond@apple.com>
+
+        Ensure full URLs for relative path images for social meta data
+        https://bugs.webkit.org/show_bug.cgi?id=206382
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/plugins/social-meta.php:
+
+2020-01-16  Jon Davis  <jond@apple.com>
+
+        Add support for categories and custom post types to the social meta plugin
+        https://bugs.webkit.org/show_bug.cgi?id=206327
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/plugins/social-meta.php:
+        * wp-content/plugins/web-inspector-pages.php:
+        * wp-content/themes/webkit/archive-web_inspector_page.php:
+
+2020-01-15  Jon Davis  <jond@apple.com>
+
+        Add Web Inspector Reference notice to Web Inspector blog posts
+        https://bugs.webkit.org/show_bug.cgi?id=206308
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/functions.php:
+
+2020-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector Reference: the meta info at the end of the article should always be on its own line
+        https://bugs.webkit.org/show_bug.cgi?id=206277
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/style.css:
+        (article .bodycopy, article .meta):
+
+2020-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector Reference: put the original author and last modified author on separate lines
+        https://bugs.webkit.org/show_bug.cgi?id=206274
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/single-web_inspector_page.php:
+        * wp-content/themes/webkit/style.css:
+        (article .meta .written): Added.
+        (article .meta .written, article .meta .updated): Added.
+        (article .meta .updated): Deleted.
+
+2020-01-15  Jon Davis  <jond@apple.com>
+
+        Ensure UAs update the stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=206292
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/header.php:
+
+2020-01-14  Jon Davis  <jond@apple.com>
+
+        Display authors of a Web Inspector reference article
+        https://bugs.webkit.org/show_bug.cgi?id=206176
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/single-web_inspector_page.php:
+
+2020-01-14  Jon Davis  <jond@apple.com>
+
+        Add Markdown support for Web Inspector Reference articles
+        https://bugs.webkit.org/show_bug.cgi?id=206256
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/plugins/web-inspector-pages.php:
+
+2020-01-14  Jon Davis  <jond@apple.com>
+
+        Fix blog post article title justification
+        https://bugs.webkit.org/show_bug.cgi?id=206245
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/style.css:
+        (main h1):
+
+2020-01-13  Jon Davis  <jond@apple.com>
+
+        Add support for Web Inspector pages and topic taxonomy
+        https://bugs.webkit.org/show_bug.cgi?id=206034
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/plugins/web-inspector-pages.php: Added.
+        * wp-content/themes/webkit/archive-web_inspector_page.php: Added.
+        * wp-content/themes/webkit/single-web_inspector_page.php: Added.
+
+2020-01-09  Jon Davis  <jond@apple.com>
+
+        Add styles to support Web Inspector reference articles
+        https://bugs.webkit.org/show_bug.cgi?id=206032
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/style.css:
+        (main h1,):
+        (main h1):
+        (article .meta .updated):
+        (article .bodycopy,):
+        (.image):
+        (p .image,):
+        (.image.block):
+        (.image img):
+        (.widescreen .image):
+        (.image.slice-top > picture > img):
+        (.image.slice-right > picture > img):
+        (.image.slice-bottom > picture > img):
+        (.image.slice-left > picture > img):
+        (.flex):
+        (.flex.center):
+        (figure.widescreen):
+        (article picture):
+        (article picture > img):
+        (.single-web_inspector_page .landing-link):
+        (.single-web_inspector_page .landing-link:hover):
+        (@media(prefers-color-scheme:dark) article .invert-brightness,):
+        (@media(prefers-color-scheme:dark) .table-of-contents label:after):
+        (article h1,): Deleted.
+        (article .bodycopy): Deleted.
+
+2020-01-09  Jon Davis  <jond@apple.com>
+
+        Fix redundant anchor tags when generating table of contents
+        https://bugs.webkit.org/show_bug.cgi?id=206016
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/plugins/table-of-contents.php:
+
 2019-11-13  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [WebGPU] Update Babylon WebGPU demos to work on ToT

@@ -137,7 +137,9 @@ JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame)
     }
 
     EvalContextType evalContextType;
-    if (isFunctionParseMode(callerUnlinkedCodeBlock->parseMode()))
+    if (callerUnlinkedCodeBlock->parseMode() == SourceParseMode::InstanceFieldInitializerMode)
+        evalContextType = EvalContextType::InstanceFieldEvalContext;
+    else if (isFunctionParseMode(callerUnlinkedCodeBlock->parseMode()))
         evalContextType = EvalContextType::FunctionEvalContext;
     else if (callerUnlinkedCodeBlock->codeType() == EvalCode)
         evalContextType = callerUnlinkedCodeBlock->evalContextType();
@@ -163,7 +165,7 @@ JSValue eval(JSGlobalObject* globalObject, CallFrame* callFrame)
         
         VariableEnvironment variablesUnderTDZ;
         JSScope::collectClosureVariablesUnderTDZ(callerScopeChain, variablesUnderTDZ);
-        eval = DirectEvalExecutable::create(globalObject, makeSource(programSource, callerCodeBlock->source().provider()->sourceOrigin()), callerCodeBlock->isStrictMode(), derivedContextType, isArrowFunctionContext, evalContextType, &variablesUnderTDZ);
+        eval = DirectEvalExecutable::create(globalObject, makeSource(programSource, callerCodeBlock->source().provider()->sourceOrigin()), callerCodeBlock->isStrictMode(), derivedContextType, callerUnlinkedCodeBlock->needsClassFieldInitializer(), isArrowFunctionContext, evalContextType, &variablesUnderTDZ);
         EXCEPTION_ASSERT(!!scope.exception() == !eval);
         if (!eval)
             return jsUndefined();
@@ -335,7 +337,7 @@ Interpreter::Interpreter(VM& vm)
     , m_cloopStack(vm)
 #endif
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     static std::once_flag assertOnceKey;
     std::call_once(assertOnceKey, [] {
         for (unsigned i = 0; i < NUMBER_OF_BYTECODE_IDS; ++i) {
@@ -343,7 +345,7 @@ Interpreter::Interpreter(VM& vm)
             RELEASE_ASSERT(getOpcodeID(getOpcode(opcodeID)) == opcodeID);
         }
     });
-#endif // USE(LLINT_EMBEDDED_OPCODE_ID)
+#endif // ASSERT_ENABLED
 }
 
 Interpreter::~Interpreter()
@@ -351,7 +353,7 @@ Interpreter::~Interpreter()
 }
 
 #if ENABLE(COMPUTED_GOTO_OPCODES)
-#if !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
+#if !USE(LLINT_EMBEDDED_OPCODE_ID) || ASSERT_ENABLED
 HashMap<Opcode, OpcodeID>& Interpreter::opcodeIDTable()
 {
     static NeverDestroyed<HashMap<Opcode, OpcodeID>> opcodeIDTable;
@@ -365,10 +367,10 @@ HashMap<Opcode, OpcodeID>& Interpreter::opcodeIDTable()
 
     return opcodeIDTable;
 }
-#endif // !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
+#endif // !USE(LLINT_EMBEDDED_OPCODE_ID) || ASSERT_ENABLED
 #endif // ENABLE(COMPUTED_GOTO_OPCODES)
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 bool Interpreter::isOpcode(Opcode opcode)
 {
 #if ENABLE(COMPUTED_GOTO_OPCODES)
@@ -379,7 +381,7 @@ bool Interpreter::isOpcode(Opcode opcode)
     return opcode >= 0 && opcode <= op_end;
 #endif
 }
-#endif // !ASSERT_DISABLED
+#endif // ASSERT_ENABLED
 
 class GetStackTraceFunctor {
 public:
@@ -544,7 +546,7 @@ public:
         if (m_codeBlock) {
             // FIXME: We should support exception handling in checkpoints.
 #if ENABLE(DFG_JIT)
-            if (m_returnPC == LLInt::getCodePtr<JSEntryPtrTag>(checkpoint_osr_exit_from_inlined_call_trampoline).executableAddress())
+            if (removeCodePtrTag(m_returnPC) == LLInt::getCodePtr<NoPtrTag>(checkpoint_osr_exit_from_inlined_call_trampoline).executableAddress())
                 m_codeBlock->vm().findCheckpointOSRSideState(m_callFrame);
 #endif
             if (!m_isTermination) {

@@ -634,6 +634,7 @@ public:
         @NO, WebKitHighlightAPIEnabledPreferenceKey,
         @YES, WebKitModernMediaControlsEnabledPreferenceKey,
         @YES, WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
+        @YES, WebKitLayoutFormattingContextIntegrationEnabledPreferenceKey,
 
 #if ENABLE(WEBGL2)
         @NO, WebKitWebGL2EnabledPreferenceKey,
@@ -663,6 +664,7 @@ public:
 #endif
 
         @YES, WebKitCSSOMViewScrollingAPIEnabledPreferenceKey,
+        @NO, WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey,
         @YES, WebKitNeedsStorageAccessFromFileURLsQuirkKey,
         @NO, WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey,
 #if ENABLE(MEDIA_STREAM)
@@ -707,6 +709,7 @@ public:
         @NO, WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey,
         @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
         @NO, WebKitInAppBrowserPrivacyEnabledPreferenceKey,
+        @NO, WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -3181,6 +3184,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCSSOMViewScrollingAPIEnabledPreferenceKey];
 }
 
+- (BOOL)CSSOMViewSmoothScrollingEnabled
+{
+    return [self _boolValueForKey:WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey];
+}
+
+- (void)setCSSOMViewSmoothScrollingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey];
+}
+
 - (BOOL)webAnimationsEnabled
 {
     return [self _boolValueForKey:WebKitWebAnimationsEnabledPreferenceKey];
@@ -3593,6 +3606,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCSSShadowPartsEnabledPreferenceKey];
 }
 
+- (BOOL)layoutFormattingContextIntegrationEnabled
+{
+    return [self _boolValueForKey:WebKitLayoutFormattingContextIntegrationEnabledPreferenceKey];
+}
+
+- (void)setLayoutFormattingContextIntegrationEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitLayoutFormattingContextIntegrationEnabledPreferenceKey];
+}
+
 - (BOOL)remotePlaybackEnabled
 {
     return [self _boolValueForKey:WebKitRemotePlaybackEnabledPreferenceKey];
@@ -3611,6 +3634,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitInAppBrowserPrivacyEnabledPreferenceKey];
+}
+
+- (BOOL)aspectRatioOfImgFromWidthAndHeightEnabled
+{
+    return [self _boolValueForKey:WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey];
+}
+
+- (void)setAspectRatioOfImgFromWidthAndHeightEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey];
 }
 
 @end

@@ -28,7 +28,7 @@
 
 #if ENABLE(ACCESSIBILITY) && PLATFORM(MAC)
 
-#import "AXIsolatedTreeNode.h"
+#import "AXIsolatedObject.h"
 #import "AccessibilityObject.h"
 #import "AccessibilityTable.h"
 #import "RenderObject.h"
@@ -232,7 +232,7 @@ static AXTextSelectionGranularity platformGranularityForWebCoreGranularity(WebCo
 
 namespace WebCore {
 
-void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachmentType)
+void AXObjectCache::detachWrapper(AXCoreObject* obj, AccessibilityDetachmentType)
 {
     [obj->wrapper() detach];
     obj->setWrapper(nullptr);

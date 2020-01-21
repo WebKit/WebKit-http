@@ -26,6 +26,8 @@
 #pragma once
 
 #include "IsoPageTrigger.h"
+#include "Mutex.h"
+#include <mutex>
 
 namespace bmalloc {
 
@@ -37,10 +39,10 @@ public:
     DeferredTrigger() { }
     
     template<typename Config>
-    void didBecome(IsoPage<Config>&);
+    void didBecome(const LockHolder&, IsoPage<Config>&);
     
     template<typename Config>
-    void handleDeferral(IsoPage<Config>&);
+    void handleDeferral(const LockHolder&, IsoPage<Config>&);
     
 private:
     bool m_hasBeenDeferred { false };

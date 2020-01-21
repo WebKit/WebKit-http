@@ -1,3 +1,189 @@
+2020-01-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.27.4 release
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2020-01-16  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=205965
+
+        Reviewed by Ross Kirsling.
+
+        Turn on build WebKit for the PlayStation port. Temporarily turn off API tests
+        until the WebKit tests are added.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-01-16  Philippe Normand  <philn@igalia.com>
+
+        [GStreamer][WPE] Client-side video rendering support
+        https://bugs.webkit.org/show_bug.cgi?id=206289
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add a new compile-time option to enable client-side video
+        rendering support. With this feature enabled the UIProcess will be
+        in charge of positioning and rendering video surfaces, thanks to
+        the WPEBackend-FDO video-plane-display-dmabuf protocol.
+
+        * Source/cmake/GStreamerDefinitions.cmake: Add
+        USE_WPE_VIDEO_PLANE_DISPLAY_DMABUF CMake option, disabled by
+        default.
+        * Source/cmake/GStreamerDependencies.cmake: This new option
+        depends on GStreamer-GL.
+        * Source/cmake/OptionsWPE.cmake: It depends also on the presence
+        of the WPEBackend-FDO library.
+
+2020-01-16  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin build
+        https://bugs.webkit.org/show_bug.cgi?id=206299
+
+        Reviewed by Brent Fulgham.
+
+        This patch has been created by don.olmstead@sony.com and pvollan@apple.com. Add target files for WTF and
+        JavaScriptCore. Also, to make sure headers are copied to the forwarding headers directory, add the CMake
+        keywork ALL when adding custom target for copying files.
+
+        * Source/cmake/TargetJavaScriptCore.cmake: Added.
+        * Source/cmake/TargetWTF.cmake: Added.
+        * Source/cmake/WebKitMacros.cmake:
+
+2020-01-10  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Clarify USE_OPENGL_ES_3
+        https://bugs.webkit.org/show_bug.cgi?id=206081
+        <rdar://problem/58486798>
+
+        Reviewed by Simon Fraser.
+
+        Make it clear that USE_ANGLE | USE_OPENGL | USE_OPENGL_ES are exclusive,
+        and that the availability of OpenGL ES 3 is a separate query.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2020-01-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.27.4 release
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2020-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r254234.
+        https://bugs.webkit.org/show_bug.cgi?id=206011
+
+        Broke production builds (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "build-jsc should invoke make instead of calling xcodebuild
+        directly"
+        https://bugs.webkit.org/show_bug.cgi?id=205960
+        https://trac.webkit.org/changeset/254234
+
+2020-01-08  Saam Barati  <sbarati@apple.com>
+
+        build-jsc should invoke make instead of calling xcodebuild directly
+        https://bugs.webkit.org/show_bug.cgi?id=205960
+
+        Reviewed by Keith Miller.
+
+        * Makefile.shared:
+
+2020-01-08  Saam Barati  <sbarati@apple.com>
+
+        build-jsc should invoke make instead of calling xcodebuild directly
+        https://bugs.webkit.org/show_bug.cgi?id=205960
+
+        Reviewed by Keith Miller.
+
+        * Makefile.shared:
+
+2020-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Rename testing build configuration to release+assert, and add new testing build configuration.
+        https://bugs.webkit.org/show_bug.cgi?id=205954
+
+        Reviewed by Yusuke Suzuki.
+
+        "make release-assert" builds a release build with ASSERT_ENABLED=1.
+        "make testing" builds a debug build with clang optimization level forced to -O3.
+
+        * Makefile:
+        * Makefile.shared:
+        * Source/Makefile:
+
+2020-01-08  Keith Miller  <keith_miller@apple.com>
+
+        Fix testing Makefile to inherit preprocessor definitions
+        https://bugs.webkit.org/show_bug.cgi?id=205940
+
+        Reviewed by Mark Lam.
+
+        * Makefile.shared:
+
+2020-01-07  Keith Miller  <keith_miller@apple.com>
+
+        Add a testing target to make that is release + assertions
+        https://bugs.webkit.org/show_bug.cgi?id=205895
+
+        Reviewed by Mark Lam.
+
+        * Makefile:
+        * Makefile.shared:
+        * Source/Makefile:
+
+2020-01-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to set purpose and hints of active editable element to input methods
+        https://bugs.webkit.org/show_bug.cgi?id=205605
+
+        Reviewed by Žan Doberšek.
+
+        Add ENABLE_AUTOCAPITALIZE build flag. It's private and disabled by default, enabled in GTK and WPE ports.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2020-01-06  Yoshiaki Jitsukawa  <yoshiaki.jitsukawa@sony.com>
+
+        [PlayStation] Update port cmake
+        https://bugs.webkit.org/show_bug.cgi?id=205846
+
+        Reviewed by Don Olmstead.
+
+        Define C/CXX macro BPLATFORM_PLAYSTATION.
+
+        Find HarfBuzz::ICU component to fix cmake errors.
+
+        Make the WebCore and WebKit builds optional.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-01-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Rename GraphicsContext3D to GraphicsContextGL
+        https://bugs.webkit.org/show_bug.cgi?id=205778
+        <rdar://problem/58327597>
+
+        Reviewed by Ross Kirsling.
+
+        Fix the build after r254064 on Windows and PlayStation.
+
+        Add USE_OPENGL_ES_3 to Windows and WPE builds to simplify the Platform checks
+        for GL functions available in OpenGL ES 3.0+. Expose additional USE macros for
+        Windows builds to remove Platform.h entries around ENABLE(WEBGL).
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
 2020-01-05  Dean Jackson  <dino@apple.com>
 
         Rename GraphicsContext3D to GraphicsContextGL

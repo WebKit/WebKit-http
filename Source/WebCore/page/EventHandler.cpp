@@ -302,7 +302,7 @@ static inline bool didScrollInScrollableArea(ScrollableArea* scrollableArea, Whe
     return didHandleWheelEvent;
 }
 
-static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, WheelEvent& wheelEvent, Element** stopElement, const FloatSize& filteredPlatformDelta, const FloatSize& filteredVelocity)
+static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, WheelEvent& wheelEvent, RefPtr<Element>& stopElement, const FloatSize& filteredPlatformDelta, const FloatSize& filteredVelocity)
 {
     bool shouldHandleEvent = wheelEvent.deltaX() || wheelEvent.deltaY();
 #if PLATFORM(MAC)
@@ -330,13 +330,12 @@ static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, Wh
                 scrollingWasHandled = didScrollInScrollableArea(boxLayer, wheelEvent);
 
             if (scrollingWasHandled) {
-                if (stopElement)
-                    *stopElement = currentEnclosingBox->element();
+                stopElement = currentEnclosingBox->element();
                 return true;
             }
         }
 
-        if (stopElement && *stopElement && *stopElement == currentEnclosingBox->element())
+        if (stopElement.get() && stopElement.get() == currentEnclosingBox->element())
             return true;
 
         currentEnclosingBox = currentEnclosingBox->containingBlock();
@@ -657,7 +656,7 @@ bool EventHandler::handleMousePressEventTripleClick(const MouseEventWithHitTestR
 static int textDistance(const Position& start, const Position& end)
 {
     auto range = Range::create(start.anchorNode()->document(), start, end);
-    return TextIterator::rangeLength(range.ptr(), true);
+    return TextIterator::rangeLength(range.ptr(), { TextIteratorLengthOption::GenerateSpacesForReplacedElements });
 }
 
 bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestResults& event)
@@ -2911,22 +2910,22 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent& wheelEv
 
 #if PLATFORM(MAC)
     ScrollLatchingState* latchedState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
-    Element* stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
+    RefPtr<Element> stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
 
     if (m_frame.page() && m_frame.page()->wheelEventDeltaFilter()->isFilteringDeltas()) {
         filteredPlatformDelta = m_frame.page()->wheelEventDeltaFilter()->filteredDelta();
         filteredVelocity = m_frame.page()->wheelEventDeltaFilter()->filteredVelocity();
     }
 #else
-    Element* stopElement = nullptr;
+    RefPtr<Element> stopElement;
 #endif
 
-    if (handleWheelEventInAppropriateEnclosingBox(startNode, wheelEvent, &stopElement, filteredPlatformDelta, filteredVelocity))
+    if (handleWheelEventInAppropriateEnclosingBox(startNode, wheelEvent, stopElement, filteredPlatformDelta, filteredVelocity))
         wheelEvent.setDefaultHandled();
 
 #if PLATFORM(MAC)
     if (latchedState && !latchedState->wheelEventElement())
-        latchedState->setPreviousWheelScrolledElement(stopElement);
+        latchedState->setPreviousWheelScrolledElement(WTFMove(stopElement));
 #endif
 }
 

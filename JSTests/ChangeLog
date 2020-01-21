@@ -1,3 +1,414 @@
+2020-01-20  Caio Lima  <ticaiolima@gmail.com>
+
+        Skip tests when there is no JIT build on ARMv7 and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=206496
+
+        Unreviewed gardening.
+
+        * microbenchmarks/bit-test-constant.js:
+        * microbenchmarks/bit-test-nonconstant.js:
+        * microbenchmarks/memcpy-typed-loop-large.js:
+        * microbenchmarks/memcpy-typed-loop-small.js:
+        * microbenchmarks/mul-immediate-sub.js:
+        * stress/dont-range-based-iterate-vector-that-is-mutated.js:
+        * stress/int8-repeat-in-then-out-of-bounds.js:
+        * stress/sampling-profiler-richards.js:
+
+2020-01-18  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] add DFG/FTL support for op_to_property_key
+        https://bugs.webkit.org/show_bug.cgi?id=206368
+
+        Reviewed by Saam Barati.
+
+        * stress/class-fields-to-property-key-const-string-ftl.js: Added.
+        * stress/class-fields-to-property-key-const-symbol-ftl.js: Added.
+        * stress/class-fields-to-property-key-slow-object-tostring-ftl.js: Added.
+        * stress/class-fields-to-property-key-slow-object-valueof-ftl.js: Added.
+        * stress/class-fields-to-property-key-string-object-ftl.js: Added.
+        * stress/class-fields-to-property-key-string-or-string-object-ftl.js: Added.
+
+2020-01-17  Saam Barati  <sbarati@apple.com>
+
+        Air O0 should have better stack allocation
+        https://bugs.webkit.org/show_bug.cgi?id=206436
+
+        Reviewed by Tadeu Zagallo.
+
+        * wasm/stress/dont-stack-overflow-in-air.js: Added.
+
+2020-01-17  Mark Lam  <mark.lam@apple.com>
+
+        JSModuleLoader's printableModuleKey() should never throw.
+        https://bugs.webkit.org/show_bug.cgi?id=206461
+        <rdar://problem/58696678>
+
+        Reviewed by Michael Saboff.
+
+        * stress/printableModuleKey-should-never-throw.js: Added.
+
+2020-01-17  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.parse should lookup prototype chains during revival
+        https://bugs.webkit.org/show_bug.cgi?id=205769
+
+        Reviewed by Saam Barati.
+
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2020-01-16  Robin Morisset  <rmorisset@apple.com>
+
+        [ESNext] Enables a way to throw an error on ByteCodeGenerator step
+        https://bugs.webkit.org/show_bug.cgi?id=180139
+
+        Reviewed by Mark Lam.
+
+        * stress/eval-huge-big-int-memory-overflow.js: Added.
+
+2020-01-16  Keith Miller  <keith_miller@apple.com>
+
+        Reland bytecode checkpoints since bugs have been fixed
+        https://bugs.webkit.org/show_bug.cgi?id=206361
+
+        Unreviewed, reland.
+
+        The watch bugs have been fixed by https://trac.webkit.org/changeset/254674
+
+        * stress/apply-osr-exit-should-get-length-once-exceptions-occasionally.js: Added.
+        (expectedArgCount):
+        (callee):
+        (test):
+        (let.array.get length):
+        * stress/apply-osr-exit-should-get-length-once.js: Added.
+        (expectedArgCount):
+        (callee):
+        (test):
+        (let.array.get length):
+        * stress/load-varargs-then-inlined-call-and-exit-strict.js:
+        (checkEqual):
+        * stress/recursive-tail-call-with-different-argument-count.js:
+        * stress/rest-varargs-osr-exit-to-checkpoint.js: Added.
+        (foo):
+        (bar):
+
+2020-01-16  Keith Miller  <keith_miller@apple.com>
+
+        Revert 254725 since it breaks tests
+        https://bugs.webkit.org/show_bug.cgi?id=206391
+
+        Unreviewed, revert.
+
+        * stress/allocation-sinking-puthint-control-flow-2.js: Removed.
+
+2020-01-16  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Object allocation sinking is missing PutHint for allocations unreachable in the graph
+        https://bugs.webkit.org/show_bug.cgi?id=203799
+        <rdar://problem/56852162>
+
+        Reviewed by Saam Barati.
+
+        * stress/allocation-sinking-puthint-control-flow-2.js: Added.
+        (f.handler.construct):
+        (f):
+
+2020-01-16  Robin Morisset  <rmorisset@apple.com>
+
+        Teach the bytecode that arithmetic operations can return bigints
+        https://bugs.webkit.org/show_bug.cgi?id=205416
+
+        Reviewed by Yusuke Suzuki.
+
+        This file crashes in debug mode without the fix.
+
+        * stress/big-int-arithmetic-return-big-int.js: Added.
+        (fooAdd):
+        (fooSub):
+        (fooMul):
+        (fooDiv):
+
+2020-01-16  Mark Lam  <mark.lam@apple.com>
+
+        operationToObject() should check for a null errorMessage.
+        https://bugs.webkit.org/show_bug.cgi?id=206339
+        <rdar://problem/58449666>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/operationToObject-should-check-for-null-errorMessage.js: Added.
+
+2020-01-15  Caitlin Potter <caitp@igalia.com>
+
+        [JSC] Add support for public class fields
+        https://bugs.webkit.org/show_bug.cgi?id=174212
+
+        Reviewed by Yusuke Suzuki.
+
+        New syntax invalidates some test expectations:
+
+        "async <linefeed> MethodDefinition" is no longer an unexpected "async"
+        token. It is now an instance field named "async" with no initializer,
+        and an automatic semicolon, followed by MethodDefinition.
+
+        "get|set GeneratorMethodDefinition"'s error message has changed, due to "get"
+        being valid class field names.
+
+        Many class-syntax tests relating to automatic semicolon insertion are
+        no longer valid, as a line containing nothing but an identifier is now
+        a valid class element.
+
+        * stress/async-await-syntax.js:
+        * stress/class-fields-bytecode-cache.js: Added.
+        * stress/class-fields-computed-to-property-key.js: Added.
+        * stress/class-fields-function-name.js: Added.
+        * stress/class-fields-harmony.js: Added.
+        * stress/class-fields-proxy-define-property.js: Added.
+        * stress/class-fields-stress-instance.js: Added.
+        * stress/generator-syntax.js:
+        * stress/method-name.js:
+        * test262/config.yaml:
+
+2020-01-15  Keith Miller  <keith_miller@apple.com>
+
+        Revert bytecode checkpoints since it breaks watch
+        https://bugs.webkit.org/show_bug.cgi?id=206301
+
+        Unreviewed, revert.
+
+2020-01-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Object.preventExtensions should throw if not successful
+        https://bugs.webkit.org/show_bug.cgi?id=206131
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-01-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r254480, r254496, and r254517.
+        https://bugs.webkit.org/show_bug.cgi?id=206278
+
+        "It regressed JetStream2 and Speedometer2" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changesets:
+
+        "Throw away baseline code if there is an optimized
+        replacement"
+        https://bugs.webkit.org/show_bug.cgi?id=202503
+        https://trac.webkit.org/changeset/254480
+
+        "Unreviewed. Change useLLInt=0 to forceBaseline=1"
+        https://trac.webkit.org/changeset/254496
+
+        "Add an option that enables/disables throwing away baseline
+        JIT code"
+        https://bugs.webkit.org/show_bug.cgi?id=206244
+        https://trac.webkit.org/changeset/254517
+
+2020-01-13  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Change useLLInt=0 to forceBaseline=1
+
+        * stress/racy-gc-cleanup-of-identifier-after-mutator-stops-running.js:
+
+2020-01-13  Keith Miller  <keith_miller@apple.com>
+
+        scanSideState scans too much side state
+        https://bugs.webkit.org/show_bug.cgi?id=206166
+
+        Reviewed by Tadeu Zagallo.
+
+        * stress/checkpoint-side-state-gc-tmps-overflow.js: Added.
+        (v8):
+
+2020-01-13  Saam Barati  <sbarati@apple.com>
+
+        Throw away baseline code if there is an optimized replacement
+        https://bugs.webkit.org/show_bug.cgi?id=202503
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/dfg-compare-eq-via-nonSpeculativeNonPeepholeCompareNullOrUndefined.js:
+        * stress/getter-setter-inlining-should-emit-movhint.js:
+        * stress/make-dictionary-repatch.js:
+        * stress/merging-ic-variants-should-bail-if-structures-overlap.js:
+        * stress/proxy-getter-stack-overflow.js:
+        * stress/regress-192717.js:
+        * stress/retry-cache-later.js:
+
+2020-01-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace uses of Box<Identifier> with a new CacheableIdentifier class.
+        https://bugs.webkit.org/show_bug.cgi?id=205544
+        <rdar://problem/58041800>
+
+        Reviewed by Saam Barati.
+
+        * stress/racy-gc-cleanup-of-identifier-after-mutator-stops-running.js: Added.
+
+2020-01-11  Keith Miller  <keith_miller@apple.com>
+
+        CheckNeutered needs to claim it reads JSType in clobberize.
+        https://bugs.webkit.org/show_bug.cgi?id=206136
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/check-neutered-clobberize-reads-jstype.js: Added.
+        (foo):
+
+2020-01-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use internal object field mechanism to implement JSStringIterator
+        https://bugs.webkit.org/show_bug.cgi?id=206144
+
+        Reviewed by Ross Kirsling.
+
+        * stress/string-iterators.js:
+        * stress/tailCallForwardArguments.js:
+        (putFuncToPrivateName.createBuiltin):
+        (createTailCallForwardingFuncWith):
+
+2020-01-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Flush old tables in End phase
+        https://bugs.webkit.org/show_bug.cgi?id=206120
+        <rdar://problem/58039989>
+
+        Reviewed by Mark Lam.
+
+        * stress/create-many-realms.js: Added.
+        (foo):
+
+2020-01-10  Caitlin Potter  <caitp@igalia.com> and Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Object.keys should throw if called on module namespace object with uninitialized binding
+        https://bugs.webkit.org/show_bug.cgi?id=205983
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-01-10  Saam Barati  <sbarati@apple.com>
+
+        ObjectAllocationSinkingPhase doesn't model pointers to allocations in control flow properly
+        https://bugs.webkit.org/show_bug.cgi?id=204738
+        <rdar://problem/57553238>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/allocation-sinking-must-model-allocation-pointers-properly-2.js: Added.
+        (assert):
+        (v9):
+        * stress/allocation-sinking-must-model-allocation-pointers-properly-3.js: Added.
+        (assert):
+        (v9):
+        * stress/allocation-sinking-must-model-allocation-pointers-properly-4.js: Added.
+        (bool):
+        (effects):
+        (escape):
+        (bar):
+        * stress/allocation-sinking-must-model-allocation-pointers-properly.js: Added.
+        (alwaysFalse):
+        (sometimesZero):
+        (assert):
+        (v9):
+
+2020-01-08  Keith Miller  <keith_miller@apple.com>
+
+        [JSC] Introduce JSArrayIterator
+        https://bugs.webkit.org/show_bug.cgi?id=204043
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/array-iterator-materialize-at-osr-exit.js: Added.
+        (shouldBe):
+        (test):
+        * stress/array-iterator-materialize-one-path.js: Added.
+        (shouldBe):
+        (test):
+        * stress/array-iterator-materialize.js: Added.
+        (shouldBe):
+        (test):
+        * stress/array-iterator-sinking.js: Added.
+        (shouldBe):
+        (test):
+        * stress/array-iterators-next-error-messages.js:
+        (catch):
+        * stress/array-iterators-next-with-call.js:
+        * stress/for-of-iteration.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+        * stress/typedarray-functions-with-neutered.js:
+        (checkProtoFunc):
+
+2020-01-08  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed follow up on r254188. I accidentally included the same test
+        twice instead of including the two different variants.
+
+        * stress/ai-value-mod-should-result-in-constant-int-where-possible.js:
+
+2020-01-08  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Proxy's [[OwnPropertyKeys]] is correct only in PropertyNameMode::StringsAndSymbols
+        https://bugs.webkit.org/show_bug.cgi?id=205772
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 12 test cases as passing.
+
+2020-01-08  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        RegExp.prototype[Symbol.replace] does not support named capture groups
+        https://bugs.webkit.org/show_bug.cgi?id=205783
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 6 test cases as passing.
+
+2020-01-07  Saam Barati  <sbarati@apple.com>
+
+        AI rule for ValueMod/ValueDiv produce constants with the wrong format when the result can be an int32
+        https://bugs.webkit.org/show_bug.cgi?id=205906
+        <rdar://problem/56108519>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/ai-value-div-should-result-in-constant-int-where-possible.js: Added.
+        (foo.bar.f):
+        (foo.):
+        (foo):
+        * stress/ai-value-mod-should-result-in-constant-int-where-possible.js: Added.
+        (foo.bar.f):
+        (foo.):
+        (foo):
+
+2020-01-06  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        String.prototype.replace() incorrectly handles named references on RegExp w/o named groups
+        https://bugs.webkit.org/show_bug.cgi?id=205785
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-01-06  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Proxy's [[OwnPropertyKeys]] is incorrect in DontEnumPropertiesMode::Exclude
+        https://bugs.webkit.org/show_bug.cgi?id=203818
+
+        Reviewed by Keith Miller.
+
+        Stress test was failing because "ownKeys" trap didn't return non-configurable
+        "prototype" property of Proxy's target, violating an invariant.
+
+        * stress/proxy-get-own-property-names-should-not-clear-previous-results.js:
+        * test262/expectations.yaml: Mark 8 test cases as passing.
+
 2020-01-04  Alexey Shvayka  <shvaikalesh@gmail.com>
 
         JSON.parse should initialize wrapper object with [[DefineOwnProperty]]

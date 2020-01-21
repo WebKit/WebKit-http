@@ -42,6 +42,7 @@
 #include "LayoutTreeBuilder.h"
 #include "RenderStyleConstants.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "TableFormattingContext.h"
 #include "TableFormattingState.h"
 #include <wtf/IsoMallocInlines.h>
@@ -88,13 +89,25 @@ void LayoutContext::layoutWithPreparedRootGeometry(InvalidationState& invalidati
         layoutFormattingContextSubtree(formattingContextRoot, invalidationState);
 }
 
-
 void LayoutContext::layoutFormattingContextSubtree(const Container& formattingContextRoot, InvalidationState& invalidationState)
 {
     RELEASE_ASSERT(formattingContextRoot.establishesFormattingContext());
     auto formattingContext = createFormattingContext(formattingContextRoot, layoutState());
-    formattingContext->layoutInFlowContent(invalidationState);
-    formattingContext->layoutOutOfFlowContent(invalidationState);
+    auto& displayBox = layoutState().displayBoxForLayoutBox(formattingContextRoot);
+
+    auto horizontalConstraints = HorizontalConstraints { displayBox.contentBoxLeft(), displayBox.contentBoxWidth() };
+    auto verticalConstraints = VerticalConstraints { displayBox.contentBoxTop(), { } };
+    formattingContext->layoutInFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
+
+    // FIXME: layoutFormattingContextSubtree() does not perform layout on the root, rather it lays out the root's content.
+    // It constructs an FC for descendant boxes and runs layout on them. The formattingContextRoot is laid out in the FC in which it lives (parent formatting context).
+    // It also means that the formattingContextRoot has to have a valid/clean geometry at this point.
+    // Currently the integration codepath does not guarantee it and that's fine as long as we layout inflow content only.
+    if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled()) {
+        auto horizontalConstraints = HorizontalConstraints { displayBox.paddingBoxLeft(), displayBox.paddingBoxWidth() };
+        auto verticalConstraints = VerticalConstraints { displayBox.paddingBoxTop(), displayBox.paddingBoxHeight() };
+        formattingContext->layoutOutOfFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
+    }
 }
 
 std::unique_ptr<FormattingContext> LayoutContext::createFormattingContext(const Container& formattingContextRoot, LayoutState& layoutState)

@@ -31,8 +31,6 @@
 #include "ImageObserver.h"
 #include "Logging.h"
 #include <wtf/CheckedArithmetic.h>
-#include <wtf/MainThread.h>
-#include <wtf/RunLoop.h>
 #include <wtf/SystemTracing.h>
 #include <wtf/URL.h>
 
@@ -47,14 +45,13 @@ ImageSource::ImageSource(BitmapImage* image, AlphaOption alphaOption, GammaAndCo
     : m_image(image)
     , m_alphaOption(alphaOption)
     , m_gammaAndColorProfileOption(gammaAndColorProfileOption)
+    , m_runLoop(RunLoop::current())
 {
-    ASSERT(isMainThread());
 }
 
 ImageSource::ImageSource(NativeImagePtr&& nativeImage)
+    : m_runLoop(RunLoop::current())
 {
-    ASSERT(isMainThread());
-
     m_frameCount = 1;
     m_encodedDataStatus = EncodedDataStatus::Complete;
     growFrames();
@@ -70,7 +67,7 @@ ImageSource::ImageSource(NativeImagePtr&& nativeImage)
 ImageSource::~ImageSource()
 {
     ASSERT(!hasAsyncDecodingQueue());
-    ASSERT(isMainThread());
+    ASSERT(&m_runLoop == &RunLoop::current());
 }
 
 bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
@@ -348,8 +345,11 @@ void ImageSource::startAsyncDecodingQueue()
     if (hasAsyncDecodingQueue() || !isDecoderAvailable())
         return;
 
+    // Async decoding is only enabled for HTMLImageElement and CSS background images.
+    ASSERT(isMainThread());
+
     // We need to protect this, m_decodingQueue and m_decoder from being deleted while we are in the decoding loop.
-    decodingQueue().dispatch([protectedThis = makeRef(*this), protectedDecodingQueue = makeRef(decodingQueue()), protectedFrameRequestQueue = makeRef(frameRequestQueue()), protectedDecoder = makeRef(*m_decoder), sourceURL = sourceURL().string().isolatedCopy()] {
+    decodingQueue().dispatch([protectedThis = makeRef(*this), protectedDecodingQueue = makeRef(decodingQueue()), protectedFrameRequestQueue = makeRef(frameRequestQueue()), protectedDecoder = makeRef(*m_decoder), sourceURL = sourceURL().string().isolatedCopy()] () mutable {
         ImageFrameRequest frameRequest;
         Seconds minDecodingDuration = protectedThis->frameDecodingDurationForTesting();
 
@@ -373,7 +373,7 @@ void ImageSource::startAsyncDecodingQueue()
             if (minDecodingDuration > 0_s)
                 sleep(minDecodingDuration - (MonotonicTime::now() - startingTime));
 
-            // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
+            // Update the cached frames on the creation thread to avoid updating the MemoryCache from a different thread.
             callOnMainThread([protectedThis = protectedThis.copyRef(), protectedQueue = protectedDecodingQueue.copyRef(), protectedDecoder = protectedDecoder.copyRef(), sourceURL = sourceURL.isolatedCopy(), nativeImage = WTFMove(nativeImage), frameRequest] () mutable {
                 // The queue may have been closed if after we got the frame NativeImage, stopAsyncDecodingQueue() was called.
                 if (protectedQueue.ptr() == protectedThis->m_decodingQueue && protectedDecoder.ptr() == protectedThis->m_decoder) {
@@ -384,6 +384,9 @@ void ImageSource::startAsyncDecodingQueue()
                     LOG(Images, "ImageSource::%s - %p - url: %s [frame %ld will not cached]", __FUNCTION__, protectedThis.ptr(), sourceURL.utf8().data(), frameRequest.index);
             });
         }
+
+        // Ensure destruction happens on creation thread.
+        callOnMainThread([protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedDecodingQueue), protectedDecoder = WTFMove(protectedDecoder)] () mutable { });
     });
 }
 

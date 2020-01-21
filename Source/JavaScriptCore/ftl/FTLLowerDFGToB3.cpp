@@ -76,6 +76,7 @@
 #include "JITMulGenerator.h"
 #include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
+#include "JSArrayIterator.h"
 #include "JSAsyncFunction.h"
 #include "JSAsyncGenerator.h"
 #include "JSAsyncGeneratorFunction.h"
@@ -121,7 +122,7 @@ namespace {
 
 std::atomic<int> compileCounter;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
     CodeBlock* codeBlock, BlockIndex blockIndex, unsigned nodeIndex)
 {
@@ -131,7 +132,7 @@ NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
     dataLog(".\n");
     CRASH();
 }
-#endif
+#endif // ASSERT_ENABLED
 
 // Using this instead of typeCheck() helps to reduce the load on B3, by creating
 // significantly less dead code.
@@ -358,12 +359,12 @@ public:
             availabilityMap().m_locals = Operands<Availability>(codeBlock()->numParameters(), 0, 0);
             for (unsigned i = codeBlock()->numParameters(); i--;) {
                 availabilityMap().m_locals.argument(i) =
-                    Availability(FlushedAt(FlushedJSValue, virtualRegisterForArgument(i)));
+                    Availability(FlushedAt(FlushedJSValue, virtualRegisterForArgumentIncludingThis(i)));
             }
 
             for (unsigned i = codeBlock()->numParameters(); i--;) {
                 MethodOfGettingAValueProfile profile(&m_graph.m_profiledBlock->valueProfileForArgument(i));
-                VirtualRegister operand = virtualRegisterForArgument(i);
+                VirtualRegister operand = virtualRegisterForArgumentIncludingThis(i);
                 LValue jsValue = m_out.load64(addressFor(operand));
                 
                 switch (m_graph.m_argumentFormats[0][i]) {
@@ -966,6 +967,9 @@ private:
         case CheckArray:
             compileCheckArray();
             break;
+        case CheckNeutered:
+            compileCheckNeutered();
+            break;
         case GetArrayLength:
             compileGetArrayLength();
             break;
@@ -1067,6 +1071,9 @@ private:
         case NewAsyncGenerator:
             compileNewAsyncGenerator();
             break;
+        case NewArrayIterator:
+            compileNewArrayIterator();
+            break;
         case NewStringObject:
             compileNewStringObject();
             break;
@@ -1131,6 +1138,9 @@ private:
             break;
         case ToPrimitive:
             compileToPrimitive();
+            break;
+        case ToPropertyKey:
+            compileToPropertyKey();
             break;
         case MakeRope:
             compileMakeRope();
@@ -1466,6 +1476,9 @@ private:
         case MaterializeCreateActivation:
             compileMaterializeCreateActivation();
             break;
+        case MaterializeNewInternalFieldObject:
+            compileMaterializeNewInternalFieldObject();
+            break;
         case CheckTraps:
             compileCheckTraps();
             break;
@@ -1579,6 +1592,7 @@ private:
         case PhantomNewGeneratorFunction:
         case PhantomNewAsyncGeneratorFunction:
         case PhantomNewAsyncFunction:
+        case PhantomNewArrayIterator:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomCreateRest:
@@ -2069,8 +2083,11 @@ private:
 
         ValueFromBlock slowResult;
         if (m_node->op() == ToObject) {
+            UniquedStringImpl* errorMessage = nullptr;
+            if (m_node->identifierNumber() != UINT32_MAX)
+                errorMessage = m_graph.identifiers()[m_node->identifierNumber()];
             auto* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-            slowResult = m_out.anchor(vmCall(Int64, operationToObject, weakPointer(globalObject), value, m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()])));
+            slowResult = m_out.anchor(vmCall(Int64, operationToObject, weakPointer(globalObject), value, m_out.constIntPtr(errorMessage)));
         } else
             slowResult = m_out.anchor(vmCall(Int64, operationCallObjectConstructor, frozenPointer(m_node->cellOperand()), value));
         m_out.jump(continuation);
@@ -3393,11 +3410,10 @@ private:
 
         LValue cell = lowCell(m_node->child1());
         bool maySeeEmptyValue = m_interpreter.forNode(m_node->child1()).m_type & SpecEmpty;
-        LBasicBlock notEmpty;
-        LBasicBlock continuation;
-        LBasicBlock lastNext;
+        LBasicBlock continuation = nullptr;
+        LBasicBlock lastNext = nullptr;
         if (maySeeEmptyValue) {
-            notEmpty = m_out.newBlock();
+            LBasicBlock notEmpty = m_out.newBlock();
             continuation = m_out.newBlock();
             m_out.branch(m_out.isZero64(cell), unsure(continuation), unsure(notEmpty));
             lastNext = m_out.appendTo(notEmpty, continuation);
@@ -4042,13 +4058,26 @@ private:
     {
         Edge edge = m_node->child1();
         LValue cell = lowCell(edge);
-        
+
         if (m_node->arrayMode().alreadyChecked(m_graph, m_node, abstractValue(edge)))
             return;
         
         speculate(
             BadIndexingType, jsValueValue(cell), 0,
             m_out.logicalNot(isArrayTypeForCheckArray(cell, m_node->arrayMode())));
+    }
+
+    void compileCheckNeutered()
+    {
+        Edge edge = m_node->child1();
+        LValue cell = lowCell(edge);
+        
+        // We only emit this node after we have checked this is a typed array so that better be true now.
+        DFG_ASSERT(m_graph, m_node, speculationChecked(abstractValue(edge).m_type, SpecTypedArrayView));
+
+        speculate(
+            BadIndexingType, jsValueValue(cell), edge.node(),
+            m_out.isNull(m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector)));
     }
 
     void compileGetTypedArrayByteOffset()
@@ -4725,7 +4754,7 @@ private:
             if (inlineCallFrame->argumentCountIncludingThis > 1)
                 base = addressFor(inlineCallFrame->argumentsWithFixup[0].virtualRegister());
         } else
-            base = addressFor(virtualRegisterForArgument(0));
+            base = addressFor(virtualRegisterForArgumentIncludingThis(0));
         
         LValue result;
         if (base) {
@@ -6142,7 +6171,7 @@ private:
 
         LValue object = allocateObject<JSClass>(m_node->structure(), m_out.intPtrZero, slowCase);
         auto initialValues = JSClass::initialValues();
-        ASSERT(initialValues.size() == JSClass::numberOfInternalFields);
+        static_assert(initialValues.size() == JSClass::numberOfInternalFields);
         for (unsigned index = 0; index < initialValues.size(); ++index)
             m_out.store64(m_out.constInt64(JSValue::encode(initialValues[index])), object, m_heaps.JSInternalFieldObjectImpl_internalFields[index]);
         mutatorFence();
@@ -6165,6 +6194,11 @@ private:
     void compileNewAsyncGenerator()
     {
         compileNewInternalFieldObject<JSAsyncGenerator>(operationNewAsyncGenerator);
+    }
+
+    void compileNewArrayIterator()
+    {
+        compileNewInternalFieldObject<JSArrayIterator>(operationNewArrayIterator);
     }
 
     void compileNewStringObject()
@@ -6675,7 +6709,7 @@ private:
         m_out.appendTo(fastAllocationCase, slowCase);
         LValue object = allocateObject<JSClass>(structure, m_out.intPtrZero, slowCase);
         auto initialValues = JSClass::initialValues();
-        ASSERT(initialValues.size() == JSClass::numberOfInternalFields);
+        static_assert(initialValues.size() == JSClass::numberOfInternalFields, "We don't support non-constant fields in create yet.");
         for (unsigned index = 0; index < initialValues.size(); ++index)
             m_out.store64(m_out.constInt64(JSValue::encode(initialValues[index])), object, m_heaps.JSInternalFieldObjectImpl_internalFields[index]);
         mutatorFence();
@@ -7305,6 +7339,38 @@ private:
             Int64, operationToPrimitive, weakPointer(globalObject), value)));
         m_out.jump(continuation);
         
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(Int64, results));
+    }
+
+    void compileToPropertyKey()
+    {
+        ASSERT(m_node->child1().useKind() == UntypedUse);
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock notStringCase = m_out.newBlock();
+        LBasicBlock slowPathCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        Vector<ValueFromBlock, 3> results;
+        m_out.branch(
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(slowPathCase));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, notStringCase);
+        results.append(m_out.anchor(value));
+        m_out.branch(isString(value, provenType(m_node->child1())), unsure(continuation), unsure(notStringCase));
+
+        m_out.appendTo(notStringCase, slowPathCase);
+        results.append(m_out.anchor(value));
+        m_out.branch(isSymbol(value, provenType(m_node->child1())), unsure(continuation), unsure(slowPathCase));
+
+        m_out.appendTo(slowPathCase, continuation);
+        results.append(m_out.anchor(vmCall(
+            Int64, operationToPropertyKey, weakPointer(globalObject), value)));
+        m_out.jump(continuation);
+
         m_out.appendTo(continuation, lastNext);
         setJSValue(m_out.phi(Int64, results));
     }
@@ -8498,7 +8564,7 @@ private:
         addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
         addArgument(m_out.constInt32(numArgs), VirtualRegister(CallFrameSlot::argumentCountIncludingThis), PayloadOffset);
         for (unsigned i = 0; i < numArgs; ++i)
-            addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+            addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgumentIncludingThis(i), 0);
 
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendVector(arguments);
@@ -8608,9 +8674,9 @@ private:
             addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
             addArgument(m_out.constInt32(numPassedArgs), VirtualRegister(CallFrameSlot::argumentCountIncludingThis), PayloadOffset);
             for (unsigned i = 0; i < numPassedArgs; ++i)
-                addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+                addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgumentIncludingThis(i), 0);
             for (unsigned i = numPassedArgs; i < numAllocatedArgs; ++i)
-                addArgument(m_out.constInt64(JSValue::encode(jsUndefined())), virtualRegisterForArgument(i), 0);
+                addArgument(m_out.constInt64(JSValue::encode(jsUndefined())), virtualRegisterForArgumentIncludingThis(i), 0);
         } else {
             for (unsigned i = 0; i < numPassedArgs; ++i)
                 arguments.append(ConstrainedValue(lowJSValue(m_graph.varArgChild(node, 1 + i)), ValueRep::WarmAny));
@@ -9506,7 +9572,7 @@ private:
         addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
         addArgument(m_out.constInt32(numArgs), VirtualRegister(CallFrameSlot::argumentCountIncludingThis), PayloadOffset);
         for (unsigned i = 0; i < numArgs; ++i)
-            addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+            addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgumentIncludingThis(i), 0);
         
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendVector(arguments);
@@ -11991,6 +12057,63 @@ private:
         setJSValue(activation);
     }
 
+    template<typename JSClass, typename Operation>
+    void compileMaterializeNewInternalFieldObjectImpl(Operation operation)
+    {
+        ObjectMaterializationData& data = m_node->objectMaterializationData();
+
+        Vector<LValue, JSClass::numberOfInternalFields> values;
+        ASSERT(data.m_properties.size() == JSClass::numberOfInternalFields);
+        for (unsigned i = 0; i < data.m_properties.size(); ++i)
+            values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
+
+        RegisteredStructure structure = m_node->structure();
+
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
+
+        RELEASE_ASSERT(data.m_properties.size() == JSClass::numberOfInternalFields);
+        LValue fastObject = allocateObject<JSClass>(structure, m_out.intPtrZero, slowPath);
+        ValueFromBlock fastResult = m_out.anchor(fastObject);
+        m_out.jump(continuation);
+
+        m_out.appendTo(slowPath, continuation);
+        VM& vm = this->vm();
+        LValue callResult = lazySlowPath(
+            [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                return createLazyCallGenerator(vm,
+                    operation, locations[0].directGPR(), &vm,
+                    CCallHelpers::TrustedImmPtr(structure.get()));
+            });
+        ValueFromBlock slowResult = m_out.anchor(callResult);
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        LValue object = m_out.phi(pointerType(), fastResult, slowResult);
+        for (unsigned i = 0; i < data.m_properties.size(); ++i) {
+            PromotedLocationDescriptor descriptor = data.m_properties[i];
+            ASSERT(descriptor.kind() == InternalFieldObjectPLoc);
+            RELEASE_ASSERT(descriptor.info() < JSClass::numberOfInternalFields);
+            m_out.store64(values[i], object, m_heaps.JSInternalFieldObjectImpl_internalFields[descriptor.info()]);
+        }
+
+        mutatorFence();
+        setJSValue(object);
+    }
+
+    void compileMaterializeNewInternalFieldObject()
+    {
+        switch (m_node->structure()->typeInfo().type()) {
+        case JSArrayIteratorType:
+            compileMaterializeNewInternalFieldObjectImpl<JSArrayIterator>(operationNewArrayIterator);
+            break;
+        default:
+            DFG_CRASH(m_graph, m_node, "Bad structure");
+        }
+    }
+
     void compileCheckTraps()
     {
         ASSERT(Options::usePollingTraps());
@@ -13196,7 +13319,7 @@ private:
         LValue base = lowCell(baseEdge);
         JSValue baseConstant = m_state.forNode(baseEdge).value();
 
-        LValue globalObject;
+        LValue globalObject = nullptr;
         JSValue globalObjectConstant;
         if (domJIT->requireGlobalObject) {
             Edge& globalObjectEdge = m_node->child2();
@@ -17566,7 +17689,7 @@ private:
         m_out.store32(
             m_out.constInt32(callSiteIndex.bits()),
             tagFor(VirtualRegister(CallFrameSlot::argumentCountIncludingThis)));
-#if !USE(BUILTIN_FRAME_ADDRESS) || !ASSERT_DISABLED
+#if !USE(BUILTIN_FRAME_ADDRESS) || ASSERT_ENABLED
         m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
 #endif
     }
@@ -17598,7 +17721,7 @@ private:
     {
         JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
         if (Options::useExceptionFuzz()) {
-#if !USE(BUILTIN_FRAME_ADDRESS) || !ASSERT_DISABLED
+#if !USE(BUILTIN_FRAME_ADDRESS) || ASSERT_ENABLED
             m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
 #endif
             m_out.call(Void, m_out.operation(operationExceptionFuzz), weakPointer(globalObject));
@@ -18170,7 +18293,7 @@ private:
     {
         BlockIndex blockIndex = block->index;
         unsigned nodeIndex = node ? node->index() : UINT_MAX;
-#if ASSERT_DISABLED
+#if !ASSERT_ENABLED
         m_out.patchpoint(Void)->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams&) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
@@ -18181,7 +18304,7 @@ private:
                     jit.move(CCallHelpers::TrustedImm32(node->op()), GPRInfo::regT2);
                 jit.abortWithReason(FTLCrash);
             });
-#else
+#else // ASSERT_ENABLED
         m_out.call(
             Void,
             m_out.constIntPtr(ftlUnreachable),
@@ -18189,7 +18312,7 @@ private:
             // that would cause it to always get collected.
             m_out.constIntPtr(bitwise_cast<intptr_t>(codeBlock())), m_out.constInt32(blockIndex),
             m_out.constInt32(nodeIndex));
-#endif
+#endif // ASSERT_ENABLED
         m_out.unreachable();
     }
 

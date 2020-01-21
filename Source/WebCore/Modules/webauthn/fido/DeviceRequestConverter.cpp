@@ -119,15 +119,16 @@ Vector<uint8_t> encodeMakeCredenitalRequestAsCBOR(const Vector<uint8_t>& hash, c
         case UserVerificationRequirement::Discouraged:
             requireUserVerification = false;
         }
-        optionMap[CBORValue(kUserVerificationMapKey)] = CBORValue(requireUserVerification);
+        if (requireUserVerification)
+            optionMap[CBORValue(kUserVerificationMapKey)] = CBORValue(requireUserVerification);
     }
     if (!optionMap.empty())
         cborMap[CBORValue(7)] = CBORValue(WTFMove(optionMap));
 
     if (pin) {
         ASSERT(pin->protocol >= 0);
-        cborMap[CBORValue(8)] = CBORValue(pin->protocol);
-        cborMap[CBORValue(9)] = CBORValue(WTFMove(pin->auth));
+        cborMap[CBORValue(8)] = CBORValue(WTFMove(pin->auth));
+        cborMap[CBORValue(9)] = CBORValue(pin->protocol);
     }
 
     auto serializedParam = CBORWriter::write(CBORValue(WTFMove(cborMap)));
@@ -164,7 +165,8 @@ Vector<uint8_t> encodeGetAssertionRequestAsCBOR(const Vector<uint8_t>& hash, con
     case UserVerificationRequirement::Discouraged:
         requireUserVerification = false;
     }
-    optionMap[CBORValue(kUserVerificationMapKey)] = CBORValue(requireUserVerification);
+    if (requireUserVerification)
+        optionMap[CBORValue(kUserVerificationMapKey)] = CBORValue(requireUserVerification);
     optionMap[CBORValue(kUserPresenceMapKey)] = CBORValue(true);
 
     if (!optionMap.empty())
@@ -172,8 +174,8 @@ Vector<uint8_t> encodeGetAssertionRequestAsCBOR(const Vector<uint8_t>& hash, con
 
     if (pin) {
         ASSERT(pin->protocol >= 0);
-        cborMap[CBORValue(8)] = CBORValue(pin->protocol);
-        cborMap[CBORValue(9)] = CBORValue(WTFMove(pin->auth));
+        cborMap[CBORValue(6)] = CBORValue(WTFMove(pin->auth));
+        cborMap[CBORValue(7)] = CBORValue(pin->protocol);
     }
 
     auto serializedParam = CBORWriter::write(CBORValue(WTFMove(cborMap)));

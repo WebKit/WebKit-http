@@ -28,6 +28,7 @@
 #if ENABLE(GPU_PROCESS)
 
 #include "Connection.h"
+#include "SampleBufferDisplayLayerManager.h"
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -47,6 +48,14 @@ public:
     
     IPC::Connection& connection() { return m_connection.get(); }
 
+#if HAVE(AUDIT_TOKEN)
+    void setAuditToken(Optional<audit_token_t> auditToken) { m_auditToken = auditToken; }
+    Optional<audit_token_t> auditToken() const { return m_auditToken; }
+#endif
+#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
+    SampleBufferDisplayLayerManager& sampleBufferDisplayLayerManager();
+#endif
+
 private:
     GPUProcessConnection(IPC::Connection::Identifier);
 
@@ -57,6 +66,13 @@ private:
 
     // The connection from the web process to the GPU process.
     Ref<IPC::Connection> m_connection;
+
+#if HAVE(AUDIT_TOKEN)
+    Optional<audit_token_t> m_auditToken;
+#endif
+#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
+    std::unique_ptr<SampleBufferDisplayLayerManager> m_sampleBufferDisplayLayerManager;
+#endif
 };
 
 } // namespace WebKit

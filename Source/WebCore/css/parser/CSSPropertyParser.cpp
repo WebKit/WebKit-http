@@ -2327,6 +2327,14 @@ static RefPtr<CSSValueList> consumeScrollSnapType(CSSParserTokenRange& range)
 
 #endif
 
+static RefPtr<CSSPrimitiveValue> consumeScrollBehavior(CSSParserTokenRange& range)
+{
+    auto valueID = range.peek().id();
+    if (valueID != CSSValueAuto && valueID != CSSValueSmooth)
+        return nullptr;
+    return consumeIdent(range);
+}
+
 static RefPtr<CSSValue> consumeBorderRadiusCorner(CSSParserTokenRange& range, CSSParserMode cssParserMode)
 {
     RefPtr<CSSPrimitiveValue> parsedValue1 = consumeLengthOrPercent(range, cssParserMode, ValueRangeNonNegative);
@@ -2900,18 +2908,6 @@ static RefPtr<CSSValue> consumeReflect(CSSParserTokenRange& range, const CSSPars
     }
     return CSSReflectValue::create(direction.releaseNonNull(), offset.releaseNonNull(), WTFMove(mask));
 }
-
-#if ENABLE(CSS_IMAGE_ORIENTATION)
-static RefPtr<CSSValue> consumeImageOrientation(CSSParserTokenRange& range, CSSParserMode cssParserMode, UnitlessQuirk unitless = UnitlessQuirk::Forbid)
-{
-    if (range.peek().type() != NumberToken) {
-        RefPtr<CSSPrimitiveValue> angle = consumeAngle(range, cssParserMode, unitless);
-        if (angle && angle->doubleValue() == 0)
-            return angle;
-    }
-    return nullptr;
-}
-#endif
 
 static RefPtr<CSSPrimitiveValue> consumeBackgroundBlendMode(CSSParserTokenRange& range)
 {
@@ -3921,6 +3917,10 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyScrollSnapType:
         return consumeScrollSnapType(m_range);
 #endif
+    case CSSPropertyScrollBehavior:
+        if (!m_context.scrollBehaviorEnabled)
+            return nullptr;
+        return consumeScrollBehavior(m_range);
     case CSSPropertyClip:
         return consumeClip(m_range, m_context.mode);
 #if ENABLE(POINTER_EVENTS)
@@ -4173,10 +4173,6 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeReflect(m_range, m_context);
     case CSSPropertyWebkitLineBoxContain:
         return consumeLineBoxContain(m_range);
-#if ENABLE(CSS_IMAGE_ORIENTATION)
-    case CSSPropertyImageOrientation:
-        return consumeImageOrientation(m_range, m_context.mode);
-#endif
     case CSSPropertyBackgroundAttachment:
     case CSSPropertyBackgroundBlendMode:
     case CSSPropertyBackgroundClip:

@@ -339,11 +339,15 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitResizeObserverEnabledPreferenceKey), kCFBooleanFalse);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey), kCFBooleanFalse);
+
     CFDictionaryAddValue(defaults, CFSTR(WebKitCoreMathMLEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitRequestIdleCallbackEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitAsyncClipboardAPIEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey), kCFBooleanFalse);
 
     defaultSettings = defaults;
 #endif
@@ -2283,6 +2287,20 @@ HRESULT WebPreferences::setCoreMathMLEnabled(BOOL enabled)
     return S_OK;
 }
 
+HRESULT WebPreferences::CSSOMViewSmoothScrollingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setCSSOMViewSmoothScrollingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitCSSOMViewSmoothScrollingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
 HRESULT WebPreferences::requestIdleCallbackEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
@@ -2400,5 +2418,19 @@ HRESULT WebPreferences::resizeObserverEnabled(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setResizeObserverEnabled(BOOL enabled)
 {
     setBoolValue(WebKitResizeObserverEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::aspectRatioOfImgFromWidthAndHeightEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setAspectRatioOfImgFromWidthAndHeightEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey, enabled);
     return S_OK;
 }

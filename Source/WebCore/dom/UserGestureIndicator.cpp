@@ -26,6 +26,7 @@
 #include "config.h"
 #include "UserGestureIndicator.h"
 
+#include "DOMWindow.h"
 #include "Document.h"
 #include "Frame.h"
 #include "ResourceLoadObserver.h"
@@ -56,8 +57,8 @@ UserGestureIndicator::UserGestureIndicator(Optional<ProcessingUserGestureState> 
     if (state)
         currentToken() = UserGestureToken::create(state.value(), gestureType);
 
-    if (document && currentToken()->processingUserGesture()) {
-        document->updateLastHandledUserGestureTimestamp(MonotonicTime::now());
+    if (document && currentToken()->processingUserGesture() && state) {
+        document->updateLastHandledUserGestureTimestamp(currentToken()->startTime());
         if (processInteractionStyle == ProcessInteractionStyle::Immediate)
             ResourceLoadObserver::shared().logUserInteractionWithReducedTimeResolution(document->topDocument());
         document->topDocument().setUserDidInteractWithPage(true);
@@ -67,6 +68,9 @@ UserGestureIndicator::UserGestureIndicator(Optional<ProcessingUserGestureState> 
                     frame->setHasHadUserInteraction();
             }
         }
+
+        if (auto* window = document->domWindow())
+            window->notifyActivated(currentToken()->startTime());
     }
 }
 

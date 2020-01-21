@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -452,6 +452,7 @@ public:
     IsoSubspace getterSetterSpace;
     IsoSubspace globalLexicalEnvironmentSpace;
     IsoSubspace internalFunctionSpace;
+    IsoSubspace jsProxySpace;
     IsoSubspace nativeExecutableSpace;
     IsoSubspace numberObjectSpace;
     IsoSubspace promiseSpace;
@@ -493,6 +494,7 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(apiGlobalObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(apiValueWrapperSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(arrayBufferSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(arrayIteratorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(asyncGeneratorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(bigIntObjectSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(booleanObjectSpace)
@@ -528,6 +530,7 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setIteratorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(setSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(strictEvalActivationSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(stringIteratorSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(sourceCodeSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(symbolObjectSpace)
@@ -808,9 +811,7 @@ public:
     ALWAYS_INLINE static bool canUseJIT()
     {
 #if ENABLE(JIT)
-#if !ASSERT_DISABLED
-        RELEASE_ASSERT(s_canUseJITIsSet);
-#endif
+        ASSERT(s_canUseJITIsSet);
         return s_canUseJIT;
 #else
         return false;
@@ -1029,11 +1030,10 @@ public:
 
     void shrinkFootprintWhenIdle();
 
-    WatchpointSet* ensureWatchpointSetForImpureProperty(const Identifier&);
-    void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
+    WatchpointSet* ensureWatchpointSetForImpureProperty(UniquedStringImpl*);
     
     // FIXME: Use AtomString once it got merged with Identifier.
-    JS_EXPORT_PRIVATE void addImpureProperty(const String&);
+    JS_EXPORT_PRIVATE void addImpureProperty(UniquedStringImpl*);
     
     InlineWatchpointSet& primitiveGigacageEnabled() { return m_primitiveGigacageEnabled; }
 
@@ -1207,7 +1207,7 @@ private:
     bool m_shouldBuildPCToCodeOriginMapping { false };
     std::unique_ptr<CodeCache> m_codeCache;
     std::unique_ptr<BuiltinExecutables> m_builtinExecutables;
-    HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
+    HashMap<RefPtr<UniquedStringImpl>, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
     std::unique_ptr<TypeProfiler> m_typeProfiler;
     std::unique_ptr<TypeProfilerLog> m_typeProfilerLog;
     unsigned m_typeProfilerEnabledCount;
@@ -1239,7 +1239,7 @@ private:
     uintptr_t m_currentWeakRefVersion { 0 };
 
 #if ENABLE(JIT)
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     JS_EXPORT_PRIVATE static bool s_canUseJITIsSet;
 #endif
     JS_EXPORT_PRIVATE static bool s_canUseJIT;

@@ -74,6 +74,7 @@
 #include "Logging.h"
 #include "LowPowerModeNotifier.h"
 #include "MediaCanStartListener.h"
+#include "MediaRecorderProvider.h"
 #include "Navigator.h"
 #include "PageConfiguration.h"
 #include "PageConsoleClient.h"
@@ -246,6 +247,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #if ENABLE(SPEECH_SYNTHESIS)
     , m_speechSynthesisClient(WTFMove(pageConfiguration.speechSynthesisClient))
 #endif
+    , m_mediaRecorderProvider((WTFMove(pageConfiguration.mediaRecorderProvider)))
     , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
     , m_verticalScrollElasticity(ScrollElasticityAllowed)
     , m_horizontalScrollElasticity(ScrollElasticityAllowed)
@@ -1349,6 +1351,10 @@ void Page::updateRendering()
 #endif
 
     layoutIfNeeded();
+    
+    forEachDocument([] (Document& document) {
+        document.updateHighlightPositions();
+    });
 }
 
 void Page::suspendScriptedAnimations()
@@ -1835,7 +1841,7 @@ void Page::setVolumeOfMediaElement(double volume, uint64_t elementID)
 
 #endif
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 
 void Page::checkSubframeCountConsistency() const
 {
@@ -1848,7 +1854,7 @@ void Page::checkSubframeCountConsistency() const
     ASSERT(m_subframeCount + 1 == subframeCount);
 }
 
-#endif
+#endif // ASSERT_ENABLED
 
 void Page::resumeAnimatingImages()
 {

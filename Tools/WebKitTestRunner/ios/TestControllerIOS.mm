@@ -142,7 +142,7 @@ void TestController::platformResetPreferencesToConsistentValues()
     [(__bridge WKPreferences *)preferences _setShouldIgnoreMetaViewport:NO];
 }
 
-void TestController::platformResetStateToConsistentValues(const TestOptions& options)
+bool TestController::platformResetStateToConsistentValues(const TestOptions& options)
 {
     cocoaResetStateToConsistentValues(options);
 
@@ -193,8 +193,28 @@ void TestController::platformResetStateToConsistentValues(const TestOptions& opt
     runUntil(isDoneWaitingForKeyboardToDismiss, m_currentInvocation->shortTimeout());
     runUntil(isDoneWaitingForMenuToDismiss, m_currentInvocation->shortTimeout());
 
+    if (PlatformWebView* platformWebView = mainWebView()) {
+        TestRunnerWKWebView *webView = platformWebView->platformView();
+        UIViewController *webViewController = [[webView window] rootViewController];
+
+        MonotonicTime waitEndTime = MonotonicTime::now() + m_currentInvocation->shortTimeout();
+        
+        bool hasPresentedViewController = !![webViewController presentedViewController];
+        while (hasPresentedViewController && MonotonicTime::now() < waitEndTime) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+            hasPresentedViewController = !![webViewController presentedViewController];
+        }
+        
+        if (hasPresentedViewController) {
+            TestInvocation::dumpWebProcessUnresponsiveness("TestController::platformResetPreferencesToConsistentValues - Failed to remove presented view controller\n");
+            return false;
+        }
+    }
+
     if (shouldRestoreFirstResponder)
         [mainWebView()->platformView() becomeFirstResponder];
+
+    return true;
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
@@ -250,7 +270,12 @@ void TestController::abortModal()
 
 const char* TestController::platformLibraryPathForTesting()
 {
-    return [[@"~/Library/Application Support/WebKitTestRunner" stringByExpandingTildeInPath] UTF8String];
+    static NSString *platformLibraryPath = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        platformLibraryPath = [[@"~/Library/Application Support/WebKitTestRunner" stringByExpandingTildeInPath] retain];
+    });
+    return platformLibraryPath.UTF8String;
 }
 
 void TestController::setHidden(bool)

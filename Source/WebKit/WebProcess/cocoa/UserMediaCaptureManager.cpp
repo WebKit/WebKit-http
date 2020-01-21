@@ -270,18 +270,20 @@ const char* UserMediaCaptureManager::supplementName()
     return "UserMediaCaptureManager";
 }
 
-void UserMediaCaptureManager::initialize(const WebProcessCreationParameters& parameters)
+void UserMediaCaptureManager::setupCaptureProcesses(bool shouldCaptureAudioInUIProcess, bool shouldCaptureAudioInGPUProcess, bool shouldCaptureVideoInUIProcess, bool shouldCaptureVideoInGPUProcess, bool shouldCaptureDisplayInUIProcess)
 {
-    MockRealtimeMediaSourceCenter::singleton().setMockAudioCaptureEnabled(!parameters.shouldCaptureAudioInUIProcess && !parameters.shouldCaptureAudioInGPUProcess);
-    MockRealtimeMediaSourceCenter::singleton().setMockVideoCaptureEnabled(!parameters.shouldCaptureVideoInUIProcess);
-    MockRealtimeMediaSourceCenter::singleton().setMockDisplayCaptureEnabled(!parameters.shouldCaptureDisplayInUIProcess);
+    MockRealtimeMediaSourceCenter::singleton().setMockAudioCaptureEnabled(!shouldCaptureAudioInUIProcess && !shouldCaptureAudioInGPUProcess);
+    MockRealtimeMediaSourceCenter::singleton().setMockVideoCaptureEnabled(!shouldCaptureVideoInUIProcess && !shouldCaptureVideoInGPUProcess);
+    MockRealtimeMediaSourceCenter::singleton().setMockDisplayCaptureEnabled(!shouldCaptureDisplayInUIProcess);
 
-    m_audioFactory.setShouldCaptureInGPUProcess(parameters.shouldCaptureAudioInGPUProcess);
-    if (parameters.shouldCaptureAudioInUIProcess || parameters.shouldCaptureAudioInGPUProcess)
+    m_audioFactory.setShouldCaptureInGPUProcess(shouldCaptureAudioInGPUProcess);
+    m_videoFactory.setShouldCaptureInGPUProcess(shouldCaptureVideoInGPUProcess);
+
+    if (shouldCaptureAudioInUIProcess || shouldCaptureAudioInGPUProcess)
         RealtimeMediaSourceCenter::singleton().setAudioCaptureFactory(m_audioFactory);
-    if (parameters.shouldCaptureVideoInUIProcess)
+    if (shouldCaptureVideoInUIProcess || shouldCaptureVideoInGPUProcess)
         RealtimeMediaSourceCenter::singleton().setVideoCaptureFactory(m_videoFactory);
-    if (parameters.shouldCaptureDisplayInUIProcess)
+    if (shouldCaptureDisplayInUIProcess)
         RealtimeMediaSourceCenter::singleton().setDisplayCaptureFactory(m_displayFactory);
 }
 
@@ -379,10 +381,10 @@ NO_RETURN_DUE_TO_ASSERT void UserMediaCaptureManager::remoteVideoSampleAvailable
 IPC::Connection* UserMediaCaptureManager::Source::connection()
 {
 #if ENABLE(GPU_PROCESS)
-    return m_shouldCaptureInGPUProcess ? &WebProcess::singleton().ensureGPUProcessConnection().connection() : WebProcess::singleton().parentProcessConnection();
-#else
-    return m_process.parentProcessConnection();
+    if (m_shouldCaptureInGPUProcess)
+        return &m_manager.m_process.ensureGPUProcessConnection().connection();
 #endif
+    return m_manager.m_process.parentProcessConnection();
 }
 
 void UserMediaCaptureManager::Source::startProducingData()
@@ -468,14 +470,20 @@ void UserMediaCaptureManager::Source::stopBeingObserved()
 
 CaptureSourceOrError UserMediaCaptureManager::AudioFactory::createAudioCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints)
 {
-    if (m_shouldCaptureInGPUProcess) {
-#if ENABLE(GPU_PROCESS)
-        return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints, m_shouldCaptureInGPUProcess);
-#else
+#if !ENABLE(GPU_PROCESS)
+    if (m_shouldCaptureInGPUProcess)
         return CaptureSourceOrError { "Audio capture in GPUProcess is not implemented"_s };
 #endif
-    }
-    return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints);
+    return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints, m_shouldCaptureInGPUProcess);
+}
+
+CaptureSourceOrError UserMediaCaptureManager::VideoFactory::createVideoCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints)
+{
+#if !ENABLE(GPU_PROCESS)
+    if (m_shouldCaptureInGPUProcess)
+        return CaptureSourceOrError { "Video capture in GPUProcess is not implemented"_s };
+#endif
+    return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints, m_shouldCaptureInGPUProcess);
 }
 
 #if PLATFORM(IOS_FAMILY)

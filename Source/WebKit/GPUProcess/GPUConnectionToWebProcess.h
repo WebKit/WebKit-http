@@ -40,9 +40,12 @@ namespace WebKit {
 
 class GPUProcess;
 class LibWebRTCCodecsProxy;
+class RemoteAudioMediaStreamTrackRendererManager;
 class RemoteMediaPlayerManagerProxy;
-class UserMediaCaptureManagerProxy;
+class RemoteMediaRecorderManager;
 class RemoteMediaResourceManager;
+class RemoteSampleBufferDisplayLayerManager;
+class UserMediaCaptureManagerProxy;
 
 class GPUConnectionToWebProcess
     : public RefCounted<GPUConnectionToWebProcess>
@@ -71,6 +74,11 @@ private:
 #endif
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     UserMediaCaptureManagerProxy& userMediaCaptureManagerProxy();
+    RemoteMediaRecorderManager& mediaRecorderManager();
+#if ENABLE(VIDEO_TRACK)
+    RemoteAudioMediaStreamTrackRendererManager& audioTrackRendererManager();
+    RemoteSampleBufferDisplayLayerManager& sampleBufferDisplayLayerManager();
+#endif
 #endif
 
     // IPC::Connection::Client
@@ -89,6 +97,11 @@ private:
     PAL::SessionID m_sessionID;
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
+    std::unique_ptr<RemoteMediaRecorderManager> m_remoteMediaRecorderManager;
+#if ENABLE(VIDEO_TRACK)
+    std::unique_ptr<RemoteAudioMediaStreamTrackRendererManager> m_audioTrackRendererManager;
+    std::unique_ptr<RemoteSampleBufferDisplayLayerManager> m_sampleBufferDisplayLayerManager;
+#endif
 #endif
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
     std::unique_ptr<LibWebRTCCodecsProxy> m_libWebRTCCodecsProxy;

@@ -52,8 +52,6 @@
 
 namespace WebKit {
 
-static id terminationObserver;
-
 static HashSet<WebsiteDataStore*>& dataStores()
 {
     static NeverDestroyed<HashSet<WebsiteDataStore*>> dataStores;
@@ -62,6 +60,20 @@ static HashSet<WebsiteDataStore*>& dataStores()
 }
 
 static NSString * const WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey = @"WebKitNetworkLoadThrottleLatencyMilliseconds";
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+WebCore::ThirdPartyCookieBlockingMode WebsiteDataStore::thirdPartyCookieBlockingMode() const
+{
+    if (!m_thirdPartyCookieBlockingMode) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if ([defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isThirdPartyCookieBlockingDisabledKey().createCFString().get()]])
+            m_thirdPartyCookieBlockingMode = WebCore::ThirdPartyCookieBlockingMode::AllOnSitesWithoutUserInteraction;
+        else
+            m_thirdPartyCookieBlockingMode = WebCore::ThirdPartyCookieBlockingMode::All;
+    }
+    return *m_thirdPartyCookieBlockingMode;
+}
+#endif
 
 WebsiteDataStoreParameters WebsiteDataStore::parameters()
 {
@@ -72,9 +84,8 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     bool shouldLogCookieInformation = false;
     bool enableResourceLoadStatisticsDebugMode = false;
-    auto thirdPartyCookieBlockingMode = WebCore::ThirdPartyCookieBlockingMode::OnlyAccordingToPerDomainPolicy;
-    auto firstPartyWebsiteDataRemovalMode = WebCore::FirstPartyWebsiteDataRemovalMode::None;
-    bool enableLegacyTLS = false;
+    auto firstPartyWebsiteDataRemovalMode = WebCore::FirstPartyWebsiteDataRemovalMode::AllButCookies;
+    bool enableLegacyTLS = configuration().legacyTLSEnabled();
     if (id value = [defaults objectForKey:@"WebKitEnableLegacyTLS"])
         enableLegacyTLS = [value boolValue];
     if (!enableLegacyTLS) {
@@ -87,11 +98,9 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     WebCore::RegistrableDomain resourceLoadStatisticsManualPrevalentResource { };
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     enableResourceLoadStatisticsDebugMode = [defaults boolForKey:@"ITPDebugMode"];
-    if ([defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isThirdPartyCookieBlockingEnabledKey().createCFString().get()]])
-        thirdPartyCookieBlockingMode = WebCore::ThirdPartyCookieBlockingMode::All;
-    else
-        thirdPartyCookieBlockingMode = WebCore::ThirdPartyCookieBlockingMode::AllOnSitesWithoutUserInteraction;
-    if ([defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isFirstPartyWebsiteDataRemovalEnabledKey().createCFString().get()]]) {
+    if ([defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isFirstPartyWebsiteDataRemovalDisabledKey().createCFString().get()]])
+        firstPartyWebsiteDataRemovalMode = WebCore::FirstPartyWebsiteDataRemovalMode::None;
+    else {
         if ([defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isFirstPartyWebsiteDataRemovalReproTestingEnabledKey().createCFString().get()]])
             firstPartyWebsiteDataRemovalMode = WebCore::FirstPartyWebsiteDataRemovalMode::AllButCookiesReproTestingTimeout;
         else if ([defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isFirstPartyWebsiteDataRemovalLiveOnTestingEnabledKey().createCFString().get()]])
@@ -162,7 +171,7 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
         hasStatisticsTestingCallback(),
         shouldIncludeLocalhostInResourceLoadStatistics,
         enableResourceLoadStatisticsDebugMode,
-        thirdPartyCookieBlockingMode,
+        thirdPartyCookieBlockingMode(),
         firstPartyWebsiteDataRemovalMode,
         m_configuration->deviceManagementRestrictionsEnabled(),
         m_configuration->allLoadsBlockedByDeviceManagementRestrictionsForTesting(),
@@ -227,42 +236,14 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
 
 void WebsiteDataStore::platformInitialize()
 {
-    if (!terminationObserver) {
-        ASSERT(dataStores().isEmpty());
-
-#if PLATFORM(MAC)
-        NSString *notificationName = NSApplicationWillTerminateNotification;
-#else
-        NSString *notificationName = UIApplicationWillTerminateNotification;
-#endif
-        terminationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:notificationName object:nil queue:nil usingBlock:^(NSNotification *note) {
-            for (auto& dataStore : dataStores()) {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-                if (dataStore->m_resourceLoadStatistics)
-                    dataStore->m_resourceLoadStatistics->applicationWillTerminate();
-#endif
-            }
-        }];
-    }
-
     ASSERT(!dataStores().contains(this));
     dataStores().add(this);
 }
 
 void WebsiteDataStore::platformDestroy()
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-    if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->applicationWillTerminate();
-#endif
-
     ASSERT(dataStores().contains(this));
     dataStores().remove(this);
-
-    if (dataStores().isEmpty()) {
-        [[NSNotificationCenter defaultCenter] removeObserver:terminationObserver];
-        terminationObserver = nil;
-    }
 }
 
 void WebsiteDataStore::platformRemoveRecentSearches(WallTime oldestTimeToRemove)

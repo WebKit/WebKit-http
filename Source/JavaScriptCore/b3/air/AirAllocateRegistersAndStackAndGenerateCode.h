@@ -43,7 +43,7 @@ class GenerateAndAllocateRegisters {
     WTF_MAKE_NONMOVABLE(GenerateAndAllocateRegisters);
 
     struct TmpData {
-        StackSlot* spillSlot;
+        StackSlot* spillSlot { nullptr };
         Reg reg;
     };
 
@@ -71,7 +71,7 @@ private:
 
     TmpMap<TmpData> m_map;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     Vector<Tmp> m_allTmps[numBanks];
 #endif
 
@@ -84,6 +84,7 @@ private:
     RegisterSet m_namedUsedRegs;
     RegisterSet m_namedDefdRegs;
     RegisterSet m_allowedRegisters;
+    std::unique_ptr<UnifiedTmpLiveness> m_liveness;
 
     struct PatchSpillData {
         CCallHelpers::Jump jump;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -433,6 +433,11 @@ void WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Object* message
     for (auto& page : globalPageMap())
         page.value->postMessageToInjectedBundle("ResourceLoadStatisticsTelemetryFinished", messageBody);
 }
+
+void WebProcessProxy::setShouldBlockThirdPartyCookiesForTesting(ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode, CompletionHandler<void()>&& completionHandler)
+{
+    sendWithAsyncReply(Messages::WebProcess::SetShouldBlockThirdPartyCookiesForTesting(thirdPartyCookieBlockingMode), WTFMove(completionHandler));
+}
 #endif
 
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
@@ -801,11 +806,11 @@ void WebProcessProxy::processDidTerminateOrFailedToLaunch()
 
 void WebProcessProxy::didReceiveInvalidMessage(IPC::Connection& connection, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
-    WTFLogAlways("Received an invalid message \"%s.%s\" from the web process.\n", messageReceiverName.toString().data(), messageName.toString().data());
+    logInvalidMessage(connection, messageReceiverName, messageName);
 
     WebProcessPool::didReceiveInvalidMessage(messageReceiverName, messageName);
 
-    // Terminate the WebProcess.
+    // Terminate the WebContent process.
     terminate();
 
     // Since we've invalidated the connection we'll never get a IPC::Connection::Client::didClose

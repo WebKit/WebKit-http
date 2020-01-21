@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef LineMetadata_h
-#define LineMetadata_h
+#pragma once
+
+#include "Sizes.h"
 
 namespace bmalloc {
 
 struct LineMetadata {
-    unsigned char startOffset;
-    unsigned char objectCount;
+    unsigned char startOffset { };
+    unsigned char objectCount { };
 };
 
 static_assert(
@@ -42,5 +43,3 @@ static_assert(
     "maximum object count must fit in LineMetadata::objectCount");
 
 } // namespace bmalloc
-
-#endif // LineMetadata_h

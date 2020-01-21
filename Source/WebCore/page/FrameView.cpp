@@ -132,7 +132,7 @@
 #include "LayoutContext.h"
 #endif
 
-#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(frame().page() && frame().page()->isAlwaysOnLoggingAllowed(), Layout, "%p - FrameView::" fmt, this, ##__VA_ARGS__)
+#define FRAMEVIEW_RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(frame().page() && frame().page()->isAlwaysOnLoggingAllowed(), channel, "%p - [frame=%p, main=%d] FrameView::" fmt, this, &frame(), frame().isMainFrame(), ##__VA_ARGS__)
 
 namespace WebCore {
 
@@ -2279,7 +2279,7 @@ void FrameView::scrollElementToRect(const Element& element, const IntRect& rect)
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
 }
 
-void FrameView::setScrollPosition(const ScrollPosition& scrollPosition)
+void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, bool animated)
 {
     LOG_WITH_STREAM(Scrolling, stream << "FrameView::setScrollPosition " << scrollPosition << " , clearing anchor");
 
@@ -2292,7 +2292,10 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition)
     Page* page = frame().page();
     if (page && page->isMonitoringWheelEvents())
         scrollAnimator().setWheelEventTestMonitor(page->wheelEventTestMonitor());
-    ScrollView::setScrollPosition(scrollPosition);
+    if (animated)
+        scrollToOffsetWithAnimation(scrollOffsetFromPosition(scrollPosition), currentScrollType());
+    else
+        ScrollView::setScrollPosition(scrollPosition);
 
     setCurrentScrollType(oldScrollType);
 }
@@ -3658,6 +3661,18 @@ void FrameView::scrollTo(const ScrollPosition& newPosition)
     didChangeScrollOffset();
 }
 
+void FrameView::scrollToOffsetWithAnimation(const ScrollOffset& offset, ScrollType scrollType, ScrollClamping)
+{
+    auto previousScrollType = currentScrollType();
+    setCurrentScrollType(scrollType);
+
+    if (currentScrollBehaviorStatus() == ScrollBehaviorStatus::InNonNativeAnimation)
+        scrollAnimator().cancelAnimations();
+    if (offset != this->scrollOffset())
+        ScrollableArea::scrollToOffsetWithAnimation(offset);
+    setCurrentScrollType(previousScrollType);
+}
+
 float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientation orientation, ScrollGranularity granularity)
 {
     if (granularity != ScrollByPage || orientation == HorizontalScrollbar)
@@ -4185,7 +4200,7 @@ void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect
 
     ASSERT(!needsLayout());
     if (needsLayout()) {
-        RELEASE_LOG_IF_ALLOWED("FrameView::paintContents() - not painting because render tree needs layout (is main frame %d)", frame().isMainFrame());
+        FRAMEVIEW_RELEASE_LOG_IF_ALLOWED(Layout, "paintContents: Not painting because render tree needs layout");
         return;
     }
 
@@ -4331,7 +4346,7 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
             break;
     }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     auto needsStyleRecalc = [&] {
         DescendantsDeque deque;
         while (auto view = nextRenderedDescendant(deque)) {
@@ -4350,7 +4365,7 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
         }
         return false;
     };
-#endif
+#endif // ASSERT_ENABLED
 
     ASSERT(!needsStyleRecalc());
     ASSERT(!needsLayout());
@@ -5155,7 +5170,7 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
 
     if (milestonesAchieved && frame().isMainFrame()) {
         if (milestonesAchieved.contains(DidFirstVisuallyNonEmptyLayout))
-            RELEASE_LOG_IF_ALLOWED("fireLayoutRelatedMilestonesIfNeeded() - firing first visually non-empty layout milestone on the main frame");
+            FRAMEVIEW_RELEASE_LOG_IF_ALLOWED(Layout, "fireLayoutRelatedMilestonesIfNeeded: Firing first visually non-empty layout milestone on the main frame");
         frame().loader().didReachLayoutMilestone(milestonesAchieved);
     }
 }

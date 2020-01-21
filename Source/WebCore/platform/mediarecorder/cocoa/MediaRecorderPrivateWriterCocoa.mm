@@ -91,6 +91,17 @@ static NSString *getAVEncoderBitRateKeyWithFallback()
 
 RefPtr<MediaRecorderPrivateWriter> MediaRecorderPrivateWriter::create(const MediaStreamTrackPrivate* audioTrack, const MediaStreamTrackPrivate* videoTrack)
 {
+    int width = 0, height = 0;
+    if (videoTrack) {
+        auto& settings = videoTrack->settings();
+        width = settings.width();
+        height = settings.height();
+    }
+    return create(!!audioTrack, width, height);
+}
+
+RefPtr<MediaRecorderPrivateWriter> MediaRecorderPrivateWriter::create(bool hasAudio, int width, int height)
+{
     NSString *directory = FileSystem::createTemporaryDirectory(@"videos");
     NSString *filename = [NSString stringWithFormat:@"/%lld.mp4", CMClockGetTime(CMClockGetHostTimeClock()).value];
     NSString *path = [directory stringByAppendingString:filename];
@@ -106,12 +117,11 @@ RefPtr<MediaRecorderPrivateWriter> MediaRecorderPrivateWriter::create(const Medi
 
     auto writer = adoptRef(*new MediaRecorderPrivateWriter(WTFMove(avAssetWriter), WTFMove(filePath)));
 
-    if (audioTrack && !writer->setAudioInput())
+    if (hasAudio && !writer->setAudioInput())
         return nullptr;
 
-    if (videoTrack) {
-        auto& settings = videoTrack->settings();
-        if (!writer->setVideoInput(settings.width(), settings.height()))
+    if (width && height) {
+        if (!writer->setVideoInput(width, height))
             return nullptr;
     }
 
@@ -141,6 +151,10 @@ void MediaRecorderPrivateWriter::clear()
     }
     if (m_writer)
         m_writer.clear();
+
+    m_data = nullptr;
+    if (auto completionHandler = WTFMove(m_fetchDataCompletionHandler))
+        completionHandler(nullptr);
 }
 
 bool MediaRecorderPrivateWriter::setVideoInput(int width, int height)
@@ -345,27 +359,37 @@ void MediaRecorderPrivateWriter::stopRecording()
     if (m_audioInput)
         m_finishWritingAudioSemaphore.wait();
 
+    m_isStopping = true;
     [m_writer finishWritingWithCompletionHandler:[this, weakPtr = makeWeakPtr(*this)]() mutable {
-        m_finishWritingSemaphore.signal();
-        callOnMainThread([this, weakPtr = WTFMove(weakPtr)] {
+        callOnMainThread([this, weakPtr = WTFMove(weakPtr), buffer = SharedBuffer::createWithContentsOfFile(m_path)]() mutable {
             if (!weakPtr)
                 return;
+
+            m_isStopping = false;
+            if (m_fetchDataCompletionHandler)
+                m_fetchDataCompletionHandler(WTFMove(buffer));
+            else
+                m_data = WTFMove(buffer);
+
             m_isStopped = false;
             m_hasStartedWriting = false;
             m_isFirstAudioSample = true;
             clear();
         });
+        m_finishWritingSemaphore.signal();
     }];
     m_finishWritingSemaphore.wait();
 }
 
 void MediaRecorderPrivateWriter::fetchData(CompletionHandler<void(RefPtr<SharedBuffer>&&)>&& completionHandler)
 {
-    if ((m_path.isEmpty() && !m_isStopped) || !m_hasStartedWriting)
-        return completionHandler(nullptr);
+    if (m_isStopping) {
+        m_fetchDataCompletionHandler = WTFMove(completionHandler);
+        return;
+    }
 
-    // FIXME: We should read in a background thread.
-    completionHandler(SharedBuffer::createWithContentsOfFile(m_path));
+    auto buffer = WTFMove(m_data);
+    completionHandler(WTFMove(buffer));
 }
 
 } // namespace WebCore

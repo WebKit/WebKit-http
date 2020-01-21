@@ -1,3 +1,70 @@
+2020-01-14  Dean Jackson  <dino@apple.com>
+
+        Build ANGLE as a dynamic library
+        https://bugs.webkit.org/show_bug.cgi?id=204708
+        rdar://57349384
+
+        Rolling this out for the 2nd time.
+
+        - it caused issues with the shared dyld cache, because the
+        cache doesn't know to include the libary until it already
+        exists in the build
+        - probably related to the above, we saw some performance
+        regressions directly related to this change
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE.xcconfig:
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * include/CMakeLists.txt:
+        * include/GLSLANG/ShaderLang.h:
+        * include/GLSLANG/ShaderVars.h:
+        * src/libANGLE/renderer/gl/cgl/DisplayCGL.mm:
+        (rx::DisplayCGL::isValidNativeWindow const):
+        * src/libANGLE/renderer/gl/cgl/WindowSurfaceCGL.mm:
+        (rx::WindowSurfaceCGL::WindowSurfaceCGL):
+        (rx::WindowSurfaceCGL::~WindowSurfaceCGL):
+        * src/libANGLE/renderer/gl/eagl/DisplayEAGL.mm:
+        (rx::DisplayEAGL::terminate):
+        (rx::DisplayEAGL::isValidNativeWindow const):
+        (rx::WorkerContextEAGL::~WorkerContextEAGL):
+        * src/libANGLE/renderer/gl/eagl/WindowSurfaceEAGL.mm:
+        (rx::WindowSurfaceEAGL::WindowSurfaceEAGL):
+        (rx::WindowSurfaceEAGL::~WindowSurfaceEAGL):
+
+2020-01-14  Kenneth Russell  <kbr@chromium.org>
+
+        Need workaround for crash in Intel OpenGL driver related to texture copying feedback loops
+        https://bugs.webkit.org/show_bug.cgi?id=205843
+
+        Remove ANGLE workaround introduced in bug 205707, as it was
+        discovered to be incomplete, and was never upstreamed. The correct
+        workaround will be integrated in the next ANGLE roll.
+
+        Reviewed by Dean Jackson.
+
+        * include/platform/FeaturesGL.h:
+        * src/libANGLE/renderer/gl/StateManagerGL.cpp:
+        (rx::StateManagerGL::bindFramebuffer):
+        * src/libANGLE/renderer/gl/renderergl_utils.cpp:
+        (rx::nativegl_gl::InitializeFeatures):
+
+2020-01-08  Kenneth Russell  <kbr@chromium.org>
+
+        Remove some #ifdefs related to iOS port of ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=205781
+
+        Since the port to the iOS Simulator in
+        https://bugs.webkit.org/show_bug.cgi?id=205618 , these #ifdefs
+        should no longer be needed.
+
+        Reviewed by Dean Jackson.
+
+        * src/common/PackedEnums.cpp:
+        (egl_gl::EGLTextureTargetToTextureType):
+        * src/libANGLE/validationES2.cpp:
+        (gl::ValidateFramebufferTexture2D):
+
 2020-01-05  Kenneth Russell  <kbr@chromium.org>
 
         REGRESSION (r253926): Flaky crashes on webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html and webgl/2.0.0/conformance/textures/misc/texture-copying-feedback-loops.html

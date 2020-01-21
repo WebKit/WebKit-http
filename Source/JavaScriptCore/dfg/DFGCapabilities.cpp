@@ -282,6 +282,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const I
     case op_new_regexp:
     case op_get_internal_field:
     case op_put_internal_field:
+    case op_to_property_key:
     case op_unreachable:
     case op_super_sampler_begin:
     case op_super_sampler_end:

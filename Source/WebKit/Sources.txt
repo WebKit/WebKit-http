@@ -24,11 +24,19 @@
 GPUProcess/GPUProcess.cpp
 GPUProcess/GPUConnectionToWebProcess.cpp
 GPUProcess/GPUProcessCreationParameters.cpp
-//GPUProcess/media/RemoteMediaPlayerManagerProxy.cpp
-//GPUProcess/media/RemoteMediaPlayerProxy.cpp
-//GPUProcess/media/RemoteMediaResource.cpp
-//GPUProcess/media/RemoteMediaResourceLoader.cpp
-//GPUProcess/media/RemoteMediaResourceManager.cpp
+GPUProcess/webrtc/RemoteAudioMediaStreamTrackRenderer.cpp
+GPUProcess/webrtc/RemoteAudioMediaStreamTrackRendererManager.cpp
+GPUProcess/webrtc/RemoteMediaRecorder.cpp
+GPUProcess/webrtc/RemoteMediaRecorderManager.cpp
+GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.cpp
+GPUProcess/webrtc/RemoteSampleBufferDisplayLayerManager.cpp
+GPUProcess/media/RemoteAudioTrackProxy.cpp
+GPUProcess/media/RemoteMediaPlayerManagerProxy.cpp
+GPUProcess/media/RemoteMediaPlayerProxy.cpp
+GPUProcess/media/RemoteMediaResource.cpp
+GPUProcess/media/RemoteMediaResourceLoader.cpp
+GPUProcess/media/RemoteMediaResourceManager.cpp
+GPUProcess/media/RemoteVideoTrackProxy.cpp
 
 NetworkProcess/AdClickAttributionManager.cpp
 NetworkProcess/NetworkActivityTracker.cpp
@@ -270,6 +278,7 @@ UIProcess/ResponsivenessTimer.cpp
 UIProcess/StatisticsRequest.cpp
 UIProcess/SuspendedPageProxy.cpp
 UIProcess/SystemPreviewController.cpp
+UIProcess/TextChecker.cpp
 UIProcess/TextCheckerCompletion.cpp
 UIProcess/UserMediaPermissionCheckProxy.cpp
 UIProcess/UserMediaPermissionRequestManagerProxy.cpp
@@ -319,6 +328,7 @@ UIProcess/API/APIAttachment.cpp
 UIProcess/API/APIContentRuleList.cpp
 UIProcess/API/APIContentRuleListAction.cpp
 UIProcess/API/APIContentRuleListStore.cpp
+UIProcess/API/APIContentWorld.cpp
 UIProcess/API/APIContextMenuElementInfo.cpp
 UIProcess/API/APIDebuggableInfo.cpp
 UIProcess/API/APIExperimentalFeature.cpp
@@ -336,6 +346,7 @@ UIProcess/API/APIURLSchemeTask.cpp
 UIProcess/API/APIUserContentWorld.cpp
 UIProcess/API/APIUserScript.cpp
 UIProcess/API/APIUserStyleSheet.cpp
+UIProcess/API/APIWebAuthenticationAssertionResponse.cpp
 UIProcess/API/APIWebAuthenticationPanel.cpp
 UIProcess/API/APIWebsitePolicies.cpp
 UIProcess/API/APIWindowFeatures.cpp
@@ -398,8 +409,9 @@ UIProcess/Authentication/AuthenticationDecisionListener.cpp
 UIProcess/Authentication/WebCredential.cpp
 UIProcess/Authentication/WebProtectionSpace.cpp
 
-UIProcess/Automation/SimulatedInputDispatcher.cpp
-UIProcess/Automation/WebAutomationSession.cpp
+// FIXME(206266): AutomationProtocolObjects.h's "namespace Protocol" conflicts with objc/runtime.h's "typedef struct objc_object Protocol"
+UIProcess/Automation/SimulatedInputDispatcher.cpp @no-unify
+UIProcess/Automation/WebAutomationSession.cpp @no-unify
 
 UIProcess/Downloads/DownloadProxy.cpp
 UIProcess/Downloads/DownloadProxyMap.cpp
@@ -451,7 +463,8 @@ UIProcess/WebsiteData/WebsiteDataStoreConfiguration.cpp
 WebProcess/WebConnectionToUIProcess.cpp
 WebProcess/WebProcess.cpp
 
-WebProcess/Automation/WebAutomationSessionProxy.cpp
+// FIXME(206266): AutomationProtocolObjects.h's "namespace Protocol" conflicts with objc/runtime.h's "typedef struct objc_object Protocol"
+WebProcess/Automation/WebAutomationSessionProxy.cpp @no-unify
 
 WebProcess/Cache/WebCacheStorageConnection.cpp
 WebProcess/Cache/WebCacheStorageProvider.cpp
@@ -508,11 +521,18 @@ WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp
 WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
 
 WebProcess/GPU/GPUProcessConnection.cpp
-//WebProcess/GPU/media/MediaPlayerPrivateRemote.cpp
-//WebProcess/GPU/media/RemoteMediaPlayerManager.cpp
-//WebProcess/GPU/media/RemoteMediaResourceProxy.cpp
+WebProcess/GPU/media/AudioTrackPrivateRemote.cpp
+WebProcess/GPU/media/MediaPlayerPrivateRemote.cpp
+WebProcess/GPU/media/RemoteMediaPlayerManager.cpp
 WebProcess/GPU/media/RemoteMediaPlayerMIMETypeCache.cpp @no-unify
+WebProcess/GPU/media/RemoteMediaResourceProxy.cpp
+WebProcess/GPU/media/VideoTrackPrivateRemote.cpp
 WebProcess/GPU/webrtc/LibWebRTCCodecs.cpp
+WebProcess/GPU/webrtc/MediaRecorderPrivate.cpp
+WebProcess/GPU/webrtc/MediaRecorderProvider.cpp
+WebProcess/GPU/webrtc/AudioMediaStreamTrackRenderer.cpp
+WebProcess/GPU/webrtc/SampleBufferDisplayLayer.cpp
+WebProcess/GPU/webrtc/SampleBufferDisplayLayerManager.cpp
 
 WebProcess/Network/NetworkProcessConnection.cpp
 WebProcess/Network/WebLoaderStrategy.cpp

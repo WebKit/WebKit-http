@@ -1957,7 +1957,7 @@ void WebPage::storeSelectionForAccessibility(bool shouldStore)
 static RefPtr<Range> rangeNearPositionMatchesText(const VisiblePosition& position, RefPtr<Range> originalRange, const String& matchText, RefPtr<Range> selectionRange)
 {
     auto range = Range::create(selectionRange->ownerDocument(), selectionRange->startPosition(), position.deepEquivalent().parentAnchoredEquivalent());
-    unsigned targetOffset = TextIterator::rangeLength(range.ptr(), true);
+    unsigned targetOffset = TextIterator::rangeLength(range.ptr(), { TextIteratorLengthOption::GenerateSpacesForReplacedElements });
     return findClosestPlainText(*selectionRange.get(), matchText, { }, targetOffset);
 }
 
@@ -2008,6 +2008,8 @@ VisiblePosition WebPage::visiblePositionInFocusedNodeForPoint(const Frame& frame
 
 void WebPage::selectPositionAtPoint(const WebCore::IntPoint& point, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
+    SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
     VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithFocusedElement);
     
@@ -3596,6 +3598,16 @@ void WebPage::applicationDidBecomeActive()
         m_page->applicationDidBecomeActive();
 }
 
+void WebPage::applicationDidEnterBackgroundForMedia(bool isSuspendedUnderLock)
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
+}
+
+void WebPage::applicationWillEnterForegroundForMedia(bool isSuspendedUnderLock)
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
+}
+
 static inline void adjustVelocityDataForBoundedScale(VelocityData& velocityData, double exposedRectScale, double minimumScale, double maximumScale)
 {
     if (velocityData.scaleChangeRate) {
@@ -4061,7 +4073,7 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
                 continue;
             }
 
-            rects.append({ contextIterator.range()->absoluteBoundingBox(), { currentLocation, 1 } });
+            rects.append({ contextIterator.range()->absoluteBoundingBox(Range::BoundingRectBehavior::IgnoreEmptyTextSelections), { currentLocation, 1 } });
             currentLocation++;
             contextIterator.advance(1);
         }

@@ -131,7 +131,7 @@ void WebSWContextManagerConnection::updatePreferencesStore(const WebPreferencesS
 
 void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerContextData& data, String&& userAgent)
 {
-    LOG(ServiceWorker, "WebSWContextManagerConnection::installServiceWorker for worker %s", data.serviceWorkerIdentifier.loggingString().utf8().data());
+    LOG(ServiceWorker, "WebSWContextManagerConnection::installServiceWorker for worker %" PRIu64, data.serviceWorkerIdentifier.toUInt64());
 
     auto pageConfiguration = pageConfigurationWithEmptyClients(WebProcess::singleton().sessionID());
 
@@ -148,14 +148,14 @@ void WebSWContextManagerConnection::installServiceWorker(const ServiceWorkerCont
     // FIXME: This method should be moved directly to WebCore::SWContextManager::Connection
     // If it weren't for ServiceWorkerFrameLoaderClient's dependence on WebDocumentLoader, this could already happen.
     // FIXME: Weird to pass m_previousServiceWorkerID as a FrameIdentifier.
-    auto frameLoaderClient = makeUnique<ServiceWorkerFrameLoaderClient>(*this, m_webPageProxyID, m_pageID, frameIdentifierFromID(++m_previousServiceWorkerID), effectiveUserAgent);
+    auto frameLoaderClient = makeUnique<ServiceWorkerFrameLoaderClient>(*this, m_webPageProxyID, m_pageID, makeObjectIdentifier<WebCore::FrameIdentifierType>(++m_previousServiceWorkerID), effectiveUserAgent);
     pageConfiguration.loaderClientForMainFrame = frameLoaderClient.get();
     m_loaders.add(WTFMove(frameLoaderClient));
 
     auto serviceWorkerThreadProxy = ServiceWorkerThreadProxy::create(WTFMove(pageConfiguration), data, WTFMove(effectiveUserAgent), WebProcess::singleton().cacheStorageProvider(), m_storageBlockingPolicy);
     SWContextManager::singleton().registerServiceWorkerThreadForInstall(WTFMove(serviceWorkerThreadProxy));
 
-    LOG(ServiceWorker, "Context process PID: %i created worker thread\n", getCurrentProcessID());
+    RELEASE_LOG(ServiceWorker, "Created service worker %" PRIu64 " in process PID %i", data.serviceWorkerIdentifier.toUInt64(), getCurrentProcessID());
 }
 
 void WebSWContextManagerConnection::setUserAgent(String&& userAgent)

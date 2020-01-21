@@ -1386,6 +1386,21 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
     if (superDidResign) {
         [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
         _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
+
+        if (_keyWebEventHandler) {
+            dispatch_async(dispatch_get_main_queue(), [weakHandler = WeakObjCPtr<id>(_keyWebEventHandler.get()), weakSelf = WeakObjCPtr<WKContentView>(self)] {
+                if (!weakSelf || !weakHandler)
+                    return;
+
+                auto strongSelf = weakSelf.get();
+                if ([strongSelf isFirstResponder] || weakHandler.get().get() != strongSelf->_keyWebEventHandler.get())
+                    return;
+
+                auto keyEventHandler = std::exchange(strongSelf->_keyWebEventHandler, nil);
+                ASSERT(strongSelf->_page->hasQueuedKeyEvent());
+                keyEventHandler(strongSelf->_page->firstQueuedKeyEvent().nativeEvent(), YES);
+            });
+        }
     }
 
     return superDidResign;
@@ -3843,19 +3858,15 @@ static inline WebCore::SelectionDirection toWKSelectionDirection(UITextDirection
 
 static void selectionChangedWithGesture(WKContentView *view, const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, WebKit::CallbackBase::Error error)
 {
-    if (error != WebKit::CallbackBase::Error::None) {
-        ASSERT_NOT_REACHED();
+    if (error != WebKit::CallbackBase::Error::None)
         return;
-    }
     [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithGestureAt:(CGPoint)point withGesture:toUIWKGestureType((WebKit::GestureType)gestureType) withState:toUIGestureRecognizerState(static_cast<WebKit::GestureRecognizerState>(gestureState)) withFlags:(toUIWKSelectionFlags((WebKit::SelectionFlags)flags))];
 }
 
 static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoint& point, uint32_t touch, uint32_t flags, WebKit::CallbackBase::Error error)
 {
-    if (error != WebKit::CallbackBase::Error::None) {
-        ASSERT_NOT_REACHED();
+    if (error != WebKit::CallbackBase::Error::None)
         return;
-    }
     [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:toUIWKSelectionTouch((WebKit::SelectionTouch)touch) withFlags:static_cast<UIWKSelectionFlags>(flags)];
 }
 
@@ -8480,7 +8491,7 @@ static UIMenu *menuFromLegacyPreviewOrDefaultActions(UIViewController *previewVi
 
                 RetainPtr<NSArray<_WKElementAction *>> defaultActionsFromAssistant = [strongSelf->_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
                 auto actions = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
-                return [UIMenu menuWithTitle:@"" children:actions];
+                return [UIMenu menuWithTitle:strongSelf->_positionInformation.title children:actions];
             };
 
             UIContextMenuContentPreviewProvider contentPreviewProvider = [weakSelf, cgImage, elementInfo] () -> UIViewController * {

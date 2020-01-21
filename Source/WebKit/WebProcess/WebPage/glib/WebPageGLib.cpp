@@ -26,14 +26,25 @@
 #include "config.h"
 #include "WebPage.h"
 
+#include "EditorState.h"
+#include "InputMethodState.h"
 #include "UserMessage.h"
 #include "WebKitExtensionManager.h"
 #include "WebKitUserMessage.h"
 #include "WebKitWebExtension.h"
 #include "WebKitWebPagePrivate.h"
 #include "WebPageProxyMessages.h"
+#include <WebCore/Editor.h>
+#include <WebCore/Frame.h>
+#include <WebCore/FrameView.h>
+#include <WebCore/HTMLInputElement.h>
+#include <WebCore/HTMLTextAreaElement.h>
+#include <WebCore/TextIterator.h>
+#include <WebCore/VisiblePosition.h>
+#include <WebCore/VisibleUnits.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 void WebPage::sendMessageToWebExtensionWithReply(UserMessage&& message, CompletionHandler<void(UserMessage&&)>&& completionHandler)
 {
@@ -57,13 +68,94 @@ void WebPage::sendMessageToWebExtension(UserMessage&& message)
     sendMessageToWebExtensionWithReply(WTFMove(message), [](UserMessage&&) { });
 }
 
-void WebPage::setInputMethodState(bool enabled)
+void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
-    if (m_inputMethodEnabled == enabled)
+    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No || !frame.view() || frame.view()->needsLayout()) {
+        result.isMissingPostLayoutData = true;
+        return;
+    }
+
+    auto& postLayoutData = result.postLayoutData();
+    postLayoutData.caretRectAtStart = frame.selection().absoluteCaretBounds();
+
+    const VisibleSelection& selection = frame.selection().selection();
+    if (selection.isNone())
         return;
 
-    m_inputMethodEnabled = enabled;
-    send(Messages::WebPageProxy::SetInputMethodState(enabled));
+#if PLATFORM(GTK)
+    const Editor& editor = frame.editor();
+    if (selection.isRange()) {
+        if (editor.selectionHasStyle(CSSPropertyFontWeight, "bold") == TrueTriState)
+            postLayoutData.typingAttributes |= AttributeBold;
+        if (editor.selectionHasStyle(CSSPropertyFontStyle, "italic") == TrueTriState)
+            postLayoutData.typingAttributes |= AttributeItalics;
+        if (editor.selectionHasStyle(CSSPropertyWebkitTextDecorationsInEffect, "underline") == TrueTriState)
+            postLayoutData.typingAttributes |= AttributeUnderline;
+        if (editor.selectionHasStyle(CSSPropertyWebkitTextDecorationsInEffect, "line-through") == TrueTriState)
+            postLayoutData.typingAttributes |= AttributeStrikeThrough;
+    } else if (selection.isCaret()) {
+        if (editor.selectionStartHasStyle(CSSPropertyFontWeight, "bold"))
+            postLayoutData.typingAttributes |= AttributeBold;
+        if (editor.selectionStartHasStyle(CSSPropertyFontStyle, "italic"))
+            postLayoutData.typingAttributes |= AttributeItalics;
+        if (editor.selectionStartHasStyle(CSSPropertyWebkitTextDecorationsInEffect, "underline"))
+            postLayoutData.typingAttributes |= AttributeUnderline;
+        if (editor.selectionStartHasStyle(CSSPropertyWebkitTextDecorationsInEffect, "line-through"))
+            postLayoutData.typingAttributes |= AttributeStrikeThrough;
+    }
+#endif
+
+    if (selection.isContentEditable()) {
+        auto selectionStart = selection.visibleStart();
+        auto paragraphStart = startOfParagraph(selectionStart);
+        auto paragraphEnd = endOfParagraph(selectionStart);
+        auto paragraphRange = makeRange(paragraphStart, paragraphEnd);
+        auto compositionRange = frame.editor().compositionRange();
+        if (compositionRange && paragraphRange->contains(*compositionRange)) {
+            auto clonedRange = paragraphRange->cloneRange();
+            paragraphRange->setEnd(compositionRange->startPosition());
+            clonedRange->setStart(compositionRange->endPosition());
+            postLayoutData.paragraphContext = plainText(paragraphRange.get()) + plainText(clonedRange.ptr());
+            postLayoutData.paragraphContextCursorPosition = TextIterator::rangeLength(paragraphRange.get());
+            postLayoutData.paragraphContextSelectionPosition = postLayoutData.paragraphContextCursorPosition;
+        } else {
+            postLayoutData.paragraphContext = plainText(paragraphRange.get());
+            postLayoutData.paragraphContextCursorPosition = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
+            postLayoutData.paragraphContextSelectionPosition = TextIterator::rangeLength(makeRange(paragraphStart, selection.visibleEnd()).get());
+        }
+    }
+}
+
+static Optional<InputMethodState> inputMethodSateForElement(Element* element)
+{
+    if (!element || !element->shouldUseInputMethod())
+        return WTF::nullopt;
+
+    InputMethodState state;
+    if (is<HTMLInputElement>(*element)) {
+        auto& inputElement = downcast<HTMLInputElement>(*element);
+        state.setPurposeForInputElement(inputElement);
+        state.addHintsForAutocapitalizeType(inputElement.autocapitalizeType());
+    } else if (is<HTMLTextAreaElement>(*element) || (element->hasEditableStyle() && is<HTMLElement>(*element))) {
+        auto& htmlElement = downcast<HTMLElement>(*element);
+        state.setPurposeOrHintForInputMode(htmlElement.canonicalInputMode());
+        state.addHintsForAutocapitalizeType(htmlElement.autocapitalizeType());
+    }
+
+    if (element->isSpellCheckingEnabled())
+        state.hints.add(InputMethodState::Hint::Spellcheck);
+
+    return state;
+}
+
+void WebPage::setInputMethodState(Element* element)
+{
+    auto state = inputMethodSateForElement(element);
+    if (m_inputMethodState == state)
+        return;
+
+    m_inputMethodState = state;
+    send(Messages::WebPageProxy::SetInputMethodState(state));
 }
 
 } // namespace WebKit

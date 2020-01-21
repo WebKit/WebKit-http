@@ -50,6 +50,7 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/MainThread.h>
+#import <wtf/NakedRef.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/ProcessPrivilege.h>
@@ -76,7 +77,7 @@ static NSURLSessionResponseDisposition toNSURLSessionResponseDisposition(WebCore
     switch (disposition) {
     case WebCore::PolicyAction::StopAllLoads:
         ASSERT_NOT_REACHED();
-#if ASSERT_DISABLED
+#if !ASSERT_ENABLED
         FALLTHROUGH;
 #endif
     case WebCore::PolicyAction::Ignore:
@@ -401,20 +402,20 @@ static String stringForSSLCipher(SSLCipherSuite cipher)
     bool _withCredentials;
 }
 
-- (id)initWithNetworkSession:(WebKit::NetworkSessionCocoa&)session wrapper:(WebKit::SessionWrapper&)sessionWrapper withCredentials:(bool)withCredentials;
+- (id)initWithNetworkSession:(NakedRef<WebKit::NetworkSessionCocoa>)session wrapper:(WebKit::SessionWrapper&)sessionWrapper withCredentials:(bool)withCredentials;
 - (void)sessionInvalidated;
 
 @end
 
 @implementation WKNetworkSessionDelegate
 
-- (id)initWithNetworkSession:(WebKit::NetworkSessionCocoa&)session wrapper:(WebKit::SessionWrapper&)sessionWrapper withCredentials:(bool)withCredentials
+- (id)initWithNetworkSession:(NakedRef<WebKit::NetworkSessionCocoa>)session wrapper:(WebKit::SessionWrapper&)sessionWrapper withCredentials:(bool)withCredentials
 {
     self = [super init];
     if (!self)
         return nil;
 
-    _session = makeWeakPtr(session);
+    _session = makeWeakPtr(session.get());
     _sessionWrapper = makeWeakPtr(sessionWrapper);
     _withCredentials = withCredentials;
 
@@ -926,7 +927,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
 
 namespace WebKit {
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 static bool sessionsCreated = false;
 #endif
 
@@ -959,22 +960,8 @@ const String& NetworkSessionCocoa::sourceApplicationSecondaryIdentifier() const
 }
 
 #if PLATFORM(IOS_FAMILY)
-static String& globalCTDataConnectionServiceType()
-{
-    static NeverDestroyed<String> ctDataConnectionServiceType;
-    return ctDataConnectionServiceType.get();
-}
-
-void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
-{
-    ASSERT(!sessionsCreated);
-    globalCTDataConnectionServiceType() = type;
-}
-
 const String& NetworkSessionCocoa::dataConnectionServiceType() const
 {
-    if (!globalCTDataConnectionServiceType().isEmpty())
-        return globalCTDataConnectionServiceType();
     return m_dataConnectionServiceType;
 }
 #endif
@@ -1026,7 +1013,7 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     sessionsCreated = true;
 #endif
 
@@ -1067,9 +1054,7 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     configuration.connectionProxyDictionary = proxyDictionary(parameters.httpProxy, parameters.httpsProxy);
 
 #if PLATFORM(IOS_FAMILY)
-    if (!globalCTDataConnectionServiceType().isEmpty())
-        configuration._CTDataConnectionServiceType = globalCTDataConnectionServiceType();
-    else if (!m_dataConnectionServiceType.isEmpty())
+    if (!m_dataConnectionServiceType.isEmpty())
         configuration._CTDataConnectionServiceType = m_dataConnectionServiceType;
 #endif
 
@@ -1081,7 +1066,7 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(IOS_FAMILY)
     // FIXME: Replace @"kCFStreamPropertyAutoErrorOnSystemChange" with a constant from the SDK once rdar://problem/40650244 is in a build.
-    if (networkProcess.suppressesConnectionTerminationOnSystemChange() || parameters.suppressesConnectionTerminationOnSystemChange)
+    if (parameters.suppressesConnectionTerminationOnSystemChange)
         configuration._socketStreamProperties = @{ @"kCFStreamPropertyAutoErrorOnSystemChange" : @NO };
 #endif
 
@@ -1194,6 +1179,21 @@ SessionWrapper& NetworkSessionCocoa::isolatedSession(WebCore::StoredCredentialsP
 
     entry->lastUsed = WallTime::now();
 
+    auto& sessionWrapper = [&] (auto storedCredentialsPolicy) -> SessionWrapper& {
+        switch (storedCredentialsPolicy) {
+        case WebCore::StoredCredentialsPolicy::Use:
+            LOG(NetworkSession, "Using isolated NSURLSession with credential storage.");
+            return entry->sessionWithCredentialStorage;
+        case WebCore::StoredCredentialsPolicy::DoNotUse:
+            LOG(NetworkSession, "Using isolated NSURLSession without credential storage.");
+            return entry->sessionWithoutCredentialStorage;
+        case WebCore::StoredCredentialsPolicy::EphemeralStateless:
+            if (!m_ephemeralStatelessSession.session)
+                initializeEphemeralStatelessSession();
+            return m_ephemeralStatelessSession;
+        }
+    } (storedCredentialsPolicy);
+    
     if (m_isolatedSessions.size() > maxNumberOfIsolatedSessions) {
         WebCore::RegistrableDomain keyToRemove;
         auto oldestTimestamp = WallTime::now();
@@ -1210,18 +1210,7 @@ SessionWrapper& NetworkSessionCocoa::isolatedSession(WebCore::StoredCredentialsP
 
     RELEASE_ASSERT(m_isolatedSessions.size() <= maxNumberOfIsolatedSessions);
 
-    switch (storedCredentialsPolicy) {
-    case WebCore::StoredCredentialsPolicy::Use:
-        LOG(NetworkSession, "Using isolated NSURLSession with credential storage.");
-        return entry->sessionWithCredentialStorage;
-    case WebCore::StoredCredentialsPolicy::DoNotUse:
-        LOG(NetworkSession, "Using isolated NSURLSession without credential storage.");
-        return entry->sessionWithoutCredentialStorage;
-    case WebCore::StoredCredentialsPolicy::EphemeralStateless:
-        if (!m_ephemeralStatelessSession.session)
-            initializeEphemeralStatelessSession();
-        return m_ephemeralStatelessSession;
-    }
+    return sessionWrapper;
 }
 
 bool NetworkSessionCocoa::hasIsolatedSession(const WebCore::RegistrableDomain domain) const

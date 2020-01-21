@@ -700,7 +700,7 @@ static void appendGradientStops(StringBuilder& builder, const Vector<CSSGradient
         else if (position == 1)
             builder.append(", to(", stop.m_color->cssText(), ')');
         else
-            builder.append(", color-stop(", FormattedNumber::fixedPrecision(position), ", ", stop.m_color->cssText(), ')');
+            builder.append(", color-stop(", position, ", ", stop.m_color->cssText(), ')');
     }
 }
 
@@ -924,6 +924,9 @@ bool CSSLinearGradientValue::equals(const CSSLinearGradientValue& other) const
             && compareCSSValuePtr(m_secondX, other.m_secondX)
             && compareCSSValuePtr(m_secondY, other.m_secondY)
             && m_stops == other.m_stops;
+
+    if (m_gradientType != other.m_gradientType)
+        return false;
 
     if (m_repeating != other.m_repeating)
         return false;
@@ -1288,6 +1291,9 @@ bool CSSRadialGradientValue::equals(const CSSRadialGradientValue& other) const
             && compareCSSValuePtr(m_firstRadius, other.m_firstRadius)
             && compareCSSValuePtr(m_secondRadius, other.m_secondRadius)
             && m_stops == other.m_stops;
+
+    if (m_gradientType != other.m_gradientType)
+        return false;
 
     if (m_repeating != other.m_repeating)
         return false;

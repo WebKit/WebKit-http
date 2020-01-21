@@ -28,6 +28,7 @@
 
 #include "BAssert.h"
 #include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <cstddef>
 #include <limits>
@@ -129,7 +130,7 @@ template<typename T> inline void divideRoundingUp(T numerator, T denominator, T&
         quotient += 1;
 }
 
-template<typename T> inline T divideRoundingUp(T numerator, T denominator)
+template<typename T> constexpr T divideRoundingUp(T numerator, T denominator)
 {
     return (numerator + denominator - 1) / denominator;
 }
@@ -191,6 +192,31 @@ bool findBitInWord(T word, size_t& index, size_t endIndex, bool value)
     
     index = endIndex;
     return false;
+}
+
+template <typename T>
+constexpr unsigned ctzConstexpr(T value)
+{
+    constexpr unsigned bitSize = sizeof(T) * CHAR_BIT;
+
+    using UT = typename std::make_unsigned<T>::type;
+    UT uValue = value;
+
+    unsigned zeroCount = 0;
+    for (unsigned i = 0; i < bitSize; i++) {
+        if (uValue & 1)
+            break;
+
+        zeroCount++;
+        uValue >>= 1;
+    }
+    return zeroCount;
+}
+
+template<typename T>
+constexpr unsigned getLSBSetNonZeroConstexpr(T t)
+{
+    return ctzConstexpr(t);
 }
 
 } // namespace bmalloc

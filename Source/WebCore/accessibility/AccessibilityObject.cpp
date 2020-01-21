@@ -120,15 +120,6 @@ bool AccessibilityObject::isDetached() const
 #endif
 }
 
-bool AccessibilityObject::containsText(String const& text) const
-{
-    // If text is empty we return true.
-    return text.isEmpty()
-        || findPlainText(title(), text, CaseInsensitive)
-        || findPlainText(accessibilityDescription(), text, CaseInsensitive)
-        || findPlainText(stringValue(), text, CaseInsensitive);
-}
-
 // ARIA marks elements as having their accessible name derive from either their contents, or their author provide name.
 bool AccessibilityObject::accessibleNameDerivesFromContent() const
 {
@@ -1197,6 +1188,9 @@ RefPtr<Range> AccessibilityObject::rangeForPlainTextRange(const PlainTextRange& 
 {
     unsigned textLength = getLengthForTextRange();
     if (range.start + range.length > textLength)
+        return nullptr;
+    // Avoid setting selection to uneditable parent node in FrameSelection::setSelectedRange. See webkit.org/b/206093.
+    if (range.isNull() && !textLength)
         return nullptr;
     
     if (AXObjectCache* cache = axObjectCache()) {

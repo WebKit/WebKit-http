@@ -72,7 +72,7 @@ void FrameViewLayoutContext::layoutUsingFormattingContext()
         m_layoutState = nullptr;
     }
     if (!m_layoutState)
-        m_layoutState = makeUnique<Layout::LayoutState>(*m_layoutTreeContent);
+        m_layoutState = makeUnique<Layout::LayoutState>(*document(), m_layoutTreeContent->rootLayoutBox());
 
     // FIXME: This is not the real invalidation yet.
     auto invalidationState = Layout::InvalidationState { };
@@ -91,7 +91,7 @@ void FrameViewLayoutContext::layoutUsingFormattingContext()
     }
 
 #ifndef NDEBUG
-    Layout::LayoutContext::verifyAndOutputMismatchingLayoutTree(*m_layoutState);
+    Layout::LayoutContext::verifyAndOutputMismatchingLayoutTree(*m_layoutState, renderView);
 #endif
 }
 
@@ -618,7 +618,7 @@ void FrameViewLayoutContext::addLayoutDelta(const LayoutSize& delta)
         layoutState->addLayoutDelta(delta);
 }
     
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 bool FrameViewLayoutContext::layoutDeltaMatches(const LayoutSize& delta)
 {
     if (auto* layoutState = this->layoutState())

@@ -2089,16 +2089,15 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     
     if (m_object->isFieldset())
         return @"AXFieldset";
-    
-    if (is<AccessibilityList>(*m_object)) {
-        auto& listObject = downcast<AccessibilityList>(*m_object);
-        if (listObject.isUnorderedList() || listObject.isOrderedList())
+
+    if (m_object->isList()) {
+        if (m_object->isUnorderedList() || m_object->isOrderedList())
             return NSAccessibilityContentListSubrole;
-        if (listObject.isDescriptionList()) {
+        if (m_object->isDescriptionList()) {
             return NSAccessibilityDescriptionListSubrole;
         }
     }
-    
+
     // ARIA content subroles.
     switch (role) {
     case AccessibilityRole::LandmarkBanner:
@@ -4010,12 +4009,14 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
             return [axObject->wrapper() attachmentView];
         return axObject->wrapper();
     }
-    
+
     if ([attribute isEqualToString:@"AXTextMarkerRangeForUIElement"]) {
-        RefPtr<Range> range = uiElement.get()->elementRange();
-        return [self textMarkerRangeFromRange:range];
+        return Accessibility::retrieveValueFromMainThread<id>([&uiElement, protectedSelf = RetainPtr<WebAccessibilityObjectWrapper>(self)] () -> id {
+            RefPtr<Range> range = uiElement.get()->elementRange();
+            return [protectedSelf textMarkerRangeFromRange:range];
+        });
     }
-    
+
     if ([attribute isEqualToString:@"AXLineForTextMarker"]) {
         VisiblePosition visiblePos = [self visiblePositionForTextMarker:(textMarker)];
         return [NSNumber numberWithUnsignedInt:m_object->lineForPosition(visiblePos)];

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,6 +86,7 @@
 #include "JSArray.h"
 #include "JSArrayBuffer.h"
 #include "JSArrayBufferConstructor.h"
+#include "JSArrayIterator.h"
 #include "JSAsyncFunction.h"
 #include "JSBigInt.h"
 #include "JSBoundFunction.h"
@@ -110,11 +111,13 @@
 #include "JSNativeStdFunction.h"
 #include "JSPromise.h"
 #include "JSPropertyNameEnumerator.h"
+#include "JSProxy.h"
 #include "JSScriptFetchParameters.h"
 #include "JSScriptFetcher.h"
 #include "JSSet.h"
 #include "JSSetIterator.h"
 #include "JSSourceCode.h"
+#include "JSStringIterator.h"
 #include "JSTemplateObjectDescriptor.h"
 #include "JSToWasmICCallee.h"
 #include "JSTypedArrays.h"
@@ -135,6 +138,7 @@
 #include "MinimumReservedZoneSize.h"
 #include "ModuleProgramCodeBlock.h"
 #include "ModuleProgramExecutable.h"
+#include "NarrowingNumberPredictionFuzzerAgent.h"
 #include "NativeErrorConstructor.h"
 #include "NativeExecutable.h"
 #include "Nodes.h"
@@ -179,6 +183,7 @@
 #include "WebAssemblyFunction.h"
 #include "WebAssemblyModuleRecord.h"
 #include "WebAssemblyWrapperFunction.h"
+#include "WideningNumberPredictionFuzzerAgent.h"
 #include <wtf/ProcessID.h>
 #include <wtf/ReadWriteLock.h>
 #include <wtf/SimpleStats.h>
@@ -219,7 +224,7 @@
 namespace JSC {
 
 #if ENABLE(JIT)
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 bool VM::s_canUseJITIsSet = false;
 #endif
 bool VM::s_canUseJIT = false;
@@ -271,7 +276,7 @@ bool VM::canUseAssembler()
 void VM::computeCanUseJIT()
 {
 #if ENABLE(JIT)
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     RELEASE_ASSERT(!s_canUseJITIsSet);
     s_canUseJITIsSet = true;
 #endif
@@ -365,6 +370,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , getterSetterSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), GetterSetter)
     , globalLexicalEnvironmentSpace ISO_SUBSPACE_INIT(heap, globalLexicalEnvironmentHeapCellType.get(), JSGlobalLexicalEnvironment)
     , internalFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), InternalFunction) // Hash:0xf845c464
+    , jsProxySpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSProxy)
     , nativeExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), NativeExecutable) // Hash:0x67567f95
     , numberObjectSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), NumberObject)
     , promiseSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSPromise)
@@ -545,6 +551,10 @@ VM::VM(VMType vmType, HeapType heapType)
         setFuzzerAgent(makeUnique<FileBasedFuzzerAgent>(*this));
     if (Options::usePredictionFileCreatingFuzzerAgent())
         setFuzzerAgent(makeUnique<PredictionFileCreatingFuzzerAgent>(*this));
+    if (Options::useNarrowingNumberPredictionFuzzerAgent())
+        setFuzzerAgent(makeUnique<NarrowingNumberPredictionFuzzerAgent>(*this));
+    if (Options::useWideningNumberPredictionFuzzerAgent())
+        setFuzzerAgent(makeUnique<WideningNumberPredictionFuzzerAgent>(*this));
 
     if (Options::alwaysGeneratePCToCodeOriginMap())
         setShouldBuildPCToCodeOriginMapping();
@@ -929,7 +939,7 @@ Exception* VM::throwException(JSGlobalObject* globalObject, Exception* exception
     if (!throwOriginFrame)
         throwOriginFrame = globalObject->deprecatedCallFrameForDebugger();
 
-    if (Options::breakOnThrow()) {
+    if (UNLIKELY(Options::breakOnThrow())) {
         CodeBlock* codeBlock = throwOriginFrame ? throwOriginFrame->codeBlock() : nullptr;
         dataLog("Throwing exception in call frame ", RawPointer(throwOriginFrame), " for code block ", codeBlock, "\n");
         CRASH();
@@ -1056,8 +1066,11 @@ void VM::gatherScratchBufferRoots(ConservativeRoots& conservativeRoots)
 
 void VM::scanSideState(ConservativeRoots& roots) const
 {
-    for (const auto& iter : m_checkpointSideState)
-        roots.add(iter.value->tmps, iter.value->tmps + sizeof(iter.value->tmps));
+    ASSERT(heap.worldIsStopped());
+    for (const auto& iter : m_checkpointSideState) {
+        static_assert(sizeof(iter.value->tmps) / sizeof(JSValue) == maxNumCheckpointTmps);
+        roots.add(iter.value->tmps, iter.value->tmps + maxNumCheckpointTmps);
+    }
 }
 #endif
 
@@ -1142,20 +1155,15 @@ void VM::dumpRegExpTrace()
 }
 #endif
 
-WatchpointSet* VM::ensureWatchpointSetForImpureProperty(const Identifier& propertyName)
+WatchpointSet* VM::ensureWatchpointSetForImpureProperty(UniquedStringImpl* propertyName)
 {
-    auto result = m_impurePropertyWatchpointSets.add(propertyName.string(), nullptr);
+    auto result = m_impurePropertyWatchpointSets.add(propertyName, nullptr);
     if (result.isNewEntry)
         result.iterator->value = adoptRef(new WatchpointSet(IsWatched));
     return result.iterator->value.get();
 }
 
-void VM::registerWatchpointForImpureProperty(const Identifier& propertyName, Watchpoint* watchpoint)
-{
-    ensureWatchpointSetForImpureProperty(propertyName)->add(watchpoint);
-}
-
-void VM::addImpureProperty(const String& propertyName)
+void VM::addImpureProperty(UniquedStringImpl* propertyName)
 {
     if (RefPtr<WatchpointSet> watchpointSet = m_impurePropertyWatchpointSets.take(propertyName))
         watchpointSet->fireAll(*this, "Impure property added");
@@ -1434,6 +1442,7 @@ void VM::ensureShadowChicken()
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiGlobalObjectSpace, apiGlobalObjectHeapCellType.get(), JSAPIGlobalObject)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(apiValueWrapperSpace, cellHeapCellType.get(), JSAPIValueWrapper)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(arrayBufferSpace, cellHeapCellType.get(), JSArrayBuffer)
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(arrayIteratorSpace, cellHeapCellType.get(), JSArrayIterator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(asyncGeneratorSpace, cellHeapCellType.get(), JSAsyncGenerator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(bigIntObjectSpace, cellHeapCellType.get(), BigIntObject)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(booleanObjectSpace, cellHeapCellType.get(), BooleanObject)
@@ -1469,6 +1478,7 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setBucketSpace, cellHeapCellType.get(), 
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setIteratorSpace, cellHeapCellType.get(), JSSetIterator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(setSpace, cellHeapCellType.get(), JSSet)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(strictEvalActivationSpace, cellHeapCellType.get(), StrictEvalActivation)
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(stringIteratorSpace, cellHeapCellType.get(), JSStringIterator)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(sourceCodeSpace, destructibleCellHeapCellType.get(), JSSourceCode)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(symbolSpace, destructibleCellHeapCellType.get(), Symbol)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(symbolObjectSpace, cellHeapCellType.get(), SymbolObject)

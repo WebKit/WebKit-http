@@ -81,6 +81,7 @@ inline CapabilityLevel canCompile(Node* node)
     case NewSymbol:
     case NewArray:
     case NewArrayWithSpread:
+    case NewArrayIterator:
     case Spread:
     case NewArrayBuffer:
     case NewTypedArray:
@@ -202,6 +203,7 @@ inline CapabilityLevel canCompile(Node* node)
     case Check:
     case CheckVarargs:
     case CheckArray:
+    case CheckNeutered:
     case CountExecution:
     case SuperSamplerBegin:
     case SuperSamplerEnd:
@@ -231,6 +233,7 @@ inline CapabilityLevel canCompile(Node* node)
     case MultiGetByOffset:
     case MultiPutByOffset:
     case ToPrimitive:
+    case ToPropertyKey:
     case Throw:
     case ThrowStaticError:
     case Unreachable:
@@ -287,12 +290,14 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
+    case PhantomNewArrayIterator:
     case PhantomCreateActivation:
     case PhantomNewRegexp:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeNewObject:
     case MaterializeCreateActivation:
+    case MaterializeNewInternalFieldObject:
     case PhantomDirectArguments:
     case PhantomCreateRest:
     case PhantomSpread:

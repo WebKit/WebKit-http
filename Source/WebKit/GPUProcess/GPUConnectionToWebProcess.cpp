@@ -36,11 +36,22 @@
 #include "LibWebRTCCodecsProxy.h"
 #include "LibWebRTCCodecsProxyMessages.h"
 #include "Logging.h"
+#include "RemoteAudioMediaStreamTrackRendererManager.h"
+#include "RemoteAudioMediaStreamTrackRendererManagerMessages.h"
+#include "RemoteAudioMediaStreamTrackRendererMessages.h"
 #include "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #include "RemoteMediaPlayerManagerProxy.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
+#include "RemoteMediaPlayerProxy.h"
+#include "RemoteMediaPlayerProxyMessages.h"
+#include "RemoteMediaRecorderManager.h"
+#include "RemoteMediaRecorderManagerMessages.h"
+#include "RemoteMediaRecorderMessages.h"
 #include "RemoteMediaResourceManager.h"
 #include "RemoteMediaResourceManagerMessages.h"
+#include "RemoteSampleBufferDisplayLayerManager.h"
+#include "RemoteSampleBufferDisplayLayerManagerMessages.h"
+#include "RemoteSampleBufferDisplayLayerMessages.h"
 #include "RemoteScrollingCoordinatorTransaction.h"
 #include "UserMediaCaptureManagerProxy.h"
 #include "UserMediaCaptureManagerProxyMessages.h"
@@ -137,6 +148,32 @@ UserMediaCaptureManagerProxy& GPUConnectionToWebProcess::userMediaCaptureManager
 
     return *m_userMediaCaptureManagerProxy;
 }
+
+RemoteMediaRecorderManager& GPUConnectionToWebProcess::mediaRecorderManager()
+{
+    if (!m_remoteMediaRecorderManager)
+        m_remoteMediaRecorderManager = makeUnique<RemoteMediaRecorderManager>(*this);
+
+    return *m_remoteMediaRecorderManager;
+}
+
+#if ENABLE(VIDEO_TRACK)
+RemoteAudioMediaStreamTrackRendererManager& GPUConnectionToWebProcess::audioTrackRendererManager()
+{
+    if (!m_audioTrackRendererManager)
+        m_audioTrackRendererManager = makeUnique<RemoteAudioMediaStreamTrackRendererManager>();
+
+    return *m_audioTrackRendererManager;
+}
+
+RemoteSampleBufferDisplayLayerManager& GPUConnectionToWebProcess::sampleBufferDisplayLayerManager()
+{
+    if (!m_sampleBufferDisplayLayerManager)
+        m_sampleBufferDisplayLayerManager = makeUnique<RemoteSampleBufferDisplayLayerManager>(m_connection.copyRef());
+
+    return *m_sampleBufferDisplayLayerManager;
+}
+#endif
 #endif
 
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
@@ -154,6 +191,9 @@ void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, I
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveMessageFromWebProcess(connection, decoder);
         return;
+    } else if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerProxy::messageReceiverName()) {
+        remoteMediaPlayerManagerProxy().didReceivePlayerMessage(connection, decoder);
+        return;
     } else if (decoder.messageReceiverName() == Messages::RemoteMediaResourceManager::messageReceiverName()) {
         remoteMediaResourceManager().didReceiveMessage(connection, decoder);
         return;
@@ -163,6 +203,32 @@ void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, I
         userMediaCaptureManagerProxy().didReceiveMessageFromGPUProcess(connection, decoder);
         return;
     }
+    if (decoder.messageReceiverName() == Messages::RemoteMediaRecorderManager::messageReceiverName()) {
+        mediaRecorderManager().didReceiveMessageFromWebProcess(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteMediaRecorder::messageReceiverName()) {
+        mediaRecorderManager().didReceiveRemoteMediaRecorderMessage(connection, decoder);
+        return;
+    }
+#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
+    if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRendererManager::messageReceiverName()) {
+        audioTrackRendererManager().didReceiveMessageFromWebProcess(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRenderer::messageReceiverName()) {
+        audioTrackRendererManager().didReceiveRendererMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayerManager::messageReceiverName()) {
+        sampleBufferDisplayLayerManager().didReceiveMessageFromWebProcess(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayer::messageReceiverName()) {
+        sampleBufferDisplayLayerManager().didReceiveLayerMessage(connection, decoder);
+        return;
+    }
+#endif
 #endif
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
     if (decoder.messageReceiverName() == Messages::LibWebRTCCodecsProxy::messageReceiverName()) {
@@ -184,6 +250,12 @@ void GPUConnectionToWebProcess::didReceiveSyncMessage(IPC::Connection& connectio
         userMediaCaptureManagerProxy().didReceiveSyncMessageFromGPUProcess(connection, decoder, replyEncoder);
         return;
     }
+#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
+    if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayerManager::messageReceiverName()) {
+        sampleBufferDisplayLayerManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
+        return;
+    }
+#endif
 #endif
 
     ASSERT_NOT_REACHED();

@@ -669,12 +669,14 @@ void RenderBlockFlow::layoutBlockChildren(bool relayoutChildren, LayoutUnit& max
 void RenderBlockFlow::layoutInlineChildren(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom)
 {
     auto computeLineLayoutPath = [&] {
+        bool canUseSimpleLines = SimpleLineLayout::canUseFor(*this);
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
-        if (LayoutIntegration::LineLayout::canUseFor(*this))
+        if (LayoutIntegration::LineLayout::canUseFor(*this, canUseSimpleLines))
             return LayoutFormattingContextPath;
 #endif
-        if (SimpleLineLayout::canUseFor(*this))
+        if (canUseSimpleLines)
             return SimpleLinesPath;
+
         return LineBoxesPath;
     };
 
@@ -717,7 +719,7 @@ void RenderBlockFlow::layoutBlockChild(RenderBox& child, MarginInfo& marginInfo,
     LayoutRect oldRect = child.frameRect();
     LayoutUnit oldLogicalTop = logicalTopForChild(child);
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayoutSize oldLayoutDelta = view().frameView().layoutContext().layoutDelta();
 #endif
     // Position the child as though it didn't collapse with the top.
@@ -2104,6 +2106,11 @@ void RenderBlockFlow::styleDidChange(StyleDifference diff, const RenderStyle* ol
 
     if (multiColumnFlow())
         updateStylesForColumnChildren();
+
+#if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+    if (layoutFormattingContextLineLayout())
+        layoutFormattingContextLineLayout()->updateStyle();
+#endif
 }
 
 void RenderBlockFlow::updateStylesForColumnChildren()
@@ -2359,7 +2366,7 @@ void RenderBlockFlow::removeFloatingObject(RenderBox& floatBox)
                         ASSERT(&floatingObject.originatingLine()->renderer() == this);
                         floatingObject.originatingLine()->markDirty();
                     }
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
                     floatingObject.clearOriginatingLine();
 #endif
                 }
@@ -3749,7 +3756,7 @@ void RenderBlockFlow::ensureLineBoxes()
 
     auto& complexLineLayout = *this->complexLineLayout();
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayoutUnit oldHeight = logicalHeight();
 #endif
     bool didNeedLayout = needsLayout();

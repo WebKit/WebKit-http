@@ -28,6 +28,7 @@
 #include "HTMLTextFormControlElement.h"
 #include "LayoutRect.h"
 #include "Range.h"
+#include "TextIterator.h"
 #include "TextIteratorBehavior.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
@@ -489,7 +490,6 @@ public:
     virtual bool isAccessibilitySVGRoot() const = 0;
     virtual bool isAccessibilitySVGElement() const = 0;
 
-    virtual bool containsText(String const&) const = 0;
     virtual bool isAttachmentElement() const = 0;
     virtual bool isHeading() const = 0;
     virtual bool isLink() const = 0;
@@ -523,7 +523,12 @@ public:
     virtual bool isInputSlider() const = 0;
     virtual bool isControl() const = 0;
     virtual bool isLabel() const = 0;
+    // lists support (l, ul, ol, dl)
     virtual bool isList() const = 0;
+    virtual bool isUnorderedList() const = 0;
+    virtual bool isOrderedList() const = 0;
+    virtual bool isDescriptionList() const = 0;
+
     virtual bool isTable() const = 0;
     virtual bool isDataTable() const = 0;
     virtual bool isTableRow() const = 0;
@@ -763,6 +768,14 @@ public:
     virtual String accessibilityDescription() const = 0;
     virtual String title() const = 0;
     virtual String helpText() const = 0;
+    bool containsText(String const& text) const
+    {
+        // If text is empty we return true.
+        return text.isEmpty()
+            || findPlainText(title(), text, CaseInsensitive)
+            || findPlainText(accessibilityDescription(), text, CaseInsensitive)
+            || findPlainText(stringValue(), text, CaseInsensitive);
+    }
 
     // Methods for determining accessibility text.
     virtual bool isARIAStaticText() const = 0;
@@ -1062,7 +1075,13 @@ public:
     virtual bool isDOMHidden() const = 0;
     virtual bool isHidden() const = 0;
 
-    virtual AccessibilityObjectWrapper* wrapper() const = 0;
+#if ENABLE(ACCESSIBILITY)
+    AccessibilityObjectWrapper* wrapper() const { return m_wrapper.get(); }
+    void setWrapper(AccessibilityObjectWrapper* wrapper) { m_wrapper = wrapper; }
+#else
+    AccessibilityObjectWrapper* wrapper() const { return nullptr; }
+    void setWrapper(AccessibilityObjectWrapper*) { }
+#endif
 
     virtual void overrideAttachmentParent(AXCoreObject* parent) = 0;
 
@@ -1110,6 +1129,14 @@ public:
     virtual uint64_t sessionID() const = 0;
     virtual String documentURI() const = 0;
     virtual String documentEncoding() const = 0;
+protected:
+#if PLATFORM(COCOA)
+    RetainPtr<WebAccessibilityObjectWrapper> m_wrapper;
+#elif PLATFORM(WIN)
+    COMPtr<AccessibilityObjectWrapper> m_wrapper;
+#elif USE(ATK)
+    GRefPtr<WebKitAccessible> m_wrapper;
+#endif
 };
 
 namespace Accessibility {

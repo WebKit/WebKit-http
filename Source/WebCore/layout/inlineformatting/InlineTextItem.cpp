@@ -28,12 +28,15 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "FontCascade.h"
 #include "InlineSoftLineBreakItem.h"
 #include "TextUtil.h"
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
 namespace Layout {
+
+static_assert(sizeof(InlineItem) == sizeof(InlineTextItem), "");
 
 static inline bool isWhitespaceCharacter(UChar character, bool preserveNewline)
 {
@@ -118,55 +121,10 @@ void InlineTextItem::createAndAppendTextItems(InlineItems& inlineContent, const 
     }
 }
 
-std::unique_ptr<InlineTextItem> InlineTextItem::createWhitespaceItem(const Box& inlineBox, unsigned start, unsigned length, Optional<InlineLayoutUnit> width)
-{
-    return makeUnique<InlineTextItem>(inlineBox, start, length, width, TextItemType::Whitespace);
-}
-
-std::unique_ptr<InlineTextItem> InlineTextItem::createNonWhitespaceItem(const Box& inlineBox, unsigned start, unsigned length, Optional<InlineLayoutUnit> width)
-{
-    return makeUnique<InlineTextItem>(inlineBox, start, length, width, TextItemType::NonWhitespace);
-}
-
-std::unique_ptr<InlineTextItem> InlineTextItem::createEmptyItem(const Box& inlineBox)
-{
-    return makeUnique<InlineTextItem>(inlineBox);
-}
-
-InlineTextItem::InlineTextItem(const Box& inlineBox, unsigned start, unsigned length, Optional<InlineLayoutUnit> width, TextItemType textItemType)
-    : InlineItem(inlineBox, Type::Text)
-    , m_start(start)
-    , m_length(length)
-    , m_width(width)
-    , m_textItemType(textItemType)
-{
-}
-
-InlineTextItem::InlineTextItem(const Box& inlineBox)
-    : InlineItem(inlineBox, Type::Text)
-{
-}
-
 bool InlineTextItem::isEmptyContent() const
 {
     // FIXME: We should check for more zero width content and not just U+200B.
     return !m_length || (m_length == 1 && layoutBox().textContext()->content[start()] == zeroWidthSpace); 
-}
-
-std::unique_ptr<InlineTextItem> InlineTextItem::left(unsigned length) const
-{
-    RELEASE_ASSERT(length <= this->length());
-    ASSERT(m_textItemType != TextItemType::Undefined);
-    ASSERT(length);
-    return makeUnique<InlineTextItem>(layoutBox(), start(), length, WTF::nullopt, m_textItemType);
-}
-
-std::unique_ptr<InlineTextItem> InlineTextItem::right(unsigned length) const
-{
-    RELEASE_ASSERT(length <= this->length());
-    ASSERT(m_textItemType != TextItemType::Undefined);
-    ASSERT(length);
-    return makeUnique<InlineTextItem>(layoutBox(), end() - length, length, WTF::nullopt, m_textItemType);
 }
 
 }

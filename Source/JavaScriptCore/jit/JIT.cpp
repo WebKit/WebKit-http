@@ -126,7 +126,7 @@ void JIT::emitNotifyWrite(GPRReg pointerToSet)
 
 void JIT::assertStackPointerOffset()
 {
-    if (ASSERT_DISABLED)
+    if (!ASSERT_ENABLED)
         return;
     
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, regT0);
@@ -425,6 +425,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_put_getter_setter_by_id)
         DEFINE_OP(op_put_getter_by_val)
         DEFINE_OP(op_put_setter_by_val)
+        DEFINE_OP(op_to_property_key)
 
         DEFINE_OP(op_get_internal_field)
         DEFINE_OP(op_put_internal_field)
@@ -599,6 +600,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_SLOW_OP(has_structure_property)
         DEFINE_SLOWCASE_SLOW_OP(resolve_scope)
         DEFINE_SLOWCASE_SLOW_OP(check_tdz)
+        DEFINE_SLOWCASE_SLOW_OP(to_property_key)
 
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -770,7 +772,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         move(returnValueGPR, GPRInfo::argumentGPR0);
         emitNakedCall(m_vm->getCTIStub(arityFixupGenerator).retaggedCode<NoPtrTag>());
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         m_bytecodeIndex = BytecodeIndex(); // Reset this, in order to guard its use with ASSERTs.
 #endif
 
@@ -904,7 +906,7 @@ CompilationResult JIT::link()
 
     MacroAssemblerCodePtr<JSEntryPtrTag> withArityCheck = patchBuffer.locationOf<JSEntryPtrTag>(m_arityCheck);
 
-    if (Options::dumpDisassembly()) {
+    if (UNLIKELY(Options::dumpDisassembly())) {
         m_disassembler->dump(patchBuffer);
         patchBuffer.didAlreadyDisassemble();
     }

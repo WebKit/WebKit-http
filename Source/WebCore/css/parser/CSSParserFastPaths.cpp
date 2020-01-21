@@ -591,6 +591,8 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueShow || valueID == CSSValueHide;
     case CSSPropertyFloat: // left | right | none
         return valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueNone;
+    case CSSPropertyImageOrientation: // from-image | none
+        return valueID == CSSValueFromImage || valueID == CSSValueNone;
     case CSSPropertyImageRendering: // auto | optimizeContrast | pixelated | optimizeSpeed | crispEdges | optimizeQuality | webkit-crispEdges
         return valueID == CSSValueAuto || valueID == CSSValueOptimizeSpeed || valueID == CSSValueOptimizeQuality || valueID == CSSValueWebkitCrispEdges || valueID == CSSValueWebkitOptimizeContrast || valueID == CSSValueCrispEdges || valueID == CSSValuePixelated;
 #if ENABLE(CSS_COMPOSITING)
@@ -636,10 +638,6 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
             || valueID == CSSValueSticky || valueID == CSSValueWebkitSticky;
     case CSSPropertyResize: // none | both | horizontal | vertical | auto
         return valueID == CSSValueNone || valueID == CSSValueBoth || valueID == CSSValueHorizontal || valueID == CSSValueVertical || valueID == CSSValueAuto;
-    // FIXME-NEWPARSER: Investigate this property.
-    // case CSSPropertyScrollBehavior: // auto | smooth
-    //     ASSERT(RuntimeEnabledFeatures::cssomSmoothScrollEnabled());
-    //   return valueID == CSSValueAuto || valueID == CSSValueSmooth;
     case CSSPropertyShapeRendering:
         return valueID == CSSValueAuto || valueID == CSSValueOptimizeSpeed || valueID == CSSValueCrispedges || valueID == CSSValueGeometricPrecision;
     case CSSPropertyStrokeLinejoin:
@@ -857,6 +855,7 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyFontVariantAlternates:
     case CSSPropertyFontVariantCaps:
     case CSSPropertyFontVariantPosition:
+    case CSSPropertyImageOrientation:
     case CSSPropertyImageRendering:
     case CSSPropertyListStylePosition:
     case CSSPropertyListStyleType:
@@ -939,7 +938,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     // case CSSPropertyFontKerning:
     // case CSSPropertyHyphens:
     // case CSSPropertyOverflowAnchor:
-    // case CSSPropertyScrollBehavior:
     // case CSSPropertyScrollSnapType:
     // case CSSPropertyTextAlignLast:
     // case CSSPropertyTextCombineUpright:

@@ -120,7 +120,6 @@ public:
     void setScrollingModesLock(bool lock = true) { m_horizontalScrollbarLock = m_verticalScrollbarLock = lock; }
 
     WEBCORE_EXPORT virtual void setCanHaveScrollbars(bool);
-    bool canHaveScrollbars() const { return horizontalScrollbarMode() != ScrollbarAlwaysOff || verticalScrollbarMode() != ScrollbarAlwaysOff; }
 
     virtual bool avoidScrollbarCreation() const { return false; }
 
@@ -265,7 +264,7 @@ public:
     ScrollPosition cachedScrollPosition() const { return m_cachedScrollPosition; }
 
     // Functions for scrolling the view.
-    virtual void setScrollPosition(const ScrollPosition&);
+    virtual void setScrollPosition(const ScrollPosition&, bool animated = false);
     void scrollBy(const IntSize& s) { return setScrollPosition(scrollPosition() + s); }
 
     // This function scrolls by lines, pages or pixels.

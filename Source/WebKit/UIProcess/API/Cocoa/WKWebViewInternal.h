@@ -31,6 +31,7 @@
 #import "_WKAttachmentInternal.h"
 #import "_WKWebViewPrintFormatterInternal.h"
 #import <wtf/CompletionHandler.h>
+#import <wtf/NakedPtr.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Variant.h>
@@ -68,6 +69,7 @@ namespace WebKit {
 enum class ContinueUnsafeLoad : bool;
 class IconLoadingDelegate;
 class NavigationState;
+class ResourceLoadDelegate;
 class SafeBrowsingWarning;
 class ViewSnapshot;
 class WebPageProxy;
@@ -81,13 +83,14 @@ class ViewGestureController;
 #endif
 }
 
-@class WKWebViewContentProviderRegistry;
+@class WKContentView;
 @class WKPasswordView;
-@class _WKFrameHandle;
 @class WKSafeBrowsingWarning;
+@class WKScrollView;
+@class WKWebViewContentProviderRegistry;
+@class _WKFrameHandle;
 
 #if PLATFORM(IOS_FAMILY)
-@class WKScrollView;
 @class WKFullScreenWindowController;
 @protocol WKWebViewContentProvider;
 #endif
@@ -108,6 +111,7 @@ class ViewGestureController;
     std::unique_ptr<WebKit::NavigationState> _navigationState;
     std::unique_ptr<WebKit::UIDelegate> _uiDelegate;
     std::unique_ptr<WebKit::IconLoadingDelegate> _iconLoadingDelegate;
+    std::unique_ptr<WebKit::ResourceLoadDelegate> _resourceLoadDelegate;
 
     WeakObjCPtr<id <_WKTextManipulationDelegate>> _textManipulationDelegate;
     WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
@@ -123,6 +127,10 @@ class ViewGestureController;
 #if PLATFORM(MAC)
     std::unique_ptr<WebKit::WebViewImpl> _impl;
     RetainPtr<WKTextFinderClient> _textFinderClient;
+
+    // Only used with UI-side compositing.
+    RetainPtr<WKScrollView> _scrollView;
+    RetainPtr<WKContentView> _contentView;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -250,7 +258,7 @@ class ViewGestureController;
 - (Optional<BOOL>)_resolutionForShareSheetImmediateCompletionForTesting;
 
 - (WKPageRef)_pageForTesting;
-- (WebKit::WebPageProxy*)_page;
+- (NakedPtr<WebKit::WebPageProxy>)_page;
 
 @end
 

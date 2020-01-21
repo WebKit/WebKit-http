@@ -233,7 +233,6 @@ void GraphicsContextImplCairo::clearRect(const FloatRect& rect)
 
 void GraphicsContextImplCairo::drawGlyphs(const Font& font, const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs, const FloatPoint& point, FontSmoothingMode fontSmoothing)
 {
-    UNUSED_PARAM(fontSmoothing);
     if (!font.platformData().size())
         return;
 
@@ -248,17 +247,21 @@ void GraphicsContextImplCairo::drawGlyphs(const Font& font, const GlyphBuffer& g
         for (size_t i = 0; i < numGlyphs; ++i) {
             glyphs[i] = { glyphsData[i], xOffset, yOffset };
             xOffset += advances[i].width();
-            yOffset -= advances[i].height();
+            yOffset += advances[i].height();
         }
     }
 
     cairo_scaled_font_t* scaledFont = font.platformData().scaledFont();
     double syntheticBoldOffset = font.syntheticBoldOffset();
 
+    if (!font.allowsAntialiasing())
+        fontSmoothing = FontSmoothingMode::NoSmoothing;
+
     auto& state = graphicsContext().state();
     Cairo::drawGlyphs(m_platformContext, Cairo::FillSource(state), Cairo::StrokeSource(state),
         Cairo::ShadowState(state), point, scaledFont, syntheticBoldOffset, glyphs, xOffset,
-        state.textDrawingMode, state.strokeThickness, state.shadowOffset, state.shadowColor);
+        state.textDrawingMode, state.strokeThickness, state.shadowOffset, state.shadowColor,
+        fontSmoothing);
 }
 
 ImageDrawResult GraphicsContextImplCairo::drawImage(Image& image, const FloatRect& destination, const FloatRect& source, const ImagePaintingOptions& imagePaintingOptions)

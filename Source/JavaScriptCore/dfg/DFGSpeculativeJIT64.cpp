@@ -1208,7 +1208,7 @@ GPRReg SpeculativeJIT::fillSpeculateCell(Edge edge)
     case DataFormatJSCell: {
         GPRReg gpr = info.gpr();
         m_gprs.lock(gpr);
-        if (!ASSERT_DISABLED) {
+        if (ASSERT_ENABLED) {
             MacroAssembler::Jump checkCell = m_jit.branchIfCell(JSValueRegs(gpr));
             m_jit.abortWithReason(DFGIsNotCell);
             checkCell.link(&m_jit);
@@ -2370,6 +2370,11 @@ void SpeculativeJIT::compile(Node* node)
         compileFromCharCode(node);
         break;
     }
+
+    case CheckNeutered: {
+        compileCheckNeutered(node);
+        break;
+    }
         
     case CheckArray: {
         checkArray(node);
@@ -3426,6 +3431,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case ToPropertyKey: {
+        compileToPropertyKey(node);
+        break;
+    }
+
     case ToNumber: {
         JSValueOperand argument(this, node->child1());
         GPRTemporary result(this, Reuse, argument);
@@ -3575,6 +3585,11 @@ void SpeculativeJIT::compile(Node* node)
 
     case NewAsyncGenerator: {
         compileNewAsyncGenerator(node);
+        break;
+    }
+
+    case NewArrayIterator: {
+        compileNewArrayIterator(node);
         break;
     }
 
@@ -3881,7 +3896,7 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg valueGPR = value.gpr();
 
         flushRegisters();
-        callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis, NoResult, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), baseGPR, thisValueGPR, propertyGPR, valueGPR);
+        callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis, TrustedImmPtr::weakPointer(m_graph, m_graph.globalObjectFor(node->origin.semantic)), baseGPR, thisValueGPR, propertyGPR, valueGPR);
         m_jit.exceptionCheck();
 
         noResult(node);
@@ -5261,6 +5276,7 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomNewAsyncGeneratorFunction:
+    case PhantomNewArrayIterator:
     case PhantomCreateActivation:
     case PhantomNewRegexp:
     case GetMyArgumentByVal:
@@ -5269,6 +5285,7 @@ void SpeculativeJIT::compile(Node* node)
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeCreateActivation:
+    case MaterializeNewInternalFieldObject:
     case PutStack:
     case KillStack:
     case GetStack:

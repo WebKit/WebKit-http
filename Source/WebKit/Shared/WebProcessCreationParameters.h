@@ -51,6 +51,10 @@
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+#include <WebCore/RenderThemeIOS.h>
+#endif
+
 namespace API {
 class Data;
 }
@@ -84,10 +88,6 @@ struct WebProcessCreationParameters {
 #endif
 #if ENABLE(MEDIA_STREAM)
     SandboxExtension::Handle audioCaptureExtensionHandle;
-    bool shouldCaptureAudioInUIProcess { false };
-    bool shouldCaptureAudioInGPUProcess { false };
-    bool shouldCaptureVideoInUIProcess { false };
-    bool shouldCaptureDisplayInUIProcess { false };
 #endif
 
     String webCoreLoggingChannels;
@@ -212,6 +212,7 @@ struct WebProcessCreationParameters {
 
 #if PLATFORM(IOS_FAMILY)
     bool currentUserInterfaceIdiomIsPad { false };
+    WebCore::RenderThemeIOS::CSSValueToSystemColorMap cssValueToSystemColorMap;
 #endif
 };
 

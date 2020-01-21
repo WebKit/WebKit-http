@@ -71,17 +71,7 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
 
     WKContextSetStorageAccessAPIEnabled(context, true);
 
-    WKWebsiteDataStore* poolWebsiteDataStore = (__bridge WKWebsiteDataStore *)TestController::websiteDataStore();
-    if (libraryPath) {
-        String cacheStorageDirectory = String(libraryPath) + '/' + "CacheStorage";
-        [poolWebsiteDataStore _setCacheStorageDirectory: cacheStorageDirectory];
-
-        String serviceWorkerRegistrationDirectory = String(libraryPath) + '/' + "ServiceWorkers";
-        [poolWebsiteDataStore _setServiceWorkerRegistrationDirectory: serviceWorkerRegistrationDirectory];
-    }
-
     [globalWebViewConfiguration.websiteDataStore _setResourceLoadStatisticsEnabled:YES];
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldSubmitTelemetry:NO];
 
     [globalWebsiteDataStoreDelegateClient release];
     globalWebsiteDataStoreDelegateClient = [[TestWebsiteDataStoreDelegate alloc] init];
@@ -272,7 +262,7 @@ void TestController::cocoaResetStateToConsistentValues(const TestOptions& option
         [platformView resetInteractionCallbacks];
     }
 
-    [globalWebsiteDataStoreDelegateClient setAllowRaisingQuota: true];
+    [globalWebsiteDataStoreDelegateClient setAllowRaisingQuota:YES];
 }
 
 void TestController::platformWillRunTest(const TestInvocation& testInvocation)

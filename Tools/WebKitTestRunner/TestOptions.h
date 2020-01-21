@@ -38,13 +38,15 @@ struct TestOptions {
         bool ignoreSynchronousMessagingTimeouts { false };
         bool enableProcessSwapOnNavigation { true };
         bool enableProcessSwapOnWindowOpen { false };
+        bool useServiceWorkerShortTimeout { false };
 
         bool hasSameInitializationOptions(const ContextOptions& options) const
         {
             if (ignoreSynchronousMessagingTimeouts != options.ignoreSynchronousMessagingTimeouts
                 || overrideLanguages != options.overrideLanguages
                 || enableProcessSwapOnNavigation != options.enableProcessSwapOnNavigation
-                || enableProcessSwapOnWindowOpen != options.enableProcessSwapOnWindowOpen)
+                || enableProcessSwapOnWindowOpen != options.enableProcessSwapOnWindowOpen
+                || useServiceWorkerShortTimeout != options.useServiceWorkerShortTimeout)
                 return false;
             return true;
         }
@@ -98,6 +100,7 @@ struct TestOptions {
     bool enableLazyImageLoading { false };
     bool allowsLinkPreview { true };
     bool enableCaptureVideoInUIProcess { false };
+    bool enableCaptureVideoInGPUProcess { false };
     bool enableCaptureAudioInGPUProcess { false };
 
     double contentInsetTop { 0 };
@@ -162,6 +165,7 @@ struct TestOptions {
             || enableLazyImageLoading != options.enableLazyImageLoading
             || allowsLinkPreview != options.allowsLinkPreview
             || enableCaptureVideoInUIProcess != options.enableCaptureVideoInUIProcess
+            || enableCaptureVideoInGPUProcess != options.enableCaptureVideoInGPUProcess
             || enableCaptureAudioInGPUProcess != options.enableCaptureAudioInGPUProcess)
             return false;
 

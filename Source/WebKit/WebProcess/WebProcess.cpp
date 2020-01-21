@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,6 @@
 #include "APIPageHandle.h"
 #include "AuthenticationManager.h"
 #include "AuxiliaryProcessMessages.h"
-#include "DependencyProcessAssertion.h"
 #include "DrawingArea.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
@@ -275,9 +274,6 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
     m_eventDispatcher->initializeConnection(connection);
 #if PLATFORM(IOS_FAMILY)
     m_viewUpdateDispatcher->initializeConnection(connection);
-
-    ASSERT(!m_uiProcessDependencyProcessAssertion);
-    m_uiProcessDependencyProcessAssertion = makeUnique<DependencyProcessAssertion>(connection->remoteProcessID(), "WebContent process dependency on UIProcess"_s);
 #endif // PLATFORM(IOS_FAMILY)
 
     m_webInspectorInterruptDispatcher->initializeConnection(connection);
@@ -481,6 +477,7 @@ void WebProcess::setWebsiteDataStoreParameters(WebProcessDataStoreParameters&& p
     setResourceLoadStatisticsEnabled(parameters.resourceLoadStatisticsEnabled);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
+    m_thirdPartyCookieBlockingMode = parameters.thirdPartyCookieBlockingMode;
     if (parameters.resourceLoadStatisticsEnabled && !parameters.sessionID.isEphemeral() && !ResourceLoadObserver::sharedIfExists())
         ResourceLoadObserver::setShared(*new WebResourceLoadObserver);
 #endif
@@ -763,7 +760,7 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
     }
 #endif
 
-    LOG_ERROR("Unhandled web process message '%s:%s' (destination: %llu)", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID());
+    LOG_ERROR("Unhandled web process message '%s:%s' (destination: %" PRIu64 ")", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID());
 }
 
 WebFrame* WebProcess::webFrame(FrameIdentifier frameID) const
@@ -1303,6 +1300,10 @@ GPUProcessConnection& WebProcess::ensureGPUProcessConnection()
             CRASH();
 
         m_gpuProcessConnection = GPUProcessConnection::create(connectionInfo.releaseIdentifier());
+#if HAVE(AUDIT_TOKEN)
+        ASSERT(connectionInfo.auditToken);
+        m_gpuProcessConnection->setAuditToken(WTFMove(connectionInfo.auditToken));
+#endif
     }
     
     return *m_gpuProcessConnection;
@@ -1634,7 +1635,7 @@ StorageAreaMap* WebProcess::storageAreaMap(StorageAreaIdentifier identifier) con
 
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
 {
-    if (WebCore::DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() == enabled || m_sessionID->isEphemeral())
+    if (WebCore::DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() == enabled || (m_sessionID && m_sessionID->isEphemeral()))
         return;
     WebCore::DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled(enabled);
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1912,7 +1913,7 @@ void WebProcess::grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensi
 
 static inline void checkDocumentsCaptureStateConsistency(const Vector<String>& extensionIDs)
 {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool isCapturingAudio = WTF::anyOf(Document::allDocumentsMap().values(), [](auto* document) {
         return document->mediaState() & MediaProducer::AudioCaptureMask;
     });
@@ -1924,7 +1925,7 @@ static inline void checkDocumentsCaptureStateConsistency(const Vector<String>& e
         ASSERT(extensionIDs.findMatching([](auto& id) { return id.contains("microphone"); }) == notFound);
     if (isCapturingVideo)
         ASSERT(extensionIDs.findMatching([](auto& id) { return id.contains("camera"); }) == notFound);
-#endif
+#endif // ASSERT_ENABLED
 }
 
 void WebProcess::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
@@ -1976,6 +1977,14 @@ bool WebProcess::areAllPagesThrottleable() const
         return page->isThrottleable();
     });
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void WebProcess::setShouldBlockThirdPartyCookiesForTesting(ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode, CompletionHandler<void()>&& completionHandler)
+{
+    m_thirdPartyCookieBlockingMode = thirdPartyCookieBlockingMode;
+    completionHandler();
+}
+#endif
 
 } // namespace WebKit
 

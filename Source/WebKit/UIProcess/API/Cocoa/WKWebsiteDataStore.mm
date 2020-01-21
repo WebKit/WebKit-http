@@ -319,26 +319,6 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 {
 }
 
-- (NSString *)_cacheStorageDirectory
-{
-    return _websiteDataStore->cacheStorageDirectory();
-}
-
-- (void)_setCacheStorageDirectory:(NSString *)directory
-{
-    _websiteDataStore->setCacheStorageDirectory(directory);
-}
-
-- (NSString *)_serviceWorkerRegistrationDirectory
-{
-    return _websiteDataStore->serviceWorkerRegistrationDirectory();
-}
-
-- (void)_setServiceWorkerRegistrationDirectory:(NSString *)directory
-{
-    _websiteDataStore->setServiceWorkerRegistrationDirectory(directory);
-}
-
 - (void)_setBoundInterfaceIdentifier:(NSString *)identifier
 {
     _websiteDataStore->setBoundInterfaceIdentifier(identifier);
@@ -405,17 +385,6 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     return [NSURL fileURLWithPath:_websiteDataStore->configuration().indexedDBDatabaseDirectory() isDirectory:YES];
 }
 
-- (void)_resourceLoadStatisticsSetShouldSubmitTelemetry:(BOOL)value
-{
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-    auto* store = _websiteDataStore->resourceLoadStatistics();
-    if (!store)
-        return;
-
-    store->setShouldSubmitTelemetry(value);
-#endif
-}
-
 - (void)_setResourceLoadStatisticsTestingCallback:(void (^)(WKWebsiteDataStore *, NSString *))callback
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -445,7 +414,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
         return;
     }
 
-    auto* webPageProxy = [webView _page];
+    auto webPageProxy = [webView _page];
     if (!webPageProxy) {
         completionHandler({ });
         return;
@@ -570,7 +539,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 - (bool)_hasRegisteredServiceWorker
 {
 #if ENABLE(SERVICE_WORKER)
-    return FileSystem::fileExists(WebCore::serviceWorkerRegistrationDatabaseFilename(_websiteDataStore->serviceWorkerRegistrationDirectory()));
+    return FileSystem::fileExists(WebCore::serviceWorkerRegistrationDatabaseFilename(_websiteDataStore->configuration().serviceWorkerRegistrationDirectory()));
 #else
     return NO;
 #endif

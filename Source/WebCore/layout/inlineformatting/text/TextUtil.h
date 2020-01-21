@@ -28,6 +28,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "InlineItem.h"
+#include "LayoutUnits.h"
 #include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
@@ -35,6 +36,8 @@ namespace WebCore {
 class RenderStyle;
 
 namespace Layout {
+
+class InlineTextItem;
 
 class TextUtil {
 public:
@@ -52,6 +55,12 @@ public:
 private:
     static InlineLayoutUnit fixedPitchWidth(const StringView&, const RenderStyle&, unsigned from, unsigned to, InlineLayoutUnit contentLogicalLeft);
 };
+
+inline bool TextUtil::shouldPreserveTrailingWhitespace(const RenderStyle& style)
+{
+    auto whitespace = style.whiteSpace();
+    return whitespace == WhiteSpace::Pre || whitespace == WhiteSpace::PreWrap || whitespace == WhiteSpace::BreakSpaces;
+}
 
 }
 }

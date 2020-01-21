@@ -29,6 +29,7 @@
 
 #include "APIArray.h"
 #include "APIAttachment.h"
+#include "APIContentWorld.h"
 #include "APIContextMenuClient.h"
 #include "APIFindClient.h"
 #include "APIFindMatchesClient.h"
@@ -48,6 +49,7 @@
 #include "APIOpenPanelParameters.h"
 #include "APIPageConfiguration.h"
 #include "APIPolicyClient.h"
+#include "APIResourceLoadClient.h"
 #include "APISecurityOrigin.h"
 #include "APIUIClient.h"
 #include "APIURLRequest.h"
@@ -195,8 +197,6 @@
 #include "InsertTextOptions.h"
 #include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "RemoteLayerTreeScrollingPerformanceData.h"
-#include "TouchBarMenuData.h"
-#include "TouchBarMenuItemData.h"
 #include "UserMediaCaptureManagerProxy.h"
 #include "VersionChecks.h"
 #include "VideoFullscreenManagerProxy.h"
@@ -204,6 +204,11 @@
 #include <WebCore/RunLoopObserver.h>
 #include <WebCore/TextIndicatorWindow.h>
 #include <wtf/MachSendRight.h>
+#endif
+
+#if HAVE(TOUCH_BAR)
+#include "TouchBarMenuData.h"
+#include "TouchBarMenuItemData.h"
 #endif
 
 #if PLATFORM(COCOA) || PLATFORM(GTK)
@@ -271,8 +276,8 @@
 #define MESSAGE_CHECK(process, assertion) MESSAGE_CHECK_BASE(assertion, process->connection())
 #define MESSAGE_CHECK_URL(process, url) MESSAGE_CHECK_BASE(checkURLReceivedFromCurrentOrPreviousWebProcess(process, url), process->connection())
 
-#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [pageProxyID=%llu, webPageID=%llu, PID=%i] WebPageProxy::" fmt, this, m_identifier.toUInt64(), m_webPageID.toUInt64(), m_process->processIdentifier(), ##__VA_ARGS__)
-#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [pageProxyID=%llu, webPageID=%llu, PID=%i] WebPageProxy::" fmt, this, m_identifier.toUInt64(), m_webPageID.toUInt64(), m_process->processIdentifier(), ##__VA_ARGS__)
+#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [pageProxyID=%" PRIu64 ", webPageID=%" PRIu64 ", PID=%i] WebPageProxy::" fmt, this, m_identifier.toUInt64(), m_webPageID.toUInt64(), m_process->processIdentifier(), ##__VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [pageProxyID=%" PRIu64 ", webPageID=%" PRIu64 ", PID=%i] WebPageProxy::" fmt, this, m_identifier.toUInt64(), m_webPageID.toUInt64(), m_process->processIdentifier(), ##__VA_ARGS__)
 
 // Represents the number of wheel events we can hold in the queue before we start pushing them preemptively.
 static const unsigned wheelEventQueueSizeThreshold = 10;
@@ -514,7 +519,7 @@ WebPageProxy::~WebPageProxy()
     RELEASE_LOG_IF_ALLOWED(Loading, "destructor:");
 
     ASSERT(m_process->webPage(m_identifier) != this);
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     for (WebPageProxy* page : m_process->pages())
         ASSERT(page != this);
 #endif
@@ -714,6 +719,15 @@ void WebPageProxy::setInjectedBundleClient(const WKPageInjectedBundleClientBase*
     m_injectedBundleClient->initialize(client);
 }
 
+void WebPageProxy::setResourceLoadClient(std::unique_ptr<API::ResourceLoadClient>&& client)
+{
+    bool hadResourceLoadClient = !!m_resourceLoadClient;
+    m_resourceLoadClient = WTFMove(client);
+    bool hasResourceLoadClient = !!m_resourceLoadClient;
+    if (hadResourceLoadClient != hasResourceLoadClient)
+        send(Messages::WebPage::SetHasResourceLoadClient(hasResourceLoadClient));
+}
+
 void WebPageProxy::handleMessage(IPC::Connection& connection, const String& messageName, const WebKit::UserData& messageBody)
 {
     ASSERT(m_process->connection() == &connection);
@@ -742,7 +756,7 @@ void WebPageProxy::launchProcess(const RegistrableDomain& registrableDomain, Pro
     ASSERT(!m_isClosed);
     ASSERT(!hasRunningProcess());
 
-    RELEASE_LOG_IF_ALLOWED(Loading, "launchProcess:" PRIu64);
+    RELEASE_LOG_IF_ALLOWED(Loading, "launchProcess:");
 
     m_process->removeWebPage(*this, WebProcessProxy::EndsUsingDataStore::Yes);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_webPageID);
@@ -2614,6 +2628,16 @@ bool WebPageProxy::shouldProcessWheelEventNow(const WebWheelEvent& event) const
     return false;
 }
 
+bool WebPageProxy::hasQueuedKeyEvent() const
+{
+    return !m_keyEventQueue.isEmpty();
+}
+
+const NativeWebKeyboardEvent& WebPageProxy::firstQueuedKeyEvent() const
+{
+    return m_keyEventQueue.first();
+}
+
 void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
 {
     if (!hasRunningProcess())
@@ -3851,10 +3875,10 @@ void WebPageProxy::launchInitialProcessIfNecessary()
 
 void WebPageProxy::runJavaScriptInMainFrame(RunJavaScriptParameters&& parameters, WTF::Function<void (API::SerializedScriptValue*, Optional<WebCore::ExceptionDetails>, CallbackBase::Error)>&& callbackFunction)
 {
-    runJavaScriptInMainFrameScriptWorld(WTFMove(parameters), WTF::nullopt, WTFMove(callbackFunction));
+    runJavaScriptInMainFrameScriptWorld(WTFMove(parameters), API::ContentWorld::pageContentWorld(), WTFMove(callbackFunction));
 }
 
-void WebPageProxy::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const Optional<String>& worldName, WTF::Function<void(API::SerializedScriptValue*, Optional<ExceptionDetails>, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, API::ContentWorld& world, WTF::Function<void(API::SerializedScriptValue*, Optional<ExceptionDetails>, CallbackBase::Error)>&& callbackFunction)
 {
     // For backward-compatibility support running script in a WebView which has not done any loads yets.
     launchInitialProcessIfNecessary();
@@ -3865,7 +3889,7 @@ void WebPageProxy::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&&
     }
 
     auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivity("WebPageProxy::runJavaScriptInMainFrameScriptWorld"_s));
-    send(Messages::WebPage::RunJavaScriptInMainFrameScriptWorld(parameters, worldName, callbackID));
+    send(Messages::WebPage::RunJavaScriptInMainFrameScriptWorld(parameters, world.worldData(), callbackID));
 }
 
 void WebPageProxy::runJavaScriptInFrame(FrameIdentifier frameID, const String& script, bool forceUserGesture, WTF::Function<void(API::SerializedScriptValue*, Optional<ExceptionDetails>, CallbackBase::Error)>&& callbackFunction)
@@ -4562,8 +4586,12 @@ void WebPageProxy::didFinishDocumentLoadForFrame(FrameIdentifier frameID, uint64
     if (frame->isMainFrame() && navigationID)
         navigation = navigationState().navigation(navigationID);
 
-    if (frame->isMainFrame())
+    if (frame->isMainFrame()) {
         m_navigationClient->didFinishDocumentLoad(*this, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+        m_didFinishDocumentLoadForMainFrameTimestamp = MonotonicTime::now();
+#endif
+    }
 }
 
 void WebPageProxy::didFinishLoadForFrame(FrameIdentifier frameID, uint64_t navigationID, const UserData& userData)
@@ -4976,10 +5004,9 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
     API::Navigation* mainFrameNavigation = frame.isMainFrame() ? navigation.get() : nullptr;
     WebFrameProxy* originatingFrame = originatingFrameInfoData.frameID ? process->webFrame(*originatingFrameInfoData.frameID) : nullptr;
 
+    auto userInitiatedActivity = process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    if (auto* resourceLoadStatisticsStore = websiteDataStore().resourceLoadStatistics())
-        resourceLoadStatisticsStore->logFrameNavigation(frame, URL(URL(), m_pageLoadState.url()), request, redirectResponse.url());
-    logFrameNavigation(frame, URL(URL(), m_pageLoadState.url()), request, redirectResponse.url());
+    logFrameNavigation(frame, URL(URL(), m_pageLoadState.url()), request, redirectResponse.url(), !!userInitiatedActivity);
 #endif
 
     if (m_policyClient)
@@ -4994,7 +5021,6 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
             sourceFrameInfo = API::FrameInfo::create(WTFMove(originatingFrameInfoData), originatingPage);
         }
 
-        auto userInitiatedActivity = process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision
             && destinationFrameInfo->isMainFrame()
             && (m_mainFrame ? !hostsAreEqual(m_mainFrame->url(), request.url()) : false)
@@ -5038,7 +5064,7 @@ WebPageProxy* WebPageProxy::nonEphemeralWebPageProxy()
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void WebPageProxy::logFrameNavigation(const WebFrameProxy& frame, const URL& pageURL, const WebCore::ResourceRequest& request, const URL& redirectURL)
+void WebPageProxy::logFrameNavigation(const WebFrameProxy& frame, const URL& pageURL, const WebCore::ResourceRequest& request, const URL& redirectURL, bool wasPotentiallyInitiatedByUser)
 {
     ASSERT(RunLoop::isMain());
     
@@ -5061,7 +5087,7 @@ void WebPageProxy::logFrameNavigation(const WebFrameProxy& frame, const URL& pag
     if (targetHost.isEmpty() || mainFrameHost.isEmpty() || targetHost == sourceURL.host())
         return;
 
-    m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::LogFrameNavigation(m_websiteDataStore->sessionID(), RegistrableDomain { targetURL }, RegistrableDomain { pageURL }, RegistrableDomain { sourceURL }, isRedirect, frame.isMainFrame()));
+    m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::LogFrameNavigation(m_websiteDataStore->sessionID(), RegistrableDomain { targetURL }, RegistrableDomain { pageURL }, RegistrableDomain { sourceURL }, isRedirect, frame.isMainFrame(), MonotonicTime::now() - m_didFinishDocumentLoadForMainFrameTimestamp, wasPotentiallyInitiatedByUser));
 }
 #endif
 
@@ -5602,8 +5628,9 @@ void WebPageProxy::runBeforeUnloadConfirmPanel(FrameIdentifier frameID, Security
         }
     }
 
-    // Since runBeforeUnloadConfirmPanel() can spin a nested run loop we need to turn off the responsiveness timer.
+    // Since runBeforeUnloadConfirmPanel() can spin a nested run loop we need to turn off the responsiveness timer and the tryClose timer.
     m_process->responsivenessTimer().stop();
+    m_tryCloseTimeoutTimer.stop();
     m_uiClient->runBeforeUnloadConfirmPanel(*this, message, frame, WTFMove(securityOrigin), WTFMove(reply));
 }
 
@@ -5906,6 +5933,36 @@ WebInspectorProxy* WebPageProxy::inspector() const
     return m_inspector.get();
 }
 
+void WebPageProxy::resourceLoadDidSendRequest(ResourceLoadInfo&& loadInfo, WebCore::ResourceRequest&& request)
+{
+    if (m_resourceLoadClient)
+        m_resourceLoadClient->didSendRequest(WTFMove(loadInfo), WTFMove(request));
+}
+
+void WebPageProxy::resourceLoadDidPerformHTTPRedirection(ResourceLoadInfo&& loadInfo, WebCore::ResourceResponse&& response, WebCore::ResourceRequest&& request)
+{
+    if (m_resourceLoadClient)
+        m_resourceLoadClient->didPerformHTTPRedirection(WTFMove(loadInfo), WTFMove(response), WTFMove(request));
+}
+
+void WebPageProxy::resourceLoadDidReceiveChallenge(ResourceLoadInfo&& loadInfo, WebKit::AuthenticationChallengeProxy& challenge)
+{
+    if (m_resourceLoadClient)
+        m_resourceLoadClient->didReceiveChallenge(WTFMove(loadInfo), challenge);
+}
+
+void WebPageProxy::resourceLoadDidReceiveResponse(ResourceLoadInfo&& loadInfo, WebCore::ResourceResponse&& response)
+{
+    if (m_resourceLoadClient)
+        m_resourceLoadClient->didReceiveResponse(WTFMove(loadInfo), WTFMove(response));
+}
+
+void WebPageProxy::resourceLoadDidCompleteWithError(ResourceLoadInfo&& loadInfo, WebCore::ResourceError&& error)
+{
+    if (m_resourceLoadClient)
+        m_resourceLoadClient->didCompleteWithError(WTFMove(loadInfo), WTFMove(error));
+}
+
 #if ENABLE(FULLSCREEN_API)
 WebFullScreenManagerProxy* WebPageProxy::fullScreenManager()
 {
@@ -5956,6 +6013,8 @@ void WebPageProxy::setHasHadSelectionChangesFromUserInteraction(bool hasHadUserS
     m_hasHadSelectionChangesFromUserInteraction = hasHadUserSelectionChanges;
 }
 
+#if HAVE(TOUCH_BAR)
+
 void WebPageProxy::setIsTouchBarUpdateSupressedForHiddenContentEditable(bool ignoreTouchBarUpdate)
 {
     m_isTouchBarUpdateSupressedForHiddenContentEditable = ignoreTouchBarUpdate;
@@ -5965,6 +6024,8 @@ void WebPageProxy::setIsNeverRichlyEditableForTouchBar(bool isNeverRichlyEditabl
 {
     m_isNeverRichlyEditableForTouchBar = isNeverRichlyEditable;
 }
+
+#endif
 
 void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, const String& originIdentifier, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
 {
@@ -7368,7 +7429,7 @@ void WebPageProxy::resetStateAfterProcessExited(ProcessTerminationReason termina
 
     PageClientProtector protector(pageClient());
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     // FIXME: It's weird that resetStateAfterProcessExited() is called even though the process is launching.
     if (terminationReason != ProcessTerminationReason::NavigationSwap)
         ASSERT(m_process->state() == WebProcessProxy::State::Launching || m_process->state() == WebProcessProxy::State::Terminated);
@@ -7484,20 +7545,24 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.colorSpace = pageClient().colorSpace();
     parameters.useSystemAppearance = m_useSystemAppearance;
 #endif
+
+#if ENABLE(META_VIEWPORT)
+    parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
+    parameters.viewportConfigurationViewLayoutSize = m_viewportConfigurationViewLayoutSize;
+    parameters.viewportConfigurationLayoutSizeScaleFactor = m_viewportConfigurationLayoutSizeScaleFactor;
+    parameters.viewportConfigurationMinimumEffectiveDeviceWidth = m_viewportConfigurationMinimumEffectiveDeviceWidth;
+    parameters.overrideViewportArguments = m_overrideViewportArguments;
+#endif
+
 #if PLATFORM(IOS_FAMILY)
     parameters.screenSize = screenSize();
     parameters.availableScreenSize = availableScreenSize();
     parameters.overrideScreenSize = overrideScreenSize();
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = pageClient().mimeTypesWithCustomContentProviders();
-    parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
-    parameters.viewportConfigurationViewLayoutSize = m_viewportConfigurationViewLayoutSize;
-    parameters.viewportConfigurationLayoutSizeScaleFactor = m_viewportConfigurationLayoutSizeScaleFactor;
-    parameters.viewportConfigurationMinimumEffectiveDeviceWidth = m_viewportConfigurationMinimumEffectiveDeviceWidth;
     parameters.maximumUnobscuredSize = m_maximumUnobscuredSize;
     parameters.deviceOrientation = m_deviceOrientation;
     parameters.keyboardIsAttached = isInHardwareKeyboardMode();
-    parameters.overrideViewportArguments = m_overrideViewportArguments;
     parameters.canShowWhileLocked = m_configuration->canShowWhileLocked();
 #endif
 
@@ -7547,8 +7612,15 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
 
     parameters.overriddenMediaType = m_overriddenMediaType;
     parameters.corsDisablingPatterns = m_configuration->corsDisablingPatterns();
+    parameters.hasResourceLoadClient = !!m_resourceLoadClient;
 
     process.addWebUserContentControllerProxy(m_userContentController, parameters);
+
+    parameters.shouldCaptureAudioInUIProcess = m_process->processPool().configuration().shouldCaptureAudioInUIProcess();
+    parameters.shouldCaptureAudioInGPUProcess = m_process->processPool().configuration().shouldCaptureAudioInGPUProcess();
+    parameters.shouldCaptureVideoInUIProcess = m_process->processPool().configuration().shouldCaptureVideoInUIProcess();
+    parameters.shouldCaptureVideoInGPUProcess = m_process->processPool().configuration().shouldCaptureVideoInGPUProcess();
+    parameters.shouldCaptureDisplayInUIProcess = m_process->processPool().configuration().shouldCaptureDisplayInUIProcess();
 
     return parameters;
 }
@@ -8210,7 +8282,15 @@ void WebPageProxy::cancelComposition(const String& compositionString)
     }
     send(Messages::WebPage::CancelComposition(compositionString));
 }
-#endif // PLATFORM(GTK)
+
+void WebPageProxy::deleteSurrounding(int64_t offset, unsigned characterCount)
+{
+    if (!hasRunningProcess())
+        return;
+
+    send(Messages::WebPage::DeleteSurrounding(offset, characterCount));
+}
+#endif // PLATFORM(GTK) || PLATFORM(WPE)
 
 void WebPageProxy::setScrollPinningBehavior(ScrollPinningBehavior pinning)
 {
@@ -9035,7 +9115,7 @@ void WebPageProxy::effectiveAppearanceDidChange()
     send(Messages::WebPage::EffectiveAppearanceDidChange(useDarkAppearance(), useElevatedUserInterfaceLevel()));
 }
 
-#if PLATFORM(COCOA)
+#if HAVE(TOUCH_BAR)
 void WebPageProxy::touchBarMenuDataChanged(const TouchBarMenuData& touchBarMenuData)
 {
     m_touchBarMenuData = touchBarMenuData;
@@ -9092,6 +9172,8 @@ void WebPageProxy::updateAttachmentAttributes(const API::Attachment& attachment,
 
 void WebPageProxy::registerAttachmentIdentifierFromData(const String& identifier, const String& contentType, const String& preferredFileName, const IPC::DataReference& data)
 {
+    MESSAGE_CHECK(m_process, IdentifierToAttachmentMap::isValidKey(identifier));
+
     if (attachmentForIdentifier(identifier))
         return;
 
@@ -9104,6 +9186,8 @@ void WebPageProxy::registerAttachmentIdentifierFromData(const String& identifier
 
 void WebPageProxy::registerAttachmentIdentifierFromFilePath(const String& identifier, const String& contentType, const String& filePath)
 {
+    MESSAGE_CHECK(m_process, IdentifierToAttachmentMap::isValidKey(identifier));
+
     if (attachmentForIdentifier(identifier))
         return;
 
@@ -9117,6 +9201,8 @@ void WebPageProxy::registerAttachmentIdentifierFromFilePath(const String& identi
 
 void WebPageProxy::registerAttachmentIdentifier(const String& identifier)
 {
+    MESSAGE_CHECK(m_process, IdentifierToAttachmentMap::isValidKey(identifier));
+
     if (!attachmentForIdentifier(identifier))
         m_attachmentIdentifierToAttachmentMap.set(identifier, ensureAttachment(identifier));
 }
@@ -9132,6 +9218,9 @@ void WebPageProxy::registerAttachmentsFromSerializedData(Vector<WebCore::Seriali
 
 void WebPageProxy::cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier)
 {
+    MESSAGE_CHECK(m_process, IdentifierToAttachmentMap::isValidKey(fromIdentifier));
+    MESSAGE_CHECK(m_process, IdentifierToAttachmentMap::isValidKey(toIdentifier));
+
     auto newAttachment = ensureAttachment(toIdentifier);
     auto existingAttachment = attachmentForIdentifier(fromIdentifier);
     if (!existingAttachment) {

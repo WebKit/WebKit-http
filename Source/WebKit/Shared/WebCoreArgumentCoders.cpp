@@ -48,6 +48,7 @@
 #include <WebCore/FileChooser.h>
 #include <WebCore/FilterOperation.h>
 #include <WebCore/FilterOperations.h>
+#include <WebCore/Font.h>
 #include <WebCore/FontAttributes.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/GraphicsLayer.h>
@@ -636,7 +637,9 @@ Optional<FloatQuad> ArgumentCoder<FloatQuad>::decode(Decoder& decoder)
         return WTF::nullopt;
     return floatQuad;
 }
+#endif // PLATFORM(IOS_FAMILY)
 
+#if ENABLE(META_VIEWPORT)
 void ArgumentCoder<ViewportArguments>::encode(Encoder& encoder, const ViewportArguments& viewportArguments)
 {
     SimpleArgumentCoder<ViewportArguments>::encode(encoder, viewportArguments);
@@ -654,8 +657,18 @@ Optional<ViewportArguments> ArgumentCoder<ViewportArguments>::decode(Decoder& de
         return WTF::nullopt;
     return viewportArguments;
 }
-#endif // PLATFORM(IOS_FAMILY)
 
+#endif // ENABLE(META_VIEWPORT)
+
+void ArgumentCoder<ViewportAttributes>::encode(Encoder& encoder, const ViewportAttributes& viewportAttributes)
+{
+    SimpleArgumentCoder<ViewportAttributes>::encode(encoder, viewportAttributes);
+}
+
+bool ArgumentCoder<ViewportAttributes>::decode(Decoder& decoder, ViewportAttributes& viewportAttributes)
+{
+    return SimpleArgumentCoder<ViewportAttributes>::decode(decoder, viewportAttributes);
+}
 
 void ArgumentCoder<IntPoint>::encode(Encoder& encoder, const IntPoint& intPoint)
 {
@@ -760,16 +773,6 @@ void ArgumentCoder<Length>::encode(Encoder& encoder, const Length& length)
 bool ArgumentCoder<Length>::decode(Decoder& decoder, Length& length)
 {
     return SimpleArgumentCoder<Length>::decode(decoder, length);
-}
-
-void ArgumentCoder<ViewportAttributes>::encode(Encoder& encoder, const ViewportAttributes& viewportAttributes)
-{
-    SimpleArgumentCoder<ViewportAttributes>::encode(encoder, viewportAttributes);
-}
-
-bool ArgumentCoder<ViewportAttributes>::decode(Decoder& decoder, ViewportAttributes& viewportAttributes)
-{
-    return SimpleArgumentCoder<ViewportAttributes>::decode(decoder, viewportAttributes);
 }
 
 void ArgumentCoder<VelocityData>::encode(Encoder& encoder, const VelocityData& velocityData)
@@ -1123,6 +1126,71 @@ void ArgumentCoder<NativeImageHandle>::encode(Encoder& encoder, const NativeImag
 bool ArgumentCoder<NativeImageHandle>::decode(Decoder& decoder, NativeImageHandle& imageHandle)
 {
     return decodeOptionalNativeImage(decoder, imageHandle.image);
+}
+
+void ArgumentCoder<FontHandle>::encode(Encoder& encoder, const FontHandle& handle)
+{
+    encoder << !!handle.font;
+    if (!handle.font)
+        return;
+
+    auto* fontFaceData = handle.font->fontFaceData();
+    encoder << !!fontFaceData;
+    if (fontFaceData) {
+        encodeSharedBuffer(encoder, fontFaceData);
+        auto& data = handle.font->platformData();
+        encoder << data.size();
+        encoder << data.syntheticBold();
+        encoder << data.syntheticOblique();
+    }
+
+    encodePlatformData(encoder, handle);
+}
+
+bool ArgumentCoder<FontHandle>::decode(Decoder& decoder, FontHandle& handle)
+{
+    Optional<bool> hasFont;
+    decoder >> hasFont;
+    if (!hasFont.hasValue())
+        return false;
+
+    if (!hasFont.value())
+        return true;
+
+    Optional<bool> hasFontFaceData;
+    decoder >> hasFontFaceData;
+    if (!hasFontFaceData.hasValue())
+        return false;
+
+    if (hasFontFaceData.value()) {
+        RefPtr<SharedBuffer> fontFaceData;
+        if (!decodeSharedBuffer(decoder, fontFaceData))
+            return false;
+
+        if (!fontFaceData)
+            return false;
+
+        Optional<float> fontSize;
+        decoder >> fontSize;
+        if (!fontSize)
+            return false;
+
+        Optional<bool> syntheticBold;
+        decoder >> syntheticBold;
+        if (!syntheticBold)
+            return false;
+
+        Optional<bool> syntheticItalic;
+        decoder >> syntheticItalic;
+        if (!syntheticItalic)
+            return false;
+
+        FontDescription description;
+        description.setComputedSize(*fontSize);
+        handle = { fontFaceData.releaseNonNull(), Font::Origin::Remote, *fontSize, *syntheticBold, *syntheticItalic };
+    }
+
+    return decodePlatformData(decoder, handle);
 }
 
 void ArgumentCoder<Cursor>::encode(Encoder& encoder, const Cursor& cursor)
@@ -1535,6 +1603,7 @@ void ArgumentCoder<CompositionUnderline>::encode(Encoder& encoder, const Composi
     encoder << underline.startOffset;
     encoder << underline.endOffset;
     encoder << underline.thick;
+    encoder.encodeEnum(underline.compositionUnderlineColor);
     encoder << underline.color;
 }
 
@@ -1547,6 +1616,8 @@ Optional<CompositionUnderline> ArgumentCoder<CompositionUnderline>::decode(Decod
     if (!decoder.decode(underline.endOffset))
         return WTF::nullopt;
     if (!decoder.decode(underline.thick))
+        return WTF::nullopt;
+    if (!decoder.decodeEnum(underline.compositionUnderlineColor))
         return WTF::nullopt;
     if (!decoder.decode(underline.color))
         return WTF::nullopt;

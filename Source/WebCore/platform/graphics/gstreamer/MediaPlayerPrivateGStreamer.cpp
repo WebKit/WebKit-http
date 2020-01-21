@@ -140,6 +140,12 @@
 #endif
 #endif // USE(TEXTURE_MAPPER_GL)
 
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+#include "PlatformDisplayLibWPE.h"
+#include <gst/gl/egl/gsteglimage.h>
+#include <wpe/extensions/video-plane-display-dmabuf.h>
+#endif
+
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
@@ -189,14 +195,14 @@ public:
         m_size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
         m_hasAlphaChannel = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo);
         m_buffer = gst_sample_get_buffer(sample);
-        if (UNLIKELY(!GST_IS_BUFFER(m_buffer)))
+        if (UNLIKELY(!GST_IS_BUFFER(m_buffer.get())))
             return;
 
 #if USE(GSTREAMER_GL)
         m_flags = flags | (m_hasAlphaChannel ? TextureMapperGL::ShouldBlend : 0);
 
         if (gstGLEnabled) {
-            m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL));
+            m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer.get(), static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL));
             if (m_isMapped) {
                 m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
                 m_hasMappedTextures = true;
@@ -208,8 +214,22 @@ public:
 #endif // USE(GSTREAMER_GL)
 
         {
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+            GstMemory* memory = gst_buffer_peek_memory(m_buffer.get(), 0);
+            if (gst_is_gl_memory(memory)) {
+                GstGLMemory* glMemory = GST_GL_MEMORY_CAST(memory);
+                GRefPtr<GstEGLImage> eglImage = adoptGRef(gst_egl_image_from_texture(GST_GL_BASE_MEMORY_CAST(memory)->context, glMemory, nullptr));
+                gsize offset;
+                if (eglImage && gst_egl_image_export_dmabuf(eglImage.get(), &m_dmabufFD, &m_dmabufStride, &offset))
+                    return;
+            }
+            static std::once_flag onceFlag;
+            std::call_once(onceFlag, [] {
+                GST_WARNING("Texture export to DMABuf failed, falling back to internal rendering");
+            });
+#endif
             m_textureID = 0;
-            m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer, GST_MAP_READ);
+            m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer.get(), GST_MAP_READ);
             if (m_isMapped) {
                 // Right now the TextureMapper only supports chromas with one plane
                 ASSERT(GST_VIDEO_INFO_N_PLANES(&videoInfo) == 1);
@@ -225,12 +245,30 @@ public:
         gst_video_frame_unmap(&m_videoFrame);
     }
 
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+    void handoffVideoDmaBuf(struct wpe_video_plane_display_dmabuf_source* videoPlaneDisplayDmaBufSource, const IntRect& rect)
+    {
+        if (m_dmabufFD <= 0)
+            return;
+
+        if (m_dmabufStride == -1)
+            m_dmabufStride = GST_VIDEO_INFO_PLANE_STRIDE(&m_videoFrame.info, 0);
+
+        wpe_video_plane_display_dmabuf_source_update(videoPlaneDisplayDmaBufSource, m_dmabufFD, rect.x(), rect.y(), m_size.width(), m_size.height(), m_dmabufStride, [](void* data) {
+            gst_buffer_unref(GST_BUFFER_CAST(data));
+        }, gst_buffer_ref(m_buffer.get()));
+
+        close(m_dmabufFD);
+        m_dmabufFD = 0;
+    }
+#endif
+
 #if USE(GSTREAMER_GL)
     virtual void waitForCPUSync()
     {
-        GstGLSyncMeta* meta = gst_buffer_get_gl_sync_meta(m_buffer);
+        GstGLSyncMeta* meta = gst_buffer_get_gl_sync_meta(m_buffer.get());
         if (meta) {
-            GstMemory* mem = gst_buffer_peek_memory(m_buffer, 0);
+            GstMemory* mem = gst_buffer_peek_memory(m_buffer.get(), 0);
             GstGLContext* context = ((GstGLBaseMemory*)mem)->context;
             gst_gl_sync_meta_wait_cpu(meta, context);
         }
@@ -248,7 +286,7 @@ public:
     {
         ASSERT(!m_textureID);
         GstVideoGLTextureUploadMeta* meta;
-        if (m_buffer && (meta = gst_buffer_get_video_gl_texture_upload_meta(m_buffer))) {
+        if (m_buffer && (meta = gst_buffer_get_video_gl_texture_upload_meta(m_buffer.get()))) {
             if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
                 guint ids[4] = { texture.id(), 0, 0, 0 };
 
@@ -324,7 +362,7 @@ public:
     }
 
 private:
-    GstBuffer* m_buffer;
+    GRefPtr<GstBuffer> m_buffer;
     GstVideoFrame m_videoFrame { };
     IntSize m_size;
     bool m_hasAlphaChannel;
@@ -333,6 +371,10 @@ private:
     GLuint m_textureID { 0 };
     bool m_isMapped { false };
     bool m_hasMappedTextures { false };
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+    int m_dmabufFD { 0 };
+    int m_dmabufStride { 0 };
+#endif
 };
 #endif
 
@@ -370,6 +412,12 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
 #endif
     m_isPlayerShuttingDown.store(false);
+
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+    auto& sharedDisplay = PlatformDisplay::sharedDisplay();
+    if (is<PlatformDisplayLibWPE>(sharedDisplay))
+        m_wpeVideoPlaneDisplayDmaBuf.reset(wpe_video_plane_display_dmabuf_source_create(downcast<PlatformDisplayLibWPE>(sharedDisplay).backend()));
+#endif
 }
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
@@ -1053,7 +1101,7 @@ void MediaPlayerPrivateGStreamer::durationChanged()
     MediaTime previousDuration = durationMediaTime();
     m_cachedDuration = MediaTime::invalidTime();
 
-    // Avoid emiting durationchanged in the case where the previous
+    // Avoid emitting durationChanged in the case where the previous
     // duration was 0 because that case is already handled by the
     // HTMLMediaElement.
     if (previousDuration && durationMediaTime() != previousDuration)
@@ -1456,7 +1504,7 @@ void MediaPlayerPrivateGStreamer::fillTimerFired()
     double fillStatus = 100.0;
     GstBufferingMode mode = GST_BUFFERING_DOWNLOAD;
 
-    if (gst_element_query(m_source.get(), query.get())) {
+    if (gst_element_query(pipeline(), query.get())) {
         gst_query_parse_buffering_stats(query.get(), &mode, nullptr, nullptr, nullptr);
 
         int percentage;
@@ -2198,6 +2246,11 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 if (const char* uri = gst_structure_get_string(structure, "uri"))
                     m_hasTaintedOrigin = webKitSrcWouldTaintOrigin(WEBKIT_WEB_SRC_CAST(m_source.get()), SecurityOrigin::create(URL(URL(), uri)));
             }
+        } else if (gst_structure_has_name(structure, "GstCacheDownloadComplete")) {
+            GST_INFO_OBJECT(pipeline(), "Stream is fully downloaded, stopping monitoring downloading progress.");
+            m_fillTimer.stop();
+            m_bufferingPercentage = 100;
+            updateStates();
         } else
             GST_DEBUG_OBJECT(pipeline(), "Unhandled element message: %" GST_PTR_FORMAT, structure);
         break;
@@ -2292,29 +2345,29 @@ void MediaPlayerPrivateGStreamer::updateMaxTimeLoaded(double percentage)
 
 void MediaPlayerPrivateGStreamer::updateBufferingStatus(GstBufferingMode mode, double percentage)
 {
+    bool wasBuffering = m_isBuffering;
+
     GST_DEBUG_OBJECT(pipeline(), "[Buffering] mode: %s, status: %f%%", enumToString(GST_TYPE_BUFFERING_MODE, mode).data(), percentage);
 
     m_didDownloadFinish = percentage == 100;
     m_isBuffering = !m_didDownloadFinish;
 
+    if (!m_didDownloadFinish)
+        m_isBuffering = true;
+
+    m_bufferingPercentage = percentage;
     switch (mode) {
     case GST_BUFFERING_STREAM: {
         updateMaxTimeLoaded(percentage);
 
         m_bufferingPercentage = percentage;
-        if (m_didDownloadFinish)
+        if (m_didDownloadFinish || (!wasBuffering && m_isBuffering))
             updateStates();
 
         break;
     }
     case GST_BUFFERING_DOWNLOAD: {
         updateMaxTimeLoaded(percentage);
-
-        // Media is now fully loaded. It will play even if network connection is
-        // cut. Buffering is done, remove the fill source from the main loop.
-        if (m_didDownloadFinish)
-            m_fillTimer.stop();
-
         updateStates();
         break;
     }
@@ -2574,11 +2627,20 @@ void MediaPlayerPrivateGStreamer::updateStates()
             m_networkState = MediaPlayer::NetworkState::Empty;
             break;
         case GST_STATE_PAUSED:
+            FALLTHROUGH;
         case GST_STATE_PLAYING:
             if (m_isBuffering) {
-                if (m_bufferingPercentage == 100) {
-                    GST_DEBUG_OBJECT(pipeline(), "[Buffering] Complete.");
-                    m_isBuffering = false;
+                GRefPtr<GstQuery> query = adoptGRef(gst_query_new_buffering(GST_FORMAT_PERCENT));
+
+                m_isBuffering = m_bufferingPercentage == 100;
+                if (gst_element_query(m_pipeline.get(), query.get())) {
+                    gboolean isBuffering = m_isBuffering;
+                    gst_query_parse_buffering_percent(query.get(), &isBuffering, nullptr);
+                    m_isBuffering = isBuffering;
+                }
+
+                if (!m_isBuffering) {
+                    GST_INFO_OBJECT(pipeline(), "[Buffering] Complete.");
                     m_readyState = MediaPlayer::ReadyState::HaveEnoughData;
                     m_networkState = m_didDownloadFinish ? MediaPlayer::NetworkState::Idle : MediaPlayer::NetworkState::Loading;
                 } else {
@@ -2608,14 +2670,14 @@ void MediaPlayerPrivateGStreamer::updateStates()
             }
 
             if (didBuffering && !m_isBuffering && !m_isPaused && m_playbackRate) {
-                GST_DEBUG_OBJECT(pipeline(), "[Buffering] Restarting playback.");
+                GST_INFO_OBJECT(pipeline(), "[Buffering] Restarting playback.");
                 changePipelineState(GST_STATE_PLAYING);
             }
         } else if (m_currentState == GST_STATE_PLAYING) {
             m_isPaused = false;
 
-            if ((m_isBuffering && m_isLiveStream) || !m_playbackRate) {
-                GST_DEBUG_OBJECT(pipeline(), "[Buffering] Pausing stream for buffering.");
+            if ((m_isBuffering && !m_isLiveStream) || !m_playbackRate) {
+                GST_INFO_OBJECT(pipeline(), "[Buffering] Pausing stream for buffering.");
                 changePipelineState(GST_STATE_PAUSED);
             }
         } else
@@ -2819,6 +2881,10 @@ void MediaPlayerPrivateGStreamer::didEnd()
         m_isPaused = true;
         changePipelineState(GST_STATE_READY);
         m_didDownloadFinish = false;
+
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+        wpe_video_plane_display_dmabuf_source_end_of_stream(m_wpeVideoPlaneDisplayDmaBuf.get());
+#endif
     }
     timeChanged();
 }
@@ -3066,12 +3132,47 @@ void MediaPlayerPrivateGStreamer::swapBuffersIfNeeded()
 }
 #endif
 
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+class GStreamerDMABufHolePunchClient : public TextureMapperPlatformLayerBuffer::HolePunchClient {
+public:
+    GStreamerDMABufHolePunchClient(std::unique_ptr<GstVideoFrameHolder>&& frameHolder, struct wpe_video_plane_display_dmabuf_source* videoPlaneDisplayDmaBufSource)
+        : m_frameHolder(WTFMove(frameHolder))
+        , m_wpeVideoPlaneDisplayDmaBuf(videoPlaneDisplayDmaBufSource) { };
+    void setVideoRectangle(const IntRect& rect) final
+    {
+        if (m_wpeVideoPlaneDisplayDmaBuf)
+            m_frameHolder->handoffVideoDmaBuf(m_wpeVideoPlaneDisplayDmaBuf, rect);
+    }
+private:
+    std::unique_ptr<GstVideoFrameHolder> m_frameHolder;
+    struct wpe_video_plane_display_dmabuf_source* m_wpeVideoPlaneDisplayDmaBuf;
+};
+#endif // USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+
 void MediaPlayerPrivateGStreamer::pushTextureToCompositor()
 {
     auto sampleLocker = holdLock(m_sampleMutex);
     if (!GST_IS_SAMPLE(m_sample.get()))
         return;
 
+#if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
+
+    auto proxyOperation =
+        [this](TextureMapperPlatformLayerProxy& proxy)
+        {
+            LockHolder holder(proxy.lock());
+
+            if (!proxy.isActive())
+                return;
+
+            std::unique_ptr<GstVideoFrameHolder> frameHolder = makeUnique<GstVideoFrameHolder>(m_sample.get(), m_videoDecoderPlatform, m_textureMapperFlags, false);
+
+            std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = makeUnique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldNotBlend, GL_DONT_CARE);
+            auto holePunchClient = makeUnique<GStreamerDMABufHolePunchClient>(WTFMove(frameHolder), m_wpeVideoPlaneDisplayDmaBuf.get());
+            layerBuffer->setHolePunchClient(WTFMove(holePunchClient));
+            proxy.pushNextBuffer(WTFMove(layerBuffer));
+        };
+#else
     auto proxyOperation =
         [this](TextureMapperPlatformLayerProxy& proxy)
         {
@@ -3100,6 +3201,7 @@ void MediaPlayerPrivateGStreamer::pushTextureToCompositor()
             }
             proxy.pushNextBuffer(WTFMove(layerBuffer));
         };
+#endif // USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
 
 #if USE(NICOSIA)
     proxyOperation(downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosiaLayer->impl()).proxy());
@@ -3294,7 +3396,7 @@ void MediaPlayerPrivateGStreamer::paint(GraphicsContext& context, const FloatRec
 }
 
 #if USE(GSTREAMER_GL)
-bool MediaPlayerPrivateGStreamer::copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
+bool MediaPlayerPrivateGStreamer::copyVideoTextureToPlatformTexture(GraphicsContextGLOpenGL* context, PlatformGLObject outputTexture, GCGLenum outputTarget, GCGLint level, GCGLenum internalFormat, GCGLenum format, GCGLenum type, bool premultiplyAlpha, bool flipY)
 {
     UNUSED_PARAM(context);
 
@@ -3501,28 +3603,27 @@ GstElement* MediaPlayerPrivateGStreamer::createVideoSink()
     }
 
     GstElement* videoSink = nullptr;
-#if ENABLE(MEDIA_STATISTICS)
-    m_fpsSink = gst_element_factory_make("fpsdisplaysink", "sink");
-    if (m_fpsSink) {
-        g_object_set(m_fpsSink.get(), "silent", TRUE , nullptr);
+    if (!webkitGstCheckVersion(1, 17, 0)) {
+        m_fpsSink = gst_element_factory_make("fpsdisplaysink", "sink");
+        if (m_fpsSink) {
+            g_object_set(m_fpsSink.get(), "silent", TRUE , nullptr);
 
-        // Turn off text overlay unless tracing is enabled.
-        if (gst_debug_category_get_threshold(webkit_media_player_debug) < GST_LEVEL_TRACE)
-            g_object_set(m_fpsSink.get(), "text-overlay", FALSE , nullptr);
+            // Turn off text overlay unless tracing is enabled.
+            if (gst_debug_category_get_threshold(webkit_media_player_debug) < GST_LEVEL_TRACE)
+                g_object_set(m_fpsSink.get(), "text-overlay", FALSE , nullptr);
 
-        if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_fpsSink.get()), "video-sink")) {
-            g_object_set(m_fpsSink.get(), "video-sink", m_videoSink.get(), nullptr);
-            videoSink = m_fpsSink.get();
-        } else
-            m_fpsSink = nullptr;
+            if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_fpsSink.get()), "video-sink")) {
+                g_object_set(m_fpsSink.get(), "video-sink", m_videoSink.get(), nullptr);
+                videoSink = m_fpsSink.get();
+            } else
+                m_fpsSink = nullptr;
+        }
     }
-#endif
 
     if (!m_fpsSink)
         videoSink = m_videoSink.get();
 
     ASSERT(videoSink);
-
     return videoSink;
 }
 
@@ -3546,44 +3647,39 @@ void MediaPlayerPrivateGStreamer::setStreamVolumeElement(GstStreamVolume* volume
     g_signal_connect_swapped(m_volumeElement.get(), "notify::mute", G_CALLBACK(muteChangedCallback), this);
 }
 
-unsigned MediaPlayerPrivateGStreamer::decodedFrameCount() const
+Optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateGStreamer::videoPlaybackQualityMetrics()
 {
-    uint64_t decodedFrames = 0;
-    if (m_fpsSink)
-        g_object_get(m_fpsSink.get(), "frames-rendered", &decodedFrames, nullptr);
-    return static_cast<unsigned>(decodedFrames);
-}
+    if (!webkitGstCheckVersion(1, 17, 0) && !m_fpsSink)
+        return WTF::nullopt;
 
-unsigned MediaPlayerPrivateGStreamer::droppedFrameCount() const
-{
-    uint64_t framesDropped = 0;
-    if (m_fpsSink)
-        g_object_get(m_fpsSink.get(), "frames-dropped", &framesDropped, nullptr);
-    return static_cast<unsigned>(framesDropped);
-}
+    uint64_t totalVideoFrames = 0;
+    uint64_t droppedVideoFrames = 0;
+    if (webkitGstCheckVersion(1, 17, 0)) {
+        GUniqueOutPtr<GstStructure> stats;
+        g_object_get(m_videoSink.get(), "stats", &stats.outPtr(), nullptr);
 
-unsigned MediaPlayerPrivateGStreamer::audioDecodedByteCount() const
-{
-    GstQuery* query = gst_query_new_position(GST_FORMAT_BYTES);
-    gint64 position = 0;
+        if (!gst_structure_get_uint64(stats.get(), "rendered", &totalVideoFrames))
+            return WTF::nullopt;
 
-    if (audioSink() && gst_element_query(audioSink(), query))
-        gst_query_parse_position(query, 0, &position);
+        if (!gst_structure_get_uint64(stats.get(), "dropped", &droppedVideoFrames))
+            return WTF::nullopt;
+    } else if (m_fpsSink) {
+        unsigned renderedFrames, droppedFrames;
+        g_object_get(m_fpsSink.get(), "frames-rendered", &renderedFrames, "frames-dropped", &droppedFrames, nullptr);
+        totalVideoFrames = renderedFrames;
+        droppedVideoFrames = droppedFrames;
+    }
 
-    gst_query_unref(query);
-    return static_cast<unsigned>(position);
-}
-
-unsigned MediaPlayerPrivateGStreamer::videoDecodedByteCount() const
-{
-    GstQuery* query = gst_query_new_position(GST_FORMAT_BYTES);
-    gint64 position = 0;
-
-    if (gst_element_query(m_videoSink.get(), query))
-        gst_query_parse_position(query, 0, &position);
-
-    gst_query_unref(query);
-    return static_cast<unsigned>(position);
+    uint32_t corruptedVideoFrames = 0;
+    double totalFrameDelay = 0;
+    uint32_t displayCompositedVideoFrames = 0;
+    return VideoPlaybackQualityMetrics {
+        static_cast<uint32_t>(totalVideoFrames),
+        static_cast<uint32_t>(droppedVideoFrames),
+        corruptedVideoFrames,
+        totalFrameDelay,
+        displayCompositedVideoFrames,
+    };
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)

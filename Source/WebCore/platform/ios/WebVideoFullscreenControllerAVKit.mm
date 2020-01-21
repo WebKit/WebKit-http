@@ -51,12 +51,12 @@ using namespace WebCore;
 #if !HAVE(AVKIT)
 
 @implementation WebVideoFullscreenController
-- (void)setVideoElement:(WebCore::HTMLVideoElement*)videoElement
+- (void)setVideoElement:(NakedPtr<WebCore::HTMLVideoElement>)videoElement
 {
     UNUSED_PARAM(videoElement);
 }
 
-- (WebCore::HTMLVideoElement*)videoElement
+- (NakedPtr<WebCore::HTMLVideoElement>)videoElement
 {
     return nullptr;
 }
@@ -589,18 +589,16 @@ void VideoFullscreenControllerContext::setVideoLayerFrame(FloatRect frame)
     RetainPtr<CALayer> videoFullscreenLayer = [m_videoFullscreenView layer];
     [videoFullscreenLayer setSublayerTransform:[videoFullscreenLayer transform]];
 
-    dispatch_async(dispatch_get_main_queue(), [protectedThis = makeRefPtr(this), this, frame, videoFullscreenLayer = WTFMove(videoFullscreenLayer)] () mutable {
-        WebThreadRun([protectedThis = WTFMove(protectedThis), this, frame, videoFullscreenLayer = WTFMove(videoFullscreenLayer)] {
-            [CATransaction begin];
-            [CATransaction setDisableActions:YES];
-            [CATransaction setAnimationDuration:0];
-            
-            [videoFullscreenLayer setSublayerTransform:CATransform3DIdentity];
-            
-            if (m_fullscreenModel)
-                m_fullscreenModel->setVideoLayerFrame(frame);
-            [CATransaction commit];
-        });
+    dispatchAsyncOnMainThreadWithWebThreadLockIfNeeded([protectedThis = makeRefPtr(this), this, frame, videoFullscreenLayer = WTFMove(videoFullscreenLayer)] {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        [CATransaction setAnimationDuration:0];
+
+        [videoFullscreenLayer setSublayerTransform:CATransform3DIdentity];
+
+        if (m_fullscreenModel)
+            m_fullscreenModel->setVideoLayerFrame(frame);
+        [CATransaction commit];
     });
 }
 
@@ -1023,12 +1021,12 @@ void VideoFullscreenControllerContext::requestHideAndExitFullscreen()
     return self;
 }
 
-- (void)setVideoElement:(HTMLVideoElement*)videoElement
+- (void)setVideoElement:(NakedPtr<HTMLVideoElement>)videoElement
 {
     _videoElement = videoElement;
 }
 
-- (HTMLVideoElement*)videoElement
+- (NakedPtr<HTMLVideoElement>)videoElement
 {
     return _videoElement.get();
 }

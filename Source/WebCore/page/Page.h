@@ -110,6 +110,7 @@ class LibWebRTCProvider;
 class LowPowerModeNotifier;
 class MediaCanStartListener;
 class MediaPlaybackTarget;
+class MediaRecorderProvider;
 class PageConfiguration;
 class PageConsoleClient;
 class PageDebuggable;
@@ -146,7 +147,7 @@ class VisitedLinkStore;
 class WebGLStateTracker;
 class WheelEventDeltaFilter;
 
-using SharedStringHash = uint64_t;
+using SharedStringHash = uint32_t;
 
 enum class CanWrap : bool;
 enum class DidWrap : bool;
@@ -584,6 +585,7 @@ public:
     DatabaseProvider& databaseProvider() { return m_databaseProvider; }
     CacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider; }
     SocketProvider& socketProvider() { return m_socketProvider; }
+    MediaRecorderProvider& mediaRecorderProvider() { return m_mediaRecorderProvider; }
     CookieJar& cookieJar() { return m_cookieJar.get(); }
 
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
@@ -616,6 +618,9 @@ public:
     WEBCORE_EXPORT void suspendAllMediaBuffering();
     WEBCORE_EXPORT void resumeAllMediaBuffering();
     bool mediaBufferingIsSuspended() const { return m_mediaBufferingIsSuspended; }
+
+    void setHasResourceLoadClient(bool has) { m_hasResourceLoadClient = has; }
+    bool hasResourceLoadClient() const { return m_hasResourceLoadClient; }
 
 #if ENABLE(MEDIA_SESSION)
     WEBCORE_EXPORT void handleMediaEvent(MediaEventType);
@@ -795,6 +800,7 @@ private:
     std::unique_ptr<SpeechSynthesisClient> m_speechSynthesisClient;
 #endif
 
+    UniqueRef<MediaRecorderProvider> m_mediaRecorderProvider;
     UniqueRef<LibWebRTCProvider> m_libWebRTCProvider;
     RTCController m_rtcController;
 
@@ -920,7 +926,6 @@ private:
     Ref<UserContentProvider> m_userContentProvider;
     Ref<VisitedLinkStore> m_visitedLinkStore;
     RefPtr<WheelEventTestMonitor> m_wheelEventTestMonitor;
-
     HashSet<ActivityStateChangeObserver*> m_activityStateChangeObservers;
 
 #if ENABLE(RESOURCE_USAGE)
@@ -989,6 +994,7 @@ private:
     bool m_mediaPlaybackIsSuspended { false };
     bool m_mediaBufferingIsSuspended { false };
     bool m_inUpdateRendering { false };
+    bool m_hasResourceLoadClient { false };
     Vector<UserContentURLPattern> m_corsDisablingPatterns;
 };
 
@@ -999,12 +1005,12 @@ inline PageGroup& Page::group()
     return *m_group;
 }
 
-#if ASSERT_DISABLED
+#if !ASSERT_ENABLED
 
 inline void Page::checkSubframeCountConsistency() const
 {
 }
 
-#endif
+#endif // !ASSERT_ENABLED
 
 } // namespace WebCore

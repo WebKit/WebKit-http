@@ -883,6 +883,8 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setReferrerPolicyAttributeEnabled:YES];
     [preferences setLinkPreloadResponsiveImagesEnabled:YES];
     [preferences setCSSShadowPartsEnabled:YES];
+    [preferences setAspectRatioOfImgFromWidthAndHeightEnabled:YES];
+    [preferences setCSSOMViewSmoothScrollingEnabled:YES];
 }
 
 // Called before each test.
@@ -1030,11 +1032,14 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.CSSLogicalEnabled = options.enableCSSLogical;
     preferences.adClickAttributionEnabled = options.adClickAttributionEnabled;
     preferences.resizeObserverEnabled = options.enableResizeObserver;
+    preferences.CSSOMViewSmoothScrollingEnabled = options.enableCSSOMViewSmoothScrolling;
     preferences.coreMathMLEnabled = options.enableCoreMathML;
     preferences.requestIdleCallbackEnabled = options.enableRequestIdleCallback;
     preferences.asyncClipboardAPIEnabled = options.enableAsyncClipboardAPI;
     preferences.privateBrowsingEnabled = options.useEphemeralSession;
     preferences.usesPageCache = options.enableBackForwardCache;
+    preferences.layoutFormattingContextIntegrationEnabled = options.layoutFormattingContextIntegrationEnabled;
+    preferences.aspectRatioOfImgFromWidthAndHeightEnabled = options.enableAspectRatioOfImgFromWidthAndHeight;
 }
 
 // Called once on DumpRenderTree startup.

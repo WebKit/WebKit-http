@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@
 #include <wtf/spi/darwin/XPCSPI.h>
 #endif
 
-#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, connection())
+#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, this->connection())
 
 namespace WebKit {
 using namespace WebCore;
@@ -64,7 +64,7 @@ GPUProcessProxy& GPUProcessProxy::singleton()
 
         GPUProcessCreationParameters parameters;
 #if ENABLE(MEDIA_STREAM)
-        parameters.useMockCaptureDevices = MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled();
+        parameters.useMockCaptureDevices = gpuProcess->m_useMockCaptureDevices;
 #endif
         // Initialize the GPU process.
         gpuProcess->send(Messages::GPUProcess::InitializeGPUProcess(parameters), 0);
@@ -77,6 +77,9 @@ GPUProcessProxy& GPUProcessProxy::singleton()
 GPUProcessProxy::GPUProcessProxy()
     : AuxiliaryProcessProxy()
     , m_throttler(*this, false)
+#if ENABLE(MEDIA_STREAM)
+    , m_useMockCaptureDevices(MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled())
+#endif
 {
     connect();
 }
@@ -86,6 +89,16 @@ GPUProcessProxy::~GPUProcessProxy()
     for (auto& request : m_connectionRequests.values())
         request.reply({ });
 }
+
+#if ENABLE(MEDIA_STREAM)
+void GPUProcessProxy::setUseMockCaptureDevices(bool value)
+{
+    if (value == m_useMockCaptureDevices)
+        return;
+    m_useMockCaptureDevices = value;
+    send(Messages::GPUProcess::SetMockCaptureDevicesEnabled { m_useMockCaptureDevices }, 0);
+}
+#endif
 
 void GPUProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
@@ -112,7 +125,9 @@ void GPUProcessProxy::getGPUProcessConnection(WebProcessProxy& webProcessProxy, 
 
 void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
 {
-    connection()->sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
+    auto& connection = *this->connection();
+
+    connection.sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
         if (!weakThis)
             return;
 
@@ -129,7 +144,7 @@ void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier conne
         request.reply(GPUProcessConnectionInfo { WTFMove(*connectionIdentifier) });
 #elif OS(DARWIN)
         MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier->port()));
-        request.reply(GPUProcessConnectionInfo { IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND } });
+        request.reply(GPUProcessConnectionInfo { IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND }, this->connection()->getAuditToken() });
 #else
         notImplemented();
 #endif
@@ -150,7 +165,7 @@ void GPUProcessProxy::didClose(IPC::Connection&)
 
 void GPUProcessProxy::didReceiveInvalidMessage(IPC::Connection& connection, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
-    WTFLogAlways("Received an invalid message \"%s.%s\" from the GPU process.\n", messageReceiverName.toString().data(), messageName.toString().data());
+    logInvalidMessage(connection, messageReceiverName, messageName);
 
     WebProcessPool::didReceiveInvalidMessage(messageReceiverName, messageName);
 

@@ -993,7 +993,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
     backingSharingState.updateBeforeDescendantTraversal(layer, willBeComposited);
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(layer);
 #endif
 
@@ -1162,7 +1162,7 @@ void RenderLayerCompositor::traverseUnchangedSubtree(RenderLayer* ancestorLayer,
 
     backingSharingState.updateBeforeDescendantTraversal(layer, layerIsComposited);
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(layer);
 #endif
 
@@ -1279,7 +1279,7 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
 
     bool requiresChildRebuild = layerBacking && layer.needsCompositingLayerConnection() && !layer.hasCompositingDescendant();
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(layer);
 #endif
 
@@ -1391,7 +1391,7 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, const char* p
     absoluteBounds.move(layer.offsetFromAncestor(m_renderView.layer()));
     
     StringBuilder logString;
-    logString.append(pad(' ', 12 + depth * 2, hex(reinterpret_cast<uintptr_t>(&layer), Lowercase)), " id ", backing->graphicsLayer()->primaryLayerID(), " (", FormattedNumber::fixedWidth(absoluteBounds.x().toFloat(), 3), ',', FormattedNumber::fixedWidth(absoluteBounds.y().toFloat(), 3), '-', FormattedNumber::fixedWidth(absoluteBounds.maxX().toFloat(), 3), ',', FormattedNumber::fixedWidth(absoluteBounds.maxY().toFloat(), 3), ") ", FormattedNumber::fixedWidth(backing->backingStoreMemoryEstimate() / 1024, 2), "KB");
+    logString.append(pad(' ', 12 + depth * 2, hex(reinterpret_cast<uintptr_t>(&layer), Lowercase)), " id ", backing->graphicsLayer()->primaryLayerID(), " (", absoluteBounds.x().toFloat(), ',', absoluteBounds.y().toFloat(), '-', absoluteBounds.maxX().toFloat(), ',', absoluteBounds.maxY().toFloat(), ") ", FormattedNumber::fixedWidth(backing->backingStoreMemoryEstimate() / 1024, 2), "KB");
 
     if (!layer.renderer().style().hasAutoUsedZIndex())
         logString.append(" z-index: ", layer.renderer().style().usedZIndex());
@@ -1931,7 +1931,7 @@ void RenderLayerCompositor::addDescendantsToOverlapMapRecursive(LayerOverlapMap&
         addToOverlapMap(overlapMap, layer, layerExtent);
     }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(const_cast<RenderLayer&>(layer));
 #endif
 
@@ -2218,7 +2218,7 @@ void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer)
     if (layer.isComposited() && !layer.backing()->paintsIntoCompositedAncestor())
         layer.setBackingNeedsRepaint();
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(layer);
 #endif
 
@@ -4109,7 +4109,7 @@ bool RenderLayerCompositor::layerHas3DContent(const RenderLayer& layer) const
 
     const_cast<RenderLayer&>(layer).updateLayerListsIfNeeded();
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     LayerListMutationDetector mutationChecker(const_cast<RenderLayer&>(layer));
 #endif
 

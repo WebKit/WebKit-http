@@ -1,3 +1,73 @@
+2020-01-16  David Kilzer  <ddkilzer@apple.com>
+
+        Attempt to fix internal iOS Debug builds
+
+            Source/WebCore/platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:2723:46: error: multiple methods named 'name' found [-Werror,-Wobjc-multiple-method-names]
+                        auto outputDeviceName = adoptNS([[outputDevice name] copy]);
+                                                         ^~~~~~~~~~~~~~~~~~~
+
+        * pal/spi/mac/AVFoundationSPI.h: Import header that defines
+        -[AVOutputDevice name].
+
+2020-01-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Glyph lookup should be language-sensitive (specifically between Yiddish and Hebrew)
+        https://bugs.webkit.org/show_bug.cgi?id=77568
+        <rdar://problem/14649193>
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2020-01-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't softlink AVCapture classes on watchOS or tvOS
+        https://bugs.webkit.org/show_bug.cgi?id=205974
+        <rdar://problem/45508044>
+
+        Reviewed by Jon Lee.
+
+        * pal/cocoa/AVFoundationSoftLink.h:
+        * pal/cocoa/AVFoundationSoftLink.mm:
+
+2020-01-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Implement css3-images image-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=89052
+
+        Reviewed by Simon Fraser.
+
+        Remove the ENABLE_CSS_IMAGE_ORIENTATION feature flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-01-07  Jer Noble  <jer.noble@apple.com>
+
+        Flaky API Test: TestWebKitAPI.WebKitLegacy.AudioSessionCategoryIOS
+        https://bugs.webkit.org/show_bug.cgi?id=194340
+        <rdar://problem/50507254>
+
+        Reviewed by Eric Carlson.
+
+        Workaround for AVFoundation crash for OS versions prior to platform fix. This crash occurrs infrequently
+        while triggering KVO due to an internal @property change. Work around the crash by disabling KVO for that
+        property at runtime, by injecting a new class method +automaticallyNotifiesObserversOfSuppressesVideoLayers
+        immediately after soft linking the AVFoundation library.
+
+        * pal/cocoa/AVFoundationSoftLink.mm:
+        (PAL::justReturnsNO):
+        (PAL::AVFoundationLibrary):
+
+2020-01-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Enable ACCESSIBILITY_ISOLATED_TREE
+        https://bugs.webkit.org/show_bug.cgi?id=205535
+        <rdar://problem/58131075>
+
+        Reviewed by Zalan Bujtas.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2020-01-05  Simon Fraser  <simon.fraser@apple.com>
 
         DumpRenderTree doesn't always call updateRendering() when a test completes

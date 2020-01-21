@@ -105,7 +105,7 @@ public:
         data.callee = getNew(VirtualRegister { CallFrameSlot::callee })->recovery();
         data.args.resize(argCount());
         for (size_t i = 0; i < argCount(); ++i)
-            data.args[i] = getNew(virtualRegisterForArgument(i))->recovery();
+            data.args[i] = getNew(virtualRegisterForArgumentIncludingThis(i))->recovery();
         for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
             CachedRecovery* cachedRecovery { m_newRegisters[reg] };
             if (!cachedRecovery)

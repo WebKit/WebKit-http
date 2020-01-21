@@ -1166,7 +1166,7 @@ struct UnicodeCodePointRange {
     UChar32 maximum;
 };
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 
 static inline bool operator<(const UnicodeCodePointRange& a, const UnicodeCodePointRange& b)
 {
@@ -1175,7 +1175,7 @@ static inline bool operator<(const UnicodeCodePointRange& a, const UnicodeCodePo
     return a.maximum < b.minimum;
 }
 
-#endif
+#endif // ASSERT_ENABLED
 
 static inline bool operator<(const UnicodeCodePointRange& a, UChar32 b)
 {
@@ -2740,6 +2740,39 @@ HighlightMap& Document::highlightMap()
     return *m_highlightMap;
 }
 
+void Document::updateHighlightPositions()
+{
+    Vector<WeakPtr<HighlightRangeData>> rangesData;
+    if (m_highlightMap) {
+        for (auto& highlight : m_highlightMap->map()) {
+            for (auto& rangeData : highlight.value->rangesData()) {
+                if (rangeData->startPosition && rangeData->endPosition)
+                    continue;
+                if (&rangeData->range->startContainer()->treeScope() != &rangeData->range->endContainer()->treeScope())
+                    continue;
+                rangesData.append(makeWeakPtr(rangeData.ptr()));
+            }
+        }
+    }
+    
+    for (auto& weakRangeData : rangesData) {
+        if (auto* rangeData = weakRangeData.get()) {
+            VisibleSelection visibleSelection(rangeData->range);
+            Position startPosition;
+            Position endPosition;
+            if (!rangeData->startPosition.hasValue())
+                startPosition = visibleSelection.visibleStart().deepEquivalent();
+            if (!rangeData->endPosition.hasValue())
+                endPosition = visibleSelection.visibleEnd().deepEquivalent(); // <MMG> switch to END
+            if (!weakRangeData.get())
+                continue;
+            
+            rangeData->startPosition = startPosition;
+            rangeData->endPosition = endPosition;
+        }
+    }
+}
+
 ScriptableDocumentParser* Document::scriptableDocumentParser() const
 {
     return parser() ? parser()->asScriptableDocumentParser() : nullptr;
@@ -3366,7 +3399,7 @@ bool Document::canNavigate(Frame* targetFrame, const URL& destinationURL)
         return false;
 
     if (isNavigationBlockedByThirdPartyIFrameRedirectBlocking(*targetFrame, destinationURL)) {
-        printNavigationErrorMessage(*targetFrame, url(), "The frame attempting navigation of the top-level window is cross-origin and the user has never interacted with the frame."_s);
+        printNavigationErrorMessage(*targetFrame, url(), "The frame attempting navigation of the top-level window is cross-origin or untrusted and the user has never interacted with the frame."_s);
         return false;
     }
 
@@ -3456,6 +3489,16 @@ bool Document::canNavigateInternal(Frame& targetFrame)
     return false;
 }
 
+void Document::willLoadScriptElement(const URL& scriptURL)
+{
+    m_hasLoadedThirdPartyScript = m_hasLoadedThirdPartyScript || !securityOrigin().isSameOriginAs(SecurityOrigin::create(scriptURL));
+}
+
+void Document::willLoadFrameElement(const URL& frameURL)
+{
+    m_hasLoadedThirdPartyFrame = m_hasLoadedThirdPartyFrame || !securityOrigin().isSameOriginAs(SecurityOrigin::create(frameURL));
+}
+
 // Prevent cross-site top-level redirects from third-party iframes unless the user has ever interacted with the frame.
 bool Document::isNavigationBlockedByThirdPartyIFrameRedirectBlocking(Frame& targetFrame, const URL& destinationURL)
 {
@@ -3475,8 +3518,9 @@ bool Document::isNavigationBlockedByThirdPartyIFrameRedirectBlocking(Frame& targ
     if (sandboxFlags() != SandboxNone)
         return false;
 
-    // Only prevent navigations by third-party iframes.
-    if (canAccessAncestor(securityOrigin(), &targetFrame))
+    // Only prevent navigations by third-party iframes or untrusted first-party iframes.
+    bool isUntrustedIframe = m_hasLoadedThirdPartyScript && m_hasLoadedThirdPartyFrame;
+    if (canAccessAncestor(securityOrigin(), &targetFrame) && !isUntrustedIframe)
         return false;
 
     // Only prevent cross-site navigations.
@@ -3680,7 +3724,7 @@ ViewportArguments Document::viewportArguments() const
 void Document::updateViewportArguments()
 {
     if (page() && frame()->isMainFrame()) {
-#ifndef NDEBUG
+#if ASSERT_ENABLED
         m_didDispatchViewportPropertiesChanged = true;
 #endif
         page()->chrome().dispatchViewportPropertiesDidChange(viewportArguments());
@@ -5005,11 +5049,6 @@ String Document::referrer()
     return String();
 }
 
-String Document::origin() const
-{
-    return securityOrigin().toString();
-}
-
 String Document::domain() const
 {
     return securityOrigin().domain();
@@ -5199,7 +5238,7 @@ void Document::setDecoder(RefPtr<TextResourceDecoder>&& decoder)
     m_decoder = WTFMove(decoder);
 }
 
-URL Document::completeURL(const String& url, const URL& baseURLOverride) const
+URL Document::completeURL(const String& url, const URL& baseURLOverride, ForceUTF8 forceUTF8) const
 {
     // Always return a null URL when passed a null string.
     // FIXME: Should we change the URL constructor to have this behavior?
@@ -5207,14 +5246,14 @@ URL Document::completeURL(const String& url, const URL& baseURLOverride) const
     if (url.isNull())
         return URL();
     const URL& baseURL = ((baseURLOverride.isEmpty() || baseURLOverride == WTF::blankURL()) && parentDocument()) ? parentDocument()->baseURL() : baseURLOverride;
-    if (!m_decoder)
+    if (!m_decoder || forceUTF8 == ForceUTF8::Yes)
         return URL(baseURL, url);
     return URL(baseURL, url, m_decoder->encodingForURLParsing());
 }
 
-URL Document::completeURL(const String& url) const
+URL Document::completeURL(const String& url, ForceUTF8 forceUTF8) const
 {
-    return completeURL(url, m_baseURL);
+    return completeURL(url, m_baseURL, forceUTF8);
 }
 
 void Document::setBackForwardCacheState(BackForwardCacheState state)
@@ -5289,7 +5328,7 @@ void Document::suspend(ReasonForSuspension reason)
     for (auto* element : m_documentSuspensionCallbackElements)
         element->prepareForDocumentSuspension();
 
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     // Clear the update flag to be able to check if the viewport arguments update
     // is dispatched, after the document is restored from the back/forward cache.
     m_didDispatchViewportPropertiesChanged = false;
@@ -8210,7 +8249,7 @@ bool Document::hitTest(const HitTestRequest& request, const HitTestLocation& loc
     if (!renderView())
         return false;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     SetForScope<bool> hitTestRestorer { m_inHitTesting, true };
 #endif
 
@@ -8344,6 +8383,24 @@ void Document::setHasEvaluatedUserAgentScripts()
         top.setHasEvaluatedUserAgentScripts();
 }
 
+void Document::didRejectSyncXHRDuringPageDismissal()
+{
+    ++m_numberOfRejectedSyncXHRs;
+    if (m_numberOfRejectedSyncXHRs > 1)
+        return;
+
+    postTask([this, weakThis = makeWeakPtr(*this)](auto&) mutable {
+        if (weakThis)
+            m_numberOfRejectedSyncXHRs = 0;
+    });
+}
+
+bool Document::shouldIgnoreSyncXHRs() const
+{
+    const unsigned maxRejectedSyncXHRsPerEventLoopIteration = 5;
+    return m_numberOfRejectedSyncXHRs > maxRejectedSyncXHRsPerEventLoopIteration;
+}
+
 #if ENABLE(APPLE_PAY)
 
 bool Document::isApplePayActive() const
@@ -8378,7 +8435,7 @@ void Document::dispatchSystemPreviewActionEvent(const SystemPreviewInfo& systemP
     if (!is<HTMLAnchorElement>(element))
         return;
 
-    auto event = MessageEvent::create(message, origin());
+    auto event = MessageEvent::create(message, securityOrigin().toString());
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, this);
     element->dispatchEvent(event);
 }

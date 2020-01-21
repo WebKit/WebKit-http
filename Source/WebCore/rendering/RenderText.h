@@ -35,6 +35,10 @@ class Font;
 class InlineTextBox;
 struct GlyphOverflow;
 
+namespace LayoutIntegration {
+class LineLayout;
+}
+
 class RenderText : public RenderObject {
     WTF_MAKE_ISO_ALLOCATED(RenderText);
 public:
@@ -75,7 +79,7 @@ public:
 #endif
 
     void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const final;
-    Vector<FloatQuad> absoluteQuadsForRange(unsigned startOffset = 0, unsigned endOffset = UINT_MAX, bool useSelectionHeight = false, bool* wasFixed = nullptr) const;
+    Vector<FloatQuad> absoluteQuadsForRange(unsigned startOffset = 0, unsigned endOffset = UINT_MAX, bool useSelectionHeight = false, bool ignoreEmptyTextSelections = false, bool* wasFixed = nullptr) const;
 
     Vector<FloatQuad> absoluteQuadsClippedToEllipsis() const;
 
@@ -165,6 +169,10 @@ public:
 
     void ensureLineBoxes();
     const SimpleLineLayout::Layout* simpleLineLayout() const;
+#if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+    const LayoutIntegration::LineLayout* layoutFormattingContextLineLayout() const;
+#endif
+    bool usesComplexLineLayoutPath() const;
 
     StringView stringView(unsigned start = 0, Optional<unsigned> stop = WTF::nullopt) const;
 

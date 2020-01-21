@@ -80,6 +80,7 @@ class FloatRect;
 class FloatRoundedRect;
 class FloatSize;
 class FixedPositionViewportConstraints;
+class FontHandle;
 class HTTPHeaderMap;
 class ImageHandle;
 class IntPoint;
@@ -147,6 +148,9 @@ class SelectionRect;
 struct Highlight;
 struct PasteboardImage;
 struct PasteboardWebContent;
+#endif
+
+#if ENABLE(META_VIEWPORT)
 struct ViewportArguments;
 #endif
 
@@ -294,13 +298,21 @@ template<> struct ArgumentCoder<WebCore::FloatQuad> {
     static void encode(Encoder&, const WebCore::FloatQuad&);
     static Optional<WebCore::FloatQuad> decode(Decoder&);
 };
+#endif // PLATFORM(IOS_FAMILY)
 
+#if ENABLE(META_VIEWPORT)
 template<> struct ArgumentCoder<WebCore::ViewportArguments> {
     static void encode(Encoder&, const WebCore::ViewportArguments&);
     static bool decode(Decoder&, WebCore::ViewportArguments&);
     static Optional<WebCore::ViewportArguments> decode(Decoder&);
 };
-#endif // PLATFORM(IOS_FAMILY)
+
+#endif
+
+template<> struct ArgumentCoder<WebCore::ViewportAttributes> {
+    static void encode(Encoder&, const WebCore::ViewportAttributes&);
+    static bool decode(Decoder&, WebCore::ViewportAttributes&);
+};
 
 template<> struct ArgumentCoder<WebCore::IntPoint> {
     static void encode(Encoder&, const WebCore::IntPoint&);
@@ -333,11 +345,6 @@ template<> struct ArgumentCoder<WebCore::LayoutPoint> {
 template<> struct ArgumentCoder<WebCore::Length> {
     static void encode(Encoder&, const WebCore::Length&);
     static bool decode(Decoder&, WebCore::Length&);
-};
-
-template<> struct ArgumentCoder<WebCore::ViewportAttributes> {
-    static void encode(Encoder&, const WebCore::ViewportAttributes&);
-    static bool decode(Decoder&, WebCore::ViewportAttributes&);
 };
 
 template<> struct ArgumentCoder<WebCore::VelocityData> {
@@ -377,6 +384,13 @@ template<> struct ArgumentCoder<WebCore::Credential> {
 template<> struct ArgumentCoder<WebCore::Cursor> {
     static void encode(Encoder&, const WebCore::Cursor&);
     static bool decode(Decoder&, WebCore::Cursor&);
+};
+
+template<> struct ArgumentCoder<WebCore::FontHandle> {
+    static void encode(Encoder&, const WebCore::FontHandle&);
+    static bool decode(Decoder&, WebCore::FontHandle&);
+    static void encodePlatformData(Encoder&, const WebCore::FontHandle&);
+    static bool decodePlatformData(Decoder&, WebCore::FontHandle&);
 };
 
 template<> struct ArgumentCoder<WebCore::ImageHandle> {
@@ -431,6 +445,26 @@ template<> struct ArgumentCoder<WTF::MachSendRight> {
 template<> struct ArgumentCoder<WebCore::KeypressCommand> {
     static void encode(Encoder&, const WebCore::KeypressCommand&);
     static Optional<WebCore::KeypressCommand> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<CGPoint> {
+    static void encode(Encoder&, CGPoint);
+    static Optional<CGPoint> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<CGSize> {
+    static void encode(Encoder&, CGSize);
+    static Optional<CGSize> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<CGRect> {
+    static void encode(Encoder&, CGRect);
+    static Optional<CGRect> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<CGAffineTransform> {
+    static void encode(Encoder&, CGAffineTransform);
+    static Optional<CGAffineTransform> decode(Decoder&);
 };
 #endif
 

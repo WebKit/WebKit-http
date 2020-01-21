@@ -429,6 +429,7 @@ EncodedJSValue JSFunction::callerGetter(JSGlobalObject* globalObject, EncodedJSV
     case SourceParseMode::AsyncGeneratorWrapperFunctionMode:
     case SourceParseMode::AsyncGeneratorWrapperMethodMode:
     case SourceParseMode::GeneratorWrapperMethodMode:
+    case SourceParseMode::InstanceFieldInitializerMode:
         if (!function->jsExecutable()->isStrictMode())
             return JSValue::encode(caller);
         return JSValue::encode(throwTypeError(globalObject, scope, "Function.caller used to retrieve strict caller"_s));
@@ -909,7 +910,7 @@ JSFunction::PropertyStatus JSFunction::reifyLazyBoundNameIfNeeded(VM& vm, JSGlob
     return PropertyStatus::Reified;
 }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 void JSFunction::assertTypeInfoFlagInvariants()
 {
     // If you change this, you'll need to update speculationFromClassInfo.
@@ -919,6 +920,6 @@ void JSFunction::assertTypeInfoFlagInvariants()
     else
         RELEASE_ASSERT(info != JSBoundFunction::info());
 }
-#endif
+#endif // ASSERT_ENABLED
 
 } // namespace JSC

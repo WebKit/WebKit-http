@@ -575,6 +575,13 @@ private:
             break;
         }
 
+        case ToPropertyKey: {
+            SpeculatedType child = node->child1()->prediction();
+            if (child)
+                changed |= mergePrediction(resultOfToPropertyKey(child));
+            break;
+        }
+
         case NormalizeMapKey: {
             SpeculatedType prediction = node->child1()->prediction();
             if (prediction)
@@ -1053,6 +1060,7 @@ private:
         case NewGenerator:
         case CreateAsyncGenerator:
         case NewAsyncGenerator:
+        case NewArrayIterator:
             setPrediction(SpecObjectOther);
             break;
             
@@ -1221,6 +1229,7 @@ private:
         case GetByVal:
         case ToThis:
         case ToPrimitive: 
+        case ToPropertyKey:
         case NormalizeMapKey:
         case AtomicsAdd:
         case AtomicsAnd:
@@ -1250,7 +1259,6 @@ private:
 
         case PutByValAlias:
         case DoubleAsInt32:
-        case CheckArray:
         case CheckTypeInfoFlags:
         case Arrayify:
         case ArrayifyToStructure:
@@ -1276,6 +1284,7 @@ private:
         case PhantomSpread:
         case PhantomNewArrayWithSpread:
         case PhantomNewArrayBuffer:
+        case PhantomNewArrayIterator:
         case PhantomClonedArguments:
         case PhantomNewRegexp:
         case GetMyArgumentByVal:
@@ -1285,6 +1294,7 @@ private:
         case CheckStructureOrEmpty:
         case MaterializeNewObject:
         case MaterializeCreateActivation:
+        case MaterializeNewInternalFieldObject:
         case PutStack:
         case KillStack:
         case StoreBarrier:
@@ -1358,6 +1368,8 @@ private:
         case PutStructure:
         case Phantom:
         case Check:
+        case CheckArray:
+        case CheckNeutered:
         case CheckVarargs:
         case PutGlobalVariable:
         case CheckTraps:
@@ -1425,6 +1437,18 @@ private:
         }
 
         return type;
+    }
+
+    SpeculatedType resultOfToPropertyKey(SpeculatedType type)
+    {
+        // Propagate the prediction of the source directly if already proven to be a property key.
+        if (type && !(type & ~(SpecString | SpecSymbol)))
+            return type;
+
+        if (type & SpecStringObject && m_graph.canOptimizeStringObjectAccess(m_currentNode->origin.semantic))
+            return mergeSpeculations(type & SpecSymbol, SpecString);
+
+        return SpecString | SpecSymbol;
     }
 
     Vector<Node*> m_dependentNodes;

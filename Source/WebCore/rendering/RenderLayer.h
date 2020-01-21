@@ -50,6 +50,7 @@
 #include "PaintInfo.h"
 #include "RenderBox.h"
 #include "RenderPtr.h"
+#include "ScrollBehavior.h"
 #include "ScrollableArea.h"
 #include <memory>
 #include <wtf/WeakPtr.h>
@@ -134,6 +135,7 @@ struct ScrollRectToVisibleOptions {
     const ScrollAlignment& alignX { ScrollAlignment::alignCenterIfNeeded };
     const ScrollAlignment& alignY { ScrollAlignment::alignCenterIfNeeded };
     ShouldAllowCrossOriginScrolling shouldAllowCrossOriginScrolling { ShouldAllowCrossOriginScrolling::No };
+    ScrollBehavior behavior { ScrollBehavior::Auto };
 };
 
 DECLARE_ALLOCATOR_WITH_HEAP_IDENTIFIER(RenderLayer);
@@ -212,7 +214,7 @@ public:
     bool normalFlowListDirty() const { return m_normalFlowListDirty; }
     bool zOrderListsDirty() const { return m_zOrderListsDirty; }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool layerListMutationAllowed() const { return m_layerListMutationAllowed; }
     void setLayerListMutationAllowed(bool flag) { m_layerListMutationAllowed = flag; }
 #endif
@@ -440,9 +442,13 @@ public:
     void scrollByRecursively(const IntSize& delta, ScrollableArea** scrolledArea = nullptr);
 
     WEBCORE_EXPORT void scrollToOffset(const ScrollOffset&, ScrollType = ScrollType::Programmatic, ScrollClamping = ScrollClamping::Clamped);
+    WEBCORE_EXPORT void scrollToOffsetWithAnimation(const ScrollOffset&, ScrollType = ScrollType::Programmatic, ScrollClamping = ScrollClamping::Clamped);
 
-    void scrollToXPosition(int x, ScrollType, ScrollClamping = ScrollClamping::Clamped);
-    void scrollToYPosition(int y, ScrollType, ScrollClamping = ScrollClamping::Clamped);
+    bool requestScrollPositionUpdate(const ScrollPosition&) override;
+
+    void scrollToXPosition(int x, ScrollType, bool animated, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToYPosition(int y, ScrollType, bool animated, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToPosition(const ScrollPosition&, ScrollType, bool animated, ScrollClamping = ScrollClamping::Clamped);
 
     // These are only used by marquee.
     void scrollToXOffset(int x) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), ScrollType::Programmatic, ScrollClamping::Unclamped); }
@@ -1261,7 +1267,7 @@ private:
     bool m_containsDirtyOverlayScrollbars : 1;
     bool m_updatingMarqueePosition : 1;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool m_layerListMutationAllowed : 1;
 #endif
 
@@ -1369,7 +1375,7 @@ inline RenderLayer* RenderLayer::paintOrderParent() const
     return m_isNormalFlowOnly ? m_parent : stackingContext();
 }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 class LayerListMutationDetector {
 public:
     LayerListMutationDetector(RenderLayer& layer)
@@ -1388,7 +1394,7 @@ private:
     RenderLayer& m_layer;
     bool m_previousMutationAllowedState;
 };
-#endif
+#endif // ASSERT_ENABLED
 
 void makeMatrixRenderable(TransformationMatrix&, bool has3DRendering);
 

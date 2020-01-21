@@ -148,7 +148,7 @@ public:
                         if (SpecCellCheck & SpecEmpty) {
                             VirtualRegister local = node->variableAccessData()->operand().virtualRegister();
                             auto* inlineCallFrame = node->origin.semantic.inlineCallFrame();
-                            if ((local - (inlineCallFrame ? inlineCallFrame->stackOffset : 0)) == virtualRegisterForArgument(0)) {
+                            if ((local - (inlineCallFrame ? inlineCallFrame->stackOffset : 0)) == virtualRegisterForArgumentIncludingThis(0)) {
                                 // |this| can be the TDZ value. The call entrypoint won't have |this| as TDZ,
                                 // but a catch or a loop OSR entry may have |this| be TDZ.
                                 checkOp = CheckStructureOrEmpty;
@@ -271,6 +271,7 @@ private:
                 case PutByValAlias:
                 case GetArrayLength:
                 case CheckArray:
+                case CheckNeutered:
                 case GetIndexedPropertyStorage:
                 case GetTypedArrayByteOffset:
                 case Phantom:
@@ -336,6 +337,7 @@ private:
                 }
 
                 case CheckStructure:
+                case CheckNeutered:
                 case GetByOffset:
                 case PutByOffset:
                 case PutStructure:

@@ -1,3 +1,49 @@
+2020-01-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: pressed virtual keys not correctly handled in action sequences
+        https://bugs.webkit.org/show_bug.cgi?id=205997
+
+        Reviewed by Brian Burg.
+
+        We are assuming that only one virtual key can be pressed and that a key up always releases the pressed virtual
+        key if any. We should keep a list of pressed keys and remove them from the list when key up happens for them.
+
+        Fixes: imported/w3c/webdriver/tests/perform_actions/key_modifiers.py::test_shift_modifier_generates_capital_letters[\ue008]
+               imported/w3c/webdriver/tests/perform_actions/key_modifiers.py::test_shift_modifier_generates_capital_letters[\ue050]
+
+        * Session.cpp:
+        (WebDriver::Session::performActions):
+        * Session.h:
+
+2020-01-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Automation: evaluateJavaScriptFunction should use Promises
+        https://bugs.webkit.org/show_bug.cgi?id=204151
+
+        Reviewed by Brian Burg.
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::httpStatusCode const): Timeout errors should return 500 not 408.
+        * Session.cpp:
+        (WebDriver::Session::executeScript): Ensure the script body goes between new lines to avoid problems with
+        trailing comments like in function() { return foo; // Comment }.
+
+2020-01-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: handle no such element errors
+        https://bugs.webkit.org/show_bug.cgi?id=204684
+
+        Reviewed by Brian Burg.
+
+        Handle InvalidNodeIdentifier errors.
+
+        Fixes: imported/w3c/webdriver/tests/get_element_tag_name/get.py::test_element_not_found
+               imported/w3c/webdriver/tests/get_element_property/get.py::test_element_not_found
+               imported/w3c/webdriver/tests/get_element_attribute/get.py::test_element_not_found
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::CommandResult):
+
 2019-12-23  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: fix handling of session timeouts for values higher than MAX_INT

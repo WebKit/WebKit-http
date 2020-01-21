@@ -30,21 +30,43 @@
 #import <AVFoundation/AVFoundation.h>
 #import <wtf/SoftLinking.h>
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000)
 SOFT_LINK_FRAMEWORK_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, PAL_EXPORT)
+#else
+@interface AVPlayerItem (DisableKVOOnSupressesVideoLayers)
++ (BOOL)automaticallyNotifiesObserversOfSuppressesVideoLayers;
+@end
+
+namespace PAL {
+
+static BOOL justReturnsNO()
+{
+    return NO;
+}
+
+PAL_EXPORT void* AVFoundationLibrary(bool isOptional = false);
+void* AVFoundationLibrary(bool isOptional)
+{
+    static void* frameworkLibrary;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        frameworkLibrary = dlopen("/System/Library/Frameworks/AVFoundation.framework/AVFoundation", RTLD_NOW);
+        if (!isOptional)
+            RELEASE_ASSERT_WITH_MESSAGE(frameworkLibrary, "%s", dlerror());
+
+        class_addMethod(objc_getClass("AVPlayerItem"), @selector(automaticallyNotifiesObserversOfSuppressesVideoLayers), (IMP)justReturnsNO, "B@:");
+    });
+    return frameworkLibrary;
+}
+
+}
+#endif
 
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetCache, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetImageGenerator, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetReader, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetWriter, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetWriterInput, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureConnection, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDevice, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDeviceFormat, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDeviceInput, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureOutput, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureSession, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureVideoDataOutput, PAL_EXPORT)
-SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVFrameRateRange, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVMediaSelectionGroup, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVMediaSelectionOption, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVMetadataItem, PAL_EXPORT)
@@ -84,6 +106,17 @@ SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVSpeechUtterance, PAL
 #if !PLATFORM(WATCHOS)
 SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVRouteDetector, PAL_EXPORT)
 SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL_WITH_EXPORT(PAL, AVFoundation, AVVideoPerformanceMetrics, PAL_EXPORT)
+#endif
+
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureConnection, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDevice, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDeviceFormat, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureDeviceInput, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureOutput, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureSession, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVCaptureVideoDataOutput, PAL_EXPORT)
+SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVFrameRateRange, PAL_EXPORT)
 #endif
 
 SOFT_LINK_CONSTANT_FOR_SOURCE_WITH_EXPORT(PAL, AVFoundation, AVAssetImageGeneratorApertureModeCleanAperture, NSString *, PAL_EXPORT)

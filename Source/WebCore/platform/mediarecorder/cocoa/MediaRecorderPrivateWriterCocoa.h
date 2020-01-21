@@ -27,6 +27,7 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "SharedBuffer.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/Deque.h>
 #include <wtf/Lock.h>
 #include <wtf/RetainPtr.h>
@@ -49,9 +50,10 @@ class AudioStreamDescription;
 class MediaStreamTrackPrivate;
 class PlatformAudioData;
 
-class MediaRecorderPrivateWriter : public ThreadSafeRefCounted<MediaRecorderPrivateWriter, WTF::DestructionThread::Main>, public CanMakeWeakPtr<MediaRecorderPrivateWriter> {
+class WEBCORE_EXPORT MediaRecorderPrivateWriter : public ThreadSafeRefCounted<MediaRecorderPrivateWriter, WTF::DestructionThread::Main>, public CanMakeWeakPtr<MediaRecorderPrivateWriter> {
 public:
     static RefPtr<MediaRecorderPrivateWriter> create(const MediaStreamTrackPrivate* audioTrack, const MediaStreamTrackPrivate* videoTrack);
+    static RefPtr<MediaRecorderPrivateWriter> create(bool hasAudio, int width, int height);
     ~MediaRecorderPrivateWriter();
     
     bool setupWriter();
@@ -83,6 +85,10 @@ private:
     dispatch_queue_t m_videoPullQueue;
     Deque<RetainPtr<CMSampleBufferRef>> m_videoBufferPool;
     Deque<RetainPtr<CMSampleBufferRef>> m_audioBufferPool;
+
+    bool m_isStopping { false };
+    RefPtr<SharedBuffer> m_data;
+    CompletionHandler<void(RefPtr<SharedBuffer>&&)> m_fetchDataCompletionHandler;
 };
 
 } // namespace WebCore

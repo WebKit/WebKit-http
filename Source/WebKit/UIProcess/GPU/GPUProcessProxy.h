@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2019-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,11 +32,9 @@
 #include "ProcessLauncher.h"
 #include "ProcessThrottler.h"
 #include "ProcessThrottlerClient.h"
-#include "TransactionID.h"
 #include "WebPageProxyIdentifier.h"
 #include "WebProcessProxyMessagesReplies.h"
 #include <memory>
-#include <wtf/Deque.h>
 
 namespace WebKit {
 
@@ -57,12 +55,18 @@ public:
 
     // ProcessThrottlerClient
     void sendProcessDidResume() final { }
-    
+
+#if ENABLE(MEDIA_STREAM)
+    void setUseMockCaptureDevices(bool);
+#endif
+
 private:
     explicit GPUProcessProxy();
     ~GPUProcessProxy();
 
     // AuxiliaryProcessProxy
+    ASCIILiteral processName() const final { return "GPU"_s; }
+
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void connectionWillOpen(IPC::Connection&) override;
     void processWillShutDown(IPC::Connection&) override;
@@ -92,6 +96,9 @@ private:
 
     ProcessThrottler m_throttler;
     ProcessThrottler::ActivityVariant m_activityFromWebProcesses;
+#if ENABLE(MEDIA_STREAM)
+    bool m_useMockCaptureDevices { false };
+#endif
 };
 
 } // namespace WebKit

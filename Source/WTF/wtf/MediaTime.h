@@ -53,10 +53,9 @@ public:
         DoubleValue = 1 << 5,
     };
 
-    MediaTime();
-    MediaTime(int64_t value, uint32_t scale, uint8_t flags = Valid);
+    constexpr MediaTime();
+    constexpr MediaTime(int64_t value, uint32_t scale, uint8_t flags = Valid);
     MediaTime(const MediaTime& rhs);
-    ~MediaTime();
 
     static MediaTime createWithFloat(float floatTime);
     static MediaTime createWithFloat(float floatTime, uint32_t timeScale);
@@ -148,6 +147,24 @@ private:
     uint32_t m_timeScale;
     uint8_t m_timeFlags;
 };
+
+constexpr MediaTime::MediaTime()
+    : m_timeValue(0)
+    , m_timeScale(DefaultTimeScale)
+    , m_timeFlags(Valid)
+{
+}
+
+constexpr MediaTime::MediaTime(int64_t value, uint32_t scale, uint8_t flags)
+    : m_timeValue(value)
+    , m_timeScale(scale)
+    , m_timeFlags(flags)
+{
+    if (scale || !(flags & Valid))
+        return;
+
+    *this = value < 0 ? negativeInfiniteTime() : positiveInfiniteTime();
+}
 
 inline MediaTime operator*(int32_t lhs, const MediaTime& rhs) { return rhs.operator*(lhs); }
 

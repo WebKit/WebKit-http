@@ -81,6 +81,7 @@ public:
     template<CSSPropertyID> static NinePieceImage convertBorderImage(BuilderState&, CSSValue&);
     template<CSSPropertyID> static NinePieceImage convertBorderMask(BuilderState&, CSSValue&);
     template<CSSPropertyID> static RefPtr<StyleImage> convertStyleImage(BuilderState&, CSSValue&);
+    static ImageOrientation convertImageOrientation(BuilderState&, const CSSValue&);
     static TransformOperations convertTransform(BuilderState&, const CSSValue&);
 #if ENABLE(DARK_MODE_CSS)
     static StyleColorScheme convertColorScheme(BuilderState&, const CSSValue&);
@@ -129,6 +130,7 @@ public:
     static bool convertOverflowScrolling(BuilderState&, const CSSValue&);
 #endif
     static FontFeatureSettings convertFontFeatureSettings(BuilderState&, const CSSValue&);
+    static bool convertSmoothScrolling(BuilderState&, const CSSValue&);
     static FontSelectionValue convertFontWeightFromValue(const CSSValue&);
     static FontSelectionValue convertFontStretchFromValue(const CSSValue&);
     static Optional<FontSelectionValue> convertFontStyleFromValue(const CSSValue&);
@@ -466,6 +468,14 @@ template<CSSPropertyID>
 inline RefPtr<StyleImage> BuilderConverter::convertStyleImage(BuilderState& builderState, CSSValue& value)
 {
     return builderState.createStyleImage(value);
+}
+
+inline ImageOrientation BuilderConverter::convertImageOrientation(BuilderState&, const CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.valueID() == CSSValueFromImage)
+        return ImageOrientation::FromImage;
+    return ImageOrientation::None;
 }
 
 inline TransformOperations BuilderConverter::convertTransform(BuilderState& builderState, const CSSValue& value)
@@ -1365,6 +1375,11 @@ inline bool BuilderConverter::convertOverflowScrolling(BuilderState&, const CSSV
     return downcast<CSSPrimitiveValue>(value).valueID() == CSSValueTouch;
 }
 #endif
+
+inline bool BuilderConverter::convertSmoothScrolling(BuilderState&, const CSSValue& value)
+{
+    return downcast<CSSPrimitiveValue>(value).valueID() == CSSValueSmooth;
+}
 
 inline SVGLengthValue BuilderConverter::convertSVGLengthValue(BuilderState&, const CSSValue& value)
 {

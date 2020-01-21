@@ -28,8 +28,10 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "LayoutContainer.h"
 #include "LayoutPhase.h"
+#include "LayoutState.h"
 #include "RenderStyle.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -63,7 +65,8 @@ Box::Box(TextContext&& textContext, RenderStyle&& style)
 
 Box::~Box()
 {
-    removeRareData();
+    if (UNLIKELY(m_hasRareData))
+        removeRareData();
 }
 
 void Box::updateStyle(const RenderStyle& newStyle)
@@ -75,7 +78,7 @@ bool Box::establishesFormattingContext() const
 {
     // We need the final tree structure to tell whether a box establishes a certain formatting context. 
     ASSERT(!Phase::isInTreeBuilding());
-    return establishesBlockFormattingContext() || establishesInlineFormattingContext() || establishesTableFormattingContext();
+    return establishesBlockFormattingContext() || establishesInlineFormattingContext() || establishesTableFormattingContext() || establishesIndependentFormattingContext();
 }
 
 bool Box::establishesBlockFormattingContext() const
@@ -129,6 +132,12 @@ bool Box::establishesInlineFormattingContextOnly() const
 bool Box::establishesTableFormattingContext() const
 {
     return isTableBox();
+}
+
+bool Box::establishesIndependentFormattingContext() const
+{
+    // FIXME: This is where we would check for 'contain' property.
+    return isAbsolutelyPositioned();
 }
 
 bool Box::establishesBlockFormattingContextOnly() const
@@ -436,6 +445,13 @@ Optional<LayoutUnit> Box::columnWidth() const
     if (!hasRareData())
         return { };
     return rareData().columnWidth;
+}
+
+void Box::setCachedDisplayBoxForLayoutState(LayoutState& layoutState, std::unique_ptr<Display::Box> box) const
+{
+    ASSERT(!m_cachedLayoutState);
+    m_cachedLayoutState = makeWeakPtr(layoutState);
+    m_cachedDisplayBoxForLayoutState = WTFMove(box);
 }
 
 Box::RareDataMap& Box::rareDataMap()

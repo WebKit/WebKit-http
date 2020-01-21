@@ -46,17 +46,11 @@ namespace JSC  {
     public:
         CallSiteIndex() = default;
         
-#if USE(JSVALUE64)
         explicit CallSiteIndex(BytecodeIndex bytecodeIndex)
             : m_bits(bytecodeIndex.offset())
         { 
             ASSERT(!bytecodeIndex.checkpoint());
         }
-#else
-        explicit CallSiteIndex(const Instruction& instruction)
-            : m_bits(reinterpret_cast<uint32_t>(&instruction))
-        { }
-#endif
         explicit CallSiteIndex(uint32_t bits)
             : m_bits(bits)
         { }

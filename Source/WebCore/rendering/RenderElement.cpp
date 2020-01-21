@@ -61,7 +61,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderLineBreak.h"
 #include "RenderListItem.h"
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 #include "RenderListMarker.h"
 #endif
 #include "RenderFragmentContainer.h"
@@ -2052,7 +2052,7 @@ bool RenderElement::checkForRepaintDuringLayout() const
 
 ImageOrientation RenderElement::imageOrientation() const
 {
-    return ImageOrientation::FromImage;
+    return style().imageOrientation();
 }
 
 void RenderElement::adjustFragmentedFlowStateOnContainingBlockChangeIfNeeded()

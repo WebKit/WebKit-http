@@ -285,6 +285,7 @@ public:
 
     virtual RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&);
     virtual bool rendererIsNeeded(const RenderStyle&);
+    virtual bool rendererIsEverNeeded() { return true; }
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
     ShadowRoot* shadowRootForBindings(JSC::JSGlobalObject&) const;
@@ -709,7 +710,7 @@ private:
     
     void attachAttributeNodeIfNeeded(Attr&);
 
-#ifndef NDEBUG
+#if ASSERT_ENABLED
     WEBCORE_EXPORT bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
 

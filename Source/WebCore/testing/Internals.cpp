@@ -39,6 +39,7 @@
 #include "CSSAnimationController.h"
 #include "CSSKeyframesRule.h"
 #include "CSSMediaRule.h"
+#include "CSSPropertyParser.h"
 #include "CSSStyleRule.h"
 #include "CSSSupportsRule.h"
 #include "CacheStorageConnection.h"
@@ -122,6 +123,7 @@
 #include "MediaEngineConfigurationFactory.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaRecorderProvider.h"
 #include "MediaResourceLoader.h"
 #include "MediaStreamTrack.h"
 #include "MemoryCache.h"
@@ -148,6 +150,7 @@
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMenuList.h"
+#include "RenderTheme.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
@@ -550,9 +553,12 @@ void Internals::resetToConsistentState(Page& page)
 
 #if ENABLE(MEDIA_STREAM)
     RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(false);
+    WebCore::MediaRecorder::setCustomPrivateRecorderCreator(nullptr);
+    page.mediaRecorderProvider().setUseGPUProcess(true);
 #endif
 
     HTMLCanvasElement::setMaxPixelMemoryForTesting(0); // This means use the default value.
+    DOMWindow::overrideTransientActivationDurationForTesting(WTF::nullopt);
 }
 
 Internals::Internals(Document& document)
@@ -1558,7 +1564,9 @@ void Internals::setUseGPUProcessForWebRTC(bool useGPUProcess)
     auto* document = contextDocument();
     if (!document || !document->page())
         return;
+
     document->page()->libWebRTCProvider().setUseGPUProcess(useGPUProcess);
+    document->page()->mediaRecorderProvider().setUseGPUProcess(useGPUProcess);
 #endif
 }
 #endif
@@ -1683,19 +1691,11 @@ ExceptionOr<String> Internals::dumpMarkerRects(const String& markerTypeString)
     contextDocument()->markers().updateRectsForInvalidatedMarkersOfType(markerType);
     auto rects = contextDocument()->markers().renderedRectsForMarkers(markerType);
 
+    // FIXME: Using fixed precision here for width because of test results that contain numbers with specific precision. Would be nice to update the test results and move to default formatting.
     StringBuilder rectString;
     rectString.appendLiteral("marker rects: ");
-    for (const auto& rect : rects) {
-        rectString.append('(');
-        rectString.append(FormattedNumber::fixedPrecision(rect.x()));
-        rectString.appendLiteral(", ");
-        rectString.append(FormattedNumber::fixedPrecision(rect.y()));
-        rectString.appendLiteral(", ");
-        rectString.append(FormattedNumber::fixedPrecision(rect.width()));
-        rectString.appendLiteral(", ");
-        rectString.append(FormattedNumber::fixedPrecision(rect.height()));
-        rectString.appendLiteral(") ");
-    }
+    for (const auto& rect : rects)
+        rectString.append('(', rect.x(), ", ", rect.y(), ", ", FormattedNumber::fixedPrecision(rect.width()), ", ", rect.height(), ") ");
     return rectString.toString();
 }
 
@@ -1762,7 +1762,7 @@ ExceptionOr<void> Internals::unconstrainedScrollTo(Element& element, double x, d
     if (!document || !document->view())
         return Exception { InvalidAccessError };
 
-    element.scrollTo({ x, y }, ScrollClamping::Unclamped);
+    element.scrollTo(ScrollToOptions(x, y), ScrollClamping::Unclamped);
     return { };
 }
 
@@ -1876,6 +1876,7 @@ ExceptionOr<String> Internals::configurationForViewport(float devicePixelRatio, 
     restrictMinimumScaleFactorToViewportSize(attributes, IntSize(availableWidth, availableHeight), devicePixelRatio);
     restrictScaleFactorToInitialScaleIfNotUserScalable(attributes);
 
+    // FIXME: Using fixed precision here because of test results that contain numbers with specific precision. Would be nice to update the test results and move to default formatting.
     return makeString("viewport size ", FormattedNumber::fixedPrecision(attributes.layoutSize.width()), 'x', FormattedNumber::fixedPrecision(attributes.layoutSize.height()), " scale ", FormattedNumber::fixedPrecision(attributes.initialScale), " with limits [", FormattedNumber::fixedPrecision(attributes.minimumScale), ", ", FormattedNumber::fixedPrecision(attributes.maximumScale), "] and userScalable ", (attributes.userScalable ? "true" : "false"));
 }
 
@@ -3438,24 +3439,14 @@ ExceptionOr<String> Internals::getCurrentCursorInfo()
     Cursor cursor = document->frame()->eventHandler().currentMouseCursor();
 
     StringBuilder result;
-    result.appendLiteral("type=");
-    result.append(cursorTypeToString(cursor.type()));
-    result.appendLiteral(" hotSpot=");
-    result.appendNumber(cursor.hotSpot().x());
-    result.append(',');
-    result.appendNumber(cursor.hotSpot().y());
+    result.append("type=", cursorTypeToString(cursor.type()), " hotSpot=", cursor.hotSpot().x(), ',', cursor.hotSpot().y());
     if (cursor.image()) {
         FloatSize size = cursor.image()->size();
-        result.appendLiteral(" image=");
-        result.append(FormattedNumber::fixedPrecision(size.width()));
-        result.append('x');
-        result.append(FormattedNumber::fixedPrecision(size.height()));
+        result.append(" image=", size.width(), 'x', size.height());
     }
 #if ENABLE(MOUSE_CURSOR_SCALE)
-    if (cursor.imageScaleFactor() != 1) {
-        result.appendLiteral(" scale=");
-        result.append(FormattedNumber::fixedPrecision(cursor.imageScaleFactor(), 8));
-    }
+    if (cursor.imageScaleFactor() != 1)
+        result.append(" scale=", cursor.imageScaleFactor());
 #endif
     return result.toString();
 #else
@@ -5280,6 +5271,11 @@ void Internals::setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest& re
     request.setMaximumIntervalForUserGestureForwarding(interval);
 }
 
+void Internals::setTransientActivationDuration(double seconds)
+{
+    DOMWindow::overrideTransientActivationDurationForTesting(Seconds { seconds });
+}
+
 void Internals::setIsPlayingToAutomotiveHeadUnit(bool isPlaying)
 {
 #if ENABLE(VIDEO) || ENABLE(WEB_AUDIO)
@@ -5406,6 +5402,20 @@ bool Internals::hasSandboxMachLookupAccessToXPCServiceName(const String& process
 String Internals::windowLocationHost(DOMWindow& window)
 {
     return window.location().host();
+}
+
+String Internals::systemColorForCSSValue(const String& cssValue, bool useDarkModeAppearance, bool useElevatedUserInterfaceLevel)
+{
+    CSSValueID id = cssValueKeywordID(cssValue);
+    RELEASE_ASSERT(StyleColor::isSystemColor(id));
+
+    OptionSet<StyleColor::Options> options;
+    if (useDarkModeAppearance)
+        options.add(StyleColor::Options::UseDarkAppearance);
+    if (useElevatedUserInterfaceLevel)
+        options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
+    
+    return RenderTheme::singleton().systemColor(id, options).cssText();
 }
 
 } // namespace WebCore

@@ -323,10 +323,17 @@ bool AbstractInterpreter<AbstractStateType>::handleConstantDivOp(Node* node)
             if (isClobbering)
                 didFoldClobberWorld();
 
-            if (isDivOperation)
-                setConstant(node, jsDoubleNumber(left.asNumber() / right.asNumber()));
-            else
-                setConstant(node, jsDoubleNumber(fmod(left.asNumber(), right.asNumber())));
+            if (isDivOperation) {
+                if (op == ValueDiv)
+                    setConstant(node, jsNumber(left.asNumber() / right.asNumber()));
+                else
+                    setConstant(node, jsDoubleNumber(left.asNumber() / right.asNumber()));
+            } else {
+                if (op == ValueMod)
+                    setConstant(node, jsNumber(fmod(left.asNumber(), right.asNumber())));
+                else
+                    setConstant(node, jsDoubleNumber(fmod(left.asNumber(), right.asNumber())));
+            }
 
             return true;
         }
@@ -1459,7 +1466,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     bool ok = true;
                     Optional<bool> result;
                     child.m_structure.forEach(
-                        [&](RegisteredStructure structure) {
+                        [&] (RegisteredStructure structure) {
                             bool matched = structure->typeInfo().type() == node->queriedType();
                             if (!result)
                                 result = matched;
@@ -1481,7 +1488,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     break;
             }
         }
-        
+
         // FIXME: This code should really use AbstractValue::isType() and
         // AbstractValue::couldBeType().
         // https://bugs.webkit.org/show_bug.cgi?id=146870
@@ -2366,7 +2373,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 if (inlineCallFrame) {
                     if (argumentIndex < static_cast<unsigned>(inlineCallFrame->argumentCountIncludingThis - 1)) {
                         setForNode(node, m_state.operand(
-                            virtualRegisterForArgument(argumentIndex + 1) + inlineCallFrame->stackOffset));
+                            virtualRegisterForArgumentIncludingThis(argumentIndex + 1) + inlineCallFrame->stackOffset));
                         m_state.setShouldTryConstantFolding(true);
                         break;
                     }
@@ -2387,7 +2394,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             for (unsigned i = 1 + node->numberOfArgumentsToSkip(); i < inlineCallFrame->argumentCountIncludingThis; ++i) {
                 result.merge(
                     m_state.operand(
-                        virtualRegisterForArgument(i) + inlineCallFrame->stackOffset));
+                        virtualRegisterForArgumentIncludingThis(i) + inlineCallFrame->stackOffset));
             }
             
             if (node->op() == GetMyArgumentByValOutOfBounds)
@@ -2521,6 +2528,20 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         clobberWorld();
         
         setTypeForNode(node, SpecHeapTop & ~SpecObject);
+        break;
+    }
+
+    case ToPropertyKey: {
+        if (!(forNode(node->child1()).m_type & ~(SpecString | SpecSymbol))) {
+            m_state.setShouldTryConstantFolding(true);
+            didFoldClobberWorld();
+            setForNode(node, forNode(node->child1()));
+            break;
+        }
+
+        clobberWorld();
+
+        setTypeForNode(node, SpecString | SpecSymbol);
         break;
     }
 
@@ -2837,17 +2858,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case NewPromise:
-        ASSERT(!!node->structure().get());
-        setForNode(node, node->structure());
-        break;
-
     case NewGenerator:
-    case NewAsyncGenerator:
-        ASSERT(!!node->structure().get());
-        setForNode(node, node->structure());
-        break;
-        
+    case NewAsyncGenerator:    
+    case NewArrayIterator:
     case NewObject:
+    case MaterializeNewInternalFieldObject:
         ASSERT(!!node->structure().get());
         setForNode(node, node->structure());
         break;
@@ -2929,6 +2944,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomSpread:
     case PhantomNewArrayWithSpread:
     case PhantomNewArrayBuffer:
+    case PhantomNewArrayIterator:
     case PhantomNewRegexp:
     case BottomValue: {
         clearForNode(node);
@@ -3357,6 +3373,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         setTypeForNode(node, signature->result);
         break;
     }
+
+    case CheckNeutered: {
+        DFG_ASSERT(m_graph, node, speculationChecked(forNode(node->child1()).m_type, SpecTypedArrayView));
+        break;
+    }
+
     case CheckArray: {
         if (node->arrayMode().alreadyChecked(m_graph, node, forNode(node->child1()))) {
             m_state.setShouldTryConstantFolding(true);
@@ -3416,6 +3438,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         filterArrayModes(node->child1(), node->arrayMode().arrayModesThatPassFiltering());
         break;
     }
+
     case Arrayify: {
         if (node->arrayMode().alreadyChecked(m_graph, node, forNode(node->child1()))) {
             didFoldClobberStructures();
@@ -4378,7 +4401,7 @@ void AbstractInterpreter<AbstractStateType>::observeTransitions(
     AbstractValue::TransitionsObserver transitionsObserver(vector);
     forAllValues(clobberLimit, transitionsObserver);
     
-    if (!ASSERT_DISABLED) {
+    if (ASSERT_ENABLED) {
         // We don't need to claim to be in a clobbered state because none of the Transition::previous structures are watchable.
         for (unsigned i = vector.size(); i--;)
             ASSERT(!vector[i].previous->dfgShouldWatch());

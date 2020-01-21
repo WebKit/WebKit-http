@@ -714,6 +714,8 @@ public:
     void compileMovHint(Node*);
     void compileMovHintAndCheck(Node*);
 
+    void compileCheckNeutered(Node*);
+
     void cachedGetById(CodeOrigin, JSValueRegs base, JSValueRegs result, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
     void cachedPutById(CodeOrigin, GPRReg baseGPR, JSValueRegs valueRegs, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
     void cachedGetByVal(CodeOrigin, JSValueRegs base, JSValueRegs property, JSValueRegs result, JITCompiler::Jump slowPathTarget);
@@ -922,8 +924,6 @@ public:
         generationInfo(node).initConstant(node, node->refCount());
     }
 
-#define FIRST_ARGUMENT_TYPE typename FunctionTraits<OperationType>::template ArgumentType<0>
-
     template<typename OperationType, typename ResultRegType, typename... Args>
     std::enable_if_t<
         FunctionTraits<OperationType>::hasResult,
@@ -934,38 +934,15 @@ public:
         return appendCallSetResult(operation, result);
     }
 
-    template<typename OperationType, typename Arg, typename... Args>
-    std::enable_if_t<
-        !FunctionTraits<OperationType>::hasResult
-        && !std::is_same<Arg, NoResultTag>::value,
-    JITCompiler::Call>
-    callOperation(OperationType operation, Arg arg, Args... args)
-    {
-        m_jit.setupArguments<OperationType>(arg, args...);
-        return appendCall(operation);
-    }
-
     template<typename OperationType, typename... Args>
     std::enable_if_t<
         !FunctionTraits<OperationType>::hasResult,
     JITCompiler::Call>
-    callOperation(OperationType operation, NoResultTag, Args... args)
+    callOperation(OperationType operation, Args... args)
     {
         m_jit.setupArguments<OperationType>(args...);
         return appendCall(operation);
     }
-
-    template<typename OperationType>
-    std::enable_if_t<
-        !FunctionTraits<OperationType>::hasResult,
-    JITCompiler::Call>
-    callOperation(OperationType operation)
-    {
-        m_jit.setupArguments<OperationType>();
-        return appendCall(operation);
-    }
-
-#undef FIRST_ARGUMENT_TYPE
 
     JITCompiler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_Cb operation, CodeBlock* codeBlock)
     {
@@ -1485,7 +1462,9 @@ public:
     void compileNewPromise(Node*);
     void compileNewGenerator(Node*);
     void compileNewAsyncGenerator(Node*);
+    void compileNewArrayIterator(Node*);
     void compileToPrimitive(Node*);
+    void compileToPropertyKey(Node*);
     void compileToNumeric(Node*);
     void compileLogShadowChickenPrologue(Node*);
     void compileLogShadowChickenTail(Node*);

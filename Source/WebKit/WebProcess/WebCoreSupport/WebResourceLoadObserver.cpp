@@ -32,6 +32,7 @@
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebPage.h"
 #include "WebProcess.h"
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/Frame.h>
@@ -71,15 +72,17 @@ WebResourceLoadObserver::~WebResourceLoadObserver()
         updateCentralStatisticsStore();
 }
 
-void WebResourceLoadObserver::requestStorageAccessUnderOpener(const RegistrableDomain& domainInNeedOfStorageAccess, PageIdentifier openerPageID, Document& openerDocument)
+void WebResourceLoadObserver::requestStorageAccessUnderOpener(const RegistrableDomain& domainInNeedOfStorageAccess, WebPage& openerPage, Document& openerDocument)
 {
     auto openerUrl = openerDocument.url();
     RegistrableDomain openerDomain { openerUrl };
     if (domainInNeedOfStorageAccess != openerDomain
         && !openerDocument.hasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess)
         && !equalIgnoringASCIICase(openerUrl.string(), WTF::blankURL())) {
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPage.identifier(), openerDomain), 0);
         
+        openerPage.addDomainWithPageLevelStorageAccess(openerDomain, domainInNeedOfStorageAccess);
+
         // Remember user interaction-based requests since they don't need to be repeated.
         openerDocument.setHasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess);
     }
@@ -335,10 +338,8 @@ void WebResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const 
     if (auto* frame = document.frame()) {
         if (auto* opener = frame->loader().opener()) {
             if (auto* openerDocument = opener->document()) {
-                if (auto* openerFrame = openerDocument->frame()) {
-                    if (auto openerPageID = openerFrame->loader().client().pageID())
-                        requestStorageAccessUnderOpener(topFrameDomain, openerPageID.value(), *openerDocument);
-                }
+                if (auto* openerPage = openerDocument->page())
+                    requestStorageAccessUnderOpener(topFrameDomain, WebPage::fromCorePage(*openerPage), *openerDocument);
             }
         }
     }

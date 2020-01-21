@@ -180,6 +180,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         if (WI.DebuggerManager.supportsBlackboxingScripts()) {
             this._blackboxSettingsView = new WI.BlackboxSettingsView;
+            this._createReferenceLink(this._blackboxSettingsView);
             this.addSettingsView(this._blackboxSettingsView);
         }
 
@@ -244,6 +245,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         zoomEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { WI.setZoomFactor(zoomEditor.value); });
         WI.settings.zoomFactor.addEventListener(WI.Setting.Event.Changed, () => { zoomEditor.value = WI.getZoomFactor().maxDecimals(2); });
 
+        this._createReferenceLink(generalSettingsView);
+
         this.addSettingsView(generalSettingsView);
     }
 
@@ -262,6 +265,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         elementsSettingsView.addSetting(WI.UIString("CSS Changes:"), WI.settings.cssChangesPerNode, WI.UIString("Show only for selected node"));
 
+        this._createReferenceLink(elementsSettingsView);
+
         this.addSettingsView(elementsSettingsView);
     }
 
@@ -278,6 +283,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         sourcesSettingsView.addSeparator();
 
         sourcesSettingsView.addSetting(WI.UIString("Images:"), WI.settings.showImageGrid, WI.UIString("Show transparency grid"));
+
+        this._createReferenceLink(sourcesSettingsView);
 
         this.addSettingsView(sourcesSettingsView);
     }
@@ -337,6 +344,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             }
         }
 
+        this._createReferenceLink(consoleSettingsView);
+
         this.addSettingsView(consoleSettingsView);
     }
 
@@ -346,10 +355,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         let initialValues = new Map;
 
-        // WebKit may by default enable certain features in a Technology Preview that are not enabled in trunk.
-        // Provide a switch that will make non-preview builds behave like an experimental build, for those preview features.
-        let hasPreviewFeatures = WI.previewFeatures.length > 0;
-        if (hasPreviewFeatures && (WI.isTechnologyPreviewBuild() || WI.isEngineeringBuild)) {
+        if (WI.canShowPreviewFeatures()) {
             experimentalSettingsView.addSetting(WI.UIString("Staging:"), WI.settings.experimentalEnablePreviewFeatures, WI.UIString("Enable Preview Features"));
             experimentalSettingsView.addSeparator();
         }
@@ -384,6 +390,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         if (InspectorBackend.hasDomain("CSS"))
             listenForChange(WI.settings.experimentalEnableStylesJumpToEffective);
+
+        this._createReferenceLink(experimentalSettingsView);
 
         this.addSettingsView(experimentalSettingsView);
     }
@@ -470,6 +478,18 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         this._debugSettingsView.addCenteredContainer(resetInspectorButton);
 
         this.addSettingsView(this._debugSettingsView);
+    }
+
+    _createReferenceLink(settingsView)
+    {
+        let link = document.createElement("a");
+        link.href = link.title = "https://webkit.org/web-inspector/web-inspector-settings/#" + settingsView.identifier;
+        link.textContent = WI.UIString("Web Inspector Reference");
+
+        link.appendChild(WI.createGoToArrowButton());
+
+        let container = settingsView.addCenteredContainer(link);
+        container.classList.add("reference");
     }
 
     _updateNavigationBarVisibility()

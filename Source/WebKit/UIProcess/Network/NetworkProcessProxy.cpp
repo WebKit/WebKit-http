@@ -311,8 +311,9 @@ void NetworkProcessProxy::didClose(IPC::Connection&)
     networkProcessCrashed();
 }
 
-void NetworkProcessProxy::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
+void NetworkProcessProxy::didReceiveInvalidMessage(IPC::Connection& connection, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
+    logInvalidMessage(connection, messageReceiverName, messageName);
 }
 
 void NetworkProcessProxy::processAuthenticationChallenge(PAL::SessionID sessionID, Ref<AuthenticationChallengeProxy>&& authenticationChallenge)
@@ -424,6 +425,12 @@ void NetworkProcessProxy::logDiagnosticMessage(WebPageProxyIdentifier pageID, co
     page->logDiagnosticMessage(message, description, shouldSample);
 }
 
+void NetworkProcessProxy::terminateUnresponsiveServiceWorkerProcesses(WebCore::RegistrableDomain&& domain, PAL::SessionID sessionID)
+{
+    for (auto* processPool : WebProcessPool::allProcessPools())
+        processPool->terminateServiceWorkerProcess(domain, sessionID);
+}
+
 void NetworkProcessProxy::logDiagnosticMessageWithResult(WebPageProxyIdentifier pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
@@ -450,6 +457,52 @@ void NetworkProcessProxy::logGlobalDiagnosticMessageWithValue(const String& mess
 {
     if (auto* page = WebPageProxy::nonEphemeralWebPageProxy())
         page->logDiagnosticMessageWithValue(message, description, value, significantFigures, shouldSample);
+}
+
+void NetworkProcessProxy::resourceLoadDidSendRequest(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceRequest&& request)
+{
+    auto* page = WebProcessProxy::webPage(pageID);
+    if (!page)
+        return;
+
+    page->resourceLoadDidSendRequest(WTFMove(loadInfo), WTFMove(request));
+}
+
+void NetworkProcessProxy::resourceLoadDidPerformHTTPRedirection(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceResponse&& response, WebCore::ResourceRequest&& request)
+{
+    auto* page = WebProcessProxy::webPage(pageID);
+    if (!page)
+        return;
+
+    page->resourceLoadDidPerformHTTPRedirection(WTFMove(loadInfo), WTFMove(response), WTFMove(request));
+}
+
+void NetworkProcessProxy::resourceLoadDidReceiveChallenge(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::AuthenticationChallenge&& challenge)
+{
+    auto* page = WebProcessProxy::webPage(pageID);
+    if (!page)
+        return;
+
+    auto challengeProxy = AuthenticationChallengeProxy::create(WTFMove(challenge), 0, *connection(), nullptr);
+    page->resourceLoadDidReceiveChallenge(WTFMove(loadInfo), challengeProxy.get());
+}
+
+void NetworkProcessProxy::resourceLoadDidReceiveResponse(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceResponse&& response)
+{
+    auto* page = WebProcessProxy::webPage(pageID);
+    if (!page)
+        return;
+
+    page->resourceLoadDidReceiveResponse(WTFMove(loadInfo), WTFMove(response));
+}
+
+void NetworkProcessProxy::resourceLoadDidCompleteWithError(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceError&& error)
+{
+    auto* page = WebProcessProxy::webPage(pageID);
+    if (!page)
+        return;
+
+    page->resourceLoadDidCompleteWithError(WTFMove(loadInfo), WTFMove(error));
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1069,11 +1122,6 @@ void NetworkProcessProxy::setShouldDowngradeReferrerForTesting(bool enabled, Com
 
 void NetworkProcessProxy::setShouldBlockThirdPartyCookiesForTesting(PAL::SessionID sessionID, ThirdPartyCookieBlockingMode blockingMode, CompletionHandler<void()>&& completionHandler)
 {
-    if (!canSendMessage()) {
-        completionHandler();
-        return;
-    }
-    
     sendWithAsyncReply(Messages::NetworkProcess::SetShouldBlockThirdPartyCookiesForTesting(sessionID, blockingMode), WTFMove(completionHandler));
 }
 
@@ -1193,7 +1241,7 @@ void NetworkProcessProxy::retrieveCacheStorageParameters(PAL::SessionID sessionI
         return;
     }
 
-    auto& cacheStorageDirectory = store->cacheStorageDirectory();
+    auto& cacheStorageDirectory = store->configuration().cacheStorageDirectory();
     SandboxExtension::Handle cacheStorageDirectoryExtensionHandle;
     if (!cacheStorageDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(cacheStorageDirectory, cacheStorageDirectoryExtensionHandle);

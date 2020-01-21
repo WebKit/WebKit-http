@@ -278,6 +278,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case CallDOM:
     case CheckSubClass:
     case CheckArray:
+    case CheckNeutered:
     case Arrayify:
     case ArrayifyToStructure:
     case GetScope:
@@ -334,6 +335,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case NewArrayWithSize:
     case NewArrayBuffer:
     case NewArrayWithSpread:
+    case NewArrayIterator:
     case Spread:
     case NewRegexp:
     case NewSymbol:
@@ -359,6 +361,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case LogicalNot:
     case CallObjectConstructor:
     case ToPrimitive:
+    case ToPropertyKey:
     case ToString:
     case ToNumber:
     case ToNumeric:
@@ -443,12 +446,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
+    case PhantomNewArrayIterator:
     case PhantomCreateActivation:
     case PhantomNewRegexp:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeNewObject:
     case MaterializeCreateActivation:
+    case MaterializeNewInternalFieldObject:
     case PhantomDirectArguments:
     case PhantomCreateRest:
     case PhantomSpread:

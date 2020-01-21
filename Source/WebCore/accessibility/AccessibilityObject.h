@@ -120,8 +120,6 @@ public:
     bool isAccessibilitySVGRoot() const override { return false; }
     bool isAccessibilitySVGElement() const override { return false; }
 
-    bool containsText(String const&) const override;
-
     bool isAttachmentElement() const override { return false; }
     bool isHeading() const override { return false; }
     bool isLink() const override { return false; }
@@ -150,7 +148,12 @@ public:
     bool isInputSlider() const override { return false; }
     bool isControl() const override { return false; }
     bool isLabel() const override { return false; }
+
     bool isList() const override { return false; }
+    bool isUnorderedList() const override { return false; }
+    bool isOrderedList() const override { return false; }
+    bool isDescriptionList() const override { return false; }
+
     bool isTable() const override { return false; }
     bool isDataTable() const override { return false; }
     bool isTableRow() const override { return false; }
@@ -678,14 +681,6 @@ public:
     bool isDOMHidden() const override;
     bool isHidden() const override { return isAXHidden() || isDOMHidden(); }
 
-#if ENABLE(ACCESSIBILITY)
-    AccessibilityObjectWrapper* wrapper() const override { return m_wrapper.get(); }
-    void setWrapper(AccessibilityObjectWrapper* wrapper) override { m_wrapper = wrapper; }
-#else
-    AccessibilityObjectWrapper* wrapper() const override { return nullptr; }
-    //void setWrapper(AccessibilityObjectWrapper*) override { }
-#endif
-
 #if PLATFORM(COCOA)
     void overrideAttachmentParent(AXCoreObject* parent) override;
 #else
@@ -781,14 +776,6 @@ protected:
 #else
     bool allowsTextRanges() const { return isTextControl(); }
     unsigned getLengthForTextRange() const { return text().length(); }
-#endif
-
-#if PLATFORM(COCOA)
-    RetainPtr<WebAccessibilityObjectWrapper> m_wrapper;
-#elif PLATFORM(WIN)
-    COMPtr<AccessibilityObjectWrapper> m_wrapper;
-#elif USE(ATK)
-    GRefPtr<WebKitAccessible> m_wrapper;
 #endif
 };
 

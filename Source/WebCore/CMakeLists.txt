@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
 include(WebKitCommon)
+include(target/TargetWTF)
+include(target/TargetJavaScriptCore)
 include(WebCoreMacros.cmake)
 include(Headers.cmake)
 
@@ -105,7 +107,9 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/layout/inlineformatting"
     "${WEBCORE_DIR}/layout/inlineformatting/text"
     "${WEBCORE_DIR}/layout/integration"
+    "${WEBCORE_DIR}/layout/invalidation"
     "${WEBCORE_DIR}/layout/layouttree"
+    "${WEBCORE_DIR}/layout/tableformatting"
     "${WEBCORE_DIR}/loader"
     "${WEBCORE_DIR}/loader/appcache"
     "${WEBCORE_DIR}/loader/archive"
@@ -976,8 +980,10 @@ set(WebCore_NON_SVG_IDL_FILES
     page/ResizeObserverCallback.idl
     page/ResizeObserverEntry.idl
     page/Screen.idl
+    page/ScrollBehavior.idl
     page/ScrollIntoViewOptions.idl
     page/ScrollLogicalPosition.idl
+    page/ScrollOptions.idl
     page/ScrollToOptions.idl
     page/ShareData.idl
     page/UndoItem.idl
@@ -1500,7 +1506,7 @@ if (ENABLE_GRAPHICS_CONTEXT_GL)
     list(APPEND WebCore_SOURCES
         platform/graphics/ANGLEWebKitBridge.cpp
         platform/graphics/FormatConverter.cpp
-        platform/graphics/opengl/GraphicsContextGLOpenGLBase.cpp
+        platform/graphics/opengl/GraphicsContextGLOpenGL.cpp
     )
 
     list(APPEND WebCore_LIBRARIES ANGLEFramework)

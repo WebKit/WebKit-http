@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1101,8 +1101,6 @@ BytecodeIndex CodeBlock::bytecodeIndexForExit(BytecodeIndex exitIndex) const
 
 void CodeBlock::propagateTransitions(const ConcurrentJSLocker&, SlotVisitor& visitor)
 {
-    UNUSED_PARAM(visitor);
-
     VM& vm = *m_vm;
 
     if (jitType() == JITType::InterpreterThunk) {
@@ -1230,8 +1228,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
             StructureID oldStructureID = metadata.m_modeMetadata.defaultMode.structureID;
             if (!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
                 return;
-            if (Options::verboseOSR())
-                dataLogF("Clearing LLInt property access.\n");
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
             LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(metadata);
         });
 
@@ -1239,8 +1236,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
             StructureID oldStructureID = metadata.m_structureID;
             if (!oldStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(oldStructureID)))
                 return;
-            if (Options::verboseOSR())
-                dataLogF("Clearing LLInt property access.\n");
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
             metadata.m_structureID = 0;
             metadata.m_offset = 0;
         });
@@ -1253,8 +1249,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
                 && (!newStructureID || vm.heap.isMarked(vm.heap.structureIDTable().get(newStructureID)))
                 && (!chain || vm.heap.isMarked(chain)))
                 return;
-            if (Options::verboseOSR())
-                dataLogF("Clearing LLInt put transition.\n");
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt put transition.");
             metadata.m_oldStructureID = 0;
             metadata.m_offset = 0;
             metadata.m_newStructureID = 0;
@@ -1303,8 +1298,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
             WriteBarrierBase<SymbolTable>& symbolTable = metadata.m_symbolTable;
             if (!symbolTable || vm.heap.isMarked(symbolTable.get()))
                 return;
-            if (Options::verboseOSR())
-                dataLogF("Clearing dead symbolTable %p.\n", symbolTable.get());
+            dataLogLnIf(Options::verboseOSR(), "Clearing dead symbolTable ", RawPointer(symbolTable.get()));
             symbolTable.clear();
         });
 
@@ -1316,8 +1310,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
             WriteBarrierBase<Structure>& structure = metadata.m_structure;
             if (!structure || vm.heap.isMarked(structure.get()))
                 return;
-            if (Options::verboseOSR())
-                dataLogF("Clearing scope access with structure %p.\n", structure.get());
+            dataLogLnIf(Options::verboseOSR(), "Clearing scope access with structure ", RawPointer(structure.get()));
             structure.clear();
         };
 
@@ -1332,8 +1325,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
             auto& instruction = instructions().at(std::get<1>(pair.key));
             OpcodeID opcode = instruction->opcodeID();
             if (opcode == op_get_by_id) {
-                if (Options::verboseOSR())
-                    dataLogF("Clearing LLInt property access.\n");
+                dataLogLnIf(Options::verboseOSR(), "Clearing LLInt property access.");
                 LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache(instruction->as<OpGetById>().metadata(this));
             }
             return true;
@@ -1352,8 +1344,7 @@ void CodeBlock::finalizeLLIntInlineCaches()
 
     forEachLLIntCallLinkInfo([&](LLIntCallLinkInfo& callLinkInfo) {
         if (callLinkInfo.isLinked() && !vm.heap.isMarked(callLinkInfo.callee())) {
-            if (Options::verboseOSR())
-                dataLog("Clearing LLInt call from ", *this, "\n");
+            dataLogLnIf(Options::verboseOSR(), "Clearing LLInt call from ", *this);
             callLinkInfo.unlink();
         }
         if (callLinkInfo.lastSeenCallee() && !vm.heap.isMarked(callLinkInfo.lastSeenCallee()))
@@ -1653,12 +1644,17 @@ void CodeBlock::stronglyVisitStrongReferences(const ConcurrentJSLocker& locker, 
     if (auto* jitData = m_jitData.get()) {
         for (ByValInfo* byValInfo : jitData->m_byValInfos)
             visitor.append(byValInfo->cachedSymbol);
+        for (StructureStubInfo* stubInfo : jitData->m_stubInfos)
+            stubInfo->visitAggregate(visitor);
     }
 #endif
 
 #if ENABLE(DFG_JIT)
-    if (JITCode::isOptimizingJIT(jitType()))
+    if (JITCode::isOptimizingJIT(jitType())) {
+        DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
+        dfgCommon->recordedStatuses.visitAggregate(visitor);
         visitOSRExitTargets(locker, visitor);
+    }
 #endif
 }
 
@@ -1783,7 +1779,7 @@ void CodeBlock::ensureCatchLivenessIsComputedForBytecodeIndex(BytecodeIndex byte
     OpCatch op = instruction->as<OpCatch>();
     auto& metadata = op.metadata(this);
     if (!!metadata.m_buffer) {
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         ConcurrentJSLocker locker(m_lock);
         bool found = false;
         auto* rareData = m_rareData.get();
@@ -1795,7 +1791,7 @@ void CodeBlock::ensureCatchLivenessIsComputedForBytecodeIndex(BytecodeIndex byte
             }
         }
         ASSERT(found);
-#endif
+#endif // ASSERT_ENABLED
         return;
     }
 
@@ -1820,7 +1816,7 @@ void CodeBlock::ensureCatchLivenessIsComputedForBytecodeIndexSlow(const OpCatch&
     });
 
     for (int i = 0; i < numParameters(); ++i)
-        liveOperands.append(virtualRegisterForArgument(i));
+        liveOperands.append(virtualRegisterForArgumentIncludingThis(i));
 
     auto profiles = makeUnique<ValueProfileAndVirtualRegisterBuffer>(liveOperands.size());
     RELEASE_ASSERT(profiles->m_size == liveOperands.size());
@@ -2184,8 +2180,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
 {
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
     
-    if (Options::verboseCallLink())
-        dataLog("Noticing call link from ", pointerDump(callerCodeBlock), " to ", *this, "\n");
+    dataLogLnIf(Options::verboseCallLink(), "Noticing call link from ", pointerDump(callerCodeBlock), " to ", *this);
     
 #if ENABLE(DFG_JIT)
     if (!m_shouldAlwaysBeInlined)
@@ -2193,8 +2188,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
     
     if (!callerCodeBlock) {
         m_shouldAlwaysBeInlined = false;
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because caller is native.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because caller is native.");
         return;
     }
 
@@ -2209,8 +2203,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
     
     if (!DFG::isSmallEnoughToInlineCodeInto(callerCodeBlock)) {
         m_shouldAlwaysBeInlined = false;
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because caller is too large.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because caller is too large.");
         return;
     }
 
@@ -2220,15 +2213,13 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
         // ensures that a function is SABI only if it is called no more frequently than
         // any of its callers.
         m_shouldAlwaysBeInlined = false;
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because caller is in LLInt.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because caller is in LLInt.");
         return;
     }
     
     if (JITCode::isOptimizingJIT(callerCodeBlock->jitType())) {
         m_shouldAlwaysBeInlined = false;
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI bcause caller was already optimized.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI bcause caller was already optimized.");
         return;
     }
     
@@ -2237,8 +2228,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
         // optimized anytime soon. For eval code this is particularly true since we
         // delay eval optimization by a *lot*.
         m_shouldAlwaysBeInlined = false;
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because caller is not a function.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because caller is not a function.");
         return;
     }
 
@@ -2247,8 +2237,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
     vm().topCallFrame->iterate(vm(), functor);
 
     if (functor.didRecurse()) {
-        if (Options::verboseCallLink())
-            dataLog("    Clearing SABI because recursion was detected.\n");
+        dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because recursion was detected.");
         m_shouldAlwaysBeInlined = false;
         return;
     }
@@ -2261,8 +2250,7 @@ void CodeBlock::noticeIncomingCall(CallFrame* callerFrame)
     if (canCompile(callerCodeBlock->capabilityLevelState()))
         return;
     
-    if (Options::verboseCallLink())
-        dataLog("    Clearing SABI because the caller is not a DFG candidate.\n");
+    dataLogLnIf(Options::verboseCallLink(), "    Clearing SABI because the caller is not a DFG candidate.");
     
     m_shouldAlwaysBeInlined = false;
 #endif
@@ -2410,12 +2398,9 @@ double CodeBlock::optimizationThresholdScalingFactor()
     
     result *= codeTypeThresholdMultiplier();
     
-    if (Options::verboseOSR()) {
-        dataLog(
-            *this, ": bytecode cost is ", bytecodeCost,
-            ", scaling execution counter by ", result, " * ", codeTypeThresholdMultiplier(),
-            "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(),
+        *this, ": bytecode cost is ", bytecodeCost,
+        ", scaling execution counter by ", result, " * ", codeTypeThresholdMultiplier());
     return result;
 }
 
@@ -2504,22 +2489,19 @@ auto CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize(DFG::OSRExitState
 
 void CodeBlock::optimizeNextInvocation()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Optimizing next invocation.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Optimizing next invocation.");
     m_jitExecuteCounter.setNewThreshold(0, this);
 }
 
 void CodeBlock::dontOptimizeAnytimeSoon()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Not optimizing anytime soon.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Not optimizing anytime soon.");
     m_jitExecuteCounter.deferIndefinitely();
 }
 
 void CodeBlock::optimizeAfterWarmUp()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Optimizing after warm-up.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Optimizing after warm-up.");
 #if ENABLE(DFG_JIT)
     m_jitExecuteCounter.setNewThreshold(
         adjustedCounterValue(Options::thresholdForOptimizeAfterWarmUp()), this);
@@ -2528,8 +2510,7 @@ void CodeBlock::optimizeAfterWarmUp()
 
 void CodeBlock::optimizeAfterLongWarmUp()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Optimizing after long warm-up.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Optimizing after long warm-up.");
 #if ENABLE(DFG_JIT)
     m_jitExecuteCounter.setNewThreshold(
         adjustedCounterValue(Options::thresholdForOptimizeAfterLongWarmUp()), this);
@@ -2538,8 +2519,7 @@ void CodeBlock::optimizeAfterLongWarmUp()
 
 void CodeBlock::optimizeSoon()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Optimizing soon.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Optimizing soon.");
 #if ENABLE(DFG_JIT)
     m_jitExecuteCounter.setNewThreshold(
         adjustedCounterValue(Options::thresholdForOptimizeSoon()), this);
@@ -2548,8 +2528,7 @@ void CodeBlock::optimizeSoon()
 
 void CodeBlock::forceOptimizationSlowPathConcurrently()
 {
-    if (Options::verboseOSR())
-        dataLog(*this, ": Forcing slow path concurrently.\n");
+    dataLogLnIf(Options::verboseOSR(), *this, ": Forcing slow path concurrently.");
     m_jitExecuteCounter.forceSlowPathConcurrently();
 }
 
@@ -2558,7 +2537,7 @@ void CodeBlock::setOptimizationThresholdBasedOnCompilationResult(CompilationResu
 {
     JITType type = jitType();
     if (type != JITType::BaselineJIT) {
-        dataLog(*this, ": expected to have baseline code but have ", type, "\n");
+        dataLogLn(*this, ": expected to have baseline code but have ", type);
         CRASH_WITH_INFO(bitwise_cast<uintptr_t>(jitCode().get()), static_cast<uint8_t>(type));
     }
     
@@ -2762,8 +2741,7 @@ void CodeBlock::updateAllPredictions()
 
 bool CodeBlock::shouldOptimizeNow()
 {
-    if (Options::verboseOSR())
-        dataLog("Considering optimizing ", *this, "...\n");
+    dataLogLnIf(Options::verboseOSR(), "Considering optimizing ", *this, "...");
 
     if (m_optimizationDelayCounter >= Options::maximumOptimizationDelay())
         return true;

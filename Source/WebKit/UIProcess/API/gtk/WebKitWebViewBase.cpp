@@ -110,9 +110,7 @@ public:
             // by the WTR do not and we must calculate a time manually. This time
             // is not calculated in the WTR, because GTK+ does not work well with
             // anything other than GDK_CURRENT_TIME on synthesized events.
-            GTimeVal timeValue;
-            g_get_current_time(&timeValue);
-            eventTime = (timeValue.tv_sec * 1000) + (timeValue.tv_usec / 1000);
+            eventTime = g_get_monotonic_time() / 1000;
         }
 
         GdkEventType type;
@@ -1666,16 +1664,19 @@ bool webkitWebViewBaseIsInWindow(WebKitWebViewBase* webViewBase)
     return webViewBase->priv->activityState.contains(ActivityState::IsInWindow);
 }
 
-void webkitWebViewBaseSetInputMethodState(WebKitWebViewBase* webkitWebViewBase, bool enabled)
+void webkitWebViewBaseSetInputMethodState(WebKitWebViewBase* webkitWebViewBase, Optional<InputMethodState>&& state)
 {
-    webkitWebViewBase->priv->inputMethodFilter.setEnabled(enabled);
+    webkitWebViewBase->priv->inputMethodFilter.setState(WTFMove(state));
 }
 
 void webkitWebViewBaseUpdateTextInputState(WebKitWebViewBase* webkitWebViewBase)
 {
     const auto& editorState = webkitWebViewBase->priv->pageProxy->editorState();
-    if (!editorState.isMissingPostLayoutData)
+    if (!editorState.isMissingPostLayoutData) {
         webkitWebViewBase->priv->inputMethodFilter.notifyCursorRect(editorState.postLayoutData().caretRectAtStart);
+        webkitWebViewBase->priv->inputMethodFilter.notifySurrounding(editorState.postLayoutData().paragraphContext, editorState.postLayoutData().paragraphContextCursorPosition,
+            editorState.postLayoutData().paragraphContextSelectionPosition);
+    }
 }
 
 void webkitWebViewBaseSetContentsSize(WebKitWebViewBase* webkitWebViewBase, const IntSize& contentsSize)

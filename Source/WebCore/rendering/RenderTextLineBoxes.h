@@ -66,10 +66,10 @@ public:
 
     enum ClippingOption { NoClipping, ClipToEllipsis };
     Vector<FloatQuad> absoluteQuads(const RenderText&, bool* wasFixed, ClippingOption) const;
-    Vector<FloatQuad> absoluteQuadsForRange(const RenderText&, unsigned start, unsigned end, bool useSelectionHeight, bool* wasFixed) const;
+    Vector<FloatQuad> absoluteQuadsForRange(const RenderText&, unsigned start, unsigned end, bool useSelectionHeight, bool ignoreEmptyTextSelections, bool* wasFixed) const;
     Vector<IntRect> absoluteRectsForRange(const RenderText&, unsigned start, unsigned end, bool useSelectionHeight, bool* wasFixed) const;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     ~RenderTextLineBoxes();
 #endif
 

@@ -104,11 +104,6 @@ EventLoopTaskGroup& WorkletGlobalScope::eventLoop()
     return *m_defaultTaskGroup;
 }
 
-String WorkletGlobalScope::origin() const
-{
-    return m_topOrigin->toString();
-}
-
 String WorkletGlobalScope::userAgent(const URL& url) const
 {
     if (!m_document)
@@ -136,7 +131,7 @@ void WorkletGlobalScope::disableWebAssembly(const String& errorMessage)
     m_script->disableWebAssembly(errorMessage);
 }
 
-URL WorkletGlobalScope::completeURL(const String& url) const
+URL WorkletGlobalScope::completeURL(const String& url, ForceUTF8) const
 {
     if (url.isNull())
         return URL();

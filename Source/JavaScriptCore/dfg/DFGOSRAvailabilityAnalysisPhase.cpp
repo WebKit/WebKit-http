@@ -235,7 +235,7 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
         unsigned entrypointIndex = node->entrypointIndex();
         const Vector<FlushFormat>& argumentFormats = m_graph.m_argumentFormats[entrypointIndex];
         for (unsigned argument = argumentFormats.size(); argument--; ) {
-            FlushedAt flushedAt = FlushedAt(argumentFormats[argument], virtualRegisterForArgument(argument));
+            FlushedAt flushedAt = FlushedAt(argumentFormats[argument], virtualRegisterForArgumentIncludingThis(argument));
             m_availability.m_locals.argument(argument) = Availability(flushedAt);
         }
         break;

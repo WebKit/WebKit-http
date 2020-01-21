@@ -231,16 +231,19 @@ WebKitInputMethodContext* View::inputMethodContext() const
     return m_inputMethodFilter.context();
 }
 
-void View::setInputMethodState(bool enabled)
+void View::setInputMethodState(Optional<InputMethodState>&& state)
 {
-    m_inputMethodFilter.setEnabled(enabled);
+    m_inputMethodFilter.setState(WTFMove(state));
 }
 
 void View::selectionDidChange()
 {
     const auto& editorState = m_pageProxy->editorState();
-    if (!editorState.isMissingPostLayoutData)
+    if (!editorState.isMissingPostLayoutData) {
         m_inputMethodFilter.notifyCursorRect(editorState.postLayoutData().caretRectAtStart);
+        m_inputMethodFilter.notifySurrounding(editorState.postLayoutData().paragraphContext, editorState.postLayoutData().paragraphContextCursorPosition,
+            editorState.postLayoutData().paragraphContextSelectionPosition);
+    }
 }
 
 void View::setSize(const WebCore::IntSize& size)

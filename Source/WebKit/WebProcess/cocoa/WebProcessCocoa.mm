@@ -80,12 +80,12 @@
 #import <wtf/cocoa/NSURLExtras.h>
 
 #if PLATFORM(IOS)
-#import "UIKitSPI.h"
 #import <WebCore/ParentalControlsContentFilter.h>
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-#include <bmalloc/MemoryStatusSPI.h>
+#import "UIKitSPI.h"
+#import <bmalloc/MemoryStatusSPI.h>
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -259,6 +259,10 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
         SandboxExtension::consumePermanently(*parameters.neSessionManagerExtensionHandle);
     NetworkExtensionContentFilter::setHasConsumedSandboxExtensions(parameters.neHelperExtensionHandle.hasValue() && parameters.neSessionManagerExtensionHandle.hasValue());
 #endif
+
+#if PLATFORM(IOS_FAMILY)
+    RenderThemeIOS::setCSSValueToSystemColorMap(WTFMove(parameters.cssValueToSystemColorMap));
+#endif
 }
 
 void WebProcess::platformSetWebsiteDataStoreParameters(WebProcessDataStoreParameters&& parameters)
@@ -321,7 +325,7 @@ void WebProcess::updateProcessName()
             RELEASE_LOG_ERROR_IF_ALLOWED(Process, "updateProcessName: Failed to set the display name of the WebContent process, error code: %ld", static_cast<long>(error));
             return;
         }
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         // It is possible for _LSSetApplicationInformationItem() to return 0 and yet fail to set the display name so we make sure the display name has actually been set.
         String actualApplicationName = adoptCF((CFStringRef)_LSCopyApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey)).get();
         ASSERT(!actualApplicationName.isEmpty());
@@ -815,7 +819,7 @@ void WebProcess::displayWasRefreshed(CGDirectDisplayID displayID)
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 static float currentBacklightLevel()
 {
     return WebProcess::singleton().backlightLevel();

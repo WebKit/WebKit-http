@@ -37,6 +37,7 @@
 #include "FrameTracers.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
+#include "JSArrayIterator.h"
 #include "JSAsyncFunction.h"
 #include "JSAsyncGeneratorFunction.h"
 #include "JSCInlines.h"
@@ -114,6 +115,19 @@ extern "C" void JIT_OPERATION operationPopulateObjectInOSR(JSGlobalObject* globa
             activation->variableAt(ScopeOffset(property.location().info())).set(vm, activation, JSValue::decode(values[i]));
         }
 
+        break;
+    }
+
+    case PhantomNewArrayIterator: {
+        JSArrayIterator* arrayIterator = jsCast<JSArrayIterator*>(JSValue::decode(*encodedValue));
+
+        // Figure out what to populate the iterator with
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() != InternalFieldObjectPLoc)
+                continue;
+            arrayIterator->internalField(static_cast<JSArrayIterator::Field>(property.location().info())).set(vm, arrayIterator, JSValue::decode(values[i]));
+        }
         break;
     }
 
@@ -279,6 +293,28 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(JSGlobalObject*
         return result;
     }
 
+    case PhantomNewArrayIterator: {
+        // Figure out what structure.
+        Structure* structure = nullptr;
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location() == PromotedLocationDescriptor(StructurePLoc)) {
+                RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits<Structure>(vm));
+                structure = jsCast<Structure*>(JSValue::decode(values[i]));
+            }
+        }
+        RELEASE_ASSERT(structure);
+
+        JSArrayIterator* result = JSArrayIterator::createWithInitialValues(vm, structure);
+
+        RELEASE_ASSERT(materialization->properties().size() - 1 == JSArrayIterator::numberOfInternalFields);
+
+        // The real values will be put subsequently by
+        // operationPopulateNewObjectInOSR. See the PhantomNewObject
+        // case for details.
+        return result;
+    }
+
     case PhantomCreateRest:
     case PhantomDirectArguments:
     case PhantomClonedArguments: {
@@ -411,7 +447,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(JSGlobalObject*
                 array->putDirectIndex(globalObject, arrayIndex, JSValue::decode(values[i]));
             }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
             // We avoid this O(n^2) loop when asserts are disabled, but the condition checked here
             // must hold to ensure the correctness of the above loop because of how we allocate the array.
             for (unsigned targetIndex = 0; targetIndex < arraySize; ++targetIndex) {
@@ -434,7 +470,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(JSGlobalObject*
                 }
                 ASSERT(found);
             }
-#endif
+#endif // ASSERT_ENABLED
             return array;
         }
 
@@ -540,7 +576,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(JSGlobalObject*
         JSArray* result = JSArray::tryCreate(vm, structure, arraySize);
         RELEASE_ASSERT(result);
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
         // Ensure we see indices for everything in the range: [0, numProperties)
         for (unsigned i = 0; i < numProperties; ++i) {
             bool found = false;
@@ -553,7 +589,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(JSGlobalObject*
             }
             ASSERT(found);
         }
-#endif
+#endif // ASSERT_ENABLED
 
         Vector<JSValue, 8> arguments;
         arguments.grow(numProperties);

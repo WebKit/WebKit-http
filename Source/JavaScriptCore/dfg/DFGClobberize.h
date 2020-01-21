@@ -649,6 +649,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ConstructVarargs:
     case ConstructForwardVarargs:
     case ToPrimitive:
+    case ToPropertyKey:
     case InByVal:
     case InById:
     case HasOwnProperty:
@@ -739,7 +740,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CallEval:
         ASSERT(!node->origin.semantic.inlineCallFrame());
         read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
-        read(AbstractHeap(Stack, virtualRegisterForArgument(0)));
+        read(AbstractHeap(Stack, virtualRegisterForArgumentIncludingThis(0)));
         read(World);
         write(Heap);
         return;
@@ -1101,6 +1102,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(JSCell_structureID);
         return;
 
+    case CheckNeutered:
+        read(JSCell_typeInfoType);
+        read(JSCell_structureID);
+        read(MiscFields);
+        return; 
+        
     case CheckTypeInfoFlags:
         read(JSCell_typeInfoFlags);
         def(HeapLocation(CheckTypeInfoFlagsLoc, JSCell_typeInfoFlags, node->child1()), LazyNode(node));
@@ -1348,14 +1355,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetInternalField: {
         AbstractHeap heap(JSPromiseFields, node->internalFieldIndex());
         read(heap);
-        def(HeapLocation(PromiseInternalFieldLoc, heap, node->child1()), LazyNode(node));
+        def(HeapLocation(InternalFieldObjectLoc, heap, node->child1()), LazyNode(node));
         return;
     }
 
     case PutInternalField: {
         AbstractHeap heap(JSPromiseFields, node->internalFieldIndex());
         write(heap);
-        def(HeapLocation(PromiseInternalFieldLoc, heap, node->child1()), LazyNode(node->child2().node()));
+        def(HeapLocation(InternalFieldObjectLoc, heap, node->child1()), LazyNode(node->child2().node()));
         return;
     }
 
@@ -1595,6 +1602,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewPromise:
     case NewGenerator:
     case NewAsyncGenerator:
+    case NewArrayIterator:
     case NewRegexp:
     case NewSymbol:
     case NewStringObject:
@@ -1604,6 +1612,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomNewAsyncGeneratorFunction:
+    case PhantomNewArrayIterator:
+    case MaterializeNewInternalFieldObject:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
     case PhantomNewRegexp:

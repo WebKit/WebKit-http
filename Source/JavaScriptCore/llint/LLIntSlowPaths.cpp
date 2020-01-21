@@ -379,8 +379,7 @@ inline bool jitCompileAndSetHeuristics(VM& vm, CodeBlock* codeBlock, BytecodeInd
 
     if (!codeBlock->checkIfJITThresholdReached()) {
         CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("threshold not reached, counter = ", codeBlock->llintExecuteCounter()));
-        if (Options::verboseOSR())
-            dataLogF("    JIT threshold should be lifted.\n");
+        dataLogLnIf(Options::verboseOSR(), "    JIT threshold should be lifted.");
         return false;
     }
     
@@ -388,8 +387,7 @@ inline bool jitCompileAndSetHeuristics(VM& vm, CodeBlock* codeBlock, BytecodeInd
     
     switch (codeBlock->jitType()) {
     case JITType::BaselineJIT: {
-        if (Options::verboseOSR())
-            dataLogF("    Code was already compiled.\n");
+        dataLogLnIf(Options::verboseOSR(), "    Code was already compiled.");
         codeBlock->jitSoon();
         return true;
     }
@@ -406,11 +404,9 @@ inline bool jitCompileAndSetHeuristics(VM& vm, CodeBlock* codeBlock, BytecodeInd
 
 static SlowPathReturnType entryOSR(CodeBlock* codeBlock, const char *name, EntryKind kind)
 {
-    if (Options::verboseOSR()) {
-        dataLog(
-            *codeBlock, ": Entered ", name, " with executeCounter = ",
-            codeBlock->llintExecuteCounter(), "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(),
+        *codeBlock, ": Entered ", name, " with executeCounter = ",
+        codeBlock->llintExecuteCounter());
     
     if (!shouldJIT(codeBlock)) {
         codeBlock->dontJITAnytimeSoon();
@@ -472,11 +468,9 @@ LLINT_SLOW_PATH_DECL(loop_osr)
     UNUSED_PARAM(globalObject);
 
 #if ENABLE(JIT)
-    if (Options::verboseOSR()) {
-        dataLog(
+    dataLogLnIf(Options::verboseOSR(),
             *codeBlock, ": Entered loop_osr with executeCounter = ",
-            codeBlock->llintExecuteCounter(), "\n");
-    }
+            codeBlock->llintExecuteCounter());
     
     auto loopOSREntryBytecodeIndex = BytecodeIndex(codeBlock->bytecodeOffset(pc));
 
@@ -514,11 +508,9 @@ LLINT_SLOW_PATH_DECL(replace)
     UNUSED_PARAM(globalObject);
 
 #if ENABLE(JIT)
-    if (Options::verboseOSR()) {
-        dataLog(
-            *codeBlock, ": Entered replace with executeCounter = ",
-            codeBlock->llintExecuteCounter(), "\n");
-    }
+    dataLogLnIf(Options::verboseOSR(),
+        *codeBlock, ": Entered replace with executeCounter = ",
+        codeBlock->llintExecuteCounter());
     
     if (shouldJIT(codeBlock))
         jitCompileAndSetHeuristics(vm, codeBlock);
@@ -1910,11 +1902,7 @@ LLINT_SLOW_PATH_DECL(slow_path_log_shadow_chicken_tail)
     JSValue thisValue = getNonConstantOperand(callFrame, bytecode.m_thisValue);
     JSScope* scope = callFrame->uncheckedR(bytecode.m_scope).Register::scope();
     
-#if USE(JSVALUE64)
     CallSiteIndex callSiteIndex(BytecodeIndex(codeBlock->bytecodeOffset(pc)));
-#else
-    CallSiteIndex callSiteIndex(*pc);
-#endif
 
     ShadowChicken* shadowChicken = vm.shadowChicken();
     RELEASE_ASSERT(shadowChicken);

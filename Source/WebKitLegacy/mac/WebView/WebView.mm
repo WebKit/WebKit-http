@@ -180,6 +180,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MIMETypeRegistry.h>
+#import <WebCore/MediaRecorderProvider.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NetworkStorageSession.h>
@@ -1448,7 +1449,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         WebCore::CacheStorageProvider::create(),
         BackForwardList::create(self),
         WebCore::CookieJar::create(storageProvider.copyRef()),
-        makeUniqueRef<WebProgressTrackerClient>(self)
+        makeUniqueRef<WebProgressTrackerClient>(self),
+        makeUniqueRef<WebCore::MediaRecorderProvider>()
     );
 #if !PLATFORM(IOS_FAMILY)
     pageConfiguration.chromeClient = new WebChromeClient(self);
@@ -1717,7 +1719,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         WebCore::CacheStorageProvider::create(),
         BackForwardList::create(self),
         WebCore::CookieJar::create(storageProvider.copyRef()),
-        makeUniqueRef<WebProgressTrackerClient>(self)
+        makeUniqueRef<WebProgressTrackerClient>(self),
+        makeUniqueRef<WebCore::MediaRecorderProvider>()
     );
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
 #if ENABLE(DRAG_SUPPORT)
@@ -2621,7 +2624,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 #endif // PLATFORM(IOS_FAMILY)
 #endif // ENABLE(REMOTE_INSPECTOR)
 
-- (WebCore::Page*)page
+- (NakedPtr<WebCore::Page>)page
 {
     return _private->page;
 }
@@ -3002,6 +3005,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setVisualViewportAPIEnabled([preferences visualViewportAPIEnabled]);
     settings.setSyntheticEditingCommandsEnabled([preferences syntheticEditingCommandsEnabled]);
     settings.setCSSOMViewScrollingAPIEnabled([preferences CSSOMViewScrollingAPIEnabled]);
+    settings.setCSSOMViewSmoothScrollingEnabled([preferences CSSOMViewSmoothScrollingEnabled]);
     settings.setMediaContentTypesRequiringHardwareSupport([preferences mediaContentTypesRequiringHardwareSupport]);
 
     switch ([preferences storageBlockingPolicy]) {
@@ -3202,6 +3206,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setDialogElementEnabled([preferences dialogElementEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setKeygenElementEnabled([preferences keygenElementEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setCSSShadowPartsEnabled([preferences cssShadowPartsEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setLayoutFormattingContextIntegrationEnabled([preferences layoutFormattingContextIntegrationEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setIsInAppBrowserPrivacyEnabled([preferences isInAppBrowserPrivacyEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -3275,6 +3280,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(RESIZE_OBSERVER)
     settings.setResizeObserverEnabled([preferences resizeObserverEnabled]);
 #endif
+    settings.setAspectRatioOfImgFromWidthAndHeightEnabled([preferences aspectRatioOfImgFromWidthAndHeightEnabled]);
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -9312,7 +9318,7 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode
+- (void)_enterVideoFullscreenForVideoElement:(NakedPtr<WebCore::HTMLVideoElement>)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode
 {
     if (_private->fullscreenController) {
         if ([_private->fullscreenController videoElement] == videoElement) {
@@ -9363,14 +9369,14 @@ bool LayerFlushController::flushLayers()
     return mediaElement->hasAudio() || mediaElement->hasVideo();
 }
 
-- (void)_setUpPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement
+- (void)_setUpPlaybackControlsManagerForMediaElement:(NakedRef<WebCore::HTMLMediaElement>)mediaElement
 {
-    if (_private->playbackSessionModel && _private->playbackSessionModel->mediaElement() == &mediaElement)
+    if (_private->playbackSessionModel && _private->playbackSessionModel->mediaElement() == mediaElement.ptr())
         return;
 
     if (!_private->playbackSessionModel)
         _private->playbackSessionModel = WebCore::PlaybackSessionModelMediaElement::create();
-    _private->playbackSessionModel->setMediaElement(&mediaElement);
+    _private->playbackSessionModel->setMediaElement(mediaElement.ptr());
 
     if (!_private->playbackSessionInterface)
         _private->playbackSessionInterface = WebCore::PlaybackSessionInterfaceMac::create(*_private->playbackSessionModel);
@@ -9394,7 +9400,7 @@ bool LayerFlushController::flushLayers()
 #endif // ENABLE(VIDEO)
 
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS_FAMILY)
-- (BOOL)_supportsFullScreenForElement:(const WebCore::Element*)element withKeyboard:(BOOL)withKeyboard
+- (BOOL)_supportsFullScreenForElement:(NakedPtr<const WebCore::Element>)element withKeyboard:(BOOL)withKeyboard
 {
     if (![[self preferences] fullScreenEnabled])
         return NO;
@@ -9402,17 +9408,17 @@ bool LayerFlushController::flushLayers()
     return true;
 }
 
-- (void)_enterFullScreenForElement:(WebCore::Element*)element
+- (void)_enterFullScreenForElement:(NakedPtr<WebCore::Element>)element
 {
     if (!_private->newFullscreenController)
         _private->newFullscreenController = [[WebFullScreenController alloc] init];
 
-    [_private->newFullscreenController setElement:element];
+    [_private->newFullscreenController setElement:element.get()];
     [_private->newFullscreenController setWebView:self];
     [_private->newFullscreenController enterFullScreen:[[self window] screen]];        
 }
 
-- (void)_exitFullScreenForElement:(WebCore::Element*)element
+- (void)_exitFullScreenForElement:(NakedPtr<WebCore::Element>)element
 {
     if (!_private->newFullscreenController)
         return;

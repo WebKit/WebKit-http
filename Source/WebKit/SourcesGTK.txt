@@ -83,6 +83,7 @@ Shared/Plugins/unix/PluginSearchPath.cpp
 Shared/cairo/ShareableBitmapCairo.cpp
 
 Shared/glib/ArgumentCodersGLib.cpp
+Shared/glib/InputMethodState.cpp
 Shared/glib/ProcessExecutablePathGLib.cpp
 Shared/glib/UserMessage.cpp
 Shared/glib/WebContextMenuItemGlib.cpp
@@ -157,6 +158,8 @@ UIProcess/API/glib/WebKitNetworkProxySettings.cpp @no-unify
 UIProcess/API/glib/WebKitNotification.cpp @no-unify
 UIProcess/API/glib/WebKitNotificationPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitNotificationProvider.cpp @no-unify
+UIProcess/API/glib/WebKitOptionMenu.cpp @no-unify
+UIProcess/API/glib/WebKitOptionMenuItem.cpp @no-unify
 UIProcess/API/glib/WebKitPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitPlugin.cpp @no-unify
 UIProcess/API/glib/WebKitPointerLockPermissionRequest.cpp @no-unify
@@ -193,8 +196,6 @@ UIProcess/API/gtk/WebKitColorChooserRequest.cpp @no-unify
 UIProcess/API/gtk/WebKitEmojiChooser.cpp @no-unify
 UIProcess/API/gtk/WebKitInputMethodContextGtk.cpp @no-unify
 UIProcess/API/gtk/WebKitInputMethodContextImplGtk.cpp @no-unify
-UIProcess/API/gtk/WebKitOptionMenu.cpp @no-unify
-UIProcess/API/gtk/WebKitOptionMenuItem.cpp @no-unify
 UIProcess/API/gtk/WebKitPopupMenu.cpp @no-unify
 UIProcess/API/gtk/WebKitPrintCustomWidget.cpp @no-unify
 UIProcess/API/gtk/WebKitPrintOperation.cpp @no-unify
@@ -393,8 +394,8 @@ WebProcess/InjectedBundle/glib/InjectedBundleGlib.cpp
 
 WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 
-WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp
-WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp
+WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp @no-unify
+WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp @no-unify
 
 WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp @no-unify
 
@@ -403,7 +404,6 @@ WebProcess/WebCoreSupport/glib/WebEditorClientGLib.cpp
 WebProcess/WebCoreSupport/gtk/WebContextMenuClientGtk.cpp
 WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp
 WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp
-WebProcess/WebCoreSupport/gtk/WebPopupMenuGtk.cpp
 
 WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 

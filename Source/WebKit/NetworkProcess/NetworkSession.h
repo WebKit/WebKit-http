@@ -153,8 +153,8 @@ protected:
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
     bool m_enableResourceLoadStatisticsLogTestingEvent;
     bool m_downgradeReferrer { true };
-    WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::AllOnSitesWithoutUserInteraction };
-    WebCore::FirstPartyWebsiteDataRemovalMode m_firstPartyWebsiteDataRemovalMode { WebCore::FirstPartyWebsiteDataRemovalMode::None };
+    WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::All };
+    WebCore::FirstPartyWebsiteDataRemovalMode m_firstPartyWebsiteDataRemovalMode { WebCore::FirstPartyWebsiteDataRemovalMode::AllButCookies };
 #endif
     bool m_isStaleWhileRevalidateEnabled { false };
     UniqueRef<AdClickAttributionManager> m_adClickAttribution;
@@ -163,7 +163,7 @@ protected:
 
     PrefetchCache m_prefetchCache;
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     bool m_isInvalidated { false };
 #endif
     RefPtr<NetworkCache::Cache> m_cache;

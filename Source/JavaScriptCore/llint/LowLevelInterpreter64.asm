@@ -23,25 +23,6 @@
 
 
 # Utilities.
-
-macro nextInstruction()
-    loadb [PB, PC, 1], t0
-    leap _g_opcodeMap, t1
-    jmp [t1, t0, PtrSize], BytecodePtrTag
-end
-
-macro nextInstructionWide16()
-    loadb OpcodeIDNarrowSize[PB, PC, 1], t0
-    leap _g_opcodeMapWide16, t1
-    jmp [t1, t0, PtrSize], BytecodePtrTag
-end
-
-macro nextInstructionWide32()
-    loadb OpcodeIDNarrowSize[PB, PC, 1], t0
-    leap _g_opcodeMapWide32, t1
-    jmp [t1, t0, PtrSize], BytecodePtrTag
-end
-
 macro storePC()
     storei PC, LLIntReturnPC[cfr]
 end
@@ -2102,6 +2083,23 @@ llintOpWithReturn(op_to_primitive, OpToPrimitive, macro (size, get, dispatch, re
 
 .opToPrimitiveSlowCase:
     callSlowPath(_slow_path_to_primitive)
+    dispatch()
+end)
+
+
+llintOpWithReturn(op_to_property_key, OpToPropertyKey, macro (size, get, dispatch, return)
+    get(m_src, t2)
+    loadConstantOrVariable(size, t2, t0)
+
+    btqnz t0, notCellMask, .opToPropertyKeySlow
+    bbeq JSCell::m_type[t0], SymbolType, .done
+    bbneq JSCell::m_type[t0], StringType, .opToPropertyKeySlow
+
+.done:
+    return(t0)
+
+.opToPropertyKeySlow:
+    callSlowPath(_slow_path_to_property_key)
     dispatch()
 end)
 

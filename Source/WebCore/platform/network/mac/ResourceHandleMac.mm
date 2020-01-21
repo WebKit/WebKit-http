@@ -95,7 +95,7 @@ ResourceHandle::~ResourceHandle()
     LOG(Network, "Handle %p destroyed", this);
 }
 
-#if PLATFORM(IOS_FAMILY)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 
 static bool synchronousWillSendRequestEnabled()
 {
@@ -207,8 +207,10 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
     NSMutableDictionary *propertyDictionary = [NSMutableDictionary dictionaryWithDictionary:connectionProperties];
     [propertyDictionary setObject:streamProperties forKey:@"kCFURLConnectionSocketStreamProperties"];
     const bool usesCache = false;
+#if !PLATFORM(MACCATALYST)
     if (synchronousWillSendRequestEnabled())
         CFURLRequestSetShouldStartSynchronously([nsRequest _CFURLRequest], 1);
+#endif
 #else
     NSMutableDictionary *propertyDictionary = [NSMutableDictionary dictionaryWithObject:streamProperties forKey:@"kCFURLConnectionSocketStreamProperties"];
     const bool usesCache = true;
@@ -309,15 +311,15 @@ void ResourceHandle::unschedule(SchedulePair& pair)
         [d->m_connection.get() unscheduleFromRunLoop:runLoop forMode:(__bridge NSString *)pair.mode()];
 }
 
-id ResourceHandle::makeDelegate(bool shouldUseCredentialStorage, MessageQueue<Function<void()>>* queue)
+id ResourceHandle::makeDelegate(bool shouldUseCredentialStorage, RefPtr<SynchronousLoaderMessageQueue>&& queue)
 {
     ASSERT(!d->m_delegate);
 
     id <NSURLConnectionDelegate> delegate;
     if (shouldUseCredentialStorage)
-        delegate = [[WebCoreResourceHandleAsOperationQueueDelegate alloc] initWithHandle:this messageQueue:queue];
+        delegate = [[WebCoreResourceHandleAsOperationQueueDelegate alloc] initWithHandle:this messageQueue:WTFMove(queue)];
     else
-        delegate = [[WebCoreResourceHandleWithCredentialStorageAsOperationQueueDelegate alloc] initWithHandle:this messageQueue:queue];
+        delegate = [[WebCoreResourceHandleWithCredentialStorageAsOperationQueueDelegate alloc] initWithHandle:this messageQueue:WTFMove(queue)];
 
     d->m_delegate = delegate;
     [delegate release];

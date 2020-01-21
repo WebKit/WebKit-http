@@ -62,7 +62,7 @@
 #include "TransformState.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
 #include <wtf/SetForScope.h>
 #endif
 
@@ -445,7 +445,8 @@ const RenderBox& RenderBoxModelObject::enclosingClippingBoxForStickyPosition(con
 {
     ASSERT(isStickilyPositioned());
 
-    auto* clipLayer = layer()->enclosingOverflowClipLayer(ExcludeSelf);
+    RenderLayer* clipLayer = hasLayer() ? layer()->enclosingOverflowClipLayer(ExcludeSelf) : nullptr;
+
     if (enclosingClippingLayer)
         *enclosingClippingLayer = clipLayer;
 
@@ -536,7 +537,8 @@ void RenderBoxModelObject::computeStickyPositionConstraints(StickyPositionViewpo
 
 FloatRect RenderBoxModelObject::constrainingRectForStickyPosition() const
 {
-    RenderLayer* enclosingClippingLayer = layer()->enclosingOverflowClipLayer(ExcludeSelf);
+    RenderLayer* enclosingClippingLayer = hasLayer() ? layer()->enclosingOverflowClipLayer(ExcludeSelf) : nullptr;
+
     if (enclosingClippingLayer) {
         RenderBox& enclosingClippingBox = downcast<RenderBox>(enclosingClippingLayer->renderer());
         LayoutRect clipRect = enclosingClippingBox.overflowClipRect(LayoutPoint(), nullptr); // FIXME: make this work in regions.
@@ -560,8 +562,6 @@ FloatRect RenderBoxModelObject::constrainingRectForStickyPosition() const
 
 LayoutSize RenderBoxModelObject::stickyPositionOffset() const
 {
-    ASSERT(hasLayer());
-    
     FloatRect constrainingRect = constrainingRectForStickyPosition();
     StickyPositionViewportConstraints constraints;
     computeStickyPositionConstraints(constraints, constrainingRect);
@@ -2693,6 +2693,23 @@ bool RenderBoxModelObject::hasRunningAcceleratedAnimations() const
             return timeline->runningAnimationsForElementAreAllAccelerated(*node);
     }
     return false;
+}
+
+void RenderBoxModelObject::collectAbsoluteQuadsForContinuation(Vector<FloatQuad>& quads, bool* wasFixed) const
+{
+    ASSERT(continuation());
+    for (auto* nextInContinuation = this->continuation(); nextInContinuation; nextInContinuation = nextInContinuation->continuation()) {
+        if (is<RenderBlock>(*nextInContinuation)) {
+            auto& blockBox = downcast<RenderBlock>(*nextInContinuation);
+            // For blocks inside inlines, we include margins so that we run right up to the inline boxes
+            // above and below us (thus getting merged with them to form a single irregular shape).
+            auto logicalRect = FloatRect { 0, -blockBox.collapsedMarginBefore(), blockBox.width(),
+                blockBox.height() + blockBox.collapsedMarginBefore() + blockBox.collapsedMarginAfter() };
+            nextInContinuation->absoluteQuadsIgnoringContinuation(logicalRect, quads, wasFixed);
+            continue;
+        }
+        nextInContinuation->absoluteQuadsIgnoringContinuation({ }, quads, wasFixed);
+    }
 }
 
 } // namespace WebCore

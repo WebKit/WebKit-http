@@ -633,7 +633,7 @@ void RenderGrid::placeItemsOnGrid(GridTrackSizingAlgorithm& algorithm, Optional<
         grid.insert(*child, { area.rows, area.columns });
     }
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     if (grid.hasGridItems()) {
         ASSERT(grid.numTracks(ForRows) >= GridPositionsResolver::explicitGridRowCount(style(), grid.autoRepeatTracks(ForRows)));
         ASSERT(grid.numTracks(ForColumns) >= GridPositionsResolver::explicitGridColumnCount(style(), grid.autoRepeatTracks(ForColumns)));
@@ -649,7 +649,7 @@ void RenderGrid::placeItemsOnGrid(GridTrackSizingAlgorithm& algorithm, Optional<
 
     grid.setNeedsItemsPlacement(false);
 
-#if !ASSERT_DISABLED
+#if ASSERT_ENABLED
     for (auto* child = grid.orderIterator().first(); child; child = grid.orderIterator().next()) {
         if (grid.orderIterator().shouldSkipChild(*child))
             continue;
@@ -866,10 +866,16 @@ Vector<LayoutUnit> RenderGrid::trackSizesForComputedStyle(GridTrackSizingDirecti
     ASSERT(!m_grid.needsItemsPlacement());
     bool hasCollapsedTracks = m_grid.hasAutoRepeatEmptyTracks(direction);
     LayoutUnit gap = !hasCollapsedTracks ? gridGap(direction) : 0_lu;
-    tracks.reserveCapacity(numPositions - 1);
-    for (size_t i = 0; i < numPositions - 2; ++i)
+    size_t explicitStart = -m_grid.smallestTrackStart(direction);
+    size_t explicitEnd = explicitStart + (isRowAxis ? style().gridColumns() : style().gridRows()).size() + autoRepeatCountForDirection(direction);
+    // Usually we have `explicitEnd <= numPositions - 1`, but the latter may be smaller when the maximum number of tracks is reached.
+    explicitEnd = std::min(explicitEnd, numPositions - 1);
+    tracks.reserveCapacity(explicitEnd - explicitStart);
+    size_t loopEnd = std::min(explicitEnd, numPositions - 2);
+    for (size_t i = explicitStart; i < loopEnd; ++i)
         tracks.append(positions[i + 1] - positions[i] - offsetBetweenTracks - gap);
-    tracks.append(positions[numPositions - 1] - positions[numPositions - 2]);
+    if (loopEnd < explicitEnd)
+        tracks.append(positions[explicitEnd] - positions[explicitEnd - 1]);
 
     if (!hasCollapsedTracks)
         return tracks;
@@ -878,13 +884,13 @@ Vector<LayoutUnit> RenderGrid::trackSizesForComputedStyle(GridTrackSizingDirecti
     size_t lastLine = tracks.size();
     gap = gridGap(direction);
     for (size_t i = 1; i < lastLine; ++i) {
-        if (m_grid.isEmptyAutoRepeatTrack(direction, i - 1))
+        if (m_grid.isEmptyAutoRepeatTrack(direction, i - 1 + explicitStart))
             --remainingEmptyTracks;
         else {
             // Remove the gap between consecutive non empty tracks. Remove it also just once for an
             // arbitrary number of empty tracks between two non empty ones.
             bool allRemainingTracksAreEmpty = remainingEmptyTracks == (lastLine - i);
-            if (!allRemainingTracksAreEmpty || !m_grid.isEmptyAutoRepeatTrack(direction, i))
+            if (!allRemainingTracksAreEmpty || !m_grid.isEmptyAutoRepeatTrack(direction, i + explicitStart))
                 tracks[i - 1] -= gap;
         }
     }
@@ -1228,11 +1234,7 @@ bool RenderGrid::isBaselineAlignmentForChild(const RenderBox& child, GridAxis ba
 // FIXME: This logic is shared by RenderFlexibleBox, so it might be refactored somehow.
 int RenderGrid::baselinePosition(FontBaseline, bool, LineDirectionMode direction, LinePositionMode mode) const
 {
-#if !ASSERT_DISABLED
-    ASSERT(mode == PositionOnContainingLine);
-#else
-    UNUSED_PARAM(mode);
-#endif
+    ASSERT_UNUSED(mode, mode == PositionOnContainingLine);
     auto baseline = firstLineBaseline();
     if (!baseline)
         return synthesizedBaselineFromBorderBox(*this, direction) + marginLogicalHeight();

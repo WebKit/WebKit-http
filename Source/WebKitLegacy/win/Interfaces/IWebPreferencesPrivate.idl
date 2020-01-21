@@ -223,6 +223,8 @@ interface IWebPreferencesPrivate6 : IWebPreferencesPrivate5
     HRESULT setVisualViewportAPIEnabled([in] BOOL enabled);
     HRESULT CSSOMViewScrollingAPIEnabled([out, retval] BOOL*);
     HRESULT setCSSOMViewScrollingAPIEnabled([in] BOOL enabled);
+    HRESULT CSSOMViewSmoothScrollingEnabled([out, retval] BOOL*);
+    HRESULT setCSSOMViewSmoothScrollingEnabled([in] BOOL enabled);
     HRESULT fetchAPIKeepAliveEnabled([out, retval] BOOL* enabled);
     HRESULT setFetchAPIKeepAliveEnabled([in] BOOL enabled);
     HRESULT spatialNavigationEnabled([out, retval] BOOL *enabled);
@@ -250,4 +252,6 @@ interface IWebPreferencesPrivate7 : IWebPreferencesPrivate6
     HRESULT setAsyncClipboardAPIEnabled([in] BOOL enabled);
     HRESULT webAnimationsCompositeOperationsEnabled([out, retval] BOOL*);
     HRESULT setWebAnimationsCompositeOperationsEnabled([in] BOOL enabled);
+    HRESULT aspectRatioOfImgFromWidthAndHeightEnabled([out, retval] BOOL*);
+    HRESULT setAspectRatioOfImgFromWidthAndHeightEnabled([in] BOOL enabled);
 }
