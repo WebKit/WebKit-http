@@ -199,6 +199,7 @@ protected:
     mutable MediaTime m_durationAtEOS;
     bool m_paused;
     float m_playbackRate;
+    bool m_playbackRatePause;
     GstState m_currentState;
     GstState m_oldState;
     GstState m_requestedState;
@@ -245,7 +246,6 @@ private:
 #endif
     GstStructure* m_mediaLocations;
     int m_mediaLocationCurrentIndex;
-    bool m_playbackRatePause;
     MediaTime m_timeOfOverlappingSeek;
     float m_lastPlaybackRate;
     Timer m_fillTimer;

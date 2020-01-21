@@ -449,6 +449,15 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
 
 void MediaPlayerPrivateGStreamerMSE::updatePlaybackRate()
 {
+    if (m_playbackRatePause) {
+        GstState state;
+        GstState pending;
+
+        gst_element_get_state(m_pipeline.get(), &state, &pending, 0);
+        if (state != GST_STATE_PLAYING && pending != GST_STATE_PLAYING)
+            changePipelineState(GST_STATE_PLAYING);
+        m_playbackRatePause = false;
+    }
 }
 
 bool MediaPlayerPrivateGStreamerMSE::seeking() const
