@@ -24,12 +24,15 @@
 #include "FrameView.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
-#include "GraphicsLayerTextureMapper.h"
 #include "NotImplemented.h"
-#include "TextureMapperLayer.h"
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebView.h"
+
+#if USE(TEXTURE_MAPPER)
+#include "GraphicsLayerTextureMapper.h"
+#include "TextureMapperLayer.h"
+#endif
 
 const double compositingFrameRate = 60;
 

@@ -1,6 +1,6 @@
 include(platform/GCrypt.cmake)
 include(platform/ImageDecoders.cmake)
-include(platform/TextureMapper.cmake)
+#include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${THIRDPARTY_DIR}/ANGLE/"
@@ -87,12 +87,13 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/StillImageHaiku.cpp
   platform/graphics/haiku/TileHaiku.cpp
   platform/graphics/haiku/TiledBackingStoreHaiku.cpp
+  platform/graphics/haiku/GraphicsLayerHaiku.cpp
 
-  platform/graphics/texmap/BitmapTexture.cpp
-  platform/graphics/texmap/BitmapTextureImageBuffer.cpp
-  platform/graphics/texmap/BitmapTexturePool.cpp
-  platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-  platform/graphics/texmap/TextureMapperImageBuffer.cpp
+  #platform/graphics/texmap/BitmapTexture.cpp
+  #platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+  #platform/graphics/texmap/BitmapTexturePool.cpp
+  #platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+  #platform/graphics/texmap/TextureMapperImageBuffer.cpp
 
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 

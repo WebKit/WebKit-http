@@ -34,15 +34,15 @@ namespace WebCore {
 
 class GraphicsLayerHaiku: public GraphicsLayer {
 public:
-    GraphicsLayerHaiku(GraphicsLayerClient& client);
+    GraphicsLayerHaiku(Type type, GraphicsLayerClient& client);
     ~GraphicsLayerHaiku();
 
     void setNeedsDisplay();
     void setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer);
 };
 
-GraphicsLayerHaiku::GraphicsLayerHaiku(GraphicsLayerClient& client)
-    : GraphicsLayer(client)
+GraphicsLayerHaiku::GraphicsLayerHaiku(Type type, GraphicsLayerClient& client)
+    : GraphicsLayer(type, client)
 {
 }
 
@@ -62,17 +62,11 @@ void GraphicsLayerHaiku::setNeedsDisplayInRect(const FloatRect&, ShouldClipToLay
     notImplemented();
 }
 
-std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client)
+Ref<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client, Type type)
 {
-    std::unique_ptr<GraphicsLayer> graphicsLayer;
     if (!factory)
-        graphicsLayer = std::make_unique<GraphicsLayerHaiku>(client);
-    else
-        graphicsLayer = factory->createGraphicsLayer(client);
-
-    graphicsLayer->initialize();
-
-    return std::move(graphicsLayer);
+        return adoptRef(* new GraphicsLayerHaiku(type, client));
+    return factory->createGraphicsLayer(type, client);
 }
 
 }
