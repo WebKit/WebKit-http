@@ -117,7 +117,7 @@ public:
     void showSpellingUI(bool show) override;
     bool spellingUIIsShowing() override;
     void willSetInputMethodState() override;
-    void setInputMethodState(bool enabled) override;
+    void setInputMethodState(Element*) override;
 
     bool performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove) override;
     // TextCheckerClient

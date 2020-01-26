@@ -60,25 +60,10 @@ FloatSize nativeImageDrawingScale(GraphicsContext& context, const FloatRect& des
 
 void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
     WebCore::GraphicsContext& ctxt, WebCore::FloatRect const& dst,
-    WebCore::FloatRect const& src, WebCore::IntSize const&,
+    WebCore::FloatRect const& src, WebCore::IntSize const& size,
     WebCore::ImagePaintingOptions const& options)
 {
-    ctxt.save();
-    ctxt.setCompositeOperation(options.compositeOperator());
-
-    BRect srcRect(src);
-    BRect dstRect(dst);
-
-    // Test using example site at
-    // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
-    ctxt.platformContext()->SetDrawingMode(B_OP_ALPHA);
-    uint32 flags = 0;
-    if (ctxt.imageInterpolationQuality() == InterpolationQuality::Default
-        || ctxt.imageInterpolationQuality() > InterpolationQuality::Low) {
-        flags |= B_FILTER_BITMAP_BILINEAR;
-    }
-    ctxt.platformContext()->DrawBitmapAsync(image.get(), srcRect, dstRect, flags);
-    ctxt.restore();
+    ctxt.drawNativeImage(image, size, dst, src, options);
 }
 
 

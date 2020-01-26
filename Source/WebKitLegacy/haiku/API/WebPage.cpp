@@ -61,6 +61,7 @@
 #include "InspectorClientHaiku.h"
 #include "LibWebRTCProvider.h"
 #include "LogInitialization.h"
+#include "MediaRecorderProvider.h"
 #include "MemoryCache.h"
 #include "WebNavigatorContentUtilsClient.h"
 #include "NotificationClientHaiku.h"
@@ -230,6 +231,14 @@ BMessenger BWebPage::sDownloadListener;
     MemoryCache::singleton().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
 }
 
+
+class MediaRecorderProviderHaiku: public MediaRecorderProvider
+{
+	public:
+		MediaRecorderProviderHaiku() = default;
+};
+
+
 BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     : BHandler("BWebPage")
     , fWebView(webView)
@@ -264,8 +273,10 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 		SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
 		CacheStorageProvider::create(),
-		BackForwardList::create(), CookieJar::create(storageProvider.copyRef()),
-    	makeUniqueRef<ProgressTrackerClientHaiku>(this)
+		BackForwardList::create(),
+		CookieJar::create(storageProvider.copyRef()),
+    	makeUniqueRef<ProgressTrackerClientHaiku>(this),
+		makeUniqueRef<MediaRecorderProviderHaiku>()
 		);
 
 	// alternativeText

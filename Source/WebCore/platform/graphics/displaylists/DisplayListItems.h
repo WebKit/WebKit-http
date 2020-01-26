@@ -1384,7 +1384,7 @@ Optional<Ref<DrawTiledScaledImage>> DrawTiledScaledImage::decode(Decoder& decode
     return DrawTiledScaledImage::create(*imageHandle->image, *destination, *source, *tileScaleFactor, hRule, vRule, *imagePaintingOptions);
 }
 
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
 class DrawNativeImage : public DrawingItem {
 public:
     static Ref<DrawNativeImage> create(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
@@ -2796,7 +2796,7 @@ void Item::encode(Encoder& encoder) const
     case ItemType::DrawTiledScaledImage:
         encoder << downcast<DrawTiledScaledImage>(*this);
         break;
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
     case ItemType::DrawNativeImage:
         encoder << downcast<DrawNativeImage>(*this);
         break;
@@ -2977,7 +2977,7 @@ Optional<Ref<Item>> Item::decode(Decoder& decoder)
         if (auto item = DrawTiledScaledImage::decode(decoder))
             return static_reference_cast<Item>(WTFMove(*item));
         break;
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
     case ItemType::DrawNativeImage:
         if (auto item = DrawNativeImage::decode(decoder))
             return static_reference_cast<Item>(WTFMove(*item));
@@ -3130,7 +3130,7 @@ SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawGlyphs)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawImage)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawTiledImage)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawTiledScaledImage)
-#if USE(CG) || USE(CAIRO)
+#if USE(CG) || USE(CAIRO) || USE(HAIKU)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawNativeImage)
 #endif
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawPattern)
@@ -3189,7 +3189,7 @@ template<> struct EnumTraits<WebCore::DisplayList::ItemType> {
     WebCore::DisplayList::ItemType::DrawImage,
     WebCore::DisplayList::ItemType::DrawTiledImage,
     WebCore::DisplayList::ItemType::DrawTiledScaledImage,
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
     WebCore::DisplayList::ItemType::DrawNativeImage,
 #endif
     WebCore::DisplayList::ItemType::DrawPattern,

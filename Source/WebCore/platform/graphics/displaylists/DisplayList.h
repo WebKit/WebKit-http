@@ -61,7 +61,7 @@ enum class ItemType : uint8_t {
     DrawImage,
     DrawTiledImage,
     DrawTiledScaledImage,
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
     DrawNativeImage,
 #endif
     DrawPattern,

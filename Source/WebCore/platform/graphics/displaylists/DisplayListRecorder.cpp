@@ -126,7 +126,7 @@ ImageDrawResult Recorder::drawTiledImage(Image& image, const FloatRect& destinat
     return ImageDrawResult::DidRecord;
 }
 
-#if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
+#if USE(CG) || USE(CAIRO) || USE(DIRECT2D) || USE(HAIKU)
 void Recorder::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
 {
     DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawNativeImage::create(image, imageSize, destRect, srcRect, options)));

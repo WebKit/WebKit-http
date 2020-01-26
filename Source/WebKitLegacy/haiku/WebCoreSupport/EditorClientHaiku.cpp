@@ -501,7 +501,7 @@ void EditorClientHaiku::willSetInputMethodState()
     notImplemented();
 }
 
-void EditorClientHaiku::setInputMethodState(bool /*enabled*/)
+void EditorClientHaiku::setInputMethodState(Element*)
 {
     notImplemented();
 }

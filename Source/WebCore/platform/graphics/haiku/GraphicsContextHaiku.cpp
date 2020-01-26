@@ -185,6 +185,29 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
     }
 }
 
+void GraphicsContext::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
+{
+    if (paintingDisabled())
+        return;
+
+	save();
+    setCompositeOperation(options.compositeOperator());
+
+    // Test using example site at
+    // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
+    platformContext()->SetDrawingMode(B_OP_ALPHA);
+
+	uint32 flags = 0;
+
+	// TODO handle more things from options (blend mode, etc)
+	if (options.interpolationQuality() > InterpolationQuality::Low)
+		flags |= B_FILTER_BITMAP_BILINEAR;
+
+	m_data->view()->DrawBitmapAsync(image.get(), BRect(srcRect), BRect(destRect), flags);
+
+	restore();
+}
+
 // This is only used to draw borders.
 void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
