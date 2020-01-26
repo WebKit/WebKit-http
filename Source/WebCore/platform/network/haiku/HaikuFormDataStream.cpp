@@ -109,7 +109,7 @@ void BFormDataIO::computeContentLength()
     m_isContentLengthUpdated = true;
 
     for (const auto& element : m_formData->elements())
-        m_totalSize += element.lengthInBytes(blobRegistry().blobRegistryImpl());
+        m_totalSize += element.lengthInBytes();
 }
 
 
@@ -164,7 +164,7 @@ WTF::Optional<size_t> BFormDataIO::readFromData(const Vector<char>& data, char* 
 
 WTF::Optional<size_t> BFormDataIO::readFromBlob(const FormDataElement::EncodedBlobData& blob, char* buffer, size_t size)
 {
-    auto* blobData = blobRegistry().blobRegistryImpl()->getBlobDataFromURL(blob.url);
+    BlobData* blobData = blobRegistry().blobRegistryImpl()->getBlobDataFromURL(blob.url);
 
 	if (!blobData)
 		return WTF::nullopt;

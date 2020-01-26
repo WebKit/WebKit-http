@@ -89,8 +89,12 @@
 #define USE_SOUP 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU)
 #define USE_WEBP 1
+#endif
+
+#if PLATFORM(HAIKU)
+#define USE_HAIKU 1
 #endif
 
 /* On Windows, use QueryPerformanceCounter by default */
@@ -192,7 +196,7 @@
 #define USE_EXPORT_MACROS 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU)
 #define USE_UNIX_DOMAIN_SOCKETS 1
 #endif
 
@@ -279,6 +283,8 @@
 #elif PLATFORM(COCOA)
 /* OS X and IOS. Use CoreFoundation & GCD abstraction. */
 #define USE_COCOA_EVENT_LOOP 1
+#elif PLATFORM(HAIKU)
+#define USE_HAIKU_EVENT_LOOP 1
 #else
 #define USE_GENERIC_EVENT_LOOP 1
 #endif

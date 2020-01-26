@@ -801,12 +801,12 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
 
 /* Enable the DFG JIT on X86 and X86_64. */
-#if CPU(X86_64) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HURD) || OS(WINDOWS))
+#if CPU(X86_64) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HAIKU) || OS(HURD) || OS(WINDOWS))
 #define ENABLE_DFG_JIT 1
 #endif
 
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS, Linux, and FreeBSD. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS_FAMILY) || OS(LINUX) || OS(FREEBSD))
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS_FAMILY) || OS(HAIKU) || OS(LINUX) || OS(FREEBSD))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on MIPS. */
@@ -956,7 +956,7 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 
 /* CSS Selector JIT Compiler */
-#if !defined(ENABLE_CSS_SELECTOR_JIT) && ((CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS_FAMILY))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(WPE)))
+#if !defined(ENABLE_CSS_SELECTOR_JIT) && ((CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS_FAMILY))) && ENABLE(JIT) && (OS(DARWIN) || OS(HAIKU) || PLATFORM(GTK) || PLATFORM(WPE)))
 #define ENABLE_CSS_SELECTOR_JIT 1
 #endif
 
