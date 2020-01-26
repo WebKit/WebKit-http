@@ -62,8 +62,8 @@ inline int offsetForOrientation(ScrollOffset offset, ScrollbarOrientation orient
 
 class ScrollableArea : public CanMakeWeakPtr<ScrollableArea> {
 public:
-    ScrollBehaviorStatus currentScrollBehaviorStatus() { return m_currentScrollBehaviorStatus; }
-    void setScrollBehaviorStatus(ScrollBehaviorStatus status) { m_currentScrollBehaviorStatus = status; }
+    ScrollBehaviorStatus currentScrollBehaviorStatus() { return static_cast<ScrollBehaviorStatus>(m_currentScrollBehaviorStatus); }
+    void setScrollBehaviorStatus(ScrollBehaviorStatus status) { m_currentScrollBehaviorStatus = static_cast<unsigned>(status); }
 
     WEBCORE_EXPORT bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
     WEBCORE_EXPORT void scrollToOffsetWithAnimation(const FloatPoint&, ScrollClamping = ScrollClamping::Clamped);
@@ -383,8 +383,6 @@ private:
     unsigned m_currentVerticalSnapPointIndex { 0 };
 #endif
 
-    ScrollBehaviorStatus m_currentScrollBehaviorStatus { ScrollBehaviorStatus::NotInAnimation };
-
     // There are 8 possible combinations of writing mode and direction. Scroll origin will be non-zero in the x or y axis
     // if there is any reversed direction or writing-mode. The combinations are:
     // writing-mode / direction     scrollOrigin.x() set    scrollOrigin.y() set
@@ -410,6 +408,7 @@ private:
     unsigned m_scrollOriginChanged : 1;
     unsigned m_currentScrollType : 1; // ScrollType
     unsigned m_scrollShouldClearLatchedState : 1;
+    unsigned m_currentScrollBehaviorStatus : 1;
 };
 
 } // namespace WebCore

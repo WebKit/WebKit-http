@@ -71,6 +71,7 @@ ScrollableArea::ScrollableArea()
     , m_scrollOriginChanged(false)
     , m_currentScrollType(static_cast<unsigned>(ScrollType::User))
     , m_scrollShouldClearLatchedState(false)
+    , m_currentScrollBehaviorStatus(static_cast<unsigned>(ScrollBehaviorStatus::NotInAnimation))
 {
 }
 

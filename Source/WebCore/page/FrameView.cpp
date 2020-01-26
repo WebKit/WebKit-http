@@ -3670,6 +3670,7 @@ void FrameView::scrollToOffsetWithAnimation(const ScrollOffset& offset, ScrollTy
         scrollAnimator().cancelAnimations();
     if (offset != this->scrollOffset())
         ScrollableArea::scrollToOffsetWithAnimation(offset);
+
     setCurrentScrollType(previousScrollType);
 }
 

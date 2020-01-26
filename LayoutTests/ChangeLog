@@ -1,3 +1,120 @@
+2020-01-21  Cathie Chen  <cathiechen@igalia.com>
+
+        Add support for scroll behavior relies on ScrollAnimation of the Web process
+        https://bugs.webkit.org/show_bug.cgi?id=204882
+
+        Reviewed by Frédéric Wang
+
+        Based on the patch by Frédéric Wang.
+
+        * platform/mac-wk1/TestExpectations: Skip these tests on WK1 as they don't work for now.
+
+2020-01-20  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations and baselines
+        https://bugs.webkit.org/show_bug.cgi?id=206501
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/compositing/visibility/visibility-change-in-subframe-expected.txt: Added.
+        * platform/gtk/editing/input/scroll-to-edge-if-line-break-at-end-of-document-contenteditable-expected.txt: Added.
+        * platform/gtk/fast/block/basic/fieldset-stretch-to-legend-expected.txt: Added.
+        * platform/gtk/js/dom/navigator-maxtouchpoints-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/color-prop-02-f-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/color-prop-03-t-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt: Added.
+
+2020-01-20  Gus Caplan  <me@gus.host>
+
+        Remove own toString from NativeError prototype
+        https://bugs.webkit.org/show_bug.cgi?id=204629
+
+        Reviewed by Ross Kirsling.
+
+        NativeError prototypes are expected to inherit toString from
+        Error.prototype. See https://github.com/tc39/ecma262/issues/1794
+        for additional details.
+
+        * http/tests/security/regress-52192-expected.txt:
+        * http/tests/security/regress-52192.html:
+
+2020-01-20  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        EXIF orientation is ignored for some CSS images
+        https://bugs.webkit.org/show_bug.cgi?id=203355
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/exif-orientation-background-image-no-repeat-expected.html: Added.
+        * fast/images/exif-orientation-background-image-no-repeat.html: Added.
+        * fast/images/exif-orientation-background-image-repeat-expected.html: Added.
+        * fast/images/exif-orientation-background-image-repeat.html: Added.
+        * fast/images/exif-orientation-border-image-expected.html: Added.
+        * fast/images/exif-orientation-border-image.html: Added.
+
+2020-01-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r254807.
+
+        Breaks Apple internal builds.
+
+        Reverted changeset:
+
+        "Add support for scroll behavior relies on ScrollAnimation of
+        the Web process"
+        https://bugs.webkit.org/show_bug.cgi?id=204882
+        https://trac.webkit.org/changeset/254807
+
+2020-01-20  Devin Rousso  <drousso@apple.com>
+
+        inspector/heap/getRemoteObject.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=156077
+        <rdar://problem/25469998>
+
+        Reviewed by Darin Adler.
+
+        Instead of blindly assuming that the first object is the `window` global object, iterate all
+        the objects found by `WI.HeapSnapshotProxy.prototype.instancesWithClassName` and check that
+        we see at least one `window` global object.
+
+        * inspector/heap/getRemoteObject.html:
+        * inspector/heap/getRemoteObject-expected.txt:
+        * platform/mac-wk2/TestExpectations:
+
+2020-01-20  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r250655?): [ Mac Debug ] inspector/runtime/promise-native-getter.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=206303
+        <rdar://problem/58612520>
+
+        Reviewed by Darin Adler.
+
+        Rework the test to not be reliant on real world timing.
+
+        * inspector/runtime/promise-native-getter.html:
+        * inspector/runtime/promise-native-getter-expected.txt:
+        * platform/mac/TestExpectations:
+
+2020-01-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a test to verify that the callout bar appears after selecting a word
+        https://bugs.webkit.org/show_bug.cgi?id=206488
+        <rdar://problem/58661768>
+
+        Reviewed by Darin Adler.
+
+        * editing/selection/ios/show-callout-bar-after-selecting-word-expected.txt: Added.
+        * editing/selection/ios/show-callout-bar-after-selecting-word.html: Added.
+
+        Add the new layout test.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.rectForMenuAction):
+
+        Wrap this UI script in its own function scope, such that it can be used multiple times in the same layout test.
+
 2020-01-20  Diego Pino Garcia  <dpino@igalia.com>
 
         [GTK] Gardening, remove expected to fail but pass

@@ -538,12 +538,9 @@ void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition, bool/* 
     if (currentScrollBehaviorStatus() == ScrollBehaviorStatus::InNonNativeAnimation)
         scrollAnimator().cancelAnimations();
 
-    if (requestScrollPositionUpdate(newScrollPosition)) {
-        setScrollBehaviorStatus(ScrollBehaviorStatus::NotInAnimation);
-        return;
-    }
+    if (!requestScrollPositionUpdate(newScrollPosition))
+        updateScrollbars(newScrollPosition);
 
-    updateScrollbars(newScrollPosition);
     setScrollBehaviorStatus(ScrollBehaviorStatus::NotInAnimation);
 }
 

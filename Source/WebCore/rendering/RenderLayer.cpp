@@ -2616,12 +2616,7 @@ void RenderLayer::scrollToOffset(const ScrollOffset& scrollOffset, ScrollType sc
     auto previousScrollType = currentScrollType();
     setCurrentScrollType(scrollType);
 
-    bool handled = false;
-#if ENABLE(ASYNC_SCROLLING)
-    handled = requestScrollPositionUpdate(scrollPositionFromOffset(clampedScrollOffset));
-#endif
-
-    if (!handled)
+    if (!requestScrollPositionUpdate(scrollPositionFromOffset(clampedScrollOffset)))
         scrollToOffsetWithoutAnimation(clampedScrollOffset, clamping);
     setScrollBehaviorStatus(ScrollBehaviorStatus::NotInAnimation);
 
@@ -2647,6 +2642,7 @@ void RenderLayer::scrollToOffsetWithAnimation(const ScrollOffset& offset, Scroll
         scrollAnimator().cancelAnimations();
     if (newScrollOffset != this->scrollOffset())
         ScrollableArea::scrollToOffsetWithAnimation(newScrollOffset);
+
     setCurrentScrollType(previousScrollType);
 }
 
