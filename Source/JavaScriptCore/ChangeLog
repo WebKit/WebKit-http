@@ -1,3 +1,12 @@
+2020-01-27  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Python 3: generate-js-builtins hits SyntaxWarning for "is 0"
+        https://bugs.webkit.org/show_bug.cgi?id=206840
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/generate-js-builtins.py: Replace is 0 with == 0
+
 2018-10-05  Mike Gorse  <mgorse@alum.wpi.edu>
 
         [GTK] build fails with python 3 if LANG and LC_TYPE are unset
