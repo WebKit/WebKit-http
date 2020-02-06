@@ -47,7 +47,7 @@
 #endif
 
 #if USE(SOUP)
-#include "HTTPCookieAcceptPolicy.h"
+#include <WebCore/HTTPCookieAcceptPolicy.h>
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
@@ -208,11 +208,14 @@ struct WebProcessCreationParameters {
 #if PLATFORM(COCOA)
     Optional<SandboxExtension::Handle> neHelperExtensionHandle;
     Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
+    bool systemHasBattery { false };
+    Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>> mimeTypesMap;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     bool currentUserInterfaceIdiomIsPad { false };
     WebCore::RenderThemeIOS::CSSValueToSystemColorMap cssValueToSystemColorMap;
+    WebCore::Color focusRingColor;
 #endif
 };
 

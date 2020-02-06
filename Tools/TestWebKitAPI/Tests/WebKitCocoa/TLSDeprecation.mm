@@ -27,6 +27,7 @@
 
 #if HAVE(SSL)
 
+#import "HTTPServer.h"
 #import "PlatformUtilities.h"
 #import "TCPServer.h"
 #import "TestNavigationDelegate.h"
@@ -37,138 +38,114 @@
 #import <WebKit/WebKit.h>
 #import <WebKit/_WKWebsiteDataStoreConfiguration.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/text/StringConcatenateNumbers.h>
 
 #if PLATFORM(IOS_FAMILY)
 #import <WebKit/WebUIKitSupport.h>
 #import <WebKit/WebCoreThread.h>
 #endif
 
-@interface WebSocketDelegate : NSObject <WKUIDelegate, WebUIDelegate>
-- (NSString *)waitForMessage;
+#if HAVE(TLS_PROTOCOL_VERSION_T) || HAVE(NETWORK_FRAMEWORK)
+@interface TLSObserver : NSObject
+- (void)waitUntilNegotiatedLegacyTLSChanged;
 @end
 
-@implementation WebSocketDelegate {
-    RetainPtr<NSString> _message;
+@implementation TLSObserver {
+    bool _negotiatedLegacyTLSChanged;
 }
 
-- (NSString *)waitForMessage
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    while (!_message)
+    EXPECT_WK_STREQ(keyPath, "_negotiatedLegacyTLS");
+    _negotiatedLegacyTLSChanged = true;
+}
+
+- (void)waitUntilNegotiatedLegacyTLSChanged
+{
+    _negotiatedLegacyTLSChanged = false;
+    while (!_negotiatedLegacyTLSChanged)
         TestWebKitAPI::Util::spinRunLoop();
-    return _message.autorelease();
-}
-
-- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
-{
-    _message = message;
-    completionHandler();
-}
-
-- (void)webView:(WebView *)sender runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WebFrame *)frame
-{
-    _message = message;
 }
 
 @end
+#endif
+
+@interface TLSNavigationDelegate : NSObject <WKNavigationDelegate>
+- (void)waitForDidFinishNavigation;
+- (void)waitForDidFailProvisionalNavigation;
+- (bool)receivedShouldAllowLegacyTLS;
+@property (nonatomic) bool shouldAllowLegacyTLS;
+@end
+
+@implementation TLSNavigationDelegate {
+    bool _navigationFinished;
+    bool _navigationFailed;
+    bool _receivedShouldAllowLegacyTLS;
+}
+
+- (void)waitForDidFinishNavigation
+{
+    while (!_navigationFinished)
+        TestWebKitAPI::Util::spinRunLoop();
+}
+
+- (void)waitForDidFailProvisionalNavigation
+{
+    while (!_navigationFailed)
+        TestWebKitAPI::Util::spinRunLoop();
+}
+
+- (bool)receivedShouldAllowLegacyTLS
+{
+    return _receivedShouldAllowLegacyTLS;
+}
+
+- (void)webView:(WKWebView *)webView didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential * credential))completionHandler
+{
+    EXPECT_WK_STREQ(challenge.protectionSpace.authenticationMethod, NSURLAuthenticationMethodServerTrust);
+    completionHandler(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust]);
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
+{
+    _navigationFinished = true;
+}
+
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error
+{
+    _navigationFailed = true;
+}
+
+- (void)_webView:(WKWebView *)webView authenticationChallenge:(NSURLAuthenticationChallenge *)challenge shouldAllowLegacyTLS:(void (^)(BOOL))completionHandler
+{
+    _receivedShouldAllowLegacyTLS = true;
+    completionHandler([self shouldAllowLegacyTLS]);
+}
+
+@end
+
 
 namespace TestWebKitAPI {
 
 const uint16_t tls1_1 = 0x0302;
 static NSString *defaultsKey = @"WebKitEnableLegacyTLS";
 
-TEST(WebKit, TLSVersionWebSocket)
+TEST(TLSVersion, DefaultBehavior)
 {
-    auto getWebSocketEvent = [] (bool clientAllowDeprecatedTLS, bool serverLimitTLS) {
-        Optional<uint16_t> maxServerTLSVersion;
-        if (serverLimitTLS)
-            maxServerTLSVersion = tls1_1;
-        TCPServer server(TCPServer::Protocol::HTTPS, [=](SSL *ssl) {
-            EXPECT_TRUE(!ssl == (clientAllowDeprecatedTLS != serverLimitTLS));
-        }, maxServerTLSVersion);
-
-        if (clientAllowDeprecatedTLS)
-            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:defaultsKey];
-        
-        auto webView = adoptNS([TestWKWebView new]);
-        auto delegate = adoptNS([WebSocketDelegate new]);
-        [webView setUIDelegate:delegate.get()];
-        [webView synchronouslyLoadHTMLString:@"start network process"];
-        [[webView configuration].processPool _allowAnyTLSCertificateForWebSocketTesting];
-        [webView synchronouslyLoadHTMLString:[NSString stringWithFormat:
-            @"<script>"
-            "const socket = new WebSocket('wss://localhost:%d');"
-            "socket.onclose = function(event){ alert('close'); };"
-            "socket.onerror = function(event){ alert('error: ' + event.data); };"
-            "</script>", server.port()]];
-        NSString *message = [delegate waitForMessage];
-        
-        if (clientAllowDeprecatedTLS)
-            [[NSUserDefaults standardUserDefaults] removeObjectForKey:defaultsKey];
-
-        return message;
-    };
-
-    EXPECT_WK_STREQ(getWebSocketEvent(true, true), "close");
-    NSString *message = getWebSocketEvent(false, true);
-    EXPECT_TRUE([message isEqualToString:@"error: undefined"] || [message isEqualToString:@"close"]);
-    EXPECT_WK_STREQ(getWebSocketEvent(false, false), "close");
+    TCPServer server(TCPServer::Protocol::HTTPS, TCPServer::respondWithOK, tls1_1);
+    auto delegate = adoptNS([TestNavigationDelegate new]);
+    auto webView = adoptNS([WKWebView new]);
+    [webView setNavigationDelegate:delegate.get()];
+    [delegate setDidReceiveAuthenticationChallenge:^(WKWebView *, NSURLAuthenticationChallenge *challenge, void (^callback)(NSURLSessionAuthChallengeDisposition, NSURLCredential *)) {
+        EXPECT_WK_STREQ(challenge.protectionSpace.authenticationMethod, NSURLAuthenticationMethodServerTrust);
+        callback(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust]);
+    }];
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+    [delegate waitForDidFinishNavigation];
 }
 
-NSString *getWebSocketEventWebKitLegacy(bool clientAllowDeprecatedTLS, bool serverLimitTLS)
-{
-#if PLATFORM(IOS_FAMILY)
-    WebKitInitialize();
-    WebThreadLock();
-#endif
-    Optional<uint16_t> maxServerTLSVersion;
-    if (serverLimitTLS)
-        maxServerTLSVersion = tls1_1;
-    TCPServer server(TCPServer::Protocol::HTTPS, [=](SSL *ssl) {
-        EXPECT_TRUE(!ssl == (clientAllowDeprecatedTLS != serverLimitTLS));
-    }, maxServerTLSVersion);
-
-    if (clientAllowDeprecatedTLS)
-        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:defaultsKey];
-    
-    auto webView = adoptNS([WebView new]);
-    auto delegate = adoptNS([WebSocketDelegate new]);
-    [webView setUIDelegate:delegate.get()];
-    WebCoreTestSupport::setAllowsAnySSLCertificate(true);
-    [[webView mainFrame] loadHTMLString:[NSString stringWithFormat:
-        @"<script>"
-        "const socket = new WebSocket('wss://localhost:%d');"
-        "socket.onclose = function(event){ alert('close'); };"
-        "socket.onerror = function(event){ alert('error: ' + event.data); };"
-        "</script>", server.port()] baseURL:nil];
-    NSString *message = [delegate waitForMessage];
-
-    if (clientAllowDeprecatedTLS)
-        [[NSUserDefaults standardUserDefaults] removeObjectForKey:defaultsKey];
-
-    return message;
-}
-
-TEST(WebKit, TLSVersionWebSocketWebKitLegacy1)
-{
-    EXPECT_WK_STREQ(getWebSocketEventWebKitLegacy(true, true), "close");
-}
-
-TEST(WebKit, TLSVersionWebSocketWebKitLegacy2)
-{
-#if PLATFORM(IOS_FAMILY)
-    const char* expected = "error: undefined";
-#else
-    const char* expected = "close";
-#endif
-    EXPECT_WK_STREQ(getWebSocketEventWebKitLegacy(false, true), expected);
-}
-
-TEST(WebKit, TLSVersionWebSocketWebKitLegacy3)
-{
-    EXPECT_WK_STREQ(getWebSocketEventWebKitLegacy(false, false), "close");
-}
-
-TEST(WebKit, TLSVersionNetworkSession)
+// FIXME: This test should remain disabled until rdar://problem/56522601 is fixed.
+TEST(TLSVersion, DISABLED_NetworkSession)
 {
     static auto delegate = adoptNS([TestNavigationDelegate new]);
     auto makeWebViewWith = [&] (WKWebsiteDataStore *store) {
@@ -177,54 +154,182 @@ TEST(WebKit, TLSVersionNetworkSession)
         auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration]);
         [webView setNavigationDelegate:delegate.get()];
         [delegate setDidReceiveAuthenticationChallenge:^(WKWebView *, NSURLAuthenticationChallenge *challenge, void (^callback)(NSURLSessionAuthChallengeDisposition, NSURLCredential *)) {
+            EXPECT_WK_STREQ(challenge.protectionSpace.authenticationMethod, NSURLAuthenticationMethodServerTrust);
             callback(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust]);
         }];
         return webView;
     };
     {
-        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
-            EXPECT_FALSE(ssl);
-        }, tls1_1);
+        TCPServer server(TCPServer::Protocol::HTTPS, TCPServer::respondWithOK, tls1_1);
         auto webView = makeWebViewWith([WKWebsiteDataStore defaultDataStore]);
         [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
-        [delegate waitForDidFailProvisionalNavigation];
-    }
-    {
-        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
-            EXPECT_FALSE(ssl);
-        }, tls1_1);
-        auto webView = makeWebViewWith([WKWebsiteDataStore nonPersistentDataStore]);
-        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
-        [delegate waitForDidFailProvisionalNavigation];
+        [delegate waitForDidFinishNavigation];
     }
     {
         TCPServer server(TCPServer::Protocol::HTTPS, TCPServer::respondWithOK, tls1_1);
-        auto configuration = adoptNS([[_WKWebsiteDataStoreConfiguration alloc] initNonPersistentConfiguration]);
-        [configuration setLegacyTLSEnabled:YES];
-        auto dataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:configuration.get()]);
-        auto webView = makeWebViewWith(dataStore.get());
-        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
-        [delegate waitForDidFinishNavigation];
-    }
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:defaultsKey];
-    {
-        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
-            TCPServer::respondWithOK(ssl);
-        }, tls1_1);
-        auto webView = makeWebViewWith([WKWebsiteDataStore defaultDataStore]);
-        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
-        [delegate waitForDidFinishNavigation];
-    }
-    {
-        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
-            TCPServer::respondWithOK(ssl);
-        }, tls1_1);
         auto webView = makeWebViewWith([WKWebsiteDataStore nonPersistentDataStore]);
         [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
         [delegate waitForDidFinishNavigation];
     }
+    {
+        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
+            EXPECT_FALSE(ssl);
+        }, tls1_1);
+        auto configuration = adoptNS([[_WKWebsiteDataStoreConfiguration alloc] initNonPersistentConfiguration]);
+        [configuration setLegacyTLSEnabled:NO];
+        auto dataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:configuration.get()]);
+        auto webView = makeWebViewWith(dataStore.get());
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+        [delegate waitForDidFailProvisionalNavigation];
+    }
+    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:defaultsKey];
+    {
+        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
+            EXPECT_FALSE(ssl);
+        }, tls1_1);
+        auto webView = makeWebViewWith([WKWebsiteDataStore defaultDataStore]);
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+        [delegate waitForDidFailProvisionalNavigation];
+    }
+    {
+        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
+            EXPECT_FALSE(ssl);
+        }, tls1_1);
+        auto webView = makeWebViewWith([WKWebsiteDataStore nonPersistentDataStore]);
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+        [delegate waitForDidFailProvisionalNavigation];
+    }
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:defaultsKey];
 }
+
+// FIXME: This test should remain disabled until rdar://problem/56522601 is fixed.
+TEST(TLSVersion, DISABLED_NavigationDelegateSPI)
+{
+    {
+        auto delegate = adoptNS([TLSNavigationDelegate new]);
+        TCPServer server(TCPServer::Protocol::HTTPS, [](SSL *ssl) {
+            // FIXME: This is only if we have the new SPI.
+            EXPECT_FALSE(ssl);
+        }, tls1_1);
+        auto webView = adoptNS([WKWebView new]);
+        [webView setNavigationDelegate:delegate.get()];
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+        [delegate waitForDidFailProvisionalNavigation];
+        EXPECT_TRUE([delegate receivedShouldAllowLegacyTLS]);
+    }
+    {
+        auto delegate = adoptNS([TLSNavigationDelegate new]);
+        delegate.get().shouldAllowLegacyTLS = YES;
+        TCPServer server(TCPServer::Protocol::HTTPS, TCPServer::respondWithOK, tls1_1);
+        auto webView = adoptNS([WKWebView new]);
+        [webView setNavigationDelegate:delegate.get()];
+        [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]]];
+        [delegate waitForDidFinishNavigation];
+        EXPECT_TRUE([delegate receivedShouldAllowLegacyTLS]);
+    }
+}
+
+#if HAVE(TLS_PROTOCOL_VERSION_T)
+
+static std::pair<RetainPtr<WKWebView>, RetainPtr<TestNavigationDelegate>> webViewWithNavigationDelegate()
+{
+    auto delegate = adoptNS([TestNavigationDelegate new]);
+    auto webView = adoptNS([WKWebView new]);
+    [webView setNavigationDelegate:delegate.get()];
+    [delegate setDidReceiveAuthenticationChallenge:^(WKWebView *, NSURLAuthenticationChallenge *challenge, void (^callback)(NSURLSessionAuthChallengeDisposition, NSURLCredential *)) {
+        EXPECT_WK_STREQ(challenge.protectionSpace.authenticationMethod, NSURLAuthenticationMethodServerTrust);
+        callback(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust]);
+    }];
+    return { webView, delegate };
+}
+
+#endif // HAVE(TLS_PROTOCOL_VERSION_T) || HAVE(NETWORK_FRAMEWORK)
+
+#if HAVE(NETWORK_FRAMEWORK) && HAVE(TLS_PROTOCOL_VERSION_T)
+
+TEST(TLSVersion, NegotiatedLegacyTLS)
+{
+    HTTPServer server({
+        { "/", { "hello" } }
+    }, HTTPServer::Protocol::HttpsWithLegacyTLS);
+
+    auto [webView, delegate] = webViewWithNavigationDelegate();
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://127.0.0.1:%d/", server.port()]]];
+    [webView loadRequest:request];
+
+    auto observer = adoptNS([TLSObserver new]);
+    [webView addObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS" options:NSKeyValueObservingOptionNew context:nil];
+    
+    EXPECT_FALSE([webView _negotiatedLegacyTLS]);
+    [observer waitUntilNegotiatedLegacyTLSChanged];
+    EXPECT_TRUE([webView _negotiatedLegacyTLS]);
+
+    [webView loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]]];
+    [observer waitUntilNegotiatedLegacyTLSChanged];
+    EXPECT_FALSE([webView _negotiatedLegacyTLS]);
+
+    [webView loadRequest:request];
+    [observer waitUntilNegotiatedLegacyTLSChanged];
+    EXPECT_TRUE([webView _negotiatedLegacyTLS]);
+
+    [webView removeObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS"];
+}
+
+TEST(TLSVersion, NavigateBack)
+{
+    HTTPServer legacyTLSServer({
+        { "/", { "hello" } }
+    }, HTTPServer::Protocol::HttpsWithLegacyTLS);
+
+    HTTPServer modernTLSServer({
+        { "/", { "hello" } }
+    }, HTTPServer::Protocol::Https);
+    
+    auto [webView, delegate] = webViewWithNavigationDelegate();
+    auto observer = adoptNS([TLSObserver new]);
+    [webView addObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS" options:NSKeyValueObservingOptionNew context:nil];
+
+    [webView loadRequest:legacyTLSServer.request()];
+    EXPECT_FALSE([webView _negotiatedLegacyTLS]);
+    [delegate waitForDidFinishNavigation];
+    EXPECT_TRUE([webView _negotiatedLegacyTLS]);
+
+    [webView loadRequest:modernTLSServer.request()];
+    [delegate waitForDidFinishNavigation];
+    EXPECT_FALSE([webView _negotiatedLegacyTLS]);
+
+    [webView goBack];
+    [observer waitUntilNegotiatedLegacyTLSChanged];
+    EXPECT_TRUE([webView _negotiatedLegacyTLS]);
+
+    [webView removeObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS"];
+}
+
+TEST(TLSVersion, Subresource)
+{
+    HTTPServer legacyTLSServer({
+        { "/", { "hello" } }
+    }, HTTPServer::Protocol::HttpsWithLegacyTLS);
+
+    HTTPServer modernTLSServer({
+        { "/", { makeString("<script>fetch('https://127.0.0.1:", static_cast<unsigned>(legacyTLSServer.port()), "/',{mode:'no-cors'})</script>") } }
+    }, HTTPServer::Protocol::Https);
+    
+    auto [webView, delegate] = webViewWithNavigationDelegate();
+    auto observer = adoptNS([TLSObserver new]);
+    [webView addObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS" options:NSKeyValueObservingOptionNew context:nil];
+
+    EXPECT_FALSE([webView _negotiatedLegacyTLS]);
+    [webView loadRequest:modernTLSServer.request()];
+    while (![webView _negotiatedLegacyTLS])
+        [observer waitUntilNegotiatedLegacyTLSChanged];
+
+    [webView removeObserver:observer.get() forKeyPath:@"_negotiatedLegacyTLS"];
+}
+
+#endif // HAVE(NETWORK_FRAMEWORK) && HAVE(TLS_PROTOCOL_VERSION_T)
+
+// FIXME: Add some tests for WKWebView.hasOnlySecureContent
 
 }
 

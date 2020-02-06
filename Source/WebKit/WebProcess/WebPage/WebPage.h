@@ -196,6 +196,7 @@ enum class TextIndicatorPresentationTransition : uint8_t;
 enum class WritingDirection : uint8_t;
 
 struct BackForwardItemIdentifier;
+struct CompositionHighlight;
 struct CompositionUnderline;
 struct DictationAlternative;
 struct ElementContext;
@@ -631,6 +632,7 @@ public:
 
     void textInputContextsInRect(WebCore::FloatRect, CompletionHandler<void(const Vector<WebCore::ElementContext>&)>&&);
     void focusTextInputContext(const WebCore::ElementContext&, CompletionHandler<void(bool)>&&);
+    void setCanShowPlaceholder(const WebCore::ElementContext&, bool);
 
 #if PLATFORM(IOS_FAMILY)
     WebCore::FloatSize screenSize() const;
@@ -795,6 +797,8 @@ public:
     void showEmojiPicker(WebCore::Frame&);
 
     void getCenterForZoomGesture(const WebCore::IntPoint& centerInViewCoordinates, CompletionHandler<void(WebCore::IntPoint&&)>&&);
+
+    void themeDidChange(String&&);
 #endif
 
     void didApplyStyle();
@@ -821,7 +825,7 @@ public:
     void getSelectedRangeAsync(CallbackID);
     void characterIndexForPointAsync(const WebCore::IntPoint&, CallbackID);
     void firstRectForCharacterRangeAsync(const EditingRange&, CallbackID);
-    void setCompositionAsync(const String& text, const Vector<WebCore::CompositionUnderline>& underlines, const EditingRange& selectionRange, const EditingRange& replacementRange);
+    void setCompositionAsync(const String& text, const Vector<WebCore::CompositionUnderline>&, const Vector<WebCore::CompositionHighlight>&, const EditingRange& selectionRange, const EditingRange& replacementRange);
     void confirmCompositionAsync();
 
     void readSelectionFromPasteboard(const String& pasteboardName, CompletionHandler<void(bool&&)>&&);
@@ -842,7 +846,7 @@ public:
     void replaceSelectionWithPasteboardData(const Vector<String>& types, const IPC::DataReference&);
 #endif
 
-    void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline);
+    void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline, const Vector<WebCore::CompositionHighlight>&);
     bool hasCompositionForTesting();
     void confirmCompositionForTesting(const String& compositionString);
 
@@ -969,7 +973,7 @@ public:
 #if PLATFORM(IOS_FAMILY)
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double scale, int32_t deviceOrientation, DynamicViewportSizeUpdateID);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double scale, int32_t deviceOrientation, double minimumEffectiveDeviceWidth, DynamicViewportSizeUpdateID);
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
@@ -1461,8 +1465,8 @@ private:
     void getSelectionAsWebArchiveData(CallbackID);
     void getSourceForFrame(WebCore::FrameIdentifier, CallbackID);
     void getWebArchiveOfFrame(WebCore::FrameIdentifier, CallbackID);
-    void runJavaScript(WebFrame*, WebCore::RunJavaScriptParameters&&, uint64_t worldIdentifier, CallbackID);
-    void runJavaScriptInMainFrameScriptWorld(WebCore::RunJavaScriptParameters&&, const std::pair<uint64_t, String>& worldData, CallbackID);
+    void runJavaScript(WebFrame*, WebCore::RunJavaScriptParameters&&, ContentWorldIdentifier, CallbackID);
+    void runJavaScriptInMainFrameScriptWorld(WebCore::RunJavaScriptParameters&&, const std::pair<ContentWorldIdentifier, String>& worldData, CallbackID);
     void runJavaScriptInFrame(WebCore::FrameIdentifier, const String&, bool forceUserGesture, CallbackID);
     void forceRepaint(CallbackID);
     void takeSnapshot(WebCore::IntRect snapshotRect, WebCore::IntSize bitmapSize, uint32_t options, CallbackID);
@@ -2043,6 +2047,10 @@ private:
 #endif
 
     String m_overriddenMediaType;
+
+#if PLATFORM(GTK)
+    String m_themeName;
+#endif
 };
 
 #if !PLATFORM(IOS_FAMILY)

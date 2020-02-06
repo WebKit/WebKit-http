@@ -1,3 +1,287 @@
+2020-02-05  Justin Michaud  <justin_michaud@apple.com>
+
+        Deleting a property should not turn structures into uncacheable dictionaries
+        https://bugs.webkit.org/show_bug.cgi?id=206430
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/delete-property-from-prototype-chain.js: Added.
+        (assert):
+        (noInline.assert.getZ):
+        (noInline.getZ.C):
+        (doTest):
+        (delete.C.prototype.z):
+        * microbenchmarks/delete-property-keeps-cacheable-structure.js: Added.
+        (assert):
+        (C):
+        (doTest):
+        * stress/cache-put-by-id-different-attributes.js:
+        (makePrototypeDict):
+        (set x):
+        * stress/cache-put-by-id-different-offset.js:
+        (makePrototypeDict):
+        (set x):
+        * stress/cache-put-by-id-poly-proto.js:
+        (makePrototypeDict):
+        (set _):
+        * stress/delete-property-check-structure-transition.js: Added.
+        (assert):
+        (assert_eq):
+        (assert_neq):
+        (sd):
+        (sid):
+        (testDeleteIsNotUncacheable):
+        (testCanMaterializeDeletes):
+        (testCanFlatten):
+        (testDeleteWithInlineCache.Object.prototype.globalProperty.42.makeFoo):
+        (testDeleteWithInlineCache.noInline.doTest):
+        (testDeleteWithInlineCache):
+        * stress/flatten-object-zero-unused-inline-properties.js:
+
+2020-02-04  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Quantifiers after lookahead assertions should be syntax errors in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=206988
+
+        Reviewed by Darin Adler and Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 10 test cases as passing.
+
+2020-02-03  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        \0 identity escapes should be syntax errors in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=207114
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-02-01  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Non-alphabetical \c escapes should be syntax errors in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=207091
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2020-01-31  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Don't dump disassembly in test.
+
+        * stress/get-getter-setter-by-offset-not-always-safe-to-execute.js:
+
+2020-01-31  Saam Barati  <sbarati@apple.com>
+
+        GetGetterSetterByOffset and GetGetter/GetSetter are not always safe to execute
+        https://bugs.webkit.org/show_bug.cgi?id=206805
+        <rdar://problem/58898161>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/get-getter-setter-by-offset-not-always-safe-to-execute.js: Added.
+
+2020-01-31  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Unmatched ] or } brackets should be syntax errors in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=207023
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-01-30  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Incomplete braced quantifiers should be banned in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=206776
+
+        Reviewed by Darin Adler.
+
+        Although the change does not affect Unicode property escapes, a few
+        test/built-ins/RegExp/property-escapes/non-existent-property-value*.js files
+        are now passing because they had \\p or \\P instead of CharacterClassEscape.
+
+        * test262/expectations.yaml: Mark 18 test cases as passing.
+
+2020-01-30  Keith Miller  <keith_miller@apple.com>
+
+        Parser needs to restore unary stack state when backtracking
+        https://bugs.webkit.org/show_bug.cgi?id=206972
+
+        Reviewed by Saam Barati.
+
+        * stress/parser-save-state-remove-stale-entries.js: Added.
+        * stress/parser-syntax-checker-assignments-are-not-resolve-expressions.js: Added.
+        (foo):
+
+2020-01-29  Mark Lam  <mark.lam@apple.com>
+
+        Fix bad assertion in InternalFunctionAllocationProfile::createAllocationStructureFromBase().
+        https://bugs.webkit.org/show_bug.cgi?id=206981
+        <rdar://problem/58985736>
+
+        Reviewed by Keith Miller.
+
+        * stress/InternalFunctionAllocationProfile-createAllocationStructureFromBase-should-allow-for-same-classInfo-from-different-globals.js: Added.
+
+2020-01-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, update tests
+        https://bugs.webkit.org/show_bug.cgi?id=206846
+
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-debug.js: Copied from JSTests/stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior.js.
+        (shouldBe):
+        (putter):
+        (not_string.toString):
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior.js:
+        * stress/incorrect-put-could-generate-invalid-ic-involving-dictionary-flatten-debug.js: Copied from JSTests/stress/incorrect-put-could-generate-invalid-ic-involving-dictionary-flatten.js.
+        (shouldBe):
+        (dictionary):
+        (putter):
+        (not_string.toString):
+        * stress/incorrect-put-could-generate-invalid-ic-involving-dictionary-flatten.js:
+
+2020-01-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Give up IC when unknown structure transition happens
+        https://bugs.webkit.org/show_bug.cgi?id=206846
+
+        Reviewed by Mark Lam.
+
+        * stress/ensure-crash.js: Added.
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-bad-transition-debug.js: Added.
+        (shouldBe):
+        (putter):
+        (not_string.toString):
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior-bad-transition.js: Added.
+        (shouldBe):
+        (putter):
+        (not_string.toString):
+        * stress/incorrect-put-could-generate-invalid-ic-but-still-not-causing-bad-behavior.js: Added.
+        (shouldBe):
+        (putter):
+        (not_string.toString):
+        * stress/incorrect-put-could-generate-invalid-ic-involving-dictionary-flatten.js: Added.
+        (shouldBe):
+        (dictionary):
+        (putter):
+        (not_string.toString):
+
+2020-01-29  Paulo Matos  <pmatos@igalia.com>
+
+        Skip slow test operand-should-fit-in-abstract-heap-encoded-payload-format.js on mips and arm
+        https://bugs.webkit.org/show_bug.cgi?id=206926
+
+        Unreviewed test gardening.
+
+        This test has quadratic behaviour with the size of a, and on mips and arm it just takes too
+        long to run with such high value of a. Therefore we skip.
+
+        * stress/operand-should-fit-in-abstract-heap-encoded-payload-format.js:
+
+2020-01-28  Paulo Matos  <pmatos@igalia.com>
+
+        Skip test numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js in arm and mips
+        https://bugs.webkit.org/show_bug.cgi?id=206865
+
+        Reviewed by Žan Doberšek.
+
+        * stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js:
+
+2020-01-26  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Invalid ranges in character classes should be banned in Unicode patterns only
+        https://bugs.webkit.org/show_bug.cgi?id=206768
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 18 test cases as passing.
+
+2020-01-24  Mark Lam  <mark.lam@apple.com>
+
+        IntlObject's cached strings should be immortal and safe for concurrent access.
+        https://bugs.webkit.org/show_bug.cgi?id=206779
+        <rdar://problem/58831763>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js: Added.
+
+2020-01-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION (r254964-r254970?): Catalina Debug JSC bot timing out while running tests
+        https://bugs.webkit.org/show_bug.cgi?id=206785
+
+        Unreviewed, skipping the test if $buildType is "debug".
+
+        * stress/operand-should-fit-in-abstract-heap-encoded-payload-format.js:
+
+2020-01-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG OSR exit is not marking CodeBlock::m_hasLinkedOSRExit when the exit target is checkpoint
+        https://bugs.webkit.org/show_bug.cgi?id=206726
+        <rdar://problem/58827849>
+
+        Reviewed by Saam Barati.
+
+        * stress/exit-target-code-block-can-be-changed-between-llint-and-baseline.js: Added.
+        (bar):
+        (foo):
+
+2020-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Bits from Operand should fit in bits reserved in AbstractHeap's Payload
+        https://bugs.webkit.org/show_bug.cgi?id=206619
+        <rdar://problem/58270260>
+
+        Reviewed by Keith Miller.
+
+        * stress/operand-should-fit-in-abstract-heap-encoded-payload-format.js: Added.
+
+2020-01-22  Keith Miller  <keith_miller@apple.com>
+
+        InternalField and CheckNeutered DFG nodes are not always safe to execute
+        https://bugs.webkit.org/show_bug.cgi?id=206632
+
+        Reviewed by Saam Barati.
+
+        * stress/for-of-bad-internal-field-hoist.js: Added.
+        (foo):
+
+2020-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DateMath should accept more ISO-8601 timezone designators even if they are not included in ECMA262 to produce expected results in the wild code
+        https://bugs.webkit.org/show_bug.cgi?id=160287
+
+        Reviewed by Ross Kirsling.
+
+        * stress/relaxed-timezone-designators.js: Added.
+        (shouldBe):
+        (parsedDate):
+
+2020-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add CheckArrayOrEmpty to handle the case when hoisting CheckArray for places where input can be empty
+        https://bugs.webkit.org/show_bug.cgi?id=206571
+        <rdar://problem/58757016>
+
+        Reviewed by Saam Barati.
+
+        * stress/check-array-or-empty.js: Added.
+        (C):
+
+2020-01-21  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Object allocation sinking is missing PutHint for allocations unreachable in the graph
+        https://bugs.webkit.org/show_bug.cgi?id=203799
+        <rdar://problem/56852162>
+
+        Reviewed by Saam Barati.
+
+        * stress/allocation-sinking-puthint-control-flow-2.js: Added.
+        (f.handler.construct):
+        (f):
+
 2020-01-20  Gus Caplan  <me@gus.host>
 
         Remove own toString from NativeError prototype

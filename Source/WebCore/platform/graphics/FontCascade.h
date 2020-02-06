@@ -104,6 +104,7 @@ public:
     int pixelSize() const { return fontDescription().computedPixelSize(); }
     float size() const { return fontDescription().computedSize(); }
 
+    bool isCurrent(const FontSelector&) const;
     WEBCORE_EXPORT void update(RefPtr<FontSelector>&& = nullptr) const;
 
     enum CustomFontNotReadyAction { DoNotPaintIfFontNotReady, UseFallbackIfFontNotReady };
@@ -203,7 +204,7 @@ public:
 private:
     enum ForTextEmphasisOrNot { NotForTextEmphasis, ForTextEmphasis };
 
-    float glyphBufferForTextRun(CodePath, const TextRun&, unsigned from, unsigned to, GlyphBuffer&) const;
+    FloatSize glyphBufferForTextRun(CodePath, const TextRun&, unsigned from, unsigned to, GlyphBuffer&) const;
     // Returns the initial in-stream advance.
     float getGlyphsAndAdvancesForSimpleText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
     void drawEmphasisMarksForSimpleText(GraphicsContext&, const TextRun&, const AtomString& mark, const FloatPoint&, unsigned from, unsigned to) const;
@@ -219,7 +220,7 @@ private:
     static bool canExpandAroundIdeographsInComplexText();
 
     // Returns the initial in-stream advance.
-    float getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
+    FloatSize getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
     void drawEmphasisMarksForComplexText(GraphicsContext&, const TextRun&, const AtomString& mark, const FloatPoint&, unsigned from, unsigned to) const;
     float floatWidthForComplexText(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     int offsetForPositionForComplexText(const TextRun&, float position, bool includePartialGlyphs) const;

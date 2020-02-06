@@ -21,7 +21,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebProcess LegacyReceiver NotRefCounted {
-    InitializeWebProcess(struct WebKit::WebProcessCreationParameters processCreationParameters)
+    InitializeWebProcess(struct WebKit::WebProcessCreationParameters processCreationParameters) -> () Async
     SetWebsiteDataStoreParameters(struct WebKit::WebProcessDataStoreParameters parameters)
 
     # Create a new page.
@@ -106,8 +106,7 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    EstablishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebKit::WebPageProxyIdentifier webPageProxyID, WebCore::PageIdentifier pageID, struct WebKit::WebPreferencesStore store, WebCore::RegistrableDomain domain, struct WebKit::ServiceWorkerInitializationData initializationData)
-    RegisterServiceWorkerClients()
+    EstablishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebKit::WebPageProxyIdentifier webPageProxyID, WebCore::PageIdentifier pageID, struct WebKit::WebPreferencesStore store, WebCore::RegistrableDomain domain, struct WebKit::ServiceWorkerInitializationData initializationData) -> () Async
 #endif
 
     SetHasSuspendedPageProxy(bool hasSuspendedPageProxy);
@@ -163,5 +162,10 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     SeedResourceLoadStatisticsForTesting(WebCore::RegistrableDomain firstPartyDomain, WebCore::RegistrableDomain thirdPartyDomain, bool shouldScheduleNotification) -> () Async
     SetShouldBlockThirdPartyCookiesForTesting(enum:uint8_t WebCore::ThirdPartyCookieBlockingMode blockingMode) -> () Async
+#endif
+
+#if PLATFORM(IOS)
+    GrantAccessToAssetServices(WebKit::SandboxExtension::Handle mobileAssetHandle, WebKit::SandboxExtension::Handle mobileAssetV2Handle)
+    RevokeAccessToAssetServices()
 #endif
 }

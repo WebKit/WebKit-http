@@ -59,6 +59,7 @@
 #import <WebCore/HistoryItem.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
+#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSScrollerImpDetails.h>
 #import <WebCore/PerformanceLogging.h>
@@ -77,6 +78,7 @@
 #import <pal/spi/mac/NSApplicationSPI.h>
 #import <stdio.h>
 #import <wtf/FileSystem.h>
+#import <wtf/ProcessPrivilege.h>
 #import <wtf/cocoa/NSURLExtras.h>
 
 #if PLATFORM(IOS)
@@ -91,7 +93,6 @@
 #if PLATFORM(IOS_FAMILY)
 #import "AccessibilitySupportSPI.h"
 #import "AssertionServicesSPI.h"
-#import "RunningBoardServicesSPI.h"
 #import "UserInterfaceIdiom.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import <UIKit/UIAccessibility.h>
@@ -121,6 +122,7 @@
 
 #if PLATFORM(COCOA)
 #import <WebCore/NetworkExtensionContentFilter.h>
+#import <WebCore/SystemBattery.h>
 #endif
 
 #if HAVE(CSCHECKFIXDISABLE)
@@ -258,10 +260,15 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     if (parameters.neSessionManagerExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.neSessionManagerExtensionHandle);
     NetworkExtensionContentFilter::setHasConsumedSandboxExtensions(parameters.neHelperExtensionHandle.hasValue() && parameters.neSessionManagerExtensionHandle.hasValue());
+    setSystemHasBattery(parameters.systemHasBattery);
+
+    if (parameters.mimeTypesMap)
+        overriddenMimeTypesMap() = WTFMove(parameters.mimeTypesMap);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     RenderThemeIOS::setCSSValueToSystemColorMap(WTFMove(parameters.cssValueToSystemColorMap));
+    RenderThemeIOS::setFocusRingColor(parameters.focusRingColor);
 #endif
 }
 
@@ -333,6 +340,61 @@ void WebProcess::updateProcessName()
     });
 #endif // PLATFORM(MAC)
 }
+
+#if PLATFORM(IOS_FAMILY)
+void WebProcess::processTaskStateDidChange(ProcessTaskStateObserver::TaskState taskState)
+{
+    // NOTE: This will be called from a background thread.
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() - taskState(%d)", this, taskState);
+    if (taskState != ProcessTaskStateObserver::Running)
+        return;
+
+    LockHolder holder(m_processWasResumedAssertionsLock);
+    if (m_processWasResumedUIAssertion && m_processWasResumedOwnAssertion)
+        return;
+
+    // We were awakened from suspension unexpectedly. Notify the WebProcessProxy, but take a process assertion on our parent PID
+    // to ensure that it too is awakened.
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Taking 'WebProcess was resumed' assertion on behalf on UIProcess", this);
+    m_processWasResumedUIAssertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:parentProcessConnection()->remoteProcessID() flags:BKSProcessAssertionPreventTaskSuspend reason:BKSProcessAssertionReasonFinishTask name:@"WebProcess was resumed" withHandler:^(BOOL acquired) {
+        if (!acquired)
+            RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() failed to take 'WebProcess was resumed' assertion for parent process", this);
+    }]);
+    m_processWasResumedUIAssertion.get().invalidationHandler = [this] {
+        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Releasing 'WebProcess was resumed' assertion on behalf on UIProcess due to invalidation", this);
+        releaseProcessWasResumedAssertions();
+    };
+    m_processWasResumedOwnAssertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:getpid() flags:BKSProcessAssertionPreventTaskSuspend reason:BKSProcessAssertionReasonFinishTask name:@"WebProcess was resumed" withHandler:^(BOOL acquired) {
+        if (!acquired)
+            RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() failed to take 'WebProcess was resumed' assertion for WebContent process", this);
+    }]);
+    m_processWasResumedOwnAssertion.get().invalidationHandler = [this] {
+        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() Releasing 'WebProcess was resumed' assertion on behalf on WebContent process due to invalidation", this);
+        releaseProcessWasResumedAssertions();
+    };
+
+    parentProcessConnection()->sendWithAsyncReply(Messages::WebProcessProxy::ProcessWasResumed(), [this] {
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() Parent process handled ProcessWasResumed IPC, releasing our assertions", this);
+        releaseProcessWasResumedAssertions();
+    });
+}
+
+void WebProcess::releaseProcessWasResumedAssertions()
+{
+    LockHolder holder(m_processWasResumedAssertionsLock);
+    if (m_processWasResumedUIAssertion) {
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::releaseProcessWasResumedAssertions() Releasing parent process 'WebProcess was resumed' assertion", this);
+        [m_processWasResumedUIAssertion invalidate];
+        m_processWasResumedUIAssertion = nullptr;
+    }
+    if (m_processWasResumedOwnAssertion) {
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::releaseProcessWasResumedAssertions() Releasing WebContent process 'WebProcess was resumed' assertion", this);
+        [m_processWasResumedOwnAssertion invalidate];
+        m_processWasResumedOwnAssertion = nullptr;
+    }
+}
+
+#endif
 
 #if PLATFORM(IOS_FAMILY)
 static NSString *webProcessLoaderAccessibilityBundlePath()
@@ -845,6 +907,51 @@ void WebProcess::setMediaMIMETypes(const Vector<String> types)
     if (cache.isEmpty())
         cache.addSupportedTypes(types);
 }
+
+#if PLATFORM(IOS)
+void WebProcess::grantAccessToAssetServices(WebKit::SandboxExtension::Handle&& mobileAssetHandle,  WebKit::SandboxExtension::Handle&& mobileAssetV2Handle)
+{
+    if (m_assetServiceExtension && m_assetServiceV2Extension)
+        return;
+    m_assetServiceExtension = SandboxExtension::create(WTFMove(mobileAssetHandle));
+    m_assetServiceExtension->consume();
+    m_assetServiceV2Extension = SandboxExtension::create(WTFMove(mobileAssetV2Handle));
+    m_assetServiceV2Extension->consume();
+}
+
+void WebProcess::revokeAccessToAssetServices()
+{
+    if (!m_assetServiceExtension || !m_assetServiceV2Extension)
+        return;
+    m_assetServiceExtension->revoke();
+    m_assetServiceExtension = nullptr;
+    m_assetServiceV2Extension->revoke();
+    m_assetServiceV2Extension = nullptr;
+}
+#endif
+
+#if PLATFORM(MAC)
+void WebProcess::setScreenProperties(const ScreenProperties& properties)
+{
+    WebCore::setScreenProperties(properties);
+    for (auto& page : m_pageMap.values())
+        page->screenPropertiesDidChange();
+    updatePageScreenProperties();
+}
+
+void WebProcess::updatePageScreenProperties()
+{
+    if (hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer)) {
+        setShouldOverrideScreenSupportsHighDynamicRange(false, false);
+        return;
+    }
+
+    bool allPagesAreOnHDRScreens = allOf(m_pageMap.values(), [] (auto& page) {
+        return screenSupportsHighDynamicRange(page->mainFrameView());
+    });
+    setShouldOverrideScreenSupportsHighDynamicRange(true, allPagesAreOnHDRScreens);
+}
+#endif
 
 } // namespace WebKit
 

@@ -596,9 +596,9 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
 }
 
 #if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
-static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, SessionWrapper& sessionWrapper, NSURLAuthenticationChallenge *challenge, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
+static inline void processServerTrustEvaluation(NetworkSessionCocoa& session, SessionWrapper& sessionWrapper, NSURLAuthenticationChallenge *challenge, NegotiatedLegacyTLS negotiatedLegacyTLS, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
 {
-    session->continueDidReceiveChallenge(sessionWrapper, challenge, taskIdentifier, networkDataTask, [completionHandler = WTFMove(completionHandler), secTrust = retainPtr(challenge.protectionSpace.serverTrust)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
+    session.continueDidReceiveChallenge(sessionWrapper, challenge, negotiatedLegacyTLS, taskIdentifier, networkDataTask, [completionHandler = WTFMove(completionHandler), secTrust = retainPtr(challenge.protectionSpace.serverTrust)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
         // FIXME: UIProcess should send us back non nil credentials but the credential IPC encoder currently only serializes ns credentials for username/password.
         if (disposition == WebKit::AuthenticationChallengeDisposition::UseCredential && !credential.nsCredential()) {
             completionHandler(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust: secTrust.get()]);
@@ -613,6 +613,12 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
 {
     auto* networkDataTask = [self existingTask:task];
     auto* sessionCocoa = networkDataTask ? static_cast<NetworkSessionCocoa*>(networkDataTask->networkSession()) : nullptr;
+    if (!networkDataTask) {
+        ASSERT(!sessionCocoa);
+        auto downloadID = _sessionWrapper->downloadMap.get(task.taskIdentifier);
+        auto download = downloadID.downloadID() ? _session->networkProcess().downloadManager().download(downloadID) : nil;
+        sessionCocoa = download ? static_cast<NetworkSessionCocoa*>(_session->networkProcess().networkSession(download->sessionID())) : nil;
+    }
     if (!sessionCocoa || [task state] == NSURLSessionTaskStateCanceling) {
         completionHandler(NSURLSessionAuthChallengeCancelAuthenticationChallenge, nil);
         return;
@@ -628,16 +634,30 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
         return;
     }
 
+    NegotiatedLegacyTLS negotiatedLegacyTLS = NegotiatedLegacyTLS::No;
+
     if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
         if (NetworkSessionCocoa::allowsSpecificHTTPSCertificateForHost(challenge))
             return completionHandler(NSURLSessionAuthChallengeUseCredential, [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust]);
 
+#if HAVE(TLS_PROTOCOL_VERSION_T)
+        NSURLSessionTaskTransactionMetrics *metrics = task._incompleteTaskMetrics.transactionMetrics.lastObject;
+        auto tlsVersion = (tls_protocol_version_t)metrics.negotiatedTLSProtocolVersion.unsignedShortValue;
+        if (tlsVersion == tls_protocol_version_TLSv10 || tlsVersion == tls_protocol_version_TLSv11)
+            negotiatedLegacyTLS = NegotiatedLegacyTLS::Yes;
+#endif
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+        if (negotiatedLegacyTLS == NegotiatedLegacyTLS::No && [task respondsToSelector:@selector(_TLSNegotiatedProtocolVersion)]) {
+            SSLProtocol tlsVersion = [task _TLSNegotiatedProtocolVersion];
+            if (tlsVersion == kTLSProtocol11 || tlsVersion == kTLSProtocol1)
+                negotiatedLegacyTLS = NegotiatedLegacyTLS::Yes;
+        }
+        ALLOW_DEPRECATED_DECLARATIONS_END
+
         // Handle server trust evaluation at platform-level if requested, for performance reasons and to use ATS defaults.
-        if (sessionCocoa->fastServerTrustEvaluationEnabled()) {
+        if (sessionCocoa->fastServerTrustEvaluationEnabled() && negotiatedLegacyTLS == NegotiatedLegacyTLS::No) {
 #if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
-            auto* networkDataTask = [self existingTask:task];
-            ASSERT(networkDataTask);
-            auto decisionHandler = makeBlockPtr([weakSelf = WeakObjCPtr<WKNetworkSessionDelegate>(self), sessionCocoa = makeWeakPtr(sessionCocoa), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = RefPtr<NetworkDataTaskCocoa>(networkDataTask)](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
+            auto decisionHandler = makeBlockPtr([weakSelf = WeakObjCPtr<WKNetworkSessionDelegate>(self), sessionCocoa = makeWeakPtr(sessionCocoa), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = makeRefPtr(networkDataTask), negotiatedLegacyTLS](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
                 auto strongSelf = weakSelf.get();
                 if (!strongSelf)
                     return completionHandler(NSURLSessionAuthChallengeCancelAuthenticationChallenge, nil);
@@ -647,7 +667,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
                     completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
                     return;
                 }
-                processServerTrustEvaluation(session, *strongSelf->_sessionWrapper, challenge, taskIdentifier, task.get(), WTFMove(completionHandler));
+                processServerTrustEvaluation(*session, *strongSelf->_sessionWrapper, challenge, negotiatedLegacyTLS, taskIdentifier, task.get(), WTFMove(completionHandler));
             });
             [NSURLSession _strictTrustEvaluate:challenge queue:[NSOperationQueue mainQueue].underlyingQueue completionHandler:decisionHandler.get()];
             return;
@@ -656,7 +676,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
 #endif
         }
     }
-    sessionCocoa->continueDidReceiveChallenge(*_sessionWrapper, challenge, taskIdentifier, [self existingTask:task], [completionHandler = makeBlockPtr(completionHandler)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
+    sessionCocoa->continueDidReceiveChallenge(*_sessionWrapper, challenge, negotiatedLegacyTLS, taskIdentifier, [self existingTask:task], [completionHandler = makeBlockPtr(completionHandler)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
         completionHandler(toNSURLSessionAuthChallengeDisposition(disposition), credential.nsCredential());
     });
 }
@@ -797,6 +817,23 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
     LOG(NetworkSession, "%llu didReceiveResponse", taskIdentifier);
     if (auto* networkDataTask = [self existingTask:dataTask]) {
         ASSERT(RunLoop::isMain());
+
+        NegotiatedLegacyTLS negotiatedLegacyTLS = NegotiatedLegacyTLS::No;
+#if HAVE(TLS_PROTOCOL_VERSION_T)
+        NSURLSessionTaskTransactionMetrics *metrics = dataTask._incompleteTaskMetrics.transactionMetrics.lastObject;
+        auto tlsVersion = (tls_protocol_version_t)metrics.negotiatedTLSProtocolVersion.unsignedShortValue;
+        if (tlsVersion == tls_protocol_version_TLSv10 || tlsVersion == tls_protocol_version_TLSv11)
+            negotiatedLegacyTLS = NegotiatedLegacyTLS::Yes;
+        UNUSED_PARAM(metrics);
+#else // We do not need to check _TLSNegotiatedProtocolVersion if we have metrics.negotiatedTLSProtocolVersion because it works at response time even before rdar://problem/56522601
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+        if ([dataTask respondsToSelector:@selector(_TLSNegotiatedProtocolVersion)]) {
+            SSLProtocol tlsVersion = [dataTask _TLSNegotiatedProtocolVersion];
+            if (tlsVersion == kTLSProtocol11 || tlsVersion == kTLSProtocol1)
+                negotiatedLegacyTLS = NegotiatedLegacyTLS::Yes;
+        }
+        ALLOW_DEPRECATED_DECLARATIONS_END
+#endif
         
         // Avoid MIME type sniffing if the response comes back as 304 Not Modified.
         int statusCode = [response isKindOfClass:NSHTTPURLResponse.class] ? [(NSHTTPURLResponse *)response statusCode] : 0;
@@ -815,7 +852,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, Se
         copyTimingData([dataTask _timingData], resourceResponse.deprecatedNetworkLoadMetrics());
 
         auto completionHandlerCopy = Block_copy(completionHandler);
-        networkDataTask->didReceiveResponse(WTFMove(resourceResponse), [completionHandlerCopy, taskIdentifier](WebCore::PolicyAction policyAction) {
+        networkDataTask->didReceiveResponse(WTFMove(resourceResponse), negotiatedLegacyTLS, [completionHandlerCopy, taskIdentifier](WebCore::PolicyAction policyAction) {
 #if !LOG_DISABLED
             LOG(NetworkSession, "%llu didReceiveResponse completionHandler (%d)", taskIdentifier, policyAction);
 #else
@@ -1019,14 +1056,6 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 
     NSURLSessionConfiguration *configuration = configurationForSessionID(m_sessionID);
 
-    if (!parameters.enableLegacyTLS) {
-#if HAVE(TLS_PROTOCOL_VERSION_T)
-        configuration.TLSMinimumSupportedProtocolVersion = tls_protocol_version_TLSv12;
-#else
-        configuration.TLSMinimumSupportedProtocol = kTLSProtocol12;
-#endif
-    }
-
 #if HAVE(APP_SSO)
     configuration._preventsAppSSO = true;
 #endif
@@ -1066,7 +1095,7 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(IOS_FAMILY)
     // FIXME: Replace @"kCFStreamPropertyAutoErrorOnSystemChange" with a constant from the SDK once rdar://problem/40650244 is in a build.
-    if (parameters.suppressesConnectionTerminationOnSystemChange)
+    if (networkProcess.suppressesConnectionTerminationOnSystemChange() || parameters.suppressesConnectionTerminationOnSystemChange)
         configuration._socketStreamProperties = @{ @"kCFStreamPropertyAutoErrorOnSystemChange" : @NO };
 #endif
 
@@ -1297,7 +1326,7 @@ bool NetworkSessionCocoa::allowsSpecificHTTPSCertificateForHost(const WebCore::A
     return certificatesMatch(trust.get(), challenge.nsURLAuthenticationChallenge().protectionSpace.serverTrust);
 }
 
-void NetworkSessionCocoa::continueDidReceiveChallenge(SessionWrapper& sessionWrapper, const WebCore::AuthenticationChallenge& challenge, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(WebKit::AuthenticationChallengeDisposition, const WebCore::Credential&)>&& completionHandler)
+void NetworkSessionCocoa::continueDidReceiveChallenge(SessionWrapper& sessionWrapper, const WebCore::AuthenticationChallenge& challenge, NegotiatedLegacyTLS negotiatedLegacyTLS, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(WebKit::AuthenticationChallengeDisposition, const WebCore::Credential&)>&& completionHandler)
 {
     if (!networkDataTask) {
 #if HAVE(NSURLSESSION_WEBSOCKET)
@@ -1349,7 +1378,7 @@ void NetworkSessionCocoa::continueDidReceiveChallenge(SessionWrapper& sessionWra
 #endif
         completionHandler(disposition, credential);
     };
-    networkDataTask->didReceiveChallenge(WTFMove(authenticationChallenge), WTFMove(challengeCompletionHandler));
+    networkDataTask->didReceiveChallenge(WTFMove(authenticationChallenge), negotiatedLegacyTLS, WTFMove(challengeCompletionHandler));
 }
 
 DMFWebsitePolicyMonitor *NetworkSessionCocoa::deviceManagementPolicyMonitor()

@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2020 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,16 +29,16 @@ from steps import (ApplyPatch, ApplyWatchList, CheckOutSource, CheckOutSpecificR
                    DownloadBuiltProduct, ExtractBuiltProduct, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
                    PrintConfiguration, RunAPITests, RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests,
                    RunJavaScriptCoreTests, RunWebKit1Tests, RunWebKitPerlTests,
-                   RunWebKitPyPython2Tests, RunWebKitPyPython3Tests, RunWebKitTests, UpdateWorkingDirectory, ValidatePatch)
+                   RunWebKitPyPython2Tests, RunWebKitPyPython3Tests, RunWebKitTests, SetBuildSummary, UpdateWorkingDirectory, ValidatePatch)
 
 
 class Factory(factory.BuildFactory):
-    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, triggers=None, remotes=None, additionalArguments=None, checkRelevance=False, **kwargs):
+    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, triggers=None, remotes=None, additionalArguments=None, checkRelevance=False, verifycqplus=False, **kwargs):
         factory.BuildFactory.__init__(self)
         self.addStep(ConfigureBuild(platform=platform, configuration=configuration, architectures=architectures, buildOnly=buildOnly, triggers=triggers, remotes=remotes, additionalArguments=additionalArguments))
         if checkRelevance:
             self.addStep(CheckPatchRelevance())
-        self.addStep(ValidatePatch())
+        self.addStep(ValidatePatch(verifycqplus=verifycqplus))
         self.addStep(PrintConfiguration())
         self.addStep(CheckOutSource())
         # CheckOutSource step pulls the latest revision, since we use alwaysUseLatest=True. Without alwaysUseLatest Buildbot will
@@ -89,6 +89,7 @@ class WebKitPyFactory(Factory):
         Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=False, additionalArgument=additionalArguments, checkRelevance=True)
         self.addStep(RunWebKitPyPython2Tests())
         self.addStep(RunWebKitPyPython3Tests())
+        self.addStep(SetBuildSummary())
 
 
 class BuildFactory(Factory):
@@ -165,12 +166,30 @@ class WinCairoFactory(Factory):
         self.addStep(CompileWebKit(skipUpload=True))
 
 
-class GTKFactory(Factory):
+class GTKBuildFactory(Factory):
     def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
         Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=True, triggers=triggers, additionalArguments=additionalArguments)
         self.addStep(KillOldProcesses())
         self.addStep(InstallGtkDependencies())
         self.addStep(CompileWebKit(skipUpload=True))
+
+
+class GTKBuildAndTestFactory(GTKBuildFactory):
+    LayoutTestClass = None
+    APITestClass = None
+
+    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
+        GTKBuildFactory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=True, additionalArguments=additionalArguments)
+        self.addStep(KillOldProcesses())
+        self.addStep(ValidatePatch(verifyBugClosed=False, addURLs=False))
+        if self.LayoutTestClass:
+            self.addStep(self.LayoutTestClass())
+        if self.APITestClass:
+            self.addStep(self.APITestClass())
+
+
+class GTKAPIBuildAndTestFactory(GTKBuildAndTestFactory):
+    APITestClass = RunAPITests
 
 
 class WPEFactory(Factory):
@@ -190,5 +209,10 @@ class ServicesFactory(Factory):
 
 
 class CommitQueueFactory(Factory):
-    pass
-    # TODO: add appropriate build-steps for commit-queue
+    def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
+        Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=False, triggers=triggers, additionalArguments=additionalArguments, verifycqplus=True)
+        self.addStep(KillOldProcesses())
+        self.addStep(CompileWebKit(skipUpload=True))
+        self.addStep(KillOldProcesses())
+        self.addStep(ValidatePatch(addURLs=False, verifycqplus=True))
+        self.addStep(RunWebKit1Tests())

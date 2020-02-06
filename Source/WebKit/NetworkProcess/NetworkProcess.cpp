@@ -70,6 +70,7 @@
 #include <WebCore/DNS.h>
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
+#include <WebCore/HTTPCookieAcceptPolicy.h>
 #include <WebCore/LegacySchemeRegistry.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -214,6 +215,13 @@ bool NetworkProcess::shouldTerminate()
 
 void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
+    ASSERT(parentProcessConnection() == &connection);
+    if (parentProcessConnection() != &connection) {
+        WTFLogAlways("Ignored message '%s:%s' because it did not come from the UIProcess (destination: %" PRIu64 ")", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
 
@@ -234,6 +242,13 @@ void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder
 
 void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
+    ASSERT(parentProcessConnection() == &connection);
+    if (parentProcessConnection() != &connection) {
+        WTFLogAlways("Ignored message '%s:%s' because it did not come from the UIProcess (destination: %" PRIu64 ")", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
     if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
 
@@ -280,6 +295,11 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
     forEachNetworkSession([](auto& networkSession) {
         networkSession.clearPrefetchCache();
     });
+
+#if ENABLE(SERVICE_WORKER)
+    for (auto& swServer : m_swServers.values())
+        swServer->handleLowMemoryWarning();
+#endif
 }
 
 void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
@@ -368,11 +388,11 @@ void NetworkProcess::initializeConnection(IPC::Connection* connection)
         supplement->initializeConnection(connection);
 }
 
-void NetworkProcess::createNetworkConnectionToWebProcess(ProcessIdentifier identifier, PAL::SessionID sessionID, CompletionHandler<void(Optional<IPC::Attachment>&&)>&& completionHandler)
+void NetworkProcess::createNetworkConnectionToWebProcess(ProcessIdentifier identifier, PAL::SessionID sessionID, CompletionHandler<void(Optional<IPC::Attachment>&&, HTTPCookieAcceptPolicy)>&& completionHandler)
 {
     auto ipcConnection = createIPCConnectionPair();
     if (!ipcConnection) {
-        completionHandler({ });
+        completionHandler({ }, HTTPCookieAcceptPolicy::Never);
         return;
     }
 
@@ -382,7 +402,8 @@ void NetworkProcess::createNetworkConnectionToWebProcess(ProcessIdentifier ident
     ASSERT(!m_webProcessConnections.contains(identifier));
     m_webProcessConnections.add(identifier, WTFMove(newConnection));
 
-    completionHandler(WTFMove(ipcConnection->second));
+    auto* storage = storageSession(sessionID);
+    completionHandler(WTFMove(ipcConnection->second), storage ? storage->cookieAcceptPolicy() : HTTPCookieAcceptPolicy::Never);
 
     connection.setOnLineState(NetworkStateNotifier::singleton().onLine());
 
@@ -507,6 +528,12 @@ void NetworkProcess::ensureSession(const PAL::SessionID& sessionID, bool shouldU
 #endif
 }
 
+void NetworkProcess::cookieAcceptPolicyChanged(HTTPCookieAcceptPolicy newPolicy)
+{
+    for (auto& connection : m_webProcessConnections.values())
+        connection->cookieAcceptPolicyChanged(newPolicy);
+}
+
 WebCore::NetworkStorageSession* NetworkProcess::storageSession(const PAL::SessionID& sessionID) const
 {
     if (sessionID == PAL::SessionID::defaultSessionID())
@@ -543,8 +570,8 @@ void NetworkProcess::setSession(PAL::SessionID sessionID, std::unique_ptr<Networ
 void NetworkProcess::destroySession(PAL::SessionID sessionID)
 {
     ASSERT(RunLoop::isMain());
-#if !USE(SOUP)
-    // Soup based ports destroy the default session right before the process exits to avoid leaking
+#if !USE(SOUP) && !USE(CURL)
+    // cURL and Soup based ports destroy the default session right before the process exits to avoid leaking
     // network resources like the cookies database.
     ASSERT(sessionID != PAL::SessionID::defaultSessionID());
 #endif
@@ -2095,6 +2122,13 @@ void NetworkProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandl
         RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend() Process is ready to suspend", this);
         completionHandler();
     });
+    
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    forEachNetworkSession([&callbackAggregator](auto& networkSession) {
+        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics())
+            resourceLoadStatistics->suspend([callbackAggregator] { });
+    });
+#endif
 
     platformPrepareToSuspend([callbackAggregator] { });
     platformSyncAllCookies([callbackAggregator] { });
@@ -2138,6 +2172,13 @@ void NetworkProcess::resume()
     for (auto& connection : m_webProcessConnections.values())
         connection->endSuspension();
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    forEachNetworkSession([](auto& networkSession) {
+        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics())
+            resourceLoadStatistics->resume();
+    });
+#endif
+    
 #if ENABLE(SERVICE_WORKER)
     for (auto& server : m_swServers.values())
         server->endSuspension();
@@ -2325,12 +2366,6 @@ void NetworkProcess::clearLegacyPrivateBrowsingLocalStorage()
         m_storageManagerSet->deleteLocalStorageModifiedSince(PAL::SessionID::legacyPrivateSessionID(), -WallTime::infinity(), []() { });
 }
 
-void NetworkProcess::updateQuotaBasedOnSpaceUsageForTesting(PAL::SessionID sessionID, const ClientOrigin& origin)
-{
-    auto storageQuotaManager = this->storageQuotaManager(sessionID, origin);
-    storageQuotaManager->resetQuotaUpdatedBasedOnUsageForTesting();
-}
-
 void NetworkProcess::resetQuota(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
     LockHolder locker(m_sessionStorageQuotaManagersLock);
@@ -2366,9 +2401,9 @@ SWServer& NetworkProcess::swServerForSession(PAL::SessionID sessionID)
 
         return makeUnique<SWServer>(makeUniqueRef<WebSWOriginStore>(), info.processTerminationDelayEnabled, WTFMove(path), sessionID, [this, sessionID](auto&& jobData, bool shouldRefreshCache, auto&& request, auto&& completionHandler) mutable {
             ServiceWorkerSoftUpdateLoader::start(networkSession(sessionID), WTFMove(jobData), shouldRefreshCache, WTFMove(request), WTFMove(completionHandler));
-        }, [this, sessionID](auto& registrableDomain) {
+        }, [this, sessionID](auto& registrableDomain, auto&& completionHandler) {
             ASSERT(!registrableDomain.isEmpty());
-            parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess { registrableDomain, sessionID }, 0);
+            parentProcessConnection()->sendWithAsyncReply(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess { registrableDomain, sessionID }, WTFMove(completionHandler), 0);
         });
     });
     return *result.iterator->value;

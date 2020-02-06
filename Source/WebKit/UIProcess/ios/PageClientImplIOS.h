@@ -134,7 +134,7 @@ private:
     CALayer* acceleratedCompositingRootLayer() const override;
     LayerHostingMode viewLayerHostingMode() override { return LayerHostingMode::OutOfProcess; }
 
-    RefPtr<ViewSnapshot> takeViewSnapshot() override;
+    RefPtr<ViewSnapshot> takeViewSnapshot(Optional<WebCore::IntRect>&&) override;
     void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
 
     void commitPotentialTapFailed() override;
@@ -247,8 +247,6 @@ private:
 #endif
 
     void handleAutocorrectionContext(const WebAutocorrectionContext&) final;
-
-    void didFinishProcessingAllPendingMouseEvents() final { }
 
 #if HAVE(PENCILKIT)
     RetainPtr<WKDrawingView> createDrawingView(WebCore::GraphicsLayer::EmbeddedViewID) override;

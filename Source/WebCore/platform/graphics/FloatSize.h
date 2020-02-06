@@ -127,7 +127,10 @@ public:
            m_height < other.m_height ? m_height : other.m_height);
     }
 
-    WEBCORE_EXPORT float diagonalLength() const;
+    float diagonalLength() const
+    {
+        return std::hypot(m_width, m_height);
+    }
 
     float diagonalLengthSquared() const
     {

@@ -31,7 +31,6 @@
 ;;;
 
 (import "util.sb")
-(import "carrier-bundle-allowed.sb")
 
 (define-once (allow-read-and-issue-generic-extensions . filters)
     (allow file-read*
@@ -111,13 +110,6 @@
      (allow iokit-open
             (iokit-user-client-class "AppleKeyStoreUserClient")))
 
-(define-once (location-services)
-    (allow-carrier-bundle) ;; <rdar://problem/21192365>
-    (mobile-preferences-read
-        "com.apple.AppSupport"
-        "com.apple.GEO"
-        "com.apple.locationd"))
-
 (define-once (play-audio)
     (allow mach-lookup
            (global-name "com.apple.audio.AURemoteIOServer"))
@@ -151,6 +143,7 @@
            (global-name "com.apple.coremedia.audioprocessingtap.xpc")
            (global-name "com.apple.coremedia.capturesession")      ; Actually for video capture
            (global-name "com.apple.coremedia.capturesource")       ; Also for video capture (<rdar://problem/15794291>).
+           (global-name "com.apple.coremedia.cpe.xpc") ; Needed for HDR playback.
            (global-name "com.apple.coremedia.customurlloader.xpc") ; Needed for custom media loading
            (global-name "com.apple.coremedia.formatreader.xpc")
            (global-name "com.apple.coremedia.player.xpc")
@@ -181,6 +174,10 @@
         "com.apple.mobileipod" ; Ditto
         "com.apple.audio.virtualaudio" ; <rdar://problem/57170333>
     )
+
+    ;; AVF needs to see these network preferences:
+    (allow file-read*
+        (literal "/private/var/preferences/com.apple.networkd.plist"))
 
     ;; Required by the MediaPlayer framework.
     (allow mach-lookup
@@ -347,15 +344,6 @@
 
     (allow file-read* file-write-data file-ioctl
            (literal "/dev/aes_0")))
-
-(define-once (awd-log-directory daemon-name)
-    (let*
-        ((base-directory (home-relative-path "/Library/Logs/awd")))
-        (allow-create-directory (literal base-directory))
-        (allow file-read* file-write*
-            (prefix (string-append base-directory "/awd-" daemon-name ".log")))
-        (allow mach-lookup (with report) (with telemetry)
-               (global-name "com.apple.awdd"))))
 
 (define-once (logd-diagnostic-paths)
     (require-any
@@ -620,8 +608,8 @@
     (deny ipc-posix-sem-create ipc-posix-sem-post ipc-posix-sem-unlink ipc-posix-sem-wait)
     (allow ipc-posix-sem-open))
 
-(allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.runningboard"))
+(allow mach-lookup (with telemetry)
+    (global-name "com.apple.runningboard")) ;; Needed by process assertion code (ProcessTaskStateObserver).
 
 (allow system-sched
        (require-entitlement "com.apple.private.kernel.override-cpumon"))
@@ -779,8 +767,6 @@
 ; <rdar://problem/7595408> , <rdar://problem/7643881>
 (opengl)
 
-(location-services)
-
 ; CRCopyRestrictionsDictionary periodically tries to CFPreferencesAppSynchronize com.apple.springboard.plist
 ; which will attempt to create the plist if it doesn't exist -- from any application.  Only SpringBoard is
 ; allowed to write its plist; ignore all others, they don't know what they are doing.
@@ -915,9 +901,6 @@
 
 ;; Allow loading injected bundles.
 (allow file-map-executable)
-
-;; AWD logging
-(awd-log-directory "com.apple.WebKit.WebContent")
 
 ;; Allow ManagedPreference access
 (allow file-read* (literal "/private/var/Managed Preferences/mobile/com.apple.webcontentfilter.plist"))

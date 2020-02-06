@@ -797,6 +797,7 @@ svg/text/selection-tripleclick.svg [ Skip ]
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
 editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
+fast/events/input-event-insert-link.html [ Failure ]
 
 # No tab navigation support on iOS
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
@@ -3001,6 +3002,7 @@ media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.htm
 media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
 media/modern-media-controls/placard-support/placard-support-airplay-fullscreen.html [ Skip ]
+media/modern-media-controls/placard-support/placard-support-airplay-fullscreen-no-controls.html [ Skip ]
 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 
 # These tests are designed to work only on macOS
@@ -3453,8 +3455,27 @@ webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/properti
 
 webkit.org/b/204757 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https.html [ Pass Failure ]
 
-webkit.org/b/205309 scrollingcoordinator/ios/scroll-position-after-reattach.html [ ImageOnlyFailure ]
-
 webkit.org/b/200043 fast/text/international/system-language/navigator-language [ Pass Failure ]
 
-webkit.org/b/206291 storage/websql/statement-error-callback.html [ Pass Timeout ]
+webkit.org/b/203222 svg/wicd/rightsizing-grid.xhtml [ Pass Failure ]
+
+webkit.org/b/206864 http/tests/workers/service/basic-timeout.https.html [ Pass Failure ]
+
+
+webkit.org/b/206671 [ Debug ] animations/animation-direction-reverse.html [ Pass Failure ]
+
+webkit.org/b/206754 imported/w3c/web-platform-tests/css/css-backgrounds/background-image-centered-with-border-radius.html [ ImageOnlyFailure ]
+webkit.org/b/206754 imported/w3c/web-platform-tests/css/css-backgrounds/box-shadow-body.html [ ImageOnlyFailure ]
+
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height-viewbox.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height-viewbox.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height.html [ Skip ]
+
+webkit.org/b/207057 imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm [ Pass Failure ]
+
+webkit.org/b/207152 fast/dom/connected-subframe-counter-overflow.html  [ Pass Timeout ]
+
+webkit.org/b/207225 imported/w3c/web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https.html [ Pass Failure ]
+
+webkit.org/b/207230 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch.html [ Pass Failure ]

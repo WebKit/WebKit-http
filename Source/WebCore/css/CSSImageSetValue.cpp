@@ -28,19 +28,20 @@
 
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
-#include "CachedImage.h"
-#include "CachedResourceLoader.h"
-#include "CachedResourceRequest.h"
-#include "CachedResourceRequestInitiators.h"
 #include "Document.h"
 #include "Page.h"
+#include "StyleBuilderState.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-CSSImageSetValue::CSSImageSetValue(LoadedFromOpaqueSource loadedFromOpaqueSource)
+Ref<CSSImageSetValue> CSSImageSetValue::create()
+{
+    return adoptRef(*new CSSImageSetValue);
+}
+
+CSSImageSetValue::CSSImageSetValue()
     : CSSValueList(ImageSetClass, CommaSeparator)
-    , m_loadedFromOpaqueSource(loadedFromOpaqueSource)
 {
 }
 
@@ -49,28 +50,22 @@ CSSImageSetValue::~CSSImageSetValue() = default;
 void CSSImageSetValue::fillImageSet()
 {
     size_t length = this->length();
-    size_t i = 0;
-    while (i < length) {
+    for (size_t i = 0; i + 1 < length; i += 2) {
         CSSValue* imageValue = item(i);
-        URL imageURL = downcast<CSSImageValue>(*imageValue).url();
+        CSSValue* scaleFactorValue = item(i + 1);
 
-        ++i;
-        ASSERT_WITH_SECURITY_IMPLICATION(i < length);
-        CSSValue* scaleFactorValue = item(i);
-        float scaleFactor = downcast<CSSPrimitiveValue>(*scaleFactorValue).floatValue();
+        ASSERT(is<CSSImageValue>(imageValue) || is<CSSImageGeneratorValue>(imageValue));
+        ASSERT(is<CSSPrimitiveValue>(scaleFactorValue));
 
-        ImageWithScale image;
-        image.imageURL = imageURL;
-        image.scaleFactor = scaleFactor;
-        m_imagesInSet.append(image);
-        ++i;
+        float scaleFactor = downcast<CSSPrimitiveValue>(scaleFactorValue)->floatValue(CSSUnitType::CSS_DPPX);
+        m_imagesInSet.append({ imageValue, scaleFactor });
     }
 
     // Sort the images so that they are stored in order from lowest resolution to highest.
     std::sort(m_imagesInSet.begin(), m_imagesInSet.end(), CSSImageSetValue::compareByScaleFactor);
 }
 
-CSSImageSetValue::ImageWithScale CSSImageSetValue::bestImageForScaleFactor()
+ImageWithScale CSSImageSetValue::bestImageForScaleFactor()
 {
     if (!m_imagesInSet.size())
         fillImageSet();
@@ -85,42 +80,48 @@ CSSImageSetValue::ImageWithScale CSSImageSetValue::bestImageForScaleFactor()
     return image;
 }
 
-std::pair<CachedImage*, float> CSSImageSetValue::loadBestFitImage(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
+CachedImage* CSSImageSetValue::cachedImage() const
 {
-    Document* document = loader.document();
-    ASSERT(document);
+    if (is<CSSImageValue>(m_selectedImageValue))
+        return downcast<CSSImageValue>(*m_selectedImageValue).cachedImage();
+    return nullptr;
+}
 
-    updateDeviceScaleFactor(*document);
+ImageWithScale CSSImageSetValue::selectBestFitImage(const Document& document)
+{
+    updateDeviceScaleFactor(document);
 
     if (!m_accessedBestFitImage) {
         m_accessedBestFitImage = true;
-
-        // FIXME: In the future, we want to take much more than deviceScaleFactor into acount here.
-        // All forms of scale should be included: Page::pageScaleFactor(), Frame::pageZoomFactor(),
-        // and any CSS transforms. https://bugs.webkit.org/show_bug.cgi?id=81698
-        ImageWithScale image = bestImageForScaleFactor();
-
-        ResourceLoaderOptions loadOptions = options;
-        loadOptions.loadedFromOpaqueSource = m_loadedFromOpaqueSource;
-        CachedResourceRequest request(ResourceRequest(document->completeURL(image.imageURL)), loadOptions);
-        request.setInitiator(cachedResourceRequestInitiators().css);
-        if (options.mode == FetchOptions::Mode::Cors)
-            request.updateForAccessControl(*document);
-
-        m_cachedImage = loader.requestImage(WTFMove(request)).value_or(nullptr);
-        m_bestFitImageScaleFactor = image.scaleFactor;
+        m_bestFitImage = bestImageForScaleFactor();
     }
-    return { m_cachedImage.get(), m_bestFitImageScaleFactor };
+
+    return m_bestFitImage;
 }
 
 void CSSImageSetValue::updateDeviceScaleFactor(const Document& document)
 {
+    // FIXME: In the future, we want to take much more than deviceScaleFactor into acount here.
+    // All forms of scale should be included: Page::pageScaleFactor(), Frame::pageZoomFactor(),
+    // and any CSS transforms. https://bugs.webkit.org/show_bug.cgi?id=81698
     float deviceScaleFactor = document.page() ? document.page()->deviceScaleFactor() : 1;
     if (deviceScaleFactor == m_deviceScaleFactor)
         return;
     m_deviceScaleFactor = deviceScaleFactor;
     m_accessedBestFitImage = false;
-    m_cachedImage = nullptr;
+    m_selectedImageValue = nullptr;
+}
+
+Ref<CSSImageSetValue> CSSImageSetValue::imageSetWithStylesResolved(Style::BuilderState& builderState)
+{
+    Ref<CSSImageSetValue> result = CSSImageSetValue::create();
+    size_t length = this->length();
+    for (size_t i = 0; i + 1 < length; i += 2) {
+        result->append(builderState.resolveImageStyles(*itemWithoutBoundsCheck(i)));
+        result->append(*itemWithoutBoundsCheck(i + 1));
+    }
+
+    return result;
 }
 
 String CSSImageSetValue::customCSSText() const
@@ -129,24 +130,11 @@ String CSSImageSetValue::customCSSText() const
     result.appendLiteral("image-set(");
 
     size_t length = this->length();
-    size_t i = 0;
-    while (i < length) {
+    for (size_t i = 0; i + 1 < length; i += 2) {
         if (i > 0)
             result.appendLiteral(", ");
 
-        const CSSValue* imageValue = item(i);
-        result.append(imageValue->cssText());
-        result.append(' ');
-
-        ++i;
-        ASSERT_WITH_SECURITY_IMPLICATION(i < length);
-        const CSSValue* scaleFactorValue = item(i);
-        result.append(scaleFactorValue->cssText());
-        // FIXME: Eventually the scale factor should contain it's own unit http://wkb.ug/100120.
-        // For now 'x' is hard-coded in the parser, so we hard-code it here too.
-        result.append('x');
-
-        ++i;
+        result.append(item(i)->cssText(), ' ', item(i + 1)->cssText());
     }
 
     result.append(')');
@@ -155,9 +143,7 @@ String CSSImageSetValue::customCSSText() const
 
 bool CSSImageSetValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
-    if (!m_cachedImage)
-        return false;
-    return handler(*m_cachedImage);
+    return m_selectedImageValue && m_selectedImageValue->traverseSubresources(handler);
 }
 
 } // namespace WebCore

@@ -102,6 +102,8 @@
 
 #if ENABLE(CONTENT_FILTERING)
 #include "ContentFilter.h"
+#include "FrameLoadRequest.h"
+#include "ScriptController.h"
 #endif
 
 #if USE(QUICK_LOOK)
@@ -1091,6 +1093,9 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         // The load could be canceled under receivedFirstData(), which makes delegate calls and even sometimes dispatches DOM events.
         if (!isLoading())
             return;
+
+        if (auto* window = m_frame->document()->domWindow())
+            window->prewarmLocalStorageIfNecessary();
 
         bool userChosen;
         String encoding;
@@ -2182,5 +2187,35 @@ void DocumentLoader::enqueueSecurityPolicyViolationEvent(SecurityPolicyViolation
 {
     m_frame->document()->enqueueSecurityPolicyViolationEvent(WTFMove(eventInit));
 }
+
+#if ENABLE(CONTENT_FILTERING)
+void DocumentLoader::dataReceivedThroughContentFilter(const char* data, int size)
+{
+    dataReceived(data, size);
+}
+
+void DocumentLoader::cancelMainResourceLoadForContentFilter(const ResourceError& error)
+{
+    cancelMainResourceLoad(error);
+}
+
+void DocumentLoader::handleProvisionalLoadFailureFromContentFilter(const URL& blockedPageURL, SubstituteData& substituteData)
+{
+    frameLoader()->load(FrameLoadRequest(*frame(), blockedPageURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+}
+
+ResourceError DocumentLoader::contentFilterDidBlock(ContentFilterUnblockHandler unblockHandler, WTF::String&& unblockRequestDeniedScript)
+{
+    unblockHandler.setUnreachableURL(documentURL());
+    if (!unblockRequestDeniedScript.isEmpty() && frame()) {
+        unblockHandler.wrapWithDecisionHandler([scriptController = makeWeakPtr(frame()->script()), script = unblockRequestDeniedScript.isolatedCopy()](bool unblocked) {
+            if (!unblocked && scriptController)
+                scriptController->executeScriptIgnoringException(script);
+        });
+    }
+    frameLoader()->client().contentFilterDidBlockLoad(WTFMove(unblockHandler));
+    return frameLoader()->blockedByContentFilterError(request());
+}
+#endif // ENABLE(CONTENT_FILTERING)
 
 } // namespace WebCore

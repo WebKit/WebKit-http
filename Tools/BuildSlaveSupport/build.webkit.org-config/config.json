@@ -43,15 +43,13 @@
                     { "name": "bot652", "platform": "ios-simulator-13" },
                     { "name": "bot653", "platform": "ios-simulator-13" },
                     { "name": "bot654", "platform": "ios-simulator-13" },
-                    { "name": "bot677", "platform": "ios-simulator-13" },
+                    { "name": "bot641", "platform": "ios-simulator-13" },
                     { "name": "bot682", "platform": "ios-simulator-13" },
                     { "name": "bot694", "platform": "ios-simulator-13" },
                     { "name": "bot695", "platform": "ios-simulator-13" },
                     { "name": "bot667", "platform": "ios-simulator-13"},
                     { "name": "bot664", "platform": "ios-simulator-13"},
 
-                    { "name": "bot543", "platform": "win" },
-                    { "name": "bot544", "platform": "win" },
                     { "name": "bot545", "platform": "win" },
                     { "name": "bot546", "platform": "win" },
                     { "name": "bot547", "platform": "win" },
@@ -199,7 +197,7 @@
                       "name": "Apple iOS 13 Simulator Release (Build)", "type": "Build", "builddir": "ios-simulator-13-release",
                       "platform": "ios-simulator-13", "configuration": "release", "architectures": ["x86_64"],
                       "triggers": ["ios-simulator-13-release-tests-wk2", "ipados-simulator-13-release-tests-wk2"],
-                      "slavenames": ["bot677", "bot682"]
+                      "slavenames": ["bot641", "bot682"]
                     },
                     {
                       "name": "Apple iOS 13 Simulator Debug (Build)", "type": "Build", "builddir": "ios-simulator-13-debug",
@@ -252,17 +250,6 @@
                       "name": "Apple Win 10 Debug (Tests)", "type": "TestWebKit1", "builddir": "win10-debug-tests",
                       "platform": "win", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["bot545"]
-                    },
-                    {
-                      "name": "Apple Win 7 Release (Build)", "type": "Build", "builddir": "win7-release-i386",
-                      "platform": "win", "configuration": "release", "architectures": ["i386"],
-                      "triggers": ["win7-release-tests"],
-                      "slavenames": ["bot544"]
-                    },
-                    {
-                      "name": "Apple Win 7 Release (Tests)", "type": "TestWebKit1", "builddir": "win7-release-tests",
-                      "platform": "win", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["bot543"]
                     },
                     {
                       "name": "GTK Linux 64-bit Release (Build)", "type": "BuildAndGenerateJSCBundle", "builddir": "gtk-linux-64-release",
@@ -455,7 +442,7 @@
                       "builderNames": ["Apple iOS 13 Simulator Release (Build)", "Apple iOS 13 Simulator Debug (Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "win", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple Win 7 Release (Build)", "Apple Win 10 Release (Build)", "Apple Win 10 Debug (Build)"]
+                      "builderNames": ["Apple Win 10 Release (Build)", "Apple Win 10 Debug (Build)"]
                     },
                     { "type": "Triggerable", "name": "ios-simulator-13-release-tests-wk2",
                       "builderNames": ["Apple iOS 13 Simulator Release WK2 (Tests)"]
@@ -474,9 +461,6 @@
                     },
                     { "type": "Triggerable", "name": "win10-debug-tests",
                       "builderNames": ["Apple Win 10 Debug (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "win7-release-tests",
-                      "builderNames": ["Apple Win 7 Release (Tests)"]
                     },
                     { "type": "Triggerable", "name": "gtk-linux-64-release-tests",
                       "builderNames": ["GTK Linux 64-bit Release (Tests)"]

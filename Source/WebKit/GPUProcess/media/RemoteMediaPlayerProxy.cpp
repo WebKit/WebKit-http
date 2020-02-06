@@ -89,10 +89,9 @@ void RemoteMediaPlayerProxy::getConfiguration(RemoteMediaPlayerConfiguration& co
     configuration.shouldIgnoreIntrinsicSize = m_player->shouldIgnoreIntrinsicSize();
 }
 
-void RemoteMediaPlayerProxy::load(const URL& url, Optional<SandboxExtension::Handle>&& sandboxExtensionHandle, const ContentType& contentType, const String& keySystem, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&& completionHandler)
+void RemoteMediaPlayerProxy::load(URL&& url, Optional<SandboxExtension::Handle>&& sandboxExtensionHandle, const ContentType& contentType, const String& keySystem, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&& completionHandler)
 {
     RemoteMediaPlayerConfiguration configuration;
-
     if (sandboxExtensionHandle) {
         m_sandboxExtension = SandboxExtension::create(WTFMove(sandboxExtensionHandle.value()));
         if (m_sandboxExtension)
@@ -289,7 +288,7 @@ void RemoteMediaPlayerProxy::mediaPlayerEngineFailedToLoad() const
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 String RemoteMediaPlayerProxy::mediaPlayerMediaKeysStorageDirectory() const
 {
-    return m_configuration.mediaKeysStorageDirectory;
+    return m_manager.gpuConnectionToWebProcess().mediaKeysStorageDirectory();
 }
 #endif
 
@@ -317,7 +316,7 @@ String RemoteMediaPlayerProxy::mediaPlayerNetworkInterfaceName() const
 
 const String& RemoteMediaPlayerProxy::mediaPlayerMediaCacheDirectory() const
 {
-    return m_configuration.mediaCacheDirectory;
+    return m_manager.gpuConnectionToWebProcess().mediaCacheDirectory();
 }
 
 const Vector<WebCore::ContentType>& RemoteMediaPlayerProxy::mediaContentTypesRequiringHardwareSupport() const
@@ -415,7 +414,7 @@ void RemoteMediaPlayerProxy::videoTrackSetSelected(TrackPrivateRemoteIdentifier 
 // FIXME: Unimplemented
 void RemoteMediaPlayerProxy::mediaPlayerResourceNotSupported()
 {
-    notImplemented();
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::ResourceNotSupported(), m_id);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerSizeChanged()
@@ -425,7 +424,7 @@ void RemoteMediaPlayerProxy::mediaPlayerSizeChanged()
 
 void RemoteMediaPlayerProxy::mediaPlayerEngineUpdated()
 {
-    notImplemented();
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::EngineUpdated(), m_id);
 }
 
 void RemoteMediaPlayerProxy::mediaPlayerFirstVideoFrameAvailable()
@@ -441,7 +440,7 @@ void RemoteMediaPlayerProxy::mediaPlayerRenderingModeChanged()
 
 void RemoteMediaPlayerProxy::mediaPlayerActiveSourceBuffersChanged()
 {
-    notImplemented();
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::ActiveSourceBuffersChanged(), m_id);
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -466,12 +465,25 @@ void RemoteMediaPlayerProxy::mediaPlayerInitializationDataEncountered(const Stri
 
 void RemoteMediaPlayerProxy::mediaPlayerWaitingForKeyChanged()
 {
-    notImplemented();
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::WaitingForKeyChanged(), m_id);
 }
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-void RemoteMediaPlayerProxy::mediaPlayerCurrentPlaybackTargetIsWirelessChanged() { };
+void RemoteMediaPlayerProxy::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(bool isCurrentPlaybackTargetWireless)
+{
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::CurrentPlaybackTargetIsWirelessChanged(isCurrentPlaybackTargetWireless), m_id);
+}
+
+void RemoteMediaPlayerProxy::setWirelessVideoPlaybackDisabled(bool disabled)
+{
+    m_player->setWirelessVideoPlaybackDisabled(disabled);
+}
+
+void RemoteMediaPlayerProxy::setShouldPlayToPlaybackTarget(bool shouldPlay)
+{
+    m_player->setShouldPlayToPlaybackTarget(shouldPlay);
+}
 #endif
 
 void RemoteMediaPlayerProxy::mediaPlayerEnterFullscreen()
@@ -646,8 +658,38 @@ void RemoteMediaPlayerProxy::sendCachedState()
     m_cachedState.bufferedRanges.clear();
 }
 
-} // namespace WebKit
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+void RemoteMediaPlayerProxy::keyAdded()
+{
+    m_player->keyAdded();
+}
+#endif
 
-#undef MESSAGE_CHECK_CONTEXTID
+void RemoteMediaPlayerProxy::beginSimulatedHDCPError()
+{
+    m_player->beginSimulatedHDCPError();
+}
+
+void RemoteMediaPlayerProxy::endSimulatedHDCPError()
+{
+    m_player->endSimulatedHDCPError();
+}
+
+void RemoteMediaPlayerProxy::notifyActiveSourceBuffersChanged()
+{
+    m_webProcessConnection->send(Messages::MediaPlayerPrivateRemote::ActiveSourceBuffersChanged(), m_id);
+}
+
+void RemoteMediaPlayerProxy::applicationWillResignActive()
+{
+    m_player->applicationWillResignActive();
+}
+
+void RemoteMediaPlayerProxy::applicationDidBecomeActive()
+{
+    m_player->applicationDidBecomeActive();
+}
+
+} // namespace WebKit
 
 #endif // ENABLE(GPU_PROCESS)

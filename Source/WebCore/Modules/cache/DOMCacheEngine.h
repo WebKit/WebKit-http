@@ -30,11 +30,12 @@
 #include "FetchOptions.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "ScriptExecutionContext.h"
 #include "SharedBuffer.h"
 #include <wtf/CompletionHandler.h>
 
 namespace WebCore {
+
+class ScriptExecutionContext;
 
 struct CacheQueryOptions;
 
@@ -49,6 +50,7 @@ enum class Error {
     Stopped
 };
 
+Exception convertToException(Error);
 Exception convertToExceptionAndLog(ScriptExecutionContext*, Error);
 
 WEBCORE_EXPORT bool queryCacheMatch(const ResourceRequest& request, const ResourceRequest& cachedRequest, const ResourceResponse&, const CacheQueryOptions&);

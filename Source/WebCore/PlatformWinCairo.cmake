@@ -1,6 +1,7 @@
 include(platform/Cairo.cmake)
 include(platform/Curl.cmake)
 include(platform/ImageDecoders.cmake)
+include(platform/OpenSSL.cmake)
 include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
@@ -54,6 +55,6 @@ list(APPEND WebCore_LIBRARIES
 )
 
 list(APPEND WebCoreTestSupport_LIBRARIES
-    ${CAIRO_LIBRARIES}
+    Cairo::Cairo
     shlwapi
 )

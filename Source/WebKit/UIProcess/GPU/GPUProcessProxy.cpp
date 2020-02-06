@@ -33,6 +33,7 @@
 #include "GPUProcessCreationParameters.h"
 #include "GPUProcessMessages.h"
 #include "GPUProcessProxyMessages.h"
+#include "GPUProcessSessionParameters.h"
 #include "Logging.h"
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
@@ -41,6 +42,7 @@
 #include "WebProcessProxy.h"
 #include "WebProcessProxyMessages.h"
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
+#include <WebCore/RuntimeApplicationChecks.h>
 #include <wtf/CompletionHandler.h>
 
 #if PLATFORM(IOS_FAMILY)
@@ -51,6 +53,37 @@
 
 namespace WebKit {
 using namespace WebCore;
+
+static inline bool isSafari()
+{
+    bool isSafari = false;
+#if PLATFORM(IOS_FAMILY)
+    if (IOSApplication::isMobileSafari())
+        isSafari = true;
+#elif PLATFORM(MAC)
+    if (MacApplication::isSafari())
+        isSafari = true;
+#endif
+    return isSafari;
+}
+
+static inline bool shouldCreateCameraSandboxExtension()
+{
+    // FIXME: We should check for "com.apple.security.device.camera" entitlement.
+    if (!isSafari())
+        return false;
+    return true;
+}
+
+static inline bool shouldCreateMicrophoneSandboxExtension()
+{
+    // FIXME: We should check for "com.apple.security.device.microphone" entitlement.
+    if (!isSafari())
+        return false;
+    return true;
+}
+
+GPUProcessProxy* GPUProcessProxy::m_singleton = nullptr;
 
 GPUProcessProxy& GPUProcessProxy::singleton()
 {
@@ -65,10 +98,23 @@ GPUProcessProxy& GPUProcessProxy::singleton()
         GPUProcessCreationParameters parameters;
 #if ENABLE(MEDIA_STREAM)
         parameters.useMockCaptureDevices = gpuProcess->m_useMockCaptureDevices;
+
+        bool needsCameraSandboxExtension = shouldCreateCameraSandboxExtension();
+        bool needsMicrophoneSandboxExtension = shouldCreateMicrophoneSandboxExtension();
+        if (needsCameraSandboxExtension)
+            SandboxExtension::createHandleForGenericExtension("com.apple.webkit.camera", parameters.cameraSandboxExtensionHandle);
+        if (needsMicrophoneSandboxExtension)
+            SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.microphoneSandboxExtensionHandle);
+#if PLATFORM(IOS)
+        if (needsCameraSandboxExtension || needsMicrophoneSandboxExtension)
+            SandboxExtension::createHandleForGenericExtension("com.apple.tccd", parameters.tccSandboxExtensionHandle);
+#endif
 #endif
         // Initialize the GPU process.
         gpuProcess->send(Messages::GPUProcess::InitializeGPUProcess(parameters), 0);
         gpuProcess->updateProcessAssertion();
+
+        m_singleton = &gpuProcess.get();
     });
 
     return gpuProcess.get();
@@ -125,6 +171,8 @@ void GPUProcessProxy::getGPUProcessConnection(WebProcessProxy& webProcessProxy, 
 
 void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
 {
+    addSession(webProcessProxy.websiteDataStore());
+
     auto& connection = *this->connection();
 
     connection.sendWithAsyncReply(Messages::GPUProcess::CreateGPUConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
@@ -225,6 +273,46 @@ void GPUProcessProxy::updateProcessAssertion()
         return;
     }
     m_activityFromWebProcesses = nullptr;
+}
+
+static inline GPUProcessSessionParameters gpuProcessSessionParameters(const WebsiteDataStore& store)
+{
+    GPUProcessSessionParameters parameters;
+
+    parameters.mediaCacheDirectory = store.resolvedMediaCacheDirectory();
+    SandboxExtension::Handle mediaCacheDirectoryExtensionHandle;
+    if (!parameters.mediaCacheDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaCacheDirectory, SandboxExtension::Type::ReadWrite, parameters.mediaCacheDirectorySandboxExtensionHandle);
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    parameters.mediaKeysStorageDirectory = store.resolvedMediaKeysDirectory();
+    SandboxExtension::Handle mediaKeysStorageDirectorySandboxExtensionHandle;
+    if (!parameters.mediaKeysStorageDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaKeysStorageDirectory, SandboxExtension::Type::ReadWrite, parameters.mediaKeysStorageDirectorySandboxExtensionHandle);
+#endif
+
+    return parameters;
+}
+
+void GPUProcessProxy::addSession(const WebsiteDataStore& store)
+{
+    if (!canSendMessage())
+        return;
+
+    if (m_sessionIDs.contains(store.sessionID()))
+        return;
+
+    send(Messages::GPUProcess::AddSession { store.sessionID(), gpuProcessSessionParameters(store) }, 0);
+    m_sessionIDs.add(store.sessionID());
+}
+
+void GPUProcessProxy::removeSession(PAL::SessionID sessionID)
+{
+    if (!canSendMessage())
+        return;
+
+    if (m_sessionIDs.remove(sessionID))
+        send(Messages::GPUProcess::RemoveSession { sessionID }, 0);
 }
 
 } // namespace WebKit

@@ -133,11 +133,11 @@ LayoutUnit FormattingContext::Geometry::contentHeightForFormattingContextRoot(co
     auto bottom = borderAndPaddingTop;
     auto& formattingRootContainer = downcast<Container>(layoutBox);
     if (formattingRootContainer.establishesInlineFormattingContext()) {
-        auto& lineBoxes = downcast<InlineFormattingState>(layoutState.establishedFormattingState(formattingRootContainer)).displayInlineContent()->lineBoxes;
+        auto& lineBoxes = layoutState.establishedInlineFormattingState(formattingRootContainer).displayInlineContent()->lineBoxes;
         // Even empty containers generate one line. 
         ASSERT(!lineBoxes.isEmpty());
-        top = lineBoxes.first().logicalTop();
-        bottom = lineBoxes.last().logicalBottom();
+        top = lineBoxes.first().top();
+        bottom = lineBoxes.last().bottom();
     } else if (formattingRootContainer.establishesBlockFormattingContext() || formattingRootContainer.establishesTableFormattingContext() || formattingRootContainer.isDocumentBox()) {
         if (formattingRootContainer.hasInFlowChild()) {
             auto& firstBoxGeometry = formattingContext.geometryForBox(*formattingRootContainer.firstInFlowChild(), EscapeReason::NeedsGeometryFromEstablishedFormattingContext);
@@ -285,9 +285,9 @@ LayoutUnit FormattingContext::Geometry::shrinkToFitWidth(const Box& formattingRo
 
     // Then the shrink-to-fit width is: min(max(preferred minimum width, available width), preferred width).
     auto intrinsicWidthConstraints = IntrinsicWidthConstraints { };
-    if (is<Container>(formattingRoot)) {
+    if (is<Container>(formattingRoot) && downcast<Container>(formattingRoot).hasInFlowOrFloatingChild()) {
         auto& root = downcast<Container>(formattingRoot);
-        auto& formattingStateForRoot = layoutState().createFormattingStateForFormattingRootIfNeeded(root);
+        auto& formattingStateForRoot = layoutState().ensureFormattingState(root);
         auto precomputedIntrinsicWidthConstraints = formattingStateForRoot.intrinsicWidthConstraints();
         if (!precomputedIntrinsicWidthConstraints)
             intrinsicWidthConstraints = LayoutContext::createFormattingContext(root, layoutState())->computedIntrinsicWidthConstraints();

@@ -1,3 +1,180 @@
+2020-02-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. [GTK] Use radio buttons instead of a combo for text direction in theme test
+
+        * ManualTests/gtk/theme.html:
+
+2020-02-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Build a shared JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=198446
+
+        Reviewed by Fujii Hironori.
+
+        Compile bmalloc and WTF as OBJECT libraries that are then linked into a shared
+        JavaScriptCore. Using OBJECT libraries is a modern CMake way to have the behavior
+        of --whole-archive.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-02-04  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable TestWebKit
+        https://bugs.webkit.org/show_bug.cgi?id=207211
+
+        Reviewed by Ross Kirsling.
+
+        Turn back on API tests.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-02-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [CMake] Add Cairo::Cairo target
+        https://bugs.webkit.org/show_bug.cgi?id=207159
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/FindCairo.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-02-02  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [CMake] Use opj_config.h to find OpenJPEG include directory
+        https://bugs.webkit.org/show_bug.cgi?id=207100
+
+        Reviewed by Konstantin Tokarev.
+
+        WebKit needs OpenJPEG 2.2.0 or later versions, but it is possible for a
+        system to have both OpenJPEG 1 and OpenJPEG 2 installed. However, some
+        distributions do not put OpenJPEG 1 under a versioned directory and
+        put its header file directly under /usr/include or /usr/local/include.
+        Since CMake prefers its prefixes to paths given in HINTS, it is possible
+        that openjpeg.h from OpenJPEG 1 is found before the one from OpenJPEG 2,
+        causing WebKit to fail to build because of using the wrong header file.
+
+        Resolve the problem by checking opj_config.h instead of openjpeg.h.
+        OpenJPEG 1.5 does not have opj_config.h, so only OpenJPEG 2 can be
+        found. This also makes it consistent with the code below which already
+        uses opj_config.h.
+
+        * Source/cmake/FindOpenJPEG.cmake:
+
+2020-01-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add _PRIVATE_LIBRARIES to framework
+        https://bugs.webkit.org/show_bug.cgi?id=207004
+
+        Reviewed by Konstantin Tokarev.
+
+        Use _PRIVATE_LIBRARIES to when creating a WebKit target to specify privately linked
+        libraries. This fits with the current conventions in WebKit for CMake libraries and
+        prevents appending to _LIBRARIES with a visibility modifier which likely has
+        unintended consequences.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2020-01-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [CMake] Add SQLite::SQLite3 target
+        https://bugs.webkit.org/show_bug.cgi?id=207005
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/FindSQLite3.cmake: Added.
+        * Source/cmake/FindSqlite.cmake: Removed.
+        * Source/cmake/OptionsAppleWin.cmake: Actually use find_package.
+        * Source/cmake/OptionsFTW.cmake: Sqlite -> SQLite3
+        * Source/cmake/OptionsGTK.cmake: Sqlite -> SQLite3
+        * Source/cmake/OptionsPlayStation.cmake: Sqlite -> SQLite3
+        * Source/cmake/OptionsWPE.cmake: Sqlite -> SQLite3
+        * Source/cmake/OptionsWinCairo.cmake: Sqlite -> SQLite3
+
+2020-01-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [MSVC] Add /experimental:newLambdaProcessor switch for better C++ conformance
+        https://bugs.webkit.org/show_bug.cgi?id=204443
+
+        Reviewed by Alex Christensen.
+
+        MSVC has a bug of 'this' in lambda captures. It has caused
+        compilation errors repeatedly.
+
+        * Source/cmake/OptionsMSVC.cmake: Added /experimental:newLambdaProcessor switch.
+
+2020-01-29  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Allow setting CMAKE_IGNORE_PATH from environment for bots
+        https://bugs.webkit.org/show_bug.cgi?id=206964
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Should use light theme unless website declares support for dark themes in color-schemes property
+        https://bugs.webkit.org/show_bug.cgi?id=197947
+
+        Reviewed by Michael Catanzaro.
+
+        Do not define HAVE_OS_DARK_MODE_SUPPORT.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-01-28  Don Olmstead  <don.olmstead@sony.com>
+
+        [LFC][Integration] Build and enable on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=206165
+
+        Reviewed by Darin Adler.
+
+        Enable LFC for Windows.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2020-01-24  Sergio Villar Senin  <svillar@igalia.com>
+
+        Remove WebVR from the tree
+        https://bugs.webkit.org/show_bug.cgi?id=206739
+
+        Reviewed by Darin Adler.
+
+        Removed WebVR and OpenVR build options for GTK and WPE ports.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-01-22  Don Olmstead  <don.olmstead@sony.com>
+
+        [OpenSSL] Add stubs and build for Web Crypto
+        https://bugs.webkit.org/show_bug.cgi?id=206449
+
+        Reviewed by Jiewen Tan.
+
+        Enable Web Crypto as an experiment for WinCairo and PlayStation. Add the USE_OPENSSL
+        definition to platforms using OpenSSL.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2020-01-21  Rob Buis  <rbuis@igalia.com>
+
+        Add build flag for stale-while-revalidate
+        https://bugs.webkit.org/show_bug.cgi?id=204169
+
+        Reviewed by Youenn Fablet.
+
+        Add build flag for stale-while-revalidate to make it
+        independent from the NETWORK_CACHE_SPECULATIVE_REVALIDATION build flag.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
 2020-01-20  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.27.4 release

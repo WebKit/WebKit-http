@@ -30,7 +30,7 @@
 
 #import "Logging.h"
 #import <WebCore/FloatRect.h>
-#import <WebCore/MediaPlaybackTargetMac.h>
+#import <WebCore/MediaPlaybackTargetCocoa.h>
 #import <objc/runtime.h>
 #import <pal/cf/CoreMediaSoftLink.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
@@ -72,14 +72,16 @@ MediaPlaybackTargetPickerMac::~MediaPlaybackTargetPickerMac()
 
 bool MediaPlaybackTargetPickerMac::externalOutputDeviceAvailable()
 {
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return devicePicker().externalOutputDeviceAvailable;
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 Ref<MediaPlaybackTarget> MediaPlaybackTargetPickerMac::playbackTarget()
 {
     AVOutputContext* context = m_outputDeviceMenuController ? [m_outputDeviceMenuController.get() outputContext] : nullptr;
 
-    return WebCore::MediaPlaybackTargetMac::create(context);
+    return WebCore::MediaPlaybackTargetCocoa::create(context);
 }
 
 AVOutputDeviceMenuController *MediaPlaybackTargetPickerMac::devicePicker()
@@ -98,8 +100,10 @@ AVOutputDeviceMenuController *MediaPlaybackTargetPickerMac::devicePicker()
 
         LOG(Media, "MediaPlaybackTargetPickerMac::devicePicker - allocated menu controller %p", m_outputDeviceMenuController.get());
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (m_outputDeviceMenuController.get().externalOutputDeviceAvailable)
             availableDevicesDidChange();
+ALLOW_DEPRECATED_DECLARATIONS_END
     }
 
     return m_outputDeviceMenuController.get();
@@ -114,7 +118,9 @@ void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& loc
 
     m_showingMenu = true;
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     bool targetSelected = [devicePicker() showMenuForRect:location appearanceName:(useDarkAppearance ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight) allowReselectionOfSelectedOutputDevice:!hasActiveRoute];
+ALLOW_DEPRECATED_DECLARATIONS_END
 
     if (targetSelected != hasActiveRoute)
         currentDeviceDidChange();

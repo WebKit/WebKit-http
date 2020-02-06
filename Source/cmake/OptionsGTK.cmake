@@ -30,7 +30,7 @@ find_package(JPEG REQUIRED)
 find_package(LibSoup 2.54.0 REQUIRED)
 find_package(LibXml2 2.8.0 REQUIRED)
 find_package(PNG REQUIRED)
-find_package(Sqlite REQUIRED)
+find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(ATK 2.16.0 REQUIRED)
@@ -91,7 +91,6 @@ WEBKIT_OPTION_DEFINE(USE_WPE_RENDERER "Whether to enable WPE rendering" PUBLIC O
 # Private options specific to the GTK port. Changing these options is
 # completely unsupported. They are intended for use only by WebKit developers.
 WEBKIT_OPTION_DEFINE(USE_ANGLE_WEBGL "Whether to use ANGLE as WebGL backend." PRIVATE OFF)
-WEBKIT_OPTION_DEFINE(USE_OPENVR "Whether to use OpenVR as WebVR backend." PRIVATE OFF)
 
 # FIXME: Can we use cairo-glesv2 to avoid this conflict?
 WEBKIT_OPTION_CONFLICT(ENABLE_ACCELERATED_2D_CANVAS ENABLE_GLES2)
@@ -211,7 +210,6 @@ set(GDK_LIBRARIES ${GDK3_LIBRARIES})
 set(GDK_INCLUDE_DIRS ${GDK3_INCLUDE_DIRS})
 
 SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_UNIX_PRINTING ${GTKUnixPrint_FOUND})
-SET_AND_EXPOSE_TO_BUILD(HAVE_OS_DARK_MODE_SUPPORT 1)
 
 if (USE_WPE_RENDERER)
     find_package(WPE 1.3.0)

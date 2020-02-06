@@ -28,6 +28,7 @@
 
 #include "Animation.h"
 #include "Element.h"
+#include "InspectorInstrumentation.h"
 #include "RenderStyle.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -39,6 +40,9 @@ Ref<CSSAnimation> CSSAnimation::create(Element& owningElement, const Animation& 
 {
     auto result = adoptRef(*new CSSAnimation(owningElement, backingAnimation, newStyle));
     result->initialize(oldStyle, newStyle);
+
+    InspectorInstrumentation::didCreateWebAnimation(result.get());
+
     return result;
 }
 
@@ -60,6 +64,8 @@ void CSSAnimation::syncPropertiesWithBackingAnimation()
 
     auto& animation = backingAnimation();
     auto* animationEffect = effect();
+
+    auto previousTiming = animationEffect->getComputedTiming();
 
     switch (animation.fillMode()) {
     case AnimationFillMode::None:
@@ -97,7 +103,7 @@ void CSSAnimation::syncPropertiesWithBackingAnimation()
     animationEffect->setDelay(Seconds(animation.delay()));
     animationEffect->setIterationDuration(Seconds(animation.duration()));
     animationEffect->updateStaticTimingProperties();
-    effectTimingDidChange();
+    effectTimingDidChange(previousTiming);
 
     // Synchronize the play state
     if (animation.playState() == AnimationPlayState::Playing && playState() == WebAnimation::PlayState::Paused) {

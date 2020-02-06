@@ -308,6 +308,8 @@ class CommitQueueFlag(object):
 
 
 class Bugzilla(object):
+    NO_EDIT_BUGS_MESSAGE = "Ignore this message if you don't have EditBugs privileges (https://bugs.webkit.org/userprefs.cgi?tab=permissions)"
+
     def __init__(self, committers=committers.CommitterList()):
         self.authenticated = False
         self.queries = BugzillaQueries(self)
@@ -624,9 +626,8 @@ class Bugzilla(object):
         self.browser['description'] = description
         if is_patch:
             self.browser['ispatch'] = ("1",)
-        # FIXME: Should this use self._find_select_element_for_flag?
-        self.browser['flag_type-1'] = ('?',) if mark_for_review else ('X',)
-        self.browser['flag_type-3'] = (self._commit_queue_flag(commit_flag),)
+        self._find_select_element_for_flag("review").value = ("?",) if mark_for_review else ("X",)
+        self._find_select_element_for_flag("commit-queue").value = (self._commit_queue_flag(commit_flag),)
 
         filename = filename or "%s.patch" % timestamp()
         if not mimetype:
@@ -782,12 +783,16 @@ class Bugzilla(object):
         return bug_id
 
     def _find_select_element_for_flag(self, flag_name):
-        # FIXME: This will break if we ever re-order attachment flags
         if flag_name == "review":
-            return self.browser.find_control(type='select', nr=0)
+            class_name = "flag_type-1"
         elif flag_name == "commit-queue":
-            return self.browser.find_control(type='select', nr=1)
-        raise Exception("Don't know how to find flag named \"%s\"" % flag_name)
+            class_name = "flag_type-3"
+        else:
+            raise Exception("Don't know how to find flag named \"%s\"" % flag_name)
+
+        return self.browser.find_control(
+            type="select",
+            predicate=lambda control: class_name in (control.attrs.get("class") or ""))
 
     def clear_attachment_flags(self,
                                attachment_id,
@@ -834,10 +839,16 @@ class Bugzilla(object):
         _log.info("Obsoleting attachment: %s" % attachment_id)
         self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
-        self.browser.find_control('isobsolete').items[0].selected = True
-        # Also clear any review flag (to remove it from review/commit queues)
-        self._find_select_element_for_flag('review').value = ("X",)
-        self._find_select_element_for_flag('commit-queue').value = ("X",)
+
+        try:
+            self.browser.find_control("isobsolete").items[0].selected = True
+            # Also clear any review flag (to remove it from review/commit queues)
+            self._find_select_element_for_flag("review").value = ("X",)
+            self._find_select_element_for_flag("commit-queue").value = ("X",)
+        except (AttributeError, ValueError):
+            _log.warning("Failed to obsolete attachment")
+            _log.warning(self.NO_EDIT_BUGS_MESSAGE)
+
         if comment_text:
             _log.info(comment_text)
             # Bugzilla has two textareas named 'comment', one is somehow
@@ -903,8 +914,8 @@ class Bugzilla(object):
         self.browser.select_form(name="changeform")
 
         if not self._has_control(self.browser, "assigned_to"):
-            _log.warning("""Failed to assign bug to you (can't find assigned_to) control.
-Ignore this message if you don't have EditBugs privileges (https://bugs.webkit.org/userprefs.cgi?tab=permissions)""")
+            _log.warning("Failed to assign bug to you (can't find assigned_to) control.")
+            _log.warning(self.NO_EDIT_BUGS_MESSAGE)
             return
 
         if comment_text:

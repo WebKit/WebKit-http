@@ -171,8 +171,18 @@ public:
     void remove(Widget*);
     void remove(AXID);
 
+#if !PLATFORM(COCOA)
     void detachWrapper(AXCoreObject*, AccessibilityDetachmentType);
+#endif
+private:
+    using DOMObjectVariant = Variant<std::nullptr_t, RenderObject*, Node*, Widget*>;
+    void cacheAndInitializeWrapper(AccessibilityObject*, DOMObjectVariant = nullptr);
     void attachWrapper(AXCoreObject*);
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    void attachWrapper(AXIsolatedObject*, WebAccessibilityObjectWrapper*);
+#endif
+
+public:
     void childrenChanged(Node*, Node* newChild = nullptr);
     void childrenChanged(RenderObject*, RenderObject* newChild = nullptr);
     void childrenChanged(AXCoreObject*);
@@ -547,7 +557,9 @@ inline void AXObjectCache::deferRecomputeIsIgnored(Element*) { }
 inline void AXObjectCache::deferTextChangedIfNeeded(Node*) { }
 inline void AXObjectCache::deferSelectedChildrenChangedIfNeeded(Element&) { }
 inline void AXObjectCache::deferTextReplacementNotificationForTextControl(HTMLTextFormControlElement&, const String&) { }
+#if !PLATFORM(COCOA)
 inline void AXObjectCache::detachWrapper(AXCoreObject*, AccessibilityDetachmentType) { }
+#endif
 inline void AXObjectCache::focusModalNodeTimerFired() { }
 inline void AXObjectCache::performCacheUpdateTimerFired() { }
 inline void AXObjectCache::frameLoadingEventNotification(Frame*, AXLoadingEvent) { }

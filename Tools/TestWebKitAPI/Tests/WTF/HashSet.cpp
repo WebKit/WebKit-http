@@ -55,8 +55,8 @@ void testInitialCapacity()
         ASSERT_EQ(initialCapacity, static_cast<unsigned>(testSet.capacity()));
     }
 
-    // Adding items up to less than half the capacity should not change the capacity.
-    unsigned capacityLimit = initialCapacity / 2 - 1;
+    // Adding items up to less than 3/4 of the capacity should not change the capacity.
+    unsigned capacityLimit = initialCapacity * 3 / 4 - 1;
     for (size_t i = size; i < capacityLimit; ++i) {
         testSet.add(i);
         ASSERT_EQ(initialCapacity, static_cast<unsigned>(testSet.capacity()));
@@ -170,6 +170,9 @@ TEST(WTF_HashSet, UniquePtrKey_RemoveUsingRawPointer)
     ConstructorDestructorCounter::TestingScope scope;
 
     HashSet<std::unique_ptr<ConstructorDestructorCounter>> set;
+#if !CHECK_HASHTABLE_ITERATORS &&!DUMP_HASHTABLE_STATS_PER_TABLE
+    static_assert(sizeof(set) == sizeof(void*));
+#endif
 
     auto uniquePtr = makeUnique<ConstructorDestructorCounter>();
     ConstructorDestructorCounter* ptr = uniquePtr.get();
@@ -315,7 +318,7 @@ TEST(WTF_HashSet, RefPtrNotZeroedBeforeDeref)
     // value.
     // A zero would be a incorrect outcome as it would mean we nulled the bucket before an opaque
     // call.
-    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::hashTableDeletedValue());
+    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::PtrTraits::hashTableDeletedValue());
     EXPECT_EQ(observer->count, 0u);
 }
 

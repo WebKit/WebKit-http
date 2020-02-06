@@ -42,21 +42,6 @@
 #endif
 #endif
 
-/* MIPS requires allocators to use aligned memory */
-#if CPU(MIPS) || CPU(MIPS64)
-#define USE_ARENA_ALLOC_ALIGNMENT_INTEGER 1
-#endif
-
-/*ARMv5TE requires allocators to use aligned memory*/
-#if defined(__ARM_ARCH_5E__) || defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_5TEJ__)
-#define USE_ARENA_ALLOC_ALIGNMENT_INTEGER 1
-#endif
-
-/*ARMv5TE requires allocators to use aligned memory*/
-#if defined(__TARGET_ARCH_5E) || defined(__TARGET_ARCH_5TE) || defined(__TARGET_ARCH_5TEJ)
-#define USE_ARENA_ALLOC_ALIGNMENT_INTEGER 1
-#endif
-
 /* Export macro support. Detects the attributes available for shared library symbol export
    decorations. */
 #if OS(WINDOWS) || (COMPILER_HAS_CLANG_DECLSPEC(dllimport) && COMPILER_HAS_CLANG_DECLSPEC(dllexport))
@@ -112,10 +97,6 @@
 
 #if PLATFORM(COCOA)
 #define USE_FOUNDATION 1
-#endif
-
-#if PLATFORM(COCOA)
-#define USE_NETWORK_CFDATA_ARRAY_CALLBACK 1
 #endif
 
 #if PLATFORM(MAC)
@@ -325,10 +306,14 @@
 #define USE_UICONTEXTMENU 1
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || PLATFORM(WATCHOS) || PLATFORM(APPLETV)
+#if PLATFORM(COCOA)
 #define USE_PLATFORM_SYSTEM_FALLBACK_LIST 1
 #endif
 
 #if PLATFORM(IOS_FAMILY) || (!(defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC) && (OS(LINUX) && (PLATFORM(GTK) || PLATFORM(WPE))))
 #define USE_BMALLOC_MEMORY_FOOTPRINT_API 1
+#endif
+
+#if OS(DARWIN) && !USE(PLATFORM_REGISTERS_WITH_PROFILE) && CPU(ARM64)
+#define USE_DARWIN_REGISTER_MACROS 1
 #endif

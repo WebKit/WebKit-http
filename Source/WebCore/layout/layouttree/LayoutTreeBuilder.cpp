@@ -315,7 +315,7 @@ void TreeBuilder::buildSubTree(const RenderElement& parentRenderer, Container& p
 #if ENABLE(TREE_DEBUGGING)
 static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState, const Container& inlineFormattingRoot, unsigned depth)
 {
-    auto& inlineFormattingState = downcast<InlineFormattingState>(layoutState.establishedFormattingState(inlineFormattingRoot));
+    auto& inlineFormattingState = layoutState.establishedInlineFormattingState(inlineFormattingRoot);
     auto* displayInlineContent = inlineFormattingState.displayInlineContent();
     if (!displayInlineContent)
         return;
@@ -330,7 +330,7 @@ static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState,
 
     stream << "lines are -> ";
     for (auto& lineBox : lineBoxes)
-        stream << "[" << lineBox.logicalLeft() << "," << lineBox.logicalTop() << " " << lineBox.logicalWidth() << "x" << lineBox.logicalHeight() << "] ";
+        stream << "[" << lineBox.left() << "," << lineBox.top() << " " << lineBox.width() << "x" << lineBox.height() << "] ";
     stream.nextLine();
 
     for (auto& displayRun : displayRuns) {
@@ -342,7 +342,7 @@ static void outputInlineRuns(TextStream& stream, const LayoutState& layoutState,
             stream << "inline text box";
         else
             stream << "inline box";
-        stream << " at (" << displayRun.logicalLeft() << "," << displayRun.logicalTop() << ") size " << displayRun.logicalWidth() << "x" << displayRun.logicalHeight();
+        stream << " at (" << displayRun.left() << "," << displayRun.top() << ") size " << displayRun.width() << "x" << displayRun.height();
         if (displayRun.textContext())
             stream << " run(" << displayRun.textContext()->start() << ", " << displayRun.textContext()->end() << ")";
         stream.nextLine();
@@ -385,10 +385,10 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Disp
     else if (layoutBox.isTableRow())
         stream << "TR";
     else if (layoutBox.isInlineBlockBox())
-        stream << "Inline-block container";
+        stream << "Inline-block";
     else if (layoutBox.isInlineLevelBox()) {
-        if (layoutBox.isInlineContainer())
-            stream << "SPAN inline container";
+        if (layoutBox.isInlineBox())
+            stream << "SPAN inline box";
         else if (layoutBox.replaced())
             stream << "IMG replaced inline box";
         else if (layoutBox.isAnonymous())
@@ -396,7 +396,7 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Disp
         else if (layoutBox.isLineBreakBox())
             stream << "BR line break";
         else
-            stream << "inline box";
+            stream << "other inline level box";
     } else if (layoutBox.isBlockLevelBox())
         stream << "block box";
     else

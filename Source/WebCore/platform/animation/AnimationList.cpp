@@ -33,7 +33,10 @@ if (i) { \
         animation(i).propSet(animation(j).propGet()); \
 }
 
+AnimationList::AnimationList() = default;
+
 AnimationList::AnimationList(const AnimationList& other)
+    : RefCounted()
 {
     m_animations.reserveInitialCapacity(other.size());
     for (auto& animation : other.m_animations)

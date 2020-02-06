@@ -64,7 +64,6 @@ VPATH = \
     $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/webgpu \
     $(WebCore)/Modules/websockets \
-    $(WebCore)/Modules/webvr \
     $(WebCore)/accessibility \
     $(WebCore)/animation \
     $(WebCore)/bindings/js \
@@ -461,20 +460,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WorkerNavigatorGPU.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
-    $(WebCore)/Modules/webvr/DOMWindowWebVR.idl \
-    $(WebCore)/Modules/webvr/GamepadWebVR.idl \
-    $(WebCore)/Modules/webvr/NavigatorWebVR.idl \
-    $(WebCore)/Modules/webvr/VRDisplay.idl \
-    $(WebCore)/Modules/webvr/VRDisplayCapabilities.idl \
-    $(WebCore)/Modules/webvr/VRDisplayEvent.idl \
-    $(WebCore)/Modules/webvr/VRDisplayEventReason.idl \
-    $(WebCore)/Modules/webvr/VREye.idl \
-    $(WebCore)/Modules/webvr/VREyeParameters.idl \
-    $(WebCore)/Modules/webvr/VRFieldOfView.idl \
-    $(WebCore)/Modules/webvr/VRFrameData.idl \
-    $(WebCore)/Modules/webvr/VRLayerInit.idl \
-    $(WebCore)/Modules/webvr/VRPose.idl \
-    $(WebCore)/Modules/webvr/VRStageParameters.idl \
     $(WebCore)/accessibility/AccessibilityRole.idl \
     $(WebCore)/accessibility/AriaAttributes.idl \
     $(WebCore)/animation/Animatable.idl \
@@ -491,6 +476,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/animation/DocumentTimelineOptions.idl \
     $(WebCore)/animation/EffectTiming.idl \
     $(WebCore)/animation/FillMode.idl \
+    $(WebCore)/animation/GetAnimationsOptions.idl \
     $(WebCore)/animation/IterationCompositeOperation.idl \
     $(WebCore)/animation/KeyframeAnimationOptions.idl \
     $(WebCore)/animation/KeyframeEffect.idl \
@@ -662,7 +648,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/ShadowRoot.idl \
     $(WebCore)/dom/ShadowRootMode.idl \
     $(WebCore)/dom/Slotable.idl \
-    $(WebCore)/dom/SpectreGadget.idl \
     $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \

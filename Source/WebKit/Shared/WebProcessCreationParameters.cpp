@@ -166,11 +166,14 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << neHelperExtensionHandle;
     encoder << neSessionManagerExtensionHandle;
+    encoder << systemHasBattery;
+    encoder << mimeTypesMap;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
     encoder << currentUserInterfaceIdiomIsPad;
     encoder << cssValueToSystemColorMap;
+    encoder << focusRingColor;
 #endif
 }
 
@@ -433,6 +436,18 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!neSessionManagerExtensionHandle)
         return false;
     parameters.neSessionManagerExtensionHandle = WTFMove(*neSessionManagerExtensionHandle);
+
+    Optional<bool> systemHasBattery;
+    decoder >> systemHasBattery;
+    if (!systemHasBattery)
+        return false;
+    parameters.systemHasBattery = WTFMove(*systemHasBattery);
+
+    Optional<Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>>> mimeTypesMap;
+    decoder >> mimeTypesMap;
+    if (!mimeTypesMap)
+        return false;
+    parameters.mimeTypesMap = WTFMove(*mimeTypesMap);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -444,6 +459,12 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!cssValueToSystemColorMap)
         return false;
     parameters.cssValueToSystemColorMap = WTFMove(*cssValueToSystemColorMap);
+
+    Optional<WebCore::Color> focusRingColor;
+    decoder >> focusRingColor;
+    if (!focusRingColor)
+        return false;
+    parameters.focusRingColor = WTFMove(*focusRingColor);
 #endif
 
     return true;

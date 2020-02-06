@@ -87,7 +87,8 @@ public:
     explicit ScriptController(Frame&);
     ~ScriptController();
 
-    WEBCORE_EXPORT static Ref<DOMWrapperWorld> createWorld();
+    enum class WorldType { User, Internal };
+    WEBCORE_EXPORT static Ref<DOMWrapperWorld> createWorld(const String& name, WorldType = WorldType::Internal);
 
     JSDOMWindow* globalObject(DOMWrapperWorld& world)
     {
@@ -99,7 +100,7 @@ public:
     using ResolveFunction = CompletionHandler<void(ValueOrException)>;
 
     WEBCORE_EXPORT JSC::JSValue executeScriptIgnoringException(const String& script, bool forceUserGesture = false);
-    JSC::JSValue executeScriptInWorldIgnoringException(DOMWrapperWorld&, const String& script, bool forceUserGesture = false);
+    WEBCORE_EXPORT JSC::JSValue executeScriptInWorldIgnoringException(DOMWrapperWorld&, const String& script, bool forceUserGesture = false);
     WEBCORE_EXPORT JSC::JSValue executeUserAgentScriptInWorldIgnoringException(DOMWrapperWorld&, const String& script, bool forceUserGesture);
     WEBCORE_EXPORT ValueOrException executeUserAgentScriptInWorld(DOMWrapperWorld&, const String& script, bool forceUserGesture);
     WEBCORE_EXPORT void executeAsynchronousUserAgentScriptInWorld(DOMWrapperWorld&, RunJavaScriptParameters&&, ResolveFunction&&);

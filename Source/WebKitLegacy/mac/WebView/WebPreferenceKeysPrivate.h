@@ -54,6 +54,7 @@
 #define WebKitJavaScriptMarkupEnabledPreferenceKey @"WebKitJavaScriptMarkupEnabled"
 #define WebKitWebAnimationsEnabledPreferenceKey @"WebKitWebAnimationsEnabled"
 #define WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey @"WebKitWebAnimationsCompositeOperationsEnabled"
+#define WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey @"WebKitWebAnimationsMutableTimelinesEnabled"
 #define WebKitPointerEventsEnabledPreferenceKey @"WebKitPointerEventsEnabled"
 #define WebKitSyntheticEditingCommandsEnabledPreferenceKey @"WebKitSyntheticEditingCommandsEnabled"
 #define WebKitWebSecurityEnabledPreferenceKey @"WebKitWebSecurityEnabled"
@@ -164,6 +165,7 @@
 #define WebKitPlugInSnapshottingEnabledPreferenceKey @"WebKitPlugInSnapshottingEnabled"
 #define WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey @"WebKitHiddenPageDOMTimerThrottlingEnabled"
 #define WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey @"WebKitHiddenPageCSSAnimationSuspensionEnabled"
+#define WebKitRenderingUpdateThrottlingEnabledPreferenceKey @"WebKitRenderingUpdateThrottlingEnabled"
 #define WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey @"WebKitLowPowerVideoAudioBufferSizeEnabled"
 #define WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey @"WebKitUseLegacyTextAlignPositionedElementBehavior"
 #define WebKitMediaSourceEnabledPreferenceKey @"WebKitMediaSourceEnabled"
@@ -207,6 +209,7 @@
 #define WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey @"WebKitWebAnimationsCSSIntegrationEnabled"
 #define WebKitCSSShadowPartsEnabledPreferenceKey @"WebKitCSSShadowPartsEnabled"
 #define WebKitLayoutFormattingContextIntegrationEnabledPreferenceKey @"WebKitLayoutFormattingContextIntegrationEnabled"
+#define WebKitWebSQLEnabledPreferenceKey @"WebKitWebSQLEnabled"
 
 #if !TARGET_OS_IPHONE
 // These are private both because callers should be using the cover methods and because the
@@ -283,5 +286,5 @@
 #define WebKitAsyncClipboardAPIEnabledPreferenceKey @"WebKitAsyncClipboardAPIEnabled"
 #define WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey @"WebKitLinkPreloadResponsiveImagesEnabled"
 #define WebKitInAppBrowserPrivacyEnabledPreferenceKey @"WebKitInAppBrowserPrivacyEnabled"
-#define WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey @"AspectRatioOfImgFromWidthAndHeightEnabled"
+#define WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey @"WebKitAspectRatioOfImgFromWidthAndHeightEnabled"
 

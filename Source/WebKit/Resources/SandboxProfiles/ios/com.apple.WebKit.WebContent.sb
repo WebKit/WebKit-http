@@ -31,7 +31,6 @@
 ;;;
 
 (import "util.sb")
-(import "carrier-bundle-allowed.sb")
 
 (define-once (allow-read-and-issue-generic-extensions . filters)
     (allow file-read*
@@ -121,15 +120,9 @@
         (mobile-preferences-read "com.apple.MobileAsset")))
 
 (define-once (mobile-keybag-access)
-     (allow iokit-open (with report) (with telemetry)
-            (iokit-user-client-class "AppleKeyStoreUserClient")))
-
-(define-once (location-services)
-    (allow-carrier-bundle) ;; <rdar://problem/21192365>
-    (mobile-preferences-read
-        "com.apple.AppSupport"
-        "com.apple.GEO"
-        "com.apple.locationd"))
+    (allow iokit-open (with telemetry)
+        (iokit-user-client-class "AppleKeyStoreUserClient")  ;; Needed by NSURLCache
+))
 
 (define-once (play-audio)
     (allow mach-lookup
@@ -164,6 +157,7 @@
            (global-name "com.apple.coremedia.audioprocessingtap.xpc")
            (global-name "com.apple.coremedia.capturesession")      ; Actually for video capture
            (global-name "com.apple.coremedia.capturesource")       ; Also for video capture (<rdar://problem/15794291>).
+           (global-name "com.apple.coremedia.cpe.xpc") ; Needed for HDR playback.
            (global-name "com.apple.coremedia.customurlloader.xpc") ; Needed for custom media loading
            (global-name "com.apple.coremedia.formatreader.xpc")
            (global-name "com.apple.coremedia.player.xpc")
@@ -178,8 +172,12 @@
            (global-name "com.apple.coremedia.volumecontroller.xpc"))
 
     (allow mach-lookup (with report) (with telemetry)
+        (global-name "com.apple.coremedia.cpeprotector.xpc")
         (global-name "com.apple.coremedia.endpoint.xpc")
-        (global-name "com.apple.coremedia.figcpecryptor"))
+        (global-name "com.apple.coremedia.figcontentkeysession.xpc")
+        (global-name "com.apple.coremedia.figcpecryptor")
+        (global-name "com.apple.coremedia.routingsessionmanager.xpc")
+        (global-name "com.apple.coremedia.sts"))
 
     (mobile-preferences-read
         "com.apple.avfoundation"
@@ -190,6 +188,10 @@
         "com.apple.mobileipod" ; Ditto
         "com.apple.audio.virtualaudio" ; <rdar://problem/57170333>
     )
+
+    ;; AVF needs to see these network preferences:
+    (allow file-read*
+        (literal "/private/var/preferences/com.apple.networkd.plist"))
 
     ;; Required by the MediaPlayer framework.
     (allow mach-lookup
@@ -360,14 +362,6 @@
 
     (allow file-read* file-write-data file-ioctl
            (literal "/dev/aes_0")))
-
-(define-once (awd-log-directory daemon-name)
-    (let*
-        ((base-directory (home-relative-path "/Library/Logs/awd")))
-        (allow-create-directory (literal base-directory))
-        (allow file-read* file-write*
-            (prefix (string-append base-directory "/awd-" daemon-name ".log")))
-))
 
 (define-once (logd-diagnostic-paths)
     (require-any
@@ -610,7 +604,6 @@
     (global-name "com.apple.cfprefsd.daemon"))
 
 (allow mach-lookup (with report) (with telemetry)
-    (global-name "com.apple.aggregated")
     (global-name "com.apple.distributed_notifications@1v3")
     (global-name "com.apple.tccd"))
 
@@ -780,8 +773,6 @@
 ; <rdar://problem/7595408> , <rdar://problem/7643881>
 (opengl)
 
-(location-services)
-
 ; CRCopyRestrictionsDictionary periodically tries to CFPreferencesAppSynchronize com.apple.springboard.plist
 ; which will attempt to create the plist if it doesn't exist -- from any application.  Only SpringBoard is
 ; allowed to write its plist; ignore all others, they don't know what they are doing.
@@ -800,7 +791,7 @@
 (deny sysctl*)
 (allow sysctl-read
     (sysctl-name
-        "hw.activecpu"
+        "hw.activecpu" ;; Needed by JSC engine.
         "hw.availcpu"
         "hw.cachelinesize"
         "hw.cpufamily" ;; <rdar://problem/58416475>
@@ -821,9 +812,11 @@
         "kern.osproductversion"
         "kern.osrelease"
         "kern.osvariant_status"
-        "kern.secure_kernel"
+        "kern.secure_kernel" ;; Needed by XPC bundle resolution
         "kern.version"
-        "vm.footprint_suspend"))
+        "vm.footprint_suspend")
+    (sysctl-name-regex #"^net.routetable") ;; <rdar://problem/57665153>
+)
 
 (allow iokit-get-properties
     (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|IOGraphics_LER(|_RegTag_1|_RegTag_0|_Busy_2)|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
@@ -837,6 +830,7 @@
     (iokit-property "IOClassNameOverride")
     (iokit-property "IOPlatformUUID")
     (iokit-property "IOSurfaceAcceleratorCapabilitiesDict")
+    (iokit-property "LGHSupported")
     (iokit-property "Protocol Characteristics")
     (iokit-property "als-colorCfg") ;; <rdar://problem/52903475>
     (iokit-property "artwork-device-idiom") ;; <rdar://problem/49497720>
@@ -920,9 +914,6 @@
 ;; Allow loading injected bundles.
 (allow file-map-executable)
 
-;; AWD logging
-(awd-log-directory "com.apple.WebKit.WebContent")
-
 ;; Allow ManagedPreference access
 (allow file-read* (literal "/private/var/Managed Preferences/mobile/com.apple.webcontentfilter.plist"))
 
@@ -933,7 +924,7 @@
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
-        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd" "com.apple.lsd.open")))
+        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd" "com.apple.lsd.open" "com.apple.mobileassetd" "com.apple.mobileassetd.v2" "com.apple.frontboard.systemappservices" "com.apple.iconservices")))
 
 (allow mach-lookup
     (require-all

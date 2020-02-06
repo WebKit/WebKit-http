@@ -34,7 +34,7 @@
 #include <wtf/text/WTFString.h>
 
 #if USE(SOUP)
-#include "HTTPCookieAcceptPolicy.h"
+#include <WebCore/HTTPCookieAcceptPolicy.h>
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
@@ -53,7 +53,7 @@ struct NetworkProcessCreationParameters {
 
     CacheModel cacheModel { CacheModel::DocumentViewer };
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
 #if PLATFORM(IOS_FAMILY)
@@ -70,12 +70,13 @@ struct NetworkProcessCreationParameters {
     uint32_t uiProcessSDKVersion { 0 };
     RetainPtr<CFDataRef> networkATSContext;
     bool storageAccessAPIEnabled;
+    bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
     WebsiteDataStoreParameters defaultDataStoreParameters;
     
 #if USE(SOUP)
-    HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicy::AlwaysAccept };
+    WebCore::HTTPCookieAcceptPolicy cookieAcceptPolicy { WebCore::HTTPCookieAcceptPolicy::AlwaysAccept };
     bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
@@ -96,7 +97,6 @@ struct NetworkProcessCreationParameters {
     bool enableAdClickAttributionDebugMode { false };
     String hstsStorageDirectory;
     SandboxExtension::Handle hstsStorageDirectoryExtensionHandle;
-    bool enableLegacyTLS { false };
 };
 
 } // namespace WebKit

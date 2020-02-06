@@ -102,8 +102,7 @@ void LayoutContext::layoutFormattingContextSubtree(const Container& formattingCo
     // FIXME: layoutFormattingContextSubtree() does not perform layout on the root, rather it lays out the root's content.
     // It constructs an FC for descendant boxes and runs layout on them. The formattingContextRoot is laid out in the FC in which it lives (parent formatting context).
     // It also means that the formattingContextRoot has to have a valid/clean geometry at this point.
-    // Currently the integration codepath does not guarantee it and that's fine as long as we layout inflow content only.
-    if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextIntegrationEnabled()) {
+    {
         auto horizontalConstraints = HorizontalConstraints { displayBox.paddingBoxLeft(), displayBox.paddingBoxWidth() };
         auto verticalConstraints = VerticalConstraints { displayBox.paddingBoxTop(), displayBox.paddingBoxHeight() };
         formattingContext->layoutOutOfFlowContent(invalidationState, horizontalConstraints, verticalConstraints);
@@ -114,18 +113,18 @@ std::unique_ptr<FormattingContext> LayoutContext::createFormattingContext(const 
 {
     ASSERT(formattingContextRoot.establishesFormattingContext());
     if (formattingContextRoot.establishesInlineFormattingContext()) {
-        auto& inlineFormattingState = downcast<InlineFormattingState>(layoutState.createFormattingStateForFormattingRootIfNeeded(formattingContextRoot));
+        auto& inlineFormattingState = layoutState.ensureInlineFormattingState(formattingContextRoot);
         return makeUnique<InlineFormattingContext>(formattingContextRoot, inlineFormattingState);
     }
 
     if (formattingContextRoot.establishesBlockFormattingContext()) {
         ASSERT(formattingContextRoot.establishesBlockFormattingContextOnly());
-        auto& blockFormattingState = downcast<BlockFormattingState>(layoutState.createFormattingStateForFormattingRootIfNeeded(formattingContextRoot));
+        auto& blockFormattingState = layoutState.ensureBlockFormattingState(formattingContextRoot);
         return makeUnique<BlockFormattingContext>(formattingContextRoot, blockFormattingState);
     }
 
     if (formattingContextRoot.establishesTableFormattingContext()) {
-        auto& tableFormattingState = downcast<TableFormattingState>(layoutState.createFormattingStateForFormattingRootIfNeeded(formattingContextRoot));
+        auto& tableFormattingState = layoutState.ensureTableFormattingState(formattingContextRoot);
         return makeUnique<TableFormattingContext>(formattingContextRoot, tableFormattingState);
     }
 

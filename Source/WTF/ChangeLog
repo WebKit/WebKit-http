@@ -1,3 +1,572 @@
+2020-02-06  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-02-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Build a shared JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=198446
+
+        Reviewed by Fujii Hironori.
+
+        Add bmalloc definition when compiling WTF. Remove LanguageUnix.cpp since
+        LanguagePlayStation.cpp is present which results in duplicate symbol definitions.
+
+        * wtf/PlatformPlayStation.cmake:
+
+2020-02-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Try using 75% load factor for HashTable
+        https://bugs.webkit.org/show_bug.cgi?id=207183
+
+        Reviewed by Mark Lam.
+
+        We know that hash-table is one of the most memory consuming part in WebKit.
+        By analyzing many production hash-table implementations[1], I found that many
+        of them are using 75% load-factor while our one is 50%.
+
+        A/B test shows that 75% load-factor is performance-neutral in Speedometer2 and
+        JetStream2, while it offers 2~% improvement in Membuster. This means that we are
+        wasting too much memory for no-performance-improvement.
+
+        This patch changes the load-factor from 50% to 75%.
+
+        [1]: LLVM DenseMap, Abseil's, rust's, and so on.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::shouldExpand):
+        (WTF::HashTable::shouldExpand const):
+        (WTF::HashTableCapacityForSize::capacityForSize):
+        (WTF::KeyTraits>::computeBestTableSize):
+
+2020-02-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Do not create sandbox reports when the UI process cannot issue extensions to diagnostics service
+        https://bugs.webkit.org/show_bug.cgi?id=207279
+        <rdar://problem/59030957>
+
+        Reviewed by Brent Fulgham.
+
+        Add flag which avoids generating sandbox reports.
+
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2020-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Make WKWebView._negotiatedLegacyTLS accurate when loading main resouorce from network or cache
+        https://bugs.webkit.org/show_bug.cgi?id=207207
+
+        Reviewed by Chris Dumez.
+
+        * wtf/persistence/PersistentDecoder.cpp:
+        (WTF::Persistence::Decoder::decode):
+        * wtf/persistence/PersistentDecoder.h:
+        * wtf/persistence/PersistentEncoder.cpp:
+        (WTF::Persistence::Encoder::encode):
+        * wtf/persistence/PersistentEncoder.h:
+
+2020-02-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255818.
+        https://bugs.webkit.org/show_bug.cgi?id=207270
+
+        It is breaking some Mac builds (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255818
+
+2020-02-05  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-02-04  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Non-unified build fixes early February 2020 edition
+        https://bugs.webkit.org/show_bug.cgi?id=207227
+
+        Reviewed by Don Olmstead.
+
+        * wtf/SingleRootGraph.h: Add missing inclusion of wtf/StringPrintStream.h
+
+2020-02-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Introduce UnlinkedCodeBlockGenerator and reduce sizeof(UnlinkedCodeBlock)
+        https://bugs.webkit.org/show_bug.cgi?id=207087
+
+        Reviewed by Tadeu Zagallo.
+
+        Add more useful methods for RefCountedArray.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::operator=):
+        (WTF::RefCountedArray::isEmpty const):
+        (WTF::RefCountedArray::front):
+        (WTF::RefCountedArray::front const):
+        (WTF::RefCountedArray::last):
+        (WTF::RefCountedArray::last const):
+
+2020-02-03  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of HashMap and HashSet
+        https://bugs.webkit.org/show_bug.cgi?id=207138
+
+        Reviewed by Yusuke Suzuki.
+
+        This reduces sizeof(HashMap) and sizeof(HashSet) from 24 to 8 on 64-bit systems.
+        I measured that the overwhelming majority of HashMaps and HashSets never see more than 0 elements,
+        so I moved the table metadata (tableSize, tableSizeMask, keyCount, deletedCount) to inside the
+        dynamically allocated memory.  This makes another branch in size() for non-empty tables
+        and an additional read and write when rehashing in exchange for fewer writes in the constructor
+        and increased cache locality of everything that uses HashMap and HashSet, which is basically everything.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::~HashTable):
+        (WTF::HashTable::end):
+        (WTF::HashTable::end const):
+        (WTF::HashTable::random):
+        (WTF::HashTable::size const):
+        (WTF::HashTable::capacity const):
+        (WTF::HashTable::isEmpty const):
+        (WTF::HashTable::reserveInitialCapacity):
+        (WTF::HashTable::shouldExpand const):
+        (WTF::HashTable::mustRehashInPlace const):
+        (WTF::HashTable::shouldShrink const):
+        (WTF::HashTable::shrink):
+        (WTF::HashTable::makeIterator):
+        (WTF::HashTable::makeConstIterator const):
+        (WTF::HashTable::makeKnownGoodIterator):
+        (WTF::HashTable::makeKnownGoodConstIterator const):
+        (WTF::HashTable::tableSize const):
+        (WTF::HashTable::setTableSize const):
+        (WTF::HashTable::tableSizeMask const):
+        (WTF::HashTable::setTableSizeMask):
+        (WTF::HashTable::keyCount const):
+        (WTF::HashTable::setKeyCount const):
+        (WTF::HashTable::deletedCount const):
+        (WTF::HashTable::setDeletedCount const):
+        (WTF::KeyTraits>::HashTable):
+        (WTF::KeyTraits>::inlineLookup):
+        (WTF::KeyTraits>::lookupForWriting):
+        (WTF::KeyTraits>::fullLookupForWriting):
+        (WTF::KeyTraits>::addUniqueForInitialization):
+        (WTF::KeyTraits>::add):
+        (WTF::KeyTraits>::addPassingHashCode):
+        (WTF::KeyTraits>::remove):
+        (WTF::KeyTraits>::removeIf):
+        (WTF::KeyTraits>::allocateTable):
+        (WTF::KeyTraits>::deallocateTable):
+        (WTF::KeyTraits>::expand):
+        (WTF::KeyTraits>::shrinkToBestSize):
+        (WTF::KeyTraits>::deleteReleasedWeakBuckets):
+        (WTF::KeyTraits>::rehash):
+        (WTF::KeyTraits>::clear):
+        (WTF::KeyTraits>::swap):
+        (WTF::KeyTraits>::checkTableConsistencyExceptSize const):
+
+2020-02-03  Sam Weinig  <weinig@apple.com>
+
+        Start splitting platform specific overrides of default enable behavior into their own files
+        https://bugs.webkit.org/show_bug.cgi?id=207105
+
+        Reviewed by Dean Jackson.
+
+        Splits out platform specific overrides of default enable behavior into separate files, 
+        starting with one for all of the Cocoa related ports, one for Apple's Windows port, and
+        one for the WinCario port.
+        
+        The rule is now that all ENABLE_* macros should have a default defined in PlatformEnable.h,
+        but platforms are allowed to override it via their PlatformEnable*.h file. For now, I manually
+        ensured that all the defines in PlatformEnableCocoa.h, PlatformEnableWinApple.h and PlatformEnableWinCairo.h
+        also had defaults in PlatformEnable.h, but going forward this needs be validated either through
+        some sort of macro-based validation, through the style checker or something else.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h: Copied from Source/WTF/wtf/PlatformEnable.h.
+        * wtf/PlatformEnableWinApple.h: Copied from Source/WTF/wtf/PlatformEnable.h.
+        * wtf/PlatformEnableWinCairo.h: Copied from Source/WTF/wtf/PlatformEnable.h.
+
+2020-01-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add _PRIVATE_LIBRARIES to framework
+        https://bugs.webkit.org/show_bug.cgi?id=207004
+
+        Reviewed by Konstantin Tokarev.
+
+        Move uses of PRIVATE within _LIBRARIES to _PRIVATE_LIBRARIES. Any _LIBRARIES appended
+        afterwards will have that visibility set erroneously.
+
+        * wtf/PlatformFTW.cmake:
+
+2020-01-30  Conrad Shultz  <conrad_shultz@apple.com>
+
+        `FALLTHROUGH` macro isn't properly defined when building Objective-C files using Clang
+        https://bugs.webkit.org/show_bug.cgi?id=206637
+
+        Reviewed by Darin Adler.
+
+        Allow the `FALLTHROUGH` macro to be defined properly when building with either GCC
+        or Clang.
+
+        * wtf/Compiler.h:
+
+2020-01-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Remove PackedIntVector
+        https://bugs.webkit.org/show_bug.cgi?id=207018
+
+        Reviewed by Mark Lam.
+
+        Simply removing PackedIntVector since (1) nobody uses it, (2) it is somewhat broken (like, size()), and (3) its implementation is not so efficient.
+        If we want to have this feature, we can recreate it.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PackedIntVector.h: Removed.
+
+2020-01-30  Jonathan Bedard  <jbedard@apple.com>
+
+        PAL: Remove old iOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=206905
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformHave.h: Add HAVE(NSPROGRESS_PUBLISHING_SPI).
+
+2020-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Should use light theme unless website declares support for dark themes in color-schemes property
+        https://bugs.webkit.org/show_bug.cgi?id=197947
+
+        Reviewed by Michael Catanzaro.
+
+        Do not define HAVE_OS_DARK_MODE_SUPPORT for the GTK port.
+
+        * wtf/PlatformHave.h:
+
+2020-01-28  Jonathan Bedard  <jbedard@apple.com>
+
+        WebCore: Guard uneven corners in rounded rectangles
+        https://bugs.webkit.org/show_bug.cgi?id=206838
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformHave.h: Add HAVE(CG_PATH_UNEVEN_CORNERS_ROUNDEDRECT).
+
+2020-01-27  Jonathan Bedard  <jbedard@apple.com>
+
+        WebCore: Remove iOS 11 macros from RenderThemeIOS.mm
+        https://bugs.webkit.org/show_bug.cgi?id=206787
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformHave.h: Add HAVE(SYSTEM_FONT_STYLE_TITLE_0) and HAVE(SYSTEM_FONT_STYLE_TITLE_4).
+
+2020-01-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix OpenSource iphoneos arm64e build
+        https://bugs.webkit.org/show_bug.cgi?id=206703
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PlatformUse.h: Add USE(DARWIN_REGISTER_MACROS) check.
+
+2020-01-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r255159.
+
+        Broke the watchOS build.
+
+        Reverted changeset:
+
+        "Fix OpenSource iphoneos arm64e build"
+        https://bugs.webkit.org/show_bug.cgi?id=206703
+        https://trac.webkit.org/changeset/255159
+
+2020-01-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix OpenSource iphoneos arm64e build
+        https://bugs.webkit.org/show_bug.cgi?id=206703
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PlatformUse.h: Add USE(DARWIN_REGISTER_MACROS) check.
+
+2020-01-27  Mark Lam  <mark.lam@apple.com>
+
+        Make getVTablePointer() an inline function to be compliant with WebKit style guidelines.
+        https://bugs.webkit.org/show_bug.cgi?id=206816
+
+        Reviewed by Darin Adler.
+
+        Convert getVTablePointer() from a macro into an inline template function.  This
+        makes the naming compliant with WebKit style guidelines.
+
+        * wtf/PointerPreparations.h:
+        (WTF::getVTablePointer):
+
+2020-01-25  Brady Eidson  <beidson@apple.com>
+
+        Make ContentWorlds be identified by an ObjectIdentifier instead of a uint64_t
+        https://bugs.webkit.org/show_bug.cgi?id=206784
+
+        Reviewed by Alex Christensen.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::ObjectIdentifier::generate):
+        (WTF::ObjectIdentifier::generateThreadSafe):
+        (WTF::ObjectIdentifier::enableGenerationProtection): To allow restricting generating an identifier to the UIProcess.
+
+2020-01-25  Mark Lam  <mark.lam@apple.com>
+
+        Introduce a getVTablePointer() utility function.
+        https://bugs.webkit.org/show_bug.cgi?id=206804
+        <rdar://problem/58872290>
+
+        Reviewed by Yusuke Suzuki and Oliver Hunt.
+
+        With getVTablePointer(), we can abstract away how we get a vtable function pointer
+        without assuming the way it is signed for ARM64E.  With this, we can remove the
+        WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION macro which assumes how a vtable function
+        pointer is signed.
+
+        * wtf/PointerPreparations.h:
+
+2020-01-25  Mark Lam  <mark.lam@apple.com>
+
+        Add some tests for dynamically allocated StaticStringImpls.
+        https://bugs.webkit.org/show_bug.cgi?id=206802
+
+        Reviewed by Darin Adler.
+
+        Removed some unnecessary explicit specialization of the charactersAreAllASCII()
+        template function.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createFromLiteral):
+        (WTF::StringImpl::createStaticStringImpl):
+
+2020-01-24  Mark Lam  <mark.lam@apple.com>
+
+        Move singleton Intl string locales out of JSGlobalObject.
+        https://bugs.webkit.org/show_bug.cgi?id=206791
+        <rdar://problem/58889037>
+
+        Reviewed by Yusuke Suzuki.
+
+        Fix a bug in StringImpl::createStaticStringImpl(): I forgot to set its hash value
+        when I introduced it.  StaticStringImpls require that its hash code be set ahead
+        of time, and cannot be mutated at runtime.  See the comment in the definition of
+        StaticStringImpl in StringImpl.h.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createStaticStringImpl):
+
+2020-01-24  Mark Lam  <mark.lam@apple.com>
+
+        IntlObject's cached strings should be immortal and safe for concurrent access.
+        https://bugs.webkit.org/show_bug.cgi?id=206779
+        <rdar://problem/58831763>
+
+        Reviewed by Yusuke Suzuki.
+
+        Add a factory for creating a dynamically allocated StaticStringImpl.
+
+        Note: StaticStringImpl is guaranteed to have the same shape as StringImpl.
+        The only difference is that s_refCountFlagIsStaticString is set on the refCount
+        for StaticStringImpl.  Since the client will use the StaticStringImpl as a
+        StringImpl, we implement the factory by using StringImpl::createInternal() for
+        simplicity, and set the s_refCountFlagIsStaticString flag thereafter.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createStaticStringImpl):
+        * wtf/text/StringImpl.h:
+
+2020-01-24  Keith Rollin  <krollin@apple.com>
+
+        Fix internal Apple builds after r254411
+        https://bugs.webkit.org/show_bug.cgi?id=206723
+        <rdar://problem/58844735>
+
+        Reviewed by Maciej Stachowiak.
+
+        The default Xcode build configuration has changed between macOS 10.13
+        and macOS 10.15, such that references to some frameworks when bulding
+        for the latter don't work when building for the former. Fix this by
+        explicitly adding support for the desired build location rather than
+        assuming such support will be provided for us.
+
+        * Configurations/WTF.xcconfig:
+
+2020-01-24  Jonathan Bedard  <jbedard@apple.com>
+
+        WTF: Remove old iOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=206634
+        <rdar://problem/58818561>
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformEnable.h: Remove iOS 12 version macro.
+        * wtf/PlatformHave.h: Ditto.
+        * wtf/PlatformUse.h: Ditto.
+
+2020-01-22  Darin Adler  <darin@apple.com>
+
+        Remove some unneeded definitions from Platform.h family headers
+        https://bugs.webkit.org/show_bug.cgi?id=206642
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformEnable.h:
+        Removed ENABLE_RESPECT_EXIF_ORIENTATION because it was unused.
+
+        * wtf/PlatformHave.h:
+        Removed HAVE_PASSKIT_API_TYPE because it is now unused.
+        Removed HAVE_MERGESORT because it was unused.
+        Removed HAVE_AVFOUNDATION_VIDEO_OUTPUT because it is now unused.
+        Removed HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP because it is now unused.
+        Removed HAVE_CFNETWORK_WITH_CONTENT_ENCODING_SNIFFING_OVERRIDE because it was unused.
+
+        * wtf/PlatformUse.h:
+        Removed USE_ARENA_ALLOC_ALIGNMENT_INTEGER because it was unused.
+        Removed USE_NETWORK_CFDATA_ARRAY_CALLBACK because it is now unused.
+
+2020-01-22  Eric Carlson  <eric.carlson@apple.com>
+
+        uniqueLogIdentifier() should generate a unique identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=206612
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/LoggerHelper.h:
+        (WTF::LoggerHelper::uniqueLogIdentifier):
+
+2020-01-22  Sam Weinig  <weinig@apple.com>
+
+        Remove unused enable macro ENABLE_JIT_CONSTANT_BLINDING
+        https://bugs.webkit.org/show_bug.cgi?id=206415
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/PlatformEnable.h:
+        ENABLE_JIT_CONSTANT_BLINDING is not used anywhere in WebKit so can be removed.
+
+2020-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DateMath should accept more ISO-8601 timezone designators even if they are not included in ECMA262 to produce expected results in the wild code
+        https://bugs.webkit.org/show_bug.cgi?id=160287
+
+        Reviewed by Ross Kirsling.
+
+        While ECMA262[1] always requires ":" in a timezone designator between hours and minutes (like, "hh:mm"),
+        ISO-8601 can accept additional forms, "+hh" and "+hhmm". This patch relaxes our Date parsing to accept this
+        type of timezone designators so that we can accept wider forms of date time formats. This addition does not
+        break the existing parsing rules since '+-' prefix can clarify that following sequences are timezones.
+
+        [1]: https://tc39.es/ecma262/#sec-date-time-string-format
+        [2]: https://en.wikipedia.org/wiki/ISO_8601#Time_zone_designators
+
+        * wtf/DateMath.cpp:
+        (WTF::parseES5TimePortion):
+        (WTF::parseES5DateFromNullTerminatedCharacters):
+
+2020-01-21  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Date parse logic should be less redundant
+        https://bugs.webkit.org/show_bug.cgi?id=206560
+
+        Reviewed by Darin Adler.
+
+        * wtf/DateMath.cpp:
+        (WTF::parseDateFromNullTerminatedCharacters):
+        * wtf/DateMath.h:
+        Align function signature with parseES5DateFromNullTerminatedCharacters.
+        Namely, drop the integer out param and flip the boolean one.
+
+2020-01-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] AtomStringTable should be small
+        https://bugs.webkit.org/show_bug.cgi?id=206400
+
+        Reviewed by Sam Weinig.
+
+        AtomStringTable is the largest hashtable typically. It takes more
+        than 256KB per WebProcess (sometimes, it took 1MB or more).
+        This patch leverages PackedPtr to compact it from 8 bytes per entry
+        to 6 bytes per entry.
+
+        While this is still large, we should investigate how to compact C++
+        pointers in 4 bytes[1] to shrink memory footprint, since WebKit
+        memory is used by Vector and HashTable fulfilled with pointers.
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=206469
+
+        * wtf/DumbPtrTraits.h:
+        (WTF::DumbPtrTraits::hashTableDeletedValue):
+        (WTF::DumbPtrTraits::isHashTableDeletedValue):
+        * wtf/Forward.h:
+        * wtf/HashTraits.h:
+        * wtf/Packed.h:
+        (WTF::Packed<T::Packed):
+        (WTF::Packed<T::isHashTableDeletedValue const):
+        (WTF::GetPtrHelper<PackedPtr<T>>::getPtr):
+        (WTF::PackedPtrTraits::hashTableDeletedValue):
+        (WTF::PackedPtrTraits::isHashTableDeletedValue):
+        (WTF::alignof): Deleted.
+        * wtf/Ref.h:
+        (WTF::Ref::Ref):
+        (WTF::Ref::isHashTableDeletedValue const):
+        (WTF::Ref::hashTableDeletedValue): Deleted.
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr):
+        (WTF::RefPtr::isHashTableDeletedValue const):
+        (WTF::RefPtr::hashTableDeletedValue): Deleted.
+        * wtf/text/AtomStringImpl.cpp:
+        (WTF::addToStringTable):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::HashAndUTF8CharactersTranslator::equal):
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        (WTF::SubstringTranslator::translate):
+        (WTF::SubstringTranslator8::equal):
+        (WTF::SubstringTranslator16::equal):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::BufferFromStaticDataTranslator::equal):
+        (WTF::BufferFromStaticDataTranslator::translate):
+        (WTF::AtomStringImpl::addSlowCase):
+        (WTF::AtomStringImpl::remove):
+        (WTF::AtomStringImpl::lookUpSlowCase):
+        (WTF::AtomStringImpl::lookUp):
+        * wtf/text/AtomStringTable.cpp:
+        (WTF::AtomStringTable::~AtomStringTable):
+        * wtf/text/AtomStringTable.h:
+        (WTF::AtomStringTable::table):
+        (): Deleted.
+        * wtf/text/StringHash.h:
+        (WTF::StringHash::hash):
+        (WTF::StringHash::equal):
+        (WTF::ASCIICaseInsensitiveHash::hash):
+        (WTF::ASCIICaseInsensitiveHash::equal):
+        * wtf/text/StringImpl.h:
+
 2020-01-17  Sam Weinig  <weinig@apple.com>
 
         Platform.h is out of control Part 8: Macros are used inconsistently

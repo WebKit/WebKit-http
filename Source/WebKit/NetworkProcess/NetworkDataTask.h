@@ -52,6 +52,7 @@ class NetworkLoadParameters;
 class NetworkSession;
 class PendingDownload;
 enum class AuthenticationChallengeDisposition : uint8_t;
+enum class NegotiatedLegacyTLS : bool;
 
 using RedirectCompletionHandler = CompletionHandler<void(WebCore::ResourceRequest&&)>;
 using ChallengeCompletionHandler = CompletionHandler<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>;
@@ -60,8 +61,8 @@ using ResponseCompletionHandler = CompletionHandler<void(WebCore::PolicyAction)>
 class NetworkDataTaskClient {
 public:
     virtual void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) = 0;
-    virtual void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&) = 0;
-    virtual void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) = 0;
+    virtual void didReceiveChallenge(WebCore::AuthenticationChallenge&&, NegotiatedLegacyTLS, ChallengeCompletionHandler&&) = 0;
+    virtual void didReceiveResponse(WebCore::ResourceResponse&&, NegotiatedLegacyTLS, ResponseCompletionHandler&&) = 0;
     virtual void didReceiveData(Ref<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) = 0;
     virtual void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) = 0;
@@ -90,7 +91,7 @@ public:
     virtual void resume() = 0;
     virtual void invalidateAndCancel() = 0;
 
-    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&);
+    void didReceiveResponse(WebCore::ResourceResponse&&, NegotiatedLegacyTLS, ResponseCompletionHandler&&);
     bool shouldCaptureExtraNetworkLoadMetrics() const;
 
     enum class State {

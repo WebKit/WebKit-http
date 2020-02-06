@@ -217,8 +217,8 @@ public:
     LayoutUnit contentLogicalWidth() const { return style().isHorizontalWritingMode() ? contentWidth() : contentHeight(); }
     LayoutUnit contentLogicalHeight() const { return style().isHorizontalWritingMode() ? contentHeight() : contentWidth(); }
 
-    LayoutUnit paddingBoxWidth() const { return width() - borderLeft() - borderRight() - verticalScrollbarWidth(); }
-    LayoutUnit paddingBoxHeight() const { return height() - borderTop() - borderBottom() - horizontalScrollbarHeight(); }
+    LayoutUnit paddingBoxWidth() const { return std::max(0_lu, width() - borderLeft() - borderRight() - verticalScrollbarWidth()); }
+    LayoutUnit paddingBoxHeight() const { return std::max(0_lu, height() - borderTop() - borderBottom() - horizontalScrollbarHeight()); }
     LayoutRect paddingBoxRect() const;
     LayoutRect paddingBoxRectIncludingScrollbar() const { return LayoutRect(borderLeft(), borderTop(), width() - borderLeft() - borderRight(), height() - borderTop() - borderBottom()); }
 
@@ -247,9 +247,8 @@ public:
     virtual int scrollTop() const;
     virtual int scrollWidth() const;
     virtual int scrollHeight() const;
-    virtual void setScrollLeft(int, ScrollType, bool animated = false, ScrollClamping = ScrollClamping::Clamped);
-    virtual void setScrollTop(int, ScrollType, bool animated = false, ScrollClamping = ScrollClamping::Clamped);
-    void setScrollPosition(const ScrollPosition&, ScrollType, bool animated = false, ScrollClamping = ScrollClamping::Clamped);
+    virtual void setScrollLeft(int, ScrollType, ScrollClamping = ScrollClamping::Clamped);
+    virtual void setScrollTop(int, ScrollType, ScrollClamping = ScrollClamping::Clamped);
 
     LayoutUnit marginTop() const override { return m_marginBox.top(); }
     LayoutUnit marginBottom() const override { return m_marginBox.bottom(); }

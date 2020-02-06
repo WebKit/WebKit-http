@@ -233,7 +233,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WPE_API_DIR}"
     "${WEBKIT_DIR}/NetworkProcess/glib"
     "${WEBKIT_DIR}/NetworkProcess/soup"
-    "${WEBKIT_DIR}/NetworkProcess/unix"
     "${WEBKIT_DIR}/Platform/IPC/glib"
     "${WEBKIT_DIR}/Platform/IPC/unix"
     "${WEBKIT_DIR}/Platform/classifier"
@@ -244,7 +243,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared/glib"
     "${WEBKIT_DIR}/Shared/libwpe"
     "${WEBKIT_DIR}/Shared/soup"
-    "${WEBKIT_DIR}/Shared/unix"
     "${WEBKIT_DIR}/UIProcess/API/C/cairo"
     "${WEBKIT_DIR}/UIProcess/API/C/wpe"
     "${WEBKIT_DIR}/UIProcess/API/glib"
@@ -260,7 +258,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM"
     "${WEBKIT_DIR}/WebProcess/soup"
-    "${WEBKIT_DIR}/WebProcess/unix"
     "${WEBKIT_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WEBKIT_DIR}/WebProcess/WebPage/atk"
@@ -274,7 +271,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${ATK_BRIDGE_INCLUDE_DIRS}
-    ${CAIRO_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
@@ -284,11 +280,11 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_LIBRARIES
+    Cairo::Cairo
     HarfBuzz::HarfBuzz
     HarfBuzz::ICU
     ${ATK_LIBRARIES}
     ${ATK_BRIDGE_LIBRARIES}
-    ${CAIRO_LIBRARIES}
     ${FREETYPE_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}

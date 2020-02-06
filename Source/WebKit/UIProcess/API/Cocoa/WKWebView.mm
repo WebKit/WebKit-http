@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -123,7 +123,6 @@
 #import <WebCore/TextManipulationController.h>
 #import <WebCore/ViewportArguments.h>
 #import <WebCore/WritingMode.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
@@ -551,11 +550,11 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
     if (!(self = [super initWithCoder:coder]))
         return nil;
 
-    WKWebViewConfiguration *configuration = decodeObjectOfClassForKeyFromCoder([WKWebViewConfiguration class], @"configuration", coder);
+    WKWebViewConfiguration *configuration = [coder decodeObjectOfClass:[WKWebViewConfiguration class] forKey:@"configuration"];
     [self _initializeWithConfiguration:configuration];
 
     self.allowsBackForwardNavigationGestures = [coder decodeBoolForKey:@"allowsBackForwardNavigationGestures"];
-    self.customUserAgent = decodeObjectOfClassForKeyFromCoder([NSString class], @"customUserAgent", coder);
+    self.customUserAgent = [coder decodeObjectOfClass:[NSString class] forKey:@"customUserAgent"];
     self.allowsLinkPreview = [coder decodeBoolForKey:@"allowsLinkPreview"];
 
 #if PLATFORM(MAC)
@@ -591,11 +590,12 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 #if PLATFORM(IOS_FAMILY)
     [_contentView _webViewDestroyed];
 
-    if (_remoteObjectRegistry)
+    if (_page && _remoteObjectRegistry)
         _page->process().processPool().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->identifier());
 #endif
 
-    _page->close();
+    if (_page)
+        _page->close();
 
 #if PLATFORM(IOS_FAMILY)
     [_remoteObjectRegistry _invalidate];
@@ -606,7 +606,8 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), (CFStringRef)[NSString stringWithUTF8String:kGSEventHardwareKeyboardAvailabilityChangedNotification], nullptr);
 #endif
 
-    pageToViewMap().remove(_page.get());
+    if (_page)
+        pageToViewMap().remove(_page.get());
 
     [super dealloc];
 }
@@ -1546,6 +1547,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     if (auto* frame = _page->mainFrame())
         return wrapper(API::FrameHandle::create(frame->frameID()));
     return nil;
+}
+
+- (BOOL)_negotiatedLegacyTLS
+{
+    return _page->pageLoadState().hasNegotiatedLegacyTLS();
 }
 
 - (BOOL)_isEditable
@@ -2567,8 +2573,9 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
             NSObject <NSSecureCoding> *userObject = nil;
             if (API::Data* data = static_cast<API::Data*>(userData)) {
-                auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(data->bytes())) length:data->size() freeWhenDone:NO]);
-                auto unarchiver = secureUnarchiverFromData(nsData.get());
+                auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<unsigned char*>(data->bytes()) length:data->size() freeWhenDone:NO]);
+                auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingFromData:nsData.get() error:nullptr]);
+                unarchiver.get().decodingFailurePolicy = NSDecodingFailurePolicyRaiseException;
                 @try {
                     if (auto* allowedClasses = m_webView->_page->process().processPool().allowedClassesForParameterCoding())
                         userObject = [unarchiver decodeObjectOfClasses:allowedClasses forKey:@"userObject"];
@@ -2706,7 +2713,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if (_page->layoutSizeScaleFactor() == viewScale)
         return;
 
-    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], viewScale, _page->minimumEffectiveDeviceWidth());
+    _page->setViewportConfigurationViewLayoutSize(_page->viewLayoutSize(), viewScale, _page->minimumEffectiveDeviceWidth());
 #endif
 }
 
@@ -2716,7 +2723,10 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if (_page->minimumEffectiveDeviceWidth() == minimumEffectiveDeviceWidth)
         return;
 
-    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], _page->layoutSizeScaleFactor(), minimumEffectiveDeviceWidth);
+    if (_dynamicViewportUpdateMode == WebKit::DynamicViewportUpdateMode::NotResizing)
+        _page->setViewportConfigurationViewLayoutSize(_page->viewLayoutSize(), _page->layoutSizeScaleFactor(), minimumEffectiveDeviceWidth);
+    else
+        _page->setMinimumEffectiveDeviceWidthWithoutViewportConfigurationUpdate(minimumEffectiveDeviceWidth);
 #endif
 }
 

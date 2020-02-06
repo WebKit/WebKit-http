@@ -121,6 +121,7 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
+#import <WebCore/ShadowRoot.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
@@ -832,10 +833,10 @@ void WebPage::handleDoubleTapForDoubleClickAtPoint(const IntPoint& point, Option
     bool altKey = modifiers.contains(WebEvent::Modifier::AltKey);
     bool metaKey = modifiers.contains(WebEvent::Modifier::MetaKey);
     auto roundedAdjustedPoint = roundedIntPoint(adjustedPoint);
-    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::OneFingerTap));
     if (m_isClosed)
         return;
-    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::OneFingerTap));
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -2709,7 +2710,6 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
 
     RenderObject* renderer = hitNode->renderer();
     info.bounds = renderer->absoluteBoundingBoxRect(true);
-    // We don't want to select blocks that are larger than 97% of the visible area of the document.
     if (is<HTMLAttachmentElement>(*hitNode)) {
         info.isAttachment = true;
         HTMLAttachmentElement& attachment = downcast<HTMLAttachmentElement>(*hitNode);
@@ -2719,10 +2719,22 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
             info.url = URL::fileURLWithFileSystemPath(downcast<HTMLAttachmentElement>(*hitNode).file()->path());
     } else {
         info.isSelectable = renderer->style().userSelect() != UserSelect::None;
+        // We don't want to select blocks that are larger than 97% of the visible area of the document.
+        // FIXME: Is this heuristic still needed, now that block selection has been removed?
         if (info.isSelectable && !hitNode->isTextNode())
             info.isSelectable = !isAssistableElement(*downcast<Element>(hitNode)) && !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
     }
+    for (auto currentNode = makeRefPtr(hitNode); currentNode; currentNode = currentNode->parentOrShadowHostNode()) {
+        auto* renderer = currentNode->renderer();
+        if (!renderer)
+            continue;
 
+        auto& style = renderer->style();
+        if (style.userSelect() == UserSelect::None && style.userDrag() == UserDrag::Element) {
+            info.prefersDraggingOverTextSelection = true;
+            break;
+        }
+    }
 #if PLATFORM(MACCATALYST)
     bool isInsideFixedPosition;
     VisiblePosition caretPosition(renderer->positionForPoint(request.point, nullptr));
@@ -2750,6 +2762,80 @@ RefPtr<ShareableBitmap> WebPage::shareableBitmapSnapshotForNode(Element& element
     return nullptr;
 }
 
+static bool canForceCaretForPosition(const VisiblePosition& position)
+{
+    auto* node = position.deepEquivalent().anchorNode();
+    if (!node)
+        return false;
+
+    auto* renderer = node->renderer();
+    auto* style = renderer ? &renderer->style() : nullptr;
+    auto cursorType = style ? style->cursor() : CursorType::Auto;
+
+    if (cursorType == CursorType::Text)
+        return true;
+
+    if (cursorType != CursorType::Auto)
+        return false;
+
+    if (node->hasEditableStyle())
+        return true;
+
+    if (!renderer)
+        return false;
+
+    return renderer->isText() && node->canStartSelection();
+}
+
+static void populateCaretContext(const HitTestResult& hitTestResult, const InteractionInformationRequest& request, InteractionInformationAtPosition& info)
+{
+    auto frame = makeRefPtr(hitTestResult.innerNodeFrame());
+    if (!frame)
+        return;
+
+    auto view = makeRefPtr(frame->view());
+    if (!view)
+        return;
+
+    auto node = hitTestResult.innerNode();
+    if (!node)
+        return;
+
+    auto* renderer = node->renderer();
+    if (!renderer)
+        return;
+
+    while (renderer && !is<RenderBlockFlow>(*renderer))
+        renderer = renderer->parent();
+
+    if (!renderer)
+        return;
+
+    // FIXME: We should be able to retrieve this geometry information without
+    // forcing the text to fall out of Simple Line Layout.
+    auto& blockFlow = downcast<RenderBlockFlow>(*renderer);
+    auto position = frame->visiblePositionForPoint(view->rootViewToContents(request.point));
+    auto lineRect = position.absoluteSelectionBoundsForLine();
+    lineRect.setWidth(blockFlow.contentWidth());
+
+    info.lineCaretExtent = view->contentsToRootView(lineRect);
+    info.caretHeight = info.lineCaretExtent.height();
+
+    bool lineContainsRequestPoint = info.lineCaretExtent.contains(request.point);
+    // Force an I-beam cursor if the page didn't request a hand, and we're inside the bounds of the line.
+    if (lineContainsRequestPoint && info.cursor->type() != Cursor::Hand && canForceCaretForPosition(position))
+        info.cursor = Cursor::fromType(Cursor::IBeam);
+
+    if (!lineContainsRequestPoint && info.cursor->type() == Cursor::IBeam) {
+        auto approximateLineRectInContentCoordinates = renderer->absoluteBoundingBoxRect();
+        approximateLineRectInContentCoordinates.setHeight(renderer->style().computedLineHeight());
+        info.lineCaretExtent = view->contentsToRootView(approximateLineRectInContentCoordinates);
+        if (!info.lineCaretExtent.contains(request.point) || !node->hasEditableStyle())
+            info.lineCaretExtent.setY(request.point.y() - info.lineCaretExtent.height() / 2);
+        info.caretHeight = info.lineCaretExtent.height();
+    }
+}
+
 InteractionInformationAtPosition WebPage::positionInformation(const InteractionInformationRequest& request)
 {
     InteractionInformationAtPosition info;
@@ -2762,24 +2848,12 @@ InteractionInformationAtPosition WebPage::positionInformation(const InteractionI
     info.nodeAtPositionHasDoubleClickHandler = m_page->mainFrame().nodeRespondingToDoubleClickEvent(request.point, adjustedPoint);
 
     auto& eventHandler = m_page->mainFrame().eventHandler();
-    HitTestResult hitTestResult = eventHandler.hitTestResultAtPoint(request.point, HitTestRequest::ReadOnly | HitTestRequest::AllowFrameScrollbars);
-    info.cursor = eventHandler.selectCursor(hitTestResult, false);
-    if (request.includeCaretContext) {
-        if (auto* frame = hitTestResult.innerNodeFrame()) {
-            if (auto* frameView = frame->view()) {
-                VisiblePosition position = frame->visiblePositionForPoint(request.point);
-                info.caretHeight = frameView->contentsToRootView(position.absoluteCaretBounds()).height();
-
-                VisiblePosition startPosition = startOfLine(position);
-                VisiblePosition endPosition = endOfLine(position);
-                info.lineCaretExtent = unionRect(frameView->contentsToRootView(startPosition.absoluteCaretBounds()), frameView->contentsToRootView(endPosition.absoluteCaretBounds()));
-            }
-        }
+    HitTestResult hitTestResultForCursor = eventHandler.hitTestResultAtPoint(request.point, HitTestRequest::ReadOnly | HitTestRequest::AllowFrameScrollbars | HitTestRequest::AllowChildFrameContent);
+    if (auto* hitFrame = hitTestResultForCursor.innerNodeFrame()) {
+        info.cursor = hitFrame->eventHandler().selectCursor(hitTestResultForCursor, false);
+        if (request.includeCaretContext)
+            populateCaretContext(hitTestResultForCursor, request, info);
     }
-
-#if ENABLE(DATA_INTERACTION)
-    info.hasSelectionAtPosition = m_page->hasSelectionAtPosition(adjustedPoint);
-#endif
 
     if (m_focusedElement)
         focusedElementPositionInformation(*this, *m_focusedElement, request, info);
@@ -3132,7 +3206,7 @@ void WebPage::setOverrideViewportArguments(const Optional<WebCore::ViewportArgum
     m_page->setOverrideViewportArguments(arguments);
 }
 
-void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation, DynamicViewportSizeUpdateID dynamicViewportSizeUpdateID)
+void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation, double minimumEffectiveDeviceWidth, DynamicViewportSizeUpdateID dynamicViewportSizeUpdateID)
 {
     SetForScope<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
     // FIXME: this does not handle the cases where the content would change the content size or scroll position from JavaScript.
@@ -3171,7 +3245,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
 
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage::dynamicViewportSizeUpdate setting view layout size to " << viewLayoutSize);
     bool viewportChanged = m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
-    viewportChanged |= m_viewportConfiguration.setViewLayoutSize(viewLayoutSize);
+    viewportChanged |= m_viewportConfiguration.setViewLayoutSize(viewLayoutSize, WTF::nullopt, minimumEffectiveDeviceWidth);
     if (viewportChanged)
         viewportConfigurationChanged();
 

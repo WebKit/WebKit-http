@@ -83,6 +83,10 @@
 #include <pal/cf/CoreMediaSoftLink.h>
 #endif
 
+#if USE(CG)
+#include "ImageBufferUtilitiesCG.h"
+#endif
+
 namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLCanvasElement);
@@ -885,7 +889,7 @@ void HTMLCanvasElement::createImageBuffer() const
     if (!width() || !height())
         return;
 
-    RenderingMode renderingMode = shouldAccelerate(size()) ? Accelerated : Unaccelerated;
+    RenderingMode renderingMode = shouldAccelerate(size()) ? RenderingMode::Accelerated : RenderingMode::Unaccelerated;
 
     auto hostWindow = (document().view() && document().view()->root()) ? document().view()->root()->hostWindow() : nullptr;
     setImageBuffer(ImageBuffer::create(size(), renderingMode, 1, ColorSpace::SRGB, hostWindow));

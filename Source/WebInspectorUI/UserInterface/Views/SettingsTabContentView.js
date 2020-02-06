@@ -26,14 +26,9 @@
 
 WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentView
 {
-    constructor(identifier)
+    constructor()
     {
-        let tabBarItem = WI.PinnedTabBarItem.fromTabInfo(WI.SettingsTabContentView.tabInfo());
-
-        super(identifier || "settings", "settings", tabBarItem);
-
-        // Ensures that the Settings tab is displayable from a pinned tab bar item.
-        tabBarItem.representedObject = this;
+        super(SettingsTabContentView.tabInfo());
 
         this._selectedSettingsView = null;
         this._settingsViews = [];
@@ -42,10 +37,15 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
     static tabInfo()
     {
         return {
+            identifier: SettingsTabContentView.Type,
             image: "Images/Gear.svg",
             title: WI.UIString("Settings"),
-            isEphemeral: true,
         };
+    }
+
+    static shouldPinTab()
+    {
+        return true;
     }
 
     static shouldSaveTab()
@@ -360,9 +360,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             experimentalSettingsView.addSeparator();
         }
 
-        experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
-        experimentalSettingsView.addSeparator();
-
         if (InspectorBackend.hasDomain("CSS")) {
             let stylesGroup = experimentalSettingsView.addGroup(WI.UIString("Styles:"));
             stylesGroup.addSetting(WI.settings.experimentalEnableStylesJumpToEffective, WI.UIString("Show Jump to Effective Property Button"));
@@ -386,7 +383,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         }
 
         listenForChange(WI.settings.experimentalEnablePreviewFeatures);
-        listenForChange(WI.settings.experimentalEnableNewTabBar);
 
         if (InspectorBackend.hasDomain("CSS"))
             listenForChange(WI.settings.experimentalEnableStylesJumpToEffective);
@@ -405,7 +401,10 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         let elementsGroup = engineeringSettingsView.addGroup(WI.unlocalizedString("Elements:"));
         elementsGroup.addSetting(WI.settings.engineeringAllowEditingUserAgentShadowTrees, WI.unlocalizedString("Allow editing UserAgent shadow trees"));
 
+        engineeringSettingsView.addSeparator();
+
         let debuggingGroup = engineeringSettingsView.addGroup(WI.unlocalizedString("Debugging:"));
+        debuggingGroup.addSetting(WI.settings.engineeringShowInternalExecutionContexts, WI.unlocalizedString("Show WebKit-internal execution contexts"));
         debuggingGroup.addSetting(WI.settings.engineeringShowInternalScripts, WI.unlocalizedString("Show WebKit-internal scripts"));
         debuggingGroup.addSetting(WI.settings.engineeringPauseForInternalScripts, WI.unlocalizedString("Pause in WebKit-internal scripts"));
 

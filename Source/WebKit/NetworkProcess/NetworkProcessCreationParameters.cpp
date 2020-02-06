@@ -40,7 +40,7 @@ NetworkProcessCreationParameters::NetworkProcessCreationParameters() = default;
 void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(cacheModel);
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     encoder << uiProcessCookieStorageIdentifier;
 #endif
 #if PLATFORM(IOS_FAMILY)
@@ -55,6 +55,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << uiProcessSDKVersion;
     IPC::encode(encoder, networkATSContext.get());
     encoder << storageAccessAPIEnabled;
+    encoder << suppressesConnectionTerminationOnSystemChange;
 #endif
     encoder << defaultDataStoreParameters;
 #if USE(SOUP)
@@ -76,7 +77,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << enableAdClickAttributionDebugMode;
     encoder << hstsStorageDirectory;
     encoder << hstsStorageDirectoryExtensionHandle;
-    encoder << enableLegacyTLS;
 }
 
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
@@ -84,7 +84,7 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decodeEnum(result.cacheModel))
         return false;
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     if (!decoder.decode(result.uiProcessCookieStorageIdentifier))
         return false;
 #endif
@@ -119,6 +119,8 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!IPC::decode(decoder, result.networkATSContext))
         return false;
     if (!decoder.decode(result.storageAccessAPIEnabled))
+        return false;
+    if (!decoder.decode(result.suppressesConnectionTerminationOnSystemChange))
         return false;
 #endif
 
@@ -175,9 +177,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
 
     if (!decoder.decode(result.hstsStorageDirectoryExtensionHandle))
-        return false;
-    
-    if (!decoder.decode(result.enableLegacyTLS))
         return false;
 
     return true;

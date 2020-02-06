@@ -91,8 +91,8 @@ void LineBuilder::initialize(const Constraints& constraints)
         m_initialStrut = { };
 
     auto lineRect = Display::InlineRect { constraints.logicalTopLeft, 0_lu, initialLineHeight };
-    auto baseline = Display::LineBox::Baseline { initialBaselineOffset, initialLineHeight - initialBaselineOffset };
-    m_lineBox = Display::LineBox { lineRect, baseline, initialBaselineOffset };
+    auto baseline = LineBoxBuilder::Baseline { initialBaselineOffset, initialLineHeight - initialBaselineOffset };
+    m_lineBox = LineBoxBuilder { lineRect, baseline, initialBaselineOffset };
     m_lineLogicalWidth = constraints.availableLogicalWidth;
     m_hasIntrusiveFloat = constraints.lineIsConstrainedByFloat;
 
@@ -124,7 +124,7 @@ LineBuilder::RunList LineBuilder::close(IsLastLineWithInlineContent isLastLineWi
         }
         if (isVisuallyEmpty()) {
             m_lineBox.resetBaseline();
-            m_lineBox.setLogicalHeight(0_lu);
+            m_lineBox.setLogicalHeight({ });
         }
         // Remove descent when all content is baseline aligned but none of them have descent.
         if (formattingContext().quirks().lineDescentNeedsCollapsing(m_runs)) {
@@ -155,7 +155,7 @@ void LineBuilder::alignContentVertically()
                 auto& boxGeometry = formattingContext().geometryForBox(layoutBox);
                 logicalTop = baselineOffset() - ascent - boxGeometry.borderTop() - boxGeometry.paddingTop().valueOr(0);
             } else if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
-                auto& formattingState = downcast<InlineFormattingState>(layoutState().establishedFormattingState(downcast<Container>(layoutBox)));
+                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<Container>(layoutBox));
                 // Spec makes us generate at least one line -even if it is empty.
                 auto inlineBlockBaselineOffset = formattingState.displayInlineContent()->lineBoxes.last().baselineOffset();
                 // The inline-block's baseline offset is relative to its content box. Let's convert it relative to the margin box.
@@ -565,7 +565,7 @@ void LineBuilder::adjustBaselineAndLineHeight(const Run& run)
         case VerticalAlign::Baseline: {
             if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
                 // Inline-blocks with inline content always have baselines.
-                auto& formattingState = downcast<InlineFormattingState>(layoutState().establishedFormattingState(downcast<Container>(layoutBox)));
+                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<Container>(layoutBox));
                 // Spec makes us generate at least one line -even if it is empty.
                 auto& lastLineBox = formattingState.displayInlineContent()->lineBoxes.last();
                 auto inlineBlockBaseline = lastLineBox.baseline();
@@ -644,9 +644,9 @@ bool LineBuilder::isVisuallyNonEmpty(const Run& run) const
     }
 
     if (run.isBox()) {
-        if (!run.layoutBox().establishesFormattingContext())
+        if (run.layoutBox().isReplaced())
             return true;
-        ASSERT(run.layoutBox().isInlineBlockBox());
+        ASSERT(run.layoutBox().isInlineBlockBox() || run.layoutBox().isInlineTableBox());
         if (!run.logicalWidth())
             return false;
         if (m_isIntrinsicSizing || formattingContext().geometryForBox(run.layoutBox()).height())
@@ -658,7 +658,7 @@ bool LineBuilder::isVisuallyNonEmpty(const Run& run) const
     return false;
 }
 
-Display::LineBox::Baseline LineBuilder::halfLeadingMetrics(const FontMetrics& fontMetrics, InlineLayoutUnit lineLogicalHeight)
+LineBoxBuilder::Baseline LineBuilder::halfLeadingMetrics(const FontMetrics& fontMetrics, InlineLayoutUnit lineLogicalHeight)
 {
     auto ascent = fontMetrics.ascent();
     auto descent = fontMetrics.descent();

@@ -39,8 +39,10 @@ import ews.config as config
 class StatusBubble(View):
     # These queue names are from shortname in https://trac.webkit.org/browser/webkit/trunk/Tools/BuildSlaveSupport/ews-build/config.json
     # FIXME: Auto-generate this list https://bugs.webkit.org/show_bug.cgi?id=195640
+    # Note: This list is sorted in the order of which bubbles appear in bugzilla.
     ALL_QUEUES = ['style', 'ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo', 'win',
-                  'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'jsc', 'jsc-armv7', 'jsc-mips', 'jsc-i386', 'webkitperl', 'webkitpy', 'services']
+                  'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'api-gtk',
+                  'bindings', 'jsc', 'jsc-armv7', 'jsc-mips', 'jsc-i386', 'webkitperl', 'webkitpy', 'services']
     # FIXME: Auto-generate the queue's trigger relationship
     QUEUE_TRIGGERS = {
         'api-ios': 'ios-sim',
@@ -65,10 +67,12 @@ class StatusBubble(View):
         bubble = {
             'name': queue,
         }
+        is_tester_queue = self._is_tester_queue(queue)
+        is_builder_queue = self._is_builder_queue(queue)
         if hide_icons == False:
-            if self._is_tester_queue(queue):
+            if is_tester_queue:
                 bubble['name'] = StatusBubble.TESTER_ICON + '  ' + bubble['name']
-            if self._is_builder_queue(queue):
+            if is_builder_queue:
                 bubble['name'] = StatusBubble.BUILDER_ICON + '  ' + bubble['name']
 
         builds, is_parent_build = self.get_all_builds_for_queue(patch, queue, self._get_parent_queue(queue))
@@ -110,7 +114,17 @@ class StatusBubble(View):
                 bubble['details_message'] = 'Build is in-progress. Recent messages:' + self._steps_messages_from_multiple_builds(builds) + '\n\nWaiting to run tests.'
             else:
                 bubble['state'] = 'pass'
-                bubble['details_message'] = 'Pass'
+                if is_builder_queue and is_tester_queue:
+                    bubble['details_message'] = 'Built successfully and passed tests'
+                elif is_builder_queue:
+                    bubble['details_message'] = 'Built successfully'
+                elif is_tester_queue:
+                    if queue == 'style':
+                        bubble['details_message'] = 'Passed style check'
+                    else:
+                        bubble['details_message'] = 'Passed tests'
+                else:
+                    bubble['details_message'] = 'Pass'
         elif build.result == Buildbot.WARNINGS:
             bubble['state'] = 'pass'
             bubble['details_message'] = 'Warning' + self._steps_messages_from_multiple_builds(builds)

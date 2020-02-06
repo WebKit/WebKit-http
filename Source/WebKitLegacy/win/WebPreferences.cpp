@@ -317,6 +317,8 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey), kCFBooleanFalse);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey), kCFBooleanFalse);
+
     CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitUserTimingEnabledPreferenceKey), kCFBooleanFalse);
@@ -348,6 +350,10 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitAsyncClipboardAPIEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitWebSQLEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitRenderingUpdateThrottlingEnabledPreferenceKey), kCFBooleanTrue);
 
     defaultSettings = defaults;
 #endif
@@ -2365,6 +2371,20 @@ HRESULT WebPreferences::webAnimationsCompositeOperationsEnabled(_Out_ BOOL* enab
     return S_OK;
 }
 
+HRESULT WebPreferences::setWebAnimationsMutableTimelinesEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::webAnimationsMutableTimelinesEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey);
+    return S_OK;
+}
+
 HRESULT WebPreferences::setUserTimingEnabled(BOOL enabled)
 {
     setBoolValue(WebKitUserTimingEnabledPreferenceKey, enabled);
@@ -2434,3 +2454,32 @@ HRESULT WebPreferences::setAspectRatioOfImgFromWidthAndHeightEnabled(BOOL enable
     setBoolValue(WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey, enabled);
     return S_OK;
 }
+
+HRESULT WebPreferences::webSQLEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitWebSQLEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setWebSQLEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitWebSQLEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::renderingUpdateThrottlingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitRenderingUpdateThrottlingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setRenderingUpdateThrottlingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitRenderingUpdateThrottlingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+

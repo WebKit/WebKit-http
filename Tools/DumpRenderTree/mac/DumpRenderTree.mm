@@ -865,6 +865,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setFetchAPIKeepAliveEnabled:YES];
     [preferences setWebAnimationsEnabled:YES];
     [preferences setWebAnimationsCompositeOperationsEnabled:YES];
+    [preferences setWebAnimationsMutableTimelinesEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
     [preferences setCacheAPIEnabled:NO];
@@ -994,6 +995,7 @@ static void resetWebPreferencesToConsistentValues()
 
     [preferences setHiddenPageDOMTimerThrottlingEnabled:NO];
     [preferences setHiddenPageCSSAnimationSuspensionEnabled:NO];
+    [preferences setRenderingUpdateThrottlingEnabled:NO];
     [preferences setRemotePlaybackEnabled:YES];
 
     [preferences setMediaDevicesEnabled:YES];
@@ -1008,6 +1010,8 @@ static void resetWebPreferencesToConsistentValues()
     preferences.mediaCapabilitiesEnabled = YES;
 
     preferences.selectionAcrossShadowBoundariesEnabled = YES;
+
+    [preferences setWebSQLEnabled:YES];
 
     [WebPreferences _clearNetworkLoaderSession];
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];

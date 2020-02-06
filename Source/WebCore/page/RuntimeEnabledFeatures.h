@@ -112,6 +112,9 @@ public:
     void setWebAnimationsCompositeOperationsEnabled(bool areEnabled) { m_areWebAnimationsCompositeOperationsEnabled = areEnabled; }
     bool webAnimationsCompositeOperationsEnabled() const { return m_areWebAnimationsCompositeOperationsEnabled; }
 
+    void setWebAnimationsMutableTimelinesEnabled(bool areEnabled) { m_areWebAnimationsMutableTimelinesEnabled = areEnabled; }
+    bool webAnimationsMutableTimelinesEnabled() const { return m_areWebAnimationsMutableTimelinesEnabled; }
+
     void setImageBitmapEnabled(bool isEnabled) { m_isImageBitmapEnabled = isEnabled; }
     bool imageBitmapEnabled() const { return m_isImageBitmapEnabled; }
 
@@ -132,13 +135,8 @@ public:
     bool fetchAPIKeepAliveEnabled() const { return m_fetchAPIKeepAliveEnabled; }
     void setFetchAPIKeepAliveEnabled(bool isEnabled) { m_fetchAPIKeepAliveEnabled = isEnabled; }
 
-    bool spectreGadgetsEnabled() const;
-
     void setInspectorAdditionsEnabled(bool isEnabled) { m_inspectorAdditionsEnabled = isEnabled; }
     bool inspectorAdditionsEnabled() const { return m_inspectorAdditionsEnabled; }
-
-    void setWebVREnabled(bool isEnabled) { m_webVREnabled = isEnabled; }
-    bool webVREnabled() const { return m_webVREnabled; }
 
     void setAccessibilityObjectModelEnabled(bool isEnabled) { m_accessibilityObjectModelEnabled = isEnabled; }
     bool accessibilityObjectModelEnabled() const { return m_accessibilityObjectModelEnabled; }
@@ -423,6 +421,7 @@ private:
     bool m_areWebAnimationsEnabled { true };
     bool m_isWebAnimationsCSSIntegrationEnabled { true };
     bool m_areWebAnimationsCompositeOperationsEnabled { false };
+    bool m_areWebAnimationsMutableTimelinesEnabled { false };
     bool m_isImageBitmapEnabled { true };
 #if ENABLE(OFFSCREEN_CANVAS)
     bool m_isOffscreenCanvasEnabled { false };
@@ -432,7 +431,6 @@ private:
     bool m_isWebSocketEnabled { true };
     bool m_fetchAPIKeepAliveEnabled { false };
     bool m_inspectorAdditionsEnabled { false };
-    bool m_webVREnabled { false };
     bool m_accessibilityObjectModelEnabled { false };
     bool m_ariaReflectionEnabled { true };
     bool m_itpDebugMode { false };
@@ -447,7 +445,7 @@ private:
     bool m_pointerEventsEnabled { true };
     bool m_syntheticEditingCommandsEnabled { true };
     bool m_dialogElementEnabled { false };
-    bool m_webSQLEnabled { true };
+    bool m_webSQLEnabled { false };
     bool m_keygenElementEnabled { false };
     bool m_pageAtRuleSupportEnabled { false };
     bool m_highlightAPIEnabled { false };

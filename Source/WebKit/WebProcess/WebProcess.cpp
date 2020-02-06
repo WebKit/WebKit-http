@@ -70,6 +70,7 @@
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
 #include "WebResourceLoadObserver.h"
+#include "WebSWClientConnection.h"
 #include "WebSWContextManagerConnection.h"
 #include "WebSWContextManagerConnectionMessages.h"
 #include "WebServiceWorkerProvider.h"
@@ -275,7 +276,6 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
 #if PLATFORM(IOS_FAMILY)
     m_viewUpdateDispatcher->initializeConnection(connection);
 #endif // PLATFORM(IOS_FAMILY)
-
     m_webInspectorInterruptDispatcher->initializeConnection(connection);
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -286,9 +286,15 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
         supplement->initializeConnection(connection);
 
     m_webConnection = WebConnectionToUIProcess::create(this);
+
+#if PLATFORM(IOS_FAMILY)
+    // Make sure we have an IPC::Connection before creating the ProcessTaskStateObserver since it may call
+    // WebProcess::processTaskStateDidChange() on a background thread and deference the IPC connection.
+    m_taskStateObserver = ProcessTaskStateObserver::create(*this);
+#endif
 }
 
-void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
+void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters, CompletionHandler<void()>&& completionHandler)
 {    
     TraceScope traceScope(InitializeWebProcessStart, InitializeWebProcessEnd);
 
@@ -453,6 +459,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
     RELEASE_LOG_IF_ALLOWED(Process, "initializeWebProcess: Presenting process = %d", WebCore::presentingApplicationPID());
+    completionHandler();
 }
 
 void WebProcess::setWebsiteDataStoreParameters(WebProcessDataStoreParameters&& parameters)
@@ -891,7 +898,7 @@ bool WebProcess::shouldPlugInAutoStartFromOrigin(WebPage& webPage, const String&
     if (!pluginOrigin.isEmpty() && m_plugInAutoStartOrigins.contains(pluginOrigin))
         return true;
 
-#ifdef ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     // The plugin wasn't in the general whitelist, so check if it similar to the primary plugin for the page (if we've found one).
     if (webPage.matchesPrimaryPlugIn(pageOrigin, pluginOrigin, mimeType))
         return true;
@@ -1191,11 +1198,16 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
         if (!IPC::Connection::identifierIsValid(connectionInfo.identifier()))
             CRASH();
 
-        m_networkProcessConnection = NetworkProcessConnection::create(connectionInfo.releaseIdentifier());
+        m_networkProcessConnection = NetworkProcessConnection::create(connectionInfo.releaseIdentifier(), connectionInfo.cookieAcceptPolicy);
 #if HAVE(AUDIT_TOKEN)
         m_networkProcessConnection->setNetworkProcessAuditToken(WTFMove(connectionInfo.auditToken));
 #endif
         m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::RegisterURLSchemesAsCORSEnabled(WebCore::LegacySchemeRegistry::allURLSchemesRegisteredAsCORSEnabled()), 0);
+
+#if ENABLE(SERVICE_WORKER)
+        if (!Document::allDocuments().isEmpty())
+            m_networkProcessConnection->serviceWorkerConnection().registerServiceWorkerClients();
+#endif
     }
     
     return *m_networkProcessConnection;
@@ -1844,18 +1856,14 @@ LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
 }
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcess::establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, const WebPreferencesStore& store, RegistrableDomain&& registrableDomain, ServiceWorkerInitializationData&& initializationData)
+void WebProcess::establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebPageProxyIdentifier webPageProxyID, PageIdentifier pageID, const WebPreferencesStore& store, RegistrableDomain&& registrableDomain, ServiceWorkerInitializationData&& initializationData, CompletionHandler<void()>&& completionHandler)
 {
     // We are in the Service Worker context process and the call below establishes our connection to the Network Process
     // by calling ensureNetworkProcessConnection. SWContextManager needs to use the same underlying IPC::Connection as the
     // NetworkProcessConnection for synchronization purposes.
     auto& ipcConnection = ensureNetworkProcessConnection().connection();
     SWContextManager::singleton().setConnection(makeUnique<WebSWContextManagerConnection>(ipcConnection, WTFMove(registrableDomain), pageGroupID, webPageProxyID, pageID, store, WTFMove(initializationData)));
-}
-
-void WebProcess::registerServiceWorkerClients()
-{
-    ServiceWorkerProvider::singleton().registerServiceWorkerClients();
+    SWContextManager::singleton().connection()->establishConnection(WTFMove(completionHandler));
 }
 
 void WebProcess::addServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier identifier)
@@ -1867,15 +1875,6 @@ bool WebProcess::removeServiceWorkerRegistration(WebCore::ServiceWorkerRegistrat
 {
     ASSERT(m_swRegistrationCounts.contains(identifier));
     return m_swRegistrationCounts.remove(identifier);
-}
-#endif
-
-#if PLATFORM(MAC)
-void WebProcess::setScreenProperties(const WebCore::ScreenProperties& properties)
-{
-    WebCore::setScreenProperties(properties);
-    for (auto& page : m_pageMap.values())
-        page->screenPropertiesDidChange();
 }
 #endif
 

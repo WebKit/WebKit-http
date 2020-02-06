@@ -489,6 +489,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (BOOL)hiddenPageCSSAnimationSuspensionEnabled;
 - (void)setHiddenPageCSSAnimationSuspensionEnabled:(BOOL)flag;
 
+- (BOOL)renderingUpdateThrottlingEnabled;
+- (void)setRenderingUpdateThrottlingEnabled:(BOOL)flag;
+
 - (BOOL)lowPowerVideoAudioBufferSizeEnabled;
 - (void)setLowPowerVideoAudioBufferSizeEnabled:(BOOL)enabled;
 
@@ -579,6 +582,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (void)setWebAnimationsCompositeOperationsEnabled:(BOOL)flag;
 - (BOOL)webAnimationsCompositeOperationsEnabled;
 
+- (void)setWebAnimationsMutableTimelinesEnabled:(BOOL)flag;
+- (BOOL)webAnimationsMutableTimelinesEnabled;
+
 - (void)setPointerEventsEnabled:(BOOL)flag;
 - (BOOL)pointerEventsEnabled;
 
@@ -635,6 +641,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 
 - (BOOL)isInAppBrowserPrivacyEnabled;
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag;
+
+- (void)setWebSQLEnabled:(BOOL)flag;
+- (BOOL)webSQLEnabled;
 
 @property (nonatomic) BOOL visualViewportAPIEnabled;
 @property (nonatomic) BOOL CSSOMViewScrollingAPIEnabled;

@@ -63,6 +63,7 @@ page/scrolling/nicosia/ScrollingTreeStickyNode.cpp
 page/scrolling/generic/ScrollingThreadGeneric.cpp
 
 platform/ScrollAnimationKinetic.cpp
+platform/ScrollAnimationSmooth.cpp
 platform/UserAgentQuirks.cpp
 
 platform/generic/ScrollAnimatorGeneric.cpp
@@ -83,7 +84,6 @@ platform/graphics/gtk/ColorGtk.cpp
 platform/graphics/gtk/DisplayRefreshMonitorGtk.cpp
 platform/graphics/gtk/GdkCairoUtilities.cpp
 platform/graphics/gtk/IconGtk.cpp
-platform/graphics/gtk/ImageBufferGtk.cpp
 platform/graphics/gtk/ImageGtk.cpp
 
 platform/graphics/gstreamer/ImageGStreamerCairo.cpp

@@ -63,6 +63,7 @@ namespace WebKit {
 
 class DownloadProxy;
 class DownloadProxyMap;
+class WebPageProxy;
 class WebProcessPool;
 class WebUserContentControllerProxy;
 
@@ -71,6 +72,7 @@ enum class StorageAccessStatus : uint8_t;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
 
+struct FrameInfoData;
 struct NetworkProcessCreationParameters;
 struct ResourceLoadInfo;
 struct WebsiteData;
@@ -95,7 +97,7 @@ public:
 
     void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnectionDelayedReply&&);
 
-    DownloadProxy& createDownloadProxy(WebsiteDataStore&, const WebCore::ResourceRequest&);
+    DownloadProxy& createDownloadProxy(WebsiteDataStore&, const WebCore::ResourceRequest&, const FrameInfoData&, WebPageProxy* originatingPage);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, CompletionHandler<void(WebsiteData)>&&);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, CompletionHandler<void()>&& completionHandler);
@@ -235,7 +237,8 @@ private:
 
     // Message handlers
     void didReceiveNetworkProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
-    void didReceiveAuthenticationChallenge(PAL::SessionID, WebPageProxyIdentifier, const Optional<WebCore::SecurityOriginData>&, WebCore::AuthenticationChallenge&&, uint64_t challengeID);
+    void didReceiveAuthenticationChallenge(PAL::SessionID, WebPageProxyIdentifier, const Optional<WebCore::SecurityOriginData>&, WebCore::AuthenticationChallenge&&, bool, uint64_t challengeID);
+    void negotiatedLegacyTLS(WebPageProxyIdentifier);
     void didFetchWebsiteData(uint64_t callbackID, const WebsiteData&);
     void didDeleteWebsiteData(uint64_t callbackID);
     void didDeleteWebsiteDataForOrigins(uint64_t callbackID);
@@ -261,7 +264,7 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain&&, PAL::SessionID);
+    void establishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain&&, PAL::SessionID, CompletionHandler<void()>&&);
     void workerContextConnectionNoLongerNeeded(WebCore::ProcessIdentifier);
     void registerServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier);
     void unregisterServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier);

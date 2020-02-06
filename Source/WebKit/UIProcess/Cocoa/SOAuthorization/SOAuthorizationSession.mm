@@ -32,6 +32,7 @@
 #import "APINavigation.h"
 #import "APINavigationAction.h"
 #import "APIUIClient.h"
+#import "Logging.h"
 #import "SOAuthorizationLoadPolicy.h"
 #import "WKUIDelegatePrivate.h"
 #import "WKWebViewInternal.h"
@@ -40,11 +41,33 @@
 #import <WebCore/ResourceResponse.h>
 #import <WebCore/SecurityOrigin.h>
 #import <pal/cocoa/AppSSOSoftLink.h>
+#import <wtf/BlockPtr.h>
 #import <wtf/Vector.h>
+
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(m_page && m_page->isAlwaysOnLoggingAllowed(), AppSSO, "%p - [InitiatingAction=%s] SOAuthorizationSession::" fmt, this, toString(m_action), ##__VA_ARGS__)
 
 namespace WebKit {
 
 namespace {
+
+static const char* Redirect = "Redirect";
+static const char* PopUp = "PopUp";
+static const char* SubFrame = "SubFrame";
+
+static const char* toString(const SOAuthorizationSession::InitiatingAction& action)
+{
+    switch (action) {
+    case SOAuthorizationSession::InitiatingAction::Redirect:
+        return Redirect;
+    case SOAuthorizationSession::InitiatingAction::PopUp:
+        return PopUp;
+    case SOAuthorizationSession::InitiatingAction::SubFrame:
+        return SubFrame;
+    }
+
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
 
 static Vector<WebCore::Cookie> toCookieVector(NSArray<NSHTTPCookie *> *cookies)
 {
@@ -94,6 +117,8 @@ void SOAuthorizationSession::becomeCompleted()
 
 void SOAuthorizationSession::shouldStart()
 {
+    RELEASE_LOG_IF_ALLOWED("shouldStart:");
+
     ASSERT(m_state == State::Idle);
     if (!m_page)
         return;
@@ -102,46 +127,74 @@ void SOAuthorizationSession::shouldStart()
 
 void SOAuthorizationSession::start()
 {
-    ASSERT((m_state == State::Idle || m_state == State::Waiting) && m_page && m_navigationAction);
-    m_state = State::Active;
+    RELEASE_LOG_IF_ALLOWED("start:");
 
-    m_page->decidePolicyForSOAuthorizationLoad(emptyString(), [this, weakThis = makeWeakPtr(*this)] (SOAuthorizationLoadPolicy policy) {
+    ASSERT((m_state == State::Idle || m_state == State::Waiting) && m_navigationAction);
+    m_state = State::Active;
+    [m_soAuthorization getAuthorizationHintsWithURL:m_navigationAction->request().url() responseCode:0 completion:makeBlockPtr([this, weakThis = makeWeakPtr(*this)] (SOAuthorizationHints *authorizationHints, NSError *error) {
+        RELEASE_LOG_IF_ALLOWED("start: Receive SOAuthorizationHints (error=%ld)", error ? error.code : 0);
+
+        if (!weakThis || error || !authorizationHints)
+            return;
+        continueStartAfterGetAuthorizationHints(authorizationHints.localizedExtensionBundleDisplayName);
+    }).get()];
+}
+
+void SOAuthorizationSession::continueStartAfterGetAuthorizationHints(const String& hints)
+{
+    RELEASE_LOG_IF_ALLOWED("continueStartAfterGetAuthorizationHints: (hints=%s)", hints.utf8().data());
+
+    ASSERT(m_state == State::Active);
+    if (!m_page)
+        return;
+
+    m_page->decidePolicyForSOAuthorizationLoad(hints, [this, weakThis = makeWeakPtr(*this)] (SOAuthorizationLoadPolicy policy) {
         if (!weakThis)
             return;
+        continueStartAfterDecidePolicy(policy);
+    });
+}
 
-        if (policy == SOAuthorizationLoadPolicy::Ignore) {
-            fallBackToWebPath();
-            return;
-        }
+void SOAuthorizationSession::continueStartAfterDecidePolicy(const SOAuthorizationLoadPolicy& policy)
+{
+    if (policy == SOAuthorizationLoadPolicy::Ignore) {
+        RELEASE_LOG_IF_ALLOWED("continueStartAfterDecidePolicy: Receive SOAuthorizationLoadPolicy::Ignore");
 
-        if (!m_soAuthorization || !m_page || !m_navigationAction)
-            return;
+        fallBackToWebPath();
+        return;
+    }
 
-        // FIXME: <rdar://problem/48909336> Replace the below with AppSSO constants.
-        auto initiatorOrigin = emptyString();
-        if (m_navigationAction->sourceFrame())
-            initiatorOrigin = m_navigationAction->sourceFrame()->securityOrigin().securityOrigin().toString();
-        if (m_action == InitiatingAction::SubFrame && m_page->mainFrame())
-            initiatorOrigin = WebCore::SecurityOrigin::create(m_page->mainFrame()->url())->toString();
-        NSDictionary *authorizationOptions = @{
-            SOAuthorizationOptionUserActionInitiated: @(m_navigationAction->isProcessingUserGesture()),
-            @"initiatorOrigin": (NSString *)initiatorOrigin,
-            @"initiatingAction": @(static_cast<NSInteger>(m_action))
-        };
-        [m_soAuthorization setAuthorizationOptions:authorizationOptions];
+    RELEASE_LOG_IF_ALLOWED("continueStartAfterDecidePolicy: Receive SOAuthorizationLoadPolicy::Allow");
+
+    if (!m_soAuthorization || !m_page || !m_navigationAction)
+        return;
+
+    // FIXME: <rdar://problem/48909336> Replace the below with AppSSO constants.
+    auto initiatorOrigin = emptyString();
+    if (m_navigationAction->sourceFrame())
+        initiatorOrigin = m_navigationAction->sourceFrame()->securityOrigin().securityOrigin().toString();
+    if (m_action == InitiatingAction::SubFrame && m_page->mainFrame())
+        initiatorOrigin = WebCore::SecurityOrigin::create(m_page->mainFrame()->url())->toString();
+    NSDictionary *authorizationOptions = @{
+        SOAuthorizationOptionUserActionInitiated: @(m_navigationAction->isProcessingUserGesture()),
+        @"initiatorOrigin": (NSString *)initiatorOrigin,
+        @"initiatingAction": @(static_cast<NSInteger>(m_action))
+    };
+    [m_soAuthorization setAuthorizationOptions:authorizationOptions];
 
 #if PLATFORM(IOS)
-        if (![fromWebPageProxy(*m_page).UIDelegate respondsToSelector:@selector(_presentingViewControllerForWebView:)])
-            [m_soAuthorization setEnableEmbeddedAuthorizationViewController:NO];
+    if (![fromWebPageProxy(*m_page).UIDelegate respondsToSelector:@selector(_presentingViewControllerForWebView:)])
+        [m_soAuthorization setEnableEmbeddedAuthorizationViewController:NO];
 #endif
 
-        auto *nsRequest = m_navigationAction->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::UpdateHTTPBody);
-        [m_soAuthorization beginAuthorizationWithURL:nsRequest.URL httpHeaders:nsRequest.allHTTPHeaderFields httpBody:nsRequest.HTTPBody];
-    });
+    auto *nsRequest = m_navigationAction->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::UpdateHTTPBody);
+    [m_soAuthorization beginAuthorizationWithURL:nsRequest.URL httpHeaders:nsRequest.allHTTPHeaderFields httpBody:nsRequest.HTTPBody];
 }
 
 void SOAuthorizationSession::fallBackToWebPath()
 {
+    RELEASE_LOG_IF_ALLOWED("fallBackToWebPath:");
+
     if (m_state != State::Active)
         return;
     becomeCompleted();
@@ -150,6 +203,8 @@ void SOAuthorizationSession::fallBackToWebPath()
 
 void SOAuthorizationSession::abort()
 {
+    RELEASE_LOG_IF_ALLOWED("abort:");
+
     if (m_state == State::Idle || m_state == State::Completed)
         return;
     becomeCompleted();
@@ -171,6 +226,9 @@ void SOAuthorizationSession::complete(NSHTTPURLResponse *httpResponse, NSData *d
 
     // Set cookies.
     auto cookies = toCookieVector([NSHTTPCookie cookiesWithResponseHeaderFields:httpResponse.allHeaderFields forURL:response.url()]);
+
+    RELEASE_LOG_IF_ALLOWED("complete: (httpStatusCode=%d, hasCookies=%d, hasData=%d)", response.httpStatusCode(), !cookies.isEmpty(), !!data.length);
+
     if (cookies.isEmpty()) {
         completeInternal(response, data);
         return;
@@ -178,15 +236,20 @@ void SOAuthorizationSession::complete(NSHTTPURLResponse *httpResponse, NSData *d
 
     if (!m_page)
         return;
-    m_page->websiteDataStore().cookieStore().setCookies(cookies, [weakThis = makeWeakPtr(*this), response = WTFMove(response), data = adoptNS([[NSData alloc] initWithData:data])] () mutable {
+    m_page->websiteDataStore().cookieStore().setCookies(cookies, [this, weakThis = makeWeakPtr(*this), response = WTFMove(response), data = adoptNS([[NSData alloc] initWithData:data])] () mutable {
         if (!weakThis)
             return;
-        weakThis->completeInternal(response, data.get());
+
+        RELEASE_LOG_IF_ALLOWED("complete: Cookies are set.");
+
+        completeInternal(response, data.get());
     });
 }
 
 void SOAuthorizationSession::presentViewController(SOAuthorizationViewController viewController, UICallback uiCallback)
 {
+    RELEASE_LOG_IF_ALLOWED("presentViewController:");
+
     ASSERT(m_state == State::Active);
     // Only expect at most one UI session for the whole authorization session.
     if (!m_page || m_page->isClosed() || m_viewController) {
@@ -227,9 +290,37 @@ void SOAuthorizationSession::presentViewController(SOAuthorizationViewController
 
 void SOAuthorizationSession::dismissViewController()
 {
+    RELEASE_LOG_IF_ALLOWED("dismissViewController:");
+
     ASSERT(m_viewController);
 #if PLATFORM(MAC)
     ASSERT(m_sheetWindow && m_sheetWindowWillCloseObserver);
+
+    // This is a workaround for an AppKit issue: <rdar://problem/59125329>.
+    // [m_sheetWindow sheetParent] is null if the parent is minimized or the host app is hidden.
+    if (auto *presentingWindow = m_page->platformWindow()) {
+        if (presentingWindow.miniaturized) {
+            if (m_presentingWindowDidDeminiaturizeObserver)
+                return;
+            m_presentingWindowDidDeminiaturizeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowDidDeminiaturizeNotification object:presentingWindow queue:nil usingBlock:[protectedThis = makeRefPtr(this), this] (NSNotification *) {
+                dismissViewController();
+                [[NSNotificationCenter defaultCenter] removeObserver:m_presentingWindowDidDeminiaturizeObserver.get()];
+                m_presentingWindowDidDeminiaturizeObserver = nullptr;
+            }];
+            return;
+        }
+    }
+
+    if (NSApp.hidden) {
+        if (m_applicationDidUnhideObserver)
+            return;
+        m_applicationDidUnhideObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidUnhideNotification object:NSApp queue:nil usingBlock:[protectedThis = makeRefPtr(this), this] (NSNotification *) {
+            dismissViewController();
+            [[NSNotificationCenter defaultCenter] removeObserver:m_applicationDidUnhideObserver.get()];
+            m_applicationDidUnhideObserver = nullptr;
+        }];
+        return;
+    }
 
     [[NSNotificationCenter defaultCenter] removeObserver:m_sheetWindowWillCloseObserver.get()];
     m_sheetWindowWillCloseObserver = nullptr;
@@ -245,4 +336,6 @@ void SOAuthorizationSession::dismissViewController()
 
 } // namespace WebKit
 
-#endif
+#undef RELEASE_LOG_IF_ALLOWED
+
+#endif // HAVE(APP_SSO)

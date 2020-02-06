@@ -30,12 +30,13 @@
 #include "CacheQueryOptions.h"
 #include "Exception.h"
 #include "HTTPParsers.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
 namespace DOMCacheEngine {
 
-static inline Exception errorToException(Error error)
+Exception convertToException(Error error)
 {
     switch (error) {
     case Error::NotImplemented:
@@ -50,15 +51,14 @@ static inline Exception errorToException(Error error)
         return Exception { TypeError, "Internal error"_s };
     case Error::Stopped:
         return Exception { TypeError, "Context is stopped"_s };
-    default:
-        ASSERT_NOT_REACHED();
-        return Exception { TypeError, "Connection stopped"_s };
     }
+    ASSERT_NOT_REACHED();
+    return Exception { TypeError, "Connection stopped"_s };
 }
 
 Exception convertToExceptionAndLog(ScriptExecutionContext* context, Error error)
 {
-    auto exception = errorToException(error);
+    auto exception = convertToException(error);
     if (context)
         context->addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("Cache API operation failed: ", exception.message()));
     return exception;

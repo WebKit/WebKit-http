@@ -48,10 +48,10 @@
 #import "_WKDownloadInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CertificateInfo.h>
+#import <WebCore/HTTPCookieAcceptPolicyCocoa.h>
 #import <WebCore/PluginData.h>
 #import <WebCore/RegistrableDomain.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/WeakObjCPtr.h>
@@ -200,26 +200,9 @@ static WKProcessPool *sharedProcessPool;
 {
 }
 
-static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAcceptPolicy policy)
-{
-    switch (static_cast<NSUInteger>(policy)) {
-    case NSHTTPCookieAcceptPolicyAlways:
-        return WebKit::HTTPCookieAcceptPolicy::AlwaysAccept;
-    case NSHTTPCookieAcceptPolicyNever:
-        return WebKit::HTTPCookieAcceptPolicy::Never;
-    case NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain:
-        return WebKit::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain;
-    case NSHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain:
-        return WebKit::HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain;
-    }
-
-    ASSERT_NOT_REACHED();
-    return WebKit::HTTPCookieAcceptPolicy::AlwaysAccept;
-}
-
 - (void)_setCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(PAL::SessionID::defaultSessionID(), toHTTPCookieAcceptPolicy(policy), []() { });
+    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(PAL::SessionID::defaultSessionID(), WebCore::toHTTPCookieAcceptPolicy(policy), []() { });
 }
 
 - (id)_objectForBundleParameter:(NSString *)parameter
@@ -230,7 +213,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 - (void)_setObject:(id <NSCopying, NSSecureCoding>)object forBundleParameter:(NSString *)parameter
 {
     auto copy = adoptNS([(NSObject *)object copy]);
-    auto keyedArchiver = secureArchiver();
+    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initRequiringSecureCoding:YES]);
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameter"];
@@ -251,7 +234,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 - (void)_setObjectsForBundleParametersWithDictionary:(NSDictionary *)dictionary
 {
     auto copy = adoptNS([[NSDictionary alloc] initWithDictionary:dictionary copyItems:YES]);
-    auto keyedArchiver = secureArchiver();
+    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initRequiringSecureCoding:YES]);
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameters"];
@@ -613,16 +596,6 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _coreLocationProvider = coreLocationProvider;
 }
 #endif // PLATFORM(IOS_FAMILY)
-
-- (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request originatingWebView:(WKWebView *)webView
-{
-    return nil;
-}
-
-- (_WKDownload *)_resumeDownloadFromData:(NSData *)resumeData path:(NSString *)path originatingWebView:(WKWebView *)webView
-{
-    return nil;
-}
 
 - (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request websiteDataStore:(WKWebsiteDataStore *)dataStore originatingWebView:(WKWebView *)webView
 {

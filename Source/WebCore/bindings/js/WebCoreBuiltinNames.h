@@ -215,20 +215,12 @@ namespace WebCore {
     macro(ServiceWorkerGlobalScope) \
     macro(ServiceWorkerRegistration) \
     macro(ShadowRoot) \
-    macro(SpectreGadget) \
     macro(StaticRange) \
     macro(StylePropertyMapReadOnly) \
     macro(StylePropertyMap) \
     macro(TextTrackCue) \
     macro(UndoItem) \
     macro(UndoManager) \
-    macro(VRDisplay) \
-    macro(VRDisplayCapabilities) \
-    macro(VRDisplayEvent) \
-    macro(VREyeParameters) \
-    macro(VRFieldOfView) \
-    macro(VRFrameData) \
-    macro(VRStageParameters) \
     macro(VisualViewport) \
     macro(WebGL2RenderingContext) \
     macro(WebGLVertexArrayObject) \
@@ -352,6 +344,7 @@ namespace WebCore {
     macro(streamWritable) \
     macro(structuredCloneArrayBuffer) \
     macro(structuredCloneArrayBufferView) \
+    macro(timeline) \
     macro(top) \
     macro(underlyingByteSource) \
     macro(underlyingSink) \

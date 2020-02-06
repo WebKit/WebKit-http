@@ -26,11 +26,35 @@
 #pragma once
 
 #include "APIObject.h"
+#include "ContentWorldShared.h"
 #include <wtf/text/WTFString.h>
 
 namespace API {
 
-class ContentWorld final : public API::ObjectImpl<API::Object::Type::ContentWorld> {
+class ContentWorldBase {
+public:
+    virtual ~ContentWorldBase() = default;
+
+    WebKit::ContentWorldIdentifier identifier() const { return m_identifier; }
+    const WTF::String& name() const { return m_name; }
+    std::pair<WebKit::ContentWorldIdentifier, WTF::String> worldData() const { return { m_identifier, m_name }; }
+
+    virtual void ref() const = 0;
+    virtual void deref() const = 0;
+
+protected:
+    ContentWorldBase(const WTF::String& name);
+    ContentWorldBase(WebKit::ContentWorldIdentifier identifier)
+        : m_identifier(identifier)
+    {
+    }
+
+private:
+    WebKit::ContentWorldIdentifier m_identifier;
+    WTF::String m_name;
+};
+
+class ContentWorld final : public API::ObjectImpl<API::Object::Type::ContentWorld>, public ContentWorldBase {
 public:
     static Ref<ContentWorld> sharedWorldWithName(const WTF::String&);
     static ContentWorld& pageContentWorld();
@@ -38,18 +62,12 @@ public:
 
     virtual ~ContentWorld();
 
-    const WTF::String& name() const { return m_name; }
-    uint64_t identifier() const { return m_identifier; }
-
-    std::pair<uint64_t, WTF::String> worldData() { return { m_identifier, m_name }; }
+    void ref() const final { ObjectImpl::ref(); }
+    void deref() const final { ObjectImpl::deref(); }
 
 private:
-    ContentWorld(const WTF::String&);
-    ContentWorld(uint64_t identifier);
-
-    // FIXME: This should be an ObjectIdentifier once we can get all ScriptWorld related classes to use ObjectIdentifier.
-    uint64_t m_identifier;
-    WTF::String m_name;
+    explicit ContentWorld(const WTF::String&);
+    explicit ContentWorld(WebKit::ContentWorldIdentifier);
 };
 
 } // namespace API

@@ -362,7 +362,7 @@ webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
 
 webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
 
-webkit.org/b/155312 inspector/heap/getPreview.html [ Pass Timeout ]
+webkit.org/b/155312 [ Debug ] inspector/heap/getPreview.html [ Pass Timeout ]
 
 # Video fullscreen is not implemented for mac wk2 in webkittestrunner
 media/media-fullscreen-loop-inline.html [ Skip ]
@@ -600,6 +600,7 @@ webkit.org/b/188096 [ Release ] tiled-drawing/scrolling/fixed/four-bars-zoomed.h
 
 webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
+webkit.org/b/162081 fast/events/input-event-insert-link.html [ Failure ]
 
 webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
 
@@ -762,7 +763,7 @@ media/deactivate-audio-session.html [ Pass ]
 # Link preconnect is disabled on pre-High Sierra because the CFNetwork SPI is missing.
 [ Sierra ] http/tests/preconnect [ Skip ]
 
-webkit.org/b/171839 [ Debug ] tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-then-horizontal.html [ Pass Failure ]
+webkit.org/b/171839 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-then-horizontal.html [ Pass Failure ]
 
 webkit.org/b/177687 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
 
@@ -925,3 +926,75 @@ webkit.org/b/203256 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConn
 webkit.org/b/205301 [ Mojave+ ] inspector/canvas/requestShaderSource-webgpu.html [ Pass Failure ]
 
 webkit.org/b/205808 fast/text/international/unicode-bidi-other-neutrals.html [ Pass Failure ]
+
+webkit.org/b/198942 webgpu/vertex-buffer-triangle-strip.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/206864 http/tests/workers/service/basic-timeout.https.html [ Pass Failure ]
+
+webkit.org/b/206746 [ Release ] imported/w3c/web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html [ Pass Failure ]
+
+webkit.org/b/206696 [ Release ] editing/selection/caret-at-bidi-boundary.html [ Slow ]
+
+webkit.org/b/206708 fast/animation/request-animation-frame-iframe.html [ Pass Failure ]
+
+webkit.org/b/206940 [ Mojave+ ] tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-with-handler.html [ Pass Failure ]
+
+webkit.org/b/206958 http/tests/media/media-stream/get-display-media-prompt.html [ Pass Failure Timeout ]
+
+webkit.org/b/206961 [ Mojave ] media/media-fragments/TC0035.html [ Pass Failure ]
+
+webkit.org/b/206839 http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html [ Pass Failure ]
+
+webkit.org/b/207003 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html [ Pass Failure ]
+
+webkit.org/b/207060 imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
+
+webkit.org/b/207063 fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html [ Pass Failure ]
+
+webkit.org/b/207078 webgpu/whlsl/textures-sample-level.html [ Pass Failure ]
+
+webkit.org/b/207117 webgpu/whlsl/nested-loop.html [ Pass Failure ]
+
+webkit.org/b/207120 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-then-proximity.html [ Pass Failure ]
+
+webkit.org/b/207127 webgpu/whlsl/buffer-vertex.html [ Pass Failure ]
+
+webkit.org/b/206903 inspector/heap/getRemoteObject.html [ Pass Crash ]
+
+webkit.org/b/207141 [ Release ] inspector/canvas/create-context-bitmaprenderer.html [ Pass Failure ]
+
+webkit.org/b/207143 [ Mojave ] media/media-fragments/TC0087.html [ Pass Failure ]
+
+webkit.org/b/207149  [ Mojave ] imported/w3c/web-platform-tests/webrtc/RTCDtlsTransport-state.html [ Pass Failure ]
+
+webkit.org/b/207151 [ Release ] fast/dom/navigator-detached-no-crash.html [ Pass Failure ]
+
+webkit.org/b/207165 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html [ Pass Failure ]
+
+webkit.org/b/207166 http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavailable-gpuprocess.html [ Pass Failure ]
+
+webkit.org/b/207199 webgpu/whlsl/loops.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207200 webgpu/whlsl/while-loop-continue.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207202 webgpu/whlsl/textures-sample-grad.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/206718 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Pass Crash ]
+
+webkit.org/b/207209 [ Release ] inspector/heap/getPreview.html [ Pass Failure ]
+
+webkit.org/b/207222 webgpu/whlsl/zero-initialize-values-2.html [ Pass Failure ]
+
+webkit.org/b/206627 storage/websql [ Skip ]
+
+webkit.org/b/207267 webgpu/whlsl/ensure-proper-variable-lifetime.html [ Pass Failure ]
+
+webkit.org/b/207269 [ Debug ] http/tests/websocket/tests/hybi/server-close.html [ Pass Crash ]
+
+webkit.org/b/207271 http/tests/resourceLoadStatistics/log-cross-site-load-with-link-decoration.html [ Pass Failure ]
+
+webkit.org/b/183684 http/tests/appcache/abort-cache-onprogress.html [ Pass Failure ]
+
+webkit.org/b/207294 webgpu/whlsl/dot-expressions.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207303 loader/stateobjects/pushstate-size-iframe.html [ Pass Crash ]

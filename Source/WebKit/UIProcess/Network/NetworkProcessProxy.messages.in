@@ -21,7 +21,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> NetworkProcessProxy LegacyReceiver NotRefCounted {
-    DidReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebKit::WebPageProxyIdentifier pageID, Optional<WebCore::SecurityOriginData> topOrigin, WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
+    DidReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebKit::WebPageProxyIdentifier pageID, Optional<WebCore::SecurityOriginData> topOrigin, WebCore::AuthenticationChallenge challenge, bool negotiatedLegacyTLS, uint64_t challengeID)
+    NegotiatedLegacyTLS(WebKit::WebPageProxyIdentifier pageID)
 
     DidFetchWebsiteData(uint64_t callbackID, struct WebKit::WebsiteData websiteData)
     DidDeleteWebsiteData(uint64_t callbackID)
@@ -61,7 +62,7 @@ messages -> NetworkProcessProxy LegacyReceiver NotRefCounted {
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    EstablishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain registrableDomain, PAL::SessionID sessionID)
+    EstablishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain registrableDomain, PAL::SessionID sessionID) -> () Async
     WorkerContextConnectionNoLongerNeeded(WebCore::ProcessIdentifier identifier)
     RegisterServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier)
     UnregisterServiceWorkerClientProcess(WebCore::ProcessIdentifier webProcessIdentifier, WebCore::ProcessIdentifier serviceWorkerProcessIdentifier)

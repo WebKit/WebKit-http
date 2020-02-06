@@ -56,6 +56,7 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 
     std::unique_ptr<WebKit::NativeWebMouseEvent> _lastEvent;
     Optional<CGPoint> _lastLocation;
+    Optional<UIEventButtonMask> _pressedButtonMask;
 }
 
 - (instancetype)initWithTarget:(id)target action:(SEL)action
@@ -122,20 +123,21 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 - (std::unique_ptr<WebKit::NativeWebMouseEvent>)createMouseEventWithType:(WebKit::WebEvent::Type)type
 {
     auto modifiers = webEventModifiersForUIKeyModifierFlags(self.modifierFlags);
-    BOOL hasControlModifier = modifiers.contains(WebKit::WebEvent::Modifier::ControlKey);
+    BOOL isRightButton = modifiers.contains(WebKit::WebEvent::Modifier::ControlKey) || (_pressedButtonMask && (*_pressedButtonMask & UIEventButtonMaskSecondary));
 
     auto button = [&] {
-        if (!_touching || type == WebKit::WebEvent::Type::MouseUp)
+        if (!_touching)
             return WebKit::WebMouseEvent::NoButton;
-        if (hasControlModifier)
+        if (isRightButton)
             return WebKit::WebMouseEvent::RightButton;
         return WebKit::WebMouseEvent::LeftButton;
     }();
 
+    // FIXME: 'buttons' should report any buttons that are still down in the case when one button is released from a chord.
     auto buttons = [&] {
-        if (!_touching)
+        if (!_touching || type == WebKit::WebEvent::Type::MouseUp)
             return 0;
-        if (hasControlModifier)
+        if (isRightButton)
             return 2;
         return 1;
     }();
@@ -150,6 +152,7 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
     _touching = YES;
+    _pressedButtonMask = [event _buttonMask];
 
     _lastEvent = [self createMouseEventWithType:WebKit::WebEvent::MouseDown];
     _lastLocation = [self locationInView:self.view];
@@ -167,10 +170,11 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    _touching = NO;
-
     _lastEvent = [self createMouseEventWithType:WebKit::WebEvent::MouseUp];
     _lastLocation = [self locationInView:self.view];
+
+    _touching = NO;
+    _pressedButtonMask = WTF::nullopt;
 
     self.state = UIGestureRecognizerStateChanged;
 }

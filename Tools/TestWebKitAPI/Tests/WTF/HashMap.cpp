@@ -88,6 +88,9 @@ TEST(WTF_HashMap, DoubleHashCollisions)
     const double negativeZeroKey = -zeroKey;
 
     DoubleHashMap map;
+#if !CHECK_HASHTABLE_ITERATORS &&!DUMP_HASHTABLE_STATS_PER_TABLE
+    static_assert(sizeof(map) == sizeof(void*));
+#endif
 
     map.add(clobberKey, 1);
     map.add(zeroKey, 2);
@@ -716,7 +719,7 @@ TEST(WTF_HashMap, RefPtrNotZeroedBeforeDeref)
     // value.
     // A zero would be a incorrect outcome as it would mean we nulled the bucket before an opaque
     // call.
-    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::hashTableDeletedValue());
+    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::PtrTraits::hashTableDeletedValue());
     EXPECT_EQ(observer->count, 0u);
 }
 

@@ -92,6 +92,8 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << viewportConfigurationMinimumEffectiveDeviceWidth;
     encoder << viewportConfigurationViewSize;
     encoder << overrideViewportArguments;
+    encoder << frontboardExtensionHandle;
+    encoder << iconServicesExtensionHandle;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -142,6 +144,10 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldCaptureVideoInUIProcess;
     encoder << shouldCaptureVideoInGPUProcess;
     encoder << shouldCaptureDisplayInUIProcess;
+
+#if PLATFORM(GTK)
+    encoder << themeName;
+#endif
 }
 
 Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decoder& decoder)
@@ -295,6 +301,18 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!overrideViewportArguments)
         return WTF::nullopt;
     parameters.overrideViewportArguments = WTFMove(*overrideViewportArguments);
+
+    Optional<Optional<SandboxExtension::Handle>> frontboardExtensionHandle;
+    decoder >> frontboardExtensionHandle;
+    if (!frontboardExtensionHandle)
+        return WTF::nullopt;
+    parameters.frontboardExtensionHandle = WTFMove(*frontboardExtensionHandle);
+
+    Optional<Optional<SandboxExtension::Handle>> iconServicesExtensionHandle;
+    decoder >> iconServicesExtensionHandle;
+    if (!iconServicesExtensionHandle)
+        return WTF::nullopt;
+    parameters.iconServicesExtensionHandle = WTFMove(*iconServicesExtensionHandle);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -370,7 +388,7 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!decoder.decode(parameters.enumeratingAllNetworkInterfacesEnabled))
         return WTF::nullopt;
 
-    Optional<Vector<std::pair<uint64_t, String>>> userContentWorlds;
+    Optional<Vector<std::pair<ContentWorldIdentifier, String>>> userContentWorlds;
     decoder >> userContentWorlds;
     if (!userContentWorlds)
         return WTF::nullopt;
@@ -437,6 +455,11 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
 
     if (!decoder.decode(parameters.shouldCaptureDisplayInUIProcess))
         return WTF::nullopt;
+
+#if PLATFORM(GTK)
+    if (!decoder.decode(parameters.themeName))
+        return WTF::nullopt;
+#endif
 
     return parameters;
 }

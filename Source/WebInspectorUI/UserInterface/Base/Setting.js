@@ -217,7 +217,6 @@ WI.settings = {
 
     // Experimental
     experimentalEnablePreviewFeatures: new WI.Setting("experimental-enable-preview-features", true),
-    experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
     experimentalEnableStylesJumpToEffective: new WI.Setting("experimental-styles-jump-to-effective", false),
 
     // Protocol
@@ -227,6 +226,7 @@ WI.settings = {
     protocolFilterMultiplexingBackendMessages: new WI.Setting("protocol-filter-multiplexing-backend-messages", true),
 
     // Engineering
+    engineeringShowInternalExecutionContexts: new WI.EngineeringSetting("engineering-show-internal-execution-contexts", false),
     engineeringShowInternalScripts: new WI.EngineeringSetting("engineering-show-internal-scripts", false),
     engineeringPauseForInternalScripts: new WI.EngineeringSetting("engineering-pause-for-internal-scripts", false),
     engineeringShowInternalObjectsInHeapSnapshot: new WI.EngineeringSetting("engineering-show-internal-objects-in-heap-snapshot", false),

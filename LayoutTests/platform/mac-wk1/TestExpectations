@@ -376,7 +376,6 @@ compositing/rtl/rtl-fixed-overflow-scrolled.html [ Failure ]
 compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 compositing/clipping/border-radius-async-overflow-non-stacking.html [ ImageOnlyFailure ]
 compositing/visibility/visibility-change-in-subframe.html [ Failure ]
-webkit.org/b/205226 compositing/video/video-border-radius-clipping.html [ ImageOnlyFailure ]
 
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
@@ -749,12 +748,6 @@ webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-s
 
 webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
 
-# Tests for smooth scroll behavior do not all work and they are slow, so let's just skip them.
-webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root.html [ Skip ]
-webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window.html [ Skip ]
-webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html [ Skip ]
-webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html [ Skip ]
-
 webkit.org/b/189908 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]
 
 webkit.org/b/189756 [ Mojave+ ] compositing/filters/opacity-change-on-filtered-paints-into-ancestor.html [ Pass ImageOnlyFailure ]
@@ -802,8 +795,8 @@ webkit.org/b/199632 http/wpt/prefetch/load-events-dynamic.html [ Skip ]
 
 webkit.org/b/198177 pointerevents/mouse/compatibility-mouse-events-prevention-mouse-pressed.html [ Skip ]
 
-webkit.org/b/198459 [ HighSierra Debug ] inspector/canvas/recording-2d-full.html [ Slow ]
-webkit.org/b/198459 [ HighSierra Debug ] inspector/canvas/recording-webgl-full.html [ Slow ]
+webkit.org/b/198459 [ Debug ] inspector/canvas/recording-2d-full.html [ Slow ]
+webkit.org/b/198459 [ Debug ] inspector/canvas/recording-webgl-full.html [ Slow ]
 
 webkit.org/b/196508 compositing/repaint/scroller-with-foreground-layer-repaints.html [ Pass Failure ]
 
@@ -839,8 +832,6 @@ webkit.org/b/203517 imported/w3c/web-platform-tests/css/css-sizing/dynamic-avail
 # Stale-while-revalidate is not supported on WK1
 imported/w3c/web-platform-tests/fetch/stale-while-revalidate [ Skip ]
 
-webkit.org/b/205168 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html [ Pass Failure ]
-
 webkit.org/b/205314 [ Catalina ] editing/mac/input/firstrectforcharacterrange-styled.html [ Failure ]
 
 webkit.org/b/205412 [ Mojave Debug ] webgl/1.0.3/conformance/rendering/many-draw-calls.html [ Timeout ]
@@ -851,8 +842,58 @@ webkit.org/b/206071 editing/spelling/grammar.html [ Skip ]
 webkit.org/b/206071 editing/spelling/markers.html [ Skip ]
 webkit.org/b/206071 editing/spelling/retro-correction-spelling-markers.html [ Failure ]
 
-webkit.org/b/206241 [ Mojave Debug ] accessibility/mac/search-text/search-text.html [ Skip ]
-
 webkit.org/b/199117 [ Debug ] storage/indexeddb/modern/objectstore-autoincrement-types.html [ Timeout ]
 
-webkit.org/b/206362 [ Debug ] inspector/page/overrideSetting-ICECandidateFilteringEnabled.html [ Failure Pass ]
+webkit.org/b/206503 [ Mojave Debug ] imported/w3c/web-platform-tests/html/dom/idlharness.worker.html [ Failure ]
+
+webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Failure Timeout ]
+
+webkit.org/b/206684 [ Debug ] inspector/heap/tracking.html [ Pass Failure ]
+
+webkit.org/b/205956 inspector/runtime/executionContextCreated-onEnable.html [ Pass Failure ]
+
+webkit.org/b/206668 fast/loader/redirect-to-invalid-url-using-meta-refresh-calls-policy-delegate.html [ Pass Failure ]
+
+webkit.org/b/180760 fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-async-delegates.html [ Pass Failure ]
+
+webkit.org/b/206673 storage/indexeddb/modern/blob-cursor.html [ Pass Timeout ]
+
+webkit.org/b/190830 [ Debug ] media/track/video-track-addition-and-frame-removal.html [ Pass Crash ]
+
+webkit.org/b/206945 [ Catalina ] compositing/repaint/become-overlay-composited-layer.html [ Pass Failure ]
+
+webkit.org/b/206974 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy.html [ Pass Failure ]
+
+webkit.org/b/207046 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/seeking/seek-to-currentTime.html [ Pass Failure ]
+
+webkit.org/b/207059 imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-small.html [ Pass Failure ]
+
+webkit.org/b/207066 editing/execCommand/insert-nested-lists.html [ Pass Failure ]
+
+webkit.org/b/206950 fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]
+
+webkit.org/b/207124 compositing/backing/animate-into-view.html [ Pass Timeout ]
+
+webkit.org/b/207125 transitions/start-transform-transition.html [ Pass Failure ]
+
+webkit.org/b/207133 css3/selectors3/xml/css3-modsel-d2.xml [ Pass Failure ]
+
+webkit.org/b/192974 media/modern-media-controls/compact-media-controls/compact-media-controls-constructor.html [ Pass Failure ]
+
+webkit.org/b/181085 svg/custom/object-sizing-explicit-width.xhtml [ Pass Failure ]
+
+webkit.org/b/207146 media/media-source/media-source-seek-redundant-append.html [ Pass Timeout ]
+
+webkit.org/b/185332 animations/duplicate-keys.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207150 [ Catalina ] platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html [ Pass Failure ]
+
+webkit.org/b/207157 inspector/debugger/tail-deleted-frames/tail-deleted-frames-scopes.html [ Pass Timeout ]
+
+webkit.org/b/207160 css2.1/20110323/replaced-intrinsic-ratio-001.htm [ Pass Failure ]
+
+webkit.org/b/207167 inspector/unit-tests/server-timing-entry.html [ Pass Timeout ]
+
+webkit.org/b/207237 http/tests/notifications/event-listener-crash.html [ Pass Crash ]
+
+webkit.org/b/207278 imported/w3c/web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html [ Pass Failure ]

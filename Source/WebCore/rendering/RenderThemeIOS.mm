@@ -359,7 +359,7 @@ static CGPoint shortened(CGPoint start, CGPoint end, float width)
 {
     float x = end.x - start.x;
     float y = end.y - start.y;
-    float ratio = (!x && !y) ? 0 : width / sqrtf(x * x + y * y);
+    float ratio = (!x && !y) ? 0 : width / std::hypot(x, y);
     return CGPointMake(start.x + x * ratio, start.y + y * ratio);
 }
 
@@ -1130,9 +1130,18 @@ Color RenderThemeIOS::platformInactiveSelectionBackgroundColor(OptionSet<StyleCo
     return Color::transparent;
 }
 
+static Optional<Color>& cachedFocusRingColor()
+{
+    static NeverDestroyed<Optional<Color>> color;
+    return color;
+}
+
 #if ENABLE(FULL_KEYBOARD_ACCESS)
 Color RenderThemeIOS::platformFocusRingColor(OptionSet<StyleColor::Options>) const
 {
+    if (cachedFocusRingColor().hasValue())
+        return *cachedFocusRingColor();
+
     // FIXME: Should be using -keyboardFocusIndicatorColor. For now, work around <rdar://problem/50838886>.
     return colorFromUIColor([PAL::getUIColorClass() systemBlueColor]);
 }
@@ -1163,13 +1172,13 @@ FontCascadeDescription& RenderThemeIOS::cachedSystemFontDescription(CSSValueID v
     static NeverDestroyed<FontCascadeDescription> shortFootnoteFont;
     static NeverDestroyed<FontCascadeDescription> shortCaption1Font;
     static NeverDestroyed<FontCascadeDescription> tallBodyFont;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_0)
     static NeverDestroyed<FontCascadeDescription> title0Font;
 #endif
     static NeverDestroyed<FontCascadeDescription> title1Font;
     static NeverDestroyed<FontCascadeDescription> title2Font;
     static NeverDestroyed<FontCascadeDescription> title3Font;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_4)
     static NeverDestroyed<FontCascadeDescription> title4Font;
 #endif
 
@@ -1197,7 +1206,7 @@ FontCascadeDescription& RenderThemeIOS::cachedSystemFontDescription(CSSValueID v
         return headlineFont;
     case CSSValueAppleSystemBody:
         return bodyFont;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_0)
     case CSSValueAppleSystemTitle0:
         return title0Font;
 #endif
@@ -1207,7 +1216,7 @@ FontCascadeDescription& RenderThemeIOS::cachedSystemFontDescription(CSSValueID v
         return title2Font;
     case CSSValueAppleSystemTitle3:
         return title3Font;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_4)
     case CSSValueAppleSystemTitle4:
         return title4Font;
 #endif
@@ -1266,7 +1275,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
         textStyle = kCTUIFontTextStyleBody;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), nullptr));
         break;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_0)
     case CSSValueAppleSystemTitle0:
         textStyle = kCTUIFontTextStyleTitle0;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), nullptr));
@@ -1284,7 +1293,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
         textStyle = kCTUIFontTextStyleTitle3;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), nullptr));
         break;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if HAVE(SYSTEM_FONT_STYLE_TITLE_4)
     case CSSValueAppleSystemTitle4:
         textStyle = kCTUIFontTextStyleTitle4;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), nullptr));
@@ -1536,6 +1545,11 @@ const RenderThemeIOS::CSSValueToSystemColorMap& RenderThemeIOS::cssValueToSystem
 void RenderThemeIOS::setCSSValueToSystemColorMap(CSSValueToSystemColorMap&& colorMap)
 {
     globalCSSValueToSystemColorMap() = WTFMove(colorMap);
+}
+
+void RenderThemeIOS::setFocusRingColor(const Color& color)
+{
+    cachedFocusRingColor() = color;
 }
 
 Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const

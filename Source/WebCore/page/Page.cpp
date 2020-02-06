@@ -22,6 +22,7 @@
 
 #include "ActivityStateChangeObserver.h"
 #include "AlternativeTextClient.h"
+#include "AnimationFrameRate.h"
 #include "ApplicationCacheStorage.h"
 #include "AuthenticatorCoordinator.h"
 #include "BackForwardCache.h"
@@ -151,10 +152,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 #include "IDBConnectionToServer.h"
-#endif
-
-#if ENABLE(DATA_INTERACTION)
-#include "SelectionRect.h"
 #endif
 
 #if ENABLE(WEBGL)
@@ -338,6 +335,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
             m_corsDisablingPatterns.uncheckedAppend(WTFMove(parsedPattern));
     }
     m_corsDisablingPatterns.shrinkToFit();
+    
+    if (m_lowPowerModeNotifier->isLowPowerModeEnabled())
+        m_throttlingReasons.add(ThrottlingReason::LowPowerMode);
 }
 
 Page::~Page()
@@ -1037,12 +1037,12 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
     RefPtr<FrameView> view = document->view();
 
     if (scale == m_pageScaleFactor) {
-        if (view && view->scrollPosition() != origin && !view->delegatesPageScaling())
+        if (view && view->scrollPosition() != origin && !delegatesScaling())
             document->updateLayoutIgnorePendingStylesheets();
     } else {
         m_pageScaleFactor = scale;
 
-        if (view && !view->delegatesPageScaling()) {
+        if (view && !delegatesScaling()) {
             view->setNeedsLayoutAfterViewConfigurationChange();
             view->setNeedsCompositingGeometryUpdate();
 
@@ -1057,7 +1057,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
         if (view && view->fixedElementsLayoutRelativeToFrame())
             view->setViewportConstrainedObjectsNeedLayout();
 
-        if (view && view->scrollPosition() != origin && !view->delegatesPageScaling() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
+        if (view && view->scrollPosition() != origin && !delegatesScaling() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
             view->layoutContext().layout();
     }
 
@@ -1079,6 +1079,11 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
 #else
     UNUSED_PARAM(inStableState);
 #endif
+}
+
+void Page::setDelegatesScaling(bool delegatesScaling)
+{
+    m_delegatesScaling = delegatesScaling;
 }
 
 void Page::setViewScaleFactor(float scale)
@@ -1158,18 +1163,20 @@ bool Page::isOnlyNonUtilityPage() const
     return !isUtilityPage() && nonUtilityPageCount == 1;
 }
 
-bool Page::isLowPowerModeEnabled() const
-{
-    if (m_lowPowerModeEnabledOverrideForTesting)
-        return m_lowPowerModeEnabledOverrideForTesting.value();
-
-    return m_lowPowerModeNotifier->isLowPowerModeEnabled();
-}
-
 void Page::setLowPowerModeEnabledOverrideForTesting(Optional<bool> isEnabled)
 {
-    m_lowPowerModeEnabledOverrideForTesting = isEnabled;
-    handleLowModePowerChange(m_lowPowerModeEnabledOverrideForTesting.valueOr(false));
+    // Remove ThrottlingReason::LowPowerMode so handleLowModePowerChange() can do its work.
+    m_throttlingReasonsOverridenForTesting.remove(ThrottlingReason::LowPowerMode);
+
+    // Use the current low power mode value of the device.
+    if (!isEnabled) {
+        handleLowModePowerChange(m_lowPowerModeNotifier->isLowPowerModeEnabled());
+        return;
+    }
+
+    // Override the value and add ThrottlingReason::LowPowerMode so it won't change.
+    handleLowModePowerChange(isEnabled.value());
+    m_throttlingReasonsOverridenForTesting.add(ThrottlingReason::LowPowerMode);
 }
 
 void Page::setTopContentInset(float contentInset)
@@ -1375,34 +1382,53 @@ void Page::resumeScriptedAnimations()
     });
 }
 
-enum class ThrottlingReasonOperation { Add, Remove };
-static void updateScriptedAnimationsThrottlingReason(Page& page, ThrottlingReasonOperation operation, ScriptedAnimationController::ThrottlingReason reason)
+bool Page::renderingUpdateThrottlingEnabled() const
 {
-    page.forEachDocument([&] (Document& document) {
-        if (auto* controller = document.scriptedAnimationController()) {
-            if (operation == ThrottlingReasonOperation::Add)
-                controller->addThrottlingReason(reason);
-            else
-                controller->removeThrottlingReason(reason);
-        }
-    });
+    return m_settings->renderingUpdateThrottlingEnabled();
+}
+
+void Page::renderingUpdateThrottlingEnabledChanged()
+{
+    renderingUpdateScheduler().adjustRenderingUpdateFrequency();
+}
+
+bool Page::isRenderingUpdateThrottled() const
+{
+    return renderingUpdateThrottlingEnabled() && !m_throttlingReasons.isEmpty();
+}
+
+Seconds Page::preferredRenderingUpdateInterval() const
+{
+    return renderingUpdateThrottlingEnabled() ? preferredFrameInterval(m_throttlingReasons) : FullSpeedAnimationInterval;
 }
 
 void Page::setIsVisuallyIdleInternal(bool isVisuallyIdle)
 {
-    updateScriptedAnimationsThrottlingReason(*this, isVisuallyIdle ? ThrottlingReasonOperation::Add : ThrottlingReasonOperation::Remove, ScriptedAnimationController::ThrottlingReason::VisuallyIdle);
+    if (isVisuallyIdle == m_throttlingReasons.contains(ThrottlingReason::VisuallyIdle))
+        return;
+
+    m_throttlingReasons = m_throttlingReasons ^ ThrottlingReason::VisuallyIdle;
+
+    if (renderingUpdateThrottlingEnabled())
+        renderingUpdateScheduler().adjustRenderingUpdateFrequency();
 }
 
 void Page::handleLowModePowerChange(bool isLowPowerModeEnabled)
 {
-    updateScriptedAnimationsThrottlingReason(*this, isLowPowerModeEnabled ? ThrottlingReasonOperation::Add : ThrottlingReasonOperation::Remove, ScriptedAnimationController::ThrottlingReason::LowPowerMode);
-    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
-        forEachDocument([] (Document& document) {
-            if (auto timeline = document.existingTimeline())
-                timeline->updateThrottlingState();
-        });
-    } else
+    if (!canUpdateThrottlingReason(ThrottlingReason::LowPowerMode))
+        return;
+
+    if (isLowPowerModeEnabled == m_throttlingReasons.contains(ThrottlingReason::LowPowerMode))
+        return;
+
+    m_throttlingReasons = m_throttlingReasons ^ ThrottlingReason::LowPowerMode;
+
+    if (renderingUpdateThrottlingEnabled())
+        renderingUpdateScheduler().adjustRenderingUpdateFrequency();
+
+    if (!RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
         mainFrame().animation().updateThrottlingState();
+
     updateDOMTimerAlignmentInterval();
 }
 
@@ -2709,7 +2735,7 @@ void Page::setUseSystemAppearance(bool value)
 
 void Page::effectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel)
 {
-#if HAVE(OS_DARK_MODE_SUPPORT)
+#if ENABLE(DARK_MODE_CSS)
     if (m_useDarkAppearance == useDarkAppearance && m_useElevatedUserInterfaceLevel == useElevatedUserInterfaceLevel)
         return;
 
@@ -2733,7 +2759,7 @@ void Page::effectiveAppearanceDidChange(bool useDarkAppearance, bool useElevated
 
 bool Page::useDarkAppearance() const
 {
-#if HAVE(OS_DARK_MODE_SUPPORT)
+#if ENABLE(DARK_MODE_CSS)
     FrameView* view = mainFrame().view();
     if (!view || !equalLettersIgnoringASCIICase(view->mediaType(), "screen"))
         return false;
@@ -2794,28 +2820,6 @@ void Page::setFullscreenControlsHidden(bool hidden)
 #endif
 }
 
-#if ENABLE(DATA_INTERACTION)
-
-bool Page::hasSelectionAtPosition(const FloatPoint& position) const
-{
-    auto currentSelection = m_mainFrame->selection().selection();
-    if (!currentSelection.isRange())
-        return false;
-
-    if (auto selectedRange = currentSelection.toNormalizedRange()) {
-        Vector<SelectionRect> selectionRects;
-        selectedRange->collectSelectionRects(selectionRects);
-        for (auto selectionRect : selectionRects) {
-            if (FloatRect(selectionRect.rect()).contains(position))
-                return true;
-        }
-    }
-
-    return false;
-}
-
-#endif
-
 void Page::disableICECandidateFiltering()
 {
     m_shouldEnableICECandidateFilteringByDefault = false;
@@ -2864,9 +2868,11 @@ void Page::forEachDocument(const Function<void(Document&)>& functor) const
 
 void Page::forEachMediaElement(const Function<void(HTMLMediaElement&)>& functor)
 {
+#if ENABLE(VIDEO)
     forEachDocument([&] (Document& document) {
         document.forEachMediaElement(functor);
     });
+#endif
 }
 
 void Page::applicationWillResignActive()

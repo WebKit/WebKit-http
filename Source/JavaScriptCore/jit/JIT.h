@@ -68,6 +68,10 @@ namespace JSC {
     struct SimpleJumpTable;
     struct StringJumpTable;
 
+    struct OpPutByVal;
+    struct OpPutByValDirect;
+    struct OpPutToScope;
+
     struct CallRecord {
         MacroAssembler::Call from;
         BytecodeIndex bytecodeIndex;
@@ -411,7 +415,7 @@ namespace JSC {
         double getOperandConstantDouble(VirtualRegister src);
 
 #if USE(JSVALUE32_64)
-        bool getOperandConstantInt(VirtualRegister op1, VirtualRegister op2, int& op, int32_t& constant);
+        bool getOperandConstantInt(VirtualRegister op1, VirtualRegister op2, VirtualRegister& op, int32_t& constant);
 
         void emitLoadTag(VirtualRegister, RegisterID tag);
         void emitLoadPayload(VirtualRegister, RegisterID payload);
@@ -935,6 +939,7 @@ namespace JSC {
         unsigned m_instanceOfIndex { UINT_MAX };
         unsigned m_byValInstructionIndex { UINT_MAX };
         unsigned m_callLinkInfoIndex { UINT_MAX };
+        unsigned m_bytecodeCountHavingSlowCase { 0 };
         
         Label m_arityCheck;
         std::unique_ptr<LinkBuffer> m_linkBuffer;

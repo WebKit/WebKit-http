@@ -54,7 +54,7 @@ list(APPEND TestWebCore_LIBRARIES
 
 if (${WTF_PLATFORM_WIN_CAIRO})
     list(APPEND TestWebCore_LIBRARIES
-        ${CAIRO_LIBRARIES}
+        Cairo::Cairo
         ${OPENSSL_LIBRARIES}
         mfuuid
         strmiids
@@ -128,7 +128,6 @@ if (ENABLE_WEBKIT)
     add_dependencies(TestWebKitAPIInjectedBundle WebKitFrameworkHeaders)
 
     target_sources(TestWebKitAPIInjectedBundle PRIVATE
-        win/InjectedBundleControllerWin.cpp
         win/PlatformUtilitiesWin.cpp
         win/UtilitiesWin.cpp
     )

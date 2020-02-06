@@ -57,6 +57,7 @@ class RenderTreePosition;
 class StylePropertyMap;
 class WebAnimation;
 
+struct GetAnimationsOptions;
 struct KeyframeAnimationOptions;
 struct ScrollIntoViewOptions;
 struct ScrollToOptions;
@@ -481,6 +482,7 @@ public:
     void setHasCSSAnimation();
     void clearHasCSSAnimation();
 
+    KeyframeEffectStack* keyframeEffectStack() const;
     KeyframeEffectStack& ensureKeyframeEffectStack();
     bool hasKeyframeEffects() const;
     OptionSet<AnimationImpact> applyKeyframeEffects(RenderStyle&);
@@ -597,7 +599,7 @@ public:
     Element* findAnchorElementForLink(String& outAnchorName);
 
     ExceptionOr<Ref<WebAnimation>> animate(JSC::JSGlobalObject&, JSC::Strong<JSC::JSObject>&&, Optional<Variant<double, KeyframeAnimationOptions>>&&);
-    Vector<RefPtr<WebAnimation>> getAnimations();
+    Vector<RefPtr<WebAnimation>> getAnimations(Optional<GetAnimationsOptions>);
 
     ElementIdentifier createElementIdentifier();
 

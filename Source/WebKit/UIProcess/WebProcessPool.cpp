@@ -737,7 +737,7 @@ void WebProcessPool::getGPUProcessConnection(WebProcessProxy& webProcessProxy, M
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, RegistrableDomain&& registrableDomain, PAL::SessionID sessionID)
+void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, RegistrableDomain&& registrableDomain, PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT_UNUSED(proxy, &proxy == m_networkProcess.get());
 
@@ -752,11 +752,9 @@ void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkPro
     RegistrableDomainWithSessionID registrableDomainWithSessionID { RegistrableDomain { registrableDomain }, sessionID };
     if (m_serviceWorkerProcesses.contains(registrableDomainWithSessionID)) {
         WEBPROCESSPOOL_RELEASE_LOG_IF_ALLOWED(ServiceWorker, "establishWorkerContextConnectionToNetworkProcess process already created");
+        completionHandler();
         return;
     }
-
-    if (m_serviceWorkerProcesses.isEmpty())
-        sendToAllProcesses(Messages::WebProcess::RegisterServiceWorkerClients { });
 
     WebProcessProxy* serviceWorkerProcessProxy { nullptr };
     if (!m_useSeparateServiceWorkerProcess) {
@@ -789,7 +787,7 @@ void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkPro
     ASSERT(!m_serviceWorkerProcesses.contains(registrableDomainWithSessionID));
     m_serviceWorkerProcesses.add(WTFMove(registrableDomainWithSessionID), makeWeakPtr(serviceWorkerProcessProxy));
 
-    serviceWorkerProcessProxy->establishServiceWorkerContext(m_serviceWorkerPreferences ? m_serviceWorkerPreferences.value() : m_defaultPageGroup->preferences().store());
+    serviceWorkerProcessProxy->establishServiceWorkerContext(m_serviceWorkerPreferences ? m_serviceWorkerPreferences.value() : m_defaultPageGroup->preferences().store(), WTFMove(completionHandler));
     if (!m_serviceWorkerUserAgent.isNull())
         serviceWorkerProcessProxy->setServiceWorkerUserAgent(m_serviceWorkerUserAgent);
 }
@@ -963,12 +961,6 @@ WebProcessDataStoreParameters WebProcessPool::webProcessDataStoreParameters(WebP
 void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDataStore* websiteDataStore, WebProcessProxy::IsPrewarmed isPrewarmed)
 {
     auto initializationActivity = process.throttler().backgroundActivity("WebProcess initialization"_s);
-    auto scopeExit = makeScopeExit([&process, initializationActivity = WTFMove(initializationActivity)]() mutable {
-        // Round-trip to the Web Content process before releasing the
-        // initialization activity, so that we're sure that all
-        // messages sent from this function have been handled.
-        process.isResponsive([initializationActivity = WTFMove(initializationActivity)] (bool) { });
-    });
 
     ensureNetworkProcess();
 
@@ -1053,7 +1045,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     if (websiteDataStore)
         parameters.websiteDataStoreParameters = webProcessDataStoreParameters(process, *websiteDataStore);
 
-    process.send(Messages::WebProcess::InitializeWebProcess(parameters), 0);
+    process.sendWithAsyncReply(Messages::WebProcess::InitializeWebProcess(parameters), [protectedThis = makeRef(*this), protectedProcess = makeRef(process), initializationActivity = WTFMove(initializationActivity)] { });
 
 #if PLATFORM(COCOA)
     process.send(Messages::WebProcess::SetQOS(webProcessLatencyQOS(), webProcessThroughputQOS()), 0);
@@ -1350,7 +1342,7 @@ bool WebProcessPool::hasPagesUsingWebsiteDataStore(WebsiteDataStore& dataStore) 
 
 DownloadProxy& WebProcessPool::download(WebsiteDataStore& dataStore, WebPageProxy* initiatingPage, const ResourceRequest& request, const String& suggestedFilename)
 {
-    auto& downloadProxy = createDownloadProxy(dataStore, request, initiatingPage);
+    auto& downloadProxy = createDownloadProxy(dataStore, request, initiatingPage, { });
     PAL::SessionID sessionID = dataStore.sessionID();
 
     if (initiatingPage)
@@ -1382,7 +1374,7 @@ DownloadProxy& WebProcessPool::download(WebsiteDataStore& dataStore, WebPageProx
 
 DownloadProxy& WebProcessPool::resumeDownload(WebsiteDataStore& dataStore, WebPageProxy* initiatingPage, const API::Data& resumeData, const String& path)
 {
-    auto& downloadProxy = createDownloadProxy(dataStore, ResourceRequest(), initiatingPage);
+    auto& downloadProxy = createDownloadProxy(dataStore, ResourceRequest(), initiatingPage, { });
     PAL::SessionID sessionID = dataStore.sessionID();
 
     SandboxExtension::Handle sandboxExtensionHandle;
@@ -1632,11 +1624,9 @@ void WebProcessPool::setDefaultRequestTimeoutInterval(double timeoutInterval)
     sendToAllProcesses(Messages::WebProcess::SetDefaultRequestTimeoutInterval(timeoutInterval));
 }
 
-DownloadProxy& WebProcessPool::createDownloadProxy(WebsiteDataStore& dataStore, const ResourceRequest& request, WebPageProxy* originatingPage)
+DownloadProxy& WebProcessPool::createDownloadProxy(WebsiteDataStore& dataStore, const ResourceRequest& request, WebPageProxy* originatingPage, const FrameInfoData& frameInfo)
 {
-    auto& downloadProxy = ensureNetworkProcess().createDownloadProxy(dataStore, request);
-    downloadProxy.setOriginatingPage(originatingPage);
-    return downloadProxy;
+    return ensureNetworkProcess().createDownloadProxy(dataStore, request, frameInfo, originatingPage);
 }
 
 void WebProcessPool::synthesizeAppIsBackground(bool background)

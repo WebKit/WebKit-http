@@ -33,6 +33,20 @@
 
 namespace API {
 
+ContentWorldBase::ContentWorldBase(const WTF::String& name)
+    : m_name(name)
+{
+    static std::once_flag once;
+    std::call_once(once, [] {
+        // To make sure we don't use our shared pageContentWorld identifier for this
+        // content world we're about to make, burn through one identifier.
+        auto identifier = WebKit::ContentWorldIdentifier::generate();
+        ASSERT_UNUSED(identifier, identifier.toUInt64() >= WebKit::pageContentWorldIdentifier().toUInt64());
+    });
+
+    m_identifier = WebKit::ContentWorldIdentifier::generate();
+}
+
 static HashMap<WTF::String, ContentWorld*>& sharedWorldMap()
 {
     static HashMap<WTF::String, ContentWorld*>* sharedMap = new HashMap<WTF::String, ContentWorld*>;
@@ -52,33 +66,32 @@ Ref<ContentWorld> ContentWorld::sharedWorldWithName(const WTF::String& name)
 
 ContentWorld& ContentWorld::pageContentWorld()
 {
-    static NeverDestroyed<RefPtr<ContentWorld>> world(adoptRef(new ContentWorld(WebKit::pageContentWorldIdentifier)));
+    static NeverDestroyed<RefPtr<ContentWorld>> world(adoptRef(new ContentWorld(WebKit::pageContentWorldIdentifier())));
     return *world.get();
 }
 
 ContentWorld& ContentWorld::defaultClientWorld()
 {
-    static NeverDestroyed<RefPtr<ContentWorld>> world(adoptRef(new ContentWorld(API::UserContentWorld::generateIdentifier())));
+    static NeverDestroyed<RefPtr<ContentWorld>> world(adoptRef(new ContentWorld(WTF::String { })));
     return *world.get();
 }
 
 ContentWorld::ContentWorld(const WTF::String& name)
-    : m_identifier(API::UserContentWorld::generateIdentifier())
-    , m_name(name)
+    : ContentWorldBase(name)
 {
 }
 
-ContentWorld::ContentWorld(uint64_t identifier)
-    : m_identifier(identifier)
+ContentWorld::ContentWorld(WebKit::ContentWorldIdentifier identifier)
+    : ContentWorldBase(identifier)
 {
 }
 
 ContentWorld::~ContentWorld()
 {
-    if (m_name.isNull())
+    if (name().isNull())
         return;
 
-    auto taken = sharedWorldMap().take(m_name);
+    auto taken = sharedWorldMap().take(name());
     ASSERT_UNUSED(taken, taken == this);
 }
 

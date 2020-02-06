@@ -125,7 +125,7 @@ public:
     };
 
     using SoftUpdateCallback = Function<void(ServiceWorkerJobData&& jobData, bool shouldRefreshCache, ResourceRequest&&, CompletionHandler<void(const ServiceWorkerFetchResult&)>&&)>;
-    using CreateContextConnectionCallback = Function<void(const WebCore::RegistrableDomain&)>;
+    using CreateContextConnectionCallback = Function<void(const WebCore::RegistrableDomain&, CompletionHandler<void()>&&)>;
     WEBCORE_EXPORT SWServer(UniqueRef<SWOriginStore>&&, bool processTerminationDelayEnabled, String&& registrationDatabaseDirectory, PAL::SessionID, SoftUpdateCallback&&, CreateContextConnectionCallback&&);
 
     WEBCORE_EXPORT ~SWServer();
@@ -209,6 +209,8 @@ public:
     WEBCORE_EXPORT void whenImportIsCompleted(CompletionHandler<void()>&&);
 
     void softUpdate(SWServerRegistration&);
+
+    WEBCORE_EXPORT void handleLowMemoryWarning();
 
 private:
     void scriptFetchFinished(const ServiceWorkerFetchResult&);

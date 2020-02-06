@@ -26,7 +26,7 @@
 #include "config.h"
 #include "AuxiliaryProcess.h"
 
-#include "DependencyProcessAssertion.h"
+#include "ContentWorldShared.h"
 #include "Logging.h"
 #include "SandboxInitializationParameters.h"
 #include <pal/SessionID.h>
@@ -78,8 +78,9 @@ void AuxiliaryProcess::initialize(const AuxiliaryProcessInitializationParameters
 
     initializeProcessName(parameters);
 
-    // In WebKit2, only the UI process should ever be generating non-default PAL::SessionIDs.
+    // In WebKit2, only the UI process should ever be generating certain identifiers.
     PAL::SessionID::enableGenerationProtection();
+    ContentWorldIdentifier::enableGenerationProtection();
 
     m_connection = IPC::Connection::createClientConnection(parameters.connectionIdentifier, *this);
     initializeConnection(m_connection.get());
@@ -102,12 +103,8 @@ void AuxiliaryProcess::initializeProcessName(const AuxiliaryProcessInitializatio
 {
 }
 
-void AuxiliaryProcess::initializeConnection(IPC::Connection* connection)
+void AuxiliaryProcess::initializeConnection(IPC::Connection*)
 {
-#if PLATFORM(IOS_FAMILY)
-    ASSERT(!m_uiProcessDependencyProcessAssertion);
-    m_uiProcessDependencyProcessAssertion = makeUnique<DependencyProcessAssertion>(connection->remoteProcessID(), "Child process dependency on UIProcess"_s);
-#endif
 }
 
 void AuxiliaryProcess::addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& messageReceiver)

@@ -37,6 +37,7 @@ list(APPEND PAL_PUBLIC_HEADERS
     spi/cocoa/LaunchServicesSPI.h
     spi/cocoa/MetalSPI.h
     spi/cocoa/NEFilterSourceSPI.h
+    spi/cocoa/NSAccessibilitySPI.h
     spi/cocoa/NSAttributedStringSPI.h
     spi/cocoa/NSButtonCellSPI.h
     spi/cocoa/NSCalendarDateSPI.h
@@ -44,7 +45,6 @@ list(APPEND PAL_PUBLIC_HEADERS
     spi/cocoa/NSExtensionSPI.h
     spi/cocoa/NSFileManagerSPI.h
     spi/cocoa/NSFileSizeFormatterSPI.h
-    spi/cocoa/NSKeyedArchiverSPI.h
     spi/cocoa/NSProgressSPI.h
     spi/cocoa/NSStringSPI.h
     spi/cocoa/NSTouchBarSPI.h
@@ -71,7 +71,6 @@ list(APPEND PAL_PUBLIC_HEADERS
     spi/mac/HIToolboxSPI.h
     spi/mac/LookupSPI.h
     spi/mac/MediaRemoteSPI.h
-    spi/mac/NSAccessibilitySPI.h
     spi/mac/NSAppearanceSPI.h
     spi/mac/NSApplicationSPI.h
     spi/mac/NSCellSPI.h

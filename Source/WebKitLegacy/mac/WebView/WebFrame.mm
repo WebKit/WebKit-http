@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,7 @@
 #import "WebDataSourceInternal.h"
 #import "WebDocumentLoaderMac.h"
 #import "WebDynamicScrollBarsView.h"
+#import "WebEditorClient.h"
 #import "WebElementDictionary.h"
 #import "WebFrameLoaderClient.h"
 #import "WebFrameViewInternal.h"
@@ -65,6 +66,7 @@
 #import <WebCore/CachedResourceLoader.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/CompositionHighlight.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/DocumentLoader.h>
@@ -111,7 +113,6 @@
 #import "WebResource.h"
 #import "WebUIKitDelegate.h"
 #import <WebCore/Document.h>
-#import <WebCore/EditorClient.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Font.h>
 #import <WebCore/FrameSelection.h>
@@ -1446,14 +1447,18 @@ static WebFrameLoadType toWebFrameLoadType(WebCore::FrameLoadType frameLoadType)
 
 - (BOOL)isTelephoneNumberParsingAllowed
 {
-    auto* document = core(self)->document();
-    return document->isTelephoneNumberParsingAllowed();
+    WebCore::Frame *frame = core(self);
+    if (!frame || !frame->document())
+        return false;
+    return frame->document()->isTelephoneNumberParsingAllowed();
 }
 
 - (BOOL)isTelephoneNumberParsingEnabled
 {
-    auto* document = core(self)->document();
-    return document->isTelephoneNumberParsingEnabled();
+    WebCore::Frame *frame = core(self);
+    if (!frame || !frame->document())
+        return false;
+    return frame->document()->isTelephoneNumberParsingEnabled();
 }
 
 - (DOMRange *)selectedDOMRange
@@ -1465,23 +1470,27 @@ static WebFrameLoadType toWebFrameLoadType(WebCore::FrameLoadType frameLoadType)
 
 - (void)setSelectedDOMRange:(DOMRange *)range affinity:(NSSelectionAffinity)affinity closeTyping:(BOOL)closeTyping
 {
-    WebCore::Frame *frame = core(self);
+    [self setSelectedDOMRange:range affinity:affinity closeTyping:closeTyping userTriggered:NO];
+}
 
-    // Ensure the view becomes first responder.
-    // This does not happen automatically on iOS because we don't forward
-    // all the click events to WebKit.
-    if (auto* frameView = frame->view()) {
-        if (NSView *documentView = frameView->documentView()) {
-            auto* page = frame->page();
-            if (!page)
-                return;
-            page->chrome().focusNSView(documentView);
-        }
-    }
+- (void)setSelectedDOMRange:(DOMRange *)range affinity:(NSSelectionAffinity)affinity closeTyping:(BOOL)closeTyping userTriggered:(BOOL)userTriggered
+{
+    using namespace WebCore;
 
-    frame->selection().setSelectedRange(core(range), (WebCore::EAffinity)affinity, closeTyping ? WebCore::FrameSelection::ShouldCloseTyping::Yes : WebCore::FrameSelection::ShouldCloseTyping::No);
+    auto& frame = *core(self);
+    if (!frame.page())
+        return;
+
+    // Ensure the view becomes first responder. This does not happen automatically on iOS because
+    // we don't forward all the click events to WebKit.
+    if (NSView *documentView = frame.view()->documentView())
+        frame.page()->chrome().focusNSView(documentView);
+
+    auto coreCloseTyping = closeTyping ? FrameSelection::ShouldCloseTyping::Yes : FrameSelection::ShouldCloseTyping::No;
+    auto coreUserTriggered = userTriggered ? UserTriggered : NotUserTriggered;
+    frame.selection().setSelectedRange(core(range), core(affinity), coreCloseTyping, coreUserTriggered);
     if (!closeTyping)
-        frame->editor().ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
+        frame.editor().ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
 }
 
 - (NSSelectionAffinity)selectionAffinity
@@ -1641,7 +1650,7 @@ static WebFrameLoadType toWebFrameLoadType(WebCore::FrameLoadType frameLoadType)
     
     Vector<WebCore::CompositionUnderline> underlines;
     frame->page()->chrome().client().suppressFormNotifications();
-    frame->editor().setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange));
+    frame->editor().setComposition(text, underlines, { }, newSelRange.location, NSMaxRange(newSelRange));
     frame->page()->chrome().client().restoreFormNotifications();
 }
 
@@ -1652,7 +1661,7 @@ static WebFrameLoadType toWebFrameLoadType(WebCore::FrameLoadType frameLoadType)
         return;
         
     Vector<WebCore::CompositionUnderline> underlines;
-    frame->editor().setComposition(text, underlines, 0, [text length]);
+    frame->editor().setComposition(text, underlines, { }, 0, [text length]);
 }
 
 - (void)confirmMarkedText:(NSString *)text

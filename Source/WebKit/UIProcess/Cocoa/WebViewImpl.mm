@@ -83,6 +83,7 @@
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ActivityState.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/CompositionHighlight.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/DragData.h>
 #import <WebCore/DragItem.h>
@@ -1462,7 +1463,6 @@ void WebViewImpl::handleProcessSwapOrExit()
     notifyInputContextAboutDiscardedComposition();
 
     updateRemoteAccessibilityRegistration(false);
-    flushPendingMouseEventCallbacks();
 
     handleDOMPasteRequestWithResult(WebCore::DOMPasteAccessResponse::DeniedForGesture);
 }
@@ -3400,29 +3400,6 @@ void WebViewImpl::handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidat
     m_page->handleAcceptedCandidate(textCheckingResultFromNSTextCheckingResult(acceptedCandidate));
 }
 
-void WebViewImpl::doAfterProcessingAllPendingMouseEvents(dispatch_block_t action)
-{
-    if (!m_page->isProcessingMouseEvents()) {
-        action();
-        return;
-    }
-
-    m_callbackHandlersAfterProcessingPendingMouseEvents.append(makeBlockPtr(action));
-}
-
-void WebViewImpl::didFinishProcessingAllPendingMouseEvents()
-{
-    flushPendingMouseEventCallbacks();
-}
-
-void WebViewImpl::flushPendingMouseEventCallbacks()
-{
-    for (auto& callback : m_callbackHandlersAfterProcessingPendingMouseEvents)
-        callback();
-
-    m_callbackHandlersAfterProcessingPendingMouseEvents.clear();
-}
-
 void WebViewImpl::preferencesDidChange()
 {
     BOOL needsViewFrameInWindowCoordinates = m_page->preferences().pluginsEnabled();
@@ -5067,7 +5044,7 @@ void WebViewImpl::setMarkedText(id string, NSRange selectedRange, NSRange replac
         return;
     }
 
-    m_page->setCompositionAsync(text, underlines, selectedRange, replacementRange);
+    m_page->setCompositionAsync(text, underlines, { }, selectedRange, replacementRange);
 }
 
 // Synchronous NSTextInputClient is still implemented to catch spurious sync calls. Remove when that is no longer needed.

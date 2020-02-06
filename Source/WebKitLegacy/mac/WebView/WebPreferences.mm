@@ -592,7 +592,8 @@ public:
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         @NO, WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
-        @NO, WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
+        @YES, WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
+        @YES, WebKitRenderingUpdateThrottlingEnabledPreferenceKey,
         @NO, WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
         
         @NO, WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey,
@@ -710,6 +711,7 @@ public:
         @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
         @NO, WebKitInAppBrowserPrivacyEnabledPreferenceKey,
         @NO, WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey,
+        @NO, WebKitWebSQLEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -2784,6 +2786,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey];
 }
 
+- (BOOL)renderingUpdateThrottlingEnabled
+{
+    return [self _boolValueForKey:WebKitRenderingUpdateThrottlingEnabledPreferenceKey];
+}
+
+- (void)setRenderingUpdateThrottlingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitRenderingUpdateThrottlingEnabledPreferenceKey];
+}
+
 - (BOOL)lowPowerVideoAudioBufferSizeEnabled
 {
     return [self _boolValueForKey:WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey];
@@ -3212,6 +3224,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setWebAnimationsCompositeOperationsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey];
+}
+
+- (BOOL)webAnimationsMutableTimelinesEnabled
+{
+    return [self _boolValueForKey:WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey];
+}
+
+- (void)setWebAnimationsMutableTimelinesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey];
 }
 
 - (BOOL)pointerEventsEnabled
@@ -3644,6 +3666,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAspectRatioOfImgFromWidthAndHeightEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey];
+}
+
+- (BOOL)webSQLEnabled
+{
+    return [self _boolValueForKey:WebKitWebSQLEnabledPreferenceKey];
+}
+
+- (void)setWebSQLEnabled:(BOOL)webSQLEnabled
+{
+    [self _setBoolValue:webSQLEnabled forKey:WebKitWebSQLEnabledPreferenceKey];
 }
 
 @end

@@ -64,7 +64,7 @@ public:
     void updateStyle();
     void layout();
 
-    LayoutUnit contentLogicalHeight() const { return m_contentLogicalHeight; }
+    LayoutUnit contentLogicalHeight() const;
     size_t lineCount() const;
 
     LayoutUnit firstLineBaseline() const;
@@ -80,16 +80,18 @@ public:
     LineLayoutTraversal::TextBoxIterator textBoxesFor(const RenderText&) const;
     LineLayoutTraversal::ElementBoxIterator elementBoxFor(const RenderLineBreak&) const;
 
+    static void releaseCaches(RenderView&);
+
 private:
     const Layout::Container& rootLayoutBox() const;
     Layout::Container& rootLayoutBox();
-    void prepareRootGeometryForLayout();
     ShadowData* debugTextShadow();
+    void releaseInlineItemCache();
 
     const RenderBlockFlow& m_flow;
     BoxTree m_boxTree;
-    Optional<Layout::LayoutState> m_layoutState;
-    LayoutUnit m_contentLogicalHeight;
+    Layout::LayoutState m_layoutState;
+    Layout::InlineFormattingState& m_inlineFormattingState;
 };
 
 }

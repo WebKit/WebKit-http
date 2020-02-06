@@ -37,7 +37,6 @@
 #include "FontCascade.h"
 #include "Node.h"
 #include "Pair.h"
-#include "RGBColor.h"
 #include "Rect.h"
 #include "RenderStyle.h"
 #include <wtf/NeverDestroyed.h>
@@ -81,15 +80,10 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSUnitType unitType)
     case CSSUnitType::CSS_VMAX:
     case CSSUnitType::CSS_VMIN:
     case CSSUnitType::CSS_VW:
-        return true;
     case CSSUnitType::CSS_DPCM:
     case CSSUnitType::CSS_DPI:
     case CSSUnitType::CSS_DPPX:
-#if ENABLE(CSS_IMAGE_RESOLUTION) || ENABLE(RESOLUTION_MEDIA_QUERY)
         return true;
-#else
-        return false;
-#endif
     case CSSUnitType::CSS_ATTR:
     case CSSUnitType::CSS_COUNTER:
     case CSSUnitType::CSS_COUNTER_NAME:
@@ -703,6 +697,7 @@ double CSSPrimitiveValue::conversionToCanonicalUnitsScaleFactor(CSSUnitType unit
     case CSSUnitType::CSS_DEG:
     case CSSUnitType::CSS_MS:
     case CSSUnitType::CSS_HZ:
+    case CSSUnitType::CSS_DPPX:
         break;
     case CSSUnitType::CSS_CM:
         factor = cssPixelsPerInch / cmPerInch;
@@ -876,29 +871,6 @@ String CSSPrimitiveValue::stringValue() const
     default:
         return String();
     }
-}
-
-ExceptionOr<Counter&> CSSPrimitiveValue::getCounterValue() const
-{
-    if (primitiveUnitType() != CSSUnitType::CSS_COUNTER)
-        return Exception { InvalidAccessError };
-    return *m_value.counter;
-}
-
-ExceptionOr<Rect&> CSSPrimitiveValue::getRectValue() const
-{
-    if (primitiveUnitType() != CSSUnitType::CSS_RECT)
-        return Exception { InvalidAccessError };
-    return *m_value.rect;
-}
-
-ExceptionOr<Ref<RGBColor>> CSSPrimitiveValue::getRGBColorValue() const
-{
-    if (primitiveUnitType() != CSSUnitType::CSS_RGBCOLOR)
-        return Exception { InvalidAccessError };
-
-    // FIXME: This should not return a new object for each invocation.
-    return RGBColor::create(m_value.color->rgb());
 }
 
 NEVER_INLINE String CSSPrimitiveValue::formatNumberValue(StringView suffix) const

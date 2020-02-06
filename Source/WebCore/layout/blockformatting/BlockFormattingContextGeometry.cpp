@@ -29,6 +29,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "BlockFormattingState.h"
+#include "DisplayBox.h"
 #include "FormattingContext.h"
 #include "InlineFormattingState.h"
 #include "LayoutChildIterator.h"
@@ -74,10 +75,10 @@ ContentHeightAndMargin BlockFormattingContext::Geometry::inFlowNonReplacedHeight
         // 1. the bottom edge of the last line box, if the box establishes a inline formatting context with one or more lines
         auto& layoutContainer = downcast<Container>(layoutBox);
         if (layoutContainer.establishesInlineFormattingContext()) {
-            auto& lineBoxes = downcast<InlineFormattingState>(layoutState().establishedFormattingState(layoutContainer)).displayInlineContent()->lineBoxes;
+            auto& lineBoxes = layoutState().establishedInlineFormattingState(layoutContainer).displayInlineContent()->lineBoxes;
             // Even empty containers generate one line. 
             ASSERT(!lineBoxes.isEmpty());
-            return { toLayoutUnit(lineBoxes.last().logicalBottom()) - borderAndPaddingTop, nonCollapsedMargin };
+            return { toLayoutUnit(lineBoxes.last().bottom()) - borderAndPaddingTop, nonCollapsedMargin };
         }
 
         // 2. the bottom edge of the bottom (possibly collapsed) margin of its last in-flow child, if the child's bottom margin...
@@ -318,11 +319,11 @@ FormattingContext::IntrinsicWidthConstraints BlockFormattingContext::Geometry::i
             return { };
         }
 
-        if (layoutBox.establishesFormattingContext() && is<Container>(layoutBox))
-            return LayoutContext::createFormattingContext(downcast<Container>(layoutBox), layoutState())->computedIntrinsicWidthConstraints();
-
         if (!is<Container>(layoutBox) || !downcast<Container>(layoutBox).hasInFlowOrFloatingChild())
             return { };
+
+        if (layoutBox.establishesFormattingContext())
+            return LayoutContext::createFormattingContext(downcast<Container>(layoutBox), layoutState())->computedIntrinsicWidthConstraints();
 
         auto intrinsicWidthConstraints = IntrinsicWidthConstraints { };
         auto& formattingState = layoutState().formattingStateForBox(layoutBox);

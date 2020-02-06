@@ -295,6 +295,11 @@ static gboolean toplevelWindowStateEvent(GtkWidget*, GdkEventWindowState* event,
 
 static void themeChanged(WebKitWebViewBase* webViewBase)
 {
+    webViewBase->priv->pageProxy->themeDidChange();
+}
+
+static void applicationPreferDarkThemeChanged(WebKitWebViewBase* webViewBase)
+{
     webViewBase->priv->pageProxy->effectiveAppearanceDidChange();
 }
 
@@ -374,7 +379,7 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
     priv->themeChangedID =
         g_signal_connect_swapped(settings, "notify::gtk-theme-name", G_CALLBACK(themeChanged), webViewBase);
     priv->applicationPreferDarkThemeID =
-        g_signal_connect_swapped(settings, "notify::gtk-application-prefer-dark-theme", G_CALLBACK(themeChanged), webViewBase);
+        g_signal_connect_swapped(settings, "notify::gtk-application-prefer-dark-theme", G_CALLBACK(applicationPreferDarkThemeChanged), webViewBase);
 
     if (gtk_widget_get_realized(GTK_WIDGET(window)))
         gtk_widget_realize(GTK_WIDGET(webViewBase));
@@ -1754,12 +1759,11 @@ void webkitWebViewBasePageClosed(WebKitWebViewBase* webkitWebViewBase)
         webkitWebViewBase->priv->acceleratedBackingStore->update({ });
 }
 
-RefPtr<WebKit::ViewSnapshot> webkitWebViewBaseTakeViewSnapshot(WebKitWebViewBase* webkitWebViewBase)
+RefPtr<WebKit::ViewSnapshot> webkitWebViewBaseTakeViewSnapshot(WebKitWebViewBase* webkitWebViewBase, Optional<IntRect>&& clipRect)
 {
     WebPageProxy* page = webkitWebViewBase->priv->pageProxy.get();
 
-    IntSize size = page->viewSize();
-
+    IntSize size = clipRect ? clipRect->size() : page->viewSize();
     float deviceScale = page->deviceScaleFactor();
     size.scale(deviceScale);
 
@@ -1767,6 +1771,11 @@ RefPtr<WebKit::ViewSnapshot> webkitWebViewBaseTakeViewSnapshot(WebKitWebViewBase
     cairoSurfaceSetDeviceScale(surface.get(), deviceScale, deviceScale);
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(surface.get()));
+    if (clipRect) {
+        cairo_translate(cr.get(), -clipRect->x(), -clipRect->y());
+        cairo_rectangle(cr.get(), clipRect->x(), clipRect->y(), clipRect->width(), clipRect->height());
+        cairo_clip(cr.get());
+    }
     webkitWebViewBaseDraw(GTK_WIDGET(webkitWebViewBase), cr.get());
 
     return ViewSnapshot::create(WTFMove(surface));

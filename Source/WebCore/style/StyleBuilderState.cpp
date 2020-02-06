@@ -38,6 +38,7 @@
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
 #include "CSSShadowValue.h"
+#include "FontCache.h"
 #include "HTMLElement.h"
 #include "RenderTheme.h"
 #include "SVGElement.h"
@@ -45,8 +46,10 @@
 #include "Settings.h"
 #include "StyleBuilder.h"
 #include "StyleCachedImage.h"
+#include "StyleCursorImage.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
+#include "StyleImageSet.h"
 #include "TransformFunctions.h"
 
 namespace WebCore {
@@ -79,21 +82,34 @@ bool BuilderState::useSVGZoomRulesForLength() const
     return is<SVGElement>(element()) && !(is<SVGSVGElement>(*element()) && element()->parentNode());
 }
 
+Ref<CSSValue> BuilderState::resolveImageStyles(CSSValue& value)
+{
+    if (is<CSSGradientValue>(value))
+        return downcast<CSSGradientValue>(value).gradientWithStylesResolved(*this);
+
+    if (is<CSSImageSetValue>(value))
+        return downcast<CSSImageSetValue>(value).imageSetWithStylesResolved(*this);
+
+    // Creating filter operations doesn't create a new CSSValue reference.
+    if (is<CSSFilterImageValue>(value))
+        downcast<CSSFilterImageValue>(value).createFilterOperations(*this);
+
+    return makeRef(value);
+}
+
 RefPtr<StyleImage> BuilderState::createStyleImage(CSSValue& value)
 {
-    if (is<CSSImageGeneratorValue>(value)) {
-        if (is<CSSGradientValue>(value))
-            return StyleGeneratedImage::create(downcast<CSSGradientValue>(value).gradientWithStylesResolved(*this));
+    if (is<CSSImageValue>(value))
+        return StyleCachedImage::create(downcast<CSSImageValue>(value));
 
-        if (is<CSSFilterImageValue>(value)) {
-            // FilterImage needs to calculate FilterOperations.
-            downcast<CSSFilterImageValue>(value).createFilterOperations(*this);
-        }
-        return StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(value));
-    }
+    if (is<CSSCursorImageValue>(value))
+        return StyleCursorImage::create(downcast<CSSCursorImageValue>(value));
 
-    if (is<CSSImageValue>(value) || is<CSSImageSetValue>(value) || is<CSSCursorImageValue>(value))
-        return StyleCachedImage::create(value);
+    if (is<CSSImageGeneratorValue>(value))
+        return StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(resolveImageStyles(value).get()));
+    
+    if (is<CSSImageSetValue>(value))
+        return StyleImageSet::create(downcast<CSSImageSetValue>(resolveImageStyles(value).get()));
 
     return nullptr;
 }
@@ -322,7 +338,18 @@ void BuilderState::adjustStyleForInterCharacterRuby()
 
 void BuilderState::updateFont()
 {
-    if (!m_fontDirty && m_style.fontCascade().fonts())
+    auto& fontSelector = const_cast<Document&>(document()).fontSelector();
+
+    auto needsUpdate = [&] {
+        if (m_fontDirty)
+            return true;
+        auto* fonts = m_style.fontCascade().fonts();
+        if (!fonts)
+            return true;
+        return false;
+    };
+
+    if (!needsUpdate())
         return;
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -332,7 +359,7 @@ void BuilderState::updateFont()
     updateFontForZoomChange();
     updateFontForOrientationChange();
 
-    m_style.fontCascade().update(&const_cast<Document&>(document()).fontSelector());
+    m_style.fontCascade().update(&fontSelector);
 
     m_fontDirty = false;
 }

@@ -1096,15 +1096,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(JSCell_structureID);
         return;
 
+    case CheckArrayOrEmpty:
     case CheckArray:
         read(JSCell_indexingType);
-        read(JSCell_typeInfoType);
         read(JSCell_structureID);
         return;
 
     case CheckNeutered:
-        read(JSCell_typeInfoType);
-        read(JSCell_structureID);
         read(MiscFields);
         return; 
         
@@ -1132,7 +1130,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PutStructure:
         read(JSObject_butterfly);
         write(JSCell_structureID);
-        write(JSCell_typeInfoType);
         write(JSCell_typeInfoFlags);
         write(JSCell_indexingType);
         return;

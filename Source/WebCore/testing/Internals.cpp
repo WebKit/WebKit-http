@@ -118,6 +118,7 @@
 #include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
 #include "Location.h"
+#include "MIMETypeRegistry.h"
 #include "MallocStatistics.h"
 #include "MediaDevices.h"
 #include "MediaEngineConfigurationFactory.h"
@@ -161,6 +162,7 @@
 #include "SVGPathStringBuilder.h"
 #include "SVGSVGElement.h"
 #include "SWClientConnection.h"
+#include "ScriptController.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollingCoordinator.h"
 #include "ScrollingMomentumCalculator.h"
@@ -174,6 +176,8 @@
 #include "SourceBuffer.h"
 #include "SpellChecker.h"
 #include "StaticNodeList.h"
+#include "StorageNamespace.h"
+#include "StorageNamespaceProvider.h"
 #include "StringCallback.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
@@ -309,7 +313,8 @@
 #endif
 
 #if PLATFORM(COCOA)
-#import <wtf/spi/darwin/SandboxSPI.h>
+#include "SystemBattery.h"
+#include <wtf/spi/darwin/SandboxSPI.h>
 #endif
 
 using JSC::CallData;
@@ -736,6 +741,8 @@ static String responseSourceToString(const ResourceResponse& response)
         return "Memory cache after validation";
     case ResourceResponse::Source::ApplicationCache:
         return "Application cache";
+    case ResourceResponse::Source::DOMCache:
+        return "DOM cache";
     case ResourceResponse::Source::InspectorOverride:
         return "Inspector override";
     }
@@ -1420,6 +1427,12 @@ String Internals::visiblePlaceholder(Element& element)
     return String();
 }
 
+void Internals::setCanShowPlaceholder(Element& element, bool canShowPlaceholder)
+{
+    if (is<HTMLTextFormControlElement>(element))
+        downcast<HTMLTextFormControlElement>(element).setCanShowPlaceholder(canShowPlaceholder);
+}
+
 void Internals::selectColorInColorChooser(HTMLInputElement& element, const String& colorValue)
 {
     element.selectColor(colorValue);
@@ -1762,7 +1775,11 @@ ExceptionOr<void> Internals::unconstrainedScrollTo(Element& element, double x, d
     if (!document || !document->view())
         return Exception { InvalidAccessError };
 
-    element.scrollTo(ScrollToOptions(x, y), ScrollClamping::Unclamped);
+    element.scrollTo({ x, y }, ScrollClamping::Unclamped);
+
+    auto& frameView = *document->view();
+    frameView.setViewportConstrainedObjectsNeedLayout();
+
     return { };
 }
 
@@ -2514,6 +2531,15 @@ uint64_t Internals::documentIdentifier(const Document& document) const
 bool Internals::isDocumentAlive(uint64_t documentIdentifier) const
 {
     return Document::allDocumentsMap().contains(makeObjectIdentifier<DocumentIdentifierType>(documentIdentifier));
+}
+
+uint64_t Internals::storageAreaMapCount() const
+{
+    auto* page = contextDocument() ? contextDocument()->page() : nullptr;
+    if (!page)
+        return 0;
+
+    return page->storageNamespaceProvider().localStorageNamespace(page->sessionID()).storageAreaMapCountForTesting();
 }
 
 uint64_t Internals::elementIdentifier(Element& element) const
@@ -3471,6 +3497,14 @@ bool Internals::isFromCurrentWorld(JSC::JSValue value) const
 {
     JSC::VM& vm = contextDocument()->vm();
     return isWorldCompatible(*vm.topCallFrame->lexicalGlobalObject(vm), value);
+}
+
+JSC::JSValue Internals::evaluateInWorldIgnoringException(const String& name, const String& source)
+{
+    auto* document = contextDocument();
+    auto& scriptController = document->frame()->script();
+    auto world = ScriptController::createWorld(name);
+    return scriptController.executeScriptInWorldIgnoringException(world, source);
 }
 
 void Internals::setUsesOverlayScrollbars(bool enabled)
@@ -5416,6 +5450,26 @@ String Internals::systemColorForCSSValue(const String& cssValue, bool useDarkMod
         options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
     
     return RenderTheme::singleton().systemColor(id, options).cssText();
+}
+
+bool Internals::systemHasBattery() const
+{
+#if PLATFORM(COCOA)
+    return WebCore::systemHasBattery();
+#else
+    return false;
+#endif
+}
+
+String Internals::mediaMIMETypeForExtension(const String& extension)
+{
+    return MIMETypeRegistry::getMediaMIMETypeForExtension(extension);
+}
+
+String Internals::focusRingColor()
+{
+    OptionSet<StyleColor::Options> options;
+    return RenderTheme::singleton().focusRingColor(options).cssText();
 }
 
 } // namespace WebCore

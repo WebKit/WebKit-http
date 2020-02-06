@@ -541,6 +541,7 @@ public:
     Style::Resolver& userAgentShadowTreeStyleResolver();
 
     CSSFontSelector& fontSelector() { return m_fontSelector; }
+    const CSSFontSelector& fontSelector() const { return m_fontSelector; }
 
     WEBCORE_EXPORT bool haveStylesheetsLoaded() const;
     bool isIgnoringPendingStylesheets() const { return m_ignorePendingStylesheets; }
@@ -1471,6 +1472,8 @@ public:
 
     WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
 
+    void addTimeline(DocumentTimeline&);
+    void removeTimeline(DocumentTimeline&);
     WEBCORE_EXPORT DocumentTimeline& timeline();
     DocumentTimeline* existingTimeline() const { return m_timeline.get(); }
     Vector<RefPtr<WebAnimation>> getAnimations();
@@ -2037,6 +2040,8 @@ private:
     static bool hasEverCreatedAnAXObjectCache;
 
     RefPtr<DocumentTimeline> m_timeline;
+    WeakHashSet<DocumentTimeline> m_timelines;
+
     DocumentIdentifier m_identifier;
 
     RefPtr<WindowEventLoop> m_eventLoop;

@@ -36,16 +36,15 @@
 #include "EventNames.h"
 #include "GraphicsLayer.h"
 #include "KeyframeEffect.h"
+#include "KeyframeEffectStack.h"
 #include "Node.h"
 #include "Page.h"
 #include "PseudoElement.h"
 #include "RenderElement.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
+#include "Settings.h"
 #include <JavaScriptCore/VM.h>
-
-static const Seconds defaultAnimationInterval { 15_ms };
-static const Seconds throttledAnimationInterval { 30_ms };
 
 namespace WebCore {
 
@@ -65,11 +64,20 @@ DocumentTimeline::DocumentTimeline(Document& document, Seconds originTime)
     , m_document(&document)
     , m_originTime(originTime)
 {
-    if (m_document && m_document->page() && !m_document->page()->isVisible())
-        suspendAnimations();
+    if (m_document) {
+        m_document->addTimeline(*this);
+        if (auto* page = m_document->page()) {
+            if (page->settings().hiddenPageCSSAnimationSuspensionEnabled() && !page->isVisible())
+                suspendAnimations();
+        }
+    }
 }
 
-DocumentTimeline::~DocumentTimeline() = default;
+DocumentTimeline::~DocumentTimeline()
+{
+    if (m_document)
+        m_document->removeTimeline(*this);
+}
 
 void DocumentTimeline::detachFromDocument()
 {
@@ -177,8 +185,7 @@ Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
             return compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(lhsOwningElement, rhsOwningElement);
 
         // Otherwise, sort A and B based on their position in the computed value of the animation-name property of the (common) owning element.
-        // In our case, this matches the time at which the animations were created and thus their relative position in m_allAnimations.
-        return false;
+        return compareAnimationsByCompositeOrder(*lhs, *rhs, lhsOwningElement->ensureKeyframeEffectStack().cssAnimationList());
     });
 
     std::sort(webAnimations.begin(), webAnimations.end(), [](auto& lhs, auto& rhs) {
@@ -193,16 +200,11 @@ Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
     return animations;
 }
 
-void DocumentTimeline::updateThrottlingState()
-{
-    scheduleAnimationResolution();
-}
-
 Seconds DocumentTimeline::animationInterval() const
 {
     if (!m_document || !m_document->page())
         return Seconds::infinity();
-    return m_document->page()->isLowPowerModeEnabled() ? throttledAnimationInterval : defaultAnimationInterval;
+    return m_document->page()->preferredRenderingUpdateInterval();
 }
 
 void DocumentTimeline::suspendAnimations()
@@ -338,15 +340,18 @@ bool DocumentTimeline::shouldRunUpdateAnimationsAndSendEventsIgnoringSuspensionS
     return !m_animations.isEmpty() || !m_acceleratedAnimationsPendingRunningStateChange.isEmpty();
 }
 
-void DocumentTimeline::updateAnimationsAndSendEvents(DOMHighResTimeStamp timestamp)
+void DocumentTimeline::updateCurrentTime(DOMHighResTimeStamp timestamp)
 {
     // We need to freeze the current time even if no animation is running.
     // document.timeline.currentTime may be called from a rAF callback and
     // it has to match the rAF timestamp.
     if (!m_isSuspended)
         cacheCurrentTime(timestamp);
+}
 
-    if (m_isSuspended || !m_animationResolutionScheduled || !shouldRunUpdateAnimationsAndSendEventsIgnoringSuspensionState())
+void DocumentTimeline::updateAnimationsAndSendEvents()
+{
+    if (m_isSuspended || !shouldRunUpdateAnimationsAndSendEventsIgnoringSuspensionState())
         return;
 
     // Updating animations and sending events may invalidate the timing of some animations, so we must set the m_animationResolutionScheduled
@@ -597,7 +602,7 @@ bool DocumentTimeline::isRunningAcceleratedAnimationOnRenderer(RenderElement& re
         auto* effect = animation->effect();
         if (is<KeyframeEffect>(effect)) {
             auto* keyframeEffect = downcast<KeyframeEffect>(effect);
-            if (keyframeEffect->isRunningAccelerated() && keyframeEffect->animatedProperties().contains(property))
+            if (keyframeEffect->isCurrentlyAffectingProperty(property, KeyframeEffect::Accelerated::Yes))
                 return true;
         }
     }

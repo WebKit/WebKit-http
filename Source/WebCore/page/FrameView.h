@@ -117,7 +117,7 @@ public:
     void setNeedsCompositingConfigurationUpdate();
     void setNeedsCompositingGeometryUpdate();
 
-    void setViewportConstrainedObjectsNeedLayout();
+    WEBCORE_EXPORT void setViewportConstrainedObjectsNeedLayout();
 
     WEBCORE_EXPORT bool renderedCharactersExceed(unsigned threshold);
 
@@ -223,13 +223,13 @@ public:
 #if USE(COORDINATED_GRAPHICS)
     WEBCORE_EXPORT void setFixedVisibleContentRect(const IntRect&) final;
 #endif
-    WEBCORE_EXPORT void setScrollPosition(const ScrollPosition&, bool animated = false) final;
+    WEBCORE_EXPORT void setScrollPosition(const ScrollPosition&, ScrollClamping = ScrollClamping::Clamped) final;
     void restoreScrollbar();
     void scheduleScrollToFocusedElement(SelectionRevealMode);
     void scrollToFocusedElementImmediatelyIfNeeded();
     void updateLayerPositionsAfterScrolling() final;
     void updateCompositingLayersAfterScrolling() final;
-    bool requestScrollPositionUpdate(const ScrollPosition&) final;
+    bool requestScrollPositionUpdate(const ScrollPosition&, ScrollType = ScrollType::User, ScrollClamping = ScrollClamping::Clamped) final;
     bool isRubberBandInProgress() const final;
     WEBCORE_EXPORT ScrollPosition minimumScrollPosition() const final;
     WEBCORE_EXPORT ScrollPosition maximumScrollPosition() const final;
@@ -658,8 +658,6 @@ public:
     GraphicsLayer* layerForVerticalScrollbar() const final;
 
     void renderLayerDidScroll(const RenderLayer&);
-
-    WEBCORE_EXPORT void scrollToOffsetWithAnimation(const ScrollOffset&, ScrollType = ScrollType::Programmatic, ScrollClamping = ScrollClamping::Clamped);
 
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) final;

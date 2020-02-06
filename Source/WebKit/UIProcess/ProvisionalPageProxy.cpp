@@ -152,10 +152,10 @@ void ProvisionalPageProxy::loadData(API::Navigation& navigation, const IPC::Data
 {
     RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "loadData: pageProxyID=%" PRIu64 " webPageID=%" PRIu64, m_page.identifier().toUInt64(), m_webPageID.toUInt64());
 
-    m_page.loadDataWithNavigationShared(m_process.copyRef(), m_webPageID, navigation, data, MIMEType, encoding, baseURL, userData, WebCore::ShouldTreatAsContinuingLoad::Yes, WTFMove(websitePolicies));
+    m_page.loadDataWithNavigationShared(m_process.copyRef(), m_webPageID, navigation, data, MIMEType, encoding, baseURL, userData, WebCore::ShouldTreatAsContinuingLoad::Yes, WTFMove(websitePolicies), navigation.lastNavigationAction().shouldOpenExternalURLsPolicy);
 }
 
-void ProvisionalPageProxy::loadRequest(API::Navigation& navigation, WebCore::ResourceRequest&& request, WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, API::Object* userData, Optional<WebsitePoliciesData>&& websitePolicies)
+void ProvisionalPageProxy::loadRequest(API::Navigation& navigation, WebCore::ResourceRequest&& request, API::Object* userData, Optional<WebsitePoliciesData>&& websitePolicies)
 {
     RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "loadRequest: pageProxyID=%" PRIu64 " webPageID=%" PRIu64, m_page.identifier().toUInt64(), m_webPageID.toUInt64());
 
@@ -165,7 +165,7 @@ void ProvisionalPageProxy::loadRequest(API::Navigation& navigation, WebCore::Res
     if (navigation.fromItem() && navigation.lockBackForwardList() == WebCore::LockBackForwardList::Yes)
         navigation.fromItem()->setLastProcessIdentifier(m_process->coreProcessIdentifier());
 
-    m_page.loadRequestWithNavigationShared(m_process.copyRef(), m_webPageID, navigation, WTFMove(request), shouldOpenExternalURLsPolicy, userData, WebCore::ShouldTreatAsContinuingLoad::Yes, WTFMove(websitePolicies));
+    m_page.loadRequestWithNavigationShared(m_process.copyRef(), m_webPageID, navigation, WTFMove(request), navigation.lastNavigationAction().shouldOpenExternalURLsPolicy, userData, WebCore::ShouldTreatAsContinuingLoad::Yes, WTFMove(websitePolicies));
 }
 
 void ProvisionalPageProxy::goToBackForwardItem(API::Navigation& navigation, WebBackForwardListItem& item, Optional<WebsitePoliciesData>&& websitePolicies)
@@ -181,7 +181,7 @@ void ProvisionalPageProxy::goToBackForwardItem(API::Navigation& navigation, WebB
     });
     send(Messages::WebPage::UpdateBackForwardListForReattach(WTFMove(itemStates)));
     send(Messages::WebPage::GoToBackForwardItem(navigation.navigationID(), item.itemID(), *navigation.backForwardFrameLoadType(), WebCore::ShouldTreatAsContinuingLoad::Yes, WTFMove(websitePolicies)));
-    m_process->responsivenessTimer().start();
+    m_process->startResponsivenessTimer();
 }
 
 inline bool ProvisionalPageProxy::validateInput(FrameIdentifier frameID, const Optional<uint64_t>& navigationID)
@@ -264,7 +264,7 @@ void ProvisionalPageProxy::didFailProvisionalLoadForFrame(FrameIdentifier frameI
     m_page.didFailProvisionalLoadForFrameShared(m_process.copyRef(), frameID, WTFMove(frameSecurityOrigin), navigationID, provisionalURL, error, willContinueLoading, userData); // May delete |this|.
 }
 
-void ProvisionalPageProxy::didCommitLoadForFrame(FrameIdentifier frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData& userData)
+void ProvisionalPageProxy::didCommitLoadForFrame(FrameIdentifier frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo& certificateInfo, bool usedLegacyTLS, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData& userData)
 {
     if (!validateInput(frameID, navigationID))
         return;
@@ -274,7 +274,7 @@ void ProvisionalPageProxy::didCommitLoadForFrame(FrameIdentifier frameID, uint64
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_webPageID);
 
     m_wasCommitted = true;
-    m_page.commitProvisionalPage(frameID, navigationID, mimeType, frameHasCustomContentProvider, frameLoadType, certificateInfo, containsPluginDocument, forcedHasInsecureContent, userData); // Will delete |this|.
+    m_page.commitProvisionalPage(frameID, navigationID, mimeType, frameHasCustomContentProvider, frameLoadType, certificateInfo, usedLegacyTLS, containsPluginDocument, forcedHasInsecureContent, userData); // Will delete |this|.
 }
 
 void ProvisionalPageProxy::didNavigateWithNavigationData(const WebNavigationDataStore& store, FrameIdentifier frameID)
@@ -334,7 +334,7 @@ void ProvisionalPageProxy::startURLSchemeTask(URLSchemeTaskParameters&& paramete
     m_page.startURLSchemeTaskShared(m_process.copyRef(), m_webPageID, WTFMove(parameters));
 }
 
-void ProvisionalPageProxy::backForwardGoToItem(const WebCore::BackForwardItemIdentifier& identifier, CompletionHandler<void(SandboxExtension::Handle&&)>&& completionHandler)
+void ProvisionalPageProxy::backForwardGoToItem(const WebCore::BackForwardItemIdentifier& identifier, CompletionHandler<void(SandboxExtension::Handle&&, const WebBackForwardListCounts&)>&& completionHandler)
 {
     m_page.backForwardGoToItemShared(m_process.copyRef(), identifier, WTFMove(completionHandler));
 }
@@ -387,6 +387,11 @@ void ProvisionalPageProxy::didCreateContextForVisibilityPropagation(LayerHosting
     m_contextIDForVisibilityPropagation = contextID;
 }
 #endif
+
+void ProvisionalPageProxy::unfreezeLayerTreeDueToSwipeAnimation()
+{
+    send(Messages::WebPage::UnfreezeLayerTreeDueToSwipeAnimation());
+}
 
 void ProvisionalPageProxy::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {

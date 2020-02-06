@@ -2,6 +2,7 @@ include(platform/Cairo.cmake)
 include(platform/Curl.cmake)
 include(platform/FreeType.cmake)
 include(platform/ImageDecoders.cmake)
+include(platform/OpenSSL.cmake)
 include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
@@ -83,15 +84,9 @@ set(WebCore_USER_AGENT_SCRIPTS
 )
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-    ${LIBXML2_INCLUDE_DIR}
-    ${SQLITE_INCLUDE_DIR}
-    ${ZLIB_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
 )
 
 list(APPEND WebCore_LIBRARIES
-    ${LIBXML2_LIBRARIES}
-    ${SQLITE_LIBRARIES}
-    ${ZLIB_LIBRARIES}
     ${WPE_LIBRARIES}
 )

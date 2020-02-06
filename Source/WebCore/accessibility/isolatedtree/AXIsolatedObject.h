@@ -54,21 +54,21 @@ public:
     AXID objectID() const override { return m_id; }
     void init() override { }
 
-    void detach(AccessibilityDetachmentType, AXObjectCache* = nullptr) override;
     bool isDetached() const override;
-    void disconnect();
 
     void setTreeIdentifier(AXIsolatedTreeID);
     void setParent(AXID);
     void appendChild(AXID);
 
 private:
+    void detachRemoteParts(AccessibilityDetachmentType) override;
+    void detachPlatformWrapper(AccessibilityDetachmentType) override;
 
     AXID parent() const { return m_parent; }
-    
+
     AXIsolatedTreeID treeIdentifier() const { return m_treeIdentifier; }
-    AXIsolatedTree* tree() const;
-    
+    AXIsolatedTree* tree() const { return m_cachedTree.get(); }
+
     AXIsolatedObject() = default;
     AXIsolatedObject(AXCoreObject&, bool isRoot);
     void initializeAttributeData(AXCoreObject&, bool isRoot);
@@ -165,13 +165,14 @@ private:
         IsInlineText,
         IsInputImage,
         IsInsideLiveRegion,
+        IsHeading,
+        IsHovered,
+        IsLandmark,
         IsLink,
         IsLinked,
         IsList,
         IsListBox,
         IsLoaded,
-        IsHeading,
-        IsHovered,
         IsMathElement,
         IsMathFraction,
         IsMathFenced,
@@ -338,6 +339,7 @@ private:
 
     // Attribute retrieval overrides.
     bool isHeading() const override { return boolAttributeValue(AXPropertyName::IsHeading); }
+    bool isLandmark() const override { return boolAttributeValue(AXPropertyName::IsLandmark); }
     bool isLink() const override { return boolAttributeValue(AXPropertyName::IsLink); }
     bool isImage() const override { return boolAttributeValue(AXPropertyName::IsImage); }
     bool isPasswordField() const override { return boolAttributeValue(AXPropertyName::IsPasswordField); }
@@ -672,7 +674,6 @@ private:
     bool isARIATextControl() const override;
     bool isNonNativeTextControl() const override;
     bool isBlockquote() const override;
-    bool isLandmark() const override;
     bool isFigureElement() const override;
     bool isKeyboardFocusable() const override;
     bool isHovered() const override;
@@ -693,7 +694,6 @@ private:
     bool hasSameFont(RenderObject*) const override;
     bool hasSameFontColor(RenderObject*) const override;
     bool hasSameStyle(RenderObject*) const override;
-    bool isStaticText() const override;
     bool hasUnderline() const override;
     bool hasHighlighting() const override;
     Element* element() const override;

@@ -3086,8 +3086,8 @@ void Document::implicitClose()
 
     m_processingLoadEvent = false;
 
-    if (auto* fontFaceSet = fontSelector().optionalFontFaceSet())
-        fontFaceSet->didFirstLayout();
+    if (auto fontFaceSet = makeRefPtr(fontSelector().fontFaceSetIfExists()))
+        fontFaceSet->documentDidFinishLoading();
 
 #if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK)
     if (f && hasLivingRenderTree() && AXObjectCache::accessibilityEnabled()) {
@@ -3613,7 +3613,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
         break;
 
     case HTTPHeaderName::Refresh: {
-        double delay;
+        double delay = 0;
         String urlString;
         if (frame && parseMetaHTTPEquivRefresh(content, delay, urlString)) {
             URL completedURL;
@@ -6352,8 +6352,22 @@ void Document::resumeScriptedAnimationControllerCallbacks()
 
 void Document::updateAnimationsAndSendEvents(DOMHighResTimeStamp timestamp)
 {
-    if (m_timeline)
-        m_timeline->updateAnimationsAndSendEvents(timestamp);
+    ASSERT(!m_timelines.hasNullReferences());
+
+    // We need to copy m_timelines before iterating over its members since calling updateAnimationsAndSendEvents() may mutate m_timelines.
+    Vector<RefPtr<DocumentTimeline>> timelines;
+    bool shouldUpdateAnimations = false;
+    for (auto& timeline : m_timelines) {
+        if (!shouldUpdateAnimations && timeline.scheduledUpdate())
+            shouldUpdateAnimations = true;
+        timelines.append(&timeline);
+    }
+
+    for (auto& timeline : timelines) {
+        timeline->updateCurrentTime(timestamp);
+        if (shouldUpdateAnimations)
+            timeline->updateAnimationsAndSendEvents();
+    }
 }
 
 void Document::serviceRequestAnimationFrameCallbacks(DOMHighResTimeStamp timestamp)
@@ -6499,11 +6513,8 @@ int Document::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callbac
         if (!page() || page()->scriptedAnimationsSuspended())
             m_scriptedAnimationController->suspend();
 
-        if (page() && page()->isLowPowerModeEnabled())
-            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::LowPowerMode);
-
         if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
-            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+            m_scriptedAnimationController->addThrottlingReason(ThrottlingReason::NonInteractedCrossOriginFrame);
     }
 
     return m_scriptedAnimationController->registerCallback(WTFMove(callback));
@@ -6742,7 +6753,7 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
 
     if (static_cast<bool>(time) && m_scriptedAnimationController) {
         // It's OK to always remove NonInteractedCrossOriginFrame even if this frame isn't cross-origin.
-        m_scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+        m_scriptedAnimationController->removeThrottlingReason(ThrottlingReason::NonInteractedCrossOriginFrame);
     }
 
     // DOM Timer alignment may depend on the user having interacted with the document.
@@ -7082,7 +7093,6 @@ bool Document::useSystemAppearance() const
 
 bool Document::useDarkAppearance(const RenderStyle* style) const
 {
-#if HAVE(OS_DARK_MODE_SUPPORT)
 #if ENABLE(DARK_MODE_CSS)
     OptionSet<ColorScheme> colorScheme;
 
@@ -7110,9 +7120,6 @@ bool Document::useDarkAppearance(const RenderStyle* style) const
 #if ENABLE(DARK_MODE_CSS)
     if (colorScheme.contains(ColorScheme::Dark))
         return pageUsesDarkAppearance;
-#endif
-#else
-    UNUSED_PARAM(style);
 #endif
 
     return false;
@@ -8039,6 +8046,16 @@ void Document::downgradeReferrerToRegistrableDomain()
 void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
 {
     m_consoleMessageListener = listener;
+}
+
+void Document::addTimeline(DocumentTimeline& timeline)
+{
+    m_timelines.add(timeline);
+}
+
+void Document::removeTimeline(DocumentTimeline& timeline)
+{
+    m_timelines.remove(timeline);
 }
 
 DocumentTimeline& Document::timeline()

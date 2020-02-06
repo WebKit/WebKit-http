@@ -66,6 +66,11 @@
 #include <wtf/MachSendRight.h>
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+#include "ProcessTaskStateObserver.h"
+OBJC_CLASS BKSProcessAssertion;
+#endif
+
 #if PLATFORM(WAYLAND) && USE(WPE_RENDERER)
 #include <WebCore/PlatformDisplayLibWPE.h>
 #endif
@@ -136,7 +141,11 @@ struct WebsiteDataStoreParameters;
 class LayerHostingContext;
 #endif
 
-class WebProcess : public AuxiliaryProcess
+class WebProcess
+    : public AuxiliaryProcess
+#if PLATFORM(IOS_FAMILY)
+    , ProcessTaskStateObserver::Client
+#endif
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -309,11 +318,20 @@ public:
     bool removeServiceWorkerRegistration(WebCore::ServiceWorkerRegistrationIdentifier);
 #endif
 
+#if PLATFORM(IOS)
+    void grantAccessToAssetServices(WebKit::SandboxExtension::Handle&& mobileAssetHandle,  WebKit::SandboxExtension::Handle&& mobileAssetV2Handle);
+    void revokeAccessToAssetServices();
+#endif
+
+#if PLATFORM(MAC)
+    void updatePageScreenProperties();
+#endif
+
 private:
     WebProcess();
     ~WebProcess();
 
-    void initializeWebProcess(WebProcessCreationParameters&&);
+    void initializeWebProcess(WebProcessCreationParameters&&, CompletionHandler<void()>&&);
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void setWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
     void platformSetWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
@@ -386,8 +404,7 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebPageProxyIdentifier, WebCore::PageIdentifier, const WebPreferencesStore&, WebCore::RegistrableDomain&&, ServiceWorkerInitializationData&&);
-    void registerServiceWorkerClients();
+    void establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, WebPageProxyIdentifier, WebCore::PageIdentifier, const WebPreferencesStore&, WebCore::RegistrableDomain&&, ServiceWorkerInitializationData&&, CompletionHandler<void()>&&);
 #endif
 
     void fetchWebsiteData(OptionSet<WebsiteDataType>, CompletionHandler<void(WebsiteData&&)>&&);
@@ -474,8 +491,11 @@ private:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+    void processTaskStateDidChange(ProcessTaskStateObserver::TaskState) final;
     bool shouldFreezeOnSuspension() const;
     void updateFreezerStatus();
+
+    void releaseProcessWasResumedAssertions();
 #endif
 
 #if ENABLE(VIDEO)
@@ -562,6 +582,10 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
+    RefPtr<ProcessTaskStateObserver> m_taskStateObserver;
+    Lock m_processWasResumedAssertionsLock;
+    RetainPtr<BKSProcessAssertion> m_processWasResumedUIAssertion;
+    RetainPtr<BKSProcessAssertion> m_processWasResumedOwnAssertion;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };
@@ -616,6 +640,11 @@ private:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     WebCore::ThirdPartyCookieBlockingMode m_thirdPartyCookieBlockingMode { WebCore::ThirdPartyCookieBlockingMode::All };
+#endif
+
+#if PLATFORM(IOS)
+    RefPtr<SandboxExtension> m_assetServiceExtension;
+    RefPtr<SandboxExtension> m_assetServiceV2Extension;
 #endif
 };
 

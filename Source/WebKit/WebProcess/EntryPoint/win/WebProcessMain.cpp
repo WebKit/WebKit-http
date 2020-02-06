@@ -23,12 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "WebProcessMainWin.h"
+#include "config.h"
+#include "WebProcessMain.h"
 
 #include <stdio.h>
 #include <windows.h>
 
 int main(int argc, char** argv)
 {
-    WebKit::WebProcessMainWin(argc, argv);
+    WebKit::WebProcessMain(argc, argv);
 }

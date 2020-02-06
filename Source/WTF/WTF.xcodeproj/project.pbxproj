@@ -450,6 +450,9 @@
 		7C42307323CE2D8B006E54D0 /* PlatformOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformOS.h; sourceTree = "<group>"; };
 		7C42307423CEB187006E54D0 /* PlatformLegacy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformLegacy.h; sourceTree = "<group>"; };
 		7C9692941F66306E00267A9E /* KeyValuePair.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KeyValuePair.h; sourceTree = "<group>"; };
+		7C98CDC723E7A9B80012F232 /* PlatformEnableCocoa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformEnableCocoa.h; sourceTree = "<group>"; };
+		7C98CDC823E7AFC80012F232 /* PlatformEnableWinApple.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformEnableWinApple.h; sourceTree = "<group>"; };
+		7C98CDC923E7AFC80012F232 /* PlatformEnableWinCairo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformEnableWinCairo.h; sourceTree = "<group>"; };
 		7CBBA07319BB7FDC00BBF025 /* OSObjectPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSObjectPtr.h; sourceTree = "<group>"; };
 		7CD0D5A71D55322A000CC9E1 /* Variant.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Variant.h; sourceTree = "<group>"; };
 		7CD4C26F1E2C82B900929470 /* StringConcatenateNumbers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StringConcatenateNumbers.h; sourceTree = "<group>"; };
@@ -590,7 +593,6 @@
 		A8A472D7151A825B004123FF /* OSAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSAllocator.h; sourceTree = "<group>"; };
 		A8A472DA151A825B004123FF /* OSRandomSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OSRandomSource.cpp; sourceTree = "<group>"; };
 		A8A472DB151A825B004123FF /* OSRandomSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSRandomSource.h; sourceTree = "<group>"; };
-		A8A472DF151A825B004123FF /* PackedIntVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PackedIntVector.h; sourceTree = "<group>"; };
 		A8A472E0151A825B004123FF /* PageAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageAllocation.h; sourceTree = "<group>"; };
 		A8A472E3151A825B004123FF /* PageBlock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageBlock.cpp; sourceTree = "<group>"; };
 		A8A472E4151A825B004123FF /* PageBlock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageBlock.h; sourceTree = "<group>"; };
@@ -1114,7 +1116,6 @@
 				A8A472DA151A825B004123FF /* OSRandomSource.cpp */,
 				A8A472DB151A825B004123FF /* OSRandomSource.h */,
 				E34CD0D022810A020020D299 /* Packed.h */,
-				A8A472DF151A825B004123FF /* PackedIntVector.h */,
 				E36895CB23A445CD008DD4C8 /* PackedRef.h */,
 				E36895CC23A445EE008DD4C8 /* PackedRefPtr.h */,
 				A8A472E0151A825B004123FF /* PageAllocation.h */,
@@ -1132,6 +1133,9 @@
 				7CEF23EB23D1257900F8B904 /* PlatformCallingConventions.h */,
 				7C42307223CE2D8A006E54D0 /* PlatformCPU.h */,
 				7C42307123CE2D8A006E54D0 /* PlatformEnable.h */,
+				7C98CDC723E7A9B80012F232 /* PlatformEnableCocoa.h */,
+				7C98CDC823E7AFC80012F232 /* PlatformEnableWinApple.h */,
+				7C98CDC923E7AFC80012F232 /* PlatformEnableWinCairo.h */,
 				7C3A45D023CFA883007DE3A6 /* PlatformHave.h */,
 				7C42307423CEB187006E54D0 /* PlatformLegacy.h */,
 				7C42307323CE2D8B006E54D0 /* PlatformOS.h */,

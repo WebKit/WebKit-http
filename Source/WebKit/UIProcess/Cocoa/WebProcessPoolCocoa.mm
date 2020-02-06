@@ -47,19 +47,21 @@
 #import "WebProcessMessages.h"
 #import "WindowServerConnection.h"
 #import <WebCore/Color.h>
+#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NotImplemented.h>
+#import <WebCore/PictureInPictureSupport.h>
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <objc/runtime.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
 #import <wtf/FileSystem.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/cocoa/Entitlements.h>
+#import <wtf/spi/darwin/SandboxSPI.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
 #if PLATFORM(MAC)
@@ -81,6 +83,7 @@ SOFT_LINK_CLASS(WebContentAnalysis, WebFilterEvaluator);
 #endif
 
 #if PLATFORM(COCOA)
+#import <WebCore/SystemBattery.h>
 #import <pal/spi/cocoa/NEFilterSourceSPI.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(NetworkExtension);
@@ -260,7 +263,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     parameters.fontWhitelist = m_fontWhitelist;
 
     if (m_bundleParameters) {
-        auto keyedArchiver = secureArchiver();
+        auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initRequiringSecureCoding:YES]);
 
         @try {
             [keyedArchiver encodeObject:m_bundleParameters.get() forKey:@"parameters"];
@@ -326,7 +329,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     
     if (isInternalInstall()) {
         SandboxExtension::Handle diagnosticsExtensionHandle;
-        SandboxExtension::createHandleForMachLookup("com.apple.diagnosticd", WTF::nullopt, diagnosticsExtensionHandle);
+        SandboxExtension::createHandleForMachLookup("com.apple.diagnosticd", WTF::nullopt, diagnosticsExtensionHandle, SandboxExtension::Flags::NoReport);
         parameters.diagnosticsExtensionHandle = WTFMove(diagnosticsExtensionHandle);
     }
 #endif
@@ -343,6 +346,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
 #endif
         parameters.neSessionManagerExtensionHandle = WTFMove(handle);
     }
+    parameters.systemHasBattery = systemHasBattery();
 #endif
     
 #if PLATFORM(IOS)
@@ -351,11 +355,13 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::createHandleForMachLookup("com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI", WTF::nullopt, handle);
         parameters.contentFilterExtensionHandle = WTFMove(handle);
     }
+    parameters.mimeTypesMap = commonMimeTypesMap();
 #endif
     
 #if PLATFORM(IOS_FAMILY)
     parameters.currentUserInterfaceIdiomIsPad = currentUserInterfaceIdiomIsPad();
     parameters.cssValueToSystemColorMap = RenderThemeIOS::cssValueToSystemColorMap();
+    parameters.focusRingColor = RenderTheme::singleton().focusRingColor(OptionSet<StyleColor::Options>());
 #endif
 }
 
@@ -379,29 +385,18 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
         }
     }
 
-    parameters.enableLegacyTLS = false;
-    if (id value = [defaults objectForKey:@"WebKitEnableLegacyTLS"])
-        parameters.enableLegacyTLS = [value boolValue];
-    if (!parameters.enableLegacyTLS) {
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
-        parameters.enableLegacyTLS = [[PAL::getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:@"allowDeprecatedWebKitTLS"] == MCRestrictedBoolExplicitYes;
-#elif PLATFORM(MAC)
-        parameters.enableLegacyTLS = CFPreferencesGetAppBooleanValue(CFSTR("allowDeprecatedWebKitTLS"), CFSTR("com.apple.applicationaccess"), nullptr);
-#endif
-    }
-    parameters.defaultDataStoreParameters.networkSessionParameters.enableLegacyTLS = parameters.enableLegacyTLS;
-
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
     parameters.uiProcessCookieStorageIdentifier = identifyingDataFromCookieStorage([[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]);
 #endif
 
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
+    parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
     NSNumber *databaseEnabledValue = [defaults objectForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isITPDatabaseEnabledKey().createCFString().get()]];
     if (databaseEnabledValue)

@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ActivityState.h"
+#include "AnimationFrameRate.h"
 #include "DisabledAdaptations.h"
 #include "Document.h"
 #include "FindOptions.h"
@@ -334,6 +335,9 @@ public:
 
     void didStartProvisionalLoad();
     void didFinishLoad(); // Called when the load has been committed in the main frame.
+
+    bool delegatesScaling() const { return m_delegatesScaling; }
+    WEBCORE_EXPORT void setDelegatesScaling(bool);
 
     // The view scale factor is multiplied into the page scale factor by all
     // callers of setPageScaleFactor.
@@ -694,12 +698,14 @@ public:
     bool isOnlyNonUtilityPage() const;
     bool isUtilityPage() const { return m_isUtilityPage; }
 
-#if ENABLE(DATA_INTERACTION)
-    WEBCORE_EXPORT bool hasSelectionAtPosition(const FloatPoint&) const;
-#endif
-
-    bool isLowPowerModeEnabled() const;
+    bool isLowPowerModeEnabled() const { return m_throttlingReasons.contains(ThrottlingReason::LowPowerMode); }
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(Optional<bool>);
+
+    bool renderingUpdateThrottlingEnabled() const;
+    void renderingUpdateThrottlingEnabledChanged();
+    bool isRenderingUpdateThrottled() const;
+    Seconds preferredRenderingUpdateInterval() const;
+    bool canUpdateThrottlingReason(ThrottlingReason reason) const { return !m_throttlingReasonsOverridenForTesting.contains(reason); }
 
     WEBCORE_EXPORT void applicationWillResignActive();
     WEBCORE_EXPORT void applicationDidEnterBackground();
@@ -716,7 +722,7 @@ public:
     DeviceOrientationUpdateProvider* deviceOrientationUpdateProvider() const { return m_deviceOrientationUpdateProvider.get(); }
 #endif
 
-    void forEachDocument(const WTF::Function<void(Document&)>&) const;
+    WEBCORE_EXPORT void forEachDocument(const WTF::Function<void(Document&)>&) const;
     void forEachMediaElement(const WTF::Function<void(HTMLMediaElement&)>&);
 
     bool shouldDisableCorsForRequestTo(const URL&) const;
@@ -949,6 +955,13 @@ private:
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabledByWebInspector { false };
     bool m_isUtilityPage;
+    bool m_shouldEnableICECandidateFilteringByDefault { true };
+    bool m_mediaPlaybackIsSuspended { false };
+    bool m_mediaBufferingIsSuspended { false };
+    bool m_inUpdateRendering { false };
+    bool m_hasResourceLoadClient { false };
+    bool m_delegatesScaling { false };
+
     UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
     
     // For testing.
@@ -957,7 +970,6 @@ private:
 
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
     std::unique_ptr<LowPowerModeNotifier> m_lowPowerModeNotifier;
-    Optional<bool> m_lowPowerModeEnabledOverrideForTesting;
 
     Optional<Navigation> m_navigationToLogWhenVisible;
 
@@ -990,12 +1002,9 @@ private:
     RefPtr<DeviceOrientationUpdateProvider> m_deviceOrientationUpdateProvider;
 #endif
 
-    bool m_shouldEnableICECandidateFilteringByDefault { true };
-    bool m_mediaPlaybackIsSuspended { false };
-    bool m_mediaBufferingIsSuspended { false };
-    bool m_inUpdateRendering { false };
-    bool m_hasResourceLoadClient { false };
     Vector<UserContentURLPattern> m_corsDisablingPatterns;
+    OptionSet<ThrottlingReason> m_throttlingReasons;
+    OptionSet<ThrottlingReason> m_throttlingReasonsOverridenForTesting;
 };
 
 inline PageGroup& Page::group()

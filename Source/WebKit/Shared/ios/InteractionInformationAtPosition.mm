@@ -29,7 +29,6 @@
 #import "ArgumentCodersCocoa.h"
 #import "WebCoreArgumentCoders.h"
 #import <pal/spi/cocoa/DataDetectorsCoreSPI.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsCore)
@@ -45,10 +44,8 @@ void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
 
     encoder << canBeValid;
     encoder << nodeAtPositionHasDoubleClickHandler;
-#if ENABLE(DATA_INTERACTION)
-    encoder << hasSelectionAtPosition;
-#endif
     encoder << isSelectable;
+    encoder << prefersDraggingOverTextSelection;
     encoder << isNearMarkedText;
     encoder << touchCalloutEnabled;
     encoder << isLink;
@@ -101,12 +98,10 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
     if (!decoder.decode(result.nodeAtPositionHasDoubleClickHandler))
         return false;
 
-#if ENABLE(DATA_INTERACTION)
-    if (!decoder.decode(result.hasSelectionAtPosition))
-        return false;
-#endif
-
     if (!decoder.decode(result.isSelectable))
+        return false;
+
+    if (!decoder.decode(result.prefersDraggingOverTextSelection))
         return false;
 
     if (!decoder.decode(result.isNearMarkedText))

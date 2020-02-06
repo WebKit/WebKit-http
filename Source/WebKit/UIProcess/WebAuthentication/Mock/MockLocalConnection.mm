@@ -28,8 +28,10 @@
 
 #if ENABLE(WEB_AUTHN)
 
+#import <Security/SecItem.h>
 #import <WebCore/ExceptionData.h>
 #import <wtf/RunLoop.h>
+#import <wtf/spi/cocoa/SecuritySPI.h>
 #import <wtf/text/WTFString.h>
 
 #import "LocalAuthenticationSoftLink.h"
@@ -73,7 +75,7 @@ void MockLocalConnection::getAttestation(const String& rpId, const String& usern
     RunLoop::main().dispatch([configuration = m_configuration, rpId, username, hash, callback = WTFMove(callback)]() mutable {
         ASSERT(configuration.local);
         if (!configuration.local->acceptAttestation) {
-            callback(NULL, NULL, [NSError errorWithDomain:NSOSStatusErrorDomain code:-1 userInfo:nil]);
+            callback(NULL, NULL, [NSError errorWithDomain:@"WebAuthentication" code:-1 userInfo:@{ NSLocalizedDescriptionKey: @"The operation couldn't complete." }]);
             return;
         }
 
@@ -89,7 +91,10 @@ void MockLocalConnection::getAttestation(const String& rpId, const String& usern
             (__bridge CFDictionaryRef)options,
             &errorRef
         ));
-        ASSERT(!errorRef);
+        if (errorRef) {
+            callback(NULL, NULL, (NSError *)errorRef);
+            return;
+        }
 
         // Mock what DeviceIdentity would do.
         String label = makeString(username, "@", rpId, "-rk-ucrt");
@@ -97,9 +102,18 @@ void MockLocalConnection::getAttestation(const String& rpId, const String& usern
             (id)kSecValueRef: (id)key.get(),
             (id)kSecClass: (id)kSecClassKey,
             (id)kSecAttrLabel: (id)label,
+            (id)kSecAttrAccessible: (id)kSecAttrAccessibleAfterFirstUnlock,
+#if HAVE(DATA_PROTECTION_KEYCHAIN)
+            (id)kSecUseDataProtectionKeychain: @YES
+#else
+            (id)kSecAttrNoLegacy: @YES
+#endif
         };
         OSStatus status = SecItemAdd((__bridge CFDictionaryRef)addQuery, NULL);
-        ASSERT_UNUSED(status, !status);
+        if (status) {
+            callback(NULL, NULL, [NSError errorWithDomain:@"WebAuthentication" code:status userInfo:@{ NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Couldn't add the key to the keychain. %d", status] }]);
+            return;
+        }
 
         auto attestationCertificate = adoptCF(SecCertificateCreateWithData(NULL, (__bridge CFDataRef)adoptNS([[NSData alloc] initWithBase64EncodedString:configuration.local->userCertificateBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get()));
         auto attestationIssuingCACertificate = adoptCF(SecCertificateCreateWithData(NULL, (__bridge CFDataRef)adoptNS([[NSData alloc] initWithBase64EncodedString:configuration.local->intermediateCACertificateBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get()));

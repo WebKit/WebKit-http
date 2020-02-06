@@ -65,6 +65,11 @@ public:
 
     Logger& logger();
 
+    const String& mediaCacheDirectory() const;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    const String& mediaKeysStorageDirectory() const;
+#endif
+
 private:
     GPUConnectionToWebProcess(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier, PAL::SessionID);
 
@@ -74,7 +79,9 @@ private:
 #endif
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     UserMediaCaptureManagerProxy& userMediaCaptureManagerProxy();
+#if HAVE(AVASSETWRITERDELEGATE)
     RemoteMediaRecorderManager& mediaRecorderManager();
+#endif
 #if ENABLE(VIDEO_TRACK)
     RemoteAudioMediaStreamTrackRendererManager& audioTrackRendererManager();
     RemoteSampleBufferDisplayLayerManager& sampleBufferDisplayLayerManager();
@@ -97,7 +104,9 @@ private:
     PAL::SessionID m_sessionID;
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
+#if HAVE(AVASSETWRITERDELEGATE)
     std::unique_ptr<RemoteMediaRecorderManager> m_remoteMediaRecorderManager;
+#endif
 #if ENABLE(VIDEO_TRACK)
     std::unique_ptr<RemoteAudioMediaStreamTrackRendererManager> m_audioTrackRendererManager;
     std::unique_ptr<RemoteSampleBufferDisplayLayerManager> m_sampleBufferDisplayLayerManager;

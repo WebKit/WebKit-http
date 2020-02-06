@@ -59,6 +59,7 @@ void BlockFormattingContext::layoutInFlowContent(InvalidationState& invalidation
     // Vertical margins between adjacent block-level boxes in a block formatting context collapse.
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Start] -> block formatting context -> formatting root(" << &root() << ")");
     auto& formattingRoot = root();
+    ASSERT(formattingRoot.hasInFlowOrFloatingChild());
     auto floatingContext = FloatingContext { formattingRoot, *this, formattingState().floatingState() };
 
     LayoutQueue layoutQueue;
@@ -118,32 +119,51 @@ void BlockFormattingContext::layoutInFlowContent(InvalidationState& invalidation
             auto horizontalConstraints = horizontalConstraintsForLayoutBox(layoutBox);
             auto verticalConstraints = verticalConstraintsForLayoutBox(layoutBox);
 
-            if (layoutBox.establishesFormattingContext()) {
-                // layoutFormattingContextRoot() takes care of the layoutBox itself and its descendants.
-                layoutFormattingContextRoot(layoutBox, floatingContext, invalidationState, horizontalConstraints, verticalConstraints);
-                layoutQueue.removeLast();
-                if (!appendNextToLayoutQueue(layoutBox, LayoutDirection::Sibling))
-                    break;
-                continue;
-            }
             computeBorderAndPadding(layoutBox, horizontalConstraints.containingBlock);
-            computeWidthAndMargin(layoutBox, horizontalConstraints);
-            computeStaticPosition(floatingContext, layoutBox, horizontalConstraints, verticalConstraints);
+            computeStaticVerticalPosition(floatingContext, layoutBox, horizontalConstraints, verticalConstraints);
+            computeWidthAndMargin(floatingContext, layoutBox, horizontalConstraints);
+            computeStaticHorizontalPosition(layoutBox, horizontalConstraints);
+
+            if (layoutBox.establishesFormattingContext()) {
+                if (is<Container>(layoutBox) && downcast<Container>(layoutBox).hasInFlowOrFloatingChild()) {
+                    // Layout the inflow descendants of this formatting context root.
+                    auto& rootDisplayBox = geometryForBox(layoutBox);
+                    auto horizontalConstraintsForFormattingContext = Geometry::horizontalConstraintsForInFlow(rootDisplayBox);
+                    auto verticalConstraintsForFormattingContext = Geometry::verticalConstraintsForInFlow(rootDisplayBox);
+                    LayoutContext::createFormattingContext(downcast<Container>(layoutBox), layoutState())->layoutInFlowContent(invalidationState, horizontalConstraintsForFormattingContext, verticalConstraintsForFormattingContext);
+                }
+                break;
+            }
             if (!appendNextToLayoutQueue(layoutBox, LayoutDirection::Child))
                 break;
         }
 
         // Climb back on the ancestors and compute height/final position.
         while (!layoutQueue.isEmpty()) {
-            // All inflow descendants (if there are any) are laid out by now. Let's compute the box's height.
             auto& layoutBox = *layoutQueue.takeLast();
             auto horizontalConstraints = horizontalConstraintsForLayoutBox(layoutBox);
             auto verticalConstraints = verticalConstraintsForLayoutBox(layoutBox);
-            // Formatting root boxes are special-cased and they don't come here.
-            ASSERT(!layoutBox.establishesFormattingContext());
+
+            // All inflow descendants (if there are any) are laid out by now. Let's compute the box's height.
             computeHeightAndMargin(layoutBox, horizontalConstraints, verticalConstraints);
-            // Move in-flow positioned children to their final position.
+
+            if (layoutBox.establishesFormattingContext()) {
+                // Now that we computed the root's height, we can layout the out-of-flow descendants.
+                if (is<Container>(layoutBox) && downcast<Container>(layoutBox).hasChild()) {
+                    auto& rootDisplayBox = geometryForBox(layoutBox);
+                    auto horizontalConstraintsForOutOfFlow =  Geometry::horizontalConstraintsForOutOfFlow(rootDisplayBox);
+                    auto verticalConstraintsForOutOfFlow = Geometry::verticalConstraintsForOutOfFlow(rootDisplayBox);
+                    LayoutContext::createFormattingContext(downcast<Container>(layoutBox), layoutState())->layoutOutOfFlowContent(invalidationState, horizontalConstraintsForOutOfFlow, verticalConstraintsForOutOfFlow);
+                }
+            }
+            // Resolve final positions.
             placeInFlowPositionedChildren(layoutBox, horizontalConstraints);
+            if (layoutBox.isFloatingPositioned()) {
+                computeFloatingPosition(floatingContext, layoutBox);
+                floatingContext.append(layoutBox);
+            } else if (layoutBox.isFloatAvoider())
+                computePositionToAvoidFloats(floatingContext, layoutBox);
+
             if (appendNextToLayoutQueue(layoutBox, LayoutDirection::Sibling))
                 break;
         }
@@ -185,46 +205,6 @@ Optional<LayoutUnit> BlockFormattingContext::usedAvailableWidthForFloatAvoider(c
     if (constraints.right)
         availableWidth -= std::max<LayoutUnit>(0, containingBlockContentBoxRight - constraints.right->x);
     return availableWidth;
-}
-
-void BlockFormattingContext::layoutFormattingContextRoot(const Box& layoutBox, FloatingContext& floatingContext, InvalidationState& invalidationState, const ConstraintsPair<HorizontalConstraints>& horizontalConstraints, const ConstraintsPair<VerticalConstraints>& verticalConstraints)
-{
-    ASSERT(layoutBox.establishesFormattingContext());
-    // Start laying out this formatting root in the formatting contenxt it lives in.
-    LOG_WITH_STREAM(FormattingContextLayout, stream << "[Compute] -> [Position][Border][Padding][Width][Margin] -> for layoutBox(" << &layoutBox << ")");
-    auto availableWidth = horizontalConstraints.containingBlock.logicalWidth;
-    auto horizontalAvailableSpaceIsConstrainedByExistingFloats = layoutBox.isFloatAvoider() && !layoutBox.isFloatingPositioned();
-    if (horizontalAvailableSpaceIsConstrainedByExistingFloats) {
-        if (auto adjustedAvailableWidth = usedAvailableWidthForFloatAvoider(floatingContext, layoutBox))
-            availableWidth = *adjustedAvailableWidth;
-    }
-    auto adjustedHorizontalConstraints = ConstraintsPair<HorizontalConstraints> { horizontalConstraints.root, { horizontalConstraints.containingBlock.logicalLeft, availableWidth } };
-
-    computeBorderAndPadding(layoutBox, adjustedHorizontalConstraints.containingBlock);
-    computeStaticVerticalPosition(floatingContext, layoutBox, horizontalConstraints, verticalConstraints);
-    computeWidthAndMargin(layoutBox, adjustedHorizontalConstraints);
-    computeStaticHorizontalPosition(layoutBox, adjustedHorizontalConstraints);
-
-    if (is<Container>(layoutBox)) {
-        // Swich over to the new formatting context (the one that the root creates).
-        auto& rootContainer = downcast<Container>(layoutBox);
-        auto& rootContainerDisplayBox = geometryForBox(rootContainer);
-        auto formattingContext = LayoutContext::createFormattingContext(rootContainer, layoutState());
-        formattingContext->layoutInFlowContent(invalidationState, Geometry::horizontalConstraintsForInFlow(rootContainerDisplayBox), Geometry::verticalConstraintsForInFlow(rootContainerDisplayBox));
-        // Come back and finalize the root's geometry.
-        computeHeightAndMargin(rootContainer, adjustedHorizontalConstraints, verticalConstraints);
-        // Now that we computed the root's height, we can go back and layout the out-of-flow content.
-        auto horizontalConstraintsForOutOfFlow =  Geometry::horizontalConstraintsForOutOfFlow(rootContainerDisplayBox);
-        auto verticalConstraintsForOutOfFlow = Geometry::verticalConstraintsForOutOfFlow(rootContainerDisplayBox);
-        formattingContext->layoutOutOfFlowContent(invalidationState, horizontalConstraintsForOutOfFlow, verticalConstraintsForOutOfFlow);
-    } else
-        computeHeightAndMargin(layoutBox, adjustedHorizontalConstraints, verticalConstraints);
-    // Float related final positioning.
-    if (layoutBox.isFloatingPositioned()) {
-        computeFloatingPosition(floatingContext, layoutBox);
-        floatingContext.append(layoutBox);
-    } else if (layoutBox.establishesBlockFormattingContext())
-        computePositionToAvoidFloats(floatingContext, layoutBox);
 }
 
 void BlockFormattingContext::placeInFlowPositionedChildren(const Box& layoutBox, const ConstraintsPair<HorizontalConstraints>& horizontalConstraints)
@@ -387,14 +367,19 @@ void BlockFormattingContext::computePositionToAvoidFloats(const FloatingContext&
         formattingState().displayBox(layoutBox).setTopLeft(*adjustedPosition);
 }
 
-void BlockFormattingContext::computeWidthAndMargin(const Box& layoutBox, const ConstraintsPair<HorizontalConstraints>& horizontalConstraints)
+void BlockFormattingContext::computeWidthAndMargin(const FloatingContext& floatingContext, const Box& layoutBox, const ConstraintsPair<HorizontalConstraints>& horizontalConstraints)
 {
     auto compute = [&](Optional<LayoutUnit> usedWidth) -> ContentWidthAndMargin {
-        if (layoutBox.isInFlow())
-            return geometry().inFlowWidthAndMargin(layoutBox, horizontalConstraints.containingBlock, { usedWidth, { } });
-
         if (layoutBox.isFloatingPositioned())
             return geometry().floatingWidthAndMargin(layoutBox, horizontalConstraints.containingBlock, { usedWidth, { } });
+
+        if (layoutBox.isFloatAvoider()) {
+            auto availableWidth = usedAvailableWidthForFloatAvoider(floatingContext, layoutBox).valueOr(horizontalConstraints.containingBlock.logicalWidth);
+            return geometry().inFlowWidthAndMargin(layoutBox, { horizontalConstraints.containingBlock.logicalLeft, availableWidth }, { usedWidth, { } });
+        }
+
+        if (layoutBox.isInFlow())
+            return geometry().inFlowWidthAndMargin(layoutBox, horizontalConstraints.containingBlock, { usedWidth, { } });
 
         ASSERT_NOT_REACHED();
         return { };

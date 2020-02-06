@@ -101,6 +101,8 @@ my $version;
 my $versionName;
 my $sdk;
 my $failFast = 1;
+my $coverage = 0;
+my $coverageDir;
 my %jsonData = ();
 my %reportData = ();
 my @testResults = ();
@@ -216,6 +218,7 @@ my $mozillaTestsDefault = defaultStringForTestState($runMozillaTests);
 my $jitStressTestsDefault = $runJITStressTests ? "will run" : " will not run";
 my $quickModeDefault = $runQuickMode ? "some" : "all";
 my $failFastDefault = $failFast ? "fail fast" : "don't fail fast";
+my $coverageDefault = $coverage ? "coverage enabled" : "coverage disabled";
 my $copyJSCDefault = $copyJSC ? "copy" : "do not copy";
 my $filter;
 my $usage = <<EOF;
@@ -239,6 +242,8 @@ Usage: $programName [options] [options to pass to build system]
   --[no-]fail-fast              Stop this script when a test family reports an error or failure (default: $failFastDefault)
   --[no-]force-collectContinuously Enable the collectContinuously mode even if it was disabled on this platform.
   --[no-]copy                   Copy (or don't copy) the JavaScriptCore build product before testing (default: $copyJSCDefault)
+  --[no-]coverage               Enable (or disable) LLVM Source-based Code Coverage instrumentation for the test run (default: $coverageDefault).
+  --coverage-dir=               Output path for LLVM Source-based Code Coverage instrumentation (default: a temporary directory).
   --json-output=                Create a file at specified path, listing failed stress tests in JSON format.
   --tarball                     Create a tarball of the bundle produced by running the JSC stress tests.
   --remote=                     Run the JSC stress tests on the specified remote host. Implies --tarball.
@@ -307,6 +312,8 @@ GetOptions(
     'fail-fast!' => \$failFast,
     'force-collectContinuously!' => \$forceCollectContinuously,
     'copy!' => \$copyJSC,
+    'coverage!' => \$coverage,
+    'coverage-dir=s' => \$coverageDir,
     'json-output=s' => \$jsonFileName,
     'tarball!' => \$createTarball,
     'remote=s' => \$remoteHost,
@@ -490,6 +497,25 @@ if (defined($gmallocPath)) {
     }
 }
 
+my $htmlDir;
+my $profdataPath;
+
+if ($coverage) {
+    if ($coverageDir) {
+        print "Using output path specified on the command line for coverage data: $coverageDir\n";
+    } else {
+        $coverageDir = tempdir();
+        print "Generating coverage data into $coverageDir\n";
+    }
+    $htmlDir = File::Spec->catfile($coverageDir, "html_report");
+    $profdataPath = File::Spec->catfile($coverageDir, "jsc_tests.profdata");
+    $envVars .=  " LLVM_PROFILE_FILE=" . File::Spec->catfile($coverageDir, "jsc_test_%9m.profraw");
+} else {
+    if ($coverageDir) {
+        die "--coverage-dir= is set but --coverage is not set\n"
+    }
+}
+
 my $productDir = jscProductDir();
 $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
 $ENV{JSCTEST_timeout} = 120 unless $ENV{JSCTEST_timeout}; # Set a 120 second timeout on all jsc tests (if environment variable not defined already).
@@ -523,81 +549,14 @@ sub runTest {
     }
 
     my $testResult = 0;
-    my $failureFlag = 0;
     my $lastOptimizeLevel;
 
     open(TEST, "-|", "@command 2>&1") or die "Failed to run @command";
     while ( my $line = <TEST> ) {
-        my $subTestName;
         print $line if ($verbose);
-
-        # e.g.: 'O2: testRotRWithImmShift(uint64-max, uint32-min): OK!''
-        if ($line =~ /(O\d): (\S+)(\(.*\)): ([A-Za-z]+)!\n/) {
-            $lastOptimizeLevel = $1;
-            $subTestName = "$testName.$1.$2$3";
-            $failureFlag += 1 if ($4 ne "OK");
-        }
-        # Assertion in binary
-        # e.g.: ASSERTION FAILED: things[0] == 2
-        elsif ($line =~ /ASSERTION FAILED:/) {
-            $failureFlag += 1;
-            next;
-        }
-        # e.g.: file/path(397) : void (anonymous namespace)::testShuffleSimpleBroadcast()
-        elsif ($failureFlag && $line =~ /.*\(\d+\) : \S+ .*::(\S+)(\(.*\))/) {
-            if (defined $lastOptimizeLevel) {
-                $subTestName = "$testName.$lastOptimizeLevel.$1$2";
-            } else {
-                $subTestName = "$testName.$1$2";
-            }
-        }
-        # sub-test from the c-api, of the form:
-        # e.g.: 'testapi[15422:16904790] parallelPromiseResolveTest(): done.''
-        elsif ($line =~ /\[\d+:\d+\] (\S+)(): done\.\n/) {
-            $subTestName = "$testName.objective-c.$1";
-        }
-        # End of C-API tests (meaning we just finished the ungrouped main tests)
-        elsif ($line =~ /Starting C-API tests in C++/) {
-            $subTestName = "$testName.objective-c.main";
-        }
-        # End of testapi
-        # e.g.: FAIL: Some tests failed.
-        elsif ($line =~ /FAIL: Some tests failed\./) {
-            $failureFlag = 0;
-            next;
-        }
-        # Test cases inside API tests
-        # e.g.: 'testapi[15422:16904790] TEST: "2 + 2": PASSED'
-        elsif ($line =~ /\[\d+:\d+\] TEST: ".*": ([A-Z]+)\n/) {
-            $failureFlag += 1 if ($1 ne "PASSED" && $1 ne "PASS");
-            next;
-        }
-        # e.g.: 'testBitXorAndAndArgs(0, 0,uint32-max): OK!''
-        elsif ($line =~ /(\S+)(\(.*\)): ([A-Za-z]+)!\n/) {
-            $subTestName = "$testName.$1$2";
-            $failureFlag += 1 if ($3 ne "OK");
-        }
-        # General testcase statement, filtered to exclude some junk logging
-        # e.g.: 'PASS: DFG script timed out as expected when no callback is specified.''
-        elsif ($line =~ /([A-Z]+): (.*)\.*\n/ && !($line =~ /[A-Z]+: \d+\n/ || $line =~ /\[\d+:\d+\] [A-Z]+:/)) {
-            $subTestName = "$testName.$2";
-            $failureFlag += 1 if ($1 ne "PASS");
-        }
-        # e.g.: 'test description: PASSED'
-        elsif ($line =~ /.*: ([A-Z]+)\n/) {
-            $failureFlag += 1 if ($1 ne "PASSED" && $1 ne "PASS");
-            next;
-        } else {
-            next;
-        }
-
-        if (!defined $reportData{$subTestName}) {
-            print "$subTestName failed\n" if ($failureFlag && !$verbose);
-            $reportData{$subTestName} = $failureFlag ? {actual => "FAIL"} : {actual => "PASS"};
-        }
-        $failureFlag = 0;
     }
     $testResult = close(TEST) ? 0 : $?;
+    $reportData{$testName} = $testResult ? {actual => "FAIL"} : {actual => "PASS"};
 
     my $exitStatus = exitStatus($testResult);
     print "$testName completed with rc=$testResult ($exitStatus)\n\n";
@@ -638,6 +597,37 @@ sub reportTestFailures {
   print "\n";
 }
 
+sub convertProfrawToProfdata
+{
+    print "Converting profraw files to profdata.\n";
+    my @command;
+    opendir(PROFRAWS, $coverageDir);
+    my @profrawFiles = grep {/jsc_test_.*\.profraw/} map {File::Spec->catfile($coverageDir, $_)} readdir(PROFRAWS);
+    close(PROFRAWS);
+    push @command, "xcrun";
+    push @command, ("-sdk", xcodeSDK()) if xcodeSDK();
+    push @command, "llvm-profdata", "merge", @profrawFiles, "-o", $profdataPath;
+    system(@command);
+}
+
+sub generateHTMLFromProfdata
+{
+    print "Generating html report from profdata file.\n";
+    my @command;
+    push @command, "xcrun";
+    push @command, ("-sdk", xcodeSDK()) if xcodeSDK();
+    push @command, "llvm-cov", "show", builtDylibPathForName("JavaScriptCore"), "--format=html", "--instr-profile=" . $profdataPath, "--output-dir=" . $htmlDir;
+    system(@command);
+
+    print "HTML report is in file://$htmlDir/index.html\n";
+}
+
+sub processCoverageData
+{
+    convertProfrawToProfdata();
+    generateHTMLFromProfdata();
+}
+
 if ($runTestMasm) { runTest("testmasm", "allMasmTestsPassed") }
 if ($runTestAir) { runTest("testair", "allAirTestsPassed") }
 if ($runTestB3) { runTest("testb3", "allB3TestsPassed") }
@@ -648,9 +638,11 @@ if ($runTestAPI) { runTest("testapi", "allApiTestsPassed") }
 # Find JavaScriptCore directory
 chdirWebKit();
 
-# FIXME: report stress test failures https://bugs.webkit.org/show_bug.cgi?id=204096
 runJSCStressTests();
 reportTestFailures();
+if ($coverage) {
+    processCoverageData();
+}
 
 $endTime = time();
 uploadResults();
@@ -811,6 +803,11 @@ sub runJSCStressTests
     my $result = system(@jscStressDriverCmd);
     exit exitStatus($result) if $result;
 
+    my @jscStressPassList = readAllLines($jscStressResultsDir . "/passed");
+    foreach my $testSucceeded (@jscStressPassList) {
+        $reportData{$testSucceeded} = {actual => "PASS"};
+    }
+
     my @jscStressFailList = readAllLines($jscStressResultsDir . "/failed");
     @jscStressFailList = sort @jscStressFailList;
     my $numJSCStressFailures = @jscStressFailList;
@@ -820,6 +817,7 @@ sub runJSCStressTests
         print "\n** The following JSC stress test failures have been introduced:\n";
         foreach my $testFailure (@jscStressFailList) {
             print "\t$testFailure\n";
+            $reportData{$testFailure} = {actual => "FAIL"};
         }
     }
     print "\n";
@@ -880,15 +878,18 @@ sub uploadResults
         return 0;
     }
 
+    my @commits = [];
+    my $internalCheckout = File::Spec->catdir(dirname(sourceDir()), "Internal");
+    if (-e $internalCheckout and -d $internalCheckout) {
+        @commits = [commitForDirectory(sourceDir(), 'webkit'), commitForDirectory($internalCheckout, 'safari')]
+    } else {
+        @commits = [commitForDirectory(sourceDir(), 'webkit')]
+    }
+
     my %upload = (
         version => 0,
         suite => 'javascriptcore-tests',
-        # FIXME: Integrate branches, https://bugs.webkit.org/show_bug.cgi?id=204094
-        # FIXME: Integrate the Safari repository, https://bugs.webkit.org/show_bug.cgi?id=204095
-        commits => [{
-            repository_id => 'webkit',
-            id => determineCurrentSVNRevision(),
-        }],
+        commits => @commits,
         configuration => configurationForUpload(),
         test_results => {
             run_stats => {

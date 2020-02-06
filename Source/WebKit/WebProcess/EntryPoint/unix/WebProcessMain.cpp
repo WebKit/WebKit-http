@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "WebProcessMainUnix.h"
-#include "wtf/Platform.h"
+#include "WebProcessMain.h"
 
 #include <cstdlib>
 
@@ -36,9 +35,12 @@ using namespace WebKit;
 
 int main(int argc, char** argv)
 {
+    // Ignore the GTK_THEME environment variable, the theme is always set by the UI process now.
+    unsetenv("GTK_THEME");
+
 #if USE(GCRYPT)
     PAL::GCrypt::initialize();
 #endif
 
-    return WebProcessMainUnix(argc, argv);
+    return WebProcessMain(argc, argv);
 }

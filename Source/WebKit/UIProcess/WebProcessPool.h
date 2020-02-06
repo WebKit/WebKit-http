@@ -294,13 +294,13 @@ public:
     void stopMemorySampler();
 
 #if USE(SOUP)
-    void setInitialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy) { m_initialHTTPCookieAcceptPolicy = policy; }
+    void setInitialHTTPCookieAcceptPolicy(WebCore::HTTPCookieAcceptPolicy policy) { m_initialHTTPCookieAcceptPolicy = policy; }
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
 #endif
     void setEnhancedAccessibility(bool);
     
     // Downloads.
-    DownloadProxy& createDownloadProxy(WebsiteDataStore&, const WebCore::ResourceRequest&, WebPageProxy* originatingPage);
+    DownloadProxy& createDownloadProxy(WebsiteDataStore&, const WebCore::ResourceRequest&, WebPageProxy* originatingPage, const FrameInfoData&);
     API::DownloadClient& downloadClient() { return m_downloadClient.get(); }
 
     API::LegacyContextHistoryClient& historyClient() { return *m_historyClient; }
@@ -398,7 +398,7 @@ public:
 
     bool isServiceWorkerPageID(WebPageProxyIdentifier) const;
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy&, WebCore::RegistrableDomain&&, PAL::SessionID);
+    void establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy&, WebCore::RegistrableDomain&&, PAL::SessionID, CompletionHandler<void()>&&);
     void removeFromServiceWorkerProcesses(WebProcessProxy&);
     size_t serviceWorkerProxiesCount() const { return m_serviceWorkerProcesses.size(); }
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
@@ -677,7 +677,7 @@ private:
     WebContextSupplementMap m_supplements;
 
 #if USE(SOUP)
-    HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain };
+    WebCore::HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { WebCore::HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain };
     WebCore::SoupNetworkProxySettings m_networkProxySettings;
 #endif
 

@@ -86,6 +86,7 @@
 #include <WebCore/BitmapInfo.h>
 #include <WebCore/CacheStorageProvider.h>
 #include <WebCore/Chrome.h>
+#include <WebCore/CompositionHighlight.h>
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuController.h>
 #include <WebCore/CookieJar.h>
@@ -5266,6 +5267,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsCompositeOperationsEnabled(!!enabled);
 
+    hr = prefsPrivate->webAnimationsMutableTimelinesEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsMutableTimelinesEnabled(!!enabled);
+
     hr = prefsPrivate->webAnimationsCSSIntegrationEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5310,6 +5316,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(!!enabled);
+
+    hr = prefsPrivate->webSQLEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setWebSQLDisabled(!enabled);
 
     hr = prefsPrivate->visualViewportAPIEnabled(&enabled);
     if (FAILED(hr))
@@ -5599,6 +5610,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setRequestAnimationFrameEnabled(enabled);
+
+    hr = prefsPrivate->renderingUpdateThrottlingEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setRenderingUpdateThrottlingEnabled(enabled);
 
     hr = prefsPrivate->mockScrollbarsEnabled(&enabled);
     if (FAILED(hr))
@@ -6385,7 +6401,7 @@ bool WebView::onIMEComposition(LPARAM lparam)
 
         int cursorPosition = LOWORD(IMMDict::dict().getCompositionString(hInputContext, GCS_CURSORPOS, 0, 0));
 
-        targetFrame.editor().setComposition(compositionString, underlines, cursorPosition, 0);
+        targetFrame.editor().setComposition(compositionString, underlines, { }, cursorPosition, 0);
     }
 
     return true;
@@ -7678,7 +7694,7 @@ HRESULT WebView::setCompositionForTesting(_In_ BSTR composition, UINT from, UINT
 
     Vector<CompositionUnderline> underlines;
     underlines.append(CompositionUnderline(0, compositionStr.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
-    frame.editor().setComposition(compositionStr, underlines, from, from + length);
+    frame.editor().setComposition(compositionStr, underlines, { }, from, from + length);
 
     return S_OK;
 }

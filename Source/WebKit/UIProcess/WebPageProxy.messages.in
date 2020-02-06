@@ -126,7 +126,7 @@ messages -> WebPageProxy {
     DidCancelClientRedirectForFrame(WebCore::FrameIdentifier frameID)
     DidChangeProvisionalURLForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, URL url)
     DidFailProvisionalLoadForFrame(WebCore::FrameIdentifier frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, enum:bool WebCore::WillContinueLoading willContinueLoading, WebKit::UserData userData)
-    DidCommitLoadForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
+    DidCommitLoadForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool usedLegacyTLS, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
     DidFailLoadForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, WebKit::UserData userData)
     DidFinishLoadForFrame(WebCore::FrameIdentifier frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -224,10 +224,9 @@ messages -> WebPageProxy {
 
     # BackForward messages
     BackForwardAddItem(struct WebKit::BackForwardListItemState itemState)
-    BackForwardGoToItem(struct WebCore::BackForwardItemIdentifier itemID) -> (WebKit::SandboxExtension::Handle sandboxExtensionHandle) Synchronous
+    BackForwardGoToItem(struct WebCore::BackForwardItemIdentifier itemID) -> (WebKit::SandboxExtension::Handle sandboxExtensionHandle, struct WebKit::WebBackForwardListCounts counts) Synchronous
     BackForwardItemAtIndex(int32_t itemIndex) -> (Optional<WebCore::BackForwardItemIdentifier> itemID) Synchronous
-    BackForwardBackListCount() -> (uint32_t count) Synchronous
-    BackForwardForwardListCount() -> (uint32_t count) Synchronous
+    BackForwardListCounts() -> (struct WebKit::WebBackForwardListCounts counts) Synchronous
     BackForwardClear()
     WillGoToBackForwardListItem(struct WebCore::BackForwardItemIdentifier itemID, bool inBackForwardCache)
 

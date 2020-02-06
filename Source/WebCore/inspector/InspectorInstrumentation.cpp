@@ -121,17 +121,14 @@ static Frame* frameForScriptExecutionContext(ScriptExecutionContext& context)
 
 void InspectorInstrumentation::didClearWindowObjectInWorldImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, DOMWrapperWorld& world)
 {
-    if (&world != &mainThreadNormalWorld())
-        return;
-
     if (auto* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
-        pageDebuggerAgent->didClearWindowObjectInWorld(frame);
+        pageDebuggerAgent->didClearWindowObjectInWorld(frame, world);
 
     if (auto* pageRuntimeAgent = instrumentingAgents.pageRuntimeAgent())
-        pageRuntimeAgent->didClearWindowObjectInWorld(frame);
+        pageRuntimeAgent->didClearWindowObjectInWorld(frame, world);
 
     if (auto* pageAgent = instrumentingAgents.inspectorPageAgent())
-        pageAgent->didClearWindowObjectInWorld(frame);
+        pageAgent->didClearWindowObjectInWorld(frame, world);
 }
 
 bool InspectorInstrumentation::isDebuggerPausedImpl(InstrumentingAgents& instrumentingAgents)
@@ -723,6 +720,9 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents& instrument
     if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
         canvasAgent->frameNavigated(frame);
 
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->frameNavigated(frame);
+
     if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
         domAgent->didCommitLoad(frame.document());
 
@@ -1133,15 +1133,37 @@ void InspectorInstrumentation::willApplyKeyframeEffectImpl(InstrumentingAgents& 
         animationAgent->willApplyKeyframeEffect(target, effect, computedTiming);
 }
 
-void InspectorInstrumentation::didChangeWebAnimationEffectImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
+void InspectorInstrumentation::didSetWebAnimationEffectImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
 {
-    if (auto* animationAgent = instrumentingAgents.trackingInspectorAnimationAgent())
-        animationAgent->didChangeWebAnimationEffect(animation);
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->didSetWebAnimationEffect(animation);
+    else if (auto* animationAgent = instrumentingAgents.trackingInspectorAnimationAgent())
+        animationAgent->didSetWebAnimationEffect(animation);
+}
+
+void InspectorInstrumentation::didChangeWebAnimationEffectTimingImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
+{
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->didChangeWebAnimationEffectTiming(animation);
+}
+
+void InspectorInstrumentation::didChangeWebAnimationEffectTargetImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
+{
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->didChangeWebAnimationEffectTarget(animation);
+}
+
+void InspectorInstrumentation::didCreateWebAnimationImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
+{
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->didCreateWebAnimation(animation);
 }
 
 void InspectorInstrumentation::willDestroyWebAnimationImpl(InstrumentingAgents& instrumentingAgents, WebAnimation& animation)
 {
-    if (auto* animationAgent = instrumentingAgents.trackingInspectorAnimationAgent())
+    if (auto* animationAgent = instrumentingAgents.enabledInspectorAnimationAgent())
+        animationAgent->willDestroyWebAnimation(animation);
+    else if (auto* animationAgent = instrumentingAgents.trackingInspectorAnimationAgent())
         animationAgent->willDestroyWebAnimation(animation);
 }
 

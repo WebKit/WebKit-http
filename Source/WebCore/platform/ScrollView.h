@@ -136,9 +136,6 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
     WEBCORE_EXPORT void setDelegatesScrolling(bool);
 
-    bool delegatesPageScaling() const { return m_delegatesPageScaling; }
-    WEBCORE_EXPORT void setDelegatesPageScaling(bool);
-
     // Overridden by FrameView to create custom CSS scrollbars if applicable.
     virtual Ref<Scrollbar> createScrollbar(ScrollbarOrientation);
 
@@ -234,7 +231,7 @@ public:
 
     // Scroll position used by web-exposed features (has legacy iOS behavior).
     WEBCORE_EXPORT IntPoint contentsScrollPosition() const;
-    void setContentsScrollPosition(const IntPoint&);
+    void setContentsScrollPosition(const IntPoint&, ScrollClamping = ScrollClamping::Clamped);
 
 #if PLATFORM(IOS_FAMILY)
     int actualScrollX() const { return unobscuredContentRect().x(); }
@@ -264,7 +261,7 @@ public:
     ScrollPosition cachedScrollPosition() const { return m_cachedScrollPosition; }
 
     // Functions for scrolling the view.
-    virtual void setScrollPosition(const ScrollPosition&, bool animated = false);
+    virtual void setScrollPosition(const ScrollPosition&, ScrollClamping = ScrollClamping::Clamped);
     void scrollBy(const IntSize& s) { return setScrollPosition(scrollPosition() + s); }
 
     // This function scrolls by lines, pages or pixels.
@@ -542,7 +539,6 @@ private:
 
     bool m_paintsEntireContents { false };
     bool m_delegatesScrolling { false };
-    bool m_delegatesPageScaling { false };
 
 }; // class ScrollView
 

@@ -447,6 +447,8 @@ struct WKAutoCorrectionData {
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender;
 - (id)targetForActionForWebView:(SEL)action withSender:(id)sender;
 
+- (void)_selectPositionAtPoint:(CGPoint)point stayingWithinFocusedElement:(BOOL)stayingWithinFocusedElement completionHandler:(void (^)(void))completionHandler;
+
 #if ENABLE(POINTER_EVENTS)
 - (void)cancelPointersForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 - (WTF::Optional<unsigned>)activeTouchIdentifierForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
@@ -487,6 +489,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_updateChangedSelection;
 - (BOOL)_interpretKeyEvent:(::WebEvent *)theEvent isCharEvent:(BOOL)isCharEvent;
 - (void)_positionInformationDidChange:(const WebKit::InteractionInformationAtPosition&)info;
+- (BOOL)_currentPositionInformationIsValidForRequest:(const WebKit::InteractionInformationRequest&)request;
 - (void)_attemptClickAtLocation:(CGPoint)location modifierFlags:(UIKeyModifierFlags)modifierFlags;
 - (void)_willStartScrollingOrZooming;
 - (void)_didScroll;

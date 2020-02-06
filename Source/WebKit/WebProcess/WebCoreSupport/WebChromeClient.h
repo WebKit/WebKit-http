@@ -181,6 +181,8 @@ private:
     void associateEditableImageWithAttachment(WebCore::GraphicsLayer::EmbeddedViewID, const String& attachmentID) final;
     void didCreateEditableImage(WebCore::GraphicsLayer::EmbeddedViewID) final;
     void didDestroyEditableImage(WebCore::GraphicsLayer::EmbeddedViewID) final;
+
+    bool shouldUseMouseEventForSelection(const WebCore::PlatformMouseEvent&) final;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -193,7 +195,7 @@ private:
 
     void setCursor(const WebCore::Cursor&) final;
     void setCursorHiddenUntilMouseMoves(bool) final;
-#if !HAVE(NSCURSOR)
+#if !HAVE(NSCURSOR) && !PLATFORM(GTK)
     bool supportsSettingCursor() final { return false; }
 #endif
 

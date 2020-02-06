@@ -81,6 +81,8 @@ public:
 
     void updateVMStackLimits() { return m_vm.updateStackLimits(); };
 
+    static EncodedJSValue JSC_HOST_CALL functionGetStructureTransitionList(JSGlobalObject*, CallFrame*);
+
 private:
     VM& m_vm;
 };
@@ -679,6 +681,42 @@ public:
             return true;
         }
         return JSNonFinalObject::getOwnPropertySlot(thisObject, globalObject, propertyName, slot);
+    }
+};
+
+class ObjectDoingSideEffectPutWithoutCorrectSlotStatus : public JSNonFinalObject {
+    using Base = JSNonFinalObject;
+public:
+    ObjectDoingSideEffectPutWithoutCorrectSlotStatus(VM& vm, Structure* structure)
+        : Base(vm, structure)
+    {
+        DollarVMAssertScope assertScope;
+    }
+
+    DECLARE_INFO;
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
+    {
+        DollarVMAssertScope assertScope;
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    }
+
+    static ObjectDoingSideEffectPutWithoutCorrectSlotStatus* create(VM& vm, Structure* structure)
+    {
+        DollarVMAssertScope assertScope;
+        ObjectDoingSideEffectPutWithoutCorrectSlotStatus* accessor = new (NotNull, allocateCell<ObjectDoingSideEffectPutWithoutCorrectSlotStatus>(vm.heap)) ObjectDoingSideEffectPutWithoutCorrectSlotStatus(vm, structure);
+        accessor->finishCreation(vm);
+        return accessor;
+    }
+
+    static bool put(JSCell* cell, JSGlobalObject* globalObject, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+    {
+        DollarVMAssertScope assertScope;
+        auto* thisObject = jsCast<ObjectDoingSideEffectPutWithoutCorrectSlotStatus*>(cell);
+        auto throwScope = DECLARE_THROW_SCOPE(globalObject->vm());
+        auto* string = value.toString(globalObject);
+        RETURN_IF_EXCEPTION(throwScope, false);
+        RELEASE_AND_RETURN(throwScope, Base::put(thisObject, globalObject, propertyName, string, slot));
     }
 };
 
@@ -1305,6 +1343,7 @@ const ClassInfo DOMJITCheckSubClassObject::s_info = { "DOMJITCheckSubClassObject
 const ClassInfo JSTestCustomGetterSetter::s_info = { "JSTestCustomGetterSetter", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCustomGetterSetter) };
 
 const ClassInfo StaticCustomAccessor::s_info = { "StaticCustomAccessor", &Base::s_info, &staticCustomAccessorTable, nullptr, CREATE_METHOD_TABLE(StaticCustomAccessor) };
+const ClassInfo ObjectDoingSideEffectPutWithoutCorrectSlotStatus::s_info = { "ObjectDoingSideEffectPutWithoutCorrectSlotStatus", &Base::s_info, &staticCustomAccessorTable, nullptr, CREATE_METHOD_TABLE(ObjectDoingSideEffectPutWithoutCorrectSlotStatus) };
 
 ElementHandleOwner* Element::handleOwner()
 {
@@ -2256,6 +2295,18 @@ static EncodedJSValue JSC_HOST_CALL functionCreateStaticCustomAccessor(JSGlobalO
     return JSValue::encode(result);
 }
 
+static EncodedJSValue JSC_HOST_CALL functionCreateObjectDoingSideEffectPutWithoutCorrectSlotStatus(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    DollarVMAssertScope assertScope;
+    VM& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+
+    auto* dollarVM = jsDynamicCast<JSDollarVM*>(vm, callFrame->thisValue());
+    RELEASE_ASSERT(dollarVM);
+    auto* result = ObjectDoingSideEffectPutWithoutCorrectSlotStatus::create(vm, dollarVM->objectDoingSideEffectPutWithoutCorrectSlotStatusStructure());
+    return JSValue::encode(result);
+}
+
 static EncodedJSValue JSC_HOST_CALL functionSetImpureGetterDelegate(JSGlobalObject* globalObject, CallFrame* callFrame)
 {
     DollarVMAssertScope assertScope;
@@ -2720,6 +2771,63 @@ static EncodedJSValue JSC_HOST_CALL functionMake16BitStringIfPossible(JSGlobalOb
     return JSValue::encode(jsString(vm, String::adopt(WTFMove(buffer))));
 }
 
+EncodedJSValue JSC_HOST_CALL JSDollarVMHelper::functionGetStructureTransitionList(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    DollarVMAssertScope assertScope;
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSObject* obj = callFrame->argument(0).toObject(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
+    if (!obj)
+        return JSValue::encode(jsNull());
+    Vector<Structure*, 8> structures;
+
+    for (auto* structure = obj->structure(); structure; structure = structure->previousID())
+        structures.append(structure);
+
+    JSArray* result = JSArray::tryCreate(vm, globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous), 0);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    for (size_t i = 0; i < structures.size(); ++i) {
+        auto* structure = structures[structures.size() - i - 1];
+        result->push(globalObject, JSValue(structure->id()));
+        RETURN_IF_EXCEPTION(scope, { });
+        result->push(globalObject, JSValue(structure->transitionOffset()));
+        RETURN_IF_EXCEPTION(scope, { });
+        result->push(globalObject, JSValue(structure->maxOffset()));
+        RETURN_IF_EXCEPTION(scope, { });
+        if (structure->m_transitionPropertyName)
+            result->push(globalObject, jsString(vm, String(*structure->m_transitionPropertyName)));
+        else
+            result->push(globalObject, jsNull());
+        RETURN_IF_EXCEPTION(scope, { });
+        result->push(globalObject, JSValue(structure->isPropertyDeletionTransition()));
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+
+    return JSValue::encode(result);
+}
+
+static EncodedJSValue JSC_HOST_CALL functionGetConcurrently(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    DollarVMAssertScope assertScope;
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSObject* obj = callFrame->argument(0).toObject(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
+    if (!obj)
+        return JSValue::encode(jsNull());
+    String property = callFrame->argument(1).toWTFString(globalObject);
+    RETURN_IF_EXCEPTION(scope, { });
+    auto name = PropertyName(Identifier::fromString(vm, property));
+    auto offset = obj->structure()->getConcurrently(name.uid());
+    if (offset != invalidOffset)
+        ASSERT(JSValue::encode(obj->getDirect(offset)));
+    JSValue result = JSValue(offset != invalidOffset);
+    RETURN_IF_EXCEPTION(scope, { });
+    return JSValue::encode(result);
+}
+
 void JSDollarVM::finishCreation(VM& vm)
 {
     DollarVMAssertScope assertScope;
@@ -2800,6 +2908,7 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "createWasmStreamingParser", functionCreateWasmStreamingParser, 0);
 #endif
     addFunction(vm, "createStaticCustomAccessor", functionCreateStaticCustomAccessor, 0);
+    addFunction(vm, "createObjectDoingSideEffectPutWithoutCorrectSlotStatus", functionCreateObjectDoingSideEffectPutWithoutCorrectSlotStatus, 0);
     addFunction(vm, "getPrivateProperty", functionGetPrivateProperty, 2);
     addFunction(vm, "setImpureGetterDelegate", functionSetImpureGetterDelegate, 2);
 
@@ -2846,6 +2955,11 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "isWasmSupported", functionIsWasmSupported, 0);
     addFunction(vm, "make16BitStringIfPossible", functionMake16BitStringIfPossible, 1);
+
+    addFunction(vm, "getStructureTransitionList", JSDollarVMHelper::functionGetStructureTransitionList, 1);
+    addFunction(vm, "getConcurrently", functionGetConcurrently, 2);
+
+    m_objectDoingSideEffectPutWithoutCorrectSlotStatusStructure.set(vm, this, ObjectDoingSideEffectPutWithoutCorrectSlotStatus::createStructure(vm, globalObject, jsNull()));
 }
 
 void JSDollarVM::addFunction(VM& vm, JSGlobalObject* globalObject, const char* name, NativeFunction function, unsigned arguments)
@@ -2860,6 +2974,13 @@ void JSDollarVM::addConstructibleFunction(VM& vm, JSGlobalObject* globalObject, 
     DollarVMAssertScope assertScope;
     Identifier identifier = Identifier::fromString(vm, name);
     putDirect(vm, identifier, JSFunction::create(vm, globalObject, arguments, identifier.string(), function, NoIntrinsic, function));
+}
+
+void JSDollarVM::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    JSDollarVM* thisObject = jsCast<JSDollarVM*>(cell);
+    Base::visitChildren(thisObject, visitor);
+    visitor.append(thisObject->m_objectDoingSideEffectPutWithoutCorrectSlotStatusStructure);
 }
 
 } // namespace JSC

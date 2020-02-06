@@ -90,6 +90,8 @@
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/Color.h>
+#import <WebCore/ColorIOS.h>
+#import <WebCore/CompositionHighlight.h>
 #import <WebCore/DOMPasteAccess.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/FloatQuad.h>
@@ -116,6 +118,7 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/DataDetectorsCoreSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
+#import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <pal/spi/ios/DataDetectorsUISPI.h>
 #import <pal/spi/ios/GraphicsServicesSPI.h>
 #import <pal/spi/ios/ManagedConfigurationSPI.h>
@@ -641,6 +644,9 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 
 - (void)_wk_cancel
 {
+    if (!self.enabled)
+        return;
+
     [self setEnabled:NO];
     [self setEnabled:YES];
 }
@@ -1515,7 +1521,6 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
 #endif
 
     if (gestureRecognizer == _touchActionLeftSwipeGestureRecognizer || gestureRecognizer == _touchActionRightSwipeGestureRecognizer || gestureRecognizer == _touchActionUpSwipeGestureRecognizer || gestureRecognizer == _touchActionDownSwipeGestureRecognizer) {
-
         // We update the enabled state of the various swipe gesture recognizers such that if we have a unidirectional touch-action
         // specified (only pan-x or only pan-y) we enable the two recognizers in the opposite axis to prevent scrolling from starting
         // if the initial gesture is such a swipe. Since the recognizers are specified to use a single finger for recognition, we don't
@@ -1526,7 +1531,11 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
         return touchActions == WebCore::TouchAction::PanX;
     }
 
+#if USE(APPLE_INTERNAL_SDK)
+    return [self _allowGestureRecognizer:gestureRecognizer toReceiveTouch:touch];
+#else
     return YES;
+#endif
 }
 
 #pragma mark - WKTouchActionGestureRecognizerDelegate implementation
@@ -2455,14 +2464,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (![self ensurePositionInformationIsUpToDate:request])
         return NO;
 
-#if ENABLE(DRAG_SUPPORT)
-    if (_positionInformation.hasSelectionAtPosition && self._allowedDragSourceActions & WebCore::DragSourceActionSelection) {
-        // If the position might initiate a drag, we don't want to consider the content at this position to be selectable.
-        // FIXME: This should be renamed to something more precise, such as textSelectionShouldRecognizeGestureAtPoint:
-        return NO;
-    }
-#endif
-
     return _positionInformation.isSelectable;
 }
 
@@ -2521,13 +2522,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (![self ensurePositionInformationIsUpToDate:request])
         return NO;
 
-#if ENABLE(DRAG_SUPPORT)
-    if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe && self._allowedDragSourceActions & WebCore::DragSourceActionSelection) {
-        // If the position might initiate a drag, we don't want to change the selection.
-        return NO;
-    }
-#endif
-
 #if ENABLE(DATALIST_ELEMENT)
     if (_positionInformation.preventTextInteraction)
         return NO;
@@ -2536,6 +2530,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     // If we're currently focusing an editable element, only allow the selection to move within that focused element.
     if (self.isFocusingElement)
         return _positionInformation.elementContext && _positionInformation.elementContext->isSameElement(_focusedElementInformation.elementContext);
+
+    if (_positionInformation.prefersDraggingOverTextSelection)
+        return NO;
 
     // If we're selecting something, don't activate highlight.
     if (gesture == UIWKGestureLoupe && [self hasSelectablePositionAtPoint:point])
@@ -4002,11 +3999,16 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)selectPositionAtPoint:(CGPoint)point completionHandler:(void (^)(void))completionHandler
 {
+    [self _selectPositionAtPoint:point stayingWithinFocusedElement:[self _isInteractingWithFocusedElement] completionHandler:completionHandler];
+}
+
+- (void)_selectPositionAtPoint:(CGPoint)point stayingWithinFocusedElement:(BOOL)stayingWithinFocusedElement completionHandler:(void (^)(void))completionHandler
+{
     _usingGestureForSelection = YES;
     UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
     RetainPtr<WKContentView> view = self;
-    
-    _page->selectPositionAtPoint(WebCore::IntPoint(point), [self _isInteractingWithFocusedElement], [view, selectionHandler](WebKit::CallbackBase::Error error) {
+
+    _page->selectPositionAtPoint(WebCore::IntPoint(point), stayingWithinFocusedElement, [view, selectionHandler](WebKit::CallbackBase::Error error) {
         selectionHandler();
         view->_usingGestureForSelection = NO;
         [selectionHandler release];
@@ -4526,13 +4528,41 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
 }
 
+static Vector<WebCore::CompositionHighlight> compositionHighlights(NSAttributedString *string)
+{
+    if (!string.length)
+        return { };
+
+    Vector<WebCore::CompositionHighlight> highlights;
+    [string enumerateAttributesInRange:NSMakeRange(0, string.length) options:0 usingBlock:[&highlights](NSDictionary<NSAttributedStringKey, id> *attributes, NSRange range, BOOL *) {
+        if (!attributes[NSMarkedClauseSegmentAttributeName])
+            return;
+
+        WebCore::Color highlightColor { WebCore::Color::compositionFill };
+        if (UIColor *uiColor = attributes[NSBackgroundColorAttributeName])
+            highlightColor = WebCore::colorFromUIColor(uiColor);
+        highlights.append({ static_cast<unsigned>(range.location), static_cast<unsigned>(NSMaxRange(range)), highlightColor });
+    }];
+    return highlights;
+}
+
+- (void)setAttributedMarkedText:(NSAttributedString *)markedText selectedRange:(NSRange)selectedRange
+{
+    [self _setMarkedText:markedText.string highlights:compositionHighlights(markedText) selectedRange:selectedRange];
+}
+
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange
+{
+    [self _setMarkedText:markedText highlights:Vector<WebCore::CompositionHighlight> { } selectedRange:selectedRange];
+}
+
+- (void)_setMarkedText:(NSString *)markedText highlights:(const Vector<WebCore::CompositionHighlight>&)highlights selectedRange:(NSRange)selectedRange
 {
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
     _candidateViewNeedsUpdate = !self.hasMarkedText;
 #endif
     _markedText = markedText;
-    _page->setCompositionAsync(markedText, Vector<WebCore::CompositionUnderline>(), selectedRange, WebKit::EditingRange());
+    _page->setCompositionAsync(markedText, { }, highlights, selectedRange, { });
 }
 
 - (void)unmarkText
@@ -6776,6 +6806,9 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
 - (BOOL)deferringGestureRecognizer:(WKDeferringGestureRecognizer *)deferringGestureRecognizer shouldDeferOtherGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
 {
+    if ([_webView _isNavigationSwipeGestureRecognizer:gestureRecognizer])
+        return NO;
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     auto isOneFingerMultipleTapGesture = [](UIGestureRecognizer *gesture) -> BOOL {
         if (![gesture isKindOfClass:UITapGestureRecognizer.class])
@@ -6853,6 +6886,10 @@ static BOOL shouldEnableDragInteractionForPolicy(_WKDragInteractionPolicy policy
     _dropInteraction = adoptNS([[UIDropInteraction alloc] initWithDelegate:self]);
     [_dragInteraction _setLiftDelay:self.dragLiftDelay];
     [_dragInteraction setEnabled:shouldEnableDragInteractionForPolicy(self.webView._dragInteractionPolicy)];
+
+#if USE(APPLE_INTERNAL_SDK)
+    [self _performAdditionalSetupDragAndDropInteractions];
+#endif
 
     [self addInteraction:_dragInteraction.get()];
     [self addInteraction:_dropInteraction.get()];
@@ -7225,6 +7262,12 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     return dragItems;
 }
 
+- (void)cancelActiveTextInteractionGestures
+{
+    [[_textInteractionAssistant loupeGesture] _wk_cancel];
+    [[_textInteractionAssistant forcePressGesture] _wk_cancel];
+}
+
 - (UIView *)textEffectsWindow
 {
 #if HAVE(UISCENE)
@@ -7483,10 +7526,13 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
 - (void)dragInteraction:(UIDragInteraction *)interaction willAnimateLiftWithAnimator:(id <UIDragAnimating>)animator session:(id <UIDragSession>)session
 {
     RELEASE_LOG(DragAndDrop, "Drag session willAnimateLiftWithAnimator: %p", session);
-    if (!_shouldRestoreCalloutBarAfterDrop && _dragDropInteractionState.anyActiveDragSourceIs(WebCore::DragSourceActionSelection)) {
-        // FIXME: This SPI should be renamed in UIKit to reflect a more general purpose of hiding interaction assistant controls.
-        [_textInteractionAssistant willStartScrollingOverflow];
-        _shouldRestoreCalloutBarAfterDrop = YES;
+    if (_dragDropInteractionState.anyActiveDragSourceIs(WebCore::DragSourceActionSelection)) {
+        [self cancelActiveTextInteractionGestures];
+        if (!_shouldRestoreCalloutBarAfterDrop) {
+            // FIXME: This SPI should be renamed in UIKit to reflect a more general purpose of hiding interaction assistant controls.
+            [_textInteractionAssistant willStartScrollingOverflow];
+            _shouldRestoreCalloutBarAfterDrop = YES;
+        }
     }
 
     auto positionForDragEnd = WebCore::roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd());

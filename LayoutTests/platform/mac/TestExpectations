@@ -1011,7 +1011,7 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
 webkit.org/b/174066 inspector/canvas/console-record-webgl2.html [ Pass Timeout ]
 webkit.org/b/173931 inspector/canvas/context-attributes.html [ Pass Timeout ]
-webkit.org/b/178028 inspector/canvas/create-context-2d.html [ Pass Timeout ]
+webkit.org/b/178028 inspector/canvas/create-context-2d.html [ Pass Failure Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/recording-webgl2-frameCount.html [ Pass Failure Timeout ]
 webkit.org/b/174066 inspector/canvas/recording-webgl2-full.html [ Pass Failure Timeout ]
@@ -1021,7 +1021,7 @@ webkit.org/b/174272 inspector/canvas/requestClientNodes-css.html [ Pass Failure 
 webkit.org/b/174066 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Pass Failure Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
 webkit.org/b/152452 [ Debug ] inspector/console/messageRepeatCountUpdated.html [ Pass Timeout ]
-webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Timeout ]
+webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Failure Timeout ]
 webkit.org/b/148636 inspector/css/get-system-fonts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
@@ -1036,7 +1036,7 @@ webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
 webkit.org/b/164293 [ Debug ] inspector/debugger/breakpoint-scope.html [ Pass Timeout ]
 webkit.org/b/168090 [ Debug ] inspector/debugger/breakpoint-columns.html [ Pass Timeout ]
-webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
+webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Failure Timeout ]
 webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
 webkit.org/b/168399 [ Debug ] inspector/debugger/search-scripts.html [ Pass Timeout ]
 webkit.org/b/181952 [ Debug ] inspector/debugger/tail-deleted-frames/tail-deleted-frames-vm-entry.html [ Slow ]
@@ -1062,7 +1062,7 @@ webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
 webkit.org/b/169228 inspector/worker/console-basic.html [ Pass Timeout ]
 webkit.org/b/164872 inspector/worker/debugger-multiple-targets-pause.html [ Pass Failure Timeout ]
 webkit.org/b/167203 inspector/worker/debugger-shared-breakpoint.html [ Pass Failure Timeout ]
-webkit.org/b/155607 inspector/heap/imported-snapshot.html [ Pass Failure ]
+webkit.org/b/155607 inspector/heap/imported-snapshot.html [ Pass Failure Timeout ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Failure ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
 webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
@@ -1828,6 +1828,10 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 [ Catalina+ ] fast/text/design-system-ui-15.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-16.html [ Pass ]
 
+[ Catalina+ ] http/wpt/mediarecorder [ Pass Failure ] 
+[ Catalina+ ] imported/w3c/web-platform-tests/mediacapture-record [ Pass Failure ]
+[ Catalina+ ] fast/history/page-cache-media-recorder.html [ Pass Failure ]
+
 webkit.org/b/200128 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html [ Timeout Pass ]
 
 # rdar://55405851 ([ macOS ] Layout tests webgpu/*-triangle-strip.html are flaky failures. (201827))
@@ -1934,4 +1938,62 @@ webkit.org/b/204312 imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-m
 webkit.org/b/77568 [ Sierra HighSierra Mojave ] fast/text/locale-shaping.html [ ImageOnlyFailure ]
 webkit.org/b/77568 [ Sierra HighSierra Mojave ] fast/text/locale-shaping-complex.html [ ImageOnlyFailure ]
 
-webkit.org/b/206291 storage/websql/statement-error-callback.html [ Pass Timeout ]
+webkit.org/b/203222 svg/wicd/rightsizing-grid.xhtml [ Pass Failure ]
+
+webkit.org/b/206682 [ Debug ] animations/play-state-paused.html [ Pass Failure ]
+
+webkit.org/b/206685 animations/animation-direction-normal.html [ Pass Failure ]
+
+webkit.org/b/206671 animations/animation-direction-reverse.html [ Pass Failure ]
+
+webkit.org/b/206711 http/wpt/resource-timing/rt-resource-errors.html [ Pass Failure ]
+
+webkit.org/b/206752 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable.html [ Pass Failure ]
+
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height-viewbox.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height-viewbox.html [ Skip ]
+webkit.org/b/206897 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height.html [ Skip ]
+
+webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/font-default-01.html [ ImageOnlyFailure ]
+webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/font-default-02.html [ ImageOnlyFailure ]
+webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/font-default-03.html [ ImageOnlyFailure ]
+webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/variations/font-weight-matching.html [ Failure ]
+
+webkit.org/b/205729 webrtc/captureCanvas-webrtc.html [ Pass Failure ]
+
+webkit.org/b/206965 storage/indexeddb/intversion-long-queue-private.html [ Pass Failure ]
+
+webkit.org/b/207010 fast/history/page-cache-webdatabase-pending-transaction.html [ Timeout ]
+
+webkit.org/b/201481 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Pass Failure ]
+
+webkit.org/b/207053 inspector/page/setBootstrapScript-sub-frame.html [ Pass Failure ]
+
+webkit.org/b/206604 animations/animation-welcome-safari.html [ Pass Failure ]
+
+webkit.org/b/207057 imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm [ Pass Failure ]
+
+webkit.org/b/207062 imported/w3c/web-platform-tests/media-source/mediasource-replay.html [ Pass Failure ]
+
+webkit.org/b/206484 imported/w3c/web-platform-tests/websockets/cookies/007.html [ Pass Failure ]
+
+webkit.org/b/206285 inspector/worker/debugger-pause.html [ Pass Failure ]
+
+webkit.org/b/207142 requestidlecallback/requestidlecallback-is-called.html [ Pass Failure ]
+
+webkit.org/b/207147 legacy-animation-engine/compositing/geometry/partial-layout-update.html [ Pass Failure ]
+
+webkit.org/b/207152 fast/dom/connected-subframe-counter-overflow.html  [ Pass Timeout ]
+
+webkit.org/b/207225 imported/w3c/web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https.html [ Pass Failure ]
+
+webkit.org/b/207226 http/tests/misc/image-blocked-src-change.html [ Pass Failure ]
+
+webkit.org/b/207230 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch.html [ Pass Failure ]
+
+webkit.org/b/207235 legacy-animation-engine/fast/animation/request-animation-frame-iframe.html [ Pass Failure ]
+
+webkit.org/b/206908 imported/w3c/web-platform-tests/hr-time/basic.any.html [ Pass Failure ]
+
+webkit.org/b/207306 inspector/animation/lifecycle-css-animation.html [ Pass Failure ]

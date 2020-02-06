@@ -25,7 +25,7 @@
  */
 
 #include "config.h"
-#include "WebProcessMainUnix.h"
+#include "WebProcessMain.h"
 
 #include "AuxiliaryProcessMain.h"
 #include "WebProcess.h"
@@ -41,7 +41,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-class WebProcessMain final: public AuxiliaryProcessMainBase {
+class WebProcessMainGtk final: public AuxiliaryProcessMainBase {
 public:
     bool platformInitialize() override
     {
@@ -53,6 +53,7 @@ public:
 #if (USE(COORDINATED_GRAPHICS) || USE(GSTREAMER_GL)) && PLATFORM(X11)
         XInitThreads();
 #endif
+
         gtk_init(nullptr, nullptr);
 
         bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
@@ -62,9 +63,9 @@ public:
     }
 };
 
-int WebProcessMainUnix(int argc, char** argv)
+int WebProcessMain(int argc, char** argv)
 {
-    return AuxiliaryProcessMain<WebProcess, WebProcessMain>(argc, argv);
+    return AuxiliaryProcessMain<WebProcess, WebProcessMainGtk>(argc, argv);
 }
 
 } // namespace WebKit

@@ -205,8 +205,6 @@ public:
                 [codeBlock] (CCallHelpers& jit, B3::Air::Code& code) {
                     AllowMacroScratchRegisterUsage allowScratch(jit);
                     jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
-                    if (Options::zeroStackFrame())
-                        jit.clearStackFrame(GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister, GPRInfo::regT0, code.frameSize());
 
                     jit.emitSave(code.calleeSaveRegisterAtOffsetList());
                     jit.emitPutToCallFrameHeader(codeBlock, VirtualRegister(CallFrameSlot::codeBlock));
@@ -966,6 +964,9 @@ private:
             break;
         case CheckArray:
             compileCheckArray();
+            break;
+        case CheckArrayOrEmpty:
+            compileCheckArrayOrEmpty();
             break;
         case CheckNeutered:
             compileCheckNeutered();
@@ -4067,13 +4068,41 @@ private:
             m_out.logicalNot(isArrayTypeForCheckArray(cell, m_node->arrayMode())));
     }
 
+    void compileCheckArrayOrEmpty()
+    {
+        Edge edge = m_node->child1();
+        LValue cell = lowCell(edge);
+
+        if (m_node->arrayMode().alreadyChecked(m_graph, m_node, abstractValue(edge))) {
+            // We can purge Empty check of CheckArrayOrEmpty completely in this case since CellUse only accepts SpecCell | SpecEmpty.
+            ASSERT(typeFilterFor(m_node->child1().useKind()) & SpecEmpty);
+            return;
+        }
+
+        bool maySeeEmptyValue = m_interpreter.forNode(m_node->child1()).m_type & SpecEmpty;
+        LBasicBlock continuation = nullptr;
+        LBasicBlock lastNext = nullptr;
+        if (maySeeEmptyValue) {
+            LBasicBlock notEmpty = m_out.newBlock();
+            continuation = m_out.newBlock();
+            m_out.branch(m_out.isZero64(cell), unsure(continuation), unsure(notEmpty));
+            lastNext = m_out.appendTo(notEmpty, continuation);
+        }
+
+        speculate(
+            BadIndexingType, jsValueValue(cell), 0,
+            m_out.logicalNot(isArrayTypeForCheckArray(cell, m_node->arrayMode())));
+
+        if (maySeeEmptyValue) {
+            m_out.jump(continuation);
+            m_out.appendTo(continuation, lastNext);
+        }
+    }
+
     void compileCheckNeutered()
     {
         Edge edge = m_node->child1();
         LValue cell = lowCell(edge);
-        
-        // We only emit this node after we have checked this is a typed array so that better be true now.
-        DFG_ASSERT(m_graph, m_node, speculationChecked(abstractValue(edge).m_type, SpecTypedArrayView));
 
         speculate(
             BadIndexingType, jsValueValue(cell), edge.node(),

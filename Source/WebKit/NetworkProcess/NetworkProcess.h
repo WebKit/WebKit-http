@@ -81,6 +81,7 @@ class StorageQuotaManager;
 class NetworkStorageSession;
 class ResourceError;
 class SWServer;
+enum class HTTPCookieAcceptPolicy : uint8_t;
 enum class IncludeHttpOnlyCookies : bool;
 enum class StoredCredentialsPolicy : uint8_t;
 enum class StorageAccessPromptWasShown : bool;
@@ -185,6 +186,7 @@ public:
     void logDiagnosticMessageWithValue(WebPageProxyIdentifier, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample);
 
 #if PLATFORM(COCOA)
+    bool suppressesConnectionTerminationOnSystemChange() const { return m_suppressesConnectionTerminationOnSystemChange; }
     RetainPtr<CFDataRef> sourceApplicationAuditData() const;
 #endif
 #if PLATFORM(COCOA) || USE(SOUP)
@@ -284,14 +286,11 @@ public:
     void syncLocalStorage(CompletionHandler<void()>&&);
     void clearLegacyPrivateBrowsingLocalStorage();
 
-    void updateQuotaBasedOnSpaceUsageForTesting(PAL::SessionID, const WebCore::ClientOrigin&);
     void resetQuota(PAL::SessionID, CompletionHandler<void()>&&);
 
 #if ENABLE(SANDBOX_EXTENSIONS)
     void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, CompletionHandler<void(SandboxExtension::HandleArray&&)>&&);
 #endif
-
-    void didReceiveNetworkProcessMessage(IPC::Connection&, IPC::Decoder&);
 
 #if ENABLE(SERVICE_WORKER)
     WebCore::SWServer* swServerForSessionIfExists(PAL::SessionID sessionID) { return m_swServers.get(sessionID); }
@@ -343,9 +342,13 @@ public:
     void resetServiceWorkerFetchTimeoutForTesting(CompletionHandler<void()>&&);
     Seconds serviceWorkerFetchTimeout() const { return m_serviceWorkerFetchTimeout; }
 
+    void cookieAcceptPolicyChanged(WebCore::HTTPCookieAcceptPolicy);
+
 private:
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
     std::unique_ptr<WebCore::NetworkStorageSession> platformCreateDefaultStorageSession() const;
+
+    void didReceiveNetworkProcessMessage(IPC::Connection&, IPC::Decoder&);
 
     void terminate() override;
     void platformTerminate();
@@ -383,7 +386,7 @@ private:
     // Message Handlers
     void didReceiveSyncNetworkProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     void initializeNetworkProcess(NetworkProcessCreationParameters&&);
-    void createNetworkConnectionToWebProcess(WebCore::ProcessIdentifier, PAL::SessionID, CompletionHandler<void(Optional<IPC::Attachment>&&)>&&);
+    void createNetworkConnectionToWebProcess(WebCore::ProcessIdentifier, PAL::SessionID, CompletionHandler<void(Optional<IPC::Attachment>&&, WebCore::HTTPCookieAcceptPolicy)>&&);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, uint64_t callbackID);
@@ -427,7 +430,7 @@ private:
     void setNetworkProxySettings(PAL::SessionID, WebCore::CurlProxySettings&&);
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     static void setSharedHTTPCookieStorage(const Vector<uint8_t>& identifier);
 #endif
 
@@ -534,6 +537,7 @@ private:
     // multiple requests to clear the cache can come in before previous requests complete, and we need to wait for all of them.
     // In the future using WorkQueue and a counting semaphore would work, as would WorkQueue supporting the libdispatch concept of "work groups".
     dispatch_group_t m_clearCacheDispatchGroup { nullptr };
+    bool m_suppressesConnectionTerminationOnSystemChange { false };
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)

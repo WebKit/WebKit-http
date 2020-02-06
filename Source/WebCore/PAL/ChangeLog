@@ -1,3 +1,238 @@
+2020-02-06  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        <rdar://problem/58985368>
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-02-05  Jer Noble  <jer.noble@apple.com>
+
+        Adopt MTOverrideShouldPlayHDRVideo()
+        https://bugs.webkit.org/show_bug.cgi?id=207275
+        <rdar://problem/58837093>
+
+        Reviewed by Eric Carlson.
+
+        * pal/cocoa/MediaToolboxSoftLink.cpp:
+        * pal/cocoa/MediaToolboxSoftLink.h:
+
+2020-02-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255818.
+        https://bugs.webkit.org/show_bug.cgi?id=207270
+
+        It is breaking some Mac builds (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255818
+
+2020-02-05  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        <rdar://problem/58985368>
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-02-04  Darin Adler  <darin@apple.com>
+
+        Remove NSKeyedArchiverSPI.h now that WebKit only uses API
+        https://bugs.webkit.org/show_bug.cgi?id=207203
+
+        Reviewed by Anders Carlsson.
+
+        * PAL.xcodeproj/project.pbxproj: Remove NSKeyedArchiverSPI.h.
+        * pal/PlatformMac.cmake: Ditto.
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h: Removed.
+
+2020-02-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=207231
+
+        * pal/PlatformMac.cmake:
+
+2020-02-03  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Pass a hint from the extension to decidePolicyForSOAuthorizationLoadWithCurrentPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=207079
+        <rdar://problem/48290464>
+
+        Reviewed by Brent Fulgham.
+
+        * pal/cocoa/AppSSOSoftLink.h:
+        * pal/cocoa/AppSSOSoftLink.mm:
+        * pal/spi/cocoa/AppSSOSPI.h:
+        Adds macros for classes that are used in the tests.
+
+2020-01-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add support for specifying background colors when setting marked text
+        https://bugs.webkit.org/show_bug.cgi?id=207065
+        <rdar://problem/57876140>
+
+        Reviewed by Tim Horton.
+
+        Add an SPI soft-linking declaration for NSMarkedClauseSegmentAttributeName.
+
+        * pal/spi/cocoa/NSAttributedStringSPI.h:
+
+2020-01-30  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKNavigationDelegate SPI to disable TLS 1.0 and 1.1
+        https://bugs.webkit.org/show_bug.cgi?id=206979
+
+        Reviewed by Brady Eidson.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-01-30  Jonathan Bedard  <jbedard@apple.com>
+
+        PAL: Remove old iOS version macros
+        https://bugs.webkit.org/show_bug.cgi?id=206905
+
+        Reviewed by Darin Adler.
+
+        * pal/cocoa/AVFoundationSoftLink.mm: Remove iOS 13 version checks.
+        * pal/spi/cf/CFNetworkSPI.h: Remove iOS 11 version checks.
+        * pal/spi/cg/CoreGraphicsSPI.h: Use HAVE macro instead of version checks.
+        * pal/spi/cocoa/IOSurfaceSPI.h: Remove iOS 11 version checks.
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h: Remove USE(SECURE_ARCHIVER_API) and
+        USE(SECURE_ARCHIVER_FOR_ATTRIBUTED_STRING).
+        * pal/spi/cocoa/NSProgressSPI.h: Replace USE(NSPROGRESS_PUBLISHING_SPI) with
+        HAVE(NSPROGRESS_PUBLISHING_SPI).
+        * pal/spi/ios/MediaPlayerSPI.h: Remove iOS 11 version checks.
+
+2020-01-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r255424.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255424
+
+2020-01-30  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-01-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255345.
+        https://bugs.webkit.org/show_bug.cgi?id=206933
+
+        "It breaks some internals builds" (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255345
+
+2020-01-29  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-01-22  Darin Adler  <darin@apple.com>
+
+        Remove some unneeded definitions from Platform.h family headers
+        https://bugs.webkit.org/show_bug.cgi?id=206642
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/cf/CFNetworkSPI.h: Remove
+        HAVE(CFNETWORK_WITH_CONTENT_ENCODING_SNIFFING_OVERRIDE) because it was
+        always 1 on Cocoa platforms, and was guarding a definition that we
+        use unconditionally in Objective-C Cocoa-only code, and there is no
+        harm of defining it on Windows as long as we don't use it.
+
+        * pal/spi/cocoa/PassKitSPI.h: Remove HAVE(PASSKIT_API_TYPE) because
+        it was always 1 on Cocoa platforms and this is a Cocoa-only header.
+
+2020-01-23  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wconditional-uninitialized in WebCore project
+        <https://webkit.org/b/206508>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+        (WARNING_CFLAGS): Add -Wconditional-uninitialized switch.
+
+2020-01-21  Alex Christensen  <achristensen@webkit.org>
+
+        Add missing NS_NOESCAPE to CFNetwork SPI
+        https://bugs.webkit.org/show_bug.cgi?id=206561
+        <rdar://problem/58774422>
+
+        Reviewed by Joe Pecoraro.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-01-21  Rob Buis  <rbuis@igalia.com>
+
+        Add build flag for stale-while-revalidate
+        https://bugs.webkit.org/show_bug.cgi?id=204169
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2020-01-20  David Kilzer  <ddkilzer@apple.com>
 
         Fix missing header guards and clean up empty files in WebCore, WebKitLegacy, WebKit, Tools

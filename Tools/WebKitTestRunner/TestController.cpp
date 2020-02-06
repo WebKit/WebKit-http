@@ -907,6 +907,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
     WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(preferences, false);
     WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(preferences, false);
+    WKPreferencesSetRenderingUpdateThrottlingEnabled(preferences, false);
 
     WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing || options.useAcceleratedDrawing);
     // FIXME: We should be testing the default.
@@ -1085,6 +1086,10 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     m_shouldLogCanAuthenticateAgainstProtectionSpace = false;
 
     setHidden(false);
+
+#if PLATFORM(COCOA)
+    clearApplicationBundleIdentifierTestingOverride();
+#endif
 
     if (!platformResetStateToConsistentValues(options))
         return false;

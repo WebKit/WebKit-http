@@ -90,7 +90,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     \
     v(Bool, reportMustSucceedExecutableAllocations, false, Normal, nullptr) \
     \
-    v(Unsigned, maxPerThreadStackUsage, 4 * MB, Normal, "Max allowed stack usage by the VM") \
+    v(Unsigned, maxPerThreadStackUsage, 5 * MB, Normal, "Max allowed stack usage by the VM") \
     v(Unsigned, softReservedZoneSize, 128 * KB, Normal, "A buffer greater than reservedZoneSize that reserves space for stringifying exceptions.") \
     v(Unsigned, reservedZoneSize, 64 * KB, Normal, "The amount of stack space we guarantee to our clients (and to interal VM code that does not call out to clients).") \
     \
@@ -128,7 +128,6 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, dumpWasmDisassembly, false, Normal, "dumps disassembly of all Wasm code upon compilation") \
     v(Bool, dumpBBQDisassembly, false, Normal, "dumps disassembly of BBQ Wasm code upon compilation") \
     v(Bool, dumpOMGDisassembly, false, Normal, "dumps disassembly of OMG Wasm code upon compilation") \
-    v(Bool, dumpAllDFGNodes, false, Normal, nullptr) \
     v(Bool, logJITCodeForPerf, false, Configurable, nullptr) \
     v(OptionRange, bytecodeRangeToJITCompile, 0, Normal, "bytecode size range to allow compilation on, e.g. 1:100") \
     v(OptionRange, bytecodeRangeToDFGCompile, 0, Normal, "bytecode size range to allow DFG compilation on, e.g. 1:100") \
@@ -164,6 +163,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, reportDFGCompileTimes, false, Normal, "dumps JS function signature and the time it took to DFG and FTL compile") \
     v(Bool, reportFTLCompileTimes, false, Normal, "dumps JS function signature and the time it took to FTL compile") \
     v(Bool, reportTotalCompileTimes, false, Normal, nullptr) \
+    v(Bool, reportTotalPhaseTimes, false, Normal, "This prints phase times at the end of running script inside jsc.cpp") \
     v(Bool, reportParseTimes, false, Normal, "dumps JS function signature and the time it took to parse") \
     v(Bool, reportBytecodeCompileTimes, false, Normal, "dumps JS function signature and the time it took to bytecode compile") \
     v(Bool, countParseTimes, false, Normal, "counts parse times") \
@@ -215,7 +215,6 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, useOSREntryToFTL, true, Normal, nullptr) \
     \
     v(Bool, useFTLJIT, true, Normal, "allows the FTL JIT to be used if true") \
-    v(Bool, useFTLTBAA, true, Normal, nullptr) \
     v(Bool, validateFTLOSRExitLiveness, false, Normal, nullptr) \
     v(Unsigned, defaultB3OptLevel, 2, Normal, nullptr) \
     v(Bool, b3AlwaysFailsBeforeCompile, false, Normal, nullptr) \
@@ -348,6 +347,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(Bool, useGC, true, Normal, nullptr) \
     v(Bool, gcAtEnd, false, Normal, "If true, the jsc CLI will do a GC before exiting") \
     v(Bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.") \
+    v(Bool, forceDidDeferGCWork, false, Normal, "If true, we will force all DeferGC destructions to perform a GC.") \
     v(Unsigned, gcMaxHeapSize, 0, Normal, nullptr) \
     v(Unsigned, forceRAMSize, 0, Normal, nullptr) \
     v(Bool, recordGCPauseTimes, false, Normal, nullptr) \
@@ -443,10 +443,6 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     \
     v(Bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
     \
-    v(Bool, enableSpectreMitigations, true, Restricted, "Enable Spectre mitigations.") \
-    v(Bool, enableSpectreGadgets, false, Restricted, "enable gadgets to test Spectre mitigations.") \
-    v(Bool, zeroStackFrame, false, Normal, "Zero stack frame on entry to a function.") \
-    \
     v(Bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
     v(Size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
     v(Unsigned, webAssemblyBBQAirOptimizationLevel, 0, Normal, "Air Optimization level for BBQ Web Assembly module compilations.") \
@@ -509,7 +505,6 @@ enum OptionEquivalence {
     v(showDisassembly, dumpDisassembly, SameOption) \
     v(showDFGDisassembly, dumpDFGDisassembly, SameOption) \
     v(showFTLDisassembly, dumpFTLDisassembly, SameOption) \
-    v(showAllDFGNodes, dumpAllDFGNodes, SameOption) \
     v(alwaysDoFullCollection, useGenerationalGC, InvertedOption) \
     v(enableOSREntryToDFG, useOSREntryToDFG, SameOption) \
     v(enableOSREntryToFTL, useOSREntryToFTL, SameOption) \

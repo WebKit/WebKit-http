@@ -28,6 +28,7 @@
 
 #include "APIContentRuleList.h"
 #include "AuthenticationChallengeProxy.h"
+#include "AuthenticationManager.h"
 #include "DownloadProxyMap.h"
 #include "DownloadProxyMessages.h"
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
@@ -147,7 +148,7 @@ void NetworkProcessProxy::getNetworkProcessConnection(WebProcessProxy& webProces
 
 void NetworkProcessProxy::openNetworkProcessConnection(uint64_t connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
 {
-    connection()->sendWithAsyncReply(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier) mutable {
+    connection()->sendWithAsyncReply(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess { webProcessProxy.coreProcessIdentifier(), webProcessProxy.sessionID() }, [this, weakThis = makeWeakPtr(this), webProcessProxy = makeWeakPtr(webProcessProxy), connectionRequestIdentifier](auto&& connectionIdentifier, HTTPCookieAcceptPolicy cookieAcceptPolicy) mutable {
         if (!weakThis)
             return;
 
@@ -161,10 +162,10 @@ void NetworkProcessProxy::openNetworkProcessConnection(uint64_t connectionReques
         auto request = m_connectionRequests.take(connectionRequestIdentifier);
 
 #if USE(UNIX_DOMAIN_SOCKETS) || OS(WINDOWS)
-        request.reply(NetworkProcessConnectionInfo { WTFMove(*connectionIdentifier) });
+        request.reply(NetworkProcessConnectionInfo { WTFMove(*connectionIdentifier), cookieAcceptPolicy });
 #elif OS(DARWIN)
         MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier->port()));
-        request.reply(NetworkProcessConnectionInfo { IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND }, connection()->getAuditToken() });
+        request.reply(NetworkProcessConnectionInfo { IPC::Attachment { connectionIdentifier->port(), MACH_MSG_TYPE_MOVE_SEND }, cookieAcceptPolicy, connection()->getAuditToken() });
 #else
         notImplemented();
 #endif
@@ -181,12 +182,12 @@ void NetworkProcessProxy::synthesizeAppIsBackground(bool background)
     }
 }
 
-DownloadProxy& NetworkProcessProxy::createDownloadProxy(WebsiteDataStore& dataStore, const ResourceRequest& resourceRequest)
+DownloadProxy& NetworkProcessProxy::createDownloadProxy(WebsiteDataStore& dataStore, const ResourceRequest& resourceRequest, const FrameInfoData& frameInfo, WebPageProxy* originatingPage)
 {
     if (!m_downloadProxyMap)
         m_downloadProxyMap = makeUnique<DownloadProxyMap>(*this);
 
-    return m_downloadProxyMap->createDownloadProxy(dataStore, m_processPool, resourceRequest);
+    return m_downloadProxyMap->createDownloadProxy(dataStore, m_processPool, resourceRequest, frameInfo, originatingPage);
 }
 
 void NetworkProcessProxy::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, CompletionHandler<void (WebsiteData)>&& completionHandler)
@@ -326,7 +327,7 @@ void NetworkProcessProxy::processAuthenticationChallenge(PAL::SessionID sessionI
     store->client().didReceiveAuthenticationChallenge(WTFMove(authenticationChallenge));
 }
 
-void NetworkProcessProxy::didReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebPageProxyIdentifier pageID, const Optional<SecurityOriginData>& topOrigin, WebCore::AuthenticationChallenge&& coreChallenge, uint64_t challengeID)
+void NetworkProcessProxy::didReceiveAuthenticationChallenge(PAL::SessionID sessionID, WebPageProxyIdentifier pageID, const Optional<SecurityOriginData>& topOrigin, WebCore::AuthenticationChallenge&& coreChallenge, bool negotiatedLegacyTLS, uint64_t challengeID)
 {
 #if HAVE(SEC_KEY_PROXY)
     WeakPtr<SecKeyProxyStore> secKeyProxyStore;
@@ -347,7 +348,7 @@ void NetworkProcessProxy::didReceiveAuthenticationChallenge(PAL::SessionID sessi
         page = WebProcessProxy::webPage(pageID);
 
     if (page) {
-        page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge));
+        page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge), negotiatedLegacyTLS ? NegotiatedLegacyTLS::Yes : NegotiatedLegacyTLS::No);
         return;
     }
 
@@ -356,32 +357,44 @@ void NetworkProcessProxy::didReceiveAuthenticationChallenge(PAL::SessionID sessi
         return;
     }
 
-    WebPageProxy::forMostVisibleWebPageIfAny(sessionID, *topOrigin, [this, weakThis = makeWeakPtr(this), sessionID, authenticationChallenge = WTFMove(authenticationChallenge)](auto* page) mutable {
+    WebPageProxy::forMostVisibleWebPageIfAny(sessionID, *topOrigin, [this, weakThis = makeWeakPtr(this), sessionID, authenticationChallenge = WTFMove(authenticationChallenge), negotiatedLegacyTLS](auto* page) mutable {
         if (!weakThis)
             return;
 
         if (page) {
-            page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge));
+            page->didReceiveAuthenticationChallengeProxy(WTFMove(authenticationChallenge), negotiatedLegacyTLS ? NegotiatedLegacyTLS::Yes : NegotiatedLegacyTLS::No);
             return;
         }
         processAuthenticationChallenge(sessionID, WTFMove(authenticationChallenge));
     });
 }
 
+void NetworkProcessProxy::negotiatedLegacyTLS(WebPageProxyIdentifier pageID)
+{
+    WebPageProxy* page = nullptr;
+    if (pageID)
+        page = WebProcessProxy::webPage(pageID);
+    if (page)
+        page->negotiatedLegacyTLS();
+}
+
 void NetworkProcessProxy::didFetchWebsiteData(uint64_t callbackID, const WebsiteData& websiteData)
 {
+    MESSAGE_CHECK(m_pendingFetchWebsiteDataCallbacks.isValidKey(callbackID));
     auto callback = m_pendingFetchWebsiteDataCallbacks.take(callbackID);
     callback(websiteData);
 }
 
 void NetworkProcessProxy::didDeleteWebsiteData(uint64_t callbackID)
 {
+    MESSAGE_CHECK(m_pendingDeleteWebsiteDataCallbacks.isValidKey(callbackID));
     auto callback = m_pendingDeleteWebsiteDataCallbacks.take(callbackID);
     callback();
 }
 
 void NetworkProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
 {
+    MESSAGE_CHECK(m_pendingDeleteWebsiteDataForOriginsCallbacks.isValidKey(callbackID));
     auto callback = m_pendingDeleteWebsiteDataForOriginsCallbacks.take(callbackID);
     callback();
 }
@@ -1286,9 +1299,9 @@ void NetworkProcessProxy::getSandboxExtensionsForBlobFiles(const Vector<String>&
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcess(RegistrableDomain&& registrableDomain, PAL::SessionID sessionID)
+void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcess(RegistrableDomain&& registrableDomain, PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
-    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(registrableDomain), sessionID);
+    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(registrableDomain), sessionID, WTFMove(completionHandler));
 }
 
 void NetworkProcessProxy::workerContextConnectionNoLongerNeeded(WebCore::ProcessIdentifier identifier)

@@ -275,7 +275,7 @@ public:
 #endif
 
 #if PLATFORM(COCOA) || PLATFORM(GTK)
-    virtual RefPtr<ViewSnapshot> takeViewSnapshot() = 0;
+    virtual RefPtr<ViewSnapshot> takeViewSnapshot(Optional<WebCore::IntRect>&&) = 0;
 #endif
 
 #if USE(APPKIT)
@@ -459,8 +459,6 @@ public:
     virtual void didHandleAcceptedCandidate() = 0;
 #endif
 
-    virtual void didFinishProcessingAllPendingMouseEvents() = 0;
-
     virtual void videoControlsManagerDidChange() { }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
@@ -518,6 +516,10 @@ public:
 #endif
 
     virtual void didChangeWebPageID() const { }
+
+#if PLATFORM(GTK)
+    virtual String themeName() const = 0;
+#endif
 };
 
 } // namespace WebKit

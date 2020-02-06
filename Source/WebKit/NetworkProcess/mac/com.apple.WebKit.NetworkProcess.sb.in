@@ -1,4 +1,4 @@
-; Copyright (C) 2013-2019 Apple Inc. All rights reserved.
+; Copyright (C) 2013-2020 Apple Inc. All rights reserved.
 ;
 ; Redistribution and use in source and binary forms, with or without
 ; modification, are permitted provided that the following conditions
@@ -139,6 +139,7 @@
     (allow mach-lookup
          (global-name "com.apple.SystemConfiguration.PPPController")
          (global-name "com.apple.SystemConfiguration.SCNetworkReachability")
+         (global-name "com.apple.dnssd.service")
          (global-name "com.apple.nehelper")
          (global-name "com.apple.nesessionmanager")
          (global-name "com.apple.networkd")
@@ -174,9 +175,10 @@
     (sysctl-name
         "hw.availcpu"
         "hw.ncpu"
-        "hw.model"
+        "hw.model" ;; Needed for bundle loading
         "kern.maxfilesperproc"
         "kern.memorystatus_level"
+        "kern.osproductversion" ;; Needed by CFNetwork (HSTS store and others)
         "kern.tcsm_available" ;; Needed for IndexedDB support.
         "vm.footprint_suspend")
     (sysctl-name-regex #"^net.routetable")

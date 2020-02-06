@@ -153,7 +153,7 @@ private:
     void exitAcceleratedCompositingMode() override;
     void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
 
-    RefPtr<ViewSnapshot> takeViewSnapshot() override;
+    RefPtr<ViewSnapshot> takeViewSnapshot(Optional<WebCore::IntRect>&&) override;
     void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
 #if ENABLE(MAC_GESTURE_EVENTS)
     void gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent&) override;
@@ -249,8 +249,6 @@ private:
 
     NSView *inspectorAttachmentView() override;
     _WKRemoteObjectRegistry *remoteObjectRegistry() override;
-
-    void didFinishProcessingAllPendingMouseEvents() final;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     WebCore::WebMediaSessionManager& mediaSessionManager() override;

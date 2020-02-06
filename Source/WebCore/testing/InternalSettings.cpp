@@ -51,10 +51,6 @@
 #include "SoupNetworkSession.h"
 #endif
 
-#if PLATFORM(GTK)
-#include <gtk/gtk.h>
-#endif
-
 namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
@@ -120,7 +116,6 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(WEBGL2)
     , m_webGL2Enabled(RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled())
 #endif
-    , m_webVREnabled(RuntimeEnabledFeatures::sharedFeatures().webVREnabled())
 #if ENABLE(MEDIA_STREAM)
     , m_setScreenCaptureEnabled(RuntimeEnabledFeatures::sharedFeatures().screenCaptureEnabled())
 #endif
@@ -224,7 +219,6 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(m_webGL2Enabled);
 #endif
-    RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(m_webVREnabled);
 #if ENABLE(MEDIA_STREAM)
     RuntimeEnabledFeatures::sharedFeatures().setScreenCaptureEnabled(m_setScreenCaptureEnabled);
 #endif
@@ -545,16 +539,6 @@ ExceptionOr<bool> InternalSettings::shouldDisplayTrackKind(const String& kind)
 
 void InternalSettings::setUseDarkAppearanceInternal(bool useDarkAppearance)
 {
-#if PLATFORM(GTK)
-    // GTK doesn't allow to change the theme from the web process, but tests need to do it, so
-    // we do it here only for tests.
-    if (auto* settings = gtk_settings_get_default()) {
-        gboolean preferDarkTheme;
-        g_object_get(settings, "gtk-application-prefer-dark-theme", &preferDarkTheme, nullptr);
-        if (preferDarkTheme != useDarkAppearance)
-            g_object_set(settings, "gtk-application-prefer-dark-theme", useDarkAppearance, nullptr);
-    }
-#endif
     ASSERT(m_page);
     m_page->effectiveAppearanceDidChange(useDarkAppearance, m_page->useElevatedUserInterfaceLevel());
 }
@@ -814,11 +798,6 @@ void InternalSettings::setWebGPUEnabled(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
-}
-
-void InternalSettings::setWebVREnabled(bool enabled)
-{
-    RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(enabled);
 }
 
 void InternalSettings::setScreenCaptureEnabled(bool enabled)

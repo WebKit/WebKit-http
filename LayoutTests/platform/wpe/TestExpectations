@@ -509,11 +509,8 @@ webkit.org/b/206409 imported/w3c/web-platform-tests/css/css-overflow/overflow-pa
 # WPT fetch tests.
 webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/content-encoding/bad-gzip-body.any.worker.html [ Failure ]
 webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/range/sw.https.window.html [ Failure ]
-webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch-sw.https.html [ Failure ]
-webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch.html [ Failure ] 
-webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/stale-css.html [ Failure ]
-webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/stale-image.html [ Failure ]
-webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/stale-script.html [ Failure ] 
+# Stale-while-revalidate is not enabled for WPE
+webkit.org/b/206416 imported/w3c/web-platform-tests/fetch/stale-while-revalidate [ Skip ]
 
 webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 
@@ -566,6 +563,122 @@ webkit.org/b/206454 fast/events/mouse-cursor-no-mousemove.html [ Failure ]
 
 webkit.org/b/206464 webrtc/peerconnection-page-cache-long.html [ Failure ]
 webkit.org/b/206464 webrtc/peerconnection-page-cache.html [ Failure ]
+
+# Remote-playback tests.
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/cancel-watch-availability.html [ Failure ]
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/disable-remote-playback-cancel-watch-availability-throws.html [ Failure ]
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/disable-remote-playback-prompt-throws.html [ Failure ]
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/disable-remote-playback-watch-availability-throws.html [ Failure ]
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/idlharness.window.html [ Failure ]
+webkit.org/b/206528 imported/w3c/web-platform-tests/remote-playback/watch-availability-initial-callback.html [ Failure ]
+
+# WPE does not implement setAutomaticLinkDetectionEnabled
+fast/events/input-event-insert-link.html [ Skip ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=81697 Skip file:// based notifications tests
+fast/history/page-cache-notification-showing.html [ Skip ]
+
+# IsLoggedIn is an experimental feature (Introduced in r250944)
+http/tests/is-logged-in/ [ Skip ]
+
+webkit.org/b/177633 editing/async-clipboard/clipboard-change-data-while-writing.html [ Failure ]
+webkit.org/b/177633 editing/async-clipboard/clipboard-read-text-from-platform.html [ Failure ]
+
+webkit.org/b/206692 fast/canvas/canvas-fillPath-shadow.html [ Failure ]
+
+webkit.org/b/206588 fast/history/page-cache-media-recorder.html [ Failure ]
+
+webkit.org/b/206517 http/wpt/service-workers/file-upload.html [ Failure ]
+
+webkit.org/b/206587 imported/w3c/web-platform-tests/2dcontext/shadows/shadowBlur_gaussian_tolerance.1.html [ Failure ]
+
+webkit.org/b/206653 imported/w3c/web-platform-tests/clipboard-apis/async-navigator-clipboard-basics.https.html [ Failure ]
+webkit.org/b/206653 imported/w3c/web-platform-tests/clipboard-apis/async-write-text-read-dttext-manual.https.html [ Failure ]
+webkit.org/b/206653 imported/w3c/web-platform-tests/clipboard-apis/async-write-text-read-text-manual.https.html [ Failure ]
+
+webkit.org/b/206586 imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/frame-ancestors-from-serviceworker.https.html [ Failure ]
+webkit.org/b/206586 imported/w3c/web-platform-tests/content-security-policy/frame-src/frame-src-same-document-meta.html [ Failure ]
+
+webkit.org/b/198823 imported/w3c/web-platform-tests/content-security-policy/reporting/report-only-in-meta.sub.html [ Failure Pass ]
+
+webkit.org/b/206657 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/resize-during-playback.html [ Failure ]
+
+webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Failure ]
+
+webkit.org/b/206652 imported/w3c/web-platform-tests/websockets/constructor/011.html [ Failure ]
+webkit.org/b/206652 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/bufferedAmount/bufferedAmount-getting.html [ Failure ]
+
+webkit.org/b/186141 svg/dom/SVGGeometry-line.xhtml [ Failure ]
+
+webkit.org/b/206583 webrtc/video-gpuProcess.html [ Failure ]
+
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-size-025.html [ ImageOnlyFailure ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-size-027.html [ ImageOnlyFailure ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-size-029.html [ ImageOnlyFailure ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/border-image-repeat-005.html [ ImageOnlyFailure ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-border-collapsed-gradient.html [ Pass ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-size/background-size-cover-svg.html [ Pass ]
+webkit.org/b/206756 imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/diagonal-percentage-vector-background.html [ Pass ]
+
+# WPT css-fonts failures/passes shared with GTK
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/first-available-font-003.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-family-name-025.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-kerning-04.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-kerning-05.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-11.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-12.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-13.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-14.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-15.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-16.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-19.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-2.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-20.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-6.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family-7.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/standard-font-family.html [ Pass ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/generic-family-keywords-001.html [ Failure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-feature-settings-descriptor-01.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-alternates-02.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-caps-02.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-caps-04.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-caps-06.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-caps-07.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-02.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-03.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-04.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-05.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-06.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-07.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-08.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-09.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-east-asian-10.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-02.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-04.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-05.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-07.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-10.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-02.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-03.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-04.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-05.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-06.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-07.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-08.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric-09.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-numeric.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/font-variant-position.html [ ImageOnlyFailure ]
+webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/quoted-generic-ignored.html [ ImageOnlyFailure ]
+
+# WPT css-fonts failures/passes unique to WPE
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/parsing/font-valid.html [ Failure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-default-01.html [ ImageOnlyFailure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-default-02.html [ ImageOnlyFailure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-default-04.html [ ImageOnlyFailure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-kerning-02.html [ ImageOnlyFailure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-01.html [ ImageOnlyFailure ]
+webkit.org/b/206886 imported/w3c/web-platform-tests/css/css-fonts/font-variant-ligatures-11.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # 3. UNRESOLVED TESTS
@@ -1653,8 +1766,8 @@ Bug(WPE) css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 Bug(WPE) css3/zoom-coords.xhtml [ Failure ]
 
 # ENABLE_CSS_COMPOSITING
-transitions/svg-text-shadow-transition.html [ Pass ]
-legacy-animation-engine/transitions/svg-text-shadow-transition.html [ Pass ]
+transitions/svg-text-shadow-transition.html [ DumpJSConsoleLogInStdErr ]
+legacy-animation-engine/transitions/svg-text-shadow-transition.html [ DumpJSConsoleLogInStdErr ]
 
 # ENABLE_MEDIA_SOURCE
 media/media-source/ [ Pass ]

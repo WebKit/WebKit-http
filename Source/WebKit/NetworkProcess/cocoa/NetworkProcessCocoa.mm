@@ -70,8 +70,6 @@ static void initializeNetworkSettings()
 
 void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters& parameters)
 {
-    WebCore::SocketStreamHandleImpl::setLegacyTLSEnabled(parameters.enableLegacyTLS);
-
     WebCore::setApplicationBundleIdentifier(parameters.uiProcessBundleIdentifier);
     WebCore::setApplicationSDKVersion(parameters.uiProcessSDKVersion);
 
@@ -97,11 +95,12 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     
     initializeNetworkSettings();
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
     WebCore::NetworkStorageSession::setStorageAccessAPIEnabled(parameters.storageAccessAPIEnabled);
+    m_suppressesConnectionTerminationOnSystemChange = parameters.suppressesConnectionTerminationOnSystemChange;
 
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
     // - memory cache size passed from UI process is always ignored;
@@ -191,7 +190,7 @@ void NetworkProcess::clearDiskCache(WallTime modifiedSince, CompletionHandler<vo
     }).get());
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
 void NetworkProcess::setSharedHTTPCookieStorage(const Vector<uint8_t>& identifier)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));

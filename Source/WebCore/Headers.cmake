@@ -178,6 +178,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     animation/CompositeOperation.h
     animation/EffectTiming.h
     animation/FillMode.h
+    animation/GetAnimationsOptions.h
     animation/IterationCompositeOperation.h
     animation/KeyframeAnimationOptions.h
     animation/KeyframeEffectOptions.h
@@ -335,7 +336,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     css/MediaQueryEvaluator.h
     css/MediaQueryExpression.h
     css/MediaQueryParserContext.h
-    css/RGBColor.h
     css/Rect.h
     css/StyleColor.h
     css/StyleProperties.h
@@ -482,6 +482,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/messageports/MessageWithMessagePorts.h
 
     editing/ClipboardAccessPolicy.h
+    editing/CompositionHighlight.h
     editing/CompositionUnderline.h
     editing/DictationAlternative.h
     editing/DictionaryPopupInfo.h
@@ -689,6 +690,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     loader/AdClickAttribution.h
     loader/CanvasActivityRecord.h
+    loader/ContentFilterClient.h
     loader/CookieJar.h
     loader/CrossOriginAccessControl.h
     loader/CrossOriginPreflightResultCache.h
@@ -1031,7 +1033,9 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/gamepad/GamepadProviderClient.h
     platform/gamepad/PlatformGamepad.h
 
+    platform/graphics/AlphaPremultiplication.h
     platform/graphics/ANGLEWebKitBridge.h
+    platform/graphics/AnimationFrameRate.h
     platform/graphics/AudioTrackPrivate.h
     platform/graphics/BitmapImage.h
     platform/graphics/Color.h
@@ -1128,6 +1132,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/PlatformTimeRanges.h
     platform/graphics/Region.h
     platform/graphics/RemoteVideoSample.h
+    platform/graphics/RenderingMode.h
     platform/graphics/RoundedRect.h
     platform/graphics/StringTruncator.h
     platform/graphics/TabSize.h
@@ -1222,6 +1227,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/network/DNS.h
     platform/network/DNSResolveQueue.h
     platform/network/FormData.h
+    platform/network/HTTPCookieAcceptPolicy.h
     platform/network/HTTPHeaderMap.h
     platform/network/HTTPParsers.h
     platform/network/NetworkLoadInformation.h

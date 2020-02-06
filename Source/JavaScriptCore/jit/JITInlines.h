@@ -26,6 +26,7 @@
 #pragma once
 
 #if ENABLE(JIT)
+#include "CommonSlowPathsInlines.h"
 #include "JSCInlines.h"
 
 namespace JSC {
@@ -104,12 +105,7 @@ ALWAYS_INLINE JIT::Call JIT::emitNakedTailCall(CodePtr<NoPtrTag> target)
 
 ALWAYS_INLINE void JIT::updateTopCallFrame()
 {
-#if USE(JSVALUE32_64)
-    const Instruction* instruction = m_codeBlock->instructions().at(m_bytecodeIndex.offset()).ptr();
-    uint32_t locationBits = CallSiteIndex(BytecodeIndex(bitwise_cast<uint32_t>(instruction))).bits();
-#else
     uint32_t locationBits = CallSiteIndex(m_bytecodeIndex).bits();
-#endif
     store32(TrustedImm32(locationBits), tagFor(CallFrameSlot::argumentCountIncludingThis));
     
     // FIXME: It's not clear that this is needed. JITOperations tend to update the top call frame on
@@ -384,21 +380,21 @@ ALWAYS_INLINE void JIT::emitInitRegister(VirtualRegister dst)
 inline void JIT::emitLoadTag(VirtualRegister reg, RegisterID tag)
 {
     if (reg.isConstant()) {
-        move(Imm32(getConstantOperand(index).tag()), tag);
+        move(Imm32(getConstantOperand(reg).tag()), tag);
         return;
     }
 
-    load32(tagFor(index), tag);
+    load32(tagFor(reg), tag);
 }
 
 inline void JIT::emitLoadPayload(VirtualRegister reg, RegisterID payload)
 {
     if (reg.isConstant()) {
-        move(Imm32(getConstantOperand(index).payload()), payload);
+        move(Imm32(getConstantOperand(reg).payload()), payload);
         return;
     }
 
-    load32(payloadFor(index), payload);
+    load32(payloadFor(reg), payload);
 }
 
 inline void JIT::emitLoad(const JSValue& v, RegisterID tag, RegisterID payload)
@@ -407,7 +403,7 @@ inline void JIT::emitLoad(const JSValue& v, RegisterID tag, RegisterID payload)
     move(Imm32(v.tag()), tag);
 }
 
-ALWAYS_INLINE void JIT::emitGet(VirtualRegister src, JSValueRegs dst)
+ALWAYS_INLINE void JIT::emitGetVirtualRegister(VirtualRegister src, JSValueRegs dst)
 {
     emitLoad(src, dst.tagGPR(), dst.payloadGPR());
 }
@@ -510,7 +506,7 @@ inline void JIT::emitStore(VirtualRegister reg, const JSValue constant, Register
 
 inline void JIT::emitJumpSlowCaseIfNotJSCell(VirtualRegister reg)
 {
-    if (!m_codeBlock->isKnownNotImmediate(virtualRegisterIndex)) {
+    if (!m_codeBlock->isKnownNotImmediate(reg)) {
         if (reg.isConstant())
             addSlowCase(jump());
         else
@@ -520,7 +516,7 @@ inline void JIT::emitJumpSlowCaseIfNotJSCell(VirtualRegister reg)
 
 inline void JIT::emitJumpSlowCaseIfNotJSCell(VirtualRegister reg, RegisterID tag)
 {
-    if (!m_codeBlock->isKnownNotImmediate(virtualRegisterIndex)) {
+    if (!m_codeBlock->isKnownNotImmediate(reg)) {
         if (reg.isConstant())
             addSlowCase(jump());
         else
@@ -533,7 +529,7 @@ ALWAYS_INLINE bool JIT::isOperandConstantInt(VirtualRegister src)
     return src.isConstant() && getConstantOperand(src).isInt32();
 }
 
-ALWAYS_INLINE bool JIT::getOperandConstantInt(VirtualRegister op1, VirtualRegister op2, int& op, int32_t& constant)
+ALWAYS_INLINE bool JIT::getOperandConstantInt(VirtualRegister op1, VirtualRegister op2, VirtualRegister& op, int32_t& constant)
 {
     if (isOperandConstantInt(op1)) {
         constant = getConstantOperand(op1).asInt32();

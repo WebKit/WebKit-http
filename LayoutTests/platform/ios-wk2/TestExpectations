@@ -78,7 +78,6 @@ http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-third-party-reque
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 # Animation tests with issues
-animations/animation-direction-normal.html [ Pass Crash ]
 legacy-animation-engine/animations/animation-direction-normal.html [ Pass Crash ]
 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 legacy-animation-engine/animations/cross-fade-background-image.html [ ImageOnlyFailure ]
@@ -862,8 +861,7 @@ js/promises-tests/promises-tests-2-2-7.html
 js/promises-tests/promises-tests-2-3-1.html
 js/promises-tests/promises-tests-2-3-2.html
 js/promises-tests/promises-tests-2-3-3.html
-js/promises-tests/promises-tests-2-3-4.html 
-storage/websql/change-version.html
+js/promises-tests/promises-tests-2-3-4.html
 
 # Flaky tests that assert/time out:
 fast/loader/form-submission-before-load-post.html
@@ -1015,8 +1013,6 @@ fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible.html [ Skip ]
 fast/dom/Geolocation/stopUpdatingForHiddenPage.html [ Skip ]
 
 # Flaky tests that need bugs
-fast/dom/Window/post-message-crash.html [ Pass Failure ]
-
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Pass Failure ]
 
 # eventSender.mouseDown is not implemented
@@ -1347,3 +1343,38 @@ webkit.org/b/203572 media/remoteplayback-target-availability.html [ Skip ]
 webkit.org/b/203637 fast/css-custom-paint/simple-hidpi.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/205308 accessibility/smart-invert-reference.html [ ImageOnlyFailure ]
+
+webkit.org/b/206616 [ Release ] http/tests/security/contentSecurityPolicy/module-eval-blocked-in-external-script.html [ Pass Timeout ]
+
+webkit.org/b/206630 [ Release ] fast/forms/validationMessage.html [ Pass Timeout ]
+
+webkit.org/b/206667 legacy-animation-engine/animations/stop-animation-on-suspend.html [ Pass Failure ]
+
+webkit.org/b/206682 animations/play-state-paused.html [ Pass Failure ]
+
+webkit.org/b/206685 [ Debug ] animations/animation-direction-normal.html [ Pass Failure ]
+
+webkit.org/b/206687 imported/w3c/web-platform-tests/beacon/idlharness.any.html [ Pass Timeout ]
+
+webkit.org/b/206752 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable.html [ Pass Failure ]
+
+webkit.org/b/206946 http/tests/security/cookies/third-party-cookie-blocking-main-frame.html [ Pass Timeout ]
+webkit.org/b/206965 storage/indexeddb/intversion-long-queue-private.html [ Pass Failure ]
+
+webkit.org/b/205309 scrollingcoordinator/ios/scroll-position-after-reattach.html [ ImageOnlyFailure ]
+
+webkit.org/b/206993 [ Release ]  fast/hidpi/image-srcset-relative-svg-canvas-2x.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207153 animations/animation-callback-timestamp.html [ Pass Failure ]
+
+webkit.org/b/207156 [ Release ] http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+
+webkit.org/b/207161 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer.html [ Pass Failure ]
+
+webkit.org/b/207164 [ Debug ] legacy-animation-engine/animations/play-state-in-shorthand.html [ Pass Failure ]
+
+webkit.org/b/207197 http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass Failure Crash ]
+
+webkit.org/b/206627 storage/websql [ Skip ]
+
+webkit.org/b/207077 [ Debug ] imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/cramped-001.html [ Pass Failure ]

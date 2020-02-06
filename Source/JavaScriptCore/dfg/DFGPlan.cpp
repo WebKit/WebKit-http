@@ -160,7 +160,7 @@ bool Plan::computeCompileTimes() const
 {
     return reportCompileTimes()
         || Options::reportTotalCompileTimes()
-        || unnukedVM()->m_perBytecodeProfiler;
+        || (m_vm && m_vm->m_perBytecodeProfiler);
 }
 
 bool Plan::reportCompileTimes() const
@@ -238,7 +238,10 @@ void Plan::compileInThread(ThreadData* threadData)
 
 Plan::CompilationPath Plan::compileInThreadImpl()
 {
-    cleanMustHandleValuesIfNecessary();
+    {
+        CompilerTimingScope timingScope("DFG", "clean must handle values");
+        cleanMustHandleValuesIfNecessary();
+    }
 
     if (verboseCompilationEnabled(m_mode) && m_osrEntryBytecodeIndex) {
         dataLog("\n");
@@ -247,7 +250,11 @@ Plan::CompilationPath Plan::compileInThreadImpl()
     }
 
     Graph dfg(*m_vm, *this);
-    parse(dfg);
+
+    {
+        CompilerTimingScope timingScope("DFG", "bytecode parser");
+        parse(dfg);
+    }
 
     m_codeBlock->setCalleeSaveRegisters(RegisterSet::dfgCalleeSaveRegisters());
 
@@ -381,11 +388,15 @@ Plan::CompilationPath Plan::compileInThreadImpl()
         RUN_PHASE(performWatchpointCollection);
         dumpAndVerifyGraph(dfg, "Graph after optimization:");
         
-        JITCompiler dataFlowJIT(dfg);
-        if (m_codeBlock->codeType() == FunctionCode)
-            dataFlowJIT.compileFunction();
-        else
-            dataFlowJIT.compile();
+        {
+            CompilerTimingScope timingScope("DFG", "machine code generation");
+
+            JITCompiler dataFlowJIT(dfg);
+            if (m_codeBlock->codeType() == FunctionCode)
+                dataFlowJIT.compileFunction();
+            else
+                dataFlowJIT.compile();
+        }
         
         return DFGPath;
     }
@@ -603,14 +614,18 @@ CompilationResult Plan::finalizeWithoutNotifyingCallback()
         }
 
         reallyAdd(m_codeBlock->jitCode()->dfgCommon());
+        {
+            ConcurrentJSLocker locker(m_codeBlock->m_lock);
+            m_codeBlock->jitCode()->shrinkToFit(locker);
+        }
 
         if (validationEnabled()) {
             TrackedReferences trackedReferences;
 
             for (WriteBarrier<JSCell>& reference : m_codeBlock->jitCode()->dfgCommon()->weakReferences)
                 trackedReferences.add(reference.get());
-            for (WriteBarrier<Structure>& reference : m_codeBlock->jitCode()->dfgCommon()->weakStructureReferences)
-                trackedReferences.add(reference.get());
+            for (StructureID structureID : m_codeBlock->jitCode()->dfgCommon()->weakStructureReferences)
+                trackedReferences.add(m_vm->getStructure(structureID));
             for (WriteBarrier<Unknown>& constant : m_codeBlock->constants())
                 trackedReferences.add(constant.get());
 
@@ -696,11 +711,7 @@ void Plan::cancel()
 {
     RELEASE_ASSERT(m_stage != Cancelled);
     ASSERT(m_vm);
-
-    // Nuke the VM pointer so that pointer comparisons against it will fail.
-    // We rely on VM pointer comparison in many places to filter out Cancelled
-    // plans.
-    m_vm = nuke(m_vm);
+    m_vm = nullptr;
 
     m_codeBlock = nullptr;
     m_profiledDFGCodeBlock = nullptr;

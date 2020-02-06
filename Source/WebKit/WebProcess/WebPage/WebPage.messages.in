@@ -51,7 +51,7 @@ messages -> WebPage LegacyReceiver {
     SetMaximumUnobscuredSize(WebCore::FloatSize size)
     SetDeviceOrientation(int32_t deviceOrientation)
     SetOverrideViewportArguments(Optional<WebCore::ViewportArguments> arguments)
-    DynamicViewportSizeUpdate(WebCore::FloatSize viewLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, WebCore::RectEdges<float> targetUnobscuredSafeAreaInsets, double scale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID)
+    DynamicViewportSizeUpdate(WebCore::FloatSize viewLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, WebCore::RectEdges<float> targetUnobscuredSafeAreaInsets, double scale, int32_t deviceOrientation, double minimumEffectiveDeviceWidth, uint64_t dynamicViewportSizeUpdateID)
 
     HandleTap(WebCore::IntPoint point, OptionSet<WebKit::WebEvent::Modifier> modifiers, WebKit::TransactionID lastLayerTreeTransactionId)
     PotentialTapAtPosition(uint64_t requestID, WebCore::FloatPoint point, bool shouldRequestMagnificationInformation)
@@ -208,7 +208,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     GetWebArchiveOfFrame(WebCore::FrameIdentifier frameID, WebKit::CallbackID callbackID)
 
     // FIXME: These should use sendWithAsyncReply instead of callbackIDs
-    RunJavaScriptInMainFrameScriptWorld(struct WebCore::RunJavaScriptParameters parameters, std::pair<uint64_t, String> world, WebKit::CallbackID callbackID)
+    RunJavaScriptInMainFrameScriptWorld(struct WebCore::RunJavaScriptParameters parameters, std::pair<WebKit::ContentWorldIdentifier, String> world, WebKit::CallbackID callbackID)
     RunJavaScriptInFrame(WebCore::FrameIdentifier frameID, String script, bool forceUserGesture, WebKit::CallbackID callbackID)
 
     ForceRepaint(WebKit::CallbackID callbackID)
@@ -453,7 +453,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     GetSelectedRangeAsync(WebKit::CallbackID callbackID)
     CharacterIndexForPointAsync(WebCore::IntPoint point, WebKit::CallbackID callbackID);
     FirstRectForCharacterRangeAsync(struct WebKit::EditingRange range, WebKit::CallbackID callbackID);
-    SetCompositionAsync(String text, Vector<WebCore::CompositionUnderline> underlines, struct WebKit::EditingRange selectionRange, struct WebKit::EditingRange replacementRange)
+    SetCompositionAsync(String text, Vector<WebCore::CompositionUnderline> underlines, Vector<WebCore::CompositionHighlight> highlights, struct WebKit::EditingRange selectionRange, struct WebKit::EditingRange replacementRange)
     ConfirmCompositionAsync()
 #endif
 #if PLATFORM(MAC)
@@ -505,6 +505,10 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 #endif
 
     EffectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel);
+
+#if PLATFORM(GTK)
+    ThemeDidChange(String themeName)
+#endif
 
 #if PLATFORM(COCOA)
     RequestActiveNowPlayingSessionInfo(WebKit::CallbackID callbackID)
@@ -574,6 +578,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
     TextInputContextsInRect(WebCore::FloatRect rect) -> (Vector<struct WebCore::ElementContext> contexts) Async
     FocusTextInputContext(struct WebCore::ElementContext context) -> (bool success) Async
+    SetCanShowPlaceholder(struct WebCore::ElementContext context, bool canShowPlaceholder)
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     WasLoadedWithDataTransferFromPrevalentResource()

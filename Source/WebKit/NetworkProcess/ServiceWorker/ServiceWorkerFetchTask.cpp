@@ -50,8 +50,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-ServiceWorkerFetchTask::ServiceWorkerFetchTask(NetworkResourceLoader& loader, ResourceRequest&& request, SWServerConnectionIdentifier serverConnectionIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, ServiceWorkerRegistrationIdentifier serviceWorkerRegistrationIdentifier, bool shouldSoftUpdate)
-    : m_loader(loader)
+ServiceWorkerFetchTask::ServiceWorkerFetchTask(WebSWServerConnection& swServerConnection, NetworkResourceLoader& loader, ResourceRequest&& request, SWServerConnectionIdentifier serverConnectionIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, ServiceWorkerRegistrationIdentifier serviceWorkerRegistrationIdentifier, bool shouldSoftUpdate)
+    : m_swServerConnection(makeWeakPtr(swServerConnection))
+    , m_loader(loader)
     , m_fetchIdentifier(WebCore::FetchIdentifier::generate())
     , m_serverConnectionIdentifier(serverConnectionIdentifier)
     , m_serviceWorkerIdentifier(serviceWorkerIdentifier)
@@ -139,7 +140,7 @@ void ServiceWorkerFetchTask::didReceiveResponse(ResourceResponse&& response, boo
     if (m_isDone)
         return;
 
-    RELEASE_LOG_IF_ALLOWED("didReceiveResponse: (httpStatusCode=%d, MIMEType=%{public}s, expectedContentLength=%" PRId64 ", needsContinueDidReceiveResponseMessage=%d)", response.httpStatusCode(), response.mimeType().utf8().data(), response.expectedContentLength(), needsContinueDidReceiveResponseMessage);
+    RELEASE_LOG_IF_ALLOWED("didReceiveResponse: (httpStatusCode=%d, MIMEType=%{public}s, expectedContentLength=%" PRId64 ", needsContinueDidReceiveResponseMessage=%d, source=%u)", response.httpStatusCode(), response.mimeType().utf8().data(), response.expectedContentLength(), needsContinueDidReceiveResponseMessage, static_cast<unsigned>(response.source()));
     m_wasHandled = true;
     m_timeoutTimer.stop();
     softUpdateIfNeeded();
@@ -239,8 +240,11 @@ void ServiceWorkerFetchTask::timeoutTimerFired()
     softUpdateIfNeeded();
 
     RELEASE_LOG_ERROR_IF_ALLOWED("timeoutTimerFired: (hasServiceWorkerConnection=%d)", !!m_serviceWorkerConnection);
-    if (m_serviceWorkerConnection)
-        m_serviceWorkerConnection->fetchTaskTimedOut(serviceWorkerIdentifier());
+
+    contextClosed();
+
+    if (m_swServerConnection)
+        m_swServerConnection->fetchTaskTimedOut(serviceWorkerIdentifier());
 }
 
 void ServiceWorkerFetchTask::softUpdateIfNeeded()

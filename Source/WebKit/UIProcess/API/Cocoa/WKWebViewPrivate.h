@@ -164,6 +164,13 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 @property (nonatomic, getter=_isEditable, setter=_setEditable:) BOOL _editable WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
+/*! @abstract A Boolean value indicating whether any resource on the page
+has been loaded over a connection using TLS 1.0 or TLS 1.1.
+@discussion @link WKWebView @/link is key-value observing (KVO) compliant
+for this property.
+*/
+@property (nonatomic, readonly) BOOL _negotiatedLegacyTLS WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 // FIXME: Remove these once nobody is using them.
 @property (nonatomic, readonly) NSData *_sessionStateData;
 - (void)_restoreFromSessionStateData:(NSData *)sessionStateData;
@@ -487,6 +494,9 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 - (UIView *)_fullScreenPlaceholderView WK_API_AVAILABLE(ios(12.0));
 
+- (void)_grantAccessToAssetServices WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_revokeAccessToAssetServices WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
 @end
 
 @interface WKWebView () <UIResponderStandardEditActions>
@@ -512,6 +522,11 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) WKPageRef _pageRefForTransitionToWKWebView  WK_API_AVAILABLE(macos(10.13.4));
 @property (nonatomic, readonly) BOOL _hasActiveVideoForControlsManager WK_API_AVAILABLE(macos(10.12));
 @property (nonatomic, readwrite, setter=_setIgnoresNonWheelEvents:) BOOL _ignoresNonWheelEvents WK_API_AVAILABLE(macos(10.13.4));
+
+/*! @abstract A Boolean value indicating whether drawing clips to the visibleRect.
+@discussion When YES, the view will use its -visibleRect when determining which areas of the WKWebView to draw. This may improve performance for large WKWebViews which are mostly clipped out by enclosing views.  The default value is NO.
+*/
+@property (nonatomic, readwrite, setter=_setClipsToVisibleRect:) BOOL _clipsToVisibleRect WK_API_AVAILABLE(macos(WK_MAC_TBA));
 
 @property (nonatomic, readonly) NSView *_safeBrowsingWarning WK_API_AVAILABLE(macos(10.14.4));
 

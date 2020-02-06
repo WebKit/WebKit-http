@@ -48,6 +48,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
+#include "HTMLBodyElement.h"
 #include "HTMLDataListElement.h"
 #include "HTMLDetailsElement.h"
 #include "HTMLFormControlElement.h"
@@ -96,19 +97,17 @@ AccessibilityObject::~AccessibilityObject()
     ASSERT(isDetached());
 }
 
-void AccessibilityObject::detach(AccessibilityDetachmentType detachmentType, AXObjectCache* cache)
+void AccessibilityObject::detachRemoteParts(AccessibilityDetachmentType detachmentType)
 {
     // Menu close events need to notify the platform. No element is used in the notification because it's a destruction event.
-    if (detachmentType == AccessibilityDetachmentType::ElementDestroyed && roleValue() == AccessibilityRole::Menu && cache)
-        cache->postNotification(nullptr, &cache->document(), AXObjectCache::AXMenuClosed);
-    
+    if (detachmentType == AccessibilityDetachmentType::ElementDestroyed && roleValue() == AccessibilityRole::Menu) {
+        if (auto* cache = axObjectCache())
+            cache->postNotification(nullptr, &cache->document(), AXObjectCache::AXMenuClosed);
+    }
+
     // Clear any children and call detachFromParent on them so that
     // no children are left with dangling pointers to their parent.
     clearChildren();
-
-#if ENABLE(ACCESSIBILITY)
-    setWrapper(nullptr);
-#endif
 }
 
 bool AccessibilityObject::isDetached() const
@@ -2055,6 +2054,13 @@ const AtomString& AccessibilityObject::getAttribute(const QualifiedName& attribu
 
 bool AccessibilityObject::replaceTextInRange(const String& replacementString, const PlainTextRange& range)
 {
+    // If this is being called on the web area, redirect it to be on the body, which will have a renderer associated with it.
+    if (is<Document>(node())) {
+        if (auto bodyObject = axObjectCache()->getOrCreate(downcast<Document>(node())->body()))
+            return bodyObject->replaceTextInRange(replacementString, range);
+        return false;
+    }
+    
     if (!renderer() || !is<Element>(node()))
         return false;
 

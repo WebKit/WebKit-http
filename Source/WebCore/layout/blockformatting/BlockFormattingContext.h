@@ -43,7 +43,7 @@ class FloatingContext;
 
 // This class implements the layout logic for block formatting contexts.
 // https://www.w3.org/TR/CSS22/visuren.html#block-formatting
-class BlockFormattingContext : public FormattingContext {
+class BlockFormattingContext final : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(BlockFormattingContext);
 public:
     BlockFormattingContext(const Container& formattingContextRoot, BlockFormattingState&);
@@ -57,10 +57,9 @@ private:
         const T root;
         const T containingBlock;
     };
-    void layoutFormattingContextRoot(const Box&, FloatingContext&, InvalidationState&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
     void placeInFlowPositionedChildren(const Box&, const ConstraintsPair<HorizontalConstraints>&);
 
-    void computeWidthAndMargin(const Box&, const ConstraintsPair<HorizontalConstraints>&);
+    void computeWidthAndMargin(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&);
     void computeHeightAndMargin(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
 
     void computeStaticHorizontalPosition(const Box&, const ConstraintsPair<HorizontalConstraints>&);

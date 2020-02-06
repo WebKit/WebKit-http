@@ -798,8 +798,10 @@ static void enableExperimentalFeatures(IWebPreferences* preferences)
     prefsPrivate->setResizeObserverEnabled(TRUE);
     prefsPrivate->setWebAnimationsEnabled(TRUE);
     prefsPrivate->setWebAnimationsCompositeOperationsEnabled(TRUE);
+    prefsPrivate->setWebAnimationsMutableTimelinesEnabled(TRUE);
     prefsPrivate->setServerTimingEnabled(TRUE);
     prefsPrivate->setAspectRatioOfImgFromWidthAndHeightEnabled(TRUE);
+    prefsPrivate->setRenderingUpdateThrottlingEnabled(FALSE);
     // FIXME: WebGL2
     // FIXME: WebRTC
 }
@@ -915,6 +917,7 @@ static void setWebPreferencesForTestOptions(IWebPreferences* preferences, const 
     prefsPrivate->setInspectorAdditionsEnabled(options.enableInspectorAdditions);
     prefsPrivate->setRequestIdleCallbackEnabled(options.enableRequestIdleCallback);
     prefsPrivate->setAsyncClipboardAPIEnabled(options.enableAsyncClipboardAPI);
+    prefsPrivate->setWebSQLEnabled(options.enableWebSQL);
     preferences->setPrivateBrowsingEnabled(options.useEphemeralSession);
     preferences->setUsesPageCache(options.enableBackForwardCache);
 }

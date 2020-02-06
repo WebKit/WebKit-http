@@ -2279,7 +2279,7 @@ void FrameView::scrollElementToRect(const Element& element, const IntRect& rect)
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
 }
 
-void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, bool animated)
+void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollClamping clamping)
 {
     LOG_WITH_STREAM(Scrolling, stream << "FrameView::setScrollPosition " << scrollPosition << " , clearing anchor");
 
@@ -2292,10 +2292,7 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, bool ani
     Page* page = frame().page();
     if (page && page->isMonitoringWheelEvents())
         scrollAnimator().setWheelEventTestMonitor(page->wheelEventTestMonitor());
-    if (animated)
-        scrollToOffsetWithAnimation(scrollOffsetFromPosition(scrollPosition), currentScrollType());
-    else
-        ScrollView::setScrollPosition(scrollPosition);
+    ScrollView::setScrollPosition(scrollPosition, clamping);
 
     setCurrentScrollType(oldScrollType);
 }
@@ -2527,9 +2524,9 @@ void FrameView::updateScriptedAnimationsAndTimersThrottlingState(const IntRect& 
 
     if (auto* scriptedAnimationController = document->scriptedAnimationController()) {
         if (shouldThrottle)
-            scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
+            scriptedAnimationController->addThrottlingReason(ThrottlingReason::OutsideViewport);
         else
-            scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
+            scriptedAnimationController->removeThrottlingReason(ThrottlingReason::OutsideViewport);
     }
 
     document->setTimerThrottlingEnabled(shouldThrottle);
@@ -2619,7 +2616,7 @@ bool FrameView::isRubberBandInProgress() const
     return false;
 }
 
-bool FrameView::requestScrollPositionUpdate(const ScrollPosition& position)
+bool FrameView::requestScrollPositionUpdate(const ScrollPosition& position, ScrollType scrollType, ScrollClamping clamping)
 {
     LOG_WITH_STREAM(Scrolling, stream << "FrameView::requestScrollPositionUpdate " << position);
 
@@ -2631,7 +2628,7 @@ bool FrameView::requestScrollPositionUpdate(const ScrollPosition& position)
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            return scrollingCoordinator->requestScrollPositionUpdate(*this, position);
+            return scrollingCoordinator->requestScrollPositionUpdate(*this, position, scrollType, clamping);
     }
 #else
     UNUSED_PARAM(position);
@@ -3034,12 +3031,7 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 void FrameView::updateBackgroundRecursively(const Optional<Color>& backgroundColor)
 {
 #if HAVE(OS_DARK_MODE_SUPPORT)
-#if PLATFORM(COCOA)
-    static const auto cssValueControlBackground = CSSValueAppleSystemControlBackground;
-#else
-    static const auto cssValueControlBackground = CSSValueWindow;
-#endif
-    Color baseBackgroundColor = backgroundColor.valueOr(RenderTheme::singleton().systemColor(cssValueControlBackground, styleColorOptions()));
+    Color baseBackgroundColor = backgroundColor.valueOr(RenderTheme::singleton().systemColor(CSSValueAppleSystemControlBackground, styleColorOptions()));
 #else
     Color baseBackgroundColor = backgroundColor.valueOr(Color::white);
 #endif
@@ -3661,19 +3653,6 @@ void FrameView::scrollTo(const ScrollPosition& newPosition)
     didChangeScrollOffset();
 }
 
-void FrameView::scrollToOffsetWithAnimation(const ScrollOffset& offset, ScrollType scrollType, ScrollClamping)
-{
-    auto previousScrollType = currentScrollType();
-    setCurrentScrollType(scrollType);
-
-    if (currentScrollBehaviorStatus() == ScrollBehaviorStatus::InNonNativeAnimation)
-        scrollAnimator().cancelAnimations();
-    if (offset != this->scrollOffset())
-        ScrollableArea::scrollToOffsetWithAnimation(offset);
-
-    setCurrentScrollType(previousScrollType);
-}
-
 float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientation orientation, ScrollGranularity granularity)
 {
     if (granularity != ScrollByPage || orientation == HorizontalScrollbar)
@@ -3723,12 +3702,13 @@ void FrameView::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rec
 
 float FrameView::visibleContentScaleFactor() const
 {
-    // FIXME: This !delegatesPageScaling() is confusing. This function should probably be renamed to delegatedPageScaleFactor().
-    if (!frame().isMainFrame() || !delegatesPageScaling())
+    if (!frame().isMainFrame())
         return 1;
 
     Page* page = frame().page();
-    if (!page)
+    // FIXME: This !delegatesScaling() is confusing, and the opposite behavior to Frame::frameScaleFactor().
+    // This function should probably be renamed to delegatedPageScaleFactor().
+    if (!page || !page->delegatesScaling())
         return 1;
 
     return page->pageScaleFactor();

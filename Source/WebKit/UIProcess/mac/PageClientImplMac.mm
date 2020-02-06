@@ -565,7 +565,7 @@ CALayer *PageClientImpl::acceleratedCompositingRootLayer() const
     return m_impl->acceleratedCompositingRootLayer();
 }
 
-RefPtr<ViewSnapshot> PageClientImpl::takeViewSnapshot()
+RefPtr<ViewSnapshot> PageClientImpl::takeViewSnapshot(Optional<WebCore::IntRect>&&)
 {
     return m_impl->takeViewSnapshot();
 }
@@ -917,11 +917,6 @@ NSView *PageClientImpl::inspectorAttachmentView()
 _WKRemoteObjectRegistry *PageClientImpl::remoteObjectRegistry()
 {
     return m_impl->remoteObjectRegistry();
-}
-
-void PageClientImpl::didFinishProcessingAllPendingMouseEvents()
-{
-    m_impl->didFinishProcessingAllPendingMouseEvents();
 }
 
 void PageClientImpl::didRestoreScrollPosition()

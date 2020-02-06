@@ -439,6 +439,29 @@ void DOMWindow::didSecureTransitionTo(Document& document)
     m_performance = nullptr;
 }
 
+void DOMWindow::prewarmLocalStorageIfNecessary()
+{
+    auto* page = this->page();
+
+    // No need to prewarm for ephemeral sessions since the data is in memory only.
+    if (!page || page->usesEphemeralSession())
+        return;
+
+    if (!page->mainFrame().mayPrewarmLocalStorage())
+        return;
+
+    // This eagerly constructs the StorageArea, which will load items from disk.
+    auto localStorageResult = this->localStorage();
+    if (localStorageResult.hasException())
+        return;
+
+    auto* localStorage = localStorageResult.returnValue();
+    if (!localStorage)
+        return;
+
+    page->mainFrame().didPrewarmLocalStorage();
+}
+
 DOMWindow::~DOMWindow()
 {
     if (m_suspendedForDocumentSuspension)
@@ -1650,7 +1673,7 @@ double DOMWindow::devicePixelRatio() const
 
 void DOMWindow::scrollBy(double x, double y) const
 {
-    scrollBy(ScrollToOptions(x, y));
+    scrollBy({ x, y });
 }
 
 void DOMWindow::scrollBy(const ScrollToOptions& options) const
@@ -1660,7 +1683,11 @@ void DOMWindow::scrollBy(const ScrollToOptions& options) const
 
     document()->updateLayoutIgnorePendingStylesheets();
 
-    FrameView* view = frame()->view();
+    auto* frame = this->frame();
+    if (!frame)
+        return;
+
+    auto view = makeRefPtr(frame->view());
     if (!view)
         return;
 
@@ -1672,7 +1699,7 @@ void DOMWindow::scrollBy(const ScrollToOptions& options) const
 
 void DOMWindow::scrollTo(double x, double y, ScrollClamping clamping) const
 {
-    scrollTo(ScrollToOptions(x, y), clamping);
+    scrollTo({ x, y }, clamping);
 }
 
 void DOMWindow::scrollTo(const ScrollToOptions& options, ScrollClamping clamping) const
@@ -1688,23 +1715,13 @@ void DOMWindow::scrollTo(const ScrollToOptions& options, ScrollClamping clamping
         view->contentsScrollPosition().x(), view->contentsScrollPosition().y()
     );
 
-    // This is an optimization for the common case of scrolling to (0, 0) when the scroller is already at the origin.
-    // If an animated scroll is in progress, this optimization is skipped to ensure that the animated scroll is really stopped.
-    if (view->currentScrollBehaviorStatus() == ScrollBehaviorStatus::NotInAnimation && !scrollToOptions.left.value() && !scrollToOptions.top.value() && view->contentsScrollPosition() == IntPoint(0, 0))
+    if (!scrollToOptions.left.value() && !scrollToOptions.top.value() && view->contentsScrollPosition() == IntPoint(0, 0))
         return;
 
     document()->updateLayoutIgnorePendingStylesheets();
 
     IntPoint layoutPos(view->mapFromCSSToLayoutUnits(scrollToOptions.left.value()), view->mapFromCSSToLayoutUnits(scrollToOptions.top.value()));
-
-    // FIXME: Should we use document()->scrollingElement()?
-    // See https://bugs.webkit.org/show_bug.cgi?id=205059
-    if (document()->documentElement() && useSmoothScrolling(scrollToOptions.behavior.valueOr(ScrollBehavior::Auto), *document()->documentElement())) {
-        view->scrollToOffsetWithAnimation(layoutPos, ScrollType::Programmatic, clamping);
-        return;
-    }
-
-    view->setContentsScrollPosition(layoutPos);
+    view->setContentsScrollPosition(layoutPos, clamping);
 }
 
 bool DOMWindow::allowedToChangeWindowGeometry() const
@@ -2351,7 +2368,7 @@ void DOMWindow::setLocation(DOMWindow& activeWindow, const URL& completedURL, Se
         lockHistory, lockBackForwardList);
 }
 
-void DOMWindow::printErrorMessage(const String& message)
+void DOMWindow::printErrorMessage(const String& message) const
 {
     if (message.isEmpty())
         return;

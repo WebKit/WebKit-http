@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2020 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -329,10 +329,11 @@ class ValidatePatch(buildstep.BuildStep):
     bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
     bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
 
-    def __init__(self, verifyObsolete=True, verifyBugClosed=True, verifyReviewDenied=True, addURLs=True, **kwargs):
+    def __init__(self, verifyObsolete=True, verifyBugClosed=True, verifyReviewDenied=True, addURLs=True, verifycqplus=False):
         self.verifyObsolete = verifyObsolete
         self.verifyBugClosed = verifyBugClosed
         self.verifyReviewDenied = verifyReviewDenied
+        self.verifycqplus = verifycqplus
         self.addURLs = addURLs
         buildstep.BuildStep.__init__(self)
 
@@ -412,6 +413,17 @@ class ValidatePatch(buildstep.BuildStep):
                 return 1
         return 0
 
+    def _is_patch_cq_plus(self, patch_id):
+        patch_json = self.get_patch_json(patch_id)
+        if not patch_json:
+            self._addToLog('stdio', 'Unable to fetch patch {}.\n'.format(patch_id))
+            return -1
+
+        for flag in patch_json.get('flags', []):
+            if flag.get('name') == 'commit-queue' and flag.get('status') == '+':
+                return 1
+        return 0
+
     def _is_bug_closed(self, bug_id):
         if not bug_id:
             self._addToLog('stdio', 'Skipping bug status validation since bug id is None.\n')
@@ -466,6 +478,11 @@ class ValidatePatch(buildstep.BuildStep):
             self.skip_build('Patch {} is marked r-'.format(patch_id))
             return None
 
+        cq_plus = self._is_patch_cq_plus(patch_id) if self.verifycqplus else 1
+        if cq_plus != 1:
+            self.skip_build('Patch {} is not marked cq+.'.format(patch_id))
+            return None
+
         if obsolete == -1 or review_denied == -1 or bug_closed == -1:
             self.finished(WARNINGS)
             self.setProperty('validated', False)
@@ -477,6 +494,8 @@ class ValidatePatch(buildstep.BuildStep):
             self._addToLog('stdio', 'Patch is not obsolete.\n')
         if self.verifyReviewDenied:
             self._addToLog('stdio', 'Patch is not marked r-.\n')
+        if self.verifycqplus:
+            self._addToLog('stdio', 'Patch is marked cq+.\n')
         self.finished(SUCCESS)
         return None
 
@@ -706,9 +725,24 @@ class WebKitPyTest(shell.ShellCommand):
         self.addLogObserver('json', self.log_observer)
         return shell.ShellCommand.start(self)
 
+    def setBuildSummary(self, build_summary):
+        previous_build_summary = self.getProperty('build_summary', '')
+        if not previous_build_summary:
+            self.setProperty('build_summary', build_summary)
+            return
+
+        if build_summary in previous_build_summary:
+            # Ensure that we do not append same build summary multiple times in case
+            # this method is called multiple times.
+            return
+
+        new_build_summary = previous_build_summary + ', ' + build_summary
+        self.setProperty('build_summary', new_build_summary)
+
     def getResultSummary(self):
         if self.results == SUCCESS:
             message = 'Passed webkitpy {} tests'.format(self.language)
+            self.setBuildSummary(message)
             return {u'step': unicode(message)}
 
         logLines = self.log_observer.getStdout()
@@ -719,12 +753,13 @@ class WebKitPyTest(shell.ShellCommand):
             self._addToLog('stderr', 'ERROR: unable to parse data, exception: {}'.format(ex))
             return super(WebKitPyTest, self).getResultSummary()
 
-        failures = webkitpy_results.get('failures') + webkitpy_results.get('errors')
+        failures = webkitpy_results.get('failures', []) + webkitpy_results.get('errors', [])
         if not failures:
             return super(WebKitPyTest, self).getResultSummary()
         pluralSuffix = 's' if len(failures) > 1 else ''
-        failures_string = ', '.join([failure.get('name').replace('webkitpy.', '') for failure in failures])
-        message = 'Found {} WebKitPy test failure{}: {}'.format(len(failures), pluralSuffix, failures_string)
+        failures_string = ', '.join([failure.get('name') for failure in failures])
+        message = 'Found {} webkitpy {} test failure{}: {}'.format(len(failures), self.language, pluralSuffix, failures_string)
+        self.setBuildSummary(message)
         return {u'step': unicode(message)}
 
     @defer.inlineCallbacks
@@ -759,7 +794,7 @@ class InstallGtkDependencies(shell.ShellCommand):
     description = ['updating gtk dependencies']
     descriptionDone = ['Updated gtk dependencies']
     command = ['perl', 'Tools/Scripts/update-webkitgtk-libs']
-    haltOnFailure = False
+    haltOnFailure = True
 
     def __init__(self, **kwargs):
         super(InstallGtkDependencies, self).__init__(logEnviron=False, **kwargs)
@@ -770,7 +805,7 @@ class InstallWpeDependencies(shell.ShellCommand):
     description = ['updating wpe dependencies']
     descriptionDone = ['Updated wpe dependencies']
     command = ['perl', 'Tools/Scripts/update-webkitwpe-libs']
-    haltOnFailure = False
+    haltOnFailure = True
 
     def __init__(self, **kwargs):
         super(InstallWpeDependencies, self).__init__(logEnviron=False, **kwargs)
@@ -1332,10 +1367,20 @@ class ReRunWebKitTests(RunWebKitTests):
 
     def evaluateCommand(self, cmd):
         rc = self.evaluateResult(cmd)
+        first_results_did_exceed_test_failure_limit = self.getProperty('first_results_exceed_failure_limit')
+        first_results_failing_tests = set(self.getProperty('first_run_failures', []))
+        second_results_did_exceed_test_failure_limit = self.getProperty('second_results_exceed_failure_limit')
+        second_results_failing_tests = set(self.getProperty('second_run_failures', []))
+        tests_that_consistently_failed = first_results_failing_tests.intersection(second_results_failing_tests)
+        flaky_failures = first_results_failing_tests.union(second_results_failing_tests) - first_results_failing_tests.intersection(second_results_failing_tests)
+        flaky_failures_string = ', '.join(flaky_failures)
+
         if rc == SUCCESS or rc == WARNINGS:
             message = 'Passed layout tests'
             self.descriptionDone = message
             self.build.results = SUCCESS
+            if not first_results_did_exceed_test_failure_limit:
+                message = 'Found flaky tests: {}'.format(flaky_failures_string)
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
@@ -1635,7 +1680,14 @@ class RunAPITests(TestWithFailureCount):
         super(RunAPITests, self).__init__(logEnviron=False, **kwargs)
 
     def start(self):
-        appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
+        platform = self.getProperty('platform')
+        if platform == 'gtk':
+            command = ['python', 'Tools/Scripts/run-gtk-tests',
+                       '--{0}'.format(self.getProperty('configuration')),
+                       '--json-output={0}'.format(self.jsonFileName)]
+            self.setCommand(command)
+        else:
+            appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
         return TestWithFailureCount.start(self)
 
     def countFailures(self, cmd):
@@ -1670,13 +1722,20 @@ class ReRunAPITests(RunAPITests):
             self.build.buildFinished([message], SUCCESS)
         else:
             self.setProperty('patchFailedTests', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(),
-                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
-                                                CompileWebKitToT(),
-                                                ValidatePatch(verifyBugClosed=False, addURLs=False),
-                                                KillOldProcesses(),
-                                                RunAPITestsWithoutPatch(),
-                                                AnalyzeAPITestsResults()])
+            steps_to_add = [UnApplyPatchIfRequired(), ValidatePatch(verifyBugClosed=False, addURLs=False)]
+            platform = self.getProperty('platform')
+            if platform == 'wpe':
+                steps_to_add.append(InstallWpeDependencies())
+            elif platform == 'gtk':
+                steps_to_add.append(InstallGtkDependencies())
+            steps_to_add.append(CompileWebKitToT())
+            steps_to_add.append(ValidatePatch(verifyBugClosed=False, addURLs=False))
+            steps_to_add.append(KillOldProcesses())
+            steps_to_add.append(RunAPITestsWithoutPatch())
+            steps_to_add.append(AnalyzeAPITestsResults())
+            # Using a single addStepsAfterCurrentStep because of https://github.com/buildbot/buildbot/issues/4874
+            self.build.addStepsAfterCurrentStep(steps_to_add)
+
         return rc
 
 
@@ -1733,10 +1792,10 @@ class AnalyzeAPITestsResults(buildstep.BuildStep):
 
         failures_with_patch = first_run_failures.intersection(second_run_failures)
         flaky_failures = first_run_failures.union(second_run_failures) - first_run_failures.intersection(second_run_failures)
-        flaky_failures_string = ', '.join([failure_name.replace('TestWebKitAPI.', '') for failure_name in flaky_failures])
+        flaky_failures_string = ', '.join(flaky_failures)
         new_failures = failures_with_patch - clean_tree_failures
         new_failures_to_display = list(new_failures)[:self.NUM_API_FAILURES_TO_DISPLAY]
-        new_failures_string = ', '.join([failure_name.replace('TestWebKitAPI.', '') for failure_name in new_failures_to_display])
+        new_failures_string = ', '.join(new_failures_to_display)
 
         self._addToLog('stderr', '\nFailures in API Test first run: {}'.format(first_run_failures))
         self._addToLog('stderr', '\nFailures in API Test second run: {}'.format(second_run_failures))
@@ -1967,3 +2026,23 @@ class ApplyWatchList(shell.ShellCommand):
         if self.results != SUCCESS:
             return {u'step': u'Failed to apply watchlist'}
         return super(ApplyWatchList, self).getResultSummary()
+
+
+class SetBuildSummary(buildstep.BuildStep):
+    name = "set-build-summary"
+    descriptionDone = ['Set build summary']
+    alwaysRun = True
+    haltOnFailure = False
+    flunkOnFailure = False
+
+    def doStepIf(self, step):
+        return self.getProperty('build_summary', False)
+
+    def hideStepIf(self, results, step):
+        return not self.doStepIf(step)
+
+    def start(self):
+        build_summary = self.getProperty('build_summary', 'build successful')
+        self.finished(SUCCESS)
+        self.build.buildFinished([build_summary], self.build.results)
+        return defer.succeed(None)

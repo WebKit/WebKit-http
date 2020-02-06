@@ -1421,19 +1421,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if (WebCore::IOSApplication::isMobileSafari())
             WebCore::DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
-
-        bool enableLegacyTLS = false;
-        if (id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitEnableLegacyTLS"])
-            enableLegacyTLS = [value boolValue];
-        if (!enableLegacyTLS) {
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
-            enableLegacyTLS = [[PAL::getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:@"allowDeprecatedWebKitTLS"] == MCRestrictedBoolExplicitYes;
-#elif PLATFORM(MAC)
-            enableLegacyTLS = CFPreferencesGetAppBooleanValue(CFSTR("allowDeprecatedWebKitTLS"), CFSTR("com.apple.applicationaccess"), nullptr);
-#endif
-        }
-        WebCore::SocketStreamHandleImpl::setLegacyTLSEnabled(enableLegacyTLS);
-
         didOneTimeInitialization = true;
     }
 
@@ -3133,8 +3120,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setAdClickAttributionEnabled([preferences adClickAttributionEnabled]);
 
     settings.setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
-
     settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
+    settings.setRenderingUpdateThrottlingEnabled([preferences renderingUpdateThrottlingEnabled]);
 
     WebCore::DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled([preferences resourceLoadStatisticsEnabled]);
 
@@ -3182,6 +3169,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled([preferences webAnimationsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsCompositeOperationsEnabled([preferences webAnimationsCompositeOperationsEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsMutableTimelinesEnabled([preferences webAnimationsMutableTimelinesEnabled]);
 
 #if ENABLE(POINTER_EVENTS)
     RuntimeEnabledFeatures::sharedFeatures().setPointerEventsEnabled([preferences pointerEventsEnabled]);
@@ -3208,6 +3196,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setCSSShadowPartsEnabled([preferences cssShadowPartsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setLayoutFormattingContextIntegrationEnabled([preferences layoutFormattingContextIntegrationEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setIsInAppBrowserPrivacyEnabled([preferences isInAppBrowserPrivacyEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setWebSQLDisabled(![preferences webSQLEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);

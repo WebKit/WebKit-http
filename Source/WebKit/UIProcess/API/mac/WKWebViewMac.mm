@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -135,21 +135,23 @@ Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollba
 {
     [super setFrameSize:size];
     [_safeBrowsingWarning setFrame:self.bounds];
-    _impl->setFrameSize(NSSizeToCGSize(size));
+    if (_impl)
+        _impl->setFrameSize(NSSizeToCGSize(size));
 }
 
 - (void)setUserInterfaceLayoutDirection:(NSUserInterfaceLayoutDirection)userInterfaceLayoutDirection
 {
     [super setUserInterfaceLayoutDirection:userInterfaceLayoutDirection];
-
-    _impl->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection);
+    if (_impl)
+        _impl->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection);
 }
 
 ALLOW_DEPRECATED_IMPLEMENTATIONS_BEGIN
 - (void)renewGState
 ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
-    _impl->renewGState();
+    if (_impl)
+        _impl->renewGState();
     [super renewGState];
 }
 
@@ -1396,6 +1398,16 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
     _page->setMainFrameIsScrollable(!expandsToFit);
 
     _impl->setClipsToVisibleRect(expandsToFit);
+}
+
+- (BOOL)_clipsToVisibleRect
+{
+    return _impl->clipsToVisibleRect();
+}
+
+- (void)_setClipsToVisibleRect:(BOOL)clipsToVisibleRect
+{
+    _impl->setClipsToVisibleRect(clipsToVisibleRect);
 }
 
 - (BOOL)_alwaysShowsHorizontalScroller

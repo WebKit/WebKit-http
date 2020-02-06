@@ -52,13 +52,6 @@
 #import <CFNetwork/CFNSURLConnection.h>
 #endif
 
-#if __has_include(<WebKitAdditions/NetworkDataTaskCocoaAdditions.h>)
-#include <WebKitAdditions/NetworkDataTaskCocoaAdditions.h>
-#else
-#define NETWORK_DATA_TASK_COCOA_ADDITIONS_1
-#define NETWORK_DATA_TASK_COCOA_ADDITIONS_2
-#endif
-
 #if HAVE(OS_SIGNPOST)
 
 #import <os/signpost.h>
@@ -285,8 +278,6 @@ NetworkDataTaskCocoa::NetworkDataTaskCocoa(NetworkSession& session, NetworkDataT
     applySniffingPoliciesAndBindRequestToInferfaceIfNeeded(nsRequest, shouldContentSniff == WebCore::ContentSniffingPolicy::SniffContent && !url.isLocalFile(), shouldContentEncodingSniff == WebCore::ContentEncodingSniffingPolicy::Sniff);
 
     m_task = [m_sessionWrapper.session dataTaskWithRequest:nsRequest];
-    
-    NETWORK_DATA_TASK_COCOA_ADDITIONS_1;
 
     BEGIN_SIGNPOST(m_task, "%{public}s pri: %f preconnect: %d", url.string().ascii().data(), toNSURLSessionTaskPriority(request.priority()), shouldPreconnectOnly == PreconnectOnly::Yes);
 
@@ -348,7 +339,7 @@ void NetworkDataTaskCocoa::didSendData(uint64_t totalBytesSent, uint64_t totalBy
         m_client->didSendData(totalBytesSent, totalBytesExpectedToSend);
 }
 
-void NetworkDataTaskCocoa::didReceiveChallenge(WebCore::AuthenticationChallenge&& challenge, ChallengeCompletionHandler&& completionHandler)
+void NetworkDataTaskCocoa::didReceiveChallenge(WebCore::AuthenticationChallenge&& challenge, NegotiatedLegacyTLS negotiatedLegacyTLS, ChallengeCompletionHandler&& completionHandler)
 {
     EMIT_SIGNPOST(m_task, "received challenge");
 
@@ -356,7 +347,7 @@ void NetworkDataTaskCocoa::didReceiveChallenge(WebCore::AuthenticationChallenge&
         return;
 
     if (m_client)
-        m_client->didReceiveChallenge(WTFMove(challenge), WTFMove(completionHandler));
+        m_client->didReceiveChallenge(WTFMove(challenge), negotiatedLegacyTLS, WTFMove(completionHandler));
     else {
         ASSERT_NOT_REACHED();
         completionHandler(AuthenticationChallengeDisposition::PerformDefaultHandling, { });
@@ -382,10 +373,10 @@ void NetworkDataTaskCocoa::didReceiveData(Ref<WebCore::SharedBuffer>&& data)
         m_client->didReceiveData(WTFMove(data));
 }
 
-void NetworkDataTaskCocoa::didReceiveResponse(WebCore::ResourceResponse&& response, WebKit::ResponseCompletionHandler&& completionHandler)
+void NetworkDataTaskCocoa::didReceiveResponse(WebCore::ResourceResponse&& response, NegotiatedLegacyTLS negotiatedLegacyTLS, WebKit::ResponseCompletionHandler&& completionHandler)
 {
     EMIT_SIGNPOST(m_task, "received response headers");
-    NetworkDataTask::didReceiveResponse(WTFMove(response), WTFMove(completionHandler));
+    NetworkDataTask::didReceiveResponse(WTFMove(response), negotiatedLegacyTLS, WTFMove(completionHandler));
 }
 
 void NetworkDataTaskCocoa::willPerformHTTPRedirection(WebCore::ResourceResponse&& redirectResponse, WebCore::ResourceRequest&& request, RedirectCompletionHandler&& completionHandler)
@@ -460,9 +451,6 @@ void NetworkDataTaskCocoa::willPerformHTTPRedirection(WebCore::ResourceResponse&
                 return completionHandler({ });
             if (!request.isNull())
                 restrictRequestReferrerToOriginIfNeeded(request);
-
-            NETWORK_DATA_TASK_COCOA_ADDITIONS_2;
-
             completionHandler(WTFMove(request));
         });
     else {

@@ -307,6 +307,8 @@ enum CompositingPolicy {
     AutoFillButtonType autoFillButtonType(HTMLInputElement inputElement);
     AutoFillButtonType lastAutoFillButtonType(HTMLInputElement inputElement);
 
+    void setCanShowPlaceholder(Element element, boolean canShowPlaceholder);
+
     [MayThrowException] Range? rangeOfString(DOMString text, Range? referenceRange, sequence<DOMString> findOptions);
     [MayThrowException] unsigned long countMatchesForText(DOMString text, sequence<DOMString> findOptions, DOMString markMatches);
     [MayThrowException] unsigned long countFindMatches(DOMString text, sequence<DOMString> findOptions);
@@ -546,6 +548,7 @@ enum CompositingPolicy {
     ArrayBuffer serializeObject(SerializedScriptValue object);
 
     boolean isFromCurrentWorld(any obj);
+    any evaluateInWorldIgnoringException(DOMString name, DOMString source);
 
     void setUsesOverlayScrollbars(boolean enabled);
     void setUsesMockScrollAnimator(boolean enabled);
@@ -731,6 +734,8 @@ enum CompositingPolicy {
     unsigned long long documentIdentifier(Document document);
     boolean isDocumentAlive(unsigned long long documentIdentifier);
 
+    readonly attribute unsigned long long storageAreaMapCount;
+
     unsigned long long elementIdentifier(Element element);
     unsigned long long frameIdentifier(Document document);
     unsigned long long pageIdentifier(Document document);
@@ -833,4 +838,9 @@ enum CompositingPolicy {
     boolean hasSandboxMachLookupAccessToXPCServiceName(DOMString process, DOMString service);
     
     DOMString systemColorForCSSValue(DOMString cssValue, boolean useDarkModeAppearance, boolean useElevatedUserInterfaceLevel);
+    DOMString focusRingColor();
+
+    boolean systemHasBattery();
+
+    DOMString mediaMIMETypeForExtension(DOMString extension);
 };

@@ -830,7 +830,7 @@ fast/dom/Range/detach-range-during-deletecontents.html [ Pass Timeout ]
 imported/blink/fast/dom/Window/open-window-features-fuzz.html [ Pass Timeout ]
 
 webkit.org/b/205487 fast/text/selection-in-initial-advance-region.html [ Failure ]
-webkit.org/b/205485 fast/text/stale-TextLayout-from-first-line.html [ ImageOnlyFailure ]
+webkit.org/b/206282 fast/text/stale-TextLayout-from-first-line.html [ ImageOnlyFailure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # http
@@ -1370,6 +1370,7 @@ webkit.org/b/101539 editing/execCommand/switch-list-type-with-orphaned-li.html [
 # Windows does not implement setAutomaticLinkDetectionEnabled
 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
+fast/events/input-event-insert-link.html [ Failure ]
 
 ###### Text Iterator
 # Plain text controller currently in Mac DumpRenderTree only.

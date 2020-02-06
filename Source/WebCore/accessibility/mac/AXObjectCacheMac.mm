@@ -232,17 +232,19 @@ static AXTextSelectionGranularity platformGranularityForWebCoreGranularity(WebCo
 
 namespace WebCore {
 
-void AXObjectCache::detachWrapper(AXCoreObject* obj, AccessibilityDetachmentType)
-{
-    [obj->wrapper() detach];
-    obj->setWrapper(nullptr);
-}
-
 void AXObjectCache::attachWrapper(AXCoreObject* obj)
 {
     RetainPtr<WebAccessibilityObjectWrapper> wrapper = adoptNS([[WebAccessibilityObjectWrapper alloc] initWithAccessibilityObject:obj]);
     obj->setWrapper(wrapper.get());
 }
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+void AXObjectCache::attachWrapper(AXIsolatedObject* isolatedObject, WebAccessibilityObjectWrapper* wrapper)
+{
+    [wrapper attachIsolatedObject:(AXCoreObject*)isolatedObject];
+    isolatedObject->setWrapper(wrapper);
+}
+#endif
 
 static BOOL axShouldRepostNotificationsForTests = false;
 

@@ -294,6 +294,11 @@ bool Box::isInlineBlockBox() const
     return m_style.display() == DisplayType::InlineBlock;
 }
 
+bool Box::isInlineTableBox() const
+{
+    return m_style.display() == DisplayType::InlineTable;
+}
+
 bool Box::isBlockLevelBox() const
 {
     // Block level elements generate block level boxes.
@@ -305,7 +310,21 @@ bool Box::isInlineLevelBox() const
 {
     // Inline level elements generate inline level boxes.
     auto display = m_style.display();
-    return display == DisplayType::Inline || isInlineBlockBox() || display == DisplayType::InlineTable;
+    return display == DisplayType::Inline || isInlineBlockBox() || isInlineTableBox();
+}
+
+bool Box::isInlineBox() const
+{
+    // An inline box is one that is both inline-level and whose contents participate in its containing inline formatting context.
+    // A non-replaced element with a 'display' value of 'inline' generates an inline box.
+    return m_style.display() == DisplayType::Inline && !isReplaced();
+}
+
+bool Box::isAtomicInlineLevelBox() const
+{
+    // Inline-level boxes that are not inline boxes (such as replaced inline-level elements, inline-block elements, and inline-table elements)
+    // are called atomic inline-level boxes because they participate in their inline formatting context as a single opaque box.
+    return isInlineLevelBox() && !isInlineBox();
 }
 
 bool Box::isBlockContainerBox() const

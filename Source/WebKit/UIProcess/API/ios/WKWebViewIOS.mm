@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1759,8 +1759,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
             [self _dispatchSetMaximumUnobscuredSize:WebCore::FloatSize(bounds.size)];
 
         BOOL sizeChanged = NO;
-        if (auto drawingArea = _page->drawingArea())
-            sizeChanged = drawingArea->setSize(WebCore::IntSize(bounds.size));
+        if (_page) {
+            if (auto drawingArea = _page->drawingArea())
+                sizeChanged = drawingArea->setSize(WebCore::IntSize(bounds.size));
+        }
 
         if (sizeChanged & [self usesStandardContentView])
             [_contentView setSizeChangedSinceLastVisibleContentRectUpdate:YES];
@@ -2378,7 +2380,8 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     [super setSemanticContentAttribute:contentAttribute];
 
-    _page->setUserInterfaceLayoutDirection(toUserInterfaceLayoutDirection(contentAttribute));
+    if (_page)
+        _page->setUserInterfaceLayoutDirection(toUserInterfaceLayoutDirection(contentAttribute));
 }
 
 @end
@@ -2711,6 +2714,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
     _dynamicViewportUpdateMode = WebKit::DynamicViewportUpdateMode::ResizingWithAnimation;
 
+    auto oldMinimumEffectiveDeviceWidth = [self _minimumEffectiveDeviceWidth];
     auto oldViewLayoutSize = [self activeViewLayoutSize:self.bounds];
     auto oldMaximumUnobscuredSize = activeMaximumUnobscuredSize(self, oldBounds);
     int32_t oldOrientation = activeOrientation(self);
@@ -2719,6 +2723,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     updateBlock();
 
     CGRect newBounds = self.bounds;
+    auto newMinimumEffectiveDeviceWidth = [self _minimumEffectiveDeviceWidth];
     auto newViewLayoutSize = [self activeViewLayoutSize:newBounds];
     auto newMaximumUnobscuredSize = activeMaximumUnobscuredSize(self, newBounds);
     int32_t newOrientation = activeOrientation(self);
@@ -2744,6 +2749,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
         && oldViewLayoutSize == newViewLayoutSize
         && oldMaximumUnobscuredSize == newMaximumUnobscuredSize
         && oldOrientation == newOrientation
+        && oldMinimumEffectiveDeviceWidth == newMinimumEffectiveDeviceWidth
         && UIEdgeInsetsEqualToEdgeInsets(oldObscuredInsets, newObscuredInsets)) {
         [self _cancelAnimatedResize];
         return;
@@ -2811,7 +2817,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     _lastSentMaximumUnobscuredSize = newMaximumUnobscuredSize;
     _lastSentDeviceOrientation = newOrientation;
 
-    _page->dynamicViewportSizeUpdate(newViewLayoutSize, newMaximumUnobscuredSize, visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, unobscuredSafeAreaInsetsExtent, targetScale, newOrientation, ++_currentDynamicViewportSizeUpdateID);
+    _page->dynamicViewportSizeUpdate(newViewLayoutSize, newMaximumUnobscuredSize, visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, unobscuredSafeAreaInsetsExtent, targetScale, newOrientation, newMinimumEffectiveDeviceWidth, ++_currentDynamicViewportSizeUpdateID);
     if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
         drawingArea->setSize(WebCore::IntSize(newBounds.size));
 
@@ -2843,6 +2849,12 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
         // not call endAnimatedResize, so we can't wait for it.
         _waitingForEndAnimatedResize = NO;
     }
+}
+
+- (void)_setSuppressSoftwareKeyboard:(BOOL)suppressSoftwareKeyboard
+{
+    [super _setSuppressSoftwareKeyboard:suppressSoftwareKeyboard];
+    [_contentView _setSuppressSoftwareKeyboard:suppressSoftwareKeyboard];
 }
 
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
@@ -3065,6 +3077,22 @@ static WTF::Optional<WebCore::ViewportArguments> viewportArgumentsFromDictionary
         return [_fullScreenWindowController webViewPlaceholder];
 #endif // ENABLE(FULLSCREEN_API)
     return nil;
+}
+
+- (void)_grantAccessToAssetServices
+{
+#if PLATFORM(IOS)
+    if (_page)
+        _page->grantAccessToAssetServices();
+#endif
+}
+
+- (void)_revokeAccessToAssetServices
+{
+#if PLATFORM(IOS)
+    if (_page)
+        _page->revokeAccessToAssetServices();
+#endif
 }
 
 @end // WKWebView (WKPrivateIOS)

@@ -126,18 +126,18 @@ static void paintInlineContent(GraphicsContext& context, LayoutPoint absoluteOff
             context.setStrokeColor(style.color());
             context.setFillColor(style.color());
 
-            auto absoluteLogicalLeft = absoluteOffset.x() + run.logicalLeft();
+            auto absoluteLeft = absoluteOffset.x() + run.left();
             // FIXME: Add non-baseline align painting
             auto& lineBox = displayInlineContent->lineBoxForRun(run);
-            auto baselineOffset = absoluteOffset.y() + lineBox.logicalTop() + lineBox.baselineOffset();
+            auto baselineOffset = absoluteOffset.y() + lineBox.top() + lineBox.baselineOffset();
             auto expansionContext = textContext->expansion();
-            auto textRun = TextRun { textContext->content(), run.logicalLeft() - lineBox.logicalLeft(),
+            auto textRun = TextRun { textContext->content(), run.left() - lineBox.left(),
                 expansionContext ? expansionContext->horizontalExpansion : 0,
                 expansionContext ? expansionContext->behavior : DefaultExpansion };
             textRun.setTabSize(!style.collapseWhiteSpace(), style.tabSize());
-            context.drawText(style.fontCascade(), textRun, { absoluteLogicalLeft, baselineOffset });
+            context.drawText(style.fontCascade(), textRun, { absoluteLeft, baselineOffset });
         } else if (auto* cachedImage = run.image()) {
-            auto runAbsoluteRect = FloatRect { absoluteOffset.x() + run.logicalLeft(), absoluteOffset.y() + run.logicalTop(), run.logicalWidth(), run.logicalHeight() };
+            auto runAbsoluteRect = FloatRect { absoluteOffset.x() + run.left(), absoluteOffset.y() + run.top(), run.width(), run.height() };
             context.drawImage(*cachedImage->image(), runAbsoluteRect);
         }
     }
@@ -183,7 +183,7 @@ static void paintSubtree(GraphicsContext& context, const Layout::LayoutState& la
         // Only inline content for now.
         if (layoutBox.establishesInlineFormattingContext()) {
             auto& container = downcast<Layout::Container>(layoutBox);
-            paintInlineContent(context, absoluteDisplayBox.topLeft(), downcast<Layout::InlineFormattingState>(layoutState.establishedFormattingState(container)));
+            paintInlineContent(context, absoluteDisplayBox.topLeft(), layoutState.establishedInlineFormattingState(container));
         }
     };
 
@@ -292,7 +292,7 @@ void Painter::paintInlineFlow(const Layout::LayoutState& layoutState, GraphicsCo
 
     ASSERT(layoutRoot.establishesInlineFormattingContext());
 
-    paintInlineContent(context, { }, downcast<Layout::InlineFormattingState>(layoutState.establishedFormattingState(layoutRoot)));
+    paintInlineContent(context, { }, layoutState.establishedInlineFormattingState(layoutRoot));
 }
 
 }

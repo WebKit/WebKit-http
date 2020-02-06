@@ -836,6 +836,7 @@ void WebProcessProxy::didBecomeUnresponsive()
     // If the web process becomes unresponsive and only runs service workers, kill it ourselves since there are no native clients to do it.
     if (isRunningServiceWorkers() && m_pageMap.isEmpty()) {
         RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didBecomeUnresponsive() Terminating service worker-only web process with pid %d because it is unresponsive", this, processIdentifier());
+        disableServiceWorkers();
         terminate();
     }
 }
@@ -862,7 +863,26 @@ void WebProcessProxy::didChangeIsResponsive()
 
 bool WebProcessProxy::mayBecomeUnresponsive()
 {
-    return !platformIsBeingDebugged();
+#if !defined(NDEBUG) || ASAN_ENABLED
+    // Disable responsiveness checks in slow builds to avoid false positives.
+    return false;
+#else
+    if (platformIsBeingDebugged())
+        return false;
+
+    static bool isLibgmallocEnabled = [] {
+        char* variable = getenv("DYLD_INSERT_LIBRARIES");
+        if (!variable)
+            return false;
+        if (!strstr(variable, "libgmalloc"))
+            return false;
+        return true;
+    }();
+    if (isLibgmallocEnabled)
+        return false;
+
+    return true;
+#endif
 }
 
 void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
@@ -891,6 +911,11 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 
     unblockAccessibilityServerIfNeeded();
 #endif
+
+    if (m_shouldStartResponsivenessTimerWhenLaunched) {
+        auto useLazyStop = *std::exchange(m_shouldStartResponsivenessTimerWhenLaunched, WTF::nullopt);
+        startResponsivenessTimer(useLazyStop);
+    }
 }
 
 WebFrameProxy* WebProcessProxy::webFrame(FrameIdentifier frameID) const
@@ -1121,6 +1146,19 @@ void WebProcessProxy::stopResponsivenessTimer()
     responsivenessTimer().stop();
 }
 
+void WebProcessProxy::startResponsivenessTimer(UseLazyStop useLazyStop)
+{
+    if (isLaunching()) {
+        m_shouldStartResponsivenessTimerWhenLaunched = useLazyStop;
+        return;
+    }
+
+    if (useLazyStop == UseLazyStop::Yes)
+        responsivenessTimer().startWithLazyStop();
+    else
+        responsivenessTimer().start();
+}
+
 void WebProcessProxy::enableSuddenTermination()
 {
     if (state() != State::Running)
@@ -1341,7 +1379,7 @@ void WebProcessProxy::isResponsive(CompletionHandler<void(bool isWebProcessRespo
     if (callback)
         m_isResponsiveCallbacks.append(WTFMove(callback));
 
-    responsivenessTimer().start();
+    startResponsivenessTimer();
     send(Messages::WebProcess::MainThreadPing(), 0);
 }
 
@@ -1463,6 +1501,7 @@ const HashSet<String>& WebProcessProxy::platformPathsWithAssumedReadAccess()
 
 void WebProcessProxy::didCollectPrewarmInformation(const WebCore::RegistrableDomain& domain, const WebCore::PrewarmInformation& prewarmInformation)
 {
+    MESSAGE_CHECK(!domain.isEmpty());
     processPool().didCollectPrewarmInformation(domain, prewarmInformation);
 }
 
@@ -1567,9 +1606,12 @@ void WebProcessProxy::endBackgroundActivityForFullscreenInput()
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessProxy::establishServiceWorkerContext(const WebPreferencesStore& store)
+void WebProcessProxy::establishServiceWorkerContext(const WebPreferencesStore& store, CompletionHandler<void()>&& completionHandler)
 {
-    send(Messages::WebProcess::EstablishWorkerContextConnectionToNetworkProcess { processPool().defaultPageGroup().pageGroupID(), m_serviceWorkerInformation->serviceWorkerPageProxyID, m_serviceWorkerInformation->serviceWorkerPageID, store, *m_registrableDomain, m_serviceWorkerInformation->initializationData }, 0);
+    sendWithAsyncReply(Messages::WebProcess::EstablishWorkerContextConnectionToNetworkProcess { processPool().defaultPageGroup().pageGroupID(), m_serviceWorkerInformation->serviceWorkerPageProxyID, m_serviceWorkerInformation->serviceWorkerPageID, store, *m_registrableDomain, m_serviceWorkerInformation->initializationData }, [activity = m_throttler.backgroundActivity("Establish Service Worker"_s), completionHandler = WTFMove(completionHandler)]() mutable {
+        RELEASE_LOG(Loading, "WebProcessProxy::establishServiceWorkerContext finished");
+        completionHandler();
+    }, 0);
 }
 
 void WebProcessProxy::setServiceWorkerUserAgent(const String& userAgent)

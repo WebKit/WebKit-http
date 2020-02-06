@@ -42,6 +42,7 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/MallocPtr.h>
 #include <wtf/Optional.h>
+#include <wtf/Packed.h>
 #include <wtf/UUID.h>
 #include <wtf/text/AtomStringImpl.h>
 
@@ -469,7 +470,7 @@ private:
 
 template<typename T, typename Source = SourceType<T>>
 class CachedPtr : public VariableLengthObject<Source*> {
-    template<typename, typename>
+    template<typename, typename, typename>
     friend class CachedRefPtr;
 
     friend struct CachedPtrOffsets;
@@ -532,20 +533,20 @@ ptrdiff_t CachedPtrOffsets::offsetOffset()
     return OBJECT_OFFSETOF(CachedPtr<void>, m_offset);
 }
 
-template<typename T, typename Source = SourceType<T>>
-class CachedRefPtr : public CachedObject<RefPtr<Source>> {
+template<typename T, typename Source = SourceType<T>, typename PtrTraits = DumbPtrTraits<Source>>
+class CachedRefPtr : public CachedObject<RefPtr<Source, PtrTraits>> {
 public:
     void encode(Encoder& encoder, const Source* src)
     {
         m_ptr.encode(encoder, src);
     }
 
-    void encode(Encoder& encoder, const RefPtr<Source> src)
+    void encode(Encoder& encoder, const RefPtr<Source, PtrTraits> src)
     {
         encode(encoder, src.get());
     }
 
-    RefPtr<Source> decode(Decoder& decoder) const
+    RefPtr<Source, PtrTraits> decode(Decoder& decoder) const
     {
         bool isNewAllocation;
         Source* decodedPtr = m_ptr.decode(decoder, isNewAllocation);
@@ -560,7 +561,7 @@ public:
         return adoptRef(decodedPtr);
     }
 
-    void decode(Decoder& decoder, RefPtr<Source>& src) const
+    void decode(Decoder& decoder, RefPtr<Source, PtrTraits>& src) const
     {
         src = decode(decoder);
     }
@@ -610,6 +611,16 @@ public:
             ::JSC::encode(encoder, buffer[i], vector[i]);
     }
 
+    void encode(Encoder& encoder, const RefCountedArray<SourceType<T>>& vector)
+    {
+        m_size = vector.size();
+        if (!m_size)
+            return;
+        T* buffer = this->template allocate<T>(encoder, m_size);
+        for (unsigned i = 0; i < m_size; ++i)
+            ::JSC::encode(encoder, buffer[i], vector[i]);
+    }
+
     template<typename... Args>
     void decode(Decoder& decoder, Vector<SourceType<T>, InlineCapacity, OverflowHandler, 16, Malloc>& vector, Args... args) const
     {
@@ -620,6 +631,18 @@ public:
         for (unsigned i = 0; i < m_size; ++i)
             ::JSC::decode(decoder, buffer[i], vector[i], args...);
     }
+
+    template<typename... Args>
+    void decode(Decoder& decoder, RefCountedArray<SourceType<T>>& vector, Args... args) const
+    {
+        if (!m_size)
+            return;
+        vector = RefCountedArray<SourceType<T>>(m_size);
+        const T* buffer = this->template buffer<T>();
+        for (unsigned i = 0; i < m_size; ++i)
+            ::JSC::decode(decoder, buffer[i], vector[i], args...);
+    }
+
 
 private:
     unsigned m_size;
@@ -983,7 +1006,7 @@ public:
 
 private:
     bool m_isEverythingCaptured;
-    CachedHashMap<CachedRefPtr<CachedUniquedStringImpl>, VariableEnvironmentEntry, IdentifierRepHash, HashTraits<RefPtr<UniquedStringImpl>>, VariableEnvironmentEntryHashTraits> m_map;
+    CachedHashMap<CachedRefPtr<CachedUniquedStringImpl, UniquedStringImpl, WTF::PackedPtrTraits<UniquedStringImpl>>, VariableEnvironmentEntry, IdentifierRepHash, HashTraits<RefPtr<UniquedStringImpl>>, VariableEnvironmentEntryHashTraits> m_map;
 };
 
 class CachedCompactVariableEnvironment : public CachedObject<CompactVariableEnvironment> {
@@ -1012,7 +1035,7 @@ public:
     }
 
 private:
-    CachedVector<CachedRefPtr<CachedUniquedStringImpl>> m_variables;
+    CachedVector<CachedRefPtr<CachedUniquedStringImpl, UniquedStringImpl, WTF::PackedPtrTraits<UniquedStringImpl>>> m_variables;
     CachedVector<VariableEnvironmentEntry> m_variableMetadata;
     unsigned m_hash;
     bool m_isEverythingCaptured;
@@ -1775,8 +1798,8 @@ public:
     VirtualRegister thisRegister() const { return m_thisRegister; }
     VirtualRegister scopeRegister() const { return m_scopeRegister; }
 
-    String sourceURLDirective(Decoder& decoder) const { return m_sourceURLDirective.decode(decoder); }
-    String sourceMappingURLDirective(Decoder& decoder) const { return m_sourceMappingURLDirective.decode(decoder); }
+    RefPtr<StringImpl> sourceURLDirective(Decoder& decoder) const { return m_sourceURLDirective.decode(decoder); }
+    RefPtr<StringImpl> sourceMappingURLDirective(Decoder& decoder) const { return m_sourceMappingURLDirective.decode(decoder); }
 
     Ref<UnlinkedMetadataTable> metadata(Decoder& decoder) const { return m_metadata.decode(decoder); }
 
@@ -1845,8 +1868,8 @@ private:
 
     CachedPtr<CachedCodeBlockRareData> m_rareData;
 
-    CachedString m_sourceURLDirective;
-    CachedString m_sourceMappingURLDirective;
+    CachedRefPtr<CachedStringImpl> m_sourceURLDirective;
+    CachedRefPtr<CachedStringImpl> m_sourceMappingURLDirective;
 
     CachedPtr<CachedInstructionStream> m_instructions;
     CachedVector<InstructionStream::Offset> m_jumpTargets;
@@ -2223,8 +2246,8 @@ ALWAYS_INLINE void CachedCodeBlock<CodeBlockType>::encode(Encoder& encoder, cons
     m_metadata.encode(encoder, codeBlock.m_metadata.get());
     m_rareData.encode(encoder, codeBlock.m_rareData.get());
 
-    m_sourceURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.impl());
-    m_sourceMappingURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.impl());
+    m_sourceURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.get());
+    m_sourceMappingURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.get());
 
     m_instructions.encode(encoder, codeBlock.m_instructions.get());
     m_constantRegisters.encode(encoder, codeBlock.m_constantRegisters);

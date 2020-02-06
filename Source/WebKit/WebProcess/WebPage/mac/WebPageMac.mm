@@ -94,7 +94,7 @@
 #import <wtf/SetForScope.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#import <WebCore/MediaPlaybackTargetMac.h>
+#import <WebCore/MediaPlaybackTargetCocoa.h>
 #import <WebCore/MediaPlaybackTargetMock.h>
 #endif
 
@@ -832,6 +832,7 @@ void WebPage::handleSelectionServiceClick(FrameSelection& selection, const Vecto
     Vector<uint8_t> selectionDataVector;
     selectionDataVector.append(reinterpret_cast<const uint8_t*>(selectionData.bytes), selectionData.length);
 
+    flushPendingEditorStateUpdate();
     send(Messages::WebPageProxy::ShowContextMenu(ContextMenuContextData(point, selectionDataVector, phoneNumbers, selection.selection().isContentEditable()), UserData()));
 }
 #endif
@@ -1021,12 +1022,16 @@ void WebPage::dataDetectorsDidHideUI(PageOverlay::PageOverlayID overlayID)
     }
 }
 
+void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo&, MonotonicTime)
+{
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 void WebPage::playbackTargetSelected(uint64_t contextId, const WebCore::MediaPlaybackTargetContext& targetContext) const
 {
     switch (targetContext.type()) {
     case MediaPlaybackTargetContext::AVOutputContextType:
-        m_page->setPlaybackTarget(contextId, WebCore::MediaPlaybackTargetMac::create(targetContext.avOutputContext()));
+        m_page->setPlaybackTarget(contextId, WebCore::MediaPlaybackTargetCocoa::create(targetContext.avOutputContext()));
         break;
     case MediaPlaybackTargetContext::MockType:
         m_page->setPlaybackTarget(contextId, WebCore::MediaPlaybackTargetMock::create(targetContext.mockDeviceName(), targetContext.mockState()));

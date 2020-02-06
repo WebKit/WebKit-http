@@ -236,6 +236,8 @@ public:
     Node* parentTreeScope(Node&);
 
     String visiblePlaceholder(Element&);
+    void setCanShowPlaceholder(Element&, bool);
+
     void selectColorInColorChooser(HTMLInputElement&, const String& colorValue);
     ExceptionOr<Vector<String>> formControlStateOfPreviousHistoryItem();
     ExceptionOr<void> setFormControlStateOfPreviousHistoryItem(const Vector<String>&);
@@ -422,6 +424,8 @@ public:
     uint64_t documentIdentifier(const Document&) const;
     bool isDocumentAlive(uint64_t documentIdentifier) const;
 
+    uint64_t storageAreaMapCount() const;
+
     uint64_t elementIdentifier(Element&) const;
     uint64_t frameIdentifier(const Document&) const;
     uint64_t pageIdentifier(const Document&) const;
@@ -514,6 +518,7 @@ public:
     Ref<SerializedScriptValue> deserializeBuffer(ArrayBuffer&) const;
 
     bool isFromCurrentWorld(JSC::JSValue) const;
+    JSC::JSValue evaluateInWorldIgnoringException(const String& name, const String& source);
 
     void setUsesOverlayScrollbars(bool);
     void setUsesMockScrollAnimator(bool);
@@ -925,6 +930,12 @@ public:
     String windowLocationHost(DOMWindow&);
 
     String systemColorForCSSValue(const String& cssValue, bool useDarkModeAppearance, bool useElevatedUserInterfaceLevel);
+
+    bool systemHasBattery() const;
+
+    String mediaMIMETypeForExtension(const String& extension);
+
+    String focusRingColor();
 
 private:
     explicit Internals(Document&);

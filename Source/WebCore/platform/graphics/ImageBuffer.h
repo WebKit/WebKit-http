@@ -28,6 +28,7 @@
 #pragma once
 
 #include "AffineTransform.h"
+#include "AlphaPremultiplication.h"
 #include "ColorSpace.h"
 #include "GraphicsTypes.h"
 #include "GraphicsTypesGL.h"
@@ -35,6 +36,7 @@
 #include "ImagePaintingOptions.h"
 #include "IntSize.h"
 #include "PlatformLayer.h"
+#include "RenderingMode.h"
 #include <JavaScriptCore/Uint8ClampedArray.h>
 #include <memory>
 #include <wtf/Forward.h>
@@ -83,25 +85,18 @@ public:
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&);
 
     static IntSize compatibleBufferSize(const FloatSize&, const GraphicsContext&);
-    bool isCompatibleWithContext(const GraphicsContext&) const;
 
     WEBCORE_EXPORT ~ImageBuffer();
 
     // The actual resolution of the backing store
     const IntSize& internalSize() const { return m_size; }
     const IntSize& logicalSize() const { return m_logicalSize; }
-
-    FloatSize sizeForDestinationSize(FloatSize) const;
-
     float resolutionScale() const { return m_resolutionScale; }
 
     WEBCORE_EXPORT GraphicsContext& context() const;
 
     WEBCORE_EXPORT RefPtr<Image> copyImage(BackingStoreCopy = CopyBackingStore, PreserveResolution = PreserveResolution::No) const;
     WEBCORE_EXPORT static RefPtr<Image> sinkIntoImage(std::unique_ptr<ImageBuffer>, PreserveResolution = PreserveResolution::No);
-    // Give hints on the faster copyImage Mode, return DontCopyBackingStore if it supports the DontCopyBackingStore behavior
-    // or return CopyBackingStore if it doesn't.  
-    static BackingStoreCopy fastCopyImageMode();
 
     enum CoordinateSystem { LogicalCoordinateSystem, BackingStoreCoordinateSystem };
 
@@ -188,10 +183,4 @@ private:
 #endif
 };
 
-#if USE(CG)
-String dataURL(const ImageData&, const String& mimeType, Optional<double> quality);
-Vector<uint8_t> data(const ImageData&, const String& mimeType, Optional<double> quality);
-#endif
-
 } // namespace WebCore
-

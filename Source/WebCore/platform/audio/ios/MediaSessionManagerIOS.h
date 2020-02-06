@@ -51,6 +51,7 @@ public:
     void carPlayServerDied();
     void updateCarPlayIsConnected(Optional<bool>&&);
     void activeAudioRouteDidChange(Optional<bool>&&);
+    void activeVideoRouteDidChange(Optional<bool>&&);
 #endif
 
 private:
@@ -62,7 +63,7 @@ private:
 
     void configureWireLessTargetMonitoring() override;
     void providePresentingApplicationPIDIfNecessary() final;
-    void sessionWillEndPlayback(PlatformMediaSession&) final;
+    void sessionWillEndPlayback(PlatformMediaSession&, DelayCallingUpdateNowPlaying) final;
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "MediaSessionManageriOS"; }

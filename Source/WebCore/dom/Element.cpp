@@ -57,6 +57,7 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "FullscreenManager.h"
+#include "GetAnimationsOptions.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLCollection.h"
@@ -840,6 +841,7 @@ void Element::scrollIntoView(Optional<Variant<bool, ScrollIntoViewOptions>>&& ar
     bool insideFixed;
     LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
 
+    // FIXME(webkit.org/b/188043): Support ScrollBehavior.
     ScrollIntoViewOptions options;
     if (arg) {
         auto value = arg.value();
@@ -858,8 +860,7 @@ void Element::scrollIntoView(Optional<Variant<bool, ScrollIntoViewOptions>>&& ar
         SelectionRevealMode::Reveal,
         isHorizontal ? alignX : alignY,
         isHorizontal ? alignY : alignX,
-        ShouldAllowCrossOriginScrolling::No,
-        options.behavior.valueOr(ScrollBehavior::Auto)
+        ShouldAllowCrossOriginScrolling::No
     };
     renderer()->scrollRectToVisible(absoluteBounds, insideFixed, visibleOptions);
 }
@@ -920,7 +921,7 @@ void Element::scrollBy(const ScrollToOptions& options)
 
 void Element::scrollBy(double x, double y)
 {
-    scrollBy(ScrollToOptions(x, y));
+    scrollBy({ x, y });
 }
 
 void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
@@ -942,7 +943,7 @@ void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
         if (!window)
             return;
 
-        window->scrollTo(options);
+        window->scrollTo(options, clamping);
         return;
     }
 
@@ -956,17 +957,13 @@ void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
         adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer),
         adjustForAbsoluteZoom(renderer->scrollTop(), *renderer)
     );
-    IntPoint scrollPosition(
-        clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()),
-        clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom())
-    );
-    bool animated = useSmoothScrolling(scrollToOptions.behavior.valueOr(ScrollBehavior::Auto), *this);
-    renderer->setScrollPosition(scrollPosition, ScrollType::Programmatic, animated, clamping);
+    renderer->setScrollLeft(clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()), ScrollType::Programmatic, clamping);
+    renderer->setScrollTop(clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom()), ScrollType::Programmatic, clamping);
 }
 
 void Element::scrollTo(double x, double y)
 {
-    scrollTo(ScrollToOptions(x, y));
+    scrollTo({ x, y });
 }
 
 void Element::scrollByUnits(int units, ScrollGranularity granularity)
@@ -1300,19 +1297,13 @@ void Element::setScrollLeft(int newLeft)
     document().updateLayoutIgnorePendingStylesheets();
 
     if (document().scrollingElement() == this) {
-        if (auto* frame = documentFrameWithNonNullView()) {
-            // FIXME: Should we use document()->scrollingElement()?
-            // See https://bugs.webkit.org/show_bug.cgi?id=205059
-            bool animated = document().documentElement() && useSmoothScrolling(ScrollBehavior::Auto, *document().documentElement());
-            frame->view()->setScrollPosition(IntPoint(static_cast<int>(newLeft * frame->pageZoomFactor() * frame->frameScaleFactor()), frame->view()->scrollY()), animated);
-        }
+        if (auto* frame = documentFrameWithNonNullView())
+            frame->view()->setScrollPosition(IntPoint(static_cast<int>(newLeft * frame->pageZoomFactor() * frame->frameScaleFactor()), frame->view()->scrollY()));
         return;
     }
 
     if (auto* renderer = renderBox()) {
-        int clampedLeft = clampToInteger(newLeft * renderer->style().effectiveZoom());
-        bool animated = useSmoothScrolling(ScrollBehavior::Auto, *this);
-        renderer->setScrollLeft(clampedLeft, ScrollType::Programmatic, animated);
+        renderer->setScrollLeft(static_cast<int>(newLeft * renderer->style().effectiveZoom()), ScrollType::Programmatic);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrollShouldClearLatchedState(true);
     }
@@ -1323,19 +1314,13 @@ void Element::setScrollTop(int newTop)
     document().updateLayoutIgnorePendingStylesheets();
 
     if (document().scrollingElement() == this) {
-        if (auto* frame = documentFrameWithNonNullView()) {
-            // FIXME: Should we use document()->scrollingElement()?
-            // See https://bugs.webkit.org/show_bug.cgi?id=205059
-            bool animated = document().documentElement() && useSmoothScrolling(ScrollBehavior::Auto, *document().documentElement());
-            frame->view()->setScrollPosition(IntPoint(frame->view()->scrollX(), static_cast<int>(newTop * frame->pageZoomFactor() * frame->frameScaleFactor())), animated);
-        }
+        if (auto* frame = documentFrameWithNonNullView())
+            frame->view()->setScrollPosition(IntPoint(frame->view()->scrollX(), static_cast<int>(newTop * frame->pageZoomFactor() * frame->frameScaleFactor())));
         return;
     }
 
     if (auto* renderer = renderBox()) {
-        int clampedTop = clampToInteger(newTop * renderer->style().effectiveZoom());
-        bool animated = useSmoothScrolling(ScrollBehavior::Auto, *this);
-        renderer->setScrollTop(clampedTop, ScrollType::Programmatic, animated);
+        renderer->setScrollTop(static_cast<int>(newTop * renderer->style().effectiveZoom()), ScrollType::Programmatic);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrollShouldClearLatchedState(true);
     }
@@ -3724,6 +3709,11 @@ IntersectionObserverData* Element::intersectionObserverData()
 
 #endif
 
+KeyframeEffectStack* Element::keyframeEffectStack() const
+{
+    return hasRareData() ? elementRareData()->keyframeEffectStack() : nullptr;
+}
+
 KeyframeEffectStack& Element::ensureKeyframeEffectStack()
 {
     auto& rareData = ensureElementRareData();
@@ -3749,7 +3739,7 @@ OptionSet<AnimationImpact> Element::applyKeyframeEffects(RenderStyle& targetStyl
         ASSERT(effect->animation());
         effect->animation()->resolve(targetStyle);
 
-        if (effect->isAccelerated())
+        if (effect->isRunningAccelerated() || effect->isAboutToRunAccelerated())
             impact.add(AnimationImpact::RequiresRecomposite);
 
         if (effect->triggersStackingContext())
@@ -4395,9 +4385,26 @@ ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::JSGlobalObject& lexicalGlob
     return animation;
 }
 
-Vector<RefPtr<WebAnimation>> Element::getAnimations()
+Vector<RefPtr<WebAnimation>> Element::getAnimations(Optional<GetAnimationsOptions> options)
 {
-    // FIXME: Filter and order the list as specified (webkit.org/b/179535).
+    // If we are to return animations in the subtree, we can get all of the document's animations and filter
+    // animations targeting that are not registered on this element, one of its pseudo elements or a child's
+    // pseudo element.
+    if (options && options->subtree) {
+        Vector<RefPtr<WebAnimation>> animations;
+        for (auto& animation : document().getAnimations()) {
+            auto* effect = animation->effect();
+            ASSERT(is<KeyframeEffect>(animation->effect()));
+            auto* target = downcast<KeyframeEffect>(*effect).target();
+            ASSERT(target);
+            if (is<PseudoElement>(target)) {
+                if (contains(downcast<PseudoElement>(*target).hostElement()))
+                    animations.append(animation);
+            } else if (contains(target))
+                animations.append(animation);
+        }
+        return animations;
+    }
 
     // For the list of animations to be current, we need to account for any pending CSS changes,
     // such as updates to CSS Animations and CSS Transitions.

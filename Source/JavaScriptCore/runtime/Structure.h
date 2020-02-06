@@ -123,6 +123,8 @@ private:
 };
 
 class Structure final : public JSCell {
+    static constexpr uint16_t shortInvalidOffset = std::numeric_limits<uint16_t>::max() - 1;
+    static constexpr uint16_t useRareDataFlag = std::numeric_limits<uint16_t>::max();
 public:
     friend class StructureTransitionTable;
 
@@ -187,11 +189,13 @@ public:
     JS_EXPORT_PRIVATE static Structure* addNewPropertyTransition(VM&, Structure*, PropertyName, unsigned attributes, PropertyOffset&, PutPropertySlot::Context = PutPropertySlot::UnknownContext, DeferredStructureTransitionWatchpointFire* = nullptr);
     static Structure* addPropertyTransitionToExistingStructureConcurrently(Structure*, UniquedStringImpl* uid, unsigned attributes, PropertyOffset&);
     JS_EXPORT_PRIVATE static Structure* addPropertyTransitionToExistingStructure(Structure*, PropertyName, unsigned attributes, PropertyOffset&);
-    static Structure* removePropertyTransition(VM&, Structure*, PropertyName, PropertyOffset&);
+    static Structure* removeNewPropertyTransition(VM&, Structure*, PropertyName, PropertyOffset&, DeferredStructureTransitionWatchpointFire* = nullptr);
+    static Structure* removePropertyTransition(VM&, Structure*, PropertyName, PropertyOffset&, DeferredStructureTransitionWatchpointFire* = nullptr);
+    static Structure* removePropertyTransitionFromExistingStructure(VM&, Structure*, PropertyName, PropertyOffset&, DeferredStructureTransitionWatchpointFire* = nullptr);
     static Structure* changePrototypeTransition(VM&, Structure*, JSValue prototype, DeferredStructureTransitionWatchpointFire&);
     JS_EXPORT_PRIVATE static Structure* attributeChangeTransition(VM&, Structure*, PropertyName, unsigned attributes);
     JS_EXPORT_PRIVATE static Structure* toCacheableDictionaryTransition(VM&, Structure*, DeferredStructureTransitionWatchpointFire* = nullptr);
-    static Structure* toUncacheableDictionaryTransition(VM&, Structure*);
+    static Structure* toUncacheableDictionaryTransition(VM&, Structure*, DeferredStructureTransitionWatchpointFire* = nullptr);
     JS_EXPORT_PRIVATE static Structure* sealTransition(VM&, Structure*);
     JS_EXPORT_PRIVATE static Structure* freezeTransition(VM&, Structure*);
     static Structure* preventExtensionsTransition(VM&, Structure*);
@@ -355,32 +359,37 @@ public:
 
     PropertyOffset maxOffset() const
     {
-        if (m_maxOffset == shortInvalidOffset)
+        uint16_t maxOffset = m_maxOffset;
+        if (maxOffset == shortInvalidOffset)
             return invalidOffset;
-        if (m_maxOffset == useRareDataFlag)
+        if (maxOffset == useRareDataFlag)
             return rareData()->m_maxOffset;
-        return m_maxOffset;
+        return maxOffset;
     }
-    
+
     void setMaxOffset(VM& vm, PropertyOffset offset)
     {
         if (offset == invalidOffset)
             m_maxOffset = shortInvalidOffset;
         else if (offset < useRareDataFlag && offset < shortInvalidOffset)
             m_maxOffset = offset;
+        else if (m_maxOffset == useRareDataFlag)
+            rareData()->m_maxOffset = offset;
         else {
-            m_maxOffset = useRareDataFlag;
             ensureRareData(vm)->m_maxOffset = offset;
+            WTF::storeStoreFence();
+            m_maxOffset = useRareDataFlag;
         }
     }
 
     PropertyOffset transitionOffset() const
     {
-        if (m_transitionOffset == shortInvalidOffset)
+        uint16_t transitionOffset = m_transitionOffset;
+        if (transitionOffset == shortInvalidOffset)
             return invalidOffset;
-        if (m_transitionOffset == useRareDataFlag)
+        if (transitionOffset == useRareDataFlag)
             return rareData()->m_transitionOffset;
-        return m_transitionOffset;
+        return transitionOffset;
     }
 
     void setTransitionOffset(VM& vm, PropertyOffset offset)
@@ -389,9 +398,12 @@ public:
             m_transitionOffset = shortInvalidOffset;
         else if (offset < useRareDataFlag && offset < shortInvalidOffset)
             m_transitionOffset = offset;
+        else if (m_transitionOffset == useRareDataFlag)
+            rareData()->m_transitionOffset = offset;
         else {
-            m_transitionOffset = useRareDataFlag;
             ensureRareData(vm)->m_transitionOffset = offset;
+            WTF::storeStoreFence();
+            m_transitionOffset = useRareDataFlag;
         }
     }
 
@@ -439,10 +451,6 @@ public:
     unsigned inlineSize() const
     {
         return std::min<unsigned>(maxOffset() + 1, m_inlineCapacity);
-    }
-    unsigned totalStorageSize() const
-    {
-        return numberOfSlotsForMaxOffset(maxOffset(), m_inlineCapacity);
     }
     unsigned totalStorageCapacity() const
     {
@@ -691,8 +699,9 @@ public:
     DEFINE_BITFIELD(bool, didWatchInternalProperties, DidWatchInternalProperties, 1, 25);
     DEFINE_BITFIELD(bool, transitionWatchpointIsLikelyToBeFired, TransitionWatchpointIsLikelyToBeFired, 1, 26);
     DEFINE_BITFIELD(bool, hasBeenDictionary, HasBeenDictionary, 1, 27);
-    DEFINE_BITFIELD(bool, isAddingPropertyForTransition, IsAddingPropertyForTransition, 1, 28);
+    DEFINE_BITFIELD(bool, protectPropertyTableWhileTransitioning, ProtectPropertyTableWhileTransitioning, 1, 28);
     DEFINE_BITFIELD(bool, hasUnderscoreProtoPropertyExcludingOriginalProto, HasUnderscoreProtoPropertyExcludingOriginalProto, 1, 29);
+    DEFINE_BITFIELD(bool, isPropertyDeletionTransition, IsPropertyDeletionTransition, 1, 30);
 
 private:
     friend class LLIntOffsetsExtractor;
@@ -717,9 +726,9 @@ private:
     template<ShouldPin, typename Func>
     PropertyOffset add(VM&, PropertyName, unsigned attributes, const Func&);
     PropertyOffset add(VM&, PropertyName, unsigned attributes);
-    template<typename Func>
-    PropertyOffset remove(PropertyName, const Func&);
-    PropertyOffset remove(PropertyName);
+    template<ShouldPin, typename Func>
+    PropertyOffset remove(VM&, PropertyName, const Func&);
+    PropertyOffset remove(VM&, PropertyName);
 
     void checkConsistency();
 
@@ -824,9 +833,6 @@ private:
 
     COMPILE_ASSERT(firstOutOfLineOffset < 256, firstOutOfLineOffset_fits);
 
-    static constexpr uint16_t shortInvalidOffset = std::numeric_limits<uint16_t>::max();
-    static constexpr uint16_t useRareDataFlag = std::numeric_limits<uint16_t>::max() - 1;
-
     uint16_t m_transitionOffset;
     uint16_t m_maxOffset;
 
@@ -834,6 +840,7 @@ private:
     TinyBloomFilter m_seenProperties;
 
     friend class VMInspector;
+    friend class JSDollarVMHelper;
 };
 
 } // namespace JSC

@@ -526,6 +526,13 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 
     pageConfiguration.corsDisablingPatterns = WTFMove(parameters.corsDisablingPatterns);
 
+#if ENABLE(ATTACHMENT_ELEMENT) && PLATFORM(IOS_FAMILY)
+    if (parameters.frontboardExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.frontboardExtensionHandle);
+    if (parameters.iconServicesExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.iconServicesExtensionHandle);
+#endif
+
     m_page = makeUnique<Page>(WTFMove(pageConfiguration));
 
     updatePreferences(parameters.store);
@@ -592,6 +599,10 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
     setPageLength(parameters.pageLength);
     setGapBetweenPages(parameters.gapBetweenPages);
     setPaginationLineGridEnabled(parameters.paginationLineGridEnabled);
+
+#if PLATFORM(GTK)
+    themeDidChange(WTFMove(parameters.themeName));
+#endif
 
     effectiveAppearanceDidChange(parameters.useDarkAppearance, parameters.useElevatedUserInterfaceLevel);
 
@@ -1982,6 +1993,10 @@ void WebPage::setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFa
 void WebPage::windowScreenDidChange(uint32_t displayID)
 {
     m_page->chrome().windowScreenDidChange(static_cast<PlatformDisplayID>(displayID));
+
+#if PLATFORM(MAC)
+    WebProcess::singleton().updatePageScreenProperties();
+#endif
 }
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
@@ -3380,7 +3395,7 @@ KeyboardUIMode WebPage::keyboardUIMode()
     return static_cast<KeyboardUIMode>((fullKeyboardAccessEnabled ? KeyboardAccessFull : KeyboardAccessDefault) | (m_tabToLinks ? KeyboardAccessTabsToLinks : 0));
 }
 
-void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameters, uint64_t worldIdentifier, CallbackID callbackID)
+void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameters, ContentWorldIdentifier worldIdentifier, CallbackID callbackID)
 {
     // NOTE: We need to be careful when running scripts that the objects we depend on don't
     // disappear during script execution.
@@ -3390,7 +3405,6 @@ void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameter
         return;
     }
 
-    ASSERT(worldIdentifier);
     auto* world = m_userContentController->worldForIdentifier(worldIdentifier);
     if (!world) {
         send(Messages::WebPageProxy::ScriptValueCallback({ }, ExceptionDetails { "Unable to execute JavaScript: Cannot find specified content world"_s }, callbackID));
@@ -3419,7 +3433,7 @@ void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameter
     frame->coreFrame()->script().executeAsynchronousUserAgentScriptInWorld(world->coreWorld(), WTFMove(parameters), WTFMove(resolveFunction));
 }
 
-void WebPage::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const std::pair<uint64_t, String>& worldData, CallbackID callbackID)
+void WebPage::runJavaScriptInMainFrameScriptWorld(RunJavaScriptParameters&& parameters, const std::pair<ContentWorldIdentifier, String>& worldData, CallbackID callbackID)
 {
     m_userContentController->addUserContentWorld(worldData);
     runJavaScript(mainWebFrame(), WTFMove(parameters), worldData.first, callbackID);
@@ -3429,7 +3443,7 @@ void WebPage::runJavaScriptInFrame(FrameIdentifier frameID, const String& script
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     ASSERT(mainWebFrame() != frame);
-    runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, WebUserContentController::identifierForNormalWorld(), callbackID);
+    runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, pageContentWorldIdentifier(), callbackID);
 }
 
 void WebPage::getContentsAsString(CallbackID callbackID)
@@ -4710,12 +4724,10 @@ void WebPage::setUseSystemAppearance(bool useSystemAppearance)
 
 #endif
 
-#if !PLATFORM(GTK)
 void WebPage::effectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel)
 {
     corePage()->effectiveAppearanceDidChange(useDarkAppearance, useElevatedUserInterfaceLevel);
 }
-#endif
 
 void WebPage::freezeLayerTreeDueToSwipeAnimation()
 {
@@ -5092,7 +5104,7 @@ void WebPage::simulateMouseMotion(WebCore::IntPoint position, WallTime time)
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, 0, position, position, 0, 0, 0, 0, OptionSet<WebEvent::Modifier> { }, time, 0, WebMouseEvent::NoTap));
 }
 
-void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline)
+void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline, const Vector<CompositionHighlight>& highlights)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     if (!frame.editor().canEdit())
@@ -5102,7 +5114,7 @@ void WebPage::setCompositionForTesting(const String& compositionString, uint64_t
     if (!suppressUnderline)
         underlines.append(CompositionUnderline(0, compositionString.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
 
-    frame.editor().setComposition(compositionString, underlines, from, from + length);
+    frame.editor().setComposition(compositionString, underlines, highlights, from, from + length);
 }
 
 bool WebPage::hasCompositionForTesting()
@@ -5341,7 +5353,7 @@ void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, 
     send(Messages::WebPageProxy::RectForCharacterRangeCallback(result, editingRange, callbackID));
 }
 
-void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUnderline>& underlines, const EditingRange& selection, const EditingRange& replacementEditingRange)
+void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUnderline>& underlines, const Vector<CompositionHighlight>& highlights, const EditingRange& selection, const EditingRange& replacementEditingRange)
 {
     platformWillPerformEditingCommand();
 
@@ -5355,7 +5367,7 @@ void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUn
                 frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         }
 
-        frame.editor().setComposition(text, underlines, selection.location, selection.location + selection.length);
+        frame.editor().setComposition(text, underlines, highlights, selection.location, selection.location + selection.length);
     }
 }
 
@@ -6825,6 +6837,13 @@ void WebPage::focusTextInputContext(const WebCore::ElementContext& textInputCont
         element->focus();
 
     completionHandler(element);
+}
+
+void WebPage::setCanShowPlaceholder(const WebCore::ElementContext& elementContext, bool canShowPlaceholder)
+{
+    RefPtr<Element> element = elementForContext(elementContext);
+    if (is<HTMLTextFormControlElement>(element))
+        downcast<HTMLTextFormControlElement>(*element).setCanShowPlaceholder(canShowPlaceholder);
 }
 
 Element* WebPage::elementForContext(const WebCore::ElementContext& elementContext) const

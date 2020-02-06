@@ -31,6 +31,12 @@
 
 namespace JSC { namespace DFG {
 
+// This phase is used to determine if a node can safely run at a new location.
+// It is important to note that returning false does not mean it's definitely 
+// wrong to run the node at the new location. In other words, returning false 
+// does not imply moving the node would be invalid only that this phase could
+// not prove it is valid. Thus, it is always ok to return false.
+
 template<typename AbstractStateType>
 class SafeToExecuteEdge {
 public:
@@ -161,49 +167,34 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
         switch (node->op()) {
         case CheckNotEmpty:
         case CheckStructureOrEmpty:
+        case CheckArrayOrEmpty:
             break;
         default:
             return false;
         }
     }
 
-    // NOTE: This tends to lie when it comes to effectful nodes, because it knows that they aren't going to
-    // get hoisted anyway.
+    // NOTE: This can lie when it comes to effectful nodes, because it knows that they aren't going to
+    // get hoisted anyway. Sometimes this is convenient so we can avoid branching on some internal
+    // state of the node (like what some child's UseKind might be). However, nodes that are obviously
+    // always effectful, we return false for, to make auditing the "return true" cases easier.
 
     switch (node->op()) {
+    // FIXME: Audit these:
+    // https://bugs.webkit.org/show_bug.cgi?id=207075
     case JSConstant:
     case DoubleConstant:
     case Int52Constant:
     case LazyJSConstant:
     case Identity:
     case IdentityWithProfile:
-    case ToThis:
-    case CreateThis:
-    case CreatePromise:
-    case CreateGenerator:
-    case CreateAsyncGenerator:
-    case ObjectCreate:
-    case ObjectKeys:
     case GetCallee:
-    case SetCallee:
     case GetArgumentCountIncludingThis:
-    case SetArgumentCountIncludingThis:
     case GetRestLength:
     case GetLocal:
-    case SetLocal:
-    case PutStack:
-    case KillStack:
     case GetStack:
-    case MovHint:
-    case ZombieHint:
     case ExitOK:
     case Phantom:
-    case Upsilon:
-    case Phi:
-    case Flush:
-    case PhantomLocal:
-    case SetArgumentDefinitely:
-    case SetArgumentMaybe:
     case ArithBitNot:
     case ArithBitAnd:
     case ArithBitOr:
@@ -234,74 +225,26 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ArithCeil:
     case ArithTrunc:
     case ArithUnary:
-    case ValueBitAnd:
-    case ValueBitXor:
-    case ValueBitOr:
-    case ValueBitNot:
-    case ValueBitLShift:
-    case ValueBitRShift:
-    case Inc:
-    case Dec:
-    case ValueNegate:
-    case ValueAdd:
-    case ValueSub:
-    case ValueMul:
-    case ValueDiv:
-    case ValueMod:
-    case ValuePow:
-    case TryGetById:
-    case DeleteById:
-    case DeleteByVal:
-    case GetById:
-    case GetByIdWithThis:
-    case GetByValWithThis:
-    case GetByIdFlush:
-    case GetByIdDirect:
-    case GetByIdDirectFlush:
-    case PutById:
-    case PutByIdFlush:
-    case PutByIdWithThis:
-    case PutByValWithThis:
-    case PutByIdDirect:
-    case PutGetterById:
-    case PutSetterById:
-    case PutGetterSetterById:
-    case PutGetterByVal:
-    case PutSetterByVal:
-    case DefineDataProperty:
-    case DefineAccessorProperty:
+    case TryGetById: // FIXME: Audit this: https://bugs.webkit.org/show_bug.cgi?id=163834
     case CheckStructure:
     case CheckStructureOrEmpty:
     case GetExecutable:
-    case GetButterfly:
     case CallDOMGetter:
     case CallDOM:
     case CheckSubClass:
     case CheckArray:
-    case CheckNeutered:
-    case Arrayify:
-    case ArrayifyToStructure:
+    case CheckArrayOrEmpty:
     case GetScope:
     case SkipScope:
     case GetGlobalObject:
     case GetGlobalThis:
     case GetClosureVar:
-    case PutClosureVar:
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
-    case PutGlobalVariable:
-    case GetInternalField:
-    case PutInternalField:
     case CheckCell:
-    case CheckBadCell:
     case CheckNotEmpty:
     case AssertNotEmpty:
     case CheckIdent:
-    case RegExpExec:
-    case RegExpExecNonGlobalOrSticky:
-    case RegExpTest:
-    case RegExpMatchFast:
-    case RegExpMatchFastGlobal:
     case CompareLess:
     case CompareLessEq:
     case CompareGreater:
@@ -312,40 +255,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case CompareStrictEq:
     case CompareEqPtr:
     case SameValue:
-    case Call:
-    case DirectCall:
-    case TailCallInlinedCaller:
-    case DirectTailCallInlinedCaller:
-    case Construct:
-    case DirectConstruct:
-    case CallVarargs:
-    case CallEval:
-    case TailCallVarargsInlinedCaller:
-    case TailCallForwardVarargsInlinedCaller:
-    case ConstructVarargs:
-    case VarargsLength:
-    case LoadVarargs:
-    case CallForwardVarargs:
-    case ConstructForwardVarargs:
-    case NewObject:
-    case NewPromise:
-    case NewGenerator:
-    case NewAsyncGenerator:
-    case NewArray:
-    case NewArrayWithSize:
-    case NewArrayBuffer:
-    case NewArrayWithSpread:
-    case NewArrayIterator:
-    case Spread:
-    case NewRegexp:
-    case NewSymbol:
-    case ProfileType:
-    case ProfileControlFlow:
     case CheckTypeInfoFlags:
     case ParseInt:
     case OverridesHasInstance:
-    case InstanceOf:
-    case InstanceOfCustom:
     case IsEmpty:
     case IsUndefined:
     case IsUndefinedOrNull:
@@ -359,124 +271,38 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case IsTypedArrayView:
     case TypeOf:
     case LogicalNot:
-    case CallObjectConstructor:
-    case ToPrimitive:
-    case ToPropertyKey:
     case ToString:
-    case ToNumber:
-    case ToNumeric:
-    case ToObject:
-    case NumberToStringWithRadix:
     case NumberToStringWithValidRadixConstant:
-    case SetFunctionName:
     case StrCat:
     case CallStringConstructor:
-    case NewStringObject:
     case MakeRope:
-    case InByVal:
-    case InById:
-    case HasOwnProperty:
-    case PushWithScope:
-    case CreateActivation:
-    case CreateDirectArguments:
-    case CreateScopedArguments:
-    case CreateClonedArguments:
-    case CreateArgumentsButterfly:
     case GetFromArguments:
     case GetArgument:
-    case PutToArguments:
-    case NewFunction:
-    case NewGeneratorFunction:
-    case NewAsyncGeneratorFunction:
-    case NewAsyncFunction:
-    case Jump:
-    case Branch:
-    case Switch:
-    case EntrySwitch:
-    case Return:
-    case TailCall:
-    case DirectTailCall:
-    case TailCallVarargs:
-    case TailCallForwardVarargs:
-    case Throw:
-    case ThrowStaticError:
-    case CountExecution:
-    case SuperSamplerBegin:
-    case SuperSamplerEnd:
-    case ForceOSRExit:
-    case CPUIntrinsic:
-    case CheckTraps:
-    case LogShadowChickenPrologue:
-    case LogShadowChickenTail:
     case StringFromCharCode:
-    case NewTypedArray:
-    case Unreachable:
     case ExtractOSREntryLocal:
     case ExtractCatchLocal:
-    case ClearCatchLocals:
-    case CheckTierUpInLoop:
-    case CheckTierUpAtReturn:
-    case CheckTierUpAndOSREnter:
-    case LoopHint:
-    case InvalidationPoint:
-    case NotifyWrite:
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:
     case CheckVarargs:
-    case MultiPutByOffset:
     case ValueRep:
     case DoubleRep:
     case Int52Rep:
     case BooleanToNumber:
     case FiatInt52:
-    case GetGetter:
-    case GetSetter:
-    case GetEnumerableLength:
-    case HasGenericProperty:
-    case HasStructureProperty:
     case HasIndexedProperty:
-    case GetDirectPname:
-    case GetPropertyEnumerator:
     case GetEnumeratorStructurePname:
     case GetEnumeratorGenericPname:
     case ToIndexString:
-    case PhantomNewObject:
-    case PhantomNewFunction:
-    case PhantomNewGeneratorFunction:
-    case PhantomNewAsyncGeneratorFunction:
-    case PhantomNewAsyncFunction:
-    case PhantomNewArrayIterator:
-    case PhantomCreateActivation:
-    case PhantomNewRegexp:
-    case PutHint:
     case CheckStructureImmediate:
-    case MaterializeNewObject:
-    case MaterializeCreateActivation:
-    case MaterializeNewInternalFieldObject:
-    case PhantomDirectArguments:
-    case PhantomCreateRest:
-    case PhantomSpread:
-    case PhantomNewArrayWithSpread:
-    case PhantomNewArrayBuffer:
-    case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
-    case ForwardVarargs:
-    case CreateRest:
     case GetPrototypeOf:
     case StringReplace:
     case StringReplaceRegExp:
     case GetRegExpObjectLastIndex:
-    case SetRegExpObjectLastIndex:
-    case RecordRegExpCachedResult:
-    case GetDynamicVar:
-    case PutDynamicVar:
-    case ResolveScopeForHoistingFuncDeclInEval:
-    case ResolveScope:
     case MapHash:
     case NormalizeMapKey:
-    case StringValueOf:
     case StringSlice:
     case ToLowerCase:
     case GetMapBucket:
@@ -486,19 +312,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case LoadValueFromMapBucket:
     case ExtractValueFromWeakMapGet:
     case WeakMapGet:
-    case WeakSetAdd:
-    case WeakMapSet:
-    case AtomicsAdd:
-    case AtomicsAnd:
-    case AtomicsCompareExchange:
-    case AtomicsExchange:
-    case AtomicsLoad:
-    case AtomicsOr:
-    case AtomicsStore:
-    case AtomicsSub:
-    case AtomicsXor:
     case AtomicsIsLockFree:
-    case InitializeEntrypointArguments:
     case MatchStructure:
     case DateGetInt32OrNaN:
     case DateGetTime:
@@ -506,12 +320,26 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case DataViewGetFloat:
         return true;
 
+    case GetButterfly:
+        return state.forNode(node->child1()).isType(SpecObject);
+
     case ArraySlice:
     case ArrayIndexOf: {
         // You could plausibly move this code around as long as you proved the
         // incoming array base structure is an original array at the hoisted location.
         // Instead of doing that extra work, we just conservatively return false.
         return false;
+    }
+
+    case GetGetter:
+    case GetSetter: {
+        if (!state.forNode(node->child1()).isType(SpecCell))
+            return false;
+        StructureAbstractValue& value = state.forNode(node->child1()).m_structure;
+        if (value.isInfinite() || value.size() != 1)
+            return false;
+
+        return value[0].get() == graph.m_vm.getterSetterStructure;
     }
 
     case BottomValue:
@@ -550,6 +378,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ArrayPush:
         return node->arrayMode().alreadyChecked(graph, node, state.forNode(graph.varArgChild(node, 1)));
 
+    case CheckNeutered:
     case GetTypedArrayByteOffset:
         return !(state.forNode(node->child1()).m_type & ~(SpecTypedArrayView));
             
@@ -564,9 +393,35 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
         return state.forNode(node->child1()).m_structure.isSubsetOf(
             RegisteredStructureSet(node->transition()->previous));
         
+    case GetGetterSetterByOffset: {
+        // If it's an inline property, we need to make sure it's a cell before trusting what the structure set tells us.
+        if (node->child1().node() == node->child2().node() && !state.forNode(node->child2()).isType(SpecCell))
+            return false;
+
+        StorageAccessData& data = node->storageAccessData();
+        auto* uid = graph.identifiers()[data.identifierNumber];
+        PropertyOffset desiredOffset = data.offset;
+        StructureAbstractValue& value = state.forNode(node->child2()).m_structure;
+        if (value.isInfinite())
+            return false;
+        for (unsigned i = value.size(); i--;) {
+            Structure* thisStructure = value[i].get();
+            if (thisStructure->isUncacheableDictionary())
+                return false;
+            unsigned attributes = 0;
+            PropertyOffset checkOffset = thisStructure->getConcurrently(uid, attributes);
+            if (checkOffset != desiredOffset || !(attributes & PropertyAttribute::Accessor))
+                return false;
+        }
+        return true;
+    }
+
     case GetByOffset:
-    case GetGetterSetterByOffset:
     case PutByOffset: {
+        // If it's an inline property, we need to make sure it's a cell before trusting what the structure set tells us.
+        if (node->child1().node() == node->child2().node() && !state.forNode(node->child2()).isType(SpecCell))
+            return false;
+
         StorageAccessData& data = node->storageAccessData();
         PropertyOffset offset = data.offset;
         // Graph::isSafeToLoad() is all about proofs derived from PropertyConditions. Those don't
@@ -584,6 +439,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
             return false;
         for (unsigned i = value.size(); i--;) {
             Structure* thisStructure = value[i].get();
+            if (thisStructure->isUncacheableDictionary())
+                return false;
             if (!thisStructure->isValidOffset(offset))
                 return false;
         }
@@ -618,12 +475,210 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
         return true;
     }
 
+    case ToThis:
+    case CreateThis:
+    case CreatePromise:
+    case CreateGenerator:
+    case CreateAsyncGenerator:
+    case ObjectCreate:
+    case ObjectKeys:
+    case SetLocal:
+    case SetCallee:
+    case PutStack:
+    case KillStack:
+    case MovHint:
+    case ZombieHint:
+    case Upsilon:
+    case Phi:
+    case Flush:
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
+    case SetArgumentCountIncludingThis:
+    case PhantomLocal:
+    case DeleteById:
+    case DeleteByVal:
+    case GetById:
+    case GetByIdWithThis:
+    case GetByValWithThis:
+    case GetByIdFlush:
+    case GetByIdDirect:
+    case GetByIdDirectFlush:
+    case PutById:
+    case PutByIdFlush:
+    case PutByIdWithThis:
+    case PutByValWithThis:
+    case PutByIdDirect:
+    case PutGetterById:
+    case PutSetterById:
+    case PutGetterSetterById:
+    case PutGetterByVal:
+    case PutSetterByVal:
+    case DefineDataProperty:
+    case DefineAccessorProperty:
+    case Arrayify:
+    case ArrayifyToStructure:
+    case PutClosureVar:
+    case PutGlobalVariable:
+    case CheckBadCell:
+    case RegExpExec:
+    case RegExpExecNonGlobalOrSticky:
+    case RegExpTest:
+    case RegExpMatchFast:
+    case RegExpMatchFastGlobal:
+    case Call:
+    case DirectCall:
+    case TailCallInlinedCaller:
+    case DirectTailCallInlinedCaller:
+    case Construct:
+    case DirectConstruct:
+    case CallVarargs:
+    case CallEval:
+    case TailCallVarargsInlinedCaller:
+    case TailCallForwardVarargsInlinedCaller:
+    case ConstructVarargs:
+    case VarargsLength:
+    case LoadVarargs:
+    case CallForwardVarargs:
+    case ConstructForwardVarargs:
+    case NewObject:
+    case NewPromise:
+    case NewGenerator:
+    case NewAsyncGenerator:
+    case NewArray:
+    case NewArrayWithSize:
+    case NewArrayBuffer:
+    case NewArrayWithSpread:
+    case NewArrayIterator:
+    case Spread:
+    case NewRegexp:
+    case NewSymbol:
+    case ProfileType:
+    case ProfileControlFlow:
+    case InstanceOf:
+    case InstanceOfCustom:
+    case CallObjectConstructor:
+    case ToPrimitive:
+    case ToPropertyKey:
+    case ToNumber:
+    case ToNumeric:
+    case ToObject:
+    case NumberToStringWithRadix:
+    case SetFunctionName:
+    case NewStringObject:
+    case InByVal:
+    case InById:
+    case HasOwnProperty:
+    case PushWithScope:
+    case CreateActivation:
+    case CreateDirectArguments:
+    case CreateScopedArguments:
+    case CreateClonedArguments:
+    case CreateArgumentsButterfly:
+    case PutToArguments:
+    case NewFunction:
+    case NewGeneratorFunction:
+    case NewAsyncGeneratorFunction:
+    case NewAsyncFunction:
+    case Jump:
+    case Branch:
+    case Switch:
+    case EntrySwitch:
+    case Return:
+    case TailCall:
+    case DirectTailCall:
+    case TailCallVarargs:
+    case TailCallForwardVarargs:
+    case Throw:
+    case ThrowStaticError:
+    case CountExecution:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
+    case ForceOSRExit:
+    case CPUIntrinsic:
+    case CheckTraps:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
+    case NewTypedArray:
+    case Unreachable:
+    case ClearCatchLocals:
+    case CheckTierUpInLoop:
+    case CheckTierUpAtReturn:
+    case CheckTierUpAndOSREnter:
+    case LoopHint:
+    case InvalidationPoint:
+    case NotifyWrite:
+    case MultiPutByOffset:
+    case GetEnumerableLength:
+    case HasGenericProperty:
+    case HasStructureProperty:
+    case GetDirectPname:
+    case GetPropertyEnumerator:
+    case PhantomNewObject:
+    case PhantomNewFunction:
+    case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncGeneratorFunction:
+    case PhantomNewAsyncFunction:
+    case PhantomNewArrayIterator:
+    case PhantomCreateActivation:
+    case PhantomNewRegexp:
+    case PutHint:
+    case MaterializeNewObject:
+    case MaterializeCreateActivation:
+    case MaterializeNewInternalFieldObject:
+    case PhantomDirectArguments:
+    case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
+    case PhantomNewArrayBuffer:
+    case PhantomClonedArguments:
+    case ForwardVarargs:
+    case CreateRest:
+    case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
+    case GetDynamicVar:
+    case PutDynamicVar:
+    case ResolveScopeForHoistingFuncDeclInEval:
+    case ResolveScope:
+    case StringValueOf:
+    case WeakSetAdd:
+    case WeakMapSet:
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsCompareExchange:
+    case AtomicsExchange:
+    case AtomicsLoad:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor:
+    case InitializeEntrypointArguments:
+    case ValueNegate:
+    case GetInternalField:
+    case PutInternalField:
     case DataViewSet:
-        return false;
-
     case SetAdd:
     case MapSet:
         return false;
+
+    case Inc:
+    case Dec:
+        return node->child1().useKind() != UntypedUse;
+
+    case ValueBitAnd:
+    case ValueBitXor:
+    case ValueBitOr:
+    case ValueBitLShift:
+    case ValueBitRShift:
+    case ValueAdd:
+    case ValueSub:
+    case ValueMul:
+    case ValueDiv:
+    case ValueMod:
+    case ValuePow:
+        return node->isBinaryUseKind(BigIntUse);
+
+    case ValueBitNot:
+        return node->child1().useKind() == BigIntUse;
 
     case LastNodeType:
         RELEASE_ASSERT_NOT_REACHED();

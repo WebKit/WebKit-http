@@ -239,11 +239,8 @@ AXObjectCache::~AXObjectCache()
         AXIsolatedTree::removeTreeForPageID(*m_pageID);
 #endif
 
-    for (const auto& object : m_objects.values()) {
-        detachWrapper(object.get(), AccessibilityDetachmentType::CacheDestroyed);
+    for (const auto& object : m_objects.values())
         object->detach(AccessibilityDetachmentType::CacheDestroyed);
-        object->setObjectID(0);
-    }
 }
 
 void AXObjectCache::findModalNodes()
@@ -603,6 +600,21 @@ static Ref<AccessibilityObject> createFromNode(Node* node)
     return AccessibilityNodeObject::create(node);
 }
 
+void AXObjectCache::cacheAndInitializeWrapper(AccessibilityObject* newObject, DOMObjectVariant domObject)
+{
+    ASSERT(newObject);
+    AXID axID = getAXID(newObject);
+    WTF::switchOn(domObject,
+        [&axID, this] (RenderObject* typedValue) { m_renderObjectMapping.set(typedValue, axID); },
+        [&axID, this] (Node* typedValue) { m_nodeObjectMapping.set(typedValue, axID); },
+        [&axID, this] (Widget* typedValue) { m_widgetObjectMapping.set(typedValue, axID); },
+        [] (auto&) { }
+    );
+    m_objects.set(axID, newObject);
+    newObject->init();
+    attachWrapper(newObject);
+}
+
 AccessibilityObject* AXObjectCache::getOrCreate(Widget* widget)
 {
     if (!widget)
@@ -625,12 +637,7 @@ AccessibilityObject* AXObjectCache::getOrCreate(Widget* widget)
     if (!newObj)
         return nullptr;
 
-    getAXID(newObj.get());
-    
-    m_widgetObjectMapping.set(widget, newObj->objectID());
-    m_objects.set(newObj->objectID(), newObj);
-    newObj->init();
-    attachWrapper(newObj.get());
+    cacheAndInitializeWrapper(newObj.get(), widget);
     return newObj.get();
 }
 
@@ -673,12 +680,7 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     // Will crash later if we have two objects for the same node.
     ASSERT(!get(node));
 
-    getAXID(newObj.get());
-
-    m_nodeObjectMapping.set(node, newObj->objectID());
-    m_objects.set(newObj->objectID(), newObj);
-    newObj->init();
-    attachWrapper(newObj.get());
+    cacheAndInitializeWrapper(newObj.get(), node);
     newObj->setLastKnownIsIgnoredValue(newObj->accessibilityIsIgnored());
     // Sometimes asking accessibilityIsIgnored() will cause the newObject to be deallocated, and then
     // it will disappear when this function is finished, leading to a use-after-free.
@@ -701,12 +703,7 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
     // Will crash later if we have two objects for the same renderer.
     ASSERT(!get(renderer));
 
-    getAXID(newObj.get());
-
-    m_renderObjectMapping.set(renderer, newObj->objectID());
-    m_objects.set(newObj->objectID(), newObj);
-    newObj->init();
-    attachWrapper(newObj.get());
+    cacheAndInitializeWrapper(newObj.get(), renderer);
     newObj->setLastKnownIsIgnoredValue(newObj->accessibilityIsIgnored());
     // Sometimes asking accessibilityIsIgnored() will cause the newObject to be deallocated, and then
     // it will disappear when this function is finished, leading to a use-after-free.
@@ -795,8 +792,8 @@ AccessibilityObject* AXObjectCache::rootObjectForFrame(Frame* frame)
     
 AccessibilityObject* AXObjectCache::getOrCreate(AccessibilityRole role)
 {
-    RefPtr<AccessibilityObject> obj = nullptr;
-    
+    RefPtr<AccessibilityObject> obj;
+
     // will be filled in...
     switch (role) {
     case AccessibilityRole::ListBoxOption:
@@ -829,15 +826,11 @@ AccessibilityObject* AXObjectCache::getOrCreate(AccessibilityRole role)
     default:
         obj = nullptr;
     }
-    
-    if (obj)
-        getAXID(obj.get());
-    else
+
+    if (!obj)
         return nullptr;
 
-    m_objects.set(obj->objectID(), obj);
-    obj->init();
-    attachWrapper(obj.get());
+    cacheAndInitializeWrapper(obj.get());
     return obj.get();
 }
 
@@ -857,9 +850,7 @@ void AXObjectCache::remove(AXID axID)
     if (!object)
         return;
 
-    detachWrapper(object.get(), AccessibilityDetachmentType::ElementDestroyed);
-    object->detach(AccessibilityDetachmentType::ElementDestroyed, this);
-    object->setObjectID(0);
+    object->detach(AccessibilityDetachmentType::ElementDestroyed);
 
     m_idsInUse.remove(axID);
     ASSERT(m_objects.size() >= m_idsInUse.size());
@@ -2523,8 +2514,12 @@ static UChar32 characterForCharacterOffset(const CharacterOffset& characterOffse
     
     UChar32 ch = 0;
     unsigned offset = characterOffset.startIndex + characterOffset.offset;
-    if (offset < characterOffset.node->textContent().length())
+    if (offset < characterOffset.node->textContent().length()) {
+// FIXME: Remove IGNORE_CLANG_WARNINGS macros once one of <rdar://problem/58615489&58615391> is fixed.
+IGNORE_CLANG_WARNINGS_BEGIN("conditional-uninitialized")
         U16_NEXT(characterOffset.node->textContent(), offset, characterOffset.node->textContent().length(), ch);
+IGNORE_CLANG_WARNINGS_END
+    }
     return ch;
 }
 
@@ -3080,8 +3075,7 @@ Ref<AXIsolatedObject> AXObjectCache::createIsolatedTreeHierarchy(AXCoreObject& o
 
     isolatedTreeNode->setTreeIdentifier(tree.treeIdentifier());
     isolatedTreeNode->setParent(parentID);
-    axObjectCache->detachWrapper(&object, AccessibilityDetachmentType::ElementChange);
-    axObjectCache->attachWrapper(&isolatedTreeNode.get());
+    axObjectCache->attachWrapper(&isolatedTreeNode.get(), object.wrapper());
 
     for (const auto& child : object.children()) {
         auto staticChild = createIsolatedTreeHierarchy(*child, isolatedTreeNode->objectID(), axObjectCache, tree, nodeChanges, false);

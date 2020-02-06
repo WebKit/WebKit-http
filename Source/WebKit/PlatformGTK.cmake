@@ -373,11 +373,9 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPCOREGTK_DIR}"
     "${FORWARDING_HEADERS_DIR}/JavaScriptCore/"
     "${FORWARDING_HEADERS_DIR}/JavaScriptCore/glib"
-    "${WEBKIT_DIR}/PluginProcess/unix"
     "${WEBKIT_DIR}/NetworkProcess/glib"
     "${WEBKIT_DIR}/NetworkProcess/gtk"
     "${WEBKIT_DIR}/NetworkProcess/soup"
-    "${WEBKIT_DIR}/NetworkProcess/unix"
     "${WEBKIT_DIR}/Platform/IPC/glib"
     "${WEBKIT_DIR}/Platform/IPC/unix"
     "${WEBKIT_DIR}/Platform/classifier"
@@ -390,12 +388,13 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared/gtk"
     "${WEBKIT_DIR}/Shared/linux"
     "${WEBKIT_DIR}/Shared/soup"
-    "${WEBKIT_DIR}/Shared/unix"
     "${WEBKIT_DIR}/UIProcess/API/C/cairo"
     "${WEBKIT_DIR}/UIProcess/API/C/gtk"
     "${WEBKIT_DIR}/UIProcess/API/glib"
     "${WEBKIT_DIR}/UIProcess/API/gtk"
     "${WEBKIT_DIR}/UIProcess/CoordinatedGraphics"
+    "${WEBKIT_DIR}/UIProcess/Inspector/glib"
+    "${WEBKIT_DIR}/UIProcess/Inspector/gtk"
     "${WEBKIT_DIR}/UIProcess/Plugins/gtk"
     "${WEBKIT_DIR}/UIProcess/geoclue"
     "${WEBKIT_DIR}/UIProcess/glib"
@@ -407,11 +406,11 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/glib/DOM"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/gtk"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/gtk/DOM"
+    "${WEBKIT_DIR}/WebProcess/Inspector/gtk"
     "${WEBKIT_DIR}/WebProcess/Plugins/Netscape/unix"
     "${WEBKIT_DIR}/WebProcess/Plugins/Netscape/x11"
     "${WEBKIT_DIR}/WebProcess/gtk"
     "${WEBKIT_DIR}/WebProcess/soup"
-    "${WEBKIT_DIR}/WebProcess/unix"
     "${WEBKIT_DIR}/WebProcess/WebCoreSupport/gtk"
     "${WEBKIT_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT_DIR}/WebProcess/WebPage/CoordinatedGraphics"
@@ -420,7 +419,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
-    ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
@@ -457,10 +455,6 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
-set(SharedWebKitLibraries
-    ${WebKit_LIBRARIES}
-)
-
 list(APPEND WebKit_LIBRARIES
     ${GTK_UNIX_PRINT_LIBRARIES}
 )
@@ -473,16 +467,16 @@ if (USE_WPE_RENDERER)
 endif ()
 
 if (LIBNOTIFY_FOUND)
-list(APPEND WebKit_LIBRARIES
-    PRIVATE ${LIBNOTIFY_LIBRARIES}
-)
+    list(APPEND WebKit_PRIVATE_LIBRARIES
+        ${LIBNOTIFY_LIBRARIES}
+    )
 endif ()
 
 if (USE_LIBWEBRTC)
-list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
-    "${THIRDPARTY_DIR}/libwebrtc/Source/"
-    "${THIRDPARTY_DIR}/libwebrtc/Source/webrtc"
-)
+    list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/libwebrtc/Source/"
+        "${THIRDPARTY_DIR}/libwebrtc/Source/webrtc"
+    )
 endif ()
 
 # To generate WebKitEnumTypes.h we want to use all installed headers, except WebKitEnumTypes.h itself.

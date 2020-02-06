@@ -244,17 +244,17 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
             // Do not dump invalid or transparent backgrounds, since that is the default.
             Color backgroundColor = o.style().visitedDependentColor(CSSPropertyBackgroundColor);
             if (o.parent()->style().visitedDependentColor(CSSPropertyBackgroundColor).rgb() != backgroundColor.rgb()
-                && backgroundColor.isValid() && backgroundColor.rgb())
+                && backgroundColor.rgb() != Color::transparent)
                 ts << " [bgcolor=" << backgroundColor.nameForRenderTreeAsText() << "]";
             
             Color textFillColor = o.style().visitedDependentColor(CSSPropertyWebkitTextFillColor);
             if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextFillColor).rgb() != textFillColor.rgb()  
-                && textFillColor.isValid() && textFillColor.rgb() != color.rgb() && textFillColor.rgb())
+                && textFillColor.rgb() != color.rgb() && textFillColor.rgb() != Color::transparent)
                 ts << " [textFillColor=" << textFillColor.nameForRenderTreeAsText() << "]";
 
             Color textStrokeColor = o.style().visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
             if (o.parent()->style().visitedDependentColor(CSSPropertyWebkitTextStrokeColor).rgb() != textStrokeColor.rgb()
-                && textStrokeColor.isValid() && textStrokeColor.rgb() != color.rgb() && textStrokeColor.rgb())
+                && textStrokeColor.rgb() != color.rgb() && textStrokeColor.rgb() != Color::transparent)
                 ts << " [textStrokeColor=" << textStrokeColor.nameForRenderTreeAsText() << "]";
 
             if (o.parent()->style().textStrokeWidth() != o.style().textStrokeWidth() && o.style().textStrokeWidth() > 0)
@@ -480,14 +480,10 @@ void writeDebugInfo(TextStream& ts, const RenderObject& object, OptionSet<Render
 static void writeTextBox(TextStream& ts, const RenderText& o, const LineLayoutTraversal::TextBox& textBox)
 {
     auto rect = textBox.rect();
-    auto logicalRect = textBox.logicalRect();
-
     int x = rect.x();
     int y = rect.y();
-
-    // FIXME: Mixing logical and physical here doesn't make sense.
-    int logicalWidth = ceilf(rect.x() + logicalRect.width()) - x;
-
+    // FIXME: Use non-logical width. webkit.org/b/206809.
+    int logicalWidth = ceilf(rect.x() + (textBox.isHorizontal() ? rect.width() : rect.height())) - x;
     // FIXME: Table cell adjustment is temporary until results can be updated.
     if (is<RenderTableCell>(*o.containingBlock()))
         y -= floorToInt(downcast<RenderTableCell>(*o.containingBlock()).intrinsicPaddingBefore());

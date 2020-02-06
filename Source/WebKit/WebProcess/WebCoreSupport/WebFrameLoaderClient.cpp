@@ -568,7 +568,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent> ha
     webPage->sandboxExtensionTracker().didCommitProvisionalLoad(m_frame);
 
     // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), valueOrCompute(documentLoader.response().certificateInfo(), [] { return CertificateInfo(); }), m_frame->coreFrame()->document()->isPluginDocument(), hasInsecureContent, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), valueOrCompute(documentLoader.response().certificateInfo(), [] { return CertificateInfo(); }), documentLoader.response().usedLegacyTLS(), m_frame->coreFrame()->document()->isPluginDocument(), hasInsecureContent, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
     webPage->didCommitLoad(m_frame);
 }
 
@@ -1535,10 +1535,10 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 #if PLATFORM(COCOA)
     auto* drawingArea = webPage->drawingArea();
     view->setViewExposedRect(drawingArea->viewExposedRect());
-    if (isMainFrame) {
+    if (isMainFrame)
         view->setDelegatesScrolling(drawingArea->usesDelegatedScrolling());
-        view->setDelegatesPageScaling(drawingArea->usesDelegatedPageScaling());
-    }
+
+    webPage->corePage()->setDelegatesScaling(drawingArea->usesDelegatedPageScaling());
 #endif
 
     if (webPage->scrollPinningBehavior() != DoNotPin)

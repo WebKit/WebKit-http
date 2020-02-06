@@ -1,3 +1,120 @@
+2020-01-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add support for specifying background colors when setting marked text
+        https://bugs.webkit.org/show_bug.cgi?id=207065
+        <rdar://problem/57876140>
+
+        Reviewed by Tim Horton.
+
+        Adjust some call sites of Editor::setComposition().
+
+        * WebView.cpp:
+        (WebView::onIMEComposition):
+        (WebView::setCompositionForTesting):
+
+2020-01-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make Animation.timeline read-write only if a runtime flag is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=206173
+        <rdar://problem/58527432>
+
+        Reviewed by Dean Jackson.
+
+        Add a new WebAnimationsMutableTimelines runtime flag.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setWebAnimationsMutableTimelinesEnabled):
+        (WebPreferences::webAnimationsMutableTimelinesEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-01-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: unable to evaluate in the isolated world of content scripts injected by safari app extensions
+        https://bugs.webkit.org/show_bug.cgi?id=206110
+        <rdar://problem/16945643>
+
+        Reviewed by Timothy Hatcher, Joseph Pecoraro, and Brian Burg.
+
+        In addition to evaluating in subframe execution contexts, add the ability for Web Inspector
+        to evaluate in non-normal isolated worlds.
+
+        * WebScriptWorld.cpp:
+        (WebScriptWorld::createInstance):
+        Treat isolated worlds created by API calls as `User` worlds.
+
+2020-01-27  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Throttling requestAnimationFrame should be controlled by RenderingUpdateScheduler
+        https://bugs.webkit.org/show_bug.cgi?id=204713
+
+        Reviewed by Simon Fraser.
+
+        Add a WKPreference key for RenderingUpdateThrottling.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::renderingUpdateThrottlingEnabled):
+        (WebPreferences::setRenderingUpdateThrottlingEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-01-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r255131.
+
+        Caused assertion failures on iOS debug bots.
+
+        Reverted changeset:
+
+        "Throttling requestAnimationFrame should be controlled by
+        RenderingUpdateScheduler"
+        https://bugs.webkit.org/show_bug.cgi?id=204713
+        https://trac.webkit.org/changeset/255131
+
+2020-01-26  Said Abou-Hallawa  <said@apple.com>
+
+        Throttling requestAnimationFrame should be controlled by RenderingUpdateScheduler
+        https://bugs.webkit.org/show_bug.cgi?id=204713
+
+        Reviewed by Simon Fraser.
+
+        Add a WKPreference key for RenderingUpdateThrottling.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::renderingUpdateThrottlingEnabled):
+        (WebPreferences::setRenderingUpdateThrottlingEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2020-01-21  Sihui Liu  <sihui_liu@apple.com>
+
+        Disable WebSQL everywhere by default except in tests
+        https://bugs.webkit.org/show_bug.cgi?id=204907
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::webSQLEnabled):
+        (WebPreferences::setWebSQLEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
 2020-01-20  David Kilzer  <ddkilzer@apple.com>
 
         Fix missing header guards and clean up empty files in WebCore, WebKitLegacy, WebKit, Tools

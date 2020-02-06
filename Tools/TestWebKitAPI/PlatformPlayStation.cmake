@@ -10,6 +10,41 @@ list(APPEND TestWTF_SOURCES
     generic/UtilitiesGeneric.cpp
 )
 
+# Both bmalloc and WTF are built as object libraries. The WebKit:: interface
+# targets are used. A limitation of that is the object files are not propagated
+# so they are added here.
+list(APPEND TestWTF_PRIVATE_LIBRARIES
+    $<TARGET_OBJECTS:WTF>
+    $<TARGET_OBJECTS:bmalloc>
+)
+
 list(APPEND TestWebCore_SOURCES
     ${test_main_SOURCES}
 )
+
+# TestWebKit
+if (ENABLE_WEBKIT)
+    add_dependencies(TestWebKitAPIBase WebKitFrameworkHeaders)
+    add_dependencies(TestWebKitAPIInjectedBundle WebKitFrameworkHeaders)
+
+    target_sources(TestWebKitAPIInjectedBundle PRIVATE
+        generic/UtilitiesGeneric.cpp
+
+        playstation/PlatformUtilitiesPlayStation.cpp
+    )
+
+    list(APPEND TestWebKit_SOURCES
+        ${test_main_SOURCES}
+
+        Tests/WebKit/curl/Certificates.cpp
+
+        generic/UtilitiesGeneric.cpp
+
+        playstation/PlatformUtilitiesPlayStation.cpp
+        playstation/PlatformWebViewPlayStation.cpp
+    )
+
+    list(APPEND TestWebKit_DEPENDENCIES
+        WebKitFrameworkHeaders
+    )
+endif ()

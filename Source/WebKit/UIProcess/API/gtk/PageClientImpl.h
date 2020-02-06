@@ -98,7 +98,7 @@ private:
     RefPtr<WebDataListSuggestionsDropdown> createDataListSuggestionsDropdown(WebPageProxy&) override;
 #endif
     void selectionDidChange() override;
-    RefPtr<ViewSnapshot> takeViewSnapshot() override;
+    RefPtr<ViewSnapshot> takeViewSnapshot(Optional<WebCore::IntRect>&&) override;
 #if ENABLE(DRAG_SUPPORT)
     void startDrag(Ref<WebCore::SelectionData>&&, WebCore::DragOperation, RefPtr<ShareableBitmap>&& dragImage) override;
 #endif
@@ -156,8 +156,6 @@ private:
     void isPlayingAudioWillChange() final { }
     void isPlayingAudioDidChange() final { }
 
-    void didFinishProcessingAllPendingMouseEvents() final { }
-
     void requestDOMPasteAccess(const WebCore::IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&&) final;
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
@@ -173,6 +171,8 @@ private:
 #endif
 
     void didChangeWebPageID() const override;
+
+    String themeName() const override;
 
     // Members of PageClientImpl class
     GtkWidget* m_viewWidget;

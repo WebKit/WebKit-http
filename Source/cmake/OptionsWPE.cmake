@@ -24,7 +24,7 @@ find_package(LibGcrypt 1.6.0 REQUIRED)
 find_package(LibSoup 2.54.0 REQUIRED)
 find_package(LibXml2 2.8.0 REQUIRED)
 find_package(PNG REQUIRED)
-find_package(Sqlite REQUIRED)
+find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(WebP REQUIRED)
 find_package(WPE REQUIRED)
@@ -75,7 +75,6 @@ WEBKIT_OPTION_DEFINE(USE_WOFF2 "Whether to enable support for WOFF2 Web Fonts." 
 WEBKIT_OPTION_DEFINE(ENABLE_WPE_QT_API "Whether to enable support for the Qt5/QML plugin" PUBLIC OFF)
 
 # Private options specific to the WPE port.
-WEBKIT_OPTION_DEFINE(USE_OPENVR "Whether to use OpenVR as WebVR backend." PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_HOLEPUNCH "Whether to enable GStreamer holepunch" PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_EXTERNAL_HOLEPUNCH "Whether to enable external holepunch" PRIVATE OFF)
 

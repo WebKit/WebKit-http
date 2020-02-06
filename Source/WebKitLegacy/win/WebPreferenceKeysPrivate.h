@@ -190,6 +190,8 @@
 
 #define WebKitWebAnimationsCompositeOperationsEnabledPreferenceKey "WebKitWebAnimationsCompositeOperationsEnabled"
 
+#define WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey "WebKitWebAnimationsMutableTimelinesEnabled"
+
 #define WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey "WebKitWebAnimationsCSSIntegrationEnabled"
 
 #define WebKitUserTimingEnabledPreferenceKey "WebKitUserTimingEnabled"
@@ -222,3 +224,7 @@
 #define WebKitAsyncClipboardAPIEnabledPreferenceKey "WebKitAsyncClipboardAPIEnabled"
 
 #define WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey "WebKitAspectRatioOfImgFromWidthAndHeightEnabled"
+
+#define WebKitWebSQLEnabledPreferenceKey "WebKitWebSQLEnabled"
+
+#define WebKitRenderingUpdateThrottlingEnabledPreferenceKey "WebKitRenderingUpdateThrottlingEnabled"

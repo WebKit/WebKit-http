@@ -2413,54 +2413,52 @@ PlatformGLObject GraphicsContextGLOpenGL::getQuery(GCGLenum target, GCGLenum pna
 
 PlatformGLObject GraphicsContextGLOpenGL::createSampler()
 {
-
-    return 0;
+    makeContextCurrent();
+    GLuint name = 0;
+    gl::GenSamplers(1, &name);
+    return name;
 }
 
 void GraphicsContextGLOpenGL::deleteSampler(PlatformGLObject sampler)
 {
-    UNUSED_PARAM(sampler);
+    makeContextCurrent();
+    gl::DeleteSamplers(1, &sampler);
 }
 
 GCGLboolean GraphicsContextGLOpenGL::isSampler(PlatformGLObject sampler)
 {
-    UNUSED_PARAM(sampler);
-
-    return false;
+    makeContextCurrent();
+    return gl::IsSampler(sampler);
 }
 
 void GraphicsContextGLOpenGL::bindSampler(GCGLuint unit, PlatformGLObject sampler)
 {
-    UNUSED_PARAM(unit);
-    UNUSED_PARAM(sampler);
+    makeContextCurrent();
+    gl::BindSampler(unit, sampler);
 }
 
 void GraphicsContextGLOpenGL::samplerParameteri(PlatformGLObject sampler, GCGLenum pname, GCGLint param)
 {
-    UNUSED_PARAM(sampler);
-    UNUSED_PARAM(pname);
-    UNUSED_PARAM(param);
+    makeContextCurrent();
+    gl::SamplerParameteri(sampler, pname, param);
 }
 
 void GraphicsContextGLOpenGL::samplerParameterf(PlatformGLObject sampler, GCGLenum pname, GCGLfloat param)
 {
-    UNUSED_PARAM(sampler);
-    UNUSED_PARAM(pname);
-    UNUSED_PARAM(param);
+    makeContextCurrent();
+    gl::SamplerParameterf(sampler, pname, param);
 }
 
 void GraphicsContextGLOpenGL::getSamplerParameterfv(PlatformGLObject sampler, GCGLenum pname, GCGLfloat* value)
 {
-    UNUSED_PARAM(sampler);
-    UNUSED_PARAM(pname);
-    UNUSED_PARAM(value);
+    makeContextCurrent();
+    gl::GetSamplerParameterfv(sampler, pname, value);
 }
 
 void GraphicsContextGLOpenGL::getSamplerParameteriv(PlatformGLObject sampler, GCGLenum pname, GCGLint* value)
 {
-    UNUSED_PARAM(sampler);
-    UNUSED_PARAM(pname);
-    UNUSED_PARAM(value);
+    makeContextCurrent();
+    gl::GetSamplerParameteriv(sampler, pname, value);
 }
 
 PlatformGLObject GraphicsContextGLOpenGL::fenceSync(GCGLenum condition, GCGLbitfield flags)
@@ -2530,33 +2528,6 @@ Vector<GCGLuint> GraphicsContextGLOpenGL::getUniformIndices(PlatformGLObject pro
     UNUSED_PARAM(uniformNames);
 
     return { };
-}
-
-void GraphicsContextGLOpenGL::texImage2D(GCGLenum target, GCGLint level, GCGLint internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, GCGLintptr pboOffset)
-{
-    UNUSED_PARAM(target);
-    UNUSED_PARAM(level);
-    UNUSED_PARAM(internalformat);
-    UNUSED_PARAM(width);
-    UNUSED_PARAM(height);
-    UNUSED_PARAM(border);
-    UNUSED_PARAM(format);
-    UNUSED_PARAM(type);
-    UNUSED_PARAM(pboOffset);
-}
-
-void GraphicsContextGLOpenGL::texImage2D(GCGLenum target, GCGLint level, GCGLint internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, const void* srcData, GCGLuint srcOffset)
-{
-    UNUSED_PARAM(target);
-    UNUSED_PARAM(level);
-    UNUSED_PARAM(internalformat);
-    UNUSED_PARAM(width);
-    UNUSED_PARAM(height);
-    UNUSED_PARAM(border);
-    UNUSED_PARAM(format);
-    UNUSED_PARAM(type);
-    UNUSED_PARAM(srcData);
-    UNUSED_PARAM(srcOffset);
 }
 
 void GraphicsContextGLOpenGL::texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, GCGLintptr pboOffset)
