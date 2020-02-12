@@ -29,6 +29,7 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "FloatRect.h"
+#include "GLContext.h"
 #include "NotImplemented.h"
 
 namespace WebCore {
@@ -62,6 +63,14 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerBuff
         notImplemented();
         return nullptr;
     }
+
+    // If there's no current GLContext in the compositor thread (nonCompositedWebGL mode), we can't perform any
+    // OpenGL operation, which means no cloning. This is used to free the GStreamer buffers and keep the last frame
+    // visible, but this is not necessary when nonCompositedWebGL is enabled (the video is painted as texture
+    // or using hole punch), so returning nullptr is fine.
+    if (!GLContext::current())
+        return nullptr;
+
     RefPtr<BitmapTexture> texture = BitmapTextureGL::create(TextureMapperContextAttributes::get(), m_internalFormat);
     texture->reset(m_size);
     static_cast<BitmapTextureGL&>(*texture).copyFromExternalTexture(m_textureID);
