@@ -961,6 +961,12 @@ WebProcessDataStoreParameters WebProcessPool::webProcessDataStoreParameters(WebP
 void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDataStore* websiteDataStore, WebProcessProxy::IsPrewarmed isPrewarmed)
 {
     auto initializationActivity = process.throttler().backgroundActivity("WebProcess initialization"_s);
+    auto scopeExit = makeScopeExit([&process, initializationActivity = WTFMove(initializationActivity)]() mutable {
+        // Round-trip to the Web Content process before releasing the
+        // initialization activity, so that we're sure that all
+        // messages sent from this function have been handled.
+        process.isResponsive([initializationActivity = WTFMove(initializationActivity)] (bool) { });
+    });
 
     ensureNetworkProcess();
 
@@ -1045,8 +1051,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     if (websiteDataStore)
         parameters.websiteDataStoreParameters = webProcessDataStoreParameters(process, *websiteDataStore);
 
-    process.sendWithAsyncReply(Messages::WebProcess::InitializeWebProcess(parameters), [protectedThis = makeRef(*this), protectedProcess = makeRef(process), initializationActivity = WTFMove(initializationActivity)] { });
-
+    process.send(Messages::WebProcess::InitializeWebProcess(parameters), 0);
 #if PLATFORM(COCOA)
     process.send(Messages::WebProcess::SetQOS(webProcessLatencyQOS(), webProcessThroughputQOS()), 0);
 #endif
@@ -1068,7 +1073,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Initialize remote inspector connection now that we have a sub-process that is hosting one of our web views.
-    Inspector::RemoteInspector::singleton(); 
+    Inspector::RemoteInspector::singleton();
 #endif
 
 #if PLATFORM(MAC)
@@ -1777,7 +1782,7 @@ void WebProcessPool::terminateServiceWorkerProcess(const WebCore::RegistrableDom
 {
 #if ENABLE(SERVICE_WORKER)
     auto protectedThis = makeRef(*this);
-    if (auto process = m_serviceWorkerProcesses.get({ domain, sessionID })) {
+    if (auto process = makeRefPtr(m_serviceWorkerProcesses.get({ domain, sessionID }).get())) {
         process->disableServiceWorkers();
         process->requestTermination(ProcessTerminationReason::ExceededCPULimit);
     }

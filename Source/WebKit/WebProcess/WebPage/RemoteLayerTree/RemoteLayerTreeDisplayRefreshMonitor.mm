@@ -43,19 +43,13 @@ RemoteLayerTreeDisplayRefreshMonitor::~RemoteLayerTreeDisplayRefreshMonitor()
         m_drawingArea->willDestroyDisplayRefreshMonitor(this);
 }
 
-void RemoteLayerTreeDisplayRefreshMonitor::setPreferredFramesPerSecond(FramesPerSecond preferredFramesPerSecond)
-{
-    if (m_drawingArea)
-        m_drawingArea->setPreferredFramesPerSecond(preferredFramesPerSecond);
-}
-
 bool RemoteLayerTreeDisplayRefreshMonitor::requestRefreshCallback()
 {
     if (!m_drawingArea || !isActive())
         return false;
 
     if (!isScheduled())
-        static_cast<DrawingArea&>(*m_drawingArea.get()).scheduleCompositingLayerFlush();
+        static_cast<DrawingArea&>(*m_drawingArea.get()).scheduleRenderingUpdate();
 
     setIsActive(true);
     setIsScheduled(true);

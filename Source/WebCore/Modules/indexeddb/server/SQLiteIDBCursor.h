@@ -44,8 +44,6 @@ class IDBGetResult;
 
 namespace IDBServer {
 
-enum class ShouldFetchForSameKey : bool { No, Yes };
-
 class SQLiteIDBTransaction;
 
 class SQLiteIDBCursor {
@@ -68,10 +66,11 @@ public:
 
     const IDBKeyData& currentKey() const;
     const IDBKeyData& currentPrimaryKey() const;
-    IDBValue* currentValue() const;
+    const IDBValue& currentValue() const;
 
     bool advance(uint64_t count);
     bool iterate(const IDBKeyData& targetKey, const IDBKeyData& targetPrimaryKey);
+    bool prefetchOneRecord();
     bool prefetch();
 
     bool didComplete() const;
@@ -79,13 +78,15 @@ public:
 
     void objectStoreRecordsChanged();
 
-    void currentData(IDBGetResult&, const Optional<IDBKeyPath>&);
+    enum class ShouldIncludePrefetchedRecords { No, Yes };
+    void currentData(IDBGetResult&, const Optional<IDBKeyPath>&, ShouldIncludePrefetchedRecords = ShouldIncludePrefetchedRecords::No);
 
 private:
     bool establishStatement();
     bool createSQLiteStatement(const String& sql);
     bool bindArguments();
 
+    bool resetAndRebindPreIndexStatementIfNecessary();
     void resetAndRebindStatement();
 
     enum class FetchResult {
@@ -94,7 +95,7 @@ private:
         ShouldFetchAgain
     };
 
-    bool fetch(ShouldFetchForSameKey = ShouldFetchForSameKey::No);
+    bool fetch();
 
     struct SQLiteCursorRecord {
         IDBCursorRecord record;
@@ -108,6 +109,10 @@ private:
 
     void markAsErrored(SQLiteCursorRecord&);
 
+    bool isDirectionNext() const { return m_cursorDirection == IndexedDB::CursorDirection::Next || m_cursorDirection == IndexedDB::CursorDirection::Nextunique; }
+
+    void increaseCountToPrefetch();
+
     SQLiteIDBTransaction* m_transaction;
     IDBResourceIdentifier m_cursorIdentifier;
     int64_t m_objectStoreID;
@@ -118,11 +123,13 @@ private:
 
     IDBKeyData m_currentLowerKey;
     IDBKeyData m_currentUpperKey;
+    IDBKeyData m_currentIndexRecordValue;
 
     Deque<SQLiteCursorRecord> m_fetchedRecords;
     uint64_t m_fetchedRecordsSize { 0 };
     IDBKeyData m_currentKeyForUniqueness;
 
+    std::unique_ptr<SQLiteStatement> m_preIndexStatement;
     std::unique_ptr<SQLiteStatement> m_statement;
     std::unique_ptr<SQLiteStatement> m_cachedObjectStoreStatement;
 
@@ -130,6 +137,8 @@ private:
     int64_t m_boundID { 0 };
 
     bool m_backingStoreCursor { false };
+
+    unsigned m_prefetchCount { 0 };
 };
 
 } // namespace IDBServer

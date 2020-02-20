@@ -155,7 +155,7 @@ void LineBuilder::alignContentVertically()
                 auto& boxGeometry = formattingContext().geometryForBox(layoutBox);
                 logicalTop = baselineOffset() - ascent - boxGeometry.borderTop() - boxGeometry.paddingTop().valueOr(0);
             } else if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
-                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<Container>(layoutBox));
+                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<ContainerBox>(layoutBox));
                 // Spec makes us generate at least one line -even if it is empty.
                 auto inlineBlockBaselineOffset = formattingState.displayInlineContent()->lineBoxes.last().baselineOffset();
                 // The inline-block's baseline offset is relative to its content box. Let's convert it relative to the margin box.
@@ -210,8 +210,8 @@ void LineBuilder::justifyRuns(InlineLayoutUnit availableWidth)
     // Need to fix up the last run's trailing expansion.
     if (lastRunWithContent && lastRunWithContent->hasExpansionOpportunity()) {
         // Turn off the trailing bits first and add the forbid trailing expansion.
-        auto leadingExpansion = *lastRunWithContent->expansionBehavior() & LeadingExpansionMask;
-        lastRunWithContent->adjustExpansionBehavior(leadingExpansion | ForbidTrailingExpansion);
+        auto leadingExpansion = lastRunWithContent->expansionBehavior() & LeadingExpansionMask;
+        lastRunWithContent->setExpansionBehavior(leadingExpansion | ForbidTrailingExpansion);
     }
     // Nothing to distribute?
     if (!expansionOpportunityCount)
@@ -393,18 +393,28 @@ void LineBuilder::moveLogicalRight(InlineLayoutUnit delta)
 
 void LineBuilder::append(const InlineItem& inlineItem, InlineLayoutUnit logicalWidth)
 {
+    appendWith(inlineItem, { logicalWidth, false });
+}
+
+void LineBuilder::appendPartialTrailingTextItem(const InlineTextItem& inlineTextItem, InlineLayoutUnit logicalWidth, bool needsHyphen)
+{
+    appendWith(inlineTextItem, { logicalWidth, needsHyphen });
+}
+
+void LineBuilder::appendWith(const InlineItem& inlineItem, const InlineRunDetails& inlineRunDetails)
+{
     if (inlineItem.isText())
-        appendTextContent(downcast<InlineTextItem>(inlineItem), logicalWidth);
+        appendTextContent(downcast<InlineTextItem>(inlineItem), inlineRunDetails.logicalWidth, inlineRunDetails.needsHyphen);
     else if (inlineItem.isLineBreak())
         appendLineBreak(inlineItem);
     else if (inlineItem.isContainerStart())
-        appendInlineContainerStart(inlineItem, logicalWidth);
+        appendInlineContainerStart(inlineItem, inlineRunDetails.logicalWidth);
     else if (inlineItem.isContainerEnd())
-        appendInlineContainerEnd(inlineItem, logicalWidth);
-    else if (inlineItem.layoutBox().replaced())
-        appendReplacedInlineBox(inlineItem, logicalWidth);
+        appendInlineContainerEnd(inlineItem, inlineRunDetails.logicalWidth);
+    else if (inlineItem.layoutBox().isReplacedBox())
+        appendReplacedInlineBox(inlineItem, inlineRunDetails.logicalWidth);
     else if (inlineItem.isBox())
-        appendNonReplacedInlineBox(inlineItem, logicalWidth);
+        appendNonReplacedInlineBox(inlineItem, inlineRunDetails.logicalWidth);
     else
         ASSERT_NOT_REACHED();
 
@@ -439,7 +449,7 @@ void LineBuilder::appendInlineContainerEnd(const InlineItem& inlineItem, InlineL
     appendNonBreakableSpace(inlineItem, contentLogicalRight(), logicalWidth);
 }
 
-void LineBuilder::appendTextContent(const InlineTextItem& inlineTextItem, InlineLayoutUnit logicalWidth)
+void LineBuilder::appendTextContent(const InlineTextItem& inlineTextItem, InlineLayoutUnit logicalWidth, bool needsHyphen)
 {
     auto willCollapseCompletely = [&] {
         if (!inlineTextItem.isCollapsible())
@@ -470,11 +480,16 @@ void LineBuilder::appendTextContent(const InlineTextItem& inlineTextItem, Inline
     if (!m_runs.isEmpty()) {
         auto& lastRun = m_runs.last();
         inlineTextItemNeedsNewRun = lastRun.hasCollapsedTrailingWhitespace() || !lastRun.isText() || &lastRun.layoutBox() != &inlineTextItem.layoutBox();
-        if (!inlineTextItemNeedsNewRun)
+        if (!inlineTextItemNeedsNewRun) {
             lastRun.expand(inlineTextItem, logicalWidth);
+            if (needsHyphen) {
+                ASSERT(!lastRun.textContent()->needsHyphen());
+                lastRun.setNeedsHyphen();
+            }
+        }
     }
     if (inlineTextItemNeedsNewRun)
-        m_runs.append({ inlineTextItem, contentLogicalWidth(), logicalWidth });
+        m_runs.append({ inlineTextItem, contentLogicalWidth(), logicalWidth, needsHyphen });
 
     m_lineBox.expandHorizontally(logicalWidth);
 
@@ -504,7 +519,7 @@ void LineBuilder::appendNonReplacedInlineBox(const InlineItem& inlineItem, Inlin
 
 void LineBuilder::appendReplacedInlineBox(const InlineItem& inlineItem, InlineLayoutUnit logicalWidth)
 {
-    ASSERT(inlineItem.layoutBox().isReplaced());
+    ASSERT(inlineItem.layoutBox().isReplacedBox());
     // FIXME: Surely replaced boxes behave differently.
     appendNonReplacedInlineBox(inlineItem, logicalWidth);
 }
@@ -565,7 +580,7 @@ void LineBuilder::adjustBaselineAndLineHeight(const Run& run)
         case VerticalAlign::Baseline: {
             if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
                 // Inline-blocks with inline content always have baselines.
-                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<Container>(layoutBox));
+                auto& formattingState = layoutState().establishedInlineFormattingState(downcast<ContainerBox>(layoutBox));
                 // Spec makes us generate at least one line -even if it is empty.
                 auto& lastLineBox = formattingState.displayInlineContent()->lineBoxes.last();
                 auto inlineBlockBaseline = lastLineBox.baseline();
@@ -617,7 +632,7 @@ InlineLayoutUnit LineBuilder::runContentHeight(const Run& run) const
 
     auto& layoutBox = run.layoutBox();
     auto& boxGeometry = formattingContext().geometryForBox(layoutBox);
-    if (layoutBox.replaced() || layoutBox.isFloatingPositioned())
+    if (layoutBox.isReplacedBox() || layoutBox.isFloatingPositioned())
         return boxGeometry.contentBoxHeight();
 
     // Non-replaced inline box (e.g. inline-block). It looks a bit misleading but their margin box is considered the content height here.
@@ -644,7 +659,7 @@ bool LineBuilder::isVisuallyNonEmpty(const Run& run) const
     }
 
     if (run.isBox()) {
-        if (run.layoutBox().isReplaced())
+        if (run.layoutBox().isReplacedBox())
             return true;
         ASSERT(run.layoutBox().isInlineBlockBox() || run.layoutBox().isInlineTableBox());
         if (!run.logicalWidth())
@@ -750,20 +765,19 @@ LineBuilder::Run::Run(const InlineSoftLineBreakItem& softLineBreakItem, InlineLa
     : m_type(softLineBreakItem.type())
     , m_layoutBox(&softLineBreakItem.layoutBox())
     , m_logicalRect({ 0, logicalLeft, 0, 0 })
-    , m_textContext({ softLineBreakItem.position(), 1, softLineBreakItem.layoutBox().textContext()->content })
+    , m_textContent({ softLineBreakItem.position(), 1, softLineBreakItem.inlineTextBox().content(), false })
 {
 }
 
-LineBuilder::Run::Run(const InlineTextItem& inlineTextItem, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth)
+LineBuilder::Run::Run(const InlineTextItem& inlineTextItem, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth, bool needsHyphen)
     : m_type(InlineItem::Type::Text)
     , m_layoutBox(&inlineTextItem.layoutBox())
     , m_logicalRect({ 0, logicalLeft, logicalWidth, 0 })
     , m_trailingWhitespaceType(trailingWhitespaceType(inlineTextItem))
-    , m_textContext({ inlineTextItem.start(), m_trailingWhitespaceType == TrailingWhitespace::Collapsed ? 1 : inlineTextItem.length(), inlineTextItem.layoutBox().textContext()->content })
+    , m_textContent({ inlineTextItem.start(), m_trailingWhitespaceType == TrailingWhitespace::Collapsed ? 1 : inlineTextItem.length(), inlineTextItem.inlineTextBox().content(), needsHyphen })
 {
     if (m_trailingWhitespaceType != TrailingWhitespace::None) {
         m_trailingWhitespaceWidth = logicalWidth;
-        m_textContext->setExpansion({ ExpansionBehavior(DefaultExpansion), { } });
         if (!isWhitespacePreserved(inlineTextItem.style()))
             m_expansionOpportunityCount = 1;
     }
@@ -781,15 +795,15 @@ void LineBuilder::Run::expand(const InlineTextItem& inlineTextItem, InlineLayout
 
     if (m_trailingWhitespaceType == TrailingWhitespace::None) {
         m_trailingWhitespaceWidth = { };
-        m_textContext->setExpansion({ ExpansionBehavior(AllowLeadingExpansion | AllowTrailingExpansion), { } });
-        m_textContext->expand(inlineTextItem.length());
+        setExpansionBehavior(AllowLeadingExpansion | AllowTrailingExpansion);
+        m_textContent->expand(inlineTextItem.length());
         return;
     }
     m_trailingWhitespaceWidth += logicalWidth;
     if (!isWhitespacePreserved(inlineTextItem.style()))
         ++m_expansionOpportunityCount;
-    m_textContext->setExpansion({ ExpansionBehavior(DefaultExpansion), { } });
-    m_textContext->expand(m_trailingWhitespaceType == TrailingWhitespace::Collapsed ? 1 : inlineTextItem.length());
+    setExpansionBehavior(DefaultExpansion);
+    m_textContent->expand(m_trailingWhitespaceType == TrailingWhitespace::Collapsed ? 1 : inlineTextItem.length());
 }
 
 bool LineBuilder::Run::hasTrailingLetterSpacing() const
@@ -818,8 +832,8 @@ void LineBuilder::Run::removeTrailingWhitespace()
 {
     // According to https://www.w3.org/TR/css-text-3/#white-space-property matrix
     // Trimmable whitespace is always collapsable so the length of the trailing trimmable whitespace is always 1 (or non-existent).
-    ASSERT(m_textContext->length());
-    m_textContext->expand(-1);
+    ASSERT(m_textContent->length());
+    m_textContent->expand(-1);
     visuallyCollapseTrailingWhitespace();
 }
 
@@ -834,22 +848,19 @@ void LineBuilder::Run::visuallyCollapseTrailingWhitespace()
         ASSERT(m_expansionOpportunityCount);
         m_expansionOpportunityCount--;
     }
-    m_textContext->setExpansion({ ExpansionBehavior(AllowLeadingExpansion | AllowTrailingExpansion), { } });
+    setExpansionBehavior(AllowLeadingExpansion | AllowTrailingExpansion);
 }
 
-void LineBuilder::Run::adjustExpansionBehavior(ExpansionBehavior expansionBehavior)
+void LineBuilder::Run::setExpansionBehavior(ExpansionBehavior expansionBehavior)
 {
     ASSERT(isText());
-    ASSERT(hasExpansionOpportunity());
-    m_textContext->setExpansion({ expansionBehavior, m_textContext->expansion()->horizontalExpansion });
+    m_expansion.behavior = expansionBehavior;
 }
 
-inline Optional<ExpansionBehavior> LineBuilder::Run::expansionBehavior() const
+inline ExpansionBehavior LineBuilder::Run::expansionBehavior() const
 {
     ASSERT(isText());
-    if (auto expansionContext = m_textContext->expansion())
-        return expansionContext->behavior;
-    return { };
+    return m_expansion.behavior;
 }
 
 void LineBuilder::Run::setComputedHorizontalExpansion(InlineLayoutUnit logicalExpansion)
@@ -857,7 +868,7 @@ void LineBuilder::Run::setComputedHorizontalExpansion(InlineLayoutUnit logicalEx
     ASSERT(isText());
     ASSERT(hasExpansionOpportunity());
     m_logicalRect.expandHorizontally(logicalExpansion);
-    m_textContext->setExpansion({ m_textContext->expansion()->behavior, logicalExpansion });
+    m_expansion.horizontalExpansion = logicalExpansion;
 }
 
 }

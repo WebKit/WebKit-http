@@ -1,3 +1,645 @@
+2020-02-18  Paulo Matos  <pmatos@igalia.com>
+
+        Fix order (in MIPS) under which CS-registers are saved/restored
+        https://bugs.webkit.org/show_bug.cgi?id=207752
+
+        Reviewed by Keith Miller.
+
+        This has been causing several segfaults on MIPS with JIT enabled
+        because during an OSR to baseline, the order in which LLInt was
+        saving the registers was not in sync with the way baseline was
+        restoring them.
+
+        * llint/LowLevelInterpreter.asm:
+
+2020-02-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Computed function properties compute their keys twice
+        https://bugs.webkit.org/show_bug.cgi?id=207297
+
+        Reviewed by Keith Miller.
+
+        If a pseudo-String is used as the key of a computed function property,
+        any side effects from resolving the string value occur in duplicate.
+
+        The cause has two parts:
+          - We aren't ensuring that the string value is resolved before doing SetFunctionName and PutByVal.
+          - Our implementation of SetFunctionName (https://tc39.es/ecma262/#sec-setfunctionname)
+            calls toString on a non-symbol argument, instead of assuming the type is a string.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::shouldSetFunctionName): Added.
+        (JSC::BytecodeGenerator::emitSetFunctionName): Added.
+        (JSC::BytecodeGenerator::emitSetFunctionNameIfNeededImpl): Deleted.
+        (JSC::BytecodeGenerator::emitSetFunctionNameIfNeeded): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        Split the "if needed" logic out into its own function.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::PropertyListNode::emitPutConstantProperty):
+        (JSC::DefineFieldNode::emitBytecode):
+        Never emit OpSetFunctionName for a name of unknown type.
+        (But also, don't perform a needless ToPropertyKey for non-function computed property keys.)
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::setFunctionName):
+        Don't call toString, assert isString.
+
+2020-02-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JITThunk should be HashSet<Weak<NativeExecutable>> with appropriate GC weakness handling
+        https://bugs.webkit.org/show_bug.cgi?id=207715
+
+        Reviewed by Darin Adler.
+
+        This patch refines JITThunks GC-aware Weak hash map for NativeExecutable. Previously, we have
+        HashMap<std::tuple<TaggedNativeFunction, TaggedNativeFunction, String>, Weak<NativeExecutable>> table.
+        But this is not good because the first tuple's information is already in NativeExecutable.
+        But we were using this design since Weak<NativeExecutable> can be nullified because of Weak<>. If this
+        happens, we could have invalid Entry in HashMap which does not have corresponding values. This will
+        cause crash when rehasing requires hash code for this entry.
+
+        But this HashMap is very bad in terms of memory usage. Each entry has 32 bytes, and this table gets enough
+        large. We identified that this table is consuming much memory in Membuster. So it is worth designing
+        carefully crafted data structure which only holds Weak<NativeExecutable> by leveraging the deep interaction
+        with our GC implementation.
+
+        This patch implements new design of JITThunks, which uses HashSet<Weak<NativeExecutable>> and carefully crafted
+        HashTraits / KeyTraits to handle Weak<> well.
+
+        1. Each Weak should have finalizer, and this finalizer should remove dead Weak<NativeExecutable> from HashSet.
+
+            This is ensuring that all the keys in HashSet is, even if Weak<> is saying it is Dead, it still has an way
+            to access content of NativeExecutable if the content is not a JS objects. For example, we can get function
+            pointer from dead Weak<NativeExecutable> if it is not yet finalized. Since we remove all finalized Weak<>
+            from the table, this finalizer mechanism allows us to access function pointers etc. from Weak<NativeExecutable>
+            so long as it is held in this table.
+
+        2. Getting NativeExecutable* from JITThunks should have special protocol.
+
+            When getting NativeExecutable* from JITThunks, we do the following,
+
+            1. First, we check we have an Entry in JITThunks. If it does not exist, we should insert it anyway.
+                1.1. If it exists, we should check whether this Weak<NativeExecutable> is dead or not. It is possible that
+                     dead one is still in the table because "dead" does not mean that it is "finalized". Until finalizing happens (and
+                     it can be delayed by incremental-sweeper), Weak<NativeExecutable> can be dead but still accessible. So the table
+                     is still holding dead one. If we get dead one, we should insert a new one.
+                1.2. If it is not dead, we return it.
+            2. Second, we create a new NativeExecutable and insert it. In that case, it is possible that the table already has Weak<NativeExecutable>,
+               but it is dead. In that case, we need to explicitly replace it with newly created one since old one is holding old content. If we
+               replaced, finalizer of Weak<> will not be invoked since it immediately deallocates Weak<>. So, it does not happen that this newly
+               inserted NativeExecutable* is removed by the finalizer registered by the old Weak<>.
+
+        This change makes memory usage of JITThunks table 1/4.
+
+        * heap/Weak.cpp:
+        (JSC::weakClearSlowCase):
+        * heap/Weak.h:
+        (JSC::Weak::Weak):
+        (JSC::Weak::isHashTableEmptyValue const):
+        (JSC::Weak::unsafeImpl const):
+        (WTF::HashTraits<JSC::Weak<T>>::isEmptyValue):
+        * heap/WeakInlines.h:
+        (JSC::Weak<T>::Weak):
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::JITThunks):
+        (JSC::JITThunks::WeakNativeExecutableHash::hash):
+        (JSC::JITThunks::WeakNativeExecutableHash::equal):
+        (JSC::JITThunks::HostKeySearcher::hash):
+        (JSC::JITThunks::HostKeySearcher::equal):
+        (JSC::JITThunks::NativeExecutableTranslator::hash):
+        (JSC::JITThunks::NativeExecutableTranslator::equal):
+        (JSC::JITThunks::NativeExecutableTranslator::translate):
+        (JSC::JITThunks::finalize):
+        (JSC::JITThunks::hostFunctionStub):
+        (JSC::JITThunks::clearHostFunctionStubs): Deleted.
+        * jit/JITThunks.h:
+        * runtime/NativeExecutable.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGCSweepAsynchronously):
+        (JSC::functionCreateEmptyFunctionWithName):
+        (JSC::JSDollarVM::finishCreation):
+
+2020-02-17  Tadeu Zagallo  <tzagallo@apple.com>
+
+        [Wasm] REGRESSION(r256665): Wasm->JS call IC needs to save memory size register
+        https://bugs.webkit.org/show_bug.cgi?id=207849
+
+        Reviewed by Mark Lam.
+
+        When generating the call IC, we should select the callee saves using BoundsChecking mode in order
+        to obey to the calling conventions described in r256665. Currently, we won't restore the memory size
+        register when calling the Wasm LLInt through the call IC.
+
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::calleeSaves const):
+
+2020-02-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Mach lookup to com.apple.webinspector should not be allowed in WebKit's WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=203214
+
+        Reviewed by Brent Fulgham.
+
+        Add static flag in RemoteInspector to indicate whether a sandbox extension is needed. The remote inspector will only be
+        started if the sandbox extension is not needed. Only the WebContent process will need a sandbox extension, since this
+        patch removes mach access to 'com.apple.webinspector' for this process. Also add name and domain for the
+        'Enable Remote Inspector' setting, since this will be used in the UI process.
+
+        * inspector/remote/RemoteInspector.cpp:
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::singleton):
+
+2020-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Remove remaining WTF_EXPORT and WTF_IMPORT by replacing them with WTF_EXPORT_DECLARATION and WTF_IMPORT_DECLARATION
+        https://bugs.webkit.org/show_bug.cgi?id=207746
+
+        Reviewed by Don Olmstead.
+
+        * runtime/JSExportMacros.h:
+
+2020-02-16  Paulo Matos  <pmatos@igalia.com>
+
+        Remove nonArgGPR1 for ARMv7 and ARM64 (unused)
+        https://bugs.webkit.org/show_bug.cgi?id=207753
+
+        Reviewed by Darin Adler.
+
+        Cleanup commit - nonArgGPR1 is unused for both ARMv7
+        and ARM64.
+
+        * jit/GPRInfo.h:
+
+2020-02-14  Tadeu Zagallo  <tzagallo@apple.com> and Michael Saboff  <msaboff@apple.com>
+
+        [WASM] Wasm interpreter's calling convention doesn't match Wasm JIT's convention.
+        https://bugs.webkit.org/show_bug.cgi?id=207727
+
+        Reviewed by Mark Lam.
+
+        The Wasm JIT has unusual calling conventions, which were further complicated by the addition
+        of the interpreter, and the interpreter did not correctly follow these conventions (by incorrectly
+        saving and restoring the callee save registers used for the memory base and size). Here's a summary
+        of the calling convention:
+
+        - When entering Wasm from JS, the wrapper must:
+            - Preserve the base and size when entering LLInt regardless of the mode. (Prior to this
+              patch we only preserved the base in Signaling mode)
+            - Preserve the memory base in either mode, and the size for BoundsChecking.
+        - Both tiers must preserve every *other* register they use. e.g. the LLInt must preserve PB
+          and wasmInstance, but must *not* preserve memoryBase and memorySize.
+        - Changes to memoryBase and memorySize are visible to the caller. This means that:
+            - Intra-module calls can assume these registers are up-to-date even if the memory was
+              resized. The only exception here is if the LLInt calls a signaling JIT, in which case
+              the JIT will not update the size register, since it won't be using it.
+            - Inter-module and JS calls require the caller to reload these registers. These calls may
+              result in memory changes (e.g. the callee may call memory.grow).
+            - A Signaling JIT caller must be aware that the LLInt may trash the size register, since
+              it always bounds checks.
+
+        * llint/WebAssembly.asm:
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::addCall):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addCall):
+        * wasm/WasmCallee.cpp:
+        (JSC::Wasm::LLIntCallee::calleeSaveRegisters):
+        * wasm/WasmCallingConvention.h:
+        * wasm/WasmLLIntPlan.cpp:
+        (JSC::Wasm::LLIntPlan::didCompleteCompilation):
+        * wasm/WasmMemoryInformation.cpp:
+        (JSC::Wasm::PinnedRegisterInfo::get):
+        (JSC::Wasm::getPinnedRegisters): Deleted.
+
+2020-02-13  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Make special udis86 C file handling only happen for Visual Studio
+        https://bugs.webkit.org/show_bug.cgi?id=207729
+
+        Reviewed by Don Olmstead.
+
+        * PlatformPlayStation.cmake:
+
+2020-02-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] We don't support BigInt literal as PropertyName
+        https://bugs.webkit.org/show_bug.cgi?id=206888
+
+        Reviewed by Ross Kirsling.
+
+        According to spec (https://tc39.es/ecma262/#prod-PropertyName),
+        BigInt literals are valid property names. Given that, we should not
+        throw a SyntaxError when using BigInt literals on destructuring
+        pattern, method declaration, object literals, etc.
+        This patch is adding BigInt literal as a valid syntax to PropertyName.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseInstanceFieldInitializerSourceElements):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        * parser/ParserArena.cpp:
+        (JSC::IdentifierArena::makeBigIntDecimalIdentifier):
+        * parser/ParserArena.h:
+
+2020-02-12  Mark Lam  <mark.lam@apple.com>
+
+        Add options for debugging WASM code.
+        https://bugs.webkit.org/show_bug.cgi?id=207677
+        <rdar://problem/59411390>
+
+        Reviewed by Yusuke Suzuki.
+
+        Specifically ...
+
+            JSC_useBBQJIT                            - allows the BBQ JIT to be used if true
+            JSC_useOMGJIT                            - allows the OMG JIT to be used if true
+            JSC_useWasmLLIntPrologueOSR              - allows prologue OSR from Wasm LLInt if true
+            JSC_useWasmLLIntLoopOSR                  - allows loop OSR from Wasm LLInt if true
+            JSC_useWasmLLIntEpilogueOSR              - allows epilogue OSR from Wasm LLInt if true
+            JSC_wasmFunctionIndexRangeToCompile=N:M  - wasm function index range to allow compilation on, e.g. 1:100
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/Options.cpp:
+        (JSC::Options::ensureOptionsAreCoherent):
+        * runtime/OptionsList.h:
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::BBQPlan):
+        * wasm/WasmOMGForOSREntryPlan.cpp:
+        (JSC::Wasm::OMGForOSREntryPlan::OMGForOSREntryPlan):
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::OMGPlan):
+        * wasm/WasmOperations.cpp:
+        (JSC::Wasm::shouldJIT):
+        (JSC::Wasm::operationWasmTriggerOSREntryNow):
+        (JSC::Wasm::operationWasmTriggerTierUpNow):
+        * wasm/WasmSlowPaths.cpp:
+        (JSC::LLInt::shouldJIT):
+        (JSC::LLInt::WASM_SLOW_PATH_DECL):
+
+2020-02-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Compact JITCodeMap by storing BytecodeIndex and CodeLocation separately
+        https://bugs.webkit.org/show_bug.cgi?id=207673
+
+        Reviewed by Mark Lam.
+
+        While BytecodeIndex is 4 bytes, CodeLocation is 8 bytes. So the tuple of them "JITCodeMap::Entry"
+        becomes 16 bytes because it adds 4 bytes padding. We should store BytecodeIndex and CodeLocation separately
+        to avoid this padding.
+
+        This patch introduces JITCodeMapBuilder. We use this to build JITCodeMap data structure as a immutable final result.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * jit/JITCodeMap.h:
+        (JSC::JITCodeMap::JITCodeMap):
+        (JSC::JITCodeMap::find const):
+        (JSC::JITCodeMap::operator bool const):
+        (JSC::JITCodeMap::codeLocations const):
+        (JSC::JITCodeMap::indexes const):
+        (JSC::JITCodeMapBuilder::append):
+        (JSC::JITCodeMapBuilder::finalize):
+        (JSC::JITCodeMap::Entry::Entry): Deleted.
+        (JSC::JITCodeMap::Entry::bytecodeIndex const): Deleted.
+        (JSC::JITCodeMap::Entry::codeLocation): Deleted.
+        (JSC::JITCodeMap::append): Deleted.
+        (JSC::JITCodeMap::finish): Deleted.
+
+2020-02-12  Pavel Feldman  <pavel.feldman@gmail.com>
+
+        Web Inspector: encode binary web socket frames using base64
+        https://bugs.webkit.org/show_bug.cgi?id=207448
+        
+        Previous representation of binary frames is lossy using fromUTF8WithLatin1Fallback,
+        this patch consistently encodes binary data using base64.
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Network.json:
+
+2020-02-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove CSS_DEVICE_ADAPTATION
+        https://bugs.webkit.org/show_bug.cgi?id=203479
+
+        Reviewed by Tim Horton.
+
+        CSS Working Group resolved to remove @viewport <https://github.com/w3c/csswg-drafts/issues/4766>,
+        so remove the code.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-02-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Compact StructureTransitionTable
+        https://bugs.webkit.org/show_bug.cgi?id=207616
+
+        Reviewed by Mark Lam.
+
+        Some of StructureTransitionTable are shown as very large HashMap and we can compact it by encoding key.
+        We leverage 48bit pointers and 8byte alignment of UniquedStringImpl* to encode other parameters into it.
+
+        * runtime/Structure.cpp:
+        (JSC::StructureTransitionTable::contains const):
+        (JSC::StructureTransitionTable::get const):
+        (JSC::StructureTransitionTable::add):
+        * runtime/Structure.h:
+        * runtime/StructureTransitionTable.h:
+        (JSC::StructureTransitionTable::Hash::Key::Key):
+        (JSC::StructureTransitionTable::Hash::Key::isHashTableDeletedValue const):
+        (JSC::StructureTransitionTable::Hash::Key::impl const):
+        (JSC::StructureTransitionTable::Hash::Key::isAddition const):
+        (JSC::StructureTransitionTable::Hash::Key::attributes const):
+        (JSC::StructureTransitionTable::Hash::Key::operator==):
+        (JSC::StructureTransitionTable::Hash::Key::operator!=):
+        (JSC::StructureTransitionTable::Hash::hash):
+        (JSC::StructureTransitionTable::Hash::equal):
+
+2020-02-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make RegExpCache small
+        https://bugs.webkit.org/show_bug.cgi?id=207619
+
+        Reviewed by Mark Lam.
+
+        We can compact RegExpKey by using PackedRefPtr, so that we can shrink memory consumption of RegExpCache.
+
+        * runtime/RegExpKey.h:
+
+2020-02-10  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validator in GenericArguments<Type>::put().
+        https://bugs.webkit.org/show_bug.cgi?id=207485
+        <rdar://problem/59302535>
+
+        Reviewed by Robin Morisset.
+
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::put):
+
+2020-02-10  Mark Lam  <mark.lam@apple.com>
+
+        Missing exception check in GenericArguments<Type>::deletePropertyByIndex().
+        https://bugs.webkit.org/show_bug.cgi?id=207483
+        <rdar://problem/59302616>
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::deletePropertyByIndex):
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256091.
+
+        Broke internal builds
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256091
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256103.
+
+        This patch is blocking the rollout of r256091
+
+        Reverted changeset:
+
+        "Move JavaScriptCore related feature defines from
+        FeatureDefines.xcconfig to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        https://trac.webkit.org/changeset/256103
+
+2020-02-09  Keith Rollin  <krollin@apple.com>
+
+        Re-enable LTO for ARM builds
+        https://bugs.webkit.org/show_bug.cgi?id=207402
+        <rdar://problem/49190767>
+
+        Reviewed by Sam Weinig.
+
+        Bug 190758 re-enabled LTO for Production builds for x86-family CPUs.
+        Enabling it for ARM was left out due to a compiler issue. That issue
+        has been fixed, and so now we can re-enable LTO for ARM.
+
+        * Configurations/Base.xcconfig:
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove ENABLE_FAST_JIT_PERMISSIONS and ENABLE_FTL_JIT.
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+        
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+
+        To support the move, DerivedSources.make has been updated to generate the list
+        of ENABLE_* features by directly from preprocessing Platform.h, rather than 
+        just getting the partial list from the xcconfig file.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * DerivedSources.make:
+
+2020-02-07  Robin Morisset  <rmorisset@apple.com>
+
+        Throw OutOfMemory exception instead of crashing if DirectArguments/ScopedArguments can't be created
+        https://bugs.webkit.org/show_bug.cgi?id=207423
+
+        Reviewed by Mark Lam.
+
+        AllocationFailureMode::Assert is problematic because fuzzers keep producing spurious error reports when they generate code that tries allocating infinite amount of memory.
+        The right approach is to use AllocationFailureMode::ReturnNull, and throw a JS exception upon receiving null.
+
+        In this patch I fixed two functions that were using AllocationFailureMode::Assert:
+            DirectArguments::DirectArguments::overrideThings
+            GenericArguments<Type>::initModifiedArgumentsDescriptor
+
+        No test added, because the only test we have is highly non-deterministic/flaky (only triggers about 10 to 20% of the time even before the fix).
+
+        * runtime/DirectArguments.h:
+        * runtime/GenericArguments.h:
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::deletePropertyByIndex):
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        (JSC::GenericArguments<Type>::initModifiedArgumentsDescriptor):
+        (JSC::GenericArguments<Type>::initModifiedArgumentsDescriptorIfNecessary):
+        (JSC::GenericArguments<Type>::setModifiedArgumentDescriptor):
+        * runtime/ScopedArguments.h:
+
+2020-02-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256051.
+
+        Broke internal builds.
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256051
+
+2020-02-07  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+        
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+
+        To support the move, DerivedSources.make has been updated to generate the list
+        of ENABLE_* features by directly from preprocessing Platform.h, rather than 
+        just getting the partial list from the xcconfig file.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * DerivedSources.make:
+
+2020-02-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CodeBlock::shrinkToFit should shrink m_constantRegisters and m_constantsSourceCodeRepresentation in 64bit architectures
+        https://bugs.webkit.org/show_bug.cgi?id=207356
+
+        Reviewed by Mark Lam.
+
+        Only 32bit architectures are using m_constantRegisters's address. 64bit architectures are not relying on m_constantRegisters's address.
+        This patches fixes the thing so that CodeBlock::shrinkToFit will shrink m_constantRegisters and m_constantsSourceCodeRepresentation
+        regardless of whether this is EarlyShrink or not. We also move DFG/FTL's LateShrink call to the place after calling DFGCommon reallyAdd
+        since they can add more constant registers.
+
+        Relanding it by fixing dead-lock.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::shrinkToFit):
+        * bytecode/CodeBlock.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGJITFinalizer.cpp:
+        (JSC::DFG::JITFinalizer::finalizeCommon):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        (JSC::DFG::Plan::finalizeWithoutNotifyingCallback):
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::emitLoadDouble):
+        (JSC::JIT::emitLoadInt32ToDouble): Deleted.
+
+2020-02-06  Robin Morisset  <rmorisset@apple.com>
+
+        Most of B3 and Air does not need to include CCallHelpers.h
+        https://bugs.webkit.org/show_bug.cgi?id=206975
+
+        Reviewed by Mark Lam.
+
+        They only do to use CCallHelpers::Jump or CCallHelpers::Label.
+        But CCallHelpers inherit those from MacroAssembler. And MacroAssembler.h is dramatically cheaper to include (since CCallHelpers includes AssemblyHelpers which includes CodeBlock.h which includes roughly the entire runtime).
+
+        * b3/B3CheckSpecial.cpp:
+        * b3/B3CheckSpecial.h:
+        * b3/B3LowerMacros.cpp:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::generate):
+        * b3/B3PatchpointSpecial.h:
+        * b3/B3StackmapGenerationParams.cpp:
+        (JSC::B3::StackmapGenerationParams::successorLabels const):
+        * b3/B3StackmapGenerationParams.h:
+        * b3/air/AirAllocateRegistersAndStackAndGenerateCode.h:
+        * b3/air/AirCCallSpecial.cpp:
+        * b3/air/AirCCallSpecial.h:
+        * b3/air/AirCode.cpp:
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::entrypointLabel const):
+        * b3/air/AirCustom.cpp:
+        (JSC::B3::Air::CCallCustom::generate):
+        (JSC::B3::Air::ShuffleCustom::generate):
+        (JSC::B3::Air::WasmBoundsCheckCustom::generate):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::generate):
+        (JSC::B3::Air::EntrySwitchCustom::generate):
+        * b3/air/AirDisassembler.cpp:
+        (JSC::B3::Air::Disassembler::addInst):
+        * b3/air/AirDisassembler.h:
+        * b3/air/AirGenerationContext.h:
+        * b3/air/AirInst.h:
+        * b3/air/AirPrintSpecial.cpp:
+        (JSC::B3::Air::PrintSpecial::generate):
+        * b3/air/AirPrintSpecial.h:
+        * b3/air/AirSpecial.h:
+        * b3/air/AirValidate.cpp:
+        * b3/air/opcode_generator.rb:
+
+2020-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255987.
+        https://bugs.webkit.org/show_bug.cgi?id=207369
+
+        JSTests failures (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] CodeBlock::shrinkToFit should shrink
+        m_constantRegisters and m_constantsSourceCodeRepresentation in
+        64bit architectures"
+        https://bugs.webkit.org/show_bug.cgi?id=207356
+        https://trac.webkit.org/changeset/255987
+
+2020-02-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CodeBlock::shrinkToFit should shrink m_constantRegisters and m_constantsSourceCodeRepresentation in 64bit architectures
+        https://bugs.webkit.org/show_bug.cgi?id=207356
+
+        Reviewed by Mark Lam.
+
+        Only 32bit architectures are using m_constantRegisters's address. 64bit architectures are not relying on m_constantRegisters's address.
+        This patches fixes the thing so that CodeBlock::shrinkToFit will shrink m_constantRegisters and m_constantsSourceCodeRepresentation
+        regardless of whether this is EarlyShrink or not. We also move DFG/FTL's LateShrink call to the place after calling DFGCommon reallyAdd
+        since they can add more constant registers.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::shrinkToFit):
+        * bytecode/CodeBlock.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGJITFinalizer.cpp:
+        (JSC::DFG::JITFinalizer::finalizeCommon):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        (JSC::DFG::Plan::finalizeWithoutNotifyingCallback):
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::emitLoadDouble):
+        (JSC::JIT::emitLoadInt32ToDouble): Deleted.
+
 2020-02-05  Don Olmstead  <don.olmstead@sony.com>
 
         [PlayStation] Build a shared JavaScriptCore

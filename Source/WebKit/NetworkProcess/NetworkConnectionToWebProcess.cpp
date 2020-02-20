@@ -61,6 +61,7 @@
 #include "WebSWServerConnectionMessages.h"
 #include "WebSWServerToContextConnection.h"
 #include "WebSWServerToContextConnectionMessages.h"
+#include "WebSocketIdentifier.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/DocumentStorageAccess.h>
 #include <WebCore/HTTPCookieAcceptPolicy.h>
@@ -123,6 +124,11 @@ NetworkConnectionToWebProcess::~NetworkConnectionToWebProcess()
     for (auto& port : m_processEntangledPorts)
         networkProcess().messagePortChannelRegistry().didCloseMessagePort(port);
 
+#if HAVE(COOKIE_CHANGE_LISTENER_API)
+    if (auto* networkStorageSession = storageSession())
+        networkStorageSession->stopListeningForCookieChangeNotifications(*this, m_hostsWithCookieListeners);
+#endif
+
 #if USE(LIBWEBRTC)
     if (m_rtcProvider)
         m_rtcProvider->close();
@@ -175,16 +181,16 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
     }
 
     if (decoder.messageReceiverName() == Messages::NetworkSocketStream::messageReceiverName()) {
-        if (auto* socketStream = m_networkSocketStreams.get(decoder.destinationID())) {
+        if (auto* socketStream = m_networkSocketStreams.get(makeObjectIdentifier<WebSocketIdentifierType>(decoder.destinationID()))) {
             socketStream->didReceiveMessage(connection, decoder);
             if (decoder.messageName() == Messages::NetworkSocketStream::Close::name())
-                m_networkSocketStreams.remove(decoder.destinationID());
+                m_networkSocketStreams.remove(makeObjectIdentifier<WebSocketIdentifierType>(decoder.destinationID()));
         }
         return;
     }
 
     if (decoder.messageReceiverName() == Messages::NetworkSocketChannel::messageReceiverName()) {
-        if (auto* channel = m_networkSocketChannels.get(decoder.destinationID()))
+        if (auto* channel = m_networkSocketChannels.get(makeObjectIdentifier<WebSocketIdentifierType>(decoder.destinationID())))
             channel->didReceiveMessage(connection, decoder);
         return;
     }
@@ -335,24 +341,24 @@ void NetworkConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection&, I
 {
 }
 
-void NetworkConnectionToWebProcess::createSocketStream(URL&& url, String cachePartition, uint64_t identifier)
+void NetworkConnectionToWebProcess::createSocketStream(URL&& url, String cachePartition, WebSocketIdentifier identifier)
 {
     ASSERT(!m_networkSocketStreams.contains(identifier));
     WebCore::SourceApplicationAuditToken token = { };
 #if PLATFORM(COCOA)
     token = { m_networkProcess->sourceApplicationAuditData() };
 #endif
-    m_networkSocketStreams.set(identifier, NetworkSocketStream::create(m_networkProcess.get(), WTFMove(url), m_sessionID, cachePartition, identifier, m_connection, WTFMove(token)));
+    m_networkSocketStreams.add(identifier, NetworkSocketStream::create(m_networkProcess.get(), WTFMove(url), m_sessionID, cachePartition, identifier, m_connection, WTFMove(token)));
 }
 
-void NetworkConnectionToWebProcess::createSocketChannel(const ResourceRequest& request, const String& protocol, uint64_t identifier)
+void NetworkConnectionToWebProcess::createSocketChannel(const ResourceRequest& request, const String& protocol, WebSocketIdentifier identifier)
 {
     ASSERT(!m_networkSocketChannels.contains(identifier));
     if (auto channel = NetworkSocketChannel::create(*this, m_sessionID, request, protocol, identifier))
         m_networkSocketChannels.add(identifier, WTFMove(channel));
 }
 
-void NetworkConnectionToWebProcess::removeSocketChannel(uint64_t identifier)
+void NetworkConnectionToWebProcess::removeSocketChannel(WebSocketIdentifier identifier)
 {
     ASSERT(m_networkSocketChannels.contains(identifier));
     m_networkSocketChannels.remove(identifier);
@@ -632,6 +638,48 @@ void NetworkConnectionToWebProcess::deleteCookie(const URL& url, const String& c
     networkStorageSession->deleteCookie(url, cookieName);
 }
 
+void NetworkConnectionToWebProcess::domCookiesForHost(const String& host, bool subscribeToCookieChangeNotifications, CompletionHandler<void(const Vector<WebCore::Cookie>&)>&& completionHandler)
+{
+    auto* networkStorageSession = storageSession();
+    if (!networkStorageSession)
+        return completionHandler({ });
+
+#if HAVE(COOKIE_CHANGE_LISTENER_API)
+    if (subscribeToCookieChangeNotifications) {
+        ASSERT(!m_hostsWithCookieListeners.contains(host));
+        m_hostsWithCookieListeners.add(host);
+        networkStorageSession->startListeningForCookieChangeNotifications(*this, host);
+    }
+#else
+    UNUSED_PARAM(subscribeToCookieChangeNotifications);
+#endif
+
+    completionHandler(networkStorageSession->domCookiesForHost(host));
+}
+
+#if HAVE(COOKIE_CHANGE_LISTENER_API)
+
+void NetworkConnectionToWebProcess::unsubscribeFromCookieChangeNotifications(const HashSet<String>& hosts)
+{
+    bool removed = m_hostsWithCookieListeners.remove(hosts.begin(), hosts.end());
+    ASSERT_UNUSED(removed, removed);
+
+    if (auto* networkStorageSession = storageSession())
+        networkStorageSession->stopListeningForCookieChangeNotifications(*this, hosts);
+}
+
+void NetworkConnectionToWebProcess::cookiesAdded(const String& host, const Vector<WebCore::Cookie>& cookies)
+{
+    connection().send(Messages::NetworkProcessConnection::CookiesAdded(host, cookies), 0);
+}
+
+void NetworkConnectionToWebProcess::cookiesDeleted()
+{
+    connection().send(Messages::NetworkProcessConnection::CookiesDeleted(), 0);
+}
+
+#endif
+
 void NetworkConnectionToWebProcess::registerFileBlobURL(const URL& url, const String& path, SandboxExtension::Handle&& extensionHandle, const String& contentType)
 {
     auto* session = networkSession();
@@ -785,6 +833,17 @@ void NetworkConnectionToWebProcess::requestStorageAccessUnderOpener(WebCore::Reg
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->requestStorageAccessUnderOpener(WTFMove(domainInNeedOfStorageAccess), openerPageID, WTFMove(openerDomain));
     }
+}
+
+void NetworkConnectionToWebProcess::isPrevalentSubresourceLoad(RegistrableDomain&& domain, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession()) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics()) {
+            resourceLoadStatistics->isPrevalentResource(domain, WTFMove(completionHandler));
+            return;
+        }
+    }
+    completionHandler(false);
 }
 #endif
 

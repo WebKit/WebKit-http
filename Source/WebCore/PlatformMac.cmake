@@ -48,7 +48,6 @@ list(APPEND WebCore_LIBRARIES
     ${SQLITE3_LIBRARIES}
     ${SYSTEMCONFIGURATION_LIBRARY}
     ${XML2_LIBRARY}
-    ${ZLIB_LIBRARY}
 )
 
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
@@ -381,7 +380,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/ScrollAnimatorMac.mm
     platform/mac/ScrollViewMac.mm
     platform/mac/ScrollbarThemeMac.mm
-    platform/mac/SerializedPlatformRepresentationMac.mm
+    platform/mac/SerializedPlatformDataCueMac.mm
     platform/mac/StringUtilities.mm
     platform/mac/SuddenTermination.mm
     platform/mac/ThemeMac.mm
@@ -430,9 +429,10 @@ list(APPEND WebCore_SOURCES
     platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm
     platform/network/mac/WebCoreURLResponse.mm
 
+    platform/text/cocoa/LocaleCocoa.mm
+
     platform/text/cf/HyphenationCF.cpp
 
-    platform/text/mac/LocaleMac.mm
     platform/text/mac/TextBoundaries.mm
     platform/text/mac/TextCheckingMac.mm
     platform/text/mac/TextEncodingRegistryMac.mm

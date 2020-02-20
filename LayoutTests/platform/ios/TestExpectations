@@ -69,17 +69,7 @@ fast/history/page-cache-running-audiocontext.html
 fast/history/page-cache-suspended-audiocontext.html
 
 # No wheel events on iOS
-fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
-fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
-fast/events/wheel-event-destroys-frame.html [ Skip ]
-fast/events/wheel-event-destroys-overflow.html [ Skip ]
-fast/events/wheel-event-outside-body.html [ Skip ]
-fast/scrolling/scroll-container-horizontally.html [ Failure ]
-fast/events/wheelevent-basic.html [ Skip ]
-fast/events/wheelevent-direction-inverted-from-device.html [ Skip ]
-fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Skip ]
-fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Skip ]
-fast/events/wheelevent-mousewheel-interaction.html [ Skip ]
+fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
 fast/events/platform-wheelevent-in-scrolling-div.html [ Skip ]
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html [ Skip ]
 fast/events/platform-wheelevent-paging-x-in-non-scrolling-page.html [ Skip ]
@@ -91,8 +81,19 @@ fast/events/platform-wheelevent-paging-y-in-non-scrolling-div.html [ Skip ]
 fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html [ Skip ]
 fast/events/platform-wheelevent-paging-y-in-scrolling-div.html [ Skip ]
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Skip ]
+fast/events/wheel-event-destroys-frame.html [ Skip ]
+fast/events/wheel-event-destroys-overflow.html [ Skip ]
+fast/events/wheel-event-outside-body.html [ Skip ]
+fast/events/wheelevent-basic.html [ Skip ]
+fast/events/wheelevent-direction-inverted-from-device.html [ Skip ]
+fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Skip ]
 fast/events/wheelevent-in-text-node.html [ Skip ]
-fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
+fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Skip ]
+fast/events/wheelevent-mousewheel-interaction.html [ Skip ]
+fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
+fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
+fast/scrolling/programmatic-scroll-to-zero-zero.html [ Skip ]
+fast/scrolling/scroll-container-horizontally.html [ Failure ]
 
 # This test requires alpha-channel video support.
 compositing/video/video-background-color.html [ WontFix ]
@@ -247,9 +248,6 @@ storage/websql/quota-tracking.html
 inspector/ [ Skip ]
 http/tests/inspector/ [ Skip ]
 http/tests/websocket/tests/hybi/inspector/ [ Skip ]
-
-# CSS Device Adaptation is not enabled.
-webkit.org/b/95959 css3/device-adapt [ Skip ]
 
 # Unsupported on certain OS versions
 webkit.org/b/152491 fast/text/woff2.html [ Skip ]
@@ -2741,11 +2739,6 @@ webkit.org/b/173611 media/video-buffered.html [ Pass Failure ]
 webkit.org/b/171617 perf/object-keys.html [ Pass Failure ]
 
 # WebGL tests which need triaging https://bugs.webkit.org/b/174100
-fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
-fast/canvas/webgl/framebuffer-object-attachment.html [ Failure ]
-fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
-fast/canvas/webgl/oes-texture-float-linear.html [ Failure ]
-fast/canvas/webgl/oes-texture-half-float-linear.html [ Failure ]
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-potentially-subsampled-image.html [ Failure ]
 fast/canvas/webgl/webgl-compressed-texture-size-limit.html [ Failure ]
 fast/canvas/webgl/webgl-draw-buffers.html [ Failure ]
@@ -2753,10 +2746,7 @@ fast/canvas/webgl/webgl2-texture-upload-enums.html [ Failure ]
 webgl/1.0.3/conformance/context/context-attribute-preserve-drawing-buffer.html [ Failure ]
 webgl/1.0.3/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
 webgl/1.0.3/conformance/context/context-hidden-alpha.html [ Failure ]
-webgl/1.0.3/conformance/extensions/oes-texture-float-linear.html [ Failure ]
-webgl/1.0.3/conformance/extensions/oes-texture-half-float-linear.html [ Failure ]
 webgl/1.0.3/conformance/extensions/webgl-compressed-texture-pvrtc.html [ Failure ]
-webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance.html [ Failure ]
 webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Failure ]
 fast/canvas/webgl/read-pixels-test.html [ Skip ]
 fast/canvas/webgl/webglcontextchangedevent.html [ Skip ]
@@ -2897,10 +2887,6 @@ imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.h
 # <rdar://problem/34209038>
 webgl/1.0.3/conformance/ogles/GL/log/log_001_to_008.html [ Skip ]
 webgl/1.0.3/conformance/ogles/GL/log2/log2_001_to_008.html [ Skip ]
-
-# <rdar://problem/33135669>
-webgl/1.0.3/conformance/textures/gl-teximage.html [ Failure ]
-fast/canvas/webgl/gl-teximage.html [ Failure ]
 
 # <rdar://problem/30517283>
 security/block-test.html
@@ -3088,17 +3074,6 @@ webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line
 fast/dynamic/mail-autosize-viewport-unit.html [ Failure ]
 
 # LFC
-fast/block/block-only/border-simple.html [ Failure ]
-fast/block/block-only/floating-box-clear-both-simple.html [ Failure ]
-fast/block/block-only/floating-box-clear-right-simple.html [ Failure ]
-fast/block/block-only/floating-box-left-and-right-multiple-with-top-offset.html [ Failure ]
-fast/block/block-only/floating-box-right-simple.html [ Failure ]
-fast/block/block-only/floating-left-right-with-all-margins.html [ Failure ]
-fast/block/block-only/margin-left-right-sizing-out-of-flow.html [ Failure ]
-fast/block/block-only/margin-left-right-sizing.html [ Failure ]
-fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
-fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]
-fast/block/block-only/absolute-position-min-max-height.html [ Failure ]
 fast/block/basic/inline-content-with-floating-image.html [ Failure ]
 fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
 fast/inline/simple-intruding-float1.html [ Failure ]
@@ -3479,3 +3454,81 @@ webkit.org/b/207152 fast/dom/connected-subframe-counter-overflow.html  [ Pass Ti
 webkit.org/b/207225 imported/w3c/web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https.html [ Pass Failure ]
 
 webkit.org/b/207230 imported/w3c/web-platform-tests/fetch/stale-while-revalidate/fetch.html [ Pass Failure ]
+
+webkit.org/b/207278 imported/w3c/web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html [ Pass Failure ]
+
+# Locale-specific shaping is only enabled on certain OSes.
+webkit.org/b/77568 fast/text/locale-shaping.html [ ImageOnlyFailure ]
+webkit.org/b/77568 fast/text/locale-shaping-complex.html [ ImageOnlyFailure ]
+
+webkit.org/b/207563 imported/w3c/web-platform-tests/content-security-policy/frame-ancestors/frame-ancestors-from-serviceworker.https.html [ Pass Failure ]
+
+webkit.org/b/207643 imported/w3c/web-platform-tests/service-workers/service-worker/resource-timing.sub.https.html [ Pass Failure ]
+
+webkit.org/b/207645 http/tests/security/cross-frame-access-private-browsing.html [ Pass Timeout ]
+
+
+webkit.org/b/207649 imported/w3c/IndexedDB-private-browsing/idb_webworkers.html [ Pass Timeout ]
+
+webkit.org/b/207650 imported/w3c/IndexedDB-private-browsing/idbcursor_delete_objectstore3.html [ Pass Timeout ]
+
+webkit.org/b/207651 imported/w3c/IndexedDB-private-browsing/idbcursor_delete_objectstore4.html [ Pass Timeout ]
+
+webkit.org/b/207652 imported/w3c/IndexedDB-private-browsing/idbcursor_delete_objectstore5.html [ Pass Timeout ]
+
+webkit.org/b/207702 imported/w3c/web-platform-tests/IndexedDB/key-generators/reading-autoincrement-indexes.any.serviceworker.html [ Pass Failure ]
+
+webkit.org/b/207703 imported/w3c/web-platform-tests/service-workers/service-worker/websocket-in-service-worker.https.html [ Pass Failure ]
+
+webkit.org/b/207705 imported/w3c/web-platform-tests/service-workers/service-worker/websocket.https.html [ Pass Failure ]
+
+webkit.org/b/202003 imported/w3c/web-platform-tests/websockets/bufferedAmount-unchanged-by-sync-xhr.any.worker.html [ Pass Failure ]
+
+webkit.org/b/207762 http/wpt/service-workers/check-service-worker-header.https.html [ Pass Failure ]
+
+webkit.org/b/207763 http/wpt/service-workers/file-upload.html [ Pass Failure ]
+
+webkit.org/b/207766 http/wpt/service-workers/header-filtering.https.html [ Pass Failure ]
+
+webkit.org/b/207767 http/wpt/service-workers/online.https.html [ Pass Failure ]
+
+webkit.org/b/207768 http/wpt/service-workers/useragent.https.html [ Pass Failure ]
+
+webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure ]
+
+webkit.org/b/207769 crypto/subtle/rsa-indexeddb-non-exportable.html [ Pass Timeout ]
+
+webkit.org/b/207770 http/tests/cache/disk-cache/disk-cache-vary-cookie.html [ Pass Timeout ]
+
+webkit.org/b/207858 fast/canvas/webgl/context-attributes-alpha.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 fast/canvas/webgl/match-page-color-space.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 webgl/smell-test.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 webgl/webgl-backing-store-size-update.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 webgl/webgl-border.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 webgl/webgl-box-shadow.html [ Pass Failure ImageOnlyFailure ]
+webkit.org/b/207858 webgl/misc/switch-to-discrete-gpu.html [ Skip ]
+webkit.org/b/207858 fast/canvas/webgl/oes-texture-half-float-uint16.html [ Pass Failure ]
+webkit.org/b/207858 fast/canvas/webgl/program-test.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/uninitialized-test.html [ Pass Failure ]
+webkit.org/b/207858 fast/canvas/webgl/webgl-depth-texture.html [ Pass Failure ]
+webkit.org/b/207858 fast/canvas/webgl/webgl-texture-binding-preserved.html [ Pass Failure ]
+webkit.org/b/207858 fast/canvas/webgl/oes-texture-float-linear.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/canvas/texture-bindings-unaffected-on-resize.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/context/context-lost-restored.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/extensions/ext-sRGB.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/extensions/oes-element-index-uint.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/glsl/misc/shader-struct-scope.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/misc/delayed-drawing.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/misc/uninitialized-test.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/programs/program-test.html [ Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/renderbuffers/framebuffer-object-attachment.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/state/state-uneffected-after-compositing.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/default-texture.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgb565.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba4444.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-canvas-rgba5551.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-canvas.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-webgl-canvas-rgb565.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-webgl-canvas-rgba4444.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-webgl-canvas-rgba5551.html [ Pass Failure ]
+webkit.org/b/207858 webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-webgl-canvas.html [ Pass Failure ]

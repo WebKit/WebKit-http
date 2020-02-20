@@ -316,6 +316,7 @@ Modules/websockets/ThreadableWebSocketChannel.cpp
 Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp
 Modules/websockets/WebSocket.cpp
 Modules/websockets/WebSocketChannel.cpp
+Modules/websockets/WebSocketChannelInspector.cpp
 Modules/websockets/WebSocketDeflateFramer.cpp
 Modules/websockets/WebSocketDeflater.cpp
 Modules/websockets/WebSocketExtensionDispatcher.cpp
@@ -447,7 +448,7 @@ accessibility/isolatedtree/AXIsolatedObject.cpp
 accessibility/isolatedtree/AXIsolatedTree.cpp
 
 animation/AnimationEffect.cpp
-animation/KeyframeEffectStack.cpp
+animation/AnimationEventBase.cpp
 animation/AnimationPlaybackEvent.cpp
 animation/AnimationTimeline.cpp
 animation/CSSAnimation.cpp
@@ -455,6 +456,7 @@ animation/CSSTransition.cpp
 animation/DeclarativeAnimation.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
+animation/KeyframeEffectStack.cpp
 animation/WebAnimation.cpp
 animation/WebAnimationUtilities.cpp
 
@@ -779,9 +781,7 @@ css/StyleSheet.cpp
 css/StyleSheetContents.cpp
 css/StyleSheetList.cpp
 css/TransformFunctions.cpp
-css/ViewportStyleResolver.cpp
 css/WebKitCSSMatrix.cpp
-css/WebKitCSSViewportRule.cpp
 
 css/parser/CSSAtRuleID.cpp
 css/parser/CSSDeferredParser.cpp
@@ -883,6 +883,7 @@ dom/EventLoop.cpp
 dom/EventNames.cpp
 dom/EventPath.cpp
 dom/EventTarget.cpp
+dom/EventTargetConcrete.cpp
 dom/ExceptionData.cpp
 dom/ExtensionStyleSheets.cpp
 dom/FocusEvent.cpp
@@ -1218,6 +1219,7 @@ html/InputType.cpp
 html/InputTypeNames.cpp
 html/LabelableElement.cpp
 html/LabelsNodeList.cpp
+html/LazyLoadImageObserver.cpp
 html/LinkIconCollector.cpp
 html/LinkRelAttribute.cpp
 html/MediaController.cpp
@@ -1450,8 +1452,10 @@ layout/integration/LayoutIntegrationLineLayout.cpp
 layout/invalidation/InvalidationContext.cpp
 layout/invalidation/InvalidationState.cpp
 layout/layouttree/LayoutBox.cpp
-layout/layouttree/LayoutContainer.cpp
-layout/layouttree/LayoutReplaced.cpp
+layout/layouttree/LayoutContainerBox.cpp
+layout/layouttree/LayoutInlineTextBox.cpp
+layout/layouttree/LayoutLineBreakBox.cpp
+layout/layouttree/LayoutReplacedBox.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 layout/tableformatting/TableFormattingContext.cpp
 layout/tableformatting/TableFormattingContextGeometry.cpp
@@ -1753,6 +1757,7 @@ platform/RemoteCommandListener.cpp
 platform/RuntimeApplicationChecks.cpp
 platform/SSLKeyGenerator.cpp
 platform/ScrollAnimator.cpp
+platform/ScrollAnimationSmooth.cpp
 platform/ScrollTypes.cpp
 platform/ScrollView.cpp
 platform/ScrollableArea.cpp
@@ -1816,6 +1821,7 @@ platform/audio/VectorMath.cpp
 platform/audio/ZeroPole.cpp
 
 platform/encryptedmedia/CDMFactory.cpp
+platform/encryptedmedia/CDMProxy.cpp
 
 platform/graphics/ANGLEWebKitBridge.cpp
 platform/graphics/BitmapImage.cpp
@@ -1962,6 +1968,7 @@ platform/graphics/transforms/TranslateTransformOperation.cpp
 platform/mediacapabilities/MediaEngineConfigurationFactory.cpp
 platform/mediacapabilities/MediaCapabilitiesLogging.cpp
 
+platform/mediarecorder/MediaRecorderPrivate.cpp
 platform/mediarecorder/MediaRecorderPrivateMock.cpp
 
 platform/mediastream/AudioMediaStreamTrackRenderer.cpp
@@ -2184,7 +2191,7 @@ rendering/RenderView.cpp
 rendering/RenderWidget.cpp
 rendering/RootInlineBox.cpp
 rendering/ScrollAlignment.cpp
-rendering/SelectionRangeData.cpp
+rendering/HighlightData.cpp
 rendering/SimpleLineLayout.cpp
 rendering/SimpleLineLayoutCoverage.cpp
 rendering/SimpleLineLayoutFlowContents.cpp
@@ -3477,7 +3484,6 @@ JSWebGPUTexture.cpp
 JSWebGPUTextureView.cpp
 JSWebKitAnimationEvent.cpp
 JSWebKitCSSMatrix.cpp
-JSWebKitCSSViewportRule.cpp
 JSWebKitPlaybackTargetAvailabilityEvent.cpp
 JSWebKitPoint.cpp
 JSWebKitTransitionEvent.cpp

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2014, 2020 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,24 +33,31 @@
 #include "PaintInfo.h"
 #include "RenderBox.h"
 #include "RenderObject.h"
+#include "RenderProgress.h"
 #include "RenderStyle.h"
+#include "ThemeWPE.h"
 #include "UserAgentScripts.h"
 #include "UserAgentStyleSheets.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-static const int focusOffset = 3;
-static const unsigned focusLineWidth = 1;
-static const Color focusColor = makeRGBA(46, 52, 54, 150);
-static const unsigned arrowSize = 16;
-static const Color arrowColor = makeRGB(46, 52, 54);
+static const int textFieldBorderSize = 1;
+static const Color textFieldBorderColor = makeRGB(205, 199, 194);
+static const Color textFieldBorderActiveColor = makeRGB(52, 132, 228);
+static const Color textFieldBorderDisabledColor = makeRGB(213, 208, 204);
+static const Color textFieldBackgroundColor = makeRGB(255, 255, 255);
+static const Color textFieldBackgroundDisabledColor = makeRGB(252, 252, 252);
+static const unsigned menuListButtonArrowSize = 16;
+static const int menuListButtonFocusOffset = -3;
 static const unsigned menuListButtonPadding = 5;
-static const int menuListButtonBorderSize = 1;
-static const Color menuListButtonBackgroundBorderColor = makeRGB(205, 199, 194);
-static const Color menuListButtonBackgroundColor = makeRGB(244, 242, 241);
-static const Color menuListButtonBackgroundPressedColor = makeRGB(214, 209, 205);
-static const Color menuListButtonBackgroundHoveredColor = makeRGB(248, 248, 247);
+static const int menuListButtonBorderSize = 1; // Keep in sync with buttonBorderSize in ThemeWPE.
+static const unsigned progressActivityBlocks = 5;
+static const unsigned progressAnimationFrameCount = 75;
+static const Seconds progressAnimationFrameRate = 33_ms; // 30fps.
+static const unsigned progressBarSize = 6;
+static const Color progressBarBorderColor = makeRGB(205, 199, 194);
+static const Color progressBarBackgroundColor = makeRGB(225, 222, 219);
 
 RenderTheme& RenderTheme::singleton()
 {
@@ -66,11 +73,10 @@ bool RenderThemeWPE::supportsFocusRing(const RenderStyle& style) const
     case TextFieldPart:
     case TextAreaPart:
     case SearchFieldPart:
-        return false;
     case MenulistPart:
-        return true;
     case RadioPart:
     case CheckboxPart:
+        return true;
     case SliderHorizontalPart:
     case SliderVerticalPart:
         return false;
@@ -88,7 +94,7 @@ void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontCascadeDe
 
 String RenderThemeWPE::extraDefaultStyleSheet()
 {
-    return String();
+    return String(themeAdwaitaUserAgentStyleSheet, sizeof(themeAdwaitaUserAgentStyleSheet));
 }
 
 #if ENABLE(VIDEO)
@@ -106,31 +112,50 @@ String RenderThemeWPE::mediaControlsScript()
 }
 #endif
 
-static void paintFocus(GraphicsContext& graphicsContext, const FloatRect& rect)
+bool RenderThemeWPE::paintTextField(const RenderObject& renderObject, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    FloatRect focusRect = rect;
-    focusRect.inflate(-focusOffset);
-    graphicsContext.setStrokeThickness(focusLineWidth);
-    graphicsContext.setLineDash({ focusLineWidth, 2 * focusLineWidth }, 0);
-    graphicsContext.setLineCap(SquareCap);
-    graphicsContext.setLineJoin(MiterJoin);
+    auto& graphicsContext = paintInfo.context();
+    GraphicsContextStateSaver stateSaver(graphicsContext);
 
+    int borderSize = textFieldBorderSize;
+    if (isEnabled(renderObject) && !isReadOnlyControl(renderObject) && isFocused(renderObject))
+        borderSize *= 2;
+
+    FloatRect fieldRect = rect;
+    FloatSize corner(5, 5);
     Path path;
-    path.addRoundedRect(focusRect, { 5, 5 });
-    graphicsContext.setStrokeColor(focusColor);
-    graphicsContext.strokePath(path);
+    path.addRoundedRect(fieldRect, corner);
+    fieldRect.inflate(-borderSize);
+    path.addRoundedRect(fieldRect, corner);
+    graphicsContext.setFillRule(WindRule::EvenOdd);
+    if (!isEnabled(renderObject) || isReadOnlyControl(renderObject))
+        graphicsContext.setFillColor(textFieldBorderDisabledColor);
+    else if (isFocused(renderObject))
+        graphicsContext.setFillColor(textFieldBorderActiveColor);
+    else
+        graphicsContext.setFillColor(textFieldBorderColor);
+    graphicsContext.fillPath(path);
+    path.clear();
+
+    path.addRoundedRect(fieldRect, corner);
+    graphicsContext.setFillRule(WindRule::NonZero);
+    if (!isEnabled(renderObject) || isReadOnlyControl(renderObject))
+        graphicsContext.setFillColor(textFieldBackgroundDisabledColor);
+    else
+        graphicsContext.setFillColor(textFieldBackgroundColor);
+    graphicsContext.fillPath(path);
+
+    return false;
 }
 
-static void paintArrow(GraphicsContext& graphicsContext, const FloatRect& rect)
+bool RenderThemeWPE::paintTextArea(const RenderObject& renderObject, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    Path path;
-    path.moveTo({ rect.x() + 3, rect.y() + 6 });
-    path.addLineTo({ rect.x() + 13, rect.y() + 6 });
-    path.addLineTo({ rect.x() + 8, rect.y() + 11 });
-    path.closeSubpath();
+    return paintTextField(renderObject, paintInfo, rect);
+}
 
-    graphicsContext.setFillColor(arrowColor);
-    graphicsContext.fillPath(path);
+bool RenderThemeWPE::paintSearchField(const RenderObject& renderObject, const PaintInfo& paintInfo, const IntRect& rect)
+{
+    return paintTextField(renderObject, paintInfo, rect);
 }
 
 LengthBox RenderThemeWPE::popupInternalPaddingBox(const RenderStyle& style) const
@@ -138,8 +163,8 @@ LengthBox RenderThemeWPE::popupInternalPaddingBox(const RenderStyle& style) cons
     if (style.appearance() == NoControlPart)
         return { };
 
-    int leftPadding = menuListButtonPadding + (style.direction() == TextDirection::RTL ? arrowSize : 0);
-    int rightPadding = menuListButtonPadding + (style.direction() == TextDirection::LTR ? arrowSize : 0);
+    int leftPadding = menuListButtonPadding + (style.direction() == TextDirection::RTL ? menuListButtonArrowSize : 0);
+    int rightPadding = menuListButtonPadding + (style.direction() == TextDirection::LTR ? menuListButtonArrowSize : 0);
 
     return { menuListButtonPadding, rightPadding, menuListButtonPadding, leftPadding };
 }
@@ -149,38 +174,32 @@ bool RenderThemeWPE::paintMenuList(const RenderObject& renderObject, const Paint
     auto& graphicsContext = paintInfo.context();
     GraphicsContextStateSaver stateSaver(graphicsContext);
 
-    FloatRect fieldRect = rect;
-    FloatSize corner(5, 5);
-    Path path;
-    path.addRoundedRect(fieldRect, corner);
-    fieldRect.inflate(-menuListButtonBorderSize);
-    path.addRoundedRect(fieldRect, corner);
-    graphicsContext.setFillRule(WindRule::EvenOdd);
-    graphicsContext.setFillColor(menuListButtonBackgroundBorderColor);
-    graphicsContext.fillPath(path);
-    path.clear();
-
-    path.addRoundedRect(fieldRect, corner);
-    graphicsContext.setFillRule(WindRule::NonZero);
+    ControlStates::States states = 0;
+    if (isEnabled(renderObject))
+        states |= ControlStates::EnabledState;
     if (isPressed(renderObject))
-        graphicsContext.setFillColor(menuListButtonBackgroundPressedColor);
-    else if (isHovered(renderObject))
-        graphicsContext.setFillColor(menuListButtonBackgroundHoveredColor);
-    else
-        graphicsContext.setFillColor(menuListButtonBackgroundColor);
-    graphicsContext.fillPath(path);
-    path.clear();
+        states |= ControlStates::PressedState;
+    if (isHovered(renderObject))
+        states |= ControlStates::HoverState;
+    ControlStates controlStates(states);
+    Theme::singleton().paint(ButtonPart, controlStates, graphicsContext, rect, 1., nullptr, 1., 1., false, false);
 
+    FloatRect fieldRect = rect;
+    fieldRect.inflate(menuListButtonBorderSize);
     if (renderObject.style().direction() == TextDirection::LTR)
-        fieldRect.move(fieldRect.width() - (arrowSize + menuListButtonPadding), (fieldRect.height() / 2.) - (arrowSize / 2));
+        fieldRect.move(fieldRect.width() - (menuListButtonArrowSize + menuListButtonPadding), (fieldRect.height() / 2.) - (menuListButtonArrowSize / 2));
     else
-        fieldRect.move(menuListButtonPadding, (fieldRect.height() / 2.) - (arrowSize / 2));
-    fieldRect.setWidth(arrowSize);
-    fieldRect.setHeight(arrowSize);
-    paintArrow(graphicsContext, fieldRect);
+        fieldRect.move(menuListButtonPadding, (fieldRect.height() / 2.) - (menuListButtonArrowSize / 2));
+    fieldRect.setWidth(menuListButtonArrowSize);
+    fieldRect.setHeight(menuListButtonArrowSize);
+    {
+        GraphicsContextStateSaver arrowStateSaver(graphicsContext);
+        graphicsContext.translate(fieldRect.x(), fieldRect.y());
+        ThemeWPE::paintArrow(graphicsContext, ThemeWPE::ArrowDirection::Down);
+    }
 
     if (isFocused(renderObject))
-        paintFocus(graphicsContext, rect);
+        ThemeWPE::paintFocus(graphicsContext, rect, menuListButtonFocusOffset);
 
     return false;
 }
@@ -189,5 +208,78 @@ bool RenderThemeWPE::paintMenuListButtonDecorations(const RenderBox& renderObjec
 {
     return paintMenuList(renderObject, paintInfo, rect);
 }
+
+Seconds RenderThemeWPE::animationRepeatIntervalForProgressBar(RenderProgress&) const
+{
+    return progressAnimationFrameRate;
+}
+
+Seconds RenderThemeWPE::animationDurationForProgressBar(RenderProgress&) const
+{
+    return progressAnimationFrameRate * progressAnimationFrameCount;
+}
+
+IntRect RenderThemeWPE::progressBarRectForBounds(const RenderObject&, const IntRect& bounds) const
+{
+    return { bounds.x(), bounds.y(), bounds.width(), progressBarSize };
+}
+
+bool RenderThemeWPE::paintProgressBar(const RenderObject& renderObject, const PaintInfo& paintInfo, const IntRect& rect)
+{
+    if (!renderObject.isProgress())
+        return true;
+
+    auto& graphicsContext = paintInfo.context();
+    GraphicsContextStateSaver stateSaver(graphicsContext);
+
+    FloatRect fieldRect = rect;
+    FloatSize corner(3, 3);
+    Path path;
+    path.addRoundedRect(fieldRect, corner);
+    fieldRect.inflate(-1);
+    path.addRoundedRect(fieldRect, corner);
+    graphicsContext.setFillRule(WindRule::EvenOdd);
+    graphicsContext.setFillColor(progressBarBorderColor);
+    graphicsContext.fillPath(path);
+    path.clear();
+
+    path.addRoundedRect(fieldRect, corner);
+    graphicsContext.setFillRule(WindRule::NonZero);
+    graphicsContext.setFillColor(progressBarBackgroundColor);
+    graphicsContext.fillPath(path);
+    path.clear();
+
+    fieldRect = rect;
+    const auto& renderProgress = downcast<RenderProgress>(renderObject);
+    if (renderProgress.isDeterminate()) {
+        auto progressWidth = fieldRect.width() * renderProgress.position();
+        if (renderObject.style().direction() == TextDirection::RTL)
+            fieldRect.move(fieldRect.width() - progressWidth, 0);
+        fieldRect.setWidth(progressWidth);
+    } else {
+        double animationProgress = renderProgress.animationProgress();
+
+        // Never let the progress rect shrink smaller than 2 pixels.
+        fieldRect.setWidth(std::max<float>(2, fieldRect.width() / progressActivityBlocks));
+        auto movableWidth = rect.width() - fieldRect.width();
+
+        // We want the first 0.5 units of the animation progress to represent the
+        // forward motion and the second 0.5 units to represent the backward motion,
+        // thus we multiply by two here to get the full sweep of the progress bar with
+        // each direction.
+        if (animationProgress < 0.5)
+            fieldRect.move(animationProgress * 2 * movableWidth, 0);
+        else
+            fieldRect.move((1.0 - animationProgress) * 2 * movableWidth, 0);
+    }
+
+    path.addRoundedRect(fieldRect, corner);
+    graphicsContext.setFillRule(WindRule::NonZero);
+    graphicsContext.setFillColor(activeSelectionBackgroundColor({ }));
+    graphicsContext.fillPath(path);
+
+    return false;
+}
+
 
 } // namespace WebCore

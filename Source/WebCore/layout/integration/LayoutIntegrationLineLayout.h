@@ -83,8 +83,11 @@ public:
     static void releaseCaches(RenderView&);
 
 private:
-    const Layout::Container& rootLayoutBox() const;
-    Layout::Container& rootLayoutBox();
+    void prepareLayoutState();
+    void prepareFloatingState();
+
+    const Layout::ContainerBox& rootLayoutBox() const;
+    Layout::ContainerBox& rootLayoutBox();
     ShadowData* debugTextShadow();
     void releaseInlineItemCache();
 

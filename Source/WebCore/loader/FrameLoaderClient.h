@@ -91,6 +91,7 @@ class NavigationAction;
 class Page;
 class PluginViewBase;
 class ProtectionSpace;
+class RegistrableDomain;
 class RTCPeerConnectionHandler;
 class ResourceError;
 class ResourceHandle;
@@ -103,6 +104,7 @@ class Widget;
 
 enum class LockBackForwardList : bool;
 enum class PolicyDecisionMode;
+enum class UsedLegacyTLS : bool;
 
 struct StringWithDirection;
 
@@ -175,7 +177,7 @@ public:
     virtual void dispatchDidReceiveIcon() { }
     virtual void dispatchDidStartProvisionalLoad() = 0;
     virtual void dispatchDidReceiveTitle(const StringWithDirection&) = 0;
-    virtual void dispatchDidCommitLoad(Optional<HasInsecureContent>) = 0;
+    virtual void dispatchDidCommitLoad(Optional<HasInsecureContent>, Optional<UsedLegacyTLS>) = 0;
     virtual void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) = 0;
     virtual void dispatchDidFailLoad(const ResourceError&) = 0;
     virtual void dispatchDidFinishDocumentLoad() = 0;
@@ -375,7 +377,10 @@ public:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     virtual bool hasFrameSpecificStorageAccess() { return false; }
+    virtual void addLoadedRegistrableDomain(RegistrableDomain&&) { }
 #endif
+
+    virtual AllowsContentJavaScript allowsContentJavaScriptFromMostRecentNavigation() const { return AllowsContentJavaScript::Yes; }
 };
 
 } // namespace WebCore

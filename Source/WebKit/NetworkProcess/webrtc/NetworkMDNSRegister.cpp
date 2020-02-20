@@ -65,7 +65,7 @@ void NetworkMDNSRegister::unregisterMDNSNames(WebCore::DocumentIdentifier docume
 
 struct PendingRegistrationRequest {
     WTF_MAKE_STRUCT_FAST_ALLOCATED;
-    PendingRegistrationRequest(Ref<IPC::Connection> connection, uint64_t requestIdentifier, String&& name, PAL::SessionID sessionID)
+    PendingRegistrationRequest(Ref<IPC::Connection>&& connection, MDNSRegisterIdentifier requestIdentifier, String&& name, PAL::SessionID sessionID)
         : connection(WTFMove(connection))
         , requestIdentifier(requestIdentifier)
         , name(WTFMove(name))
@@ -74,7 +74,7 @@ struct PendingRegistrationRequest {
     }
 
     Ref<IPC::Connection> connection;
-    uint64_t requestIdentifier { 0 };
+    MDNSRegisterIdentifier requestIdentifier;
     String name;
     PAL::SessionID sessionID;
     DNSRecordRef record;
@@ -104,7 +104,7 @@ static void registerMDNSNameCallback(DNSServiceRef, DNSRecordRef record, DNSServ
     request->connection->send(Messages::WebMDNSRegister::FinishedRegisteringMDNSName { request->requestIdentifier, request->name }, 0);
 }
 
-void NetworkMDNSRegister::registerMDNSName(uint64_t requestIdentifier, WebCore::DocumentIdentifier documentIdentifier, const String& ipAddress)
+void NetworkMDNSRegister::registerMDNSName(MDNSRegisterIdentifier requestIdentifier, WebCore::DocumentIdentifier documentIdentifier, const String& ipAddress)
 {
     DNSServiceRef service;
     auto iterator = m_services.find(documentIdentifier);
@@ -126,7 +126,7 @@ void NetworkMDNSRegister::registerMDNSName(uint64_t requestIdentifier, WebCore::
     } else
         service = iterator->value;
 
-    String name = makeString(createCanonicalUUIDString(), pendingRegistrationRequestCount, ".local");
+    String name = makeString(createCanonicalUUIDString(), ".local");
 
     auto ip = inet_addr(ipAddress.utf8().data());
 
@@ -168,7 +168,7 @@ void NetworkMDNSRegister::unregisterMDNSNames(WebCore::DocumentIdentifier)
 {
 }
 
-void NetworkMDNSRegister::registerMDNSName(uint64_t requestIdentifier, WebCore::DocumentIdentifier documentIdentifier, const String& ipAddress)
+void NetworkMDNSRegister::registerMDNSName(MDNSRegisterIdentifier requestIdentifier, WebCore::DocumentIdentifier documentIdentifier, const String& ipAddress)
 {
     RELEASE_LOG_IF_ALLOWED("registerMDNSName not implemented");
     m_connection.connection().send(Messages::WebMDNSRegister::FinishedRegisteringMDNSName { requestIdentifier, makeUnexpected(WebCore::MDNSRegisterError::NotImplemented) }, 0);

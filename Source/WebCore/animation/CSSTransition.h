@@ -27,6 +27,7 @@
 
 #include "CSSPropertyNames.h"
 #include "DeclarativeAnimation.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -53,8 +54,9 @@ public:
     void resolve(RenderStyle&) final;
 
 private:
-    CSSTransition(Element&, CSSPropertyID, MonotonicTime generationTime, const Animation&, const RenderStyle& targetStyle, const RenderStyle& reversingAdjustedStartStyle, double);
+    CSSTransition(Element&, CSSPropertyID, MonotonicTime generationTime, const Animation&, const RenderStyle& oldStyle, const RenderStyle& targetStyle, const RenderStyle& reversingAdjustedStartStyle, double);
     void setTimingProperties(Seconds delay, Seconds duration);
+    Ref<AnimationEventBase> createEvent(const AtomString& eventType, double elapsedTime, const String& pseudoId, Optional<Seconds> timelineTime) final;
 
     CSSPropertyID m_property;
     MonotonicTime m_generationTime;

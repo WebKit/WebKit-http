@@ -30,7 +30,7 @@
 
 #include "FormattingContext.h"
 #include "LayoutBox.h"
-#include "LayoutContainer.h"
+#include "LayoutContainerBox.h"
 #include "LengthFunctions.h"
 
 namespace WebCore {
@@ -43,8 +43,8 @@ ContentWidthAndMargin InlineFormattingContext::Geometry::inlineBlockWidthAndMarg
     // 10.3.10 'Inline-block', replaced elements in normal flow
 
     // Exactly as inline replaced elements.
-    if (formattingContextRoot.replaced())
-        return inlineReplacedWidthAndMargin(formattingContextRoot, horizontalConstraints, overrideHorizontalValues);
+    if (formattingContextRoot.isReplacedBox())
+        return inlineReplacedWidthAndMargin(downcast<ReplacedBox>(formattingContextRoot), horizontalConstraints, { }, overrideHorizontalValues);
 
     // 10.3.9 'Inline-block', non-replaced elements in normal flow
 
@@ -66,15 +66,15 @@ ContentHeightAndMargin InlineFormattingContext::Geometry::inlineBlockHeightAndMa
     ASSERT(layoutBox.isInFlow());
 
     // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block' replaced elements in normal flow and floating replaced elements
-    if (layoutBox.replaced())
-        return inlineReplacedHeightAndMargin(layoutBox, horizontalConstraints, { }, overrideVerticalValues);
+    if (layoutBox.isReplacedBox())
+        return inlineReplacedHeightAndMargin(downcast<ReplacedBox>(layoutBox), horizontalConstraints, { }, overrideVerticalValues);
 
     // 10.6.6 Complicated cases
     // - 'Inline-block', non-replaced elements.
     return complicatedCases(layoutBox, horizontalConstraints, overrideVerticalValues);
 }
 
-Optional<InlineLayoutUnit> InlineFormattingContext::Geometry::computedTextIndent(const Container& formattingContextRoot, const HorizontalConstraints& horizontalConstraints) const
+Optional<InlineLayoutUnit> InlineFormattingContext::Geometry::computedTextIndent(const ContainerBox& formattingContextRoot, const HorizontalConstraints& horizontalConstraints) const
 {
     auto textIndent = formattingContextRoot.style().textIndent();
     if (textIndent == RenderStyle::initialTextIndent())

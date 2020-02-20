@@ -1027,6 +1027,7 @@ fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Skip 
 fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html [ Skip ]
 fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html [ Skip ]
 fast/events/focus-label-legend-elements-with-tab.html [ Skip ]
+fast/forms/search-cancel-button-hover.html [ Skip ]
 
 # No touch events
 fast/visual-viewport/ios/bottom-bar-with-keyboard.html [ Skip ]
@@ -1225,7 +1226,7 @@ webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
-webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
+webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure Timeout ]
 
 webkit.org/b/182144 [ Debug ] webgl/1.0.3/conformance/rendering/many-draw-calls.html [ Skip ]
 
@@ -1359,7 +1360,6 @@ webkit.org/b/206687 imported/w3c/web-platform-tests/beacon/idlharness.any.html [
 webkit.org/b/206752 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-serializable.html [ Pass Failure ]
 
 webkit.org/b/206946 http/tests/security/cookies/third-party-cookie-blocking-main-frame.html [ Pass Timeout ]
-webkit.org/b/206965 storage/indexeddb/intversion-long-queue-private.html [ Pass Failure ]
 
 webkit.org/b/205309 scrollingcoordinator/ios/scroll-position-after-reattach.html [ ImageOnlyFailure ]
 
@@ -1378,3 +1378,44 @@ webkit.org/b/207197 http/tests/resourceLoadStatistics/cookie-deletion.html [ Pas
 webkit.org/b/206627 storage/websql [ Skip ]
 
 webkit.org/b/207077 [ Debug ] imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/cramped-001.html [ Pass Failure ]
+
+webkit.org/b/207038 [ Release ] fast/hidpi/image-srcset-svg-canvas-2x.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207386 imported/w3c/web-platform-tests/css/css-transitions/properties-value-002.html [ Pass Failure ]
+
+webkit.org/b/207465 [ Debug ] storage/indexeddb/intversion-long-queue.html [ Pass Failure ]
+
+webkit.org/b/207466 [ Debug ] http/wpt/service-workers/service-worker-networkprocess-crash.html [ Pass Failure ]
+
+webkit.org/b/205216 imported/w3c/web-platform-tests/content-security-policy/reporting/report-same-origin-with-cookies.html [ Pass Failure ]
+
+webkit.org/b/207551 http/tests/adClickAttribution/store-disabled-in-ephemeral-session.html [ Pass Timeout ]
+
+webkit.org/b/207552 http/tests/storageAccess/has-storage-access-false-by-default-ephemeral-database.html [ Pass Timeout ]
+
+webkit.org/b/190852 imported/w3c/web-platform-tests/service-workers/service-worker/redirected-response.https.html [ Pass Failure ]
+
+webkit.org/b/207559 fast/parser/parser-yield-timing.html [ Pass Failure ]
+
+webkit.org/b/207583 http/wpt/beacon/cors/crossorigin-arraybufferview-no-preflight.html [ Pass Failure ]
+
+webkit.org/b/207596 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
+
+webkit.org/b/207660 crypto/subtle/rsa-indexeddb-non-exportable-private.html [ Slow ]
+
+webkit.org/b/207665 http/tests/cache-storage/cache-representation.https.html [ Slow ]
+
+webkit.org/b/196300 fast/visual-viewport/ios/min-scale-greater-than-one.html [ Pass Failure ]
+
+webkit.org/b/207647 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass Timeout ]
+
+webkit.org/b/207771 http/wpt/service-workers/persistent-importScripts.html [ Pass Timeout ]
+
+webkit.org/b/207774 http/wpt/service-workers/third-party-cookie.html [ Pass Timeout ]
+
+webkit.org/b/207866 imported/w3c/IndexedDB-private-browsing [ Pass Timeout ]
+
+# skip LFC regression tests on iOS for now.
+fast/layoutformattingcontext/ [ Skip ]
+
+webkit.org/b/207896 fast/canvas/webgl/oes-vertex-array-object.html [ Pass Failure ]

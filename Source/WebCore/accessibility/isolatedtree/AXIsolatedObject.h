@@ -46,17 +46,18 @@ namespace WebCore {
 class AXIsolatedTree;
 
 class AXIsolatedObject final : public AXCoreObject {
+    friend class AXIsolatedTree;
 public:
-    static Ref<AXIsolatedObject> create(AXCoreObject&, bool isRoot);
+    static Ref<AXIsolatedObject> create(AXCoreObject&, AXIsolatedTreeID, AXID parentID);
     ~AXIsolatedObject();
 
     void setObjectID(AXID id) override { m_id = id; }
     AXID objectID() const override { return m_id; }
     void init() override { }
 
+    void attachPlatformWrapper(AccessibilityObjectWrapper*);
     bool isDetached() const override;
 
-    void setTreeIdentifier(AXIsolatedTreeID);
     void setParent(AXID);
     void appendChild(AXID);
 
@@ -64,13 +65,13 @@ private:
     void detachRemoteParts(AccessibilityDetachmentType) override;
     void detachPlatformWrapper(AccessibilityDetachmentType) override;
 
-    AXID parent() const { return m_parent; }
+    AXID parent() const { return m_parentID; }
 
-    AXIsolatedTreeID treeIdentifier() const { return m_treeIdentifier; }
+    AXIsolatedTreeID treeIdentifier() const { return m_treeID; }
     AXIsolatedTree* tree() const { return m_cachedTree.get(); }
 
     AXIsolatedObject() = default;
-    AXIsolatedObject(AXCoreObject&, bool isRoot);
+    AXIsolatedObject(AXCoreObject&, AXIsolatedTreeID, AXID parentID);
     void initializeAttributeData(AXCoreObject&, bool isRoot);
     AXCoreObject* associatedAXObject() const
     {
@@ -131,6 +132,7 @@ private:
         FileUploadButtonReturnsValueInTitle,
         FocusableAncestor,
         HasARIAValueNow,
+        HasChildren,
         HasPopup,
         HeadingLevel,
         HelpText,
@@ -770,7 +772,7 @@ private:
     void insertChild(AXCoreObject*, unsigned) override;
     bool shouldIgnoreAttributeRole() const override;
     bool canHaveChildren() const override;
-    bool hasChildren() const override;
+    bool hasChildren() const override { return boolAttributeValue(AXPropertyName::HasChildren); }
     void setNeedsToUpdateChildren() override;
     void setNeedsToUpdateSubtree() override;
     void clearChildren() override;
@@ -780,8 +782,6 @@ private:
     AXCoreObject* activeDescendant() const override;
     void handleActiveDescendantChanged() override;
     void handleAriaExpandedChanged() override;
-    bool isDescendantOfObject(const AXCoreObject*) const override;
-    bool isAncestorOfObject(const AXCoreObject*) const override;
     AXCoreObject* firstAnonymousBlockChild() const override;
     bool hasAttribute(const QualifiedName&) const override;
     const AtomString& getAttribute(const QualifiedName&) const override;
@@ -821,11 +821,10 @@ private:
 
     void updateBackingStore() override;
 
-    AXID m_parent { InvalidAXID };
-    AXID m_id { InvalidAXID };
-    bool m_initialized { false };
-    AXIsolatedTreeID m_treeIdentifier;
+    AXIsolatedTreeID m_treeID;
     RefPtr<AXIsolatedTree> m_cachedTree;
+    AXID m_parentID { InvalidAXID };
+    AXID m_id { InvalidAXID };
     Vector<AXID> m_childrenIDs;
     Vector<RefPtr<AXCoreObject>> m_children;
 

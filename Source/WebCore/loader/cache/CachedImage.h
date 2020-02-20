@@ -92,7 +92,9 @@ public:
     void removeAllClientsWaitingForAsyncDecoding();
 
     void setForceUpdateImageDataEnabledForTesting(bool enabled) { m_forceUpdateImageDataEnabledForTesting =  enabled; }
-    
+
+    bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
+
 private:
     void clear();
 
@@ -128,8 +130,6 @@ private:
 
     // For compatibility, images keep loading even if there are HTTP errors.
     bool shouldIgnoreHTTPStatusCodeErrors() const override { return true; }
-
-    bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
 
     class CachedImageObserver final : public RefCounted<CachedImageObserver>, public ImageObserver {
     public:
@@ -184,10 +184,11 @@ private:
 
     MonotonicTime m_lastUpdateImageDataTime;
 
-    unsigned m_updateImageDataCount { 0 };
-    bool m_isManuallyCached { false };
-    bool m_shouldPaintBrokenImage { true };
-    bool m_forceUpdateImageDataEnabledForTesting { false };
+    static constexpr unsigned maxUpdateImageDataCount = 4;
+    unsigned m_updateImageDataCount : 3;
+    bool m_isManuallyCached : 1;
+    bool m_shouldPaintBrokenImage : 1;
+    bool m_forceUpdateImageDataEnabledForTesting : 1;
 };
 
 } // namespace WebCore

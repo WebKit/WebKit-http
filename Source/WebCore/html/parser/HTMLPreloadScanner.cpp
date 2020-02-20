@@ -28,6 +28,7 @@
 #include "config.h"
 #include "HTMLPreloadScanner.h"
 
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLSrcsetParser.h"
@@ -42,6 +43,8 @@
 #include "MediaQueryParser.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SecurityPolicy.h"
+#include "Settings.h"
 #include "SizesAttributeParser.h"
 #include <wtf/MainThread.h>
 
@@ -161,6 +164,10 @@ public:
         if (!LinkLoader::isSupportedType(type.value(), m_typeAttribute))
             return nullptr;
 
+        // Do not preload if lazyload is possible but metadata fetch is disabled.
+        if (HTMLImageElement::hasLazyLoadableAttributeValue(m_lazyloadAttribute))
+            return nullptr;
+
         auto request = makeUnique<PreloadRequest>(initiatorFor(m_tagId), m_urlToLoad, predictedBaseURL, type.value(), m_mediaAttribute, m_moduleScript, m_referrerPolicy);
         request->setCrossOriginMode(m_crossOriginMode);
         request->setNonce(m_nonceAttribute);
@@ -205,6 +212,12 @@ private:
             if (match(attributeName, sizesAttr) && m_sizesAttribute.isNull()) {
                 m_sizesAttribute = attributeValue;
                 break;
+            }
+            if (RuntimeEnabledFeatures::sharedFeatures().lazyImageLoadingEnabled()) {
+                if (match(attributeName, loadingAttr) && m_lazyloadAttribute.isNull()) {
+                    m_lazyloadAttribute = attributeValue;
+                    break;
+                }
             }
             processImageAndScriptAttribute(attributeName, attributeValue);
             break;
@@ -376,6 +389,7 @@ private:
     String m_metaContent;
     String m_asAttribute;
     String m_typeAttribute;
+    String m_lazyloadAttribute;
     bool m_metaIsViewport;
     bool m_metaIsDisabledAdaptations;
     bool m_inputIsImage;
@@ -433,7 +447,7 @@ void TokenPreloadScanner::scan(const HTMLToken& token, Vector<std::unique_ptr<Pr
             // The first <base> element is the one that wins.
             if (!m_predictedBaseElementURL.isEmpty())
                 return;
-            updatePredictedBaseURL(token);
+            updatePredictedBaseURL(token, document.settings().shouldRestrictBaseURLSchemes());
             return;
         }
         if (tagId == TagId::Picture) {
@@ -453,11 +467,15 @@ void TokenPreloadScanner::scan(const HTMLToken& token, Vector<std::unique_ptr<Pr
     }
 }
 
-void TokenPreloadScanner::updatePredictedBaseURL(const HTMLToken& token)
+void TokenPreloadScanner::updatePredictedBaseURL(const HTMLToken& token, bool shouldRestrictBaseURLSchemes)
 {
     ASSERT(m_predictedBaseElementURL.isEmpty());
-    if (auto* hrefAttribute = findAttribute(token.attributes(), hrefAttr->localName().string()))
-        m_predictedBaseElementURL = URL(m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value))).isolatedCopy();
+    auto* hrefAttribute = findAttribute(token.attributes(), hrefAttr->localName().string());
+    if (!hrefAttribute)
+        return;
+    URL temp { m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value)) };
+    if (!shouldRestrictBaseURLSchemes || SecurityPolicy::isBaseURLSchemeAllowed(temp))
+        m_predictedBaseElementURL = temp.isolatedCopy();
 }
 
 HTMLPreloadScanner::HTMLPreloadScanner(const HTMLParserOptions& options, const URL& documentURL, float deviceScaleFactor)

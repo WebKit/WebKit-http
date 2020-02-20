@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,20 +117,22 @@ bool GenericArguments<Type>::put(JSCell* cell, JSGlobalObject* globalObject, Pro
 {
     Type* thisObject = jsCast<Type*>(cell);
     VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     
     if (!thisObject->overrodeThings()
         && (ident == vm.propertyNames->length
             || ident == vm.propertyNames->callee
             || ident == vm.propertyNames->iteratorSymbol)) {
-        thisObject->overrideThings(vm);
+        thisObject->overrideThings(globalObject);
+        RETURN_IF_EXCEPTION(scope, false);
         PutPropertySlot dummy = slot; // This put is not cacheable, so we shadow the slot that was given to us.
-        return Base::put(thisObject, globalObject, ident, value, dummy);
+        RELEASE_AND_RETURN(scope, Base::put(thisObject, globalObject, ident, value, dummy));
     }
 
     // https://tc39.github.io/ecma262/#sec-arguments-exotic-objects-set-p-v-receiver
     // Fall back to the OrdinarySet when the receiver is altered from the thisObject.
     if (UNLIKELY(isThisValueAltered(slot, thisObject)))
-        return ordinarySetSlow(globalObject, thisObject, ident, value, slot.thisValue(), slot.isStrictMode());
+        RELEASE_AND_RETURN(scope, ordinarySetSlow(globalObject, thisObject, ident, value, slot.thisValue(), slot.isStrictMode()));
     
     Optional<uint32_t> index = parseIndex(ident);
     if (index && thisObject->isMappedArgument(index.value())) {
@@ -138,7 +140,7 @@ bool GenericArguments<Type>::put(JSCell* cell, JSGlobalObject* globalObject, Pro
         return true;
     }
     
-    return Base::put(thisObject, globalObject, ident, value, slot);
+    RELEASE_AND_RETURN(scope, Base::put(thisObject, globalObject, ident, value, slot));
 }
 
 template<typename Type>
@@ -160,37 +162,46 @@ bool GenericArguments<Type>::deleteProperty(JSCell* cell, JSGlobalObject* global
 {
     Type* thisObject = jsCast<Type*>(cell);
     VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     
     if (!thisObject->overrodeThings()
         && (ident == vm.propertyNames->length
             || ident == vm.propertyNames->callee
-            || ident == vm.propertyNames->iteratorSymbol))
-        thisObject->overrideThings(vm);
-    
-    if (Optional<uint32_t> index = parseIndex(ident))
-        return GenericArguments<Type>::deletePropertyByIndex(thisObject, globalObject, *index);
+            || ident == vm.propertyNames->iteratorSymbol)) {
+        thisObject->overrideThings(globalObject);
+        RETURN_IF_EXCEPTION(scope, false);
+    }
 
-    return Base::deleteProperty(thisObject, globalObject, ident);
+    if (Optional<uint32_t> index = parseIndex(ident))
+        RELEASE_AND_RETURN(scope, GenericArguments<Type>::deletePropertyByIndex(thisObject, globalObject, *index));
+
+    RELEASE_AND_RETURN(scope, Base::deleteProperty(thisObject, globalObject, ident));
 }
 
 template<typename Type>
 bool GenericArguments<Type>::deletePropertyByIndex(JSCell* cell, JSGlobalObject* globalObject, unsigned index)
 {
-    Type* thisObject = jsCast<Type*>(cell);
     VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    Type* thisObject = jsCast<Type*>(cell);
 
     bool propertyMightBeInJSObjectStorage = thisObject->isModifiedArgumentDescriptor(index) || !thisObject->isMappedArgument(index);
     bool deletedProperty = true;
-    if (propertyMightBeInJSObjectStorage)
+    if (propertyMightBeInJSObjectStorage) {
         deletedProperty = Base::deletePropertyByIndex(cell, globalObject, index);
+        RETURN_IF_EXCEPTION(scope, true);
+    }
 
     if (deletedProperty) {
         // Deleting an indexed property unconditionally unmaps it.
         if (thisObject->isMappedArgument(index)) {
             // We need to check that the property was mapped so we don't write to random memory.
-            thisObject->unmapArgument(vm, index);
+            thisObject->unmapArgument(globalObject, index);
+            RETURN_IF_EXCEPTION(scope, true);
         }
-        thisObject->setModifiedArgumentDescriptor(vm, index);
+        thisObject->setModifiedArgumentDescriptor(globalObject, index);
+        RETURN_IF_EXCEPTION(scope, true);
     }
 
     return deletedProperty;
@@ -205,9 +216,10 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, JSGlobalObject*
     
     if (ident == vm.propertyNames->length
         || ident == vm.propertyNames->callee
-        || ident == vm.propertyNames->iteratorSymbol)
-        thisObject->overrideThingsIfNecessary(vm);
-    else {
+        || ident == vm.propertyNames->iteratorSymbol) {
+        thisObject->overrideThingsIfNecessary(globalObject);
+        RETURN_IF_EXCEPTION(scope, false);
+    } else {
         Optional<uint32_t> optionalIndex = parseIndex(ident);
         if (optionalIndex) {
             uint32_t index = optionalIndex.value();
@@ -230,7 +242,8 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, JSGlobalObject*
                     object->putDirectMayBeIndex(globalObject, ident, value);
                     scope.assertNoException();
 
-                    thisObject->setModifiedArgumentDescriptor(vm, index);
+                    thisObject->setModifiedArgumentDescriptor(globalObject, index);
+                    RETURN_IF_EXCEPTION(scope, false);
                 }
             }
             
@@ -246,8 +259,10 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, JSGlobalObject*
                         object->putDirectMayBeIndex(globalObject, ident, value);
                         scope.assertNoException();
                     }
-                    thisObject->unmapArgument(vm, index);
-                    thisObject->setModifiedArgumentDescriptor(vm, index);
+                    thisObject->unmapArgument(globalObject, index);
+                    RETURN_IF_EXCEPTION(scope, false);
+                    thisObject->setModifiedArgumentDescriptor(globalObject, index);
+                    RETURN_IF_EXCEPTION(scope, false);
                 }
             }
         }
@@ -258,12 +273,19 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, JSGlobalObject*
 }
 
 template<typename Type>
-void GenericArguments<Type>::initModifiedArgumentsDescriptor(VM& vm, unsigned argsLength)
+void GenericArguments<Type>::initModifiedArgumentsDescriptor(JSGlobalObject* globalObject, unsigned argsLength)
 {
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     RELEASE_ASSERT(!m_modifiedArgumentsDescriptor);
 
     if (argsLength) {
-        void* backingStore = vm.gigacageAuxiliarySpace(m_modifiedArgumentsDescriptor.kind).allocateNonVirtual(vm, WTF::roundUpToMultipleOf<8>(argsLength), nullptr, AllocationFailureMode::Assert);
+        void* backingStore = vm.gigacageAuxiliarySpace(m_modifiedArgumentsDescriptor.kind).allocateNonVirtual(vm, WTF::roundUpToMultipleOf<8>(argsLength), nullptr, AllocationFailureMode::ReturnNull);
+        if (UNLIKELY(!backingStore)) {
+            throwOutOfMemoryError(globalObject, scope);
+            return;
+        }
         bool* modifiedArguments = static_cast<bool*>(backingStore);
         m_modifiedArgumentsDescriptor.set(vm, this, modifiedArguments, argsLength);
         for (unsigned i = argsLength; i--;)
@@ -272,16 +294,20 @@ void GenericArguments<Type>::initModifiedArgumentsDescriptor(VM& vm, unsigned ar
 }
 
 template<typename Type>
-void GenericArguments<Type>::initModifiedArgumentsDescriptorIfNecessary(VM& vm, unsigned argsLength)
+void GenericArguments<Type>::initModifiedArgumentsDescriptorIfNecessary(JSGlobalObject* globalObject, unsigned argsLength)
 {
     if (!m_modifiedArgumentsDescriptor)
-        initModifiedArgumentsDescriptor(vm, argsLength);
+        initModifiedArgumentsDescriptor(globalObject, argsLength);
 }
 
 template<typename Type>
-void GenericArguments<Type>::setModifiedArgumentDescriptor(VM& vm, unsigned index, unsigned length)
+void GenericArguments<Type>::setModifiedArgumentDescriptor(JSGlobalObject* globalObject, unsigned index, unsigned length)
 {
-    initModifiedArgumentsDescriptorIfNecessary(vm, length);
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    initModifiedArgumentsDescriptorIfNecessary(globalObject, length);
+    RETURN_IF_EXCEPTION(scope, void());
     if (index < length)
         m_modifiedArgumentsDescriptor.at(index, length) = true;
 }

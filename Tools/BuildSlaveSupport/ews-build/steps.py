@@ -238,6 +238,7 @@ class CheckPatchRelevance(buildstep.BuildStep):
         'Tools/BuildSlaveSupport/build.webkit.org-config',
         'Tools/BuildSlaveSupport/ews-build',
         'Tools/BuildSlaveSupport/Shared',
+        'Tools/resultsdbpy',
     ]
 
     jsc_paths = [
@@ -320,22 +321,10 @@ class CheckPatchRelevance(buildstep.BuildStep):
         return None
 
 
-class ValidatePatch(buildstep.BuildStep):
-    name = 'validate-patch'
-    description = ['validate-patch running']
-    descriptionDone = ['Validated patch']
-    flunkOnFailure = True
-    haltOnFailure = True
+class BugzillaMixin(object):
+    addURLs = False
     bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
     bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
-
-    def __init__(self, verifyObsolete=True, verifyBugClosed=True, verifyReviewDenied=True, addURLs=True, verifycqplus=False):
-        self.verifyObsolete = verifyObsolete
-        self.verifyBugClosed = verifyBugClosed
-        self.verifyReviewDenied = verifyReviewDenied
-        self.verifycqplus = verifycqplus
-        self.addURLs = addURLs
-        buildstep.BuildStep.__init__(self)
 
     @defer.inlineCallbacks
     def _addToLog(self, logName, message):
@@ -441,6 +430,87 @@ class ValidatePatch(buildstep.BuildStep):
             return 1
         return 0
 
+    def get_bugzilla_api_key(self):
+        passwords = json.load(open('passwords.json'))
+        return passwords['BUGZILLA_API_KEY']
+
+    def remove_flags_on_patch(self, patch_id):
+        patch_url = '{}rest/bug/attachment/{}'.format(BUG_SERVER_URL, patch_id)
+        flags = [{'name': 'review', 'status': 'X'}, {'name': 'commit-queue', 'status': 'X'}]
+        try:
+            response = requests.put(patch_url, json={'flags': flags, 'Bugzilla_api_key': self.get_bugzilla_api_key()})
+            if response.status_code not in [200, 201]:
+                self._addToLog('stdio', 'Unable to remove flags on patch {}. Unexpected response code from bugzilla: {}'.format(patch_id, response.status_code))
+                return FAILURE
+        except Exception as e:
+            self._addToLog('stdio', 'Error in removing flags on Patch {}'.format(patch_id))
+            return FAILURE
+        return SUCCESS
+
+    def close_bug(self, bug_id):
+        bug_url = '{}rest/bug/{}'.format(BUG_SERVER_URL, bug_id)
+        try:
+            response = requests.put(bug_url, json={'status': 'RESOLVED', 'resolution': 'FIXED', 'Bugzilla_api_key': self.get_bugzilla_api_key()})
+            if response.status_code not in [200, 201]:
+                self._addToLog('stdio', 'Unable to close bug {}. Unexpected response code from bugzilla: {}'.format(bug_id, response.status_code))
+                return FAILURE
+        except Exception as e:
+            self._addToLog('stdio', 'Error in closing bug {}'.format(bug_id))
+            return FAILURE
+        return SUCCESS
+
+    def comment_on_bug(self, bug_id, comment_text):
+        bug_comment_url = '{}rest/bug/{}/comment'.format(BUG_SERVER_URL, bug_id)
+        if not comment_text:
+            return FAILURE
+        try:
+            response = requests.post(bug_comment_url, data={'comment': comment_text, 'Bugzilla_api_key': self.get_bugzilla_api_key()})
+            if response.status_code not in [200, 201]:
+                self._addToLog('stdio', 'Unable to comment on bug {}. Unexpected response code from bugzilla: {}'.format(bug_id, response.status_code))
+                return FAILURE
+        except Exception as e:
+            self._addToLog('stdio', 'Error in commenting on bug {}'.format(bug_id))
+            return FAILURE
+        return SUCCESS
+
+    def create_bug(self, bug_title, bug_description, component='Tools / Tests', cc_list=None):
+        bug_url = '{}rest/bug'.format(BUG_SERVER_URL)
+        if not (bug_title and bug_description):
+            return FAILURE
+
+        try:
+            response = requests.post(bug_url, data={'product': 'WebKit',
+                                                    'component': component,
+                                                    'version': 'WebKit Nightly Build',
+                                                    'summary': bug_title,
+                                                    'description': bug_description,
+                                                    'cc': cc_list,
+                                                    'Bugzilla_api_key': self.get_bugzilla_api_key()})
+            if response.status_code not in [200, 201]:
+                self._addToLog('stdio', 'Unable to file bug. Unexpected response code from bugzilla: {}'.format(response.status_code))
+                return FAILURE
+        except Exception as e:
+            self._addToLog('stdio', 'Error in creating bug: {}'.format(bug_title))
+            return FAILURE
+        self._addToLog('stdio', 'Filed bug: {}'.format(bug_title))
+        return SUCCESS
+
+
+class ValidatePatch(buildstep.BuildStep, BugzillaMixin):
+    name = 'validate-patch'
+    description = ['validate-patch running']
+    descriptionDone = ['Validated patch']
+    flunkOnFailure = True
+    haltOnFailure = True
+
+    def __init__(self, verifyObsolete=True, verifyBugClosed=True, verifyReviewDenied=True, addURLs=True, verifycqplus=False):
+        self.verifyObsolete = verifyObsolete
+        self.verifyBugClosed = verifyBugClosed
+        self.verifyReviewDenied = verifyReviewDenied
+        self.verifycqplus = verifycqplus
+        self.addURLs = addURLs
+        buildstep.BuildStep.__init__(self)
+
     def getResultSummary(self):
         if self.results == FAILURE:
             return {u'step': unicode(self.descriptionDone)}
@@ -498,6 +568,77 @@ class ValidatePatch(buildstep.BuildStep):
             self._addToLog('stdio', 'Patch is marked cq+.\n')
         self.finished(SUCCESS)
         return None
+
+
+class RemoveFlagsOnPatch(buildstep.BuildStep, BugzillaMixin):
+    name = 'remove-flags-from-patch'
+    flunkOnFailure = False
+    haltOnFailure = False
+
+    def start(self):
+        patch_id = self.getProperty('patch_id', '')
+        if not patch_id:
+            self._addToLog('stdio', 'patch_id build property not found.\n')
+            self.descriptionDone = 'No patch id found'
+            self.finished(FAILURE)
+            return None
+
+        rc = self.remove_flags_on_patch(patch_id)
+        self.finished(rc)
+        return None
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Removed flags on bugzilla patch'}
+        return {u'step': u'Failed to remove flags on bugzilla patch'}
+
+
+class CloseBug(buildstep.BuildStep, BugzillaMixin):
+    name = 'close-bugzilla-bug'
+    flunkOnFailure = False
+    haltOnFailure = False
+
+    def start(self):
+        self.bug_id = self.getProperty('bug_id', '')
+        if not self.bug_id:
+            self._addToLog('stdio', 'bug_id build property not found.\n')
+            self.descriptionDone = 'No bug id found'
+            self.finished(FAILURE)
+            return None
+
+        rc = self.close_bug(self.bug_id)
+        self.finished(rc)
+        return None
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Closed bug {}'.format(self.bug_id)}
+        return {u'step': u'Failed to close bug {}'.format(self.bug_id)}
+
+
+class CommentOnBug(buildstep.BuildStep, BugzillaMixin):
+    name = 'comment-on-bugzilla-bug'
+    flunkOnFailure = False
+    haltOnFailure = False
+
+    def start(self):
+        self.bug_id = self.getProperty('bug_id', '')
+        self.comment_text = self.getProperty('bugzilla_comment_text', '')
+
+        if not self.comment_text:
+            self._addToLog('stdio', 'bugzilla_comment_text build property not found.\n')
+            self.descriptionDone = 'No bugzilla comment found'
+            self.finished(WARNINGS)
+            return None
+
+        rc = self.comment_on_bug(self.bug_id, self.comment_text)
+        self.finished(rc)
+        return None
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Added comment on bug {}'.format(self.bug_id)}
+        return {u'step': u'Failed to add comment on bug {}'.format(self.bug_id)}
 
 
 class UnApplyPatchIfRequired(CleanWorkingDirectory):
@@ -710,6 +851,26 @@ class RunEWSBuildbotCheckConfig(shell.ShellCommand):
         if self.results == SUCCESS:
             return {u'step': u'Passed buildbot checkconfig'}
         return {u'step': u'Failed buildbot checkconfig'}
+
+
+class RunResultsdbpyTests(shell.ShellCommand):
+    name = 'resultsdbpy-unit-tests'
+    description = ['resultsdbpy-unit-tests running']
+    command = [
+        'python3',
+        'Tools/resultsdbpy/resultsdbpy/run-tests',
+        '--verbose',
+        '--no-selenium',
+        '--fast-tests',
+    ]
+
+    def __init__(self, **kwargs):
+        super(RunResultsdbpyTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Passed resultsdbpy unit tests'}
+        return {u'step': u'Failed resultsdbpy unit tests'}
 
 
 class WebKitPyTest(shell.ShellCommand):
@@ -1340,7 +1501,7 @@ class RunWebKitTests(shell.Test):
             message = 'Passed layout tests'
             self.descriptionDone = message
             self.build.results = SUCCESS
-            self.build.buildFinished([message], SUCCESS)
+            self.setProperty('build_summary', message)
         else:
             self.build.addStepsAfterCurrentStep([
                 ArchiveTestResults(),
@@ -1380,8 +1541,9 @@ class ReRunWebKitTests(RunWebKitTests):
             self.descriptionDone = message
             self.build.results = SUCCESS
             if not first_results_did_exceed_test_failure_limit:
-                message = 'Found flaky tests: {}'.format(flaky_failures_string)
-            self.build.buildFinished([message], SUCCESS)
+                pluralSuffix = 's' if len(flaky_failures) > 1 else ''
+                message = 'Found flaky test{}: {}'.format(pluralSuffix, flaky_failures_string)
+            self.setProperty('build_summary', message)
         else:
             self.setProperty('patchFailedTests', True)
             self.build.addStepsAfterCurrentStep([ArchiveTestResults(),
@@ -1444,14 +1606,20 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         self.build.buildFinished([message], FAILURE)
         return defer.succeed(None)
 
-    def report_pre_existing_failures(self, clean_tree_failures):
+    def report_pre_existing_failures(self, clean_tree_failures, flaky_failures):
         self.finished(SUCCESS)
         self.build.results = SUCCESS
         self.descriptionDone = 'Passed layout tests'
-        pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
-        clean_tree_failures_string = ', '.join([failure_name for failure_name in clean_tree_failures])
-        message = 'Found {} pre-existing test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
-        self.build.buildFinished([message], SUCCESS)
+        message = ''
+        if clean_tree_failures:
+            clean_tree_failures_string = ', '.join([failure_name for failure_name in clean_tree_failures])
+            pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
+            message = 'Found {} pre-existing test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
+        if flaky_failures:
+            flaky_failures_string = ', '.join(flaky_failures)
+            pluralSuffix = 's' if len(flaky_failures) > 1 else ''
+            message += ' Found flaky test{}: {}'.format(pluralSuffix, flaky_failures_string)
+        self.setProperty('build_summary', message)
         return defer.succeed(None)
 
     def retry_build(self, message=''):
@@ -1475,6 +1643,7 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         second_results_failing_tests = set(self.getProperty('second_run_failures', []))
         clean_tree_results_did_exceed_test_failure_limit = self.getProperty('clean_tree_results_exceed_failure_limit')
         clean_tree_results_failing_tests = set(self.getProperty('clean_tree_run_failures', []))
+        flaky_failures = first_results_failing_tests.union(second_results_failing_tests) - first_results_failing_tests.intersection(second_results_failing_tests)
 
         if first_results_did_exceed_test_failure_limit and second_results_did_exceed_test_failure_limit:
             if (len(first_results_failing_tests) - len(clean_tree_results_failing_tests)) <= 5:
@@ -1518,7 +1687,7 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
             # At this point we know that at least one test flaked, but no consistent failures
             # were introduced. This is a bit of a grey-zone. It's possible that the patch introduced some flakiness.
             # We still mark the build as SUCCESS.
-            return self.report_pre_existing_failures(clean_tree_results_failing_tests)
+            return self.report_pre_existing_failures(clean_tree_results_failing_tests, flaky_failures)
 
         if clean_tree_results_did_exceed_test_failure_limit:
             return self.retry_build()
@@ -1529,7 +1698,7 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         # At this point, we know that the first and second runs had the exact same failures,
         # and that those failures are all present on the clean tree, so we can say with certainty
         # that the patch is good.
-        return self.report_pre_existing_failures(clean_tree_results_failing_tests)
+        return self.report_pre_existing_failures(clean_tree_results_failing_tests, flaky_failures)
 
 
 class RunWebKit1Tests(RunWebKitTests):

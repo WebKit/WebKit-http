@@ -120,6 +120,7 @@ class UserData;
 class WaylandCompositorDisplay;
 class WebAutomationSessionProxy;
 class WebCacheStorageProvider;
+class WebCookieJar;
 class WebCompiledContentRuleListData;
 class WebConnectionToUIProcess;
 class WebFrame;
@@ -293,6 +294,7 @@ public:
     WebAutomationSessionProxy* automationSessionProxy() { return m_automationSessionProxy.get(); }
 
     WebCacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider.get(); }
+    WebCookieJar& cookieJar() { return m_cookieJar.get(); }
     WebSocketChannelManager& webSocketChannelManager() { return m_webSocketChannelManager; }
 
 #if PLATFORM(IOS_FAMILY)
@@ -307,6 +309,10 @@ public:
 
 #if PLATFORM(COCOA)
     void setMediaMIMETypes(const Vector<String>);
+#if ENABLE(REMOTE_INSPECTOR)
+    void enableRemoteWebInspector(const SandboxExtension::Handle&);
+#endif
+    void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
 #endif
 
     bool areAllPagesThrottleable() const;
@@ -331,7 +337,7 @@ private:
     WebProcess();
     ~WebProcess();
 
-    void initializeWebProcess(WebProcessCreationParameters&&, CompletionHandler<void()>&&);
+    void initializeWebProcess(WebProcessCreationParameters&&);
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void setWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
     void platformSetWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
@@ -554,6 +560,7 @@ private:
 #endif
 
     Ref<WebCacheStorageProvider> m_cacheStorageProvider;
+    Ref<WebCookieJar> m_cookieJar;
     WebSocketChannelManager m_webSocketChannelManager;
 
     std::unique_ptr<LibWebRTCNetwork> m_libWebRTCNetwork;

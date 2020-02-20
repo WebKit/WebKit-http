@@ -217,6 +217,7 @@ WI.settings = {
 
     // Experimental
     experimentalEnablePreviewFeatures: new WI.Setting("experimental-enable-preview-features", true),
+    experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
     experimentalEnableStylesJumpToEffective: new WI.Setting("experimental-styles-jump-to-effective", false),
 
     // Protocol
@@ -235,6 +236,7 @@ WI.settings = {
 
     // Debug
     debugShowConsoleEvaluations: new WI.DebugSetting("debug-show-console-evaluations", false),
+    debugOutlineFocusedElement: new WI.DebugSetting("debug-outline-focused-element", false),
     debugEnableLayoutFlashing: new WI.DebugSetting("debug-enable-layout-flashing", false),
     debugEnableStyleEditingDebugMode: new WI.DebugSetting("debug-enable-style-editing-debug-mode", false),
     debugEnableUncaughtExceptionReporter: new WI.DebugSetting("debug-enable-uncaught-exception-reporter", true),

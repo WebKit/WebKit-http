@@ -28,6 +28,7 @@
 #include "Decoder.h"
 #include "Encoder.h"
 #include <utility>
+#include <wtf/Box.h>
 #include <wtf/Forward.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/SHA1.h>
@@ -120,6 +121,54 @@ template<typename T> struct ArgumentCoder<Optional<T>> {
             return Optional<Optional<T>>(WTFMove(*value));
         }
         return Optional<Optional<T>>(Optional<T>(WTF::nullopt));
+    }
+};
+
+template<typename T> struct ArgumentCoder<Box<T>> {
+    static void encode(Encoder& encoder, const Box<T>& box)
+    {
+        if (!box) {
+            encoder << false;
+            return;
+        }
+
+        encoder << true;
+        encoder << *box.get();
+    }
+
+    static bool decode(Decoder& decoder, Box<T>& box)
+    {
+        bool isEngaged;
+        if (!decoder.decode(isEngaged))
+            return false;
+
+        if (!isEngaged) {
+            box = nullptr;
+            return true;
+        }
+
+        Box<T> value = Box<T>::create();
+        if (!decoder.decode(*value))
+            return false;
+
+        box = WTFMove(value);
+        return true;
+    }
+
+    static Optional<Box<T>> decode(Decoder& decoder)
+    {
+        Optional<bool> isEngaged;
+        decoder >> isEngaged;
+        if (!isEngaged)
+            return WTF::nullopt;
+        if (*isEngaged) {
+            Optional<T> value;
+            decoder >> value;
+            if (!value)
+                return WTF::nullopt;
+            return Optional<Box<T>>(Box<T>::create(WTFMove(*value)));
+        }
+        return Optional<Box<T>>(Box<T>(nullptr));
     }
 };
 
@@ -389,6 +438,11 @@ template<typename KeyArg, typename MappedArg, typename HashArg, typename KeyTrai
             if (UNLIKELY(!value))
                 return WTF::nullopt;
 
+            if (UNLIKELY(!HashMapType::isValidKey(*key))) {
+                decoder.markInvalid();
+                return WTF::nullopt;
+            }
+
             if (UNLIKELY(!hashMap.add(WTFMove(*key), WTFMove(*value)).isNewEntry)) {
                 // The hash map already has the specified key, bail.
                 decoder.markInvalid();
@@ -444,7 +498,12 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Argume
             if (!key)
                 return WTF::nullopt;
 
-            if (!hashSet.add(WTFMove(key.value())).isNewEntry) {
+            if (UNLIKELY(!HashSetType::isValidValue(*key))) {
+                decoder.markInvalid();
+                return WTF::nullopt;
+            }
+
+            if (UNLIKELY(!hashSet.add(WTFMove(*key)).isNewEntry)) {
                 // The hash set already has the specified key, bail.
                 decoder.markInvalid();
                 return WTF::nullopt;
@@ -483,8 +542,13 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Argume
             unsigned count;
             if (!decoder.decode(count))
                 return false;
-            
-            if (!tempHashCountedSet.add(key, count).isNewEntry) {
+
+            if (UNLIKELY(!HashCountedSetType::isValidValue(key))) {
+                decoder.markInvalid();
+                return false;
+            }
+
+            if (UNLIKELY(!tempHashCountedSet.add(key, count).isNewEntry)) {
                 // The hash counted set already has the specified key, bail.
                 decoder.markInvalid();
                 return false;

@@ -1,3 +1,715 @@
+2020-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Defer execution of async scripts until until the document is loaded
+        https://bugs.webkit.org/show_bug.cgi?id=207698
+        <rdar://problem/57625747>
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline WPT test to reflect behavior change. Some tests start passing and some other are now failing because
+        they rely on specific ordering at network level.
+
+        * web-platform-tests/content-security-policy/script-src/scripthash-changed-1-expected.txt:
+        * web-platform-tests/content-security-policy/script-src/scripthash-changed-2-expected.txt:
+        * web-platform-tests/content-security-policy/script-src/scriptnonce-changed-1-expected.txt:
+        * web-platform-tests/content-security-policy/script-src/scriptnonce-changed-2-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_005-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/execution-timing/085-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-text-modifications-expected.txt:
+
+2020-02-17  Rob Buis  <rbuis@igalia.com>
+
+        Main implementation for lazy image loading
+        https://bugs.webkit.org/show_bug.cgi?id=200764
+
+        Reviewed by Darin Adler.
+
+        Set correct test option and import lazyload WPT tests into
+        semantics/embedded-content/the-img-element while removing
+        loading/lazyload directory.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/common.js: Added.
+        (ElementLoadPromise):
+        (ElementLoadPromise.prototype.element):
+        (is_image_fully_loaded):
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/disconnected-image-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/disconnected-image-loading-lazy.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-eager-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/iframe-loading-eager.tentative-expected.txt.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-eager.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/iframe-loading-eager.tentative.html.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-lazy.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/iframe-loading-lazy.tentative.html.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-eager-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/image-loading-eager.tentative-expected.txt.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-eager.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/image-loading-eager.tentative.html.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-below-viewport-dynamic-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-below-viewport-dynamic.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-001.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-001.sub.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-002.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-002.sub.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-script-disabled-iframe-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-script-disabled-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-viewport-dynamic-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-viewport-dynamic.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-into-script-disabled-iframe-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-into-script-disabled-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-multicol-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-multicol.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/image-loading-lazy.tentative.html.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/invisible-image-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/invisible-image.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/move-element-and-scroll-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/move-element-and-scroll.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-below-viewport-image-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-below-viewport-image-loading-lazy.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-image-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-image-loading-lazy.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-2.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-iframe-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-crossorigin-applied.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-crossorigin-applied.sub.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-referrer-policy-applied.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/original-referrer-policy-applied.sub.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/picture-loading-lazy-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/picture-loading-lazy.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/remove-element-and-scroll-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/remove-element-and-scroll.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/image-loading-lazy-below-viewport-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/image-loading-lazy-in-viewport-iframe.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/image.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/resources/image.png.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/newwindow.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/referrer-checker-img.py: Added.
+        (main):
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/subframe.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/loading/lazyload/resources/subframe.html.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/resources/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/w3c-import.log:
+        * web-platform-tests/loading/lazyload/resources/w3c-import.log: Removed.
+        * web-platform-tests/loading/lazyload/w3c-import.log: Removed.
+
+2020-02-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Update WPT tests for encoding
+        https://bugs.webkit.org/show_bug.cgi?id=207644
+
+        Rubber-stamped by Youenn Fablet.
+
+        Update from WPT ToT (c8671a2d15)
+
+        On top of the automatic import this:
+         - removes imported/w3c/web-platform-tests/encoding/reftest.list and moves the -ref.html expectations to -expected.html (see bug 203783)
+         - manually fixes the broken imported tests with byte truncated secuences (see bug 207731)
+         - manually fixes the test resources of imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode* (see bug 207736)
+
+        * web-platform-tests/encoding/META.yml: Added.
+        * web-platform-tests/encoding/OWNERS: Removed.
+        * web-platform-tests/encoding/api-basics.any-expected.txt: Added.
+        * web-platform-tests/encoding/api-basics.any.html: Added.
+        * web-platform-tests/encoding/api-basics.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/api-basics.html.
+        * web-platform-tests/encoding/api-basics.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/api-basics.any.worker.html: Added.
+        * web-platform-tests/encoding/api-invalid-label.any-expected.txt: Added.
+        * web-platform-tests/encoding/api-invalid-label.any.html: Added.
+        * web-platform-tests/encoding/api-invalid-label.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/api-invalid-label.html.
+        (tests.forEach):
+        * web-platform-tests/encoding/api-invalid-label.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/api-invalid-label.any.worker.html: Added.
+        * web-platform-tests/encoding/api-replacement-encodings.any-expected.txt: Added.
+        * web-platform-tests/encoding/api-replacement-encodings.any.html: Added.
+        * web-platform-tests/encoding/api-replacement-encodings.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/api-replacement-encodings.html.
+        (encodings_table.forEach):
+        * web-platform-tests/encoding/api-replacement-encodings.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/api-replacement-encodings.any.worker.html: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8.any-expected.txt: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8.any.html: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/api-surrogates-utf8.html.
+        (badStrings.forEach):
+        * web-platform-tests/encoding/api-surrogates-utf8.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8.any.worker.html: Added.
+        * web-platform-tests/encoding/big5-encoder-expected.txt:
+        * web-platform-tests/encoding/big5-encoder.html:
+        * web-platform-tests/encoding/encodeInto.any-expected.txt: Added.
+        * web-platform-tests/encoding/encodeInto.any.html: Added.
+        * web-platform-tests/encoding/encodeInto.any.js: Added.
+        (forEach.testData.forEach.destinationData.string_appeared_here.forEach.arrayBufferOrSharedArrayBuffer.test):
+        (Float64Array.forEach.view.string_appeared_here.forEach):
+        (string_appeared_here.forEach):
+        (test):
+        * web-platform-tests/encoding/encodeInto.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/encodeInto.any.worker.html: Added.
+        * web-platform-tests/encoding/eof-shift_jis-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/eof-shift_jis-ref.html.
+        * web-platform-tests/encoding/eof-utf-8-one-ref.html: Removed.
+        * web-platform-tests/encoding/eof-utf-8-three-ref.html: Removed.
+        * web-platform-tests/encoding/eof-utf-8-two-ref.html: Removed.
+        * web-platform-tests/encoding/gbk-encoder-expected.txt:
+        * web-platform-tests/encoding/gbk-encoder.html:
+        * web-platform-tests/encoding/idlharness.any-expected.txt: Added.
+        * web-platform-tests/encoding/idlharness.any.html: Added.
+        * web-platform-tests/encoding/idlharness.any.js: Added.
+        * web-platform-tests/encoding/idlharness.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/idlharness.any.worker.html: Added.
+        * web-platform-tests/encoding/idlharness.html: Removed.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.any-expected.txt: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.any.html: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.any.js: Added.
+        (decode):
+        * web-platform-tests/encoding/iso-2022-jp-decoder.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.any.worker.html: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.html: Removed.
+        * web-platform-tests/encoding/iso-2022-jp-encoder-expected.txt:
+        * web-platform-tests/encoding/iso-2022-jp-encoder.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-cseucpkdfmtjapanese-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-cseucpkdfmtjapanese.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-errors-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-x-euc-jp-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode-x-euc-jp.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decode.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-decoder.js: Added.
+        (dec2char):
+        (eucjpDecoder):
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-cseucpkdfmtjapanese-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-cseucpkdfmtjapanese.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-cseucpkdfmtjapanese.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-misc-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-x-euc-jp-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-x-euc-jp.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form-x-euc-jp.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-form.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-han-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-hangul-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-misc-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encode-href.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp-encoder.js: Added.
+        (chars2cps):
+        (eucjpEncoder):
+        (convertToHex):
+        (normalizeStr):
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars-cseucpkdfmtjapanese.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars-cseucpkdfmtjapanese.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars-x-euc-jp.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars-x-euc-jp.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_chars.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/eucjp_errors.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/jis0208_index.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/jis0212_index.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/euc-jp/w3c-import.log: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode-csiso2022jp-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode-csiso2022jp.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode-errors-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode-errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decode.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-decoder.js: Added.
+        (dec2char):
+        (getIndexPtr):
+        (iso2022jpDecoder):
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-csiso2022jp-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-csiso2022jp.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-csiso2022jp.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-stateful-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-errors-stateful.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-form.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-han-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-hangul-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-misc-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc-expected.txt.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encode-href.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp-encoder.js: Added.
+        (chars2cps):
+        (iso2022jpEncoder):
+        (convertToHex):
+        (normalizeStr):
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp_errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/iso2022jp_errors.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/jis0208_index.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/iso-2022-jp/w3c-import.log: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-csshiftjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-errors.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms932.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms_kanji.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-shift-jis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-sjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-windows-31j.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-x-sjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decoder.js:
+        (sjisDecoder):
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-csshiftjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-han-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-hangul.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-misc-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms932.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms_kanji.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-shift-jis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-sjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-windows-31j.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-x-sjis.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href.html:
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encoder.js:
+        (sjisEncoder):
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/w3c-import.log:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-cseuckr.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-csksc56011987.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-iso-ir-149.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-korean.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1987.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1989.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc5601.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc_5601.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-windows-949.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decoder.js:
+        (euckrDecoder):
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-cseuckr.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-csksc56011987.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-han-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul-expected.txt: Removed.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul.html: Removed.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul.html.headers: Removed.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-misc-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-iso-ir-149.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-korean.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1987.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1989.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc5601.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc_5601.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-windows-949.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-han-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-misc-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href.html:
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/w3c-import.log:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-big5-hkscs.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-cn-big5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-csbig5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-extra.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-x-x-big5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decoder.js:
+        (big5Decoder):
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-enc-ascii-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-enc-ascii.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-big5-hkscs-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-big5-hkscs.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-cn-big5-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-cn-big5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-csbig5-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-csbig5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBa-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBa.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBb.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-han-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-hangul.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-pua.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-x-x-big5-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-x-x-big5.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-han.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-hangul.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-misc.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-expected.txt:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href.html:
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/w3c-import.log:
+        * web-platform-tests/encoding/reftest.list: Removed.
+        * web-platform-tests/encoding/remove-only-one-bom-expected.txt: Added.
+        * web-platform-tests/encoding/remove-only-one-bom.html: Added.
+        * web-platform-tests/encoding/resources/decode-common.js: Added.
+        (showNodes):
+        * web-platform-tests/encoding/resources/encode-form-common.js: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-sjis.html.
+        (setup):
+        (runNext.iframe.onload):
+        * web-platform-tests/encoding/resources/encode-href-common.js: Added.
+        (encode):
+        * web-platform-tests/encoding/resources/ranges.js: Added.
+        * web-platform-tests/encoding/resources/single-byte-raw.py:
+        (main):
+        * web-platform-tests/encoding/resources/two-boms-utf-16be.html: Added.
+        * web-platform-tests/encoding/resources/two-boms-utf-16le.html: Added.
+        * web-platform-tests/encoding/resources/two-boms-utf-8.html: Added.
+        * web-platform-tests/encoding/resources/utf-32-big-endian-bom.html:
+        * web-platform-tests/encoding/resources/utf-32-big-endian-bom.xml:
+        * web-platform-tests/encoding/resources/utf-32-big-endian-nobom.html:
+        * web-platform-tests/encoding/resources/utf-32-big-endian-nobom.xml:
+        * web-platform-tests/encoding/resources/utf-32-little-endian-bom.html:
+        * web-platform-tests/encoding/resources/utf-32-little-endian-bom.xml:
+        * web-platform-tests/encoding/resources/utf-32-little-endian-nobom.html:
+        * web-platform-tests/encoding/resources/utf-32-little-endian-nobom.xml:
+        * web-platform-tests/encoding/resources/w3c-import.log:
+        * web-platform-tests/encoding/single-byte-decoder.html:
+        * web-platform-tests/encoding/sniffing-expected.txt: Added.
+        * web-platform-tests/encoding/sniffing.html: Added.
+        * web-platform-tests/encoding/streams/backpressure.any.js: Added.
+        (input.new.Uint8Array):
+        * web-platform-tests/encoding/streams/backpressure.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/backpressure.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-attributes.any.js: Added.
+        (const.label.of.Object.keys):
+        (null.test):
+        (null.setting.fatal.to.string_appeared_here.should.set the):
+        (null.setting.ignoreBOM.to.string_appeared_here.should.set the):
+        (string_appeared_here.setting.fatal.to.string_appeared_here.should.set the):
+        (string_appeared_here.setting.ignoreBOM.to.string_appeared_here.should.set the):
+        * web-platform-tests/encoding/streams/decode-attributes.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-attributes.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-bad-chunks.any.js: Added.
+        (const.chunk.of.badChunks.promise_test.async t):
+        * web-platform-tests/encoding/streams/decode-bad-chunks.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-bad-chunks.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-ignore-bom.any.js: Added.
+        (async pipeAndAssemble):
+        * web-platform-tests/encoding/streams/decode-ignore-bom.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-ignore-bom.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-incomplete-input.any.js: Added.
+        (promise_test.async t):
+        * web-platform-tests/encoding/streams/decode-incomplete-input.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-incomplete-input.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-non-utf8.any.js: Added.
+        (const.encoding.of.encodings.promise_test.async const):
+        (const.encoding.of.encodings.promise_test):
+        (const.encoding.of.encodings.promise_test.async t):
+        * web-platform-tests/encoding/streams/decode-non-utf8.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-non-utf8.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-split-character.any.js: Added.
+        * web-platform-tests/encoding/streams/decode-split-character.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-split-character.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/decode-utf8.any.js: Added.
+        (string_appeared_here.forEach.async promise_test):
+        (string_appeared_here.forEach):
+        (async promise_test):
+        * web-platform-tests/encoding/streams/decode-utf8.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/decode-utf8.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/encode-bad-chunks.any.js: Added.
+        (promise_test.t.const.writePromise.writer.write.toString):
+        * web-platform-tests/encoding/streams/encode-bad-chunks.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/encode-bad-chunks.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/encode-utf8.any.js: Added.
+        (of.testCases.promise_test.async const):
+        (of.testCases.promise_test):
+        * web-platform-tests/encoding/streams/encode-utf8.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/encode-utf8.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/readable-writable-properties.any.js: Added.
+        (test):
+        * web-platform-tests/encoding/streams/readable-writable-properties.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/streams/readable-writable-properties.any.worker.html: Added.
+        * web-platform-tests/encoding/streams/realms.window-expected.txt: Added.
+        * web-platform-tests/encoding/streams/realms.window.html: Added.
+        * web-platform-tests/encoding/streams/realms.window.js: Added.
+        (createRealm):
+        (async createRealms):
+        (const.id):
+        (evalInRealm):
+        (async evalInRealmAndWait):
+        (async evalInRealmAndReturn):
+        (async constructAndStore):
+        (readInReadRealm):
+        (writeInWriteRealm):
+        (window.onload):
+        (runGenericTests.async promise_test):
+        (async runTextEncoderStreamTests.async promise_test):
+        (async runTextEncoderStreamTests):
+        (async runTextDecoderStreamTests.async promise_test):
+        (async runTextDecoderStreamTests):
+        * web-platform-tests/encoding/streams/resources/readable-stream-from-array.js: Added.
+        (readableStreamFromArray):
+        * web-platform-tests/encoding/streams/resources/readable-stream-to-array.js: Added.
+        (readableStreamToArray):
+        * web-platform-tests/encoding/streams/resources/w3c-import.log: Added.
+        * web-platform-tests/encoding/streams/w3c-import.log: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-byte-order-marks.html.
+        (testCases.forEach):
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-copy.any-expected.txt:
+        * web-platform-tests/encoding/textdecoder-copy.any.js:
+        (string_appeared_here.forEach.arrayBufferOrSharedArrayBuffer.test):
+        * web-platform-tests/encoding/textdecoder-copy.any.worker-expected.txt:
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-fatal-single-byte.html.
+        (singleByteEncodings.forEach):
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-fatal-streaming.html.
+        (test):
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-fatal.html.
+        (bad.forEach):
+        (test):
+        * web-platform-tests/encoding/textdecoder-fatal.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-ignorebom.html.
+        (cases.forEach):
+        (test):
+        * web-platform-tests/encoding/textdecoder-ignorebom.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-labels.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-labels.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-labels.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-labels.html.
+        (encodings_table.forEach):
+        * web-platform-tests/encoding/textdecoder-labels.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-labels.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.any.js: Added.
+        (string_appeared_here.forEach.):
+        (string_appeared_here.forEach):
+        * web-platform-tests/encoding/textdecoder-streaming.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.html: Removed.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textdecoder-utf16-surrogates.html.
+        (bad.forEach):
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.any.worker.html: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.any-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.any.html: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textencoder-constructor-non-utf.html.
+        (encodings_table.forEach):
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.any.worker.html: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.any-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.any.html: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/textencoder-utf16-surrogates.html.
+        (test):
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.any.worker.html: Added.
+        * web-platform-tests/encoding/utf-32-expected.txt:
+        * web-platform-tests/encoding/utf-32-from-win1252-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/utf-32-expected.txt.
+        * web-platform-tests/encoding/utf-32-from-win1252.html: Added.
+        * web-platform-tests/encoding/utf-32.html:
+        * web-platform-tests/encoding/w3c-import.log:
+
+2020-02-16  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Implement EventTarget constructor
+        https://bugs.webkit.org/show_bug.cgi?id=174313
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/constructors-expected.txt:
+        * web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt:
+        * web-platform-tests/dom/events/EventTarget-constructible.any-expected.txt:
+        * web-platform-tests/dom/events/EventTarget-constructible.any.worker-expected.txt:
+        * web-platform-tests/dom/events/event-global-extra.window-expected.txt:
+        * web-platform-tests/dom/idlharness.any.worker-expected.txt:
+        * web-platform-tests/dom/idlharness.window-expected.txt:
+
+2020-02-14  Rossana Monteriso  <rmonteriso@igalia.com>
+
+        [css-grid] Move grid-gutters-and-alignment test to WPT folder
+        https://bugs.webkit.org/show_bug.cgi?id=207751
+
+        Reviewed by Javier Fernandez.
+
+        Add grid-gutters-and-alignment test, checked and adapted to WPT, with its expected.txt file.
+        Imported to WPT with this PR: https://github.com/web-platform-tests/wpt/pull/21717
+
+        * web-platform-tests/css/css-grid/alignment/grid-gutters-and-alignment-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-gutters-and-alignment.html:
+
+2020-02-14  Antoine Quint  <graouts@webkit.org>
+
+        [Web Animations] Style changes due to Web Animations should not trigger CSS Transitions 
+        https://bugs.webkit.org/show_bug.cgi?id=207760
+        <rdar://problem/59458111>
+
+        Reviewed by Simon Fraser.
+
+        Mark Web Platform Tests progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/style-change-events-expected.txt:
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/style-change-events-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/style-change-events-expected.txt:
+
+2020-02-14  Antoine Quint  <graouts@webkit.org>
+
+        [Web Animations] Ensure CSS Transition and CSS Animation events are queued, sorted and dispatched by their timeline
+        https://bugs.webkit.org/show_bug.cgi?id=207364
+        <rdar://problem/59370413>
+
+        Reviewed by Simon Fraser.
+
+        There are some progressions but also some "regressions". The progressions are real, showing the delivery of all animation events at the correct
+        time. However, the regressions are misleading. The fact that the "style change" tests would work was due to a design issue in the test which would
+        only wait one frame to detect whether a CSS Transition was started after a change made through the Web Animations API. These would work because
+        events were queued in the next frame, but delivered later due to the dedicated per-animation queue used, which meant the test was fooled into
+        thinking the CSS Transition did not start, as expected. Changing those test to use more than one frame to test for the lack of a CSS Transition
+        would have shown the FAIL results.
+
+        However, in order to not regress our WPT score, the issue of "style change" events will be addressed in a follow-up patch.
+
+        * web-platform-tests/css/css-transitions/CSSTransition-startTime.tentative-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/style-change-events-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/style-change-events-expected.txt:
+        * web-platform-tests/web-animations/timing-model/timelines/update-and-send-events-expected.txt:
+
+2020-02-12  Rossana Monteriso  <rmonteriso@igalia.com>
+
+        [css-grid] Move grid-item-auto-margins-alignment tests to WPT folder
+        https://bugs.webkit.org/show_bug.cgi?id=207534
+
+        Reviewed by Javier Fernandez.
+
+        Add grid-item-auto-margins-alignment tests, checked and adapted to WPT, with their expected.txt files.
+        Imported to WPT with this PR: https://github.com/web-platform-tests/wpt/pull/21509
+
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment-vertical-lr-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment-vertical-lr.html:
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment-vertical-rl-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment-vertical-rl.html:
+        * web-platform-tests/css/css-grid/alignment/grid-item-auto-margins-alignment.html:
+
+2020-02-11  Youenn Fablet  <youenn@apple.com>
+
+        Parent service worker controller should be used for child iframe as per https://w3c.github.io/ServiceWorker/#control-and-use-window-client
+        https://bugs.webkit.org/show_bug.cgi?id=207506
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/service-workers/service-worker/local-url-inherit-controller.https-expected.txt:
+
+2020-02-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't update selection when calling setSelectionRange on a disconnected input element
+        https://bugs.webkit.org/show_bug.cgi?id=207357
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the test that progressed a little. The test now passes offset checks but still fails direction check.
+
+        * web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-textarea-expected.txt:
+
+2020-02-07  youenn fablet  <youenn@apple.com>
+
+        Filter out TURN/STUN .local URLs from a RTCPeerConnection iceServers list
+        https://bugs.webkit.org/show_bug.cgi?id=207332
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCConfiguration-iceServers-expected.txt:
+        Rebase tests since we are passing a few more sub tests by converting String to a Vector of one string,
+        as allowed by the spec and tested by this test.
+
+2020-02-07  Rob Buis  <rbuis@igalia.com>
+
+        Fix fetch/api/policies/referrer-origin-worker.html
+        https://bugs.webkit.org/show_bug.cgi?id=206520
+
+        Reviewed by Youenn Fablet.
+
+        Updated improved test result.
+
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+
+2020-02-06  Cathie Chen  <cathiechen@igalia.com>
+
+        Add support for scroll behavior relies on ScrollAnimation of the Web process
+        https://bugs.webkit.org/show_bug.cgi?id=204882
+
+        Reviewed by Frédéric Wang
+
+        Based on the patch by Frédéric Wang.
+
+        Enable CSSOMViewSmoothScrollingEnabled on scroll behavior tests and update expectations.
+
+        * web-platform-tests/css/cssom-view/scroll-behavior-default-css-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-default-css.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-element-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-element.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-scrollintoview-nested-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-scrollintoview-nested.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-smooth-positions.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-root-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html:
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-window-expected.txt:
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html:
+
 2020-02-05  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Update snapshot of Web Animations, CSS Animations and CSS Transitions WPT tests

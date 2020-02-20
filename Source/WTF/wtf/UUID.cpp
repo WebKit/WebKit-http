@@ -32,6 +32,7 @@
 #include <wtf/UUID.h>
 
 #include <mutex>
+#include <wtf/ASCIICType.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HexNumber.h>
 #include <wtf/text/StringBuilder.h>
@@ -79,6 +80,35 @@ String bootSessionUUIDString()
 #else
     return String();
 #endif
+}
+
+bool isVersion4UUID(StringView value)
+{
+    // Version 4 UUIDs have the form xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx with hexadecimal digits for x and one of 8, 9, A, or B for y.
+    if (value.length() != 36)
+        return false;
+
+    for (auto cptr = 0; cptr < 36; ++cptr) {
+        if (cptr == 8 || cptr == 13 || cptr == 18 || cptr == 23) {
+            if (value[cptr] != '-')
+                return false;
+            continue;
+        }
+        if (cptr == 14) {
+            if (value[cptr] != '4')
+                return false;
+            continue;
+        }
+        if (cptr == 19) {
+            auto y = value[cptr];
+            if (y != '8' && y != '9' && y != 'a' && y != 'A' && y != 'b' && y != 'B')
+                return false;
+            continue;
+        }
+        if (!isASCIIHexDigit(value[cptr]))
+            return false;
+    }
+    return true;
 }
 
 } // namespace WTF

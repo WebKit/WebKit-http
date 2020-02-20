@@ -34,12 +34,12 @@
 #import "LocalSampleBufferDisplayLayer.h"
 #import "MediaStreamPrivate.h"
 #import "PixelBufferConformerCV.h"
-#import "VideoFullscreenLayerManagerObjC.h"
+#import "VideoLayerManagerObjC.h"
 #import "VideoTrackPrivateMediaStream.h"
 #import <CoreGraphics/CGAffineTransform.h>
 #import <objc_runtime.h>
 #import <pal/avfoundation/MediaTimeAVFoundation.h>
-#import <pal/spi/mac/AVFoundationSPI.h>
+#import <pal/spi/cocoa/AVFoundationSPI.h>
 #import <pal/system/Clock.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
@@ -144,11 +144,9 @@ static const double rendererLatency = 0.02;
 MediaPlayerPrivateMediaStreamAVFObjC::MediaPlayerPrivateMediaStreamAVFObjC(MediaPlayer* player)
     : m_player(player)
     , m_clock(PAL::Clock::create())
-    , m_videoFullscreenLayerManager(makeUnique<VideoFullscreenLayerManagerObjC>())
-#if !RELEASE_LOG_DISABLED
     , m_logger(player->mediaPlayerLogger())
     , m_logIdentifier(player->mediaPlayerLogIdentifier())
-#endif
+    , m_videoLayerManager(makeUnique<VideoLayerManagerObjC>(m_logger, m_logIdentifier))
     , m_boundsChangeListener(adoptNS([[WebRootSampleBufferBoundsChangeListener alloc] initWithParent:this]))
 {
     INFO_LOG(LOGIDENTIFIER);
@@ -382,7 +380,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::ensureLayers()
     updateRenderingMode();
     updateDisplayLayer();
 
-    m_videoFullscreenLayerManager->setVideoLayer(m_sampleBufferDisplayLayer->rootLayer(), size);
+    m_videoLayerManager->setVideoLayer(m_sampleBufferDisplayLayer->rootLayer(), size);
 
     [m_boundsChangeListener begin];
 }
@@ -394,7 +392,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::destroyLayers()
 
     updateRenderingMode();
     
-    m_videoFullscreenLayerManager->didDestroyVideoLayer();
+    m_videoLayerManager->didDestroyVideoLayer();
 }
 
 #pragma mark -
@@ -465,7 +463,7 @@ PlatformLayer* MediaPlayerPrivateMediaStreamAVFObjC::platformLayer() const
     if (!m_sampleBufferDisplayLayer || !m_sampleBufferDisplayLayer->rootLayer() || m_displayMode == None)
         return nullptr;
 
-    return m_videoFullscreenLayerManager->videoInlineLayer();
+    return m_videoLayerManager->videoInlineLayer();
 }
 
 MediaPlayerPrivateMediaStreamAVFObjC::DisplayMode MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode() const
@@ -632,19 +630,19 @@ MediaPlayer::ReadyState MediaPlayerPrivateMediaStreamAVFObjC::readyState() const
 
 MediaPlayer::ReadyState MediaPlayerPrivateMediaStreamAVFObjC::currentReadyState()
 {
-    if (!m_mediaStreamPrivate || !m_mediaStreamPrivate->active() || !m_mediaStreamPrivate->tracks().size())
+    if (!m_mediaStreamPrivate || !m_mediaStreamPrivate->active() || !m_mediaStreamPrivate->hasTracks())
         return MediaPlayer::ReadyState::HaveNothing;
 
-    bool allTracksAreLive = true;
-    for (auto& track : m_mediaStreamPrivate->tracks()) {
-        if (!track->enabled() || track->readyState() != MediaStreamTrackPrivate::ReadyState::Live)
-            allTracksAreLive = false;
+    bool waitingForImage = m_mediaStreamPrivate->activeVideoTrack() && !m_imagePainter.mediaSample;
+    if (waitingForImage && (!m_haveSeenMetadata || m_waitingForFirstImage))
+        return MediaPlayer::ReadyState::HaveNothing;
 
-        if (track == m_mediaStreamPrivate->activeVideoTrack() && !m_imagePainter.mediaSample) {
-            if (!m_haveSeenMetadata || m_waitingForFirstImage)
-                return MediaPlayer::ReadyState::HaveNothing;
-            allTracksAreLive = false;
-        }
+    bool allTracksAreLive = !waitingForImage;
+    if (allTracksAreLive) {
+        m_mediaStreamPrivate->forEachTrack([&](auto& track) {
+            if (!track.enabled() || track.readyState() != MediaStreamTrackPrivate::ReadyState::Live)
+                allTracksAreLive = false;
+        });
     }
 
     if (m_waitingForFirstImage || (!allTracksAreLive && !m_haveSeenMetadata))
@@ -778,12 +776,12 @@ bool MediaPlayerPrivateMediaStreamAVFObjC::supportsPictureInPicture() const
 void MediaPlayerPrivateMediaStreamAVFObjC::setVideoFullscreenLayer(PlatformLayer* videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {
     updateCurrentFrameImage();
-    m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, WTFMove(completionHandler), m_imagePainter.cgImage);
+    m_videoLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, WTFMove(completionHandler), m_imagePainter.cgImage);
 }
 
 void MediaPlayerPrivateMediaStreamAVFObjC::setVideoFullscreenFrame(FloatRect frame)
 {
-    m_videoFullscreenLayerManager->setVideoFullscreenFrame(frame);
+    m_videoLayerManager->setVideoFullscreenFrame(frame);
 }
 
 typedef enum {
@@ -1056,12 +1054,10 @@ void MediaPlayerPrivateMediaStreamAVFObjC::rootLayerBoundsDidChange()
     updateDisplayLayer();
 }
 
-#if !RELEASE_LOG_DISABLED
 WTFLogChannel& MediaPlayerPrivateMediaStreamAVFObjC::logChannel() const
 {
     return LogMedia;
 }
-#endif
 
 }
 

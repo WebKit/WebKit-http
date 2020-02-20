@@ -262,7 +262,7 @@ platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm @no-
 platform/graphics/avfoundation/objc/MediaSampleAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm @no-unify
-platform/graphics/avfoundation/objc/VideoFullscreenLayerManagerObjC.mm @no-unify
+platform/graphics/avfoundation/objc/VideoLayerManagerObjC.mm @no-unify
 platform/graphics/avfoundation/objc/VideoTrackPrivateAVFObjC.cpp @no-unify
 platform/graphics/avfoundation/objc/VideoTrackPrivateMediaSourceAVFObjC.mm @no-unify
 platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm @no-unify
@@ -399,6 +399,7 @@ platform/ios/LegacyTileGridTile.mm
 platform/ios/LegacyTileLayer.mm
 platform/ios/LegacyTileLayerPool.mm
 platform/ios/LocalCurrentTraitCollection.mm
+platform/ios/LocalizedDeviceModel.mm
 platform/ios/LowPowerModeNotifierIOS.mm
 platform/ios/PasteboardIOS.mm
 platform/ios/PlatformEventFactoryIOS.mm @no-unify
@@ -463,7 +464,7 @@ platform/mac/SSLKeyGeneratorMac.mm
 platform/mac/ScrollAnimatorMac.mm @no-unify
 platform/mac/ScrollViewMac.mm
 platform/mac/ScrollbarThemeMac.mm @no-unify
-platform/mac/SerializedPlatformRepresentationMac.mm
+platform/mac/SerializedPlatformDataCueMac.mm
 platform/mac/StringUtilities.mm
 platform/mac/SuddenTermination.mm
 platform/mac/ThemeMac.mm
@@ -537,10 +538,11 @@ platform/network/mac/WebCoreURLResponse.mm
 
 platform/text/cf/HyphenationCF.cpp
 
+platform/text/cocoa/LocaleCocoa.mm
+
 platform/text/ios/LocalizedDateCache.mm
 platform/text/ios/TextEncodingRegistryIOS.mm
 
-platform/text/mac/LocaleMac.mm
 platform/text/mac/TextBoundaries.mm
 platform/text/mac/TextCheckingMac.mm
 platform/text/mac/TextEncodingRegistryMac.mm

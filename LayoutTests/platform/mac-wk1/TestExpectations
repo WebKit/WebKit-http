@@ -159,6 +159,25 @@ http/tests/intersection-observer [ Skip ]
 imported/w3c/web-platform-tests/intersection-observer [ Skip ]
 intersection-observer [ Skip ]
 
+http/tests/lazyload [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/disconnected-image-loading-lazy.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-below-viewport-dynamic.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-viewport-dynamic.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-into-script-disabled-iframe.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/move-element-and-scroll.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-below-viewport-image-loading-lazy.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/not-rendered-image-loading-lazy.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied-2.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-base-url-applied.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-crossorigin-applied.sub.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/original-referrer-policy-applied.sub.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/picture-loading-lazy.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/remove-element-and-scroll.html [ Skip ]
+
 # testRunner.queueLoad() does not support loading data URLs in Mac WK1
 http/tests/security/contentSecurityPolicy/navigate-self-to-data-url.html [ Skip ]
 
@@ -204,8 +223,6 @@ webkit.org/b/150564 svg/repaint/add-background-property-on-root.html [ Pass Time
 webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
 
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
-
-webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
 
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
 
@@ -748,6 +765,12 @@ webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-s
 
 webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
 
+# Tests for smooth scroll behavior do not all work and they are slow, so let's just skip them.
+webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root.html [ Skip ]
+webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window.html [ Skip ]
+webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html [ Skip ]
+webkit.org/b/191357 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html [ Skip ]
+
 webkit.org/b/189908 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]
 
 webkit.org/b/189756 [ Mojave+ ] compositing/filters/opacity-change-on-filtered-paints-into-ancestor.html [ Pass ImageOnlyFailure ]
@@ -864,8 +887,6 @@ webkit.org/b/206945 [ Catalina ] compositing/repaint/become-overlay-composited-l
 
 webkit.org/b/206974 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy.html [ Pass Failure ]
 
-webkit.org/b/207046 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/seeking/seek-to-currentTime.html [ Pass Failure ]
-
 webkit.org/b/207059 imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-small.html [ Pass Failure ]
 
 webkit.org/b/207066 editing/execCommand/insert-nested-lists.html [ Pass Failure ]
@@ -897,3 +918,29 @@ webkit.org/b/207167 inspector/unit-tests/server-timing-entry.html [ Pass Timeout
 webkit.org/b/207237 http/tests/notifications/event-listener-crash.html [ Pass Crash ]
 
 webkit.org/b/207278 imported/w3c/web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html [ Pass Failure ]
+
+webkit.org/b/207469 [ Debug ] imported/w3c/web-platform-tests/svg/animations/slider-switch.html [ Pass Failure ]
+
+webkit.org/b/207470 [ Debug ] imported/w3c/web-platform-tests/workers/WorkerGlobalScope_ErrorEvent_colno.htm [ Pass Failure ]
+
+webkit.org/b/207559 fast/parser/parser-yield-timing.html [ Pass Failure ]
+
+# This seems to be indicative of a CFNetwork bug.
+webkit.org/b/207895 http/tests/cookies/document-cookie-during-iframe-parsing.html [ Pass Failure ]
+
+webkit.org/b/207560 media/airplay-target-availability.html [ Pass Failure ]
+
+webkit.org/b/207153 [ Debug ] animations/animation-callback-timestamp.html [ Pass Failure ]
+
+webkit.org/b/207566 imported/w3c/web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html [ Pass Failure ]
+
+webkit.org/b/207568 inspector/page/overrideUserAgent.html [ Pass Failure ]
+
+webkit.org/b/207569 legacy-animation-engine/animations/3d/transform-origin-vs-functions.html [ Pass Failure ]
+
+webkit.org/b/207847 resize-observer/delete-observers-in-callbacks.html [ Pass Failure ]
+
+webkit.org/b/207857 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Pass Timeout ]
+
+webkit.org/b/207891 imported/w3c/web-platform-tests/css/css-position/fixed-z-index-blend.html [ Pass Failure ]
+http/tests/websocket/web-socket-loads-captured-in-per-page-domains.html [ Skip ]

@@ -73,7 +73,6 @@ IPC::Connection* WebSWClientConnection::messageSenderConnection() const
 
 void WebSWClientConnection::scheduleJobInServer(const ServiceWorkerJobData& jobData)
 {
-    RELEASE_ASSERT(!jobData.scopeURL.isNull());
     runOrDelayTaskForImport([this, jobData] {
         send(Messages::WebSWServerConnection::ScheduleJobInServer { jobData });
     });
@@ -95,6 +94,15 @@ void WebSWClientConnection::removeServiceWorkerRegistrationInServer(ServiceWorke
 {
     if (WebProcess::singleton().removeServiceWorkerRegistration(identifier))
         send(Messages::WebSWServerConnection::RemoveServiceWorkerRegistrationInServer { identifier });
+}
+
+void WebSWClientConnection::scheduleUnregisterJobInServer(ServiceWorkerRegistrationIdentifier registrationIdentifier, WebCore::DocumentOrWorkerIdentifier documentIdentifier, CompletionHandler<void(ExceptionOr<bool>&&)>&& completionHandler)
+{
+    sendWithAsyncReply(Messages::WebSWServerConnection::ScheduleUnregisterJobInServer { ServiceWorkerJobIdentifier::generateThreadSafe(), registrationIdentifier, documentIdentifier }, [completionHandler = WTFMove(completionHandler)](auto&& result) mutable {
+        if (!result.has_value())
+            return completionHandler(result.error().toException());
+        completionHandler(result.value());
+    });
 }
 
 void WebSWClientConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, MessageWithMessagePorts&& message, const ServiceWorkerOrClientIdentifier& sourceIdentifier)
@@ -230,9 +238,7 @@ void WebSWClientConnection::clear()
     for (auto& callback : getRegistrationTasks.values())
         callback({ });
 
-    auto registrationReadyTasks = WTFMove(m_ongoingRegistrationReadyTasks);
-    for (auto& callback : registrationReadyTasks.values())
-        callback({ });
+    m_ongoingRegistrationReadyTasks.clear();
 
     clearPendingJobs();
 }

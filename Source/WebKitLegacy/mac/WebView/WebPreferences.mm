@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2020 Apple Inc. All rights reserved.
  *           (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -7,13 +7,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -90,10 +90,10 @@ static WebCacheModel cacheModelForMainBundle(void)
         // Apps that probably need the small setting
         static const char* const documentViewerIDs[] = {
             "Microsoft/com.microsoft.Messenger",
-            "com.adiumX.adiumX", 
+            "com.adiumX.adiumX",
             "com.alientechnology.Proteus",
             "com.apple.Dashcode",
-            "com.apple.iChat", 
+            "com.apple.iChat",
             "com.barebones.bbedit",
             "com.barebones.textwrangler",
             "com.barebones.yojimbo",
@@ -107,7 +107,7 @@ static WebCacheModel cacheModelForMainBundle(void)
             "com.yahoo.messenger3",
             "de.codingmonkeys.SubEthaEdit",
             "fi.karppinen.Pyro",
-            "info.colloquy", 
+            "info.colloquy",
             "kungfoo.tv.ecto",
         };
 
@@ -228,13 +228,13 @@ public:
     // Create fake identifier
     static int instanceCount = 1;
     NSString *fakeIdentifier;
-    
-    // At least ensure that identifier hasn't been already used.  
+
+    // At least ensure that identifier hasn't been already used.
     fakeIdentifier = [NSString stringWithFormat:@"WebPreferences%d", instanceCount++];
     while ([[self class] _getInstanceForIdentifier:fakeIdentifier]){
         fakeIdentifier = [NSString stringWithFormat:@"WebPreferences%d", instanceCount++];
     }
-    
+
     return [self initWithIdentifier:fakeIdentifier];
 }
 
@@ -433,6 +433,7 @@ public:
         @YES, WebKitWebSecurityEnabledPreferenceKey,
         @YES, WebKitAllowUniversalAccessFromFileURLsPreferenceKey,
         @YES, WebKitAllowFileAccessFromFileURLsPreferenceKey,
+        @YES, WebKitAllowTopNavigationToDataURLsPreferenceKey,
 #if PLATFORM(IOS_FAMILY)
         @NO, WebKitJavaScriptCanOpenWindowsAutomaticallyPreferenceKey,
 #else
@@ -593,9 +594,8 @@ public:
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         @NO, WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         @YES, WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
-        @YES, WebKitRenderingUpdateThrottlingEnabledPreferenceKey,
         @NO, WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
-        
+
         @NO, WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey,
 #if ENABLE(MEDIA_SOURCE)
         @YES, WebKitMediaSourceEnabledPreferenceKey,
@@ -642,6 +642,9 @@ public:
 #endif
 #if ENABLE(WEBGPU)
         @NO, WebKitWebGPUEnabledPreferenceKey,
+#endif
+#if ENABLE(WEBGL) || ENABLE(WEBGL2)
+        @YES, WebKitMaskWebGLStringsEnabledPreferenceKey,
 #endif
         @NO, WebKitCacheAPIEnabledPreferenceKey,
         @YES, WebKitFetchAPIEnabledPreferenceKey,
@@ -968,7 +971,7 @@ public:
     return [self _stringValueForKey: WebKitSerifFontPreferenceKey];
 }
 
-- (void)setSerifFontFamily:(NSString *)family 
+- (void)setSerifFontFamily:(NSString *)family
 {
     [self _setStringValue: family forKey: WebKitSerifFontPreferenceKey];
 }
@@ -1067,7 +1070,7 @@ public:
 - (NSURL *)userStyleSheetLocation
 {
     NSString *locationString = [self _stringValueForKey: WebKitUserStyleSheetLocationPreferenceKey];
-    
+
     if ([locationString _webkit_looksLikeAbsoluteURL]) {
         return [NSURL _web_URLWithDataAsString:locationString];
     } else {
@@ -1079,7 +1082,7 @@ public:
 - (void)setUserStyleSheetLocation:(NSURL *)URL
 {
     NSString *locationString;
-    
+
     if ([URL isFileURL]) {
         locationString = [[URL path] _web_stringByAbbreviatingWithTildeInPath];
     } else {
@@ -1100,7 +1103,7 @@ public:
 // in use display web content in a straightforward manner. However, it is
 // wrong for iOS, where WebViews are used for various purposes, like
 // text editing, text rendering, and displaying web content.
-// 
+//
 // I have changed the user style sheet mechanism to be a per-WebView
 // setting, rather than a per-process preference. This seems to give the
 // behavior we want for iOS.
@@ -1570,6 +1573,16 @@ public:
     [self _setBoolValue: flag forKey: WebKitAllowFileAccessFromFileURLsPreferenceKey];
 }
 
+- (BOOL)allowTopNavigationToDataURLs
+{
+    return [self _boolValueForKey: WebKitAllowTopNavigationToDataURLsPreferenceKey];
+}
+
+- (void)setAllowTopNavigationToDataURLs:(BOOL)flag
+{
+    [self _setBoolValue: flag forKey: WebKitAllowTopNavigationToDataURLsPreferenceKey];
+}
+
 - (BOOL)allowCrossOriginSubresourcesToAskForCredentials
 {
     return [self _boolValueForKey:WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey];
@@ -1795,7 +1808,7 @@ public:
         // ensure that a valid result is returned
         value = WebKitEditableLinkDefaultBehavior;
     }
-    
+
     return value;
 }
 
@@ -1879,7 +1892,7 @@ public:
 
     if (!ident)
         return _standardPreferences;
-    
+
     WebPreferences *instance = [webPreferencesInstances objectForKey:[self _concatenateKeyWithIBCreatorID:ident]];
 
     return instance;
@@ -2191,6 +2204,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setWebGPUEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitWebGPUEnabledPreferenceKey];
+}
+
+- (BOOL)maskWebGLStringsEnabled
+{
+    return [self _boolValueForKey:WebKitMaskWebGLStringsEnabledPreferenceKey];
+}
+
+- (void)setMaskWebGLStringsEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitMaskWebGLStringsEnabledPreferenceKey];
 }
 
 - (BOOL)accelerated2dCanvasEnabled
@@ -2633,7 +2656,7 @@ static NSString *classIBCreatorID = nil;
         ASSERT_NOT_REACHED();
         storageBlockingPolicy = WebBlockAllStorage;
         break;
-    }    
+    }
 
     [self setStorageBlockingPolicy:storageBlockingPolicy];
 }
@@ -2784,16 +2807,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setHiddenPageCSSAnimationSuspensionEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey];
-}
-
-- (BOOL)renderingUpdateThrottlingEnabled
-{
-    return [self _boolValueForKey:WebKitRenderingUpdateThrottlingEnabledPreferenceKey];
-}
-
-- (void)setRenderingUpdateThrottlingEnabled:(BOOL)enabled
-{
-    [self _setBoolValue:enabled forKey:WebKitRenderingUpdateThrottlingEnabledPreferenceKey];
 }
 
 - (BOOL)lowPowerVideoAudioBufferSizeEnabled

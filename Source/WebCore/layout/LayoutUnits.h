@@ -153,8 +153,16 @@ struct VerticalGeometry {
 };
 
 struct HorizontalConstraints {
+    LayoutUnit logicalRight() const { return logicalLeft + logicalWidth; }
+
     LayoutUnit logicalLeft;
     LayoutUnit logicalWidth;
+};
+
+struct OutOfFlowHorizontalConstraints {
+    HorizontalConstraints value;
+    // Borders and paddings are resolved against the containing block's content box as if the box was an in-flow box.
+    LayoutUnit borderAndPaddingSpecificWidth;
 };
 
 struct VerticalConstraints {

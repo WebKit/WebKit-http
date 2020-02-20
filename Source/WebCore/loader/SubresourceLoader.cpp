@@ -239,7 +239,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest&& newRequest, co
             m_resource->responseReceived(opaqueRedirectedResponse);
             if (reachedTerminalState()) {
                 RELEASE_LOG_IF_ALLOWED("willSendRequestinternal: reached terminal state (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
-                return;
+                return completionHandler(WTFMove(newRequest));
             }
 
             RELEASE_LOG_IF_ALLOWED("willSendRequestinternal: resource load completed (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
@@ -691,7 +691,13 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
         // This is the legacy path for platforms (and ResourceHandle paths) that do not provide
         // complete load metrics in didFinishLoad. In those cases, fall back to the possibility
         // that they populated partial load timing information on the ResourceResponse.
-        reportResourceTiming(m_resource->response().deprecatedNetworkLoadMetrics());
+        const auto* timing = m_resource->response().deprecatedNetworkLoadMetricsOrNull();
+        Optional<NetworkLoadMetrics> empty;
+        if (!timing) {
+            empty.emplace();
+            timing = &empty.value();
+        }
+        reportResourceTiming(*timing);
     }
 
     if (m_resource->type() != CachedResource::Type::MainResource)

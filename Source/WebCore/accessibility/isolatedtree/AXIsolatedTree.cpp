@@ -42,6 +42,18 @@ static unsigned newTreeID()
     return ++s_currentTreeID;
 }
 
+AXIsolatedTree::NodeChange::NodeChange(AXIsolatedObject& isolatedObject, AccessibilityObjectWrapper* wrapper)
+    : m_isolatedObject(isolatedObject)
+    , m_wrapper(wrapper)
+{
+}
+
+AXIsolatedTree::NodeChange::NodeChange(const NodeChange& other)
+    : m_isolatedObject(other.m_isolatedObject.get())
+    , m_wrapper(other.m_wrapper)
+{
+}
+
 HashMap<PageIdentifier, Ref<AXIsolatedTree>>& AXIsolatedTree::treePageCache()
 {
     static NeverDestroyed<HashMap<PageIdentifier, Ref<AXIsolatedTree>>> map;
@@ -152,14 +164,30 @@ void AXIsolatedTree::setFocusedNodeID(AXID axID)
 void AXIsolatedTree::removeNode(AXID axID)
 {
     LockHolder locker { m_changeLogLock };
+    ASSERT(m_readerThreadNodeMap.contains(axID));
     m_pendingRemovals.append(axID);
 }
 
-void AXIsolatedTree::appendNodeChanges(Vector<Ref<AXIsolatedObject>>& log)
+void AXIsolatedTree::removeSubtree(AXID axID)
 {
     LockHolder locker { m_changeLogLock };
-    for (auto& node : log)
-        m_pendingAppends.append(node.copyRef());
+    m_pendingRemovals.append(axID);
+
+    auto object = nodeForID(axID);
+    if (!object)
+        return;
+    auto childrenIDs(object->m_childrenIDs);
+    locker.unlockEarly();
+
+    for (const auto& childID : childrenIDs)
+        removeSubtree(childID);
+}
+
+void AXIsolatedTree::appendNodeChanges(const Vector<NodeChange>& log)
+{
+    LockHolder locker { m_changeLogLock };
+    for (const auto& node : log)
+        m_pendingAppends.append(node);
 }
 
 void AXIsolatedTree::applyPendingChanges()
@@ -167,22 +195,31 @@ void AXIsolatedTree::applyPendingChanges()
     RELEASE_ASSERT(!isMainThread());
     LockHolder locker { m_changeLogLock };
 
-    // We don't clear the pending IDs beacause if the next round of updates does not modify them, then they stay the same
-    // value without extra bookkeeping.
     m_focusedNodeID = m_pendingFocusedNodeID;
 
-    for (auto& item : m_pendingAppends)
-        m_readerThreadNodeMap.add(item->objectID(), WTFMove(item));
-    m_pendingAppends.clear();
-
-    for (auto& item : m_pendingRemovals) {
-        if (auto object = nodeForID(item))
+    for (const auto& axID : m_pendingRemovals) {
+        if (auto object = nodeForID(axID))
             object->detach(AccessibilityDetachmentType::ElementDestroyed);
-        m_readerThreadNodeMap.remove(item);
+        m_readerThreadNodeMap.remove(axID);
     }
     m_pendingRemovals.clear();
+
+    for (const auto& item : m_pendingAppends) {
+        ASSERT(!m_readerThreadNodeMap.contains(item.m_isolatedObject->objectID())
+            || item.m_isolatedObject->objectID() == m_rootNodeID);
+
+        if (item.m_wrapper)
+            item.m_isolatedObject->attachPlatformWrapper(item.m_wrapper);
+
+        m_readerThreadNodeMap.add(item.m_isolatedObject->objectID(), item.m_isolatedObject.get());
+        // The reference count of the just added IsolatedObject must be 2
+        // because it is referenced by m_readerThreadNodeMap and m_pendingAppends.
+        // When m_pendingAppends is cleared, the object will be held only by m_readerThreadNodeMap.
+        ASSERT(m_readerThreadNodeMap.get(item.m_isolatedObject->objectID())->refCount() == 2);
+    }
+    m_pendingAppends.clear();
 }
-    
+
 } // namespace WebCore
 
 #endif // ENABLE(ACCESSIBILITY_ISOLATED_TREE)

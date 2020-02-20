@@ -31,10 +31,10 @@
 #import "TestNavigationDelegate.h"
 #import "Utilities.h"
 
+#import <WebKit/WKContentWorld.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WebKitPrivate.h>
 #import <WebKit/_WKActivatedElementInfo.h>
-#import <WebKit/_WKContentWorld.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
@@ -51,6 +51,11 @@
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIWindow)
 
+static NSString *overrideBundleIdentifier(id, SEL)
+{
+    return @"com.apple.TestWebKitAPI";
+}
+
 @implementation WKWebView (WKWebViewTestingQuirks)
 
 // TestWebKitAPI is currently not a UIApplication so we are unable to track if it is in
@@ -65,6 +70,22 @@ SOFT_LINK_CLASS(UIKit, UIWindow)
 #endif
 
 @implementation WKWebView (TestWebKitAPI)
+
+#if PLATFORM(IOS_FAMILY)
+
++ (void)initialize
+{
+    // FIXME: This hack should no longer be necessary on builds that have the fix for <rdar://problem/56790195>.
+    // Calling +displayIdentifier will guarantee a call to an internal UIKit helper method that caches the fake
+    // bundle name "com.apple.TestWebKitAPI" for the rest of the process' lifetime. This allows us to avoid crashing
+    // under -[UIScrollView setContentOffset:animated:] due to telemetry code that requires a bundle identifier.
+    // Note that this swizzling is temporary, since unconditionally swizzling -[NSBundle bundleIdentifier] for the
+    // entirely of the test causes other tests to fail or time out.
+    InstanceMethodSwizzler bundleIdentifierSwizzler(NSBundle.class, @selector(bundleIdentifier), reinterpret_cast<IMP>(overrideBundleIdentifier));
+    [UIApplication displayIdentifier];
+}
+
+#endif // PLATFORM(IOS_FAMILY)
 
 - (void)loadTestPageNamed:(NSString *)pageName
 {
@@ -99,6 +120,12 @@ SOFT_LINK_CLASS(UIKit, UIWindow)
 - (void)synchronouslyLoadHTMLString:(NSString *)html
 {
     [self synchronouslyLoadHTMLString:html baseURL:[[[NSBundle mainBundle] bundleURL] URLByAppendingPathComponent:@"TestWebKitAPI.resources"]];
+}
+
+- (void)synchronouslyLoadHTMLString:(NSString *)html preferences:(WKWebpagePreferences *)preferences
+{
+    [self loadHTMLString:html baseURL:[[[NSBundle mainBundle] bundleURL] URLByAppendingPathComponent:@"TestWebKitAPI.resources"]];
+    [self _test_waitForDidFinishNavigationWithPreferences:preferences];
 }
 
 - (void)synchronouslyLoadTestPageNamed:(NSString *)pageName
@@ -187,7 +214,7 @@ SOFT_LINK_CLASS(UIKit, UIWindow)
         *errorOut = nil;
 
     RetainPtr<id> evalResult;
-    [self _callAsyncJavaScriptFunction:script withArguments:arguments inWorld:_WKContentWorld.pageContentWorld completionHandler:[&] (id result, NSError *error) {
+    [self callAsyncJavaScript:script arguments:arguments inContentWorld:WKContentWorld.pageWorld completionHandler:[&] (id result, NSError *error) {
         evalResult = result;
         if (errorOut)
             *errorOut = [error retain];
@@ -317,7 +344,12 @@ static void setOverriddenApplicationKeyWindow(UIWindow *window)
     if (gOverriddenApplicationKeyWindow.get() == window)
         return;
 
-    ASSERT(UIApplication.sharedApplication);
+    if (!UIApplication.sharedApplication) {
+        InstanceMethodSwizzler bundleIdentifierSwizzler(NSBundle.class, @selector(bundleIdentifier), reinterpret_cast<IMP>(overrideBundleIdentifier));
+        UIApplicationInitialize();
+        UIApplicationInstantiateSingleton(UIApplication.class);
+    }
+
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         gApplicationKeyWindowSwizzler.get() = makeUnique<InstanceMethodSwizzler>(UIApplication.class, @selector(keyWindow), reinterpret_cast<IMP>(applicationKeyWindowOverride));

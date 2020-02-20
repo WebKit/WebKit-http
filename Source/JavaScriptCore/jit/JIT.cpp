@@ -912,13 +912,14 @@ CompilationResult JIT::link()
             patchBuffer.locationOfNearCall<JSInternalPtrTag>(compilationInfo.hotPathOther));
     }
 
-    JITCodeMap jitCodeMap;
-    for (unsigned bytecodeOffset = 0; bytecodeOffset < m_labels.size(); ++bytecodeOffset) {
-        if (m_labels[bytecodeOffset].isSet())
-            jitCodeMap.append(BytecodeIndex(bytecodeOffset), patchBuffer.locationOf<JSEntryPtrTag>(m_labels[bytecodeOffset]));
+    {
+        JITCodeMapBuilder jitCodeMapBuilder;
+        for (unsigned bytecodeOffset = 0; bytecodeOffset < m_labels.size(); ++bytecodeOffset) {
+            if (m_labels[bytecodeOffset].isSet())
+                jitCodeMapBuilder.append(BytecodeIndex(bytecodeOffset), patchBuffer.locationOf<JSEntryPtrTag>(m_labels[bytecodeOffset]));
+        }
+        m_codeBlock->setJITCodeMap(jitCodeMapBuilder.finalize());
     }
-    jitCodeMap.finish();
-    m_codeBlock->setJITCodeMap(WTFMove(jitCodeMap));
 
     MacroAssemblerCodePtr<JSEntryPtrTag> withArityCheck = patchBuffer.locationOf<JSEntryPtrTag>(m_arityCheck);
 
@@ -943,7 +944,10 @@ CompilationResult JIT::link()
         static_cast<double>(result.size()) /
         static_cast<double>(m_codeBlock->instructionsSize()));
 
-    m_codeBlock->shrinkToFit(CodeBlock::LateShrink);
+    {
+        ConcurrentJSLocker locker(m_codeBlock->m_lock);
+        m_codeBlock->shrinkToFit(locker, CodeBlock::ShrinkMode::LateShrink);
+    }
     m_codeBlock->setJITCode(
         adoptRef(*new DirectJITCode(result, withArityCheck, JITType::BaselineJIT)));
 

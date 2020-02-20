@@ -688,7 +688,9 @@ void WebProcessProxy::getPlugins(bool refresh, CompletionHandler<void(Vector<Plu
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&& reply)
 {
-    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, WTFMove(reply));
+    MESSAGE_CHECK(HashSet<uint64_t>::isValidValue(pluginProcessToken));
+    bool success = PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, WTFMove(reply));
+    MESSAGE_CHECK(success);
 }
 #endif
 
@@ -883,12 +885,17 @@ bool WebProcessProxy::mayBecomeUnresponsive()
 
     return true;
 #endif
+
+#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(COCOA)
+    enableRemoteInspectorIfNeeded();
+#endif
 }
 
 void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {
     RELEASE_ASSERT(isMainThreadOrCheckDisabled());
 
+    auto protectedThis = makeRef(*this);
     AuxiliaryProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
     if (!IPC::Connection::identifierIsValid(connectionIdentifier)) {

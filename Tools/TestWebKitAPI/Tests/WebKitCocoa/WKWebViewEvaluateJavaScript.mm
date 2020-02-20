@@ -26,14 +26,18 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
+#import "HTTPServer.h"
 #import "PlatformUtilities.h"
 #import "TCPServer.h"
 #import "Test.h"
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
+#import <WebKit/WKWebViewConfigurationPrivate.h>
+#import <WebKit/WKContentWorld.h>
 #import <WebKit/WKErrorPrivate.h>
+#import <WebKit/WKPreferencesPrivate.h>
+#import <WebKit/WKPreferencesRef.h>
 #import <WebKit/WKWebViewPrivate.h>
-#import <WebKit/_WKContentWorld.h>
 #import <wtf/RetainPtr.h>
 
 static bool isDone;
@@ -117,13 +121,13 @@ TEST(WKWebView, EvaluateJavaScriptErrorCases)
 
 TEST(WKWebView, WKContentWorld)
 {
-    EXPECT_NULL(_WKContentWorld.pageContentWorld.name);
-    EXPECT_NULL(_WKContentWorld.defaultClientWorld.name);
-    EXPECT_FALSE(_WKContentWorld.pageContentWorld == _WKContentWorld.defaultClientWorld);
+    EXPECT_NULL(WKContentWorld.pageWorld.name);
+    EXPECT_NULL(WKContentWorld.defaultClientWorld.name);
+    EXPECT_FALSE(WKContentWorld.pageWorld == WKContentWorld.defaultClientWorld);
 
-    _WKContentWorld *namedWorld = [_WKContentWorld worldWithName:@"Name"];
+    WKContentWorld *namedWorld = [WKContentWorld worldWithName:@"Name"];
     EXPECT_TRUE([namedWorld.name isEqualToString:@"Name"]);
-    EXPECT_EQ(namedWorld, [_WKContentWorld worldWithName:@"Name"]);
+    EXPECT_EQ(namedWorld, [WKContentWorld worldWithName:@"Name"]);
 }
 
 TEST(WKWebView, EvaluateJavaScriptInWorlds)
@@ -138,8 +142,8 @@ TEST(WKWebView, EvaluateJavaScriptInWorlds)
     }];
     isDone = false;
 
-    // Verify that value is visible when evaluating in the pageContentWorld
-    [webView _evaluateJavaScript:@"foo" inWorld:_WKContentWorld.pageContentWorld completionHandler:^(id result, NSError *error) {
+    // Verify that value is visible when evaluating in the pageWorld
+    [webView evaluateJavaScript:@"foo" inContentWorld:WKContentWorld.pageWorld completionHandler:^(id result, NSError *error) {
         EXPECT_TRUE([result isKindOfClass:[NSString class]]);
         EXPECT_TRUE([result isEqualToString:@"bar"]);
         isDone = true;
@@ -147,14 +151,14 @@ TEST(WKWebView, EvaluateJavaScriptInWorlds)
     isDone = false;
 
     // Verify that value is not visible when evaluating in the defaultClientWorld
-    [webView _evaluateJavaScript:@"foo" inWorld:_WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"foo" inContentWorld:WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
-    // Verify that value is visible when calling a function in the pageContentWorld
-    [webView _callAsyncJavaScriptFunction:@"return foo" withArguments:nil inWorld:_WKContentWorld.pageContentWorld completionHandler:[&] (id result, NSError *error) {
+    // Verify that value is visible when calling a function in the pageWorld
+    [webView callAsyncJavaScript:@"return foo" arguments:nil inContentWorld:WKContentWorld.pageWorld completionHandler:[&] (id result, NSError *error) {
         EXPECT_TRUE([result isKindOfClass:[NSString class]]);
         EXPECT_TRUE([result isEqualToString:@"bar"]);
         isDone = true;
@@ -162,22 +166,22 @@ TEST(WKWebView, EvaluateJavaScriptInWorlds)
     isDone = false;
 
     // Verify that value is not visible when calling a function in the defaultClientWorld
-    [webView _callAsyncJavaScriptFunction:@"return foo" withArguments:nil inWorld:_WKContentWorld.defaultClientWorld completionHandler:[&] (id result, NSError *error) {
+    [webView callAsyncJavaScript:@"return foo" arguments:nil inContentWorld:WKContentWorld.defaultClientWorld completionHandler:[&] (id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
     // Set a varibale value in a named world.
-    RetainPtr<_WKContentWorld> namedWorld = [_WKContentWorld worldWithName:@"NamedWorld"];
-    [webView _evaluateJavaScript:@"var bar = baz" inWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
+    RetainPtr<WKContentWorld> namedWorld = [WKContentWorld worldWithName:@"NamedWorld"];
+    [webView evaluateJavaScript:@"var bar = baz" inContentWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
     // Set a global varibale value in a named world via a function call.
-    [webView _callAsyncJavaScriptFunction:@"window.baz = bat" withArguments:nil inWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
+    [webView callAsyncJavaScript:@"window.baz = bat" arguments:nil inContentWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         EXPECT_NULL(error);
         isDone = true;
@@ -185,14 +189,14 @@ TEST(WKWebView, EvaluateJavaScriptInWorlds)
     isDone = false;
 
     // Verify they are there in that named world.
-    [webView _evaluateJavaScript:@"bar" inWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"bar" inContentWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
         EXPECT_TRUE([result isKindOfClass:[NSString class]]);
         EXPECT_TRUE([result isEqualToString:@"baz"]);
         isDone = true;
     }];
     isDone = false;
 
-    [webView _evaluateJavaScript:@"window.baz" inWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"window.baz" inContentWorld:namedWorld.get() completionHandler:^(id result, NSError *error) {
         EXPECT_TRUE([result isKindOfClass:[NSString class]]);
         EXPECT_TRUE([result isEqualToString:@"bat"]);
         isDone = true;
@@ -200,26 +204,26 @@ TEST(WKWebView, EvaluateJavaScriptInWorlds)
     isDone = false;
 
     // Verify they aren't there in the defaultClientWorld.
-    [webView _evaluateJavaScript:@"bar" inWorld:_WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"bar" inContentWorld:WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
-    [webView _evaluateJavaScript:@"window.baz" inWorld:_WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"window.baz" inContentWorld:WKContentWorld.defaultClientWorld completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
-    // Verify they aren't there in the pageContentWorld.
-    [webView _evaluateJavaScript:@"bar" inWorld:_WKContentWorld.pageContentWorld completionHandler:^(id result, NSError *error) {
+    // Verify they aren't there in the pageWorld.
+    [webView evaluateJavaScript:@"bar" inContentWorld:WKContentWorld.pageWorld completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
     isDone = false;
 
-    [webView _evaluateJavaScript:@"window.baz" inWorld:_WKContentWorld.pageContentWorld completionHandler:^(id result, NSError *error) {
+    [webView evaluateJavaScript:@"window.baz" inContentWorld:WKContentWorld.pageWorld completionHandler:^(id result, NSError *error) {
         EXPECT_NULL(result);
         isDone = true;
     }];
@@ -254,3 +258,116 @@ TEST(WebKit, EvaluateJavaScriptInAttachments)
     TestWebKitAPI::Util::run(&done);
 }
 
+#if HAVE(NETWORK_FRAMEWORK)
+TEST(WebKit, AllowsContentJavaScript)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView synchronouslyLoadHTMLString:@"<script>var foo = 'bar'</script>"];
+
+    __block bool done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(error);
+        EXPECT_TRUE([result isKindOfClass:[NSString class]]);
+        EXPECT_TRUE([result isEqualToString:@"bar"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    RetainPtr<WKWebpagePreferences> preferences = adoptNS([[WKWebpagePreferences alloc] init]);
+    EXPECT_TRUE(preferences.get().allowsContentJavaScript);
+    preferences.get().allowsContentJavaScript = NO;
+    [webView synchronouslyLoadHTMLString:@"<script>var foo = 'bar'</script>" preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(result);
+        EXPECT_TRUE([[error description] containsString:@"Can't find variable: foo"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    TestWebKitAPI::HTTPServer server({
+        { "/script", { "var foo = 'bar'" } }
+    });
+    preferences.get().allowsContentJavaScript = YES;
+    [webView synchronouslyLoadHTMLString:[NSString stringWithFormat:@"<script src='http://127.0.0.1:%d/script'></script>", server.port()] preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(error);
+        EXPECT_TRUE([result isKindOfClass:[NSString class]]);
+        EXPECT_TRUE([result isEqualToString:@"bar"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    preferences.get().allowsContentJavaScript = NO;
+    [webView synchronouslyLoadHTMLString:[NSString stringWithFormat:@"<script src='http://127.0.0.1:%d/script'></script>", server.port()] preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(result);
+        EXPECT_TRUE([[error description] containsString:@"Can't find variable: foo"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    preferences.get().allowsContentJavaScript = YES;
+    [webView synchronouslyLoadHTMLString:@"<iframe src='javascript:window.foo = 1'></iframe>" preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"window.frames[0].foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(error);
+        EXPECT_TRUE([result isKindOfClass:[NSNumber class]]);
+        EXPECT_TRUE([result isEqualToNumber:@1]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    preferences.get().allowsContentJavaScript = NO;
+    [webView synchronouslyLoadHTMLString:@"<iframe src='javascript:window.foo = 1'></iframe>" preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"window.frames[0].foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(result);
+        EXPECT_NULL(error);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+}
+#endif
+
+TEST(WebKit, SPIJavascriptMarkupVsAPIContentJavaScript)
+{
+    // There's not a dynamically configuration setting for javascript markup,
+    // but it can be configured at WKWebView creation time.
+    WKWebViewConfiguration *configuration = [[[WKWebViewConfiguration alloc] init] autorelease];
+    configuration._allowsJavaScriptMarkup = NO;
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration]);
+
+    // Verify that the following JS does not execute.
+    [webView synchronouslyLoadHTMLString:@"<script>var foo = 'bar'</script>"];
+
+    __block bool done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(result);
+        EXPECT_TRUE([[error description] containsString:@"Can't find variable: foo"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    // Try to explicitly enable script markup using WKWebpagePreferences, but verify it should still fail because
+    // of the above configuration setting.
+    RetainPtr<WKWebpagePreferences> preferences = adoptNS([[WKWebpagePreferences alloc] init]);
+    EXPECT_TRUE(preferences.get().allowsContentJavaScript);
+    [webView synchronouslyLoadHTMLString:@"<script>var foo = 'bar'</script>" preferences:preferences.get()];
+
+    done = false;
+    [webView evaluateJavaScript:@"foo" completionHandler:^(id result, NSError *error) {
+        EXPECT_NULL(result);
+        EXPECT_TRUE([[error description] containsString:@"Can't find variable: foo"]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+}

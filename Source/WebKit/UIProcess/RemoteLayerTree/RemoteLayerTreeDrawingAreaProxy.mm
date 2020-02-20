@@ -49,7 +49,6 @@
 }
 
 - (id)initWithDrawingAreaProxy:(WebKit::RemoteLayerTreeDrawingAreaProxy*)drawingAreaProxy;
-- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond;
 - (void)displayLinkFired:(CADisplayLink *)sender;
 - (void)invalidate;
 - (void)schedule;
@@ -75,11 +74,6 @@
 {
     ASSERT(!_displayLink);
     [super dealloc];
-}
-
-- (void)setPreferredFramesPerSecond:(NSInteger)preferredFramesPerSecond
-{
-    _displayLink.preferredFramesPerSecond = preferredFramesPerSecond;
 }
 
 - (void)displayLinkFired:(CADisplayLink *)sender
@@ -189,15 +183,6 @@ void RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry()
     m_isWaitingForDidUpdateGeometry = true;
 }
 
-void RemoteLayerTreeDrawingAreaProxy::setPreferredFramesPerSecond(FramesPerSecond preferredFramesPerSecond)
-{
-#if PLATFORM(IOS_FAMILY)
-    [displayLinkHandler() setPreferredFramesPerSecond:preferredFramesPerSecond];
-#else
-    UNUSED_PARAM(preferredFramesPerSecond);
-#endif
-}
-
 void RemoteLayerTreeDrawingAreaProxy::willCommitLayerTree(TransactionID transactionID)
 {
     m_pendingLayerTreeTransactionID = transactionID;
@@ -266,7 +251,7 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
 #endif
 
     if (layerTreeTransaction.hasEditorState())
-        m_webPageProxy.dispatchDidReceiveEditorStateAfterFocus();
+        m_webPageProxy.dispatchDidUpdateEditorState();
 
     if (auto milestones = layerTreeTransaction.newlyReachedPaintingMilestones())
         m_webPageProxy.didReachLayoutMilestone(milestones);

@@ -27,13 +27,13 @@
 
 #include "AnimationEffect.h"
 #include "AnimationEffectPhase.h"
-#include "GenericEventQueue.h"
 #include "WebAnimation.h"
 #include <wtf/Ref.h>
 
 namespace WebCore {
 
 class Animation;
+class AnimationEventBase;
 class Element;
 class RenderStyle;
 
@@ -64,7 +64,6 @@ public:
     void setTimeline(RefPtr<AnimationTimeline>&&) final;
     void cancel() final;
 
-    bool needsTick() const override;
     void tick() override;
 
     bool canHaveGlobalPosition() final;
@@ -74,6 +73,9 @@ protected:
 
     virtual void initialize(const RenderStyle* oldStyle, const RenderStyle& newStyle);
     virtual void syncPropertiesWithBackingAnimation();
+    // elapsedTime is the animation's current time at the time the event is added and is exposed through the DOM API, timelineTime is the animations'
+    // timeline current time and is not exposed through the DOM API but used by the DocumentTimeline for sorting events before dispatch. 
+    virtual Ref<AnimationEventBase> createEvent(const AtomString& eventType, double elapsedTime, const String& pseudoId, Optional<Seconds> timelineTime) = 0;
     void invalidateDOMEvents(Seconds elapsedTime = 0_s);
 
 private:
@@ -81,12 +83,9 @@ private:
     void flushPendingStyleChanges() const;
     AnimationEffectPhase phaseWithoutEffect() const;
     void enqueueDOMEvent(const AtomString&, Seconds);
-    void remove() final;
 
     bool m_wasPending { false };
     AnimationEffectPhase m_previousPhase { AnimationEffectPhase::Idle };
-
-    UniqueRef<MainThreadGenericEventQueue> m_eventQueue;
 
     Element* m_owningElement;
     Ref<Animation> m_backingAnimation;

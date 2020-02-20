@@ -21,7 +21,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebProcess LegacyReceiver NotRefCounted {
-    InitializeWebProcess(struct WebKit::WebProcessCreationParameters processCreationParameters) -> () Async
+    InitializeWebProcess(struct WebKit::WebProcessCreationParameters processCreationParameters)
     SetWebsiteDataStoreParameters(struct WebKit::WebProcessDataStoreParameters parameters)
 
     # Create a new page.
@@ -132,6 +132,9 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 
 #if PLATFORM(COCOA)
     SetMediaMIMETypes(Vector<String> types)
+#if ENABLE(REMOTE_INSPECTOR)
+    EnableRemoteWebInspector(WebKit::SandboxExtension::Handle handle);
+#endif
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -167,5 +170,9 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #if PLATFORM(IOS)
     GrantAccessToAssetServices(WebKit::SandboxExtension::Handle mobileAssetHandle, WebKit::SandboxExtension::Handle mobileAssetV2Handle)
     RevokeAccessToAssetServices()
+#endif
+
+#if PLATFORM(COCOA)
+    NotifyPreferencesChanged(String domain, String key, Optional<String> encodedValue)
 #endif
 }

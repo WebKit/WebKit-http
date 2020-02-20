@@ -1110,9 +1110,15 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 
 #define UIWKDocumentRequestMarkedTextRects (1 << 5)
 
-@interface UITextInteractionAssistant (Staging_55645619)
-- (void)didEndScrollingOrZooming;
+@interface UITextInteractionAssistant (IPI)
+@property (nonatomic, readonly) BOOL inGesture;
+@property (nonatomic, readonly) UITextInteraction *interactions;
 - (void)willStartScrollingOrZooming;
+- (void)didEndScrollingOrZooming;
+@end
+
+@interface UITextInteraction (IPI)
+@property (nonatomic, readonly) BOOL inGesture;
 @end
 
 #if HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)

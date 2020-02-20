@@ -1,3 +1,275 @@
+2020-02-17  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][Cocoa] Implement in-WebProcess cookie cache to avoid sync IPC for document.cookie in most cases
+        https://bugs.webkit.org/show_bug.cgi?id=207593
+        <rdar://problem/56027027>
+
+        Reviewed by Antti Koivisto.
+
+        Add new CFNetwork SPI to CFNetworkSPI.h for open source builds and for using respondsToSelector.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2020-02-17  Peng Liu  <peng.liu6@apple.com>
+
+        Fix check-webkit-style errors related to AVFoundationSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=207834
+
+        Reviewed by Eric Carlson.
+
+        Move AVFoundationSPI.h from folder "mac" to "cocoa" because it is used by both iOS and Mac.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/AVFoundationSPI.h: Renamed from Source/WebCore/PAL/pal/spi/mac/AVFoundationSPI.h.
+
+2020-02-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Use CF prefs direct mode in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=203420
+
+        Reviewed by Brent Fulgham.
+
+        Add SPI to enable CF prefs direct mode and declare method called when preference are changed.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cf/CFUtilitiesSPI.h:
+        * pal/spi/cocoa/NSUserDefaultsSPI.h: Added.
+
+2020-02-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use builtin targets
+        https://bugs.webkit.org/show_bug.cgi?id=205166
+
+        Reviewed by Darin Adler.
+
+        * pal/PlatformPlayStation.cmake:
+
+2020-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Remove remaining WTF_EXPORT and WTF_IMPORT by replacing them with WTF_EXPORT_DECLARATION and WTF_IMPORT_DECLARATION
+        https://bugs.webkit.org/show_bug.cgi?id=207746
+
+        Reviewed by Don Olmstead.
+
+        Removed unused PAL_TESTSUPPORT_EXPORT.
+
+        * pal/ExportMacros.h:
+
+2020-02-14  Nikos Mouchtaris  <nmouchtaris@apple.com>
+
+        WebKit support for Apple Pay Buttons with custom corner radii
+        https://bugs.webkit.org/show_bug.cgi?id=207664
+        <rdar://problem/43718114>
+
+        Reviewed by Andy Estes.
+
+        Added link for PKDrawApplePayButtonWithCornerRadius and
+        PKApplePayButtonDefaultCornerRadius.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm:
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-02-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256010.
+
+        Introduced ASan crashes
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/r256010
+
+2020-02-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove CSS_DEVICE_ADAPTATION
+        https://bugs.webkit.org/show_bug.cgi?id=203479
+
+        Reviewed by Tim Horton.
+
+        CSS Working Group resolved to remove @viewport <https://github.com/w3c/csswg-drafts/issues/4766>,
+        so remove the code.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-02-11  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Wrong includes for internal SDK
+        https://bugs.webkit.org/show_bug.cgi?id=207554
+
+        Reviewed by Chris Dumez.
+
+        * pal/spi/mac/HIServicesSPI.h:
+
+2020-02-11  chris fleizach  <cfleizach@apple.com>
+
+        AX: Unable to build webkit open source - build errors related to AXClientType
+        https://bugs.webkit.org/show_bug.cgi?id=207524
+        <rdar://problem/59279722>
+
+        Reviewed by Mark Lam.
+
+        * pal/spi/mac/HIServicesSPI.h:
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256091.
+
+        Broke internal builds
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256091
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256103.
+
+        This patch is blocking the rollout of r256091
+
+        Reverted changeset:
+
+        "Move JavaScriptCore related feature defines from
+        FeatureDefines.xcconfig to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        https://trac.webkit.org/changeset/256103
+
+2020-02-09  Keith Rollin  <krollin@apple.com>
+
+        Re-enable LTO for ARM builds
+        https://bugs.webkit.org/show_bug.cgi?id=207402
+        <rdar://problem/49190767>
+
+        Reviewed by Sam Weinig.
+
+        Bug 190758 re-enabled LTO for Production builds for x86-family CPUs.
+        Enabling it for ARM was left out due to a compiler issue. That issue
+        has been fixed, and so now we can re-enable LTO for ARM.
+
+        * Configurations/Base.xcconfig:
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove ENABLE_FAST_JIT_PERMISSIONS and ENABLE_FTL_JIT.
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/PAL.xcconfig:
+        Remove quotes as they should not be necessary (other uses of BUILT_PRODUCTS_DIR 
+        are not quoted) and complicate scripts that want to use HEADER_SEARCH_PATHS.
+
+2020-02-07  Nikos Mouchtaris  <nmouchtaris@apple.com>
+
+        [Apple Pay] Provide a redacted billing contact during payment method selection
+        https://bugs.webkit.org/show_bug.cgi?id=207169
+
+        Reviewed by Andy Estes.
+        
+        Fix for build problem.
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2020-02-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256051.
+
+        Broke internal builds.
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256051
+
+2020-02-07  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/PAL.xcconfig:
+        Remove quotes as they should not be necessary (other uses of BUILT_PRODUCTS_DIR 
+        are not quoted) and complicate scripts that want to use HEADER_SEARCH_PATHS.
+
+2020-02-07  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        <rdar://problem/58985368>
+
+        Reviewed by Eric Carlson.
+
+        Add soft link macros for VideoToolbox and AudioToolbox.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/cf/AudioToolboxSoftLink.cpp: Added.
+        * pal/cf/AudioToolboxSoftLink.h: Added.
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/cf/VideoToolboxSoftLink.cpp: Added.
+        * pal/cf/VideoToolboxSoftLink.h: Added.
+
+2020-02-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Adopt new SOAuthorizationOption constants
+        https://bugs.webkit.org/show_bug.cgi?id=207186
+        <rdar://problem/48909336>
+
+        Reviewed by Brent Fulgham.
+
+        * pal/cocoa/AppSSOSoftLink.h:
+        * pal/cocoa/AppSSOSoftLink.mm:
+        Soft links the new constants.
+
+2020-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255910, r255970, and r255972.
+        https://bugs.webkit.org/show_bug.cgi?id=207345
+
+        Broke internal builds (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255910
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255970
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255972
+
 2020-02-06  youenn fablet  <youenn@apple.com>
 
         [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder

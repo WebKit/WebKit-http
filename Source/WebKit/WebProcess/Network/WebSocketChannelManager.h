@@ -48,7 +48,7 @@ public:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
 private:
-    HashMap<uint64_t, Ref<WebSocketChannel>> m_channels;
+    HashMap<WebSocketIdentifier, Ref<WebSocketChannel>> m_channels;
 };
 
 } // namespace WebKit

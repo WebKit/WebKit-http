@@ -196,6 +196,11 @@ public:
     // Return whether the view is visible.
     virtual bool isViewVisible() = 0;
 
+#if PLATFORM(IOS_FAMILY)
+    // Return whether the application is visible.
+    virtual bool isApplicationVisible() = 0;
+#endif
+
     // Return whether the view is visible, or occluded by another window.
     virtual bool isViewVisibleOrOccluded() { return isViewVisible(); }
 
@@ -395,7 +400,7 @@ public:
     virtual void updateInputContextAfterBlurringAndRefocusingElement() = 0;
     virtual void elementDidBlur() = 0;
     virtual void focusedElementDidChangeInputMode(WebCore::InputMode) = 0;
-    virtual void didReceiveEditorStateUpdateAfterFocus() = 0;
+    virtual void didUpdateEditorState() = 0;
     virtual bool isFocusingElement() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;

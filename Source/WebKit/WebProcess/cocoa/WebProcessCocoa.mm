@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,12 +57,14 @@
 #import <WebCore/FontCascade.h>
 #import <WebCore/HistoryController.h>
 #import <WebCore/HistoryItem.h>
+#import <WebCore/LocalizedDeviceModel.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSScrollerImpDetails.h>
 #import <WebCore/PerformanceLogging.h>
+#import <WebCore/PictureInPictureSupport.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SWContextManager.h>
 #import <algorithm>
@@ -80,6 +82,10 @@
 #import <wtf/FileSystem.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/cocoa/NSURLExtras.h>
+
+#if ENABLE(REMOTE_INSPECTOR)
+#include <JavaScriptCore/RemoteInspector.h>
+#endif
 
 #if PLATFORM(IOS)
 #import <WebCore/ParentalControlsContentFilter.h>
@@ -197,6 +203,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 
 #if PLATFORM(IOS_FAMILY)
     setCurrentUserInterfaceIdiomIsPad(parameters.currentUserInterfaceIdiomIsPad);
+    setLocalizedDeviceModel(parameters.localizedDeviceModel);
+    setSupportsPictureInPicture(parameters.supportsPictureInPicture);
 #endif
 
 #if USE(APPKIT)
@@ -269,6 +277,12 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #if PLATFORM(IOS_FAMILY)
     RenderThemeIOS::setCSSValueToSystemColorMap(WTFMove(parameters.cssValueToSystemColorMap));
     RenderThemeIOS::setFocusRingColor(parameters.focusRingColor);
+#endif
+
+#if PLATFORM(COCOA)
+    // FIXME(207716): The following should be removed when the GPU process is complete.
+    for (size_t i = 0, size = parameters.mediaExtensionHandles.size(); i < size; ++i)
+        SandboxExtension::consumePermanently(parameters.mediaExtensionHandles[i]);
 #endif
 }
 
@@ -901,11 +915,38 @@ void WebProcess::backlightLevelDidChange(float backlightLevel)
 }
 #endif
 
+#if ENABLE(REMOTE_INSPECTOR)
+void WebProcess::enableRemoteWebInspector(const SandboxExtension::Handle& handle)
+{
+    SandboxExtension::consumePermanently(handle);
+    Inspector::RemoteInspector::setNeedMachSandboxExtension(false);
+    Inspector::RemoteInspector::singleton();
+}
+#endif
+
 void WebProcess::setMediaMIMETypes(const Vector<String> types)
 {
     auto& cache = AVAssetMIMETypeCache::singleton();
     if (cache.isEmpty())
         cache.addSupportedTypes(types);
+}
+
+void WebProcess::notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue)
+{
+    auto defaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:domain]);
+    if (!encodedValue.hasValue()) {
+        [defaults setObject:nil forKey:key];
+        return;
+    }
+    auto encodedData = adoptNS([[NSData alloc] initWithBase64EncodedString:*encodedValue options:0]);
+    if (!encodedData)
+        return;
+    NSError *err = nil;
+    auto object = retainPtr([NSKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:encodedData.get() error:&err]);
+    ASSERT(!err);
+    if (err)
+        return;
+    [defaults setObject:object.get() forKey:key];
 }
 
 #if PLATFORM(IOS)

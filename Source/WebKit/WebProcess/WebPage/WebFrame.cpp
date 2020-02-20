@@ -265,8 +265,12 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyChec
 
     invalidatePolicyListener();
 
-    if (forNavigationAction && m_frameLoaderClient && websitePolicies)
+    if (forNavigationAction && m_frameLoaderClient && websitePolicies) {
+        ASSERT(page());
+        if (page())
+            page()->setAllowsContentJavaScriptFromMostRecentNavigation(websitePolicies->allowsContentJavaScript);
         m_frameLoaderClient->applyToDocumentLoader(WTFMove(*websitePolicies));
+    }
 
     m_policyDownloadID = downloadID;
     if (navigationID) {
@@ -703,12 +707,14 @@ void WebFrame::stopLoading()
 
 WebFrame* WebFrame::frameForContext(JSContextRef context)
 {
-
     JSC::JSGlobalObject* globalObjectObj = toJS(context);
     JSDOMWindow* window = jsDynamicCast<JSDOMWindow*>(globalObjectObj->vm(), globalObjectObj);
     if (!window)
         return nullptr;
-    return WebFrame::fromCoreFrame(*(window->wrapped().frame()));
+    auto* coreFrame = window->wrapped().frame();
+    if (!coreFrame)
+        return nullptr;
+    return WebFrame::fromCoreFrame(*coreFrame);
 }
 
 JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleNodeHandle* nodeHandle, InjectedBundleScriptWorld* world)

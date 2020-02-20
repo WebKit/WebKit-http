@@ -27,6 +27,7 @@
 #pragma once
 
 #include "HTTPHeaderMap.h"
+#include <wtf/Box.h>
 #include <wtf/Optional.h>
 #include <wtf/Seconds.h>
 #include <wtf/persistence/PersistentDecoder.h>
@@ -47,6 +48,7 @@ enum class NetworkLoadPriority : uint8_t {
 };
 
 class NetworkLoadMetrics {
+    WTF_MAKE_FAST_ALLOCATED(NetworkLoadMetrics);
 public:
     NetworkLoadMetrics()
     {
@@ -70,9 +72,9 @@ public:
 
         copy.remoteAddress = remoteAddress.isolatedCopy();
         copy.connectionIdentifier = connectionIdentifier.isolatedCopy();
-        copy.priority = priority;
         copy.tlsProtocol = tlsProtocol.isolatedCopy();
         copy.tlsCipher = tlsCipher.isolatedCopy();
+        copy.priority = priority;
         copy.requestHeaders = requestHeaders.isolatedCopy();
 
         copy.requestHeaderBytesSent = requestHeaderBytesSent;
@@ -103,9 +105,9 @@ public:
     {
         remoteAddress = String();
         connectionIdentifier = String();
-        priority = NetworkLoadPriority::Unknown;
         tlsProtocol = String();
         tlsCipher = String();
+        priority = NetworkLoadPriority::Unknown;
         requestHeaders.clear();
         requestHeaderBytesSent = std::numeric_limits<uint32_t>::max();
         requestBodyBytesSent = std::numeric_limits<uint64_t>::max();
@@ -128,9 +130,9 @@ public:
             && protocol == other.protocol
             && remoteAddress == other.remoteAddress
             && connectionIdentifier == other.connectionIdentifier
-            && priority == other.priority
             && tlsProtocol == other.tlsProtocol
             && tlsCipher == other.tlsCipher
+            && priority == other.priority
             && requestHeaders == other.requestHeaders
             && requestHeaderBytesSent == other.requestHeaderBytesSent
             && requestBodyBytesSent == other.requestBodyBytesSent
@@ -166,12 +168,12 @@ public:
 
     String remoteAddress;
     String connectionIdentifier;
-    NetworkLoadPriority priority;
 
     String tlsProtocol;
     String tlsCipher;
 
     // Whether or not all of the properties (0 or otherwise) have been set.
+    NetworkLoadPriority priority;
     bool complete { false };
 
     HTTPHeaderMap requestHeaders;
@@ -184,7 +186,7 @@ public:
 };
 
 #if PLATFORM(COCOA)
-WEBCORE_EXPORT void copyTimingData(NSDictionary *timingData, NetworkLoadMetrics&);
+WEBCORE_EXPORT Box<NetworkLoadMetrics> copyTimingData(NSDictionary *timingData);
 #endif
 
 template<class Encoder>
@@ -202,9 +204,9 @@ void NetworkLoadMetrics::encode(Encoder& encoder) const
     encoder << protocol;
     encoder << remoteAddress;
     encoder << connectionIdentifier;
-    encoder << priority;
     encoder << tlsProtocol;
     encoder << tlsCipher;
+    encoder << priority;
     encoder << requestHeaders;
     encoder << requestHeaderBytesSent;
     encoder << requestBodyBytesSent;
@@ -228,9 +230,9 @@ bool NetworkLoadMetrics::decode(Decoder& decoder, NetworkLoadMetrics& metrics)
         && decoder.decode(metrics.protocol)
         && decoder.decode(metrics.remoteAddress)
         && decoder.decode(metrics.connectionIdentifier)
-        && decoder.decode(metrics.priority)
         && decoder.decode(metrics.tlsProtocol)
         && decoder.decode(metrics.tlsCipher)
+        && decoder.decode(metrics.priority)
         && decoder.decode(metrics.requestHeaders)
         && decoder.decode(metrics.requestHeaderBytesSent)
         && decoder.decode(metrics.requestBodyBytesSent)

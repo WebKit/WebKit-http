@@ -68,6 +68,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/indexeddb/server/UniqueIDBDatabaseTransaction.h
 
     Modules/indexeddb/shared/IDBCursorInfo.h
+    Modules/indexeddb/shared/IDBCursorRecord.h
     Modules/indexeddb/shared/IDBDatabaseInfo.h
     Modules/indexeddb/shared/IDBError.h
     Modules/indexeddb/shared/IDBGetAllRecordsData.h
@@ -153,6 +154,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/websockets/ThreadableWebSocketChannel.h
     Modules/websockets/WebSocketChannel.h
     Modules/websockets/WebSocketChannelClient.h
+    Modules/websockets/WebSocketChannelInspector.h
     Modules/websockets/WebSocketDeflateFramer.h
     Modules/websockets/WebSocketDeflater.h
     Modules/websockets/WebSocketExtensionDispatcher.h
@@ -378,7 +380,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/Document.h
     dom/DocumentFragment.h
     dom/DocumentFullscreen.h
-    dom/DocumentIdentifier.h
     dom/DocumentMarker.h
     dom/DocumentMarkerController.h
     dom/DocumentStorageAccess.h
@@ -402,6 +403,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/EventNames.h
     dom/EventQueue.h
     dom/EventTarget.h
+    dom/EventTargetConcrete.h
     dom/Exception.h
     dom/ExceptionCode.h
     dom/ExceptionData.h
@@ -685,8 +687,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     layout/displaytree/DisplayRun.h
 
     layout/layouttree/LayoutBox.h
-    layout/layouttree/LayoutReplaced.h
-    layout/layouttree/TextContext.h
 
     loader/AdClickAttribution.h
     loader/CanvasActivityRecord.h
@@ -810,7 +810,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/FrameViewLayoutContext.h
     page/GlobalFrameIdentifier.h
     page/GlobalWindowIdentifier.h
-    page/LayerFlushThrottleState.h
     page/LayoutMilestone.h
     page/MediaCanStartListener.h
     page/MediaProducer.h
@@ -836,6 +835,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/RemoteDOMWindow.h
     page/RemoteFrame.h
     page/RenderingUpdateScheduler.h
+    page/RenderingUpdateThrottleState.h
     page/RuntimeEnabledFeatures.h
     page/ScrollBehavior.h
     page/ScrollIntoViewOptions.h
@@ -924,6 +924,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/DateComponents.h
     platform/Decimal.h
     platform/DeferrableTask.h
+    platform/DocumentIdentifier.h
     platform/DragData.h
     platform/DragImage.h
     platform/DragItem.h
@@ -996,7 +997,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/ScrollbarTheme.h
     platform/ScrollbarThemeComposite.h
     platform/SearchPopupMenu.h
-    platform/SerializedPlatformRepresentation.h
+    platform/SerializedPlatformDataCue.h
     platform/SharedBuffer.h
     platform/SharedStringHash.h
     platform/SuddenTermination.h
@@ -1035,7 +1036,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     platform/graphics/AlphaPremultiplication.h
     platform/graphics/ANGLEWebKitBridge.h
-    platform/graphics/AnimationFrameRate.h
     platform/graphics/AudioTrackPrivate.h
     platform/graphics/BitmapImage.h
     platform/graphics/Color.h
@@ -1290,6 +1290,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/EventRegion.h
     rendering/FloatingObjects.h
     rendering/GapRects.h
+    rendering/HighlightData.h
     rendering/HitTestLocation.h
     rendering/HitTestRequest.h
     rendering/HitTestResult.h
@@ -1345,7 +1346,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/RenderWidget.h
     rendering/RootInlineBox.h
     rendering/ScrollAlignment.h
-    rendering/SelectionRangeData.h
     rendering/SimpleLineLayout.h
     rendering/SimpleLineLayoutCoverage.h
     rendering/SimpleLineLayoutFlowContents.h

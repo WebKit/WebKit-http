@@ -107,6 +107,8 @@ allowSettingAnyXHRHeaderFromFileURLs:
   initial: false
 allowCrossOriginSubresourcesToAskForCredentials:
   initial: false
+allowTopNavigationToDataURLs:
+  initial: true
 needsStorageAccessFromFileURLsQuirk:
   initial: true
 needsFrameNameFallbackToIdQuirk:
@@ -124,6 +126,8 @@ clipboardAccessPolicy:
   initial: ClipboardAccessPolicy::RequiresUserGesture
 asyncClipboardAPIEnabled:
   initial: false
+shouldRestrictBaseURLSchemes:
+  initial: true
 
 textAreasAreResizable:
   initial: false
@@ -193,8 +197,6 @@ forceFTPDirectoryListings:
   initial: false
 developerExtrasEnabled:
   initial: false
-scriptMarkupEnabled:
-  initial: true
 needsSiteSpecificQuirks:
   initial: false
   inspectorOverride: true
@@ -357,6 +359,9 @@ requestIdleCallbackEnabled:
   initial: false
 
 HTTPSUpgradeEnabled:
+  initial: false
+
+inProcessCookieCacheEnabled:
   initial: false
 
 thirdPartyIframeRedirectBlockingEnabled:
@@ -765,10 +770,6 @@ hiddenPageCSSAnimationSuspensionEnabled:
   initial: false
   onChange: hiddenPageCSSAnimationSuspensionEnabledChanged
 
-renderingUpdateThrottlingEnabled:
-  initial: true
-  onChange: renderingUpdateThrottlingEnabledChanged
-
 storageBlockingPolicy:
   type: SecurityOrigin::StorageBlockingPolicy
   initial: SecurityOrigin::AllowAllStorage
@@ -858,7 +859,7 @@ incompleteImageBorderEnabled:
   initial: false
 
 shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
-  initial: false
+  initial: true
 
 shouldIgnoreMetaViewport:
   initial: false
@@ -947,3 +948,7 @@ mediaCaptureRequiresSecureConnection:
 
 shouldUseServiceWorkerShortTimeout:
   initial: false
+
+# Clients should use per-navigation "allowsContentJavaScript" policies instead
+scriptMarkupEnabled:
+    initial: true

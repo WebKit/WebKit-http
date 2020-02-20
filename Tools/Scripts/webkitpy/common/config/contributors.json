@@ -2512,6 +2512,12 @@
          "jkjiang"
       ]
    },
+   "Jacob Uphoff" : {
+      "emails" : [
+         "jacob_uphoff@apple.com"
+      ],
+      "status" : "committer"
+   },
    "Jae Hyun Park" : {
       "emails" : [
          "jaepark@webkit.org",
@@ -2627,6 +2633,12 @@
       "nicks" : [
          "jarrednicholls"
       ]
+   },
+   "Jason Lawrence" : {
+      "emails" : [
+         "lawrence.j@apple.com"
+      ],
+      "status" : "committer"
    },
    "Jason Liu" : {
       "emails" : [

@@ -67,6 +67,7 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration.processPool = (__bridge WKProcessPool *)context;
     globalWebViewConfiguration.websiteDataStore = (__bridge WKWebsiteDataStore *)TestController::websiteDataStore();
     globalWebViewConfiguration._allowUniversalAccessFromFileURLs = YES;
+    globalWebViewConfiguration._allowTopNavigationToDataURLs = YES;
     globalWebViewConfiguration._applePayEnabled = YES;
 
     WKContextSetStorageAccessAPIEnabled(context, true);
@@ -153,6 +154,8 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
         
     if (options.useEphemeralSession)
         [copiedConfiguration setWebsiteDataStore:[WKWebsiteDataStore nonPersistentDataStore]];
+
+    [copiedConfiguration _setAllowTopNavigationToDataURLs:options.allowTopNavigationToDataURLs];
 
     configureContentMode(copiedConfiguration.get(), options);
 
@@ -327,6 +330,30 @@ void TestController::getAllStorageAccessEntries()
             domains.uncheckedAppend(domain);
         m_currentInvocation->didReceiveAllStorageAccessEntries(domains);
     }];
+}
+
+void TestController::getPrevalentDomains()
+{
+    auto* parentView = mainWebView();
+    if (!parentView)
+        return;
+    
+    [globalWebViewConfiguration.websiteDataStore _getPrevalentDomainsFor:parentView->platformView() completionHandler:^(NSArray<NSString *> *nsDomains) {
+        Vector<String> domains;
+        domains.reserveInitialCapacity(nsDomains.count);
+        for (NSString *domain : nsDomains)
+            domains.uncheckedAppend(domain);
+        m_currentInvocation->didReceivePrevalentDomains(WTFMove(domains));
+    }];
+}
+
+void TestController::clearPrevalentDomains()
+{
+    auto* parentView = mainWebView();
+    if (!parentView)
+        return;
+
+    [globalWebViewConfiguration.websiteDataStore _clearPrevalentDomainsFor:parentView->platformView()];
 }
 
 void TestController::injectUserScript(WKStringRef script)

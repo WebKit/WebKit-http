@@ -499,9 +499,6 @@ webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
 # Skip tests in fast/text/shaping
 webkit.org/b/90951 fast/text/shaping
 
-# CSS Device Adaptation is not enabled.
-webkit.org/b/95959 css3/device-adapt [ Skip ]
-
 # Accelerated overflow scrolling (ENABLE_ACCELERATED_OVERFLOW_SCROLLING) is not enabled.
 fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 
@@ -1732,7 +1729,6 @@ webkit.org/b/199275 [ HighSierra ] inspector/canvas/requestShaderSource-webgpu.h
 webkit.org/b/199275 [ HighSierra ] inspector/canvas/resolveContext-webgpu.html [ Skip ]
 webkit.org/b/199275 [ HighSierra ] inspector/canvas/shaderProgram-add-remove-webgpu.html [ Skip ]
 webkit.org/b/199275 [ HighSierra ] inspector/canvas/updateShader-webgpu.html [ Skip ]
-webkit.org/b/199275 [ HighSierra ] inspector/canvas/updateShader-webgpu-sharedVertexFragment.html [ Skip ]
 
 webkit.org/b/189680 platform/mac/media/audio-session-category-video-paused.html [ Pass Timeout ]
 
@@ -1828,10 +1824,6 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 [ Catalina+ ] fast/text/design-system-ui-15.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-16.html [ Pass ]
 
-[ Catalina+ ] http/wpt/mediarecorder [ Pass Failure ] 
-[ Catalina+ ] imported/w3c/web-platform-tests/mediacapture-record [ Pass Failure ]
-[ Catalina+ ] fast/history/page-cache-media-recorder.html [ Pass Failure ]
-
 webkit.org/b/200128 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html [ Timeout Pass ]
 
 # rdar://55405851 ([ macOS ] Layout tests webgpu/*-triangle-strip.html are flaky failures. (201827))
@@ -1891,6 +1883,8 @@ webkit.org/b/198867 [ Mojave+ ] webgl/many-contexts.html [ Skip ]
 
 webkit.org/b/203171 inspector/layers/layers-for-node.html [ Pass Failure ]
 
+webkit.org/b/203416 imported/w3c/web-platform-tests/css/css-transitions/before-load-001.html [ Failure ]
+
 webkit.org/b/203305 [ HighSierra Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-001.html [ Pass Failure ]
 webkit.org/b/203305 [ HighSierra Debug ] imported/w3c/web-platform-tests/css/css-transitions/properties-value-inherit-001.html [ Pass Failure ]
 webkit.org/b/203357 [ Debug ] imported/w3c/web-platform-tests/css/css-transitions/event-dispatch.tentative.html [ Pass Failure ]
@@ -1935,8 +1929,8 @@ webkit.org/b/200043 [ Sierra HighSierra Mojave Catalina ] fast/text/internationa
 webkit.org/b/204312 imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-manual.svg [ Failure Pass ]
 
 # Locale-specific shaping is only enabled on certain OSes.
-webkit.org/b/77568 [ Sierra HighSierra Mojave ] fast/text/locale-shaping.html [ ImageOnlyFailure ]
-webkit.org/b/77568 [ Sierra HighSierra Mojave ] fast/text/locale-shaping-complex.html [ ImageOnlyFailure ]
+webkit.org/b/77568 [ Sierra HighSierra Mojave Catalina ] fast/text/locale-shaping.html [ ImageOnlyFailure ]
+webkit.org/b/77568 [ Sierra HighSierra Mojave Catalina ] fast/text/locale-shaping-complex.html [ ImageOnlyFailure ]
 
 webkit.org/b/203222 svg/wicd/rightsizing-grid.xhtml [ Pass Failure ]
 
@@ -1961,8 +1955,6 @@ webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/fon
 webkit.org/b/206883 [ Mojave ] imported/w3c/web-platform-tests/css/css-fonts/variations/font-weight-matching.html [ Failure ]
 
 webkit.org/b/205729 webrtc/captureCanvas-webrtc.html [ Pass Failure ]
-
-webkit.org/b/206965 storage/indexeddb/intversion-long-queue-private.html [ Pass Failure ]
 
 webkit.org/b/207010 fast/history/page-cache-webdatabase-pending-transaction.html [ Timeout ]
 
@@ -1997,3 +1989,47 @@ webkit.org/b/207235 legacy-animation-engine/fast/animation/request-animation-fra
 webkit.org/b/206908 imported/w3c/web-platform-tests/hr-time/basic.any.html [ Pass Failure ]
 
 webkit.org/b/207306 inspector/animation/lifecycle-css-animation.html [ Pass Failure ]
+
+webkit.org/b/207333 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer.html [ Pass Failure ]
+
+webkit.org/b/207307 imported/w3c/web-platform-tests/notifications/constructor-basic.html [ Pass Crash ]
+
+webkit.org/b/112939 fast/performance/performance-now-timestamps.html [ Pass Failure ]
+
+webkit.org/b/207363 inspector/css/pseudo-creation.html [ Pass Failure ]
+
+webkit.org/b/207392 [ Debug ] imported/w3c/web-platform-tests/workers/WorkerGlobalScope_ErrorEvent_message.htm [ Pass Failure ]
+
+webkit.org/b/207395 [ Debug ] imported/w3c/web-platform-tests/workers/WorkerGlobalScope_ErrorEvent_lineno.htm [ Pass Failure ]
+
+webkit.org/b/184617 legacy-animation-engine/animations/suspend-resume-animation-events.html [ Pass Failure ]
+
+webkit.org/b/207461 imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html [ Pass Failure ]
+
+webkit.org/b/207463 [ Debug ] inspector/runtime/getCollectionEntries.html [ Pass Failure ]
+
+webkit.org/b/207517 [ Debug ] inspector/animation/lifecycle-css-transition.html [ Pass Failure ]
+
+webkit.org/b/207642 inspector/runtime/getCollectionEntries.html [ Pass Failure ]
+
+webkit.org/b/194162 storage/websql/read-transactions-running-concurrently.html [ Pass Failure ]
+
+webkit.org/b/207337 http/wpt/css/css-animations/start-animation-001.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/207710 svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]
+
+webkit.org/b/207046 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/seeking/seek-to-currentTime.html [ Pass Failure ]
+
+webkit.org/b/207723 http/tests/contentextensions/hide-on-ping-with-ping-that-redirects.html [ Pass Failure ]
+
+webkit.org/b/207726 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-canvas-element/security.pattern.fillStyle.sub.html [ Pass Failure ]
+
+webkit.org/b/207859 fast/images/slower-decoding-than-animation-image.html [ Pass Failure ]
+
+webkit.org/b/207858 fast/canvas/webgl/program-test.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/readPixels-float.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/draw-elements-out-of-bounds-uint-index.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/webgl2-texture-upload-enums.html [ Failure ]
+webkit.org/b/207858 fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
+webkit.org/b/207858 webgl/1.0.3/conformance/programs/program-test.html [ Failure ]

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,6 +50,9 @@ public:
 
     void setPrivate(InbandTextTrackPrivate&);
     void setMediaElement(WeakPtr<HTMLMediaElement>) override;
+#if !RELEASE_LOG_DISABLED
+    void setLogger(const Logger&, const void*) final;
+#endif
 
 protected:
     InbandTextTrack(ScriptExecutionContext&, TextTrackClient&, InbandTextTrackPrivate&);
@@ -69,9 +72,9 @@ private:
     void addDataCue(const MediaTime&, const MediaTime&, const void*, unsigned) override { ASSERT_NOT_REACHED(); }
 
 #if ENABLE(DATACUE_VALUE)
-    void addDataCue(const MediaTime&, const MediaTime&, Ref<SerializedPlatformRepresentation>&&, const String&) override { ASSERT_NOT_REACHED(); }
-    void updateDataCue(const MediaTime&, const MediaTime&, SerializedPlatformRepresentation&) override  { ASSERT_NOT_REACHED(); }
-    void removeDataCue(const MediaTime&, const MediaTime&, SerializedPlatformRepresentation&) override  { ASSERT_NOT_REACHED(); }
+    void addDataCue(const MediaTime&, const MediaTime&, Ref<SerializedPlatformDataCue>&&, const String&) override { ASSERT_NOT_REACHED(); }
+    void updateDataCue(const MediaTime&, const MediaTime&, SerializedPlatformDataCue&) override  { ASSERT_NOT_REACHED(); }
+    void removeDataCue(const MediaTime&, const MediaTime&, SerializedPlatformDataCue&) override  { ASSERT_NOT_REACHED(); }
 #endif
 
     void addGenericCue(GenericCueData&) override { ASSERT_NOT_REACHED(); }
@@ -80,7 +83,7 @@ private:
 
     void parseWebVTTFileHeader(String&&) override { ASSERT_NOT_REACHED(); }
     void parseWebVTTCueData(const char*, unsigned) override { ASSERT_NOT_REACHED(); }
-    void parseWebVTTCueData(const ISOWebVTTCue&) override { ASSERT_NOT_REACHED(); }
+    void parseWebVTTCueData(ISOWebVTTCue&&) override { ASSERT_NOT_REACHED(); }
 
     MediaTime startTimeVariance() const override;
 };

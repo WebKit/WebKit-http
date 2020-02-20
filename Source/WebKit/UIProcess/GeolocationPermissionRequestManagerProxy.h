@@ -28,6 +28,8 @@
 
 #include "GeolocationPermissionRequestProxy.h"
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebKit {
 
@@ -45,8 +47,12 @@ public:
     // Called by GeolocationPermissionRequestProxy when a decision is made by the user.
     void didReceiveGeolocationPermissionDecision(uint64_t, bool allow);
 
+    bool isValidAuthorizationToken(const String&) const;
+    void revokeAuthorizationToken(const String&);
+
 private:
     HashMap<uint64_t, RefPtr<GeolocationPermissionRequestProxy>> m_pendingRequests;
+    HashSet<String> m_validAuthorizationTokens;
     WebPageProxy& m_page;
 };
 

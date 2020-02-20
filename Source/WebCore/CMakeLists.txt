@@ -166,26 +166,6 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/xml/parser"
 )
 
-set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
-    ${LIBXML2_INCLUDE_DIR}
-    ${LIBXSLT_INCLUDE_DIR}
-    ${ZLIB_INCLUDE_DIRS}
-)
-
-SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/Modules/filesystem"
-    "${WEBCORE_DIR}/css"
-    "${WEBCORE_DIR}/dom"
-    "${WEBCORE_DIR}/fileapi"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/graphics"
-    "${WEBCORE_DIR}/platform/graphics/transforms"
-    "${WEBCORE_DIR}/platform/text"
-    "${WEBCORE_DIR}/rendering/shapes"
-    "${JAVASCRIPTCORE_DIR}/heap"
-    "${JAVASCRIPTCORE_DIR}/parser"
-)
-
 set(WebCore_IDL_INCLUDES
     css
     dom
@@ -669,7 +649,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/typedom/TypedOMCSSUnparsedValue.idl
 
     css/WebKitCSSMatrix.idl
-    css/WebKitCSSViewportRule.idl
 
     dom/AbortController.idl
     dom/AbortSignal.idl
@@ -1228,12 +1207,15 @@ set(WebCore_PLUG_INS_RESOURCES
 )
 
 set(WebCore_LIBRARIES
+    LibXml2::LibXml2
+    PAL
     SQLite::SQLite3
-    ${LIBXML2_LIBRARIES}
-    ${LIBXSLT_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    PAL${DEBUG_SUFFIX}
+    ZLIB::ZLIB
 )
+
+if (ENABLE_XSLT)
+    list(APPEND WebCore_LIBRARIES LibXslt::LibXslt)
+endif ()
 
 set(WebCoreTestSupport_LIBRARIES
     WebKit::JavaScriptCore

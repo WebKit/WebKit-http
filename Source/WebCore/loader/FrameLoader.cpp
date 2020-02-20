@@ -161,8 +161,6 @@ namespace WebCore {
 using namespace HTMLNames;
 using namespace SVGNames;
 
-static const char defaultAcceptHeader[] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
-
 bool isBackForwardLoadType(FrameLoadType type)
 {
     switch (type) {
@@ -705,7 +703,7 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
 
 void FrameLoader::receivedFirstData()
 {
-    dispatchDidCommitLoad(WTF::nullopt);
+    dispatchDidCommitLoad(WTF::nullopt, WTF::nullopt);
     dispatchDidClearWindowObjectsInAllWorlds();
     dispatchGlobalObjectAvailableInAllWorlds();
 
@@ -1479,6 +1477,7 @@ void FrameLoader::load(FrameLoadRequest&& request)
 
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(request.resourceRequest(), request.substituteData());
     loader->setAllowsWebArchiveForMainFrame(request.isRequestFromClientOrUserInput());
+    loader->setAllowsDataURLsForMainFrame(request.isRequestFromClientOrUserInput());
     addSameSiteInfoToRequestIfNeeded(loader->request());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, request);
 
@@ -1779,6 +1778,7 @@ void FrameLoader::reload(OptionSet<ReloadOption> options)
     // but first it has to be the "policy" document loader, and then the "provisional" document loader.
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(initialRequest, defaultSubstituteDataForURL(initialRequest.url()));
     loader->setAllowsWebArchiveForMainFrame(m_documentLoader->allowsWebArchiveForMainFrame());
+    loader->setAllowsDataURLsForMainFrame(m_documentLoader->allowsDataURLsForMainFrame());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, InitiatedByMainFrame::Unknown, m_documentLoader->shouldOpenExternalURLsPolicyToPropagate());
 
     loader->setUserContentExtensionsEnabled(!options.contains(ReloadOption::DisableContentBlockers));
@@ -2070,8 +2070,9 @@ void FrameLoader::commitProvisionalLoad()
         notifier().dispatchDidReceiveResponse(cachedPage->documentLoader(), mainResourceIdentifier, cachedPage->documentLoader()->response());
 
         Optional<HasInsecureContent> hasInsecureContent = cachedPage->cachedMainFrame()->hasInsecureContent();
+        Optional<UsedLegacyTLS> usedLegacyTLS = cachedPage->cachedMainFrame()->usedLegacyTLS();
 
-        dispatchDidCommitLoad(hasInsecureContent);
+        dispatchDidCommitLoad(hasInsecureContent, usedLegacyTLS);
 
         // FIXME: This API should be turned around so that we ground CachedPage into the Page.
         cachedPage->restore(*m_frame.page());
@@ -2964,9 +2965,6 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
         request.setPriority(m_overrideResourceLoadPriorityForTesting.value());
 
     applyUserAgentIfNeeded(request);
-
-    if (isMainResource)
-        request.setHTTPAccept(defaultAcceptHeader);
 
     // Make sure we send the Origin header.
     addHTTPOriginIfNeeded(request, String());
@@ -4005,12 +4003,12 @@ void FrameLoader::didChangeTitle(DocumentLoader* loader)
 #endif
 }
 
-void FrameLoader::dispatchDidCommitLoad(Optional<HasInsecureContent> initialHasInsecureContent)
+void FrameLoader::dispatchDidCommitLoad(Optional<HasInsecureContent> initialHasInsecureContent, Optional<UsedLegacyTLS> initialUsedLegacyTLS)
 {
     if (m_stateMachine.creatingInitialEmptyDocument())
         return;
 
-    m_client.dispatchDidCommitLoad(initialHasInsecureContent);
+    m_client.dispatchDidCommitLoad(initialHasInsecureContent, initialUsedLegacyTLS);
 
     if (m_frame.isMainFrame()) {
         m_frame.page()->resetSeenPlugins();

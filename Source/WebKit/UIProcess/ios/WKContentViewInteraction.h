@@ -236,7 +236,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UISwipeGestureRecognizer> _touchActionDownSwipeGestureRecognizer;
 #endif
 
-#if PLATFORM(MACCATALYST)
+#if HAVE(LOOKUP_GESTURE_RECOGNIZER)
     RetainPtr<_UILookupGestureRecognizer> _lookupGestureRecognizer;
 #endif
 
@@ -483,7 +483,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_elementDidBlur;
 - (void)_hideContextMenuHintContainer;
 - (void)_didUpdateInputMode:(WebCore::InputMode)mode;
-- (void)_didReceiveEditorStateUpdateAfterFocus;
+- (void)_didUpdateEditorState;
 - (void)_hardwareKeyboardAvailabilityChanged;
 - (void)_selectionChanged;
 - (void)_updateChangedSelection;

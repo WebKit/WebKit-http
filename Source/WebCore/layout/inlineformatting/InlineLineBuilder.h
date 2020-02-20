@@ -61,6 +61,7 @@ public:
 
     void initialize(const Constraints&);
     void append(const InlineItem&, InlineLayoutUnit logicalWidth);
+    void appendPartialTrailingTextItem(const InlineTextItem&, InlineLayoutUnit logicalWidth, bool needsHypen);
     void resetContent();
     bool isVisuallyEmpty() const { return m_lineBox.isConsideredEmpty(); }
     bool hasIntrusiveFloat() const { return m_hasIntrusiveFloat; }
@@ -84,7 +85,8 @@ public:
         const Box& layoutBox() const { return *m_layoutBox; }
         const RenderStyle& style() const { return m_layoutBox->style(); }
         const Display::InlineRect& logicalRect() const { return m_logicalRect; }
-        const Optional<Display::Run::TextContext>& textContext() const { return m_textContext; }
+        Display::Run::Expansion expansion() const { return m_expansion; }
+        const Optional<Display::Run::TextContent>& textContent() const { return m_textContent; }
 
         Run(Run&&) = default;
         Run& operator=(Run&& other) = default;
@@ -92,7 +94,7 @@ public:
     private:
         friend class LineBuilder;
 
-        Run(const InlineTextItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth);
+        Run(const InlineTextItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth, bool needsHypen);
         Run(const InlineSoftLineBreakItem&, InlineLayoutUnit logicalLeft);
         Run(const InlineItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth);
 
@@ -108,10 +110,12 @@ public:
         void setLogicalHeight(InlineLayoutUnit logicalHeight) { m_logicalRect.setHeight(logicalHeight); }
 
         bool hasExpansionOpportunity() const { return m_expansionOpportunityCount; }
-        Optional<ExpansionBehavior> expansionBehavior() const;
+        ExpansionBehavior expansionBehavior() const;
         unsigned expansionOpportunityCount() const { return m_expansionOpportunityCount; }
         void setComputedHorizontalExpansion(InlineLayoutUnit logicalExpansion);
-        void adjustExpansionBehavior(ExpansionBehavior);
+        void setExpansionBehavior(ExpansionBehavior);
+
+        void setNeedsHyphen() { m_textContent->setNeedsHyphen(); }
 
         enum class TrailingWhitespace {
             None,
@@ -136,7 +140,8 @@ public:
         Display::InlineRect m_logicalRect;
         TrailingWhitespace m_trailingWhitespaceType { TrailingWhitespace::None };
         InlineLayoutUnit m_trailingWhitespaceWidth { 0 };
-        Optional<Display::Run::TextContext> m_textContext;
+        Optional<Display::Run::TextContent> m_textContent;
+        Display::Run::Expansion m_expansion;
         unsigned m_expansionOpportunityCount { 0 };
     };
     using RunList = Vector<Run, 10>;
@@ -159,8 +164,13 @@ private:
     InlineLayoutUnit contentLogicalRight() const { return m_lineBox.logicalRight(); }
     InlineLayoutUnit baselineOffset() const { return m_lineBox.baselineOffset(); }
 
+    struct InlineRunDetails {
+        InlineLayoutUnit logicalWidth { 0 };
+        bool needsHyphen { false };
+    };
+    void appendWith(const InlineItem&, const InlineRunDetails&);
     void appendNonBreakableSpace(const InlineItem&, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth);
-    void appendTextContent(const InlineTextItem&, InlineLayoutUnit logicalWidth);
+    void appendTextContent(const InlineTextItem&, InlineLayoutUnit logicalWidth, bool needsHyphen);
     void appendNonReplacedInlineBox(const InlineItem&, InlineLayoutUnit logicalWidth);
     void appendReplacedInlineBox(const InlineItem&, InlineLayoutUnit logicalWidth);
     void appendInlineContainerStart(const InlineItem&, InlineLayoutUnit logicalWidth);

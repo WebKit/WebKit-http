@@ -1,3 +1,573 @@
+2020-02-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Move from "layer flush" terminology to "rendering update"
+        https://bugs.webkit.org/show_bug.cgi?id=207870
+
+        Reviewed by Tim Horton.
+
+        * wtf/SystemTracing.h:
+
+2020-02-17  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][Cocoa] Implement in-WebProcess cookie cache to avoid sync IPC for document.cookie in most cases
+        https://bugs.webkit.org/show_bug.cgi?id=207593
+        <rdar://problem/56027027>
+
+        Reviewed by Antti Koivisto.
+
+        Add build time flags for new feature.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformHave.h:
+
+2020-02-17  Tim Horton  <timothy_horton@apple.com>
+
+        Add and adopt HAVE(LOOKUP_GESTURE_RECOGNIZER)
+        https://bugs.webkit.org/show_bug.cgi?id=207876
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/PlatformHave.h:
+        For symmetry's sake, introduce a HAVE for this gesture.
+
+2020-02-17  Mark Lam  <mark.lam@apple.com>
+
+        getVTablePointer() should return a const void*.
+        https://bugs.webkit.org/show_bug.cgi?id=207871
+        <rdar://problem/59525721>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PointerPreparations.h:
+        (WTF::getVTablePointer):
+
+2020-02-17  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Enable ANGLE by default for Cocoa platforms
+        https://bugs.webkit.org/show_bug.cgi?id=205483
+        rdar://56925821
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+
+2020-02-17  Peng Liu  <peng.liu6@apple.com>
+
+        Fix check-webkit-style errors related to AVFoundationSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=207834
+
+        Reviewed by Eric Carlson.
+
+        Add HAVE_VIDEO_PERFORMANCE_METRICS and USE_AV_SAMPLE_BUFFER_DISPLAY_LAYER to fix check-webkit-style errors.
+
+        * wtf/PlatformHave.h:
+        * wtf/PlatformUse.h:
+
+2020-02-17  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        a lot gcc warnings because of %{public}s format specifier
+        https://bugs.webkit.org/show_bug.cgi?id=207478
+
+        Reviewed by Darin Adler.
+
+        Add PUBLIC_LOG_STRING macro which is defined depending on if
+        os_log()[1] is used or rather old printf().
+
+        OS Logging processes format specifiers for privacy matters, for
+        example dynamic strings, which demands %{public}s. But these
+        specifiers are not valid for printf().
+
+        Calls to logging with this specifier, if they are not Mac/Darwing
+        exclusive, use this new macro to avoid gcc warnings.
+
+        1. https://developer.apple.com/documentation/os/logging?language=objc
+
+        * wtf/Assertions.h:
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::ReliefLogger::logMemoryUsageChange):
+
+2020-02-17  Antti Koivisto  <antti@apple.com>
+
+        [macOS] Add trace points for layer flush runloop observer
+        https://bugs.webkit.org/show_bug.cgi?id=207837
+
+        Reviewed by Sam Weinig.
+
+        * wtf/SystemTracing.h:
+
+2020-02-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use builtin targets
+        https://bugs.webkit.org/show_bug.cgi?id=205166
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/PlatformWPE.cmake:
+
+2020-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Remove remaining WTF_EXPORT and WTF_IMPORT by replacing them with WTF_EXPORT_DECLARATION and WTF_IMPORT_DECLARATION
+        https://bugs.webkit.org/show_bug.cgi?id=207746
+
+        Reviewed by Don Olmstead.
+
+        I removed WTF_EXPORT from function declarations in r256420 (Bug 207453).
+        WTF_EXPORT is still used mostly in *ExportMacros.h. However, there is no
+        difference between WTF_EXPORT and WTF_EXPORT_DECLARATION.
+
+        Removed WTF_EXPORT and WTF_IMPORT by replacing them with
+        WTF_EXPORT_DECLARATION and WTF_IMPORT_DECLARATION
+
+        Removed unused WTF_HIDDEN.
+
+        Defined WTF_EXPORT_DECLARATION, WTF_IMPORT_DECLARATION and WTF_HIDDEN_DECLARATION empty
+        in case of !USE(EXPORT_MACROS) to simplify *ExportMacros.h.
+
+        * wtf/ExportMacros.h:
+
+2020-02-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r256633.
+        https://bugs.webkit.org/show_bug.cgi?id=207807
+
+        4% memory regression in new Membuster, possibly some leaking
+        in WebKit Malloc? (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Implement NetworkCache::Data by using
+        FileSystem::MappedFileData"
+        https://bugs.webkit.org/show_bug.cgi?id=197684
+        https://trac.webkit.org/changeset/256633
+
+2020-02-14  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] Implement NetworkCache::Data by using FileSystem::MappedFileData
+        https://bugs.webkit.org/show_bug.cgi?id=197684
+
+        Reviewed by Fujii Hironori.
+
+        * wtf/FileSystem.cpp:
+        * wtf/FileSystem.h:
+        Added FileAccessPermission flag when opening files.
+        Remove default argument for the listDirectory filter since the defaut
+        String() filter doesn't match all files on Mac and Windows.
+
+        * wtf/glib/FileSystemGlib.cpp:
+        * wtf/posix/FileSystemPOSIX.cpp:
+        Added (S_IRUSR | S_IWUSR) file open modes.
+
+        * wtf/win/FileSystemWin.cpp:
+        Implement getVolumeFreeSpace since some of the tests use it when toggling cache.
+        
+        * wtf/win/PathWalker.cpp:
+
+2020-02-14  Alex Christensen  <achristensen@webkit.org>
+
+        Allow UIDNAInfo.errors from uidna_nameToUnicode that would not cause URL parsing failures
+        https://bugs.webkit.org/show_bug.cgi?id=207360
+        <rdar://problem/57825317>
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::mapHostName):
+
+2020-02-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        WebP image format is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=192672
+
+        Reviewed by Youenn Fablet.
+
+        Introduce HAVE(WEBP) for macOS and iOS.
+
+        * wtf/PlatformHave.h:
+
+2020-02-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Compact JITCodeMap by storing BytecodeIndex and CodeLocation separately
+        https://bugs.webkit.org/show_bug.cgi?id=207673
+
+        Reviewed by Mark Lam.
+
+        * wtf/MallocPtr.h:
+
+2020-02-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256010.
+
+        Introduced ASan crashes
+
+        Reverted changeset:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/r256010
+
+2020-02-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Shrink CachedResource
+        https://bugs.webkit.org/show_bug.cgi?id=207618
+
+        Reviewed by Mark Lam.
+
+        * wtf/Markable.h:
+        (WTF::Markable::asOptional const): Add helper method to get Optional easily from Markable.
+        * wtf/ObjectIdentifier.h:
+        (WTF::ObjectIdentifier::MarkableTraits::isEmptyValue):
+        (WTF::ObjectIdentifier::MarkableTraits::emptyValue):
+        (WTF::ObjectIdentifier::ObjectIdentifier): Add MarkableTraits for ObjectIdentifier.
+
+2020-02-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove CSS_DEVICE_ADAPTATION
+        https://bugs.webkit.org/show_bug.cgi?id=203479
+
+        Reviewed by Tim Horton.
+
+        CSS Working Group resolved to remove @viewport <https://github.com/w3c/csswg-drafts/issues/4766>,
+        so remove the code.
+
+        * wtf/PlatformEnable.h:
+
+2020-02-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Fix declarations marked by wrong export macros (WEBCORE_EXPORT and WTF_EXPORT)
+        https://bugs.webkit.org/show_bug.cgi?id=207453
+
+        Reviewed by Ross Kirsling.
+
+        Export macros are prone to be misused because thier definitions
+        are identical for POSIX ports. They can be used interchangeably on
+        such ports.
+
+        WTF should use WTF_EXPORT_PRIVATE instead of WTF_EXPORT.
+
+        * wtf/HexNumber.h:
+        * wtf/Language.h:
+        * wtf/Logger.h:
+        * wtf/ProcessPrivilege.h:
+        * wtf/cocoa/CrashReporter.h:
+        * wtf/cocoa/Entitlements.h:
+        * wtf/text/LineEnding.h:
+        * wtf/text/TextBreakIterator.h:
+        * wtf/text/icu/UTextProviderLatin1.h:
+        Replaced WTF_EXPORT with WTF_EXPORT_PRIVATE.
+
+2020-02-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Support in-band VTT captions when loading media in the GPU Process
+        https://bugs.webkit.org/show_bug.cgi?id=207467
+        <rdar://problem/59312749>
+
+        Reviewed by Jer Noble.
+
+        * wtf/LoggerHelper.h:
+        (WTF::LoggerHelper::childLogIdentifier const):
+
+2020-02-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, speculative build fix on watchOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=207183
+
+        * wtf/HashTable.h:
+        (WTF::HashTableCapacityForSize::capacityForSize):
+
+2020-02-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix build failure on watchOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=207183
+
+        * wtf/HashTable.h:
+        (WTF::HashTableCapacityForSize::capacityForSize):
+
+2020-02-10  Daniel Bates  <dabates@apple.com>
+
+        Disallow setting base URL to a data or JavaScript URL
+        https://bugs.webkit.org/show_bug.cgi?id=207136
+
+        Reviewed by Brent Fulgham.
+
+        Add some more macro definitions.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256091.
+
+        Broke internal builds
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256091
+
+2020-02-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r256103.
+
+        This patch is blocking the rollout of r256091
+
+        Reverted changeset:
+
+        "Move JavaScriptCore related feature defines from
+        FeatureDefines.xcconfig to PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        https://trac.webkit.org/changeset/256103
+
+2020-02-09  Keith Rollin  <krollin@apple.com>
+
+        Re-enable LTO for ARM builds
+        https://bugs.webkit.org/show_bug.cgi?id=207402
+        <rdar://problem/49190767>
+
+        Reviewed by Sam Weinig.
+
+        Bug 190758 re-enabled LTO for Production builds for x86-family CPUs.
+        Enabling it for ARM was left out due to a compiler issue. That issue
+        has been fixed, and so now we can re-enable LTO for ARM.
+
+        * Configurations/Base.xcconfig:
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformEnable.h:
+        Add default values for ENABLE_FAST_JIT_PERMISSIONS and ENABLE_SEPARATED_WX_HEAP.
+
+        * wtf/PlatformEnableCocoa.h:
+        Added ENABLE_FAST_JIT_PERMISSIONS (from FeatureDefines.xcconfig), ENABLE_SEPARATED_WX_HEAP
+        (from PlatformEnable.h) and ENABLE_FTL_JIT (from both FeatureDefines.xcconfig and PlatformEnable.h).
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Migrate definition of USE_PLATFORM_REGISTERS_WITH_PROFILE to PlatformUse.h
+        https://bugs.webkit.org/show_bug.cgi?id=207428
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformUse.h:
+        Move definition of USE_PLATFORM_REGISTERS_WITH_PROFILE from AdditionalFeatureDefines.h, where 
+        it did not belong.
+
+2020-02-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Try using 75% load factor for HashTable
+        https://bugs.webkit.org/show_bug.cgi?id=207183
+
+        Reviewed by Mark Lam.
+
+        We know that hash-table is one of the most memory consuming part in WebKit.
+        By analyzing many production hash-table implementations[1], I found that many
+        of them are using 75% load-factor while our one is 50%.
+
+        This patch changes the load-factor from 50% to 75%. But we pick 75% only for
+        small tables which capacity is <= 1024 based on collected data by micro-benchmarking.
+        The collected data is telling that longer probe-length affects on performance if table
+        size gets larger.
+
+        [1]: LLVM DenseMap, Abseil's, rust's, and so on.
+
+        * wtf/HashTable.h:
+        (WTF::HashTableCapacityForSize::shouldExpand):
+        (WTF::HashTableCapacityForSize::capacityForSize):
+        (WTF::HashTable::shouldExpand const):
+        (WTF::KeyTraits>::computeBestTableSize):
+
+2020-02-08  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+        
+        ENABLE_INSPECTOR_TELEMETRY, ENABLE_TEXT_AUTOSIZING, ENABLE_WEBGL, ENABLE_METER_ELEMENT,
+        ENABLE_VIDEO_TRACK, ENABLE_WEB_AUDIO and ENABLE_CURSOR_VISIBILITY are all now always
+        set to 1 for Cocoa (if not defined already), as this was already the case via the xcconfig.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Harden HashTable IPC decoders
+        https://bugs.webkit.org/show_bug.cgi?id=207415
+
+        Reviewed by Chris Dumez.
+
+        * wtf/HashCountedSet.h:
+
+2020-02-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256051.
+
+        Broke internal builds.
+
+        Reverted changeset:
+
+        "Move trivial definitions from FeatureDefines.xcconfig to
+        PlatformEnableCocoa.h"
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+        https://trac.webkit.org/changeset/256051
+
+2020-02-07  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Win] Two FileSystem API tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=207388
+
+        Reviewed by Don Olmstead.
+
+        * wtf/win/FileSystemWin.cpp:
+        Make getFinalPathName return dos path rather than nt volume path.
+        Change createSymbolicLink return to match CreateSymbolicLinkW
+        Have directoryName strip trailing slashes.
+
+2020-02-03  Sam Weinig  <weinig@apple.com>
+
+        Move trivial definitions from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207155
+
+        Reviewed by Tim Horton.
+
+        Move all trivial definitions (just ENABLE_FOO = ENABLE_FOO; or ENABLE_BAR = ;)
+        from the FeatureDefines.xcconfigs to PlatformEnableCocoa.h, ensuring each one
+        also has a default value in PlatformEnable.h
+        
+        ENABLE_INSPECTOR_TELEMETRY, ENABLE_TEXT_AUTOSIZING, ENABLE_WEBGL, ENABLE_METER_ELEMENT,
+        ENABLE_VIDEO_TRACK, ENABLE_WEB_AUDIO and ENABLE_CURSOR_VISIBILITY are all now always
+        set to 1 for Cocoa (if not defined already), as this was already the case via the xcconfig.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-02-07  youenn fablet  <youenn@apple.com>
+
+        Mandate UUID version 4 for mDNS ICE candidates
+        https://bugs.webkit.org/show_bug.cgi?id=207329
+        <rdar://problem/59221606>
+
+        Address post-commit comments from Darin by using isASCIIHexDigit.
+
+        Unreviewed.
+
+        * wtf/UUID.cpp:
+        (WTF::isVersion4UUID):
+        (WTF::isHexadecimalCharacter): Deleted.
+
+2020-02-07  youenn fablet  <youenn@apple.com>
+
+        Mandate UUID version 4 for mDNS ICE candidates
+        https://bugs.webkit.org/show_bug.cgi?id=207329
+
+        Reviewed by Alex Christensen.
+
+        Add a routine to validate version 4 UUID.
+
+        * wtf/UUID.cpp:
+        (WTF::isHexadecimalCharacter):
+        (WTF::isVersion4UUID):
+        * wtf/UUID.h:
+
+2020-02-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, revert 75% load-factor because of JetStream2/string-unpack-code-SP regression
+        https://bugs.webkit.org/show_bug.cgi?id=207183
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::shouldExpand const):
+        (WTF::KeyTraits>::computeBestTableSize):
+        (WTF::HashTable::shouldExpand): Deleted.
+        (WTF::HashTableCapacityForSize::capacityForSize): Deleted.
+
+2020-02-07  youenn fablet  <youenn@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-02-06  Mark Lam  <mark.lam@apple.com>
+
+        Add a comment in StringView::setUnderlyingString(const StringView&) for clarification.
+        https://bugs.webkit.org/show_bug.cgi?id=207368
+        <rdar://problem/59211075>
+
+        Reviewed by Keith Miller.
+
+        Every time I read this code, I have to re-deduce why this code is thread safe.
+        So, I'm just going to add a comment to document it.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::setUnderlyingString):
+
+2020-02-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r254534): 1-3% regression on PLT
+        https://bugs.webkit.org/show_bug.cgi?id=207244
+        <rdar://problem/58821709>
+
+        Reviewed by Simon Fraser.
+
+        CTFontTransformGlyphsWithLanguage() is only acceptable on certain OSes.
+
+        * wtf/PlatformHave.h:
+
+2020-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r255910, r255970, and r255972.
+        https://bugs.webkit.org/show_bug.cgi?id=207345
+
+        Broke internal builds (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255910
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255970
+
+        "[Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder"
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+        https://trac.webkit.org/changeset/255972
+
+2020-02-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Unreviewed internal build fix attempt.
+
+        * wtf/PlatformHave.h: Fix copy / paste error.
+
+2020-02-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=206582
+
+        Unreviewed internal build fix attempt.
+
+        * wtf/PlatformHave.h:
+
 2020-02-06  youenn fablet  <youenn@apple.com>
 
         [Cocoa] Use AVAssetWriterDelegate to implement MediaRecorder

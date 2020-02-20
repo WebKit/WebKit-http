@@ -174,6 +174,9 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler;
 - (void)requestAutocorrectionContextWithCompletionHandler:(void (^)(UIWKAutocorrectionContext *autocorrectionContext))completionHandler;
 - (void)selectWordBackward;
+- (void)selectTextWithGranularity:(UITextGranularity)granularity atPoint:(CGPoint)point completionHandler:(void (^)(void))completionHandler;
+- (void)updateSelectionWithExtentPoint:(CGPoint)point completionHandler:(void (^)(BOOL selectionEndIsMoving))completionHandler;
+- (void)updateSelectionWithExtentPoint:(CGPoint)point withBoundary:(UITextGranularity)granularity completionHandler:(void (^)(BOOL selectionEndIsMoving))completionHandler;
 @property (nonatomic, readonly) NSString *selectedText;
 @end
 
@@ -257,6 +260,10 @@ typedef NS_ENUM(NSUInteger, _UIClickInteractionEvent) {
 
 @interface UIResponder (Internal)
 - (void)_share:(id)sender;
+@end
+
+@interface UIApplication (Internal)
++ (NSString *)displayIdentifier;
 @end
 
 #endif // PLATFORM(IOS_FAMILY)

@@ -31,6 +31,8 @@
 
 namespace API {
 
+class UserContentWorld;
+
 class ContentWorldBase {
 public:
     virtual ~ContentWorldBase() = default;
@@ -45,10 +47,10 @@ public:
 protected:
     ContentWorldBase(const WTF::String& name);
     ContentWorldBase(WebKit::ContentWorldIdentifier identifier)
+        : m_identifier(identifier) { }
+    ContentWorldBase(WebKit::ContentWorldIdentifier identifier, const WTF::String& name)
         : m_identifier(identifier)
-    {
-    }
-
+        , m_name(name) { }
 private:
     WebKit::ContentWorldIdentifier m_identifier;
     WTF::String m_name;
@@ -68,6 +70,7 @@ public:
 private:
     explicit ContentWorld(const WTF::String&);
     explicit ContentWorld(WebKit::ContentWorldIdentifier);
+    explicit ContentWorld(const UserContentWorld&);
 };
 
 } // namespace API

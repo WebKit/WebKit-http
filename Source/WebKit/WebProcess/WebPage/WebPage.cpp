@@ -466,7 +466,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
         makeUniqueRef<WebKit::LibWebRTCProvider>(),
         WebProcess::singleton().cacheStorageProvider(),
         WebBackForwardListProxy::create(*this),
-        WebCookieJar::create(),
+        WebProcess::singleton().cookieJar(),
         makeUniqueRef<WebProgressTrackerClient>(*this),
         makeUniqueRef<MediaRecorderProvider>()
     );
@@ -1784,12 +1784,6 @@ void WebPage::sendViewportAttributesChanged(const ViewportArguments& viewportArg
     // Put the width and height to the viewport width and height. In css units however.
     // Use FloatSize to avoid truncated values during scale.
     FloatSize contentFixedSize = m_viewSize;
-
-#if ENABLE(CSS_DEVICE_ADAPTATION)
-    // CSS viewport descriptors might be applied to already affected viewport size
-    // if the page enables/disables stylesheets, so need to keep initial viewport size.
-    view->setInitialViewportSize(roundedIntSize(contentFixedSize));
-#endif
 
     contentFixedSize.scale(1 / attr.initialScale);
     view->setFixedVisibleContentRect(IntRect(contentFixedOrigin, roundedIntSize(contentFixedSize)));
@@ -3446,10 +3440,31 @@ void WebPage::runJavaScriptInFrame(FrameIdentifier frameID, const String& script
     runJavaScript(frame, { script, false, WTF::nullopt, forceUserGesture }, pageContentWorldIdentifier(), callbackID);
 }
 
-void WebPage::getContentsAsString(CallbackID callbackID)
+void WebPage::getContentsAsString(ContentAsStringIncludesChildFrames includeChildFrames, CallbackID callbackID)
 {
-    String resultString = m_mainFrame->contentsAsString();
-    send(Messages::WebPageProxy::StringCallback(resultString, callbackID));
+    switch (includeChildFrames) {
+    case ContentAsStringIncludesChildFrames::No: {
+        String resultString = m_mainFrame->contentsAsString();
+        send(Messages::WebPageProxy::StringCallback(resultString, callbackID));
+        break;
+    }
+    case ContentAsStringIncludesChildFrames::Yes: {
+        StringBuilder builder;
+        for (RefPtr<Frame> frame = &corePage()->mainFrame(); frame; frame = frame->tree().traverseNextRendered()) {
+            if (auto* webFrame = WebFrame::fromCoreFrame(*frame)) {
+                if (!builder.isEmpty()) {
+                    builder.append('\n');
+                    builder.append('\n');
+                }
+
+                builder.append(webFrame->contentsAsString());
+            }
+        }
+
+        send(Messages::WebPageProxy::StringCallback(builder.toString(), callbackID));
+        break;
+    }
+    }
 }
 
 #if ENABLE(MHTML)
@@ -4231,9 +4246,9 @@ void WebPage::extendSandboxForFilesFromOpenPanel(SandboxExtension::HandleArray&&
 #endif
 
 #if ENABLE(GEOLOCATION)
-void WebPage::didReceiveGeolocationPermissionDecision(uint64_t geolocationID, bool allowed)
+void WebPage::didReceiveGeolocationPermissionDecision(uint64_t geolocationID, const String& authorizationToken)
 {
-    geolocationPermissionRequestManager().didReceiveGeolocationPermissionDecision(geolocationID, allowed);
+    geolocationPermissionRequestManager().didReceiveGeolocationPermissionDecision(geolocationID, authorizationToken);
 }
 #endif
 
@@ -5815,6 +5830,10 @@ void WebPage::didCommitLoad(WebFrame* frame)
     if (!frame->isMainFrame())
         return;
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    clearPrevalentDomains();
+#endif
+    
     // If previous URL is invalid, then it's not a real page that's being navigated away from.
     // Most likely, this is actually the first load to be committed in this page.
     if (frame->coreFrame()->loader().previousURL().isValid())
@@ -6199,7 +6218,7 @@ void WebPage::scheduleFullEditorStateUpdate()
     m_hasPendingEditorStateUpdate = true;
     // FIXME: Scheduling a compositing layer flush here can be more expensive than necessary.
     // Instead, we should just compute and send post-layout editor state during the next frame.
-    m_drawingArea->scheduleCompositingLayerFlush();
+    m_drawingArea->scheduleRenderingUpdate();
 }
 
 #if HAVE(TOUCH_BAR)
@@ -6245,6 +6264,7 @@ void WebPage::updateWebsitePolicies(WebsitePoliciesData&& websitePolicies)
     if (!documentLoader)
         return;
 
+    m_allowsContentJavaScriptFromMostRecentNavigation = websitePolicies.allowsContentJavaScript;
     WebsitePoliciesData::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
     
 #if ENABLE(VIDEO)
@@ -6300,6 +6320,7 @@ Ref<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRe
         }
 
         if (m_pendingWebsitePolicies) {
+            m_allowsContentJavaScriptFromMostRecentNavigation = m_pendingWebsitePolicies->allowsContentJavaScript;
             WebsitePoliciesData::applyToDocumentLoader(WTFMove(*m_pendingWebsitePolicies), documentLoader);
             m_pendingWebsitePolicies = WTF::nullopt;
         }
@@ -6645,6 +6666,29 @@ void WebPage::wasLoadedWithDataTransferFromPrevalentResource()
 
     frame->document()->wasLoadedWithDataTransferFromPrevalentResource();
 }
+
+void WebPage::addLoadedRegistrableDomain(RegistrableDomain&& domain)
+{
+    auto addResult = m_loadedDomains.add(domain);
+    if (addResult.isNewEntry) {
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::IsPrevalentSubresourceLoad(domain), [this, protectedThis = makeRef(*this), domain] (bool isPrevalent) {
+            if (isPrevalent)
+                m_prevalentDomains.add(domain);
+        });
+    }
+}
+
+void WebPage::getPrevalentDomains(CompletionHandler<void(Vector<RegistrableDomain>)>&& completionHandler)
+{
+    completionHandler(copyToVector(m_prevalentDomains));
+}
+
+void WebPage::clearPrevalentDomains()
+{
+    m_prevalentDomains.clear();
+    m_loadedDomains.clear();
+}
+
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)

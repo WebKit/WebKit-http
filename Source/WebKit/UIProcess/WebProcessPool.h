@@ -72,6 +72,7 @@ OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS NSObject;
 OBJC_CLASS NSSet;
 OBJC_CLASS NSString;
+OBJC_CLASS WKPreferenceObserver;
 #endif
 
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
@@ -540,6 +541,10 @@ public:
     void setUseSeparateServiceWorkerProcess(bool);
     bool useSeparateServiceWorkerProcess() const { return m_useSeparateServiceWorkerProcess; }
 
+#if PLATFORM(COCOA)
+    void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
+#endif
+
 private:
     void platformInitialize();
 
@@ -609,6 +614,9 @@ private:
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
     static float displayBrightness();
     static void backlightLevelDidChangeCallback(CFNotificationCenterRef, void *observer, CFStringRef name, const void *, CFDictionaryRef userInfo);    
+#if ENABLE(REMOTE_INSPECTOR)
+    static void remoteWebInspectorEnabledCallback(CFNotificationCenterRef, void *observer, CFStringRef name, const void *, CFDictionaryRef userInfo);
+#endif
 #endif
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
@@ -801,6 +809,10 @@ private:
     bool m_isDelayedWebProcessLaunchDisabled { false };
 #endif
     bool m_useSeparateServiceWorkerProcess { false };
+
+#if PLATFORM(COCOA)
+    RetainPtr<WKPreferenceObserver> m_preferenceObserver;
+#endif
 };
 
 template<typename T>

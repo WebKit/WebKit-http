@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -131,6 +131,7 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
     BOOL _convertsPositionStyleOnCopy;
     BOOL _allowsMetaRefresh;
     BOOL _allowUniversalAccessFromFileURLs;
+    BOOL _allowTopNavigationToDataURLs;
 
 #if PLATFORM(IOS_FAMILY)
     LazyInitialized<RetainPtr<WKWebViewContentProviderRegistry>> _contentProviderRegistry;
@@ -235,6 +236,7 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
     _convertsPositionStyleOnCopy = NO;
     _allowsMetaRefresh = YES;
     _allowUniversalAccessFromFileURLs = NO;
+    _allowTopNavigationToDataURLs = YES;
     _needsStorageAccessFromFileURLsQuirk = YES;
 
 #if PLATFORM(IOS_FAMILY)
@@ -256,7 +258,7 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
 
     _colorFilterEnabled = NO;
     _incompleteImageBorderEnabled = NO;
-    _shouldDeferAsynchronousScriptsUntilAfterDocumentLoad = NO;
+    _shouldDeferAsynchronousScriptsUntilAfterDocumentLoad = YES;
     _drawsBackground = YES;
 
     _editableImagesEnabled = NO;
@@ -382,6 +384,7 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
     configuration->_convertsPositionStyleOnCopy = self->_convertsPositionStyleOnCopy;
     configuration->_allowsMetaRefresh = self->_allowsMetaRefresh;
     configuration->_allowUniversalAccessFromFileURLs = self->_allowUniversalAccessFromFileURLs;
+    configuration->_allowTopNavigationToDataURLs = self->_allowTopNavigationToDataURLs;
 
     configuration->_invisibleAutoplayNotPermitted = self->_invisibleAutoplayNotPermitted;
     configuration->_mediaDataLoadsAutomatically = self->_mediaDataLoadsAutomatically;
@@ -621,16 +624,6 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     _groupIdentifier = groupIdentifier;
 }
 
-- (BOOL)_treatsSHA1SignedCertificatesAsInsecure
-{
-    return _pageConfiguration->treatsSHA1SignedCertificatesAsInsecure();
-}
-
-- (void)_setTreatsSHA1SignedCertificatesAsInsecure:(BOOL)insecure
-{
-    _pageConfiguration->setTreatsSHA1SignedCertificatesAsInsecure(insecure);
-}
-
 - (BOOL)_respectsImageOrientation
 {
     return _respectsImageOrientation;
@@ -681,6 +674,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     _allowUniversalAccessFromFileURLs = allowUniversalAccessFromFileURLs;
 }
 
+- (BOOL)_allowTopNavigationToDataURLs
+{
+    return _allowTopNavigationToDataURLs;
+}
+
+- (void)_setAllowTopNavigationToDataURLs:(BOOL)allowTopNavigationToDataURLs
+{
+    _allowTopNavigationToDataURLs = allowTopNavigationToDataURLs;
+}
+
 - (BOOL)_convertsPositionStyleOnCopy
 {
     return _convertsPositionStyleOnCopy;
@@ -702,6 +705,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 #if PLATFORM(IOS_FAMILY)
+- (BOOL)_clientNavigationsRunAtForegroundPriority
+{
+    return _pageConfiguration->clientNavigationsRunAtForegroundPriority();
+}
+
+- (void)_setClientNavigationsRunAtForegroundPriority:(BOOL)clientNavigationsRunAtForegroundPriority
+{
+    _pageConfiguration->setClientNavigationsRunAtForegroundPriority(clientNavigationsRunAtForegroundPriority);
+}
+
 - (BOOL)_alwaysRunsAtForegroundPriority
 {
     return _pageConfiguration->alwaysRunsAtForegroundPriority();
@@ -1148,6 +1161,8 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 static WebKit::WebViewCategory toWebKitWebViewCategory(_WKWebViewCategory category)
 {
     switch (category) {
+    case _WKWebViewCategoryAppBoundDomain:
+        return WebKit::WebViewCategory::AppBoundDomain;
     case _WKWebViewCategoryHybridApp:
         return WebKit::WebViewCategory::HybridApp;
     case _WKWebViewCategoryInAppBrowser:
@@ -1156,12 +1171,14 @@ static WebKit::WebViewCategory toWebKitWebViewCategory(_WKWebViewCategory catego
         return WebKit::WebViewCategory::WebBrowser;
     }
     ASSERT_NOT_REACHED();
-    return WebKit::WebViewCategory::HybridApp;
+    return WebKit::WebViewCategory::AppBoundDomain;
 }
 
 static _WKWebViewCategory toWKWebViewCategory(WebKit::WebViewCategory category)
 {
     switch (category) {
+    case WebKit::WebViewCategory::AppBoundDomain:
+        return _WKWebViewCategoryAppBoundDomain;
     case WebKit::WebViewCategory::HybridApp:
         return _WKWebViewCategoryHybridApp;
     case WebKit::WebViewCategory::InAppBrowser:
@@ -1170,7 +1187,7 @@ static _WKWebViewCategory toWKWebViewCategory(WebKit::WebViewCategory category)
         return _WKWebViewCategoryWebBrowser;
     }
     ASSERT_NOT_REACHED();
-    return _WKWebViewCategoryHybridApp;
+    return _WKWebViewCategoryAppBoundDomain;
 }
 
 - (_WKWebViewCategory)_webViewCategory

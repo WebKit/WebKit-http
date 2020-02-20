@@ -27,6 +27,7 @@
 
 #if ENABLE(WEB_RTC)
 
+#include "MDNSRegisterIdentifier.h"
 #include <WebCore/DocumentIdentifier.h>
 #include <WebCore/LibWebRTCProvider.h>
 #include <wtf/Expected.h>
@@ -44,23 +45,20 @@ class WebMDNSRegister {
 public:
     WebMDNSRegister() = default;
 
-    void unregisterMDNSNames(uint64_t documentIdentifier);
-    void registerMDNSName(uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(WebCore::LibWebRTCProvider::MDNSNameOrError&&)>&&);
+    void unregisterMDNSNames(WebCore::DocumentIdentifier);
+    void registerMDNSName(WebCore::DocumentIdentifier, const String& ipAddress, CompletionHandler<void(WebCore::LibWebRTCProvider::MDNSNameOrError&&)>&&);
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
 private:
-    void finishedRegisteringMDNSName(uint64_t, WebCore::LibWebRTCProvider::MDNSNameOrError&&);
+    void finishedRegisteringMDNSName(MDNSRegisterIdentifier, WebCore::LibWebRTCProvider::MDNSNameOrError&&);
 
     struct PendingRegistration {
         CompletionHandler<void(WebCore::LibWebRTCProvider::MDNSNameOrError&&)> callback;
         WebCore::DocumentIdentifier documentIdentifier;
         String ipAddress;
     };
-    HashMap<uint64_t, PendingRegistration> m_pendingRegistrations;
-
-    HashMap<uint64_t, CompletionHandler<void(WebCore::LibWebRTCProvider::IPAddressOrError&&)>> m_pendingResolutions;
-    uint64_t m_pendingRequestsIdentifier { 0 };
+    HashMap<MDNSRegisterIdentifier, PendingRegistration> m_pendingRegistrations;
 
     HashMap<WebCore::DocumentIdentifier, HashMap<String, String>> m_registeringDocuments;
 };

@@ -33,7 +33,9 @@
 namespace WebKit {
 
 template<> struct WrapperTraits<API::UserContentWorld> {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     using WrapperClass = _WKUserContentWorld;
+    ALLOW_DEPRECATED_DECLARATIONS_END
 };
 
 }

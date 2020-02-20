@@ -86,6 +86,11 @@ ContentWorld::ContentWorld(WebKit::ContentWorldIdentifier identifier)
 {
 }
 
+ContentWorld::ContentWorld(const UserContentWorld& userContentWorld)
+    : ContentWorldBase(userContentWorld.identifier(), userContentWorld.name())
+{
+}
+
 ContentWorld::~ContentWorld()
 {
     if (name().isNull())

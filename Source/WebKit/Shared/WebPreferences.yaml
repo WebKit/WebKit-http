@@ -55,6 +55,13 @@ HTTPSUpgradeEnabled:
    humanReadableDescription: "Automatic HTTPS upgrade for known supported sites"
    category: experimental
 
+InProcessCookieCacheEnabled:
+   type: bool
+   defaultValue: true
+   humanReadableName: "In-Process Cookie Cache"
+   humanReadableDescription: "In-Process DOM Cookie Cache"
+   category: experimental
+
 ThirdPartyIframeRedirectBlockingEnabled:
    type: bool
    defaultValue: true
@@ -216,6 +223,14 @@ AllowSettingAnyXHRHeaderFromFileURLs:
   defaultValue: false
 
 AllowCrossOriginSubresourcesToAskForCredentials:
+  type: bool
+  defaultValue: false
+
+AllowTopNavigationToDataURLs:
+  type: bool
+  defaultValue: false
+
+ShouldRestrictBaseURLSchemes:
   type: bool
   defaultValue: false
 
@@ -487,10 +502,6 @@ HiddenPageDOMTimerThrottlingAutoIncreases:
 HiddenPageCSSAnimationSuspensionEnabled:
   type: bool
   defaultValue: DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED
-
-RenderingUpdateThrottlingEnabled:
-  type: bool
-  defaultValue: true
 
 LowPowerVideoAudioBufferSizeEnabled:
   type: bool
@@ -764,7 +775,7 @@ GamepadsEnabled:
   humanReadableDescription: "Web Gamepad API support"
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(GAMEPAD)
-  
+
 HighlightAPIEnabled:
     type: bool
     defaultValue: false
@@ -795,6 +806,7 @@ WebAuthenticationLocalAuthenticatorEnabled:
   humanReadableName: "Web Authentication Local Authenticator"
   humanReadableDescription: "Enable Web Authentication local authenticator support"
   webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
   condition: ENABLE(WEB_AUTHN)
 
 ModernMediaControlsEnabled:
@@ -1379,6 +1391,15 @@ WebGPUEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEBGPU)
+
+MaskWebGLStringsEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Mask WebGL Strings"
+  humanReadableDescription: "Mask WebGL Vendor, Renderer, Shader Language Strings"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEBGL) || ENABLE(WEBGL2)
 
 AccessibilityObjectModelEnabled:
   type: bool

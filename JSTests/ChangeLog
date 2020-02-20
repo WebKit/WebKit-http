@@ -1,3 +1,109 @@
+2020-02-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Computed function properties compute their keys twice
+        https://bugs.webkit.org/show_bug.cgi?id=207297
+
+        Reviewed by Keith Miller.
+
+        * stress/computed-property-key-side-effects.js: Added.
+        * test262/expectations.yaml: Mark 6 test cases as passing.
+
+2020-02-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JITThunk should be HashSet<Weak<NativeExecutable>> with appropriate GC weakness handling
+        https://bugs.webkit.org/show_bug.cgi?id=207715
+
+        Reviewed by Darin Adler.
+
+        * stress/stress-jitthunks.js: Added.
+        (let.set newGlobal):
+        (set catch):
+
+2020-02-17  Tadeu Zagallo  <tzagallo@apple.com>
+
+        [Wasm] REGRESSION(r256665): Wasm->JS call IC needs to save memory size register
+        https://bugs.webkit.org/show_bug.cgi?id=207849
+
+        Reviewed by Mark Lam.
+
+        * wasm/regress/regress-256665.js: Added.
+        (f):
+
+2020-02-14  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed: fix broken tests added in r256665
+        https://bugs.webkit.org/show_bug.cgi?id=207727
+
+        Our inline WAT doesn't seem to like named blocks/branch targets.
+
+        * wasm/regress/llint-callee-saves-with-fast-memory.js:
+        * wasm/regress/llint-callee-saves-without-fast-memory.js:
+
+2020-02-14  Tadeu Zagallo  <tzagallo@apple.com>
+
+        [WASM] Wasm interpreter's calling convention doesn't match Wasm JIT's convention.
+        https://bugs.webkit.org/show_bug.cgi?id=207727
+
+        Reviewed by Mark Lam.
+
+        * wasm/regress/llint-callee-saves-with-fast-memory.js: Added.
+        * wasm/regress/llint-callee-saves-without-fast-memory.js: Added.
+
+2020-02-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] We don't support BigInt literal as PropertyName
+        https://bugs.webkit.org/show_bug.cgi?id=206888
+
+        Reviewed by Ross Kirsling.
+
+        * stress/big-int-as-property-name.js: Added.
+
+2020-02-10  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validator in GenericArguments<Type>::put().
+        https://bugs.webkit.org/show_bug.cgi?id=207485
+        <rdar://problem/59302535>
+
+        Reviewed by Robin Morisset.
+
+        * stress/placate-exception-check-validator-in-GenericArguments-put.js: Added.
+
+2020-02-10  Justin Michaud  <justin_michaud@apple.com>
+
+        arm64_32: microbenchmarks/delete-property-keeps-cacheable-structure.js is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=207484
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/delete-property-keeps-cacheable-structure.js:
+
+2020-02-10  Mark Lam  <mark.lam@apple.com>
+
+        Missing exception check in GenericArguments<Type>::deletePropertyByIndex().
+        https://bugs.webkit.org/show_bug.cgi?id=207483
+        <rdar://problem/59302616>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/missing-exception-check-in-GenericArguments-deletePropertyByIndex.js: Added.
+
+2020-02-06  Sukolsak Sakshuwong  <sukolsak@gmail.com> and Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JavaScript string corruption using RegExp with unicode character
+        https://bugs.webkit.org/show_bug.cgi?id=187947
+
+        Reviewed by Yusuke Suzuki.
+
+        This change adds regression test for string corruption that occured after
+        non-BMP character was removed by String.prototype.replace.
+        The issue was fixed in https://trac.webkit.org/changeset/253648/webkit.
+
+        Also, this patch brings back:
+        1. An out-of-order character class range test.
+        2. Dangling and combined surrogates tests (as webkit.org/b/154863 is now resolved).
+
+        * stress/regress-187947.js: Added.
+
 2020-02-05  Justin Michaud  <justin_michaud@apple.com>
 
         Deleting a property should not turn structures into uncacheable dictionaries

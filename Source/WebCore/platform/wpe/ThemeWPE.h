@@ -30,6 +30,11 @@
 namespace WebCore {
 
 class ThemeWPE final : public Theme {
+public:
+    static void paintFocus(GraphicsContext&, const FloatRect&, int offset);
+    enum class ArrowDirection { Up, Down };
+    static void paintArrow(GraphicsContext&, ArrowDirection);
+
 private:
     LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const final;
 
@@ -37,7 +42,8 @@ private:
 
     void paintCheckbox(ControlStates&, GraphicsContext&, const FloatRect&, float);
     void paintRadio(ControlStates&, GraphicsContext&, const FloatRect&, float);
-    void paintButton(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float);
+    void paintButton(ControlStates&, GraphicsContext&, const FloatRect&, float);
+    void paintSpinButton(ControlStates&, GraphicsContext&, const FloatRect&, float);
 };
 
 } // namespace WebCore

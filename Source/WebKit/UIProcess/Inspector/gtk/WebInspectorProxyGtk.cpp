@@ -147,6 +147,7 @@ WebPageProxy* WebInspectorProxy::platformCreateFrontendPage()
     preferences->setDeveloperExtrasEnabled(true);
     preferences->setLogsPageMessagesToSystemConsoleEnabled(true);
 #endif
+    preferences->setAllowTopNavigationToDataURLs(true);
     preferences->setJavaScriptRuntimeFlags({
     });
     auto pageGroup = WebPageGroup::create(inspectorPageGroupIdentifierForPage(inspectedPage()));
@@ -260,12 +261,8 @@ void WebInspectorProxy::platformCreateFrontendWindow()
     if (m_client && m_client->openWindow(*this))
         return;
 
-    GtkWidget* inspectedViewParent = gtk_widget_get_toplevel(inspectedPage()->viewWidget());
-    if (!WebCore::widgetIsOnscreenToplevelWindow(inspectedViewParent))
-        inspectedViewParent = nullptr;
-
     ASSERT(!m_inspectorWindow);
-    m_inspectorWindow = webkitInspectorWindowNew(inspectedViewParent ? GTK_WINDOW(inspectedViewParent) : nullptr);
+    m_inspectorWindow = webkitInspectorWindowNew();
     gtk_container_add(GTK_CONTAINER(m_inspectorWindow), m_inspectorView);
     gtk_widget_show(m_inspectorView);
 
@@ -460,6 +457,11 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned width)
 }
 
 void WebInspectorProxy::platformSetSheetRect(const WebCore::FloatRect&)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformStartWindowDrag()
 {
     notImplemented();
 }

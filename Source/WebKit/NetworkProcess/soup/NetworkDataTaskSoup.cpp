@@ -367,16 +367,17 @@ void NetworkDataTaskSoup::dispatchDidReceiveResponse()
 {
     ASSERT(!m_response.isNull());
 
+    Box<NetworkLoadMetrics> timing = Box<NetworkLoadMetrics>::create();
+    timing->responseStart = m_networkLoadMetrics.responseStart;
+    timing->domainLookupStart = m_networkLoadMetrics.domainLookupStart;
+    timing->domainLookupEnd = m_networkLoadMetrics.domainLookupEnd;
+    timing->connectStart = m_networkLoadMetrics.connectStart;
+    timing->secureConnectionStart = m_networkLoadMetrics.secureConnectionStart;
+    timing->connectEnd = m_networkLoadMetrics.connectEnd;
+    timing->requestStart = m_networkLoadMetrics.requestStart;
+    timing->responseStart = m_networkLoadMetrics.responseStart;
     // FIXME: Remove this once nobody depends on deprecatedNetworkLoadMetrics.
-    NetworkLoadMetrics& deprecatedResponseMetrics = m_response.deprecatedNetworkLoadMetrics();
-    deprecatedResponseMetrics.responseStart = m_networkLoadMetrics.responseStart;
-    deprecatedResponseMetrics.domainLookupStart = m_networkLoadMetrics.domainLookupStart;
-    deprecatedResponseMetrics.domainLookupEnd = m_networkLoadMetrics.domainLookupEnd;
-    deprecatedResponseMetrics.connectStart = m_networkLoadMetrics.connectStart;
-    deprecatedResponseMetrics.secureConnectionStart = m_networkLoadMetrics.secureConnectionStart;
-    deprecatedResponseMetrics.connectEnd = m_networkLoadMetrics.connectEnd;
-    deprecatedResponseMetrics.requestStart = m_networkLoadMetrics.requestStart;
-    deprecatedResponseMetrics.responseStart = m_networkLoadMetrics.responseStart;
+    m_response.setDeprecatedNetworkLoadMetrics(WTFMove(timing));
 
     didReceiveResponse(ResourceResponse(m_response), NegotiatedLegacyTLS::No, [this, protectedThis = makeRef(*this)](PolicyAction policyAction) {
         if (m_state == State::Canceling || m_state == State::Completed) {
@@ -674,6 +675,20 @@ void NetworkDataTaskSoup::continueHTTPRedirection()
     m_password = url.pass();
     m_lastHTTPMethod = request.httpMethod();
     request.removeCredentials();
+
+    if (isTopLevelNavigation()) {
+        request.setFirstPartyForCookies(request.url());
+#if SOUP_CHECK_VERSION(2, 69, 90)
+        soup_message_set_is_top_level_navigation(m_soupMessage.get(), true);
+#endif
+    }
+
+#if SOUP_CHECK_VERSION(2, 69, 90)
+    if (request.isSameSite()) {
+        GUniquePtr<SoupURI> requestURI = urlToSoupURI(request.url());
+        soup_message_set_site_for_cookies(m_soupMessage.get(), requestURI.get());
+    }
+#endif
 
     if (isCrossOrigin) {
         // The network layer might carry over some headers from the original request that

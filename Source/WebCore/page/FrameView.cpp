@@ -2279,7 +2279,7 @@ void FrameView::scrollElementToRect(const Element& element, const IntRect& rect)
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
 }
 
-void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollClamping clamping)
+void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollClamping clamping, bool animated)
 {
     LOG_WITH_STREAM(Scrolling, stream << "FrameView::setScrollPosition " << scrollPosition << " , clearing anchor");
 
@@ -2292,7 +2292,10 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition, ScrollCl
     Page* page = frame().page();
     if (page && page->isMonitoringWheelEvents())
         scrollAnimator().setWheelEventTestMonitor(page->wheelEventTestMonitor());
-    ScrollView::setScrollPosition(scrollPosition, clamping);
+    if (animated)
+        scrollToOffsetWithAnimation(scrollOffsetFromPosition(scrollPosition), currentScrollType(), clamping);
+    else
+        ScrollView::setScrollPosition(scrollPosition, clamping);
 
     setCurrentScrollType(oldScrollType);
 }
@@ -2524,9 +2527,9 @@ void FrameView::updateScriptedAnimationsAndTimersThrottlingState(const IntRect& 
 
     if (auto* scriptedAnimationController = document->scriptedAnimationController()) {
         if (shouldThrottle)
-            scriptedAnimationController->addThrottlingReason(ThrottlingReason::OutsideViewport);
+            scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
         else
-            scriptedAnimationController->removeThrottlingReason(ThrottlingReason::OutsideViewport);
+            scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
     }
 
     document->setTimerThrottlingEnabled(shouldThrottle);
@@ -2814,19 +2817,19 @@ void FrameView::unobscuredContentSizeChanged()
 #endif
 }
 
-static LayerFlushThrottleState::Flags determineLayerFlushThrottleState(Page& page)
+static OptionSet<RenderingUpdateThrottleState> determineLayerFlushThrottleState(Page& page)
 {
     // We only throttle when constantly receiving new data during the inital page load.
     if (!page.progress().isMainLoadProgressing())
-        return 0;
+        return { };
     // Scrolling during page loading disables throttling.
     if (page.mainFrame().view()->wasScrolledByUser())
-        return 0;
+        return { };
     // Disable for image documents so large GIF animations don't get throttled during loading.
     auto* document = page.mainFrame().document();
     if (!document || is<ImageDocument>(*document))
-        return 0;
-    return LayerFlushThrottleState::Enabled;
+        return { };
+    return { RenderingUpdateThrottleState::Enabled };
 }
 
 void FrameView::disableLayerFlushThrottlingTemporarilyForInteraction()
@@ -2835,8 +2838,9 @@ void FrameView::disableLayerFlushThrottlingTemporarilyForInteraction()
         return;
     auto& page = *frame().page();
 
-    LayerFlushThrottleState::Flags flags = LayerFlushThrottleState::UserIsInteracting | determineLayerFlushThrottleState(page);
-    if (page.chrome().client().adjustLayerFlushThrottling(flags))
+    auto flags = determineLayerFlushThrottleState(page);
+    flags.add(RenderingUpdateThrottleState::UserIsInteracting);
+    if (page.chrome().client().adjustRenderingUpdateThrottling(flags))
         return;
 
     if (RenderView* view = renderView())
@@ -2859,15 +2863,15 @@ void FrameView::updateLayerFlushThrottling()
 
     ASSERT(frame().isMainFrame());
 
-    LayerFlushThrottleState::Flags flags = determineLayerFlushThrottleState(*page);
+    auto flags = determineLayerFlushThrottleState(*page);
 
     // See if the client is handling throttling.
-    if (page->chrome().client().adjustLayerFlushThrottling(flags))
+    if (page->chrome().client().adjustRenderingUpdateThrottling(flags))
         return;
 
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (RenderView* renderView = frame->contentRenderer())
-            renderView->compositor().setLayerFlushThrottlingEnabled(flags & LayerFlushThrottleState::Enabled);
+            renderView->compositor().setLayerFlushThrottlingEnabled(flags.contains(RenderingUpdateThrottleState::Enabled));
     }
 }
 
@@ -3653,6 +3657,19 @@ void FrameView::scrollTo(const ScrollPosition& newPosition)
     didChangeScrollOffset();
 }
 
+void FrameView::scrollToOffsetWithAnimation(const ScrollOffset& offset, ScrollType scrollType, ScrollClamping)
+{
+    auto previousScrollType = currentScrollType();
+    setCurrentScrollType(scrollType);
+
+    if (currentScrollBehaviorStatus() == ScrollBehaviorStatus::InNonNativeAnimation)
+        scrollAnimator().cancelAnimations();
+    if (offset != this->scrollOffset())
+        ScrollableArea::scrollToOffsetWithAnimation(offset);
+
+    setCurrentScrollType(previousScrollType);
+}
+
 float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientation orientation, ScrollGranularity granularity)
 {
     if (granularity != ScrollByPage || orientation == HorizontalScrollbar)
@@ -4243,7 +4260,7 @@ void FrameView::paintContentsForSnapshot(GraphicsContext& context, const IntRect
     if (shouldPaintSelection == ExcludeSelection) {
         for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
             if (auto* renderView = frame->contentRenderer())
-                renderView->selection().clear();
+                renderView->selection().clearSelection();
         }
     }
 

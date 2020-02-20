@@ -37,14 +37,14 @@ class MockGamepadProvider : public GamepadProvider {
     WTF_MAKE_NONCOPYABLE(MockGamepadProvider);
     friend class NeverDestroyed<MockGamepadProvider>;
 public:
-    WEBCORE_EXPORT static MockGamepadProvider& singleton();
+    WEBCORE_TESTSUPPORT_EXPORT static MockGamepadProvider& singleton();
 
-    WEBCORE_EXPORT void startMonitoringGamepads(GamepadProviderClient&) final;
-    WEBCORE_EXPORT void stopMonitoringGamepads(GamepadProviderClient&) final;
+    WEBCORE_TESTSUPPORT_EXPORT void startMonitoringGamepads(GamepadProviderClient&) final;
+    WEBCORE_TESTSUPPORT_EXPORT void stopMonitoringGamepads(GamepadProviderClient&) final;
     const Vector<PlatformGamepad*>& platformGamepads() final { return m_connectedGamepadVector; }
     bool isMockGamepadProvider() const final { return true; }
 
-    void setMockGamepadDetails(unsigned index, const String& gamepadID, unsigned axisCount, unsigned buttonCount);
+    void setMockGamepadDetails(unsigned index, const String& gamepadID, const String& mapping, unsigned axisCount, unsigned buttonCount);
     bool setMockGamepadAxisValue(unsigned index, unsigned axisIndex, double value);
     bool setMockGamepadButtonValue(unsigned index, unsigned buttonIndex, double value);
     bool connectMockGamepad(unsigned index);

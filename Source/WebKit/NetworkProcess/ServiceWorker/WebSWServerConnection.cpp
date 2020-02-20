@@ -81,6 +81,8 @@ WebSWServerConnection::~WebSWServerConnection()
 
 void WebSWServerConnection::rejectJobInClient(ServiceWorkerJobIdentifier jobIdentifier, const ExceptionData& exceptionData)
 {
+    if (auto completionHandler = m_unregisterJobs.take(jobIdentifier))
+        return completionHandler(makeUnexpected(exceptionData));
     send(Messages::WebSWClientConnection::JobRejectedInServer(jobIdentifier, exceptionData));
 }
 
@@ -91,7 +93,9 @@ void WebSWServerConnection::resolveRegistrationJobInClient(ServiceWorkerJobIdent
 
 void WebSWServerConnection::resolveUnregistrationJobInClient(ServiceWorkerJobIdentifier jobIdentifier, const ServiceWorkerRegistrationKey& registrationKey, bool unregistrationResult)
 {
-    send(Messages::WebSWClientConnection::UnregistrationJobResolvedInServer(jobIdentifier, unregistrationResult));
+    ASSERT(m_unregisterJobs.contains(jobIdentifier));
+    if (auto completionHandler = m_unregisterJobs.take(jobIdentifier))
+        completionHandler(unregistrationResult);
 }
 
 void WebSWServerConnection::startScriptFetchInClient(ServiceWorkerJobIdentifier jobIdentifier, const ServiceWorkerRegistrationKey& registrationKey, FetchOptions::Cache cachePolicy)
@@ -272,10 +276,56 @@ void WebSWServerConnection::postMessageToServiceWorker(ServiceWorkerIdentifier d
 
 void WebSWServerConnection::scheduleJobInServer(ServiceWorkerJobData&& jobData)
 {
+    ASSERT(!jobData.scopeURL.isNull());
+    if (jobData.scopeURL.isNull()) {
+        rejectJobInClient(jobData.identifier().jobIdentifier, ExceptionData { InvalidStateError, "Scope URL is empty"_s });
+        return;
+    }
+
     SWSERVERCONNECTION_RELEASE_LOG_IF_ALLOWED("Scheduling ServiceWorker job %s in server", jobData.identifier().loggingString().utf8().data());
     ASSERT(identifier() == jobData.connectionIdentifier());
 
     server().scheduleJob(WTFMove(jobData));
+}
+
+URL WebSWServerConnection::clientURLFromIdentifier(DocumentOrWorkerIdentifier contextIdentifier)
+{
+    return WTF::switchOn(contextIdentifier, [&](DocumentIdentifier documentIdentifier) -> URL {
+        ServiceWorkerClientIdentifier clientIdentifier { identifier(), documentIdentifier };
+
+        auto iterator = m_clientOrigins.find(clientIdentifier);
+        if (iterator == m_clientOrigins.end())
+            return { };
+
+        auto clientData = server().serviceWorkerClientWithOriginByID(iterator->value, clientIdentifier);
+        if (!clientData)
+            return { };
+
+        return clientData->url;
+    }, [&](ServiceWorkerIdentifier serviceWorkerIdentifier) -> URL {
+        auto* worker = server().workerByID(serviceWorkerIdentifier);
+        if (!worker)
+            return { };
+        return worker->data().scriptURL;
+    });
+}
+
+void WebSWServerConnection::scheduleUnregisterJobInServer(ServiceWorkerJobIdentifier jobIdentifier, ServiceWorkerRegistrationIdentifier registrationIdentifier, DocumentOrWorkerIdentifier contextIdentifier, CompletionHandler<void(UnregisterJobResult&&)>&& completionHandler)
+{
+    SWSERVERCONNECTION_RELEASE_LOG_IF_ALLOWED("Scheduling unregister ServiceWorker job in server");
+
+    auto* registration = server().getRegistration(registrationIdentifier);
+    if (!registration)
+        return completionHandler(false);
+
+    auto clientURL = clientURLFromIdentifier(contextIdentifier);
+    if (!clientURL.isValid())
+        return completionHandler(makeUnexpected(ExceptionData { InvalidStateError, "Client is unknown"_s }));
+
+    ASSERT(!m_unregisterJobs.contains(jobIdentifier));
+    m_unregisterJobs.add(jobIdentifier, WTFMove(completionHandler));
+
+    server().scheduleUnregisterJob(ServiceWorkerJobDataIdentifier { identifier(), jobIdentifier }, *registration, contextIdentifier, WTFMove(clientURL));
 }
 
 void WebSWServerConnection::postMessageToServiceWorkerClient(DocumentIdentifier destinationContextIdentifier, const MessageWithMessagePorts& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
@@ -313,6 +363,7 @@ void WebSWServerConnection::registerServiceWorkerClient(SecurityOriginData&& top
     bool isNewOrigin = WTF::allOf(m_clientOrigins.values(), [&contextOrigin](auto& origin) {
         return contextOrigin != origin.clientOrigin;
     });
+    auto* contextConnection = isNewOrigin ? server().contextConnectionForRegistrableDomain(RegistrableDomain { contextOrigin }) : nullptr;
 
     auto clientOrigin = ClientOrigin { WTFMove(topOrigin), WTFMove(contextOrigin) };
     m_clientOrigins.add(data.identifier, clientOrigin);
@@ -321,11 +372,9 @@ void WebSWServerConnection::registerServiceWorkerClient(SecurityOriginData&& top
     if (!m_isThrottleable)
         updateThrottleState();
 
-    if (isNewOrigin) {
-        if (auto* contextConnection = server().contextConnectionForRegistrableDomain(RegistrableDomain { contextOrigin })) {
-            auto& connection = static_cast<WebSWServerToContextConnection&>(*contextConnection);
-            m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::RegisterServiceWorkerClientProcess { identifier(), connection.webProcessIdentifier() }, 0);
-        }
+    if (contextConnection) {
+        auto& connection = static_cast<WebSWServerToContextConnection&>(*contextConnection);
+        m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::RegisterServiceWorkerClientProcess { identifier(), connection.webProcessIdentifier() }, 0);
     }
 }
 

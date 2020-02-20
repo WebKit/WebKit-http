@@ -40,40 +40,30 @@ namespace Display {
 
 struct Run {
     WTF_MAKE_STRUCT_FAST_ALLOCATED;
-    struct TextContext {
+    struct TextContent {
         WTF_MAKE_STRUCT_FAST_ALLOCATED;
     public:
-        struct ExpansionContext;
-        TextContext(unsigned position, unsigned length, const String&);
+        TextContent(unsigned position, unsigned length, const String&, bool needsHyphen);
 
         unsigned start() const { return m_start; }
         unsigned end() const { return start() + length(); }
         unsigned length() const { return m_length; }
         StringView content() const { return StringView(m_contentString).substring(m_start, m_length); }
 
-        struct ExpansionContext {
-            ExpansionBehavior behavior { DefaultExpansion };
-            InlineLayoutUnit horizontalExpansion { 0 };
-        };
-        void setExpansion(ExpansionContext expansionContext) { m_expansionContext = expansionContext; }
-        Optional<ExpansionContext> expansion() const { return m_expansionContext; }
-
         bool needsHyphen() const { return m_needsHyphen; }
+        void setNeedsHyphen() { m_needsHyphen = true; }
 
         void expand(unsigned delta) { m_length += delta; }
-        void setNeedsHyphen() { m_needsHyphen = true; }
 
     private:
         unsigned m_start { 0 };
         unsigned m_length { 0 };
         bool m_needsHyphen { false };
         String m_contentString;
-        Optional<ExpansionContext> m_expansionContext;
     };
 
-    Run(size_t lineIndex, const Layout::Box&, const InlineRect&, const InlineRect& inkOverflow, Optional<TextContext> = WTF::nullopt);
-
-    size_t lineIndex() const { return m_lineIndex; }
+    struct Expansion;
+    Run(size_t lineIndex, const Layout::Box&, const InlineRect&, const InlineRect& inkOverflow, Expansion, Optional<TextContent> = WTF::nullopt);
 
     const InlineRect& rect() const { return m_rect; }
     const InlineRect& inkOverflow() const { return m_inkOverflow; }
@@ -87,25 +77,23 @@ struct Run {
     InlineLayoutUnit width() const { return m_rect.width(); }
     InlineLayoutUnit height() const { return m_rect.height(); }
 
-    void setWidth(InlineLayoutUnit width) { m_rect.setWidth(width); }
-    void setTop(InlineLayoutUnit top) { m_rect.setTop(top); }
-    void setlLeft(InlineLayoutUnit left) { m_rect.setLeft(left); }
-    void moveVertically(InlineLayoutUnit delta) { m_rect.moveVertically(delta); }
-    void moveHorizontally(InlineLayoutUnit delta) { m_rect.moveHorizontally(delta); }
-    void expandVertically(InlineLayoutUnit delta) { m_rect.expandVertically(delta); }
-    void expandHorizontally(InlineLayoutUnit delta) { m_rect.expandHorizontally(delta); }
+    Optional<TextContent>& textContent() { return m_textContent; }
+    const Optional<TextContent>& textContent() const { return m_textContent; }
+    // FIXME: This information should be preserved at Run construction time.
+    bool isLineBreak() const { return layoutBox().isLineBreakBox() || (textContent() && textContent()->content() == "\n" && style().preserveNewline()); }
 
-    void setTextContext(const TextContext&& textContext) { m_textContext.emplace(textContext); }
-    const Optional<TextContext>& textContext() const { return m_textContext; }
-    Optional<TextContext>& textContext() { return m_textContext; }
+    struct Expansion {
+        ExpansionBehavior behavior { DefaultExpansion };
+        InlineLayoutUnit horizontalExpansion { 0 };
+    };
+    Expansion expansion() const { return m_expansion; }
 
-    void setImage(CachedImage& image) { m_cachedImage = &image; }
     CachedImage* image() const { return m_cachedImage; }
-
-    bool isLineBreak() const { return layoutBox().isLineBreakBox() || (textContext() && textContext()->content() == "\n" && style().preserveNewline()); }
 
     const Layout::Box& layoutBox() const { return *m_layoutBox; }
     const RenderStyle& style() const { return m_layoutBox->style(); }
+
+    size_t lineIndex() const { return m_lineIndex; }
 
 private:
     // FIXME: Find out the Display::Run <-> paint style setup.
@@ -114,21 +102,24 @@ private:
     CachedImage* m_cachedImage { nullptr };
     InlineRect m_rect;
     InlineRect m_inkOverflow;
-    Optional<TextContext> m_textContext;
+    Expansion m_expansion;
+    Optional<TextContent> m_textContent;
 };
 
-inline Run::Run(size_t lineIndex, const Layout::Box& layoutBox, const InlineRect& rect, const InlineRect& inkOverflow, Optional<TextContext> textContext)
+inline Run::Run(size_t lineIndex, const Layout::Box& layoutBox, const InlineRect& rect, const InlineRect& inkOverflow, Expansion expansion, Optional<TextContent> textContent)
     : m_lineIndex(lineIndex)
     , m_layoutBox(makeWeakPtr(layoutBox))
     , m_rect(rect)
     , m_inkOverflow(inkOverflow)
-    , m_textContext(textContext)
+    , m_expansion(expansion)
+    , m_textContent(textContent)
 {
 }
 
-inline Run::TextContext::TextContext(unsigned start, unsigned length, const String& contentString)
+inline Run::TextContent::TextContent(unsigned start, unsigned length, const String& contentString, bool needsHyphen)
     : m_start(start)
     , m_length(length)
+    , m_needsHyphen(needsHyphen)
     , m_contentString(contentString)
 {
 }

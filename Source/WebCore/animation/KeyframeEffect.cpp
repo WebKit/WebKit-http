@@ -771,6 +771,20 @@ void KeyframeEffect::updateBlendingKeyframes(RenderStyle& elementStyle)
     setBlendingKeyframes(keyframeList);
 }
 
+bool KeyframeEffect::animatesProperty(CSSPropertyID property) const
+{
+    if (!m_blendingKeyframes.isEmpty())
+        return m_blendingKeyframes.properties().contains(property);
+
+    for (auto& keyframe : m_parsedKeyframes) {
+        for (auto keyframeProperty : keyframe.unparsedStyle.keys()) {
+            if (keyframeProperty == property)
+                return true;
+        }
+    }
+    return false;
+}
+
 bool KeyframeEffect::forceLayoutIfNeeded()
 {
     if (!m_needsForcedLayout || !m_target)
@@ -792,6 +806,7 @@ bool KeyframeEffect::forceLayoutIfNeeded()
 void KeyframeEffect::clearBlendingKeyframes()
 {
     m_blendingKeyframesSource = BlendingKeyframesSource::WebAnimation;
+    m_unanimatedStyle = nullptr;
     m_blendingKeyframes.clear();
 }
 
@@ -910,12 +925,12 @@ void KeyframeEffect::computeDeclarativeAnimationBlendingKeyframes(const RenderSt
 {
     ASSERT(is<DeclarativeAnimation>(animation()));
     if (is<CSSAnimation>(animation()))
-        computeCSSAnimationBlendingKeyframes();
+        computeCSSAnimationBlendingKeyframes(newStyle);
     else if (is<CSSTransition>(animation()))
         computeCSSTransitionBlendingKeyframes(oldStyle, newStyle);
 }
 
-void KeyframeEffect::computeCSSAnimationBlendingKeyframes()
+void KeyframeEffect::computeCSSAnimationBlendingKeyframes(const RenderStyle& unanimatedStyle)
 {
     ASSERT(is<CSSAnimation>(animation()));
 
@@ -924,7 +939,7 @@ void KeyframeEffect::computeCSSAnimationBlendingKeyframes()
 
     KeyframeList keyframeList(backingAnimation.name());
     if (auto* styleScope = Style::Scope::forOrdinal(*m_target, backingAnimation.nameStyleScopeOrdinal()))
-        styleScope->resolver().keyframeStylesForAnimation(*m_target, &cssAnimation->unanimatedStyle(), keyframeList);
+        styleScope->resolver().keyframeStylesForAnimation(*m_target, &unanimatedStyle, keyframeList);
 
     // Ensure resource loads for all the frames.
     for (auto& keyframe : keyframeList.keyframes()) {
@@ -1086,12 +1101,13 @@ void KeyframeEffect::apply(RenderStyle& targetStyle)
     auto computedTiming = getComputedTiming();
     m_phaseAtLastApplication = computedTiming.phase;
 
-    updateAcceleratedActions(computedTiming);
-
     InspectorInstrumentation::willApplyKeyframeEffect(*m_target, *this, computedTiming);
 
     if (!computedTiming.progress)
         return;
+
+    if (!m_unanimatedStyle)
+        m_unanimatedStyle = RenderStyle::clonePtr(targetStyle);
 
     setAnimatedPropertiesInStyle(targetStyle, computedTiming.progress.value());
 }
@@ -1334,10 +1350,12 @@ TimingFunction* KeyframeEffect::timingFunctionForKeyframeAtIndex(size_t index)
     return nullptr;
 }
 
-void KeyframeEffect::updateAcceleratedActions(ComputedEffectTiming computedTiming)
+void KeyframeEffect::updateAcceleratedActions()
 {
     if (m_acceleratedPropertiesState == AcceleratedProperties::None)
         return;
+
+    auto computedTiming = getComputedTiming();
 
     // If we're not already running accelerated, the only thing we're interested in is whether we need to start the animation
     // which we need to do once we're in the active phase. Otherwise, there's no change in accelerated state to consider.
@@ -1379,6 +1397,18 @@ void KeyframeEffect::addPendingAcceleratedAction(AcceleratedAction action)
     if (action != AcceleratedAction::Seek)
         m_lastRecordedAcceleratedAction = action;
     animation()->acceleratedStateDidChange();
+}
+
+void KeyframeEffect::animationDidTick()
+{
+    invalidate();
+    updateAcceleratedActions();
+}
+
+void KeyframeEffect::animationDidPlay()
+{
+    if (m_acceleratedPropertiesState != AcceleratedProperties::None)
+        addPendingAcceleratedAction(AcceleratedAction::Play);
 }
 
 void KeyframeEffect::animationDidSeek()
@@ -1529,7 +1559,7 @@ bool KeyframeEffect::computeExtentOfTransformAnimation(LayoutRect& bounds) const
     auto& box = downcast<RenderBox>(*renderer());
     auto rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
 
-    auto cumulativeBounds = bounds;
+    LayoutRect cumulativeBounds;
 
     for (const auto& keyframe : m_blendingKeyframes.keyframes()) {
         const auto* keyframeStyle = keyframe.style();

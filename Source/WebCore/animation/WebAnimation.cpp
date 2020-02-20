@@ -683,15 +683,20 @@ void WebAnimation::willChangeRenderer()
 
 void WebAnimation::enqueueAnimationPlaybackEvent(const AtomString& type, Optional<Seconds> currentTime, Optional<Seconds> timelineTime)
 {
-    auto event = AnimationPlaybackEvent::create(type, currentTime, timelineTime);
+    auto event = AnimationPlaybackEvent::create(type, currentTime, timelineTime, this);
     event->setTarget(this);
+    enqueueAnimationEvent(WTFMove(event));
+}
 
+void WebAnimation::enqueueAnimationEvent(Ref<AnimationEventBase>&& event)
+{
     if (is<DocumentTimeline>(m_timeline)) {
         // If animation has a document for timing, then append event to its document for timing's pending animation event queue along
         // with its target, animation. If animation is associated with an active timeline that defines a procedure to convert timeline times
         // to origin-relative time, let the scheduled event time be the result of applying that procedure to timeline time. Otherwise, the
         // scheduled event time is an unresolved time value.
-        downcast<DocumentTimeline>(*m_timeline).enqueueAnimationPlaybackEvent(WTFMove(event));
+        m_hasScheduledEventsDuringTick = true;
+        downcast<DocumentTimeline>(*m_timeline).enqueueAnimationEvent(WTFMove(event));
     } else {
         // Otherwise, queue a task to dispatch event at animation. The task source for this task is the DOM manipulation task source.
         queueTaskToDispatchEvent(*this, TaskSource::DOMManipulation, WTFMove(event));
@@ -986,6 +991,9 @@ ExceptionOr<void> WebAnimation::play(AutoRewind autoRewind)
 
     invalidateEffect();
 
+    if (m_effect)
+        m_effect->animationDidPlay();
+
     return { };
 }
 
@@ -1195,11 +1203,12 @@ bool WebAnimation::isCompletelyAccelerated() const
 
 bool WebAnimation::needsTick() const
 {
-    return pending() || playState() == PlayState::Running;
+    return pending() || playState() == PlayState::Running || m_hasScheduledEventsDuringTick;
 }
 
 void WebAnimation::tick()
 {
+    m_hasScheduledEventsDuringTick = false;
     updateFinishedState(DidSeek::No, SynchronouslyNotify::Yes);
     m_shouldSkipUpdatingFinishedStateWhenResolving = true;
 
@@ -1209,7 +1218,8 @@ void WebAnimation::tick()
     if (hasPendingPlayTask())
         runPendingPlayTask();
 
-    invalidateEffect();
+    if (!isEffectInvalidationSuspended() && m_effect)
+        m_effect->animationDidTick();
 }
 
 void WebAnimation::resolve(RenderStyle& targetStyle)
@@ -1435,6 +1445,8 @@ ExceptionOr<void> WebAnimation::commitStyles()
 
 Seconds WebAnimation::timeToNextTick() const
 {
+    ASSERT(effect());
+
     if (pending())
         return 0_s;
 

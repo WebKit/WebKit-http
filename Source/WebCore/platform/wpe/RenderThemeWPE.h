@@ -48,10 +48,19 @@ private:
 
     void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
 
+    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
     bool popsMenuBySpaceOrReturn() const override { return true; }
     LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
     bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
+
+    Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const override;
+    Seconds animationDurationForProgressBar(RenderProgress&) const override;
+    IntRect progressBarRectForBounds(const RenderObject&, const IntRect&) const override;
+    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
 };
 
 } // namespace WebCore

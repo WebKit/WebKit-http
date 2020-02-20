@@ -26,10 +26,9 @@
 #include "config.h"
 #include "MediaRecorderPrivateAVFImpl.h"
 
-#if ENABLE(MEDIA_STREAM) && HAVE(AVASSETWRITERDELEGATE)
+#if ENABLE(MEDIA_STREAM)
 
 #include "AudioStreamDescription.h"
-#include "MediaRecorderPrivateWriterCocoa.h"
 #include "MediaSample.h"
 #include "MediaStreamPrivate.h"
 #include "SharedBuffer.h"
@@ -43,42 +42,18 @@ std::unique_ptr<MediaRecorderPrivateAVFImpl> MediaRecorderPrivateAVFImpl::create
     // Currently we only choose the first track as the recorded track.
     // FIXME: We would better to throw an exception to JavaScript if writer creation fails.
 
-    String audioTrackId;
-    String videoTrackId;
-    const MediaStreamTrackPrivate* audioTrack { nullptr };
-    const MediaStreamTrackPrivate* videoTrack { nullptr };
-    for (auto& track : stream.tracks()) {
-        if (!track->enabled() || track->ended())
-            continue;
-        switch (track->type()) {
-        case RealtimeMediaSource::Type::Video: {
-            auto& settings = track->settings();
-            if (!videoTrack && settings.supportsWidth() && settings.supportsHeight()) {
-                videoTrack = track.get();
-                videoTrackId = videoTrack->id();
-            }
-            break;
-        }
-        case RealtimeMediaSource::Type::Audio:
-            if (!audioTrack) {
-                audioTrack = track.get();
-                audioTrackId = audioTrack->id();
-            }
-            break;
-        case RealtimeMediaSource::Type::None:
-            break;
-        }
-    }
+    auto selectedTracks = MediaRecorderPrivate::selectTracks(stream);
 
-    int width = 0, height = 0;
-    if (videoTrack) {
-        auto& settings = videoTrack->settings();
-        width = settings.width();
-        height = settings.height();
-    }
-    auto writer = MediaRecorderPrivateWriter::create(!!audioTrack, width, height);
+    auto writer = MediaRecorderPrivateWriter::create(selectedTracks.audioTrack, selectedTracks.videoTrack);
     if (!writer)
         return nullptr;
+
+    String audioTrackId;
+    if (selectedTracks.audioTrack)
+        audioTrackId = selectedTracks.audioTrack->id();
+    String videoTrackId;
+    if (selectedTracks.videoTrack)
+        videoTrackId = selectedTracks.videoTrack->id();
 
     return makeUnique<MediaRecorderPrivateAVFImpl>(writer.releaseNonNull(), WTFMove(audioTrackId), WTFMove(videoTrackId));
 }
@@ -127,4 +102,4 @@ const String& MediaRecorderPrivateAVFImpl::mimeType()
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM) && HAVE(AVASSETWRITERDELEGATE)
+#endif // ENABLE(MEDIA_STREAM)

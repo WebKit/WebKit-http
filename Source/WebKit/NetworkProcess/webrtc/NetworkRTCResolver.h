@@ -36,16 +36,16 @@ namespace WebKit {
 
 class NetworkRTCResolver {
 public:
-    static std::unique_ptr<NetworkRTCResolver> create(uint64_t identifier, WebCore::DNSCompletionHandler&&);
+    static std::unique_ptr<NetworkRTCResolver> create(LibWebRTCResolverIdentifier, WebCore::DNSCompletionHandler&&);
 
-    NetworkRTCResolver(uint64_t identifier, WebCore::DNSCompletionHandler&&);
+    NetworkRTCResolver(LibWebRTCResolverIdentifier, WebCore::DNSCompletionHandler&&);
     virtual ~NetworkRTCResolver();
 
     virtual void start(const String& address);
     virtual void stop();
 
 protected:
-    uint64_t m_identifier;
+    LibWebRTCResolverIdentifier m_identifier;
     WebCore::DNSCompletionHandler m_completionHandler;
 };
 
