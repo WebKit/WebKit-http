@@ -35,7 +35,7 @@ endif ()
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility-inlines-hidden")
 
 find_package(LibGcrypt 1.6.0 REQUIRED)
-FIND_PACKAGE(Sqlite REQUIRED)
+FIND_PACKAGE(SQLite3 REQUIRED)
 FIND_PACKAGE(LibXml2 2.8.0 REQUIRED)
 FIND_PACKAGE(LibXslt 1.1.7 REQUIRED)
 find_package(ICU REQUIRED COMPONENTS data i18n uc)

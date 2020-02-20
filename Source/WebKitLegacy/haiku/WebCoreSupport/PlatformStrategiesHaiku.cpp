@@ -83,7 +83,7 @@ WebCore::BlobRegistry* PlatformStrategiesHaiku::createBlobRegistry()
 
 bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& session)
 {
-	return session.cookiesEnabled();
+	return true;
 }
 
 

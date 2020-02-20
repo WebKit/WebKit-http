@@ -32,6 +32,7 @@
 
 #include "Cookie.h"
 #include "CookieRequestHeaderFieldProxy.h"
+#include "HTTPCookieAcceptPolicy.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
@@ -77,9 +78,9 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty,
 	platformSession().GetCookieJar().AddCookie(heapCookie);
 }
 
-bool NetworkStorageSession::cookiesEnabled() const
+HTTPCookieAcceptPolicy NetworkStorageSession::cookieAcceptPolicy() const
 {
-    return true;
+    return HTTPCookieAcceptPolicy::AlwaysAccept;
 }
 
 std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty,

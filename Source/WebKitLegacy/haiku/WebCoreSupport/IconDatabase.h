@@ -27,7 +27,10 @@
 #pragma once
 
 #include "NativeImage.h"
+
+#include <WebCore/SharedBuffer.h>
 #include <WebCore/SQLiteDatabase.h>
+
 #include <wtf/Condition.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
