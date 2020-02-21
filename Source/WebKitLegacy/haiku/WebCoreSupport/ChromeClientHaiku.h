@@ -137,7 +137,7 @@ namespace WebCore {
 
         void attachRootGraphicsLayer(Frame&, GraphicsLayer*) override;
         void setNeedsOneShotDrawingSynchronization() override;
-        void scheduleCompositingLayerFlush() override;
+        void scheduleRenderingUpdate() override;
 
         CompositingTriggerFlags allowedCompositingTriggers() const override
         {

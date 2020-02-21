@@ -84,7 +84,6 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css/parser"
     "${WEBCORE_DIR}/css/typedom"
     "${WEBCORE_DIR}/cssjit"
-    "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/dom/messageports"
     "${WEBCORE_DIR}/domjit"
     "${WEBCORE_DIR}/editing"
@@ -139,7 +138,6 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
-    "${WEBCORE_DIR}/platform/text/icu"
     "${WEBCORE_DIR}/platform/vr"
     "${WEBCORE_DIR}/plugins"
     "${WEBCORE_DIR}/rendering"
@@ -164,6 +162,18 @@ set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/worklets"
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
+)
+
+set(WebCore_LOCAL_INCLUDE_DIRECTORIES
+	"${WEBCORE_DIR}/css"
+	"${WEBCORE_DIR}/dom"
+	"${WEBCORE_DIR}/fileapi"
+	"${WEBCORE_DIR}/platform"
+	"${WEBCORE_DIR}/platform/graphics"
+	"${WEBCORE_DIR}/platform/graphics/transforms"
+	"${WEBCORE_DIR}/platform/text"
+	"${WEBCORE_DIR}/rendering/shapes"
+
 )
 
 set(WebCore_IDL_INCLUDES

@@ -448,7 +448,7 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     if (paintingDisabled())
         return;
 
-    NativeImagePtr surface = buffer.m_data.m_bitmap;
+    NativeImagePtr surface = buffer.nativeImage();
     BPicture picture;
     BView* view = platformContext();
 

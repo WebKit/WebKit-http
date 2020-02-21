@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ImageBuffer.h"
 
+#include "ColorUtilities.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "IntRect.h"
@@ -86,6 +87,13 @@ ImageBufferData::~ImageBufferData()
 
     m_bitmap->Unlock();
 }
+
+
+NativeImagePtr ImageBuffer::nativeImage() const
+{
+	return m_data.m_bitmap;
+}
+
 
 ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode, const HostWindow*, bool& success)
     : m_data(size)
@@ -193,6 +201,233 @@ void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lo
     }
 }
 
+void ImageBuffer::transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace)
+{
+    if (srcColorSpace == dstColorSpace)
+        return;
+
+    // only sRGB <-> linearRGB are supported at the moment
+    if ((srcColorSpace != ColorSpace::LinearRGB && srcColorSpace != ColorSpace::SRGB)
+        || (dstColorSpace != ColorSpace::LinearRGB && dstColorSpace != ColorSpace::SRGB))
+        return;
+
+    if (dstColorSpace == ColorSpace::LinearRGB) {
+        static const std::array<uint8_t, 256> linearRgbLUT = [] {
+            std::array<uint8_t, 256> array;
+            for (unsigned i = 0; i < 256; i++) {
+                float color = i / 255.0f;
+                color = sRGBToLinearColorComponent(color);
+                array[i] = static_cast<uint8_t>(round(color * 255));
+            }
+            return array;
+        }();
+        platformTransformColorSpace(linearRgbLUT);
+    } else if (dstColorSpace == ColorSpace::SRGB) {
+        static const std::array<uint8_t, 256> deviceRgbLUT= [] {
+            std::array<uint8_t, 256> array;
+            for (unsigned i = 0; i < 256; i++) {
+                float color = i / 255.0f;
+                color = linearToSRGBColorComponent(color);
+                array[i] = static_cast<uint8_t>(round(color * 255));
+            }
+            return array;
+        }();
+        platformTransformColorSpace(deviceRgbLUT);
+    }
+}
+
+template <AlphaPremultiplication premultiplied>
+RefPtr<ImageData> getData(const IntRect& rect, const IntRect& logicalRect, const ImageBufferData& data, const IntSize& size, const IntSize& logicalSize, float resolutionScale)
+{
+    auto result = ImageData::create(rect.size());
+    auto* pixelArray = result ? result->data() : nullptr;
+    if (!result)
+        return nullptr;
+
+    // Can overflow, as we are adding 2 ints.
+    int endx = 0;
+    if (!WTF::safeAdd(rect.x(), rect.width(), endx))
+        return nullptr;
+
+    // Can overflow, as we are adding 2 ints.
+    int endy = 0;
+    if (!WTF::safeAdd(rect.y(), rect.height(), endy))
+        return nullptr;
+
+    if (rect.x() < 0 || rect.y() < 0 || endx > size.width() || endy > size.height())
+        pixelArray->zeroFill();
+
+    int originx = rect.x();
+    int destx = 0;
+    if (originx < 0) {
+        destx = -originx;
+        originx = 0;
+    }
+
+    if (endx > size.width())
+        endx = size.width();
+    int numColumns = endx - originx;
+
+    int originy = rect.y();
+    int desty = 0;
+    if (originy < 0) {
+        desty = -originy;
+        originy = 0;
+    }
+
+    if (endy > size.height())
+        endy = size.height();
+    int numRows = endy - originy;
+
+    // Nothing will be copied, so just return the result.
+    if (numColumns <= 0 || numRows <= 0)
+        return result;
+
+    // The size of the derived surface is in BackingStoreCoordinateSystem.
+    // We need to set the device scale for the derived surface from this ImageBuffer.
+    IntRect imageRect(originx, originy, numColumns, numRows);
+    NativeImagePtr imageSurface = data.m_bitmap;
+    //cairoSurfaceSetDeviceScale(imageSurface.get(), resolutionScale, resolutionScale);
+    originx = imageRect.x();
+    originy = imageRect.y();
+
+    unsigned char* dataSrc = (unsigned char*)imageSurface->Bits();
+    unsigned char* dataDst = pixelArray->data();
+    int stride = imageSurface->BytesPerRow();
+    unsigned destBytesPerRow = 4 * rect.width();
+
+    unsigned char* destRows = dataDst + desty * destBytesPerRow + destx * 4;
+    for (int y = 0; y < numRows; ++y) {
+        unsigned* row = reinterpret_cast_ptr<unsigned*>(dataSrc + stride * (y + originy));
+        for (int x = 0; x < numColumns; x++) {
+            int basex = x * 4;
+            unsigned* pixel = row + x + originx;
+
+            // Avoid calling Color::colorFromPremultipliedARGB() because one
+            // function call per pixel is too expensive.
+            unsigned alpha = (*pixel & 0xFF000000) >> 24;
+            unsigned red = (*pixel & 0x00FF0000) >> 16;
+            unsigned green = (*pixel & 0x0000FF00) >> 8;
+            unsigned blue = (*pixel & 0x000000FF);
+
+            if (premultiplied == AlphaPremultiplication::Unpremultiplied) {
+                if (alpha && alpha != 255) {
+                    red = red * 255 / alpha;
+                    green = green * 255 / alpha;
+                    blue = blue * 255 / alpha;
+                }
+            }
+
+            destRows[basex]     = red;
+            destRows[basex + 1] = green;
+            destRows[basex + 2] = blue;
+            destRows[basex + 3] = alpha;
+        }
+        destRows += destBytesPerRow;
+    }
+
+    return result;
+}
+
+RefPtr<ImageData> ImageBuffer::getImageData(AlphaPremultiplication outputFormat, const IntRect& srcRect) const
+{
+    IntRect logicalRect = srcRect;
+    IntRect backingStoreRect = srcRect;
+    backingStoreRect.scale(m_resolutionScale);
+    
+    if (outputFormat == AlphaPremultiplication::Unpremultiplied)
+        return getData<AlphaPremultiplication::Unpremultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
+    return getData<AlphaPremultiplication::Premultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
+}
+
+void ImageBuffer::putImageData(AlphaPremultiplication sourceFormat, const ImageData& imageData, const IntRect& sourceRect, const IntPoint& destPoint)
+{
+    IntRect logicalSourceRect = sourceRect;
+    IntPoint logicalDestPoint = destPoint;
+
+    IntRect scaledSourceRect = sourceRect;
+    IntSize scaledSourceSize = imageData.size();
+    IntPoint scaledDestPoint = destPoint;
+
+    scaledSourceRect.scale(m_resolutionScale);
+    scaledDestPoint.scale(m_resolutionScale);
+
+    ASSERT(scaledSourceRect.width() > 0);
+    ASSERT(scaledSourceRect.height() > 0);
+
+    int originx = scaledSourceRect.x();
+    int destx = scaledDestPoint.x() + scaledSourceRect.x();
+    int logicalDestx = logicalDestPoint.x() + logicalSourceRect.x();
+    ASSERT(destx >= 0);
+    ASSERT(destx < m_size.width());
+    ASSERT(originx >= 0);
+    ASSERT(originx <= scaledSourceRect.maxX());
+
+    int endx = scaledDestPoint.x() + scaledSourceRect.maxX();
+    int logicalEndx = logicalDestPoint.x() + logicalSourceRect.maxX();
+    ASSERT(endx <= m_size.width());
+
+    int numColumns = endx - destx;
+    int logicalNumColumns = logicalEndx - logicalDestx;
+
+    int originy = scaledSourceRect.y();
+    int desty = scaledDestPoint.y() + scaledSourceRect.y();
+    int logicalDesty = logicalDestPoint.y() + logicalSourceRect.y();
+    ASSERT(desty >= 0);
+    ASSERT(desty < m_size.height());
+    ASSERT(originy >= 0);
+    ASSERT(originy <= scaledSourceRect.maxY());
+
+    int endy = scaledDestPoint.y() + scaledSourceRect.maxY();
+    int logicalEndy = logicalDestPoint.y() + logicalSourceRect.maxY();
+    ASSERT(endy <= m_size.height());
+    int numRows = endy - desty;
+    int logicalNumRows = logicalEndy - logicalDesty;
+
+    // The size of the derived surface is in BackingStoreCoordinateSystem.
+    // We need to set the device scale for the derived surface from this ImageBuffer.
+    IntRect imageRect(destx, desty, numColumns, numRows);
+    NativeImagePtr imageSurface = m_data.m_bitmap;
+    //cairoSurfaceSetDeviceScale(imageSurface.get(), m_resolutionScale, m_resolutionScale);
+    destx = imageRect.x();
+    desty = imageRect.y();
+
+    uint8_t* pixelData = (uint8_t*)imageSurface->Bits();
+
+    unsigned srcBytesPerRow = 4 * scaledSourceSize.width();
+    int stride = imageSurface->BytesPerRow();
+
+    const uint8_t* srcRows = imageData.data()->data() + originy * srcBytesPerRow + originx * 4;
+    for (int y = 0; y < numRows; ++y) {
+        unsigned* row = reinterpret_cast_ptr<unsigned*>(pixelData + stride * (y + desty));
+        for (int x = 0; x < numColumns; x++) {
+            int basex = x * 4;
+            unsigned* pixel = row + x + destx;
+
+            // Avoid calling Color::premultipliedARGBFromColor() because one
+            // function call per pixel is too expensive.
+            unsigned red = srcRows[basex];
+            unsigned green = srcRows[basex + 1];
+            unsigned blue = srcRows[basex + 2];
+            unsigned alpha = srcRows[basex + 3];
+
+            if (sourceFormat == AlphaPremultiplication::Unpremultiplied) {
+                if (alpha != 255) {
+                    red = (red * alpha + 254) / 255;
+                    green = (green * alpha + 254) / 255;
+                    blue = (blue * alpha + 254) / 255;
+                }
+            }
+
+            *pixel = (alpha << 24) | red  << 16 | green  << 8 | blue;
+        }
+        srcRows += srcBytesPerRow;
+    }
+
+    // This cairo surface operation is done in LogicalCoordinateSystem.
+    //cairo_surface_mark_dirty_rectangle(imageSurface.get(), logicalDestx, logicalDesty, logicalNumColumns, logicalNumRows);
+}
+
 static inline void convertFromData(const uint8* sourceRows, unsigned sourceBytesPerRow,
                                    uint8* destRows, unsigned destBytesPerRow,
                                    unsigned rows, unsigned columns)
@@ -277,147 +512,6 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
                         destRows, destBytesPerRow,
                         rows, columns);
     }
-}
-
-static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
-{
-    // The area can overflow if the rect is too big.
-    Checked<unsigned, RecordOverflow> area = 4;
-    area *= rect.width();
-    area *= rect.height();
-    if (area.hasOverflowed())
-        return nullptr;
-
-    RefPtr<Uint8ClampedArray> result
-		= Uint8ClampedArray::tryCreateUninitialized(area.unsafeGet());
-	if (!result) {
-		return nullptr;
-	}
-
-    // Can overflow, as we are adding 2 ints.
-    int endx = 0;
-    if (!WTF::safeAdd(rect.x(), rect.width(), endx))
-        return nullptr;
-
-    // Can overflow, as we are adding 2 ints.
-    int endy = 0;
-    if (!WTF::safeAdd(rect.y(), rect.height(), endy))
-        return nullptr;
-
-    if (rect.x() < 0 || rect.y() < 0 || endx > size.width() || endy > size.height())
-        result->zeroFill();
-
-    // Normalize the dest rectangle to not write before the allocated space,
-    // when there are negative coordinates
-    int originx = rect.x();
-    int destx = 0;
-    if (originx < 0) {
-        destx = -originx;
-        originx = 0;
-    }
-
-    if (endx > size.width())
-        endx = size.width();
-    int numColumns = endx - originx;
-
-    int originy = rect.y();
-    int desty = 0;
-    if (originy < 0) {
-        desty = -originy;
-        originy = 0;
-    }
-
-    if (endy > size.height())
-        endy = size.height();
-    int numRows = endy - originy;
-
-    // Nothing will be copied, so just return the result.
-    if (numColumns <= 0 || numRows <= 0)
-        return result;
-
-    // Now we know there must be an intersection rect which we need to extract.
-    BRect sourceRect(0, 0, numColumns - 1, numRows - 1);
-    sourceRect = BRect(rect) & sourceRect;
-
-    unsigned destBytesPerRow = 4 * rect.width();
-    unsigned char* destRows = result->data();
-    // Offset the destination pointer to point at the first pixel of the
-    // intersection rect.
-    destRows += destx * 4 + desty * destBytesPerRow;
-
-    const uint8* sourceRows = reinterpret_cast<const uint8*>(imageData.m_bitmap->Bits());
-    uint32 sourceBytesPerRow = imageData.m_bitmap->BytesPerRow();
-    // Offset the source pointer to point at the first pixel of the
-    // intersection rect.
-    sourceRows += (int)sourceRect.left * 4 + (int)sourceRect.top * sourceBytesPerRow;
-
-    convertFromInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
-        numRows, numColumns, premultiplied);
-
-    return result;
-}
-
-template<typename Unit>
-inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem coordinateSystemOfValue, float resolutionScale)
-{
-    if (coordinateSystemOfValue == ImageBuffer::BackingStoreCoordinateSystem || resolutionScale == 1.0)
-        return value;
-    Unit result(value);
-    result.scale(resolutionScale);
-    return result;
-}
-
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, WebCore::IntSize*, CoordinateSystem coordinateSystem) const
-{
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view->Sync();
-
-    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
-
-    return getImageData(backingStoreRect, m_data, m_size, false);
-}
-
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, WebCore::IntSize*, CoordinateSystem coordinateSystem) const
-{
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view->Sync();
-    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
-    return getImageData(backingStoreRect, m_data, m_size, true);
-}
-
-void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultiplication multiplied, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
-{
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view->Sync();
-
-    // If the source image is outside the destination image, we can return at
-    // this point.
-    // TODO: Check if this isn't already done in WebCore.
-    if (destPoint.x() > sourceSize.width() || destPoint.y() > sourceSize.height()
-        || destPoint.x() + sourceRect.width() < 0
-        || destPoint.y() + sourceRect.height() < 0) {
-        return;
-    }
-
-    const unsigned char* sourceRows = source.data();
-    unsigned sourceBytesPerRow = 4 * sourceSize.width();
-    // Offset the source pointer to the first pixel of the source rect.
-    sourceRows += sourceRect.x() * 4 + sourceRect.y() * sourceBytesPerRow;
-
-    // We know there must be an intersection rect.
-    BRect destRect(destPoint.x(), destPoint.y(), sourceRect.width() - 1, sourceRect.height() - 1);
-    destRect = destRect & BRect(0, 0, sourceSize.width() - 1, sourceSize.height() - 1);
-
-    unsigned char* destRows = reinterpret_cast<unsigned char*>(m_data.m_bitmap->Bits());
-    uint32 destBytesPerRow = m_data.m_bitmap->BytesPerRow();
-    // Offset the source pointer to point at the first pixel of the
-    // intersection rect.
-    destRows += (int)destRect.left * 4 + (int)destRect.top * destBytesPerRow;
-
-    unsigned rows = sourceRect.height();
-    unsigned columns = sourceRect.width();
-    convertToInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
-        rows, columns, multiplied == AlphaPremultiplication::Premultiplied);
 }
 
 // TODO: PreserveResolution

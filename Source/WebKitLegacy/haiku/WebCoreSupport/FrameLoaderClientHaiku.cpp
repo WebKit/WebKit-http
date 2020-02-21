@@ -388,7 +388,9 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>)
+void FrameLoaderClientHaiku::dispatchDidCommitLoad(
+	WTF::Optional<WebCore::HasInsecureContent>,
+	Optional<WebCore::UsedLegacyTLS>)
 {
     CALLED();
     if (m_loadingErrorPage) {
@@ -409,7 +411,7 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad(WTF::Optional<WebCore::HasIns
 
     uidna_nameToUnicodeUTF8(m_uidna_context, url.host().utf8().data(),
         -1 /* NULL-terminated */, dest, sizeof(dest), &info, &error);
-   
+
     if (U_SUCCESS(error) && info.errors == 0)
         decoded.SetHost(dest);
 

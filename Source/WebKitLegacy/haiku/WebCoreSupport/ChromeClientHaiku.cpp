@@ -510,7 +510,7 @@ void ChromeClientHaiku::setNeedsOneShotDrawingSynchronization()
     notImplemented();
 }
 
-void ChromeClientHaiku::scheduleCompositingLayerFlush()
+void ChromeClientHaiku::scheduleRenderingUpdate()
 {
     // Don't do anything if the view isn't ready yet.
     if (!m_webView->LockLooper())

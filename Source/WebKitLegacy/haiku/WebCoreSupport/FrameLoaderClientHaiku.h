@@ -84,15 +84,15 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
                                          const ResourceResponse&) override;
     bool shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier) override;
     void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*,
-                                                           unsigned long identifier,
-                                                           const AuthenticationChallenge&) override;
+        unsigned long identifier, const AuthenticationChallenge&) override;
 
     bool dispatchDidReceiveInvalidCertificate(DocumentLoader*,
         const CertificateInfo& certificate, const char* message) override;
 
-    void dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>) override;
+    void dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>,
+		Optional<WebCore::UsedLegacyTLS>) override;
     void dispatchDidReceiveResponse(DocumentLoader*, unsigned long,
-                                            const ResourceResponse&) override;
+        const ResourceResponse&) override;
     void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int) override;
     void dispatchDidFinishLoading(DocumentLoader*, unsigned long) override;
     void dispatchDidFailLoading(DocumentLoader*, unsigned long,

@@ -109,7 +109,7 @@ public:
 
 #if USE(CG) || USE(DIRECT2D)
     NativeImagePtr copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
-#elif USE(CAIRO)
+#elif USE(CAIRO) || USE(HAIKU)
     NativeImagePtr nativeImage() const;
 #endif
 
