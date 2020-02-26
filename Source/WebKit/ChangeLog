@@ -1,3 +1,15 @@
+2020-02-26  Don Olmstead  <don.olmstead@sony.com>
+
+        Allow setting of stack sizes for threads
+        https://bugs.webkit.org/show_bug.cgi?id=208223
+
+        Reviewed by Yusuke Suzuki.
+
+        Specify ThreadType at the Thread::create callsite.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::createRunLoop):
+
 2020-05-21  Enrique Ocaña González  <eocanha@igalia.com>
 
         [GStreamer][GTK][WPE] Expose and honor the media content types requiring hardware support setting

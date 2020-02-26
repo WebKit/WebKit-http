@@ -144,7 +144,7 @@ void WorkerThread::start(WTF::Function<void(const String&)>&& evaluateCallback)
 
     m_thread = Thread::create(isServiceWorkerThread() ? "WebCore: Service Worker" : "WebCore: Worker", [this] {
         workerThread();
-    });
+    }, ThreadType::JavaScript);
 }
 
 void WorkerThread::workerThread()
