@@ -150,6 +150,12 @@ set(WebKit_FORWARDING_HEADERS_FILES
 )
 
 list(APPEND WebKit_MESSAGES_IN_FILES
+
+    GPUProcess/media/RemoteAudioDestinationManager.messages.in
+    GPUProcess/media/RemoteMediaPlayerManagerProxy.messages.in
+    GPUProcess/media/RemoteMediaPlayerProxy.messages.in
+    GPUProcess/media/RemoteMediaResourceManager.messages.in
+
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
 
     Shared/ApplePay/WebPaymentCoordinatorProxy.messages.in

@@ -36,6 +36,8 @@
 #include "LibWebRTCCodecsProxy.h"
 #include "LibWebRTCCodecsProxyMessages.h"
 #include "Logging.h"
+#include "RemoteAudioDestinationManager.h"
+#include "RemoteAudioDestinationManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererManager.h"
 #include "RemoteAudioMediaStreamTrackRendererManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererMessages.h"
@@ -124,6 +126,14 @@ void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connec
     CRASH();
 }
 
+RemoteAudioDestinationManager& GPUConnectionToWebProcess::remoteAudioDestinationManager()
+{
+    if (!m_remoteAudioDestinationManager)
+        m_remoteAudioDestinationManager = makeUnique<RemoteAudioDestinationManager>(*this);
+
+    return *m_remoteAudioDestinationManager;
+}
+
 RemoteMediaResourceManager& GPUConnectionToWebProcess::remoteMediaResourceManager()
 {
     if (!m_remoteMediaResourceManager)
@@ -188,6 +198,10 @@ LibWebRTCCodecsProxy& GPUConnectionToWebProcess::libWebRTCCodecsProxy()
 
 void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
+    if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
+        remoteAudioDestinationManager().didReceiveMessageFromWebProcess(connection, decoder);
+        return true;
+    }
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveMessageFromWebProcess(connection, decoder);
         return;
@@ -240,6 +254,10 @@ void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, I
 
 void GPUConnectionToWebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
+    if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
+        remoteAudioDestinationManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
+        return true;
+    }
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
         return;
