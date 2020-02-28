@@ -1680,8 +1680,11 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
         keyURIArray->setRange(StringView(keyURI).upconvertedCharacters(), keyURI.length() / sizeof(unsigned char), 0);
 
         auto initData = Uint8Array::create(WTFMove(initDataBuffer), 0, byteLength);
-        if (!player()->keyNeeded(initData.ptr()))
-            return false;
+        player()->keyNeeded(initData.ptr());
+#if ENABLE(ENCRYPTED_MEDIA)
+        if (!player()->shouldContinueAfterKeyNeeded())
+            return true;
+#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION)
@@ -1715,7 +1718,9 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
             return false;
         }
 
-        if (!player()->keyNeeded(initData.ptr()))
+        player()->keyNeeded(initData.ptr());
+
+        if (!player()->shouldContinueAfterKeyNeeded())
             return false;
 
         m_keyURIToRequestMap.set(keyID, avRequest);
