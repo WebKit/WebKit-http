@@ -27,55 +27,15 @@
 
 #if ENABLE(WEB_RTC)
 
+#include "RTCRtpCodecParameters.h"
+#include "RTCRtpHeaderExtensionParameters.h"
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 struct RTCRtpParameters {
-
-    struct FecParameters {
-        unsigned long ssrc;
-    };
-
-    struct RtxParameters {
-        unsigned long ssrc;
-    };
-
-    enum class PriorityType { VeryLow, Low, Medium, High };
-    enum class DegradationPreference { MaintainFramerate, MaintainResolution, Balanced };
-    enum class DtxStatus { Disabled, Enabled };
-
-    struct CodecParameters {
-        unsigned short payloadType { 0 };
-        String mimeType;
-        unsigned long clockRate { 0 };
-        unsigned short channels = 1;
-    };
-
-    struct EncodingParameters {
-        unsigned long ssrc { 0 };
-        RtxParameters rtx;
-        FecParameters fec;
-        DtxStatus dtx { DtxStatus::Disabled };
-        bool active { false};
-        PriorityType priority { PriorityType::Medium };
-        unsigned long maxBitrate { 0 };
-        unsigned long maxFramerate { 0 };
-        String rid;
-        double scaleResolutionDownBy { 1 };
-    };
-
-    struct HeaderExtensionParameters {
-        String uri;
-        unsigned short id;
-    };
-
-    String transactionId;
-    Vector<EncodingParameters> encodings;
-    Vector<HeaderExtensionParameters> headerExtensions;
-    Vector<CodecParameters> codecs;
-    DegradationPreference degradationPreference = DegradationPreference::Balanced;
+    Vector<RTCRtpHeaderExtensionParameters> headerExtensions;
+    Vector<RTCRtpCodecParameters> codecs;
 };
 
 

@@ -69,6 +69,10 @@ public:
     WEBCORE_EXPORT const String& id() const;
     const String& label() const;
 
+
+    const AtomicString& contentHint() const;
+    void setContentHint(const String&);
+        
     bool enabled() const;
     void setEnabled(bool);
 
@@ -101,7 +105,7 @@ public:
         String deviceId;
         String groupId;
     };
-    TrackSettings getSettings(Document&) const;
+    TrackSettings getSettings() const;
 
     struct TrackCapabilities {
         std::optional<LongRange> width;
@@ -116,7 +120,7 @@ public:
         String deviceId;
         String groupId;
     };
-    TrackCapabilities getCapabilities(Document&) const;
+    TrackCapabilities getCapabilities() const;
 
     const MediaTrackConstraints& getConstraints() const { return m_constraints; }
     void applyConstraints(const std::optional<MediaTrackConstraints>&, DOMPromiseDeferred<void>&&);
@@ -145,7 +149,9 @@ protected:
     MediaStreamTrack(ScriptExecutionContext&, Ref<MediaStreamTrackPrivate>&&);
 
     ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
-
+        
+    Ref<MediaStreamTrackPrivate> m_private;
+        
 private:
     explicit MediaStreamTrack(MediaStreamTrack&);
 
@@ -171,7 +177,7 @@ private:
     void trackEnabledChanged(MediaStreamTrackPrivate&) final;
 
     Vector<Observer*> m_observers;
-    Ref<MediaStreamTrackPrivate> m_private;
+    
 
     MediaTrackConstraints m_constraints;
     std::optional<DOMPromiseDeferred<void>> m_promise;

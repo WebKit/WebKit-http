@@ -22,7 +22,7 @@ namespace {
 const int kMaxAbsQpDeltaValue = 51;
 const int kMinQpValue = 0;
 const int kMaxQpValue = 51;
-}
+}  // namespace
 
 namespace webrtc {
 
@@ -44,7 +44,7 @@ H264BitstreamParser::Result H264BitstreamParser::ParseNonParameterSetNalu(
   if (!sps_ || !pps_)
     return kInvalidStream;
 
-  last_slice_qp_delta_ = rtc::nullopt;
+  last_slice_qp_delta_ = absl::nullopt;
   const std::vector<uint8_t> slice_rbsp =
       H264::ParseRbsp(source, source_length);
   if (slice_rbsp.size() < H264::kNaluTypeSize)
@@ -75,9 +75,9 @@ H264BitstreamParser::Result H264BitstreamParser::ParseNonParameterSetNalu(
     RETURN_INV_ON_FAIL(slice_reader.ReadBits(&bits_tmp, 2));
   }
   // frame_num: u(v)
-  // Represented by log2_max_frame_num_minus4 + 4 bits.
+  // Represented by log2_max_frame_num bits.
   RETURN_INV_ON_FAIL(
-      slice_reader.ReadBits(&bits_tmp, sps_->log2_max_frame_num_minus4 + 4));
+      slice_reader.ReadBits(&bits_tmp, sps_->log2_max_frame_num));
   uint32_t field_pic_flag = 0;
   if (sps_->frame_mbs_only_flag == 0) {
     // field_pic_flag: u(1)
@@ -92,10 +92,10 @@ H264BitstreamParser::Result H264BitstreamParser::ParseNonParameterSetNalu(
     RETURN_INV_ON_FAIL(slice_reader.ReadExponentialGolomb(&golomb_tmp));
   }
   // pic_order_cnt_lsb: u(v)
-  // Represented by sps_.log2_max_pic_order_cnt_lsb_minus4 + 4 bits.
+  // Represented by sps_.log2_max_pic_order_cnt_lsb bits.
   if (sps_->pic_order_cnt_type == 0) {
-    RETURN_INV_ON_FAIL(slice_reader.ReadBits(
-        &bits_tmp, sps_->log2_max_pic_order_cnt_lsb_minus4 + 4));
+    RETURN_INV_ON_FAIL(
+        slice_reader.ReadBits(&bits_tmp, sps_->log2_max_pic_order_cnt_lsb));
     if (pps_->bottom_field_pic_order_in_frame_present_flag &&
         field_pic_flag == 0) {
       // delta_pic_order_cnt_bottom: se(v)
@@ -247,8 +247,8 @@ H264BitstreamParser::Result H264BitstreamParser::ParseNonParameterSetNalu(
       }
     }
   }
-  if (pps_->entropy_coding_mode_flag &&
-      slice_type != H264::SliceType::kI && slice_type != H264::SliceType::kSi) {
+  if (pps_->entropy_coding_mode_flag && slice_type != H264::SliceType::kI &&
+      slice_type != H264::SliceType::kSi) {
     // cabac_init_idc: ue(v)
     RETURN_INV_ON_FAIL(slice_reader.ReadExponentialGolomb(&golomb_tmp));
   }

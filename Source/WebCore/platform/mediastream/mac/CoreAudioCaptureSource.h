@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "CAAudioStreamDescription.h"
 #include "CaptureDevice.h"
 #include "RealtimeMediaSource.h"
+#include "RealtimeMediaSourceFactory.h"
 #include <AudioToolbox/AudioToolbox.h>
 #include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/HashMap.h>
@@ -54,7 +55,7 @@ class WebAudioSourceProviderAVFObjC;
 class CoreAudioCaptureSource : public RealtimeMediaSource {
 public:
 
-    static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
+    static CaptureSourceOrError create(String&& deviceID, String&& hashSalt, const MediaConstraints*);
 
     WEBCORE_EXPORT static AudioCaptureFactory& factory();
 
@@ -73,7 +74,7 @@ public:
     void scheduleReconfiguration();
 
 protected:
-    CoreAudioCaptureSource(const String& deviceID, const String& label, uint32_t persistentID);
+    CoreAudioCaptureSource(String&& deviceID, String&& label, String&& hashSalt, uint32_t persistentID);
     virtual ~CoreAudioCaptureSource();
 
 private:
@@ -84,20 +85,18 @@ private:
     void startProducingData() final;
     void stopProducingData() final;
 
-    bool applyVolume(double) final { return true; }
-    bool applySampleRate(int) final;
-    bool applyEchoCancellation(bool) final;
+    std::optional<Vector<int>> discreteSampleRates() const final { return { { 8000, 16000, 32000, 44100, 48000, 96000 } }; }
 
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    const RealtimeMediaSourceSettings& settings() const final;
-    void settingsDidChange() final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
 
     bool interrupted() const final;
 
     uint32_t m_captureDeviceID { 0 };
 
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    std::optional<RealtimeMediaSourceSettings> m_currentSettings;
 
     enum class SuspensionType { None, WhilePaused, WhilePlaying };
     SuspensionType m_suspendType { SuspensionType::None };
@@ -110,7 +109,7 @@ private:
     bool m_resumePending { false };
 };
 
-class CoreAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory {
+class CoreAudioCaptureSourceFactory : public AudioCaptureFactory {
 public:
     static CoreAudioCaptureSourceFactory& singleton();
 
@@ -127,9 +126,9 @@ public:
 #endif
 
 private:
-    CaptureSourceOrError createAudioCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
+    CaptureSourceOrError createAudioCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints) final
     {
-        return CoreAudioCaptureSource::create(device.persistentId(), constraints);
+        return CoreAudioCaptureSource::create(String { device.persistentId() }, WTFMove(hashSalt), constraints);
     }
 };
 

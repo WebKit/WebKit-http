@@ -28,9 +28,14 @@
 #if USE(LIBWEBRTC)
 
 #include "LibWebRTCMacros.h"
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
+#include <webrtc/modules/audio_device/include/audio_device.h>
 #include <webrtc/rtc_base/messagehandler.h>
 #include <webrtc/rtc_base/thread.h>
-#include <webrtc/modules/audio_device/include/audio_device.h>
+
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace WebCore {
 
@@ -47,7 +52,7 @@ private:
         return value;
     }
 
-    void AddRef() const final { return; }
+    void AddRef() const final { }
     rtc::RefCountReleaseStatus Release() const final { return rtc::RefCountReleaseStatus::kOtherRefsRemained; }
     void OnMessage(rtc::Message*);
 

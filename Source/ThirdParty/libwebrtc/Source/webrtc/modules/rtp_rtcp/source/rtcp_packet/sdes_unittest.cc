@@ -10,6 +10,7 @@
 
 #include "modules/rtp_rtcp/source/rtcp_packet/sdes.h"
 
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 #include "test/rtcp_packet_parser.h"
 
@@ -74,7 +75,7 @@ TEST(RtcpPacketSdesTest, CreateWithTooManyChunks) {
   Sdes sdes;
   for (size_t i = 0; i < kMaxChunks; ++i) {
     uint32_t ssrc = kSenderSsrc + i;
-    std::ostringstream oss;
+    rtc::StringBuilder oss;
     oss << "cname" << i;
     EXPECT_TRUE(sdes.AddCName(ssrc, oss.str()));
   }
@@ -97,11 +98,10 @@ TEST(RtcpPacketSdesTest, CreateAndParseCnameItemWithEmptyString) {
 TEST(RtcpPacketSdesTest, ParseSkipsNonCNameField) {
   const uint8_t kName[] = "abc";
   const uint8_t kCname[] = "de";
-  const uint8_t kValidPacket[] = {0x81,  202, 0x00, 0x04,
-                                  0x12, 0x34, 0x56, 0x78,
-                                  kNameTag,  3, kName[0],  kName[1], kName[2],
-                                  kCnameTag, 2, kCname[0], kCname[1],
-                                  kTerminatorTag, kPadding, kPadding};
+  const uint8_t kValidPacket[] = {
+      0x81, 202,       0x00,      0x04,           0x12,     0x34,     0x56,
+      0x78, kNameTag,  3,         kName[0],       kName[1], kName[2], kCnameTag,
+      2,    kCname[0], kCname[1], kTerminatorTag, kPadding, kPadding};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kValidPacket) % 4);
   ASSERT_EQ(kValidPacket[3] + 1u, sizeof(kValidPacket) / 4);
@@ -118,13 +118,14 @@ TEST(RtcpPacketSdesTest, ParseSkipsChunksWithoutCName) {
   const uint8_t kName[] = "ab";
   const uint8_t kEmail[] = "de";
   const uint8_t kCname[] = "def";
-  const uint8_t kPacket[] = {0x82,  202, 0x00, 0x07,
-      0x12, 0x34, 0x56, 0x78,  // 1st chunk.
-      kNameTag,  3, kName[0],  kName[1], kName[2],
-      kEmailTag, 2, kEmail[0], kEmail[1],
-      kTerminatorTag, kPadding, kPadding,
-      0x23, 0x45, 0x67, 0x89,  // 2nd chunk.
-      kCnameTag, 3, kCname[0], kCname[1], kCname[2],
+  const uint8_t kPacket[] = {
+      0x82,           202,      0x00,      0x07,      0x12,
+      0x34,           0x56,     0x78,  // 1st chunk.
+      kNameTag,       3,        kName[0],  kName[1],  kName[2],
+      kEmailTag,      2,        kEmail[0], kEmail[1], kTerminatorTag,
+      kPadding,       kPadding, 0x23,      0x45,      0x67,
+      0x89,  // 2nd chunk.
+      kCnameTag,      3,        kCname[0], kCname[1], kCname[2],
       kTerminatorTag, kPadding, kPadding};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kPacket) % 4);
@@ -141,10 +142,9 @@ TEST(RtcpPacketSdesTest, ParseFailsWithoutChunkItemTerminator) {
   const uint8_t kName[] = "abc";
   const uint8_t kCname[] = "d";
   // No place for next chunk item.
-  const uint8_t kInvalidPacket[] = {0x81,  202, 0x00, 0x03,
-                                    0x12, 0x34, 0x56, 0x78,
-                                    kNameTag,  3, kName[0], kName[1], kName[2],
-                                    kCnameTag, 1, kCname[0]};
+  const uint8_t kInvalidPacket[] = {
+      0x81,     202, 0x00,     0x03,     0x12,     0x34,      0x56, 0x78,
+      kNameTag, 3,   kName[0], kName[1], kName[2], kCnameTag, 1,    kCname[0]};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kInvalidPacket) % 4);
   ASSERT_EQ(kInvalidPacket[3] + 1u, sizeof(kInvalidPacket) / 4);
@@ -157,11 +157,9 @@ TEST(RtcpPacketSdesTest, ParseFailsWithDamagedChunkItem) {
   const uint8_t kName[] = "ab";
   const uint8_t kCname[] = "d";
   // Next chunk item has non-terminator type, but not the size.
-  const uint8_t kInvalidPacket[] = {0x81,  202, 0x00, 0x03,
-                                    0x12, 0x34, 0x56, 0x78,
-                                    kNameTag,  2, kName[0], kName[1],
-                                    kCnameTag, 1, kCname[0],
-                                    kEmailTag};
+  const uint8_t kInvalidPacket[] = {
+      0x81,     202, 0x00,     0x03,     0x12,      0x34, 0x56,      0x78,
+      kNameTag, 2,   kName[0], kName[1], kCnameTag, 1,    kCname[0], kEmailTag};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kInvalidPacket) % 4);
   ASSERT_EQ(kInvalidPacket[3] + 1u, sizeof(kInvalidPacket) / 4);
@@ -174,10 +172,9 @@ TEST(RtcpPacketSdesTest, ParseFailsWithTooLongChunkItem) {
   const uint8_t kName[] = "abc";
   const uint8_t kCname[] = "d";
   // Last chunk item has length that goes beyond the buffer end.
-  const uint8_t kInvalidPacket[] = {0x81,  202, 0x00, 0x03,
-                                    0x12, 0x34, 0x56, 0x78,
-                                    kNameTag,  3, kName[0], kName[1], kName[2],
-                                    kCnameTag, 2, kCname[0]};
+  const uint8_t kInvalidPacket[] = {
+      0x81,     202, 0x00,     0x03,     0x12,     0x34,      0x56, 0x78,
+      kNameTag, 3,   kName[0], kName[1], kName[2], kCnameTag, 2,    kCname[0]};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kInvalidPacket) % 4);
   ASSERT_EQ(kInvalidPacket[3] + 1u, sizeof(kInvalidPacket) / 4);
@@ -189,11 +186,10 @@ TEST(RtcpPacketSdesTest, ParseFailsWithTooLongChunkItem) {
 TEST(RtcpPacketSdesTest, ParseFailsWithTwoCNames) {
   const uint8_t kCname1[] = "a";
   const uint8_t kCname2[] = "de";
-  const uint8_t kInvalidPacket[] = {0x81,  202, 0x00, 0x03,
-                                    0x12, 0x34, 0x56, 0x78,
-                                    kCnameTag, 1, kCname1[0],
-                                    kCnameTag, 2, kCname2[0], kCname2[1],
-                                    kTerminatorTag};
+  const uint8_t kInvalidPacket[] = {
+      0x81,       202,           0x00, 0x03,       0x12,      0x34, 0x56,
+      0x78,       kCnameTag,     1,    kCname1[0], kCnameTag, 2,    kCname2[0],
+      kCname2[1], kTerminatorTag};
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kInvalidPacket) % 4);
   ASSERT_EQ(kInvalidPacket[3] + 1u, sizeof(kInvalidPacket) / 4);
@@ -206,12 +202,11 @@ TEST(RtcpPacketSdesTest, ParseFailsWithTooLittleSpaceForNextChunk) {
   const uint8_t kCname[] = "a";
   const uint8_t kEmail[] = "de";
   // Two chunks are promised in the header, but no place for the second chunk.
-  const uint8_t kInvalidPacket[] = {0x82,  202, 0x00, 0x04,
-                                    0x12, 0x34, 0x56, 0x78,  // 1st chunk.
-                                    kCnameTag, 1, kCname[0],
-                                    kEmailTag, 2, kEmail[0], kEmail[1],
-                                    kTerminatorTag,
-                                    0x23, 0x45, 0x67, 0x89};  // 2nd chunk.
+  const uint8_t kInvalidPacket[] = {
+      0x82,           202,  0x00,      0x04,      0x12, 0x34,      0x56,
+      0x78,  // 1st chunk.
+      kCnameTag,      1,    kCname[0], kEmailTag, 2,    kEmail[0], kEmail[1],
+      kTerminatorTag, 0x23, 0x45,      0x67,      0x89};  // 2nd chunk.
   // Sanity checks packet was assembled correctly.
   ASSERT_EQ(0u, sizeof(kInvalidPacket) % 4);
   ASSERT_EQ(kInvalidPacket[3] + 1u, sizeof(kInvalidPacket) / 4);

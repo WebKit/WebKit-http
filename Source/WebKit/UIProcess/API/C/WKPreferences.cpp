@@ -1438,24 +1438,14 @@ bool WKPreferencesGetPeerConnectionEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->peerConnectionEnabled();
 }
 
-void WKPreferencesSetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setWebRTCLegacyAPIEnabled(enabled);
-}
-
-bool WKPreferencesGetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->webRTCLegacyAPIEnabled();
-}
-
 void WKPreferencesSetWebRTCMDNSICECandidatesEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-    toImpl(preferencesRef)->setMDNSICECandidatesEnabled(enabled);
+    toImpl(preferencesRef)->setWebRTCMDNSICECandidatesEnabled(enabled);
 }
 
 bool WKPreferencesGetWebRTCMDNSICECandidatesEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->mDNSICECandidatesEnabled();
+    return toImpl(preferencesRef)->webRTCMDNSICECandidatesEnabled();
 }
 
 void WKPreferencesSetSpatialNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled)

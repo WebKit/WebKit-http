@@ -20,14 +20,13 @@
 #include <utility>
 #include <vector>
 
-#include "rtc_base/basictypes.h"
 #include "rtc_base/constructormagic.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/location.h"
 #include "rtc_base/messagehandler.h"
 #include "rtc_base/scoped_ref_ptr.h"
-#include "rtc_base/sigslot.h"
 #include "rtc_base/socketserver.h"
+#include "rtc_base/third_party/sigslot/sigslot.h"
 #include "rtc_base/thread_annotations.h"
 #include "rtc_base/timeutils.h"
 
@@ -40,20 +39,17 @@ class MessageQueue;
 
 class MessageQueueManager {
  public:
-  static void Add(MessageQueue *message_queue);
-  static void Remove(MessageQueue *message_queue);
-  static void Clear(MessageHandler *handler);
+  static void Add(MessageQueue* message_queue);
+  static void Remove(MessageQueue* message_queue);
+  static void Clear(MessageHandler* handler);
 
-  // For testing purposes, we expose whether or not the MessageQueueManager
-  // instance has been initialized. It has no other use relative to the rest of
-  // the functions of this class, which auto-initialize the underlying
-  // MessageQueueManager instance when necessary.
-  static bool IsInitialized();
+  // TODO(nisse): Delete alias, as soon as downstream code is updated.
+  static void ProcessAllMessageQueues() { ProcessAllMessageQueuesForTesting(); }
 
-  // Mainly for testing purposes, for use with a simulated clock.
+  // For testing purposes, for use with a simulated clock.
   // Ensures that all message queues have processed delayed messages
   // up until the current point in time.
-  static void ProcessAllMessageQueues();
+  static void ProcessAllMessageQueuesForTesting();
 
  private:
   static MessageQueueManager* Instance();
@@ -61,12 +57,11 @@ class MessageQueueManager {
   MessageQueueManager();
   ~MessageQueueManager();
 
-  void AddInternal(MessageQueue *message_queue);
-  void RemoveInternal(MessageQueue *message_queue);
-  void ClearInternal(MessageHandler *handler);
+  void AddInternal(MessageQueue* message_queue);
+  void RemoveInternal(MessageQueue* message_queue);
+  void ClearInternal(MessageHandler* handler);
   void ProcessAllMessageQueuesInternal();
 
-  static MessageQueueManager* instance_;
   // This list contains all live MessageQueues.
   std::vector<MessageQueue*> message_queues_ RTC_GUARDED_BY(crit_);
 
@@ -89,9 +84,10 @@ class MessageData {
 template <class T>
 class TypedMessageData : public MessageData {
  public:
-  explicit TypedMessageData(const T& data) : data_(data) { }
+  explicit TypedMessageData(const T& data) : data_(data) {}
   const T& data() const { return data_; }
   T& data() { return data_; }
+
  private:
   T data_;
 };
@@ -123,28 +119,30 @@ class ScopedMessageData : public MessageData {
 template <class T>
 class ScopedRefMessageData : public MessageData {
  public:
-  explicit ScopedRefMessageData(T* data) : data_(data) { }
+  explicit ScopedRefMessageData(T* data) : data_(data) {}
   const scoped_refptr<T>& data() const { return data_; }
   scoped_refptr<T>& data() { return data_; }
+
  private:
   scoped_refptr<T> data_;
 };
 
-template<class T>
+template <class T>
 inline MessageData* WrapMessageData(const T& data) {
   return new TypedMessageData<T>(data);
 }
 
-template<class T>
+template <class T>
 inline const T& UseMessageData(MessageData* data) {
-  return static_cast< TypedMessageData<T>* >(data)->data();
+  return static_cast<TypedMessageData<T>*>(data)->data();
 }
 
-template<class T>
+template <class T>
 class DisposeData : public MessageData {
  public:
-  explicit DisposeData(T* data) : data_(data) { }
+  explicit DisposeData(T* data) : data_(data) {}
   virtual ~DisposeData() { delete data_; }
+
  private:
   T* data_;
 };
@@ -162,9 +160,9 @@ struct Message {
            (id == MQID_ANY || id == message_id);
   }
   Location posted_from;
-  MessageHandler *phandler;
+  MessageHandler* phandler;
   uint32_t message_id;
-  MessageData *pdata;
+  MessageData* pdata;
   int64_t ts_sensitive;
 };
 
@@ -181,9 +179,9 @@ class DelayedMessage {
                  const Message& msg)
       : cmsDelay_(delay), msTrigger_(trigger), num_(num), msg_(msg) {}
 
-  bool operator< (const DelayedMessage& dmsg) const {
-    return (dmsg.msTrigger_ < msTrigger_)
-           || ((dmsg.msTrigger_ == msTrigger_) && (dmsg.num_ < num_));
+  bool operator<(const DelayedMessage& dmsg) const {
+    return (dmsg.msTrigger_ < msTrigger_) ||
+           ((dmsg.msTrigger_ == msTrigger_) && (dmsg.num_ < num_));
   }
 
   int64_t cmsDelay_;  // for debugging
@@ -224,15 +222,16 @@ class MessageQueue {
   // Not all message queues actually process messages (such as SignalThread).
   // In those cases, it's important to know, before posting, that it won't be
   // Processed.  Normally, this would be true until IsQuitting() is true.
-  virtual bool IsProcessingMessages();
+  virtual bool IsProcessingMessagesForTesting();
 
   // Get() will process I/O until:
   //  1) A message is available (returns true)
   //  2) cmsWait seconds have elapsed (returns false)
   //  3) Stop() is called (returns false)
-  virtual bool Get(Message *pmsg, int cmsWait = kForever,
+  virtual bool Get(Message* pmsg,
+                   int cmsWait = kForever,
                    bool process_io = true);
-  virtual bool Peek(Message *pmsg, int cmsWait = 0);
+  virtual bool Peek(Message* pmsg, int cmsWait = 0);
   virtual void Post(const Location& posted_from,
                     MessageHandler* phandler,
                     uint32_t id = 0,
@@ -257,7 +256,7 @@ class MessageQueue {
   virtual void Clear(MessageHandler* phandler,
                      uint32_t id = MQID_ANY,
                      MessageList* removed = nullptr);
-  virtual void Dispatch(Message *pmsg);
+  virtual void Dispatch(Message* pmsg);
   virtual void ReceiveSends();
 
   // Amount of time until the next message can be retrieved
@@ -270,7 +269,8 @@ class MessageQueue {
   }
 
   // Internally posts a message which causes the doomed object to be deleted
-  template<class T> void Dispose(T* doomed) {
+  template <class T>
+  void Dispose(T* doomed) {
     if (doomed) {
       Post(RTC_FROM_HERE, nullptr, MQID_DISPOSE, new DisposeData<T>(doomed));
     }
@@ -298,9 +298,15 @@ class MessageQueue {
   // if false was passed as init_queue to the MessageQueue constructor.
   void DoInit();
 
-  // Perform cleanup, subclasses that override Clear must call this from the
-  // destructor.
-  void DoDestroy();
+  // Does not take any lock. Must be called either while holding crit_, or by
+  // the destructor (by definition, the latter has exclusive access).
+  void ClearInternal(MessageHandler* phandler,
+                     uint32_t id,
+                     MessageList* removed) RTC_EXCLUSIVE_LOCKS_REQUIRED(&crit_);
+
+  // Perform cleanup; subclasses must call this from the destructor,
+  // and are not expected to actually hold the lock.
+  void DoDestroy() RTC_EXCLUSIVE_LOCKS_REQUIRED(&crit_);
 
   void WakeUpSocketServer();
 

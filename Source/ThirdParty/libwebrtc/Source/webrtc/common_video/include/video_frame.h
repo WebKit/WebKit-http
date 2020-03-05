@@ -16,9 +16,11 @@
 // to refactor and clean up related interfaces, at which point it
 // should be moved to somewhere under api/.
 
-#include "api/rtp_headers.h"
+#include "absl/types/optional.h"
+#include "api/video/video_content_type.h"
+#include "api/video/video_rotation.h"
+#include "api/video/video_timing.h"
 #include "common_types.h"  // NOLINT(build/include)
-#include "typedefs.h"  // NOLINT(build/include)
 
 namespace webrtc {
 
@@ -32,13 +34,32 @@ class EncodedImage {
   static size_t GetBufferPaddingBytes(VideoCodecType codec_type);
 
   EncodedImage();
+  EncodedImage(const EncodedImage&);
   EncodedImage(uint8_t* buffer, size_t length, size_t size);
+
+  // TODO(nisse): Change style to timestamp(), set_timestamp(), for consistency
+  // with the VideoFrame class.
+  // Set frame timestamp (90kHz).
+  void SetTimestamp(uint32_t timestamp) { timestamp_rtp_ = timestamp; }
+
+  // Get frame timestamp (90kHz).
+  uint32_t Timestamp() const { return timestamp_rtp_; }
 
   void SetEncodeTime(int64_t encode_start_ms, int64_t encode_finish_ms);
 
+  absl::optional<int> SpatialIndex() const {
+    if (spatial_index_ < 0)
+      return absl::nullopt;
+    return spatial_index_;
+  }
+  void SetSpatialIndex(absl::optional<int> spatial_index) {
+    RTC_DCHECK_GE(spatial_index.value_or(0), 0);
+    RTC_DCHECK_LT(spatial_index.value_or(0), kMaxSpatialLayers);
+    spatial_index_ = spatial_index.value_or(-1);
+  }
+
   uint32_t _encodedWidth = 0;
   uint32_t _encodedHeight = 0;
-  uint32_t _timeStamp = 0;
   // NTP time of the capture time in local timebase in milliseconds.
   int64_t ntp_time_ms_ = 0;
   int64_t capture_time_ms_ = 0;
@@ -57,7 +78,7 @@ class EncodedImage {
   PlayoutDelay playout_delay_ = {-1, -1};
 
   struct Timing {
-    uint8_t flags = TimingFrameFlags::kInvalid;
+    uint8_t flags = VideoSendTiming::kInvalid;
     int64_t encode_start_ms = 0;
     int64_t encode_finish_ms = 0;
     int64_t packetization_finish_ms = 0;
@@ -67,6 +88,12 @@ class EncodedImage {
     int64_t receive_start_ms = 0;
     int64_t receive_finish_ms = 0;
   } timing_;
+
+ private:
+  uint32_t timestamp_rtp_ = 0;
+  // -1 means not set. Use a plain int rather than optional, to keep this class
+  // copyable with memcpy.
+  int spatial_index_ = -1;
 };
 
 }  // namespace webrtc

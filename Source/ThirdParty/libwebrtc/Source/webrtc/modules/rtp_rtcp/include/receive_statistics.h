@@ -14,11 +14,12 @@
 #include <map>
 #include <vector>
 
+#include "call/rtp_packet_sink_interface.h"
 #include "modules/include/module.h"
 #include "modules/include/module_common_types.h"
-#include "modules/rtp_rtcp/source/rtcp_packet/report_block.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
-#include "typedefs.h"  // NOLINT(build/include)
+#include "modules/rtp_rtcp/source/rtcp_packet/report_block.h"
+#include "rtc_base/deprecation.h"
 
 namespace webrtc {
 
@@ -46,36 +47,33 @@ class StreamStatistician {
       StreamDataCounters* data_counters) const = 0;
 
   virtual uint32_t BitrateReceived() const = 0;
-
-  // Returns true if the packet with RTP header |header| is likely to be a
-  // retransmitted packet, false otherwise.
-  virtual bool IsRetransmitOfOldPacket(const RTPHeader& header,
-                                       int64_t min_rtt) const = 0;
-
-  // Returns true if |sequence_number| is received in order, false otherwise.
-  virtual bool IsPacketInOrder(uint16_t sequence_number) const = 0;
 };
 
-class ReceiveStatistics : public ReceiveStatisticsProvider {
+class ReceiveStatistics : public ReceiveStatisticsProvider,
+                          public RtpPacketSinkInterface {
  public:
   ~ReceiveStatistics() override = default;
 
   static ReceiveStatistics* Create(Clock* clock);
 
   // Updates the receive statistics with this packet.
+  // TODO(bugs.webrtc.org/8016): Deprecated. Delete as soon as
+  // downstream code is updated to use OnRtpPacket.
+  RTC_DEPRECATED
   virtual void IncomingPacket(const RTPHeader& rtp_header,
-                              size_t packet_length,
-                              bool retransmitted) = 0;
+                              size_t packet_length) = 0;
 
   // Increment counter for number of FEC packets received.
-  virtual void FecPacketReceived(const RTPHeader& header,
-                                 size_t packet_length) = 0;
+  virtual void FecPacketReceived(const RtpPacketReceived& packet) = 0;
 
   // Returns a pointer to the statistician of an ssrc.
   virtual StreamStatistician* GetStatistician(uint32_t ssrc) const = 0;
 
   // Sets the max reordering threshold in number of packets.
   virtual void SetMaxReorderingThreshold(int max_reordering_threshold) = 0;
+  // Detect retransmissions, enabling updates of the retransmitted counters. The
+  // default is false.
+  virtual void EnableRetransmitDetection(uint32_t ssrc, bool enable) = 0;
 
   // Called on new RTCP stats creation.
   virtual void RegisterRtcpStatisticsCallback(

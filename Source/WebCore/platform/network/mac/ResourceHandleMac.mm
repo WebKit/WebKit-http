@@ -63,10 +63,6 @@
 
 using namespace WebCore;
 
-@interface NSURLConnection ()
--(id)_initWithRequest:(NSURLRequest *)request delegate:(id)delegate usesCache:(BOOL)usesCacheFlag maxContentLength:(long long)maxContentLength startImmediately:(BOOL)startImmediately connectionProperties:(NSDictionary *)connectionProperties;
-@end
-
 namespace WebCore {
     
 static void applyBasicAuthorizationHeader(ResourceRequest& request, const Credential& credential)
@@ -224,7 +220,9 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
     // web content for purposes of App Transport Security.
     [propertyDictionary setObject:@{@"NSAllowsArbitraryLoadsInWebContent": @YES} forKey:@"_kCFURLConnectionPropertyATSFrameworkOverrides"];
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 bool ResourceHandle::start()

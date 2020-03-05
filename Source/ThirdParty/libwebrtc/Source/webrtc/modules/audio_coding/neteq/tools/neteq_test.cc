@@ -16,6 +16,26 @@
 
 namespace webrtc {
 namespace test {
+namespace {
+
+absl::optional<Operations> ActionToOperations(
+    absl::optional<NetEqSimulator::Action> a) {
+  if (!a) {
+    return absl::nullopt;
+  }
+  switch (*a) {
+    case NetEqSimulator::Action::kAccelerate:
+      return absl::make_optional(kAccelerate);
+    case NetEqSimulator::Action::kExpand:
+      return absl::make_optional(kExpand);
+    case NetEqSimulator::Action::kNormal:
+      return absl::make_optional(kNormal);
+    case NetEqSimulator::Action::kPreemptiveExpand:
+      return absl::make_optional(kPreemptiveExpand);
+  }
+}
+
+}  // namespace
 
 void DefaultNetEqTestErrorCallback::OnInsertPacketError(
     const NetEqInput::PacketData& packet) {
@@ -46,9 +66,26 @@ NetEqTest::NetEqTest(const NetEq::Config& config,
   RegisterExternalDecoders(ext_codecs);
 }
 
+NetEqTest::~NetEqTest() = default;
+
 int64_t NetEqTest::Run() {
+  int64_t simulation_time = 0;
+  SimulationStepResult step_result;
+  do {
+    step_result = RunToNextGetAudio();
+    simulation_time += step_result.simulation_step_ms;
+  } while (!step_result.is_simulation_finished);
+  if (callbacks_.simulation_ended_callback) {
+    callbacks_.simulation_ended_callback->SimulationEnded(simulation_time);
+  }
+  return simulation_time;
+}
+
+NetEqTest::SimulationStepResult NetEqTest::RunToNextGetAudio() {
+  SimulationStepResult result;
   const int64_t start_time_ms = *input_->NextEventTime();
   int64_t time_now_ms = start_time_ms;
+  current_state_.packet_iat_ms.clear();
 
   while (!input_->ended()) {
     // Advance time to next event.
@@ -58,17 +95,29 @@ int64_t NetEqTest::Run() {
     if (input_->NextPacketTime() && time_now_ms >= *input_->NextPacketTime()) {
       std::unique_ptr<NetEqInput::PacketData> packet_data = input_->PopPacket();
       RTC_CHECK(packet_data);
-      int error = neteq_->InsertPacket(
-          packet_data->header,
-          rtc::ArrayView<const uint8_t>(packet_data->payload),
-          static_cast<uint32_t>(packet_data->time_ms * sample_rate_hz_ / 1000));
-      if (error != NetEq::kOK && callbacks_.error_callback) {
-        callbacks_.error_callback->OnInsertPacketError(*packet_data);
+      const size_t payload_data_length =
+          packet_data->payload.size() - packet_data->header.paddingLength;
+      if (payload_data_length != 0) {
+        int error = neteq_->InsertPacket(
+            packet_data->header,
+            rtc::ArrayView<const uint8_t>(packet_data->payload),
+            static_cast<uint32_t>(packet_data->time_ms * sample_rate_hz_ /
+                                  1000));
+        if (error != NetEq::kOK && callbacks_.error_callback) {
+          callbacks_.error_callback->OnInsertPacketError(*packet_data);
+        }
+        if (callbacks_.post_insert_packet) {
+          callbacks_.post_insert_packet->AfterInsertPacket(*packet_data,
+                                                           neteq_.get());
+        }
+      } else {
+        neteq_->InsertEmptyPacket(packet_data->header);
       }
-      if (callbacks_.post_insert_packet) {
-        callbacks_.post_insert_packet->AfterInsertPacket(*packet_data,
-                                                         neteq_.get());
+      if (last_packet_time_ms_) {
+        current_state_.packet_iat_ms.push_back(time_now_ms -
+                                               *last_packet_time_ms_);
       }
+      last_packet_time_ms_ = absl::make_optional<int>(time_now_ms);
     }
 
     // Check if it is time to get output audio.
@@ -79,7 +128,9 @@ int64_t NetEqTest::Run() {
       }
       AudioFrame out_frame;
       bool muted;
-      int error = neteq_->GetAudio(&out_frame, &muted);
+      int error = neteq_->GetAudio(&out_frame, &muted,
+                                   ActionToOperations(next_action_));
+      next_action_ = absl::nullopt;
       RTC_CHECK(!muted) << "The code does not handle enable_muted_state";
       if (error != NetEq::kOK) {
         if (callbacks_.error_callback) {
@@ -100,15 +151,100 @@ int64_t NetEqTest::Run() {
       }
 
       input_->AdvanceOutputEvent();
+      result.simulation_step_ms =
+          input_->NextEventTime().value_or(time_now_ms) - start_time_ms;
+      const auto operations_state = neteq_->GetOperationsAndState();
+      current_state_.current_delay_ms = operations_state.current_buffer_size_ms;
+      current_state_.packet_size_ms = operations_state.current_frame_size_ms;
+      current_state_.next_packet_available =
+          operations_state.next_packet_available;
+      current_state_.packet_buffer_flushed =
+          operations_state.packet_buffer_flushes >
+          prev_ops_state_.packet_buffer_flushes;
+      // TODO(ivoc): Add more accurate reporting by tracking the origin of
+      // samples in the sync buffer.
+      result.action_times_ms[Action::kExpand] = 0;
+      result.action_times_ms[Action::kAccelerate] = 0;
+      result.action_times_ms[Action::kPreemptiveExpand] = 0;
+      result.action_times_ms[Action::kNormal] = 0;
+
+      if (out_frame.speech_type_ == AudioFrame::SpeechType::kPLC ||
+          out_frame.speech_type_ == AudioFrame::SpeechType::kPLCCNG) {
+        // Consider the whole frame to be the result of expansion.
+        result.action_times_ms[Action::kExpand] = 10;
+      } else if (operations_state.accelerate_samples -
+                     prev_ops_state_.accelerate_samples >
+                 0) {
+        // Consider the whole frame to be the result of acceleration.
+        result.action_times_ms[Action::kAccelerate] = 10;
+      } else if (operations_state.preemptive_samples -
+                     prev_ops_state_.preemptive_samples >
+                 0) {
+        // Consider the whole frame to be the result of preemptive expansion.
+        result.action_times_ms[Action::kPreemptiveExpand] = 10;
+      } else {
+        // Consider the whole frame to be the result of normal playout.
+        result.action_times_ms[Action::kNormal] = 10;
+      }
+      result.is_simulation_finished = input_->ended();
+      prev_ops_state_ = operations_state;
+      return result;
     }
   }
-  return time_now_ms - start_time_ms;
+  result.simulation_step_ms =
+      input_->NextEventTime().value_or(time_now_ms) - start_time_ms;
+  result.is_simulation_finished = true;
+  return result;
+}
+
+void NetEqTest::SetNextAction(NetEqTest::Action next_operation) {
+  next_action_ = absl::optional<Action>(next_operation);
+}
+
+NetEqTest::NetEqState NetEqTest::GetNetEqState() {
+  return current_state_;
 }
 
 NetEqNetworkStatistics NetEqTest::SimulationStats() {
   NetEqNetworkStatistics stats;
   RTC_CHECK_EQ(neteq_->NetworkStatistics(&stats), 0);
   return stats;
+}
+
+NetEqLifetimeStatistics NetEqTest::LifetimeStats() const {
+  return neteq_->GetLifetimeStatistics();
+}
+
+NetEqTest::DecoderMap NetEqTest::StandardDecoderMap() {
+  DecoderMap codecs = {
+    {0, std::make_pair(NetEqDecoder::kDecoderPCMu, "pcmu")},
+    {8, std::make_pair(NetEqDecoder::kDecoderPCMa, "pcma")},
+#ifdef WEBRTC_CODEC_ILBC
+    {102, std::make_pair(NetEqDecoder::kDecoderILBC, "ilbc")},
+#endif
+    {103, std::make_pair(NetEqDecoder::kDecoderISAC, "isac")},
+#if !defined(WEBRTC_ANDROID)
+    {104, std::make_pair(NetEqDecoder::kDecoderISACswb, "isac-swb")},
+#endif
+#ifdef WEBRTC_CODEC_OPUS
+    {111, std::make_pair(NetEqDecoder::kDecoderOpus, "opus")},
+#endif
+    {93, std::make_pair(NetEqDecoder::kDecoderPCM16B, "pcm16-nb")},
+    {94, std::make_pair(NetEqDecoder::kDecoderPCM16Bwb, "pcm16-wb")},
+    {95, std::make_pair(NetEqDecoder::kDecoderPCM16Bswb32kHz, "pcm16-swb32")},
+    {96, std::make_pair(NetEqDecoder::kDecoderPCM16Bswb48kHz, "pcm16-swb48")},
+    {9, std::make_pair(NetEqDecoder::kDecoderG722, "g722")},
+    {106, std::make_pair(NetEqDecoder::kDecoderAVT, "avt")},
+    {114, std::make_pair(NetEqDecoder::kDecoderAVT16kHz, "avt-16")},
+    {115, std::make_pair(NetEqDecoder::kDecoderAVT32kHz, "avt-32")},
+    {116, std::make_pair(NetEqDecoder::kDecoderAVT48kHz, "avt-48")},
+    {117, std::make_pair(NetEqDecoder::kDecoderRED, "red")},
+    {13, std::make_pair(NetEqDecoder::kDecoderCNGnb, "cng-nb")},
+    {98, std::make_pair(NetEqDecoder::kDecoderCNGwb, "cng-wb")},
+    {99, std::make_pair(NetEqDecoder::kDecoderCNGswb32kHz, "cng-swb32")},
+    {100, std::make_pair(NetEqDecoder::kDecoderCNGswb48kHz, "cng-swb48")}
+  };
+  return codecs;
 }
 
 void NetEqTest::RegisterDecoders(const DecoderMap& codecs) {

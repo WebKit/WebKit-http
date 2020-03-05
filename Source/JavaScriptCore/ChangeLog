@@ -1,3 +1,9 @@
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
 2019-02-26  Guillaume Emont  <guijemont@igalia.com>
 
         [JSC] Repeat string created from Array.prototype.join() take too much memory
@@ -609,6 +615,20 @@
         (JSC::JITByIdGenerator::JITByIdGenerator):
         (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
         (JSC::JITInstanceOfGenerator::JITInstanceOfGenerator):
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
 
 2018-08-30  Saam barati  <sbarati@apple.com>
 
@@ -29356,3 +29376,46 @@
         but it doesn't have to, and it makes the compiler sad.
 
 == Rolled over to ChangeLog-2018-01-01 ==
+2018-09-12  Guillaume Emont  <guijemont@igalia.com>
+
+        Add IGNORE_WARNING_.* macros
+        https://bugs.webkit.org/show_bug.cgi?id=188996
+
+        Reviewed by Michael Catanzaro.
+
+        * API/JSCallbackObject.h:
+        * API/tests/testapi.c:
+        * assembler/LinkBuffer.h:
+        (JSC::LinkBuffer::finalizeCodeWithDisassembly):
+        * b3/B3LowerToAir.cpp:
+        * b3/B3Opcode.cpp:
+        * b3/B3Type.h:
+        * b3/B3TypeMap.h:
+        * b3/B3Width.h:
+        * b3/air/AirArg.cpp:
+        * b3/air/AirArg.h:
+        * b3/air/AirCode.h:
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateNumber):
+        (JSC::DFG::SpeculativeJIT::speculateMisc):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        * ftl/FTLOutput.h:
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::calculatePokeOffset):
+        * llint/LLIntData.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::slowPathLogF):
+        * runtime/ConfigFile.cpp:
+        (JSC::ConfigFile::canonicalizePaths):
+        * runtime/JSDataViewPrototype.cpp:
+        * runtime/JSGenericTypedArrayViewConstructor.h:
+        * runtime/JSGenericTypedArrayViewPrototype.h:
+        * runtime/Options.cpp:
+        (JSC::Options::setAliasedOption):
+        * tools/CodeProfiling.cpp:
+        * wasm/WasmSections.h:
+        * wasm/generateWasmValidateInlinesHeader.py:
+
+== Rolled over to ChangeLog-2018-09-11 ==

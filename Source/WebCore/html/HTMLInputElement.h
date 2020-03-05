@@ -151,7 +151,7 @@ public:
     HTMLElement* placeholderElement() const final;
     WEBCORE_EXPORT HTMLElement* autoFillButtonElement() const;
 #if ENABLE(DATALIST_ELEMENT)
-    HTMLElement* dataListButtonElement() const;
+    WEBCORE_EXPORT HTMLElement* dataListButtonElement() const;
 #endif
 
     bool checked() const { return m_isChecked; }
@@ -296,6 +296,7 @@ public:
 
     Color valueAsColor() const; // Returns transparent color if not type=color.
     WEBCORE_EXPORT void selectColor(StringView); // Does nothing if not type=color. Simulates user selection of color; intended for testing.
+    WEBCORE_EXPORT Vector<Color> suggestedColors() const;
 
     String defaultToolTip() const;
 

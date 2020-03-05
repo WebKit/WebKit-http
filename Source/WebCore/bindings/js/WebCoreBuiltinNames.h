@@ -43,6 +43,7 @@ namespace WebCore {
     macro(AuthenticatorAssertionResponse) \
     macro(AuthenticatorAttestationResponse) \
     macro(AuthenticatorResponse) \
+    macro(BlobEvent) \
     macro(Cache) \
     macro(CacheStorage) \
     macro(Client) \
@@ -97,9 +98,9 @@ namespace WebCore {
     macro(MediaKeyStatusMap) \
     macro(MediaKeySystemAccess) \
     macro(MediaKeys) \
+    macro(MediaRecorder) \
     macro(MediaSource) \
     macro(MediaStream) \
-    macro(MediaStreamEvent) \
     macro(MediaStreamTrack) \
     macro(ModernMediaControls) \
     macro(NavigatorCredentials) \
@@ -120,6 +121,7 @@ namespace WebCore {
     macro(PerformanceResourceTiming) \
     macro(PerformanceServerTiming) \
     macro(PublicKeyCredential) \
+    macro(RTCCertificate) \
     macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCDataChannel) \
@@ -191,7 +193,6 @@ namespace WebCore {
     macro(WindowClient) \
     macro(WritableStream) \
     macro(XMLHttpRequest) \
-    macro(addTrack) \
     macro(appendFromJS) \
     macro(associatedReadableByteStreamController) \
     macro(autoAllocateChunkSize) \
@@ -223,8 +224,6 @@ namespace WebCore {
     macro(finishConsumingStream) \
     macro(focus) \
     macro(frames) \
-    macro(getRemoteStreams) \
-    macro(getSenders) \
     macro(getTracks) \
     macro(getUserMedia) \
     macro(header) \
@@ -268,7 +267,6 @@ namespace WebCore {
     macro(readableStreamController) \
     macro(reader) \
     macro(readyPromiseCapability) \
-    macro(removeTrack) \
     macro(response) \
     macro(responseCacheIsValid) \
     macro(retrieveResponse) \
@@ -298,7 +296,6 @@ namespace WebCore {
     macro(underlyingSource) \
     macro(view) \
     macro(visualViewport) \
-    macro(webRTCLegacyAPIEnabled) \
     macro(webkit) \
     macro(webkitAudioContext) \
     macro(webkitIDBCursor) \

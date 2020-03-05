@@ -14,6 +14,9 @@
 #include <memory>
 #include <vector>
 
+#include "api/test/simulated_network.h"
+#include "call/simulated_packet_receiver.h"
+#include "call/video_send_stream.h"
 #include "modules/rtp_rtcp/include/rtp_header_parser.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/event.h"
@@ -21,8 +24,6 @@
 #include "test/constants.h"
 #include "test/direct_transport.h"
 #include "test/gtest.h"
-#include "typedefs.h"  // NOLINT(build/include)
-#include "call/video_send_stream.h"
 
 namespace {
 const int kShortTimeoutMs = 500;
@@ -97,19 +98,11 @@ class PacketTransport : public test::DirectTransport {
                   RtpRtcpObserver* observer,
                   TransportType transport_type,
                   const std::map<uint8_t, MediaType>& payload_type_map,
-                  const FakeNetworkPipe::Config& configuration)
+                  std::unique_ptr<SimulatedPacketReceiverInterface> nw_pipe)
       : test::DirectTransport(task_queue,
-                              configuration,
+                              std::move(nw_pipe),
                               send_call,
                               payload_type_map),
-        observer_(observer),
-        transport_type_(transport_type) {}
-
-  PacketTransport(SingleThreadedTaskQueueForTesting* task_queue,
-                  Call* send_call, RtpRtcpObserver* observer,
-                  TransportType transport_type,
-                  std::unique_ptr<FakeNetworkPipe> nw_pipe)
-      : test::DirectTransport(task_queue, std::move(nw_pipe), send_call),
         observer_(observer),
         transport_type_(transport_type) {}
 

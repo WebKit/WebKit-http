@@ -435,9 +435,16 @@ void TestRunner::setMediaDevicesEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setMDNSICECandidatesEnabled(bool enabled)
+void TestRunner::setWebRTCMDNSICECandidatesEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitMDNSICECandidatesEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebRTCMDNSICECandidatesEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
+void TestRunner::setWebRTCUnifiedPlanEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebRTCUnifiedPlanEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -446,13 +453,6 @@ void TestRunner::setCustomUserAgent(JSStringRef userAgent)
 {
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetCustomUserAgent"));
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), toWK(userAgent).get(), nullptr);
-}
-
-void TestRunner::setWebRTCLegacyAPIEnabled(bool enabled)
-{
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebRTCLegacyAPIEnabled"));
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
 void TestRunner::setModernMediaControlsEnabled(bool enabled)

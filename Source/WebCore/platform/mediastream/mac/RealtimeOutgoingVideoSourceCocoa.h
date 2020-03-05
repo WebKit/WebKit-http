@@ -28,6 +28,7 @@
 #if USE(LIBWEBRTC)
 
 #include "RealtimeOutgoingVideoSource.h"
+#include "PixelBufferConformerCV.h"
 
 namespace WebCore {
 
@@ -38,8 +39,14 @@ public:
 private:
     explicit RealtimeOutgoingVideoSourceCocoa(Ref<MediaStreamTrackPrivate>&&);
 
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> createBlackFrame(size_t width, size_t height) final;
+
     // MediaStreamTrackPrivate::Observer API
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) final;
+
+    RetainPtr<CVPixelBufferRef> convertToYUV(CVPixelBufferRef);
+
+    std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
 
 #if !RELEASE_LOG_DISABLED
     size_t m_numberOfFrames { 0 };

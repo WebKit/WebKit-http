@@ -15,7 +15,6 @@
 
 #include <memory>
 
-#include "modules/audio_coding/test/ACMTest.h"
 #include "modules/audio_coding/test/Channel.h"
 #include "modules/audio_coding/test/PCMFile.h"
 
@@ -23,11 +22,7 @@
 
 namespace webrtc {
 
-enum StereoMonoMode {
-  kNotSet,
-  kMono,
-  kStereo
-};
+enum StereoMonoMode { kNotSet, kMono, kStereo };
 
 class TestPackStereo : public AudioPacketizationCallback {
  public:
@@ -61,22 +56,27 @@ class TestPackStereo : public AudioPacketizationCallback {
   bool lost_packet_;
 };
 
-class TestStereo : public ACMTest {
+class TestStereo {
  public:
   explicit TestStereo(int test_mode);
   ~TestStereo();
 
-  void Perform() override;
+  void Perform();
 
  private:
   // The default value of '-1' indicates that the registration is based only on
   // codec name and a sampling frequncy matching is not required. This is useful
   // for codecs which support several sampling frequency.
-  void RegisterSendCodec(char side, char* codec_name, int32_t samp_freq_hz,
-                         int rate, int pack_size, int channels,
-                         int payload_type);
+  void RegisterSendCodec(char side,
+                         char* codec_name,
+                         int32_t samp_freq_hz,
+                         int rate,
+                         int pack_size,
+                         int channels);
 
-  void Run(TestPackStereo* channel, int in_channels, int out_channels,
+  void Run(TestPackStereo* channel,
+           int in_channels,
+           int out_channels,
            int percent_loss = 0);
   void OpenOutFile(int16_t test_number);
   void DisplaySendReceiveCodec();
@@ -96,19 +96,6 @@ class TestStereo : public ACMTest {
   uint16_t pack_size_bytes_;
   int counter_;
   char* send_codec_name_;
-
-  // Payload types for stereo codecs and CNG
-  int g722_pltype_;
-  int l16_8khz_pltype_;
-  int l16_16khz_pltype_;
-  int l16_32khz_pltype_;
-#ifdef PCMA_AND_PCMU
-  int pcma_pltype_;
-  int pcmu_pltype_;
-#endif
-#ifdef WEBRTC_CODEC_OPUS
-  int opus_pltype_;
-#endif
 };
 
 }  // namespace webrtc

@@ -8,108 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import <AVFoundation/AVFoundation.h>
-#import <WebRTC/RTCMacros.h>
-
-NS_ASSUME_NONNULL_BEGIN
-
-__attribute__((objc_runtime_name("WK_RTCI420Buffer")))
-@protocol RTCI420Buffer;
-
-// RTCVideoFrameBuffer is an ObjectiveC version of webrtc::VideoFrameBuffer.
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCVideoFrameBuffer")))
-@protocol RTCVideoFrameBuffer <NSObject>
-
-@property(nonatomic, readonly) int width;
-@property(nonatomic, readonly) int height;
-
-- (id<RTCI420Buffer>)toI420;
-
-@end
-
-/** Protocol for RTCVideoFrameBuffers containing YUV planar data. */
-__attribute__((objc_runtime_name("WK_RTCYUVPlanarBuffer")))
-@protocol RTCYUVPlanarBuffer <RTCVideoFrameBuffer>
-
-@property(nonatomic, readonly) int chromaWidth;
-@property(nonatomic, readonly) int chromaHeight;
-@property(nonatomic, readonly) const uint8_t *dataY;
-@property(nonatomic, readonly) const uint8_t *dataU;
-@property(nonatomic, readonly) const uint8_t *dataV;
-@property(nonatomic, readonly) int strideY;
-@property(nonatomic, readonly) int strideU;
-@property(nonatomic, readonly) int strideV;
-
-- (instancetype)initWithWidth:(int)width height:(int)height;
-- (instancetype)initWithWidth:(int)width
-                       height:(int)height
-                      strideY:(int)strideY
-                      strideU:(int)strideU
-                      strideV:(int)strideV;
-
-@end
-
-/** Extension of the YUV planar data buffer with mutable data access */
-__attribute__((objc_runtime_name("WK_RTCMutableYUVPlanarBuffer")))
-@protocol RTCMutableYUVPlanarBuffer <RTCYUVPlanarBuffer>
-
-@property(nonatomic, readonly) uint8_t *mutableDataY;
-@property(nonatomic, readonly) uint8_t *mutableDataU;
-@property(nonatomic, readonly) uint8_t *mutableDataV;
-
-@end
-
-/** Protocol for RTCYUVPlanarBuffers containing I420 data */
-__attribute__((objc_runtime_name("WK_RTCI420Buffer")))
-@protocol RTCI420Buffer <RTCYUVPlanarBuffer>
-@end
-
-/** Extension of the I420 buffer with mutable data access */
-__attribute__((objc_runtime_name("WK_RTCMutableI420Buffer")))
-@protocol RTCMutableI420Buffer <RTCI420Buffer, RTCMutableYUVPlanarBuffer>
-@end
-
-/** RTCVideoFrameBuffer containing a CVPixelBufferRef */
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCCVPixelBuffer")))
-@interface RTCCVPixelBuffer : NSObject <RTCVideoFrameBuffer>
-
-@property(nonatomic, readonly) CVPixelBufferRef pixelBuffer;
-@property(nonatomic, readonly) int cropX;
-@property(nonatomic, readonly) int cropY;
-
-+ (NSSet<NSNumber *> *)supportedPixelFormats;
-
-- (instancetype)initWithPixelBuffer:(CVPixelBufferRef)pixelBuffer;
-- (instancetype)initWithPixelBuffer:(CVPixelBufferRef)pixelBuffer
-                       adaptedWidth:(int)adaptedWidth
-                      adaptedHeight:(int)adaptedHeight
-                          cropWidth:(int)cropWidth
-                         cropHeight:(int)cropHeight
-                              cropX:(int)cropX
-                              cropY:(int)cropY;
-
-- (BOOL)requiresCropping;
-- (BOOL)requiresScalingToWidth:(int)width height:(int)height;
-- (int)bufferSizeForCroppingAndScalingToWidth:(int)width height:(int)height;
-/** The minimum size of the |tmpBuffer| must be the number of bytes returned from the
- * bufferSizeForCroppingAndScalingToWidth:height: method.
- */
-- (BOOL)cropAndScaleTo:(CVPixelBufferRef)outputPixelBuffer withTempBuffer:(uint8_t *)tmpBuffer;
-
-@end
-
-/** RTCI420Buffer implements the RTCI420Buffer protocol */
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCI420Buffer")))
-@interface RTCI420Buffer : NSObject <RTCI420Buffer>
-@end
-
-/** Mutable version of RTCI420Buffer */
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCMutableI420Buffer")))
-@interface RTCMutableI420Buffer : RTCI420Buffer <RTCMutableI420Buffer>
-@end
-
-NS_ASSUME_NONNULL_END
+#import "api/video_frame_buffer/RTCNativeI420Buffer.h"
+#import "api/video_frame_buffer/RTCNativeMutableI420Buffer.h"
+#import "base/RTCI420Buffer.h"
+#import "base/RTCMutableI420Buffer.h"
+#import "base/RTCMutableYUVPlanarBuffer.h"
+#import "base/RTCVideoFrameBuffer.h"
+#import "base/RTCYUVPlanarBuffer.h"
+#import "components/video_frame_buffer/RTCCVPixelBuffer.h"

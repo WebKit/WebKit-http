@@ -30,7 +30,8 @@ namespace test {
 // Used to perform an audio processing simulation from an aec dump.
 class AecDumpBasedSimulator final : public AudioProcessingSimulator {
  public:
-  explicit AecDumpBasedSimulator(const SimulationSettings& settings);
+  AecDumpBasedSimulator(const SimulationSettings& settings,
+                        std::unique_ptr<AudioProcessingBuilder> ap_builder);
   ~AecDumpBasedSimulator() override;
 
   // Processes the messages in the aecdump file.
@@ -41,6 +42,7 @@ class AecDumpBasedSimulator final : public AudioProcessingSimulator {
   void HandleMessage(const webrtc::audioproc::Stream& msg);
   void HandleMessage(const webrtc::audioproc::ReverseStream& msg);
   void HandleMessage(const webrtc::audioproc::Config& msg);
+  void HandleMessage(const webrtc::audioproc::RuntimeSetting& msg);
   void PrepareProcessStreamCall(const webrtc::audioproc::Stream& msg);
   void PrepareReverseProcessStreamCall(
       const webrtc::audioproc::ReverseStream& msg);

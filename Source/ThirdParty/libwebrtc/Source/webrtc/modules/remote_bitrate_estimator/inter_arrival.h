@@ -11,10 +11,10 @@
 #ifndef MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
 #define MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
 
-#include <cstddef>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "rtc_base/constructormagic.h"
-#include "typedefs.h"  // NOLINT(build/include)
 
 namespace webrtc {
 
@@ -57,15 +57,15 @@ class InterArrival {
         : size(0),
           first_timestamp(0),
           timestamp(0),
+          first_arrival_ms(-1),
           complete_time_ms(-1) {}
 
-    bool IsFirstPacket() const {
-      return complete_time_ms == -1;
-    }
+    bool IsFirstPacket() const { return complete_time_ms == -1; }
 
     size_t size;
     uint32_t first_timestamp;
     uint32_t timestamp;
+    int64_t first_arrival_ms;
     int64_t complete_time_ms;
     int64_t last_system_time_ms;
   };

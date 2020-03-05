@@ -31,6 +31,7 @@
 #include "SharedMemory.h"
 #include "WebProcessSupplement.h"
 #include <WebCore/RealtimeMediaSource.h>
+#include <WebCore/RealtimeMediaSourceFactory.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -42,7 +43,7 @@ namespace WebKit {
 class CrossProcessRealtimeAudioSource;
 class WebProcess;
 
-class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver, public WebCore::RealtimeMediaSource::AudioCaptureFactory, public WebCore::RealtimeMediaSource::VideoCaptureFactory {
+class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver, public WebCore::AudioCaptureFactory, public WebCore::VideoCaptureFactory {
 public:
     explicit UserMediaCaptureManager(WebProcess&);
     ~UserMediaCaptureManager();
@@ -54,9 +55,9 @@ private:
     void initialize(const WebProcessCreationParameters&) final;
 
     // WebCore::RealtimeMediaSource factories
-    WebCore::CaptureSourceOrError createAudioCaptureSource(const WebCore::CaptureDevice& device, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WebCore::RealtimeMediaSource::Type::Audio, constraints); }
-    WebCore::CaptureSourceOrError createVideoCaptureSource(const WebCore::CaptureDevice& device, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WebCore::RealtimeMediaSource::Type::Video, constraints); }
-    WebCore::CaptureSourceOrError createCaptureSource(const WebCore::CaptureDevice&, WebCore::RealtimeMediaSource::Type, const WebCore::MediaConstraints*);
+    WebCore::CaptureSourceOrError createAudioCaptureSource(const WebCore::CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WebCore::RealtimeMediaSource::Type::Audio, WTFMove(hashSalt), constraints); }
+    WebCore::CaptureSourceOrError createVideoCaptureSource(const WebCore::CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(device, WebCore::RealtimeMediaSource::Type::Video, WTFMove(hashSalt), constraints); }
+    WebCore::CaptureSourceOrError createCaptureSource(const WebCore::CaptureDevice&, WebCore::RealtimeMediaSource::Type, String&&, const WebCore::MediaConstraints*);
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;

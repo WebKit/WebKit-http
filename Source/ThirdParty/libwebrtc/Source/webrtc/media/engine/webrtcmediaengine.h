@@ -25,11 +25,11 @@ class AudioMixer;
 class AudioProcessing;
 class VideoDecoderFactory;
 class VideoEncoderFactory;
-}
+}  // namespace webrtc
 namespace cricket {
 class WebRtcVideoDecoderFactory;
 class WebRtcVideoEncoderFactory;
-}
+}  // namespace cricket
 
 namespace cricket {
 
@@ -41,6 +41,7 @@ class WebRtcMediaEngineFactory {
   //
   // TODO(deadbeef): Change these to return an std::unique_ptr<>, to indicate
   // that the caller owns the returned object.
+#if defined(USE_BUILTIN_SW_CODECS)
   static MediaEngineInterface* Create(
       webrtc::AudioDeviceModule* adm,
       const rtc::scoped_refptr<webrtc::AudioEncoderFactory>&
@@ -59,6 +60,7 @@ class WebRtcMediaEngineFactory {
       WebRtcVideoDecoderFactory* video_decoder_factory,
       rtc::scoped_refptr<webrtc::AudioMixer> audio_mixer,
       rtc::scoped_refptr<webrtc::AudioProcessing> apm);
+#endif
 
   // Create a MediaEngineInterface with optional video codec factories. These
   // video factories represents all video codecs, i.e. no extra internal video
@@ -85,8 +87,7 @@ std::vector<webrtc::RtpExtension> FilterRtpExtensions(
     bool (*supported)(const std::string&),
     bool filter_redundant_extensions);
 
-webrtc::Call::Config::BitrateConfig GetBitrateConfigForCodec(
-    const Codec& codec);
+webrtc::BitrateConstraints GetBitrateConfigForCodec(const Codec& codec);
 
 }  // namespace cricket
 

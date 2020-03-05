@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
-#import "AVMediaCaptureSource.h"
 #import "AVVideoCaptureSource.h"
 #import "AudioSourceProvider.h"
 #import "Logging.h"
@@ -55,20 +54,12 @@ SOFT_LINK_CLASS(AVFoundation, AVCaptureSession)
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeAudio, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeMuxed, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeVideo, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureSessionPreset1280x720, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureSessionPreset640x480, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureSessionPreset352x288, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureSessionPresetLow, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasConnectedNotification, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasDisconnectedNotification, NSString *)
 
 #define AVMediaTypeAudio getAVMediaTypeAudio()
 #define AVMediaTypeMuxed getAVMediaTypeMuxed()
 #define AVMediaTypeVideo getAVMediaTypeVideo()
-#define AVCaptureSessionPreset1280x720 getAVCaptureSessionPreset1280x720()
-#define AVCaptureSessionPreset640x480 getAVCaptureSessionPreset640x480()
-#define AVCaptureSessionPreset352x288 getAVCaptureSessionPreset352x288()
-#define AVCaptureSessionPresetLow getAVCaptureSessionPresetLow()
 #define AVCaptureDeviceWasConnectedNotification getAVCaptureDeviceWasConnectedNotification()
 #define AVCaptureDeviceWasDisconnectedNotification getAVCaptureDeviceWasDisconnectedNotification()
 
@@ -179,9 +170,7 @@ void AVCaptureDeviceManager::registerForDeviceNotifications()
 void AVCaptureDeviceManager::deviceConnected()
 {
     refreshCaptureDevices();
-
-    for (auto& observer : m_observers.values())
-        observer();
+    deviceChanged();
 }
 
 void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
@@ -200,8 +189,7 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
         }
     }
 
-    for (auto& observer : m_observers.values())
-        observer();
+    deviceChanged();
 }
 
 } // namespace WebCore

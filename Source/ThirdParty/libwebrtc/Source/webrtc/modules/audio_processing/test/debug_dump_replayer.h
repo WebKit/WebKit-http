@@ -34,7 +34,7 @@ class DebugDumpReplayer {
   bool SetDumpFile(const std::string& filename);
 
   // Return next event.
-  rtc::Optional<audioproc::Event> GetNextEvent() const;
+  absl::optional<audioproc::Event> GetNextEvent() const;
 
   // Run the next event. Returns true if succeeded.
   bool RunNextEvent();
@@ -48,6 +48,7 @@ class DebugDumpReplayer {
   void OnStreamEvent(const audioproc::Stream& msg);
   void OnReverseStreamEvent(const audioproc::ReverseStream& msg);
   void OnConfigEvent(const audioproc::Config& msg);
+  void OnRuntimeSettingEvent(const audioproc::RuntimeSetting& msg);
 
   void MaybeRecreateApm(const audioproc::Config& msg);
   void ConfigureApm(const audioproc::Config& msg);

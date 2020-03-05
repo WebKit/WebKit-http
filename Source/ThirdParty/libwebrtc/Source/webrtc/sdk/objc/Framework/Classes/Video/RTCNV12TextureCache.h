@@ -8,25 +8,4 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import <GLKit/GLKit.h>
-
-@class RTCVideoFrame;
-
-NS_ASSUME_NONNULL_BEGIN
-
-__attribute__((objc_runtime_name("WK_RTCNV12TextureCache")))
-@interface RTCNV12TextureCache : NSObject
-
-@property(nonatomic, readonly) GLuint yTexture;
-@property(nonatomic, readonly) GLuint uvTexture;
-
-- (instancetype)init NS_UNAVAILABLE;
-- (nullable instancetype)initWithContext:(EAGLContext *)context NS_DESIGNATED_INITIALIZER;
-
-- (BOOL)uploadFrameToTextures:(RTCVideoFrame *)frame;
-
-- (void)releaseTextures;
-
-@end
-
-NS_ASSUME_NONNULL_END
+#import "components/renderer/opengl/RTCNV12TextureCache.h"

@@ -630,25 +630,27 @@ static OptionSet<WebsiteDataType> toWebsiteDataTypes(WebKitWebsiteDataTypes type
 {
     OptionSet<WebsiteDataType> returnValue;
     if (types & WEBKIT_WEBSITE_DATA_MEMORY_CACHE)
-        returnValue |= WebsiteDataType::MemoryCache;
+        returnValue.add(WebsiteDataType::MemoryCache);
     if (types & WEBKIT_WEBSITE_DATA_DISK_CACHE)
-        returnValue |= WebsiteDataType::DiskCache;
+        returnValue.add(WebsiteDataType::DiskCache);
     if (types & WEBKIT_WEBSITE_DATA_OFFLINE_APPLICATION_CACHE)
-        returnValue |= WebsiteDataType::OfflineWebApplicationCache;
+        returnValue.add(WebsiteDataType::OfflineWebApplicationCache);
     if (types & WEBKIT_WEBSITE_DATA_SESSION_STORAGE)
-        returnValue |= WebsiteDataType::SessionStorage;
+        returnValue.add(WebsiteDataType::SessionStorage);
     if (types & WEBKIT_WEBSITE_DATA_LOCAL_STORAGE)
-        returnValue |= WebsiteDataType::LocalStorage;
+        returnValue.add(WebsiteDataType::LocalStorage);
     if (types & WEBKIT_WEBSITE_DATA_WEBSQL_DATABASES)
-        returnValue |= WebsiteDataType::WebSQLDatabases;
+        returnValue.add(WebsiteDataType::WebSQLDatabases);
     if (types & WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES)
-        returnValue |= WebsiteDataType::IndexedDBDatabases;
+        returnValue.add(WebsiteDataType::IndexedDBDatabases);
 #if ENABLE(NETSCAPE_PLUGIN_API)
     if (types & WEBKIT_WEBSITE_DATA_PLUGIN_DATA)
-        returnValue |= WebsiteDataType::PlugInData;
+        returnValue.add(WebsiteDataType::PlugInData);
 #endif
     if (types & WEBKIT_WEBSITE_DATA_COOKIES)
-        returnValue |= WebsiteDataType::Cookies;
+        returnValue.add(WebsiteDataType::Cookies);
+    if (types & WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT)
+        returnValue.add(WebsiteDataType::DeviceIdHashSalt);
     return returnValue;
 }
 
@@ -732,7 +734,12 @@ void webkit_website_data_manager_remove(WebKitWebsiteDataManager* manager, WebKi
     for (GList* item = websiteData; item; item = g_list_next(item)) {
         WebKitWebsiteData* data = static_cast<WebKitWebsiteData*>(item->data);
 
-        if (webkit_website_data_get_types(data) & types)
+        // We have to remove the hash salts when cookies are removed.
+        auto dataTypes = webkit_website_data_get_types(data);
+        if (dataTypes & WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT)
+            dataTypes = static_cast<WebKitWebsiteDataTypes>(dataTypes | WEBKIT_WEBSITE_DATA_COOKIES);
+
+        if (dataTypes & types)
             records.append(webkitWebsiteDataGetRecord(data));
     }
 

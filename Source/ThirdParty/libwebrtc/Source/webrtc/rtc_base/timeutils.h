@@ -18,6 +18,7 @@
 #include <string>
 
 #include "rtc_base/checks.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace rtc {
 
@@ -80,7 +81,6 @@ int64_t TimeMicros();
 // Returns the current time in nanoseconds.
 int64_t TimeNanos();
 
-
 // Returns a future timestamp, 'elapsed' milliseconds from now.
 int64_t TimeAfter(int64_t elapsed);
 
@@ -127,6 +127,10 @@ int64_t TmToSeconds(const std::tm& tm);
 // measuring time intervals and timeouts.
 int64_t TimeUTCMicros();
 
+// Return the number of milliseconds since January 1, 1970, UTC.
+// See above.
+int64_t TimeUTCMillis();
+
 // Interval of time from the range [min, max] inclusive.
 class IntervalRange {
  public:
@@ -139,14 +143,16 @@ class IntervalRange {
   int max() const { return max_; }
 
   std::string ToString() const {
-    std::stringstream ss;
+    rtc::StringBuilder ss;
     ss << "[" << min_ << "," << max_ << "]";
-    return ss.str();
+    return ss.Release();
   }
 
   bool operator==(const IntervalRange& o) const {
     return min_ == o.min_ && max_ == o.max_;
   }
+
+  bool operator!=(const IntervalRange& o) const { return !operator==(o); }
 
  private:
   int min_;

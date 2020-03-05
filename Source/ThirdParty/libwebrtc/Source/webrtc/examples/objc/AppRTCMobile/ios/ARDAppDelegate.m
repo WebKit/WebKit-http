@@ -10,10 +10,10 @@
 
 #import "ARDAppDelegate.h"
 
-#import "WebRTC/RTCFieldTrials.h"
-#import "WebRTC/RTCLogging.h"
-#import "WebRTC/RTCSSLAdapter.h"
-#import "WebRTC/RTCTracing.h"
+#import <WebRTC/RTCFieldTrials.h>
+#import <WebRTC/RTCLogging.h>
+#import <WebRTC/RTCSSLAdapter.h>
+#import <WebRTC/RTCTracing.h>
 
 #import "ARDMainViewController.h"
 
@@ -25,9 +25,7 @@
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  NSDictionary *fieldTrials = @{
-    kRTCFieldTrialH264HighProfileKey: kRTCFieldTrialEnabledValue,
-  };
+  NSDictionary *fieldTrials = @{};
   RTCInitFieldTrialDictionary(fieldTrials);
   RTCInitializeSSL();
   RTCSetupInternalTracer();

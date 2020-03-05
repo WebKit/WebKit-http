@@ -22,6 +22,7 @@
 #include "modules/audio_processing/test/echo_canceller_test_tools.h"
 #include "rtc_base/numerics/safe_minmax.h"
 #include "rtc_base/random.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -40,8 +41,12 @@ void RunFilterUpdateTest(int num_blocks_to_process,
   EchoCanceller3Config config;
   config.filter.main.length_blocks = filter_length_blocks;
   AdaptiveFirFilter main_filter(config.filter.main.length_blocks,
+                                config.filter.main.length_blocks,
+                                config.filter.config_change_duration_blocks,
                                 DetectOptimization(), &data_dumper);
   AdaptiveFirFilter shadow_filter(config.filter.shadow.length_blocks,
+                                  config.filter.shadow.length_blocks,
+                                  config.filter.config_change_duration_blocks,
                                   DetectOptimization(), &data_dumper);
   Aec3Fft fft;
 
@@ -52,12 +57,13 @@ void RunFilterUpdateTest(int num_blocks_to_process,
 
   std::array<float, kBlockSize> x_old;
   x_old.fill(0.f);
-  ShadowFilterUpdateGain shadow_gain(config.filter.shadow);
+  ShadowFilterUpdateGain shadow_gain(
+      config.filter.shadow, config.filter.config_change_duration_blocks);
   Random random_generator(42U);
   std::vector<std::vector<float>> x(3, std::vector<float>(kBlockSize, 0.f));
   std::vector<float> y(kBlockSize, 0.f);
   AecState aec_state(config);
-  RenderSignalAnalyzer render_signal_analyzer;
+  RenderSignalAnalyzer render_signal_analyzer(config);
   std::array<float, kFftLength> s;
   FftData S;
   FftData G;
@@ -110,16 +116,16 @@ void RunFilterUpdateTest(int num_blocks_to_process,
 }
 
 std::string ProduceDebugText(int filter_length_blocks) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Length: " << filter_length_blocks;
-  return ss.str();
+  return ss.Release();
 }
 
 std::string ProduceDebugText(size_t delay, int filter_length_blocks) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Delay: " << delay << ", ";
   ss << ProduceDebugText(filter_length_blocks);
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace
@@ -130,11 +136,11 @@ std::string ProduceDebugText(size_t delay, int filter_length_blocks) {
 TEST(ShadowFilterUpdateGain, NullDataOutputGain) {
   ApmDataDumper data_dumper(42);
   FftBuffer fft_buffer(1);
-  RenderSignalAnalyzer analyzer;
+  RenderSignalAnalyzer analyzer(EchoCanceller3Config{});
   FftData E;
   const EchoCanceller3Config::Filter::ShadowConfiguration& config = {
       12, 0.5f, 220075344.f};
-  ShadowFilterUpdateGain gain(config);
+  ShadowFilterUpdateGain gain(config, 250);
   std::array<float, kFftLengthBy2Plus1> render_power;
   render_power.fill(0.f);
   EXPECT_DEATH(gain.Compute(render_power, analyzer, E, 1, false, nullptr), "");

@@ -26,10 +26,17 @@ class DtmfSenderObserverInterface {
   // Triggered when DTMF |tone| is sent.
   // If |tone| is empty that means the DtmfSender has sent out all the given
   // tones.
-  virtual void OnToneChange(const std::string& tone) = 0;
+  // The callback includes the state of the tone buffer at the time when
+  // the tone finished playing.
+  virtual void OnToneChange(const std::string& tone,
+                            const std::string& tone_buffer) {}
+  // DEPRECATED: Older API without tone buffer.
+  // TODO(bugs.webrtc.org/9725): Remove old API and default implementation
+  // when old callers are gone.
+  virtual void OnToneChange(const std::string& tone) {}
 
  protected:
-  virtual ~DtmfSenderObserverInterface() {}
+  virtual ~DtmfSenderObserverInterface() = default;
 };
 
 // The interface of native implementation of the RTCDTMFSender defined by the
@@ -67,13 +74,9 @@ class DtmfSenderInterface : public rtc::RefCountInterface {
   // If InsertDtmf is called on the same object while an existing task for this
   // object to generate DTMF is still running, the previous task is canceled.
   // Returns true on success and false on failure.
-  virtual bool InsertDtmf(const std::string& tones, int duration,
+  virtual bool InsertDtmf(const std::string& tones,
+                          int duration,
                           int inter_tone_gap) = 0;
-
-  // Returns the track given as argument to the constructor. Only exists for
-  // backwards compatibilty; now that DtmfSenders are tied to RtpSenders, it's
-  // no longer relevant.
-  virtual const AudioTrackInterface* track() const = 0;
 
   // Returns the tones remaining to be played out.
   virtual std::string tones() const = 0;
@@ -89,7 +92,7 @@ class DtmfSenderInterface : public rtc::RefCountInterface {
   virtual int inter_tone_gap() const = 0;
 
  protected:
-  virtual ~DtmfSenderInterface() {}
+  ~DtmfSenderInterface() override = default;
 };
 
 }  // namespace webrtc

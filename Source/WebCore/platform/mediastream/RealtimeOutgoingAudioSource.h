@@ -34,7 +34,13 @@
 #include "LibWebRTCMacros.h"
 #include "MediaStreamTrackPrivate.h"
 #include "Timer.h"
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/mediastreaminterface.h>
+
+ALLOW_UNUSED_PARAMETERS_END
+
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace webrtc {

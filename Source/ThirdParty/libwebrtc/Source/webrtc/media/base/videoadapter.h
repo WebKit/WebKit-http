@@ -11,7 +11,9 @@
 #ifndef MEDIA_BASE_VIDEOADAPTER_H_
 #define MEDIA_BASE_VIDEOADAPTER_H_
 
-#include "api/optional.h"
+#include <utility>
+
+#include "absl/types/optional.h"
 #include "media/base/videocommon.h"
 #include "rtc_base/constructormagic.h"
 #include "rtc_base/criticalsection.h"
@@ -42,13 +44,29 @@ class VideoAdapter {
                             int* out_width,
                             int* out_height);
 
+  // DEPRECATED. Please use OnOutputFormatRequest below.
+  // TODO(asapersson): Remove this once it is no longer used.
   // Requests the output frame size and frame interval from
   // |AdaptFrameResolution| to not be larger than |format|. Also, the input
   // frame size will be cropped to match the requested aspect ratio. The
   // requested aspect ratio is orientation agnostic and will be adjusted to
   // maintain the input orientation, so it doesn't matter if e.g. 1280x720 or
   // 720x1280 is requested.
-  void OnOutputFormatRequest(const VideoFormat& format);
+  // Note: Should be called from the source only.
+  void OnOutputFormatRequest(const absl::optional<VideoFormat>& format);
+
+  // Requests output frame size and frame interval from |AdaptFrameResolution|.
+  // |target_aspect_ratio|: The input frame size will be cropped to match the
+  // requested aspect ratio. The aspect ratio is orientation agnostic and will
+  // be adjusted to maintain the input orientation (i.e. it doesn't matter if
+  // e.g. <1280,720> or <720,1280> is requested).
+  // |max_pixel_count|: The maximum output frame size.
+  // |max_fps|: The maximum output framerate.
+  // Note: Should be called from the source only.
+  void OnOutputFormatRequest(
+      const absl::optional<std::pair<int, int>>& target_aspect_ratio,
+      const absl::optional<int>& max_pixel_count,
+      const absl::optional<int>& max_fps);
 
   // Requests the output frame size from |AdaptFrameResolution| to have as close
   // as possible to |target_pixel_count| pixels (if set) but no more than
@@ -57,8 +75,9 @@ class VideoAdapter {
   // framerate rather than resolution.
   // Set |max_pixel_count| and/or |max_framerate_fps| to
   // std::numeric_limit<int>::max() if no upper limit is desired.
+  // Note: Should be called from the sink only.
   void OnResolutionFramerateRequest(
-      const rtc::Optional<int>& target_pixel_count,
+      const absl::optional<int>& target_pixel_count,
       int max_pixel_count,
       int max_framerate_fps);
 
@@ -75,14 +94,16 @@ class VideoAdapter {
   // Resolution must be divisible by this factor.
   const int required_resolution_alignment_;
   // The target timestamp for the next frame based on requested format.
-  rtc::Optional<int64_t> next_frame_timestamp_ns_
+  absl::optional<int64_t> next_frame_timestamp_ns_
       RTC_GUARDED_BY(critical_section_);
 
-  // Max number of pixels requested via calls to OnOutputFormatRequest,
-  // OnResolutionRequest respectively.
+  // Max number of pixels/fps requested via calls to OnOutputFormatRequest,
+  // OnResolutionFramerateRequest respectively.
   // The adapted output format is the minimum of these.
-  rtc::Optional<VideoFormat> requested_format_
+  absl::optional<std::pair<int, int>> target_aspect_ratio_
       RTC_GUARDED_BY(critical_section_);
+  absl::optional<int> max_pixel_count_ RTC_GUARDED_BY(critical_section_);
+  absl::optional<int> max_fps_ RTC_GUARDED_BY(critical_section_);
   int resolution_request_target_pixel_count_ RTC_GUARDED_BY(critical_section_);
   int resolution_request_max_pixel_count_ RTC_GUARDED_BY(critical_section_);
   int max_framerate_request_ RTC_GUARDED_BY(critical_section_);

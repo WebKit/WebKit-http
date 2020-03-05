@@ -11,7 +11,6 @@
 #include "modules/audio_processing/aec3/render_delay_buffer.h"
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -19,15 +18,16 @@
 #include "modules/audio_processing/aec3/aec3_common.h"
 #include "modules/audio_processing/logging/apm_data_dumper.h"
 #include "rtc_base/random.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 namespace webrtc {
 namespace {
 
 std::string ProduceDebugText(int sample_rate_hz) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Sample rate: " << sample_rate_hz;
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace
@@ -75,12 +75,14 @@ TEST(RenderDelayBuffer, SetDelay) {
   EchoCanceller3Config config;
   std::unique_ptr<RenderDelayBuffer> delay_buffer(
       RenderDelayBuffer::Create(config, 1));
-  ASSERT_FALSE(delay_buffer->Delay());
-  for (size_t delay = config.delay.min_echo_path_delay_blocks + 1; delay < 20;
-       ++delay) {
-    delay_buffer->SetDelay(delay);
-    ASSERT_TRUE(delay_buffer->Delay());
-    EXPECT_EQ(delay, *delay_buffer->Delay());
+  ASSERT_TRUE(delay_buffer->Delay());
+  delay_buffer->Reset();
+  size_t initial_internal_delay = config.delay.min_echo_path_delay_blocks +
+                                  config.delay.api_call_jitter_blocks;
+  for (size_t delay = initial_internal_delay;
+       delay < initial_internal_delay + 20; ++delay) {
+    ASSERT_TRUE(delay_buffer->SetDelay(delay));
+    EXPECT_EQ(delay, delay_buffer->Delay());
   }
 }
 

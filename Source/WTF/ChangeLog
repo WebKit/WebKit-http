@@ -1,3 +1,78 @@
+2018-08-31  Antti Koivisto  <antti@apple.com>
+
+        Replace OptionSet |= and -= operators with add() and remove() functions
+        https://bugs.webkit.org/show_bug.cgi?id=189169
+
+        Reviewed by Anders Carlsson.
+
+        Improve code readability.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::add):
+        (WTF::OptionSet::remove):
+        (WTF::OptionSet::operator==):
+        (WTF::OptionSet::operator!=):
+        (WTF::OptionSet::operator|=): Deleted.
+        (WTF::OptionSet::operator-=): Deleted.
+        * wtf/ProcessPrivilege.cpp:
+        (WTF::addProcessPrivilege):
+        (WTF::removeProcessPrivilege):
+
+2018-08-31  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r226407): Remove unused BlockStack.h
+        <https://webkit.org/b/189189>
+
+        Reviewed by Yusuke Suzuki.
+
+        * WTF.xcodeproj/project.pbxproj: Remove references to BlockStack.h.
+        * wtf/BlockStack.h: Remove.
+        * wtf/CMakeLists.txt: Remove references to BlockStack.h.
+
+2018-08-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Replace AVFoundationSupport.py using CMake
+        https://bugs.webkit.org/show_bug.cgi?id=182891
+
+        Reviewed by Per Arne Vollan.
+
+        Rely on CMake values for the added HAVE_* checks.
+
+        * wtf/Platform.h:
+
+2018-08-30  Tim Horton  <timothy_horton@apple.com>
+
+        Bundle unified sources more tightly in projects with deep directory structures
+        https://bugs.webkit.org/show_bug.cgi?id=189009
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/generate-unified-source-bundles.rb:
+        It turns out our plan to switch unified source bundle every time the directory
+        changes is not a good fit for projects like WebKit2 with many small directories.
+        It leaves many unified source bundles with only a single source file,
+        achieving only ~40% density.
+
+        Instead, switch unified source bundles every time the top-level directory changes.
+        This still achieves the goal of *usually* only rebuilding the one top-level
+        directory you touched, and increases source bundle density wildly, to ~95%.
+
+        * wtf/Platform.h:
+
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Rename wtf/text/mac/StringMac.mm to wtf/text/cococa/StringCococa.mm
+        <https://webkit.org/b/189082>
+
+        Reviewed by Sam Weinig.
+
+        Includes a drive-by fix for a webkit-style warning:
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
 2018-09-05  Brent Fulgham  <bfulgham@apple.com>
 
         The width of an empty or nullptr TextRun should be zero
@@ -33,6 +108,20 @@
         directory you touched, and increases source bundle density wildly, to ~95%.
 
         * wtf/Platform.h:
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
 
 2018-08-25  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
 
@@ -502,6 +591,16 @@
 
         Unreviewed, fix the build by ignoring some deprecation warnings.
 
+2018-09-12  Guillaume Emont  <guijemont@igalia.com>
+
+        Add IGNORE_WARNING_.* macros
+        https://bugs.webkit.org/show_bug.cgi?id=188996
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Compiler.h:
         * wtf/MD5.cpp:
         (WTF::MD5::MD5):
         (WTF::MD5::addBytes):
@@ -22920,3 +23019,16 @@
         * wtf/glib/GUniquePtr.h:
 
 == Rolled over to ChangeLog-2016-09-26 ==
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+        * wtf/SHA1.cpp:
+        (WTF::SHA1::SHA1):
+        (WTF::SHA1::addBytes):
+        (WTF::SHA1::computeHash):
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/Vector.h:
+        (WTF::VectorBuffer::endOfBuffer):
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments):
+
+== Rolled over to ChangeLog-2018-09-11 ==

@@ -15,7 +15,7 @@
 // Windows needs to be included before mmsystem.h
 #include "rtc_base/win32.h"
 
-#include <MMSystem.h>
+#include <mmsystem.h>
 
 #elif defined(WEBRTC_POSIX)
 
@@ -25,8 +25,8 @@
 #endif  // defined(WEBRTC_POSIX)
 
 #include "rtc_base/criticalsection.h"
+#include "rtc_base/synchronization/rw_lock_wrapper.h"
 #include "rtc_base/timeutils.h"
-#include "system_wrappers/include/rw_lock_wrapper.h"
 
 namespace webrtc {
 
@@ -90,7 +90,7 @@ class WindowsRealTimeClock : public RealTimeClock {
         num_timer_wraps_(0),
         ref_point_(GetSystemReferencePoint()) {}
 
-  virtual ~WindowsRealTimeClock() {}
+  ~WindowsRealTimeClock() override {}
 
  protected:
   struct ReferencePoint {
@@ -200,33 +200,15 @@ class UnixRealTimeClock : public RealTimeClock {
 };
 #endif  // defined(WEBRTC_POSIX)
 
-#if defined(WEBRTC_WIN)
-static WindowsRealTimeClock* volatile g_shared_clock = nullptr;
-#endif  // defined(WEBRTC_WIN)
-
 Clock* Clock::GetRealTimeClock() {
 #if defined(WEBRTC_WIN)
-  // This read relies on volatile read being atomic-load-acquire. This is
-  // true in MSVC since at least 2005:
-  // "A read of a volatile object (volatile read) has Acquire semantics"
-  if (g_shared_clock != nullptr)
-    return g_shared_clock;
-  WindowsRealTimeClock* clock = new WindowsRealTimeClock;
-  if (InterlockedCompareExchangePointer(
-          reinterpret_cast<void* volatile*>(&g_shared_clock), clock, nullptr) !=
-      nullptr) {
-    // g_shared_clock was assigned while we constructed/tried to assign our
-    // instance, delete our instance and use the existing one.
-    delete clock;
-  }
-  return g_shared_clock;
+  static Clock* const clock = new WindowsRealTimeClock();
 #elif defined(WEBRTC_POSIX)
-  static std::aligned_storage<sizeof(UnixRealTimeClock), std::alignment_of<UnixRealTimeClock>::value>::type clock_storage;
-  static UnixRealTimeClock* clock = new (&clock_storage) UnixRealTimeClock;
+  static Clock* const clock = new UnixRealTimeClock();
+#else
+  static Clock* const clock = nullptr;
+#endif
   return clock;
-#else  // defined(WEBRTC_POSIX)
-  return nullptr;
-#endif  // !defined(WEBRTC_WIN) || defined(WEBRTC_POSIX)
 }
 
 SimulatedClock::SimulatedClock(int64_t initial_time_us)

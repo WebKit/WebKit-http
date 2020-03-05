@@ -14,9 +14,10 @@
 #include <memory>
 #include <vector>
 
+#include "absl/types/optional.h"
+#include "api/audio_codecs/audio_codec_pair_id.h"
 #include "api/audio_codecs/audio_encoder.h"
 #include "api/audio_codecs/audio_format.h"
-#include "api/optional.h"
 
 namespace webrtc {
 
@@ -27,18 +28,38 @@ namespace webrtc {
 struct AudioEncoderIsacFloat {
   struct Config {
     bool IsOk() const {
-      return (sample_rate_hz == 16000 &&
-              (frame_size_ms == 30 || frame_size_ms == 60)) ||
-             (sample_rate_hz == 32000 && frame_size_ms == 30);
+      switch (sample_rate_hz) {
+        case 16000:
+          if (frame_size_ms != 30 && frame_size_ms != 60) {
+            return false;
+          }
+          if (bit_rate < 10000 || bit_rate > 32000) {
+            return false;
+          }
+          return true;
+        case 32000:
+          if (frame_size_ms != 30) {
+            return false;
+          }
+          if (bit_rate < 10000 || bit_rate > 56000) {
+            return false;
+          }
+          return true;
+        default:
+          return false;
+      }
     }
     int sample_rate_hz = 16000;
     int frame_size_ms = 30;
+    int bit_rate = 32000;  // Limit on short-term average bit rate, in bits/s.
   };
-  static rtc::Optional<Config> SdpToConfig(const SdpAudioFormat& audio_format);
+  static absl::optional<Config> SdpToConfig(const SdpAudioFormat& audio_format);
   static void AppendSupportedEncoders(std::vector<AudioCodecSpec>* specs);
   static AudioCodecInfo QueryAudioEncoder(const Config& config);
-  static std::unique_ptr<AudioEncoder> MakeAudioEncoder(const Config& config,
-                                                        int payload_type);
+  static std::unique_ptr<AudioEncoder> MakeAudioEncoder(
+      const Config& config,
+      int payload_type,
+      absl::optional<AudioCodecPairId> codec_pair_id = absl::nullopt);
 };
 
 }  // namespace webrtc

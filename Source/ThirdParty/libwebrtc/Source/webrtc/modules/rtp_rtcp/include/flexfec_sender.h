@@ -12,6 +12,7 @@
 #define MODULES_RTP_RTCP_INCLUDE_FLEXFEC_SENDER_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "api/array_view.h"
@@ -20,9 +21,9 @@
 #include "modules/rtp_rtcp/include/flexfec_sender.h"
 #include "modules/rtp_rtcp/include/rtp_header_extension_map.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "modules/rtp_rtcp/source/rtp_header_extension_size.h"
 #include "modules/rtp_rtcp/source/rtp_packet_to_send.h"
 #include "modules/rtp_rtcp/source/ulpfec_generator.h"
-#include "rtc_base/basictypes.h"
 #include "rtc_base/random.h"
 #include "system_wrappers/include/clock.h"
 
@@ -38,6 +39,7 @@ class FlexfecSender {
   FlexfecSender(int payload_type,
                 uint32_t ssrc,
                 uint32_t protected_media_ssrc,
+                const std::string& mid,
                 const std::vector<RtpExtension>& rtp_header_extensions,
                 rtc::ArrayView<const RtpExtensionSize> extension_sizes,
                 const RtpState* rtp_state,
@@ -79,6 +81,8 @@ class FlexfecSender {
   const uint32_t timestamp_offset_;
   const uint32_t ssrc_;
   const uint32_t protected_media_ssrc_;
+  // MID value to send in the MID header extension.
+  const std::string mid_;
   // Sequence number of next packet to generate.
   uint16_t seq_num_;
 

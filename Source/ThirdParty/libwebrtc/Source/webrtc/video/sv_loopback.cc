@@ -11,7 +11,9 @@
 #include <stdio.h>
 
 #include "rtc_base/flags.h"
+#include "rtc_base/logging.h"
 #include "rtc_base/stringencode.h"
+#include "system_wrappers/include/field_trial.h"
 #include "test/field_trial.h"
 #include "test/gtest.h"
 #include "test/run_test.h"
@@ -19,6 +21,17 @@
 
 namespace webrtc {
 namespace flags {
+
+InterLayerPredMode IntToInterLayerPredMode(int inter_layer_pred) {
+  if (inter_layer_pred == 0) {
+    return InterLayerPredMode::kOn;
+  } else if (inter_layer_pred == 1) {
+    return InterLayerPredMode::kOff;
+  } else {
+    RTC_DCHECK_EQ(inter_layer_pred, 2);
+    return InterLayerPredMode::kOnKeyPic;
+  }
+}
 
 // Flags for video.
 DEFINE_int(vwidth, 640, "Video width.");
@@ -77,6 +90,14 @@ int VideoNumStreams() {
 DEFINE_int(vnum_spatial_layers, 1, "Number of video spatial layers to use.");
 int VideoNumSpatialLayers() {
   return static_cast<int>(FLAG_vnum_spatial_layers);
+}
+
+DEFINE_int(vinter_layer_pred,
+           2,
+           "Video inter-layer prediction mode. "
+           "0 - enabled, 1 - disabled, 2 - enabled only for key pictures.");
+InterLayerPredMode VideoInterLayerPred() {
+  return IntToInterLayerPredMode(FLAG_vinter_layer_pred);
 }
 
 DEFINE_string(
@@ -189,9 +210,17 @@ int ScreenshareNumStreams() {
 
 DEFINE_int(snum_spatial_layers,
            1,
-           "Number of screemshare spatial layers to use.");
+           "Number of screenshare spatial layers to use.");
 int ScreenshareNumSpatialLayers() {
   return static_cast<int>(FLAG_snum_spatial_layers);
+}
+
+DEFINE_int(sinter_layer_pred,
+           0,
+           "Screenshare inter-layer prediction mode. "
+           "0 - enabled, 1 - disabled, 2 - enabled only for key pictures.");
+InterLayerPredMode ScreenshareInterLayerPred() {
+  return IntToInterLayerPredMode(FLAG_sinter_layer_pred);
 }
 
 DEFINE_string(
@@ -390,6 +419,8 @@ DEFINE_bool(logs, false, "print logs to stderr");
 
 DEFINE_bool(send_side_bwe, true, "Use send-side bandwidth estimation");
 
+DEFINE_bool(generic_descriptor, false, "Use the generic frame descriptor.");
+
 DEFINE_bool(allow_reordering, false, "Allow packet reordering to occur");
 
 DEFINE_bool(use_ulpfec, false, "Use RED+ULPFEC forward error correction.");
@@ -444,7 +475,7 @@ void Loopback() {
     screenshare_idx = 0;
   }
 
-  FakeNetworkPipe::Config pipe_config;
+  DefaultNetworkSimulationConfig pipe_config;
   pipe_config.loss_percent = flags::LossPercent();
   pipe_config.avg_burst_loss_length = flags::AvgBurstLossLength();
   pipe_config.link_capacity_kbps = flags::LinkCapacityKbps();
@@ -453,7 +484,7 @@ void Loopback() {
   pipe_config.delay_standard_deviation_ms = flags::StdPropagationDelayMs();
   pipe_config.allow_reordering = flags::FLAG_allow_reordering;
 
-  Call::Config::BitrateConfig call_bitrate_config;
+  BitrateConstraints call_bitrate_config;
   call_bitrate_config.min_bitrate_bps =
       (flags::ScreenshareMinBitrateKbps() + flags::VideoMinBitrateKbps()) *
       1000;
@@ -463,7 +494,8 @@ void Loopback() {
       1000;
 
   VideoQualityTest::Params params, camera_params, screenshare_params;
-  params.call = {flags::FLAG_send_side_bwe, call_bitrate_config, 0};
+  params.call = {flags::FLAG_send_side_bwe, flags::FLAG_generic_descriptor,
+                 call_bitrate_config, 0};
   params.call.dual_video = true;
   params.video[screenshare_idx] = {
       true,
@@ -480,6 +512,7 @@ void Loopback() {
       flags::ScreenshareMinTransmitBitrateKbps() * 1000,
       false,  // ULPFEC disabled.
       false,  // FlexFEC disabled.
+      false,  // Automatic scaling disabled
       ""};
   params.video[camera_idx] = {flags::FLAG_video,
                               flags::VideoWidth(),
@@ -495,19 +528,20 @@ void Loopback() {
                               0,  // No min transmit bitrate.
                               flags::FLAG_use_ulpfec,
                               flags::FLAG_use_flexfec,
+                              false,
                               flags::VideoClip(),
                               flags::GetCaptureDevice()};
   params.audio = {flags::FLAG_audio, flags::FLAG_audio_video_sync,
                   flags::FLAG_audio_dtx};
-  params.logging = {flags::FLAG_logs, flags::FLAG_rtc_event_log_name,
-                    flags::FLAG_rtp_dump_name, flags::FLAG_encoded_frame_path};
+  params.logging = {flags::FLAG_rtc_event_log_name, flags::FLAG_rtp_dump_name,
+                    flags::FLAG_encoded_frame_path};
   params.analyzer = {"dual_streams",
                      0.0,
                      0.0,
                      flags::DurationSecs(),
                      flags::OutputFilename(),
                      flags::GraphTitle()};
-  params.pipe = pipe_config;
+  params.config = pipe_config;
 
   params.screenshare[camera_idx].enabled = false;
   params.screenshare[screenshare_idx] = {
@@ -535,7 +569,7 @@ void Loopback() {
       &params, screenshare_idx, stream_descriptors,
       flags::ScreenshareNumStreams(), flags::ScreenshareSelectedStream(),
       flags::ScreenshareNumSpatialLayers(), flags::ScreenshareSelectedSL(),
-      SL_descriptors);
+      flags::ScreenshareInterLayerPred(), SL_descriptors);
 
   stream_descriptors.clear();
   stream_descriptors.push_back(flags::VideoStream0());
@@ -546,13 +580,13 @@ void Loopback() {
   VideoQualityTest::FillScalabilitySettings(
       &params, camera_idx, stream_descriptors, flags::VideoNumStreams(),
       flags::VideoSelectedStream(), flags::VideoNumSpatialLayers(),
-      flags::VideoSelectedSL(), SL_descriptors);
+      flags::VideoSelectedSL(), flags::VideoInterLayerPred(), SL_descriptors);
 
-  VideoQualityTest test;
+  auto fixture = absl::make_unique<VideoQualityTest>(nullptr);
   if (flags::DurationSecs()) {
-    test.RunWithAnalyzer(params);
+    fixture->RunWithAnalyzer(params);
   } else {
-    test.RunWithRenderers(params);
+    fixture->RunWithRenderers(params);
   }
 }
 }  // namespace webrtc
@@ -568,10 +602,14 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  // InitFieldTrialsFromString needs a reference to an std::string instance,
-  // with a scope that outlives the test.
-  std::string field_trials = webrtc::flags::FLAG_force_fieldtrials;
-  webrtc::test::InitFieldTrialsFromString(field_trials);
+  rtc::LogMessage::SetLogToStderr(webrtc::flags::FLAG_logs);
+
+  webrtc::test::ValidateFieldTrialsStringOrDie(
+      webrtc::flags::FLAG_force_fieldtrials);
+  // InitFieldTrialsFromString stores the char*, so the char array must outlive
+  // the application.
+  webrtc::field_trial::InitFieldTrialsFromString(
+      webrtc::flags::FLAG_force_fieldtrials);
 
   webrtc::test::RunTest(webrtc::Loopback);
   return 0;

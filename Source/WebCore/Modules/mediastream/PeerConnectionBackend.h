@@ -35,21 +35,25 @@
 
 #include "JSDOMPromiseDeferred.h"
 #include "LibWebRTCProvider.h"
-#include "RTCRtpParameters.h"
+#include "RTCRtpSendParameters.h"
 #include "RTCSessionDescription.h"
 #include "RTCSignalingState.h"
 #include <wtf/LoggerHelper.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
+class Document;
 class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
+class RTCCertificate;
 class RTCDataChannelHandler;
 class RTCIceCandidate;
 class RTCPeerConnection;
 class RTCRtpReceiver;
 class RTCRtpSender;
+class RTCRtpTransceiver;
 class RTCSessionDescription;
 class RTCStatsReport;
 
@@ -57,6 +61,7 @@ struct MediaEndpointConfiguration;
 struct RTCAnswerOptions;
 struct RTCDataChannelInit;
 struct RTCOfferOptions;
+struct RTCRtpTransceiverInit;
 
 namespace PeerConnection {
 using SessionDescriptionPromise = DOMPromiseDeferred<IDLDictionary<RTCSessionDescription::Init>>;
@@ -66,12 +71,16 @@ using StatsPromise = DOMPromiseDeferred<IDLInterface<RTCStatsReport>>;
 using CreatePeerConnectionBackend = std::unique_ptr<PeerConnectionBackend> (*)(RTCPeerConnection&);
 
 class PeerConnectionBackend
+    : public CanMakeWeakPtr<PeerConnectionBackend>
 #if !RELEASE_LOG_DISABLED
-    : private LoggerHelper
+    , private LoggerHelper
 #endif
 {
 public:
     WEBCORE_EXPORT static CreatePeerConnectionBackend create;
+
+    static std::optional<RTCRtpCapabilities> receiverCapabilities(ScriptExecutionContext&, const String& kind);
+    static std::optional<RTCRtpCapabilities> senderCapabilities(ScriptExecutionContext&, const String& kind);
 
     explicit PeerConnectionBackend(RTCPeerConnection&);
     virtual ~PeerConnectionBackend() = default;
@@ -96,16 +105,15 @@ public:
 
     virtual bool setConfiguration(MediaEndpointConfiguration&&) = 0;
 
-    virtual void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) = 0;
+    virtual void getStats(Ref<DeferredPromise>&&) = 0;
+    virtual void getStats(RTCRtpSender&, Ref<DeferredPromise>&&) = 0;
+    virtual void getStats(RTCRtpReceiver&, Ref<DeferredPromise>&&) = 0;
 
-    virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
+    virtual ExceptionOr<Ref<RTCRtpSender>> addTrack(MediaStreamTrack&, Vector<String>&&);
+    virtual void removeTrack(RTCRtpSender&) { }
 
-    virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
-    virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) = 0;
-    virtual void notifyAddedTrack(RTCRtpSender&) { }
-    virtual void notifyRemovedTrack(RTCRtpSender&) { }
-
-    virtual RTCRtpParameters getParameters(RTCRtpSender&) const { return { }; }
+    virtual ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(const String&, const RTCRtpTransceiverInit&);
+    virtual ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&);
 
     void markAsNeedingNegotiation();
     bool isNegotiationNeeded() const { return m_negotiationNeeded; };
@@ -129,6 +137,37 @@ public:
     virtual bool isLocalDescriptionSet() const = 0;
 
     void finishedRegisteringMDNSName(const String& ipAddress, const String& name);
+
+    struct CertificateInformation {
+        enum class Type { RSASSAPKCS1v15, ECDSAP256 };
+        struct RSA {
+            unsigned modulusLength;
+            int publicExponent;
+        };
+
+        static CertificateInformation RSASSA_PKCS1_v1_5()
+        {
+            return CertificateInformation { Type::RSASSAPKCS1v15 };
+        }
+
+        static CertificateInformation ECDSA_P256()
+        {
+            return CertificateInformation { Type::ECDSAP256 };
+        }
+
+        explicit CertificateInformation(Type type)
+            : type(type)
+        {
+        }
+
+        Type type;
+        std::optional<double> expires;
+
+        std::optional<RSA> rsaParameters;
+    };
+    static void generateCertificate(Document&, const CertificateInformation&, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&&);
+
+    virtual void collectTransceivers() { };
 
 protected:
     void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&, String&& url);

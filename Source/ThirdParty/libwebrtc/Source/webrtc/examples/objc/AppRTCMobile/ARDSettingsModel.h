@@ -10,7 +10,7 @@
 
 #import <Foundation/Foundation.h>
 
-#import "WebRTC/RTCVideoCodec.h"
+#import <WebRTC/RTCVideoCodecInfo.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -105,19 +105,6 @@ NS_ASSUME_NONNULL_BEGIN
  * @param setting the boolean value to be stored.
  */
 - (void)storeCreateAecDumpSetting:(BOOL)createAecDump;
-
-/**
- * Returns current setting whether to use level controller from store if present or default (NO)
- * otherwise.
- */
-- (BOOL)currentUseLevelControllerSettingFromStore;
-
-/**
- * Stores the provided use level controller setting into the store.
- *
- * @param setting the boolean value to be stored.
- */
-- (void)storeUseLevelControllerSetting:(BOOL)useLevelController;
 
 /**
  * Returns current setting whether to use manual audio config from store if present or default (YES)

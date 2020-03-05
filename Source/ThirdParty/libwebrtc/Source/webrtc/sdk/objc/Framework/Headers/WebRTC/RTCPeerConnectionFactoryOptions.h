@@ -8,32 +8,4 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import <Foundation/Foundation.h>
-
-#import <WebRTC/RTCMacros.h>
-
-NS_ASSUME_NONNULL_BEGIN
-
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCPeerConnectionFactoryOptions")))
-@interface RTCPeerConnectionFactoryOptions : NSObject
-
-@property(nonatomic, assign) BOOL disableEncryption;
-
-@property(nonatomic, assign) BOOL disableNetworkMonitor;
-
-@property(nonatomic, assign) BOOL ignoreLoopbackNetworkAdapter;
-
-@property(nonatomic, assign) BOOL ignoreVPNNetworkAdapter;
-
-@property(nonatomic, assign) BOOL ignoreCellularNetworkAdapter;
-
-@property(nonatomic, assign) BOOL ignoreWiFiNetworkAdapter;
-
-@property(nonatomic, assign) BOOL ignoreEthernetNetworkAdapter;
-
-- (instancetype)init NS_DESIGNATED_INITIALIZER;
-
-@end
-
-NS_ASSUME_NONNULL_END
+#import "api/peerconnection/RTCPeerConnectionFactoryOptions.h"

@@ -11,12 +11,11 @@
 #include <stdio.h>
 
 #include <memory>
-#include <sstream>
 
 #include "modules/remote_bitrate_estimator/tools/bwe_rtp.h"
 #include "modules/rtp_rtcp/include/rtp_header_parser.h"
-#include "modules/rtp_rtcp/include/rtp_payload_registry.h"
 #include "rtc_base/format_macros.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/rtp_file_reader.h"
 
 int main(int argc, char* argv[]) {
@@ -29,7 +28,8 @@ int main(int argc, char* argv[]) {
   bool arrival_time_only = (argc >= 5 && strncmp(argv[4], "-t", 2) == 0);
   std::unique_ptr<webrtc::test::RtpFileReader> rtp_reader(reader);
   std::unique_ptr<webrtc::RtpHeaderParser> rtp_parser(parser);
-  fprintf(stdout, "seqnum timestamp ts_offset abs_sendtime recvtime "
+  fprintf(stdout,
+          "seqnum timestamp ts_offset abs_sendtime recvtime "
           "markerbit ssrc size original_size\n");
   int packet_counter = 0;
   int non_zero_abs_send_time = 0;
@@ -43,28 +43,23 @@ int main(int argc, char* argv[]) {
     if (header.extension.transmissionTimeOffset != 0)
       ++non_zero_ts_offsets;
     if (arrival_time_only) {
-      std::stringstream ss;
+      rtc::StringBuilder ss;
       ss << static_cast<int64_t>(packet.time_ms) * 1000000;
       fprintf(stdout, "%s\n", ss.str().c_str());
     } else {
-      fprintf(stdout,
-              "%u %u %d %u %u %d %u %" PRIuS " %" PRIuS "\n",
-              header.sequenceNumber,
-              header.timestamp,
+      fprintf(stdout, "%u %u %d %u %u %d %u %" PRIuS " %" PRIuS "\n",
+              header.sequenceNumber, header.timestamp,
               header.extension.transmissionTimeOffset,
-              header.extension.absoluteSendTime,
-              packet.time_ms,
-              header.markerBit,
-              header.ssrc,
-              packet.length,
+              header.extension.absoluteSendTime, packet.time_ms,
+              header.markerBit, header.ssrc, packet.length,
               packet.original_length);
     }
     ++packet_counter;
   }
   fprintf(stderr, "Parsed %d packets\n", packet_counter);
   fprintf(stderr, "Packets with non-zero absolute send time: %d\n",
-         non_zero_abs_send_time);
+          non_zero_abs_send_time);
   fprintf(stderr, "Packets with non-zero timestamp offset: %d\n",
-         non_zero_ts_offsets);
+          non_zero_ts_offsets);
   return 0;
 }

@@ -10,8 +10,8 @@
 
 #include "video/encoder_rtcp_feedback.h"
 
+#include "api/video/video_stream_encoder_interface.h"
 #include "rtc_base/checks.h"
-#include "video/video_stream_encoder.h"
 
 static const int kMinKeyFrameRequestIntervalMs = 300;
 
@@ -19,11 +19,11 @@ namespace webrtc {
 
 EncoderRtcpFeedback::EncoderRtcpFeedback(Clock* clock,
                                          const std::vector<uint32_t>& ssrcs,
-                                         VideoStreamEncoder* encoder)
+                                         VideoStreamEncoderInterface* encoder)
     : clock_(clock),
       ssrcs_(ssrcs),
       video_stream_encoder_(encoder),
-      time_last_intra_request_ms_(ssrcs.size(), -1) {
+      time_last_intra_request_ms_(-1) {
   RTC_DCHECK(!ssrcs.empty());
 }
 
@@ -36,31 +36,19 @@ bool EncoderRtcpFeedback::HasSsrc(uint32_t ssrc) {
   return false;
 }
 
-size_t EncoderRtcpFeedback::GetStreamIndex(uint32_t ssrc) {
-  for (size_t i = 0; i < ssrcs_.size(); ++i) {
-    if (ssrcs_[i] == ssrc)
-      return i;
-  }
-  RTC_NOTREACHED() << "Unknown ssrc " << ssrc;
-  return 0;
-}
-
 void EncoderRtcpFeedback::OnReceivedIntraFrameRequest(uint32_t ssrc) {
   RTC_DCHECK(HasSsrc(ssrc));
-  size_t index = GetStreamIndex(ssrc);
   {
-    // TODO(mflodman): Move to VideoStreamEncoder after some more changes making
-    // it easier to test there.
     int64_t now_ms = clock_->TimeInMilliseconds();
     rtc::CritScope lock(&crit_);
-    if (time_last_intra_request_ms_[index] + kMinKeyFrameRequestIntervalMs >
-        now_ms) {
+    if (time_last_intra_request_ms_ + kMinKeyFrameRequestIntervalMs > now_ms) {
       return;
     }
-    time_last_intra_request_ms_[index] = now_ms;
+    time_last_intra_request_ms_ = now_ms;
   }
 
-  video_stream_encoder_->OnReceivedIntraFrameRequest(index);
+  // Always produce key frame for all streams.
+  video_stream_encoder_->SendKeyFrame();
 }
 
 }  // namespace webrtc

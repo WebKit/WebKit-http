@@ -884,7 +884,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if ENABLE(WEBGL) && !PLATFORM(COCOA)
+#if ENABLE(WEBGL) && !PLATFORM(MAC)
 WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
@@ -3617,7 +3617,8 @@ void WebPage::didSelectDataListOption(const String& selectedOption)
 
 void WebPage::didCloseSuggestions()
 {
-    m_activeDataListSuggestionPicker->didCloseSuggestions();
+    if (m_activeDataListSuggestionPicker)
+        m_activeDataListSuggestionPicker->didCloseSuggestions();
     m_activeDataListSuggestionPicker = nullptr;
 }
 
@@ -3757,6 +3758,12 @@ void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vect
 {
     m_userMediaPermissionRequestManager->didCompleteMediaDeviceEnumeration(userMediaID, devices, WTFMove(deviceIdentifierHashSalt), originHasPersistentAccess);
 }
+
+void WebPage::captureDevicesChanged(DeviceAccessState accessState)
+{
+    m_userMediaPermissionRequestManager->captureDevicesChanged(accessState);
+}
+
 #if ENABLE(SANDBOX_EXTENSIONS)
 void WebPage::grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&& extensions)
 {

@@ -14,6 +14,8 @@
 #ifndef COMMON_AUDIO_RING_BUFFER_H_
 #define COMMON_AUDIO_RING_BUFFER_H_
 
+// TODO(alessiob): Used by AEC, AECm and AudioRingBuffer. Remove when possible.
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -53,7 +55,8 @@ size_t WebRtc_ReadBuffer(RingBuffer* handle,
                          size_t element_count);
 
 // Writes |data| to buffer and returns the number of elements written.
-size_t WebRtc_WriteBuffer(RingBuffer* handle, const void* data,
+size_t WebRtc_WriteBuffer(RingBuffer* handle,
+                          const void* data,
                           size_t element_count);
 
 // Moves the buffer read position and returns the number of elements moved.

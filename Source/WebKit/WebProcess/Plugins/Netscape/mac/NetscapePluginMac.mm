@@ -372,10 +372,9 @@ static inline EventRecord initializeEventRecord(EventKind eventKind)
 
     eventRecord.what = eventKind;
     eventRecord.message = 0;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     eventRecord.when = TickCount();
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     eventRecord.where = Point();
     eventRecord.modifiers = 0;
 
@@ -1042,10 +1041,9 @@ void NetscapePlugin::sendComplexTextInput(const String& textInput)
 
         // Set the script code as the keyboard script. Normally Carbon does this whenever the input source changes.
         // However, this is only done for the process that has the keyboard focus. We cheat and do it here instead.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         SetScriptManagerVariable(smKeyScript, scriptCode);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         
         EventRecord event = initializeEventRecord(keyDown);
         event.modifiers = 0;
@@ -1120,11 +1118,10 @@ static void makeCGLPresentLayerOpaque(CALayer *pluginRootLayer)
         return;
 
     Class cglPresentLayerClass = NSClassFromString(@"CGLPresentLayer");
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (![cglPresentLayerClass isSubclassOfClass:[CAOpenGLLayer class]])
         return;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     CALayer *layer = [sublayers objectAtIndex:0];
     if (![layer isKindOfClass:cglPresentLayerClass])
@@ -1180,11 +1177,10 @@ void NetscapePlugin::nullEventTimerFired()
     event.where.v = mousePosition.y;
 
     event.modifiers = GetCurrentKeyModifiers();
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (!Button())
         event.modifiers |= btnState;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     NPP_HandleEvent(&event);
 }

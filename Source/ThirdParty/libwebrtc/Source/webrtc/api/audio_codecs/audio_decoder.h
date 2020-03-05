@@ -14,11 +14,10 @@
 #include <memory>
 #include <vector>
 
+#include "absl/types/optional.h"
 #include "api/array_view.h"
-#include "api/optional.h"
 #include "rtc_base/buffer.h"
 #include "rtc_base/constructormagic.h"
-#include "typedefs.h"  // NOLINT(build/include)
 
 namespace webrtc {
 
@@ -48,13 +47,16 @@ class AudioDecoder {
     // If no duration can be ascertained, returns zero.
     virtual size_t Duration() const = 0;
 
+    // Returns true if this packet contains DTX.
+    virtual bool IsDtxPacket() const;
+
     // Decodes this frame of audio and writes the result in |decoded|.
     // |decoded| must be large enough to store as many samples as indicated by a
-    // call to Duration() . On success, returns an rtc::Optional containing the
+    // call to Duration() . On success, returns an absl::optional containing the
     // total number of samples across all channels, as well as whether the
     // decoder produced comfort noise or speech. On failure, returns an empty
-    // rtc::Optional. Decode may be called at most once per frame object.
-    virtual rtc::Optional<DecodeResult> Decode(
+    // absl::optional. Decode may be called at most once per frame object.
+    virtual absl::optional<DecodeResult> Decode(
         rtc::ArrayView<int16_t> decoded) const = 0;
   };
 
@@ -116,6 +118,20 @@ class AudioDecoder {
   // one or several lost packets. The caller has to make sure that the
   // memory allocated in |decoded| should accommodate |num_frames| frames.
   virtual size_t DecodePlc(size_t num_frames, int16_t* decoded);
+
+  // Asks the decoder to generate packet-loss concealment and append it to the
+  // end of |concealment_audio|. The concealment audio should be in
+  // channel-interleaved format, with as many channels as the last decoded
+  // packet produced. The implementation must produce at least
+  // requested_samples_per_channel, or nothing at all. This is a signal to the
+  // caller to conceal the loss with other means. If the implementation provides
+  // concealment samples, it is also responsible for "stitching" it together
+  // with the decoded audio on either side of the concealment.
+  // Note: The default implementation of GeneratePlc will be deleted soon. All
+  // implementations must provide their own, which can be a simple as a no-op.
+  // TODO(bugs.webrtc.org/9676): Remove default impementation.
+  virtual void GeneratePlc(size_t requested_samples_per_channel,
+                           rtc::BufferT<int16_t>* concealment_audio);
 
   // Resets the decoder state (empty buffers etc.).
   virtual void Reset() = 0;

@@ -19,7 +19,6 @@
 #include "modules/remote_bitrate_estimator/remote_bitrate_estimator_abs_send_time.h"
 #include "modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
 #include "modules/rtp_rtcp/include/rtp_header_parser.h"
-#include "modules/rtp_rtcp/include/rtp_payload_registry.h"
 #include "rtc_base/flags.h"
 #include "test/rtp_file_reader.h"
 
@@ -128,13 +127,13 @@ bool ParseArgsAndSetupEstimator(int argc,
             new webrtc::RemoteBitrateEstimatorAbsSendTime(observer, clock);
         *estimator_used = "AbsoluteSendTimeRemoteBitrateEstimator";
         break;
-        }
+      }
       case webrtc::kRtpExtensionTransmissionTimeOffset: {
         *estimator =
             new webrtc::RemoteBitrateEstimatorSingleStream(observer, clock);
-          *estimator_used = "RemoteBitrateEstimator";
-          break;
-        }
+        *estimator_used = "RemoteBitrateEstimator";
+        break;
+      }
       default:
         assert(false);
     }

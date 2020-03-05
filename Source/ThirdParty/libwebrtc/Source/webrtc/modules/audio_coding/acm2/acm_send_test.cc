@@ -15,10 +15,14 @@
 #include <string.h>
 
 #include "api/audio_codecs/audio_encoder.h"
+#include "api/audio_codecs/builtin_audio_decoder_factory.h"
+#include "api/audio_codecs/builtin_audio_encoder_factory.h"
+#include "modules/audio_coding/codecs/audio_format_conversion.h"
 #include "modules/audio_coding/include/audio_coding_module.h"
 #include "modules/audio_coding/neteq/tools/input_audio_file.h"
 #include "modules/audio_coding/neteq/tools/packet.h"
 #include "rtc_base/checks.h"
+#include "rtc_base/stringencode.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -28,7 +32,12 @@ AcmSendTestOldApi::AcmSendTestOldApi(InputAudioFile* audio_source,
                                      int source_rate_hz,
                                      int test_duration_ms)
     : clock_(0),
-      acm_(webrtc::AudioCodingModule::Create(&clock_)),
+      acm_(webrtc::AudioCodingModule::Create([this] {
+        AudioCodingModule::Config config;
+        config.clock = &clock_;
+        config.decoder_factory = CreateBuiltinAudioDecoderFactory();
+        return config;
+      }())),
       audio_source_(audio_source),
       source_rate_hz_(source_rate_hz),
       input_block_size_samples_(
@@ -59,20 +68,26 @@ bool AcmSendTestOldApi::RegisterCodec(const char* payload_name,
                                            sampling_freq_hz, channels));
   codec.pltype = payload_type;
   codec.pacsize = frame_size_samples;
-  codec_registered_ = (acm_->RegisterSendCodec(codec) == 0);
+  auto factory = CreateBuiltinAudioEncoderFactory();
+  SdpAudioFormat format = CodecInstToSdp(codec);
+  format.parameters["ptime"] = rtc::ToString(rtc::CheckedDivExact(
+      frame_size_samples, rtc::CheckedDivExact(sampling_freq_hz, 1000)));
+  acm_->SetEncoder(
+      factory->MakeAudioEncoder(payload_type, format, absl::nullopt));
+  codec_registered_ = true;
   input_frame_.num_channels_ = channels;
   assert(input_block_size_samples_ * input_frame_.num_channels_ <=
          AudioFrame::kMaxDataSizeSamples);
   return codec_registered_;
 }
 
-bool AcmSendTestOldApi::RegisterExternalCodec(
-    AudioEncoder* external_speech_encoder) {
-  acm_->RegisterExternalSendCodec(external_speech_encoder);
+void AcmSendTestOldApi::RegisterExternalCodec(
+    std::unique_ptr<AudioEncoder> external_speech_encoder) {
   input_frame_.num_channels_ = external_speech_encoder->NumChannels();
+  acm_->SetEncoder(std::move(external_speech_encoder));
   assert(input_block_size_samples_ * input_frame_.num_channels_ <=
          AudioFrame::kMaxDataSizeSamples);
-  return codec_registered_ = true;
+  codec_registered_ = true;
 }
 
 std::unique_ptr<Packet> AcmSendTestOldApi::NextPacket() {
@@ -89,10 +104,9 @@ std::unique_ptr<Packet> AcmSendTestOldApi::NextPacket() {
     RTC_CHECK(audio_source_->Read(input_block_size_samples_,
                                   input_frame_.mutable_data()));
     if (input_frame_.num_channels_ > 1) {
-      InputAudioFile::DuplicateInterleaved(input_frame_.data(),
-                                           input_block_size_samples_,
-                                           input_frame_.num_channels_,
-                                           input_frame_.mutable_data());
+      InputAudioFile::DuplicateInterleaved(
+          input_frame_.data(), input_block_size_samples_,
+          input_frame_.num_channels_, input_frame_.mutable_data());
     }
     data_to_send_ = false;
     RTC_CHECK_GE(acm_->Add10MsData(input_frame_), 0);
@@ -132,7 +146,7 @@ std::unique_ptr<Packet> AcmSendTestOldApi::CreatePacket() {
   packet_memory[0] = 0x80;
   packet_memory[1] = static_cast<uint8_t>(payload_type_);
   packet_memory[2] = (sequence_number_ >> 8) & 0xFF;
-  packet_memory[3] = (sequence_number_) & 0xFF;
+  packet_memory[3] = (sequence_number_)&0xFF;
   packet_memory[4] = (timestamp_ >> 24) & 0xFF;
   packet_memory[5] = (timestamp_ >> 16) & 0xFF;
   packet_memory[6] = (timestamp_ >> 8) & 0xFF;
@@ -146,8 +160,7 @@ std::unique_ptr<Packet> AcmSendTestOldApi::CreatePacket() {
   ++sequence_number_;
 
   // Copy the payload data.
-  memcpy(packet_memory + kRtpHeaderSize,
-         &last_payload_vec_[0],
+  memcpy(packet_memory + kRtpHeaderSize, &last_payload_vec_[0],
          last_payload_vec_.size());
   std::unique_ptr<Packet> packet(
       new Packet(packet_memory, allocated_bytes, clock_.TimeInMilliseconds()));

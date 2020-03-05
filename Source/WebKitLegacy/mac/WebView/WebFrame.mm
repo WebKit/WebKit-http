@@ -443,10 +443,9 @@ static NSURL *createUniqueWebDataURL();
         if (FrameView* view = frame->view()) {
             view->setTransparent(!drawsBackground);
 #if !PLATFORM(IOS)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             Color color = colorFromNSColor([backgroundColor colorUsingColorSpaceName:NSDeviceRGBColorSpace]);
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
 #else
             Color color = Color(backgroundColor);
 #endif
@@ -622,10 +621,9 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 #if !PLATFORM(IOS)
     ASSERT([[NSGraphicsContext currentContext] isFlipped]);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGContextRef ctx = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #else
     CGContextRef ctx = WKGetCurrentGraphicsContext();
 #endif
@@ -649,16 +647,16 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         // For subframes, we need to inherit the paint behavior from our parent
         if (FrameView* parentView = parentFrame ? parentFrame->view() : nullptr) {
             if (parentView->paintBehavior().contains(PaintBehavior::FlattenCompositingLayers))
-                paintBehavior |= PaintBehavior::FlattenCompositingLayers;
+                paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
             
             if (parentView->paintBehavior().contains(PaintBehavior::Snapshotting))
-                paintBehavior |= PaintBehavior::Snapshotting;
+                paintBehavior.add(PaintBehavior::Snapshotting);
             
             if (parentView->paintBehavior().contains(PaintBehavior::TileFirstPaint))
-                paintBehavior |= PaintBehavior::TileFirstPaint;
+                paintBehavior.add(PaintBehavior::TileFirstPaint);
         }
     } else
-        paintBehavior |= [self _paintBehaviorForDestinationContext:ctx];
+        paintBehavior.add([self _paintBehaviorForDestinationContext:ctx]);
         
     view->setPaintBehavior(paintBehavior);
 
@@ -2207,10 +2205,9 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     if (!AXObjectCache::accessibilityEnabled()) {
         AXObjectCache::enableAccessibility();
 #if !PLATFORM(IOS)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         AXObjectCache::setEnhancedUserInterfaceAccessibility([[NSApp accessibilityAttributeValue:NSAccessibilityEnhancedUserInterfaceAttribute] boolValue]);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
     }
     

@@ -141,6 +141,8 @@ Modules/mediacapabilities/NavigatorMediaCapabilities.cpp
 
 Modules/mediacontrols/MediaControlsHost.cpp
 
+Modules/mediarecorder/MediaRecorder.cpp
+
 Modules/mediasession/HTMLMediaElementMediaSession.cpp
 Modules/mediasession/MediaRemoteControls.cpp
 Modules/mediasession/MediaSession.cpp
@@ -159,13 +161,13 @@ Modules/mediastream/MediaDevices.cpp
 Modules/mediastream/MediaDevicesEnumerationRequest.cpp
 Modules/mediastream/MediaDevicesRequest.cpp
 Modules/mediastream/MediaStream.cpp
-Modules/mediastream/MediaStreamEvent.cpp
 Modules/mediastream/MediaStreamRegistry.cpp
 Modules/mediastream/MediaStreamTrack.cpp
 Modules/mediastream/MediaStreamTrackEvent.cpp
 Modules/mediastream/MediaTrackConstraints.cpp
 Modules/mediastream/NavigatorMediaDevices.cpp
 Modules/mediastream/PeerConnectionBackend.cpp
+Modules/mediastream/RTCCertificate.cpp
 Modules/mediastream/RTCController.cpp
 Modules/mediastream/RTCDTMFSender.cpp
 Modules/mediastream/RTCDTMFToneChangeEvent.cpp
@@ -181,6 +183,8 @@ Modules/mediastream/RTCSessionDescription.cpp
 Modules/mediastream/RTCTrackEvent.cpp
 Modules/mediastream/UserMediaController.cpp
 Modules/mediastream/UserMediaRequest.cpp
+
+Modules/mediastream/libwebrtc/LibWebRTCCertificateGenerator.cpp
 
 Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
@@ -1056,6 +1060,7 @@ html/ImageBitmap.cpp
 html/ImageData.cpp
 html/ImageDocument.cpp
 html/ImageInputType.cpp
+html/InputMode.cpp
 html/InputType.cpp
 html/InputTypeNames.cpp
 html/LabelableElement.cpp
@@ -1739,9 +1744,11 @@ platform/mediastream/RealtimeIncomingAudioSource.cpp
 platform/mediastream/RealtimeIncomingVideoSource.cpp
 platform/mediastream/RealtimeMediaSource.cpp
 platform/mediastream/RealtimeMediaSourceCenter.cpp
+platform/mediastream/RealtimeMediaSourceFactory.cpp
 platform/mediastream/RealtimeMediaSourceSettings.cpp
 platform/mediastream/RealtimeOutgoingAudioSource.cpp
 platform/mediastream/RealtimeOutgoingVideoSource.cpp
+platform/mediastream/RealtimeVideoSource.cpp
 
 platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
@@ -1750,7 +1757,6 @@ platform/mock/GeolocationClientMock.cpp
 platform/mock/MediaEngineDecodingConfigurationMock.cpp
 platform/mock/MediaEngineEncodingConfigurationMock.cpp
 platform/mock/MockRealtimeAudioSource.cpp
-platform/mock/MockRealtimeMediaSource.cpp
 platform/mock/MockRealtimeMediaSourceCenter.cpp
 platform/mock/MockRealtimeVideoSource.cpp
 platform/mock/RTCDataChannelHandlerMock.cpp
@@ -2427,6 +2433,7 @@ JSBeforeUnloadEvent.cpp
 JSBiquadFilterNode.cpp
 JSBlob.cpp
 JSBlobCallback.cpp
+JSBlobEvent.cpp
 JSBlobLineEndings.cpp
 JSBlobPropertyBag.cpp
 JSByteLengthQueuingStrategy.cpp
@@ -2749,13 +2756,13 @@ JSMediaError.cpp
 JSMediaList.cpp
 JSMediaQueryList.cpp
 JSMediaQueryListListener.cpp
+JSMediaRecorder.cpp
 JSMediaRemoteControls.cpp
 JSMediaSession.cpp
 JSMediaSource.cpp
 JSMediaStream.cpp
 JSMediaStreamAudioDestinationNode.cpp
 JSMediaStreamAudioSourceNode.cpp
-JSMediaStreamEvent.cpp
 JSMediaStreamTrack.cpp
 JSMediaStreamTrackEvent.cpp
 JSMediaTrackConstraints.cpp
@@ -2782,7 +2789,6 @@ JSNavigatorMediaCapabilities.cpp
 JSNavigatorMediaDevices.cpp
 JSNavigatorOnLine.cpp
 JSNavigatorServiceWorker.cpp
-JSNavigatorUserMedia.cpp
 JSNavigatorWebDriver.cpp
 JSNavigatorWebVR.cpp
 JSNode.cpp
@@ -2850,11 +2856,14 @@ JSPublicKeyCredentialDescriptor.cpp
 JSPublicKeyCredentialRequestOptions.cpp
 JSPublicKeyCredentialType.cpp
 JSRTCAnswerOptions.cpp
+JSRTCCertificate.cpp
 JSRTCConfiguration.cpp
 JSRTCDTMFSender.cpp
 JSRTCDTMFToneChangeEvent.cpp
 JSRTCDataChannel.cpp
 JSRTCDataChannelEvent.cpp
+JSRTCDegradationPreference.cpp
+JSRTCDtxStatus.cpp
 JSRTCIceCandidate.cpp
 JSRTCIceConnectionState.cpp
 JSRTCIceGatheringState.cpp
@@ -2866,9 +2875,19 @@ JSRTCOfferOptions.cpp
 JSRTCPeerConnection.cpp
 JSRTCPeerConnectionIceEvent.cpp
 JSRTCPeerConnectionState.cpp
+JSRTCPriorityType.cpp
+JSRTCRtpCapabilities.cpp
+JSRTCRtpCodecParameters.cpp
+JSRTCRtpContributingSource.cpp
+JSRTCRtpEncodingParameters.cpp
+JSRTCRtpFecParameters.cpp
+JSRTCRtpHeaderExtensionParameters.cpp
 JSRTCRtpParameters.cpp
+JSRTCRtpRtxParameters.cpp
 JSRTCRtpReceiver.cpp
+JSRTCRtpSendParameters.cpp
 JSRTCRtpSender.cpp
+JSRTCRtpSynchronizationSource.cpp
 JSRTCRtpTransceiver.cpp
 JSRTCRtpTransceiverDirection.cpp
 JSRTCSessionDescription.cpp

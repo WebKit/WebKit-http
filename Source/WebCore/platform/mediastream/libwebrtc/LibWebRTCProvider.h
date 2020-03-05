@@ -35,20 +35,24 @@
 
 #if USE(LIBWEBRTC)
 
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/peerconnectioninterface.h>
-#include <webrtc/api/video_codecs/video_decoder_factory.h>
 #include <webrtc/api/video_codecs/video_encoder_factory.h>
+#include <webrtc/api/video_codecs/video_decoder_factory.h>
 #include <webrtc/rtc_base/scoped_ref_ptr.h>
-#include <webrtc/media/engine/webrtcvideodecoderfactory.h>
-#include <webrtc/media/engine/webrtcvideoencoderfactory.h>
+
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace rtc {
 class NetworkManager;
 class PacketSocketFactory;
 class Thread;
+class RTCCertificateGenerator;
 }
 
 namespace webrtc {
+class AsyncResolverFactory;
 class PeerConnectionFactoryInterface;
 }
 #endif
@@ -56,6 +60,7 @@ class PeerConnectionFactoryInterface;
 namespace WebCore {
 
 class LibWebRTCAudioModule;
+struct RTCRtpCapabilities;
 
 enum class MDNSRegisterError { NotImplemented, BadParameter, DNSSD, Internal, Timeout };
 
@@ -86,12 +91,6 @@ public:
         callback(makeUnexpected(MDNSRegisterError::NotImplemented));
     }
 
-    virtual void resolveMDNSName(PAL::SessionID, const String& name, CompletionHandler<void(IPAddressOrError&&)>&& callback)
-    {
-        UNUSED_PARAM(name);
-        callback(makeUnexpected(MDNSRegisterError::NotImplemented));
-    }
-
 #if USE(LIBWEBRTC)
     virtual rtc::scoped_refptr<webrtc::PeerConnectionInterface> createPeerConnection(webrtc::PeerConnectionObserver&, webrtc::PeerConnectionInterface::RTCConfiguration&&);
 
@@ -107,12 +106,18 @@ public:
     void disableEnumeratingAllNetworkInterfaces();
     void enableEnumeratingAllNetworkInterfaces();
 
+    void supportsVP8(bool value) { m_supportsVP8 = value; }
     virtual void disableNonLocalhostConnections() { m_disableNonLocalhostConnections = true; }
+
+    rtc::RTCCertificateGenerator& certificateGenerator();
+
+    std::optional<RTCRtpCapabilities> receiverCapabilities(const String& kind);
+    std::optional<RTCRtpCapabilities> senderCapabilities(const String& kind);
 
 protected:
     LibWebRTCProvider() = default;
 
-    rtc::scoped_refptr<webrtc::PeerConnectionInterface> createPeerConnection(webrtc::PeerConnectionObserver&, rtc::NetworkManager&, rtc::PacketSocketFactory&, webrtc::PeerConnectionInterface::RTCConfiguration&&);
+    rtc::scoped_refptr<webrtc::PeerConnectionInterface> createPeerConnection(webrtc::PeerConnectionObserver&, rtc::NetworkManager&, rtc::PacketSocketFactory&, webrtc::PeerConnectionInterface::RTCConfiguration&&, std::unique_ptr<webrtc::AsyncResolverFactory>&&);
 
     rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> createPeerConnectionFactory(rtc::Thread* networkThread, rtc::Thread* signalingThread, LibWebRTCAudioModule*);
     virtual std::unique_ptr<webrtc::VideoDecoderFactory> createDecoderFactory();
@@ -124,6 +129,7 @@ protected:
 
     rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> m_factory;
     bool m_disableNonLocalhostConnections { false };
+    bool m_supportsVP8 { false };
 #endif
 };
 

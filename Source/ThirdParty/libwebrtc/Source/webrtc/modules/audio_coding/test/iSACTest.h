@@ -17,13 +17,12 @@
 
 #include "common_types.h"  // NOLINT(build/include)
 #include "modules/audio_coding/include/audio_coding_module.h"
-#include "modules/audio_coding/test/ACMTest.h"
 #include "modules/audio_coding/test/Channel.h"
 #include "modules/audio_coding/test/PCMFile.h"
 #include "modules/audio_coding/test/utility.h"
 
 #define MAX_FILE_NAME_LENGTH_BYTE 500
-#define NO_OF_CLIENTS             15
+#define NO_OF_CLIENTS 15
 
 namespace webrtc {
 
@@ -36,18 +35,20 @@ struct ACMTestISACConfig {
   bool enforceFrameSize;
 };
 
-class ISACTest : public ACMTest {
+class ISACTest {
  public:
   explicit ISACTest(int testMode);
   ~ISACTest();
 
   void Perform();
+
  private:
   void Setup();
 
   void Run10ms();
 
-  void EncodeDecode(int testNr, ACMTestISACConfig& wbISACConfig,
+  void EncodeDecode(int testNr,
+                    ACMTestISACConfig& wbISACConfig,
                     ACMTestISACConfig& swbISACConfig);
 
   void SwitchingSamplingRate(int testNr, int maxSampRateChange);

@@ -28,6 +28,8 @@
 #include "ArgumentCoders.h"
 #include <WebCore/AutocapitalizeTypes.h>
 #include <WebCore/Autofill.h>
+#include <WebCore/Color.h>
+#include <WebCore/InputMode.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/URL.h>
 #include <wtf/text/WTFString.h>
@@ -109,6 +111,7 @@ struct AssistedNodeInformation {
     bool insideFixedPosition { false };
     AutocapitalizeType autocapitalizeType { AutocapitalizeTypeDefault };
     InputType elementType { InputType::None };
+    WebCore::InputMode inputMode { WebCore::InputMode::Unspecified };
     String formAction;
     Vector<OptionItem> selectOptions;
     int selectedIndex { -1 };
@@ -122,6 +125,12 @@ struct AssistedNodeInformation {
     String placeholder;
     String label;
     String ariaLabel;
+#if ENABLE(DATALIST_ELEMENT)
+    bool hasSuggestions { false };
+#if ENABLE(INPUT_TYPE_COLOR)
+    Vector<WebCore::Color> suggestedColors;
+#endif
+#endif
 
     uint64_t assistedNodeIdentifier { 0 };
 

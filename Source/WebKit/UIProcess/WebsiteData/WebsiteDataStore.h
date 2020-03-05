@@ -53,6 +53,7 @@ namespace WebKit {
 
 class SecKeyProxyStore;
 class StorageManager;
+class DeviceIdHashSaltStorage;
 class WebPageProxy;
 class WebProcessPool;
 class WebResourceLoadStatisticsStore;
@@ -91,6 +92,7 @@ public:
         String localStorageDirectory;
         uint32_t localStorageQuota;
         String mediaKeysStorageDirectory;
+        String deviceIdHashSaltsStorageDirectory;
         String resourceLoadStatisticsDirectory;
         String javaScriptConfigurationDirectory;
         String cookieStorageFile;
@@ -155,6 +157,8 @@ public:
     const String& resolvedResourceLoadStatisticsDirectory() const { return m_resolvedConfiguration.resourceLoadStatisticsDirectory; }
 
     StorageManager* storageManager() { return m_storageManager.get(); }
+
+    DeviceIdHashSaltStorage* deviceIdHashSaltStorage() { return m_deviceIdHashSaltStorage.get(); }
 
     WebProcessPool* processPoolForCookieStorageOperations();
     bool isAssociatedProcessPool(WebProcessPool&) const;
@@ -228,6 +232,7 @@ private:
     bool m_hasResolvedDirectories { false };
 
     const RefPtr<StorageManager> m_storageManager;
+    const RefPtr<DeviceIdHashSaltStorage> m_deviceIdHashSaltStorage;
     RefPtr<WebResourceLoadStatisticsStore> m_resourceLoadStatistics;
     bool m_resourceLoadStatisticsDebugMode { false };
 

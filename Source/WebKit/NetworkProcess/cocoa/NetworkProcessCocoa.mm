@@ -120,12 +120,12 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
     OptionSet<NetworkCache::Cache::Option> cacheOptions { NetworkCache::Cache::Option::RegisterNotify };
     if (parameters.shouldEnableNetworkCacheEfficacyLogging)
-        cacheOptions |= NetworkCache::Cache::Option::EfficacyLogging;
+        cacheOptions.add(NetworkCache::Cache::Option::EfficacyLogging);
     if (parameters.shouldUseTestingNetworkSession)
-        cacheOptions |= NetworkCache::Cache::Option::TestingMode;
+        cacheOptions.add(NetworkCache::Cache::Option::TestingMode);
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
-        cacheOptions |= NetworkCache::Cache::Option::SpeculativeRevalidation;
+        cacheOptions.add(NetworkCache::Cache::Option::SpeculativeRevalidation);
 #endif
 
     m_cache = NetworkCache::Cache::open(m_diskCacheDirectory, cacheOptions);
@@ -227,8 +227,7 @@ static void saveCookies(NSHTTPCookieStorage *cookieStorage, CompletionHandler<vo
 
 void NetworkProcess::platformSyncAllCookies(CompletionHandler<void()>&& completionHander) {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     RefPtr<CallbackAggregator> callbackAggregator = CallbackAggregator::create(WTFMove(completionHander));
@@ -240,7 +239,7 @@ void NetworkProcess::platformSyncAllCookies(CompletionHandler<void()>&& completi
     completionHander();
 #endif
 
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& completionHandler)

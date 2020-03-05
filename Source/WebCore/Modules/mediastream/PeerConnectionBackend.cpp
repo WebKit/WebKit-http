@@ -36,10 +36,13 @@
 
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
+#include "LibWebRTCCertificateGenerator.h"
 #include "Logging.h"
+#include "Page.h"
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionIceEvent.h"
+#include "RTCRtpCapabilities.h"
 #include "RuntimeEnabledFeatures.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -55,6 +58,18 @@ static std::unique_ptr<PeerConnectionBackend> createNoPeerConnectionBackend(RTCP
 }
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createNoPeerConnectionBackend;
+
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
+
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
 #endif
 
 PeerConnectionBackend::PeerConnectionBackend(RTCPeerConnection& peerConnection)
@@ -272,40 +287,8 @@ void PeerConnectionBackend::addIceCandidate(RTCIceCandidate* iceCandidate, DOMPr
     ASSERT(!m_peerConnection.isClosed());
 
     if (!iceCandidate) {
-        if (m_waitingForMDNSResolution) {
-            m_finishedReceivingCandidates = true;
-            m_endOfIceCandidatePromise = WTFMove(promise);
-            return;
-        }
         endOfIceCandidates(WTFMove(promise));
         return;
-    }
-
-    if (RuntimeEnabledFeatures::sharedFeatures().mdnsICECandidatesEnabled()) {
-        auto name = extractIPAddres(iceCandidate->candidate());
-        if (name.endsWith(".local")) {
-            ++m_waitingForMDNSResolution;
-            auto& document = downcast<Document>(*m_peerConnection.scriptExecutionContext());
-            auto& provider = document.page()->libWebRTCProvider();
-            provider.resolveMDNSName(document.sessionID(), name, [peerConnection = makeRef(m_peerConnection), this, name, iceCandidate = makeRef(*iceCandidate), promise = WTFMove(promise)] (LibWebRTCProvider::IPAddressOrError&& result) mutable {
-                if (peerConnection->isStopped())
-                    return;
-
-                --m_waitingForMDNSResolution;
-                if (!result.has_value()) {
-                    if (result.error() != MDNSRegisterError::Timeout)
-                        peerConnection->scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, makeString("MDNS resolution of a host candidate failed with error", (unsigned)result.error()));
-                    return;
-                }
-
-                auto candidate = iceCandidate->candidate();
-                candidate.replace(name, result.value());
-                iceCandidate->setCandidate(WTFMove(candidate));
-                m_addIceCandidatePromise = WTFMove(promise);
-                this->doAddIceCandidate(iceCandidate);
-            });
-            return;
-        }
     }
 
     // FIXME: As per https://w3c.github.io/webrtc-pc/#dom-rtcpeerconnection-addicecandidate(), this check should be done before enqueuing the task.
@@ -436,7 +419,7 @@ void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid, unsigned
     if (sdp.find(" host ", 0) != notFound) {
         // FIXME: We might need to clear all pending candidates when setting again local description.
         m_pendingICECandidates.append(PendingICECandidate { String { sdp }, WTFMove(mid), sdpMLineIndex, WTFMove(serverURL) });
-        if (RuntimeEnabledFeatures::sharedFeatures().mdnsICECandidatesEnabled()) {
+        if (RuntimeEnabledFeatures::sharedFeatures().webRTCMDNSICECandidatesEnabled()) {
             auto ipAddress = extractIPAddres(sdp);
             // We restrict to IPv4 candidates for now.
             if (ipAddress.contains('.'))
@@ -527,6 +510,33 @@ void PeerConnectionBackend::markAsNeedingNegotiation()
 
     if (m_peerConnection.signalingState() == RTCSignalingState::Stable)
         m_peerConnection.scheduleNegotiationNeededEvent();
+}
+
+ExceptionOr<Ref<RTCRtpSender>> PeerConnectionBackend::addTrack(MediaStreamTrack&, Vector<String>&&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(const String&, const RTCRtpTransceiverInit&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+void PeerConnectionBackend::generateCertificate(Document& document, const CertificateInformation& info, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&& promise)
+{
+#if USE(LIBWEBRTC)
+    LibWebRTCCertificateGenerator::generateCertificate(document.securityOrigin(), document.page()->libWebRTCProvider(), info, WTFMove(promise));
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(expires);
+    UNUSED_PARAM(type);
+    promise.reject(NotSupportedError);
+#endif
 }
 
 #if !RELEASE_LOG_DISABLED

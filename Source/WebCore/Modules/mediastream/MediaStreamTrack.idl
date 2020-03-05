@@ -37,6 +37,7 @@ enum MediaStreamTrackState { "live", "ended" };
     readonly attribute DOMString id;
     readonly attribute DOMString label;
     attribute boolean enabled;
+    attribute DOMString contentHint;
     readonly attribute boolean muted;
     attribute EventHandler onmute;
     attribute EventHandler onunmute;
@@ -46,9 +47,9 @@ enum MediaStreamTrackState { "live", "ended" };
     MediaStreamTrack clone();
     [ImplementedAs=stopTrack] void stop();
 
-    [CallWith=Document] MediaTrackCapabilities getCapabilities();
+    MediaTrackCapabilities getCapabilities();
     MediaTrackConstraints getConstraints();
-    [CallWith=Document] MediaTrackSettings getSettings();
+    MediaTrackSettings getSettings();
     Promise<void> applyConstraints(optional MediaTrackConstraints constraints);
 
     attribute EventHandler onoverconstrained;

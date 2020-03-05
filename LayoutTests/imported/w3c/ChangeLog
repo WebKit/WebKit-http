@@ -1,3 +1,935 @@
+2018-11-15  Youenn Fablet  <youenn@apple.com>
+
+        Update RTCPeerConnection JS built-ins to be closer to specWe
+        https://bugs.webkit.org/show_bug.cgi?id=191665
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt:
+
+2018-11-15  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Consider scrollbars in populateGridPositionsForDirection()
+        https://bugs.webkit.org/show_bug.cgi?id=191656
+
+        Reviewed by Javier Fernandez.
+
+        Imported tests from WPT.
+
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-vertical-lr-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-vertical-lr-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-vertical-rl-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-scrollbar-vertical-rl-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/w3c-import.log:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Convert libwebrtc error types to DOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=191590
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/webrtc/RTCConfiguration-rtcpMuxPolicy-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-answer-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Calling removeTrack on different RTCPeerConnection should throw InvalidAccessError
+        https://bugs.webkit.org/show_bug.cgi?id=191603
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-removeTrack.https-expected.txt:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Add support for RTCRtpCodecParameters.sdpFmtpLine
+        https://bugs.webkit.org/show_bug.cgi?id=191591
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/protocol/video-codecs.https-expected.txt:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Add support for transport and peerConnection stats
+        https://bugs.webkit.org/show_bug.cgi?id=191592
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpReceiver-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/getstats-expected.txt:
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.getTransceivers is not always exposing all transceivers
+        https://bugs.webkit.org/show_bug.cgi?id=191589
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.getTransceivers is not always exposing all transceivers
+        https://bugs.webkit.org/show_bug.cgi?id=191589
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT webrtc tests to ToT
+        https://bugs.webkit.org/show_bug.cgi?id=191564
+
+        Reviewed by Eric Carlson.
+
+        Also remove QUIC specific tests that are not related to webrtc-pc.
+        * resources/import-expectations.json:
+        * web-platform-tests/webrtc: refreshed.
+
+2018-11-12  Rob Buis  <rbuis@igalia.com>
+
+        Content-Type parameter values should allow empty quoted strings
+        https://bugs.webkit.org/show_bug.cgi?id=191388
+
+        Reviewed by Dean Jackson.
+
+        Include improved expected test result and updated mime-type test:
+        https://github.com/whatwg/mimesniff/pull/79
+
+        * web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/resources/mime-types.json:
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2018-11-12  Sihui Liu  <sihui_liu@apple.com>
+
+        imported/w3c/web-platform-tests/IndexedDB/keygenerator-explicit.html crashing on iOS device
+        https://bugs.webkit.org/show_bug.cgi?id=191500
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/IndexedDB/keygenerator-explicit-expected.txt:
+
+2018-11-12  Youenn Fablet  <youenn@apple.com>
+
+        Support setting stream ids when adding a transceiver
+        https://bugs.webkit.org/show_bug.cgi?id=191307
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-transceivers.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Require <iframe allow="display"> for an iframe to use getDisplayMedia
+        https://bugs.webkit.org/show_bug.cgi?id=191505
+        <rdar://problem/45968811>
+
+        Reviewed by Jer Noble.
+
+        * web-platform-tests/mediacapture-streams/MediaStream-default-feature-policy.https-expected.txt:
+
+2018-11-11  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Import additional grid layout test from the WPT suite
+        https://bugs.webkit.org/show_bug.cgi?id=191369
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        New Grid Layout tests from the WPT suite.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-grid/META.yml: Added.
+        * web-platform-tests/css/css-grid/OWNERS: Removed.
+        * web-platform-tests/css/css-grid/abspos/support/grid.css:
+        (.thirdRowThirdColumn):
+        * web-platform-tests/css/css-grid/abspos/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-001.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-002.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-003.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-004.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-005.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-006.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-007.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-008.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-001-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-001.html:
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-002-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-002.html:
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-003.html: Added.
+        * web-platform-tests/css/css-grid/alignment/self-baseline/w3c-import.log:
+        * web-platform-tests/css/css-grid/alignment/support/style-change.js:
+        (evaluateStyleChangeMultiple):
+        * web-platform-tests/css/css-grid/alignment/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/alignment/test-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-definition/support/grid.css:
+        (.thirdRowThirdColumn):
+        * web-platform-tests/css/css-grid/grid-definition/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-items/anonymous-grid-item-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/grid-items-relative-offsets-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-items/grid-items-relative-offsets-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/grid-items-relative-offsets-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-items/grid-items-relative-offsets-002.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/item-with-table-with-infinite-max-intrinsic-width-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/item-with-table-with-infinite-max-intrinsic-width.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/support/grid.css:
+        (.thirdRowThirdColumn):
+        * web-platform-tests/css/css-grid/grid-items/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-items/table-with-infinite-max-intrinsic-width-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/table-with-infinite-max-intrinsic-width.html: Added.
+        * web-platform-tests/css/css-grid/grid-items/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-model/grid-container-ignores-first-letter-002-expected.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/grid-container-ignores-first-letter-002.html: Added.
+        * web-platform-tests/css/css-grid/grid-model/support/grid.css:
+        (.thirdRowThirdColumn):
+        * web-platform-tests/css/css-grid/grid-model/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-model/w3c-import.log:
+        * web-platform-tests/css/css-grid/implicit-grids/w3c-import.log:
+        * web-platform-tests/css/css-grid/inheritance-expected.txt: Added.
+        * web-platform-tests/css/css-grid/inheritance.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-cols-filled-shrinkwrap-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-cols-filled-shrinkwrap-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-cols-spanned-shrinkwrap-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-cols-spanned-shrinkwrap-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-rows-filled-shrinkwrap-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-rows-filled-shrinkwrap-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-rows-spanned-shrinkwrap-001-expected.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-percent-rows-spanned-shrinkwrap-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/w3c-import.log:
+        * web-platform-tests/css/css-grid/parsing/grid-area-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-area-invalid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-area-valid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-area-valid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-columns-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-columns-invalid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-columns-valid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-columns-valid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-flow-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-flow-invalid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-flow-valid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-flow-valid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-rows-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-rows-invalid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-rows-valid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-auto-rows-valid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-areas-invalid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-areas-invalid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-areas-valid-expected.txt: Added.
+        * web-platform-tests/css/css-grid/parsing/grid-template-areas-valid.html: Added.
+        * web-platform-tests/css/css-grid/parsing/w3c-import.log: Added.
+        * web-platform-tests/css/css-grid/placement/w3c-import.log:
+        * web-platform-tests/css/css-grid/test-plan/w3c-import.log:
+        * web-platform-tests/css/css-grid/w3c-import.log:
+        * web-platform-tests/css/support/META.yml: Added.
+        * web-platform-tests/css/support/OWNERS: Removed.
+        * web-platform-tests/css/support/computed-testcommon.js: Added.
+        (test_computed_value):
+        * web-platform-tests/css/support/grid.css:
+        (.thirdRowThirdColumn):
+        * web-platform-tests/css/support/inheritance-testcommon.js: Added.
+        (assert_initial):
+        * web-platform-tests/css/support/parsing-testcommon.js: Added.
+        (test_valid_value):
+        * web-platform-tests/css/support/support/w3c-import.log:
+        * web-platform-tests/css/support/w3c-import.log:
+
+
+2018-11-09  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] canMakePayment() should not consider serialized payment method data
+        https://bugs.webkit.org/show_bug.cgi?id=191432
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/payment-request/payment-request-canmakepayment-method.https-expected.txt: Added.
+
+2018-11-09  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Fix failing imported/w3c/web-platform-tests/media-source/mediasource-changetype-play.html test
+        https://bugs.webkit.org/show_bug.cgi?id=191396
+
+        Reviewed by Eric Carlson.
+
+        Modify the changetype test suite to include a HEVC version.
+
+        * web-platform-tests/media-source/hevc/test-v-128k-320x240-24fps-8kfr.mp4: Added.
+        * web-platform-tests/media-source/mediasource-changetype-util.js:
+        (findSupportedChangeTypeTestTypes):
+
+2018-11-08  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Update web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=191426
+
+        Updated web-platform-tests/payment-request/ to match wpt as of commit 577284e.
+
+        Reviewed by Jiewen Tan.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/payment-request/META.yml:
+        * web-platform-tests/payment-request/payment-request-abort-method.https.html:
+        * web-platform-tests/payment-request/payment-request-canmakepayment-method-protection.https-expected.txt: Added.
+        * web-platform-tests/payment-request/payment-request-canmakepayment-method-protection.https.html: Added.
+        * web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html:
+        * web-platform-tests/payment-request/payment-request-constructor.https.html:
+        * web-platform-tests/payment-request/payment-request-id-attribute.https.html:
+        * web-platform-tests/payment-request/payment-response/retry-method-manual.https.html:
+        * web-platform-tests/payment-request/rejects_if_not_active.https.html:
+        * web-platform-tests/payment-request/w3c-import.log:
+
+2018-11-07  Youenn Fablet  <youenn@apple.com>
+
+        Allow setting RTCRtpTransceiver.direction
+        https://bugs.webkit.org/show_bug.cgi?id=191346
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-remote-track-mute.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-transceivers.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        sender.replaceTrack() fails with InvalidStateError if the transceiver.direction is "inactive"
+        https://bugs.webkit.org/show_bug.cgi?id=191202
+
+        Reviewed by Eric Carlson.
+
+        Changes made upstreamed.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-replaceTrack.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-replaceTrack.https.html:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Add support for sender/receiver getCapabilities
+        https://bugs.webkit.org/show_bug.cgi?id=191192
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpCapabilities-helper.js:
+        (string_appeared_here.validateRtpCapabilities): Change already made upstream.
+        * web-platform-tests/webrtc/RTCRtpReceiver-getCapabilities-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getCapabilities-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver-setCodecPreferences-expected.txt:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Support onremovetrack for RTCPeerConnection removed tracks
+        https://bugs.webkit.org/show_bug.cgi?id=191299
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https-expected.txt:
+
+2018-11-06  Javier Fernandez  <jfernandez@igalia.com>
+
+        CSS grid elements with justify-content: space-around have extra whitespace, sometimes a lot
+        https://bugs.webkit.org/show_bug.cgi?id=191308
+
+        Reviewed by Dean Jackson.
+
+        Imported WPT to cover the behavior changes added in this patch.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-002.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-003.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-004.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/w3c-import.log:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191278
+
+        Reviewed by Eric Carlson.
+
+        Updating test according upstreamed WPT.
+        Rebased test accordingly.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html:
+
+2018-11-06  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Account for CSS zoom when computing client rects
+        https://bugs.webkit.org/show_bug.cgi?id=191282
+
+        Reviewed by Simon Fraser.
+
+        Update expectation for test case that now passes.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+
+2018-11-06  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update all tests to match the latest API changes
+        https://bugs.webkit.org/show_bug.cgi?id=191302
+        <rdar://problem/41000438>
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css-timing-1/cubic-bezier-timing-functions-output.html:
+        * web-platform-tests/web-animations/META.yml: Added.
+        * web-platform-tests/web-animations/README.md: Added.
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/property-list.js:
+        * web-platform-tests/web-animations/animation-model/animation-types/property-types.js:
+        * web-platform-tests/web-animations/animation-model/combining-effects/applying-the-composited-result-expected.txt: Added.
+        * web-platform-tests/web-animations/animation-model/combining-effects/applying-the-composited-result.html: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-interval-distance-expected.txt: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-interval-distance.html: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/getAnimations.html:
+        * web-platform-tests/web-animations/interfaces/Animation/cancel.html:
+        * web-platform-tests/web-animations/interfaces/Animation/constructor.html:
+        * web-platform-tests/web-animations/interfaces/Animation/effect.html:
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/finish.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/finished.html:
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/onfinish.html:
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/getComputedTiming-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming-expected.txt.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/getComputedTiming.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming.html.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/updateTiming-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/updateTiming.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations.html:
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/composite.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes.html:
+        * web-platform-tests/web-animations/resources/keyframe-tests.js:
+        * web-platform-tests/web-animations/resources/timing-tests.js: Added.
+        * web-platform-tests/web-animations/resources/timing-utils.js: Added.
+        * web-platform-tests/web-animations/testcommon.js:
+        * web-platform-tests/web-animations/timing-model/animation-effects/phases-and-states.html:
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/play-states-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/play-states.html:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/seamlessly-updating-the-playback-rate-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/seamlessly-updating-the-playback-rate-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-current-time-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-current-time-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-playback-rate-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-playback-rate-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-start-time-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-start-time-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-target-effect-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-target-effect-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-timeline-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-timeline-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/the-current-time-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/current-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/the-current-time-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/current-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html:
+        * web-platform-tests/web-animations/timing-model/timelines/document-timelines.html:
+        * web-platform-tests/web-animations/timing-model/timelines/update-and-send-events-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/timelines/update-and-send-events.html: Added.
+
+2018-11-06  Rob Buis  <rbuis@igalia.com>
+
+        Some minor X-Content-Type-Options parsing issues
+        https://bugs.webkit.org/show_bug.cgi?id=191107
+
+        Reviewed by Darin Adler.
+
+        Update improved result.
+
+        * web-platform-tests/fetch/nosniff/parsing-nosniff-expected.txt:
+
+2018-11-05  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Update WPTs to the latest upstream version
+        https://bugs.webkit.org/show_bug.cgi?id=191274
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+        * web-platform-tests/intersection-observer/bounding-box.html:
+        * web-platform-tests/intersection-observer/target-in-different-window-expected.txt: Added.
+        * web-platform-tests/intersection-observer/target-in-different-window.html: Added.
+        * web-platform-tests/intersection-observer/w3c-import.log:
+
+2018-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Resync html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=191214
+
+        Reviewed by Geoff Garen.
+
+        Resync html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name WPT tests from
+        upstream c583bcd7eb.
+
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/creating_browsing_context_test_01-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/creating_browsing_context_test_01.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window.html: Added.
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window.js: Added.
+        (test.frame.contentWindow.onpagehide):
+        (test.frame.contentDocument.onvisibilitychange):
+        (test.frame.contentWindow.onbeforeunload):
+        (test.frame.contentWindow.onunload):
+        (test):
+        (async_test):
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/non_automated/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/resources/message-opener.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/resources/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/w3c-import.log:
+
+2018-11-05  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fix isIntersecting computation when 0 is not a threshold
+        https://bugs.webkit.org/show_bug.cgi?id=191210
+
+        Reviewed by Simon Fraser.
+
+        Update expectation for test that now passes.
+
+        * web-platform-tests/intersection-observer/initial-observation-with-threshold-expected.txt:
+
+2018-11-04  Youenn Fablet  <youenn@apple.com>
+
+        IDB should allow storing RTCCertificate
+        https://bugs.webkit.org/show_bug.cgi?id=191077
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/webrtc/RTCCertificate-postMessage.html: Added.
+        * web-platform-tests/webrtc/resources/RTCCertificate-postMessage-iframe.html: Added.
+
+2018-11-04  Youenn Fablet  <youenn@apple.com>
+
+        Add support for RTCMuxPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=191188
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCConfiguration-rtcpMuxPolicy-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-08-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Support "name" option for dedicated workers
+        https://bugs.webkit.org/show_bug.cgi?id=188779
+
+        Reviewed by Joseph Pecoraro.
+
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+        * web-platform-tests/workers/name-property-expected.txt:
+
+2018-11-01  Youenn Fablet  <youenn@apple.com>
+
+        RTCTrackEvent.streams should be SameObject
+        https://bugs.webkit.org/show_bug.cgi?id=191130
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCTrackEvent-constructor-expected.txt:
+
+2018-10-31  Chris Dumez  <cdumez@apple.com>
+
+        Resync XHR Web Platform Tests from upstream 44dd29fb0d
+        https://bugs.webkit.org/show_bug.cgi?id=191116
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/xhr/getallresponseheaders-expected.txt:
+        * web-platform-tests/xhr/getallresponseheaders.htm:
+        * web-platform-tests/xhr/getresponseheader.any-expected.txt:
+        * web-platform-tests/xhr/getresponseheader.any.js:
+        (forEach.testValues.async_test.t.client.onload.t.step_func_done):
+        (async_test.t.client.onload.t.step_func_done): Deleted.
+        * web-platform-tests/xhr/getresponseheader.any.worker-expected.txt:
+        * web-platform-tests/xhr/resources/header-content-length-twice.asis: Added.
+        * web-platform-tests/xhr/resources/headers-double-empty.asis: Added.
+        * web-platform-tests/xhr/resources/headers-some-are-empty.asis: Added.
+        * web-platform-tests/xhr/resources/w3c-import.log:
+        * web-platform-tests/xhr/setrequestheader-combining.window-expected.txt: Added.
+        * web-platform-tests/xhr/setrequestheader-combining.window.html: Added.
+        * web-platform-tests/xhr/setrequestheader-combining.window.js: Added.
+        (test):
+        * web-platform-tests/xhr/w3c-import.log:
+
+2018-10-31  YUHAN WU  <yuhan_wu@apple.com>
+
+        MediaRecorder should fire dataavailable event when all tracks are ended and stop() is called
+        https://bugs.webkit.org/show_bug.cgi?id=190778
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-record/BlobEvent-constructor-expected.txt:
+        * web-platform-tests/mediacapture-record/MediaRecorder-destroy-script-execution-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-destroy-script-execution.html: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop-expected.txt:
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop.html:
+        * web-platform-tests/mediacapture-record/support/MediaRecorder-iframe.html: Added.
+
+2018-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Resync XHR Web Platform Tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=191085
+
+        Reviewed by Alex Christensen.
+
+        Resync XHR Web Platform Tests from upstream 75b0f336c5.
+
+        * web-platform-tests/xhr/abort-after-stop.htm:
+        * web-platform-tests/xhr/getallresponseheaders-expected.txt:
+        * web-platform-tests/xhr/getallresponseheaders.htm:
+        * web-platform-tests/xhr/getresponseheader.any-expected.txt: Added.
+        * web-platform-tests/xhr/getresponseheader.any.html: Added.
+        * web-platform-tests/xhr/getresponseheader.any.js: Added.
+        (async_test.t.client.onload.t.step_func_done):
+        * web-platform-tests/xhr/getresponseheader.any.worker-expected.txt: Added.
+        * web-platform-tests/xhr/getresponseheader.any.worker.html: Added.
+        * web-platform-tests/xhr/headers-normalize-response-expected.txt:
+        * web-platform-tests/xhr/headers-normalize-response.htm:
+        * web-platform-tests/xhr/open-after-abort.htm:
+        * web-platform-tests/xhr/open-after-stop.window-expected.txt: Added.
+        * web-platform-tests/xhr/open-after-stop.window.html: Added.
+        * web-platform-tests/xhr/open-after-stop.window.js: Added.
+        (onload):
+        * web-platform-tests/xhr/overridemimetype-edge-cases.window-expected.txt:
+        * web-platform-tests/xhr/overridemimetype-edge-cases.window.js:
+        (async_test.t.client.onload.t.step_func_done):
+        (async_test.t.client.onload.t.step_func):
+        * web-platform-tests/xhr/resources/headers-www-authenticate.asis: Added.
+        * web-platform-tests/xhr/resources/inspect-headers.py:
+        (get_response):
+        * web-platform-tests/xhr/resources/responseXML-unavailable-in-worker.js:
+        (test):
+        * web-platform-tests/xhr/resources/w3c-import.log:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-aborted.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-abortedonmain.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-overrides.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-overridesexpires.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-simple.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-synconmain.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-synconworker.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout-twice.js:
+        * web-platform-tests/xhr/resources/xmlhttprequest-timeout.js:
+        (AbortedRequest):
+        (SyncRequestSettingTimeoutAfterOpen.this.startXHR):
+        (SyncRequestSettingTimeoutAfterOpen):
+        (SyncRequestSettingTimeoutBeforeOpen.this.startXHR):
+        (SyncRequestSettingTimeoutBeforeOpen):
+        (runTestRequests):
+        * web-platform-tests/xhr/send-content-type-charset-expected.txt:
+        * web-platform-tests/xhr/send-content-type-charset.htm:
+        * web-platform-tests/xhr/send-data-readablestream.any-expected.txt: Added.
+        * web-platform-tests/xhr/send-data-readablestream.any.html: Added.
+        * web-platform-tests/xhr/send-data-readablestream.any.js: Added.
+        (assert_xhr):
+        (test):
+        (promise_test.async):
+        * web-platform-tests/xhr/send-data-readablestream.any.worker-expected.txt: Added.
+        * web-platform-tests/xhr/send-data-readablestream.any.worker.html: Added.
+        * web-platform-tests/xhr/setrequestheader-allow-empty-value-expected.txt:
+        * web-platform-tests/xhr/setrequestheader-allow-whitespace-in-value-expected.txt:
+        * web-platform-tests/xhr/setrequestheader-header-allowed-expected.txt:
+        * web-platform-tests/xhr/setrequestheader-header-allowed.htm:
+        * web-platform-tests/xhr/timeout-multiple-fetches.html:
+        * web-platform-tests/xhr/w3c-import.log:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-aborted.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-abortedonmain.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-overrides.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-overridesexpires.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-simple.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-synconmain-expected.txt:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-synconmain.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-twice.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-aborted.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-overrides.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-overridesexpires.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-simple.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-synconworker.html:
+        * web-platform-tests/xhr/xmlhttprequest-timeout-worker-twice.html:
+
+2018-10-30  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: iteration of cursors skip records if updated or deleted
+        https://bugs.webkit.org/show_bug.cgi?id=190917
+        <rdar://problem/35250410>
+
+        Reviewed by Chris Dumez.
+
+        Rebaseline the expectation for test that passes.
+
+        * web-platform-tests/IndexedDB/idbcursor-iterating-update-expected.txt:
+
+2018-10-28  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement the update animations and send events procedure
+        https://bugs.webkit.org/show_bug.cgi?id=191013
+        <rdar://problem/45620495>
+
+        Reviewed by Dean Jackson.
+
+        Progressions in a couple of Web Animations Web Platform Tests.
+
+        * web-platform-tests/web-animations/timing-model/animations/current-time-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state-expected.txt:
+
+2018-10-29  Justin Michaud  <justin_michaud@apple.com>
+
+        Revert r237347 registered custom properties... https://bugs.webkit.org/show_bug.cgi?id=190039
+        https://bugs.webkit.org/show_bug.cgi?id=190919
+
+        Reviewed by Michael Saboff.
+
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-properties-inheritance-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-cssom-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-cycles-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-expected.txt:
+
+2018-10-28  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement MerchantValidationEvent.methodName
+        https://bugs.webkit.org/show_bug.cgi?id=190058
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.https-expected.txt:
+
+2018-10-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Rebase some flaky tests
+        https://bugs.webkit.org/show_bug.cgi?id=190969
+
+        Reviewed by Dean Jackson.
+
+        A few Web Animations tests that are flaky have outdated expectations. Rebasing them to have the output
+        that is most likely to be produced.
+
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-context-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/current-time-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state-expected.txt:
+
+2018-10-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WPT] Update resource-timing WPT tests to use the right cross origin
+        https://bugs.webkit.org/show_bug.cgi?id=190554
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/resource-timing/resource_TAO_cross_origin_redirect_chain-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_cross_origin_redirect_chain.html:
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain-expected.txt:
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain.html:
+
+2018-10-22  Justin Michaud  <justin_michaud@apple.com>
+
+        Registered custom properties should support syntax parameter for <length> and *
+        https://bugs.webkit.org/show_bug.cgi?id=190039
+
+        Reviewed by Antti Koivisto.
+
+        Update WPT test results to fail in a new way.
+
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-properties-inheritance-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-cssom-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-cycles-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-expected.txt:
+
+2018-10-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update web-platform-tests/resource-timing
+        https://bugs.webkit.org/show_bug.cgi?id=190550
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/resource-timing/resource_initiator_types-expected.txt:
+        * web-platform-tests/resource-timing/resource_subframe_self_navigation-expected.txt:
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_eventually.html:
+        * web-platform-tests/resource-timing/resources/TAOResponse.py:
+        (main):
+
+2018-10-20  YUHAN WU  <yuhan_wu@apple.com>
+
+        MediaRecorder should fire a stop event when all tracks are ended
+        https://bugs.webkit.org/show_bug.cgi?id=190642
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-stop.html: Added.
+
+2018-10-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237254.
+        https://bugs.webkit.org/show_bug.cgi?id=190760
+
+        "It regresses JetStream 2 by 5% on some iOS devices"
+        (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237254
+
+2018-10-19  Charlie Turner  <cturner@igalia.com>
+
+        [EME] Fix crash during tracing in  gst_qtdemux_request_protection_context
+        https://bugs.webkit.org/show_bug.cgi?id=190738
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add new passing baselines for some ClearKey tests, now that the
+        GStreamer crash fix allows us the generate them.
+
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-destroy-persistent-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-persistent-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-destroy-persistent-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-persistent-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multisession.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-after-update.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-immediately.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-onencrypted.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-two-videos.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-playback.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-resetting-src.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-different-mediakeys.https-expected.txt: Added.
+
+2018-10-19  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Handle zero-area intersections
+        https://bugs.webkit.org/show_bug.cgi?id=189624
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline expectations for tests that now pass.
+
+        * web-platform-tests/intersection-observer/edge-inclusive-intersection-expected.txt:
+        * web-platform-tests/intersection-observer/isIntersecting-change-events-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-zero-size-target-expected.txt:
+        * web-platform-tests/intersection-observer/text-target-expected.txt:
+        * web-platform-tests/intersection-observer/zero-area-element-visible-expected.txt:
+
+2018-10-18  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/html/webappapis/scripting/events/inline-event-handler-ordering-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/invalid-uncompiled-raw-handler-compiled-late-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-attribute-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-body-onerror-expected.txt:
+
+2018-10-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable the datalist element by default on iOS and macOS
+        https://bugs.webkit.org/show_bug.cgi?id=190594
+        <rdar://problem/45281159>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Rebaseline some web platform tests.
+
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-datalist-element/datalistoptions-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/hidden-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/selection-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/text-expected.txt:
+        * web-platform-tests/shadow-dom/input-element-list-expected.txt:
+
 2018-10-17  Charlie Turner  <cturner@igalia.com>
 
         [EME] Sanity check key ID length in the keyids init data format
@@ -7,6 +939,1760 @@
 
         * web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.https-expected.txt:
         Added new baseline.
+
+2018-10-16  Youenn Fablet  <youenn@apple.com>
+
+        Support RTCConfiguration.certificates
+        https://bugs.webkit.org/show_bug.cgi?id=190603
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCCertificate-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-constructor-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-10-16  Chris Dumez  <cdumez@apple.com>
+
+        window.navigator should not become null after the window loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190595
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test which is not failing differently. The last check of this test is checking that
+        navigator.serviceWorker returns null after the frame has been detached. The test has been written
+        this way because this is how Chromium behaves. However, Firefox keeps returning the
+        ServiceWorkerContainer, as we do. Also, the specification indicates the the attribute cannot
+        return null (since the attribute is not nullable):
+        - https://w3c.github.io/ServiceWorker/#navigator-serviceworker
+
+        * web-platform-tests/service-workers/service-worker/detached-context.https-expected.txt:
+
+2018-10-16  Charlie Turner  <cturner@igalia.com>
+
+        [EME] Add some ClearKey baselines for passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=190579
+
+        Reviewed by Unreviewed test gardening.
+
+        * web-platform-tests/encrypted-media/clearkey-check-initdata-type.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-events-session-closed-event.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-events.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-invalid-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-keystatuses-multiple-sessions.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-keystatuses.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-at-same-time.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-the-same-mediakeys.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-to-multiple-video-elements.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysession.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysystemaccess.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-not-callable-after-createsession.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-update-non-ascii-input.https-expected.txt: Added.
+
+2018-10-15  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.generateCertificate is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=173541
+        <rdar://problem/32638029>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCCertificate-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-generateCertificate-expected.txt:
+        * web-platform-tests/webrtc/interfaces.https-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237054.
+        https://bugs.webkit.org/show_bug.cgi?id=190593
+
+        "this regressed JetStream 2 by 6% on iOS" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237054
+
+2018-10-15  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement error handler of MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190438
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-record/MediaRecorder-error-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-error.html: Added.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Window's properties such as 'location' should not become null when it loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190539
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT test whose output has changed.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window-expected.txt:
+
+2018-10-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/html/webappapis/scripting/events/inline-event-handler-ordering-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/invalid-uncompiled-raw-handler-compiled-late-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-attribute-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-body-onerror-expected.txt:
+
+2018-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r236802.
+
+        Working on getting the HTML spec updated instead
+        (https://github.com/whatwg/html/pull/4079)
+
+        Reverted changeset:
+
+        "Passing noopener=NOOPENER to window.open() should cause the
+        new window to not have an opener"
+        https://bugs.webkit.org/show_bug.cgi?id=190251
+        https://trac.webkit.org/changeset/236802
+
+2018-10-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the frames() timing function
+        https://bugs.webkit.org/show_bug.cgi?id=190034
+        <rdar://problem/44827544>
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output-expected.txt:
+        * web-platform-tests/css-timing-1/frames-timing-functions-syntax-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt:
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * web-platform-tests/web-animations/timing-model/time-transformations/transformed-progress-expected.txt:
+
+2018-10-09  Oriol Brufau  <obrufau@igalia.com>
+
+        Resolve inset properties to computed style when there is overconstraintment
+        https://bugs.webkit.org/show_bug.cgi?id=188711
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        This patch makes WebKit behave closer to Blink. Specifically,
+         - In overconstrained relative or absolute positioning, inset properties resolve
+           to the computed value (absolutizing percentages) instead of to the used value.
+         - In fixed positioning, the resolved value of non-'auto' values is no longer
+           increased by the border of the containg block.
+
+        Some tests still have failures due to
+         - https://bugs.webkit.org/show_bug.cgi?id=189513
+         - https://bugs.webkit.org/show_bug.cgi?id=189518
+         - https://bugs.webkit.org/show_bug.cgi?id=189549
+
+        This patch can slighlty alter the resolved value if it's a long decimal number,
+        that's why test expectations for the timing functions test changed.
+
+        * web-platform-tests/css-timing-1/cubic-bezier-timing-functions-output-expected.txt:
+        * web-platform-tests/css/cssom/getComputedStyle-insets-absolute-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-absolute.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-fixed-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-fixed.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-nobox-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-nobox.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-relative-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-relative.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-static-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-static.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-sticky-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-sticky.html: Added.
+        * web-platform-tests/css/cssom/support/getComputedStyle-insets.js: Added.
+        (serialize):
+        (wmName):
+        (checkStyle):
+        (runTestsWithWM):
+        (export.runTests):
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Attempt to fix test failure after 236915
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed Test Gardening
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt:
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html for Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed Test Expetations
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt:
+
+2018-10-06  Justin Michaud  <justin_michaud@apple.com>
+
+        Properly determine if css custom property values are computationally independent
+        https://bugs.webkit.org/show_bug.cgi?id=190303
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-computation-expected.txt:
+
+2018-10-04  Chris Dumez  <cdumez@apple.com>
+
+        A Document / Window should lose its browsing context as soon as its iframe is removed from the document
+        https://bugs.webkit.org/show_bug.cgi?id=190282
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several WPT tests that are now passing. I have verified that those tests are also passing in
+        Firefox and Chrome.
+
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/window-parent-null-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-synchronously-discard-expected.txt:
+
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * web-platform-tests/mediacapture-record/BlobEvent-constructor-expected.txt:
+        * web-platform-tests/mediacapture-record/MediaRecorder-constructor-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-constructor.html: Added.
+
+2018-10-03  Justin Michaud  <justin_michaud@apple.com>
+
+        Registered custom properties should allow inheritance to be controlled
+        https://bugs.webkit.org/show_bug.cgi?id=190038
+
+        Reviewed by Antti Koivisto.
+
+        Update web platform tests for css registered custom properties to fail in a different way.
+
+        * web-platform-tests/css/css-properties-values-api/registered-properties-inheritance-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-computation-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-cssom-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/url-resolution-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-cycles-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-expected.txt:
+
+2018-10-03  Youenn Fablet  <youenn@apple.com>
+
+        Add VP8 support to WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-expected.txt:
+
+2018-10-03  Chris Dumez  <cdumez@apple.com>
+
+        Passing noopener=NOOPENER to window.open() should cause the new window to not have an opener
+        https://bugs.webkit.org/show_bug.cgi?id=190251
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener-expected.txt:
+
+2018-10-03  Chris Dumez  <cdumez@apple.com>
+
+        input.checked is incorrect while we're parsing its children
+        https://bugs.webkit.org/show_bug.cgi?id=190227
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/html/semantics/forms/the-input-element/checked-expected.txt:
+
+2018-10-03  Rob Buis  <rbuis@igalia.com>
+
+        Import WPT mimesniff resources
+        https://bugs.webkit.org/show_bug.cgi?id=190074
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/mimesniff/META.yml: Added.
+        * web-platform-tests/mimesniff/README.md: Added.
+        * web-platform-tests/mimesniff/mime-types/README.md: Added.
+        * web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt: Added.
+        * web-platform-tests/mimesniff/mime-types/charset-parameter.window.html: Added.
+        * web-platform-tests/mimesniff/mime-types/charset-parameter.window.js: Added.
+        (promise_test):
+        (isByteCompatible):
+        (encodeForURL):
+        (runTests):
+        * web-platform-tests/mimesniff/mime-types/parsing.any-expected.txt: Added.
+        * web-platform-tests/mimesniff/mime-types/parsing.any.html: Added.
+        * web-platform-tests/mimesniff/mime-types/parsing.any.js: Added.
+        (promise_test):
+        (isByteCompatible):
+        (runTests):
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker-expected.txt: Added.
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker.html: Added.
+        * web-platform-tests/mimesniff/mime-types/resources/generated-mime-types.json: Added.
+        * web-platform-tests/mimesniff/mime-types/resources/generated-mime-types.py: Added.
+        (isHTTPTokenCodePoint):
+        (isHTTPQuotedStringTokenCodePoint):
+        * web-platform-tests/mimesniff/mime-types/resources/mime-charset.py: Added.
+        (main):
+        * web-platform-tests/mimesniff/mime-types/resources/mime-types.json: Added.
+        * web-platform-tests/mimesniff/mime-types/resources/w3c-import.log: Added.
+        * web-platform-tests/mimesniff/mime-types/w3c-import.log: Added.
+        * web-platform-tests/mimesniff/w3c-import.log: Added.
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        MessageEvent.ports should return the same object
+        https://bugs.webkit.org/show_bug.cgi?id=190151
+
+        Reviewed by Darin Adler.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt:
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        radio / checkbox inputs should fire "click, input, change" events in order when clicked
+        https://bugs.webkit.org/show_bug.cgi?id=190223
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline a few WPT tests that are now passing. I have verified that those are passing in Gecko and Blink
+        as well.
+
+        * web-platform-tests/html/semantics/forms/the-input-element/checkbox-click-events-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/checkbox-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-expected.txt:
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        fieldset.elements should return an HTMLCollection instead of an HTMLFormControlsCollection
+        https://bugs.webkit.org/show_bug.cgi?id=190218
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing WPT test now that it is passing.
+
+        * web-platform-tests/html/semantics/forms/the-fieldset-element/HTMLFieldSetElement-expected.txt:
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        Refresh imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh
+        https://bugs.webkit.org/show_bug.cgi?id=190212
+
+        Reviewed by Youenn Fablet.
+
+        Refresh imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh
+        from upstream f15449622a76d0.
+
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/remove-from-document-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/support/refresh.sub.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/support/w3c-import.log:
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        Image.__proto__ should be Function.prototype, not HTMLElement.prototype
+        https://bugs.webkit.org/show_bug.cgi?id=190216
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing WPT test now that it is passing.
+
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/Image-constructor-expected.txt:
+
+2018-10-01  Simon Pieters  <zcorpan@gmail.com>
+
+        <form> in quirks mode should have margin-block-end: 1em
+        https://bugs.webkit.org/show_bug.cgi?id=157788
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/html/rendering/non-replaced-elements/flow-content-0/form-margin-quirk.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/flow-content-0/form-margin-quirk-expected.txt: Added.
+
+2018-10-01  Rob Buis  <rbuis@igalia.com>
+
+        Align XMLHttpRequest's overrideMimeType() with the standard
+        https://bugs.webkit.org/show_bug.cgi?id=169276
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/xhr/overridemimetype-invalid-mime-type-expected.txt:
+
+2018-10-01  Chris Dumez  <cdumez@apple.com>
+
+        Make crossOriginObject.then undefined for promises
+        https://bugs.webkit.org/show_bug.cgi?id=190094
+
+        Reviewed by Darin Adler.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2018-09-30  Walker Henderson  <wjahenderson@gmail.com>
+
+        AudioNode.connect should return passed destination node
+        https://bugs.webkit.org/show_bug.cgi?id=188834
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webaudio/the-audio-api/the-audionode-interface/audionode-connect-return-value-expected.txt:
+
+2018-09-29  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Properly align items next to collapsed tracks with gutters
+        https://bugs.webkit.org/show_bug.cgi?id=190089
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Import grid-gutters-013.html and reference from WPT.
+
+        Test: imported/w3c/web-platform-tests/css/css-grid/alignment/grid-gutters-013.html
+
+        * web-platform-tests/css/css-grid/alignment/grid-gutters-013-expected.xht: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-gutters-013.html: Added.
+
+2018-09-28  Chris Dumez  <cdumez@apple.com>
+
+        The return value of an OnBeforeUnloadEventHandler should always be coerced into a DOMString
+        https://bugs.webkit.org/show_bug.cgi?id=190090
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline WPT test now that one more check is passing.
+
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/beforeunload-canceling-expected.txt:
+
+2018-09-28  Chris Dumez  <cdumez@apple.com>
+
+        document.open() should throw errors for cross-origin calls
+        https://bugs.webkit.org/show_bug.cgi?id=189371
+        <rdar://problem/44282700>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline existing WPT tests now that more checks are passing.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-origin.sub.window-expected.txt:
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-same-origin-domain.sub.window-expected.txt:
+
+2018-09-27  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Update web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=190049
+
+        Reviewed by Youenn Fablet.
+
+        Updated web-platform-tests/payment-request/ to tip-of-tree from web-platform-tests.
+
+        * web-platform-tests/payment-request/MerchantValidationEvent/complete-method.https-expected.txt: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/complete-method.https.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/complete-method-manual.https.html.
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.https-expected.txt:
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.https.html:
+        * web-platform-tests/payment-request/MerchantValidationEvent/w3c-import.log:
+        * web-platform-tests/payment-request/PaymentAddress/attributes-and-toJSON-method-manual.https.html:
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodDetails-attribute.https-expected.txt:
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodDetails-attribute.https.html:
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodName-attribute.https-expected.txt:
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodName-attribute.https.html:
+        * web-platform-tests/payment-request/PaymentValidationErrors/retry-shows-shippingAddress-member-manual.https.html:
+        * web-platform-tests/payment-request/historical.https-expected.txt:
+        * web-platform-tests/payment-request/historical.https.html:
+        * web-platform-tests/payment-request/idlharness.https.window.js:
+        * web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute-manual.https.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.manual.https.html.
+        * web-platform-tests/payment-request/payment-response/w3c-import.log:
+
+2018-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236557.
+
+        Really roll out r236557 this time because it breaks internal
+        builds.
+
+        Reverted changeset:
+
+        "Add VP8 support to WebRTC"
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+        https://trac.webkit.org/changeset/236557
+
+2018-09-27  Chris Dumez  <cdumez@apple.com>
+
+        Fragment should be stripped from document URL during document.open() URL propagation
+        https://bugs.webkit.org/show_bug.cgi?id=189374
+        <rdar://problem/44282736>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url-fragment.window-expected.txt:
+
+2018-09-27  Youenn Fablet  <youenn@apple.com>
+
+        Add VP8 support to WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-expected.txt:
+
+2018-09-27  Chris Dumez  <cdumez@apple.com>
+
+        document.open() should not propagate URLs to non-fully active documents
+        https://bugs.webkit.org/show_bug.cgi?id=189375
+        <rdar://problem/44282755>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window-expected.txt:
+
+2018-09-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output.html:
+        * web-platform-tests/css/css-logical/animation-003.tentative.html:
+        * web-platform-tests/css/css-scoping/keyframes-001.html:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-context.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate.html:
+        * web-platform-tests/web-animations/timing-model/animations/current-time.html:
+
+2018-09-26  YUHAN WU  <yuhan_wu@apple.com>
+
+        Video track clone cannot preserve original property
+        https://bugs.webkit.org/show_bug.cgi?id=189872
+        <rdar://problem/44706579>
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint-expected.txt:
+
+2018-09-26  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r236524.
+
+        Broke API tests
+
+        Reverted changeset:
+
+        "URLWithUserTypedString should return nil for URLs deemed to
+        be invalid by WebCore::URL"
+        https://bugs.webkit.org/show_bug.cgi?id=189979
+        https://trac.webkit.org/changeset/236524
+
+2018-09-26  Chris Dumez  <cdumez@apple.com>
+
+        Ignore-opens-during-unload counter of a parent should apply to its children during beforeunload event
+        https://bugs.webkit.org/show_bug.cgi?id=189376
+        <rdar://problem/44282754>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline existing test now that one more check is passing.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/ignore-opens-during-unload.window-expected.txt:
+
+2018-09-25  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement MediaStreamTrack Content Hints
+        https://bugs.webkit.org/show_bug.cgi?id=189262
+        <rdar://problem/44101773>
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint-expected.txt:
+
+2018-09-25  YUHAN WU  <yuhan_wu@apple.com>
+
+        Import WPT content hint tests
+        https://bugs.webkit.org/show_bug.cgi?id=189854
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mst-content-hint/idlharness.window-expected.txt: Added.
+
+2018-09-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove filterRes parameter from SVG filters
+        https://bugs.webkit.org/show_bug.cgi?id=129565
+        <rdar://problem/44714340>
+
+        Reviewed by Dean Jackson.
+        
+        Remove support for the "filterRes" attribute on SVG filters. It's marked as
+        deprecated in https://drafts.fxtf.org/filter-effects/#element-attrdef-filter-filterres
+        and no longer supported by Chrome or Firefox.
+
+        * web-platform-tests/html/syntax/parsing/html5lib_tests11-expected.txt: Rebaseline
+
+2018-09-24  Justin Michaud  <justin_michaud@apple.com>
+
+        Import WPT tests for css custom properties api
+        https://bugs.webkit.org/show_bug.cgi?id=189764
+
+        Reviewed by Ryosuke Niwa.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-properties-values-api/META.yml: Added.
+        * web-platform-tests/css/css-properties-values-api/idlharness-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/idlharness.html: Added.
+        * web-platform-tests/css/css-properties-values-api/property-cascade-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/property-cascade.html: Added.
+        * web-platform-tests/css/css-properties-values-api/register-property-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing.html: Added.
+        * web-platform-tests/css/css-properties-values-api/register-property.html: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-properties-inheritance-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-properties-inheritance.html: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-computation-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-computation.html: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-cssom-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-cssom.html: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-initial-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/registered-property-initial.html: Added.
+        * web-platform-tests/css/css-properties-values-api/support/alt/alt.css: Added.
+        (#target):
+        * web-platform-tests/css/css-properties-values-api/support/alt/alt.js: Added.
+        (reg_url):
+        * web-platform-tests/css/css-properties-values-api/support/alt/w3c-import.log: Added.
+        * web-platform-tests/css/css-properties-values-api/support/main/main.css: Added.
+        (#target):
+        * web-platform-tests/css/css-properties-values-api/support/main/main.js: Added.
+        (reg_url):
+        * web-platform-tests/css/css-properties-values-api/support/main/main.utf16be.css: Added.
+        * web-platform-tests/css/css-properties-values-api/support/main/w3c-import.log: Added.
+        * web-platform-tests/css/css-properties-values-api/typedom.tentative-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/typedom.tentative.html: Added.
+        * web-platform-tests/css/css-properties-values-api/unit-cycles-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/unit-cycles.html: Added.
+        * web-platform-tests/css/css-properties-values-api/url-resolution-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/url-resolution.html: Added.
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-cycles-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-cycles.html: Added.
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties-expected.txt: Added.
+        * web-platform-tests/css/css-properties-values-api/var-reference-registered-properties.html: Added.
+        * web-platform-tests/css/css-properties-values-api/w3c-import.log: Added.
+
+2018-09-24  Chris Dumez  <cdumez@apple.com>
+
+        No-op document.open() calls should not have any side effects
+        https://bugs.webkit.org/show_bug.cgi?id=189373
+        <rdar://problem/44282702>
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline WPT test now that it is passing.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-synchronous-script.window-expected.txt:
+
+2018-09-24  Chris Dumez  <cdumez@apple.com>
+
+        Import html/webappapis/dynamic-markup-insertion WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=189863
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/closing-the-input-stream/document.close-01-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/closing-the-input-stream/document.close-01.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/closing-the-input-stream/w3c-import.log: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/001-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/001.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/002-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/002.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/003-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/003.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/004-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/004.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/005-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/005.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/005.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/006-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/006.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/006.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/007-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/007.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/007.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/008-1.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/008-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/008.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/008.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/009-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/009.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/010-1.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/010-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/010.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/010.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/011-1.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/011-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/011.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/011.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/012-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/012.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/012.js: Added.
+        (t.step):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/013-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/013.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/013.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/014-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/014.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/015-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/015.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/016-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/016.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/017-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/017.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/018-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/018.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/019-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/019.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/020-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/020.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/021-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/021.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/022-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/022.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/023-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/023.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/024-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/024.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/025-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/025.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/026-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/026.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/027-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/027.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/028-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/028.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/029-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/029.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/030-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/030.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/031-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/031.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/032-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/032.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/033-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/033.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/034-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/034.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/035-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/035.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/036-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/036.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/037-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/037.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/038-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/038.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/039-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/039.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/040-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/040.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/041-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/041.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/042-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/042.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/043-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/043.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/044-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/044.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/045-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/045.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/046-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/046.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/047-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/047.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/048-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/048.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/049-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/049.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/050-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/050.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/051-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/051.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/contentType.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/contentType.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/contentType.window.js: Added.
+        (string_appeared_here.forEach.val.async_test.t.frame.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/document.write-01-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/document.write-01.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/document.write-02-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/document.write-02.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/empty.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_001-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_001.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_002-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_002.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_003-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_003.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_004-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_004.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_005-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_005.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_005.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_006-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_006.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_007-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_007.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_008-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_008.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_009-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_009.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_010-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/iframe_010.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/nested-document-write-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/nested-document-write-2.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/nested-document-write-external.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/original-id.json: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_001-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_001.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_002-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_002.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_003-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_003.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_004-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_004.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_005-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_005.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_006-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_006.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_007-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_007.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_008-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_008.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_009-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_009.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_010-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_010.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_011-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_011.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_012-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_012.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_013-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/script_013.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/w3c-import.log: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/write-active-document-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/write-active-document.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-01-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-01.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-02-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-02.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-03-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/document.writeln-03.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/original-id.json: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/document-writeln/w3c-import.log: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/002-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/002.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/004-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/004.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/006-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/006.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/011-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/011-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/011.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/012-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/012-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/012.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/013-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/013-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/013.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/014-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/014-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/014.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/015-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/015-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/015.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/016-1.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/016-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/016.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-immediate.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-immediate.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-immediate.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-header.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-header.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-header.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-meta.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-meta.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-refresh-multisecond-meta.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-while-navigating.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-while-navigating.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort-while-navigating.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        (async_test.t.t.step_timeout):
+        (async_test.t.t.step_timeout.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort.sub.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort.sub.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort.sub.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/aborted-parser.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/aborted-parser.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/aborted-parser.window.js: Added.
+        (async_test.t.window.handlers.afterOpen.t.step_func_done):
+        (async_test.t.window.handlers.afterOpenAsync.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/active.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/active.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/active.window.js: Added.
+        (assertOpenIsEffective):
+        (async_test.t.frame.onload.t.step_func):
+        (async_test.t.xhr.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-origin.sub.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-origin.sub.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-origin.sub.window.js: Added.
+        (setEntryToTopLevel):
+        (async_test.t.t.add_cleanup):
+        (async_test.t.iframe.onload.t.step_func_done):
+        (async_test.t.window.onCustomElementReady.t.step_func):
+        (async_test.t.self.testSynchronousScript.t.step_func):
+        (string_appeared_here.async_test.t.t.add_cleanup):
+        (string_appeared_here.async_test.t.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-xml.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-xml.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-exception-vs-return-xml.window.js: Added.
+        (async_test.t.t.add_cleanup):
+        (async_test.t.self.testSynchronousScript.t.step_func_done):
+        (string_appeared_here.async_test.t.t.add_cleanup):
+        (string_appeared_here.async_test.t.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-ignore-opens-during-unload.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-ignore-opens-during-unload.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-ignore-opens-during-unload.window.js: Added.
+        (string_appeared_here.async_test.t.iframe.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-same-origin-domain.sub.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-same-origin-domain.sub.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-same-origin-domain.sub.window.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-synchronous-script.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-synchronous-script.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-synchronous-script.window.js: Added.
+        (async_test.t.self.testSynchronousScript.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-xml.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-xml.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/bailout-side-effects-xml.window.js: Added.
+        (async_test.t.iframe.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/beforeunload.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/beforeunload.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/beforeunload.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/custom-element.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/custom-element.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/custom-element.window.js: Added.
+        (CustomElement):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-01-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-01.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-02-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-02.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-03-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-03-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/document.open-03.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/encoding.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/encoding.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/encoding.window.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/event-listeners.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/event-listeners.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/event-listeners.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        (test.t.const.winListener.t.step_func):
+        (test.t.t.add_cleanup):
+        (test.t.const.bodyListener.t.step_func):
+        (async_test.t.xhr.onload.t.step_func_done):
+        (test.t.t.step_func):
+        (test.t.thrower.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history-state.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history-state.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history-state.window.js: Added.
+        (async_test.t.iframe.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/history.window.js: Added.
+        (window.onFrameLoaded.t.step_func):
+        (window.onDocumentOpen.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/ignore-opens-during-unload.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/ignore-opens-during-unload.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/ignore-opens-during-unload.window.js: Added.
+        (async_test.t.iframe.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-events.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-events.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-events.window.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-observer.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-observer.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/mutation-observer.window.js: Added.
+        (async_test.t.t.add_cleanup):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/no-new-global.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/no-new-global.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/no-new-global.window.js: Added.
+        (async_test.t.frame.onload.t.step_func_done):
+        (testIdentity):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/origin-check-in-document-open-basic-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/origin-check-in-document-open-basic.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/origin-check-in-document-open-same-origin-domain.sub-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/origin-check-in-document-open-same-origin-domain.sub.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/quirks.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/quirks.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/quirks.window.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/readiness.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/readiness.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/readiness.window.js: Added.
+        (async_test.t.t.add_cleanup):
+        (async_test.t.frame.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/reload.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/reload.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/reload.window.js: Added.
+        (window.name.string_appeared_here.async_test.t.t.add_cleanup):
+        (window.name.string_appeared_here.async_test.t.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/aborted-parser-async-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/aborted-parser-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/bailout-order-custom-element-with-domain-frame.sub.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/bailout-order-synchronous-script-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/bailout-order-synchronous-script-with-domain-frame.sub.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/bailout-order-xml-with-domain-frame.sub.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/bailout-order-xml-with-synchronous-script-frame.xhtml: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/document-open-side-effects.js: Added.
+        (assertDocumentIsReadyForSideEffectsTest):
+        (assertOpenHasNoSideEffects):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/dummy.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/encoding-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/global-variables-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/history-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/http-refresh.py: Added.
+        (main):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/meta-refresh.py: Added.
+        (main):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/page-with-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/set-document-domain.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/slow-png.py: Added.
+        (main):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/url-frame.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/resources/w3c-import.log: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/tasks.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/tasks.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/tasks.window.js: Added.
+        (taskTest):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument-plaintext-subframe.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument-plaintext.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument-plaintext.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument-plaintext.window.js: Added.
+        (string_appeared_here.forEach.type.async_test.t.frame.onload.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/type-argument.window.js: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/unload.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/unload.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/unload.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url-fragment.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url-fragment.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url-fragment.window.js: Added.
+        (async_test.t.t.add_cleanup):
+        (async_test.t.self.onhashchange.t.step_func_done):
+        (async_test.t.const.frame.document.body.appendChild.document.createElement.string_appeared_here.t.add_cleanup):
+        (async_test.t.window.testDone.t.step_func_done):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window-expected.txt: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window.html: Added.
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window.js: Added.
+        (async_test.t.frame.onload.t.step_func):
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/w3c-import.log: Added.
+
+2018-09-24  Yoav Weiss  <yoav@yoav.ws>
+
+        Import WPT resource-timing tests
+        https://bugs.webkit.org/show_bug.cgi?id=189903
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/resource-timing/META.yml: Added.
+        * web-platform-tests/resource-timing/OWNERS: Removed.
+        * web-platform-tests/resource-timing/clear_resource_timing_functionality.html: Added.
+        * web-platform-tests/resource-timing/clear_resource_timing_functionality-expected.txt: Added.
+        * web-platform-tests/resource-timing/idlharness.any.html: Added.
+        * web-platform-tests/resource-timing/idlharness.any-expected.txt: Added.
+        * web-platform-tests/resource-timing/idlharness.any.js: Added.
+        (idl_array.catch):
+        * web-platform-tests/resource-timing/idlharness.any.worker.html: Added.
+        * web-platform-tests/resource-timing/idlharness.any.worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/idlharness.html: Removed.
+        * web-platform-tests/resource-timing/resource-timing-tojson.html: Added.
+        * web-platform-tests/resource-timing/resource-timing-tojson-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_TAO_cross_origin_redirect_chain.html: Added.
+        * web-platform-tests/resource-timing/resource_TAO_cross_origin_redirect_chain-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_TAO_match_origin.htm:
+        * web-platform-tests/resource-timing/resource_TAO_match_origin-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_match_wildcard.htm:
+        * web-platform-tests/resource-timing/resource_TAO_match_wildcard-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_multi.htm:
+        * web-platform-tests/resource-timing/resource_TAO_multi-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_multi_wildcard.html: Copied from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_multi.htm.
+        * web-platform-tests/resource-timing/resource_TAO_multi_wildcard-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_TAO_null.htm:
+        * web-platform-tests/resource-timing/resource_TAO_null-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_origin_uppercase.htm:
+        * web-platform-tests/resource-timing/resource_TAO_origin_uppercase-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_space.htm:
+        * web-platform-tests/resource-timing/resource_TAO_space-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_TAO_wildcard.htm:
+        * web-platform-tests/resource-timing/resource_TAO_wildcard-expected.txt: Changed.
+        * web-platform-tests/resource-timing/resource_dedicated_worker.html: Added.
+        * web-platform-tests/resource-timing/resource_dedicated_worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_ignore_data_url.html: Added.
+        * web-platform-tests/resource-timing/resource_ignore_data_url-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_ignore_failures.html: Added.
+        * web-platform-tests/resource-timing/resource_ignore_failures-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_initiator_types.html: Added.
+        * web-platform-tests/resource-timing/resource_initiator_types-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_memory_cached.sub.html: Added.
+        * web-platform-tests/resource-timing/resource_memory_cached.sub-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_redirects.html: Added.
+        * web-platform-tests/resource-timing/resource_redirects-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_reparenting.html: Added.
+        * web-platform-tests/resource-timing/resource_reparenting-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_script_types.html: Added.
+        * web-platform-tests/resource-timing/resource_script_types-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_subframe_self_navigation.html: Added.
+        * web-platform-tests/resource-timing/resource_subframe_self_navigation-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing.worker.html: Added.
+        * web-platform-tests/resource-timing/resource_timing.worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing.worker.js: Added.
+        (check):
+        (async_test.t.then):
+        * web-platform-tests/resource-timing/resource_timing_TAO_cross_origin_redirect.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_TAO_cross_origin_redirect-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_eventually.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_eventually-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_when_populate_entries.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_when_populate_entries-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_when_shrink_buffer_size.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_buffer_full_when_shrink_buffer_size-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_same_origin_redirect.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_same_origin_redirect-expected.txt: Added.
+        * web-platform-tests/resource-timing/resource_timing_store_and_clear_during_callback.html: Added.
+        * web-platform-tests/resource-timing/resource_timing_store_and_clear_during_callback-expected.txt: Added.
+        * web-platform-tests/resource-timing/resources/TAOResponse.py:
+        (main):
+        * web-platform-tests/resource-timing/resources/all_resource_types.htm: Added.
+        * web-platform-tests/resource-timing/resources/blank_page_green.htm: Added.
+        * web-platform-tests/resource-timing/resources/empty.js: Added.
+        * web-platform-tests/resource-timing/resources/empty.py: Added.
+        (main):
+        * web-platform-tests/resource-timing/resources/empty_script.js: Added.
+        * web-platform-tests/resource-timing/resources/eventsource.py: Added.
+        (main):
+        * web-platform-tests/resource-timing/resources/green_frame.htm: Added.
+        * web-platform-tests/resource-timing/resources/iframe_TAO_multi_wildcard.html: Added.
+        * web-platform-tests/resource-timing/resources/multi_redirect.py: Added.
+        (main):
+        * web-platform-tests/resource-timing/resources/nested.css: Added.
+        (@import "resource_timing_test0.css?id=n1";):
+        (ol):
+        * web-platform-tests/resource-timing/resources/notify_parent.html: Added.
+        * web-platform-tests/resource-timing/resources/self_navigation.html: Added.
+        * web-platform-tests/resource-timing/resources/w3c-import.log:
+        * web-platform-tests/resource-timing/resources/worker_with_images.js: Added.
+        (checkDone):
+        (makeRequest.xhr.onreadystatechange):
+        (makeRequest):
+        * web-platform-tests/resource-timing/w3c-import.log:
+
+2018-09-21  Dean Jackson  <dino@apple.com>
+
+        Add PointerEvent, plus feature flag, plus Web Platform Tests
+        https://bugs.webkit.org/show_bug.cgi?id=189867
+        <rdar://problem/44697384>
+
+        Reviewed by Simon Fraser.
+
+        Import the Web Platform Tests for Pointer Events.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/pointerevents/META.yml: Added.
+        * web-platform-tests/pointerevents/README.md: Added.
+        * web-platform-tests/pointerevents/extension/idlharness.window-expected.txt: Added.
+        * web-platform-tests/pointerevents/extension/idlharness.window.html: Added.
+        * web-platform-tests/pointerevents/extension/idlharness.window.js: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_constructor-expected.txt: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_constructor.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-verification-expected.txt: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-verification.html: Added.
+        * web-platform-tests/pointerevents/extension/w3c-import.log: Added.
+        * web-platform-tests/pointerevents/idlharness.window-expected.txt: Added.
+        * web-platform-tests/pointerevents/idlharness.window.html: Added.
+        * web-platform-tests/pointerevents/idlharness.window.js: Added.
+        * web-platform-tests/pointerevents/pointerevent_constructor-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_constructor.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_on_event_handlers-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_on_event_handlers.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_styles.css: Added.
+        * web-platform-tests/pointerevents/pointerevent_support.js: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-illegal-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-illegal.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-verification-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-verification.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/resources/pointerevent_movementxy-iframe.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/resources/w3c-import.log: Added.
+        * web-platform-tests/pointerevents/resources/pointerevent_attributes_hoverable_pointers-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/pointerevent_fractional_coordinates-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/pointerevent_pointerId_scope-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/w3c-import.log: Added.
+        * web-platform-tests/pointerevents/w3c-import.log: Added.
+
+2018-09-21  YUHAN WU  <yuhan_wu@apple.com>
+
+        Import WPT content hint tests
+        https://bugs.webkit.org/show_bug.cgi?id=189854
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/mst-content-hint/META.yml: Added.
+        * web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint-expected.txt: Added.
+        * web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint.html: Added.
+        * web-platform-tests/mst-content-hint/idlharness.window.html: Added.
+        * web-platform-tests/mst-content-hint/idlharness.window.js: Added.
+        * web-platform-tests/mst-content-hint/w3c-import.log: Added.
+
+2018-09-21  Youenn Fablet  <youenn@apple.com>
+
+        Add RTCCodecStats support
+        https://bugs.webkit.org/show_bug.cgi?id=189792
+        <rdar://problem/32370668>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpReceiver-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getStats.https-expected.txt:
+
+2018-09-20  Frederic Wang  <fwang@igalia.com>
+
+        Synchronize CSSOM View test suite against upstream WPT
+        https://bugs.webkit.org/show_bug.cgi?id=189787
+
+        Reviewed by Antonio Gomes.
+
+        * web-platform-tests/css/cssom-view/META.yml: Added.
+        * web-platform-tests/css/cssom-view/OWNERS: Removed.
+        * web-platform-tests/css/cssom-view/cssom-getBoundingClientRect-vertical-rl-expected.html: Added.
+        * web-platform-tests/css/cssom-view/cssom-getBoundingClientRect-vertical-rl.html: Added.
+        * web-platform-tests/css/cssom-view/cssom-view-window-screen-interface-expected.txt:
+        * web-platform-tests/css/cssom-view/cssom-view-window-screen-interface.html:
+        * web-platform-tests/css/cssom-view/dom-element-scroll-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/dom-element-scroll.html: Added.
+        * web-platform-tests/css/cssom-view/elementFromPoint-mixed-font-sizes-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/elementFromPoint-mixed-font-sizes.html: Added.
+        * web-platform-tests/css/cssom-view/interfaces-expected.txt:
+        * web-platform-tests/css/cssom-view/interfaces.html:
+        * web-platform-tests/css/cssom-view/media-query-list-interface-expected.txt: Removed.
+        * web-platform-tests/css/cssom-view/media-query-list-interface.xht: Removed.
+        * web-platform-tests/css/cssom-view/resources/w3c-import.log:
+        * web-platform-tests/css/cssom-view/scroll-behavior-default-css-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-default-css.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-element-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-element.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-root.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-main-frame-window.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-scrollintoview-nested-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-scrollintoview-nested.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-smooth-positions-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-smooth-positions.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-root-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-window-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html: Added.
+        * web-platform-tests/css/cssom-view/scrollIntoView-vertical-rl-writing-mode-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/scrollIntoView-vertical-rl-writing-mode.html: Added.
+        * web-platform-tests/css/cssom-view/support/scroll-behavior.js: Added.
+        (observeScrolling):
+        (waitForScrollEnd):
+        (scrollNode):
+        (scrollWindow):
+        * web-platform-tests/css/cssom-view/support/support/w3c-import.log:
+        * web-platform-tests/css/cssom-view/support/w3c-import.log:
+        * web-platform-tests/css/cssom-view/table-client-props-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/table-client-props.html: Added.
+        * web-platform-tests/css/cssom-view/table-offset-props-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/table-offset-props.html: Added.
+        * web-platform-tests/css/cssom-view/table-scroll-props-expected.txt: Added.
+        * web-platform-tests/css/cssom-view/table-scroll-props.html: Added.
+        * web-platform-tests/css/cssom-view/w3c-import.log:
+        * web-platform-tests/css/cssom-view/window-interface-expected.txt: Removed.
+        * web-platform-tests/css/cssom-view/window-interface.xht: Removed.
+
+2018-09-19  YUHAN WU  <yuhan_wu@apple.com>
+
+        MediaStream-MediaElement-srcObject.https.html expects video duration for a MediaStream to be Infinity and is currently NaN
+        https://bugs.webkit.org/show_bug.cgi?id=189516
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html:
+        * web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https-expected.txt:
+
+2018-09-19  Youenn Fablet  <youenn@apple.com>
+
+        Implement sender/receiver getStats
+        https://bugs.webkit.org/show_bug.cgi?id=189707
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpReceiver-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getStats.https-expected.txt:
+
+2018-09-18  Youenn Fablet  <youenn@apple.com>
+
+        Implement RTCRtpReceiver getContributingSources/getSynchronizationSources
+        https://bugs.webkit.org/show_bug.cgi?id=189671
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpReceiver-getContributingSources.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https-expected.txt:
+        * web-platform-tests/webrtc/interfaces-expected.txt: Removed, as no longer needed.
+
+2018-09-11  Youenn Fablet  <youenn@apple.com>
+
+        Remove MediaDevices NoInterfaceObject
+        https://bugs.webkit.org/show_bug.cgi?id=189512
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-all-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-enumerateDevices-expected.txt:
+
+2018-09-07  Youenn Fablet  <youenn@apple.com>
+
+        Add support for unified plan transceivers
+        https://bugs.webkit.org/show_bug.cgi?id=189390
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCDTMFSender-insertDTMF.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-addTrack.https-expected.txt:
+        Regression comes from the fact that the sender was never used but transceiver direction is sendrecv.
+        This might need further clarification in the spec or implementation of libwebrtc.
+        * web-platform-tests/webrtc/RTCPeerConnection-addTransceiver-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-removeTrack.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setDescription-transceiver-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver-setDirection-expected.txt:
+
+2018-09-07  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: open() does not throw a SYNTAX_ERR exception if method is empty or url cannot be resolved
+        https://bugs.webkit.org/show_bug.cgi?id=46008
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/xhr/open-url-bogus-expected.txt:
+        * web-platform-tests/xhr/open-url-multi-window-6-expected.txt:
+
+2018-09-07  Frederic Wang  <fwang@igalia.com>
+
+        [CSSOM View] Handle the scrollingElement in Element::scroll(Left/Top/Width/Height/To)
+        https://bugs.webkit.org/show_bug.cgi?id=182230
+
+        Reviewed by Simon Fraser.
+
+        This commit updates expectations for some WPT tests so that they have only PASS results.
+        Note that css/cssom-view/scrollingElement-quirks-dynamic-*.html still fail for now (bug 182292).
+
+        * web-platform-tests/css/cssom-view/HTMLBody-ScrollArea_quirksmode-expected.txt:
+        * web-platform-tests/css/cssom-view/scrolling-quirks-vs-nonquirks-expected.txt:
+        * web-platform-tests/css/cssom-view/scrollingElement-expected.txt: Added.
+
+2018-09-05  Youenn Fablet  <youenn@apple.com>
+
+        Expose RTCRtpSender.setParameters
+        https://bugs.webkit.org/show_bug.cgi?id=189307
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpSender-replaceTrack-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-setParameters-expected.txt:
+
+2018-09-04  Frederic Wang  <fwang@igalia.com>
+
+        Add basic support for ScrollIntoViewOptions
+        https://bugs.webkit.org/show_bug.cgi?id=189258
+
+        Reviewed by Simon Fraser.
+
+        Update test expectations for WPT scrollIntoView tests.
+
+        * web-platform-tests/css/cssom-view/scrollIntoView-scrollMargin-expected.txt: This is not
+        supported yet but update the error message.
+        * web-platform-tests/css/cssom-view/scrollIntoView-scrollPadding-expected.txt: Ditto.
+        * web-platform-tests/css/cssom-view/scrollIntoView-shadow-expected.txt: Update expectation
+        now that this test passes.
+        * web-platform-tests/css/cssom-view/scrollIntoView-smooth-expected.txt: Ditto.
+        * web-platform-tests/css/cssom-view/scrollintoview-expected.txt: Ditto.
+
+2018-09-04  Oriol Brufau  <obrufau@igalia.com>
+
+        Check important flags when serializing shorthand with "initial" values
+        https://bugs.webkit.org/show_bug.cgi?id=188984
+
+        Reviewed by Antti Koivisto.
+
+        The test still has some failures due to https://bugs.webkit.org/show_bug.cgi?id=185953
+        but without this patch it would fail earlier.
+
+        * web-platform-tests/css/cssom/shorthand-serialization-expected.txt:
+        * web-platform-tests/css/cssom/shorthand-serialization.html:
+
+2018-09-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        slotchange event doesn't get fired when inserting, removing, or renaming slot elements
+        https://bugs.webkit.org/show_bug.cgi?id=189144
+        <rdar://problem/43871061>
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/shadow-dom/slotchange-customelements-expected.txt:
+        * web-platform-tests/shadow-dom/slotchange-event-expected.txt:
+        * web-platform-tests/shadow-dom/slotchange-expected.txt:
+
+2018-09-04  Rob Buis  <rbuis@igalia.com>
+
+        Adjust XMLHttpRequest username/password precedence rules
+        https://bugs.webkit.org/show_bug.cgi?id=184910
+
+        Reviewed by Chris Dumez.
+
+        Update test result.
+
+        * web-platform-tests/xhr/send-authentication-competing-names-passwords-expected.txt:
+
+2018-09-04  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] PaymentResponse should have an onpayerdetailchange event handler
+        https://bugs.webkit.org/show_bug.cgi?id=189249
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.https-expected.txt:
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the MerchantValidationEvent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=189235
+
+        Reviewed by Daniel Bates.
+
+        Updated payment-request web platform tests to 0313d9f.
+
+        * resources/TestRepositories:
+        * resources/import-expectations.json:
+        * web-platform-tests/payment-request/MerchantValidationEvent/complete-method-manual.https.html: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.http-expected.txt: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.http.html: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.https-expected.txt: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/constructor.https.html: Added.
+        * web-platform-tests/payment-request/MerchantValidationEvent/w3c-import.log: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.http-expected.txt: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.http.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.https-expected.txt: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-duplicate-shipping-options-manual.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-incremental-update-manual.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-method-abort-update-manual.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-state-checks-manual.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updatewith-method.https-expected.txt: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/updatewith-method.https.html: Added.
+        * web-platform-tests/payment-request/PaymentRequestUpdateEvent/w3c-import.log: Added.
+        * web-platform-tests/payment-request/allowpaymentrequest/common.sub.js:
+        (window.onmessage.e.t.step):
+        (string_appeared_here.forEach):
+        (window.onmessage): Deleted.
+        * web-platform-tests/payment-request/allowpaymentrequest/echo-PaymentRequest.html:
+        * web-platform-tests/payment-request/onmerchantvalidation-attribute.https-expected.txt: Added.
+        * web-platform-tests/payment-request/onmerchantvalidation-attribute.https.html: Added.
+        * web-platform-tests/payment-request/w3c-import.log:
+
+2018-09-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove duplicate directory web-platform-tests/cssom-view
+        https://bugs.webkit.org/show_bug.cgi?id=189241
+
+        Reviewed by Daniel Bates.
+
+        cssom-view tests were moved into web-platform-tests/css at r232903 but the old
+        directory and expectation were left. This patch finishes the migration.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/cssom-view/scrollingElement-expected.txt: Removed.
+        * web-platform-tests/cssom-view/CaretPosition-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/CaretPosition-001.html: Removed.
+        * web-platform-tests/cssom-view/DOMRectList-expected.txt: Removed.
+        * web-platform-tests/cssom-view/DOMRectList.html: Removed.
+        * web-platform-tests/cssom-view/HTMLBody-ScrollArea_quirksmode-expected.txt: Removed.
+        * web-platform-tests/cssom-view/HTMLBody-ScrollArea_quirksmode.html: Removed.
+        * web-platform-tests/cssom-view/MediaQueryList-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/MediaQueryList-001.html: Removed.
+        * web-platform-tests/cssom-view/MediaQueryList-with-empty-string-expected.txt: Removed.
+        * web-platform-tests/cssom-view/MediaQueryList-with-empty-string.html: Removed.
+        * web-platform-tests/cssom-view/OWNERS: Removed.
+        * web-platform-tests/cssom-view/Screen-pixelDepth-Screen-colorDepth001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/Screen-pixelDepth-Screen-colorDepth001.html: Removed.
+        * web-platform-tests/cssom-view/cssom-getBoundingClientRect-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-getBoundingClientRect-001.html: Removed.
+        * web-platform-tests/cssom-view/cssom-getBoundingClientRect-002-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-getBoundingClientRect-002.html: Removed.
+        * web-platform-tests/cssom-view/cssom-getClientRects-002-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-getClientRects-002.html: Removed.
+        * web-platform-tests/cssom-view/cssom-getClientRects-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-getClientRects.html: Removed.
+        * web-platform-tests/cssom-view/cssom-view-img-attributes-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-view-img-attributes-001.html: Removed.
+        * web-platform-tests/cssom-view/cssom-view-window-screen-interface-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-view-window-screen-interface.html: Removed.
+        * web-platform-tests/cssom-view/cssom-view/media-query-list-interface-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-view/media-query-list-interface.xht: Removed.
+        * web-platform-tests/cssom-view/cssom-view/w3c-import.log: Removed.
+        * web-platform-tests/cssom-view/cssom-view/window-interface-expected.txt: Removed.
+        * web-platform-tests/cssom-view/cssom-view/window-interface.xht: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-001.html: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-002-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-002.html: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-003-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-003.html: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementFromPoint.html: Removed.
+        * web-platform-tests/cssom-view/elementFromPosition-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementFromPosition.html: Removed.
+        * web-platform-tests/cssom-view/elementScroll-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementScroll.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-iframes-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-iframes.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-invalid-cases-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-invalid-cases.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-shadowroot-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-shadowroot.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-simple-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-simple.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-svg-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-svg.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-table-expected.txt: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint-table.html: Removed.
+        * web-platform-tests/cssom-view/elementsFromPoint.html: Removed.
+        * web-platform-tests/cssom-view/historical-expected.txt: Removed.
+        * web-platform-tests/cssom-view/historical.html: Removed.
+        * web-platform-tests/cssom-view/htmlelement-offset-width-001-expected.txt: Removed.
+        * web-platform-tests/cssom-view/htmlelement-offset-width-001.html: Removed.
+        * web-platform-tests/cssom-view/iframe.html: Removed.
+        * web-platform-tests/cssom-view/interfaces-expected.txt: Removed.
+        * web-platform-tests/cssom-view/interfaces.html: Removed.
+        * web-platform-tests/cssom-view/matchMedia-expected.txt: Removed.
+        * web-platform-tests/cssom-view/matchMedia.xht: Removed.
+        * web-platform-tests/cssom-view/matchMediaAddListener-expected.txt: Removed.
+        * web-platform-tests/cssom-view/matchMediaAddListener.html: Removed.
+        * web-platform-tests/cssom-view/mouseEvent-expected.txt: Removed.
+        * web-platform-tests/cssom-view/mouseEvent.html: Removed.
+        * web-platform-tests/cssom-view/negativeMargins-expected.txt: Removed.
+        * web-platform-tests/cssom-view/negativeMargins.html: Removed.
+        * web-platform-tests/cssom-view/offsetParent_element_test-expected.txt: Removed.
+        * web-platform-tests/cssom-view/offsetParent_element_test.html: Removed.
+        * web-platform-tests/cssom-view/offsetTopLeftInScrollableParent-expected.txt: Removed.
+        * web-platform-tests/cssom-view/offsetTopLeftInScrollableParent.html: Removed.
+        * web-platform-tests/cssom-view/resources/elementsFromPoint.js: Removed.
+        * web-platform-tests/cssom-view/resources/iframe1.html: Removed.
+        * web-platform-tests/cssom-view/resources/iframe2.html: Removed.
+        * web-platform-tests/cssom-view/resources/w3c-import.log: Removed.
+        * web-platform-tests/cssom-view/scrollIntoView-shadow-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrollIntoView-shadow.html: Removed.
+        * web-platform-tests/cssom-view/scrollIntoView-smooth-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrollIntoView-smooth.html: Removed.
+        * web-platform-tests/cssom-view/scrollWidthHeight-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrollWidthHeight.xht: Removed.
+        * web-platform-tests/cssom-view/scrollWidthHeightWhenNotScrollable-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrollWidthHeightWhenNotScrollable.xht: Removed.
+        * web-platform-tests/cssom-view/scrolling-no-browsing-context-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrolling-no-browsing-context.html: Removed.
+        * web-platform-tests/cssom-view/scrolling-quirks-vs-nonquirks-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrolling-quirks-vs-nonquirks.html: Removed.
+        * web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-001-expected.html: Removed.
+        * web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-001.html: Removed.
+        * web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-002-expected.html: Removed.
+        * web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-002.html: Removed.
+        * web-platform-tests/cssom-view/scrollingElement.html: Removed.
+        * web-platform-tests/cssom-view/scrollintoview-expected.txt: Removed.
+        * web-platform-tests/cssom-view/scrollintoview.html: Removed.
+        * web-platform-tests/cssom-view/support/1x1-green.png: Removed.
+        * web-platform-tests/cssom-view/support/1x1-lime.png: Removed.
+        * web-platform-tests/cssom-view/support/1x1-maroon.png: Removed.
+        * web-platform-tests/cssom-view/support/1x1-navy.png: Removed.
+        * web-platform-tests/cssom-view/support/1x1-red.png: Removed.
+        * web-platform-tests/cssom-view/support/1x1-white.png: Removed.
+        * web-platform-tests/cssom-view/support/60x60-gg-rr.png: Removed.
+        * web-platform-tests/cssom-view/support/60x60-green.png: Removed.
+        * web-platform-tests/cssom-view/support/60x60-red.png: Removed.
+        * web-platform-tests/cssom-view/support/README: Removed.
+        * web-platform-tests/cssom-view/support/a-green.css: Removed.
+        * web-platform-tests/cssom-view/support/b-green.css: Removed.
+        * web-platform-tests/cssom-view/support/c-red.css: Removed.
+        * web-platform-tests/cssom-view/support/cat.png: Removed.
+        * web-platform-tests/cssom-view/support/import-green.css: Removed.
+        * web-platform-tests/cssom-view/support/import-red.css: Removed.
+        * web-platform-tests/cssom-view/support/pattern-grg-rgr-grg.png: Removed.
+        * web-platform-tests/cssom-view/support/pattern-grg-rrg-rgg.png: Removed.
+        * web-platform-tests/cssom-view/support/pattern-rgr-grg-rgr.png: Removed.
+        * web-platform-tests/cssom-view/support/pattern-tr.png: Removed.
+        * web-platform-tests/cssom-view/support/ruler-h-50%.png: Removed.
+        * web-platform-tests/cssom-view/support/ruler-h-50px.png: Removed.
+        * web-platform-tests/cssom-view/support/ruler-v-100px.png: Removed.
+        * web-platform-tests/cssom-view/support/ruler-v-50px.png: Removed.
+        * web-platform-tests/cssom-view/support/square-purple.png: Removed.
+        * web-platform-tests/cssom-view/support/square-teal.png: Removed.
+        * web-platform-tests/cssom-view/support/square-white.png: Removed.
+        * web-platform-tests/cssom-view/support/support/README: Removed.
+        * web-platform-tests/cssom-view/support/support/swatch-green.png: Removed.
+        * web-platform-tests/cssom-view/support/support/swatch-red.png: Removed.
+        * web-platform-tests/cssom-view/support/support/w3c-import.log: Removed.
+        * web-platform-tests/cssom-view/support/swatch-blue.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-green.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-lime.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-orange.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-red.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-teal.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-white.png: Removed.
+        * web-platform-tests/cssom-view/support/swatch-yellow.png: Removed.
+        * web-platform-tests/cssom-view/support/test-bl.png: Removed.
+        * web-platform-tests/cssom-view/support/test-br.png: Removed.
+        * web-platform-tests/cssom-view/support/test-inner-half-size.png: Removed.
+        * web-platform-tests/cssom-view/support/test-outer.png: Removed.
+        * web-platform-tests/cssom-view/support/test-tl.png: Removed.
+        * web-platform-tests/cssom-view/support/test-tr.png: Removed.
+        * web-platform-tests/cssom-view/support/w3c-import.log: Removed.
+        * web-platform-tests/cssom-view/ttwf-js-cssomview-getclientrects-length-expected.txt: Removed.
+        * web-platform-tests/cssom-view/ttwf-js-cssomview-getclientrects-length.html: Removed.
+        * web-platform-tests/cssom-view/w3c-import.log: Removed.
+        * web-platform-tests/cssom-view/window-screen-height-expected.txt: Removed.
+        * web-platform-tests/cssom-view/window-screen-height-immutable-expected.txt: Removed.
+        * web-platform-tests/cssom-view/window-screen-height-immutable.html: Removed.
+        * web-platform-tests/cssom-view/window-screen-height.html: Removed.
+        * web-platform-tests/cssom-view/window-screen-width-expected.txt: Removed.
+        * web-platform-tests/cssom-view/window-screen-width-immutable-expected.txt: Removed.
+        * web-platform-tests/cssom-view/window-screen-width-immutable.html: Removed.
+        * web-platform-tests/cssom-view/window-screen-width.html: Removed.
+
+2018-08-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add assignedElements to HTMLSlotElement
+        https://bugs.webkit.org/show_bug.cgi?id=189146
+
+        Reviewed by Darin Adler.
+
+        Rebaselined the tests now that we're passing all test cases.
+
+        * web-platform-tests/shadow-dom/slots-expected.txt:
+        * web-platform-tests/shadow-dom/slots-fallback-expected.txt:
+
+2018-08-30  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the PaymentMethodChangeEvent and PaymentMethodChangeEventInit interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=189100
+
+        Reviewed by Daniel Bates.
+
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodDetails-attribute.https-expected.txt:
+        * web-platform-tests/payment-request/PaymentMethodChangeEvent/methodName-attribute.https-expected.txt:
+        * web-platform-tests/payment-request/onpaymentmenthodchange-attribute.https-expected.txt:
+
+2018-08-29  Olivia Barnett  <obarnett@apple.com>
+
+        Implement the Web Share API
+        https://bugs.webkit.org/show_bug.cgi?id=171100
+        <rdar://problem/31751734>
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/web-share/idlharness.https-expected.txt:
+        * web-platform-tests/web-share/share-empty.https-expected.txt:
+        * web-platform-tests/web-share/share-securecontext.http-expected.txt:
+        * web-platform-tests/web-share/share-url-invalid.https-expected.txt:
+        * web-platform-tests/web-share/share-without-user-gesture.https-expected.txt:
+        Updated expected results.
+
+2018-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Remove WebRTC legacy API implementation
+        https://bugs.webkit.org/show_bug.cgi?id=189040
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-all-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaDevices-IDL-enumerateDevices-expected.txt:
+        * web-platform-tests/mediacapture-streams/MediaStream-default-feature-policy.https-expected.txt:
+        * web-platform-tests/webrtc/historical-expected.txt:
+        * web-platform-tests/webrtc/no-media-call.html:
+        * web-platform-tests/webrtc/simplecall.https.html:
+
+2018-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Add a runtime flag for WebRTC unified plan
+        https://bugs.webkit.org/show_bug.cgi?id=189068
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-addTrack.https-expected.txt:
+
+2018-08-24  Youenn Fablet  <youenn@apple.com>
+
+        libwebrtc PeerConnection::AddTrack sometimes fail
+        https://bugs.webkit.org/show_bug.cgi?id=188914
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-addTrack.https-expected.txt:
+
+2018-08-23  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Support the inputmode attribute on contenteditable elements
+        https://bugs.webkit.org/show_bug.cgi?id=188878
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/html/dom/reflection-misc-expected.txt: Rebaseline.
 
 2018-09-15  Rob Buis  <rbuis@igalia.com>
 
@@ -52,6 +2738,17 @@
         Reviewed by Darin Adler.
 
         * web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+
+2018-08-23  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc up to 984f1a80c0
+        https://bugs.webkit.org/show_bug.cgi?id=188745
+        <rdar://problem/43539177>
+
+        Reviewed by Eric Carlson.
+
+       * web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-expected.txt:
+       * web-platform-tests/webrtc/no-media-call-expected.txt:
 
 2018-08-22  Rob Buis  <rbuis@igalia.com>
 

@@ -186,7 +186,6 @@
 #define WebKitMediaDevicesEnabledPreferenceKey @"WebKitMediaDevicesEnabled"
 #define WebKitMediaStreamEnabledPreferenceKey @"WebKitMediaStreamEnabled"
 #define WebKitPeerConnectionEnabledPreferenceKey @"WebKitPeerConnectionEnabled"
-#define WebKitWebRTCLegacyAPIEnabledPreferenceKey @"WebKitWebRTCLegacyAPIEnabled"
 #define WebKitLinkPreloadEnabledPreferenceKey @"WebKitLinkPreloadEnabled"
 #define WebKitMediaPreloadingEnabledPreferenceKey @"WebKitMediaPreloadingEnabled"
 #define WebKitWebAuthenticationEnabledPreferenceKey @"WebKitWebAuthenticationEnabled"
@@ -260,4 +259,5 @@
 #define WebKitAccessibilityObjectModelEnabledPreferenceKey @"WebKitAccessibilityObjectModelEnabled"
 #define WebKitAriaReflectionEnabledPreferenceKey @"WebKitAriaReflectionEnabled"
 #define WebKitMediaCapabilitiesEnabledPreferenceKey @"WebKitMediaCapabilitiesEnabled"
+#define WebKitMediaRecorderEnabledPreferenceKey @"WebKitMediaRecorderEnabled"
 #define WebKitServerTimingEnabledPreferenceKey @"WebKitServerTimingEnabled"

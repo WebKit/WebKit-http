@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Apple Inc. All rights reserved.
+* Copyright (C) 2018 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -28,99 +28,7 @@
     EnabledAtRuntime=PeerConnection,
     JSGenerateToJSObject,
 ] dictionary RTCRtpParameters {
-    DOMString transactionId;
-    sequence<RTCRtpEncodingParameters> encodings;
     sequence<RTCRtpHeaderExtensionParameters> headerExtensions;
     // FIXME: Add RTCRtcpParameters rtcp;
     sequence<RTCRtpCodecParameters> codecs;
-    RTCDegradationPreference degradationPreference = "balanced";
-};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-    JSGenerateToJSObject,
-] dictionary RTCRtpCodecParameters {
-    unsigned short payloadType;
-    DOMString mimeType;
-    unsigned long clockRate;
-    unsigned short channels = 1;
-    // FIXME: Add DOMString sdpFmtpLine;
-};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-    JSGenerateToJSObject,
-] dictionary RTCRtpEncodingParameters {
-    unsigned long ssrc;
-    RTCRtpRtxParameters rtx;
-    RTCRtpFecParameters fec;
-    RTCDtxStatus dtx;
-    boolean active;
-    RTCPriorityType priority;
-    unsigned long maxBitrate;
-    unsigned long maxFramerate;
-    DOMString rid;
-    double scaleResolutionDownBy = 1;
-};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-    JSGenerateToJSObject,
-] dictionary RTCRtpHeaderExtensionParameters {
-    DOMString uri;
-    unsigned short id;
-    // FIXME: Add boolean encrypted;
-};
-
-//[
-//    Conditional=WEB_RTC,
-//    EnabledAtRuntime=PeerConnection,
-//    JSGenerateToJSObject,
-//] dictionary RTCRtcpParameters {
-//    DOMString cname;
-//    boolean reducedSize;
-//};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-    JSGenerateToJSObject,
-] dictionary RTCRtpFecParameters {
-    unsigned long ssrc;
-};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-    JSGenerateToJSObject,
-] dictionary RTCRtpRtxParameters {
-    unsigned long ssrc;
-};
-
-[
-    Conditional=WEB_RTC,
-] enum RTCDegradationPreference {
-    "maintain-framerate",
-    "maintain-resolution",
-    "balanced"
-};
-
-[
-    Conditional=WEB_RTC,
-] enum RTCDtxStatus {
-    "disabled",
-    "enabled"
-};
-
-[
-    Conditional=WEB_RTC,
-    EnabledAtRuntime=PeerConnection,
-] enum RTCPriorityType {
-    "very-low",
-    "low",
-    "medium",
-    "high"
 };

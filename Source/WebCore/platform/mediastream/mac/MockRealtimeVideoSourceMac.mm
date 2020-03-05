@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
 #import "NotImplemented.h"
+#import "PixelBufferResizer.h"
 #import "PlatformLayer.h"
 #import "RealtimeMediaSourceSettings.h"
 #import <QuartzCore/CALayer.h>
@@ -49,11 +50,23 @@
 namespace WebCore {
 using namespace PAL;
 
+#if PLATFORM(MAC)
+const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8Planar;
+#else
+const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+#endif
 static const int videoSampleRate = 90000;
 
-CaptureSourceOrError MockRealtimeVideoSource::create(const String& deviceID, const String& name, const MediaConstraints* constraints)
+CaptureSourceOrError MockRealtimeVideoSource::create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints* constraints)
 {
-    auto source = adoptRef(*new MockRealtimeVideoSourceMac(deviceID, name));
+#ifndef NDEBUG
+    auto device = MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(deviceID);
+    ASSERT(device);
+    if (!device)
+        return { };
+#endif
+
+    auto source = adoptRef(*new MockRealtimeVideoSourceMac(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt)));
     // FIXME: We should report error messages
     if (constraints && source->applyConstraints(*constraints))
         return { };
@@ -61,8 +74,8 @@ CaptureSourceOrError MockRealtimeVideoSource::create(const String& deviceID, con
     return CaptureSourceOrError(WTFMove(source));
 }
 
-MockRealtimeVideoSourceMac::MockRealtimeVideoSourceMac(const String& deviceID, const String& name)
-    : MockRealtimeVideoSource(deviceID, name)
+MockRealtimeVideoSourceMac::MockRealtimeVideoSourceMac(String&& deviceID, String&& name, String&& hashSalt)
+    : MockRealtimeVideoSource(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt))
 {
 }
 
@@ -70,24 +83,19 @@ RetainPtr<CMSampleBufferRef> MockRealtimeVideoSourceMac::CMSampleBufferFromPixel
 {
     if (!pixelBuffer)
         return nullptr;
-
-    if (!m_pixelBufferConformer)
-        m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>((__bridge CFDictionaryRef)@{ (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8Planar) });
-
-    auto convertedPixelBuffer = m_pixelBufferConformer->convert(pixelBuffer);
-
+    
     CMTime sampleTime = CMTimeMake(((elapsedTime() + 100_ms) * videoSampleRate).seconds(), videoSampleRate);
     CMSampleTimingInfo timingInfo = { kCMTimeInvalid, sampleTime, sampleTime };
 
     CMVideoFormatDescriptionRef formatDescription = nullptr;
-    OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, (CVImageBufferRef)convertedPixelBuffer, &formatDescription);
+    OSStatus status = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, (CVImageBufferRef)pixelBuffer, &formatDescription);
     if (status != noErr) {
         LOG_ERROR("Failed to initialize CMVideoFormatDescription with error code: %d", status);
         return nullptr;
     }
 
     CMSampleBufferRef sampleBuffer;
-    status = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault, (CVImageBufferRef)convertedPixelBuffer, formatDescription, &timingInfo, &sampleBuffer);
+    status = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault, (CVImageBufferRef)pixelBuffer, formatDescription, &timingInfo, &sampleBuffer);
     CFRelease(formatDescription);
     if (status != noErr) {
         LOG_ERROR("Failed to initialize CMSampleBuffer with error code: %d", status);
@@ -148,18 +156,28 @@ void MockRealtimeVideoSourceMac::updateSampleBuffer()
         return;
 
     auto pixelBuffer = pixelBufferFromCGImage(imageBuffer->copyImage()->nativeImage().get());
+    if (m_pixelBufferResizer)
+        pixelBuffer = m_pixelBufferResizer->resize(pixelBuffer.get());
+    else {
+        if (!m_pixelBufferConformer) {
+            m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>((__bridge CFDictionaryRef)@{
+                (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(videoCaptureFormat)
+            });
+        }
+
+        pixelBuffer = m_pixelBufferConformer->convert(pixelBuffer.get());
+    }
     auto sampleBuffer = CMSampleBufferFromPixelBuffer(pixelBuffer.get());
 
     // We use m_deviceOrientation to emulate sensor orientation
-    videoSampleAvailable(MediaSampleAVFObjC::create(sampleBuffer.get(), m_deviceOrientation));
+    dispatchMediaSampleToObservers(MediaSampleAVFObjC::create(sampleBuffer.get(), m_deviceOrientation));
 }
 
-bool MockRealtimeVideoSourceMac::applySize(const IntSize& newSize)
+void MockRealtimeVideoSourceMac::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    if (size() != newSize)
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height }))
         m_bufferPool = nullptr;
-
-    return MockRealtimeVideoSource::applySize(newSize);
+    MockRealtimeVideoSource::settingsDidChange(settings);
 }
 
 void MockRealtimeVideoSourceMac::orientationChanged(int orientation)
@@ -187,6 +205,21 @@ void MockRealtimeVideoSourceMac::monitorOrientation(OrientationNotifier& notifie
 {
     notifier.addObserver(*this);
     orientationChanged(notifier.orientation());
+}
+
+void MockRealtimeVideoSourceMac::setSizeAndFrameRateWithPreset(IntSize requestedSize, double, RefPtr<VideoPreset> preset)
+{
+    if (!preset)
+        return;
+
+    if (preset->size != requestedSize) {
+        if (m_pixelBufferResizer && !m_pixelBufferResizer->canResizeTo(requestedSize))
+            m_pixelBufferResizer = nullptr;
+
+        if (!m_pixelBufferResizer)
+            m_pixelBufferResizer = std::make_unique<PixelBufferResizer>(requestedSize, videoCaptureFormat);
+    } else
+        m_pixelBufferResizer = nullptr;
 }
 
 } // namespace WebCore

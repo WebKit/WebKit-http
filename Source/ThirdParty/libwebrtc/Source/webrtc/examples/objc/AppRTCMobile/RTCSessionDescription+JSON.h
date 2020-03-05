@@ -8,12 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import "WebRTC/RTCSessionDescription.h"
+#import <WebRTC/RTCSessionDescription.h>
 
 @interface RTCSessionDescription (JSON)
 
-+ (RTCSessionDescription *)descriptionFromJSONDictionary:
-    (NSDictionary *)dictionary;
++ (RTCSessionDescription *)descriptionFromJSONDictionary:(NSDictionary *)dictionary;
 - (NSData *)JSONData;
 
 @end

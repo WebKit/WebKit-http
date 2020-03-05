@@ -77,6 +77,7 @@ void AssistedNodeInformation::encode(IPC::Encoder& encoder) const
     encoder << isRTL;
     encoder.encodeEnum(autocapitalizeType);
     encoder.encodeEnum(elementType);
+    encoder.encodeEnum(inputMode);
     encoder << formAction;
     encoder << selectOptions;
     encoder << selectedIndex;
@@ -96,6 +97,12 @@ void AssistedNodeInformation::encode(IPC::Encoder& encoder) const
     encoder << label;
     encoder << ariaLabel;
     encoder << assistedNodeIdentifier;
+#if ENABLE(DATALIST_ELEMENT)
+    encoder << hasSuggestions;
+#if ENABLE(INPUT_TYPE_COLOR)
+    encoder << suggestedColors;
+#endif
+#endif
 }
 
 bool AssistedNodeInformation::decode(IPC::Decoder& decoder, AssistedNodeInformation& result)
@@ -140,6 +147,9 @@ bool AssistedNodeInformation::decode(IPC::Decoder& decoder, AssistedNodeInformat
         return false;
 
     if (!decoder.decodeEnum(result.elementType))
+        return false;
+
+    if (!decoder.decodeEnum(result.inputMode))
         return false;
 
     if (!decoder.decode(result.formAction))
@@ -198,6 +208,16 @@ bool AssistedNodeInformation::decode(IPC::Decoder& decoder, AssistedNodeInformat
 
     if (!decoder.decode(result.assistedNodeIdentifier))
         return false;
+
+#if ENABLE(DATALIST_ELEMENT)
+    if (!decoder.decode(result.hasSuggestions))
+        return false;
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    if (!decoder.decode(result.suggestedColors))
+        return false;
+#endif
+#endif
 
     return true;
 }

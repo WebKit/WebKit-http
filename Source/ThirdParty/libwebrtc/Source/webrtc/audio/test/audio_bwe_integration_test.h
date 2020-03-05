@@ -13,8 +13,8 @@
 #include <memory>
 #include <string>
 
+#include "api/test/simulated_network.h"
 #include "test/call_test.h"
-#include "test/fake_audio_device.h"
 #include "test/single_threaded_task_queue.h"
 
 namespace webrtc {
@@ -27,17 +27,17 @@ class AudioBweTest : public test::EndToEndTest {
  protected:
   virtual std::string AudioInputFile() = 0;
 
-  virtual FakeNetworkPipe::Config GetNetworkPipeConfig() = 0;
+  virtual DefaultNetworkSimulationConfig GetNetworkPipeConfig() = 0;
 
   size_t GetNumVideoStreams() const override;
   size_t GetNumAudioStreams() const override;
   size_t GetNumFlexfecStreams() const override;
 
-  std::unique_ptr<test::FakeAudioDevice::Capturer> CreateCapturer() override;
+  std::unique_ptr<TestAudioDeviceModule::Capturer> CreateCapturer() override;
 
   void OnFakeAudioDevicesCreated(
-      test::FakeAudioDevice* send_audio_device,
-      test::FakeAudioDevice* recv_audio_device) override;
+      TestAudioDeviceModule* send_audio_device,
+      TestAudioDeviceModule* recv_audio_device) override;
 
   test::PacketTransport* CreateSendTransport(
       SingleThreadedTaskQueueForTesting* task_queue,
@@ -48,7 +48,7 @@ class AudioBweTest : public test::EndToEndTest {
   void PerformTest() override;
 
  private:
-  test::FakeAudioDevice* send_audio_device_;
+  TestAudioDeviceModule* send_audio_device_;
 };
 
 }  // namespace test

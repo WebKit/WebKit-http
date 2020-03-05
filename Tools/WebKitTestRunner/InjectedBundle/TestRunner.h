@@ -129,8 +129,8 @@ public:
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setMediaDevicesEnabled(bool);
-    void setWebRTCLegacyAPIEnabled(bool);
-    void setMDNSICECandidatesEnabled(bool);
+    void setWebRTCMDNSICECandidatesEnabled(bool);
+    void setWebRTCUnifiedPlanEnabled(bool);
     void setCustomUserAgent(JSStringRef);
 
     // Special DOM functions.

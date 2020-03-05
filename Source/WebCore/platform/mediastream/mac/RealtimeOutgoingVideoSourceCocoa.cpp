@@ -29,10 +29,17 @@
 #if USE(LIBWEBRTC)
 
 #include "Logging.h"
+#include "RealtimeIncomingVideoSourceCocoa.h"
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/video/i420_buffer.h>
 #include <webrtc/common_video/libyuv/include/webrtc_libyuv.h>
 #include <webrtc/sdk/WebKit/WebKitUtilities.h>
 #include <webrtc/sdk/objc/Framework/Classes/Video/corevideo_frame_buffer.h>
+
+ALLOW_UNUSED_PARAMETERS_END
+
 #include <pal/cf/CoreMediaSoftLink.h>
 #include "CoreVideoSoftLink.h"
 
@@ -50,7 +57,8 @@ typedef enum RotationMode {
   kRotateCounterClockwise = 270,
 } RotationModeEnum;
 
-int ConvertToI420(const uint8_t* src_frame,
+int ConvertToI420(webrtc::VideoType src_video_type,
+                  const uint8_t* src_frame,
                   size_t src_size,
                   uint8_t* dst_y,
                   int dst_stride_y,
@@ -64,8 +72,7 @@ int ConvertToI420(const uint8_t* src_frame,
                   int src_height,
                   int crop_width,
                   int crop_height,
-                  RotationMode rotation,
-                  uint32_t format);
+                  RotationMode rotation);
 }
 }
 
@@ -85,34 +92,6 @@ Ref<RealtimeOutgoingVideoSourceCocoa> RealtimeOutgoingVideoSourceCocoa::create(R
 RealtimeOutgoingVideoSourceCocoa::RealtimeOutgoingVideoSourceCocoa(Ref<MediaStreamTrackPrivate>&& videoSource)
     : RealtimeOutgoingVideoSource(WTFMove(videoSource))
 {
-}
-
-static inline int ConvertToI420(webrtc::VideoType src_video_type,
-                  const uint8_t* src_frame,
-                  int crop_x,
-                  int crop_y,
-                  int src_width,
-                  int src_height,
-                  size_t sample_size,
-                  libyuv::RotationMode rotation,
-                  webrtc::I420Buffer* dst_buffer) {
-  int dst_width = dst_buffer->width();
-  int dst_height = dst_buffer->height();
-  // LibYuv expects pre-rotation values for dst.
-  // Stride values should correspond to the destination values.
-  if (rotation == libyuv::kRotate90 || rotation == libyuv::kRotate270) {
-    std::swap(dst_width, dst_height);
-  }
-  return libyuv::ConvertToI420(
-      src_frame, sample_size,
-      dst_buffer->MutableDataY(), dst_buffer->StrideY(),
-      dst_buffer->MutableDataU(), dst_buffer->StrideU(),
-      dst_buffer->MutableDataV(), dst_buffer->StrideV(),
-      crop_x, crop_y,
-      src_width, src_height,
-      dst_width, dst_height,
-      rotation,
-      webrtc::ConvertVideoType(src_video_type));
 }
 
 void RealtimeOutgoingVideoSourceCocoa::sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample& sample)
@@ -147,41 +126,28 @@ void RealtimeOutgoingVideoSourceCocoa::sampleBufferUpdated(MediaStreamTrackPriva
     auto pixelBuffer = static_cast<CVPixelBufferRef>(CMSampleBufferGetImageBuffer(sample.platformSample().sample.cmSampleBuffer));
     auto pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
 
-    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar || pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-        rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer = webrtc::pixelBufferToFrame(pixelBuffer);
-        if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
-            // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
-            // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
-            auto rotatedBuffer = buffer->ToI420();
-            ASSERT(rotatedBuffer);
-            buffer = webrtc::I420Buffer::Rotate(*rotatedBuffer, m_currentRotation);
-        }
-        sendFrame(WTFMove(buffer));
-        return;
-    }
-
-    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
-    auto* source = reinterpret_cast<uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0));
-
-    ASSERT(m_width);
-    ASSERT(m_height);
-
-    auto newBuffer = m_bufferPool.CreateBuffer(m_width, m_height);
-    ASSERT(newBuffer);
-    if (!newBuffer) {
-        RELEASE_LOG(WebRTC, "RealtimeOutgoingVideoSourceCocoa::videoSampleAvailable unable to allocate buffer for conversion to YUV");
-        return;
-    }
-    if (pixelFormatType == kCVPixelFormatType_32BGRA)
-        ConvertToI420(webrtc::VideoType::kARGB, source, 0, 0, m_width, m_height, 0, libyuv::kRotate0, newBuffer);
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer;
+    RetainPtr<CVPixelBufferRef> convertedBuffer;
+    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar || pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+        buffer = webrtc::pixelBufferToFrame(pixelBuffer);
     else {
-        ASSERT(pixelFormatType == kCVPixelFormatType_32ARGB);
-        ConvertToI420(webrtc::VideoType::kBGRA, source, 0, 0, m_width, m_height, 0, libyuv::kRotate0, newBuffer);
+        convertedBuffer = convertToYUV(pixelBuffer);
+        buffer = webrtc::pixelBufferToFrame(convertedBuffer.get());
     }
-    CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
-    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0)
-        newBuffer = webrtc::I420Buffer::Rotate(*newBuffer, m_currentRotation);
-    sendFrame(WTFMove(newBuffer));
+
+    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
+        // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
+        // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
+        auto rotatedBuffer = buffer->ToI420();
+        ASSERT(rotatedBuffer);
+        buffer = webrtc::I420Buffer::Rotate(*rotatedBuffer, m_currentRotation);
+    }
+    sendFrame(WTFMove(buffer));
+}
+
+rtc::scoped_refptr<webrtc::VideoFrameBuffer> RealtimeOutgoingVideoSourceCocoa::createBlackFrame(size_t  width, size_t  height)
+{
+    return webrtc::pixelBufferToFrame(createBlackPixelBuffer(width, height).get());
 }
 
 

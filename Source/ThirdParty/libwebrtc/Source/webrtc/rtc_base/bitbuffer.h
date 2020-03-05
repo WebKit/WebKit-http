@@ -11,8 +11,8 @@
 #ifndef RTC_BASE_BITBUFFER_H_
 #define RTC_BASE_BITBUFFER_H_
 
-#include <stdint.h>  // For integer types.
 #include <stddef.h>  // For size_t.
+#include <stdint.h>  // For integer types.
 
 #include "rtc_base/constructormagic.h"
 
@@ -43,7 +43,7 @@ class BitBuffer {
   bool ReadUInt32(uint32_t* val);
 
   // Reads bit-sized values from the buffer. Returns false if there isn't enough
-  // data left for the specified bit count..
+  // data left for the specified bit count.
   bool ReadBits(uint32_t* val, size_t bit_count);
 
   // Peeks bit-sized values from the buffer. Returns false if there isn't enough

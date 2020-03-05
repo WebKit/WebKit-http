@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,9 @@
 
 #include "FontCascade.h"
 #include "ImageBuffer.h"
-#include "MockRealtimeMediaSource.h"
+#include "MockMediaDevice.h"
+#include "RealtimeMediaSourceFactory.h"
+#include "RealtimeVideoSource.h"
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
@@ -43,48 +45,48 @@ namespace WebCore {
 class FloatRect;
 class GraphicsContext;
 
-class MockRealtimeVideoSource : public MockRealtimeMediaSource {
+class MockRealtimeVideoSource : public RealtimeVideoSource {
 public:
 
-    static CaptureSourceOrError create(const String& deviceID, const String& name, const MediaConstraints*);
-
-    static VideoCaptureFactory& factory();
-
-    virtual ~MockRealtimeVideoSource();
+    static CaptureSourceOrError create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints*);
 
 protected:
-    MockRealtimeVideoSource(const String& deviceID, const String& name);
-    virtual void updateSampleBuffer() { }
+    MockRealtimeVideoSource(String&& deviceID, String&& name, String&& hashSalt);
 
+    virtual void updateSampleBuffer() = 0;
+
+    void setCurrentFrame(MediaSample&);
     ImageBuffer* imageBuffer() const;
 
     Seconds elapsedTime();
-    bool applySize(const IntSize&) override;
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
 
 private:
-    void updateSettings(RealtimeMediaSourceSettings&) override;
-    void initializeCapabilities(RealtimeMediaSourceCapabilities&) override;
-    void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) override;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
 
     void startProducingData() final;
     void stopProducingData() final;
+    bool isCaptureSource() const final { return true; }
+    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+    void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+
+    void generatePresets() final;
 
     void drawAnimation(GraphicsContext&);
     void drawText(GraphicsContext&);
     void drawBoxes(GraphicsContext&);
 
-    bool applyFrameRate(double) override;
-    bool applyFacingMode(RealtimeMediaSourceSettings::VideoFacingMode) override { return true; }
-    bool applyAspectRatio(double) override { return true; }
-
-    bool isCaptureSource() const final { return true; }
-
     void generateFrame();
+    void startCaptureTimer();
 
     void delaySamples(Seconds) override;
 
-    bool mockCamera() const { return WTF::holds_alternative<MockCameraProperties>(device().properties); }
-    bool mockScreen() const { return WTF::holds_alternative<MockDisplayProperties>(device().properties); }
+    bool mockCamera() const { return WTF::holds_alternative<MockCameraProperties>(m_device.properties); }
+    bool mockDisplay() const { return WTF::holds_alternative<MockDisplayProperties>(m_device.properties); }
+    bool mockScreen() const { return mockDisplayType(CaptureDevice::DeviceType::Screen); }
+    bool mockWindow() const { return mockDisplayType(CaptureDevice::DeviceType::Window); }
+    bool mockDisplayType(CaptureDevice::DeviceType) const;
 
     float m_baseFontSize { 0 };
     float m_bipBopFontSize { 0 };
@@ -100,8 +102,12 @@ private:
     MonotonicTime m_delayUntil;
 
     unsigned m_frameNumber { 0 };
-
-    RunLoop::Timer<MockRealtimeVideoSource> m_timer;
+    RunLoop::Timer<MockRealtimeVideoSource> m_emitFrameTimer;
+    std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
+    Color m_fillColor { Color::black };
+    MockMediaDevice m_device;
 };
 
 } // namespace WebCore

@@ -21,6 +21,7 @@ namespace internal {
 class TransportAdapter : public Transport {
  public:
   explicit TransportAdapter(Transport* transport);
+  ~TransportAdapter() override;
 
   bool SendRtp(const uint8_t* packet,
                size_t length,
@@ -31,7 +32,7 @@ class TransportAdapter : public Transport {
   void Disable();
 
  private:
-  Transport *transport_;
+  Transport* transport_;
   std::atomic<bool> enabled_;
 };
 }  // namespace internal

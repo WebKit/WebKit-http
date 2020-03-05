@@ -18,7 +18,7 @@
 #include "rtc_base/logging.h"
 #include "modules/audio_coding/codecs/g722/audio_encoder_g722.h"
 #ifdef WEBRTC_CODEC_ILBC
-#include "modules/audio_coding/codecs/ilbc/audio_encoder_ilbc.h"
+#include "modules/audio_coding/codecs/ilbc/audio_encoder_ilbc.h"  // nogncheck
 #endif
 #ifdef WEBRTC_CODEC_ISACFX
 #include "modules/audio_coding/codecs/isac/fix/include/audio_decoder_isacfix.h"  // nogncheck
@@ -33,7 +33,7 @@
 #endif
 #include "modules/audio_coding/codecs/pcm16b/audio_encoder_pcm16b.h"
 #ifdef WEBRTC_CODEC_RED
-#include "modules/audio_coding/codecs/red/audio_encoder_copy_red.h"
+#include "modules/audio_coding/codecs/red/audio_encoder_copy_red.h"  // nogncheck
 #endif
 #include "modules/audio_coding/acm2/acm_codec_database.h"
 
@@ -44,7 +44,7 @@
 namespace webrtc {
 namespace acm2 {
 
-rtc::Optional<RentACodec::CodecId> RentACodec::CodecIdByParams(
+absl::optional<RentACodec::CodecId> RentACodec::CodecIdByParams(
     const char* payload_name,
     int sampling_freq_hz,
     size_t channels) {
@@ -52,25 +52,25 @@ rtc::Optional<RentACodec::CodecId> RentACodec::CodecIdByParams(
       ACMCodecDB::CodecId(payload_name, sampling_freq_hz, channels));
 }
 
-rtc::Optional<CodecInst> RentACodec::CodecInstById(CodecId codec_id) {
-  rtc::Optional<int> mi = CodecIndexFromId(codec_id);
-  return mi ? rtc::Optional<CodecInst>(Database()[*mi])
-            : rtc::nullopt;
+absl::optional<CodecInst> RentACodec::CodecInstById(CodecId codec_id) {
+  absl::optional<int> mi = CodecIndexFromId(codec_id);
+  return mi ? absl::optional<CodecInst>(Database()[*mi]) : absl::nullopt;
 }
 
-rtc::Optional<RentACodec::CodecId> RentACodec::CodecIdByInst(
+absl::optional<RentACodec::CodecId> RentACodec::CodecIdByInst(
     const CodecInst& codec_inst) {
   return CodecIdFromIndex(ACMCodecDB::CodecNumber(codec_inst));
 }
 
-rtc::Optional<CodecInst> RentACodec::CodecInstByParams(const char* payload_name,
-                                                       int sampling_freq_hz,
-                                                       size_t channels) {
-  rtc::Optional<CodecId> codec_id =
+absl::optional<CodecInst> RentACodec::CodecInstByParams(
+    const char* payload_name,
+    int sampling_freq_hz,
+    size_t channels) {
+  absl::optional<CodecId> codec_id =
       CodecIdByParams(payload_name, sampling_freq_hz, channels);
   if (!codec_id)
-    return rtc::nullopt;
-  rtc::Optional<CodecInst> ci = CodecInstById(*codec_id);
+    return absl::nullopt;
+  absl::optional<CodecInst> ci = CodecInstById(*codec_id);
   RTC_DCHECK(ci);
 
   // Keep the number of channels from the function call. For most codecs it
@@ -80,17 +80,13 @@ rtc::Optional<CodecInst> RentACodec::CodecInstByParams(const char* payload_name,
   return ci;
 }
 
-bool RentACodec::IsCodecValid(const CodecInst& codec_inst) {
-  return ACMCodecDB::CodecNumber(codec_inst) >= 0;
-}
-
-rtc::Optional<bool> RentACodec::IsSupportedNumChannels(CodecId codec_id,
-                                                       size_t num_channels) {
+absl::optional<bool> RentACodec::IsSupportedNumChannels(CodecId codec_id,
+                                                        size_t num_channels) {
   auto i = CodecIndexFromId(codec_id);
-  return i ? rtc::Optional<bool>(
+  return i ? absl::optional<bool>(
                  ACMCodecDB::codec_settings_[*i].channel_support >=
                  num_channels)
-           : rtc::nullopt;
+           : absl::nullopt;
 }
 
 rtc::ArrayView<const CodecInst> RentACodec::Database() {
@@ -98,12 +94,12 @@ rtc::ArrayView<const CodecInst> RentACodec::Database() {
                                          NumberOfCodecs());
 }
 
-rtc::Optional<NetEqDecoder> RentACodec::NetEqDecoderFromCodecId(
+absl::optional<NetEqDecoder> RentACodec::NetEqDecoderFromCodecId(
     CodecId codec_id,
     size_t num_channels) {
-  rtc::Optional<int> i = CodecIndexFromId(codec_id);
+  absl::optional<int> i = CodecIndexFromId(codec_id);
   if (!i)
-    return rtc::nullopt;
+    return absl::nullopt;
   const NetEqDecoder ned = ACMCodecDB::neteq_decoders_[*i];
   return (ned == NetEqDecoder::kDecoderOpus && num_channels == 2)
              ? NetEqDecoder::kDecoderOpus_2ch
@@ -276,8 +272,7 @@ std::unique_ptr<AudioEncoder> RentACodec::RentEncoderStack(
 
   auto pt = [&param](const std::map<int, int>& m) {
     auto it = m.find(param->speech_encoder->SampleRateHz());
-    return it == m.end() ? rtc::nullopt
-                         : rtc::Optional<int>(it->second);
+    return it == m.end() ? absl::nullopt : absl::optional<int>(it->second);
   };
   auto cng_pt = pt(param->cng_payload_types);
   param->use_cng =

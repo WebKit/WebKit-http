@@ -2291,6 +2291,8 @@ void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
     ASSERT(cachedFrame.view());
     ASSERT(m_pageCacheState == Document::InPageCache);
     observeFrame(&cachedFrame.view()->frame());
+    if (auto* window = domWindow())
+        window->attachToFrame(cachedFrame.view()->frame());
 }
 
 void Document::detachFromCachedFrame(CachedFrameBase& cachedFrame)
@@ -7141,9 +7143,9 @@ OptionSet<StyleColor::Options> Document::styleColorOptions() const
 {
     OptionSet<StyleColor::Options> options;
     if (useSystemAppearance())
-        options |= StyleColor::Options::UseSystemAppearance;
+        options.add(StyleColor::Options::UseSystemAppearance);
     if (useDarkAppearance())
-        options |= StyleColor::Options::UseDarkAppearance;
+        options.add(StyleColor::Options::UseDarkAppearance);
     return options;
 }
 
@@ -7572,6 +7574,13 @@ void Document::mediaStreamCaptureStateChanged()
     for (auto* mediaElement : m_mediaStreamStateChangeElements)
         mediaElement->mediaStreamCaptureStarted();
 }
+
+void Document::setDeviceIDHashSalt(const String& salt)
+{
+    ASSERT(m_idHashSalt.isEmpty() || m_idHashSalt == salt);
+    m_idHashSalt = salt;
+}
+
 #endif
 
 void Document::addApplicationStateChangeListener(ApplicationStateChangeListener& listener)
@@ -8061,6 +8070,14 @@ String Document::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const 
     if (!page)
         return emptyString();
     return page->chrome().client().signedPublicKeyAndChallengeString(keySizeIndex, challengeString, url);
+}
+
+void Document::detachFromFrame()
+{
+    if (auto* window = domWindow())
+        window->willDetachDocumentFromFrame();
+
+    observeFrame(nullptr);
 }
 
 } // namespace WebCore
