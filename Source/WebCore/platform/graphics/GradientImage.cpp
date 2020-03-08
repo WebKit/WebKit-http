@@ -29,6 +29,10 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 
+#if PLATFORM(HAIKU)
+#include <View.h>
+#endif
+
 namespace WebCore {
 
 GradientImage::GradientImage(Gradient& generator, const FloatSize& size)

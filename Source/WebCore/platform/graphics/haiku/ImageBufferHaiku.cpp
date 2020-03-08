@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "ImageBuffer.h"
+#include "ImageBufferHaikuSurfaceBackend.h"
 
 #include "ColorUtilities.h"
 #include "GraphicsContext.h"
@@ -78,6 +78,7 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
     m_image = StillImage::createForRendering(m_bitmap);
 }
 
+
 ImageBufferData::~ImageBufferData()
 {
     m_view = nullptr;
@@ -89,48 +90,53 @@ ImageBufferData::~ImageBufferData()
 }
 
 
-NativeImagePtr ImageBuffer::nativeImage() const
+NativeImagePtr ImageBufferHaikuSurfaceBackend::copyNativeImage(WebCore::BackingStoreCopy doCopy) const
 {
-	return m_data.m_bitmap;
+	if (doCopy == DontCopyBackingStore)
+		return m_data.m_bitmap;
+	else
+		return new BitmapRef(m_data.m_bitmap.get());
 }
 
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode, const HostWindow*, bool& success)
-    : m_data(size)
+std::unique_ptr<ImageBufferHaikuSurfaceBackend>
+ImageBufferHaikuSurfaceBackend::create(const FloatSize& size, float resolutionScale,
+	ColorSpace colorSpace, const HostWindow* window)
+{
+    return std::unique_ptr<ImageBufferHaikuSurfaceBackend>(
+		new ImageBufferHaikuSurfaceBackend(size, resolutionScale, colorSpace, window));
+}
+
+
+std::unique_ptr<ImageBufferHaikuSurfaceBackend>
+ImageBufferHaikuSurfaceBackend::create(WebCore::FloatSize const& size,
+	WebCore::GraphicsContext const&)
+{
+    return std::unique_ptr<ImageBufferHaikuSurfaceBackend>(
+		new ImageBufferHaikuSurfaceBackend(size, 1, ColorSpace::SRGB, NULL));
+}
+
+
+ImageBufferHaikuSurfaceBackend::ImageBufferHaikuSurfaceBackend(const FloatSize& size,
+	float resolutionScale, ColorSpace colorSpace, const HostWindow*)
+    : ImageBufferBackend(size, IntSize(size), resolutionScale, colorSpace)
+	, m_data(size)
     , m_size(size)
     , m_logicalSize(size)
     , m_resolutionScale(resolutionScale)
 {
-    success = false;  // Make early return mean error.
-
-    float scaledWidth = ceilf(m_resolutionScale * size.width());
-    float scaledHeight = ceilf(m_resolutionScale * size.height());
-
-    // FIXME: Should we automatically use a lower resolution?
-    if (!FloatSize(scaledWidth, scaledHeight).isExpressibleAsIntSize())
-        return;
-
-    if (m_size.isEmpty())
-        return;
-
-    success = m_data.m_view != nullptr;
 }
 
-ImageBuffer::~ImageBuffer()
+ImageBufferHaikuSurfaceBackend::~ImageBufferHaikuSurfaceBackend()
 {
 }
 
-GraphicsContext& ImageBuffer::context() const
+GraphicsContext& ImageBufferHaikuSurfaceBackend::context() const
 {
     return *m_data.m_context;
 }
 
-RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, PreserveResolution preserveResolution)
-{
-    return imageBuffer->copyImage(DontCopyBackingStore, preserveResolution);
-}
-
-RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveResolution) const
+RefPtr<Image> ImageBufferHaikuSurfaceBackend::copyImage(BackingStoreCopy copyBehavior, PreserveResolution) const
 {
     if (m_data.m_view)
         m_data.m_view->Sync();
@@ -141,12 +147,7 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveReso
     return StillImage::createForRendering(m_data.m_bitmap);
 }
 
-void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const ImagePaintingOptions& options)
-{
-    imageBuffer->draw(destContext, destRect, srcRect, options);
-}
-
-void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBufferHaikuSurfaceBackend::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,
                        const ImagePaintingOptions& options)
 {
     if (!m_data.m_view)
@@ -155,13 +156,13 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
     m_data.m_view->Sync();
     if (&destContext == &context() && destRect.intersects(srcRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
-        RefPtr<Image> copy = copyImage(CopyBackingStore);
+        RefPtr<Image> copy = copyImage(CopyBackingStore, PreserveResolution::Yes);
         destContext.drawImage(*copy.get(), destRect, srcRect, options);
     } else
         destContext.drawImage(*m_data.m_image.get(), destRect, srcRect, options);
 }
 
-void ImageBuffer::drawPattern(GraphicsContext& destContext,
+void ImageBufferHaikuSurfaceBackend::drawPattern(GraphicsContext& destContext,
     const FloatRect& destRect, const FloatRect& srcRect,
     const AffineTransform& patternTransform, const FloatPoint& phase,
     const FloatSize& size, const ImagePaintingOptions& options)
@@ -172,72 +173,14 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext,
     m_data.m_view->Sync();
     if (&destContext == &context() && srcRect.intersects(destRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
-        RefPtr<Image> copy = copyImage(CopyBackingStore);
+        RefPtr<Image> copy = copyImage(CopyBackingStore, PreserveResolution::Yes);
         copy->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, options.compositeOperator());
     } else
         m_data.m_image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, options.compositeOperator());
 }
 
-void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)
-{
-    uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap->Bits());
-    unsigned bytesPerRow = m_data.m_bitmap->BytesPerRow();
-    unsigned rows = m_size.height();
-    unsigned columns = m_size.width();
-    for (unsigned y = 0; y < rows; y++) {
-        uint8* pixel = rowData;
-        for (unsigned x = 0; x < columns; x++) {
-            // lookUpTable doesn't seem to support a LUT for each color channel
-            // separately (judging from the other ports). We don't need to
-            // convert from/to pre-multiplied color space since BBitmap storage
-            // is not pre-multiplied.
-            pixel[0] = lookUpTable[pixel[0]];
-            pixel[1] = lookUpTable[pixel[1]];
-            pixel[2] = lookUpTable[pixel[2]];
-            // alpha stays unmodified.
-            pixel += 4;
-        }
-        rowData += bytesPerRow;
-    }
-}
-
-void ImageBuffer::transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace)
-{
-    if (srcColorSpace == dstColorSpace)
-        return;
-
-    // only sRGB <-> linearRGB are supported at the moment
-    if ((srcColorSpace != ColorSpace::LinearRGB && srcColorSpace != ColorSpace::SRGB)
-        || (dstColorSpace != ColorSpace::LinearRGB && dstColorSpace != ColorSpace::SRGB))
-        return;
-
-    if (dstColorSpace == ColorSpace::LinearRGB) {
-        static const std::array<uint8_t, 256> linearRgbLUT = [] {
-            std::array<uint8_t, 256> array;
-            for (unsigned i = 0; i < 256; i++) {
-                float color = i / 255.0f;
-                color = sRGBToLinearColorComponent(color);
-                array[i] = static_cast<uint8_t>(round(color * 255));
-            }
-            return array;
-        }();
-        platformTransformColorSpace(linearRgbLUT);
-    } else if (dstColorSpace == ColorSpace::SRGB) {
-        static const std::array<uint8_t, 256> deviceRgbLUT= [] {
-            std::array<uint8_t, 256> array;
-            for (unsigned i = 0; i < 256; i++) {
-                float color = i / 255.0f;
-                color = linearToSRGBColorComponent(color);
-                array[i] = static_cast<uint8_t>(round(color * 255));
-            }
-            return array;
-        }();
-        platformTransformColorSpace(deviceRgbLUT);
-    }
-}
-
 template <AlphaPremultiplication premultiplied>
-RefPtr<ImageData> getData(const IntRect& rect, const IntRect& logicalRect, const ImageBufferData& data, const IntSize& size, const IntSize& logicalSize, float resolutionScale)
+RefPtr<ImageData> getData(const IntRect& rect, const IntRect& logicalRect, const ImageBufferData& data, const FloatSize& size, const FloatSize& logicalSize, float resolutionScale)
 {
     auto result = ImageData::create(rect.size());
     auto* pixelArray = result ? result->data() : nullptr;
@@ -329,7 +272,16 @@ RefPtr<ImageData> getData(const IntRect& rect, const IntRect& logicalRect, const
     return result;
 }
 
-RefPtr<ImageData> ImageBuffer::getImageData(AlphaPremultiplication outputFormat, const IntRect& srcRect) const
+Vector<uint8_t> ImageBufferHaikuSurfaceBackend::toBGRAData() const
+{
+	uint8_t* bits = (uint8_t*)m_data.m_bitmap->Bits();
+	Vector<uint8_t> v;
+	v.tryAppend(bits, m_data.m_bitmap->BitsLength());
+	return v;
+
+}
+
+RefPtr<ImageData> ImageBufferHaikuSurfaceBackend::getImageData(AlphaPremultiplication outputFormat, const IntRect& srcRect) const
 {
     IntRect logicalRect = srcRect;
     IntRect backingStoreRect = srcRect;
@@ -340,7 +292,7 @@ RefPtr<ImageData> ImageBuffer::getImageData(AlphaPremultiplication outputFormat,
     return getData<AlphaPremultiplication::Premultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
 }
 
-void ImageBuffer::putImageData(AlphaPremultiplication sourceFormat, const ImageData& imageData, const IntRect& sourceRect, const IntPoint& destPoint)
+void ImageBufferHaikuSurfaceBackend::putImageData(AlphaPremultiplication sourceFormat, const ImageData& imageData, const IntRect& sourceRect, const IntPoint& destPoint)
 {
     IntRect logicalSourceRect = sourceRect;
     IntPoint logicalDestPoint = destPoint;
@@ -428,94 +380,8 @@ void ImageBuffer::putImageData(AlphaPremultiplication sourceFormat, const ImageD
     //cairo_surface_mark_dirty_rectangle(imageSurface.get(), logicalDestx, logicalDesty, logicalNumColumns, logicalNumRows);
 }
 
-static inline void convertFromData(const uint8* sourceRows, unsigned sourceBytesPerRow,
-                                   uint8* destRows, unsigned destBytesPerRow,
-                                   unsigned rows, unsigned columns)
-{
-    for (unsigned y = 0; y < rows; y++) {
-        const uint8* s = sourceRows;
-        uint8* d = destRows;
-        for (unsigned x = 0; x < columns; x++) {
-            // RGBA -> BGRA or BGRA -> RGBA
-            d[0] = s[2];
-            d[1] = s[1];
-            d[2] = s[0];
-            d[3] = s[3];
-            d += 4;
-            s += 4;
-        }
-        sourceRows += sourceBytesPerRow;
-        destRows += destBytesPerRow;
-    }
-}
-
-static inline void convertFromInternalData(const uint8* sourceRows, unsigned sourceBytesPerRow,
-                                           uint8* destRows, unsigned destBytesPerRow,
-                                           unsigned rows, unsigned columns,
-                                           bool premultiplied)
-{
-    if (premultiplied) {
-        // Internal storage is not pre-multiplied, pre-multiply on the fly.
-        for (unsigned y = 0; y < rows; y++) {
-            const uint8* s = sourceRows;
-            uint8* d = destRows;
-            for (unsigned x = 0; x < columns; x++) {
-                // RGBA -> BGRA or BGRA -> RGBA
-                d[0] = static_cast<uint16>(s[2]) * s[3] / 255;
-                d[1] = static_cast<uint16>(s[1]) * s[3] / 255;
-                d[2] = static_cast<uint16>(s[0]) * s[3] / 255;
-                d[3] = s[3];
-                d += 4;
-                s += 4;
-            }
-            sourceRows += sourceBytesPerRow;
-            destRows += destBytesPerRow;
-        }
-    } else {
-        convertFromData(sourceRows, sourceBytesPerRow,
-                        destRows, destBytesPerRow,
-                        rows, columns);
-    }
-}
-
-static inline void convertToInternalData(const uint8* sourceRows, unsigned sourceBytesPerRow,
-                                         uint8* destRows, unsigned destBytesPerRow,
-                                         unsigned rows, unsigned columns,
-                                         bool premultiplied)
-{
-    if (premultiplied) {
-        // Internal storage is not pre-multiplied, de-multiply source data.
-        for (unsigned y = 0; y < rows; y++) {
-            const uint8* s = sourceRows;
-            uint8* d = destRows;
-            for (unsigned x = 0; x < columns; x++) {
-                // RGBA -> BGRA or BGRA -> RGBA
-                if (s[3]) {
-                    d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
-                    d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
-                    d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
-                    d[3] = s[3];
-                } else {
-                    d[0] = 0;
-                    d[1] = 0;
-                    d[2] = 0;
-                    d[3] = 0;
-                }
-                d += 4;
-                s += 4;
-            }
-            sourceRows += sourceBytesPerRow;
-            destRows += destBytesPerRow;
-        }
-    } else {
-        convertFromData(sourceRows, sourceBytesPerRow,
-                        destRows, destBytesPerRow,
-                        rows, columns);
-    }
-}
-
 // TODO: PreserveResolution
-String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
+String ImageBufferHaikuSurfaceBackend::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";
@@ -533,7 +399,7 @@ String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, 
 
 
 // TODO: quality
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, Optional<double> /*quality*/) const
+Vector<uint8_t> ImageBufferHaikuSurfaceBackend::toData(const String& mimeType, Optional<double> /*quality*/) const
 {
     BString mimeTypeString(mimeType);
 
