@@ -606,7 +606,7 @@ PASS HTMLAnchorElement interface: attribute relList
 PASS HTMLAnchorElement interface: attribute hreflang 
 PASS HTMLAnchorElement interface: attribute type 
 PASS HTMLAnchorElement interface: attribute text 
-FAIL HTMLAnchorElement interface: attribute referrerPolicy assert_true: The prototype object must have a property "referrerPolicy" expected true got false
+PASS HTMLAnchorElement interface: attribute referrerPolicy 
 PASS HTMLAnchorElement interface: attribute coords 
 PASS HTMLAnchorElement interface: attribute charset 
 PASS HTMLAnchorElement interface: attribute name 
@@ -634,7 +634,7 @@ PASS HTMLAnchorElement interface: document.createElement("a") must inherit prope
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "hreflang" with the proper type 
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "type" with the proper type 
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "text" with the proper type 
-FAIL HTMLAnchorElement interface: document.createElement("a") must inherit property "referrerPolicy" with the proper type assert_inherits: property "referrerPolicy" not found in prototype chain
+PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "referrerPolicy" with the proper type 
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "coords" with the proper type 
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "charset" with the proper type 
 PASS HTMLAnchorElement interface: document.createElement("a") must inherit property "name" with the proper type 
@@ -756,7 +756,7 @@ PASS HTMLImageElement interface: attribute naturalWidth
 PASS HTMLImageElement interface: attribute naturalHeight 
 PASS HTMLImageElement interface: attribute complete 
 PASS HTMLImageElement interface: attribute currentSrc 
-FAIL HTMLImageElement interface: attribute referrerPolicy assert_true: The prototype object must have a property "referrerPolicy" expected true got false
+PASS HTMLImageElement interface: attribute referrerPolicy 
 PASS HTMLImageElement interface: attribute decoding 
 PASS HTMLImageElement interface: operation decode() 
 PASS HTMLImageElement interface: attribute name 
@@ -781,7 +781,7 @@ PASS HTMLImageElement interface: document.createElement("img") must inherit prop
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "naturalHeight" with the proper type 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "complete" with the proper type 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "currentSrc" with the proper type 
-FAIL HTMLImageElement interface: document.createElement("img") must inherit property "referrerPolicy" with the proper type assert_inherits: property "referrerPolicy" not found in prototype chain
+PASS HTMLImageElement interface: document.createElement("img") must inherit property "referrerPolicy" with the proper type 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "decoding" with the proper type 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "decode()" with the proper type 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "name" with the proper type 
@@ -806,7 +806,7 @@ PASS HTMLImageElement interface: new Image() must inherit property "naturalWidth
 PASS HTMLImageElement interface: new Image() must inherit property "naturalHeight" with the proper type 
 PASS HTMLImageElement interface: new Image() must inherit property "complete" with the proper type 
 PASS HTMLImageElement interface: new Image() must inherit property "currentSrc" with the proper type 
-FAIL HTMLImageElement interface: new Image() must inherit property "referrerPolicy" with the proper type assert_inherits: property "referrerPolicy" not found in prototype chain
+PASS HTMLImageElement interface: new Image() must inherit property "referrerPolicy" with the proper type 
 PASS HTMLImageElement interface: new Image() must inherit property "decoding" with the proper type 
 PASS HTMLImageElement interface: new Image() must inherit property "decode()" with the proper type 
 PASS HTMLImageElement interface: new Image() must inherit property "name" with the proper type 

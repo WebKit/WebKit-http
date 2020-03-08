@@ -203,11 +203,12 @@ static void ensureOnMainThread(Function<void()>&& f)
 #endif
 
 @interface WebCoreAVFPullDelegate : NSObject<AVPlayerItemOutputPullDelegate> {
-    WeakPtr<MediaPlayerPrivateAVFoundationObjC> m_player;
+    BinarySemaphore m_semaphore;
 }
-- (id)initWithPlayer:(WeakPtr<MediaPlayerPrivateAVFoundationObjC>&&)player;
 - (void)outputMediaDataWillChange:(AVPlayerItemOutput *)sender;
 - (void)outputSequenceWasFlushed:(AVPlayerItemOutput *)output;
+
+@property (nonatomic, readonly) BinarySemaphore& semaphore;
 @end
 
 namespace WebCore {
@@ -410,7 +411,6 @@ MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC(MediaPlay
     , m_objcObserver(adoptNS([[WebCoreAVFMovieObserver alloc] initWithPlayer:makeWeakPtr(*this)]))
     , m_videoFrameHasDrawn(false)
     , m_haveCheckedPlayability(false)
-    , m_videoOutputDelegate(adoptNS([[WebCoreAVFPullDelegate alloc] initWithPlayer:makeWeakPtr(*this)]))
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     , m_loaderDelegate(adoptNS([[WebCoreAVFLoaderDelegate alloc] initWithPlayer:makeWeakPtr(*this)]))
 #endif
@@ -746,26 +746,6 @@ static NSURL *canonicalURL(const URL& url)
     return [canonicalRequest URL];
 }
 
-#if PLATFORM(IOS_FAMILY)
-static NSHTTPCookie* toNSHTTPCookie(const Cookie& cookie)
-{
-    RetainPtr<NSMutableDictionary> properties = adoptNS([[NSMutableDictionary alloc] init]);
-    [properties setDictionary:@{
-        NSHTTPCookieName: cookie.name,
-        NSHTTPCookieValue: cookie.value,
-        NSHTTPCookieDomain: cookie.domain,
-        NSHTTPCookiePath: cookie.path,
-        NSHTTPCookieExpires: [NSDate dateWithTimeIntervalSince1970:(cookie.expires / 1000)],
-    }];
-    if (cookie.secure)
-        [properties setObject:@YES forKey:NSHTTPCookieSecure];
-    if (cookie.session)
-        [properties setObject:@YES forKey:NSHTTPCookieDiscard];
-
-    return [NSHTTPCookie cookieWithProperties:properties.get()];
-}
-#endif
-
 void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const URL& url)
 {
     if (m_avAsset)
@@ -850,7 +830,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const URL& url)
     if (player()->getRawCookies(url, cookies)) {
         RetainPtr<NSMutableArray> nsCookies = adoptNS([[NSMutableArray alloc] initWithCapacity:cookies.size()]);
         for (auto& cookie : cookies)
-            [nsCookies addObject:toNSHTTPCookie(cookie)];
+            [nsCookies addObject:(NSHTTPCookie *)cookie];
 
         if (PAL::canLoad_AVFoundation_AVURLAssetHTTPCookiesKey())
             [options setObject:nsCookies.get() forKey:AVURLAssetHTTPCookiesKey];
@@ -1083,9 +1063,15 @@ void MediaPlayerPrivateAVFoundationObjC::updateVideoFullscreenInlineImage()
     m_videoLayerManager->updateVideoFullscreenInlineImage(m_lastImage);
 }
 
+RetainPtr<PlatformLayer> MediaPlayerPrivateAVFoundationObjC::createVideoFullscreenLayer()
+{
+    return adoptNS([[CALayer alloc] init]);
+}
+
 void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* videoFullscreenLayer, Function<void()>&& completionHandler)
 {
-    updateLastImage(UpdateType::UpdateSynchronously);
+    if (videoFullscreenLayer)
+        updateLastImage(UpdateType::UpdateSynchronously);
     m_videoLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, WTFMove(completionHandler), m_lastImage);
     updateDisableExternalPlayback();
 }
@@ -1234,6 +1220,11 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformDuration() const
 
     INFO_LOG(LOGIDENTIFIER, "returning invalid time");
     return MediaTime::invalidTime();
+}
+
+float MediaPlayerPrivateAVFoundationObjC::currentTime() const
+{
+    return currentMediaTime().toFloat();
 }
 
 MediaTime MediaPlayerPrivateAVFoundationObjC::currentMediaTime() const
@@ -1512,7 +1503,16 @@ void MediaPlayerPrivateAVFoundationObjC::paintCurrentFrameInContext(GraphicsCont
     setDelayCallbacks(true);
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    if (videoOutputHasAvailableFrame())
+    // Callers of this will often call copyVideoTextureToPlatformTexture first,
+    // which calls updateLastPixelBuffer, which clears m_lastImage whenever the
+    // video delivers a new frame. This breaks videoOutputHasAvailableFrame's
+    // short-circuiting when m_lastImage is non-null, but the video often
+    // doesn't have a new frame to deliver since the last time
+    // hasNewPixelBufferForItemTime was called against m_videoOutput. To avoid
+    // changing the semantics of videoOutputHasAvailableFrame in ways that might
+    // break other callers, look for production of a recent pixel buffer from
+    // the video output, too.
+    if (videoOutputHasAvailableFrame() || (m_videoOutput && m_lastPixelBuffer))
         paintWithVideoOutput(context, rect);
     else
         paintWithImageGenerator(context, rect);
@@ -1678,8 +1678,11 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
         keyURIArray->setRange(StringView(keyURI).upconvertedCharacters(), keyURI.length() / sizeof(unsigned char), 0);
 
         auto initData = Uint8Array::create(WTFMove(initDataBuffer), 0, byteLength);
-        if (!player()->keyNeeded(initData.ptr()))
-            return false;
+        player()->keyNeeded(initData.ptr());
+#if ENABLE(ENCRYPTED_MEDIA)
+        if (!player()->shouldContinueAfterKeyNeeded())
+            return true;
+#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION)
@@ -1713,7 +1716,9 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
             return false;
         }
 
-        if (!player()->keyNeeded(initData.ptr()))
+        player()->keyNeeded(initData.ptr());
+
+        if (!player()->shouldContinueAfterKeyNeeded())
             return false;
 
         m_keyURIToRequestMap.set(keyID, avRequest);
@@ -2139,6 +2144,7 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoOutput()
     m_videoOutput = adoptNS([PAL::allocAVPlayerItemVideoOutputInstance() initWithPixelBufferAttributes:attributes]);
     ASSERT(m_videoOutput);
 
+    m_videoOutputDelegate = adoptNS([[WebCoreAVFPullDelegate alloc] init]);
     [m_videoOutput setDelegate:m_videoOutputDelegate.get() queue:globalPullDelegateQueue()];
 
     [m_avPlayerItem.get() addOutput:m_videoOutput.get()];
@@ -2228,7 +2234,11 @@ void MediaPlayerPrivateAVFoundationObjC::updateLastImage(UpdateType type)
 
 void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext& context, const FloatRect& outputRect)
 {
-    updateLastImage(UpdateType::UpdateSynchronously);
+    // It's crucial to not wait synchronously for the next image. Videos that
+    // come down this path are performing slow-case software uploads, and such
+    // videos may not return metadata in a timely fashion. Use the most recently
+    // available pixel buffer, if any.
+    updateLastImage();
     if (!m_lastImage)
         return;
 
@@ -2276,14 +2286,9 @@ void MediaPlayerPrivateAVFoundationObjC::waitForVideoOutputMediaDataWillChange()
     [m_videoOutput requestNotificationOfMediaDataChangeWithAdvanceInterval:0];
 
     // Wait for 1 second.
-    bool satisfied = m_videoOutputSemaphore.waitFor(1_s);
+    bool satisfied = [m_videoOutputDelegate semaphore].waitFor(1_s);
     if (!satisfied)
         ERROR_LOG(LOGIDENTIFIER, "timed out");
-}
-
-void MediaPlayerPrivateAVFoundationObjC::outputMediaDataWillChange(AVPlayerItemVideoOutput *)
-{
-    m_videoOutputSemaphore.signal();
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -2609,7 +2614,7 @@ String MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack() const
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 // AVPlayerItem.tracks is empty during AirPlay so if AirPlay is activated immediately
 // after the item is created, we don't know if it has audio or video and state reported
-// to the WebMediaSessionManager is incorrect. AirPlay can't actually be active is an item
+// to the WebMediaSessionManager is incorrect. AirPlay can't actually be active if an item
 // doesn't have audio or video, so lie during AirPlay.
 
 bool MediaPlayerPrivateAVFoundationObjC::hasVideo() const
@@ -2651,26 +2656,26 @@ bool MediaPlayerPrivateAVFoundationObjC::isCurrentPlaybackTargetWireless() const
 MediaPlayer::WirelessPlaybackTargetType MediaPlayerPrivateAVFoundationObjC::wirelessPlaybackTargetType() const
 {
     if (!m_avPlayer)
-        return MediaPlayer::TargetTypeNone;
+        return MediaPlayer::WirelessPlaybackTargetType::TargetTypeNone;
 
 #if PLATFORM(IOS_FAMILY)
     if (!PAL::isAVFoundationFrameworkAvailable())
-        return MediaPlayer::TargetTypeNone;
+        return MediaPlayer::WirelessPlaybackTargetType::TargetTypeNone;
 
     switch ([m_avPlayer externalPlaybackType]) {
     case AVPlayerExternalPlaybackTypeNone:
-        return MediaPlayer::TargetTypeNone;
+        return MediaPlayer::WirelessPlaybackTargetType::TargetTypeNone;
     case AVPlayerExternalPlaybackTypeAirPlay:
-        return MediaPlayer::TargetTypeAirPlay;
+        return MediaPlayer::WirelessPlaybackTargetType::TargetTypeAirPlay;
     case AVPlayerExternalPlaybackTypeTVOut:
-        return MediaPlayer::TargetTypeTVOut;
+        return MediaPlayer::WirelessPlaybackTargetType::TargetTypeTVOut;
     }
 
     ASSERT_NOT_REACHED();
-    return MediaPlayer::TargetTypeNone;
+    return MediaPlayer::WirelessPlaybackTargetType::TargetTypeNone;
 
 #else
-    return MediaPlayer::TargetTypeAirPlay;
+    return MediaPlayer::WirelessPlaybackTargetType::TargetTypeAirPlay;
 #endif
 }
     
@@ -3575,18 +3580,12 @@ NSArray* playerKVOProperties()
 
 @implementation WebCoreAVFPullDelegate
 
-- (id)initWithPlayer:(WeakPtr<MediaPlayerPrivateAVFoundationObjC>&&)player
-{
-    self = [super init];
-    if (self)
-        m_player = WTFMove(player);
-    return self;
-}
+@synthesize semaphore=m_semaphore;
 
 - (void)outputMediaDataWillChange:(AVPlayerItemVideoOutput *)output
 {
-    if (m_player)
-        m_player->outputMediaDataWillChange(output);
+    UNUSED_PARAM(output);
+    m_semaphore.signal();
 }
 
 - (void)outputSequenceWasFlushed:(AVPlayerItemVideoOutput *)output

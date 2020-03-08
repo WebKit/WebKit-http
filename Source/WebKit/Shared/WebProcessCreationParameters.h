@@ -124,6 +124,7 @@ struct WebProcessCreationParameters {
     bool fullKeyboardAccessEnabled { false };
     bool memoryCacheDisabled { false };
     bool attrStyleEnabled { false };
+    bool useGPUProcessForMedia { false };
 
 #if ENABLE(SERVICE_CONTROLS)
     bool hasImageServices { false };
@@ -201,8 +202,11 @@ struct WebProcessCreationParameters {
 #if PLATFORM(IOS)
     Optional<SandboxExtension::Handle> compilerServiceExtensionHandle;
     Optional<SandboxExtension::Handle> contentFilterExtensionHandle;
-    Optional<SandboxExtension::Handle> launchServicesOpenExtensionHandle;
+#endif
+
+#if PLATFORM(IOS_FAMILY)
     Optional<SandboxExtension::Handle> diagnosticsExtensionHandle;
+    SandboxExtension::HandleArray dynamicMachExtensionHandles;
 #endif
 
 #if PLATFORM(COCOA)
@@ -210,6 +214,7 @@ struct WebProcessCreationParameters {
     Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
     bool systemHasBattery { false };
     Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>> mimeTypesMap;
+    HashMap<String, String> mapUTIFromMIMEType;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -222,6 +227,9 @@ struct WebProcessCreationParameters {
 
 #if PLATFORM(COCOA)
     SandboxExtension::HandleArray mediaExtensionHandles; // FIXME(207716): Remove when GPU process is complete.
+#if !ENABLE(CFPREFS_DIRECT_MODE)
+    Optional<SandboxExtension::Handle> preferencesExtensionHandle;
+#endif
 #endif
 };
 

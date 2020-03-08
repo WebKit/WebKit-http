@@ -29,6 +29,7 @@
 #include "ImageBuffer.h"
 
 #include "GraphicsContext.h"
+#include "HostWindow.h"
 #include "ImageData.h"
 #include "PlatformImageBuffer.h"
 
@@ -37,10 +38,28 @@ namespace WebCore {
 static const float MaxClampedLength = 4096;
 static const float MaxClampedArea = MaxClampedLength * MaxClampedLength;
 
+std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, ShouldAccelerate shouldAccelerate, ShouldUseDisplayList shouldUseDisplayList, RenderingPurpose purpose, float resolutionScale, ColorSpace colorSpace, const HostWindow* hostWindow)
+{
+    std::unique_ptr<ImageBuffer> imageBuffer;
+    if (hostWindow)
+        imageBuffer = hostWindow->createImageBuffer(size, shouldAccelerate, shouldUseDisplayList, purpose, resolutionScale, colorSpace);
+
+    if (!imageBuffer) {
+        RenderingMode mode;
+        if (shouldUseDisplayList == ShouldUseDisplayList::Yes)
+            mode = shouldAccelerate == ShouldAccelerate::Yes ? RenderingMode::DisplayListAccelerated : RenderingMode::DisplayListUnaccelerated;
+        else
+            mode = shouldAccelerate == ShouldAccelerate::Yes ? RenderingMode::Accelerated : RenderingMode::Unaccelerated;
+        imageBuffer = ImageBuffer::create(size, mode, resolutionScale, colorSpace, hostWindow);
+    }
+
+    return imageBuffer;
+}
+
 std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, RenderingMode renderingMode, float resolutionScale, ColorSpace colorSpace, const HostWindow* hostWindow)
 {
     std::unique_ptr<ImageBuffer> imageBuffer;
-    
+
     switch (renderingMode) {
     case RenderingMode::Accelerated:
         imageBuffer = AcceleratedImageBuffer::create(size, resolutionScale, colorSpace, hostWindow);
@@ -49,13 +68,19 @@ std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, Renderin
         if (!imageBuffer)
             imageBuffer = UnacceleratedImageBuffer::create(size, resolutionScale, colorSpace, hostWindow);
         break;
-            
+
     case RenderingMode::DisplayListAccelerated:
         imageBuffer = DisplayListAcceleratedImageBuffer::create(size, resolutionScale, colorSpace, hostWindow);
         FALLTHROUGH;
     case RenderingMode::DisplayListUnaccelerated:
         if (!imageBuffer)
             imageBuffer = DisplayListUnacceleratedImageBuffer::create(size, resolutionScale, colorSpace, hostWindow);
+        break;
+
+    case RenderingMode::RemoteAccelerated:
+    case RenderingMode::RemoteUnaccelerated:
+        if (hostWindow)
+            imageBuffer = hostWindow->createImageBuffer(size, renderingMode, resolutionScale, colorSpace);
         break;
     }
 
@@ -74,13 +99,18 @@ std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, const Gr
         if (!imageBuffer)
             imageBuffer = UnacceleratedImageBuffer::create(size, context);
         break;
-            
+
     case RenderingMode::DisplayListAccelerated:
         imageBuffer = DisplayListAcceleratedImageBuffer::create(size, context);
         FALLTHROUGH;
     case RenderingMode::DisplayListUnaccelerated:
         if (!imageBuffer)
             imageBuffer = DisplayListUnacceleratedImageBuffer::create(size, context);
+        break;
+
+    case RenderingMode::RemoteUnaccelerated:
+    case RenderingMode::RemoteAccelerated:
+        ASSERT_NOT_REACHED();
         break;
     }
 

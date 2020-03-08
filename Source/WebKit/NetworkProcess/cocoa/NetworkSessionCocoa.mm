@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1096,6 +1096,14 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     if (!m_sourceApplicationSecondaryIdentifier.isEmpty())
         configuration._sourceApplicationSecondaryIdentifier = m_sourceApplicationSecondaryIdentifier;
 
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    if (!parameters.alternativeServiceDirectory.isEmpty()) {
+        SandboxExtension::consumePermanently(parameters.alternativeServiceDirectoryExtensionHandle);
+        configuration._alternativeServicesStorage = [[[_NSHTTPAlternativeServicesStorage alloc] initPersistentStoreWithURL:[[NSURL fileURLWithPath:parameters.alternativeServiceDirectory isDirectory:YES] URLByAppendingPathComponent:@"AlternativeService.sqlite"]] autorelease];
+    } else
+        RELEASE_ASSERT(m_sessionID.isEphemeral());
+#endif
+
     configuration.connectionProxyDictionary = proxyDictionary(parameters.httpProxy, parameters.httpsProxy);
 
 #if PLATFORM(IOS_FAMILY)
@@ -1161,13 +1169,11 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 #endif
 
 #if HAVE(SESSION_CLEANUP)
-    activateSessionCleanup(*this);
+    activateSessionCleanup(*this, parameters);
 #endif
 }
 
-NetworkSessionCocoa::~NetworkSessionCocoa()
-{
-}
+NetworkSessionCocoa::~NetworkSessionCocoa() = default;
 
 void NetworkSessionCocoa::initializeEphemeralStatelessSession()
 {
@@ -1469,4 +1475,44 @@ void NetworkSessionCocoa::removeWebSocketTask(WebSocketTask& task)
 
 #endif // HAVE(NSURLSESSION_WEBSOCKET)
 
+Vector<WebCore::SecurityOriginData> NetworkSessionCocoa::hostNamesWithAlternativeServices() const
+{
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    Vector<WebCore::SecurityOriginData> origins;
+    _NSHTTPAlternativeServicesStorage* storage = m_sessionWithCredentialStorage.session.get().configuration._alternativeServicesStorage;
+    NSArray<_NSHTTPAlternativeServiceEntry *> *entries = [storage HTTPServiceEntriesWithFilter:_NSHTTPAlternativeServicesFilter.emptyFilter];
+
+    for (_NSHTTPAlternativeServiceEntry* entry in entries) {
+        WebCore::SecurityOriginData origin = { "https"_s, entry.host, entry.port };
+        origins.append(origin);
+    }
+    return origins;
+#else
+    return { };
+#endif
 }
+
+void NetworkSessionCocoa::deleteAlternativeServicesForHostNames(const Vector<String>& hosts)
+{
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    _NSHTTPAlternativeServicesStorage* storage = m_sessionWithCredentialStorage.session.get().configuration._alternativeServicesStorage;
+    for (auto& host : hosts)
+        [storage removeHTTPAlternativeServiceEntriesWithRegistrableDomain:host];
+#else
+    UNUSED_PARAM(hosts);
+#endif
+}
+
+void NetworkSessionCocoa::clearAlternativeServices(WallTime modifiedSince)
+{
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    _NSHTTPAlternativeServicesStorage* storage = m_sessionWithCredentialStorage.session.get().configuration._alternativeServicesStorage;
+    NSTimeInterval timeInterval = modifiedSince.secondsSinceEpoch().seconds();
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:timeInterval];
+    [storage removeHTTPAlternativeServiceEntriesCreatedAfterDate:date];
+#else
+    UNUSED_PARAM(modifiedSince);
+#endif
+}
+
+} // namespace WebKit

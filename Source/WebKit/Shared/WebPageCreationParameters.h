@@ -209,12 +209,14 @@ struct WebPageCreationParameters {
 
     String overriddenMediaType;
     Vector<String> corsDisablingPatterns;
+    String processDisplayName;
 
     bool shouldCaptureAudioInUIProcess { false };
     bool shouldCaptureAudioInGPUProcess { false };
     bool shouldCaptureVideoInUIProcess { false };
     bool shouldCaptureVideoInGPUProcess { false };
     bool shouldCaptureDisplayInUIProcess { false };
+    bool shouldRenderCanvasInGPUProcess { false };
 
 #if PLATFORM(GTK)
     String themeName;

@@ -33,6 +33,7 @@
 #import "WebPageProxyMessages.h"
 #import "WebPaymentCoordinator.h"
 #import "WebRemoteObjectRegistry.h"
+#import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
@@ -84,7 +85,8 @@ void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
     }
     
     // Find the frame the point is over.
-    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(roundedIntPoint(floatPoint)), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::DisallowUserAgentShadowContent, HitTestRequest::AllowChildFrameContent };
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(roundedIntPoint(floatPoint)), hitType);
     auto [range, options] = DictionaryLookup::rangeAtHitTestResult(result);
     if (!range)
         return;
@@ -282,6 +284,15 @@ RetainPtr<CFDataRef> WebPage::pdfSnapshotAtSize(IntRect rect, IntSize bitmapSize
     CGPDFContextClose(pdfContext.get());
 
     return data;
+}
+
+void WebPage::getProcessDisplayName(CompletionHandler<void(String&&)>&& completionHandler)
+{
+#if PLATFORM(MAC)
+    completionHandler(adoptCF((CFStringRef)_LSCopyApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey)).get());
+#else
+    completionHandler({ });
+#endif
 }
 
 } // namespace WebKit

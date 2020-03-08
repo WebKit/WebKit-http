@@ -100,14 +100,6 @@ namespace WebCore {
 #if !USE(COMPOSITING_FOR_SMALL_CANVASES)
 static const int canvasAreaThresholdRequiringCompositing = 50 * 100;
 #endif
-// During page loading delay layer flushes up to this many seconds to allow them coalesce, reducing workload.
-#if PLATFORM(IOS_FAMILY)
-static const Seconds throttledLayerFlushInitialDelay { 500_ms };
-static const Seconds throttledLayerFlushDelay { 1.5_s };
-#else
-static const Seconds throttledLayerFlushInitialDelay { 500_ms };
-static const Seconds throttledLayerFlushDelay { 500_ms };
-#endif
 
 using namespace HTMLNames;
 
@@ -314,7 +306,6 @@ static inline bool layersLogEnabled()
 RenderLayerCompositor::RenderLayerCompositor(RenderView& renderView)
     : m_renderView(renderView)
     , m_updateCompositingLayersTimer(*this, &RenderLayerCompositor::updateCompositingLayersTimerFired)
-    , m_layerFlushTimer(*this, &RenderLayerCompositor::layerFlushTimerFired)
 {
 #if PLATFORM(IOS_FAMILY)
     if (m_renderView.frameView().platformWidget())
@@ -476,24 +467,16 @@ void RenderLayerCompositor::customPositionForVisibleRectComputation(const Graphi
     position = -scrollPosition;
 }
 
-void RenderLayerCompositor::notifyFlushRequired(const GraphicsLayer* layer)
+void RenderLayerCompositor::notifyFlushRequired(const GraphicsLayer*)
 {
-    scheduleLayerFlush(layer->canThrottleLayerFlush());
+    scheduleRenderingUpdate();
 }
 
-void RenderLayerCompositor::scheduleLayerFlush(bool canThrottle)
+void RenderLayerCompositor::scheduleRenderingUpdate()
 {
     ASSERT(!m_flushingLayers);
 
-    if (canThrottle)
-        startInitialLayerFlushTimerIfNeeded();
-
-    if (canThrottle && isThrottlingLayerFlushes())
-        m_hasPendingLayerFlush = true;
-    else {
-        m_hasPendingLayerFlush = false;
-        page().renderingUpdateScheduler().scheduleRenderingUpdate();
-    }
+    page().renderingUpdateScheduler().scheduleRenderingUpdate();
 }
 
 FloatRect RenderLayerCompositor::visibleRectForLayerFlushing() const
@@ -522,9 +505,6 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         return;
 
     if (rootLayerAttachment() == RootLayerUnattached) {
-#if PLATFORM(IOS_FAMILY)
-        startLayerFlushTimerIfNeeded();
-#endif
         m_shouldFlushOnReattach = true;
         return;
     }
@@ -560,7 +540,6 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 #endif
 
     ++m_layerFlushCount;
-    startLayerFlushTimerIfNeeded();
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -628,7 +607,7 @@ void RenderLayerCompositor::didChangeVisibleRect()
     bool requiresFlush = rootLayer->visibleRectChangeRequiresFlush(visibleRect);
     LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor::didChangeVisibleRect " << visibleRect << " requiresFlush " << requiresFlush);
     if (requiresFlush)
-        scheduleLayerFlush();
+        scheduleRenderingUpdate();
 }
 
 void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*)
@@ -643,7 +622,7 @@ void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*
 
 void RenderLayerCompositor::flushLayersSoon(GraphicsLayerUpdater&)
 {
-    scheduleLayerFlush(true);
+    scheduleRenderingUpdate();
 }
 
 void RenderLayerCompositor::layerTiledBackingUsageChanged(const GraphicsLayer* graphicsLayer, bool usingTiledBacking)
@@ -740,8 +719,8 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
         // We only get here if we didn't scroll on the scrolling thread, so this update needs to re-position viewport-constrained layers.
         if (m_renderView.settings().acceleratedCompositingForFixedPositionEnabled() && isPageScroll) {
             if (auto* viewportConstrainedObjects = m_renderView.frameView().viewportConstrainedObjects()) {
-                for (auto* renderer : *viewportConstrainedObjects) {
-                    if (auto* layer = renderer->layer())
+                for (auto& renderer : *viewportConstrainedObjects) {
+                    if (auto* layer = renderer.layer())
                         layer->setNeedsCompositingGeometryUpdate();
                 }
             }
@@ -2077,7 +2056,7 @@ void RenderLayerCompositor::frameViewDidScroll()
     // it will also manage updating the scroll layer position.
     if (hasCoordinatedScrolling()) {
         // We have to schedule a flush in order for the main TiledBacking to update its tile coverage.
-        scheduleLayerFlush();
+        scheduleRenderingUpdate();
         return;
     }
 
@@ -3199,15 +3178,7 @@ bool RenderLayerCompositor::useCoordinatedScrollingForLayer(const RenderLayer& l
 
 static bool isScrolledByOverflowScrollLayer(const RenderLayer& layer, const RenderLayer& overflowScrollLayer)
 {
-    bool scrolledByOverflowScroll = false;
-    traverseAncestorLayers(layer, [&](const RenderLayer& ancestorLayer, bool inContainingBlockChain, bool) {
-        if (&ancestorLayer == &overflowScrollLayer) {
-            scrolledByOverflowScroll = inContainingBlockChain;
-            return AncestorTraversal::Stop;
-        }
-        return AncestorTraversal::Continue;
-    });
-    return scrolledByOverflowScroll;
+    return layer.boxScrollingScope() == overflowScrollLayer.contentsScrollingScope();
 }
 
 static RenderLayer* enclosingCompositedScrollingLayer(const RenderLayer& layer, const RenderLayer& intermediateLayer, bool& sawIntermediateLayer)
@@ -3935,7 +3906,7 @@ void RenderLayerCompositor::ensureRootLayer()
             updateOverflowControlsLayers();
 
             if (hasCoordinatedScrolling())
-                scheduleLayerFlush(true);
+                scheduleRenderingUpdate();
             else
                 updateScrollLayerPosition();
         }
@@ -4028,7 +3999,7 @@ void RenderLayerCompositor::attachRootLayer(RootLayerAttachment attachment)
     rootLayerAttachmentChanged();
     
     if (m_shouldFlushOnReattach) {
-        scheduleLayerFlush();
+        scheduleRenderingUpdate();
         m_shouldFlushOnReattach = false;
     }
 }
@@ -4250,8 +4221,8 @@ ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, S
         return 0;
     
     backing->setScrollingNodeIDForRole(nodeID, role);
-    m_scrollingNodeToLayerMap.add(nodeID, &layer);
-    
+    m_scrollingNodeToLayerMap.add(nodeID, makeWeakPtr(layer));
+
     return nodeID;
 }
 
@@ -4285,8 +4256,8 @@ void RenderLayerCompositor::detachScrollCoordinatedLayerWithRole(RenderLayer& la
     auto unregisterNode = [&](ScrollingNodeID nodeID) {
         auto childNodes = scrollingCoordinator.childrenOfNode(nodeID);
         for (auto childNodeID : childNodes) {
-            if (auto* layer = m_scrollingNodeToLayerMap.get(childNodeID))
-                layer->setNeedsScrollingTreeUpdate();
+            if (auto weakLayer = m_scrollingNodeToLayerMap.get(childNodeID))
+                weakLayer->setNeedsScrollingTreeUpdate();
         }
 
         m_scrollingNodeToLayerMap.remove(nodeID);
@@ -4464,16 +4435,6 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForViewportConstrained
     return newNodeID;
 }
 
-LayoutRect RenderLayerCompositor::rootParentRelativeScrollableRect() const
-{
-    auto& frameView = m_renderView.frameView();
-
-    if (m_renderView.frame().isMainFrame())
-        return frameView.frameRect();
-    
-    return LayoutRect({ }, LayoutSize(frameView.size()));
-}
-
 LayoutRect RenderLayerCompositor::parentRelativeScrollableRect(const RenderLayer& layer, const RenderLayer* ancestorLayer) const
 {
     // FIXME: ancestorLayer needs to be always non-null, so should become a reference.
@@ -4527,7 +4488,6 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingRole(Rende
             updateScrollingNodeLayers(newNodeID, layer, *scrollingCoordinator);
 
         if (changes & ScrollingNodeChangeFlags::LayerGeometry) {
-            scrollingCoordinator->setRectRelativeToParentNode(newNodeID, rootParentRelativeScrollableRect());
             scrollingCoordinator->setScrollingNodeScrollableAreaGeometry(newNodeID, frameView);
             scrollingCoordinator->setFrameScrollingNodeState(newNodeID, frameView);
         }
@@ -4541,11 +4501,8 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingRole(Rende
         if (changes & ScrollingNodeChangeFlags::Layer)
             updateScrollingNodeLayers(newNodeID, layer, *scrollingCoordinator);
 
-        if (changes & ScrollingNodeChangeFlags::LayerGeometry && treeState.parentNodeID) {
-            RenderLayer* scrollingAncestorLayer = m_scrollingNodeToLayerMap.get(treeState.parentNodeID.value());
-            scrollingCoordinator->setRectRelativeToParentNode(newNodeID, parentRelativeScrollableRect(layer, scrollingAncestorLayer));
+        if (changes & ScrollingNodeChangeFlags::LayerGeometry && treeState.parentNodeID)
             scrollingCoordinator->setScrollingNodeScrollableAreaGeometry(newNodeID, layer);
-        }
     }
 
     return newNodeID;
@@ -4609,11 +4566,6 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForFrameHostingRole(Re
     if (changes & ScrollingNodeChangeFlags::Layer)
         scrollingCoordinator->setNodeLayers(newNodeID, { layer.backing()->graphicsLayer() });
 
-    if (changes & ScrollingNodeChangeFlags::LayerGeometry && treeState.parentNodeID) {
-        RenderLayer* scrollingAncestorLayer = m_scrollingNodeToLayerMap.get(treeState.parentNodeID.value());
-        scrollingCoordinator->setRectRelativeToParentNode(newNodeID, parentRelativeScrollableRect(layer, scrollingAncestorLayer));
-    }
-
     return newNodeID;
 }
 
@@ -4653,7 +4605,7 @@ ScrollableArea* RenderLayerCompositor::scrollableAreaForScrollLayerID(ScrollingN
     if (!nodeID)
         return nullptr;
 
-    return m_scrollingNodeToLayerMap.get(nodeID);
+    return m_scrollingNodeToLayerMap.get(nodeID).get();
 }
 
 void RenderLayerCompositor::willRemoveScrollingLayerWithBacking(RenderLayer& layer, RenderLayerBacking& backing)
@@ -4700,60 +4652,6 @@ ScrollingCoordinator* RenderLayerCompositor::scrollingCoordinator() const
 GraphicsLayerFactory* RenderLayerCompositor::graphicsLayerFactory() const
 {
     return page().chrome().client().graphicsLayerFactory();
-}
-
-void RenderLayerCompositor::setLayerFlushThrottlingEnabled(bool enabled)
-{
-    m_layerFlushThrottlingEnabled = enabled;
-    if (m_layerFlushThrottlingEnabled)
-        return;
-    m_layerFlushTimer.stop();
-    if (!m_hasPendingLayerFlush)
-        return;
-    scheduleLayerFlush();
-}
-
-void RenderLayerCompositor::disableLayerFlushThrottlingTemporarilyForInteraction()
-{
-    if (m_layerFlushThrottlingTemporarilyDisabledForInteraction)
-        return;
-    m_layerFlushThrottlingTemporarilyDisabledForInteraction = true;
-}
-
-bool RenderLayerCompositor::isThrottlingLayerFlushes() const
-{
-    if (!m_layerFlushThrottlingEnabled)
-        return false;
-    if (!m_layerFlushTimer.isActive())
-        return false;
-    if (m_layerFlushThrottlingTemporarilyDisabledForInteraction)
-        return false;
-    return true;
-}
-
-void RenderLayerCompositor::startLayerFlushTimerIfNeeded()
-{
-    m_layerFlushThrottlingTemporarilyDisabledForInteraction = false;
-    m_layerFlushTimer.stop();
-    if (!m_layerFlushThrottlingEnabled)
-        return;
-    m_layerFlushTimer.startOneShot(throttledLayerFlushDelay);
-}
-
-void RenderLayerCompositor::startInitialLayerFlushTimerIfNeeded()
-{
-    if (!m_layerFlushThrottlingEnabled)
-        return;
-    if (m_layerFlushTimer.isActive())
-        return;
-    m_layerFlushTimer.startOneShot(throttledLayerFlushInitialDelay);
-}
-
-void RenderLayerCompositor::layerFlushTimerFired()
-{
-    if (!m_hasPendingLayerFlush)
-        return;
-    scheduleLayerFlush();
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)

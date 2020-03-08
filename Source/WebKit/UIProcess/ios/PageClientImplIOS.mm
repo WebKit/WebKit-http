@@ -34,6 +34,7 @@
 #import "DataReference.h"
 #import "DownloadProxy.h"
 #import "DrawingAreaProxy.h"
+#import "FrameInfoData.h"
 #import "InteractionInformationAtPosition.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NavigationState.h"
@@ -218,6 +219,18 @@ void PageClientImpl::didCreateContextForVisibilityPropagation(LayerHostingContex
 {
     [m_contentView _processDidCreateContextForVisibilityPropagation];
 }
+
+void PageClientImpl::didCreateContextInGPUProcessForVisibilityPropagation(LayerHostingContextID)
+{
+    [m_contentView _gpuProcessDidCreateContextForVisibilityPropagation];
+}
+#endif
+
+#if ENABLE(GPU_PROCESS)
+void PageClientImpl::gpuProcessCrashed()
+{
+    [m_contentView _gpuProcessCrashed];
+}
 #endif
 
 void PageClientImpl::pageClosed()
@@ -245,9 +258,10 @@ void PageClientImpl::didCompleteSyntheticClick()
     [m_contentView _didCompleteSyntheticClick];
 }
 
-void PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, API::SecurityOrigin& origin, Function<void(bool)>& completionHandler)
+void PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, const FrameInfoData& frameInfo, Function<void(bool)>& completionHandler)
 {
-    [[wrapper(m_webView.get()->_page->process().processPool()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:origin.securityOrigin() frame:frame completionHandler:std::exchange(completionHandler, nullptr) view:m_webView.get().get()];
+    auto origin = API::SecurityOrigin::create(frameInfo.securityOrigin.protocol, frameInfo.securityOrigin.host, frameInfo.securityOrigin.port);
+    [[wrapper(m_webView.get()->_page->process().processPool()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:FrameInfoData { frameInfo } completionHandler:std::exchange(completionHandler, nullptr) view:m_webView.get().get()];
 }
 
 void PageClientImpl::didStartProvisionalLoadForMainFrame()

@@ -427,6 +427,8 @@ AXCoreObject* AXObjectCache::focusedUIElementForPage(const Page* page)
     if (!focusedDocument)
         return nullptr;
 
+    focusedDocument->updateStyleIfNeeded();
+
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     if (clientSupportsIsolatedTree())
         return isolatedTreeFocusedObject(*focusedDocument);
@@ -877,6 +879,12 @@ void AXObjectCache::remove(Node& node)
     m_deferredFocusedNodeChange.removeAllMatching([&node](auto& entry) -> bool {
         return entry.second == &node;
     });
+    // Set nullptr to the old focused node if it is being removed.
+    std::for_each(m_deferredFocusedNodeChange.begin(), m_deferredFocusedNodeChange.end(), [&node](auto& entry) {
+        if (entry.first == &node)
+            entry.first = nullptr;
+    });
+
     removeNodeForUse(node);
 
     remove(m_nodeObjectMapping.take(&node));
@@ -1358,6 +1366,10 @@ void AXObjectCache::postTextStateChangeNotification(const Position& position, co
         }
     }
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    updateIsolatedTree(object, AXSelectedTextChanged);
+#endif
+
     postTextStateChangeNotification(object, intent, selection);
 #else
     postTextStateChangeNotification(node, intent, selection);
@@ -1391,9 +1403,7 @@ void AXObjectCache::postTextStateChangeNotification(AccessibilityObject* object,
 
 void AXObjectCache::postTextStateChangeNotification(Node* node, AXTextEditType type, const String& text, const VisiblePosition& position)
 {
-    if (!node)
-        return;
-    if (type == AXTextEditTypeUnknown)
+    if (!node || type == AXTextEditTypeUnknown)
         return;
 
     stopCachingComputedObjectAttributes();
@@ -1405,6 +1415,10 @@ void AXObjectCache::postTextStateChangeNotification(Node* node, AXTextEditType t
             return;
         object = object->observableObject();
     }
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    updateIsolatedTree(object, AXValueChanged);
+#endif
 
     postTextStateChangePlatformNotification(object, type, text, position);
 #else
@@ -3116,7 +3130,7 @@ Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, D
 
     auto* axFocus = axObjectCache->focusedObject(document);
     if (axFocus)
-        tree->setFocusedNodeID(axFocus->objectID());
+        tree->setFocusedNode(axFocus->objectID());
 
     return makeRef(*tree);
 }
@@ -3133,6 +3147,7 @@ void AXObjectCache::updateIsolatedTree(AXCoreObject* object, AXNotification noti
     switch (notification) {
     case AXCheckedStateChanged:
     case AXChildrenChanged:
+    case AXSelectedTextChanged:
     case AXValueChanged: {
         tree->removeSubtree(object->objectID());
         auto* parent = object->parentObject();
@@ -3233,12 +3248,12 @@ bool isNodeAriaVisible(Node* node)
     return !requiresAriaHiddenFalse || ariaHiddenFalsePresent;
 }
 
-AccessibilityObject* AXObjectCache::rootWebArea()
+AXCoreObject* AXObjectCache::rootWebArea()
 {
     AXCoreObject* rootObject = this->rootObject();
-    if (!rootObject || !rootObject->isAccessibilityScrollView())
+    if (!rootObject || !rootObject->isScrollView())
         return nullptr;
-    return downcast<AccessibilityScrollView>(*rootObject).webAreaObject();
+    return rootObject->webAreaObject();
 }
 
 AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache* cache)

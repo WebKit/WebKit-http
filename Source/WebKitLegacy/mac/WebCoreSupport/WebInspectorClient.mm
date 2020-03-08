@@ -269,6 +269,42 @@ void WebInspectorFrontendClient::resetState()
     [NSWindow removeFrameUsingName:[[m_frontendWindowController window] frameAutosaveName]];
 }
 
+void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Appearance appearance)
+{
+    NSWindow *window = [m_frontendWindowController window];
+    ASSERT(window);
+
+    switch (appearance) {
+    case InspectorFrontendClient::Appearance::System:
+        window.appearance = nil;
+        break;
+
+    case InspectorFrontendClient::Appearance::Light:
+        window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+        break;
+
+    case InspectorFrontendClient::Appearance::Dark:
+        window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+        break;
+    }
+}
+
+bool WebInspectorFrontendClient::supportsDockSide(DockSide dockSide)
+{
+    switch (dockSide) {
+    case DockSide::Undocked:
+    case DockSide::Bottom:
+        return true;
+
+    case DockSide::Right:
+    case DockSide::Left:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 void WebInspectorFrontendClient::attachWindow(DockSide)
 {
     if ([m_frontendWindowController.get() attached])

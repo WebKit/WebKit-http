@@ -25,7 +25,7 @@
 
 WI.NavigationBar = class NavigationBar extends WI.View
 {
-    constructor(element, navigationItems, role, label)
+    constructor(element, {role, sizesToFit, navigationItems} = {})
     {
         super(element);
 
@@ -33,20 +33,18 @@ WI.NavigationBar = class NavigationBar extends WI.View
 
         if (role)
             this.element.setAttribute("role", role);
-        if (label)
-            this.element.setAttribute("aria-label", label);
 
-        this.element.addEventListener("focus", this._focus.bind(this), false);
-        this.element.addEventListener("blur", this._blur.bind(this), false);
         this.element.addEventListener("keydown", this._keyDown.bind(this), false);
-        this.element.addEventListener("mousedown", this._mouseDown.bind(this), false);
+        this.element.addEventListener("mousedown", this._mouseDown.bind(this), true);
 
-        this._mouseMovedEventListener = this._mouseMoved.bind(this);
-        this._mouseUpEventListener = this._mouseUp.bind(this);
-
+        this._role = role;
+        this._sizesToFit = sizesToFit || false;
         this._minimumWidth = NaN;
         this._navigationItems = [];
         this._selectedNavigationItem = null;
+
+        this._mouseMovedEventListener = this._mouseMoved.bind(this);
+        this._mouseUpEventListener = this._mouseUp.bind(this);
 
         if (navigationItems) {
             for (var i = 0; i < navigationItems.length; ++i)
@@ -56,9 +54,11 @@ WI.NavigationBar = class NavigationBar extends WI.View
 
     // Public
 
+    get sizesToFit() { return this._sizesToFit; }
+
     addNavigationItem(navigationItem, parentElement)
     {
-        return this.insertNavigationItem(navigationItem, this._navigationItems.length, parentElement);
+        return this.insertNavigationItem(navigationItem, Infinity, parentElement);
     }
 
     insertNavigationItem(navigationItem, index, parentElement)
@@ -72,7 +72,7 @@ WI.NavigationBar = class NavigationBar extends WI.View
 
         navigationItem.didAttach(this);
 
-        console.assert(index >= 0 && index <= this._navigationItems.length);
+        console.assert(!isFinite(index) || (index >= 0 && index <= this._navigationItems.length));
         index = Math.max(0, Math.min(index, this._navigationItems.length));
 
         this._navigationItems.splice(index, 0, navigationItem);
@@ -165,12 +165,6 @@ WI.NavigationBar = class NavigationBar extends WI.View
         if (isNaN(this._minimumWidth))
             this._minimumWidth = this._calculateMinimumWidth();
         return this._minimumWidth;
-    }
-
-    get sizesToFit()
-    {
-        // Can be overridden by subclasses.
-        return false;
     }
 
     findNavigationItem(identifier)
@@ -288,14 +282,17 @@ WI.NavigationBar = class NavigationBar extends WI.View
         if (event.button !== 0)
             return;
 
-        // Remove the tabIndex so clicking the navigation bar does not give it focus.
-        // Only keep the tabIndex if already focused from keyboard navigation. This matches Xcode.
-        if (!this._focused)
-            this.element.removeAttribute("tabindex");
-
         var itemElement = event.target.closest("." + WI.RadioButtonNavigationItem.StyleClassName);
         if (!itemElement || !itemElement.navigationItem)
             return;
+
+        if (this._role === "tablist") {
+            if (this.element.contains(document.activeElement)) {
+                // If clicking on a tab, stop the event from being handled by the button element. Instead,
+                // pass focus to the selected tab. Otherwise, let the button become activated normally.
+                event.stopPropagation();
+            }
+        }
 
         this._previousSelectedNavigationItem = this.selectedNavigationItem;
         this.selectedNavigationItem = itemElement.navigationItem;
@@ -310,8 +307,6 @@ WI.NavigationBar = class NavigationBar extends WI.View
         // Register these listeners on the document so we can track the mouse if it leaves the navigation bar.
         document.addEventListener("mousemove", this._mouseMovedEventListener, false);
         document.addEventListener("mouseup", this._mouseUpEventListener, false);
-
-        event.stopPropagation();
     }
 
     _mouseMoved(event)
@@ -373,9 +368,6 @@ WI.NavigationBar = class NavigationBar extends WI.View
 
     _keyDown(event)
     {
-        if (!this._focused)
-            return;
-
         if (event.keyIdentifier !== "Left" && event.keyIdentifier !== "Right")
             return;
 
@@ -401,16 +393,7 @@ WI.NavigationBar = class NavigationBar extends WI.View
             return;
 
         this.selectedNavigationItem = this._navigationItems[selectedNavigationItemIndex];
-    }
-
-    _focus(event)
-    {
-        this._focused = true;
-    }
-
-    _blur(event)
-    {
-        this._focused = false;
+        this.selectedNavigationItem?.element.focus();
     }
 
     _calculateMinimumWidth()

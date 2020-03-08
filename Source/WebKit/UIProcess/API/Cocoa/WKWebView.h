@@ -235,7 +235,7 @@ WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
  evaluateJavaScript: is a great way to set up global state for future JavaScript execution in a given world. (e.g. Importing libraries/utilities that future JavaScript execution will rely on)
  Once your global state is set up, consider using callAsyncJavaScriptFunction: for more flexible interaction with the JavaScript programming model.
 */
-- (void)evaluateJavaScript:(NSString *)javaScriptString inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))completionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)evaluateJavaScript:(NSString *)javaScriptString inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))completionHandler NS_REFINED_FOR_SWIFT WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 /* @abstract Calls the given JavaScript string as an async JavaScript function, passing the given named arguments to that function.
  @param functionBody The JavaScript string to use as the function body.
@@ -387,13 +387,12 @@ The uniform type identifier kUTTypeWebArchive can be used get the related pasteb
  */
 + (BOOL)handlesURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macos(10.13), ios(11.0));
 
-
 /* @abstract The media type for the WKWebView
  @discussion The value of mediaType will override the normal value of the CSS media property.
  Setting the value to nil will restore the normal value.
  The default value is nil.
 */
-@property (nonatomic, nullable, copy) NSString *mediaType;
+@property (nonatomic, nullable, copy) NSString *mediaType WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if !TARGET_OS_IPHONE
 /* @abstract Returns an NSPrintOperation object configured to print the contents of this WKWebView

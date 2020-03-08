@@ -34,14 +34,20 @@ from twisted.internet import error, reactor
 from twisted.python import failure, log
 from twisted.trial import unittest
 
-from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, AnalyzeJSCTestsResults, AnalyzeLayoutTestsResults, ApplyPatch, ApplyWatchList, ArchiveBuiltProduct, ArchiveTestResults,
-                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild, CleanUpGitIndexLock, CleanWorkingDirectory,
-                   CompileJSC, CompileJSCToT, CompileWebKit, CompileWebKitToT, ConfigureBuild,
-                   DownloadBuiltProduct, DownloadBuiltProductFromMaster, ExtractBuiltProduct, ExtractTestResults, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
-                   PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, ReRunWebKitPerlTests, ReRunWebKitTests, RunAPITests, RunAPITestsWithoutPatch,
-                   RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests, RunResultsdbpyTests, RunJavaScriptCoreTests, RunJSCTestsWithoutPatch, RunWebKit1Tests,
-                   RunWebKitPerlTests, RunWebKitPyPython2Tests, RunWebKitPyPython3Tests, RunWebKitTests, RunWebKitTestsWithoutPatch, TestWithFailureCount, Trigger, TransferToS3, UnApplyPatchIfRequired,
-                   UpdateWorkingDirectory, UploadBuiltProduct, UploadTestResults, ValidatePatch)
+from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, AnalyzeJSCTestsResults,
+                   AnalyzeLayoutTestsResults, ApplyPatch, ApplyWatchList, ArchiveBuiltProduct, ArchiveTestResults,
+                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild,
+                   CleanUpGitIndexLock, CleanWorkingDirectory, CompileJSC, CompileJSCToT, CompileWebKit,
+                   CompileWebKitToT, ConfigureBuild, CreateLocalGITCommit,
+                   DownloadBuiltProduct, DownloadBuiltProductFromMaster, ExtractBuiltProduct, ExtractTestResults,
+                   FindModifiedChangeLogs, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
+                   PrintConfiguration, PushCommitToWebKitRepo, ReRunAPITests, ReRunJavaScriptCoreTests, ReRunWebKitPerlTests,
+                   ReRunWebKitTests, RunAPITests, RunAPITestsWithoutPatch, RunBindingsTests, RunBuildWebKitOrgUnitTests,
+                   RunEWSBuildbotCheckConfig, RunEWSUnitTests, RunResultsdbpyTests, RunJavaScriptCoreTests,
+                   RunJSCTestsWithoutPatch, RunWebKit1Tests, RunWebKitPerlTests, RunWebKitPyPython2Tests,
+                   RunWebKitPyPython3Tests, RunWebKitTests, RunWebKitTestsWithoutPatch, TestWithFailureCount,
+                   Trigger, TransferToS3, UnApplyPatchIfRequired, UpdateWorkingDirectory, UploadBuiltProduct,
+                   UploadTestResults, ValidateCommiterAndReviewer, ValidatePatch)
 
 # Workaround for https://github.com/buildbot/buildbot/issues/4669
 from buildbot.test.fake.fakebuild import FakeBuild
@@ -984,6 +990,14 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
         self.expectOutcome(result=FAILURE, state_string='Failed to compile WebKit')
         return self.runStep()
 
+    def test_skip_for_rollout_patches_on_commit_queue(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('buildername', 'Commit-Queue')
+        self.setProperty('configuration', 'debug')
+        self.setProperty('rollout', True)
+        self.expectOutcome(result=SKIPPED, state_string='Compiled WebKit (skipped)')
+        return self.runStep()
+
 
 class TestCompileWebKitToT(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
@@ -1737,6 +1751,15 @@ class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
             + 2,
         )
         self.expectOutcome(result=FAILURE, state_string='layout-tests (failure)')
+        return self.runStep()
+
+    def test_skip_for_rollout_patches_on_commit_queue(self):
+        self.setupStep(RunWebKit1Tests())
+        self.setProperty('buildername', 'Commit-Queue')
+        self.setProperty('fullPlatform', 'mac')
+        self.setProperty('configuration', 'debug')
+        self.setProperty('rollout', True)
+        self.expectOutcome(result=SKIPPED, state_string='layout-tests (skipped)')
         return self.runStep()
 
 
@@ -2995,6 +3018,196 @@ OSError: [Errno 2] No such file or directory''')
             ExpectShell(command=['uptime'], workdir='wkdir', timeout=60, logEnviron=False) + 0,
         )
         self.expectOutcome(result=FAILURE, state_string='Failed to print configuration')
+        return self.runStep()
+
+
+class TestFindModifiedChangeLogs(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_modified_changelogs(self):
+        self.setupStep(FindModifiedChangeLogs())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=180,
+                        logEnviron=False,
+                        command=['git', 'diff', '-r', '--name-status', '--no-renames', '--no-ext-diff', '--full-index']) +
+            ExpectShell.log('stdio', stdout='''M	Source/WebCore/ChangeLog
+M	Source/WebCore/layout/blockformatting/BlockFormattingContext.h
+M	Source/WebCore/layout/blockformatting/BlockMarginCollapse.cpp
+M	Tools/ChangeLog
+M	Tools/TestWebKitAPI/CMakeLists.txt''') +
+            0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Found modified ChangeLogs')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('modified_changelogs'), ['Source/WebCore/ChangeLog', 'Tools/ChangeLog'])
+        return rc
+
+    def test_success_added_changelog(self):
+        self.setupStep(FindModifiedChangeLogs())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=180,
+                        logEnviron=False,
+                        command=['git', 'diff', '-r', '--name-status', '--no-renames', '--no-ext-diff', '--full-index']) +
+            ExpectShell.log('stdio', stdout='''A	Tools/Scripts/ChangeLog
+M	Tools/Scripts/run-api-tests''') +
+            0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Found modified ChangeLogs')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('modified_changelogs'), ['Tools/Scripts/ChangeLog'])
+        return rc
+
+    def test_failure(self):
+        self.setupStep(FindModifiedChangeLogs())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=180,
+                        logEnviron=False,
+                        command=['git', 'diff', '-r', '--name-status', '--no-renames', '--no-ext-diff', '--full-index']) +
+            ExpectShell.log('stdio', stdout='Unexpected failure') +
+            2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed to find list of modified ChangeLogs')
+        return self.runStep()
+
+
+class TestCreateLocalGITCommit(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CreateLocalGITCommit())
+        self.setProperty('modified_changelogs', ['Tools/Scripts/ChangeLog', 'Source/WebCore/ChangeLog'])
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=300,
+                        logEnviron=False,
+                        command='perl Tools/Scripts/commit-log-editor --print-log Tools/Scripts/ChangeLog Source/WebCore/ChangeLog | git commit --all -F -') +
+            0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Created local git commit')
+        return self.runStep()
+
+    def test_failure_no_changelog(self):
+        self.setupStep(CreateLocalGITCommit())
+        self.expectOutcome(result=FAILURE, state_string='No modified ChangeLog file found')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CreateLocalGITCommit())
+        self.setProperty('modified_changelogs', ['Tools/Scripts/ChangeLog'])
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=300,
+                        logEnviron=False,
+                        command='perl Tools/Scripts/commit-log-editor --print-log Tools/Scripts/ChangeLog | git commit --all -F -') +
+            ExpectShell.log('stdio', stdout='Unexpected failure') +
+            2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed to create git commit')
+        return self.runStep()
+
+
+class TestValidateCommiterAndReviewer(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+
+        def mock_load_contributors(cls, *args, **kwargs):
+            return {'aakash_jain@apple.com': {'name': 'Aakash Jain', 'status': 'reviewer'},
+                    'committer@webkit.org': {'name': 'WebKit Committer', 'status': 'committer'}}
+        ValidateCommiterAndReviewer.load_contributors = mock_load_contributors
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(ValidateCommiterAndReviewer())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('patch_committer', 'committer@webkit.org')
+        self.setProperty('patch_reviewer', 'aakash_jain@apple.com')
+        self.expectHidden(False)
+        self.assertEqual(ValidateCommiterAndReviewer.haltOnFailure, False)
+        self.expectOutcome(result=SUCCESS, state_string='Validated commiter and reviewer')
+        return self.runStep()
+
+    def test_success_no_reviewer(self):
+        self.setupStep(ValidateCommiterAndReviewer())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('patch_committer', 'aakash_jain@apple.com')
+        self.expectHidden(False)
+        self.expectOutcome(result=SUCCESS, state_string='Validated committer')
+        return self.runStep()
+
+    def test_failure_load_contributors(self):
+        self.setupStep(ValidateCommiterAndReviewer())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('patch_committer', 'abc@webkit.org')
+        ValidateCommiterAndReviewer.load_contributors = lambda x: {}
+        self.expectHidden(False)
+        self.expectOutcome(result=FAILURE, state_string='Failed to get contributors information')
+        return self.runStep()
+
+    def test_failure_invalid_committer(self):
+        self.setupStep(ValidateCommiterAndReviewer())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('patch_committer', 'abc@webkit.org')
+        self.expectHidden(False)
+        self.expectOutcome(result=FAILURE, state_string='abc@webkit.org does not have committer permissions')
+        return self.runStep()
+
+    def test_failure_invalid_reviewer(self):
+        self.setupStep(ValidateCommiterAndReviewer())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('patch_committer', 'aakash_jain@apple.com')
+        self.setProperty('patch_reviewer', 'committer@webkit.org')
+        self.expectHidden(False)
+        self.expectOutcome(result=FAILURE, state_string='committer@webkit.org does not have reviewer permissions')
+        return self.runStep()
+
+class TestPushCommitToWebKitRepo(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(PushCommitToWebKitRepo())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=300,
+                        logEnviron=False,
+                        command=['git', 'svn', 'dcommit', '--rmdir']) +
+            ExpectShell.log('stdio', stdout='Committed r256729') +
+            0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Committed r256729')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(PushCommitToWebKitRepo())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=300,
+                        logEnviron=False,
+                        command=['git', 'svn', 'dcommit', '--rmdir']) +
+            ExpectShell.log('stdio', stdout='Unexpected failure') +
+            2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed to push commit to Webkit repository')
         return self.runStep()
 
 

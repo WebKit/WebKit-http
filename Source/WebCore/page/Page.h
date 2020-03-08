@@ -141,6 +141,7 @@ class StorageNamespaceProvider;
 class UserContentProvider;
 class UserContentURLPattern;
 class UserInputBridge;
+class UserStyleSheet;
 class ValidationMessageClient;
 class VisibleSelection;
 class VisitedLinkStore;
@@ -254,6 +255,7 @@ public:
     bool shouldEnableICECandidateFilteringByDefault() const { return m_shouldEnableICECandidateFilteringByDefault; }
 
     void didChangeMainDocument();
+    void mainFrameDidChangeToNonInitialEmptyDocument();
 
     PerformanceMonitor* performanceMonitor() { return m_performanceMonitor.get(); }
 
@@ -722,6 +724,9 @@ public:
 
     bool shouldDisableCorsForRequestTo(const URL&) const;
 
+    WEBCORE_EXPORT void injectUserStyleSheet(UserStyleSheet&);
+    WEBCORE_EXPORT void removeInjectedUserStyleSheet(UserStyleSheet&);
+
 private:
     struct Navigation {
         RegistrableDomain domain;
@@ -999,6 +1004,7 @@ private:
 #endif
 
     Vector<UserContentURLPattern> m_corsDisablingPatterns;
+    Vector<UserStyleSheet> m_userStyleSheetsPendingInjection;
 };
 
 inline PageGroup& Page::group()

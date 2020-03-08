@@ -24,13 +24,15 @@
 GPUProcess/GPUProcess.cpp
 GPUProcess/GPUConnectionToWebProcess.cpp
 GPUProcess/GPUProcessCreationParameters.cpp
-GPUProcess/webrtc/RemoteAudioMediaStreamTrackRenderer.cpp
-GPUProcess/webrtc/RemoteAudioMediaStreamTrackRendererManager.cpp
-GPUProcess/webrtc/RemoteMediaRecorder.cpp
-GPUProcess/webrtc/RemoteMediaRecorderManager.cpp
-GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.cpp
-GPUProcess/webrtc/RemoteSampleBufferDisplayLayerManager.cpp
+GPUProcess/graphics/RemoteImageBufferMessageHandlerProxy.cpp
+GPUProcess/graphics/RemoteRenderingBackendProxy.cpp
+GPUProcess/media/RemoteAudioSessionProxy.cpp
+GPUProcess/media/RemoteAudioSessionProxyManager.cpp
 GPUProcess/media/RemoteAudioTrackProxy.cpp
+GPUProcess/media/RemoteCDMFactoryProxy.cpp
+GPUProcess/media/RemoteCDMInstanceProxy.cpp
+GPUProcess/media/RemoteCDMInstanceSessionProxy.cpp
+GPUProcess/media/RemoteCDMProxy.cpp
 GPUProcess/media/RemoteMediaPlayerManagerProxy.cpp
 GPUProcess/media/RemoteMediaPlayerProxy.cpp
 GPUProcess/media/RemoteMediaResource.cpp
@@ -38,6 +40,13 @@ GPUProcess/media/RemoteMediaResourceLoader.cpp
 GPUProcess/media/RemoteMediaResourceManager.cpp
 GPUProcess/media/RemoteTextTrackProxy.cpp
 GPUProcess/media/RemoteVideoTrackProxy.cpp
+GPUProcess/webrtc/RemoteAudioMediaStreamTrackRenderer.cpp
+GPUProcess/webrtc/RemoteAudioMediaStreamTrackRendererManager.cpp
+GPUProcess/webrtc/RemoteMediaRecorder.cpp
+GPUProcess/webrtc/RemoteMediaRecorderManager.cpp
+GPUProcess/webrtc/RemoteSampleBufferDisplayLayer.cpp
+GPUProcess/webrtc/RemoteSampleBufferDisplayLayerManager.cpp
+
 
 NetworkProcess/AdClickAttributionManager.cpp
 NetworkProcess/NetworkActivityTracker.cpp
@@ -327,6 +336,7 @@ UIProcess/API/APIContextMenuElementInfo.cpp
 UIProcess/API/APIDebuggableInfo.cpp
 UIProcess/API/APIExperimentalFeature.cpp
 UIProcess/API/APIFrameInfo.cpp
+UIProcess/API/APIFrameTreeNode.cpp
 UIProcess/API/APIHTTPCookieStore.cpp
 UIProcess/API/APIHitTestResult.cpp
 UIProcess/API/APIInternalDebugFeature.cpp
@@ -337,7 +347,6 @@ UIProcess/API/APIProcessPoolConfiguration.cpp
 UIProcess/API/APIOpenPanelParameters.cpp
 UIProcess/API/APISessionState.cpp
 UIProcess/API/APIURLSchemeTask.cpp
-UIProcess/API/APIUserContentWorld.cpp
 UIProcess/API/APIUserScript.cpp
 UIProcess/API/APIUserStyleSheet.cpp
 UIProcess/API/APIWebAuthenticationAssertionResponse.cpp
@@ -426,6 +435,8 @@ UIProcess/Inspector/WebInspectorProxy.cpp
 UIProcess/Inspector/WebInspectorUtilities.cpp
 UIProcess/Inspector/WebPageDebuggable.cpp
 UIProcess/Inspector/WebPageInspectorController.cpp
+
+UIProcess/Inspector/Agents/InspectorBrowserAgent.cpp
 
 UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp
 UIProcess/Notifications/WebNotification.cpp
@@ -532,13 +543,23 @@ WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp
 WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
 
 WebProcess/GPU/GPUProcessConnection.cpp
+WebProcess/GPU/graphics/ImageBufferShareableBitmapBackend.cpp
+WebProcess/GPU/graphics/RemoteImageBufferMessageHandler.cpp
+WebProcess/GPU/graphics/RemoteRenderingBackend.cpp
 WebProcess/GPU/media/AudioTrackPrivateRemote.cpp
 WebProcess/GPU/media/MediaPlayerPrivateRemote.cpp
+WebProcess/GPU/media/RemoteAudioDestinationProxy.cpp
+WebProcess/GPU/media/RemoteAudioSession.cpp
+WebProcess/GPU/media/RemoteCDM.cpp
+WebProcess/GPU/media/RemoteCDMFactory.cpp
+WebProcess/GPU/media/RemoteCDMInstance.cpp
+WebProcess/GPU/media/RemoteCDMInstanceSession.cpp
 WebProcess/GPU/media/RemoteMediaPlayerManager.cpp
 WebProcess/GPU/media/RemoteMediaPlayerMIMETypeCache.cpp @no-unify
 WebProcess/GPU/media/RemoteMediaResourceProxy.cpp
 WebProcess/GPU/media/TextTrackPrivateRemote.cpp
 WebProcess/GPU/media/VideoTrackPrivateRemote.cpp
+WebProcess/GPU/media/WebMediaStrategy.cpp
 WebProcess/GPU/webrtc/LibWebRTCCodecs.cpp
 WebProcess/GPU/webrtc/MediaRecorderPrivate.cpp
 WebProcess/GPU/webrtc/MediaRecorderProvider.cpp

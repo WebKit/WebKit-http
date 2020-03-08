@@ -122,13 +122,13 @@
 #include "UserContentProvider.h"
 #include "UserContentURLPattern.h"
 #include "UserInputBridge.h"
+#include "UserStyleSheet.h"
 #include "ValidationMessageClient.h"
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
 #include "WheelEventDeltaFilter.h"
 #include "Widget.h"
-#include <wtf/Deque.h>
 #include <wtf/FileSystem.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -927,26 +927,29 @@ static bool isEditableTextInputElement(const Element& element)
 
 Vector<Ref<Element>> Page::editableElementsInRect(const FloatRect& searchRectInRootViewCoordinates) const
 {
+    auto frameView = makeRefPtr(mainFrame().view());
+    if (!frameView)
+        return { };
+
+    auto document = makeRefPtr(mainFrame().document());
+    if (!document)
+        return { };
+
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::CollectMultipleElements, HitTestRequest::DisallowUserAgentShadowContent, HitTestRequest::AllowVisibleChildFrameContentOnly };
+    LayoutRect searchRectInMainFrameCoordinates = frameView->rootViewToContents(roundedIntRect(searchRectInRootViewCoordinates));
+    HitTestResult hitTestResult { searchRectInMainFrameCoordinates };
+    if (!document->hitTest(hitType, hitTestResult))
+        return { };
+
     Vector<Ref<Element>> result;
-    forEachDocument([&] (Document& document) {
-        Deque<Node*> nodesToSearch;
-        nodesToSearch.append(&document);
-        while (!nodesToSearch.isEmpty()) {
-            auto* node = nodesToSearch.takeFirst();
-
-            // It is possible to have nested text input contexts (e.g. <input type='text'> inside contenteditable) but
-            // in this case we just take the outermost context and skip the rest.
-            if (!is<Element>(node) || !isEditableTextInputElement(downcast<Element>(*node))) {
-                for (auto* child = node->firstChild(); child; child = child->nextSibling())
-                    nodesToSearch.append(child);
-                continue;
-            }
-
-            auto& element = downcast<Element>(*node);
-            if (searchRectInRootViewCoordinates.intersects(element.clientRect()))
-                result.append(element);
+    auto& nodeSet = hitTestResult.listBasedTestResult();
+    result.reserveInitialCapacity(nodeSet.size());
+    for (auto& node : nodeSet) {
+        if (is<Element>(node) && isEditableTextInputElement(downcast<Element>(*node))) {
+            ASSERT(searchRectInRootViewCoordinates.intersects(downcast<Element>(*node).clientRect()));
+            result.uncheckedAppend(downcast<Element>(*node));
         }
-    });
+    }
     return result;
 }
 
@@ -2985,9 +2988,14 @@ void Page::recomputeTextAutoSizingInAllFrames()
     forEachDocument([] (Document& document) {
         if (auto* renderView = document.renderView()) {
             for (auto& renderer : descendantsOfType<RenderElement>(*renderView)) {
+                // Use the fact that descendantsOfType() returns parent nodes before child nodes.
+                // The adjustment is only valid if the parent nodes have already been updated.
                 if (auto* element = renderer.element()) {
-                    if (Style::Adjuster::adjustForTextAutosizing(renderer.mutableStyle(), *element))
-                        renderer.setNeedsLayout();
+                    if (auto adjustment = Style::Adjuster::adjustmentForTextAutosizing(renderer.style(), *element)) {
+                        auto newStyle = RenderStyle::clone(renderer.style());
+                        Style::Adjuster::adjustForTextAutosizing(newStyle, *element, adjustment);
+                        renderer.setStyle(WTFMove(newStyle));
+                    }
                 }
             }
         }
@@ -3006,6 +3014,51 @@ bool Page::shouldDisableCorsForRequestTo(const URL& url) const
 void Page::revealCurrentSelection()
 {
     focusController().focusedOrMainFrame().selection().revealSelection(SelectionRevealMode::Reveal, ScrollAlignment::alignCenterIfNeeded);
+}
+
+void Page::injectUserStyleSheet(UserStyleSheet& userStyleSheet)
+{
+    // We need to wait until we're no longer displaying the initial empty document before we can inject the stylesheets.
+    if (m_mainFrame->loader().stateMachine().isDisplayingInitialEmptyDocument()) {
+        m_userStyleSheetsPendingInjection.append(userStyleSheet);
+        return;
+    }
+
+    if (userStyleSheet.injectedFrames() == InjectInTopFrameOnly) {
+        if (auto* document = m_mainFrame->document())
+            document->extensionStyleSheets().injectPageSpecificUserStyleSheet(userStyleSheet);
+    } else {
+        forEachDocument([&] (Document& document) {
+            document.extensionStyleSheets().injectPageSpecificUserStyleSheet(userStyleSheet);
+        });
+    }
+}
+
+void Page::removeInjectedUserStyleSheet(UserStyleSheet& userStyleSheet)
+{
+    if (!m_userStyleSheetsPendingInjection.isEmpty()) {
+        m_userStyleSheetsPendingInjection.removeFirstMatching([userStyleSheet](auto& storedUserStyleSheet) {
+            return storedUserStyleSheet.url() == userStyleSheet.url();
+        });
+        return;
+    }
+
+    if (userStyleSheet.injectedFrames() == InjectInTopFrameOnly) {
+        if (auto* document = m_mainFrame->document())
+            document->extensionStyleSheets().removePageSpecificUserStyleSheet(userStyleSheet);
+    } else {
+        forEachDocument([&] (Document& document) {
+            document.extensionStyleSheets().removePageSpecificUserStyleSheet(userStyleSheet);
+        });
+    }
+}
+
+void Page::mainFrameDidChangeToNonInitialEmptyDocument()
+{
+    ASSERT(!m_mainFrame->loader().stateMachine().isDisplayingInitialEmptyDocument());
+    for (auto& userStyleSheet : m_userStyleSheetsPendingInjection)
+        injectUserStyleSheet(userStyleSheet);
+    m_userStyleSheetsPendingInjection.clear();
 }
 
 } // namespace WebCore

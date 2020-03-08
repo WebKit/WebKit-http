@@ -33,6 +33,7 @@ from layout_test_failures import LayoutTestFailures
 import json
 import re
 import requests
+import os
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
 S3URL = 'https://s3-us-west-2.amazonaws.com/'
@@ -210,6 +211,9 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
             self.finished(FAILURE)
             return None
 
+        patch_reviewer_name = self.getProperty('patch_reviewer_full_name', '')
+        if patch_reviewer_name:
+            self.command.extend(['--reviewer', patch_reviewer_name])
         d = self.downloadFileContentToWorker('.buildbot-diff', patch)
         d.addCallback(lambda res: shell.ShellCommand.start(self))
 
@@ -325,6 +329,7 @@ class BugzillaMixin(object):
     addURLs = False
     bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
     bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
+    rollout_preamble = 'ROLLOUT of r'
 
     @defer.inlineCallbacks
     def _addToLog(self, logName, message):
@@ -387,8 +392,12 @@ class BugzillaMixin(object):
             return -1
 
         patch_author = patch_json.get('creator')
+        self.setProperty('patch_author', patch_author)
+        patch_title = patch_json.get('summary')
+        if patch_title.startswith(self.rollout_preamble):
+            self.setProperty('rollout', True)
         if self.addURLs:
-            self.addURL('Patch by: {}'.format(patch_author), 'mailto:{}'.format(patch_author))
+            self.addURL('Patch by: {}'.format(patch_author), '')
         return patch_json.get('is_obsolete')
 
     def _is_patch_review_denied(self, patch_id):
@@ -410,8 +419,32 @@ class BugzillaMixin(object):
 
         for flag in patch_json.get('flags', []):
             if flag.get('name') == 'commit-queue' and flag.get('status') == '+':
+                self.setProperty('patch_committer', flag.get('setter', ''))
                 return 1
         return 0
+
+    def _does_patch_have_acceptable_review_flag(self, patch_id):
+        patch_json = self.get_patch_json(patch_id)
+        if not patch_json:
+            self._addToLog('stdio', 'Unable to fetch patch {}.\n'.format(patch_id))
+            return -1
+
+        for flag in patch_json.get('flags', []):
+            if flag.get('name') == 'review':
+                review_status = flag.get('status')
+                if review_status == '+':
+                    patch_reviewer = flag.get('setter', '')
+                    self.setProperty('patch_reviewer', patch_reviewer)
+                    if self.addURLs:
+                        self.addURL('Reviewed by: {}'.format(patch_reviewer), '')
+                    if patch_reviewer == patch_json.get('creator'):
+                        self._addToLog('stdio', 'Patch {} is r+ by the patch author {} itself. This seems like a mistake.\n'.format(patch_id, patch_reviewer))
+                        return 0
+                    return 1
+                if review_status in ['-', '?']:
+                    self._addToLog('stdio', 'Patch {} is marked r{}.\n'.format(patch_id, review_status))
+                    return 0
+        return 1  # Patch without review flag is acceptable, since the ChangeLog might have 'Reviewed by' in it.
 
     def _is_bug_closed(self, bug_id):
         if not bug_id:
@@ -566,6 +599,11 @@ class ValidatePatch(buildstep.BuildStep, BugzillaMixin):
             self.skip_build('Patch {} is not marked cq+.'.format(patch_id))
             return None
 
+        acceptable_review_flag = self._does_patch_have_acceptable_review_flag(patch_id) if self.verifycqplus else 1
+        if acceptable_review_flag != 1:
+            self.skip_build('Patch {} does not have acceptable review flag.'.format(patch_id))
+            return None
+
         if obsolete == -1 or review_denied == -1 or bug_closed == -1:
             self.finished(WARNINGS)
             self.setProperty('validated', False)
@@ -579,6 +617,100 @@ class ValidatePatch(buildstep.BuildStep, BugzillaMixin):
             self._addToLog('stdio', 'Patch is not marked r-.\n')
         if self.verifycqplus:
             self._addToLog('stdio', 'Patch is marked cq+.\n')
+            self._addToLog('stdio', 'Patch have acceptable review flag.\n')
+        self.finished(SUCCESS)
+        return None
+
+
+class ValidateCommiterAndReviewer(buildstep.BuildStep):
+    name = 'validate-commiter-and-reviewer'
+    descriptionDone = ['Validated commiter and reviewer']
+    url = 'https://trac.webkit.org/browser/webkit/trunk/Tools/Scripts/webkitpy/common/config/contributors.json'
+    url_text = '{}?format=txt'.format(url)
+    contributors = {}
+
+    def load_contributors(self):
+        try:
+            response = requests.get(self.url_text)
+            if response.status_code != 200:
+                self._addToLog('stdio', 'Failed to access {} with status code: {}\n'.format(self.url_text, response.status_code))
+                return {}
+        except Exception as e:
+            self._addToLog('stdio', 'Failed to access {url}\n'.format(url=self.url_text))
+            return {}
+
+        contributors_json = response.json()
+        contributors = {}
+        for key, value in contributors_json.iteritems():
+            emails = value.get('emails')
+            for email in emails:
+                contributors[email.lower()] = {'name': key, 'status': value.get('status')}
+        return contributors
+
+    @defer.inlineCallbacks
+    def _addToLog(self, logName, message):
+        try:
+            log = self.getLog(logName)
+        except KeyError:
+            log = yield self.addLog(logName)
+        log.addStdout(message)
+
+    def getResultSummary(self):
+        if self.results == FAILURE:
+            return {u'step': unicode(self.descriptionDone)}
+        return buildstep.BuildStep.getResultSummary(self)
+
+    def fail_build(self, email, status):
+        reason = '{} does not have {} permissions'.format(email, status)
+        comment = '{} does not have {} permissions according to {}.'.format(email, status, self.url)
+        comment += '\n\nRejecting attachment {} from commit queue.'.format(self.getProperty('patch_id', ''))
+        self.setProperty('bugzilla_comment_text', comment)
+
+        self._addToLog('stdio', reason)
+        self.setProperty('build_finish_summary', reason)
+        self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+        self.finished(FAILURE)
+        self.descriptionDone = reason
+
+    def is_reviewer(self, email):
+        contributor = self.contributors.get(email)
+        return contributor and contributor['status'] == 'reviewer'
+
+    def is_committer(self, email):
+        contributor = self.contributors.get(email)
+        return contributor and contributor['status'] in ['reviewer', 'committer']
+
+    def full_name_from_email(self, email):
+        contributor = self.contributors.get(email)
+        if not contributor:
+            return ''
+        return contributor.get('name')
+
+    def start(self):
+        self.contributors = self.load_contributors()
+        if not self.contributors:
+            self.finished(FAILURE)
+            self.descriptionDone = 'Failed to get contributors information'
+            self.build.buildFinished(['Failed to get contributors information'], FAILURE)
+            return None
+        patch_committer = self.getProperty('patch_committer', '').lower()
+        if not self.is_committer(patch_committer):
+            self.fail_build(patch_committer, 'committer')
+            return None
+        self._addToLog('stdio', '{} is a valid commiter.\n'.format(patch_committer))
+
+        patch_reviewer = self.getProperty('patch_reviewer', '').lower()
+        if not patch_reviewer:
+            # Patch does not have r+ flag. This is acceptable, since the ChangeLog might have 'Reviewed by' in it.
+            self.descriptionDone = 'Validated committer'
+            self.finished(SUCCESS)
+            return None
+
+        self.setProperty('patch_reviewer_full_name', self.full_name_from_email(patch_reviewer))
+        if not self.is_reviewer(patch_reviewer):
+            self.fail_build(patch_reviewer, 'reviewer')
+            return None
+        self._addToLog('stdio', '{} is a valid reviewer.\n'.format(patch_reviewer))
         self.finished(SUCCESS)
         return None
 
@@ -1077,6 +1209,9 @@ class CompileWebKit(shell.Compile):
         self.skipUpload = skipUpload
         super(CompileWebKit, self).__init__(logEnviron=False, **kwargs)
 
+    def doStepIf(self, step):
+        return not (self.getProperty('rollout') and self.getProperty('buildername', '').lower() == 'commit-queue')
+
     def start(self):
         platform = self.getProperty('platform')
         buildOnly = self.getProperty('buildOnly')
@@ -1433,12 +1568,12 @@ class KillOldProcesses(shell.Compile):
         super(KillOldProcesses, self).__init__(timeout=60, logEnviron=False, **kwargs)
 
     def evaluateCommand(self, cmd):
-        if cmd.didFail():
+        if self.results in [FAILURE, EXCEPTION]:
             self.build.buildFinished(['Failed to kill old processes, retrying build'], RETRY)
         return shell.Compile.evaluateCommand(self, cmd)
 
     def getResultSummary(self):
-        if self.results == FAILURE:
+        if self.results in [FAILURE, EXCEPTION]:
             return {u'step': u'Failed to kill old processes'}
         return shell.Compile.getResultSummary(self)
 
@@ -1461,6 +1596,7 @@ class RunWebKitTests(shell.Test):
 
     def __init__(self, **kwargs):
         shell.Test.__init__(self, logEnviron=False, **kwargs)
+        self.incorrectLayoutLines = []
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
@@ -1468,7 +1604,6 @@ class RunWebKitTests(shell.Test):
         self.log_observer_json = logobserver.BufferLogObserver()
         self.addLogObserver('json', self.log_observer_json)
 
-        self.incorrectLayoutLines = []
         platform = self.getProperty('platform')
         appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
         additionalArguments = self.getProperty('additionalArguments')
@@ -1767,6 +1902,9 @@ class RunWebKit1Tests(RunWebKitTests):
     def start(self):
         self.setProperty('use-dump-render-tree', True)
         return RunWebKitTests.start(self)
+
+    def doStepIf(self, step):
+        return not (self.getProperty('rollout') and self.getProperty('buildername', '').lower() == 'commit-queue')
 
 
 class ArchiveBuiltProduct(shell.ShellCommand):
@@ -2277,3 +2415,128 @@ class SetBuildSummary(buildstep.BuildStep):
         self.finished(SUCCESS)
         self.build.buildFinished([build_summary], self.build.results)
         return defer.succeed(None)
+
+
+class FindModifiedChangeLogs(shell.ShellCommand):
+    name = 'find-modified-changelogs'
+    descriptionDone = ['Found modified ChangeLogs']
+    command = ['git', 'diff', '-r', '--name-status', '--no-renames', '--no-ext-diff', '--full-index']
+    haltOnFailure = True
+
+    def __init__(self, **kwargs):
+        shell.ShellCommand.__init__(self, timeout=3 * 60, logEnviron=False, **kwargs)
+
+    def start(self):
+        self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
+        self.addLogObserver('stdio', self.log_observer)
+        return shell.ShellCommand.start(self)
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to find list of modified ChangeLogs'}
+        return shell.ShellCommand.getResultSummary(self)
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
+        modified_changelogs = self.extract_changelogs(log_text, self._status_regexp('MA'))
+        self.setProperty('modified_changelogs', modified_changelogs)
+        return rc
+
+    def is_path_to_changelog(self, path):
+        return os.path.basename(path) == 'ChangeLog'
+
+    def _status_regexp(self, expected_types):
+        return '^(?P<status>[{}])\t(?P<filename>.+)$'.format(expected_types)
+
+    def extract_changelogs(self, output, status_regexp):
+        filenames = []
+        for line in output.splitlines():
+            match = re.search(status_regexp, line)
+            if not match:
+                continue
+            filename = match.group('filename')
+            if self.is_path_to_changelog(filename):
+                filenames.append(filename)
+        return filenames
+
+
+class CreateLocalGITCommit(shell.ShellCommand):
+    name = 'create-local-git-commit'
+    descriptionDone = ['Created local git commit']
+    haltOnFailure = True
+
+    def __init__(self, **kwargs):
+        shell.ShellCommand.__init__(self, timeout=5 * 60, logEnviron=False, **kwargs)
+
+    def start(self):
+        self.failure_message = None
+        modified_changelogs = self.getProperty('modified_changelogs')
+        if not modified_changelogs:
+            self.failure_message = u'No modified ChangeLog file found'
+            self.finished(FAILURE)
+            return None
+
+        modified_changelogs = ' '.join(modified_changelogs)
+        self.command = 'perl Tools/Scripts/commit-log-editor --print-log {}'.format(modified_changelogs)
+        self.command += ' | git commit --all -F -'
+        return shell.ShellCommand.start(self)
+
+    def getResultSummary(self):
+        if self.failure_message:
+            return {u'step': self.failure_message}
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to create git commit'}
+        return shell.ShellCommand.getResultSummary(self)
+
+
+class PushCommitToWebKitRepo(shell.ShellCommand):
+    name = 'push-commit-to-webkit-repo'
+    descriptionDone = ['Pushed commit to WebKit repository']
+    command = ['git', 'svn', 'dcommit', '--rmdir']
+    commit_success_regexp = '^Committed r(?P<svn_revision>\d+)$'
+    haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        shell.ShellCommand.__init__(self, timeout=5 * 60, logEnviron=False, **kwargs)
+
+    def start(self):
+        self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
+        self.addLogObserver('stdio', self.log_observer)
+        return shell.ShellCommand.start(self)
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        if rc == SUCCESS:
+            log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
+            svn_revision = self.svn_revision_from_commit_text(log_text)
+            self.setProperty('bugzilla_comment_text', self.comment_text_for_bug(svn_revision))
+            commit_summary = 'Committed r{}'.format(svn_revision)
+            self.descriptionDone = commit_summary
+            self.setProperty('build_summary', 'Committed r{}'.format(svn_revision))
+            self.build.addStepsAfterCurrentStep([CommentOnBug(), RemoveFlagsOnPatch(), CloseBug()])
+        else:
+            self.setProperty('bugzilla_comment_text', self.comment_text_for_bug())
+            self.setProperty('build_finish_summary', 'Failed to commit to WebKit repository')
+            self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+        return rc
+
+    def url_for_revision(self, revision):
+        return 'https://trac.webkit.org/changeset/{}'.format(revision)
+
+    def comment_text_for_bug(self, svn_revision=None):
+        patch_id = self.getProperty('patch_id', '')
+        if not svn_revision:
+            return 'commit-queue failed to commit attachment {} to WebKit repository.'.format(patch_id)
+        comment = 'Committed r{}: <{}>'.format(svn_revision, self.url_for_revision(svn_revision))
+        comment += '\n\nAll reviewed patches have been landed. Closing bug and clearing flags on attachment {}.'.format(patch_id)
+        return comment
+
+    def svn_revision_from_commit_text(self, commit_text):
+        match = re.search(self.commit_success_regexp, commit_text, re.MULTILINE)
+        return match.group('svn_revision')
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to push commit to Webkit repository'}
+        return shell.ShellCommand.getResultSummary(self)

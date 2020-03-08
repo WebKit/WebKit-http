@@ -28,12 +28,17 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "DataReference.h"
 #include "TextTrackPrivateRemoteConfiguration.h"
 #include "TrackPrivateRemoteIdentifier.h"
 #include <WebCore/InbandTextTrackPrivate.h>
 
+namespace IPC {
+class DataReference;
+}
+
 namespace WebCore {
-class GenericCueData;
+class InbandGenericCue;
 class ISOWebVTTCue;
 }
 
@@ -44,6 +49,7 @@ class MediaPlayerPrivateRemote;
 class TextTrackPrivateRemote final : public WebCore::InbandTextTrackPrivate {
     WTF_MAKE_NONCOPYABLE(TextTrackPrivateRemote)
 public:
+
     static Ref<TextTrackPrivateRemote> create(MediaPlayerPrivateRemote& player, TrackPrivateRemoteIdentifier idendifier, TextTrackPrivateRemoteConfiguration&& configuration)
     {
         return adoptRef(*new TextTrackPrivateRemote(player, idendifier, WTFMove(configuration)));
@@ -51,19 +57,22 @@ public:
 
     void addDataCue(MediaTime&& start, MediaTime&& end, IPC::DataReference&&);
 
+    using SerializedPlatformDataCueValue = WebCore::SerializedPlatformDataCueValue;
 #if ENABLE(DATACUE_VALUE)
     void addDataCueWithType(MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&&, String&&);
     void updateDataCue(MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&&);
     void removeDataCue(MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&&);
 #endif
 
-    void addGenericCue(WebCore::GenericCueData&);
-    void updateGenericCue(WebCore::GenericCueData&);
-    void removeGenericCue(WebCore::GenericCueData&);
+    using InbandGenericCue = WebCore::InbandGenericCue;
+    void addGenericCue(Ref<InbandGenericCue>);
+    void updateGenericCue(Ref<InbandGenericCue>);
+    void removeGenericCue(Ref<InbandGenericCue>);
 
+    using ISOWebVTTCue = WebCore::ISOWebVTTCue;
     void parseWebVTTFileHeader(String&&);
     void parseWebVTTCueData(const IPC::DataReference&);
-    void parseWebVTTCueDataStruct(WebCore::ISOWebVTTCue&&);
+    void parseWebVTTCueDataStruct(ISOWebVTTCue&&);
 
     void updateConfiguration(TextTrackPrivateRemoteConfiguration&&);
 

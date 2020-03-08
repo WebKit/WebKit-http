@@ -1,3 +1,750 @@
+2020-03-05  Paulo Matos  <pmatos@igalia.com>
+
+        [JSCOnly] 32-bits warning on memset of JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=204411
+
+        Reviewed by Mark Lam.
+
+        Fixes warning on 32bit builds. This is required because GCC knows
+        it is not safe to use memset on non-POD types and warns against its use.
+
+        * heap/GCMemoryOperations.h:
+        (JSC::gcSafeZeroMemory):
+
+2020-03-04  Mark Lam  <mark.lam@apple.com>
+
+        Handle an out of memory error while constructing the BytecodeGenerator.
+        https://bugs.webkit.org/show_bug.cgi?id=208622
+        <rdar://problem/59341136>
+
+        Reviewed by Saam Barati.
+
+        Added the ability to handle out of memory errors encountered during the
+        construction of the BytecodeGenerator.  Currently, we only use this for the
+        case where we fail to instantiate a ScopedArgumentsTable.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGeneratorBase.h:
+        * runtime/ScopedArgumentsTable.cpp:
+        (JSC::ScopedArgumentsTable::tryCreate):
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/SymbolTable.h:
+
+2020-03-04  Paulo Matos  <pmatos@igalia.com>
+
+        JSC 32bits broken in debug mode by r257399
+        https://bugs.webkit.org/show_bug.cgi?id=208439
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Use uses() method call instead of gpr() on assert to that it
+        works for both 64 and 32 bits.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+
+2020-03-03  Saam Barati  <sbarati@apple.com>
+
+        Refactor FixedVMPoolExecutableAllocator to not have member functions which are really just helper functions
+        https://bugs.webkit.org/show_bug.cgi?id=208537
+
+        Reviewed by Mark Lam.
+
+        There were a few member functions in FixedVMPoolExecutableAllocator that were
+        essentially helper functions. I've factored them out, and made FixedVMPoolExecutableAllocator
+        call them directly. This refactoring is needed when I implement the 1GB
+        executable pool on arm64 since the implementation of that will create split
+        implementations of something like FixedVMPoolExecutableAllocator.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::jitWriteThunkGenerator):
+        (JSC::genericWriteToJITRegion):
+        (JSC::initializeSeparatedWXHeaps):
+        (JSC::initializeJITPageReservation):
+        (JSC::ExecutableAllocator::isValid const):
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::ExecutableAllocator::isValidExecutableMemory):
+        (JSC::ExecutableAllocator::getLock const):
+        (JSC::ExecutableAllocator::committedByteCount):
+        (JSC::ExecutableAllocator::dumpProfile):
+        (JSC::startOfFixedExecutableMemoryPoolImpl):
+        (JSC::endOfFixedExecutableMemoryPoolImpl):
+        (JSC::isJITPC):
+
+2020-03-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Introduce JSRemoteInspectorServerStart API for socket-based RWI.
+        https://bugs.webkit.org/show_bug.cgi?id=208349
+
+        Reviewed by Joseph Pecoraro.
+
+        * API/JSRemoteInspectorServer.cpp: Added.
+        (JSRemoteInspectorServerStart):
+        * API/JSRemoteInspectorServer.h: Added.
+        * CMakeLists.txt:
+
+2020-03-03  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [WinCairo][PlayStation] Add interface to get listening port of RemoteInspectorServer
+        https://bugs.webkit.org/show_bug.cgi?id=208391
+
+        Reviewed by Don Olmstead.
+
+        When passing zero as a port argument, system will pick an available port for it.
+        Without this method, client cannot get which port is listening.
+
+        * inspector/remote/socket/RemoteInspectorServer.cpp:
+        (Inspector::RemoteInspectorServer::start):
+        (Inspector::RemoteInspectorServer::getPort):
+        * inspector/remote/socket/RemoteInspectorServer.h:
+
+2020-03-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] @hasOwnLengthProperty returns wrong value if "length" is attempted to be modified
+        https://bugs.webkit.org/show_bug.cgi?id=208497
+        <rdar://problem/59913544>
+
+        Reviewed by Mark Lam.
+
+        When "length" of JSFunction is attempted to be modified, we put a flag. And @hasOwnLengthProperty
+        does not correctly use this flag to return a value for the fast path. This affects on "length"
+        property of bound functions. For example,
+
+            function userFunction(a) { }
+            userFunction.length = 20; // This field is read-only. So, it is not changed.
+            userFunction.bind().length; // Should be 1, but it returns 0.
+
+        1. We rename m_hasModifiedLength to m_hasModifiedLengthForNonHostFunction and m_hasModifiedName
+           to m_hasModifiedNameForNonHostFunction since we are not tracking these states for host-functions
+           which can eagerly initialize them.
+        2. We rename areNameAndLengthOriginal to canAssumeNameAndLengthAreOriginal to allow it to return
+           "false" for host functions. If it returns true, we go to the fast path.
+        3. Correctly use canAssumeNameAndLengthAreOriginal information in @hasOwnLengthProperty.
+
+        * runtime/FunctionRareData.cpp:
+        (JSC::FunctionRareData::FunctionRareData):
+        * runtime/FunctionRareData.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::canAssumeNameAndLengthAreOriginal):
+        (JSC::JSFunction::areNameAndLengthOriginal): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::hasOwnLengthProperty):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionHasOwnLengthProperty):
+
+2020-03-02  Alan Coon  <alancoon@apple.com>
+
+        Add new Mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=208398
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2020-03-02  Justin Michaud  <justin_michaud@apple.com>
+
+        Delete by val caching does not keep the subscript alive
+        https://bugs.webkit.org/show_bug.cgi?id=208393
+
+        Reviewed by Yusuke Suzuki.
+
+        Before, the provided test case crashed with asan because we did not keep deleteByVal
+        subscripts alive. This patch changes CacheableIdentifier to make this mistake harder
+        to make again, by making the constructor calls more explicit when CacheableIdentifier
+        will not keep an Identifier alive.
+
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID):
+        (JSC::tryCacheDeleteBy):
+        (JSC::repatchDeleteBy):
+        (JSC::tryCacheInByID):
+        (JSC::tryCacheInstanceOf):
+        (JSC::tryCacheDelBy): Deleted.
+        (JSC::repatchDelBy): Deleted.
+        * jit/Repatch.h:
+        * runtime/CacheableIdentifier.h:
+        * runtime/CacheableIdentifierInlines.h:
+        (JSC::CacheableIdentifier::createFromIdentifierOwnedByCodeBlock):
+        (JSC::CacheableIdentifier::createFromCell):
+
+2020-03-02  Paulo Matos  <pmatos@igalia.com>
+
+        Fix JSC 32bit alignment increase gcc warning
+        https://bugs.webkit.org/show_bug.cgi?id=208445
+
+        Reviewed by Yusuke Suzuki.
+
+        Use reinterpret_cast_ptr<>() instead of reinterpret_cast<>() to
+        avoid GCC warning about increase in alignment requirement for cast
+        target type.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::compileExit):
+
+2020-03-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix wrong assertion
+        https://bugs.webkit.org/show_bug.cgi?id=208404
+        <rdar://problem/59956592>
+
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedUniquedStringImplBase::decode const):
+
+2020-03-01  Charles Turner  <cturner@igalia.com>
+
+        undefined reference to `JSC::ExecutableBase::hasJITCodeForCall() const'
+        https://bugs.webkit.org/show_bug.cgi?id=207890
+
+        Reviewed by Yusuke Suzuki.
+
+        Encountered on arm-buildroot-linux-gnueabihf with GCC 9.2.0.
+
+        * runtime/NativeExecutable.cpp: Inclusion of
+        ExecutableBaseInlines.h resolves the issue for me.
+
+2020-02-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Remove std::lock_guard
+        https://bugs.webkit.org/show_bug.cgi?id=206451
+
+        Reviewed by Anders Carlsson.
+
+        * API/JSVirtualMachine.mm:
+        (+[JSVMWrapperCache addWrapper:forJSContextGroupRef:]):
+        (+[JSVMWrapperCache wrapperForJSContextGroupRef:]):
+        * API/glib/JSCVirtualMachine.cpp:
+        (addWrapper):
+        (removeWrapper):
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::analyzeNode):
+        (JSC::HeapSnapshotBuilder::analyzeEdge):
+        (JSC::HeapSnapshotBuilder::analyzePropertyNameEdge):
+        (JSC::HeapSnapshotBuilder::analyzeVariableNameEdge):
+        (JSC::HeapSnapshotBuilder::analyzeIndexEdge):
+        (JSC::HeapSnapshotBuilder::setOpaqueRootReachabilityReasonForCell):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::JSRunLoopTimer::timerDidFire):
+
+2020-02-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] BuiltinNames' HashMap should be small
+        https://bugs.webkit.org/show_bug.cgi?id=208404
+
+        Reviewed by Mark Lam.
+
+        This patch converts public-to-private-name-map from HashMap<RefPtr<UniquedStringImpl>, SymbolImpl*> to HashSet<String> to save half of memory.
+        The key is that private names have the same string content to the public names. We can just query with string content to the HashSet of
+        private names, and we can get private names.
+
+        The problem is that we also have a hack inserting string <-> non-private well-known Symbol mappings into this table. These symbols do not have
+        the same content to the public string. So the above assumption is broken.
+
+        To make the above assumption valid, we have a separate small HashMap which holds string <-> non-private well-known Symbol mappings. Since # of
+        well-known Symbols are only 13, this new HashMap is taking at most 512B for entries, which is much smaller compared to the saved memory by
+        converting HashMap to HashSet for private names (32KB).
+
+        To allow it, we introduce new well-known Symbol identifier syntax to builtin JS, which is "@@iterator" format. If there is two "@", we parse this
+        identifier as a well-known Symbol.
+
+        * builtins/ArrayConstructor.js:
+        (from.wrapper.iterator):
+        (from):
+        (from.wrapper.iteratorSymbol): Deleted.
+        * builtins/ArrayPrototype.js:
+        (globalPrivate.concatSlowPath):
+        (concat):
+        * builtins/BuiltinNames.cpp:
+        (JSC::BuiltinNames::BuiltinNames):
+        (JSC::CharBufferSeacher::hash):
+        (JSC::CharBufferSeacher::equal):
+        (JSC::lookUpPrivateNameImpl):
+        (JSC::lookUpWellKnownSymbolImpl):
+        (JSC::BuiltinNames::lookUpPrivateName const):
+        (JSC::BuiltinNames::lookUpWellKnownSymbol const):
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::lookUpPrivateName const):
+        (JSC::BuiltinNames::lookUpWellKnownSymbol const):
+        (JSC::BuiltinNames::checkPublicToPrivateMapConsistency):
+        (JSC::BuiltinNames::appendExternalName):
+        (JSC::BuiltinNames::getPublicName const): Deleted.
+        * builtins/GlobalOperations.js:
+        (globalPrivate.speciesConstructor):
+        * builtins/IteratorHelpers.js:
+        (performIteration):
+        * builtins/StringPrototype.js:
+        (match):
+        (matchAll):
+        (intrinsic.StringPrototypeReplaceIntrinsic.replace):
+        (replaceAll):
+        (search):
+        (split):
+        * builtins/TypedArrayConstructor.js:
+        (from.wrapper.iterator):
+        (from):
+        (from.wrapper.iteratorSymbol): Deleted.
+        * builtins/TypedArrayPrototype.js:
+        (globalPrivate.typedArraySpeciesConstructor):
+        (map):
+        (filter):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_getByIdDirectPrivate):
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_putByIdDirectPrivate):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedUniquedStringImplBase::encode):
+        (JSC::CachedUniquedStringImplBase::decode const):
+        * runtime/CommonIdentifiers.cpp:
+        (JSC::CommonIdentifiers::CommonIdentifiers):
+        (JSC::CommonIdentifiers::lookUpPrivateName const): Deleted.
+        (JSC::CommonIdentifiers::getPublicName const): Deleted.
+        * runtime/CommonIdentifiers.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGetPrivateProperty):
+
+2020-02-28  Saam Barati  <sbarati@apple.com>
+
+        Clean up code with how we choose Gigacage sizes and whether or not to use Wasm fast memory
+        https://bugs.webkit.org/show_bug.cgi?id=208392
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/OptionsList.h:
+
+2020-02-27  Saam Barati  <sbarati@apple.com>
+
+        Fix debug arm64 Wasm tests
+        https://bugs.webkit.org/show_bug.cgi?id=208362
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::emitChecksForModOrDiv):
+
+        We were assuming that "-1" is a valid imm on arm64, but it's not, we need
+        to use big imm.
+
+2020-02-27  Justin Michaud  <justin_michaud@apple.com>
+
+        Poly proto should work with property delete transitions
+        https://bugs.webkit.org/show_bug.cgi?id=208261
+
+        Reviewed by Saam Barati.
+
+        This patch fixes a bug where the combination of inline caching
+        and poly proto cause us to cache a setter call along a prototype chain that 
+        is no longer the correct setter to call. This is exposed as a result of
+        https://bugs.webkit.org/show_bug.cgi?id=206430 since DefineOwnProperty used 
+        to transition to uncacheable dictionary.
+
+        The case looks like this:
+        A - setter for x redefines x
+        |
+        B
+        |
+        C
+
+        We set (new C).x
+
+        Right now, we first call A's setter, then we try to figure out what the state of things
+        were before it was called in order to cache it. We just assume that A's setter still exists, and we cache it
+        without ever checking, In this patch, we ensure that the property exists and the attributes match in order to prevent crashing. 
+
+        In the code, A = target, C = base.
+
+        Get is correct because it collects caching information before any calls.
+
+        The bug https://bugs.webkit.org/show_bug.cgi?id=208337 tracks the remaining semantic bugs around this code.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID):
+
+2020-02-27  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [WinCairo] Fix RemoteInspector reconnect issue
+        https://bugs.webkit.org/show_bug.cgi?id=208256
+
+        Reviewed by Devin Rousso.
+
+        Call target's disconnection sequence asynchronously to avoid deadlock.
+
+        * inspector/remote/RemoteConnectionToTarget.cpp:
+        (Inspector::RemoteConnectionToTarget::close):
+        * inspector/remote/socket/RemoteInspectorSocketEndpoint.cpp:
+        (Inspector::RemoteInspectorSocketEndpoint::workerThread):
+
+2020-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Enhance JSObjectGetProperty() to mitigate against null object pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=208275
+        <rdar://problem/59826325>
+
+        Reviewed by Robin Morisset.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectGetProperty):
+
+2020-02-26  Saam Barati  <sbarati@apple.com>
+
+        Make testair pass on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=208258
+
+        Reviewed by Tadeu Zagallo.
+
+        testElideMoveThenRealloc and testElideSimpleMove were never tested
+        on arm64. This patch makes those tests work. 
+        - testElideMoveThenRealloc was using a BitImm that is invalid on arm64
+        - testElideSimpleMove was testing for the wrong disassembly
+
+        * b3/air/testair.cpp:
+
+2020-02-26  Don Olmstead  <don.olmstead@sony.com>
+
+        Allow setting of stack sizes for threads
+        https://bugs.webkit.org/show_bug.cgi?id=208223
+
+        Reviewed by Yusuke Suzuki.
+
+        Specify ThreadType at the Thread::create callsite.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::notifyIsSafeToCollect):
+
+2020-02-26  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC][MIPS] Adding support to Checkpoints
+        https://bugs.webkit.org/show_bug.cgi?id=208196
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is adding changes to properly support OSR to
+        checkpoints on MIPS. It required fixes on JIT probe and some
+        adjustment on Offlineasm to correct generate `$gp` load when executing 
+        `checkpoint_osr_exit_from_inlined_call_trampoline`.
+
+        * assembler/MacroAssemblerMIPS.cpp:
+
+        Probe trampoline needs to allocate 16 bytes for 4 arguments to
+        properly follow C calling conventions. This space is used by callee
+        when the JSC is compiled with `-O0` flags
+        (Check "DEFAULT C CALLING CONVENTION (O32)" section on
+        https://www.mips.com/downloads/mips32-instruction-set-quick-reference-v1-01).
+
+        * llint/LowLevelInterpreter.asm:
+
+        As we need to do on ARMv7, 64-bits arguments needs to be passed in
+        register pairs `$a1:$a0` or `$a3:$a2` (little-endian mode). Since `$a0`
+        contais `CallFrame*`, we need to pass `EncodedJSValue` on `$a3:$a2`
+        pair.
+
+        * offlineasm/mips.rb:
+
+        Following the same reason for return locations on OSR to LLInt, we
+        need to adjust `$gp` using `$ra` instead of `$t9` on
+        `checkpoint_osr_exit_from_inlined_call_trampoline`, given it is only
+        reachable through `ret` operations. For detailed explanation, check
+        ChangeLog of https://trac.webkit.org/changeset/252713.
+
+2020-02-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: safari app extension isolated worlds and injected files use the extension's identifier instead of its name
+        https://bugs.webkit.org/show_bug.cgi?id=206911
+        <rdar://problem/58026635>
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Browser.json: Added.
+        Add a `Browser` agent that can communicate with the inspected page's containing browser. It
+        lives in the UIProcess alongside the `Target` agent (meaning there should only be one per
+        debuggable rather than one per target) and as such is not routed through the `Target` agent.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources.make:
+
+2020-02-25  Justin Michaud  <justin_michaud@apple.com>
+
+        Inline Cache delete by id/val
+        https://bugs.webkit.org/show_bug.cgi?id=207522
+
+        Reviewed by Keith Miller and Filip Pizlo.
+
+        We add inline caching for deleteById/val for baseline only. We also fix a concurrency bug in ICStats used for testing.
+        We add three new access cases (no inline code is emitted at this time): 
+        - Delete is a cached delete of an existing property
+        - DeleteMiss is a delete of a property that does not exist
+        - DeleteNonConfigurable is a delete of a property that exists, but should not be deleted.
+        There are no conditions required for these caches, since the structure id must change and the prototype does not matter.
+        This gives the following microbenchmark results:
+
+        delete-property-keeps-cacheable-structure (neutral)
+        delete-property-inline-cache              definitely 3.9096x faster
+        delete-property-inline-cache-polymorphic  definitely 1.5239x faster
+        delete-property-from-prototype-chain      (neutral)
+
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::deleteProperty):
+        (JSC::JSCallbackObject<Parent>::deletePropertyByIndex):
+        * API/JSObjectRef.cpp:
+        (JSObjectDeletePropertyForKey):
+        (JSObjectDeleteProperty):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::createTransition):
+        (JSC::AccessCase::createDelete):
+        (JSC::AccessCase::requiresIdentifierNameMatch const):
+        (JSC::AccessCase::requiresInt32PropertyCheck const):
+        (JSC::AccessCase::needsScratchFPR const):
+        (JSC::AccessCase::forEachDependentCell const):
+        (JSC::AccessCase::doesCalls const):
+        (JSC::AccessCase::canReplace const):
+        (JSC::AccessCase::dump const):
+        (JSC::AccessCase::propagateTransitions const):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        (JSC::AccessCase::structure const):
+        (JSC::AccessCase::newStructure const):
+        * bytecode/PolymorphicAccess.cpp:
+        (WTF::printInternal):
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::reset):
+        * bytecode/StructureStubInfo.h:
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::deleteProperty):
+        * debugger/DebuggerScope.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addDelById):
+        (JSC::DFG::JITCompiler::addDelByVal):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileDeleteById): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileDeleteByVal): Deleted.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileDeleteById):
+        (JSC::DFG::SpeculativeJIT::compileDeleteByVal):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileDeleteById):
+        (JSC::DFG::SpeculativeJIT::compileDeleteByVal):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileDelBy):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDeleteById):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDeleteByVal):
+        * jit/ICStats.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileSlowCases):
+        (JSC::JIT::link):
+        * jit/JIT.h:
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITDelByValGenerator::JITDelByValGenerator):
+        (JSC::JITDelByValGenerator::generateFastPath):
+        (JSC::JITDelByValGenerator::finalize):
+        (JSC::JITDelByIdGenerator::JITDelByIdGenerator):
+        (JSC::JITDelByIdGenerator::generateFastPath):
+        (JSC::JITDelByIdGenerator::finalize):
+        * jit/JITInlineCacheGenerator.h:
+        (JSC::JITDelByValGenerator::JITDelByValGenerator):
+        (JSC::JITDelByValGenerator::slowPathJump const):
+        (JSC::JITDelByIdGenerator::JITDelByIdGenerator):
+        (JSC::JITDelByIdGenerator::slowPathJump const):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_del_by_id):
+        (JSC::JIT::emitSlow_op_del_by_id):
+        (JSC::JIT::emit_op_del_by_val):
+        (JSC::JIT::emitSlow_op_del_by_val):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_del_by_id):
+        (JSC::JIT::emit_op_del_by_val):
+        (JSC::JIT::emitSlow_op_del_by_val):
+        (JSC::JIT::emitSlow_op_del_by_id):
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID):
+        (JSC::tryCacheDelBy):
+        (JSC::repatchDelBy):
+        (JSC::resetPutByID):
+        (JSC::resetDelBy):
+        * jit/Repatch.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/CacheableIdentifierInlines.h:
+        (JSC::CacheableIdentifier::CacheableIdentifier):
+        * runtime/ClassInfo.h:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::deleteProperty):
+        * runtime/ClonedArguments.h:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/DeletePropertySlot.h: Added.
+        (JSC::DeletePropertySlot::DeletePropertySlot):
+        (JSC::DeletePropertySlot::setConfigurableMiss):
+        (JSC::DeletePropertySlot::setNonconfigurable):
+        (JSC::DeletePropertySlot::setHit):
+        (JSC::DeletePropertySlot::isCacheableDelete const):
+        (JSC::DeletePropertySlot::isDeleteHit const):
+        (JSC::DeletePropertySlot::isConfigurableDeleteMiss const):
+        (JSC::DeletePropertySlot::isNonconfigurable const):
+        (JSC::DeletePropertySlot::cachedOffset const):
+        (JSC::DeletePropertySlot::disableCaching):
+        (JSC::DeletePropertySlot::isCacheable const):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::deleteProperty):
+        * runtime/ErrorConstructor.h:
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::deleteProperty):
+        * runtime/ErrorInstance.h:
+        * runtime/GenericArguments.h:
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::put):
+        (JSC::GenericArguments<Type>::deleteProperty):
+        * runtime/GetterSetter.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::deleteProperty):
+        * runtime/JSArray.h:
+        * runtime/JSCJSValue.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::deleteProperty):
+        * runtime/JSCell.h:
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::deleteProperty):
+        * runtime/JSDataView.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::deleteProperty):
+        * runtime/JSFunction.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::deleteProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deletePropertyByIndex):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::addFunction):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::deleteProperty):
+        * runtime/JSLexicalEnvironment.h:
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::deleteProperty):
+        * runtime/JSModuleEnvironment.h:
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::deleteProperty):
+        * runtime/JSModuleNamespaceObject.h:
+        * runtime/JSONObject.cpp:
+        (JSC::Walker::walk):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::deletePropertyByIndex):
+        (JSC::validateAndApplyPropertyDescriptor):
+        * runtime/JSObject.h:
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::deleteProperty):
+        * runtime/JSProxy.h:
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::deleteProperty):
+        * runtime/JSSymbolTableObject.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::deleteProperty):
+        * runtime/ProxyObject.h:
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::deleteProperty):
+        * runtime/RegExpObject.h:
+        * runtime/StrictEvalActivation.cpp:
+        (JSC::StrictEvalActivation::deleteProperty):
+        * runtime/StrictEvalActivation.h:
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::deleteProperty):
+        * runtime/StringObject.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::removePropertyTransition):
+        (JSC::Structure::removePropertyTransitionFromExistingStructureImpl):
+        (JSC::Structure::removePropertyTransitionFromExistingStructure):
+        (JSC::Structure::removePropertyTransitionFromExistingStructureConcurrently):
+        (JSC::Structure::removeNewPropertyTransition):
+        (JSC::Structure::dump const):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::hasIndexingHeader const):
+        (JSC::Structure::mayHaveIndexingHeader const):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionHasOwnLengthProperty):
+        (JSC::JSDollarVM::finishCreation):
+
+2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Attach WARN_UNUSED_RETURN to makeScopeExit and fix existing wrong usage
+        https://bugs.webkit.org/show_bug.cgi?id=208162
+
+        Reviewed by Robin Morisset.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+
+2020-02-24  Keith Miller  <keith_miller@apple.com>
+
+        LLInt should fast path for jtrue/false on Symbols and Objects
+        https://bugs.webkit.org/show_bug.cgi?id=208151
+
+        Reviewed by Yusuke Suzuki.
+
+        64-bit interpreter can fast path the case where an object or symbol
+        is passed to a jtrue or jfalse opcode. This is because these values
+        are always truthy.
+
+        Also, fix some weird indentation in LowLevelInterpreter.asm.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSType.h:
+
+2020-02-24  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] 32-bits debug build broken after r257212
+        https://bugs.webkit.org/show_bug.cgi?id=208149
+
+        Reviewed by Yusuke Suzuki.
+
+        Changing `Structure::setCachedPrototypeChain` to use
+        `m_cachedPrototypeChainOrRareData.setMayBeNull`, since `chain` may be
+        null.
+
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setCachedPrototypeChain):
+
+2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix watchOS build
+        https://bugs.webkit.org/show_bug.cgi?id=207827
+
+        While watchOS does not use FTL at all, it still compiles.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileObjectKeys):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreatePromise):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateInternalFieldObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckSubClass):
+        (JSC::FTL::DFG::LowerDFGToB3::loadStructureClassInfo):
+        (JSC::FTL::DFG::LowerDFGToB3::loadStructureCachedPrototypeChainOrRareData):
+
 2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
 
         Unreviewed, build fix for 32bit pointer architectures

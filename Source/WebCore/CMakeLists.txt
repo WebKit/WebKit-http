@@ -18,10 +18,6 @@ list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
     "Sources.txt"
 )
 
-set(WebCore_INCLUDE_DIRECTORIES
-    "${PAL_FRAMEWORK_HEADERS_DIR}"
-)
-
 set(WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WebCore_DERIVED_SOURCES_DIR}"
@@ -1218,8 +1214,9 @@ set(WebCore_PLUG_INS_RESOURCES
 
 set(WebCore_LIBRARIES
     LibXml2::LibXml2
-    PAL
     SQLite::SQLite3
+    WebKit::JavaScriptCore
+    WebKit::PAL
     ZLIB::ZLIB
 )
 
@@ -1229,6 +1226,7 @@ endif ()
 
 set(WebCoreTestSupport_LIBRARIES
     WebKit::JavaScriptCore
+    WebKit::PAL
 )
 if (NOT WTF_OS_WINDOWS)
     list(APPEND WebCoreTestSupport_LIBRARIES WebCore)
@@ -2010,6 +2008,7 @@ endif ()
 
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})
 add_dependencies(WebCoreTestSupport WebCore WebCoreTestSupportBindings)
+target_compile_definitions(WebCoreTestSupport PRIVATE "BUILDING_WebCoreTestSupport")
 target_include_directories(WebCoreTestSupport PUBLIC ${WebCoreTestSupport_INCLUDE_DIRECTORIES} ${WebCore_INCLUDE_DIRECTORIES})
 target_include_directories(WebCoreTestSupport PRIVATE ${WebCoreTestSupport_PRIVATE_INCLUDE_DIRECTORIES} ${WebCore_PRIVATE_INCLUDE_DIRECTORIES})
 target_include_directories(WebCoreTestSupport SYSTEM PUBLIC ${WebCoreTestSupport_SYSTEM_INCLUDE_DIRECTORIES} ${WebCore_SYSTEM_INCLUDE_DIRECTORIES})

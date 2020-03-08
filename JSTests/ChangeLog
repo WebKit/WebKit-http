@@ -1,3 +1,158 @@
+2020-03-04  Mark Lam  <mark.lam@apple.com>
+
+        Handle an out of memory error while constructing the BytecodeGenerator.
+        https://bugs.webkit.org/show_bug.cgi?id=208622
+        <rdar://problem/59341136>
+
+        Reviewed by Saam Barati.
+
+        * stress/out-of-memory-while-constructing-BytecodeGenerator.js: Added.
+
+2020-03-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] @hasOwnLengthProperty returns wrong value if "length" is attempted to be modified
+        https://bugs.webkit.org/show_bug.cgi?id=208497
+        <rdar://problem/59913544>
+
+        Reviewed by Mark Lam.
+
+        * stress/function-length-update.js: Added.
+        (shouldBe):
+        (userFunction):
+        (userFunction2):
+
+2020-03-02  Saam Barati  <sbarati@apple.com>
+
+        Don't skip tests unnecessarily on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=208470
+        <rdar://problem/59968869>
+
+        Reviewed by Tadeu Zagallo.
+
+        * microbenchmarks/bit-test-constant.js:
+        * microbenchmarks/bit-test-nonconstant.js:
+        * microbenchmarks/memcpy-typed-loop-large.js:
+        * microbenchmarks/memcpy-typed-loop-small.js:
+        * microbenchmarks/mul-immediate-sub.js:
+        * stress/dont-range-based-iterate-vector-that-is-mutated.js:
+        * stress/dont-reserve-huge-capacity-lexer.js:
+        * stress/new-largeish-contiguous-array-with-size.js:
+        * stress/sampling-profiler-richards.js:
+        * typeProfiler/deltablue-for-of.js:
+        * typeProfiler/getter-richards.js:
+        * wasm/regress/llint-callee-saves-with-fast-memory.js:
+
+2020-03-02  Justin Michaud  <justin_michaud@apple.com>
+
+        Delete by val caching does not keep the subscript alive
+        https://bugs.webkit.org/show_bug.cgi?id=208393
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/delete-property-ic-stress.js: Added.
+
+2020-02-27  Justin Michaud  <justin_michaud@apple.com>
+
+        Poly proto should work with property delete transitions
+        https://bugs.webkit.org/show_bug.cgi?id=208261
+
+        Reviewed by Saam Barati.
+
+        * stress/delete-property-poly-proto.js: Added.
+        (A.prototype.set x):
+        (A):
+        (B):
+
+2020-02-27  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Update test262 (2020.02.26)
+        https://bugs.webkit.org/show_bug.cgi?id=208280
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/config.yaml:
+        * test262/expectations.yaml:
+        * test262/harness/async-gc.js:
+        * test262/latest-changes-summary.txt:
+        * test262/test/:
+        * test262/test262-Revision.txt:
+
+2020-02-26  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC][MIPS] Adding support to Checkpoints
+        https://bugs.webkit.org/show_bug.cgi?id=208196
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/memcpy-typed-loop.js:
+
+2020-02-25  Justin Michaud  <justin_michaud@apple.com>
+
+        Inline Cache delete by id/val
+        https://bugs.webkit.org/show_bug.cgi?id=207522
+
+        Reviewed by Keith Miller and Filip Pizlo. 
+
+        * microbenchmarks/delete-property-from-prototype-chain.js:
+        (delete.C.prototype.z):
+        * microbenchmarks/delete-property-inline-cache-polymorphic.js: Added.
+        (C):
+        (noInline.C.foo):
+        (noInline.foo.F):
+        (noInline.F):
+        * microbenchmarks/delete-property-inline-cache.js: Added.
+        (C):
+        (noInline.C.D):
+        (noInline.D.foo):
+        (noInline.foo.E):
+        (noInline.E.F):
+        (noInline.F):
+        * microbenchmarks/delete-property-keeps-cacheable-structure.js:
+        * stress/delete-property-check-structure-transition.js:
+        (sd): Deleted.
+        (testDeleteIsNotUncacheable): Deleted.
+        (): Deleted.
+        (testCanFlatten): Deleted.
+        (testDeleteWithInlineCache.Object.prototype.globalProperty.42.makeFoo): Deleted.
+        (testDeleteWithInlineCache.noInline.doTest): Deleted.
+        (testDeleteWithInlineCache): Deleted.
+        * stress/delete-property-inline-cache.js: Added.
+        (assert):
+        (assert_eq):
+        (assert_neq):
+        (assert_throws):
+        (noInline.assert.noInline.assert_eq.noInline.assert_neq.noInline.assert_throws.testCacheableDeleteById.makeFoo):
+        (noInline.assert.noInline.assert_eq.noInline.assert_neq.noInline.assert_throws.testCacheableDeleteById):
+        (noInline.testCacheableDeleteById.testCacheableDeleteByVal.makeFoo2):
+        (noInline.testCacheableDeleteById.testCacheableDeleteByVal):
+        (noInline.testCacheableDeleteByVal.testCacheableEmptyDeleteById.makeFoo3):
+        (noInline.testCacheableDeleteByVal.testCacheableEmptyDeleteById):
+        (noInline.testCacheableEmptyDeleteById.testCacheableDeleteByIdMiss.makeFoo4):
+        (noInline.testCacheableEmptyDeleteById.testCacheableDeleteByIdMiss):
+        (noInline.testCacheableDeleteByIdMiss.testDeleteIndex.makeFoo5):
+        (noInline.testCacheableDeleteByIdMiss.testDeleteIndex):
+        (noInline.testDeleteIndex.testPolymorphicDelByVal.makeFoo6):
+        (noInline.testDeleteIndex.testPolymorphicDelByVal):
+        (noInline.testPolymorphicDelByVal.testBigintDeleteByVal.makeFoo7):
+        (noInline.testPolymorphicDelByVal.testBigintDeleteByVal):
+        (noInline.testBigintDeleteByVal.testSymbolDeleteByVal.makeFoo8):
+        (noInline.testBigintDeleteByVal.testSymbolDeleteByVal):
+        (noInline.testSymbolDeleteByVal.testObjDeleteByVal.makeFoo9):
+        (noInline.testSymbolDeleteByVal.testObjDeleteByVal):
+        (noInline.testObjDeleteByVal.testStrict.makeFoo10):
+        (noInline.testObjDeleteByVal.testStrict):
+        (noInline.testStrict.testOverride.arr.j):
+        (noInline.testStrict.testOverride):
+        (noInline.testOverride.testNonObject.deleteIt):
+        (noInline.testOverride.testNonObject):
+        (noInline.testNonObject.testNonObjectStrict.deleteIt):
+        (noInline.testNonObject.testNonObjectStrict):
+        (noInline.testNonObjectStrict.testExceptionUnwind.mutateThem):
+        (noInline.testNonObjectStrict.testExceptionUnwind.noInline.deleteIt):
+        (noInline.testNonObjectStrict.testExceptionUnwind):
+        (noInline.testExceptionUnwind.testTDZ):
+        (noInline.testTDZ):
+
 2020-02-19  Ross Kirsling  <ross.kirsling@sony.com>
 
         Computed Properties with increment sometimes produces incorrect results

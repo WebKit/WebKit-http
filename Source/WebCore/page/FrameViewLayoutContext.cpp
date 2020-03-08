@@ -99,6 +99,11 @@ void FrameViewLayoutContext::invalidateLayoutTreeContent()
 {
     m_layoutTreeContent = nullptr;
 }
+
+void FrameViewLayoutContext::invalidateLayoutState()
+{
+    m_layoutState = nullptr;
+}
 #endif
 
 static bool isObjectAncestorContainerOf(RenderElement& ancestor, RenderElement& descendant)
@@ -203,7 +208,6 @@ void FrameViewLayoutContext::layout()
     WeakPtr<RenderElement> layoutRoot;
     
     m_layoutTimer.stop();
-    m_delayedLayout = false;
     m_setNeedsLayoutWasDeferred = false;
 
 #if !LOG_DISABLED
@@ -330,7 +334,6 @@ void FrameViewLayoutContext::reset()
     clearSubtreeLayoutRoot();
     m_layoutCount = 0;
     m_layoutSchedulingIsEnabled = true;
-    m_delayedLayout = false;
     m_layoutTimer.stop();
     m_firstLayout = true;
     m_asynchronousTasksTimer.stop();
@@ -395,21 +398,15 @@ void FrameViewLayoutContext::scheduleLayout()
     if (frame().ownerRenderer() && view().isInChildFrameWithFrameFlattening())
         frame().ownerRenderer()->setNeedsLayout(MarkContainingBlockChain);
 
-    Seconds delay = frame().document()->minimumLayoutDelay();
-    if (m_layoutTimer.isActive() && m_delayedLayout && !delay)
-        unscheduleLayout();
-
     if (m_layoutTimer.isActive())
         return;
 
-    m_delayedLayout = delay.value();
-
 #if !LOG_DISABLED
     if (!frame().document()->ownerElement())
-        LOG(Layout, "FrameView %p scheduling layout for %.3fs", this, delay.value());
+        LOG(Layout, "FrameView %p layout timer scheduled at %.3fs", this, frame().document()->timeSinceDocumentCreation().value());
 #endif
 
-    m_layoutTimer.startOneShot(delay);
+    m_layoutTimer.startOneShot(0_s);
 }
 
 void FrameViewLayoutContext::unscheduleLayout()
@@ -426,7 +423,6 @@ void FrameViewLayoutContext::unscheduleLayout()
 #endif
 
     m_layoutTimer.stop();
-    m_delayedLayout = false;
 }
 
 void FrameViewLayoutContext::scheduleSubtreeLayout(RenderElement& layoutRoot)
@@ -444,12 +440,10 @@ void FrameViewLayoutContext::scheduleSubtreeLayout(RenderElement& layoutRoot)
     }
 
     if (!isLayoutPending() && isLayoutSchedulingEnabled()) {
-        Seconds delay = renderView.document().minimumLayoutDelay();
         ASSERT(!layoutRoot.container() || is<RenderView>(layoutRoot.container()) || !layoutRoot.container()->needsLayout());
         setSubtreeLayoutRoot(layoutRoot);
         InspectorInstrumentation::didInvalidateLayout(frame());
-        m_delayedLayout = delay.value();
-        m_layoutTimer.startOneShot(delay);
+        m_layoutTimer.startOneShot(0_s);
         return;
     }
 

@@ -47,8 +47,6 @@
 #include "AudioTrack.h"
 #include "CaptionUserPreferences.h"
 #include "TextTrack.h"
-#include "TextTrackCue.h"
-#include "VTTCue.h"
 #include "VideoTrack.h"
 #endif
 
@@ -181,6 +179,7 @@ public:
     void setPreparedToReturnVideoLayerToInline(bool);
     void waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler = [] { });
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    RetainPtr<PlatformLayer> createVideoFullscreenLayer();
     WEBCORE_EXPORT void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
 #ifdef __OBJC__
     PlatformLayer* videoFullscreenLayer() const { return m_videoFullscreenLayer.get(); }
@@ -593,6 +592,10 @@ public:
     void applicationWillResignActive();
     void applicationDidBecomeActive();
 
+    uint64_t mediaSessionUniqueIdentifier() const;
+    String mediaSessionTitle() const;
+    String sourceApplicationIdentifier() const;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual void finishInitialization();
@@ -682,7 +685,7 @@ private:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String& keyId) const final;
-    bool mediaPlayerKeyNeeded(Uint8Array*) final;
+    void mediaPlayerKeyNeeded(Uint8Array*) final;
     String mediaPlayerMediaKeysStorageDirectory() const final;
 #endif
 
@@ -695,6 +698,10 @@ private:
 
     // CDMClient
     void cdmClientAttemptToResumePlaybackIfNecessary() final;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
+    void updateShouldContinueAfterNeedKey();
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -719,8 +726,6 @@ private:
     bool mediaPlayerIsVideo() const override;
     LayoutRect mediaPlayerContentBoxRect() const override;
     float mediaPlayerContentsScale() const override;
-    void mediaPlayerPause() override;
-    void mediaPlayerPlay() override;
     bool mediaPlayerPlatformVolumeConfigurationRequired() const override;
     bool mediaPlayerIsLooping() const override;
     CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
@@ -734,7 +739,6 @@ private:
 
     void mediaPlayerActiveSourceBuffersChanged() override;
 
-    String sourceApplicationIdentifier() const override;
     String mediaPlayerSourceApplicationIdentifier() const override { return sourceApplicationIdentifier(); }
     Vector<String> mediaPlayerPreferredAudioCharacteristics() const override;
 
@@ -881,10 +885,6 @@ private:
     void suspendPlayback() override;
     void resumeAutoplaying() override;
     void mayResumePlayback(bool shouldResume) override;
-    uint64_t mediaSessionUniqueIdentifier() const final;
-    String mediaSessionTitle() const override;
-    double mediaSessionDuration() const override { return duration(); }
-    double mediaSessionCurrentTime() const override { return currentTime(); }
     bool canReceiveRemoteControlCommands() const override { return true; }
     void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override;
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
@@ -1168,6 +1168,7 @@ private:
     MediaProvider m_mediaProvider;
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    bool m_hasNeedkeyListener { false };
     RefPtr<WebKitMediaKeys> m_webKitMediaKeys;
 #endif
 

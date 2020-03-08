@@ -28,6 +28,7 @@
 
 #if ENABLE(GEOLOCATION)
 
+#include "FrameInfoData.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebFrame.h"
 #include "WebPage.h"
@@ -71,9 +72,7 @@ void GeolocationPermissionRequestManager::startRequestForGeolocation(Geolocation
     WebFrame* webFrame = WebFrame::fromCoreFrame(*frame);
     ASSERT(webFrame);
 
-    SecurityOrigin& origin = frame->document()->securityOrigin();
-
-    m_page.send(Messages::WebPageProxy::RequestGeolocationPermissionForFrame(geolocationID, webFrame->frameID(), origin.data().databaseIdentifier()));
+    m_page.send(Messages::WebPageProxy::RequestGeolocationPermissionForFrame(geolocationID, webFrame->info()));
 }
 
 void GeolocationPermissionRequestManager::revokeAuthorizationToken(const String& authorizationToken)

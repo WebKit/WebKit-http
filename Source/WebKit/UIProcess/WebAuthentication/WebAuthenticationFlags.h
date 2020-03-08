@@ -45,7 +45,15 @@ enum class WebAuthenticationStatus : uint8_t {
     NoCredentialsFound,
     PinBlocked,
     PinAuthBlocked,
-    PinInvalid
+    PinInvalid,
+    LAError,
+    LAExcludeCredentialsMatched,
+    LANoCredential,
+};
+
+enum class LocalAuthenticatorPolicy : bool {
+    Allow,
+    Disallow
 };
 
 } // namespace WebKit

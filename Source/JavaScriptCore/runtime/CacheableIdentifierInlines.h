@@ -35,6 +35,16 @@
 
 namespace JSC {
 
+inline CacheableIdentifier CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(const Identifier& i)
+{
+    return CacheableIdentifier(i);
+}
+
+inline CacheableIdentifier CacheableIdentifier::createFromCell(JSCell* i)
+{
+    return CacheableIdentifier(i);
+}
+
 inline CacheableIdentifier::CacheableIdentifier(const Identifier& identifier)
 {
     setUidBits(identifier.impl());
@@ -42,6 +52,7 @@ inline CacheableIdentifier::CacheableIdentifier(const Identifier& identifier)
 
 inline CacheableIdentifier::CacheableIdentifier(JSCell* identifier)
 {
+    ASSERT(isCacheableIdentifierCell(identifier));
     setCellBits(identifier);
 }
 

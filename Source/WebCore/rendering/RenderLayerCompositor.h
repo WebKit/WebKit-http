@@ -179,7 +179,7 @@ public:
 
     // GraphicsLayers buffer state, which gets pushed to the underlying platform layers
     // at specific times.
-    void scheduleLayerFlush(bool canThrottle = false);
+    void scheduleRenderingUpdate();
     void flushPendingLayerChanges(bool isFlushRoot = true);
 
     // Called when the GraphicsLayer for the given RenderLayer has flushed changes inside of flushPendingLayerChanges().
@@ -365,9 +365,6 @@ public:
     bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
 
     OptionSet<CompositingReason> reasonsForCompositing(const RenderLayer&) const;
-
-    void setLayerFlushThrottlingEnabled(bool);
-    void disableLayerFlushThrottlingTemporarilyForInteraction();
     
     void didPaintBacking(RenderLayerBacking*);
 
@@ -533,7 +530,6 @@ private:
     FixedPositionViewportConstraints computeFixedViewportConstraints(RenderLayer&) const;
     StickyPositionViewportConstraints computeStickyViewportConstraints(RenderLayer&) const;
 
-    LayoutRect rootParentRelativeScrollableRect() const;
     LayoutRect parentRelativeScrollableRect(const RenderLayer&, const RenderLayer* ancestorLayer) const;
 
     // Returns list of layers and their clip rects required to clip the given layer, which include clips in the
@@ -556,11 +552,6 @@ private:
     bool isAsyncScrollableStickyLayer(const RenderLayer&, const RenderLayer** enclosingAcceleratedOverflowLayer = nullptr) const;
 
     bool shouldCompositeOverflowControls() const;
-
-    bool isThrottlingLayerFlushes() const;
-    void startInitialLayerFlushTimerIfNeeded();
-    void startLayerFlushTimerIfNeeded();
-    void layerFlushTimerFired();
 
 #if !LOG_DISABLED
     const char* logReasonsForCompositing(const RenderLayer&);
@@ -624,11 +615,6 @@ private:
 
     std::unique_ptr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
 
-    Timer m_layerFlushTimer;
-
-    bool m_layerFlushThrottlingEnabled { false };
-    bool m_layerFlushThrottlingTemporarilyDisabledForInteraction { false };
-    bool m_hasPendingLayerFlush { false };
     bool m_viewBackgroundIsTransparent { false };
 
 #if !LOG_DISABLED
@@ -642,7 +628,7 @@ private:
     Color m_viewBackgroundColor;
     Color m_rootExtendedBackgroundColor;
 
-    HashMap<ScrollingNodeID, RenderLayer*> m_scrollingNodeToLayerMap;
+    HashMap<ScrollingNodeID, WeakPtr<RenderLayer>> m_scrollingNodeToLayerMap;
 #if PLATFORM(IOS_FAMILY)
     std::unique_ptr<LegacyWebKitScrollingLayerCoordinator> m_legacyScrollingLayerCoordinator;
 #endif

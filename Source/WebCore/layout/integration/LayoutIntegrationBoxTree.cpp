@@ -28,6 +28,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "LayoutInlineTextBox.h"
 #include "LayoutLineBreakBox.h"
 #include "RenderBlockFlow.h"
 #include "RenderChildIterator.h"
@@ -65,6 +66,7 @@ void BoxTree::buildTree(const RenderBlockFlow& flow)
             auto clonedStyle = RenderStyle::clone(childRenderer.style());
             clonedStyle.setDisplay(DisplayType::Inline);
             clonedStyle.setFloating(Float::No);
+            clonedStyle.setPosition(PositionType::Static);
             childBox = makeUnique<Layout::LineBreakBox>(downcast<RenderLineBreak>(childRenderer).isWBR(), WTFMove(clonedStyle));
         }
         ASSERT(childBox);

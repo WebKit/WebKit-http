@@ -122,16 +122,25 @@ using namespace WebKit;
 
 static void encodeSharedBuffer(Encoder& encoder, const SharedBuffer* buffer)
 {
-    SharedMemory::Handle handle;
     uint64_t bufferSize = buffer ? buffer->size() : 0;
     encoder << bufferSize;
     if (!bufferSize)
         return;
 
+#if USE(UNIX_DOMAIN_SOCKETS)
+    // Do not use shared memory for SharedBuffer encoding in Unix, because it's easy to reach the
+    // maximum number of file descriptors open per process when sending large data in small chunks
+    // over the IPC. ConnectionUnix.cpp already uses shared memory to send any IPC message that is
+    // too large. See https://bugs.webkit.org/show_bug.cgi?id=208571.
+    for (const auto& element : *buffer)
+        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(element.segment->data()), element.segment->size(), 1);
+#else
+    SharedMemory::Handle handle;
     auto sharedMemoryBuffer = SharedMemory::allocate(buffer->size());
     memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
     sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
     encoder << handle;
+#endif
 }
 
 static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
@@ -143,12 +152,21 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
     if (!bufferSize)
         return true;
 
+#if USE(UNIX_DOMAIN_SOCKETS)
+    Vector<uint8_t> data;
+    data.grow(bufferSize);
+    if (!decoder.decodeFixedLengthData(data.data(), data.size(), 1))
+        return false;
+
+    buffer = SharedBuffer::create(WTFMove(data));
+#else
     SharedMemory::Handle handle;
     if (!decoder.decode(handle))
         return false;
 
     auto sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
+#endif
 
     return true;
 }
@@ -2130,6 +2148,7 @@ void ArgumentCoder<UserStyleSheet>::encode(Encoder& encoder, const UserStyleShee
     encoder << userStyleSheet.blacklist();
     encoder.encodeEnum(userStyleSheet.injectedFrames());
     encoder.encodeEnum(userStyleSheet.level());
+    encoder << userStyleSheet.pageID();
 }
 
 bool ArgumentCoder<UserStyleSheet>::decode(Decoder& decoder, UserStyleSheet& userStyleSheet)
@@ -2158,7 +2177,12 @@ bool ArgumentCoder<UserStyleSheet>::decode(Decoder& decoder, UserStyleSheet& use
     if (!decoder.decodeEnum(level))
         return false;
 
-    userStyleSheet = UserStyleSheet(source, url, WTFMove(whitelist), WTFMove(blacklist), injectedFrames, level);
+    Optional<Optional<PageIdentifier>> pageID;
+    decoder >> pageID;
+    if (!pageID)
+        return false;
+
+    userStyleSheet = UserStyleSheet(source, url, WTFMove(whitelist), WTFMove(blacklist), injectedFrames, level, WTFMove(*pageID));
     return true;
 }
 
@@ -3202,5 +3226,74 @@ Optional<SerializedPlatformDataCueValue> ArgumentCoder<WebCore::SerializedPlatfo
     return {{ }};
 }
 #endif
+
+void ArgumentCoder<RefPtr<WebCore::SharedBuffer>>::encode(Encoder& encoder, const RefPtr<WebCore::SharedBuffer>& buffer)
+{
+    encodeSharedBuffer(encoder, buffer.get());
+}
+
+Optional<RefPtr<SharedBuffer>> ArgumentCoder<RefPtr<WebCore::SharedBuffer>>::decode(Decoder& decoder)
+{
+    RefPtr<SharedBuffer> buffer;
+    if (!decodeSharedBuffer(decoder, buffer))
+        return WTF::nullopt;
+
+    return buffer;
+}
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void ArgumentCoder<WebCore::CDMInstanceSession::Message>::encode(Encoder& encoder, const WebCore::CDMInstanceSession::Message& message)
+{
+    encoder << message.first;
+
+    RefPtr<SharedBuffer> messageData = message.second.copyRef();
+    encoder << messageData;
+}
+
+Optional<WebCore::CDMInstanceSession::Message>  ArgumentCoder<WebCore::CDMInstanceSession::Message>::decode(Decoder& decoder)
+{
+    WebCore::CDMInstanceSession::MessageType type;
+    if (!decoder.decode(type))
+        return WTF::nullopt;
+
+    RefPtr<SharedBuffer> buffer;
+    if (!decoder.decode(buffer) || !buffer)
+        return WTF::nullopt;
+
+    return makeOptional<WebCore::CDMInstanceSession::Message>({ type, buffer.releaseNonNull() });
+}
+
+void ArgumentCoder<WebCore::CDMInstanceSession::KeyStatusVector>::encode(Encoder& encoder, const WebCore::CDMInstanceSession::KeyStatusVector& keyStatuses)
+{
+    encoder << static_cast<uint64_t>(keyStatuses.size());
+    for (auto& keyStatus : keyStatuses) {
+        RefPtr<SharedBuffer> key = keyStatus.first.copyRef();
+        encoder << key << keyStatus.second;
+    }
+}
+
+Optional<WebCore::CDMInstanceSession::KeyStatusVector> ArgumentCoder<WebCore::CDMInstanceSession::KeyStatusVector>::decode(Decoder& decoder)
+{
+    uint64_t dataSize;
+    if (!decoder.decode(dataSize))
+        return WTF::nullopt;
+
+    WebCore::CDMInstanceSession::KeyStatusVector keyStatuses;
+    keyStatuses.reserveInitialCapacity(dataSize);
+
+    for (uint64_t i = 0; i < dataSize; ++i) {
+        RefPtr<SharedBuffer> key;
+        if (!decoder.decode(key) || !key)
+            return WTF::nullopt;
+
+        WebCore::CDMInstanceSessionClient::KeyStatus status;
+        if (!decoder.decode(status))
+            return WTF::nullopt;
+
+        keyStatuses.uncheckedAppend({ key.releaseNonNull(), status });
+    }
+    return keyStatuses;
+}
+#endif // ENABLE(ENCRYPTED_MEDIA)
 
 } // namespace IPC

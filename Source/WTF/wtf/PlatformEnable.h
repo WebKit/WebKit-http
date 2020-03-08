@@ -541,6 +541,10 @@
 #define ENABLE_DATA_DETECTION 0
 #endif
 
+#if !defined(ENABLE_GPU_PROCESS_FOR_WEBRTC)
+#define ENABLE_GPU_PROCESS_FOR_WEBRTC 0
+#endif
+
 /*
  * Enable this to put each IsoHeap and other allocation categories into their own malloc heaps, so that tools like vmmap can show how big each heap is.
  * Turn BENABLE_MALLOC_HEAP_BREAKDOWN on in bmalloc together when using this.
@@ -822,6 +826,14 @@
 #define ENABLE_KINETIC_SCROLLING 1
 #endif
 
+#if !defined(ENABLE_SCROLLING_THREAD)
+#if USE(NICOSIA)
+#define ENABLE_SCROLLING_THREAD 1
+#else
+#define ENABLE_SCROLLING_THREAD 0
+#endif
+#endif
+
 /* This feature works by embedding the OpcodeID in the 32 bit just before the generated LLint code
    that executes each opcode. It cannot be supported by the CLoop since there's no way to embed the
    OpcodeID word in the CLoop's switch statement cases. It is also currently not implemented for MSVC.
@@ -859,3 +871,5 @@
 #if ENABLE(WEBGL2) && !ENABLE(WEBGL)
 #error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
 #endif
+
+#define ENABLE_CFPREFS_DIRECT_MODE 0

@@ -511,6 +511,7 @@ public:
     ExceptionOr<void> setCompositingPolicyOverride(Optional<CompositingPolicy>);
     ExceptionOr<Optional<CompositingPolicy>> compositingPolicyOverride() const;
 
+    void updateLayoutAndStyleForAllFrames();
     ExceptionOr<void> updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node*);
     unsigned layoutCount() const;
 
@@ -851,7 +852,7 @@ public:
             : name(cookie.name)
             , value(cookie.value)
             , domain(cookie.domain)
-            , expires(cookie.expires)
+            , expires(cookie.expires.valueOr(0))
             , isHttpOnly(cookie.httpOnly)
             , isSecure(cookie.secure)
             , isSession(cookie.session)
@@ -937,6 +938,8 @@ public:
     String encodedPreferenceValue(const String& domain, const String& key);
 
     String mediaMIMETypeForExtension(const String& extension);
+
+    String getUTIFromMIMEType(const String& mimeType);
 
     bool supportsPictureInPicture();
 

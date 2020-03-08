@@ -1,3 +1,408 @@
+2020-03-05  Jer Noble  <jer.noble@apple.com>
+
+        [GPUP] Implement RemoteAudioSession
+        https://bugs.webkit.org/show_bug.cgi?id=208583
+
+        Reviewed by Alex Christensen.
+
+        Add UniqueRef to the list of forward-declared template types.
+
+        * wtf/Forward.h:
+
+2020-03-04  Mark Lam  <mark.lam@apple.com>
+
+        Handle an out of memory error while constructing the BytecodeGenerator.
+        https://bugs.webkit.org/show_bug.cgi?id=208622
+        <rdar://problem/59341136>
+
+        Reviewed by Saam Barati.
+
+        * wtf/CagedUniquePtr.h:
+        (WTF::CagedUniquePtr::tryCreate):
+
+2020-03-04  Brady Eidson  <beidson@apple.com>
+
+        Lay initial groundwork for new PDF loading model
+        https://bugs.webkit.org/show_bug.cgi?id=208599
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformHave.h:
+
+2020-03-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add system trace points around display list replay
+        https://bugs.webkit.org/show_bug.cgi?id=208616
+
+        Reviewed by Simon Fraser.
+
+        Add DisplayListReplayStart and DisplayListReplayEnd.
+
+        * wtf/SystemTracing.h:
+
+2020-03-04  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Add enable flag to disable direct mode for preferences
+        https://bugs.webkit.org/show_bug.cgi?id=208588
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/PlatformEnable.h:
+
+2020-03-03  Megan Gardner  <megan_gardner@apple.com>
+
+        Build Fix
+        https://bugs.webkit.org/show_bug.cgi?id=208530
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/PlatformHave.h:
+
+2020-03-03  Jiten Mehta  <jmehta@apple.com>
+
+        Adopt HTTP Alternative Services Storage
+        https://bugs.webkit.org/show_bug.cgi?id=208387
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformHave.h:
+
+2020-03-03  youenn fablet  <youenn@apple.com>
+
+        Rename USE(GPU_PROCESS) to ENABLE(GPU_PROCESS_FOR_WEBRTC)
+        https://bugs.webkit.org/show_bug.cgi?id=208505
+
+        Reviewed by Eric Carlson.
+
+        Rename macro since the name is misleading.
+        Disable GPU_PROCESS_FOR_WEBRTC for iOS except simulator for now.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+        * wtf/PlatformUse.h:
+
+2020-03-02  Ben Nham  <nham@apple.com>
+
+        Add performance probes for HTML parsing
+        https://bugs.webkit.org/show_bug.cgi?id=208271
+
+        Reviewed by Daniel Bates.
+
+        This adds probes that show which lines of HTML are have been parsed.
+
+        * wtf/SystemTracing.h:
+
+2020-03-02  Ben Nham  <nham@apple.com>
+
+        [WTF] Add signpost API
+        https://bugs.webkit.org/show_bug.cgi?id=208395
+
+        Reviewed by Alex Christensen.
+
+        We want to start using os_signpost instead of kdebug_trace when emitting performance events,
+        because it is usually cheaper (doesn't require a system call unless the log buffer is full)
+        and allows for richer tracepoints (allows for logging strings as well as integers).
+
+        To facilitate this, this moves the os_signpost wrappers in NetworkDataTaskCocoa to
+        WTF. Since signposts can contain sensitive strings (like URLs), currently we only enable
+        them on Apple-internal devices when an environment variable is set.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/SystemTracing.h:
+        * wtf/cocoa/SystemTracingCocoa.cpp: Added.
+        (WTFSignpostsEnabled):
+        (WTFSignpostLogHandle):
+        * wtf/spi/darwin/OSVariantSPI.h: Renamed from Source/WebCore/PAL/pal/spi/cocoa/OSVariantSPI.h.
+
+2020-03-02  Alan Coon  <alancoon@apple.com>
+
+        Add new Mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=208398
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2020-03-02  Megan Gardner  <megan_gardner@apple.com>
+
+        Add date/time style to macCatalyst
+        https://bugs.webkit.org/show_bug.cgi?id=208456
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/PlatformHave.h:
+
+2020-03-02  Paulo Matos  <pmatos@igalia.com>
+
+        Fix JSC 32bit alignment increase gcc warning
+        https://bugs.webkit.org/show_bug.cgi?id=208445
+
+        Reviewed by Yusuke Suzuki.
+
+        Use reinterpret_cast_ptr<>() instead of reinterpret_cast<>() to
+        avoid GCC warning about increase in alignment requirement for cast
+        target type.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::tableSize const):
+        (WTF::HashTable::setTableSize const):
+        (WTF::HashTable::tableSizeMask const):
+        (WTF::HashTable::setTableSizeMask):
+        (WTF::HashTable::keyCount const):
+        (WTF::HashTable::setKeyCount const):
+        (WTF::HashTable::deletedCount const):
+        (WTF::HashTable::setDeletedCount const):
+        (WTF::KeyTraits>::allocateTable):
+        (WTF::KeyTraits>::deallocateTable):
+
+2020-03-02  youenn fablet  <youenn@apple.com>
+
+        Enable capture in GPUProcess by default for recent platforms only
+        https://bugs.webkit.org/show_bug.cgi?id=208437
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformUse.h:
+        Introduce USE(GPU_PROCESS)
+
+2020-02-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Remove std::lock_guard
+        https://bugs.webkit.org/show_bug.cgi?id=206451
+
+        Reviewed by Anders Carlsson.
+
+        Remove use of std::lock_guard. This is deprecated in C++17.
+
+        1. For particularly low-level usage (like, bmalloc, std::mutex), use std::scoped_lock.
+        2. For the other purpose, use holdLock.
+
+        * benchmarks/ConditionSpeedTest.cpp:
+        * wtf/CryptographicallyRandomNumber.cpp:
+        * wtf/HashTable.cpp:
+        (WTF::HashTableStats::recordCollisionAtCount):
+        (WTF::HashTableStats::dumpStats):
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::invalidateIterators):
+        (WTF::addIterator):
+        (WTF::removeIterator):
+        * wtf/Language.cpp:
+        (WTF::userPreferredLanguages):
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        (WTF::callOnMainAndWait):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        (WTF::StackStats::LayoutCheckPoint::~LayoutCheckPoint):
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::unlockSlow):
+        * wtf/cf/LanguageCF.cpp:
+        (WTF::languagePreferencesDidChange):
+        (WTF::platformUserPreferredLanguages):
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::invalidate):
+        (WTF::StringView::adoptUnderlyingString):
+        (WTF::StringView::setUnderlyingString):
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::Collator::Collator):
+        (WTF::Collator::~Collator):
+        * wtf/win/LanguageWin.cpp:
+        (WTF::platformLanguage):
+
+2020-02-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] BuiltinNames' HashMap should be small
+        https://bugs.webkit.org/show_bug.cgi?id=208404
+
+        Reviewed by Mark Lam.
+
+        * wtf/text/AtomStringImpl.cpp:
+        (WTF::HashTranslatorCharBuffer::HashTranslatorCharBuffer): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::HashTranslatorCharBuffer::HashTranslatorCharBuffer):
+
+2020-02-27  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [WinCairo] Fix RemoteInspector reconnect issue
+        https://bugs.webkit.org/show_bug.cgi?id=208256
+
+        Reviewed by Devin Rousso.
+
+        Added wakeupCallback to RunLoop. In case of RunLook::iterate, we need to wake up worker thread
+        when RunLoop is waking up.
+
+        * wtf/RunLoop.h:
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::setWakeUpCallback):
+        (WTF::RunLoop::wakeUp):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::setWakeUpCallback):
+        (WTF::RunLoop::wakeUp):
+
+2020-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Add ENABLE(SCROLLING_THREAD) and use it to turn off some code we don't need for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=208282
+
+        Reviewed by Tim Horton.
+        
+        Define ENABLE_SCROLLING_THREAD PLATFORM(MAC) and USE(NICOSIA).
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-02-26  Don Olmstead  <don.olmstead@sony.com>
+
+        Allow setting of stack sizes for threads
+        https://bugs.webkit.org/show_bug.cgi?id=208223
+
+        Reviewed by Yusuke Suzuki.
+
+        Introduce ThreadType which is used internally to specify a stack size for a particular
+        type of thread. Platforms can make their own decisions on what the stack size should be
+        based on their own observations. Additionally a default stack size can be specified
+        by defining DEFAULT_THREAD_STACK_SIZE_IN_KB if the default stack for a platform is
+        insufficient in all cases, or when investigating the stack size for tuning.
+
+        Both the pthread and Windows thread implementations are modified to set the stack size
+        if provided.
+
+        * wtf/Threading.cpp:
+        (WTF::stackSize):
+        (WTF::Thread::create):
+        * wtf/Threading.h:
+        * wtf/posix/ThreadingPOSIX.cpp:
+        (WTF::Thread::establishHandle):
+        * wtf/win/ThreadingWin.cpp:
+        (WTF::Thread::establishHandle):
+
+2020-02-26  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] Implement NetworkCache::Data by using FileSystem::MappedFileData
+        https://bugs.webkit.org/show_bug.cgi?id=197684
+        <rdar://problem/59467397>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/FileSystem.cpp:
+        * wtf/FileSystem.h:
+        Added FileAccessPermission flag when opening files.
+        Remove default argument for the listDirectory filter since the defaut
+        String() filter doesn't match all files on Mac and Windows.
+
+        Added FileOpenMode::ReadWrite to be used with ReadWrite MappedFileData.
+        Added failIfFileExists flag to openFile.
+
+        * wtf/glib/FileSystemGlib.cpp:
+        * wtf/posix/FileSystemPOSIX.cpp:
+        Added (S_IRUSR | S_IWUSR) file open modes.
+
+        * wtf/win/FileSystemWin.cpp:
+        Implement getVolumeFreeSpace since some of the tests use it when toggling cache.
+        
+        * wtf/win/PathWalker.cpp:
+
+2020-02-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: safari app extension isolated worlds and injected files use the extension's identifier instead of its name
+        https://bugs.webkit.org/show_bug.cgi?id=206911
+        <rdar://problem/58026635>
+
+        Reviewed by Brian Burg.
+
+        * wtf/HashSet.h:
+        (WTF::HashSet::reserveInitialCapacity): Added.
+
+2020-02-25  Justin Michaud  <justin_michaud@apple.com>
+
+        Inline Cache delete by id/val
+        https://bugs.webkit.org/show_bug.cgi?id=207522
+
+        Reviewed by Keith Miller and Filip Pizlo.
+
+        * wtf/Spectrum.h:
+        (WTF::Spectrum::add):
+        (WTF::Spectrum::get const):
+        (WTF::Spectrum::buildList const):
+        (WTF::Spectrum::clear):
+        (WTF::Spectrum::removeIf):
+        (WTF::Spectrum::begin): Deleted.
+        (WTF::Spectrum::end): Deleted.
+
+2020-02-25  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE] Enable BACKTRACE_SYMBOLS
+        https://bugs.webkit.org/show_bug.cgi?id=208187
+
+        Reviewed by Žan Doberšek.
+
+        * wtf/PlatformHave.h: Enable backtrace_symbols, to be combined
+        with dladdr() the stacktrace dumps will be improved.
+
+2020-02-25  Saam Barati  <sbarati@apple.com>
+
+        Update stale comment about PackedAlignedPtr
+        https://bugs.webkit.org/show_bug.cgi?id=208176
+
+        Reviewed by Yusuke Suzuki.
+
+        The comment was stale since cells aren't guaranteed anymore to be
+        aligned on 16 byte boundaries because of the GCs precise allocations.
+
+        * wtf/Packed.h:
+
+2020-02-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Stop using gtk foreign drawing API to style form controls
+        https://bugs.webkit.org/show_bug.cgi?id=208129
+
+        Reviewed by Adrian Perez de Castro.
+
+        Enable USE_NEW_THEME for the GTK port.
+
+        * wtf/PlatformUse.h:
+
+2020-02-25  Philippe Normand  <pnormand@igalia.com>
+
+        [Linux] StackTrace symbols are not demangled
+        https://bugs.webkit.org/show_bug.cgi?id=207933
+
+        Reviewed by Yusuke Suzuki.
+
+        Demangle symbols provided by backtrace_symbols.
+
+        * wtf/StackTrace.cpp:
+        (WTF::StackTrace::dump const):
+
+2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Add tests for CompactRefPtrTuple
+        https://bugs.webkit.org/show_bug.cgi?id=208172
+
+        Reviewed by Darin Adler.
+
+        Include Noncopyable.h.
+
+        * wtf/CompactRefPtrTuple.h:
+
+2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Attach WARN_UNUSED_RETURN to makeScopeExit and fix existing wrong usage
+        https://bugs.webkit.org/show_bug.cgi?id=208162
+
+        Reviewed by Robin Morisset.
+
+        We should hold ScopeExit to call destructor when we exit from the scope actually.
+        Putting WARN_UNUSED_RETURN to fix existing misuse.
+
+        * wtf/Scope.h:
+
 2020-02-23  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Shrink Structure

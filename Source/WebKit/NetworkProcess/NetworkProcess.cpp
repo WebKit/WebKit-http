@@ -454,8 +454,11 @@ void NetworkProcess::addSessionStorageQuotaManager(PAL::SessionID sessionID, uin
     auto isNewEntry = m_sessionStorageQuotaManagers.ensure(sessionID, [defaultQuota, defaultThirdPartyQuota, &cacheRootPath] {
         return makeUnique<SessionStorageQuotaManager>(cacheRootPath, defaultQuota, defaultThirdPartyQuota);
     }).isNewEntry;
-    if (isNewEntry)
+    if (isNewEntry) {
         SandboxExtension::consumePermanently(cacheRootPathHandle);
+        if (!cacheRootPath.isEmpty())
+            postStorageTask(createCrossThreadTask(*this, &NetworkProcess::ensurePathExists, cacheRootPath));
+    }
 }
 
 void NetworkProcess::removeSessionStorageQuotaManager(PAL::SessionID sessionID)
@@ -1205,6 +1208,18 @@ void NetworkProcess::setResourceLoadStatisticsDebugMode(PAL::SessionID sessionID
     }
 }
 
+void NetworkProcess::isResourceLoadStatisticsEphemeral(PAL::SessionID sessionID, CompletionHandler<void(bool)>&& completionHandler) const
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics()) {
+            completionHandler(resourceLoadStatistics->isEphemeral());
+            return;
+        }
+    } else
+        ASSERT_NOT_REACHED();
+    completionHandler(false);
+}
+
 void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkStorageSession = storageSession(sessionID))
@@ -1466,6 +1481,15 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
             });
         });
     }
+
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    if (websiteDataTypes.contains(WebsiteDataType::AlternativeServices)) {
+        if (auto* session = networkSession(sessionID)) {
+            for (auto& origin : session->hostNamesWithAlternativeServices())
+                callbackAggregator->m_websiteData.entries.append({ origin, WebsiteDataType::AlternativeServices, 0 });
+        }
+    }
+#endif
 }
 
 void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, WallTime modifiedSince, uint64_t callbackID)
@@ -1535,6 +1559,13 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
         if (auto* networkSession = this->networkSession(sessionID))
             networkSession->clearAdClickAttribution();
     }
+
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    if (websiteDataTypes.contains(WebsiteDataType::AlternativeServices)) {
+        if (auto* networkSession = this->networkSession(sessionID))
+            networkSession->clearAlternativeServices(modifiedSince);
+    }
+#endif
 }
 
 static void clearDiskCacheEntries(NetworkCache::Cache* cache, const Vector<SecurityOriginData>& origins, CompletionHandler<void()>&& completionHandler)
@@ -1572,6 +1603,18 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
         if (auto* networkStorageSession = storageSession(sessionID))
             deleteHSTSCacheForHostNames(*networkStorageSession, HSTSCacheHostNames);
+    }
+#endif
+
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    if (websiteDataTypes.contains(WebsiteDataType::AlternativeServices)) {
+        if (auto* networkSession = this->networkSession(sessionID)) {
+            Vector<String> hosts;
+            hosts.reserveInitialCapacity(originDatas.size());
+            for (auto& origin : originDatas)
+                hosts.uncheckedAppend(origin.host);
+            networkSession->deleteAlternativeServicesForHostNames(hosts);
+        }
     }
 #endif
 
@@ -1747,6 +1790,18 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomains(PAL::SessionID sessi
                 callbackAggregator->m_domains.add(RegistrableDomain::uncheckedCreateFromHost(host));
 
             deleteHSTSCacheForHostNames(*networkStorageSession, hostnamesWithHSTSToDelete);
+        }
+    }
+#endif
+
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    if (websiteDataTypes.contains(WebsiteDataType::AlternativeServices)) {
+        if (auto* networkSession = this->networkSession(sessionID)) {
+            Vector<String> registrableDomainsToDelete;
+            registrableDomainsToDelete.reserveInitialCapacity(domains.size());
+            for (auto& domain : domains)
+                registrableDomainsToDelete.uncheckedAppend(domain.first.string());
+            networkSession->deleteAlternativeServicesForHostNames(registrableDomainsToDelete);
         }
     }
 #endif
@@ -2133,8 +2188,10 @@ void NetworkProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandl
     
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     forEachNetworkSession([&callbackAggregator](auto& networkSession) {
-        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics())
-            resourceLoadStatistics->suspend([callbackAggregator] { });
+        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics()) {
+            if (!resourceLoadStatistics->isEphemeral())
+                resourceLoadStatistics->suspend([callbackAggregator] { });
+        }
     });
 #endif
 
@@ -2182,8 +2239,10 @@ void NetworkProcess::resume()
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     forEachNetworkSession([](auto& networkSession) {
-        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics())
-            resourceLoadStatistics->resume();
+        if (auto* resourceLoadStatistics = networkSession.resourceLoadStatistics()) {
+            if (!resourceLoadStatistics->isEphemeral())
+                resourceLoadStatistics->resume();
+        }
     });
 #endif
     

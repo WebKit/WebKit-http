@@ -65,6 +65,7 @@
 #import "WKSelectMenuListViewController.h"
 #import "WKSyntheticFlagsChangedWebEvent.h"
 #import "WKTextInputListViewController.h"
+#import "WKTextSelectionRect.h"
 #import "WKTimePickerViewController.h"
 #import "WKUIDelegatePrivate.h"
 #import "WKWebViewConfiguration.h"
@@ -265,7 +266,7 @@ constexpr double fasterTapSignificantZoomThreshold = 0.8;
     BOOL _isNone;
     BOOL _isRange;
     BOOL _isEditable;
-    NSArray *_selectionRects;
+    NSArray<WKTextSelectionRect *>*_selectionRects;
     NSUInteger _selectedTextLength;
 }
 @property (nonatomic) CGRect startRect;
@@ -274,7 +275,7 @@ constexpr double fasterTapSignificantZoomThreshold = 0.8;
 @property (nonatomic) BOOL isRange;
 @property (nonatomic) BOOL isEditable;
 @property (nonatomic) NSUInteger selectedTextLength;
-@property (copy, nonatomic) NSArray *selectionRects;
+@property (copy, nonatomic) NSArray<WKTextSelectionRect *> *selectionRects;
 
 + (WKTextRange *)textRangeWithState:(BOOL)isNone isRange:(BOOL)isRange isEditable:(BOOL)isEditable startRect:(CGRect)startRect endRect:(CGRect)endRect selectionRects:(NSArray *)selectionRects selectedTextLength:(NSUInteger)selectedTextLength;
 
@@ -290,13 +291,6 @@ constexpr double fasterTapSignificantZoomThreshold = 0.8;
 
 @end
 
-@interface WKTextSelectionRect : UITextSelectionRect
-
-@property (nonatomic, retain) WebSelectionRect *webRect;
-
-+ (NSArray *)textSelectionRectsWithWebRects:(NSArray *)webRects;
-
-@end
 
 @interface WKAutocorrectionRects : UIWKAutocorrectionRects
 + (WKAutocorrectionRects *)autocorrectionRectsWithFirstCGRect:(CGRect)firstRect lastCGRect:(CGRect)lastRect;
@@ -998,7 +992,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self removeGestureRecognizer:_touchActionDownSwipeGestureRecognizer.get()];
 #endif
 
-    _layerTreeTransactionIdAtLastTouchStart = { };
+    _layerTreeTransactionIdAtLastInteractionStart = { };
 
 #if ENABLE(DATA_INTERACTION)
     [existingLocalDragSessionContext(_dragDropInteractionState.dragSession()) cleanUpTemporaryDirectories];
@@ -1343,7 +1337,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
             [strongSelf _resetInputViewDeferral];
         });
 
-        _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
+        _page->activityStateDidChange(WebCore::ActivityState::IsFocused, WebKit::WebPageProxy::ActivityStateChangeDispatchMode::Immediate);
 
         if ([self canShowNonEmptySelectionView])
             [_textInteractionAssistant activateSelection];
@@ -1404,7 +1398,7 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
 
     if (superDidResign) {
         [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
-        _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
+        _page->activityStateDidChange(WebCore::ActivityState::IsFocused, WebKit::WebPageProxy::ActivityStateChangeDispatchMode::Immediate);
 
         if (_keyWebEventHandler) {
             dispatch_async(dispatch_get_main_queue(), [weakHandler = WeakObjCPtr<id>(_keyWebEventHandler.get()), weakSelf = WeakObjCPtr<WKContentView>(self)] {
@@ -1463,7 +1457,7 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
     _lastInteractionLocation = lastTouchEvent->locationInDocumentCoordinates;
     if (lastTouchEvent->type == UIWebTouchEventTouchBegin) {
         [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
-        _layerTreeTransactionIdAtLastTouchStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+        _layerTreeTransactionIdAtLastInteractionStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
 
 #if ENABLE(TOUCH_EVENTS)
         _page->resetPotentialTapSecurityOrigin();
@@ -2300,7 +2294,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if (_textInteractionAssistant) {
         for (WKTextSelectionRect *selectionRect in [_textInteractionAssistant valueForKeyPath:@"selectionView.selection.selectionRects"])
-            [textSelectionRects addObject:[NSValue valueWithCGRect:selectionRect.webRect.rect]];
+            [textSelectionRects addObject:[NSValue valueWithCGRect:selectionRect.rect]];
     }
 
     return textSelectionRects;
@@ -2627,7 +2621,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_doubleTapRecognizedForDoubleClick:(UITapGestureRecognizer *)gestureRecognizer
 {
-    _page->handleDoubleTapForDoubleClickAtPoint(WebCore::IntPoint(gestureRecognizer.location), WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart);
+    _page->handleDoubleTapForDoubleClickAtPoint(WebCore::IntPoint(gestureRecognizer.location), WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastInteractionStart);
 }
 
 - (void)_twoFingerSingleTapGestureRecognized:(UITapGestureRecognizer *)gestureRecognizer
@@ -2794,7 +2788,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         m_commitPotentialTapPointerId = pointerId;
     }
 #endif
-    _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart, pointerId);
+    _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastInteractionStart, pointerId);
 
     if (!_isExpectingFastSingleTapCommit)
         [self _finishInteraction];
@@ -2835,7 +2829,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         [self becomeFirstResponder];
 
     [_inputPeripheral endEditing];
-    _page->handleTap(location, WebKit::webEventModifierFlags(modifierFlags), _layerTreeTransactionIdAtLastTouchStart);
+    _page->handleTap(location, WebKit::webEventModifierFlags(modifierFlags), _layerTreeTransactionIdAtLastInteractionStart);
 }
 
 - (void)setUpTextSelectionAssistant
@@ -4466,6 +4460,16 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
 }
 
+static NSArray<WKTextSelectionRect *> *wkTextSelectionRects(const Vector<WebCore::SelectionRect>& coreRects)
+{
+    auto rects = adoptNS([[NSMutableArray alloc] initWithCapacity:coreRects.size()]);
+    for (auto& coreRect : coreRects) {
+        auto wkTextSelectionRect = adoptNS([[WKTextSelectionRect alloc] initWithSelectionRect:coreRect]);
+        [rects addObject:wkTextSelectionRect.get()];
+    }
+    return rects.autorelease();
+}
+
 - (UITextRange *)selectedTextRange
 {
     if (_page->editorState().selectionIsNone || _page->editorState().isMissingPostLayoutData)
@@ -4503,7 +4507,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
                                 isEditable:_page->editorState().isContentEditable
                                  startRect:startRect
                                    endRect:endRect
-                            selectionRects:[self webSelectionRects]
+                            selectionRects:wkTextSelectionRects(_page->editorState().postLayoutData().selectionRects)
                         selectedTextLength:postLayoutEditorStateData.selectedTextLength];
 }
 
@@ -4514,7 +4518,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (NSArray *)selectionRectsForRange:(UITextRange *)range
 {
-    return [WKTextSelectionRect textSelectionRectsWithWebRects:((WKTextRange *)range).selectionRects];
+    return [(WKTextRange *)range selectionRects];
 }
 
 - (void)setSelectedTextRange:(UITextRange *)range
@@ -8057,8 +8061,12 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
     if (!_page->hasRunningProcess())
         return;
 
-    if (auto event = gestureRecognizer.lastMouseEvent)
+    if (auto event = gestureRecognizer.lastMouseEvent) {
+        if (event->type() == WebKit::WebEvent::MouseDown)
+            _layerTreeTransactionIdAtLastInteractionStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+
         _page->handleMouseEvent(*event);
+    }
 }
 #endif
 
@@ -8965,8 +8973,14 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     _contextMenuElementInfo = nullptr;
 
     [animator addCompletion:[weakSelf = WeakObjCPtr<WKContentView>(self)] () {
-        if (auto strongSelf = weakSelf.get())
-            [std::exchange(strongSelf->_contextMenuHintContainerView, nil) removeFromSuperview];
+        auto strongSelf = weakSelf.get();
+        if (!strongSelf)
+            return;
+        // If a new _contextMenuElementInfo is installed, we've started another interaction,
+        // and removing the hint container view will cause the animation to break.
+        if (strongSelf->_contextMenuElementInfo)
+            return;
+        [std::exchange(strongSelf->_contextMenuHintContainerView, nil) removeFromSuperview];
     }];
 }
 
@@ -9294,7 +9308,8 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 
 #endif // HAVE(LINK_PREVIEW)
 
-// UITextRange, UITextPosition and UITextSelectionRect implementations for WK2
+// UITextRange and UITextPosition implementations for WK2
+// FIXME: Move these out into separate files.
 
 @implementation WKTextRange (UITextInputAdditions)
 
@@ -9406,71 +9421,6 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"<WKTextPosition: %p, {%@}>", self, NSStringFromCGRect(self.positionRect)];
-}
-
-@end
-
-@implementation WKTextSelectionRect
-
-- (id)initWithWebRect:(WebSelectionRect *)wRect
-{
-    self = [super init];
-    if (self)
-        self.webRect = wRect;
-
-    return self;
-}
-
-- (void)dealloc
-{
-    self.webRect = nil;
-    [super dealloc];
-}
-
-// FIXME: we are using this implementation for now
-// that uses WebSelectionRect, but we want to provide our own
-// based on WebCore::SelectionRect.
-
-+ (NSArray *)textSelectionRectsWithWebRects:(NSArray *)webRects
-{
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:webRects.count];
-    for (WebSelectionRect *webRect in webRects) {
-        RetainPtr<WKTextSelectionRect> rect = adoptNS([[WKTextSelectionRect alloc] initWithWebRect:webRect]);
-        [array addObject:rect.get()];
-    }
-    return array;
-}
-
-- (CGRect)rect
-{
-    return _webRect.rect;
-}
-
-ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-- (UITextWritingDirection)writingDirection
-{
-    return (UITextWritingDirection)_webRect.writingDirection;
-}
-ALLOW_DEPRECATED_DECLARATIONS_END
-
-- (UITextRange *)range
-{
-    return nil;
-}
-
-- (BOOL)containsStart
-{
-    return _webRect.containsStart;
-}
-
-- (BOOL)containsEnd
-{
-    return _webRect.containsEnd;
-}
-
-- (BOOL)isVertical
-{
-    return !_webRect.isHorizontal;
 }
 
 @end

@@ -1,3 +1,160 @@
+2020-03-03  Fujii Hironori  <fujii.hironori@gmail.com>
+
+        [Curl] Add TLS debugging feature to log encryption keys
+        https://bugs.webkit.org/show_bug.cgi?id=208192
+        <rdar://problem/59900616>
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        Changed the default ENABLE_TLS_DEBUG to OFF.
+
+2020-02-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r257565.
+
+        It broke WinCairo MiniBrowser
+
+        Reverted changeset:
+
+        "[CMake] Use WEBKIT_EXECUTABLE in MiniBrowser"
+        https://bugs.webkit.org/show_bug.cgi?id=206894
+        https://trac.webkit.org/changeset/257565
+
+2020-02-28  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Add TLS debugging feature to log encryption keys
+        https://bugs.webkit.org/show_bug.cgi?id=208192
+
+        Reviewed by Fujii Hironori.
+
+        This patch enables recording encryption keys on curl port.
+        When you set key log file path to environment variable SSLKEYLOGFILE on curl port, network process writes encryption keys into the path.
+        The key log file follows the NSS key log format and this feature is as same as Chrome and Firefox have.
+
+        See also: https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format
+
+        Test: No tests for this debugging feature. We have to check manually if the log file is generate.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2020-02-28  Keith Miller  <keith_miller@apple.com>
+
+        Fix issue in cmake build for checking ccache
+        https://bugs.webkit.org/show_bug.cgi?id=208377
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        If either of the "readlink" or "which" commands fail when looking for the ccache prefix
+        the output variables will be empty and an invalid expression will be provided to CMake.
+        e.g. we will get something like:
+        if ("0" "EQUAL" "0" "AND" "1" "EQUAL" "0" "AND" "STREQUAL" "/usr/local/bin/ccache")
+
+        The fix is to wrap the output variables in the quotes when unboxing them in the if.
+
+        * Source/cmake/WebKitCCache.cmake:
+
+2020-02-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin build
+        https://bugs.webkit.org/show_bug.cgi?id=208330
+
+        Reviewed by Don Olmstead.
+
+        Set framework headers directory for AppleWin build.
+
+        * Source/cmake/target/TargetJavaScriptCore.cmake:
+        * Source/cmake/target/TargetWTF.cmake:
+
+2020-02-27  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::PAL target
+        https://bugs.webkit.org/show_bug.cgi?id=198493
+
+        Reviewed by Michael Catanzaro.
+
+        Define WebKit::PAL target for Apple internal Windows builds.
+
+        * Source/cmake/target/PAL.cmake: Added.
+
+2020-02-27  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use WEBKIT_EXECUTABLE in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=206894
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add a MiniBrowser derived sources directory.
+
+        * Source/cmake/WebKitFS.cmake:
+
+2020-02-27  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [LFC][Integration] Build and enable for the WPE and GTK ports
+        https://bugs.webkit.org/show_bug.cgi?id=208289
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enable LFC for the WPE and GTK ports.
+
+        * Source/cmake/OptionsGTK.cmake: LFC enabled as experimental feature.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2020-02-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bump GTK version numbers
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2020-02-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add support for rendering slider ticks
+        https://bugs.webkit.org/show_bug.cgi?id=208132
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add a test case for sliders with ticks.
+
+        * ManualTests/gtk/theme.html:
+
+2020-02-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Stop using gtk foreign drawing API to style form controls
+        https://bugs.webkit.org/show_bug.cgi?id=208129
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add a test case for datalist element.
+
+        * ManualTests/gtk/theme.html:
+
+2020-02-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Do not use target/icu.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=208173
+
+        Reviewed by Don Olmstead.
+
+        icu.cmake is removed in r256731. Use find_package + ICU since WebKit offers find_package implementation
+        which can find appropriate system-installed ICU.
+
+        * Source/cmake/OptionsFTW.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsMac.cmake:
+
+2020-02-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin build.
+        https://bugs.webkit.org/show_bug.cgi?id=208164
+
+        Unreviewed build fix.
+
+        Allow a warning which happens when building with older SDKs.
+
+        * Source/cmake/OptionsMSVC.cmake:
+
 2020-02-20  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK][WPE] Not set ccache compiler prefix if ccache its already the compiler binary in path.

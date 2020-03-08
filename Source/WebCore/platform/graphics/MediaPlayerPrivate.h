@@ -62,6 +62,7 @@ public:
     virtual PlatformLayer* platformLayer() const { return nullptr; }
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    virtual RetainPtr<PlatformLayer> createVideoFullscreenLayer() { return nullptr; }
     virtual void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) { completionHandler(); }
     virtual void updateVideoFullscreenInlineImage() { }
     virtual void setVideoFullscreenFrame(FloatRect) { }
@@ -164,15 +165,10 @@ public:
 
     virtual bool hasAvailableVideoFrame() const { return readyState() >= MediaPlayer::ReadyState::HaveCurrentData; }
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    virtual void enterFullscreen() { }
-    virtual void exitFullscreen() { }
-#endif
-
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
     virtual String wirelessPlaybackTargetName() const { return emptyString(); }
-    virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const { return MediaPlayer::TargetTypeNone; }
+    virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const { return MediaPlayer::WirelessPlaybackTargetType::TargetTypeNone; }
 
     virtual bool wirelessVideoPlaybackDisabled() const { return true; }
     virtual void setWirelessVideoPlaybackDisabled(bool) { }
@@ -184,16 +180,11 @@ public:
     virtual void setShouldPlayToPlaybackTarget(bool) { }
 #endif
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    virtual bool canEnterFullscreen() const { return false; }
-#endif
-
     // whether accelerated rendering is supported by the media engine for the current media.
     virtual bool supportsAcceleratedRendering() const { return false; }
     // called when the rendering system flips the into or out of accelerated rendering mode.
     virtual void acceleratedRenderingStateChanged() { }
 
-    virtual bool shouldMaintainAspectRatio() const { return true; }
     virtual void setShouldMaintainAspectRatio(bool) { }
 
     virtual bool hasSingleSecurityOrigin() const { return false; }
@@ -241,6 +232,10 @@ public:
     virtual void cdmInstanceDetached(CDMInstance&) { }
     virtual void attemptToDecryptWithInstance(CDMInstance&) { }
     virtual bool waitingForKey() const { return false; }
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
+    virtual void setShouldContinueAfterKeyNeeded(bool) { }
 #endif
 
 #if ENABLE(VIDEO_TRACK)

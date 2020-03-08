@@ -61,7 +61,13 @@
 #include "QuickLook.h"
 #endif
 
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ALWAYS
+#define PAGE_ID(frame) (frame.pageID().valueOr(PageIdentifier()).toUInt64())
+#define FRAME_ID(frame) (frame.frameID().valueOr(FrameIdentifier()).toUInt64())
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(cachedResourceLoader.isAlwaysOnLoggingAllowed(), Network, "%p - CachedResource::" fmt, this, ##__VA_ARGS__)
+#define RELEASE_LOG_IF_ALLOWED_WITH_FRAME(fmt, frame, ...) RELEASE_LOG_IF(cachedResourceLoader.isAlwaysOnLoggingAllowed(), Network, "%p - [pageID=%" PRIu64 ", frameID=%" PRIu64 "] CachedResource::" fmt, this, PAGE_ID(frame), FRAME_ID(frame), ##__VA_ARGS__)
+#define RELEASE_LOG_ALWAYS(fmt, ...) RELEASE_LOG(Network, "%p - CachedResource::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
 
@@ -226,11 +232,11 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
             // Beacons are allowed to go through in 'pagehide' event handlers.
             if (shouldUsePingLoad(type()))
                 break;
-            RELEASE_LOG_IF_ALLOWED("load: About to enter back/forward cache (frame = %p)", &frame);
+            RELEASE_LOG_IF_ALLOWED_WITH_FRAME("load: About to enter back/forward cache", frame);
             failBeforeStarting();
             return;
         case Document::InBackForwardCache:
-            RELEASE_LOG_IF_ALLOWED("load: Already in back/forward cache (frame = %p)", &frame);
+            RELEASE_LOG_IF_ALLOWED_WITH_FRAME("load: Already in back/forward cache", frame);
             failBeforeStarting();
             return;
         }
@@ -240,11 +246,11 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
     if (m_options.securityCheck == SecurityCheckPolicy::DoSecurityCheck && !shouldUsePingLoad(type())) {
         while (true) {
             if (frameLoader.state() == FrameStateProvisional)
-                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- state is provisional (frame = %p)", &frame);
+                RELEASE_LOG_IF_ALLOWED_WITH_FRAME("load: Failed security check -- state is provisional", frame);
             else if (!frameLoader.activeDocumentLoader())
-                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- not active document (frame = %p)", &frame);
+                RELEASE_LOG_IF_ALLOWED_WITH_FRAME("load: Failed security check -- not active document", frame);
             else if (frameLoader.activeDocumentLoader()->isStopping())
-                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- active loader is stopping (frame = %p)", &frame);
+                RELEASE_LOG_IF_ALLOWED_WITH_FRAME("load: Failed security check -- active loader is stopping", frame);
             else
                 break;
             failBeforeStarting();
@@ -321,10 +327,11 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
         return;
     }
 
-    platformStrategies()->loaderStrategy()->loadResource(frame, *this, WTFMove(request), m_options, [this, protectedThis = CachedResourceHandle<CachedResource>(this), frame = makeRef(frame), loggingAllowed = cachedResourceLoader.isAlwaysOnLoggingAllowed()] (RefPtr<SubresourceLoader>&& loader) {
+    platformStrategies()->loaderStrategy()->loadResource(frame, *this, WTFMove(request), m_options, [this, protectedThis = CachedResourceHandle<CachedResource>(this), frameRef = makeRef(frame), loggingAllowed = cachedResourceLoader.isAlwaysOnLoggingAllowed()] (RefPtr<SubresourceLoader>&& loader) {
         m_loader = WTFMove(loader);
         if (!m_loader) {
-            RELEASE_LOG_IF(loggingAllowed, Network, "%p - CachedResource::load: Unable to create SubresourceLoader (frame = %p)", this, frame.ptr());
+            auto& frame = frameRef.get();
+            RELEASE_LOG_IF(loggingAllowed, Network, "%p - [pageID=%" PRIu64 ", frameID=%" PRIu64 "] CachedResource::load: Unable to create SubresourceLoader", this, PAGE_ID(frame), FRAME_ID(frame));
             failBeforeStarting();
             return;
         }
@@ -485,11 +492,12 @@ Seconds CachedResource::freshnessLifetime(const ResourceResponse& response) cons
 
 void CachedResource::redirectReceived(ResourceRequest&& request, const ResourceResponse& response, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
 {
-    m_requestedFromNetworkingLayer = true;
-    if (response.isNull())
-        return completionHandler(WTFMove(request));
+    RELEASE_LOG_ALWAYS("redirectReceived:");
 
-    updateRedirectChainStatus(m_redirectChainCacheStatus, response);
+    m_requestedFromNetworkingLayer = true;
+    if (!response.isNull())
+        updateRedirectChainStatus(m_redirectChainCacheStatus, response);
+
     completionHandler(WTFMove(request));
 }
 
@@ -952,3 +960,9 @@ void CachedResource::previewResponseReceived(const ResourceResponse& response)
 #endif
 
 }
+
+#undef PAGE_ID
+#undef FRAME_ID
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_IF_ALLOWED_WITH_FRAME
+#undef RELEASE_LOG_ALWAYS

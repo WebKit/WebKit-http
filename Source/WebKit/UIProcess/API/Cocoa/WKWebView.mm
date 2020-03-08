@@ -27,6 +27,7 @@
 #import "WKWebViewInternal.h"
 
 #import "APIFormClient.h"
+#import "APIFrameTreeNode.h"
 #import "APIPageConfiguration.h"
 #import "APISerializedScriptValue.h"
 #import "AttributedString.h"
@@ -37,6 +38,7 @@
 #import "FullscreenClient.h"
 #import "GlobalFindInPageState.h"
 #import "IconLoadingDelegate.h"
+#import "InspectorDelegate.h"
 #import "LegacySessionStateCoding.h"
 #import "Logging.h"
 #import "MediaUtilities.h"
@@ -96,9 +98,11 @@
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKFrameTreeNodeInternal.h"
 #import "_WKFullscreenDelegate.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKInputDelegate.h"
+#import "_WKInspectorDelegate.h"
 #import "_WKInspectorInternal.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
@@ -391,6 +395,7 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 
     _iconLoadingDelegate = makeUnique<WebKit::IconLoadingDelegate>(self);
     _resourceLoadDelegate = makeUnique<WebKit::ResourceLoadDelegate>(self);
+    _inspectorDelegate = makeUnique<WebKit::InspectorDelegate>(self);
 
     [self _setUpSQLiteDatabaseTrackerClient];
 
@@ -830,17 +835,17 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
 - (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
 {
-    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:YES completionHandler:completionHandler inWorld:WKContentWorld.pageWorld];
+    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:YES inFrame:nil inWorld:WKContentWorld.pageWorld completionHandler:completionHandler];
 }
 
 - (void)evaluateJavaScript:(NSString *)javaScriptString inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^)(id, NSError *))completionHandler
 {
-    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:YES completionHandler:completionHandler inWorld:contentWorld];
+    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:YES inFrame:nil inWorld:contentWorld completionHandler:completionHandler];
 }
 
 - (void)callAsyncJavaScript:(NSString *)javaScriptString arguments:(NSDictionary<NSString *, id> *)arguments inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^)(id, NSError *error))completionHandler
 {
-    [self _evaluateJavaScript:javaScriptString asAsyncFunction:YES withArguments:arguments forceUserGesture:YES completionHandler:completionHandler inWorld:contentWorld];
+    [self _evaluateJavaScript:javaScriptString asAsyncFunction:YES withArguments:arguments forceUserGesture:YES inFrame:nil inWorld:contentWorld completionHandler:completionHandler];
 }
 
 static bool validateArgument(id argument)
@@ -877,7 +882,7 @@ static bool validateArgument(id argument)
     return false;
 }
 
-- (void)_evaluateJavaScript:(NSString *)javaScriptString asAsyncFunction:(BOOL)asAsyncFunction withArguments:(NSDictionary<NSString *, id> *)arguments forceUserGesture:(BOOL)forceUserGesture completionHandler:(void (^)(id, NSError *))completionHandler inWorld:(WKContentWorld *)world
+- (void)_evaluateJavaScript:(NSString *)javaScriptString asAsyncFunction:(BOOL)asAsyncFunction withArguments:(NSDictionary<NSString *, id> *)arguments forceUserGesture:(BOOL)forceUserGesture inFrame:(WKFrameInfo *)frame inWorld:(WKContentWorld *)world completionHandler:(void (^)(id, NSError *))completionHandler
 {
     auto handler = adoptNS([completionHandler copy]);
 
@@ -899,7 +904,7 @@ static bool validateArgument(id argument)
         argumentsMap->set(key, *wireBytes);
     }
 
-    if (errorMessage) {
+    if (errorMessage && handler) {
         RetainPtr<NSMutableDictionary> userInfo = adoptNS([[NSMutableDictionary alloc] init]);
 
         [userInfo setObject:localizedDescriptionForErrorCode(WKErrorJavaScriptExceptionOccurred) forKey:NSLocalizedDescriptionKey];
@@ -913,8 +918,12 @@ static bool validateArgument(id argument)
 
         return;
     }
+    
+    Optional<WebCore::FrameIdentifier> frameID;
+    if (frame)
+        frameID = makeObjectIdentifier<WebCore::FrameIdentifierType>(frame._handle.frameID);
 
-    _page->runJavaScriptInMainFrameScriptWorld(WebCore::RunJavaScriptParameters { javaScriptString, !!asAsyncFunction, WTFMove(argumentsMap), !!forceUserGesture }, *world->_contentWorld.get(), [handler](API::SerializedScriptValue* serializedScriptValue, Optional<WebCore::ExceptionDetails> details, WebKit::ScriptValueCallback::Error errorCode) {
+    _page->runJavaScriptInFrameInScriptWorld(WebCore::RunJavaScriptParameters { javaScriptString, !!asAsyncFunction, WTFMove(argumentsMap), !!forceUserGesture }, frameID, *world->_contentWorld.get(), [handler](API::SerializedScriptValue* serializedScriptValue, Optional<WebCore::ExceptionDetails> details, WebKit::ScriptValueCallback::Error errorCode) {
         if (!handler)
             return;
 
@@ -1556,6 +1565,17 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     return nil;
 }
 
+- (id <_WKInspectorDelegate>)_inspectorDelegate
+{
+    return _inspectorDelegate->delegate().autorelease();
+}
+
+- (void)_setInspectorDelegate:(id<_WKInspectorDelegate>)delegate
+{
+    _page->setInspectorClient(_inspectorDelegate->createInspectorClient());
+    _inspectorDelegate->setDelegate(delegate);
+}
+
 - (_WKFrameHandle *)_mainFrame
 {
     if (auto* frame = _page->mainFrame())
@@ -1566,6 +1586,14 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 - (BOOL)_negotiatedLegacyTLS
 {
     return _page->pageLoadState().hasNegotiatedLegacyTLS();
+}
+
+- (void)_frames:(void (^)(_WKFrameTreeNode *))completionHandler
+{
+    _page->getAllFrames([completionHandler = makeBlockPtr(completionHandler), page = makeRef(*_page.get())] (WebKit::FrameTreeNodeData&& data) {
+        _WKFrameTreeNode *node = [[wrapper(API::FrameTreeNode::create(WTFMove(data), page.get())) retain] autorelease];
+        completionHandler(node);
+    });
 }
 
 - (BOOL)_isEditable
@@ -1630,8 +1658,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
         }
     }
 
-    _page->startTextManipulations(exclusionRules, [weakSelf = WeakObjCPtr<WKWebView>(self)] (WebCore::TextManipulationController::ItemIdentifier itemID,
-        const Vector<WebCore::TextManipulationController::ManipulationToken>& tokens) {
+    _page->startTextManipulations(exclusionRules, [weakSelf = WeakObjCPtr<WKWebView>(self)] (const Vector<WebCore::TextManipulationController::ManipulationItem>& itemReferences) {
         if (!weakSelf)
             return;
 
@@ -1640,39 +1667,137 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
         if (!delegate)
             return;
 
-        NSMutableArray *wkTokens = [NSMutableArray arrayWithCapacity:tokens.size()];
-        for (auto& token : tokens) {
-            auto wkToken = adoptNS([[_WKTextManipulationToken alloc] init]);
-            [wkToken setIdentifier:String::number(token.identifier.toUInt64())];
-            [wkToken setContent:token.content];
-            [wkToken setExcluded:token.isExcluded];
-            [wkTokens addObject:wkToken.get()];
+        if (![delegate respondsToSelector:@selector(_webView:didFindTextManipulationItems:)]) {
+            for (auto& item : itemReferences) {
+                NSMutableArray *wkTokens = [NSMutableArray arrayWithCapacity:item.tokens.size()];
+                for (auto& token : item.tokens) {
+                    auto wkToken = adoptNS([[_WKTextManipulationToken alloc] init]);
+                    [wkToken setIdentifier:String::number(token.identifier.toUInt64())];
+                    [wkToken setContent:token.content];
+                    [wkToken setExcluded:token.isExcluded];
+                    [wkTokens addObject:wkToken.get()];
+                }
+                auto wkItem = adoptNS([[_WKTextManipulationItem alloc] initWithIdentifier:String::number(item.identifier.toUInt64()) tokens:wkTokens]);
+                [delegate _webView:retainedSelf.get() didFindTextManipulationItem:wkItem.get()];
+            }
+            return;
         }
 
-        auto item = adoptNS([[_WKTextManipulationItem alloc] initWithIdentifier:String::number(itemID.toUInt64()) tokens:wkTokens]);
-        [delegate _webView:retainedSelf.get() didFindTextManipulationItem:item.get()];
+        NSMutableArray *wkItems = [NSMutableArray arrayWithCapacity:itemReferences.size()];
+        for (auto& item : itemReferences) {
+            NSMutableArray *wkTokens = [NSMutableArray arrayWithCapacity:item.tokens.size()];
+            for (auto& token : item.tokens) {
+                auto wkToken = adoptNS([[_WKTextManipulationToken alloc] init]);
+                [wkToken setIdentifier:String::number(token.identifier.toUInt64())];
+                [wkToken setContent:token.content];
+                [wkToken setExcluded:token.isExcluded];
+                [wkTokens addObject:wkToken.get()];
+            }
+            auto wkItem = adoptNS([[_WKTextManipulationItem alloc] initWithIdentifier:String::number(item.identifier.toUInt64()) tokens:wkTokens]);
+            [wkItems addObject:wkItem.get()];
+        }
+        [delegate _webView:retainedSelf.get() didFindTextManipulationItems:wkItems];
+
     }, [capturedCompletionBlock = makeBlockPtr(completionHandler)] () {
         capturedCompletionBlock();
     });
 }
 
+static WebCore::TextManipulationController::ItemIdentifier coreTextManipulationItemIdentifierFromString(NSString* identifier)
+{
+    return makeObjectIdentifier<WebCore::TextManipulationController::ItemIdentifierType>(String(identifier).toUInt64());
+}
+
+static WebCore::TextManipulationController::TokenIdentifier coreTextManipulationTokenIdentifierFromString(NSString* identifier)
+{
+    return makeObjectIdentifier<WebCore::TextManipulationController::TokenIdentifierType>(String(identifier).toUInt64());
+}
+
 - (void)_completeTextManipulation:(_WKTextManipulationItem *)item completion:(void(^)(BOOL success))completionHandler
 {
-    using ManipulationResult = WebCore::TextManipulationController::ManipulationResult;
-
-    if (!_page)
+    if (!_page) {
+        completionHandler(false);
         return;
-
-    auto itemID = makeObjectIdentifier<WebCore::TextManipulationController::ItemIdentifierType>(String(item.identifier).toUInt64());
-
-    Vector<WebCore::TextManipulationController::ManipulationToken> tokens;
-    for (_WKTextManipulationToken *wkToken in item.tokens) {
-        auto tokenID = makeObjectIdentifier<WebCore::TextManipulationController::TokenIdentifierType>(String(wkToken.identifier).toUInt64());
-        tokens.append(WebCore::TextManipulationController::ManipulationToken { tokenID, wkToken.content });
     }
 
-    _page->completeTextManipulation(itemID, tokens, [capturedCompletionBlock = makeBlockPtr(completionHandler)] (ManipulationResult result) {
-        capturedCompletionBlock(result == ManipulationResult::Success);
+    auto itemID = coreTextManipulationItemIdentifierFromString(item.identifier);
+
+    Vector<WebCore::TextManipulationController::ManipulationToken> tokens;
+    for (_WKTextManipulationToken *wkToken in item.tokens)
+        tokens.append(WebCore::TextManipulationController::ManipulationToken { coreTextManipulationTokenIdentifierFromString(wkToken.identifier), wkToken.content });
+
+    Vector<WebCore::TextManipulationController::ManipulationItem> coreItems;
+    coreItems.reserveInitialCapacity(1);
+    coreItems.uncheckedAppend(WebCore::TextManipulationController::ManipulationItem { itemID, WTFMove(tokens) });
+    _page->completeTextManipulation(coreItems, [capturedCompletionBlock = makeBlockPtr(completionHandler)] (bool allFailed, auto& failures) {
+        capturedCompletionBlock(!allFailed && failures.isEmpty());
+    });
+}
+
+static RetainPtr<NSMutableArray> makeFailureSetForAllTextManipulationItems(NSArray<_WKTextManipulationItem *> *items)
+{
+    RetainPtr<NSMutableArray> wkFailures = adoptNS([[[NSMutableArray alloc] initWithCapacity:items.count] autorelease]);
+    for (_WKTextManipulationItem *item in items)
+        [wkFailures addObject:[NSError errorWithDomain:_WKTextManipulationItemErrorDomain code:_WKTextManipulationItemErrorNotAvailable userInfo:@{_WKTextManipulationItemErrorItemKey: item}]];
+    return wkFailures;
+};
+
+static RetainPtr<NSMutableArray> wkTextManipulationErrors(NSArray<_WKTextManipulationItem *> *items, const Vector<WebCore::TextManipulationController::ManipulationFailure>& failures)
+{
+    using ManipulationFailureType = WebCore::TextManipulationController::ManipulationFailureType;
+
+    if (failures.isEmpty())
+        return RetainPtr<NSMutableArray> { nil };
+
+    RetainPtr<NSMutableArray> wkFailures = adoptNS([[NSMutableArray alloc] initWithCapacity:failures.size()]);
+    for (auto& coreFailure : failures) {
+        ASSERT(coreFailure.index < items.count);
+        if (coreFailure.index >= items.count)
+            continue;
+        auto* item = items[coreFailure.index];
+        ASSERT(coreTextManipulationItemIdentifierFromString(item.identifier) == coreFailure.identifier);
+        auto errorCode = ([&coreFailure]() {
+            switch (coreFailure.type) {
+            case ManipulationFailureType::ContentChanged:
+                return _WKTextManipulationItemErrorContentChanged;
+            case ManipulationFailureType::InvalidItem:
+                return _WKTextManipulationItemErrorInvalidItem;
+            case ManipulationFailureType::InvalidToken:
+                return _WKTextManipulationItemErrorInvalidToken;
+            case ManipulationFailureType::ExclusionViolation:
+                return _WKTextManipulationItemErrorExclusionViolation;
+            }
+        })();
+        [wkFailures addObject:[NSError errorWithDomain:_WKTextManipulationItemErrorDomain code:static_cast<int>(errorCode) userInfo:@{_WKTextManipulationItemErrorItemKey: item}]];
+    }
+
+    return wkFailures;
+}
+
+- (void)_completeTextManipulationForItems:(NSArray<_WKTextManipulationItem *> *)items completion:(void(^)(NSArray<NSError *> *errors))completionHandler
+{
+    if (!_page) {
+        completionHandler(makeFailureSetForAllTextManipulationItems(items).get());
+        return;
+    }
+
+    Vector<WebCore::TextManipulationController::ManipulationItem> coreItems;
+    coreItems.reserveInitialCapacity(items.count);
+    for (_WKTextManipulationItem *wkItem in items) {
+        Vector<WebCore::TextManipulationController::ManipulationToken> coreTokens;
+        coreTokens.reserveInitialCapacity(wkItem.tokens.count);
+        for (_WKTextManipulationToken *wkToken in wkItem.tokens)
+            coreTokens.uncheckedAppend(WebCore::TextManipulationController::ManipulationToken { coreTextManipulationTokenIdentifierFromString(wkToken.identifier), wkToken.content });
+        coreItems.uncheckedAppend(WebCore::TextManipulationController::ManipulationItem { coreTextManipulationItemIdentifierFromString(wkItem.identifier), WTFMove(coreTokens) });
+    }
+
+    RetainPtr<NSArray<_WKTextManipulationItem *>> retainedItems = items;
+    _page->completeTextManipulation(coreItems, [capturedItems = retainedItems, capturedCompletionBlock = makeBlockPtr(completionHandler)](bool allFailed, auto& failures) {
+        if (allFailed) {
+            capturedCompletionBlock(makeFailureSetForAllTextManipulationItems(capturedItems.get()).get());
+            return;
+        }
+        capturedCompletionBlock(wkTextManipulationErrors(capturedItems.get(), failures).get());
     });
 }
 
@@ -2170,7 +2295,17 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
 - (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
 {
-    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:NO completionHandler:completionHandler inWorld:WKContentWorld.pageWorld];
+    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:NO inFrame:nil inWorld:WKContentWorld.pageWorld completionHandler:completionHandler];
+}
+
+- (void)_callAsyncJavaScript:(NSString *)functionBody arguments:(NSDictionary<NSString *, id> *)arguments inFrame:(WKFrameInfo *)frame inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^)(id, NSError *error))completionHandler
+{
+    [self _evaluateJavaScript:functionBody asAsyncFunction:YES withArguments:arguments forceUserGesture:YES inFrame:frame inWorld:contentWorld completionHandler:completionHandler];
+}
+
+- (void)_evaluateJavaScript:(NSString *)javaScriptString inFrame:(WKFrameInfo *)frame inContentWorld:(WKContentWorld *)contentWorld completionHandler:(void (^)(id, NSError *error))completionHandler
+{
+    [self _evaluateJavaScript:javaScriptString asAsyncFunction:NO withArguments:nil forceUserGesture:YES inFrame:frame inWorld:contentWorld completionHandler:completionHandler];
 }
 
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies
@@ -2557,6 +2692,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->recordNavigationSnapshot(item._item);
 }
 
+- (void)_setIsNavigatingToAppBoundDomain:(BOOL)isNavigatingToAppBoundDomain completionHandler:(void (^)(void))completionHandler
+{
+    _page->setIsNavigatingToAppBoundDomainTesting(isNavigatingToAppBoundDomain, [completionHandler = makeBlockPtr(completionHandler)]() {
+        completionHandler();
+    });
+}
+
 - (id <_WKInputDelegate>)_inputDelegate
 {
     return _inputDelegate.getAutoreleased();
@@ -2740,6 +2882,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     _page->setViewportConfigurationViewLayoutSize(_page->viewLayoutSize(), viewScale, _page->minimumEffectiveDeviceWidth());
 #endif
+}
+
+- (void)_getProcessDisplayNameWithCompletionHandler:(void (^)(NSString *))completionHandler
+{
+    _page->getProcessDisplayName([handler = makeBlockPtr(completionHandler)](auto&& name) {
+        handler(name);
+    });
 }
 
 - (void)_setMinimumEffectiveDeviceWidth:(CGFloat)minimumEffectiveDeviceWidth

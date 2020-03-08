@@ -162,17 +162,6 @@ using namespace std;
 static const FloatSize s_holePunchDefaultFrameSize(1280, 720);
 #endif
 
-static int greatestCommonDivisor(int a, int b)
-{
-    while (b) {
-        int temp = a;
-        a = b;
-        b = temp % b;
-    }
-
-    return ABS(a);
-}
-
 static void busMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
 {
     player->handleMessage(message);
@@ -1923,7 +1912,7 @@ FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
     int displayHeight = originalSize.height() * pixelAspectRatioDenominator;
 
     // Divide display width and height by their GCD to avoid possible overflows.
-    int displayAspectRatioGCD = greatestCommonDivisor(displayWidth, displayHeight);
+    int displayAspectRatioGCD = gst_util_greatest_common_divisor(displayWidth, displayHeight);
     displayWidth /= displayAspectRatioGCD;
     displayHeight /= displayAspectRatioGCD;
 
@@ -2435,7 +2424,7 @@ void MediaPlayerPrivateGStreamer::processTableOfContentsEntry(GstTocEntry* entry
 {
     ASSERT(entry);
 
-    auto cue = GenericCueData::create();
+    auto cue = InbandGenericCue::create();
 
     gint64 start = -1, stop = -1;
     gst_toc_entry_get_start_stop_times(entry, &start, &stop);

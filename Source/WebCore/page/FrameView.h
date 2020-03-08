@@ -33,6 +33,8 @@
 #include "LayoutRect.h"
 #include "Pagination.h"
 #include "PaintPhase.h"
+#include "RenderElement.h"
+#include "RenderLayerModelObject.h"
 #include "RenderPtr.h"
 #include "ScrollView.h"
 #include "StyleColor.h"
@@ -44,6 +46,7 @@
 #include <wtf/IsoMalloc.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/OptionSet.h>
+#include <wtf/WeakHashSet.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -147,7 +150,8 @@ public:
     void setNeedsOneShotDrawingSynchronization();
 
     WEBCORE_EXPORT GraphicsLayer* graphicsLayerForPlatformWidget(PlatformWidget);
-    WEBCORE_EXPORT void scheduleLayerFlushAllowingThrottling();
+
+    WEBCORE_EXPORT void scheduleRenderingUpdate();
 
     WEBCORE_EXPORT TiledBacking* tiledBacking() const;
 
@@ -288,15 +292,14 @@ public:
 
     void addSlowRepaintObject(RenderElement&);
     void removeSlowRepaintObject(RenderElement&);
-    bool hasSlowRepaintObject(const RenderElement& renderer) const { return m_slowRepaintObjects && m_slowRepaintObjects->contains(&renderer); }
-    bool hasSlowRepaintObjects() const { return m_slowRepaintObjects && m_slowRepaintObjects->size(); }
+    bool hasSlowRepaintObject(const RenderElement& renderer) const { return m_slowRepaintObjects && m_slowRepaintObjects->contains(renderer); }
+    bool hasSlowRepaintObjects() const { return m_slowRepaintObjects && !m_slowRepaintObjects->computesEmpty(); }
 
     // Includes fixed- and sticky-position objects.
-    typedef HashSet<RenderLayerModelObject*> ViewportConstrainedObjectSet;
-    void addViewportConstrainedObject(RenderLayerModelObject*);
-    void removeViewportConstrainedObject(RenderLayerModelObject*);
-    const ViewportConstrainedObjectSet* viewportConstrainedObjects() const { return m_viewportConstrainedObjects.get(); }
-    bool hasViewportConstrainedObjects() const { return m_viewportConstrainedObjects && m_viewportConstrainedObjects->size() > 0; }
+    void addViewportConstrainedObject(RenderLayerModelObject&);
+    void removeViewportConstrainedObject(RenderLayerModelObject&);
+    const WeakHashSet<RenderLayerModelObject>* viewportConstrainedObjects() const { return m_viewportConstrainedObjects.get(); }
+    bool hasViewportConstrainedObjects() const { return m_viewportConstrainedObjects && !m_viewportConstrainedObjects->computesEmpty(); }
     
     float frameScaleFactor() const;
 
@@ -333,7 +336,6 @@ public:
     
     bool fixedElementsLayoutRelativeToFrame() const;
 
-    WEBCORE_EXPORT void disableLayerFlushThrottlingTemporarilyForInteraction();
     bool speculativeTilingEnabled() const { return m_speculativeTilingEnabled; }
     void loadProgressingStatusChanged();
 
@@ -397,7 +399,7 @@ public:
     void incrementVisuallyNonEmptyCharacterCount(const String&);
     void incrementVisuallyNonEmptyPixelCount(const IntSize&);
     bool isVisuallyNonEmpty() const { return m_contentQualifiesAsVisuallyNonEmpty; }
-    WEBCORE_EXPORT bool qualifiesAsVisuallyNonEmpty() const;
+    void checkAndDispatchDidReachVisuallyNonEmptyState();
 
     WEBCORE_EXPORT void enableAutoSizeMode(bool enable, const IntSize& minSize);
     WEBCORE_EXPORT void setAutoSizeFixedMinimumHeight(int);
@@ -710,7 +712,6 @@ private:
     void resumeVisibleImageAnimations(const IntRect& visibleRect);
     void updateScriptedAnimationsAndTimersThrottlingState(const IntRect& visibleRect);
 
-    void updateLayerFlushThrottling();
     WEBCORE_EXPORT void adjustTiledBackingCoverage();
 
     void repaintContentRectangle(const IntRect&) final;
@@ -823,7 +824,7 @@ private:
 
     HashSet<Widget*> m_widgetsInRenderTree;
     std::unique_ptr<ListHashSet<RenderEmbeddedObject*>> m_embeddedObjectsToUpdate;
-    std::unique_ptr<HashSet<const RenderElement*>> m_slowRepaintObjects;
+    std::unique_ptr<WeakHashSet<RenderElement>> m_slowRepaintObjects;
 
     RefPtr<ContainerNode> m_maintainScrollPositionAnchor;
     RefPtr<Node> m_nodeToDraw;
@@ -885,7 +886,7 @@ private:
     IntSize m_autoSizeContentSize;
 
     std::unique_ptr<ScrollableAreaSet> m_scrollableAreas;
-    std::unique_ptr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
+    std::unique_ptr<WeakHashSet<RenderLayerModelObject>> m_viewportConstrainedObjects;
 
     OptionSet<LayoutMilestone> m_milestonesPendingPaint;
 

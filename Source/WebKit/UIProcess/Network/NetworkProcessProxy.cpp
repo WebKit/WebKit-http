@@ -438,10 +438,12 @@ void NetworkProcessProxy::logDiagnosticMessage(WebPageProxyIdentifier pageID, co
     page->logDiagnosticMessage(message, description, shouldSample);
 }
 
-void NetworkProcessProxy::terminateUnresponsiveServiceWorkerProcesses(WebCore::RegistrableDomain&& domain, PAL::SessionID sessionID)
+void NetworkProcessProxy::terminateUnresponsiveServiceWorkerProcesses(WebCore::ProcessIdentifier processIdentifier)
 {
-    for (auto* processPool : WebProcessPool::allProcessPools())
-        processPool->terminateServiceWorkerProcess(domain, sessionID);
+    if (auto* process = WebProcessProxy::processForIdentifier(processIdentifier)) {
+        process->disableServiceWorkers();
+        process->requestTermination(ProcessTerminationReason::ExceededCPULimit);
+    }
 }
 
 void NetworkProcessProxy::logDiagnosticMessageWithResult(WebPageProxyIdentifier pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
@@ -472,11 +474,16 @@ void NetworkProcessProxy::logGlobalDiagnosticMessageWithValue(const String& mess
         page->logDiagnosticMessageWithValue(message, description, value, significantFigures, shouldSample);
 }
 
-void NetworkProcessProxy::resourceLoadDidSendRequest(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceRequest&& request)
+void NetworkProcessProxy::resourceLoadDidSendRequest(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceRequest&& request, Optional<IPC::FormDataReference>&& httpBody)
 {
     auto* page = WebProcessProxy::webPage(pageID);
     if (!page)
         return;
+
+    if (httpBody) {
+        auto data = httpBody->takeData();
+        request.setHTTPBody(WTFMove(data));
+    }
 
     page->resourceLoadDidSendRequest(WTFMove(loadInfo), WTFMove(request));
 }
@@ -509,13 +516,13 @@ void NetworkProcessProxy::resourceLoadDidReceiveResponse(WebPageProxyIdentifier 
     page->resourceLoadDidReceiveResponse(WTFMove(loadInfo), WTFMove(response));
 }
 
-void NetworkProcessProxy::resourceLoadDidCompleteWithError(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceError&& error)
+void NetworkProcessProxy::resourceLoadDidCompleteWithError(WebPageProxyIdentifier pageID, ResourceLoadInfo&& loadInfo, WebCore::ResourceResponse&& response, WebCore::ResourceError&& error)
 {
     auto* page = WebProcessProxy::webPage(pageID);
     if (!page)
         return;
 
-    page->resourceLoadDidCompleteWithError(WTFMove(loadInfo), WTFMove(error));
+    page->resourceLoadDidCompleteWithError(WTFMove(loadInfo), WTFMove(response), WTFMove(error));
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -968,6 +975,16 @@ void NetworkProcessProxy::setResourceLoadStatisticsDebugMode(PAL::SessionID sess
     }
     
     sendWithAsyncReply(Messages::NetworkProcess::SetResourceLoadStatisticsDebugMode(sessionID, debugMode), WTFMove(completionHandler));
+}
+
+void NetworkProcessProxy::isResourceLoadStatisticsEphemeral(PAL::SessionID sessionID, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (!canSendMessage()) {
+        completionHandler(false);
+        return;
+    }
+    
+    sendWithAsyncReply(Messages::NetworkProcess::IsResourceLoadStatisticsEphemeral(sessionID), WTFMove(completionHandler));
 }
 
 void NetworkProcessProxy::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)

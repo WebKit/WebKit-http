@@ -33,6 +33,8 @@
 #include "LibWebRTCCodecs.h"
 #include "LibWebRTCCodecsMessages.h"
 #include "MediaPlayerPrivateRemoteMessages.h"
+#include "RemoteCDMFactory.h"
+#include "RemoteCDMProxy.h"
 #include "RemoteMediaPlayerManager.h"
 #include "RemoteMediaPlayerManagerMessages.h"
 #include "SampleBufferDisplayLayerMessages.h"
@@ -43,6 +45,10 @@
 #include "WebPageMessages.h"
 #include "WebProcess.h"
 #include <WebCore/SharedBuffer.h>
+
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "RemoteCDMInstanceSessionMessages.h"
+#endif
 
 namespace WebKit {
 using namespace WebCore;
@@ -75,32 +81,51 @@ SampleBufferDisplayLayerManager& GPUProcessConnection::sampleBufferDisplayLayerM
 }
 #endif
 
-void GPUProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
+#if ENABLE(ENCRYPTED_MEDIA)
+RemoteCDMFactory& GPUProcessConnection::cdmFactory()
+{
+    return *WebProcess::singleton().supplement<RemoteCDMFactory>();
+}
+#endif
+
+bool GPUProcessConnection::dispatchMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::MediaPlayerPrivateRemote::messageReceiverName()) {
         WebProcess::singleton().supplement<RemoteMediaPlayerManager>()->didReceivePlayerMessage(connection, decoder);
-        return;
+        return true;
     }
 
 #if ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManager::messageReceiverName()) {
         if (auto* captureManager = WebProcess::singleton().supplement<UserMediaCaptureManager>())
             captureManager->didReceiveMessageFromGPUProcess(connection, decoder);
-        return;
+        return true;
     }
 #if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
     if (decoder.messageReceiverName() == Messages::SampleBufferDisplayLayer::messageReceiverName()) {
         sampleBufferDisplayLayerManager().didReceiveLayerMessage(connection, decoder);
-        return;
+        return true;
     }
 #endif // PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
 #endif // ENABLE(MEDIA_STREAM)
 #if USE(LIBWEBRTC) && PLATFORM(COCOA)
     if (decoder.messageReceiverName() == Messages::LibWebRTCCodecs::messageReceiverName()) {
         WebProcess::singleton().libWebRTCCodecs().didReceiveMessage(connection, decoder);
-        return;
+        return true;
     }
 #endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (decoder.messageReceiverName() == Messages::RemoteCDMInstanceSession::messageReceiverName()) {
+        WebProcess::singleton().supplement<RemoteCDMFactory>()->didReceiveSessionMessage(connection, decoder);
+        return true;
+    }
+#endif
+    return messageReceiverMap().dispatchMessage(connection, decoder);
+}
+
+bool GPUProcessConnection::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
+{
+    return messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
 } // namespace WebKit

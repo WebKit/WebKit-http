@@ -38,13 +38,15 @@ namespace WebKit {
 class LocalAuthenticator final : public Authenticator {
 public:
     // Here is the FSM.
-    // MakeCredential: Init => RequestReceived => UserConsented => Attested => End
-    // GetAssertion: Init => RequestReceived => UserConsented => End
+    // MakeCredential: Init => RequestReceived => PolicyDecided => UserVerified => Attested => End
+    // GetAssertion: Init => RequestReceived => ResponseSelected => UserVerified => End
     enum class State {
         Init,
         RequestReceived,
-        UserConsented,
+        UserVerified,
         Attested,
+        ResponseSelected,
+        PolicyDecided,
     };
 
     static Ref<LocalAuthenticator> create(UniqueRef<LocalConnection>&& connection)
@@ -56,14 +58,19 @@ private:
     explicit LocalAuthenticator(UniqueRef<LocalConnection>&&);
 
     void makeCredential() final;
-    void continueMakeCredentialAfterUserConsented(SecAccessControlRef, LocalConnection::UserConsent, LAContext *);
+    void continueMakeCredentialAfterDecidePolicy(LocalAuthenticatorPolicy);
+    void continueMakeCredentialAfterUserVerification(SecAccessControlRef, LocalConnection::UserVerification, LAContext *);
     void continueMakeCredentialAfterAttested(SecKeyRef, Vector<uint8_t>&& credentialId, Vector<uint8_t>&& authData, NSArray *certificates, NSError *);
 
     void getAssertion() final;
-    void continueGetAssertionAfterUserConsented(LocalConnection::UserConsent, LAContext *, const Vector<uint8_t>& credentialId, const Vector<uint8_t>& userhandle);
+    void continueGetAssertionAfterResponseSelected(Ref<WebCore::AuthenticatorAssertionResponse>&&);
+    void continueGetAssertionAfterUserVerification(Ref<WebCore::AuthenticatorAssertionResponse>&&, LocalConnection::UserVerification, LAContext *);
+
+    void receiveException(WebCore::ExceptionData&&, WebAuthenticationStatus = WebAuthenticationStatus::LAError) const;
 
     State m_state { State::Init };
     UniqueRef<LocalConnection> m_connection;
+    HashSet<Ref<WebCore::AuthenticatorAssertionResponse>> m_assertionResponses;
 };
 
 } // namespace WebKit

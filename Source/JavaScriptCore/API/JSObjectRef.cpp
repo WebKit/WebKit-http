@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Kelvin W Sherlock (ksherlock@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -346,7 +346,7 @@ bool JSObjectHasProperty(JSContextRef ctx, JSObjectRef object, JSStringRef prope
 
 JSValueRef JSObjectGetProperty(JSContextRef ctx, JSObjectRef object, JSStringRef propertyName, JSValueRef* exception)
 {
-    if (!ctx) {
+    if (!ctx || !object) {
         ASSERT_NOT_REACHED();
         return 0;
     }
@@ -479,7 +479,7 @@ bool JSObjectDeletePropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueR
     if (handleExceptionIfNeeded(scope, ctx, exception) == ExceptionStatus::DidThrow)
         return false;
 
-    bool result = jsObject->methodTable(vm)->deleteProperty(jsObject, globalObject, ident);
+    bool result = JSCell::deleteProperty(jsObject, globalObject, ident);
     handleExceptionIfNeeded(scope, ctx, exception);
     return result;
 }
@@ -534,7 +534,7 @@ bool JSObjectDeleteProperty(JSContextRef ctx, JSObjectRef object, JSStringRef pr
 
     JSObject* jsObject = toJS(object);
 
-    bool result = jsObject->methodTable(vm)->deleteProperty(jsObject, globalObject, propertyName->identifier(&vm));
+    bool result = JSCell::deleteProperty(jsObject, globalObject, propertyName->identifier(&vm));
     handleExceptionIfNeeded(scope, ctx, exception);
     return result;
 }

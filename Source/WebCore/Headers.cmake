@@ -834,7 +834,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/RemoteDOMWindow.h
     page/RemoteFrame.h
     page/RenderingUpdateScheduler.h
-    page/RenderingUpdateThrottleState.h
     page/RuntimeEnabledFeatures.h
     page/ScrollBehavior.h
     page/ScrollIntoViewOptions.h
@@ -951,6 +950,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/MIMETypeRegistry.h
     platform/MediaSample.h
     platform/MediaSelectionOption.h
+    platform/MediaStrategy.h
     platform/NotImplemented.h
     platform/OrientationNotifier.h
     platform/PODInterval.h
@@ -1022,13 +1022,33 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/animation/AnimationUtilities.h
     platform/animation/TimingFunction.h
 
+    platform/audio/AudioArray.h
+    platform/audio/AudioBus.h
+    platform/audio/AudioChannel.h
+    platform/audio/AudioDestination.h
     platform/audio/AudioHardwareListener.h
+    platform/audio/AudioIOCallback.h
     platform/audio/AudioSession.h
     platform/audio/AudioSourceProvider.h
     platform/audio/AudioStreamDescription.h
+    platform/audio/NowPlayingInfo.h
     platform/audio/PlatformAudioData.h
     platform/audio/PlatformMediaSession.h
     platform/audio/PlatformMediaSessionManager.h
+
+    platform/encryptedmedia/CDMEncryptionScheme.h
+    platform/encryptedmedia/CDMFactory.h
+    platform/encryptedmedia/CDMInstance.h
+    platform/encryptedmedia/CDMInstanceSession.h
+    platform/encryptedmedia/CDMKeyStatus.h
+    platform/encryptedmedia/CDMKeySystemConfiguration.h
+    platform/encryptedmedia/CDMMediaCapability.h
+    platform/encryptedmedia/CDMMessageType.h
+    platform/encryptedmedia/CDMPrivate.h
+    platform/encryptedmedia/CDMProxy.h
+    platform/encryptedmedia/CDMRequirement.h
+    platform/encryptedmedia/CDMRestrictions.h
+    platform/encryptedmedia/CDMSessionType.h
 
     platform/gamepad/GamepadProvider.h
     platform/gamepad/GamepadProviderClient.h
@@ -1101,6 +1121,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/ImagePaintingOptions.h
     platform/graphics/ImageSource.h
     platform/graphics/ImageTypes.h
+    platform/graphics/InbandGenericCue.h
     platform/graphics/InbandTextTrackPrivate.h
     platform/graphics/InbandTextTrackPrivateClient.h
     platform/graphics/IntPoint.h
@@ -1128,6 +1149,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/Pattern.h
     platform/graphics/PlatformDisplay.h
     platform/graphics/PlatformImageBuffer.h
+    platform/graphics/PlatformImageBufferBackend.h
     platform/graphics/PlatformLayer.h
     platform/graphics/PlatformMediaResourceLoader.h
     platform/graphics/PlatformTextTrack.h

@@ -28,6 +28,7 @@
 
 #if ENABLE(WEB_AUTHN)
 
+#import <WebCore/LocalizedStrings.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RunLoop.h>
 
@@ -39,22 +40,31 @@
 
 namespace WebKit {
 
-void LocalConnection::getUserConsent(const String& reason, SecAccessControlRef accessControl, UserConsentContextCallback&& completionHandler) const
+void LocalConnection::verifyUser(SecAccessControlRef accessControl, UserVerificationCallback&& completionHandler) const
 {
     auto context = adoptNS([allocLAContextInstance() init]);
-    auto reply = makeBlockPtr([context, completionHandler = WTFMove(completionHandler)] (BOOL success, NSError *error) mutable {
+
+    auto options = adoptNS([[NSMutableDictionary alloc] init]);
+    if ([context biometryType] == LABiometryTypeTouchID)
+        [options setObject:WebCore::touchIDPromptTitle() forKey:@(LAOptionAuthenticationTitle)];
+#if PLATFORM(iOS)
+    [options setObject:WebCore::biometricFallbackPromptTitle() forKey:@(LAOptionPasscodeTitle)];
+#endif
+
+    auto reply = makeBlockPtr([context, completionHandler = WTFMove(completionHandler)] (NSDictionary *, NSError *error) mutable {
         ASSERT(!RunLoop::isMain());
 
-        UserConsent consent = UserConsent::Yes;
-        if (!success || error) {
+        UserVerification verification = UserVerification::Yes;
+        if (error) {
             LOG_ERROR("Couldn't authenticate with biometrics: %@", error);
-            consent = UserConsent::No;
+            verification = UserVerification::No;
         }
-        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), consent, context = WTFMove(context)]() mutable {
-            completionHandler(consent, context.get());
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), verification, context = WTFMove(context)] () mutable {
+            completionHandler(verification, context.get());
         });
     });
-    [context evaluateAccessControl:accessControl operation:LAAccessControlOperationUseKeySign localizedReason:reason reply:reply.get()];
+
+    [context evaluateAccessControl:accessControl operation:LAAccessControlOperationUseKeySign options:options.get() reply:reply.get()];
 }
 
 RetainPtr<SecKeyRef> LocalConnection::createCredentialPrivateKey(LAContext *context, SecAccessControlRef accessControlRef, const String& secAttrLabel, NSData *secAttrApplicationTag) const
@@ -86,12 +96,6 @@ void LocalConnection::getAttestation(SecKeyRef privateKey, NSData *authData, NSD
 #if defined(LOCALCONNECTION_ADDITIONS)
 LOCALCONNECTION_ADDITIONS
 #endif
-}
-
-NSDictionary *LocalConnection::selectCredential(const NSArray *credentials) const
-{
-    // FIXME(rdar://problem/35900534): We don't have an UI to prompt users for selecting intersectedCredentials, and therefore we always use the first one for now.
-    return credentials[0];
 }
 
 } // namespace WebKit

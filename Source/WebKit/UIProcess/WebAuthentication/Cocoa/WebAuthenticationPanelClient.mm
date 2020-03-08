@@ -32,11 +32,12 @@
 #import "APIWebAuthenticationAssertionResponse.h"
 #import "CompletionHandlerCallChecker.h"
 #import "WKNSArray.h"
-#import "WebAuthenticationFlags.h"
 #import "_WKWebAuthenticationAssertionResponseInternal.h"
 #import "_WKWebAuthenticationPanel.h"
 #import <wtf/BlockPtr.h>
 #import <wtf/RunLoop.h>
+
+#import "LocalAuthenticationSoftLink.h"
 
 namespace WebKit {
 
@@ -47,7 +48,8 @@ WebAuthenticationPanelClient::WebAuthenticationPanelClient(_WKWebAuthenticationP
     m_delegateMethods.panelUpdateWebAuthenticationPanel = [delegate respondsToSelector:@selector(panel:updateWebAuthenticationPanel:)];
     m_delegateMethods.panelDismissWebAuthenticationPanelWithResult = [delegate respondsToSelector:@selector(panel:dismissWebAuthenticationPanelWithResult:)];
     m_delegateMethods.panelRequestPinWithRemainingRetriesCompletionHandler = [delegate respondsToSelector:@selector(panel:requestPINWithRemainingRetries:completionHandler:)];
-    m_delegateMethods.panelselectAssertionResponseCompletionHandler = [delegate respondsToSelector:@selector(panel:selectAssertionResponse:completionHandler:)];
+    m_delegateMethods.panelSelectAssertionResponseCompletionHandler = [delegate respondsToSelector:@selector(panel:selectAssertionResponse:completionHandler:)];
+    m_delegateMethods.panelDecidePolicyForLocalAuthenticatorCompletionHandler = [delegate respondsToSelector:@selector(panel:decidePolicyForLocalAuthenticatorWithCompletionHandler:)];
 }
 
 RetainPtr<id <_WKWebAuthenticationPanelDelegate> > WebAuthenticationPanelClient::delegate()
@@ -67,6 +69,12 @@ static _WKWebAuthenticationPanelUpdate wkWebAuthenticationPanelUpdate(WebAuthent
         return _WKWebAuthenticationPanelUpdatePINAuthBlocked;
     if (status == WebAuthenticationStatus::PinInvalid)
         return _WKWebAuthenticationPanelUpdatePINInvalid;
+    if (status == WebAuthenticationStatus::LAError)
+        return _WKWebAuthenticationPanelUpdateLAError;
+    if (status == WebAuthenticationStatus::LAExcludeCredentialsMatched)
+        return _WKWebAuthenticationPanelUpdateLAExcludeCredentialsMatched;
+    if (status == WebAuthenticationStatus::LANoCredential)
+        return _WKWebAuthenticationPanelUpdateLANoCredential;
     ASSERT_NOT_REACHED();
     return _WKWebAuthenticationPanelUpdateMultipleNFCTagsPresent;
 }
@@ -133,7 +141,7 @@ void WebAuthenticationPanelClient::selectAssertionResponse(Vector<Ref<WebCore::A
 {
     ASSERT(!responses.isEmpty());
 
-    if (!m_delegateMethods.panelselectAssertionResponseCompletionHandler) {
+    if (!m_delegateMethods.panelSelectAssertionResponseCompletionHandler) {
         completionHandler(responses[0]);
         return;
     }
@@ -155,6 +163,40 @@ void WebAuthenticationPanelClient::selectAssertionResponse(Vector<Ref<WebCore::A
             return;
         checker->didCallCompletionHandler();
         completionHandler(static_cast<API::WebAuthenticationAssertionResponse&>([response _apiObject]).response());
+    }).get()];
+}
+
+static LocalAuthenticatorPolicy localAuthenticatorPolicy(_WKLocalAuthenticatorPolicy result)
+{
+    switch (result) {
+    case _WKLocalAuthenticatorPolicyAllow:
+        return LocalAuthenticatorPolicy::Allow;
+    case _WKLocalAuthenticatorPolicyDisallow:
+        return LocalAuthenticatorPolicy::Disallow;
+    }
+    ASSERT_NOT_REACHED();
+    return LocalAuthenticatorPolicy::Allow;
+}
+
+void WebAuthenticationPanelClient::decidePolicyForLocalAuthenticator(CompletionHandler<void(LocalAuthenticatorPolicy)>&& completionHandler) const
+{
+    if (!m_delegateMethods.panelDecidePolicyForLocalAuthenticatorCompletionHandler) {
+        completionHandler(LocalAuthenticatorPolicy::Disallow);
+        return;
+    }
+
+    auto delegate = m_delegate.get();
+    if (!delegate) {
+        completionHandler(LocalAuthenticatorPolicy::Disallow);
+        return;
+    }
+
+    auto checker = CompletionHandlerCallChecker::create(delegate.get(), @selector(panel:decidePolicyForLocalAuthenticatorWithCompletionHandler:));
+    [delegate panel:m_panel decidePolicyForLocalAuthenticatorWithCompletionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKLocalAuthenticatorPolicy policy) mutable {
+        if (checker->completionHandlerHasBeenCalled())
+            return;
+        checker->didCallCompletionHandler();
+        completionHandler(localAuthenticatorPolicy(policy));
     }).get()];
 }
 

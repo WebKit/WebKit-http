@@ -252,8 +252,21 @@ inline bool Structure::hasIndexingHeader(const JSCell* cell) const
     
     if (!isTypedView(typedArrayTypeForType(m_blob.type())))
         return false;
-    
+
     return jsCast<const JSArrayBufferView*>(cell)->mode() == WastefulTypedArray;
+}
+
+inline bool Structure::mayHaveIndexingHeader(bool& mustCheckCell) const
+{
+    mustCheckCell = false;
+    if (hasIndexedProperties(indexingType()))
+        return true;
+
+    if (!isTypedView(typedArrayTypeForType(m_blob.type())))
+        return false;
+
+    mustCheckCell = true;
+    return true;
 }
 
 inline bool Structure::masqueradesAsUndefined(JSGlobalObject* lexicalGlobalObject)
@@ -352,7 +365,7 @@ inline void Structure::setCachedPrototypeChain(VM& vm, StructureChain* chain)
     m_inlineCapacityAndCachedPrototypeChainOrRareData.setPointer(chain);
     vm.heap.writeBarrier(this, chain);
 #else
-    m_cachedPrototypeChainOrRareData.set(vm, this, chain);
+    m_cachedPrototypeChainOrRareData.setMayBeNull(vm, this, chain);
 #endif
 }
 

@@ -56,6 +56,7 @@
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/UTIUtilities.h>
 #import <objc/runtime.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <sys/param.h>
@@ -197,8 +198,10 @@ void WebProcessPool::platformResolvePathsForSandboxExtensions()
     m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebProcessPool::containerTemporaryDirectory());
 #endif
 
+#if ENABLE(CFPREFS_DIRECT_MODE)
     // Start observing preference changes.
     [WKPreferenceObserver sharedInstance];
+#endif
 }
 
 #if PLATFORM(IOS)
@@ -218,7 +221,9 @@ static bool deviceHasAGXCompilerService()
         });
     return deviceHasAGXCompilerService;
 }
+#endif
 
+#if PLATFORM(IOS_FAMILY)
 static bool isInternalInstall()
 {
     static bool isInternal = MGGetBoolAnswer(kMGQAppleInternalInstallCapability);
@@ -346,7 +351,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
 #endif
 
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (isSafari && !m_configuration->shouldCaptureAudioInUIProcess() && !m_configuration->shouldCaptureAudioInGPUProcess() && mediaDevicesEnabled)
+    if (isSafari && mediaDevicesEnabled && !m_defaultPageGroup->preferences().captureAudioInUIProcessEnabled() && !m_defaultPageGroup->preferences().captureAudioInGPUProcessEnabled())
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
 #endif
 
@@ -366,11 +371,21 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::createHandleForMachLookup("com.apple.AGXCompilerService", WTF::nullopt, compilerServiceExtensionHandle);
         parameters.compilerServiceExtensionHandle = WTFMove(compilerServiceExtensionHandle);
     }
+#endif
 
-    if (WebCore::IOSApplication::isMobileMail()) {
-        SandboxExtension::Handle launchServicesOpenExtensionHandle;
-        SandboxExtension::createHandleForMachLookup("com.apple.lsd.open", WTF::nullopt, launchServicesOpenExtensionHandle);
-        parameters.launchServicesOpenExtensionHandle = WTFMove(launchServicesOpenExtensionHandle);
+#if PLATFORM(IOS_FAMILY)
+    if (!WebCore::IOSApplication::isMobileSafari()) {
+        static const char* services[] = {
+            "com.apple.lsd.open",
+            "com.apple.mobileassetd",
+            "com.apple.iconservices",
+            "com.apple.PowerManagement.control",
+            "com.apple.frontboard.systemappservices"
+        };
+        auto size = WTF_ARRAY_LENGTH(services);
+        parameters.dynamicMachExtensionHandles.allocate(size);
+        for (size_t i = 0; i < size; ++i)
+            SandboxExtension::createHandleForMachLookup(services[i], WTF::nullopt, parameters.dynamicMachExtensionHandles[i]);
     }
     
     if (isInternalInstall()) {
@@ -394,6 +409,8 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         parameters.neSessionManagerExtensionHandle = WTFMove(managerHandle);
     }
     parameters.systemHasBattery = systemHasBattery();
+    parameters.mimeTypesMap = commonMimeTypesMap();
+    parameters.mapUTIFromMIMEType = createUTIFromMIMETypeMap();
 #endif
     
 #if PLATFORM(IOS)
@@ -402,7 +419,6 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         SandboxExtension::createHandleForMachLookup("com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI", WTF::nullopt, handle);
         parameters.contentFilterExtensionHandle = WTFMove(handle);
     }
-    parameters.mimeTypesMap = commonMimeTypesMap();
 #endif
     
 #if PLATFORM(IOS_FAMILY)
@@ -426,6 +442,11 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
         for (size_t i = 0, size = services.size(); i < size; ++i)
             SandboxExtension::createHandleForMachLookup(services[i], WTF::nullopt, parameters.mediaExtensionHandles[i]);
     }
+#if !ENABLE(CFPREFS_DIRECT_MODE)
+    SandboxExtension::Handle preferencesExtensionHandle;
+    SandboxExtension::createHandleForMachLookup("com.apple.cfprefsd.daemon", WTF::nullopt, preferencesExtensionHandle);
+    parameters.preferencesExtensionHandle = WTFMove(preferencesExtensionHandle);
+#endif
 }
 
 void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)

@@ -33,6 +33,7 @@
 #include "WebInspectorUtilities.h"
 #include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <WebCore/FloatRect.h>
+#include <WebCore/InspectorFrontendClient.h>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -162,6 +163,10 @@ public:
 
     void setDiagnosticLoggingAvailable(bool);
 
+    // Browser
+    void browserExtensionsEnabled(HashMap<String, String>&&);
+    void browserExtensionsDisabled(HashSet<String>&&);
+
     // Provided by platform WebInspectorProxy implementations.
     static String inspectorPageURL();
     static String inspectorTestPageURL();
@@ -200,6 +205,7 @@ private:
     void platformHide();
     bool platformIsFront();
     void platformAttachAvailabilityChanged(bool);
+    void platformSetForcedAppearance(WebCore::InspectorFrontendClient::Appearance);
     void platformInspectedURLChanged(const String&);
     void platformShowCertificate(const WebCore::CertificateInfo&);
     unsigned platformInspectedWindowHeight();
@@ -229,6 +235,7 @@ private:
     void bringToFront();
     void bringInspectedPageToFront();
     void attachAvailabilityChanged(bool);
+    void setForcedAppearance(WebCore::InspectorFrontendClient::Appearance);
     void inspectedURLChanged(const String&);
     void showCertificate(const WebCore::CertificateInfo&);
     void elementSelectionChanged(bool);
@@ -246,6 +253,10 @@ private:
     unsigned inspectionLevel() const;
 
     WebPreferences& inspectorPagePreferences() const;
+
+#if PLATFORM(MAC)
+    void applyForcedAppearance();
+#endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void updateInspectorWindowTitle() const;
@@ -282,6 +293,7 @@ private:
     RunLoop::Timer<WebInspectorProxy> m_closeFrontendAfterInactivityTimer;
     String m_urlString;
     WebCore::FloatRect m_sheetRect;
+    WebCore::InspectorFrontendClient::Appearance m_frontendAppearance { WebCore::InspectorFrontendClient::Appearance::System };
     bool m_isObservingContentLayoutRect { false };
 #elif PLATFORM(GTK)
     std::unique_ptr<WebInspectorProxyClient> m_client;

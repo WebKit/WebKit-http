@@ -68,7 +68,22 @@ WKWebsiteDataStoreRef WKWebsiteDataStoreCreateWithConfiguration(WKWebsiteDataSto
 
 void WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(WKWebsiteDataStoreRef dataStoreRef, bool enable)
 {
-    WebKit::toImpl(dataStoreRef)->setResourceLoadStatisticsEnabled(enable);
+    auto* websiteDataStore = WebKit::toImpl(dataStoreRef);
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    websiteDataStore->useExplicitITPState();
+#endif
+    websiteDataStore->setResourceLoadStatisticsEnabled(enable);
+}
+
+void WKWebsiteDataStoreIsStatisticsEphemeral(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreStatisticsEphemeralFunction completionHandler)
+{
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    WebKit::toImpl(dataStoreRef)->isResourceLoadStatisticsEphemeral([context, completionHandler](bool isEphemeral) {
+        completionHandler(isEphemeral, context);
+    });
+#else
+    completionHandler(false, context);
+#endif
 }
 
 bool WKWebsiteDataStoreGetResourceLoadStatisticsEnabled(WKWebsiteDataStoreRef dataStoreRef)

@@ -33,7 +33,7 @@
 @implementation _WKWebAuthenticationPanel {
 #if ENABLE(WEB_AUTHN)
     WeakPtr<WebKit::WebAuthenticationPanelClient> _client;
-    RetainPtr<NSMutableArray> _transports;
+    RetainPtr<NSMutableSet> _transports;
 #endif
 }
 
@@ -73,19 +73,21 @@ static _WKWebAuthenticationTransport wkWebAuthenticationTransport(WebCore::Authe
         return _WKWebAuthenticationTransportUSB;
     case WebCore::AuthenticatorTransport::Nfc:
         return _WKWebAuthenticationTransportNFC;
+    case WebCore::AuthenticatorTransport::Internal:
+        return _WKWebAuthenticationTransportInternal;
     default:
         ASSERT_NOT_REACHED();
         return _WKWebAuthenticationTransportUSB;
     }
 }
 
-- (NSArray *)transports
+- (NSSet *)transports
 {
     if (_transports)
         return _transports.get();
 
     auto& transports = _panel->transports();
-    _transports = [[NSMutableArray alloc] initWithCapacity:transports.size()];
+    _transports = [[NSMutableSet alloc] initWithCapacity:transports.size()];
     for (auto& transport : transports)
         [_transports addObject:adoptNS([[NSNumber alloc] initWithInt:wkWebAuthenticationTransport(transport)]).get()];
     return _transports.get();

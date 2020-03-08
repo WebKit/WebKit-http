@@ -115,7 +115,7 @@
         (allow file-read* asset-access-filter)
         (if (memq 'with-media-playback options)
             (play-media asset-access-filter))
-        (allow mach-lookup (with telemetry-backtrace) (with telemetry)
+        (allow mach-lookup (with telemetry-backtrace)
                (global-name "com.apple.mobileassetd" "com.apple.mobileassetd.v2"))
         (mobile-preferences-read "com.apple.MobileAsset")))
 
@@ -353,7 +353,7 @@
         "com.apple.mt"
         "com.apple.preferences.sounds")
 
-    (allow mach-lookup (with telemetry-backtrace) (with telemetry)
+    (allow mach-lookup (with telemetry-backtrace)
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
     )
 
@@ -536,16 +536,16 @@
 (allow mach-lookup
     (global-name "com.apple.logd")
     (global-name "com.apple.logd.events")
+    (global-name "com.apple.cfprefsd.daemon")
 )
 
-(allow mach-lookup (with report) (with telemetry)
+(deny mach-lookup (with telemetry)
     (global-name "com.apple.distributed_notifications@1v3"))
 
 (allow ipc-posix-shm-read*
        (ipc-posix-name-prefix "apple.cfprefs."))
  
-(allow mach-lookup (with telemetry-backtrace) (with telemetry)
-    (global-name "com.apple.lsd.open")
+(allow mach-lookup (with telemetry-backtrace)
     (global-name "com.apple.lsd.mapdb"))
 
 ;; <rdar://problem/12413942>
@@ -669,7 +669,7 @@
 ;; <rdar://problem/7344719&26323449> LaunchServices app icons
 (allow file-read*
     (well-known-system-group-container-subpath "/systemgroup.com.apple.lsd.iconscache"))
-(allow mach-lookup (with telemetry-backtrace) (with telemetry)
+(allow mach-lookup (with telemetry-backtrace)
     (xpc-service-name "com.apple.iconservices")
     (global-name "com.apple.iconservices"))
 
@@ -738,6 +738,7 @@
         "kern.memorystatus_level"
         "kern.osproductversion"
         "kern.osrelease"
+        "kern.ostype"
         "kern.osvariant_status"
         "kern.secure_kernel" ;; Needed by XPC bundle resolution
         "kern.version"
@@ -828,7 +829,7 @@
 (allow mach-lookup (with report) (with telemetry)
        (global-name "com.apple.webinspector"))
 
-(allow mach-lookup (with telemetry-backtrace) (with telemetry)
+(allow mach-lookup (with telemetry-backtrace)
     (global-name "com.apple.PowerManagement.control"))
 
 (deny file-write-create (vnode-type SYMLINK))
@@ -847,7 +848,7 @@
 (allow mach-lookup
     (require-all
         (extension "com.apple.webkit.extension.mach")
-        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd" "com.apple.lsd.open" "com.apple.mobileassetd" "com.apple.mobileassetd.v2" "com.apple.frontboard.systemappservices" "com.apple.iconservices" "com.apple.webinspector"
+        (global-name "com.apple.iphone.axserver-systemwide" "com.apple.tccd" "com.apple.nehelper" "com.apple.nesessionmanager.content-filter" "com.apple.uikit.viewservice.com.apple.WebContentFilter.remoteUI" "com.apple.diagnosticd" "com.apple.lsd.open" "com.apple.mobileassetd" "com.apple.mobileassetd.v2" "com.apple.frontboard.systemappservices" "com.apple.iconservices" "com.apple.webinspector" "com.apple.PowerManagement.control" "com.apple.cfprefsd.daemon"
 
             ;;; FIXME(207716): The following should be removed when the GPU process is complete
             "com.apple.airplay.apsynccontroller.xpc" "com.apple.audio.AURemoteIOServer" "com.apple.audio.AudioComponentRegistrar"

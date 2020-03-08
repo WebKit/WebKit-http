@@ -25,10 +25,11 @@ from buildbot.process import factory
 from buildbot.steps import trigger
 
 from steps import (ApplyPatch, ApplyWatchList, CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance,
-                   CheckStyle, CompileJSC, CompileWebKit, ConfigureBuild,
-                   DownloadBuiltProduct, ExtractBuiltProduct, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
-                   PrintConfiguration, RunAPITests, RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests, RunResultsdbpyTests,
-                   RunJavaScriptCoreTests, RunWebKit1Tests, RunWebKitPerlTests,
+                   CheckStyle, CompileJSC, CompileWebKit, ConfigureBuild, CreateLocalGITCommit,
+                   DownloadBuiltProduct, ExtractBuiltProduct, FindModifiedChangeLogs, InstallGtkDependencies,
+                   InstallWpeDependencies, KillOldProcesses, PrintConfiguration, PushCommitToWebKitRepo,
+                   RunAPITests, RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests,
+                   RunResultsdbpyTests, RunJavaScriptCoreTests, RunWebKit1Tests, RunWebKitPerlTests,
                    RunWebKitPyPython2Tests, RunWebKitPyPython3Tests, RunWebKitTests, SetBuildSummary, UpdateWorkingDirectory, ValidatePatch)
 
 
@@ -219,4 +220,12 @@ class CommitQueueFactory(Factory):
         self.addStep(CompileWebKit(skipUpload=True))
         self.addStep(KillOldProcesses())
         self.addStep(ValidatePatch(addURLs=False, verifycqplus=True))
-        self.addStep(RunWebKit1Tests())
+        self.addStep(RunWebKitTests())
+        self.addStep(ValidatePatch(addURLs=False, verifycqplus=True))
+        self.addStep(CheckOutSource())
+        self.addStep(UpdateWorkingDirectory())
+        self.addStep(ApplyPatch())
+        self.addStep(FindModifiedChangeLogs())
+        self.addStep(CreateLocalGITCommit())
+        self.addStep(PushCommitToWebKitRepo())
+        self.addStep(SetBuildSummary())

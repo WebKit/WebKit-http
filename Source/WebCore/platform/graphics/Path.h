@@ -81,6 +81,14 @@ typedef void PlatformPath;
 
 typedef PlatformPath* PlatformPathPtr;
 
+#if USE(CG)
+using PlatformPathStorageType = RetainPtr<CGMutablePathRef>;
+#elif USE(DIRECT2D)
+using PlatformPathStorageType = COMPtr<ID2D1GeometryGroup>;
+#else
+using PlatformPathStorageType = PlatformPathPtr;
+#endif
+
 namespace WTF {
 class TextStream;
 }
@@ -119,7 +127,7 @@ class Path {
 public:
     WEBCORE_EXPORT Path();
 #if USE(CG)
-    Path(RetainPtr<CGMutablePathRef>);
+    Path(RetainPtr<CGMutablePathRef>&&);
 #endif
     WEBCORE_EXPORT ~Path();
 
@@ -138,6 +146,7 @@ public:
     WEBCORE_EXPORT FloatRect fastBoundingRect() const;
     FloatRect strokeBoundingRect(StrokeStyleApplier* = 0) const;
 
+    WEBCORE_EXPORT size_t elementCount() const;
     float length() const;
     PathTraversalState traversalStateAtLength(float length) const;
     FloatPoint pointAtLength(float length) const;
@@ -180,6 +189,8 @@ public:
 #if USE(DIRECT2D)
     FloatRect fastBoundingRectForStroke(const PlatformContextDirect2D&) const;
     PlatformPathPtr platformPath() const { return m_path.get(); }
+#elif USE(CG)
+    PlatformPathPtr platformPath() const { return m_path.get(); }
 #else
     PlatformPathPtr platformPath() const { return m_path; }
 #endif
@@ -219,13 +230,20 @@ public:
     template<class Decoder> static Optional<Path> decode(Decoder&);
 
 private:
+#if USE(CG)
+    void swap(Path&);
+#endif
+
+    mutable PlatformPathStorageType m_path;
+
 #if USE(DIRECT2D)
     Vector<ID2D1Geometry*> m_geometries;
-    COMPtr<ID2D1GeometryGroup> m_path;
     mutable COMPtr<ID2D1GeometrySink> m_activePath;
     mutable bool m_figureIsOpened { false };
-#else
-    PlatformPathPtr m_path { nullptr };
+#endif
+
+#if USE(CG)
+    mutable bool m_copyPathBeforeMutation { false };
 #endif
 };
 
@@ -233,12 +251,7 @@ WTF::TextStream& operator<<(WTF::TextStream&, const Path&);
 
 template<class Encoder> void Path::encode(Encoder& encoder) const
 {
-    uint64_t numPoints = 0;
-    apply([&numPoints](const PathElement&) {
-        ++numPoints;
-    });
-
-    encoder << numPoints;
+    encoder << static_cast<uint64_t>(elementCount());
 
     apply([&](auto& element) {
         encoder.encodeEnum(element.type);

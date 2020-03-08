@@ -207,6 +207,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 #if HAVE(ALLOWS_SENSITIVE_LOGGING)
 @property BOOL _allowsSensitiveLogging;
 #endif
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+@property (nullable, retain) _NSHTTPAlternativeServicesStorage *_alternativeServicesStorage;
+#endif
 @end
 
 @interface NSURLSessionTask ()
@@ -246,6 +249,28 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 + (void)_disableAppSSO;
 #endif
 @end
+
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+
+@interface _NSHTTPAlternativeServiceEntry : NSObject <NSCopying>
+@property (readwrite, nonatomic, retain) NSString *host;
+@property (readwrite, nonatomic, assign) NSInteger port;
+@end
+
+@interface _NSHTTPAlternativeServicesFilter : NSObject <NSCopying>
++ (instancetype)emptyFilter;
+@end
+
+@interface _NSHTTPAlternativeServicesStorage : NSObject
+@property (readonly, nonatomic) NSURL *path;
++ (instancetype)sharedPersistentStore;
+- (instancetype)initPersistentStoreWithURL:(nullable NSURL *)path;
+- (NSArray<_NSHTTPAlternativeServiceEntry *> *)HTTPServiceEntriesWithFilter:(_NSHTTPAlternativeServicesFilter *)filter;
+- (void)removeHTTPAlternativeServiceEntriesWithRegistrableDomain:(NSString *)domain;
+- (void)removeHTTPAlternativeServiceEntriesCreatedAfterDate:(NSDate *)date;
+@end
+
+#endif // HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
 
 extern NSString * const NSURLAuthenticationMethodOAuth;
 
@@ -392,9 +417,12 @@ WTF_EXTERN_C_END
 @interface NSHTTPCookieStorage ()
 + (void)_setSharedHTTPCookieStorage:(NSHTTPCookieStorage *)storage;
 - (void)_setSubscribedDomainsForCookieChanges:(NSSet<NSString*>* __nullable)domainList;
+- (NSArray* __nullable)_getCookiesForDomain:(NSString*)domain;
+- (void)_setCookiesChangedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* addedCookies, NSString* domainForChangedCookie))cookiesChangedHandler onQueue:(dispatch_queue_t __nullable)queue;
+- (void)_setCookiesRemovedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* __nullable removedCookies, NSString* __nullable domainForRemovedCookies, bool removeAllCookies))cookiesRemovedHandler onQueue:(dispatch_queue_t __nullable)queue;
+// FIXME: The following 2 should be removed are only kept to ensure smooth transition to the new _setCookiesChangedHandler / _setCookiesRemovedHandler SPI.
 - (void)_setCookiesAddedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* addedCookies, NSURL* __nullable urlForAddedCookies))cookiesAddedHandler onQueue:(dispatch_queue_t __nullable)queue;
 - (void)_setCookiesDeletedHandler:(void(^__nullable)(NSArray<NSHTTPCookie*>* __nullable deletedCookies, bool deletedAllCookies))cookiesDeletedHandler onQueue:(dispatch_queue_t __nullable)queue;
-- (NSArray* __nullable)_getCookiesForDomain:(NSString*)domain;
 @end
 
 @interface NSURLResponse ()

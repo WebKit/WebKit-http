@@ -294,6 +294,9 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
     }
 #endif
 
+    if (m_page && m_doc && isMainFrame() && !loader().stateMachine().isDisplayingInitialEmptyDocument())
+        m_page->mainFrameDidChangeToNonInitialEmptyDocument();
+
     InspectorInstrumentation::frameDocumentUpdated(*this);
 
     m_documentIsBeingReplaced = false;
@@ -622,6 +625,9 @@ void Frame::injectUserScripts(UserScriptInjectionTime injectionTime)
 
 void Frame::injectUserScriptImmediately(DOMWrapperWorld& world, const UserScript& script)
 {
+    if (RuntimeEnabledFeatures::sharedFeatures().isInAppBrowserPrivacyEnabled() && isMainFrame() && loader().client().hasNavigatedAwayFromAppBoundDomain())
+        return;
+
     auto* document = this->document();
     if (!document)
         return;
@@ -635,6 +641,16 @@ void Frame::injectUserScriptImmediately(DOMWrapperWorld& world, const UserScript
     document->setAsRunningUserScripts();
     loader().client().willInjectUserScript(world);
     m_script->evaluateInWorldIgnoringException(ScriptSourceCode(script.source(), URL(script.url())), world);
+}
+
+Optional<PageIdentifier> Frame::pageID() const
+{
+    return loader().pageID();
+}
+
+Optional<FrameIdentifier> Frame::frameID() const
+{
+    return loader().frameID();
 }
 
 RenderView* Frame::contentRenderer() const
@@ -736,7 +752,8 @@ String Frame::displayStringModifiedByEncoding(const String& str) const
 
 VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint) const
 {
-    HitTestResult result = eventHandler().hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowVisibleChildFrameContentOnly);
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::AllowVisibleChildFrameContentOnly };
+    HitTestResult result = eventHandler().hitTestResultAtPoint(framePoint, hitType);
     Node* node = result.innerNonSharedNode();
     if (!node)
         return VisiblePosition();
@@ -757,8 +774,10 @@ Document* Frame::documentAtPoint(const IntPoint& point)
     IntPoint pt = view()->windowToContents(point);
     HitTestResult result = HitTestResult(pt);
 
-    if (contentRenderer())
-        result = eventHandler().hitTestResultAtPoint(pt, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+    if (contentRenderer()) {
+        constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::DisallowUserAgentShadowContent, HitTestRequest::AllowChildFrameContent };
+        result = eventHandler().hitTestResultAtPoint(pt, hitType);
+    }
     return result.innerNode() ? &result.innerNode()->document() : 0;
 }
 
@@ -846,10 +865,12 @@ AbstractDOMWindow* Frame::virtualWindow() const
 
 String Frame::layerTreeAsText(LayerTreeFlags flags) const
 {
-    document()->updateLayout();
+    if (!m_view)
+        return { };
 
+    m_view->updateLayoutAndStyleIfNeededRecursive();
     if (!contentRenderer())
-        return String();
+        return { };
 
     return contentRenderer()->compositor().layerTreeAsText(flags);
 }

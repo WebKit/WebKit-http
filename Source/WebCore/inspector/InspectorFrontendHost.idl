@@ -48,9 +48,12 @@
     void setZoomFactor(unrestricted float zoom);
     float zoomFactor();
 
+    void setForcedAppearance(DOMString appearance);
+
     DOMString userInterfaceLayoutDirection();
 
-    void requestSetDockSide(DOMString side);
+    boolean supportsDockSide(DOMString dockSide);
+    void requestSetDockSide(DOMString dockSide);
 
     void setAttachedWindowHeight(unsigned long height);
     void setAttachedWindowWidth(unsigned long width);

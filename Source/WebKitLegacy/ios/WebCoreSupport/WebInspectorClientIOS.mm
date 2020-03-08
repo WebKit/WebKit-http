@@ -128,6 +128,8 @@ void WebInspectorFrontendClient::bringToFront() { }
 void WebInspectorFrontendClient::closeWindow() { }
 void WebInspectorFrontendClient::reopen() { }
 void WebInspectorFrontendClient::resetState() { }
+void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Appearance) { }
+bool WebInspectorFrontendClient::supportsDockSide(DockSide) { return false; }
 void WebInspectorFrontendClient::attachWindow(DockSide) { }
 void WebInspectorFrontendClient::detachWindow() { }
 void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned) { }

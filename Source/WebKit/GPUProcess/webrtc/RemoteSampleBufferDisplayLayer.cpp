@@ -34,9 +34,8 @@
 #include <WebCore/MediaSampleAVFObjC.h>
 #include <WebCore/RemoteVideoSample.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<RemoteSampleBufferDisplayLayer> RemoteSampleBufferDisplayLayer::create(SampleBufferDisplayLayerIdentifier identifier, Ref<IPC::Connection>&& connection, bool hideRootLayer, IntSize size)
 {
@@ -81,9 +80,9 @@ void RemoteSampleBufferDisplayLayer::updateAffineTransform(CGAffineTransform tra
     m_sampleBufferDisplayLayer->updateAffineTransform(transform);
 }
 
-void RemoteSampleBufferDisplayLayer::updateBoundsAndPosition(CGRect bounds, CGPoint position)
+void RemoteSampleBufferDisplayLayer::updateBoundsAndPosition(CGRect bounds, WebCore::MediaSample::VideoRotation rotation)
 {
-    m_sampleBufferDisplayLayer->updateRootLayerBoundsAndPosition(bounds, position);
+    m_sampleBufferDisplayLayer->updateRootLayerBoundsAndPosition(bounds, rotation, LocalSampleBufferDisplayLayer::ShouldUpdateRootLayer::Yes);
 }
 
 void RemoteSampleBufferDisplayLayer::flush()
@@ -107,7 +106,7 @@ void RemoteSampleBufferDisplayLayer::enqueueSample(WebCore::RemoteVideoSample&& 
     if (!m_imageTransferSession)
         return;
 
-    auto sample = m_imageTransferSession->createMediaSample(remoteSample.surface(), remoteSample.time(), remoteSample.size());
+    auto sample = m_imageTransferSession->createMediaSample(remoteSample);
 
     ASSERT(sample);
     if (!sample)

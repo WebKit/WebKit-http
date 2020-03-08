@@ -590,6 +590,15 @@ WebRTCVP8CodecEnabled:
   humanReadableDescription: "Enable WebRTC VP8 codec"
   category: internal
 
+WebRTCPlatformCodecsInGPUProcessEnabled:
+  type: bool
+  defaultValue: DEFAULT_WEBRTC_CODECS_IN_GPUPROCESS
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC Platform Codecs in GPU Process"
+  humanReadableDescription: "Enable WebRTC Platform Codecs in GPU Process"
+  category: experimental
+
 WebRTCDTMFEnabled:
   type: bool
   defaultValue: true
@@ -597,7 +606,7 @@ WebRTCDTMFEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC DTMF"
   humanReadableDescription: "Enable WebRTC DTMF"
-  category: experimental
+  category: internal
 
 WebRTCH264SimulcastEnabled:
   type: bool
@@ -614,7 +623,7 @@ WebRTCMDNSICECandidatesEnabled:
   humanReadableName: "WebRTC mDNS ICE candidates"
   humanReadableDescription: "Enable WebRTC mDNS ICE candidates"
   webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
+  category: internal
   condition: ENABLE(WEB_RTC)
 
 UseLegacyTextAlignPositionedElementBehavior:
@@ -923,11 +932,6 @@ DefaultFontSize:
 DefaultFixedFontSize:
   type: double
   defaultValue: 13
-
-LayoutInterval:
-  type: double
-  defaultValue: -1
-  webcoreBinding: custom
 
 MaxParseDuration:
   type: double
@@ -1526,7 +1530,7 @@ GenericCueAPIEnabled:
 
 CaptureVideoInUIProcessEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_CAPTURE_VIDEO_IN_UIPROCESS
   humanReadableName: "Capture video in UI Process"
   humanReadableDescription: "Enable video capture in UI Process"
   category: experimental
@@ -1535,7 +1539,7 @@ CaptureVideoInUIProcessEnabled:
 
 CaptureVideoInGPUProcessEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_CAPTURE_VIDEO_IN_GPUPROCESS
   humanReadableName: "Capture video in GPU Process"
   humanReadableDescription: "Enable video capture in GPU Process"
   category: internal
@@ -1734,12 +1738,20 @@ CaptureAudioInUIProcessEnabled:
 
 CaptureAudioInGPUProcessEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_CAPTURE_AUDIO_IN_GPUPROCESS
   humanReadableName: "Capture Audio in GPU Process"
   humanReadableDescription: "Enable audio capture in GPU Process"
   category: internal
   webcoreBinding: none
   condition: ENABLE(MEDIA_STREAM)
+
+RenderCanvasInGPUProcessEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Render canvas in GPU Process"
+  humanReadableDescription: "Enable canvas rendering in GPU Process"
+  category: internal
+  webcoreBinding: none
 
 RestrictedHTTPResponseAccess:
   type: bool
@@ -1949,6 +1961,14 @@ IsAccessibilityIsolatedTreeEnabled:
     webcoreBinding: RuntimeEnabledFeatures
     category: experimental
     condition: ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+
+WebShareFileAPIEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Web Share API Level 2"
+    humanReadableDescription: "Enable level 2 of Web Share API"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: experimental
 
 # Deprecated
 

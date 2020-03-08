@@ -28,6 +28,15 @@
     color: hsl(0, 0%, 18%);
 }
 
+.navigation-bar .item.button:not(.image-only):focus,
+.navigation-bar .item.button.image-only:focus > .glyph {
+    outline: auto -webkit-focus-ring-color;
+}
+
+.navigation-bar .item.button.image-only:focus {
+    outline: none;
+}
+
 .navigation-bar .item.button.image-only {
     width: 26px;
 }
@@ -39,6 +48,10 @@
 .navigation-bar .item.button.image-and-text > span {
     padding-bottom: 1px;
     -webkit-padding-start: 4px;
+}
+
+.tab-bar > .navigation-bar .item.button.image-and-text > span {
+    padding-bottom: 0;
 }
 
 .navigation-bar .item.button.text-only {
@@ -61,11 +74,11 @@
     color: var(--glyph-color-pressed);
 }
 
-.navigation-bar .item.button:not(.disabled):matches(:focus, .activate.activated, .radio.selected) > .glyph {
+.navigation-bar .item.button:not(.disabled):matches(.activate.activated, .radio.selected) > .glyph {
     color: var(--glyph-color-active);
 }
 
-.navigation-bar .item.button:not(.disabled):active:matches(:focus, .activate.activated, .radio.selected) > .glyph {
+.navigation-bar .item.button:not(.disabled):active:matches(.activate.activated, .radio.selected) > .glyph {
     color: var(--glyph-color-active-pressed);
 }
 
@@ -74,8 +87,29 @@
     color: var(--glyph-color-disabled);
 }
 
+.navigation-bar .item.button > img {
+    width: 100%;
+    height: 100%;
+}
+
+.navigation-bar .item.button.disabled > img {
+    opacity: 0.3;
+}
+
+body:matches(.window-inactive, .window-docked-inactive) .navigation-bar .item.button > img {
+    opacity: 0.6;
+}
+
+body:matches(.window-inactive, .window-docked-inactive) .navigation-bar .item.button.disabled > img {
+    opacity: 0.18;
+}
+
 @media (prefers-color-scheme: dark) {
     .navigation-bar .item.button {
         color: var(--text-color-secondary);
+    }
+
+    .navigation-bar .item.button.disabled > img {
+        filter: invert();
     }
 }

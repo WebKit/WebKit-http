@@ -934,5 +934,6 @@ sub uploadResults
         return 0;
     }
     print "Upload to $report failed\n";
+
     return 1;
 }

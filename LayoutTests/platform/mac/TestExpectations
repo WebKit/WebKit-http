@@ -24,7 +24,7 @@ fast/text-autosizing/ios/programmatic-text-size-adjust.html [ Skip ]
 fast/text-autosizing/ios/text-size-adjust-inline-style.html [ Skip ]
 fast/text-autosizing [ Pass ]
 # Tests for idempotent autosizing mode rely on viewport scaling which isn't implemented on Mac.
-fast/text-autosizing/ios/idempotentmode [ Pass Failure ImageOnlyFailure ]
+fast/text-autosizing/ios/idempotentmode [ Skip ]
 
 fast/attachment/attachment-subtitle-resize.html [ Pass ]
 
@@ -1548,8 +1548,6 @@ webkit.org/b/175998 http/tests/security/mixedContent/insecure-css-with-secure-co
 [ Sierra ] platform/mac/media/encrypted-media/fps-generateRequest.html [ Skip ]
 [ Sierra ] platform/mac/media/encrypted-media/fps-encrypted-event.html [ Skip ]
 
-webkit.org/b/165311 [ Sierra+ ] media/modern-media-controls/pip-support/pip-support-click.html [ Pass Failure ]
-
 # User-installed font infrastructure is ony present on certain OSes.
 webkit.org/b/180062 [ Sierra HighSierra ] fast/text/user-installed-fonts/disable.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
@@ -2031,7 +2029,6 @@ webkit.org/b/207858 fast/canvas/webgl/readPixels-float.html [ Failure ]
 webkit.org/b/207858 fast/canvas/webgl/draw-elements-out-of-bounds-uint-index.html [ Failure ]
 webkit.org/b/207858 fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Failure ]
 webkit.org/b/207858 fast/canvas/webgl/webgl2-texture-upload-enums.html [ Failure ]
-webkit.org/b/207858 fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
 webkit.org/b/207858 webgl/1.0.3/conformance/programs/program-test.html [ Failure ]
 
 webkit.org/b/207971 css3/selectors3/xml/css3-modsel-d1.xml [ Pass Failure ]
@@ -2041,3 +2038,22 @@ webkit.org/b/207978 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/208061 [ Mojave ] webaudio/audioparam-exponentialRampToValueAtTime.html [ Pass Crash ]
 
 webkit.org/b/208077 [ Debug ] legacy-animation-engine/animations/animation-welcome-safari.html [ Pass Failure ]
+
+webkit.org/b/207858 [ Mojave ] webgl/1.0.3/conformance/textures/tex-image-and-sub-image-2d-with-webgl-canvas-rgba5551.html [ Pass Failure ]
+
+webkit.org/b/208219 compositing/video/video-clip-change-src.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208220 [ Debug ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html [ Pass Failure ]
+
+webkit.org/b/208053 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-effects.sub.html [ Skip ]
+webkit.org/b/208053 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-occlusion.sub.html [ Skip ]
+
+webkit.org/b/208078 [ Debug ] webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Pass Timeout ]
+
+webkit.org/b/208450 webanimations/accelerated-animation-renderer-change.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208467 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html [ Pass Failure ]
+
+webkit.org/b/208519 [ Catalina ] webanimations/accelerated-animation-slot-invalidation.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208574 mathml/scripts-removeChild.html [ Pass ImageOnlyFailure ]

@@ -126,8 +126,6 @@ public:
 
     void setBufferingPolicy(MediaPlayer::BufferingPolicy) override;
 
-    void outputMediaDataWillChange(AVPlayerItemVideoOutput*);
-
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void playbackTargetIsWirelessDidChange();
 #endif
@@ -155,6 +153,7 @@ public:
     bool waitingForKey() const final { return m_waitingForKey; }
 #endif
 
+    float currentTime() const override;
     MediaTime currentMediaTime() const override;
 
 private:
@@ -177,6 +176,7 @@ private:
     void paint(GraphicsContext&, const FloatRect&) override;
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
     PlatformLayer* platformLayer() const override;
+    RetainPtr<PlatformLayer> createVideoFullscreenLayer() override;
     void setVideoFullscreenLayer(PlatformLayer*, Function<void()>&& completionHandler) override;
     void updateVideoFullscreenInlineImage() final;
     void setVideoFullscreenFrame(FloatRect) override;
@@ -357,7 +357,6 @@ private:
     RetainPtr<WebCoreAVFPullDelegate> m_videoOutputDelegate;
     RetainPtr<CVPixelBufferRef> m_lastPixelBuffer;
     RetainPtr<CGImageRef> m_lastImage;
-    BinarySemaphore m_videoOutputSemaphore;
     std::unique_ptr<ImageRotationSessionVT> m_imageRotationSession;
     std::unique_ptr<VideoTextureCopierCV> m_videoTextureCopier;
 

@@ -80,7 +80,7 @@ Ref<PerformanceResourceTiming> PerformanceResourceTiming::create(MonotonicTime t
 }
 
 PerformanceResourceTiming::PerformanceResourceTiming(MonotonicTime timeOrigin, ResourceTiming&& resourceTiming)
-    : PerformanceEntry(PerformanceEntry::Type::Resource, resourceTiming.url().string(), "resource"_s, entryStartTime(timeOrigin, resourceTiming), entryEndTime(timeOrigin, resourceTiming))
+    : PerformanceEntry(resourceTiming.url().string(), entryStartTime(timeOrigin, resourceTiming), entryEndTime(timeOrigin, resourceTiming))
     , m_initiatorType(resourceTiming.initiator())
     , m_timeOrigin(timeOrigin)
     , m_loadTiming(resourceTiming.loadTiming())
@@ -88,12 +88,11 @@ PerformanceResourceTiming::PerformanceResourceTiming(MonotonicTime timeOrigin, R
     , m_shouldReportDetails(resourceTiming.allowTimingDetails())
     , m_serverTiming(resourceTiming.populateServerTiming())
 {
-    m_networkLoadMetrics.clearNonTimingData();
 }
 
 PerformanceResourceTiming::~PerformanceResourceTiming() = default;
 
-String PerformanceResourceTiming::nextHopProtocol() const
+const String& PerformanceResourceTiming::nextHopProtocol() const
 {
     return m_networkLoadMetrics.protocol;
 }

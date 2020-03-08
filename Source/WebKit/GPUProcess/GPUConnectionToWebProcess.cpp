@@ -36,6 +36,8 @@
 #include "LibWebRTCCodecsProxy.h"
 #include "LibWebRTCCodecsProxyMessages.h"
 #include "Logging.h"
+#include "RemoteAudioDestinationManager.h"
+#include "RemoteAudioDestinationManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererManager.h"
 #include "RemoteAudioMediaStreamTrackRendererManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererMessages.h"
@@ -58,9 +60,27 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebProcessMessages.h"
-
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
 #include <WebCore/PlatformMediaSessionManager.h>
+
+#if PLATFORM(COCOA)
+#include <WebCore/MediaSessionManagerCocoa.h>
+#include <WebCore/MediaSessionManagerIOS.h>
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "RemoteCDMFactoryProxy.h"
+#include "RemoteCDMFactoryProxyMessages.h"
+#include "RemoteCDMInstanceProxyMessages.h"
+#include "RemoteCDMInstanceSessionProxyMessages.h"
+#include "RemoteCDMProxyMessages.h"
+#endif
+
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+#include "RemoteAudioSessionProxy.h"
+#include "RemoteAudioSessionProxyManager.h"
+#include "RemoteAudioSessionProxyMessages.h"
+#endif
 
 namespace WebKit {
 using namespace WebCore;
@@ -75,11 +95,21 @@ public:
     }
 
 private:
+    Logger& logger() final { return m_process.logger(); }
     void addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& receiver) final { }
     void removeMessageReceiver(IPC::StringReference messageReceiverName) final { }
     IPC::Connection& connection() final { return m_process.connection(); }
-    PlatformMediaSessionManager& sessionManager() final { return m_process.sessionManager(); }
-    void willStartCameraCapture() final { sessionManager().prepareToSendUserMediaPermissionRequest(); }
+#if PLATFORM(IOS)
+    void willStartCameraCapture() final
+    {
+        if (m_providedPresentingApplicationPID)
+            return;
+        m_providedPresentingApplicationPID = true;
+        MediaSessionManageriOS::providePresentingApplicationPID();
+    }
+
+    bool m_providedPresentingApplicationPID { false };
+#endif
 
     GPUConnectionToWebProcess& m_process;
 };
@@ -109,6 +139,10 @@ GPUConnectionToWebProcess::~GPUConnectionToWebProcess()
 
 void GPUConnectionToWebProcess::didClose(IPC::Connection&)
 {
+    if (m_audioSessionProxy) {
+        gpuProcess().audioSessionManager().removeProxy(webProcessIdentifier());
+        m_audioSessionProxy = nullptr;
+    }
 }
 
 Logger& GPUConnectionToWebProcess::logger()
@@ -125,6 +159,14 @@ void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connec
 {
     WTFLogAlways("Received an invalid message \"%s.%s\" from the web process.\n", messageReceiverName.toString().data(), messageName.toString().data());
     CRASH();
+}
+
+RemoteAudioDestinationManager& GPUConnectionToWebProcess::remoteAudioDestinationManager()
+{
+    if (!m_remoteAudioDestinationManager)
+        m_remoteAudioDestinationManager = makeUnique<RemoteAudioDestinationManager>(*this);
+
+    return *m_remoteAudioDestinationManager;
 }
 
 RemoteMediaResourceManager& GPUConnectionToWebProcess::remoteMediaResourceManager()
@@ -189,79 +231,198 @@ LibWebRTCCodecsProxy& GPUConnectionToWebProcess::libWebRTCCodecsProxy()
 }
 #endif
 
-void GPUConnectionToWebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
+#if ENABLE(ENCRYPTED_MEDIA)
+RemoteCDMFactoryProxy& GPUConnectionToWebProcess::cdmFactoryProxy()
 {
+    if (!m_cdmFactoryProxy)
+        m_cdmFactoryProxy = makeUnique<RemoteCDMFactoryProxy>(*this);
+
+    return *m_cdmFactoryProxy;
+}
+#endif
+
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+RemoteAudioSessionProxy& GPUConnectionToWebProcess::audioSessionProxy()
+{
+    if (!m_audioSessionProxy) {
+        m_audioSessionProxy = RemoteAudioSessionProxy::create(*this).moveToUniquePtr();
+        gpuProcess().audioSessionManager().addProxy(makeWeakPtr(m_audioSessionProxy.get()));
+    }
+    return *m_audioSessionProxy;
+}
+#endif
+
+void GPUConnectionToWebProcess::createRenderingBackend(RenderingBackendIdentifier renderingBackendIdentifier)
+{
+    auto addResult = m_remoteRenderingBackendProxyMap.ensure(renderingBackendIdentifier, [&]() {
+        return RemoteRenderingBackendProxy::create(*this, renderingBackendIdentifier);
+    });
+    ASSERT_UNUSED(addResult, addResult.isNewEntry);
+}
+
+void GPUConnectionToWebProcess::releaseRenderingBackend(RenderingBackendIdentifier renderingBackendIdentifier)
+{
+    bool found = m_remoteRenderingBackendProxyMap.remove(renderingBackendIdentifier);
+    ASSERT_UNUSED(found, found);
+}
+
+#if PLATFORM(COCOA)
+void GPUConnectionToWebProcess::clearNowPlayingInfo()
+{
+    MediaSessionManagerCocoa::clearNowPlayingInfo();
+}
+
+void GPUConnectionToWebProcess::setNowPlayingInfo(bool setAsNowPlayingApplication, const NowPlayingInfo& nowPlayingInfo)
+{
+    MediaSessionManagerCocoa::setNowPlayingInfo(setAsNowPlayingApplication, nowPlayingInfo);
+}
+#endif
+
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+void GPUConnectionToWebProcess::ensureAudioSession(EnsureAudioSessionCompletion&& completion)
+{
+    completion(audioSessionProxy().configuration());
+}
+#endif
+
+bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC::Decoder& decoder)
+{
+    if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
+        remoteAudioDestinationManager().didReceiveMessageFromWebProcess(connection, decoder);
+        return true;
+    }
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveMessageFromWebProcess(connection, decoder);
-        return;
-    } else if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerProxy::messageReceiverName()) {
+        return true;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceivePlayerMessage(connection, decoder);
-        return;
-    } else if (decoder.messageReceiverName() == Messages::RemoteMediaResourceManager::messageReceiverName()) {
+        return true;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteMediaResourceManager::messageReceiverName()) {
         remoteMediaResourceManager().didReceiveMessage(connection, decoder);
-        return;
+        return true;
     }
 #if ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManagerProxy::messageReceiverName()) {
         userMediaCaptureManagerProxy().didReceiveMessageFromGPUProcess(connection, decoder);
-        return;
+        return true;
     }
     if (decoder.messageReceiverName() == Messages::RemoteMediaRecorderManager::messageReceiverName()) {
         mediaRecorderManager().didReceiveMessageFromWebProcess(connection, decoder);
-        return;
+        return true;
     }
     if (decoder.messageReceiverName() == Messages::RemoteMediaRecorder::messageReceiverName()) {
         mediaRecorderManager().didReceiveRemoteMediaRecorderMessage(connection, decoder);
-        return;
+        return true;
     }
 #if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
     if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRendererManager::messageReceiverName()) {
         audioTrackRendererManager().didReceiveMessageFromWebProcess(connection, decoder);
-        return;
+        return true;
     }
     if (decoder.messageReceiverName() == Messages::RemoteAudioMediaStreamTrackRenderer::messageReceiverName()) {
         audioTrackRendererManager().didReceiveRendererMessage(connection, decoder);
-        return;
+        return true;
     }
     if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayerManager::messageReceiverName()) {
         sampleBufferDisplayLayerManager().didReceiveMessageFromWebProcess(connection, decoder);
-        return;
+        return true;
     }
     if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayer::messageReceiverName()) {
         sampleBufferDisplayLayerManager().didReceiveLayerMessage(connection, decoder);
-        return;
+        return true;
     }
 #endif
 #endif
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
     if (decoder.messageReceiverName() == Messages::LibWebRTCCodecsProxy::messageReceiverName()) {
         libWebRTCCodecsProxy().didReceiveMessageFromWebProcess(connection, decoder);
-        return;
+        return true;
     }
 #endif
-}
-
-void GPUConnectionToWebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
-{
-    if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
-        remoteMediaPlayerManagerProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
-        return;
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (decoder.messageReceiverName() == Messages::RemoteCDMFactoryProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveMessageFromWebProcess(connection, decoder);
+        return true;
     }
 
+    if (decoder.messageReceiverName() == Messages::RemoteCDMProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveCDMMessage(connection, decoder);
+        return true;
+    }
+
+    if (decoder.messageReceiverName() == Messages::RemoteCDMInstanceProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveCDMInstanceMessage(connection, decoder);
+        return true;
+    }
+
+    if (decoder.messageReceiverName() == Messages::RemoteCDMInstanceSessionProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveCDMInstanceSessionMessage(connection, decoder);
+        return true;
+    }
+#endif
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+    if (decoder.messageReceiverName() == Messages::RemoteAudioSessionProxy::messageReceiverName()) {
+        audioSessionProxy().didReceiveMessage(connection, decoder);
+        return true;
+    }
+#endif
+
+    return messageReceiverMap().dispatchMessage(connection, decoder);
+}
+
+bool GPUConnectionToWebProcess::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
+{
+    if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
+        remoteAudioDestinationManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
+        return true;
+    }
+    if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
+        remoteMediaPlayerManagerProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
+        return true;
+    }
 #if ENABLE(MEDIA_STREAM)
     if (decoder.messageReceiverName() == Messages::UserMediaCaptureManagerProxy::messageReceiverName()) {
         userMediaCaptureManagerProxy().didReceiveSyncMessageFromGPUProcess(connection, decoder, replyEncoder);
-        return;
+        return true;
     }
 #if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
     if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayerManager::messageReceiverName()) {
         sampleBufferDisplayLayerManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
-        return;
+        return true;
     }
 #endif
 #endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (decoder.messageReceiverName() == Messages::RemoteCDMFactoryProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
+        return true;
+    }
 
-    ASSERT_NOT_REACHED();
+    if (decoder.messageReceiverName() == Messages::RemoteCDMProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveSyncCDMMessage(connection, decoder, replyEncoder);
+        return true;
+    }
+
+    if (decoder.messageReceiverName() == Messages::RemoteCDMInstanceProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveSyncCDMInstanceMessage(connection, decoder, replyEncoder);
+        return true;
+    }
+
+    if (decoder.messageReceiverName() == Messages::RemoteCDMInstanceSessionProxy::messageReceiverName()) {
+        cdmFactoryProxy().didReceiveSyncCDMInstanceSessionMessage(connection, decoder, replyEncoder);
+        return true;
+    }
+#endif
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+    if (decoder.messageReceiverName() == Messages::RemoteAudioSessionProxy::messageReceiverName()) {
+        audioSessionProxy().didReceiveSyncMessage(connection, decoder, replyEncoder);
+        return true;
+    }
+#endif
+
+    return messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
 const String& GPUConnectionToWebProcess::mediaCacheDirectory() const
@@ -269,19 +430,19 @@ const String& GPUConnectionToWebProcess::mediaCacheDirectory() const
     return m_gpuProcess->mediaCacheDirectory(m_sessionID);
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 const String& GPUConnectionToWebProcess::mediaKeysStorageDirectory() const
 {
     return m_gpuProcess->mediaKeysStorageDirectory(m_sessionID);
 }
 #endif
 
-PlatformMediaSessionManager& GPUConnectionToWebProcess::sessionManager()
+#if ENABLE(MEDIA_STREAM)
+void GPUConnectionToWebProcess::setOrientationForMediaCapture(uint64_t orientation)
 {
-    if (!m_sessionManager)
-        m_sessionManager = PlatformMediaSessionManager::create();
-    return *m_sessionManager;
+    userMediaCaptureManagerProxy().setOrientation(orientation);
 }
+#endif
 
 } // namespace WebKit
 

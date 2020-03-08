@@ -29,11 +29,13 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "DataReference.h"
 #include "MediaPlayerPrivateRemote.h"
 #include "RemoteMediaPlayerProxyMessages.h"
 #include <WebCore/NotImplemented.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 TextTrackPrivateRemote::TextTrackPrivateRemote(MediaPlayerPrivateRemote& player, TrackPrivateRemoteIdentifier idendifier, TextTrackPrivateRemoteConfiguration&& configuration)
     : WebCore::InbandTextTrackPrivate(configuration.cueFormat)
@@ -88,21 +90,26 @@ void TextTrackPrivateRemote::updateConfiguration(TextTrackPrivateRemoteConfigura
     m_isDefault = configuration.isDefault;
 }
 
-void TextTrackPrivateRemote::addGenericCue(GenericCueData&)
+void TextTrackPrivateRemote::addGenericCue(Ref<InbandGenericCue> cue)
 {
-    notImplemented();
+    ASSERT(client());
+    if (auto* client = this->client())
+        client->addGenericCue(cue);
 }
 
-void TextTrackPrivateRemote::updateGenericCue(GenericCueData&)
+void TextTrackPrivateRemote::updateGenericCue(Ref<InbandGenericCue> cue)
 {
-    notImplemented();
+    ASSERT(client());
+    if (auto* client = this->client())
+        client->updateGenericCue(cue);
 }
 
-void TextTrackPrivateRemote::removeGenericCue(GenericCueData&)
+void TextTrackPrivateRemote::removeGenericCue(Ref<InbandGenericCue> cue)
 {
-    notImplemented();
+    ASSERT(client());
+    if (auto* client = this->client())
+        client->removeGenericCue(cue);
 }
-
 
 void TextTrackPrivateRemote::parseWebVTTFileHeader(String&& header)
 {
@@ -137,21 +144,21 @@ void TextTrackPrivateRemote::addDataCueWithType(MediaTime&& start, MediaTime&& e
 {
     ASSERT(client());
     if (auto* client = this->client())
-        client->addDataCue(WTFMove(start), WTFMove(end), SerializedPlatformDataCue::create(WTFMove(dataValue)), type);
+        client->addDataCue(WTFMove(start), WTFMove(end), WebCore::SerializedPlatformDataCue::create(WTFMove(dataValue)), type);
 }
 
 void TextTrackPrivateRemote::updateDataCue(MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&& dataValue)
 {
     ASSERT(client());
     if (auto* client = this->client())
-        client->updateDataCue(WTFMove(start), WTFMove(end), SerializedPlatformDataCue::create(WTFMove(dataValue)));
+        client->updateDataCue(WTFMove(start), WTFMove(end), WebCore::SerializedPlatformDataCue::create(WTFMove(dataValue)));
 }
 
 void TextTrackPrivateRemote::removeDataCue(MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&& dataValue)
 {
     ASSERT(client());
     if (auto* client = this->client())
-        client->removeDataCue(WTFMove(start), WTFMove(end), SerializedPlatformDataCue::create(WTFMove(dataValue)));
+        client->removeDataCue(WTFMove(start), WTFMove(end), WebCore::SerializedPlatformDataCue::create(WTFMove(dataValue)));
 }
 #endif
 

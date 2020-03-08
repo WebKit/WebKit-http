@@ -252,7 +252,7 @@ public:
 
     const String& uiProcessBundleIdentifier() const { return m_uiProcessBundleIdentifier; }
 
-    void updateActivePages();
+    void updateActivePages(const String& overrideDisplayName);
     void getActivePagesOriginsForTesting(CompletionHandler<void(Vector<String>&&)>&&);
     void pageActivityStateDidChange(WebCore::PageIdentifier, OptionSet<WebCore::ActivityState::Flag> changed);
 
@@ -517,6 +517,8 @@ private:
 
     bool isAlwaysOnLoggingAllowed() { return m_sessionID ? m_sessionID->isAlwaysOnLoggingAllowed() : true; }
 
+    void setUseGPUProcessForMedia(bool);
+
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
     HashMap<WebCore::PageIdentifier, RefPtr<WebPage>> m_pageMap;
@@ -653,6 +655,8 @@ private:
     RefPtr<SandboxExtension> m_assetServiceExtension;
     RefPtr<SandboxExtension> m_assetServiceV2Extension;
 #endif
+
+    bool m_useGPUProcessForMedia { false };
 };
 
 } // namespace WebKit

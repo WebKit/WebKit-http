@@ -74,8 +74,16 @@ public:
     virtual void reopen() = 0;
     virtual void resetState() = 0;
 
+    enum class Appearance {
+        System,
+        Light,
+        Dark,
+    };
+    WEBCORE_EXPORT virtual void setForcedAppearance(Appearance) = 0;
+
     virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() const = 0;
 
+    WEBCORE_EXPORT virtual bool supportsDockSide(DockSide) = 0;
     WEBCORE_EXPORT virtual void requestSetDockSide(DockSide) = 0;
     WEBCORE_EXPORT virtual void changeAttachedWindowHeight(unsigned) = 0;
     WEBCORE_EXPORT virtual void changeAttachedWindowWidth(unsigned) = 0;
@@ -106,3 +114,16 @@ public:
 };
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::InspectorFrontendClient::Appearance> {
+    using values = EnumValues<
+        WebCore::InspectorFrontendClient::Appearance,
+        WebCore::InspectorFrontendClient::Appearance::System,
+        WebCore::InspectorFrontendClient::Appearance::Light,
+        WebCore::InspectorFrontendClient::Appearance::Dark
+    >;
+};
+
+} // namespace WTF

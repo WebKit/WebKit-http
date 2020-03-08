@@ -92,6 +92,8 @@ Ref<PageConfiguration> PageConfiguration::copy() const
     copy->m_corsDisablingPatterns = this->m_corsDisablingPatterns;
     copy->m_webViewCategory = this->m_webViewCategory;
 
+    copy->m_processDisplayName = this->m_processDisplayName;
+
     return copy;
 }
 
@@ -146,12 +148,12 @@ void PageConfiguration::setRelatedPage(WebPageProxy* relatedPage)
     m_relatedPage = relatedPage;
 }
 
-VisitedLinkStore* PageConfiguration::visitedLinkStore()
+WebKit::VisitedLinkStore* PageConfiguration::visitedLinkStore()
 {
     return m_visitedLinkStore.get();
 }
 
-void PageConfiguration::setVisitedLinkStore(VisitedLinkStore* visitedLinkStore)
+void PageConfiguration::setVisitedLinkStore(WebKit::VisitedLinkStore* visitedLinkStore)
 {
     m_visitedLinkStore = visitedLinkStore;
 }

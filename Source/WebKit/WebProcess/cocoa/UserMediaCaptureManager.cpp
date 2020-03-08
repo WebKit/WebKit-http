@@ -28,7 +28,8 @@
 
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
 
-#include  "GPUProcessConnection.h"
+#include "AudioMediaStreamTrackRenderer.h"
+#include "GPUProcessConnection.h"
 #include "SharedRingBufferStorage.h"
 #include "UserMediaCaptureManagerMessages.h"
 #include "UserMediaCaptureManagerProxyMessages.h"
@@ -36,6 +37,7 @@
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
 #include <WebCore/CaptureDevice.h>
+#include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/ImageTransferSessionVT.h>
 #include <WebCore/MediaConstraints.h>
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
@@ -180,7 +182,7 @@ public:
             return;
         }
 
-        auto sampleRef = m_imageTransferSession->createMediaSample(remoteSample.surface(), remoteSample.time(), remoteSample.size());
+        auto sampleRef = m_imageTransferSession->createMediaSample(remoteSample);
         if (!sampleRef) {
             ASSERT_NOT_REACHED();
             return;
@@ -272,6 +274,9 @@ void UserMediaCaptureManager::setupCaptureProcesses(bool shouldCaptureAudioInUIP
 
     m_audioFactory.setShouldCaptureInGPUProcess(shouldCaptureAudioInGPUProcess);
     m_videoFactory.setShouldCaptureInGPUProcess(shouldCaptureVideoInGPUProcess);
+
+    if (shouldCaptureAudioInGPUProcess)
+        WebCore::AudioMediaStreamTrackRenderer::setCreator(WebKit::AudioMediaStreamTrackRenderer::create);
 
     if (shouldCaptureAudioInUIProcess || shouldCaptureAudioInGPUProcess)
         RealtimeMediaSourceCenter::singleton().setAudioCaptureFactory(m_audioFactory);
@@ -447,11 +452,13 @@ Ref<RealtimeMediaSource> UserMediaCaptureManager::cloneSource(Source& source)
 Ref<RealtimeMediaSource> UserMediaCaptureManager::cloneVideoSource(Source& source)
 {
     auto id = RealtimeMediaSourceIdentifier::generate();
-    if (!m_process.send(Messages::UserMediaCaptureManagerProxy::Clone { source.sourceID(), id }, 0))
+    if (!source.connection()->send(Messages::UserMediaCaptureManagerProxy::Clone { source.sourceID(), id }, 0))
         return makeRef(source);
 
     auto settings = source.settings();
     auto cloneSource = adoptRef(*new Source(String::number(id.toUInt64()), source.type(), source.deviceType(), String { settings.label().string() }, source.deviceIDHashSalt(), id, *this));
+    if (source.shouldCaptureInGPUProcess())
+        cloneSource->setShouldCaptureInGPUProcess(true);
     cloneSource->setSettings(WTFMove(settings));
     m_sources.add(id, cloneSource.copyRef());
     return cloneSource;
@@ -467,6 +474,11 @@ CaptureSourceOrError UserMediaCaptureManager::AudioFactory::createAudioCaptureSo
 #if !ENABLE(GPU_PROCESS)
     if (m_shouldCaptureInGPUProcess)
         return CaptureSourceOrError { "Audio capture in GPUProcess is not implemented"_s };
+#endif
+#if PLATFORM(IOS_FAMILY)
+    // FIXME: Remove disabling of the audio session category managemeent once we move all media playing to GPUProcess.
+    if (m_shouldCaptureInGPUProcess)
+        DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
     return m_manager.createCaptureSource(device, WTFMove(hashSalt), constraints, m_shouldCaptureInGPUProcess);
 }

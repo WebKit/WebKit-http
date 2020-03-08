@@ -219,9 +219,16 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     static dispatch_once_t onceToken;
     static NSSet *allWebsiteDataTypes;
     dispatch_once(&onceToken, ^ {
-        auto *privateTypes = @[_WKWebsiteDataTypeHSTSCache, _WKWebsiteDataTypeMediaKeys, _WKWebsiteDataTypeSearchFieldRecentSearches, _WKWebsiteDataTypeResourceLoadStatistics, _WKWebsiteDataTypeCredentials, _WKWebsiteDataTypeAdClickAttributions
+        auto *privateTypes = @[
+            _WKWebsiteDataTypeHSTSCache,
+            _WKWebsiteDataTypeMediaKeys,
+            _WKWebsiteDataTypeSearchFieldRecentSearches,
+            _WKWebsiteDataTypeResourceLoadStatistics,
+            _WKWebsiteDataTypeCredentials,
+            _WKWebsiteDataTypeAdClickAttributions,
+            _WKWebsiteDataTypeAlternativeServices
 #if !TARGET_OS_IPHONE
-        , _WKWebsiteDataTypePlugInData
+            , _WKWebsiteDataTypePlugInData
 #endif
         ];
 
@@ -278,6 +285,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (void)_setResourceLoadStatisticsEnabled:(BOOL)enabled
 {
+    _websiteDataStore->useExplicitITPState();
     _websiteDataStore->setResourceLoadStatisticsEnabled(enabled);
 }
 
@@ -321,49 +329,24 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (void)_setBoundInterfaceIdentifier:(NSString *)identifier
 {
-    _websiteDataStore->setBoundInterfaceIdentifier(identifier);
 }
 
 - (NSString *)_boundInterfaceIdentifier
 {
-    return _websiteDataStore->boundInterfaceIdentifier();
+    return nil;
 }
 
 - (void)_setAllowsCellularAccess:(BOOL)allows
 {
-    _websiteDataStore->setAllowsCellularAccess(allows ? WebKit::AllowsCellularAccess::Yes : WebKit::AllowsCellularAccess::No);
 }
 
 - (BOOL)_allowsCellularAccess
 {
-    return _websiteDataStore->allowsCellularAccess() == WebKit::AllowsCellularAccess::Yes;
+    return YES;
 }
 
 - (void)_setProxyConfiguration:(NSDictionary *)configuration
 {
-    _websiteDataStore->setProxyConfiguration((__bridge CFDictionaryRef)configuration);
-}
-
-- (NSString *)_sourceApplicationBundleIdentifier
-{
-    return _websiteDataStore->sourceApplicationBundleIdentifier();
-}
-
-- (void)_setSourceApplicationBundleIdentifier:(NSString *)identifier
-{
-    if (!_websiteDataStore->setSourceApplicationBundleIdentifier(identifier))
-        [NSException raise:NSGenericException format:@"_setSourceApplicationBundleIdentifier cannot be called after networking has begun"];
-}
-
-- (NSString *)_sourceApplicationSecondaryIdentifier
-{
-    return _websiteDataStore->sourceApplicationSecondaryIdentifier();
-}
-
-- (void)_setSourceApplicationSecondaryIdentifier:(NSString *)identifier
-{
-    if (!_websiteDataStore->setSourceApplicationSecondaryIdentifier(identifier))
-        [NSException raise:NSGenericException format:@"_setSourceApplicationSecondaryIdentifier cannot be called after networking has begun"];
 }
 
 - (void)_setAllowsTLSFallback:(BOOL)allows
@@ -377,7 +360,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (NSDictionary *)_proxyConfiguration
 {
-    return (__bridge NSDictionary *)_websiteDataStore->proxyConfiguration();
+    return nil;
 }
 
 - (NSURL *)_indexedDBDatabaseDirectory

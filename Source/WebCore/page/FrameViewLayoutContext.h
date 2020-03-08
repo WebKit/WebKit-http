@@ -120,6 +120,7 @@ public:
     const Layout::LayoutState* layoutFormattingState() const { return m_layoutState.get(); }
     Layout::LayoutTreeContent* layoutTreeContent() const { return m_layoutTreeContent.get(); }
     void invalidateLayoutTreeContent();
+    void invalidateLayoutState();
 #endif
 
 private:
@@ -177,7 +178,6 @@ private:
     WeakPtr<RenderElement> m_subtreeLayoutRoot;
 
     bool m_layoutSchedulingIsEnabled { true };
-    bool m_delayedLayout { false };
     bool m_firstLayout { true };
     bool m_needsFullRepaint { true };
     bool m_inAsynchronousTasks { false };

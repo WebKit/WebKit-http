@@ -159,15 +159,19 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(IOS)
     encoder << compilerServiceExtensionHandle;
     encoder << contentFilterExtensionHandle;
-    encoder << launchServicesOpenExtensionHandle;
-    encoder << diagnosticsExtensionHandle;
 #endif
-    
+
+#if PLATFORM(IOS_FAMILY)
+    encoder << diagnosticsExtensionHandle;
+    encoder << dynamicMachExtensionHandles;
+#endif
+
 #if PLATFORM(COCOA)
     encoder << neHelperExtensionHandle;
     encoder << neSessionManagerExtensionHandle;
     encoder << systemHasBattery;
     encoder << mimeTypesMap;
+    encoder << mapUTIFromMIMEType;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -181,6 +185,9 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     // FIXME(207716): The following should be removed when the GPU process is complete.
     encoder << mediaExtensionHandles;
+#if !ENABLE(CFPREFS_DIRECT_MODE)
+    encoder << preferencesExtensionHandle;
+#endif
 #endif
 }
 
@@ -417,18 +424,20 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!contentFilterExtensionHandle)
         return false;
     parameters.contentFilterExtensionHandle = WTFMove(*contentFilterExtensionHandle);
+#endif
 
-    Optional<Optional<SandboxExtension::Handle>> launchServicesOpenExtensionHandle;
-    decoder >> launchServicesOpenExtensionHandle;
-    if (!launchServicesOpenExtensionHandle)
-        return false;
-    parameters.launchServicesOpenExtensionHandle = WTFMove(*launchServicesOpenExtensionHandle);
-
+#if PLATFORM(IOS_FAMILY)
     Optional<Optional<SandboxExtension::Handle>> diagnosticsExtensionHandle;
     decoder >> diagnosticsExtensionHandle;
     if (!diagnosticsExtensionHandle)
         return false;
     parameters.diagnosticsExtensionHandle = WTFMove(*diagnosticsExtensionHandle);
+
+    Optional<SandboxExtension::HandleArray> dynamicMachExtensionHandles;
+    decoder >> dynamicMachExtensionHandles;
+    if (!dynamicMachExtensionHandles)
+        return false;
+    parameters.dynamicMachExtensionHandles = WTFMove(*dynamicMachExtensionHandles);
 #endif
 
 #if PLATFORM(COCOA)
@@ -455,6 +464,12 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!mimeTypesMap)
         return false;
     parameters.mimeTypesMap = WTFMove(*mimeTypesMap);
+
+    Optional<HashMap<String, String>> mapUTIFromMIMEType;
+    decoder >> mapUTIFromMIMEType;
+    if (!mapUTIFromMIMEType)
+        return false;
+    parameters.mapUTIFromMIMEType = WTFMove(*mapUTIFromMIMEType);
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -488,6 +503,14 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     parameters.mediaExtensionHandles = WTFMove(*mediaExtensionHandles);
     // FIXME(207716): End region to remove.
+
+#if !ENABLE(CFPREFS_DIRECT_MODE)
+    Optional<Optional<SandboxExtension::Handle>> preferencesExtensionHandle;
+    decoder >> preferencesExtensionHandle;
+    if (!preferencesExtensionHandle)
+        return false;
+    parameters.preferencesExtensionHandle = WTFMove(*preferencesExtensionHandle);
+#endif
 #endif
 
     return true;

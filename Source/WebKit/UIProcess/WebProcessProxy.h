@@ -51,9 +51,14 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/Logger.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/WeakHashSet.h>
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+#include "LayerHostingContext.h"
+#endif
 
 namespace API {
 class Navigation;
@@ -364,6 +369,14 @@ public:
     void setHasIssuedAttachmentElementRelatedSandboxExtensions() { m_hasIssuedAttachmentElementRelatedSandboxExtensions = true; }
 #endif
 
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    void didCreateContextInGPUProcessForVisibilityPropagation(LayerHostingContextID);
+#endif
+
+#if ENABLE(GPU_PROCESS)
+    void gpuProcessCrashed();
+#endif
+
 protected:
     WebProcessProxy(WebProcessPool&, WebsiteDataStore*, IsPrewarmed);
 
@@ -555,6 +568,7 @@ private:
 #if PLATFORM(COCOA)
     MediaCaptureSandboxExtensions m_mediaCaptureSandboxExtensions { SandboxExtensionType::None };
 #endif
+    RefPtr<Logger> m_logger;
 
     struct ServiceWorkerInformation {
         WebPageProxyIdentifier serviceWorkerPageProxyID;

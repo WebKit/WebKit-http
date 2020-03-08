@@ -33,6 +33,7 @@
 #import "PageClient.h"
 #import "SafeBrowsingSPI.h"
 #import "SafeBrowsingWarning.h"
+#import "SharedBufferDataReference.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import "WebsiteDataStore.h"
@@ -183,13 +184,12 @@ void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-void WebPageProxy::platformRegisterAttachment(Ref<API::Attachment>&& attachment, const String& preferredFileName, const IPC::DataReference& dataReference)
+void WebPageProxy::platformRegisterAttachment(Ref<API::Attachment>&& attachment, const String& preferredFileName, const IPC::SharedBufferDataReference& dataReference)
 {
     if (dataReference.isEmpty())
         return;
 
-    auto buffer = SharedBuffer::create(dataReference.data(), dataReference.size());
-    auto fileWrapper = adoptNS([pageClient().allocFileWrapperInstance() initRegularFileWithContents:buffer->createNSData().autorelease()]);
+    auto fileWrapper = adoptNS([pageClient().allocFileWrapperInstance() initRegularFileWithContents:dataReference.buffer()->createNSData().autorelease()]);
     [fileWrapper setPreferredFilename:preferredFileName];
     attachment->setFileWrapper(fileWrapper.get());
 }
@@ -235,17 +235,17 @@ IPC::Connection* WebPageProxy::paymentCoordinatorConnection(const WebPaymentCoor
 
 const String& WebPageProxy::paymentCoordinatorBoundInterfaceIdentifier(const WebPaymentCoordinatorProxy&)
 {
-    return websiteDataStore().boundInterfaceIdentifier();
+    return websiteDataStore().configuration().boundInterfaceIdentifier();
 }
 
 const String& WebPageProxy::paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&)
 {
-    return websiteDataStore().sourceApplicationBundleIdentifier();
+    return websiteDataStore().configuration().sourceApplicationBundleIdentifier();
 }
 
 const String& WebPageProxy::paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&)
 {
-    return websiteDataStore().sourceApplicationSecondaryIdentifier();
+    return websiteDataStore().configuration().sourceApplicationSecondaryIdentifier();
 }
 
 void WebPageProxy::paymentCoordinatorAddMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference& messageReceiverName, IPC::MessageReceiver& messageReceiver)
@@ -306,6 +306,11 @@ void WebPageProxy::didCreateContextForVisibilityPropagation(LayerHostingContextI
 {
     m_contextIDForVisibilityPropagation = contextID;
     pageClient().didCreateContextForVisibilityPropagation(contextID);
+}
+
+void WebPageProxy::didCreateContextInGPUProcessForVisibilityPropagation(LayerHostingContextID contextID)
+{
+    pageClient().didCreateContextInGPUProcessForVisibilityPropagation(contextID);
 }
 #endif
 

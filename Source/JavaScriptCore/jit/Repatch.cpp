@@ -592,7 +592,7 @@ static InlineCacheAction tryCachePutByID(JSGlobalObject* globalObject, CodeBlock
                     }
                 }
 
-                newCase = AccessCase::create(vm, codeBlock, AccessCase::Replace, ident, slot.cachedOffset(), oldStructure);
+                newCase = AccessCase::create(vm, codeBlock, AccessCase::Replace, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), slot.cachedOffset(), oldStructure);
             } else {
                 ASSERT(slot.type() == PutPropertySlot::NewProperty);
 
@@ -641,7 +641,7 @@ static InlineCacheAction tryCachePutByID(JSGlobalObject* globalObject, CodeBlock
                     }
                 }
 
-                newCase = AccessCase::create(vm, codeBlock, ident, offset, oldStructure, newStructure, conditionSet, WTFMove(prototypeAccessChain));
+                newCase = AccessCase::createTransition(vm, codeBlock, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), offset, oldStructure, newStructure, conditionSet, WTFMove(prototypeAccessChain));
             }
         } else if (slot.isCacheableCustom() || slot.isCacheableSetter()) {
             if (slot.isCacheableCustom()) {
@@ -670,7 +670,7 @@ static InlineCacheAction tryCachePutByID(JSGlobalObject* globalObject, CodeBlock
                 }
 
                 newCase = GetterSetterAccessCase::create(
-                    vm, codeBlock, slot.isCustomAccessor() ? AccessCase::CustomAccessorSetter : AccessCase::CustomValueSetter, oldStructure, ident,
+                    vm, codeBlock, slot.isCustomAccessor() ? AccessCase::CustomAccessorSetter : AccessCase::CustomValueSetter, oldStructure, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident),
                     invalidOffset, conditionSet, WTFMove(prototypeAccessChain), slot.customSetter(), slot.base() != baseValue ? slot.base() : nullptr);
             } else {
                 ObjectPropertyConditionSet conditionSet;
@@ -688,7 +688,10 @@ static InlineCacheAction tryCachePutByID(JSGlobalObject* globalObject, CodeBlock
                         prototypeAccessChain = PolyProtoAccessChain::create(globalObject, baseCell, slot.base());
                         if (!prototypeAccessChain)
                             return GiveUpOnCache;
-                        offset = prototypeAccessChain->slotBaseStructure(vm, baseCell->structure(vm))->get(vm, ident.impl());
+                        unsigned attributes;
+                        offset = prototypeAccessChain->slotBaseStructure(vm, baseCell->structure(vm))->get(vm, ident.impl(), attributes);
+                        if (!isValidOffset(offset) || !(attributes & PropertyAttribute::Accessor))
+                            return RetryCacheLater;
                     } else {
                         prototypeAccessChain = nullptr;
                         conditionSet = generateConditionsForPrototypePropertyHit(
@@ -704,13 +707,13 @@ static InlineCacheAction tryCachePutByID(JSGlobalObject* globalObject, CodeBlock
                 }
 
                 newCase = GetterSetterAccessCase::create(
-                    vm, codeBlock, AccessCase::Setter, oldStructure, ident, offset, conditionSet, WTFMove(prototypeAccessChain));
+                    vm, codeBlock, AccessCase::Setter, oldStructure, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), offset, conditionSet, WTFMove(prototypeAccessChain));
             }
         }
 
         LOG_IC((ICEvent::PutByIdAddAccessCase, oldStructure->classInfo(), ident, slot.base() == baseValue));
         
-        result = stubInfo.addAccessCase(locker, codeBlock, ident, WTFMove(newCase));
+        result = stubInfo.addAccessCase(locker, codeBlock, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), WTFMove(newCase));
 
         if (result.generatedSomeCode()) {
             LOG_IC((ICEvent::PutByIdReplaceWithJump, oldStructure->classInfo(), ident, slot.base() == baseValue));
@@ -732,6 +735,74 @@ void repatchPutByID(JSGlobalObject* globalObject, CodeBlock* codeBlock, JSValue 
     
     if (tryCachePutByID(globalObject, codeBlock, baseValue, oldStructure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, appropriateGenericPutByIdFunction(slot, putKind));
+}
+
+static InlineCacheAction tryCacheDeleteBy(JSGlobalObject* globalObject, CodeBlock* codeBlock, DeletePropertySlot& slot, JSValue baseValue, Structure* oldStructure, CacheableIdentifier propertyName, StructureStubInfo& stubInfo, DelByKind)
+{
+    VM& vm = globalObject->vm();
+    AccessGenerationResult result;
+
+    {
+        GCSafeConcurrentJSLocker locker(codeBlock->m_lock, globalObject->vm().heap);
+
+        if (forceICFailure(globalObject))
+            return GiveUpOnCache;
+
+        ASSERT(oldStructure);
+        if (!baseValue.isObject() || !oldStructure->propertyAccessesAreCacheable())
+            return GiveUpOnCache;
+
+        if (!slot.isCacheableDelete())
+            return GiveUpOnCache;
+
+        std::unique_ptr<AccessCase> newCase;
+
+        if (slot.isDeleteHit()) {
+            PropertyOffset newOffset = invalidOffset;
+            Structure* newStructure = Structure::removePropertyTransitionFromExistingStructureConcurrently(oldStructure, propertyName.uid(), newOffset);
+            if (!newStructure)
+                return RetryCacheLater;
+            if (!newStructure->propertyAccessesAreCacheable() || newStructure->isDictionary())
+                return GiveUpOnCache;
+            ASSERT(newOffset == slot.cachedOffset());
+            ASSERT(newStructure->previousID(vm) == oldStructure);
+            ASSERT(newStructure->isPropertyDeletionTransition());
+            ASSERT(newStructure->isObject());
+            ASSERT(isValidOffset(newOffset));
+            newCase = AccessCase::createDelete(vm, codeBlock, propertyName, newOffset, oldStructure, newStructure);
+        } else if (!codeBlock->isStrictMode()) {
+            if (slot.isNonconfigurable())
+                newCase = AccessCase::create(vm, codeBlock, AccessCase::DeleteNonConfigurable, propertyName, invalidOffset, oldStructure, { }, nullptr);
+            else
+                newCase = AccessCase::create(vm, codeBlock, AccessCase::DeleteMiss, propertyName, invalidOffset, oldStructure, { }, nullptr);
+        }
+
+        result = stubInfo.addAccessCase(locker, codeBlock, propertyName, WTFMove(newCase));
+
+        if (result.generatedSomeCode()) {
+            RELEASE_ASSERT(result.code());
+            LOG_IC((ICEvent::DelByReplaceWithJump, oldStructure->classInfo(), Identifier::fromUid(vm, propertyName.uid())));
+            InlineAccess::rewireStubAsJump(stubInfo, CodeLocationLabel<JITStubRoutinePtrTag>(result.code()));
+        }
+    }
+
+    fireWatchpointsAndClearStubIfNeeded(vm, stubInfo, codeBlock, result);
+
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
+}
+
+void repatchDeleteBy(JSGlobalObject* globalObject, CodeBlock* codeBlock, DeletePropertySlot& slot, JSValue baseValue, Structure* oldStructure, CacheableIdentifier propertyName, StructureStubInfo& stubInfo, DelByKind kind)
+{
+    SuperSamplerScope superSamplerScope(false);
+    VM& vm = globalObject->vm();
+
+    if (tryCacheDeleteBy(globalObject, codeBlock, slot, baseValue, oldStructure, propertyName, stubInfo, kind) == GiveUpOnCache) {
+        LOG_IC((ICEvent::DelByReplaceWithGeneric, baseValue.classInfoOrNull(globalObject->vm()), Identifier::fromUid(vm, propertyName.uid())));
+        if (kind == DelByKind::Normal)
+            ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, operationDeleteByIdGeneric);
+        else
+            ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, operationDeleteByValGeneric);
+    }
 }
 
 static InlineCacheAction tryCacheInByID(
@@ -821,9 +892,9 @@ static InlineCacheAction tryCacheInByID(
         LOG_IC((ICEvent::InAddAccessCase, structure->classInfo(), ident, slot.slotBase() == base));
 
         std::unique_ptr<AccessCase> newCase = AccessCase::create(
-            vm, codeBlock, wasFound ? AccessCase::InHit : AccessCase::InMiss, ident, wasFound ? slot.cachedOffset() : invalidOffset, structure, conditionSet, WTFMove(prototypeAccessChain));
+            vm, codeBlock, wasFound ? AccessCase::InHit : AccessCase::InMiss, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), wasFound ? slot.cachedOffset() : invalidOffset, structure, conditionSet, WTFMove(prototypeAccessChain));
 
-        result = stubInfo.addAccessCase(locker, codeBlock, ident, WTFMove(newCase));
+        result = stubInfo.addAccessCase(locker, codeBlock, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), WTFMove(newCase));
 
         if (result.generatedSomeCode()) {
             LOG_IC((ICEvent::InReplaceWithJump, structure->classInfo(), ident, slot.slotBase() == base));
@@ -887,7 +958,7 @@ static InlineCacheAction tryCacheInstanceOf(
         }
         
         if (!newCase)
-            newCase = AccessCase::create(vm, codeBlock, AccessCase::InstanceOfGeneric, Identifier());
+            newCase = AccessCase::create(vm, codeBlock, AccessCase::InstanceOfGeneric, CacheableIdentifier());
         
         LOG_IC((ICEvent::InstanceOfAddAccessCase, structure->classInfo(), Identifier()));
         
@@ -1388,6 +1459,15 @@ void resetPutByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo)
     }
 
     ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, optimizedFunction);
+    InlineAccess::rewireStubAsJump(stubInfo, stubInfo.slowPathStartLocation);
+}
+
+void resetDelBy(CodeBlock* codeBlock, StructureStubInfo& stubInfo, DelByKind kind)
+{
+    if (kind == DelByKind::Normal)
+        ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, operationDeleteByIdOptimize);
+    else
+        ftlThunkAwareRepatchCall(codeBlock, stubInfo.slowPathCallLocation, operationDeleteByValOptimize);
     InlineAccess::rewireStubAsJump(stubInfo, stubInfo.slowPathStartLocation);
 }
 

@@ -110,8 +110,11 @@ public:
     void reopen() override;
     void resetState() override;
 
+    void setForcedAppearance(WebCore::InspectorFrontendClient::Appearance) override;
+
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() const override;
 
+    bool supportsDockSide(DockSide) override;
     void requestSetDockSide(DockSide) override;
     void changeAttachedWindowHeight(unsigned) override;
     void changeAttachedWindowWidth(unsigned) override;

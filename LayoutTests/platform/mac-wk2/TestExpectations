@@ -13,6 +13,7 @@ editing/undo-manager [ Pass ]
 editing/pasteboard/dom-paste [ Pass ]
 fast/forms/select/mac-wk2 [ Pass ]
 fast/sandbox/mac [ Pass ]
+fast/scrolling/mac [ Pass ]
 fast/visual-viewport/tiled-drawing [ Pass ]
 fast/web-share [ Pass ]
 scrollingcoordinator [ Pass ]
@@ -689,6 +690,10 @@ http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-r
 [ HighSierra+ ] http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture.html [ Skip ]
 [ HighSierra+ ] http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture-database.html [ Skip ]
 
+# Enable again when fixing https://bugs.webkit.org/show_bug.cgi?id=208400.
+http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral-database.html [ Skip ]
+http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral.html [ Skip ]
+
 # As of https://trac.webkit.org/changeset/227762 the timestampResolution is just 5 seconds which makes this test flaky
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
 
@@ -944,7 +949,7 @@ webkit.org/b/207060 imported/w3c/web-platform-tests/html/webappapis/timers/type-
 
 webkit.org/b/207063 fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html [ Pass Failure ]
 
-webkit.org/b/207078 webgpu/whlsl/textures-sample-level.html [ Pass Failure ]
+webkit.org/b/207078 webgpu/whlsl/textures-sample-level.html [ Pass ImageOnlyFailure Crash ]
 
 webkit.org/b/207117 webgpu/whlsl/nested-loop.html [ Pass ImageOnlyFailure ]
 
@@ -1024,7 +1029,7 @@ webkit.org/b/207688 fast/dom/attr_dead_doc.html [ Pass Failure ]
 
 webkit.org/b/206852 inspector/canvas/updateShader-webgpu-sharedVertexFragment.html [ Pass Failure ]
 
-webkit.org/b/207700 webgpu/whlsl/return-local-variable.html [ Pass Failure ]
+webkit.org/b/207700 webgpu/whlsl/return-local-variable.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/207728 [ Release ] accessibility/press-targets-center-point.html [ Pass Failure ]
 
@@ -1065,3 +1070,27 @@ webkit.org/b/208005 webgpu/whlsl/zero-initialize-values.html [ Pass ImageOnlyFai
 webkit.org/b/208014 [ Debug ] http/tests/websocket/tests/hybi/no-subprotocol.html [ Pass Crash ]
 
 webkit.org/b/208062 http/wpt/fetch/disable-speculative-for-reload.html [ Pass Failure ]
+
+webkit.org/b/208222 [ Release ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Pass Failure ]
+
+webkit.org/b/208264 [ Release ] fast/harness/uiscriptcontroller/concurrent-ui-side-scripts.html [ Pass Failure ]
+
+webkit.org/b/208340 webgpu/whlsl/textures-sample.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208390 [ Debug ] fast/css-custom-paint/delay-repaint.html [ Pass Failure ]
+
+webkit.org/b/208396 http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Pass Failure ]
+
+webkit.org/b/208394 imported/w3c/web-platform-tests/dom/nodes/Document-characterSet-normalization.html [ Pass Failure ]
+
+webkit.org/b/208471 tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler.html [ Pass Failure ]
+
+webkit.org/b/208476 css3/shapes/shape-outside/shape-image/shape-image-025.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208577 [ Release ] fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/208584 fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Pass Failure ]
+
+webkit.org/b/208590 [ Debug ] fast/events/beforeunload-prompt.html [ Pass Crash ]
+
+webkit.org/b/208648 [ Debug ] editing/execCommand/append-node-under-document.html [ Pass Crash ]

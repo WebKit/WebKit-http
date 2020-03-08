@@ -135,6 +135,7 @@ class WebProcessProxy;
 enum class ContinueUnsafeLoad : bool { No, Yes };
 
 struct FocusedElementInformation;
+struct FrameInfoData;
 struct InteractionInformationAtPosition;
 struct WebAutocorrectionContext;
 struct WebHitTestResultData;
@@ -224,7 +225,7 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     // FIXME: Adopt the WKUIDelegatePrivate callback on iOS and remove this.
-    virtual void decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, API::SecurityOrigin&, Function<void(bool)>&) = 0;
+    virtual void decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, const FrameInfoData&, Function<void(bool)>&) = 0;
 #endif
 
     virtual void didStartProvisionalLoadForMainFrame() { };
@@ -303,8 +304,13 @@ public:
 
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
     virtual void didCreateContextForVisibilityPropagation(LayerHostingContextID) { }
+    virtual void didCreateContextInGPUProcessForVisibilityPropagation(LayerHostingContextID) { }
 #endif
-    
+
+#if ENABLE(GPU_PROCESS)
+    virtual void gpuProcessCrashed() { }
+#endif
+
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) = 0;

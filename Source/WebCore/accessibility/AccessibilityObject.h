@@ -110,10 +110,13 @@ public:
     bool isAccessibilityNodeObject() const override { return false; }
     bool isAccessibilityRenderObject() const override { return false; }
     bool isAccessibilityScrollbar() const override { return false; }
-    bool isAccessibilityScrollView() const override { return false; }
+    bool isAccessibilityScrollViewInstance() const override { return false; }
     bool isAccessibilitySVGRoot() const override { return false; }
     bool isAccessibilitySVGElement() const override { return false; }
     bool isAccessibilityTableInstance() const override { return false; }
+    bool isAccessibilityProgressIndicatorInstance() const override { return false; }
+
+    bool isAccessibilityTableColumnInstance() const override { return false; }
 
     bool isAttachmentElement() const override { return false; }
     bool isHeading() const override { return false; }
@@ -168,12 +171,31 @@ public:
     int axColumnCount() const override { return 0; }
     int axRowCount() const override { return 0; }
 
-    bool isTableRow() const override { return false; }
-    bool isTableColumn() const override { return false; }
+    // Table cell support.
     bool isTableCell() const override { return false; }
+    // Returns the start location and row span of the cell.
+    std::pair<unsigned, unsigned> rowIndexRange() const override { return { 0, 1 }; }
+    // Returns the start location and column span of the cell.
+    std::pair<unsigned, unsigned> columnIndexRange() const override { return { 0, 1 }; }
+    int axColumnIndex() const override { return -1; }
+    int axRowIndex() const override { return -1; }
+
+    // Table column support.
+    bool isTableColumn() const override { return false; }
+    unsigned columnIndex() const override { return 0; }
+    AXCoreObject* columnHeader() override { return nullptr; }
+
+    // Table row support.
+    bool isTableRow() const override { return false; }
+    unsigned rowIndex() const override { return 0; }
+
+    // ARIA tree/grid row support.
+    bool isARIATreeGridRow() const override { return false; }
+    AccessibilityChildrenVector disclosedRows() override; // ARIATreeItem implementation. AccessibilityARIAGridRow overrides this method.
+    AXCoreObject* disclosedByRow() const override { return nullptr; }
+
     bool isFieldset() const override { return false; }
     bool isGroup() const override { return false; }
-    bool isARIATreeGridRow() const override { return false; }
     bool isImageMapLink() const override { return false; }
     bool isMenuList() const override { return false; }
     bool isMenuListPopup() const override { return false; }
@@ -585,8 +607,6 @@ public:
 
     // Used by an ARIA tree to get all its rows.
     void ariaTreeRows(AccessibilityChildrenVector&) override;
-    // Used by an ARIA tree item to get all of its direct rows that it can disclose.
-    void ariaTreeItemDisclosedRows(AccessibilityChildrenVector&) override;
     // Used by an ARIA tree item to get only its content, and not its child tree items and groups.
     void ariaTreeItemContent(AccessibilityChildrenVector&) override;
 
@@ -736,6 +756,7 @@ public:
     AccessibilityObject* highestEditableAncestor() override;
 
     const AccessibilityScrollView* ancestorAccessibilityScrollView(bool includeSelf) const override;
+    AccessibilityObject* webAreaObject() const override { return nullptr; }
 
     void clearIsIgnoredFromParentData() override { m_isIgnoredFromParentData = AccessibilityIsIgnoredFromParentData(); }
     void setIsIgnoredFromParentDataForChild(AXCoreObject*) override;

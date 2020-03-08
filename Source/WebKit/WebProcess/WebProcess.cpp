@@ -42,6 +42,7 @@
 #include "NetworkSession.h"
 #include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
+#include "RemoteAudioSession.h"
 #include "StatisticsData.h"
 #include "StorageAreaMap.h"
 #include "UserData.h"
@@ -174,6 +175,10 @@
 #include "LibWebRTCCodecs.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "RemoteCDMFactory.h"
+#endif
+
 #define RELEASE_LOG_SESSION_ID (m_sessionID ? m_sessionID->toUInt64() : 0)
 #define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
 
@@ -238,6 +243,10 @@ WebProcess::WebProcess()
 
 #if ENABLE(GPU_PROCESS)
     addSupplement<RemoteMediaPlayerManager>();
+#endif
+
+#if ENABLE(GPU_PROCESS) && ENABLE(ENCRYPTED_MEDIA)
+    addSupplement<RemoteCDMFactory>();
 #endif
 
     Gigacage::forbidDisablingPrimitiveGigacage();
@@ -463,6 +472,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     WebResourceLoadObserver::setShouldLogUserInteraction(parameters.shouldLogUserInteraction);
 #endif
 
+    setUseGPUProcessForMedia(parameters.useGPUProcessForMedia);
+
     RELEASE_LOG_IF_ALLOWED(Process, "initializeWebProcess: Presenting process = %d", WebCore::presentingApplicationPID());
 }
 
@@ -489,8 +500,8 @@ void WebProcess::setWebsiteDataStoreParameters(WebProcessDataStoreParameters&& p
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     m_thirdPartyCookieBlockingMode = parameters.thirdPartyCookieBlockingMode;
-    if (parameters.resourceLoadStatisticsEnabled && !parameters.sessionID.isEphemeral() && !ResourceLoadObserver::sharedIfExists())
-        ResourceLoadObserver::setShared(*new WebResourceLoadObserver);
+    if (parameters.resourceLoadStatisticsEnabled && !ResourceLoadObserver::sharedIfExists())
+        ResourceLoadObserver::setShared(*new WebResourceLoadObserver(parameters.sessionID.isEphemeral() ? WebCore::ResourceLoadStatistics::IsEphemeral::Yes : WebCore::ResourceLoadStatistics::IsEphemeral::No));
 #endif
 
     resetPlugInAutoStartOriginHashes(WTFMove(parameters.plugInAutoStartOriginHashes));
@@ -1439,7 +1450,7 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
 {
 }
 
-void WebProcess::updateActivePages()
+void WebProcess::updateActivePages(const String& overrideDisplayName)
 {
 }
 
@@ -1651,12 +1662,12 @@ StorageAreaMap* WebProcess::storageAreaMap(StorageAreaIdentifier identifier) con
 
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
 {
-    if (WebCore::DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() == enabled || (m_sessionID && m_sessionID->isEphemeral()))
+    if (WebCore::DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() == enabled)
         return;
     WebCore::DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled(enabled);
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (enabled && !ResourceLoadObserver::sharedIfExists())
-        WebCore::ResourceLoadObserver::setShared(*new WebResourceLoadObserver);
+        WebCore::ResourceLoadObserver::setShared(*new WebResourceLoadObserver(m_sessionID && m_sessionID->isEphemeral() ? WebCore::ResourceLoadStatistics::IsEphemeral::Yes : WebCore::ResourceLoadStatistics::IsEphemeral::No));
 #endif
 }
 
@@ -1988,6 +1999,21 @@ void WebProcess::setShouldBlockThirdPartyCookiesForTesting(ThirdPartyCookieBlock
     completionHandler();
 }
 #endif
+
+void WebProcess::setUseGPUProcessForMedia(bool useGPUProcessForMedia)
+{
+    if (useGPUProcessForMedia == m_useGPUProcessForMedia)
+        return;
+
+    m_useGPUProcessForMedia = useGPUProcessForMedia;
+
+#if USE(AUDIO_SESSION)
+    if (useGPUProcessForMedia)
+        AudioSession::setSharedSession(RemoteAudioSession::create(*this));
+    else
+        AudioSession::setSharedSession(AudioSession::create());
+#endif
+}
 
 } // namespace WebKit
 

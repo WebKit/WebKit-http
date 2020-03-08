@@ -42,13 +42,13 @@ public:
     virtual std::unique_ptr<CDMPrivate> createCDM(const String&) = 0;
     virtual bool supportsKeySystem(const String&) = 0;
 
-    static Vector<CDMFactory*>& registeredFactories();
+    WEBCORE_EXPORT static Vector<CDMFactory*>& registeredFactories();
     WEBCORE_EXPORT static void registerFactory(CDMFactory&);
     WEBCORE_EXPORT static void unregisterFactory(CDMFactory&);
 
     // Platform-specific function that's called when the list of
     // registered CDMFactory objects is queried for the first time.
-    static void platformRegisterFactories(Vector<CDMFactory*>&);
+    WEBCORE_EXPORT static void platformRegisterFactories(Vector<CDMFactory*>&);
 };
 
 } // namespace WebCore

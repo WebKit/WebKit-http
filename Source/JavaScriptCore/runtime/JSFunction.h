@@ -164,7 +164,7 @@ public:
     };
     PropertyStatus reifyLazyPropertyIfNeeded(VM&, JSGlobalObject*, PropertyName);
 
-    bool areNameAndLengthOriginal(VM&);
+    bool canAssumeNameAndLengthAreOriginal(VM&);
 
 protected:
     JS_EXPORT_PRIVATE JSFunction(VM&, NativeExecutable*, JSGlobalObject*, Structure*);
@@ -179,7 +179,7 @@ protected:
 
     static bool put(JSCell*, JSGlobalObject*, PropertyName, JSValue, PutPropertySlot&);
 
-    static bool deleteProperty(JSCell*, JSGlobalObject*, PropertyName);
+    static bool deleteProperty(JSCell*, JSGlobalObject*, PropertyName, DeletePropertySlot&);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 

@@ -188,14 +188,14 @@ WebFrame* WebFrame::fromCoreFrame(const Frame& frame)
 
 FrameInfoData WebFrame::info() const
 {
-    FrameInfoData info;
+    FrameInfoData info {
+        isMainFrame(),
+        // FIXME: This should use the full request.
+        ResourceRequest(URL(URL(), url())),
+        SecurityOriginData::fromFrame(m_coreFrame),
+        m_frameID
+    };
 
-    info.isMainFrame = isMainFrame();
-    // FIXME: This should use the full request.
-    info.request = ResourceRequest(URL(URL(), url()));
-    info.securityOrigin = SecurityOriginData::fromFrame(m_coreFrame);
-    info.frameID = m_frameID;
-    
     return info;
 }
 
@@ -641,7 +641,8 @@ RefPtr<InjectedBundleHitTestResult> WebFrame::hitTest(const IntPoint point) cons
     if (!m_coreFrame)
         return nullptr;
 
-    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent));
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::IgnoreClipping,  HitTestRequest::DisallowUserAgentShadowContent, HitTestRequest::AllowChildFrameContent };
+    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler().hitTestResultAtPoint(point, hitType));
 }
 
 bool WebFrame::getDocumentBackgroundColor(double* red, double* green, double* blue, double* alpha)

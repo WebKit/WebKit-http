@@ -286,6 +286,11 @@ void WebInspectorFrontendClient::resetState()
     m_inspectorClient->deleteInspectorAttachDisabled();
 }
 
+void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Appearance)
+{
+    notImplemented();
+}
+
 void WebInspectorFrontendClient::attachWindow(DockSide)
 {
     if (m_attached)
@@ -313,6 +318,22 @@ void WebInspectorFrontendClient::detachWindow()
 
     closeWindowWithoutNotifications();
     showWindowWithoutNotifications();
+}
+
+bool WebInspectorFrontendClient::supportsDockSide(DockSide dockSide)
+{
+    switch (dockSide) {
+    case DockSide::Undocked:
+    case DockSide::Bottom:
+        return true;
+
+    case DockSide::Right:
+    case DockSide::Left:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)

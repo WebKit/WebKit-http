@@ -544,9 +544,9 @@ bool JSFunction::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName pr
     if (propertyName == vm.propertyNames->length || propertyName == vm.propertyNames->name) {
         FunctionRareData* rareData = thisObject->ensureRareData(vm);
         if (propertyName == vm.propertyNames->length)
-            rareData->setHasModifiedLength();
+            rareData->setHasModifiedLengthForNonHostFunction();
         else
-            rareData->setHasModifiedName();
+            rareData->setHasModifiedNameForNonHostFunction();
     }
 
     if (UNLIKELY(isThisValueAltered(slot, thisObject)))
@@ -586,7 +586,7 @@ bool JSFunction::put(JSCell* cell, JSGlobalObject* globalObject, PropertyName pr
     RELEASE_AND_RETURN(scope, Base::put(thisObject, globalObject, propertyName, value, slot));
 }
 
-bool JSFunction::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, PropertyName propertyName)
+bool JSFunction::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, PropertyName propertyName, DeletePropertySlot& slot)
 {
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -595,9 +595,9 @@ bool JSFunction::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, Prop
     if (propertyName == vm.propertyNames->length || propertyName == vm.propertyNames->name) {
         FunctionRareData* rareData = thisObject->ensureRareData(vm);
         if (propertyName == vm.propertyNames->length)
-            rareData->setHasModifiedLength();
+            rareData->setHasModifiedLengthForNonHostFunction();
         else
-            rareData->setHasModifiedName();
+            rareData->setHasModifiedNameForNonHostFunction();
     }
 
     if (thisObject->isHostOrBuiltinFunction()) {
@@ -617,7 +617,7 @@ bool JSFunction::deleteProperty(JSCell* cell, JSGlobalObject* globalObject, Prop
         RETURN_IF_EXCEPTION(scope, false);
     }
     
-    RELEASE_AND_RETURN(scope, Base::deleteProperty(thisObject, globalObject, propertyName));
+    RELEASE_AND_RETURN(scope, Base::deleteProperty(thisObject, globalObject, propertyName, slot));
 }
 
 bool JSFunction::defineOwnProperty(JSObject* object, JSGlobalObject* globalObject, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
@@ -630,9 +630,9 @@ bool JSFunction::defineOwnProperty(JSObject* object, JSGlobalObject* globalObjec
     if (propertyName == vm.propertyNames->length || propertyName == vm.propertyNames->name) {
         FunctionRareData* rareData = thisObject->ensureRareData(vm);
         if (propertyName == vm.propertyNames->length)
-            rareData->setHasModifiedLength();
+            rareData->setHasModifiedLengthForNonHostFunction();
         else
-            rareData->setHasModifiedName();
+            rareData->setHasModifiedNameForNonHostFunction();
     }
 
     if (thisObject->isHostOrBuiltinFunction()) {

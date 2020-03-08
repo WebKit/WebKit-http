@@ -27,6 +27,7 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "LayerHostingContext.h"
 #include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerManager.h"
 #include "RemoteMediaPlayerState.h"
@@ -43,6 +44,7 @@ class MachSendRight;
 }
 
 namespace WebCore {
+struct GenericCueData;
 class ISOWebVTTCue;
 class SerializedPlatformDataCueValue;
 }
@@ -92,11 +94,12 @@ public:
     void playbackStateChanged(bool);
     void engineFailedToLoad(long);
     void updateCachedState(RemoteMediaPlayerState&&);
-    void characteristicChanged(bool hasAudio, bool hasVideo, WebCore::MediaPlayerEnums::MovieLoadType);
+    void characteristicChanged(RemoteMediaPlayerState&&);
     void sizeChanged(WebCore::FloatSize);
     void firstVideoFrameAvailable();
 #if PLATFORM(COCOA)
     void setVideoInlineSizeFenced(const WebCore::IntSize&, const WTF::MachSendRight&);
+    void setVideoFullscreenFrameFenced(const WebCore::FloatRect&, const WTF::MachSendRight&);
 #endif
 
     void addRemoteAudioTrack(TrackPrivateRemoteIdentifier, TrackPrivateRemoteConfiguration&&);
@@ -122,6 +125,10 @@ public:
     void removeDataCue(TrackPrivateRemoteIdentifier, MediaTime&& start, MediaTime&& end, WebCore::SerializedPlatformDataCueValue&&);
 #endif
 
+    void addGenericCue(TrackPrivateRemoteIdentifier, WebCore::GenericCueData&&);
+    void updateGenericCue(TrackPrivateRemoteIdentifier, WebCore::GenericCueData&&);
+    void removeGenericCue(TrackPrivateRemoteIdentifier, WebCore::GenericCueData&&);
+
     void requestResource(RemoteMediaResourceIdentifier, WebCore::ResourceRequest&&, WebCore::PlatformMediaResourceLoader::LoadOptions, CompletionHandler<void()>&&);
     void removeResource(RemoteMediaResourceIdentifier);
     void resourceNotSupported();
@@ -132,6 +139,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void waitingForKeyChanged();
+    void initializationDataEncountered(const String&, IPC::DataReference&&);
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -174,6 +182,7 @@ private:
     PlatformLayer* platformLayer() const final;
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    RetainPtr<PlatformLayer> createVideoFullscreenLayer() final;
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) final;
     void updateVideoFullscreenInlineImage() final;
     void setVideoFullscreenFrame(WebCore::FloatRect) final;
@@ -252,11 +261,6 @@ private:
 
     bool hasAvailableVideoFrame() const final;
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    void enterFullscreen() final;
-    void exitFullscreen() final;
-#endif
-
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     String wirelessPlaybackTargetName() const final;
     WebCore::MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const final;
@@ -271,14 +275,9 @@ private:
     void setShouldPlayToPlaybackTarget(bool) final;
 #endif
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    bool canEnterFullscreen() const final;
-#endif
-
     bool supportsAcceleratedRendering() const final;
     void acceleratedRenderingStateChanged() final;
 
-    bool shouldMaintainAspectRatio() const final;
     void setShouldMaintainAspectRatio(bool) final;
 
     bool hasSingleSecurityOrigin() const final;
@@ -317,6 +316,10 @@ private:
     bool waitingForKey() const final;
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
+    void setShouldContinueAfterKeyNeeded(bool) final;
+#endif
+
 #if ENABLE(VIDEO_TRACK)
     bool requiresTextTrackRepresentation() const final;
     void setTextTrackRepresentation(WebCore::TextTrackRepresentation*) final;
@@ -334,10 +337,6 @@ private:
     String languageOfPrimaryAudioTrack() const final;
 
     size_t extraMemoryCost() const final;
-
-    unsigned long long fileSize() const final;
-
-    bool ended() const final;
 
     Optional<WebCore::VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
 
@@ -361,6 +360,8 @@ private:
     WebCore::MediaPlayer* m_player { nullptr };
     RefPtr<WebCore::PlatformMediaResourceLoader> m_mediaResourceLoader;
     RetainPtr<PlatformLayer> m_videoInlineLayer;
+    RetainPtr<PlatformLayer> m_videoFullscreenLayer;
+    Optional<LayerHostingContextID> m_fullscreenLayerHostingContextId;
     RemoteMediaPlayerManager& m_manager;
     WebCore::MediaPlayerEnums::MediaEngineIdentifier m_remoteEngineIdentifier;
     MediaPlayerPrivateRemoteIdentifier m_id;
@@ -377,9 +378,6 @@ private:
     double m_volume { 1 };
     double m_rate { 1 };
     long m_platformErrorCode { 0 };
-    WebCore::MediaPlayerEnums::MovieLoadType m_movieLoadType { WebCore::MediaPlayerEnums::MovieLoadType::Unknown };
-    bool m_hasAudio { false };
-    bool m_hasVideo { false };
     bool m_muted { false };
     bool m_seeking { false };
     bool m_isCurrentPlaybackTargetWireless { false };

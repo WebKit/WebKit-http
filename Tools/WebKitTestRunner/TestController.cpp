@@ -519,7 +519,7 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
     return configuration;
 }
 
-WKWebsiteDataStoreRef TestController::websiteDataStore()
+WKWebsiteDataStoreRef TestController::defaultWebsiteDataStore()
 {
     static WKWebsiteDataStoreRef dataStore = nullptr;
     if (!dataStore) {
@@ -544,6 +544,11 @@ WKWebsiteDataStoreRef TestController::websiteDataStore()
         dataStore = WKWebsiteDataStoreCreateWithConfiguration(configuration.get());
     }
     return dataStore;
+}
+
+WKWebsiteDataStoreRef TestController::websiteDataStore()
+{
+    return WKPageConfigurationGetWebsiteDataStore(WKPageCopyPageConfiguration(m_mainWebView->page()));
 }
 
 WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(const TestOptions& options)
@@ -616,6 +621,7 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(co
     
     if (options.useEphemeralSession) {
         auto ephemeralDataStore = adoptWK(WKWebsiteDataStoreCreateNonPersistentDataStore());
+        WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(ephemeralDataStore.get(), true);
         WKPageConfigurationSetWebsiteDataStore(pageConfiguration.get(), ephemeralDataStore.get());
     }
 
@@ -929,7 +935,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetBeaconAPIEnabled(preferences, true);
     WKPreferencesSetDirectoryUploadEnabled(preferences, true);
 
-    WKHTTPCookieStoreDeleteAllCookies(WKWebsiteDataStoreGetHTTPCookieStore(TestController::websiteDataStore()), nullptr, nullptr);
+    WKHTTPCookieStoreDeleteAllCookies(WKWebsiteDataStoreGetHTTPCookieStore(TestController::defaultWebsiteDataStore()), nullptr, nullptr);
 
     WKPreferencesSetMockCaptureDevicesEnabled(preferences, true);
     
@@ -1005,7 +1011,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     WKContextResetServiceWorkerFetchTimeoutForTesting(TestController::singleton().context());
 
-    WKWebsiteDataStoreClearAllDeviceOrientationPermissions(TestController::websiteDataStore());
+    WKWebsiteDataStoreClearAllDeviceOrientationPermissions(websiteDataStore());
+    WKWebsiteDataStoreClearAllDeviceOrientationPermissions(TestController::defaultWebsiteDataStore());
 
     clearIndexedDatabases();
     clearLocalStorage();
@@ -2197,7 +2204,7 @@ void TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef 
 
     auto setHTTPCookieAcceptPolicy = [&] (WKHTTPCookieAcceptPolicy policy, CompletionHandler<void(WKTypeRef)>&& completionHandler) {
         auto context = new CompletionHandler<void(WKTypeRef)>(WTFMove(completionHandler));
-        WKHTTPCookieStoreSetHTTPCookieAcceptPolicy(WKWebsiteDataStoreGetHTTPCookieStore(TestController::websiteDataStore()), policy, context, [] (void* context) {
+        WKHTTPCookieStoreSetHTTPCookieAcceptPolicy(WKWebsiteDataStoreGetHTTPCookieStore(TestController::defaultWebsiteDataStore()), policy, context, [] (void* context) {
             auto completionHandlerPointer = static_cast<CompletionHandler<void(WKTypeRef)>*>(context);
             (*completionHandlerPointer)(nullptr);
             delete completionHandlerPointer;
@@ -2753,9 +2760,8 @@ String TestController::saltForOrigin(WKFrameRef frame, String originHash)
 {
     auto& settings = settingsForOrigin(originHash);
     auto& ephemeralSalts = settings.ephemeralSalts();
-    auto frameInfo = adoptWK(WKFrameCreateFrameInfo(frame));
-    auto frameHandle = WKFrameInfoGetFrameHandleRef(frameInfo.get());
-    uint64_t frameIdentifier = WKFrameHandleGetFrameID(frameHandle);
+    auto frameHandle = adoptWK(WKFrameCreateFrameHandle(frame));
+    uint64_t frameIdentifier = WKFrameHandleGetFrameID(frameHandle.get());
     String frameSalt = ephemeralSalts.get(frameIdentifier);
 
     if (settings.persistentPermission()) {
@@ -2925,7 +2931,7 @@ void TestController::decidePolicyForNavigationAction(WKNavigationActionRef navig
             if (shouldSwapToEphemeralSessionOnNextNavigation || shouldSwapToDefaultSessionOnNextNavigation) {
                 ASSERT(shouldSwapToEphemeralSessionOnNextNavigation != shouldSwapToDefaultSessionOnNextNavigation);
                 auto policies = adoptWK(WKWebsitePoliciesCreate());
-                WKRetainPtr<WKWebsiteDataStoreRef> newSession = TestController::websiteDataStore();
+                WKRetainPtr<WKWebsiteDataStoreRef> newSession = TestController::defaultWebsiteDataStore();
                 if (shouldSwapToEphemeralSessionOnNextNavigation)
                     newSession = adoptWK(WKWebsiteDataStoreCreateNonPersistentDataStore());
                 WKWebsitePoliciesSetDataStore(policies.get(), newSession.get());
@@ -3093,8 +3099,6 @@ PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parent
 
 WKContextRef TestController::platformAdjustContext(WKContextRef context, WKContextConfigurationRef contextConfiguration)
 {
-    auto* dataStore = TestController::websiteDataStore();
-    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(dataStore, true);
     return context;
 }
 
@@ -3151,7 +3155,7 @@ void TestController::clearServiceWorkerRegistrations()
 {
     ClearServiceWorkerRegistrationsCallbackContext context(*this);
 
-    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(TestController::websiteDataStore(), &context, clearServiceWorkerRegistrationsCallback);
+    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(TestController::defaultWebsiteDataStore(), &context, clearServiceWorkerRegistrationsCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3177,7 +3181,7 @@ void TestController::clearDOMCache(WKStringRef origin)
     ClearDOMCacheCallbackContext context(*this);
 
     auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
-    WKWebsiteDataStoreRemoveFetchCacheForOrigin(TestController::websiteDataStore(), cacheOrigin.get(), &context, clearDOMCacheCallback);
+    WKWebsiteDataStoreRemoveFetchCacheForOrigin(TestController::defaultWebsiteDataStore(), cacheOrigin.get(), &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3185,7 +3189,7 @@ void TestController::clearDOMCaches()
 {
     ClearDOMCacheCallbackContext context(*this);
 
-    WKWebsiteDataStoreRemoveAllFetchCaches(TestController::websiteDataStore(), &context, clearDOMCacheCallback);
+    WKWebsiteDataStoreRemoveAllFetchCaches(TestController::defaultWebsiteDataStore(), &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3209,14 +3213,14 @@ static void StorageVoidCallback(void* userData)
 void TestController::clearIndexedDatabases()
 {
     StorageVoidCallbackContext context(*this);
-    WKWebsiteDataStoreRemoveAllIndexedDatabases(TestController::websiteDataStore(), &context, StorageVoidCallback);
+    WKWebsiteDataStoreRemoveAllIndexedDatabases(websiteDataStore(), &context, StorageVoidCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::clearLocalStorage()
 {
     StorageVoidCallbackContext context(*this);
-    WKWebsiteDataStoreRemoveLocalStorage(TestController::websiteDataStore(), &context, StorageVoidCallback);
+    WKWebsiteDataStoreRemoveLocalStorage(websiteDataStore(), &context, StorageVoidCallback);
     runUntil(context.done, noTimeout);
 
     StorageVoidCallbackContext legacyContext(*this);
@@ -3269,7 +3273,7 @@ static void fetchCacheOriginsCallback(WKArrayRef origins, void* userData)
 bool TestController::hasDOMCache(WKStringRef origin)
 {
     FetchCacheOriginsCallbackContext context(*this, origin);
-    WKWebsiteDataStoreGetFetchCacheOrigins(TestController::websiteDataStore(), &context, fetchCacheOriginsCallback);
+    WKWebsiteDataStoreGetFetchCacheOrigins(TestController::defaultWebsiteDataStore(), &context, fetchCacheOriginsCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3297,7 +3301,7 @@ static void fetchCacheSizeForOriginCallback(uint64_t size, void* userData)
 uint64_t TestController::domCacheSize(WKStringRef origin)
 {
     FetchCacheSizeForOriginCallbackContext context(*this);
-    WKWebsiteDataStoreGetFetchCacheSizeForOrigin(TestController::websiteDataStore(), origin, &context, fetchCacheSizeForOriginCallback);
+    WKWebsiteDataStoreGetFetchCacheSizeForOrigin(TestController::defaultWebsiteDataStore(), origin, &context, fetchCacheSizeForOriginCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3352,13 +3356,21 @@ static void resourceStatisticsBooleanResultCallback(bool result, void* userData)
 
 void TestController::setStatisticsEnabled(bool value)
 {
-    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(TestController::websiteDataStore(), value);
+    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(websiteDataStore(), value);
+}
+
+bool TestController::isStatisticsEphemeral()
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreIsStatisticsEphemeral(websiteDataStore(), &context, resourceStatisticsBooleanResultCallback);
+    runUntil(context.done, noTimeout);
+    return context.result;
 }
 
 void TestController::setStatisticsDebugMode(bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsDebugModeWithCompletionHandler(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsDebugModeWithCompletionHandler(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetStatisticsDebugMode();
 }
@@ -3366,7 +3378,7 @@ void TestController::setStatisticsDebugMode(bool value)
 void TestController::setStatisticsPrevalentResourceForDebugMode(WKStringRef hostName)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsPrevalentResourceForDebugMode(TestController::websiteDataStore(), hostName, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsPrevalentResourceForDebugMode(websiteDataStore(), hostName, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetPrevalentResourceForDebugMode();
 }
@@ -3374,7 +3386,7 @@ void TestController::setStatisticsPrevalentResourceForDebugMode(WKStringRef host
 void TestController::setStatisticsLastSeen(WKStringRef host, double seconds)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsLastSeen(TestController::websiteDataStore(), host, seconds, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsLastSeen(websiteDataStore(), host, seconds, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetLastSeen();
 }
@@ -3382,7 +3394,7 @@ void TestController::setStatisticsLastSeen(WKStringRef host, double seconds)
 void TestController::setStatisticsMergeStatistic(WKStringRef host, WKStringRef topFrameDomain1, WKStringRef topFrameDomain2, double lastSeen, bool hadUserInteraction, double mostRecentUserInteraction, bool isGrandfathered, bool isPrevalent, bool isVeryPrevalent, int dataRecordsRemoved)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsMergeStatistic(TestController::websiteDataStore(), host, topFrameDomain1, topFrameDomain2, lastSeen, hadUserInteraction, mostRecentUserInteraction, isGrandfathered, isPrevalent, isVeryPrevalent, dataRecordsRemoved, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsMergeStatistic(websiteDataStore(), host, topFrameDomain1, topFrameDomain2, lastSeen, hadUserInteraction, mostRecentUserInteraction, isGrandfathered, isPrevalent, isVeryPrevalent, dataRecordsRemoved, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didMergeStatistic();
 }
@@ -3390,7 +3402,7 @@ void TestController::setStatisticsMergeStatistic(WKStringRef host, WKStringRef t
 void TestController::setStatisticsPrevalentResource(WKStringRef host, bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsPrevalentResource(TestController::websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsPrevalentResource(websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetPrevalentResource();
 }
@@ -3398,7 +3410,7 @@ void TestController::setStatisticsPrevalentResource(WKStringRef host, bool value
 void TestController::setStatisticsVeryPrevalentResource(WKStringRef host, bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsVeryPrevalentResource(TestController::websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsVeryPrevalentResource(websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetVeryPrevalentResource();
 }
@@ -3406,7 +3418,7 @@ void TestController::setStatisticsVeryPrevalentResource(WKStringRef host, bool v
 String TestController::dumpResourceLoadStatistics()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreDumpResourceLoadStatistics(TestController::websiteDataStore(), &context, resourceStatisticsStringResultCallback);
+    WKWebsiteDataStoreDumpResourceLoadStatistics(websiteDataStore(), &context, resourceStatisticsStringResultCallback);
     runUntil(context.done, noTimeout);
     return toWTFString(context.resourceLoadStatisticsRepresentation.get());
 }
@@ -3414,7 +3426,7 @@ String TestController::dumpResourceLoadStatistics()
 bool TestController::isStatisticsPrevalentResource(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsPrevalentResource(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsPrevalentResource(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3422,7 +3434,7 @@ bool TestController::isStatisticsPrevalentResource(WKStringRef host)
 bool TestController::isStatisticsVeryPrevalentResource(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsVeryPrevalentResource(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsVeryPrevalentResource(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3430,7 +3442,7 @@ bool TestController::isStatisticsVeryPrevalentResource(WKStringRef host)
 bool TestController::isStatisticsRegisteredAsSubresourceUnder(WKStringRef subresourceHost, WKStringRef topFrameHost)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsRegisteredAsSubresourceUnder(TestController::websiteDataStore(), subresourceHost, topFrameHost, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsRegisteredAsSubresourceUnder(websiteDataStore(), subresourceHost, topFrameHost, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3438,7 +3450,7 @@ bool TestController::isStatisticsRegisteredAsSubresourceUnder(WKStringRef subres
 bool TestController::isStatisticsRegisteredAsSubFrameUnder(WKStringRef subFrameHost, WKStringRef topFrameHost)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsRegisteredAsSubFrameUnder(TestController::websiteDataStore(), subFrameHost, topFrameHost, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsRegisteredAsSubFrameUnder(websiteDataStore(), subFrameHost, topFrameHost, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3446,7 +3458,7 @@ bool TestController::isStatisticsRegisteredAsSubFrameUnder(WKStringRef subFrameH
 bool TestController::isStatisticsRegisteredAsRedirectingTo(WKStringRef hostRedirectedFrom, WKStringRef hostRedirectedTo)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsRegisteredAsRedirectingTo(TestController::websiteDataStore(), hostRedirectedFrom, hostRedirectedTo, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsRegisteredAsRedirectingTo(websiteDataStore(), hostRedirectedFrom, hostRedirectedTo, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3454,7 +3466,7 @@ bool TestController::isStatisticsRegisteredAsRedirectingTo(WKStringRef hostRedir
 void TestController::setStatisticsHasHadUserInteraction(WKStringRef host, bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsHasHadUserInteraction(TestController::websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsHasHadUserInteraction(websiteDataStore(), host, value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetHasHadUserInteraction();
 }
@@ -3462,7 +3474,7 @@ void TestController::setStatisticsHasHadUserInteraction(WKStringRef host, bool v
 bool TestController::isStatisticsHasHadUserInteraction(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsHasHadUserInteraction(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsHasHadUserInteraction(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3470,20 +3482,20 @@ bool TestController::isStatisticsHasHadUserInteraction(WKStringRef host)
 bool TestController::isStatisticsOnlyInDatabaseOnce(WKStringRef subHost, WKStringRef topHost)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsOnlyInDatabaseOnce(TestController::websiteDataStore(), subHost, topHost, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsOnlyInDatabaseOnce(websiteDataStore(), subHost, topHost, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
 
 void TestController::setStatisticsGrandfathered(WKStringRef host, bool value)
 {
-    WKWebsiteDataStoreSetStatisticsGrandfathered(TestController::websiteDataStore(), host, value);
+    WKWebsiteDataStoreSetStatisticsGrandfathered(websiteDataStore(), host, value);
 }
 
 bool TestController::isStatisticsGrandfathered(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreIsStatisticsGrandfathered(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreIsStatisticsGrandfathered(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3491,120 +3503,120 @@ bool TestController::isStatisticsGrandfathered(WKStringRef host)
 void TestController::setUseITPDatabase(bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetUseITPDatabase(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetUseITPDatabase(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef host, WKStringRef topFrameHost)
 {
-    WKWebsiteDataStoreSetStatisticsSubframeUnderTopFrameOrigin(TestController::websiteDataStore(), host, topFrameHost);
+    WKWebsiteDataStoreSetStatisticsSubframeUnderTopFrameOrigin(websiteDataStore(), host, topFrameHost);
 }
 
 void TestController::setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef host, WKStringRef topFrameHost)
 {
-    WKWebsiteDataStoreSetStatisticsSubresourceUnderTopFrameOrigin(TestController::websiteDataStore(), host, topFrameHost);
+    WKWebsiteDataStoreSetStatisticsSubresourceUnderTopFrameOrigin(websiteDataStore(), host, topFrameHost);
 }
 
 void TestController::setStatisticsSubresourceUniqueRedirectTo(WKStringRef host, WKStringRef hostRedirectedTo)
 {
-    WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectTo(TestController::websiteDataStore(), host, hostRedirectedTo);
+    WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectTo(websiteDataStore(), host, hostRedirectedTo);
 }
 
 void TestController::setStatisticsSubresourceUniqueRedirectFrom(WKStringRef host, WKStringRef hostRedirectedFrom)
 {
-    WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectFrom(TestController::websiteDataStore(), host, hostRedirectedFrom);
+    WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectFrom(websiteDataStore(), host, hostRedirectedFrom);
 }
 
 void TestController::setStatisticsTopFrameUniqueRedirectTo(WKStringRef host, WKStringRef hostRedirectedTo)
 {
-    WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectTo(TestController::websiteDataStore(), host, hostRedirectedTo);
+    WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectTo(websiteDataStore(), host, hostRedirectedTo);
 }
 
 void TestController::setStatisticsTopFrameUniqueRedirectFrom(WKStringRef host, WKStringRef hostRedirectedFrom)
 {
-    WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectFrom(TestController::websiteDataStore(), host, hostRedirectedFrom);
+    WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectFrom(websiteDataStore(), host, hostRedirectedFrom);
 }
 
 void TestController::setStatisticsCrossSiteLoadWithLinkDecoration(WKStringRef fromHost, WKStringRef toHost)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsCrossSiteLoadWithLinkDecoration(TestController::websiteDataStore(), fromHost, toHost, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsCrossSiteLoadWithLinkDecoration(websiteDataStore(), fromHost, toHost, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsTimeToLiveUserInteraction(TestController::websiteDataStore(), seconds, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsTimeToLiveUserInteraction(websiteDataStore(), seconds, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::statisticsProcessStatisticsAndDataRecords()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsProcessStatisticsAndDataRecords(TestController::websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsProcessStatisticsAndDataRecords(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::statisticsUpdateCookieBlocking()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsUpdateCookieBlocking(TestController::websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsUpdateCookieBlocking(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetBlockCookiesForHost();
 }
 
 void TestController::statisticsSubmitTelemetry()
 {
-    WKWebsiteDataStoreStatisticsSubmitTelemetry(TestController::websiteDataStore());
+    WKWebsiteDataStoreStatisticsSubmitTelemetry(websiteDataStore());
 }
 
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
 {
-    WKWebsiteDataStoreSetStatisticsNotifyPagesWhenDataRecordsWereScanned(TestController::websiteDataStore(), value);
+    WKWebsiteDataStoreSetStatisticsNotifyPagesWhenDataRecordsWereScanned(websiteDataStore(), value);
 }
 
 void TestController::setStatisticsIsRunningTest(bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsIsRunningTest(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsIsRunningTest(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
 {
-    WKWebsiteDataStoreSetStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(TestController::websiteDataStore(), value);
+    WKWebsiteDataStoreSetStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(websiteDataStore(), value);
 }
 
 void TestController::setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value)
 {
-    WKWebsiteDataStoreSetStatisticsNotifyPagesWhenTelemetryWasCaptured(TestController::websiteDataStore(), value);
+    WKWebsiteDataStoreSetStatisticsNotifyPagesWhenTelemetryWasCaptured(websiteDataStore(), value);
 }
 
 void TestController::setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds)
 {
-    WKWebsiteDataStoreSetStatisticsMinimumTimeBetweenDataRecordsRemoval(TestController::websiteDataStore(), seconds);
+    WKWebsiteDataStoreSetStatisticsMinimumTimeBetweenDataRecordsRemoval(websiteDataStore(), seconds);
 }
 
 void TestController::setStatisticsGrandfatheringTime(double seconds)
 {
-    WKWebsiteDataStoreSetStatisticsGrandfatheringTime(TestController::websiteDataStore(), seconds);
+    WKWebsiteDataStoreSetStatisticsGrandfatheringTime(websiteDataStore(), seconds);
 }
 
 void TestController::setStatisticsMaxStatisticsEntries(unsigned entries)
 {
-    WKWebsiteDataStoreSetStatisticsMaxStatisticsEntries(TestController::websiteDataStore(), entries);
+    WKWebsiteDataStoreSetStatisticsMaxStatisticsEntries(websiteDataStore(), entries);
 }
 
 void TestController::setStatisticsPruneEntriesDownTo(unsigned entries)
 {
-    WKWebsiteDataStoreSetStatisticsPruneEntriesDownTo(TestController::websiteDataStore(), entries);
+    WKWebsiteDataStoreSetStatisticsPruneEntriesDownTo(websiteDataStore(), entries);
 }
 
 void TestController::statisticsClearInMemoryAndPersistentStore()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore(TestController::websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
 }
@@ -3612,7 +3624,7 @@ void TestController::statisticsClearInMemoryAndPersistentStore()
 void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours(TestController::websiteDataStore(), hours, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours(websiteDataStore(), hours, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
 }
@@ -3620,7 +3632,7 @@ void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours
 void TestController::statisticsClearThroughWebsiteDataRemoval()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsClearThroughWebsiteDataRemoval(TestController::websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsClearThroughWebsiteDataRemoval(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
 }
@@ -3628,14 +3640,14 @@ void TestController::statisticsClearThroughWebsiteDataRemoval()
 void TestController::statisticsDeleteCookiesForHost(WKStringRef host, bool includeHttpOnlyCookies)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsDeleteCookiesForTesting(TestController::websiteDataStore(), host, includeHttpOnlyCookies, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsDeleteCookiesForTesting(websiteDataStore(), host, includeHttpOnlyCookies, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 bool TestController::isStatisticsHasLocalStorage(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsHasLocalStorage(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreStatisticsHasLocalStorage(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3643,14 +3655,14 @@ bool TestController::isStatisticsHasLocalStorage(WKStringRef host)
 void TestController::setStatisticsCacheMaxAgeCap(double seconds)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsCacheMaxAgeCap(TestController::websiteDataStore(), seconds, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetStatisticsCacheMaxAgeCap(websiteDataStore(), seconds, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
 }
 
 bool TestController::hasStatisticsIsolatedSession(WKStringRef host)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsHasIsolatedSession(TestController::websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
+    WKWebsiteDataStoreStatisticsHasIsolatedSession(websiteDataStore(), host, &context, resourceStatisticsBooleanResultCallback);
     runUntil(context.done, noTimeout);
     return context.result;
 }
@@ -3658,7 +3670,7 @@ bool TestController::hasStatisticsIsolatedSession(WKStringRef host)
 void TestController::setStatisticsShouldDowngradeReferrer(bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsShouldDowngradeReferrerForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsShouldDowngradeReferrerForTesting(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetShouldDowngradeReferrer();
 }
@@ -3666,7 +3678,7 @@ void TestController::setStatisticsShouldDowngradeReferrer(bool value)
 void TestController::setStatisticsShouldBlockThirdPartyCookies(bool value, bool onlyOnSitesWithoutUserInteraction)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(TestController::websiteDataStore(), value, onlyOnSitesWithoutUserInteraction, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(websiteDataStore(), value, onlyOnSitesWithoutUserInteraction, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetShouldBlockThirdPartyCookies();
 }
@@ -3674,7 +3686,7 @@ void TestController::setStatisticsShouldBlockThirdPartyCookies(bool value, bool 
 void TestController::setStatisticsFirstPartyWebsiteDataRemovalMode(bool value)
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(TestController::websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreSetResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetFirstPartyWebsiteDataRemovalMode();
 }
@@ -3682,7 +3694,7 @@ void TestController::setStatisticsFirstPartyWebsiteDataRemovalMode(bool value)
 void TestController::statisticsResetToConsistentState()
 {
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsResetToConsistentState(TestController::websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsResetToConsistentState(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didResetStatisticsToConsistentState();
 }
@@ -3856,7 +3868,7 @@ void TestController::clearAdClickAttribution()
 void TestController::clearAdClickAttributionsThroughWebsiteDataRemoval()
 {
     AdClickAttributionVoidCallbackContext callbackContext(*this);
-    WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemoval(TestController::websiteDataStore(), &callbackContext, adClickAttributionVoidCallback);
+    WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemoval(websiteDataStore(), &callbackContext, adClickAttributionVoidCallback);
     runUntil(callbackContext.done, noTimeout);
 }
 

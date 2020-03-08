@@ -36,6 +36,7 @@
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/NotificationDirection.h>
 #include <WebCore/RealtimeMediaSource.h>
+#include <WebCore/RenderingMode.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
 #include <WebCore/SerializedPlatformDataCueValue.h>
 #include <WebCore/ServiceWorkerTypes.h>
@@ -53,6 +54,11 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebCoreArgumentCodersAdditions.h>
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+#include <WebCore/CDMInstance.h>
+#include <WebCore/CDMInstanceSession.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -100,6 +106,7 @@ class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
+class SharedBuffer;
 class SpringTimingFunction;
 class StepsTimingFunction;
 class StickyPositionViewportConstraints;
@@ -829,6 +836,23 @@ template<> struct ArgumentCoder<WebCore::SerializedPlatformDataCueValue> {
 };
 #endif
 
+template<> struct ArgumentCoder<RefPtr<WebCore::SharedBuffer>> {
+    static void encode(Encoder&, const RefPtr<WebCore::SharedBuffer>&);
+    static Optional<RefPtr<WebCore::SharedBuffer>> decode(Decoder&);
+};
+
+#if ENABLE(ENCRYPTED_MEDIA)
+template<> struct ArgumentCoder<WebCore::CDMInstanceSession::Message> {
+    static void encode(Encoder&, const WebCore::CDMInstanceSession::Message&);
+    static Optional<WebCore::CDMInstanceSession::Message> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<WebCore::CDMInstanceSession::KeyStatusVector> {
+    static void encode(Encoder&, const WebCore::CDMInstanceSession::KeyStatusVector&);
+    static Optional<WebCore::CDMInstanceSession::KeyStatusVector> decode(Decoder&);
+};
+#endif
+
 } // namespace IPC
 
 namespace WTF {
@@ -839,6 +863,18 @@ template<> struct EnumTraits<WebCore::ColorSpace> {
     WebCore::ColorSpace::SRGB,
     WebCore::ColorSpace::LinearRGB,
     WebCore::ColorSpace::DisplayP3
+    >;
+};
+
+template<> struct EnumTraits<WebCore::RenderingMode> {
+    using values = EnumValues<
+    WebCore::RenderingMode,
+    WebCore::RenderingMode::Accelerated,
+    WebCore::RenderingMode::Unaccelerated,
+    WebCore::RenderingMode::DisplayListAccelerated,
+    WebCore::RenderingMode::DisplayListUnaccelerated,
+    WebCore::RenderingMode::RemoteAccelerated,
+    WebCore::RenderingMode::RemoteUnaccelerated
     >;
 };
 
@@ -964,5 +1000,29 @@ template<> struct EnumTraits<WTFLogLevel> {
     WTFLogLevel::Debug
     >;
 };
+
+#if ENABLE(ENCRYPTED_MEDIA)
+template <> struct EnumTraits<WebCore::CDMInstanceSession::SessionLoadFailure> {
+    using values = EnumValues <
+    WebCore::CDMInstanceSession::SessionLoadFailure,
+    WebCore::CDMInstanceSession::SessionLoadFailure::None,
+    WebCore::CDMInstanceSession::SessionLoadFailure::NoSessionData,
+    WebCore::CDMInstanceSession::SessionLoadFailure::MismatchedSessionType,
+    WebCore::CDMInstanceSession::SessionLoadFailure::QuotaExceeded,
+    WebCore::CDMInstanceSession::SessionLoadFailure::Other
+    >;
+};
+
+template <> struct EnumTraits<WebCore::CDMInstance::HDCPStatus> {
+    using values = EnumValues <
+    WebCore::CDMInstance::HDCPStatus,
+    WebCore::CDMInstance::HDCPStatus::Unknown,
+    WebCore::CDMInstance::HDCPStatus::Valid,
+    WebCore::CDMInstance::HDCPStatus::OutputRestricted,
+    WebCore::CDMInstance::HDCPStatus::OutputDownscaled
+    >;
+};
+
+#endif
 
 } // namespace WTF

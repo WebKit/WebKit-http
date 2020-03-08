@@ -39,6 +39,8 @@ namespace WebKit {
 class GPUConnectionToWebProcess;
 struct GPUProcessCreationParameters;
 struct GPUProcessSessionParameters;
+class LayerHostingContext;
+class RemoteAudioSessionProxyManager;
 
 class GPUProcess : public AuxiliaryProcess, public ThreadSafeRefCounted<GPUProcess>, public CanMakeWeakPtr<GPUProcess> {
     WTF_MAKE_NONCOPYABLE(GPUProcess);
@@ -62,6 +64,10 @@ public:
     const String& mediaKeysStorageDirectory(PAL::SessionID) const;
 #endif
 
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+    RemoteAudioSessionProxyManager& audioSessionManager() const;
+#endif
+
 private:
     void lowMemoryHandler(Critical);
 
@@ -83,7 +89,10 @@ private:
 
     void processDidTransitionToForeground();
     void processDidTransitionToBackground();
+#if ENABLE(MEDIA_STREAM)
     void setMockCaptureDevicesEnabled(bool);
+    void setOrientationForMediaCapture(uint64_t orientation);
+#endif
 
     // Connections to WebProcesses.
     HashMap<WebCore::ProcessIdentifier, Ref<GPUConnectionToWebProcess>> m_webProcessConnections;
@@ -95,6 +104,13 @@ private:
 #endif
     };
     HashMap<PAL::SessionID, GPUSession> m_sessions;
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    std::unique_ptr<LayerHostingContext> m_contextForVisibilityPropagation;
+    bool m_canShowWhileLocked { false };
+#endif
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+    mutable std::unique_ptr<RemoteAudioSessionProxyManager> m_audioSessionManager;
+#endif
 };
 
 } // namespace WebKit

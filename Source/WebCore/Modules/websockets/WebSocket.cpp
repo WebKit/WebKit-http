@@ -52,7 +52,9 @@
 #include "SocketProvider.h"
 #include "ThreadableWebSocketChannel.h"
 #include "WebSocketChannel.h"
+#include "WorkerGlobalScope.h"
 #include "WorkerLoaderProxy.h"
+#include "WorkerThread.h"
 #include <JavaScriptCore/ArrayBuffer.h>
 #include <JavaScriptCore/ArrayBufferView.h>
 #include <JavaScriptCore/ScriptCallStack.h>

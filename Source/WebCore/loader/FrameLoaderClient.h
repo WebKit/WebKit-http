@@ -189,6 +189,7 @@ public:
 
     virtual void dispatchDidLayout() { }
     virtual void dispatchDidReachLayoutMilestone(OptionSet<LayoutMilestone>) { }
+    virtual void dispatchDidReachVisuallyNonEmptyState() { }
 
     virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
     virtual void dispatchShow() = 0;
@@ -348,7 +349,7 @@ public:
     virtual WebGLLoadPolicy resolveWebGLPolicyForURL(const URL&) const { return WebGLAllowCreation; }
 #endif
 
-    virtual void forcePageTransitionIfNeeded() { }
+    virtual void completePageTransitionIfNeeded() { }
 
     // FIXME (bug 116233): We need to get rid of EmptyFrameLoaderClient completely, then this will no longer be needed.
     virtual bool isEmptyFrameLoaderClient() const { return false; }
@@ -381,6 +382,9 @@ public:
 #endif
 
     virtual AllowsContentJavaScript allowsContentJavaScriptFromMostRecentNavigation() const { return AllowsContentJavaScript::Yes; }
+
+    virtual bool hasNavigatedAwayFromAppBoundDomain() { return false; }
+
 };
 
 } // namespace WebCore

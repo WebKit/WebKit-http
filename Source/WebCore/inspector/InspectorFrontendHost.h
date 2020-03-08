@@ -68,8 +68,11 @@ public:
     void setZoomFactor(float);
     float zoomFactor();
 
+    void setForcedAppearance(String);
+
     String userInterfaceLayoutDirection();
 
+    bool supportsDockSide(const String&);
     void requestSetDockSide(const String&);
 
     void setAttachedWindowHeight(unsigned);

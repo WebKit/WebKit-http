@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -144,24 +144,36 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     if (!networkCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(networkCacheDirectory, networkCacheDirectoryExtensionHandle);
 
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    String alternativeServiceStorageDirectory = resolvedAlternativeServicesStorageDirectory();
+    SandboxExtension::Handle alternativeServiceStorageDirectoryExtensionHandle;
+    if (!alternativeServiceStorageDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(alternativeServiceStorageDirectory, alternativeServiceStorageDirectoryExtensionHandle);
+#endif
+
     bool shouldIncludeLocalhostInResourceLoadStatistics = isSafari;
     bool isInAppBrowserPrivacyEnabled = [defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isInAppBrowserPrivacyEnabledKey().createCFString().get()]];
     
     WebsiteDataStoreParameters parameters;
-    parameters.networkSessionParameters = {
+    parameters.networkSessionParameters = NetworkSessionCreationParameters {
         m_sessionID,
-        boundInterfaceIdentifier(),
-        allowsCellularAccess(),
-        proxyConfiguration(),
-        sourceApplicationBundleIdentifier(),
-        sourceApplicationSecondaryIdentifier(),
+        configuration().boundInterfaceIdentifier(),
+        configuration().allowsCellularAccess() ? AllowsCellularAccess::Yes : AllowsCellularAccess::No,
+        configuration().proxyConfiguration(),
+        configuration().sourceApplicationBundleIdentifier(),
+        configuration().sourceApplicationSecondaryIdentifier(),
         shouldLogCookieInformation,
         Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. },
         WTFMove(httpProxy),
         WTFMove(httpsProxy),
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+        WTFMove(alternativeServiceStorageDirectory),
+        WTFMove(alternativeServiceStorageDirectoryExtensionHandle),
+#endif
         WTFMove(resourceLoadStatisticsDirectory),
         WTFMove(resourceLoadStatisticsDirectoryHandle),
         resourceLoadStatisticsEnabled(),
+        isItpStateExplicitlySet(),
         hasStatisticsTestingCallback(),
         shouldIncludeLocalhostInResourceLoadStatistics,
         enableResourceLoadStatisticsDebugMode,
@@ -182,7 +194,6 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
         m_configuration->allowsServerPreconnect(),
         isInAppBrowserPrivacyEnabled
     };
-    networkingHasBegun();
 
     auto cookieFile = resolvedCookieStorageFile();
 
@@ -194,8 +205,8 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     }
 
     parameters.uiProcessCookieStorageIdentifier = m_uiProcessCookieStorageIdentifier;
-    parameters.networkSessionParameters.sourceApplicationBundleIdentifier = sourceApplicationBundleIdentifier();
-    parameters.networkSessionParameters.sourceApplicationSecondaryIdentifier = sourceApplicationSecondaryIdentifier();
+    parameters.networkSessionParameters.sourceApplicationBundleIdentifier = configuration().sourceApplicationBundleIdentifier();
+    parameters.networkSessionParameters.sourceApplicationSecondaryIdentifier = configuration().sourceApplicationSecondaryIdentifier();
 
     parameters.pendingCookies = copyToVector(m_pendingCookies);
 
@@ -276,6 +287,11 @@ WTF::String WebsiteDataStore::defaultCacheStorageDirectory()
 WTF::String WebsiteDataStore::defaultNetworkCacheDirectory()
 {
     return cacheDirectoryFileSystemRepresentation("NetworkCache");
+}
+
+WTF::String WebsiteDataStore::defaultAlternativeServicesDirectory()
+{
+    return cacheDirectoryFileSystemRepresentation("AlternativeServices");
 }
 
 WTF::String WebsiteDataStore::defaultMediaCacheDirectory()

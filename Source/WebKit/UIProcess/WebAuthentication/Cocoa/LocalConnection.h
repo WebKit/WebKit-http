@@ -35,6 +35,10 @@
 
 OBJC_CLASS LAContext;
 
+namespace WebCore {
+class AuthenticatorAssertionResponse;
+}
+
 namespace WebKit {
 
 // Local authenticators normally doesn't need to establish connections
@@ -46,23 +50,22 @@ class LocalConnection {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(LocalConnection);
 public:
-    enum class UserConsent {
+    enum class UserVerification : bool {
         No,
         Yes
     };
 
     using AttestationCallback = CompletionHandler<void(NSArray *, NSError *)>;
-    using UserConsentCallback = CompletionHandler<void(UserConsent)>;
-    using UserConsentContextCallback = CompletionHandler<void(UserConsent, LAContext *)>;
+    using UserVerificationCallback = CompletionHandler<void(UserVerification, LAContext *)>;
 
     LocalConnection() = default;
     virtual ~LocalConnection() = default;
 
     // Overrided by MockLocalConnection.
-    virtual void getUserConsent(const String& reason, SecAccessControlRef, UserConsentContextCallback&&) const;
+    virtual void verifyUser(SecAccessControlRef, UserVerificationCallback&&) const;
     virtual RetainPtr<SecKeyRef> createCredentialPrivateKey(LAContext *, SecAccessControlRef, const String& secAttrLabel, NSData *secAttrApplicationTag) const;
     virtual void getAttestation(SecKeyRef, NSData *authData, NSData *hash, AttestationCallback&&) const;
-    virtual NSDictionary *selectCredential(const NSArray *) const;
+    virtual void filterResponses(HashSet<Ref<WebCore::AuthenticatorAssertionResponse>>&) const { };
 };
 
 } // namespace WebKit

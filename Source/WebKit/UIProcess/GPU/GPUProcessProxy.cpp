@@ -110,6 +110,8 @@ GPUProcessProxy& GPUProcessProxy::singleton()
             SandboxExtension::createHandleForMachLookup("com.apple.tccd", WTF::nullopt, parameters.tccSandboxExtensionHandle);
 #endif
 #endif
+        parameters.parentPID = getCurrentProcessID();
+
         // Initialize the GPU process.
         gpuProcess->send(Messages::GPUProcess::InitializeGPUProcess(parameters), 0);
         gpuProcess->updateProcessAssertion();
@@ -144,6 +146,14 @@ void GPUProcessProxy::setUseMockCaptureDevices(bool value)
     m_useMockCaptureDevices = value;
     send(Messages::GPUProcess::SetMockCaptureDevicesEnabled { m_useMockCaptureDevices }, 0);
 }
+
+void GPUProcessProxy::setOrientationForMediaCapture(uint64_t orientation)
+{
+    if (m_orientation == orientation)
+        return;
+    m_orientation = orientation;
+    send(Messages::GPUProcess::SetOrientationForMediaCapture { orientation }, 0);
+}
 #endif
 
 void GPUProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -172,6 +182,13 @@ void GPUProcessProxy::getGPUProcessConnection(WebProcessProxy& webProcessProxy, 
 void GPUProcessProxy::openGPUProcessConnection(ConnectionRequestIdentifier connectionRequestIdentifier, WebProcessProxy& webProcessProxy)
 {
     addSession(webProcessProxy.websiteDataStore());
+    
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    if (m_contextIDForVisibilityPropagation)
+        webProcessProxy.didCreateContextInGPUProcessForVisibilityPropagation(m_contextIDForVisibilityPropagation);
+    else
+        m_processesPendingVisibilityPropagationNotification.append(makeWeakPtr(webProcessProxy));
+#endif
 
     auto& connection = *this->connection();
 
@@ -319,6 +336,24 @@ void GPUProcessProxy::removeSession(PAL::SessionID sessionID)
     if (m_sessionIDs.remove(sessionID))
         send(Messages::GPUProcess::RemoveSession { sessionID }, 0);
 }
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+void GPUProcessProxy::didCreateContextForVisibilityPropagation(LayerHostingContextID contextID)
+{
+    m_contextIDForVisibilityPropagation = contextID;
+
+    auto processes = WTFMove(m_processesPendingVisibilityPropagationNotification);
+    for (auto& process : processes) {
+        if (process)
+            process->didCreateContextInGPUProcessForVisibilityPropagation(contextID);
+    }
+}
+
+LayerHostingContextID GPUProcessProxy::contextIDForVisibilityPropagation() const
+{
+    return m_contextIDForVisibilityPropagation;
+}
+#endif
 
 } // namespace WebKit
 

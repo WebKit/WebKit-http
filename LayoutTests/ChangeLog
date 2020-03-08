@@ -1,3 +1,2928 @@
+2020-03-05  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] scrollingcoordinator/ios/fixed-frame-overflow-swipe.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208587
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-05  Ben Nham  <nham@apple.com>
+
+        REGRESSION (r257862): imported/w3c/web-platform-tests/svg/import/struct-dom-06-b-manual.svg is failing
+        https://bugs.webkit.org/show_bug.cgi?id=208653
+
+        Unreviewed test gardening.
+
+        Mark this test as flaky on iOS. It was already flaky on Mac with the same diff. Using 204312
+        to track flakiness on both platforms.
+
+        * platform/ios/TestExpectations:
+
+2020-03-05  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] http/tests/security/contentSecurityPolicy/javascript-url-blocked-by-default-src-star.html  is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208662
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Generate layer event regions for async overflow scrolling on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=208649
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations:
+        * fast/scrolling/mac/border-radius-event-region-expected.txt: Added.
+        * fast/scrolling/mac/border-radius-event-region.html: Added.
+        * fast/scrolling/mac/event-region-visibility-hidden-expected.txt: Added.
+        * fast/scrolling/mac/event-region-visibility-hidden.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-05  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r257760?) [ Mac wk2 Debug ] ASSERTION FAILED: child->parentObject() == this in WebCore::AccessibilityObject::insertChild
+        https://bugs.webkit.org/show_bug.cgi?id=208648
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-05  Kenneth Russell  <kbr@chromium.org>
+
+        REGRESSION: [ Mac ] fast/canvas/webgl/texImage2D-video-flipY-false.html is Timing out
+        https://bugs.webkit.org/show_bug.cgi?id=205734
+
+        Reenable layout test on macOS.
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/TestExpectations:
+
+2020-03-05  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS iOS ] storage/indexeddb/modern/transactions-stop-on-navigation.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208656
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-05  youenn fablet  <youenn@apple.com>
+
+        In case an activating service worker is terminated, it should go to activated state
+        https://bugs.webkit.org/show_bug.cgi?id=208440
+        <rdar://problem/59742332>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/service-worker-spinning-activate.https.html:
+
+2020-03-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Integration] Reset position style on line breaks.
+        https://bugs.webkit.org/show_bug.cgi?id=208646
+        <rdar://problem/60086589>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/out-of-flow-positioned-line-break-expected.txt: Added.
+        * fast/inline/out-of-flow-positioned-line-break.html: Added.
+
+2020-03-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Invalidation] Incoming image data should invalidate layout tree content
+        https://bugs.webkit.org/show_bug.cgi?id=208640
+        <rdar://problem/60083229>
+
+        Reviewed by Antti Koivisto.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208480
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/text/monospace-width-cache-expected.txt: Update
+          after r257305.
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.txt:
+          Update after r257626.
+
+2020-03-05  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r257839): two fast/forms/textarea are failing after commit r257839 (208576)
+        https://bugs.webkit.org/show_bug.cgi?id=208627
+        <rdar://problem/60042801>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/forms/textarea-no-scroll-on-blur.html:
+        * fast/forms/textarea-scrolled-type.html:
+
+        Update the tests to use rAF instead of zero duration timers.
+        There must be a rendering update between focus() and blur() for actual scrolling to happen and
+        zero duration timer doesn't guarantee that.
+
+2020-03-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline media controls tests after r257775
+
+        * platform/gtk/fast/layers/video-layer-expected.png:
+        * platform/gtk/fast/layers/video-layer-expected.txt:
+        * platform/gtk/media/audio-controls-rendering-expected.png:
+        * platform/gtk/media/audio-controls-rendering-expected.txt:
+        * platform/gtk/media/controls-after-reload-expected.png:
+        * platform/gtk/media/controls-after-reload-expected.txt:
+        * platform/gtk/media/controls-strict-expected.png:
+        * platform/gtk/media/controls-strict-expected.txt:
+        * platform/gtk/media/media-controls-clone-expected.png:
+        * platform/gtk/media/media-controls-clone-expected.txt:
+        * platform/gtk/media/video-controls-rendering-expected.png:
+        * platform/gtk/media/video-controls-rendering-expected.txt:
+        * platform/gtk/media/video-display-toggle-expected.png:
+        * platform/gtk/media/video-display-toggle-expected.txt:
+        * platform/gtk/media/video-empty-source-expected.png:
+        * platform/gtk/media/video-empty-source-expected.txt:
+        * platform/gtk/media/video-no-audio-expected.png:
+        * platform/gtk/media/video-no-audio-expected.txt:
+        * platform/gtk/media/video-playing-and-pause-expected.png:
+        * platform/gtk/media/video-playing-and-pause-expected.txt:
+        * platform/gtk/media/video-zoom-controls-expected.png:
+        * platform/gtk/media/video-zoom-controls-expected.txt:
+
+2020-03-04  Doug Kelly  <dougk@apple.com>
+
+        Crash in SVGElement::removeEventListener with symbol element
+        https://bugs.webkit.org/show_bug.cgi?id=207920
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/detached-svg-parent-window-events-expected.txt: Added.
+        * fast/events/detached-svg-parent-window-events.html: Added.
+        * fast/events/onerror-svg-symbol-expected.txt: Added.
+        * fast/events/onerror-svg-symbol.html: Added.
+
+2020-03-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ Mac wk2 Debug ] fast/layoutformattingcontext/block-only/replaced-intrinsic-width-simple.html is crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208598
+        <rdar://problem/60054452>
+
+        Unreviewed test gardening.
+        
+        This is LFC failure only. Unrelated to first paint. Skip it for now.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-04  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r257840?) [ Mac wk2 Debug ] fast/layoutformattingcontext/block-only/replaced-intrinsic-width-simple.html is crashing. 
+        https://bugs.webkit.org/show_bug.cgi?id=208598
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-04  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS and Mac wk2 Debug ] fast/events/beforeunload-prompt.html is flaky crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208590
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] scrollingcoordinator/ios/fixed-frame-overflow-swipe.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208587
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-removetrack.https.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208585
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208584
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] imported/w3c/web-platform-tests/IndexedDB/key-generators/reading-autoincrement-indexes-cursors.any.serviceworker.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=206934#add_comment
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] http/wpt/service-workers/server-trust-evaluation.https.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208582
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] http/wpt/service-workers/skipFetchEvent.https.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208581
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        REGRESSION (r257839): two fast/forms/textarea are failing after commit r257839
+        https://bugs.webkit.org/show_bug.cgi?id=208576
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed test gardening after r257764.
+
+        * TestExpectations:
+        * platform/win/TestExpectations:
+
+2020-03-04  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION (r257840?) [ Mac wk2 Release ] fast/hidpi/image-srcset-relative-svg-canvas.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208577
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-04  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac ] mathml/scripts-removeChild.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208574
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-03-04  Simon Fraser  <simon.fraser@apple.com>
+
+        (r256513) [ Mac ] fast/scrolling/programmatic-scroll-to-zero-zero.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=207948
+
+        Reviewed by Zalan Bujtas.
+
+        Remove line for fast/scrolling/programmatic-scroll-to-zero-zero.html.
+        Skip two Windows tests that, for unknown reasons, no longer get any scrolling
+        triggers.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+2020-03-04  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] webrtc/video-replace-track.html has been flaky failing on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=208573
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-04  Zalan Bujtas  <zalan@apple.com>
+
+        [First paint] Going from visually empty to non-empty should immediately trigger layer unfreezing
+        https://bugs.webkit.org/show_bug.cgi?id=208385
+        <rdar://problem/59895900>
+
+        Reviewed by Antti Koivisto.
+        
+        * fast/scrolling/scroll-animator-overlay-scrollbars-clicked-expected.txt:
+        * fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html:
+        * fast/scrolling/scroll-animator-overlay-scrollbars-hovered-expected.txt:
+        * fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html:
+
+2020-03-04  Antti Koivisto  <antti@apple.com>
+
+        Avoid full style resolution on Element::focus()
+        https://bugs.webkit.org/show_bug.cgi?id=208504
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/events/keypress-removed-node-expected.txt:
+        * fast/events/keypress-removed-node.html:
+
+        Modify the test so it is not sensitive to non-rendered whitespace changes
+        (caused by timing of render tree updates).
+
+        * fast/forms/autofocus-input-css-style-change.html:
+
+        Read the <input autofocus> :focus style in rAF as focusing happens asynchronously. This matches other browsers.
+
+        * fast/forms/focus-after-visibility-change-expected.txt: Added.
+        * fast/forms/focus-after-visibility-change.html: Added.
+
+        Add a simple test for visibility style change after renderer has already be created.
+
+2020-03-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Stop adding volume-box class to volume box element
+        https://bugs.webkit.org/show_bug.cgi?id=208510
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update expectations of http/tests/media/hls/video-controls-live-stream.html.
+
+        * platform/gtk/http/tests/media/hls/video-controls-live-stream-expected.txt:
+
+2020-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(iOS): editing/selection/ios/set-selection-by-tapping-after-changing-focused-element-bounds.html is always timing out
+        https://bugs.webkit.org/show_bug.cgi?id=208556
+
+        Reviewed by Wenson Hsieh.
+
+        Wait for the dobule tap delay between the initial tap and the second tap on the editable region
+        so that the second tap would result in a selection change instead of both taps to be recognized
+        as a single double tap.
+
+        * editing/selection/ios/set-selection-by-tapping-after-changing-focused-element-bounds.html:
+
+2020-03-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] http/tests/navigation/process-swap-on-client-side-redirect-private.html is flaky timing out
+        https://bugs.webkit.org/show_bug.cgi?id=208547
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ iOS ] fast/hidpi/filters-and-image-buffer-resolution.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208543
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-03  Zalan Bujtas  <zalan@apple.com>
+
+        [Internals] Introduce Internals::updateLayoutAndStyleRecursively
+        https://bugs.webkit.org/show_bug.cgi?id=208536
+        <rdar://problem/60012372>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/animated-gif-no-layout.html:
+
+2020-03-03  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL2] Implement texImage2D(TexImageSource) for RGBA/RGBA/UNSIGNED_BYTE ImageElements
+        https://bugs.webkit.org/show_bug.cgi?id=208486
+
+        Reviewed by Dean Jackson.
+
+        Partial implementation of WebGL 2 texImage2D(TexImageSource). Update affected results, mostly partial progressions.
+
+        * TestExpectations: Unskip svg_image texture tests that test the ImageElement pathway.
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r11f_g11f_b10f-rgb-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r11f_g11f_b10f-rgb-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r11f_g11f_b10f-rgb-unsigned_int_10f_11f_11f_rev-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r16f-red-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r16f-red-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r32f-red-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r8-red-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-r8ui-red_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rg16f-rg-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rg16f-rg-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rg32f-rg-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rg8-rg-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rg8ui-rg_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb16f-rgb-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb16f-rgb-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb32f-rgb-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb565-rgb-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb565-rgb-unsigned_short_5_6_5-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb5_a1-rgba-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb5_a1-rgba-unsigned_short_5_5_5_1-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb8-rgb-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb8ui-rgb_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb9_e5-rgb-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgb9_e5-rgb-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba16f-rgba-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba16f-rgba-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba32f-rgba-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba4-rgba-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba4-rgba-unsigned_short_4_4_4_4-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba8-rgba-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-rgba8ui-rgba_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-srgb8-rgb-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/canvas_sub_rectangle/tex-2d-srgb8_alpha8-rgba-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r11f_g11f_b10f-rgb-unsigned_int_10f_11f_11f_rev-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r16f-red-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r16f-red-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r32f-red-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r8-red-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-r8ui-red_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rg16f-rg-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rg16f-rg-half_float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rg32f-rg-float-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rg8-rg-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rg8ui-rg_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rgb8ui-rgb_integer-unsigned_byte-expected.txt:
+        * webgl/2.0.0/conformance2/textures/image_bitmap_from_canvas/tex-2d-rgba8ui-rgba_integer-unsigned_byte-expected.txt:
+
+2020-03-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS ] svg/custom/textPath-change-id-pattern.svg is flakey failing
+        https://bugs.webkit.org/show_bug.cgi?id=208532
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-03-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS ] legacy-animation-engine/animations/play-state-start-paused.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208527
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-03-03  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS ] webgl/2.0.0/conformance/extensions/webgl-draw-buffers.html has been timing out ever since it was introduced.
+        https://bugs.webkit.org/show_bug.cgi?id=208524
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-03-03  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] http/tests/security/cookies/third-party-cookie-blocking-redirect.html is flaky timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=208525
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-03  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Catalina ] webanimations/accelerated-animation-slot-invalidation.html is flaky failing. 
+        https://bugs.webkit.org/show_bug.cgi?id=208519
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-03-03  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk1 Debug ] legacy-animation-engine/animations/animation-direction-reverse.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208518
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline media/video-controls-no-scripting.html after r257705
+
+        * platform/gtk/media/video-controls-no-scripting-expected.txt:
+
+2020-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed gardeing. Update expectations of media/video-controls-toggling.html after r257771
+
+        I forgot to update the expected file after the changes in media/video-controls-toggling.html.
+
+        * media/video-controls-toggling-expected.txt:
+        * platform/gtk/media/video-controls-toggling-expected.txt: Removed.
+
+2020-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Test media/video-controls-toggling.html is failing for GTK since r257299
+        https://bugs.webkit.org/show_bug.cgi?id=208507
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        This has started to fail for GTK since we switched to use adwaita media controls, but I think this was passing
+        by coincidence. The test itself is wrong and that's probably the reason why it fails in the other platforms
+        too. The test expects that the changes that happen after removing the controls attribute from video element are
+        sync, but they aren't because a mutation observer is used by media controls script. Then, it assumes that panel
+        display property is set to none after controls attribute is removed, but we are actually removing the media
+        controls tree from the DOM in that case so the panel is null at that point. This worked in GTK before because
+        all those checks that were supposed to happen after removing the controls were done before the
+        handleControlsChange() was called.
+
+        * media/video-controls-toggling.html: Check that panel is null after controls attribute is removed from video
+        element in the next run loop iteration.
+
+2020-03-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutTests] Transition animations/cross-fade-* tests to non-pixel-tests
+        https://bugs.webkit.org/show_bug.cgi?id=208495
+        <rdar://problem/59979337>
+
+        Reviewed by Simon Fraser.
+
+        These tests are designed to be a dumpAsText() tests (their render tree outputs are flaky).
+
+        * animations/cross-fade-border-image-source-expected.txt: Added.
+        * animations/cross-fade-border-image-source.html:
+        * animations/cross-fade-list-style-image-expected.txt: Added.
+        * animations/cross-fade-list-style-image.html:
+        * animations/cross-fade-webkit-mask-box-image-expected.txt: Added.
+        * animations/cross-fade-webkit-mask-box-image.html:
+        * animations/cross-fade-webkit-mask-image-expected.txt: Added.
+        * animations/cross-fade-webkit-mask-image.html:
+        * platform/gtk/animations/cross-fade-border-image-source-expected.png: Removed.
+        * platform/gtk/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/gtk/animations/cross-fade-list-style-image-expected.png: Removed.
+        * platform/gtk/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/gtk/animations/cross-fade-webkit-mask-box-image-expected.png: Removed.
+        * platform/gtk/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/gtk/animations/cross-fade-webkit-mask-image-expected.png: Removed.
+        * platform/gtk/animations/cross-fade-webkit-mask-image-expected.txt: Removed.
+        * platform/ios/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/ios/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/ios/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/ios/animations/cross-fade-webkit-mask-image-expected.txt: Removed.
+        * platform/mac/animations/cross-fade-border-image-source-expected.png: Removed.
+        * platform/mac/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/mac/animations/cross-fade-list-style-image-expected.png: Removed.
+        * platform/mac/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/mac/animations/cross-fade-webkit-mask-box-image-expected.png: Removed.
+        * platform/mac/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/mac/animations/cross-fade-webkit-mask-image-expected.png: Removed.
+        * platform/mac/animations/cross-fade-webkit-mask-image-expected.txt: Removed.
+        * platform/win/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/win/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/win/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/wincairo/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/wincairo/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/wincairo/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/wincairo/animations/cross-fade-webkit-mask-image-expected.txt: Removed.
+        * platform/wpe/animations/cross-fade-border-image-source-expected.txt: Removed.
+        * platform/wpe/animations/cross-fade-list-style-image-expected.txt: Removed.
+        * platform/wpe/animations/cross-fade-webkit-mask-box-image-expected.txt: Removed.
+        * platform/wpe/animations/cross-fade-webkit-mask-image-expected.txt: Removed.
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] http/tests/workers/service/postmessage-after-sw-process-crash.https.html is flaky failing, timing out and crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208491
+
+        Unreviewed test gardening.
+        
+        * platform/ios-wk2/TestExpectations:
+
+2020-03-02  Saam Barati  <sbarati@apple.com>
+
+        Don't skip tests unnecessarily on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=208470
+        <rdar://problem/59968869>
+
+        Reviewed by Tadeu Zagallo.
+
+        * js/script-tests/array-from.js:
+        * js/script-tests/function-apply-many-args.js:
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] is css3/shapes/shape-outside/shape-image/shape-image-025.html flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208476
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        Fix for LayoutTests/accessibility/mac/search-text/search-text.html in IsolatedTree mode.
+        https://bugs.webkit.org/show_bug.cgi?id=208434
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/aria-expanded-notifications.html:
+        With this change, we now get the FocusChanged notification when the
+        script sets focus to a tree item.
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208471
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ macOS wk2 ] webgpu/whlsl/textures-sample-level.html is flaky failing and crashing
+        https://bugs.webkit.org/show_bug.cgi?id=207078
+
+        Unreviewed test gardening.
+
+        Corrected the expectations, so that they reflect the image failure issue and crashing.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 Debug and Mac Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208467
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-03-02  John Wilander  <wilander@apple.com>
+
+        ResourceLoadStatistics: Enable cookie blocking and the Storage Access API in ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=208399
+        <rdar://problem/24731650>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/adClickAttribution/store-disabled-in-ephemeral-session.html:
+            Just moved the <!-- webkit-test-runner [ useFlexibleViewport=true useEphemeralSession=true ] -->
+            header up to the top.
+        * http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral-database-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral-database.html: Added.
+        * http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/third-party-cookie-blocking-ephemeral.html: Added.
+        * http/tests/storageAccess/deny-due-to-no-interaction-under-general-third-party-cookie-blocking-ephemeral-expected.txt: Added.
+        * http/tests/storageAccess/deny-due-to-no-interaction-under-general-third-party-cookie-blocking-ephemeral.html: Added.
+        * http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral-database.html:
+        * http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral.html:
+            Added explicit disabling of resource load statistics. However, something enables it again. See
+            Comment under TestExpectation files below.
+        * http/tests/storageAccess/has-storage-access-under-general-third-party-cookie-blocking-with-cookie-ephemeral-expected.txt: Added.
+        * http/tests/storageAccess/has-storage-access-under-general-third-party-cookie-blocking-with-cookie-ephemeral.html: Added.
+        * http/tests/storageAccess/has-storage-access-under-general-third-party-cookie-blocking-without-cookie-ephemeral-expected.txt: Added.
+        * http/tests/storageAccess/has-storage-access-under-general-third-party-cookie-blocking-without-cookie-ephemeral.html: Added.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-ephemeral-expected.txt: Added.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-ephemeral.html: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-user-gesture-ephemeral-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-user-gesture-ephemeral.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+            These two test cases are now being skipped because resource load statistics are on in ephemeral sessions:
+            http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral.html
+            http/tests/storageAccess/has-storage-access-true-if-third-party-has-cookies-ephemeral-database.html
+            https://bugs.webkit.org/show_bug.cgi?id=208400 tracks the work to figure out how this can be tested
+            since some bug in the TestRunner is re-enabling resource load statistics as soon as you turn it off
+            in ephemeral sessions.
+
+2020-03-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Deny mach lookup access to distributed notifications in the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=208455
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-expected.txt:
+        * fast/sandbox/ios/sandbox-mach-lookup.html:
+
+2020-03-02  Doug Kelly  <dougk@apple.com>
+
+        ASSERT(m_column != unsetColumnIndex) in RenderTable::cellBefore
+        https://bugs.webkit.org/show_bug.cgi?id=208397
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/table/insert-cell-invisible-parent-expected.txt: Added.
+        * fast/table/insert-cell-invisible-parent.html: Added.
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac ] webanimations/accelerated-animation-renderer-change.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208450
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-03-02  Dean Jackson  <dino@apple.com>
+
+        maps.google.com is not loading properly, screen flickers when zooming
+        https://bugs.webkit.org/show_bug.cgi?id=208331
+        <rdar://problem/59790757>
+
+        Reviewed by Antoine Quint.
+
+        * platform/ios/TestExpectations: remove failing expectation for:
+        webgl/1.0.3/conformance/renderbuffers/framebuffer-object-attachment.html
+
+2020-03-02  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk1 Debug ] mathml/presentation/attributes-accent-accentunder-dynamic.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208449
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-03-02  Eric Carlson  <eric.carlson@apple.com>
+
+        [GPUP] Plumb through more MediaPlayer methods
+        https://bugs.webkit.org/show_bug.cgi?id=208423
+        <rdar://problem/59924386>
+
+        Reviewed by Youenn Fablet.
+
+        * gpu-process/TestExpectations: Unskip ~1200 media tests.
+
+2020-03-02  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for anchors
+        https://bugs.webkit.org/show_bug.cgi?id=208424
+
+        Reviewed by Darin Adler.
+
+        Add tests for anchors with various referrerpolicy attribute values and
+        update improved test results.
+
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer-when-downgrade/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/no-referrer/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/origin/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/same-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/same-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/same-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/same-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/same-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/same-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/strict-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-anchor/unsafe-url/same-origin.html: Added.
+        * http/tests/referrer-policy/resources/check-referrer.php: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/ios-wk2/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/win/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/wpe/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2020-03-02  youenn fablet  <youenn@apple.com>
+
+        ASSERTION FAILED: Completion handler should always be called on inspector/dom-debugger/attribute-modified-style.html
+        https://bugs.webkit.org/show_bug.cgi?id=208167
+        <rdar://problem/59747016>
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations:
+        Removed flaky expectation.
+
+2020-03-01  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update TestExpectations and baselines
+        https://bugs.webkit.org/show_bug.cgi?id=208433
+
+        Unreviewed gardening.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/accessibility/media-emits-object-replacement-expected.txt:
+        * platform/wpe/css3/flexbox/button-expected.txt:
+        * platform/wpe/fast/block/float/float-avoidance-expected.txt:
+        * platform/wpe/fast/canvas/fallback-content-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/copy-tex-image-and-sub-image-2d-bad-input-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/draw-elements-out-of-bounds-uint-index-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/drawElements-empty-vertex-data-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/vertexAttribPointer-with-bad-offset-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/webgl-drawarrays-crash-2-expected.txt: Added.
+        * platform/wpe/fast/canvas/webgl/webgl-drawarrays-crash-expected.txt: Added.
+        * platform/wpe/fast/css/continuationCrash-expected.txt:
+        * platform/wpe/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/wpe/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/wpe/fast/css/non-standard-checkbox-size-expected.txt:
+        * platform/wpe/fast/css/rtl-ordering-expected.txt:
+        * platform/wpe/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/wpe/fast/css/text-overflow-input-expected.txt:
+        * platform/wpe/fast/dom/HTMLInputElement/input-slider-update-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/indeterminate-progress-001-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/native-progress-bar-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/progress-element-expected.txt:
+        * platform/wpe/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/wpe/fast/dom/Range/getBoundingClientRect-expected.txt:
+        * platform/wpe/fast/html/details-replace-summary-child-expected.txt:
+        * platform/wpe/fast/html/details-replace-text-expected.txt:
+        * platform/wpe/fast/layers/video-layer-expected.txt:
+        * platform/wpe/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/wpe/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/wpe/fast/replaced/replaced-breaking-expected.txt:
+        * platform/wpe/fast/replaced/table-percent-height-expected.txt:
+        * platform/wpe/fast/replaced/width100percent-button-expected.txt:
+        * platform/wpe/fast/replaced/width100percent-checkbox-expected.txt:
+        * platform/wpe/fast/replaced/width100percent-radio-expected.txt:
+        * platform/wpe/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/wpe/fast/xmlhttprequest/xmlhttprequest-nonexistent-file-expected.txt: Added.
+        * platform/wpe/fetch/fetch-url-serialization-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-animations/Element-getAnimations.tentative-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-sizing/button-min-width-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-transitions/before-load-001-expected.txt:
+        * platform/wpe/storage/domstorage/sessionstorage/blocked-file-access-expected.txt: Added.
+        * platform/wpe/svg/custom/foreign-object-skew-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug51727-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug52505-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug52506-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug92647-2-expected.txt:
+        * platform/wpe/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/wpe/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/wpe/tables/mozilla/other/move_row-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/wpe/webanimations/partly-accelerated-transition-by-removing-property-expected.txt:
+        * platform/wpe/webgl/1.0.3/conformance/context/context-lost-restored-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/buffers/bound-buffer-size-change-test-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/buffers/buffer-copying-contents-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/misc/object-deletion-behaviour-2-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/transform_feedback/unwritten-output-defaults-to-zero-expected.txt:
+
+2020-03-01  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208430
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-29  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floats] FloatingState::top should return topmost logical vertical position
+        https://bugs.webkit.org/show_bug.cgi?id=208412
+        <rdar://problem/59918798>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/block-only/block-root-top-should-start-from-float-top-expected.html: Added.
+        * fast/layoutformattingcontext/block-only/block-root-top-should-start-from-float-top.html: Added.
+
+2020-02-29  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floats] The used available width for float avoider with clear always matches the containing block's constraint
+        https://bugs.webkit.org/show_bug.cgi?id=208411
+        <rdar://problem/59918356>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/block-only/float-clear-with-auto-width-expected.html: Added.
+        * fast/layoutformattingcontext/block-only/float-clear-with-auto-width.html: Added.
+
+2020-02-28  Chris Dumez  <cdumez@apple.com>
+
+        Garbage collection prevents FontFace.loaded promise from getting resolved
+        https://bugs.webkit.org/show_bug.cgi?id=208382
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage. Thanks to Alexey Proskuryakov for writing the test.
+
+        * fast/text/font-promises-gc-expected.txt: Added.
+        * fast/text/font-promises-gc.html: Added.
+
+2020-02-28  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] compositing/absolute-inside-out-of-view-fixed.html is flaky timing out and crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208401
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS wk2 Release ] fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208245
+
+        Unreviewed test gardenign.
+
+        * platform/ios-wk2/TestExpectations: Remove flaky expectation since the test has been fixed.
+
+2020-02-28  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS ] imported/w3c/web-platform-tests/dom/nodes/Document-characterSet-normalization.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208394
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-28  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208396
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-28  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mojave wk2 Debug ] fast/css-custom-paint/delay-repaint.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208390
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Deflake animations/font-variations tests
+        https://bugs.webkit.org/show_bug.cgi?id=208383
+
+        Reviewed by Ryosuke Niwa.
+
+        Use document.fonts.ready to work around https://bugs.webkit.org/show_bug.cgi?id=208382,
+        and to simplify the tests.
+
+        * animations/font-variations/font-stretch.html:
+        * animations/font-variations/font-style.html:
+        * animations/font-variations/font-variation-settings-order.html:
+        * animations/font-variations/font-variation-settings-unlike.html:
+        * animations/font-variations/font-variation-settings.html:
+        * animations/font-variations/font-weight.html:
+
+2020-02-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [ iOS wk2 Release ] fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208245
+        <rdar://problem/59856625>
+
+        The test was still actually passing, it was just displaying differently.
+        Change the test to be more robust.
+
+        Unreviewed test gardening.
+
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout-expected.html: Removed.
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html:
+
+2020-02-28  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk1 ] imported/w3c/web-platform-tests/requestidlecallback/callback-timeout-when-busy.html is flakey failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208384
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-02-28  youenn fablet  <youenn@apple.com>
+
+        [MacOS/iOS] Enable audio/video capture in GPUProcess by default
+        https://bugs.webkit.org/show_bug.cgi?id=208130
+
+        Reviewed by Eric Carlson.
+
+        Disable video capture in GPUProcess as cloning mechanism does not work well with the idea of a single video or audio source in a process.
+        A follow-up patch should fix this.
+
+        * fast/mediastream/MediaStream-clone.html:
+        * fast/mediastream/MediaStreamTrack-clone.html:
+        * fast/mediastream/mediastreamtrack-video-clone.html:
+        * webrtc/multi-video.html:
+
+2020-02-28  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208371
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline tests after fixes for new style regressions
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css3/flexbox/button-expected.png:
+        * platform/gtk/css3/flexbox/button-expected.txt:
+        * platform/gtk/editing/selection/3690703-2-expected.png:
+        * platform/gtk/editing/selection/3690703-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-expected.png:
+        * platform/gtk/editing/selection/3690703-expected.txt:
+        * platform/gtk/editing/selection/3690719-expected.png:
+        * platform/gtk/editing/selection/3690719-expected.txt:
+        * platform/gtk/editing/selection/4397952-expected.png:
+        * platform/gtk/editing/selection/4397952-expected.txt:
+        * platform/gtk/editing/selection/5240265-expected.png:
+        * platform/gtk/editing/selection/5240265-expected.txt:
+        * platform/gtk/editing/selection/selection-button-text-expected.png:
+        * platform/gtk/editing/selection/selection-button-text-expected.txt:
+        * platform/gtk/fast/block/float/float-avoidance-expected.png:
+        * platform/gtk/fast/block/float/float-avoidance-expected.txt:
+        * platform/gtk/fast/css/continuationCrash-expected.png:
+        * platform/gtk/fast/css/continuationCrash-expected.txt:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.png:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.png:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.txt:
+        * platform/gtk/fast/css/rtl-ordering-expected.png:
+        * platform/gtk/fast/css/rtl-ordering-expected.txt:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.png:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/gtk/fast/forms/001-expected.png:
+        * platform/gtk/fast/forms/001-expected.txt:
+        * platform/gtk/fast/forms/basic-buttons-expected.png:
+        * platform/gtk/fast/forms/basic-buttons-expected.txt:
+        * platform/gtk/fast/forms/basic-selects-expected.png:
+        * platform/gtk/fast/forms/basic-selects-expected.txt:
+        * platform/gtk/fast/forms/blankbuttons-expected.png:
+        * platform/gtk/fast/forms/blankbuttons-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.png:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/button-positioned-expected.png:
+        * platform/gtk/fast/forms/button-positioned-expected.txt:
+        * platform/gtk/fast/forms/button-sizes-expected.png:
+        * platform/gtk/fast/forms/button-sizes-expected.txt:
+        * platform/gtk/fast/forms/button-style-color-expected.png:
+        * platform/gtk/fast/forms/button-style-color-expected.txt:
+        * platform/gtk/fast/forms/button-table-styles-expected.png:
+        * platform/gtk/fast/forms/button-table-styles-expected.txt:
+        * platform/gtk/fast/forms/button-text-transform-expected.png:
+        * platform/gtk/fast/forms/button-text-transform-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.png:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.png:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.png:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.png:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/formmove3-expected.png:
+        * platform/gtk/fast/forms/formmove3-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.png:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-button-sizes-expected.png:
+        * platform/gtk/fast/forms/input-button-sizes-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.png:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/forms/menulist-restrict-line-height-expected.png:
+        * platform/gtk/fast/forms/menulist-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.png:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.txt:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.png:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.txt:
+        * platform/gtk/fast/html/details-replace-text-expected.png:
+        * platform/gtk/fast/html/details-replace-text-expected.txt:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.png:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.png:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.png:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-button-expected.png:
+        * platform/gtk/fast/replaced/width100percent-button-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-checkbox-expected.png:
+        * platform/gtk/fast/replaced/width100percent-checkbox-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-radio-expected.png:
+        * platform/gtk/fast/replaced/width100percent-radio-expected.txt:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.png:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.txt:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.png:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.png:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.txt:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.png:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.png:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/gtk/tables/mozilla/other/move_row-expected.png:
+        * platform/gtk/tables/mozilla/other/move_row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+
+2020-02-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Remove platform/gtk/fast/forms/number/number-size-spinbutton-nocover.html
+
+        This tested the behavior of spin buttons with the old GTK theming code.
+
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover-expected.png: Removed.
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover-expected.txt: Removed.
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover.html: Removed.
+
+2020-02-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Test imported/blink/fast/forms/datalist/slider-appearance-with-ticks-crash.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=190613
+
+        Reviewed by Wenson Hsieh.
+
+        Remove test expectations.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2020-02-27  Doug Kelly  <dougk@apple.com>
+
+        Hit test with clipPath referencing parent element causes infinite recursion
+        https://bugs.webkit.org/show_bug.cgi?id=208279
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/hittest/svg-clip-path-child-element-expected.txt: Added.
+        * svg/hittest/svg-clip-path-child-element.html: Added.
+
+2020-02-27  Eric Carlson  <eric.carlson@apple.com>
+
+        Support in-band generic cues when loading media in the GPU Process
+        https://bugs.webkit.org/show_bug.cgi?id=208080
+        <rdar://problem/59687943>
+
+        Reviewed by Youenn Fablet.
+
+        * gpu-process/TestExpectations:
+
+2020-02-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue mach sandbox extensions to the WebContent process for a set of specific services
+        https://bugs.webkit.org/show_bug.cgi?id=208146
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-mail-expected.txt:
+        * fast/sandbox/ios/sandbox-mach-lookup-mail.html:
+
+2020-02-27  Ben Nham  <nham@apple.com>
+
+        REGRESSION (r257391-257396): [ iOS ] imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/scroll-restoration-order.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=208323
+
+        Unreviewed test gardening.
+
+        scroll-restoration-order.html has always failed on iOS. Before r257394, we didn't properly
+        restore the scroll position before the hashchange event. After r257394, we now properly
+        restore the scroll position, but do it too early (it's restored before popstate, rather than
+        between popstate and hashchange). If anything, the new state seems less broken than before,
+        so this just updates the expected results to reflect the current status of our tests.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/scroll-restoration-order-expected.txt:
+
+2020-02-27  Lauro Moura  <lmoura@igalia.com>
+
+        [GTK] Layout test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=208360
+
+        Unreviewed test gardening.
+
+        Removed some deprecated baselines after new form styles.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/disabled-controls-not-focusable-expected.txt: Removed.
+        * platform/gtk/fast/forms/input-number-click-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange-expected.txt: Removed.
+
+2020-02-27  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS Debug wk2 ] imported/w3c/web-platform-tests/css/mediaqueries/test_media_queries.html is flaky timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=208355
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-27  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] LayoutTest/fast/animation/request-animation-frame-time-unit.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171957
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-27  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        [ macOS wk2 ] webgpu/whlsl/return-local-variable.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=207700
+
+        Unreviewed test gardening
+
+        * platform/mac-wk2/TestExpectations: Correcting test expectations.
+
+2020-02-27  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION (r256910?) [ Mac wk1 ] fast/canvas/webgl/canvas-webgl-page-cache.html is flaky crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208345
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r257575.
+
+        Broke the watchOS build.
+
+        Reverted changeset:
+
+        "[iOS] Issue mach sandbox extensions to the WebContent process
+        for a set of specific services"
+        https://bugs.webkit.org/show_bug.cgi?id=208146
+        https://trac.webkit.org/changeset/257575
+
+2020-02-27  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208328
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-27  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] webgpu/whlsl/textures-sample.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208340
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-27  Ben Nham  <nham@apple.com>
+
+        Fix flaky enter/exit PIP test
+        https://bugs.webkit.org/show_bug.cgi?id=208272
+
+        Unreviewed test gardening.
+
+        This test sometimes fails because it presses the PIP control before the video starts
+        playing. Fix this by waiting for the playing event before pressing the control.
+
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS wk2 Release ] fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208245
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations: Mark test as flaky.
+
+2020-02-27  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION: (257072) [ Mac wk2 Release ] fast/harness/uiscriptcontroller/concurrent-ui-side-scripts.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208264
+        <rdar://problem/59821552>
+
+        Reviewed by Simon Fraser.
+
+        * fast/harness/uiscriptcontroller/concurrent-ui-side-scripts-expected.txt:
+        * fast/harness/uiscriptcontroller/concurrent-ui-side-scripts.html:
+
+        There is no guarantee that two independent async UI scripts finish in particular order. Order the output instead.
+
+2020-02-27  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 ] crypto/subtle/rsa-indexeddb-non-exportable-private.html is flaky timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=207660
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue mach sandbox extensions to the WebContent process for a set of specific services
+        https://bugs.webkit.org/show_bug.cgi?id=208146
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-mail-expected.txt:
+        * fast/sandbox/ios/sandbox-mach-lookup-mail.html:
+
+2020-02-27  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CSS Backgrounds] Skip WPT tests always crashing in Debug.
+
+        Unreviewed gardening. See https://webkit.org/b/206579#c1
+
+        * TestExpectations:
+
+2020-02-27  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for images
+        https://bugs.webkit.org/show_bug.cgi?id=207901
+
+        Reviewed by Darin Adler.
+
+        Add tests for images with various referrerpolicy attribute values.
+
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer-when-downgrade/same-origin.html: Added.
+        * http/tests/referrer-policy-img/no-referrer/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/no-referrer/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/no-referrer/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/no-referrer/same-origin.html: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-img/origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/origin/same-origin.html: Added.
+        * http/tests/referrer-policy-img/same-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/same-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/same-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/same-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/same-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/same-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-img/strict-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/strict-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/strict-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/strict-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-img/unsafe-url/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-img/unsafe-url/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-img/unsafe-url/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-img/unsafe-url/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-img/unsafe-url/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-img/unsafe-url/same-origin.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http.html:
+        * http/tests/referrer-policy/resources/image.php: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/win/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/idlharness.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2020-02-26  Nikos Mouchtaris  <nmouchtaris@apple.com>
+
+        Web platform tests for Web Share API fail incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=208083
+
+        Reviewed by Alex Christensen.
+
+        Removed duplicate tests for corresponding wpts, fixed expected
+        for new wpts. Modified TestExpectations to now run all web-share
+        wpts except for those testing secure context behavior, which is not
+        supported by the current wpt infrastructure.
+
+        * TestExpectations:
+        * fast/web-share/canShare-expected.txt: Removed.
+        * fast/web-share/canShare-files-expected.txt: Removed.
+        * fast/web-share/canShare-files.html: Removed.
+        * fast/web-share/canShare.html: Removed.
+        * fast/web-share/share-empty-expected.txt: Removed.
+        * fast/web-share/share-empty.html: Removed.
+        * fast/web-share/share-url-invalid-expected.txt: Removed.
+        * fast/web-share/share-without-user-gesture-expected.txt: Removed.
+        * fast/web-share/share-without-user-gesture.html: Removed.
+
+2020-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPadOS] REGRESSION(r247667): Autosizing style changes don't invalidate RenderText's preferred logical widths
+        https://bugs.webkit.org/show_bug.cgi?id=208084
+        <rdar://problem/59463898>
+
+        Reviewed by Darin Adler.
+
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout-expected.html: Added.
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html: Added.
+
+2020-02-26  Jack Lee  <shihchieh_lee@apple.com>
+
+        Nullptr crash in WebCore::canHaveChildrenForEditing via CompositeEditCommand::insertNode
+        https://bugs.webkit.org/show_bug.cgi?id=208115
+        <rdar://problem/56685655>
+
+        Reviewed by Ryosuke Niwa.
+
+        When inserting a list at an element with a non-list-item child, if the element is uneditable, skip creating list item for the child. 
+
+        * fast/lists/insert-list-uneditable-element-with-non-li-child-expected.txt: Added.
+        * fast/lists/insert-list-uneditable-element-with-non-li-child.html: Added.
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [mac-sierra] LayoutTest media/modern-media-controls/pip-support/pip-support-click.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=165311
+
+        Unreviewed test gardening.
+
+        I have removed this expectation because the issue appears to be resolved.
+
+        * platform/mac/TestExpectations:
+
+2020-02-26  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, rolling out r257508.
+
+        This commit broke the watchos build
+
+        Reverted changeset:
+
+        "[iOS] Issue mach sandbox extensions to the WebContent process
+        for a set of specific services"
+        https://bugs.webkit.org/show_bug.cgi?id=208146
+        https://trac.webkit.org/changeset/257508
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] media/modern-media-controls/pip-support/pip-support-click.html is flaky timing out. 
+        https://bugs.webkit.org/show_bug.cgi?id=208272
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [WebGL] Unskip runnable WebGL 2.0.0 conformance suite for mac
+        https://bugs.webkit.org/show_bug.cgi?id=208078
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-02-26  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] Implement NetworkCache::Data by using FileSystem::MappedFileData
+        https://bugs.webkit.org/show_bug.cgi?id=197684
+        <rdar://problem/59467397>
+
+        Reviewed by Yusuke Suzuki.
+
+        * platform/wincairo/TestExpectations:
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 Release ] fast/harness/uiscriptcontroller/concurrent-ui-side-scripts.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208264
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 Release ] fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208245
+
+        Unreviewed test gardening. 
+
+        Removed the test expectations.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-26  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208253
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-26  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] Garden dedicated queue
+        https://bugs.webkit.org/show_bug.cgi?id=204547
+
+        Unreviewed test gardening.
+
+        One more pass to stabilize the WebGL bot.
+
+        * platform/ios/TestExpectations: Remove reference to non-existent test.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/acos-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/acosh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/cosh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/fract-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/pow-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/reflect-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sinh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/pixelbufferobject-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_copyteximage2d-expected.txt:
+        * webgl/TestExpectations:
+
+2020-02-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Issue mach sandbox extensions to the WebContent process for a set of specific services
+        https://bugs.webkit.org/show_bug.cgi?id=208146
+
+        Reviewed by Brent Fulgham.
+
+        * fast/sandbox/ios/sandbox-mach-lookup-mail-expected.txt:
+        * fast/sandbox/ios/sandbox-mach-lookup-mail.html:
+
+2020-02-26  Nikos Mouchtaris  <nmouchtaris@apple.com>
+
+        Regression r257289: fast/web-share/share-with-files.html is missing expected results
+        https://bugs.webkit.org/show_bug.cgi?id=208191
+
+        Reviewed by Tim Horton.
+
+        Added expected for new test.
+
+        * fast/web-share/share-with-files-expected.txt: Added.
+
+2020-02-26  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Update WPT tests for Intersection Observer
+        https://bugs.webkit.org/show_bug.cgi?id=208053.
+
+        Unreviewed test gardening
+
+        Skipping tests that do not have an expected file.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2020-02-26  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, rolling out r257373.
+
+        This commit introduced one test that is a flaky failure on ios
+        bots and broke another test
+
+        Reverted changeset:
+
+        "[iPadOS] REGRESSION(r247667): Autosizing style changes don't
+        invalidate RenderText's preferred logical widths"
+        https://bugs.webkit.org/show_bug.cgi?id=208084
+        https://trac.webkit.org/changeset/257373
+
+2020-02-26  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iOS wk2 Release ] fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208245
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2020-02-26  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC][Floats] ASSERT(committedInlineItemCount || line.hasIntrusiveFloat()) in LineLayoutContext::close
+        https://bugs.webkit.org/show_bug.cgi?id=208230
+        <rdar://problem/59791249>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/float-and-br-inline-content-only-expected.html: Added.
+        * fast/layoutformattingcontext/float-and-br-inline-content-only.html: Added.
+
+2020-02-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update fast/forms/number/number-size.html after r257299
+
+        Since r257299 the GTK port specific behavior is no longer needed, so we can remove the widthSpecified function
+        and use the specified value directly.
+
+        * fast/forms/number/number-size-expected.txt:
+        * fast/forms/number/number-size.html:
+
+2020-02-25  Jack Lee  <shihchieh_lee@apple.com>
+
+        ASSERTION FAILURE in AppendNodeCommand::AppendNodeCommand when inserting list with read-only user-modify
+        https://bugs.webkit.org/show_bug.cgi?id=208045
+        <rdar://problem/39023383>
+
+        Reviewed by Ryosuke Niwa.
+
+        When inserting a list (InsertListCommand) around enclosed list items, if new list is not editable, skip moving list items in function doApplyForSingleParagraph.
+
+        * fast/lists/insert-list-user-modify-read-only-enclosed-li-expected.txt: Added.
+        * fast/lists/insert-list-user-modify-read-only-enclosed-li.html: Added.
+
+2020-02-25  Jack Lee  <shihchieh_lee@apple.com>
+
+        Nullptr crash in CompositeEditCommand::splitTreeToNode
+        https://bugs.webkit.org/show_bug.cgi?id=208039
+        <rdar://problem/52011355>
+
+        Reviewed by Ryosuke Niwa.
+
+        When inserting a list (InsertListCommand) around orphaned list items, if unordered list is not editable, skip moving list items in function fixOrphanedListChild. 
+
+        * fast/lists/insert-list-user-modify-read-only-orphaned-li-expected.txt: Added.
+        * fast/lists/insert-list-user-modify-read-only-orphaned-li.html: Added.
+
+2020-02-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Various test-cases from Gecko assert with ASSERTION FAILED: layoutState->renderer() == this.
+        https://bugs.webkit.org/show_bug.cgi?id=202805
+
+        Skip the test that's always crashing as suggested by Alexey.
+
+        * TestExpectations:
+
+2020-02-25  Justin Fan  <justin_fan@apple.com>
+
+        [ WebGL ] Update WebGL bot expectations
+        https://bugs.webkit.org/show_bug.cgi?id=208227
+
+        Unreviewed test gardening.
+
+        Update DEQP expectations after ANGLE switch, and revise list of skipped tests for WebGL bot.
+
+        * webgl/2.0.0/deqp/functional/gles3/booleanstatequery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/bufferobjectquery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/abs-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/acos-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/acosh-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/add-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/asin-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/asinh-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/atan-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/atan2-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/atanh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/ceil-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/clamp-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/cos-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/cosh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/cross-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/degrees-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/determinant-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/distance-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/div-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/dot-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/exp-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/exp2-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/faceforward-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/floor-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/fract-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/inverse-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/inversesqrt-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/length-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/log-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/log2-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/max-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/min-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/mix-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/mod-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/modf-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/mul-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/normalize-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/pow-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/radians-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/reflect-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/refract-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/round-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/roundeven-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sign-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sin-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sinh-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/smoothstep-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sqrt-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/step-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/sub-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/tan-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/tanh-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/builtinprecision/trunc-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/draw/instancing-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/clear-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/tex2d_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbocolorbuffer/texcube_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbodepthbuffer-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/format_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/format_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/format_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/sub-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/target-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fboinvalidate/whole-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_color_06-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/recreate_depth_stencil-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/resize_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/resize_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/resize_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/resize_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/shared_colorbuffer_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/shared_colorbuffer_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/shared_depth_stencil-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fborender/stencil_clear-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fbostencilbuffer-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/floatstatequery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fragdepth-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/fragmentoutput/array.int-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_06-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_07-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_09-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_14-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_15-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_16-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_17-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_19-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_20-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_21-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_22-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_23-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_24-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_26-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/framebufferblit/conversion_27-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/integerstatequery-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/lifetime-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/negativestateapi-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/negativevertexarrayapi-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/pixelbufferobject-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/rasterizerdiscard-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/rbostatequery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/readpixel-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/samplerstatequery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderbuiltinvar-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderderivate_dfdy-expected.txt: Added.
+        * webgl/2.0.0/deqp/functional/gles3/shaderoperator/angle_and_trigonometry_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderoperator/angle_and_trigonometry_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderpackingfunction-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderprecision_float-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shaderstatequery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texelfetch-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texelfetchoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texture-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texturegrad-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texturegradoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texturelod-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texturelodoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureproj-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureprojgrad-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureprojgradoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureprojlod-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureprojlodoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/textureprojoffset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/shadertexturefunction/texturesize-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/stringquery-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_combinations_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_06-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_07-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_08-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_formats_09-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/2d_sizes_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_combinations_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_05-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_06-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_07-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_08-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_formats_09-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_no_edges_visible-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_sizes_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_sizes_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_sizes_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_sizes_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturefiltering/cube_sizes_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_npot_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_npot_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_npot_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_npot_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_pot_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_pot_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_pot_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_2d_pot_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_npot_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_npot_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_npot_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_npot_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_pot_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_pot_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_pot_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/sized_color_cube_pot_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/textureformat/unsized_2d-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_copyteximage2d-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_copytexsubimage2d-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_2d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_2d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_cube_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_cube_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_cube_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_cube_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage2d_cube_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage3d_2d_array_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage3d_2d_array_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage3d_3d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_teximage3d_3d_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_2d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_2d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_2d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_cube_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_cube_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_cube_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_cube_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage2d_cube_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage3d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage3d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/basic_texsubimage3d_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/random_teximage2d_2d-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/random_teximage2d_cube-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_2d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_2d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_2d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_cube_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_cube_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_cube_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_cube_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_cube_04-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage2d_format_size-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_2d_array_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_2d_array_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_3d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_3d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_3d_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texstorage3d_format_3d_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_empty_tex-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_pbo_2d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_pbo_2d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_pbo_cube_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_pbo_cube_02-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage2d_pbo_cube_03-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage3d_pbo_2d_array_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage3d_pbo_2d_array_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage3d_pbo_3d_00-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturespecification/texsubimage3d_pbo_3d_01-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturewrap/rgba8_npot-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/texturewrap/rgba8_pot-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_interleaved_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_interleaved_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_interleaved_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_separate_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_separate_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_element_separate_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_interleaved_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_interleaved_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_interleaved_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_separate_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_separate_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/array_separate_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_interleaved_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_interleaved_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_interleaved_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_separate_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_separate_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/basic_types_separate_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/interpolation_centroid-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/interpolation_flat-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/interpolation_smooth-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/point_size-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/position-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_interleaved_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_interleaved_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_interleaved_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_separate_lines-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_separate_points-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/transformfeedback/random_separate_triangles-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformapi/info_query-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformapi/random-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformapi/value_assigned-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformapi/value_initial-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformbuffers/instance_array_basic_type-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformbuffers/random-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformbuffers/single_basic_array-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/uniformbuffers/single_basic_type-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrayobject-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/multiple_attributes.count-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/multiple_attributes.output-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/multiple_attributes.storage-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/multiple_attributes.stride-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.first-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.normalize-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.offset-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.byte-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.float-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.half-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.int-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.int_2_10_10_10-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.short-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.unsigned_byte-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.unsigned_int-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.unsigned_int_2_10_10_10-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.output_type.unsigned_short-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.stride-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.dynamic_copy-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.dynamic_draw-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.dynamic_read-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.static_copy-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.static_draw-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.static_read-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.stream_copy-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.stream_draw-expected.txt:
+        * webgl/2.0.0/deqp/functional/gles3/vertexarrays/single_attribute.usage.stream_read-expected.txt:
+        * webgl/TestExpectations:
+
+2020-02-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for macOS.
+
+        * platform/mac/TestExpectations: Change the expectation for the
+        fast/text-autosizing/ios/idempotentmode directory to 'Skip' since the
+        tests rely on a feature that isn't implemented on macOS.
+
+2020-02-25  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 Release ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208222
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-25  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac Debug ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208220
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-02-25  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] More 2.0.0 conformance suite gardening after ANGLE rollout
+        https://bugs.webkit.org/show_bug.cgi?id=208211
+
+        Unreviewed test gardening.
+
+        Mark one more unsupported test as flaky, and add in Intel graphics-specific results for 
+        5 tests that were failing consistently across all bots.
+
+        * TestExpectations:
+        * webgl/2.0.0/conformance/buffers/buffer-uninitialized-expected.txt:
+        * webgl/2.0.0/conformance/extensions/angle-instanced-arrays-expected.txt:
+        * webgl/2.0.0/conformance/rendering/clipping-wide-points-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/clipping-wide-points-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-3d-size-limit-expected.txt:
+
+2020-02-25  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac ] compositing/video/video-clip-change-src.html is flaky failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208219
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-02-25  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Removing expectations from a resolved bug
+        https://bugs.webkit.org/show_bug.cgi?id=207154
+
+        Unreviewed test gardening
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-02-25  Jason Lawrence  <lawrence.j@apple.com>
+
+        REGRESSION: (r257268) [ iPadOS wk2 ] fast/scrolling/ios/change-scrollability-on-content-resize-nested.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=208216
+
+        Unreviewed test gardening.
+
+        Rebaselined the test for iPad, removed the failure expectation.
+
+        * platform/ipad/TestExpectations:
+        * platform/ipad/fast/scrolling/ios/change-scrollability-on-content-resize-nested-expected.txt:
+
+2020-02-25  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ iPadOS wk2 ] fast/scrolling/ios/change-scrollability-on-content-resize-nested.html is failing. 
+        https://bugs.webkit.org/show_bug.cgi?id=208216
+
+        Unreviewed test gardening.
+
+        * platform/ipad/TestExpectations:
+
+2020-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPadOS] REGRESSION(r247667): Autosizing style changes don't invalidate RenderText's preferred logical widths
+        https://bugs.webkit.org/show_bug.cgi?id=208084
+        <rdar://problem/59463898>
+
+        Reviewed by Darin Adler.
+
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout-expected.html: Added.
+        * fast/text-autosizing/ios/idempotentmode/viewport-change-relayout.html: Added.
+
+2020-02-25  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][TFC] Do not create a formatting context for empty subtree in TableFormattingContext::computePreferredWidthForColumns
+        https://bugs.webkit.org/show_bug.cgi?id=208205
+        <rdar://problem/59766702>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/simple-table-with-empty-td-expected.html: Added.
+        * fast/layoutformattingcontext/simple-table-with-empty-td.html: Added.
+
+2020-02-25  Jacob Uphoff  <jacob_uphoff@apple.com>
+        
+        Removing expectations for a resolved bug
+        https://bugs.webkit.org/show_bug.cgi?id=206673
+
+        Unreviewed test gardening
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-02-25  Nikos Mouchtaris  <nmouchtaris@apple.com>
+
+        REGRESSION: (r257289) [ macOS ] fast/dom/navigator-detached-no-crash.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=208202
+
+        Reviewed by Megan Gardner.
+
+        Fixed expected for new function introduced to navigator. Test makes sure accessing each
+        member of navigator doesn't crash, added check for new function in expected. 
+
+        * platform/mac-wk2/fast/dom/navigator-detached-no-crash-expected.txt:
+
+2020-02-25  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][OutOfFlow] Out-of-flow positioned line breaks can generate display boxes
+        https://bugs.webkit.org/show_bug.cgi?id=208198
+        <rdar://problem/59764787>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/layoutformattingcontext/out-of-flow-positioned-line-breaks-expected.html: Added.
+        * fast/layoutformattingcontext/out-of-flow-positioned-line-breaks.html: Added.
+
+2020-02-25  Chris Dumez  <cdumez@apple.com>
+
+        Regression(CookieCache) Hang and very high CPU usage on nytimes.com
+        https://bugs.webkit.org/show_bug.cgi?id=208166
+        <rdar://problem/59739735>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/cookies/document-cookie-set-expired-cookie-expected.txt: Added.
+        * http/tests/cookies/document-cookie-set-expired-cookie.html: Added.
+
+2020-02-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline tests after r257299 and r257300.
+
+        * platform/gtk/accessibility/media-emits-object-replacement-expected.txt:
+        * platform/gtk/compositing/overflow/theme-affects-visual-overflow-expected.png:
+        * platform/gtk/compositing/overflow/theme-affects-visual-overflow-expected.txt:
+        * platform/gtk/compositing/video/video-background-color-expected.png: Added.
+        * platform/gtk/compositing/video/video-background-color-expected.txt: Added.
+        * platform/gtk/css1/box_properties/acid_test-expected.png:
+        * platform/gtk/css1/box_properties/acid_test-expected.txt:
+        * platform/gtk/css2.1/20110323/replaced-elements-001-expected.txt:
+        * platform/gtk/css2.1/t09-c5526c-display-00-e-expected.png:
+        * platform/gtk/css2.1/t09-c5526c-display-00-e-expected.txt:
+        * platform/gtk/css3/flexbox/button-expected.png:
+        * platform/gtk/css3/flexbox/button-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-68-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-70-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-68-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-70-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-68-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-70-expected.txt:
+        * platform/gtk/editing/pasteboard/4641033-expected.png:
+        * platform/gtk/editing/pasteboard/4641033-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-1-expected.png:
+        * platform/gtk/editing/pasteboard/4944770-1-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-2-expected.png:
+        * platform/gtk/editing/pasteboard/4944770-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-2-expected.png:
+        * platform/gtk/editing/selection/3690703-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-expected.png:
+        * platform/gtk/editing/selection/3690703-expected.txt:
+        * platform/gtk/editing/selection/3690719-expected.png:
+        * platform/gtk/editing/selection/3690719-expected.txt:
+        * platform/gtk/editing/selection/4397952-expected.png:
+        * platform/gtk/editing/selection/4397952-expected.txt:
+        * platform/gtk/editing/selection/5240265-expected.png:
+        * platform/gtk/editing/selection/5240265-expected.txt:
+        * platform/gtk/editing/selection/caret-before-select-expected.png:
+        * platform/gtk/editing/selection/caret-before-select-expected.txt:
+        * platform/gtk/editing/selection/replaced-boundaries-3-expected.png:
+        * platform/gtk/editing/selection/replaced-boundaries-3-expected.txt:
+        * platform/gtk/editing/selection/select-box-expected.png:
+        * platform/gtk/editing/selection/select-box-expected.txt:
+        * platform/gtk/editing/selection/select-element-paragraph-boundary-expected.png:
+        * platform/gtk/editing/selection/select-element-paragraph-boundary-expected.txt:
+        * platform/gtk/editing/selection/selection-button-text-expected.png:
+        * platform/gtk/editing/selection/selection-button-text-expected.txt:
+        * platform/gtk/fast/block/basic/011-expected.png:
+        * platform/gtk/fast/block/basic/011-expected.txt:
+        * platform/gtk/fast/block/float/float-avoidance-expected.png:
+        * platform/gtk/fast/block/float/float-avoidance-expected.txt:
+        * platform/gtk/fast/block/margin-collapse/103-expected.png:
+        * platform/gtk/fast/block/margin-collapse/103-expected.txt:
+        * platform/gtk/fast/block/positioning/inline-block-relposition-expected.png:
+        * platform/gtk/fast/block/positioning/inline-block-relposition-expected.txt:
+        * platform/gtk/fast/box-sizing/percentage-height-expected.png:
+        * platform/gtk/fast/box-sizing/percentage-height-expected.txt:
+        * platform/gtk/fast/css/continuationCrash-expected.png:
+        * platform/gtk/fast/css/continuationCrash-expected.txt:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.png:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.png:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.png:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.txt:
+        * platform/gtk/fast/css/rtl-ordering-expected.png:
+        * platform/gtk/fast/css/rtl-ordering-expected.txt:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.png:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.png:
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/css/text-transform-select-expected.png:
+        * platform/gtk/fast/css/text-transform-select-expected.txt:
+        * platform/gtk/fast/dom/HTMLInputElement/input-slider-update-expected.png:
+        * platform/gtk/fast/dom/HTMLInputElement/input-slider-update-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/indeterminate-progress-001-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/native-progress-bar-expected.png:
+        * platform/gtk/fast/dom/HTMLProgressElement/native-progress-bar-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-element-expected.png:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-element-expected.txt:
+        * platform/gtk/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.png:
+        * platform/gtk/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.png:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/gtk/fast/dynamic/positioned-movement-with-positioned-children-expected.txt:
+        * platform/gtk/fast/forms/001-expected.png:
+        * platform/gtk/fast/forms/001-expected.txt:
+        * platform/gtk/fast/forms/003-expected.png:
+        * platform/gtk/fast/forms/003-expected.txt:
+        * platform/gtk/fast/forms/004-expected.png:
+        * platform/gtk/fast/forms/004-expected.txt:
+        * platform/gtk/fast/forms/basic-buttons-expected.png:
+        * platform/gtk/fast/forms/basic-buttons-expected.txt:
+        * platform/gtk/fast/forms/basic-inputs-expected.png:
+        * platform/gtk/fast/forms/basic-inputs-expected.txt:
+        * platform/gtk/fast/forms/basic-selects-expected.png:
+        * platform/gtk/fast/forms/basic-selects-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.txt:
+        * platform/gtk/fast/forms/blankbuttons-expected.png:
+        * platform/gtk/fast/forms/blankbuttons-expected.txt:
+        * platform/gtk/fast/forms/button-align-expected.png:
+        * platform/gtk/fast/forms/button-align-expected.txt:
+        * platform/gtk/fast/forms/button-cannot-be-nested-expected.png:
+        * platform/gtk/fast/forms/button-cannot-be-nested-expected.txt:
+        * platform/gtk/fast/forms/button-default-title-expected.png:
+        * platform/gtk/fast/forms/button-default-title-expected.txt:
+        * platform/gtk/fast/forms/button-generated-content-expected.png:
+        * platform/gtk/fast/forms/button-generated-content-expected.txt:
+        * platform/gtk/fast/forms/button-inner-block-reuse-expected.png:
+        * platform/gtk/fast/forms/button-inner-block-reuse-expected.txt:
+        * platform/gtk/fast/forms/button-positioned-expected.png:
+        * platform/gtk/fast/forms/button-positioned-expected.txt:
+        * platform/gtk/fast/forms/button-sizes-expected.png:
+        * platform/gtk/fast/forms/button-sizes-expected.txt:
+        * platform/gtk/fast/forms/button-style-color-expected.png:
+        * platform/gtk/fast/forms/button-style-color-expected.txt:
+        * platform/gtk/fast/forms/button-table-styles-expected.png:
+        * platform/gtk/fast/forms/button-table-styles-expected.txt:
+        * platform/gtk/fast/forms/button-text-transform-expected.png:
+        * platform/gtk/fast/forms/button-text-transform-expected.txt:
+        * platform/gtk/fast/forms/button-white-space-expected.png:
+        * platform/gtk/fast/forms/button-white-space-expected.txt:
+        * platform/gtk/fast/forms/control-clip-expected.png:
+        * platform/gtk/fast/forms/control-clip-expected.txt:
+        * platform/gtk/fast/forms/control-clip-overflow-expected.png:
+        * platform/gtk/fast/forms/control-clip-overflow-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.png:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/datalist/datalist-searchinput-appearance-expected.png:
+        * platform/gtk/fast/forms/datalist/datalist-searchinput-appearance-expected.txt:
+        * platform/gtk/fast/forms/datalist/datalist-textinput-appearance-expected.png:
+        * platform/gtk/fast/forms/datalist/datalist-textinput-appearance-expected.txt:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.png:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.png:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.png:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.png:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/formmove-expected.png:
+        * platform/gtk/fast/forms/formmove-expected.txt:
+        * platform/gtk/fast/forms/formmove2-expected.png:
+        * platform/gtk/fast/forms/formmove2-expected.txt:
+        * platform/gtk/fast/forms/formmove3-expected.png:
+        * platform/gtk/fast/forms/formmove3-expected.txt:
+        * platform/gtk/fast/forms/indeterminate-expected.png:
+        * platform/gtk/fast/forms/indeterminate-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-disabled-expected.png:
+        * platform/gtk/fast/forms/input-appearance-disabled-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.png:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-button-sizes-expected.png:
+        * platform/gtk/fast/forms/input-button-sizes-expected.txt:
+        * platform/gtk/fast/forms/input-disabled-color-expected.png:
+        * platform/gtk/fast/forms/input-disabled-color-expected.txt:
+        * platform/gtk/fast/forms/input-first-letter-expected.png:
+        * platform/gtk/fast/forms/input-first-letter-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.png:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/forms/large-toggle-elements-expected.png:
+        * platform/gtk/fast/forms/large-toggle-elements-expected.txt:
+        * platform/gtk/fast/forms/menulist-deselect-update-expected.png:
+        * platform/gtk/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/gtk/fast/forms/menulist-narrow-width-expected.png:
+        * platform/gtk/fast/forms/menulist-narrow-width-expected.txt:
+        * platform/gtk/fast/forms/menulist-no-overflow-expected.png:
+        * platform/gtk/fast/forms/menulist-no-overflow-expected.txt:
+        * platform/gtk/fast/forms/menulist-separator-painting-expected.png:
+        * platform/gtk/fast/forms/menulist-separator-painting-expected.txt:
+        * platform/gtk/fast/forms/menulist-style-color-expected.png:
+        * platform/gtk/fast/forms/menulist-style-color-expected.txt:
+        * platform/gtk/fast/forms/menulist-width-change-expected.png:
+        * platform/gtk/fast/forms/menulist-width-change-expected.txt:
+        * platform/gtk/fast/forms/number/number-spinbutton-change-and-input-events-expected.txt:
+        * platform/gtk/fast/forms/number/number-spinbutton-click-in-iframe-expected.txt:
+        * platform/gtk/fast/forms/number/number-spinbutton-gets-disabled-or-readonly-expected.txt:
+        * platform/gtk/fast/forms/option-script-expected.png:
+        * platform/gtk/fast/forms/option-script-expected.txt:
+        * platform/gtk/fast/forms/option-strip-whitespace-expected.png:
+        * platform/gtk/fast/forms/option-strip-whitespace-expected.txt:
+        * platform/gtk/fast/forms/option-text-clip-expected.png:
+        * platform/gtk/fast/forms/option-text-clip-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.png:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.png:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/range/input-appearance-range-expected.png:
+        * platform/gtk/fast/forms/range/input-appearance-range-expected.txt:
+        * platform/gtk/fast/forms/range/slider-padding-expected.png:
+        * platform/gtk/fast/forms/range/slider-padding-expected.txt:
+        * platform/gtk/fast/forms/range/slider-thumb-shared-style-expected.png:
+        * platform/gtk/fast/forms/range/slider-thumb-shared-style-expected.txt:
+        * platform/gtk/fast/forms/range/slider-transformed-expected.txt:
+        * platform/gtk/fast/forms/range/thumbslider-no-parent-slider-expected.png:
+        * platform/gtk/fast/forms/range/thumbslider-no-parent-slider-expected.txt:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.png:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.png:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/gtk/fast/forms/search-input-rtl-expected.png:
+        * platform/gtk/fast/forms/search-input-rtl-expected.txt:
+        * platform/gtk/fast/forms/search-rtl-expected.png:
+        * platform/gtk/fast/forms/search-rtl-expected.txt:
+        * platform/gtk/fast/forms/search-styled-expected.png:
+        * platform/gtk/fast/forms/search-styled-expected.txt:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.png:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/gtk/fast/forms/searchfield-heights-expected.png:
+        * platform/gtk/fast/forms/searchfield-heights-expected.txt:
+        * platform/gtk/fast/forms/select-align-expected.png:
+        * platform/gtk/fast/forms/select-align-expected.txt:
+        * platform/gtk/fast/forms/select-background-none-expected.png:
+        * platform/gtk/fast/forms/select-background-none-expected.txt:
+        * platform/gtk/fast/forms/select-baseline-expected.png:
+        * platform/gtk/fast/forms/select-baseline-expected.txt:
+        * platform/gtk/fast/forms/select-change-listbox-to-popup-expected.png:
+        * platform/gtk/fast/forms/select-change-listbox-to-popup-expected.txt:
+        * platform/gtk/fast/forms/select-dirty-parent-pref-widths-expected.png:
+        * platform/gtk/fast/forms/select-dirty-parent-pref-widths-expected.txt:
+        * platform/gtk/fast/forms/select-disabled-appearance-expected.png:
+        * platform/gtk/fast/forms/select-disabled-appearance-expected.txt:
+        * platform/gtk/fast/forms/select-element-focus-ring-expected.png:
+        * platform/gtk/fast/forms/select-element-focus-ring-expected.txt:
+        * platform/gtk/fast/forms/select-initial-position-expected.png:
+        * platform/gtk/fast/forms/select-initial-position-expected.txt:
+        * platform/gtk/fast/forms/select-non-native-rendering-direction-expected.png:
+        * platform/gtk/fast/forms/select-non-native-rendering-direction-expected.txt:
+        * platform/gtk/fast/forms/select-selected-expected.png:
+        * platform/gtk/fast/forms/select-selected-expected.txt:
+        * platform/gtk/fast/forms/select-style-expected.png:
+        * platform/gtk/fast/forms/select-style-expected.txt:
+        * platform/gtk/fast/forms/select-visual-hebrew-expected.png:
+        * platform/gtk/fast/forms/select-visual-hebrew-expected.txt:
+        * platform/gtk/fast/forms/select-writing-direction-natural-expected.png:
+        * platform/gtk/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/gtk/fast/forms/select/optgroup-rendering-expected.png:
+        * platform/gtk/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/gtk/fast/forms/selectlist-minsize-expected.png:
+        * platform/gtk/fast/forms/selectlist-minsize-expected.txt:
+        * platform/gtk/fast/forms/stuff-on-my-optgroup-expected.png:
+        * platform/gtk/fast/forms/stuff-on-my-optgroup-expected.txt:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.png:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.txt:
+        * platform/gtk/fast/forms/textarea-placeholder-pseudo-style-expected.png:
+        * platform/gtk/fast/forms/textarea-placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.png:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.txt:
+        * platform/gtk/fast/html/details-replace-text-expected.png:
+        * platform/gtk/fast/html/details-replace-text-expected.txt:
+        * platform/gtk/fast/html/keygen-expected.png:
+        * platform/gtk/fast/html/keygen-expected.txt:
+        * platform/gtk/fast/inline/positionedLifetime-expected.png:
+        * platform/gtk/fast/inline/positionedLifetime-expected.txt:
+        * platform/gtk/fast/invalid/014-expected.png:
+        * platform/gtk/fast/invalid/014-expected.txt:
+        * platform/gtk/fast/layers/video-layer-expected.png:
+        * platform/gtk/fast/layers/video-layer-expected.txt:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.png:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.png:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/gtk/fast/parser/bad-xml-slash-expected.png:
+        * platform/gtk/fast/parser/bad-xml-slash-expected.txt:
+        * platform/gtk/fast/parser/document-write-option-expected.png:
+        * platform/gtk/fast/parser/document-write-option-expected.txt:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.png:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.txt:
+        * platform/gtk/fast/repaint/slider-thumb-drag-release-expected.png:
+        * platform/gtk/fast/repaint/slider-thumb-drag-release-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.png:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.png:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/gtk/fast/replaced/three-selects-break-expected.png:
+        * platform/gtk/fast/replaced/three-selects-break-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-button-expected.png:
+        * platform/gtk/fast/replaced/width100percent-button-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-checkbox-expected.png:
+        * platform/gtk/fast/replaced/width100percent-checkbox-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.png:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-radio-expected.png:
+        * platform/gtk/fast/replaced/width100percent-radio-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.png:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/gtk/fast/table/append-cells2-expected.png:
+        * platform/gtk/fast/table/append-cells2-expected.txt:
+        * platform/gtk/fast/table/remove-td-display-none-expected.png:
+        * platform/gtk/fast/table/remove-td-display-none-expected.txt:
+        * platform/gtk/fast/text/international/bidi-menulist-expected.png:
+        * platform/gtk/fast/text/international/bidi-menulist-expected.txt:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.png:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.txt:
+        * platform/gtk/fast/text/international/pop-up-button-text-alignment-and-direction-expected.png:
+        * platform/gtk/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+        * platform/gtk/fast/text/monospace-width-cache-expected.png:
+        * platform/gtk/fast/text/monospace-width-cache-expected.txt:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.png:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/gtk/fast/text/whitespace/normal-after-nowrap-breaking-expected.png:
+        * platform/gtk/fast/text/whitespace/normal-after-nowrap-breaking-expected.txt:
+        * platform/gtk/http/tests/media/hls/video-controls-live-stream-expected.txt:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.png:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/gtk/media/audio-controls-rendering-expected.png:
+        * platform/gtk/media/audio-controls-rendering-expected.txt:
+        * platform/gtk/media/controls-after-reload-expected.png:
+        * platform/gtk/media/controls-after-reload-expected.txt:
+        * platform/gtk/media/controls-strict-expected.png:
+        * platform/gtk/media/controls-strict-expected.txt:
+        * platform/gtk/media/media-controls-clone-expected.png:
+        * platform/gtk/media/media-controls-clone-expected.txt:
+        * platform/gtk/media/video-controls-rendering-expected.png:
+        * platform/gtk/media/video-controls-rendering-expected.txt:
+        * platform/gtk/media/video-display-toggle-expected.png:
+        * platform/gtk/media/video-display-toggle-expected.txt:
+        * platform/gtk/media/video-empty-source-expected.png:
+        * platform/gtk/media/video-empty-source-expected.txt:
+        * platform/gtk/media/video-no-audio-expected.png:
+        * platform/gtk/media/video-no-audio-expected.txt:
+        * platform/gtk/media/video-playing-and-pause-expected.png:
+        * platform/gtk/media/video-playing-and-pause-expected.txt:
+        * platform/gtk/media/video-zoom-controls-expected.png:
+        * platform/gtk/media/video-zoom-controls-expected.txt:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.png:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.txt:
+        * platform/gtk/svg/custom/inline-svg-in-xhtml-expected.png:
+        * platform/gtk/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug29326-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug29326-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4382-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug44505-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug44505-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4527-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug68912-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug68912-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug96334-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.png:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/gtk/tables/mozilla/core/margins-expected.png:
+        * platform/gtk/tables/mozilla/core/margins-expected.txt:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.png:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/gtk/tables/mozilla/other/move_row-expected.png:
+        * platform/gtk/tables/mozilla/other/move_row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions1-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions2-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions2-expected.txt:
+        * platform/gtk/transforms/2d/zoom-menulist-expected.png:
+        * platform/gtk/transforms/2d/zoom-menulist-expected.txt:
+
+2020-02-25  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208183
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-25  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Gardening, update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=208184
+
+        Unreviewed gardening.
+
+        * platform/wpe/TestExpectations:
+
+2020-02-24  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] Unskip runnable WebGL 2.0.0 conformance suite for mac
+        https://bugs.webkit.org/show_bug.cgi?id=208078
+
+        Unreviewed test gardening.
+
+        Actually run WebGL 2 tests. Update expectations for ANGLE backend.
+
+        * TestExpectations: Unskip non-DEQP WebGL 2.0.0 tests that do not crash nor timeout.
+        * platform/ios-wk2/TestExpectations: Continue to skip 2.0.0 on iOS WK2 until discrepancies can be addressed.
+        * webgl/2.0.0/conformance2/renderbuffers/framebuffer-object-attachment-expected.txt:
+        * webgl/2.0.0/conformance2/renderbuffers/invalidate-framebuffer-expected.txt:
+        * webgl/2.0.0/conformance2/renderbuffers/multisampled-renderbuffer-initialization-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/blitframebuffer-test-expected.txt:
+        * webgl/2.0.0/conformance2/rendering/rgb-format-support-expected.txt:
+        * webgl/2.0.0/conformance2/textures/misc/tex-3d-size-limit-expected.txt:
+
+2020-02-24  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 Debug ] is inspector/dom-debugger/attribute-modified-style.html is flaky crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=208167
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-24  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r257126): fast/frames/flattening/iframe-tiny.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208055
+        <rdar://problem/59668089>
+
+        Reviewed by Simon Fraser.
+
+        In the frame flattening context when optional layout is delayed, getComputedStyle() might return
+        the un-flattened geometry unless the iframe element is forced to get laid out.
+        1. main frame content is loaded and laid out -> if the iframe content is not ready yet, we don't initiate iframe flattening.
+        2. iframe content is ready -> layout is scheduled.
+        3. getComputedStyle() is called which initiates a style update/layout on the main frame,
+           but only dirty boxes trigger layout (the iframe renderer itself is not dirty <- this is where frame flattening fails: webkit.org/b/208161)
+        4. getComputedStyle() returns with the "stale" geometry.
+
+        * fast/frames/flattening/iframe-tiny.html:
+
+2020-02-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark http/tests/cookies/document-cookie-after-showModalDialog.html as flaky on WK1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2020-02-24  Jason Lawrence  <lawrence.j@apple.com>
+
+        [ Mac wk2 ] fast/scrolling/overflow-scroll-past-max.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=208160
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2020-02-24  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Gardening, mark several tests as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=208140
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2020-02-24  Jason Lawrence  <lawrence.j@apple.com>
+
+        Changed results due to ANGLE use
+        https://bugs.webkit.org/show_bug.cgi?id=207858
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2020-02-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove geometry information from the scrolling tree
+        https://bugs.webkit.org/show_bug.cgi?id=208085
+
+        Reviewed by Sam Weinig.
+
+        The scrolling tree doesn't have enough information to do hit-testing because it has
+        no representation of layers that overlap scrollers. We'll have to do hit-testing another
+        way, so remove hit-testing-geometry data from the scrolling tree.
+
+        * fast/scrolling/ios/change-scrollability-on-content-resize-expected.txt:
+        * fast/scrolling/ios/change-scrollability-on-content-resize-nested-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-then-up-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/absolute-in-nested-sc-scrollers-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/absolute-inside-stacking-in-scroller-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/clipped-layer-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/clipped-layer-in-overflow-nested-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/composited-in-absolute-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/composited-in-absolute-in-stacking-context-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-in-fixed-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/gain-scrolling-node-parent-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/lose-scrolling-node-parent-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-absolute-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-relative-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-overflow-scroll-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/positioned-nodes-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/remove-coordinated-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/remove-scrolling-role-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/reparent-with-layer-removal-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/sticky-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/toggle-coordinated-frame-scrolling-expected.txt:
+        * scrollingcoordinator/scrolling-tree/absolute-in-nested-sc-scrollers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/absolute-inside-stacking-in-scroller-expected.txt:
+        * scrollingcoordinator/scrolling-tree/clipped-layer-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/clipped-layer-in-overflow-nested-expected.txt:
+        * scrollingcoordinator/scrolling-tree/composited-in-absolute-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/composited-in-absolute-in-stacking-context-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-in-fixed-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/gain-scrolling-node-parent-expected.txt:
+        * scrollingcoordinator/scrolling-tree/lose-scrolling-node-parent-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-absolute-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-relative-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-overflow-scroll-expected.txt:
+        * scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt:
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt:
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-expected.txt:
+        * scrollingcoordinator/scrolling-tree/remove-coordinated-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/remove-scrolling-role-expected.txt:
+        * scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/reparent-with-layer-removal-expected.txt:
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt:
+        * scrollingcoordinator/scrolling-tree/sticky-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/toggle-coordinated-frame-scrolling-expected.txt:
+        * tiled-drawing/scrolling/clamp-out-of-bounds-scrolls-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/nested-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/percentage-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/scroll-region-after-frame-layout-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-after-scroll-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-slow-scrolling-expected.txt:
+        * tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt:
+
+2020-02-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/forms/ios/click-should-not-suppress-misspelling.html fails on iOS 13.4 beta
+        https://bugs.webkit.org/show_bug.cgi?id=208086
+        <rdar://problem/59631501>
+
+        Reviewed by Tim Horton.
+
+        In the iOS 13.4 beta, tapping near the caret rect in an editable text field causes the callout bar to toggle
+        visibility instead of triggering word-granularity spellchecking and changing the selection. This test in
+        particular dispatches two taps: the first at (100, 100), and the second at (300, 100) in content view
+        coordinates. However, since the page does not have a viewport, the entire page is scaled down on iPhone, such
+        that the second tap at (300, 100) ends up being very close to the caret rect.
+
+        To fix this, we simply make the text field take up 100% of the viewport width, and make the viewport use
+        device-width with an initial scale of 1. This ensures that the second tap will be somewhere near the end of the
+        misspelled word, which triggers spellchecking as intended by the test instead of just showing the callout bar.
+
+        * fast/forms/ios/click-should-not-suppress-misspelling-expected.txt:
+        * fast/forms/ios/click-should-not-suppress-misspelling.html:
+
 2020-02-24  Rob Buis  <rbuis@igalia.com>
 
         Verify Prefetch and credential behavior

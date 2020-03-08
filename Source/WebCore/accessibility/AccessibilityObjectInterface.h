@@ -485,10 +485,12 @@ public:
     virtual bool isAccessibilityNodeObject() const = 0;
     virtual bool isAccessibilityRenderObject() const = 0;
     virtual bool isAccessibilityScrollbar() const = 0;
-    virtual bool isAccessibilityScrollView() const = 0;
+    virtual bool isAccessibilityScrollViewInstance() const = 0;
     virtual bool isAccessibilitySVGRoot() const = 0;
     virtual bool isAccessibilitySVGElement() const = 0;
     virtual bool isAccessibilityTableInstance() const = 0;
+    virtual bool isAccessibilityTableColumnInstance() const = 0;
+    virtual bool isAccessibilityProgressIndicatorInstance() const = 0;
 
     virtual bool isAttachmentElement() const = 0;
     virtual bool isHeading() const = 0;
@@ -550,13 +552,31 @@ public:
     virtual int axColumnCount() const = 0;
     virtual int axRowCount() const = 0;
 
-    virtual bool isTableRow() const = 0;
-    virtual bool isTableColumn() const = 0;
+    // Table cell support.
     virtual bool isTableCell() const = 0;
+    // Returns the start location and row span of the cell.
+    virtual std::pair<unsigned, unsigned> rowIndexRange() const = 0;
+    // Returns the start location and column span of the cell.
+    virtual std::pair<unsigned, unsigned> columnIndexRange() const = 0;
+    virtual int axColumnIndex() const = 0;
+    virtual int axRowIndex() const = 0;
+
+    // Table column support.
+    virtual bool isTableColumn() const = 0;
+    virtual unsigned columnIndex() const = 0;
+    virtual AXCoreObject* columnHeader() = 0;
+
+    // Table row support.
+    virtual bool isTableRow() const = 0;
+    virtual unsigned rowIndex() const = 0;
+
+    // ARIA tree/grid row support.
+    virtual bool isARIATreeGridRow() const = 0;
+    virtual AccessibilityChildrenVector disclosedRows() = 0; // Also implemented by ARIATreeItems.
+    virtual AXCoreObject* disclosedByRow() const = 0;
 
     virtual bool isFieldset() const = 0;
     virtual bool isGroup() const = 0;
-    virtual bool isARIATreeGridRow() const = 0;
     virtual bool isImageMapLink() const = 0;
     virtual bool isMenuList() const = 0;
     virtual bool isMenuListPopup() const = 0;
@@ -990,8 +1010,6 @@ public:
 
     // Used by an ARIA tree to get all its rows.
     virtual void ariaTreeRows(AccessibilityChildrenVector&) = 0;
-    // Used by an ARIA tree item to get all of its direct rows that it can disclose.
-    virtual void ariaTreeItemDisclosedRows(AccessibilityChildrenVector&) = 0;
     // Used by an ARIA tree item to get only its content, and not its child tree items and groups.
     virtual void ariaTreeItemContent(AccessibilityChildrenVector&) = 0;
 
@@ -1142,6 +1160,7 @@ public:
     virtual AXCoreObject* highestEditableAncestor() = 0;
 
     virtual const AccessibilityScrollView* ancestorAccessibilityScrollView(bool includeSelf) const = 0;
+    virtual AXCoreObject* webAreaObject() const = 0;
 
     virtual void setIsIgnoredFromParentData(AccessibilityIsIgnoredFromParentData&) = 0;
     virtual void clearIsIgnoredFromParentData() = 0;

@@ -38,6 +38,7 @@
 #include "WebProcessPool.h"
 #include "WebView.h"
 #include <WebCore/CertificateInfo.h>
+#include <WebCore/InspectorFrontendClient.h>
 #include <WebCore/InspectorFrontendClientLocal.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/WebCoreBundleWin.h>
@@ -406,6 +407,11 @@ void WebInspectorProxy::platformBringToFront()
 }
 
 void WebInspectorProxy::platformBringInspectedPageToFront()
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSetForcedAppearance(WebCore::InspectorFrontendClient::Appearance)
 {
     notImplemented();
 }

@@ -5144,20 +5144,168 @@ private:
             weakPointer(globalObject), base, subscript, m_out.constInt32(m_node->accessorAttributes()), accessor);
     }
 
+    template<DelByKind kind, typename SubscriptKind>
+    void compileDelBy(LValue base, SubscriptKind subscriptValue)
+    {
+        PatchpointValue* patchpoint;
+        if constexpr (kind == DelByKind::Normal) {
+            patchpoint = m_out.patchpoint(Int64);
+            patchpoint->append(ConstrainedValue(base, ValueRep::SomeLateRegister));
+        } else {
+            patchpoint = m_out.patchpoint(Int64);
+            patchpoint->append(ConstrainedValue(base, ValueRep::SomeLateRegister));
+            patchpoint->append(ConstrainedValue(subscriptValue, ValueRep::SomeLateRegister));
+        }
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->numGPScratchRegisters = 1;
+
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
+
+        State* state = &m_ftlState;
+        Node* node = m_node;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                CallSiteIndex callSiteIndex =
+                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic);
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+                CCallHelpers::JumpList slowCases;
+
+                auto base = JSValueRegs(params[1].gpr());
+                auto returnGPR = params[0].gpr();
+                ASSERT(base.gpr() != returnGPR);
+                ASSERT(base.gpr() != params.gpScratch(0));
+                ASSERT(returnGPR != params.gpScratch(0));
+
+                if (node->child1().useKind() == UntypedUse)
+                    slowCases.append(jit.branchIfNotCell(base));
+
+                constexpr auto optimizationFunction = [&] () {
+                    if constexpr (kind == DelByKind::Normal)
+                        return operationDeleteByIdOptimize;
+                    else
+                        return operationDeleteByValOptimize;
+                }();
+
+                const auto subscript = [&] {
+                    if constexpr (kind == DelByKind::Normal)
+                        return CCallHelpers::TrustedImmPtr(subscriptValue);
+                    else {
+                        ASSERT(base.gpr() != params[2].gpr());
+                        ASSERT(params.gpScratch(0) != params[2].gpr());
+                        if (node->child2().useKind() == UntypedUse)
+                            slowCases.append(jit.branchIfNotCell(JSValueRegs(params[2].gpr())));
+                        return JSValueRegs(params[2].gpr());
+                    }
+                }();
+
+                const auto generator = [&] {
+                    if constexpr (kind == DelByKind::Normal) {
+                        return Box<JITDelByIdGenerator>::create(
+                            jit.codeBlock(), node->origin.semantic, callSiteIndex,
+                            params.unavailableRegisters(), base,
+                            returnGPR, params.gpScratch(0));
+                    } else {
+                        return Box<JITDelByValGenerator>::create(
+                            jit.codeBlock(), node->origin.semantic, callSiteIndex,
+                            params.unavailableRegisters(), base,
+                            subscript, returnGPR, params.gpScratch(0));
+                    }
+                }();
+
+                generator->generateFastPath(jit);
+                slowCases.append(generator->slowPathJump());
+                CCallHelpers::Label done = jit.label();
+
+                params.addLatePath(
+                    [=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                        slowCases.link(&jit);
+                        CCallHelpers::Label slowPathBegin = jit.label();
+                        CCallHelpers::Call slowPathCall = callOperation(
+                            *state, params.unavailableRegisters(), jit, node->origin.semantic,
+                            exceptions.get(), optimizationFunction, returnGPR,
+                            jit.codeBlock()->globalObjectFor(node->origin.semantic),
+                            CCallHelpers::TrustedImmPtr(generator->stubInfo()), base,
+                            subscript).call();
+                        jit.jump().linkTo(done, &jit);
+
+                        generator->reportSlowPathCall(slowPathBegin, slowPathCall);
+
+                        jit.addLinkTask(
+                            [=] (LinkBuffer& linkBuffer) {
+                                generator->finalize(linkBuffer, linkBuffer);
+                            });
+                    });
+            });
+
+        setBoolean(m_out.notZero64(patchpoint));
+    }
+
     void compileDeleteById()
     {
-        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-        LValue base = lowJSValue(m_node->child1());
-        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
-        setBoolean(m_out.notZero64(vmCall(Int64, operationDeleteById, weakPointer(globalObject), base, m_out.constIntPtr(uid))));
+        LValue base;
+
+        switch (m_node->child1().useKind()) {
+        case CellUse: {
+            base = lowCell(m_node->child1());
+            break;
+        }
+
+        case UntypedUse: {
+            base = lowJSValue(m_node->child1());
+            break;
+        }
+
+        default:
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            return;
+        }
+        compileDelBy<DelByKind::Normal>(base, m_graph.identifiers()[m_node->identifierNumber()]);
     }
 
     void compileDeleteByVal()
     {
-        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-        LValue base = lowJSValue(m_node->child1());
-        LValue subscript = lowJSValue(m_node->child2());
-        setBoolean(m_out.notZero64(vmCall(Int64, operationDeleteByVal, weakPointer(globalObject), base, subscript)));
+        LValue base;
+        LValue subscript;
+
+        switch (m_node->child1().useKind()) {
+        case CellUse: {
+            base = lowCell(m_node->child1());
+            break;
+        }
+
+        case UntypedUse: {
+            base = lowJSValue(m_node->child1());
+            break;
+        }
+
+        default:
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            return;
+        }
+
+        switch (m_node->child2().useKind()) {
+        case CellUse: {
+            subscript = lowCell(m_node->child2());
+            break;
+        }
+
+        case UntypedUse: {
+            subscript = lowJSValue(m_node->child2());
+            break;
+        }
+
+        default:
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            return;
+        }
+        compileDelBy<DelByKind::NormalByVal>(base, subscript);
     }
     
     void compileArrayPush()
@@ -6091,7 +6239,7 @@ private:
 
                 LValue object = lowObject(m_node->child1());
                 LValue structure = loadStructure(object);
-                LValue cachedPrototypeChainOrRareData = m_out.bitAnd(m_out.constIntPtr(Structure::cachedPrototypeChainOrRareDataMask), m_out.loadPtr(structure, m_heaps.Structure_cachedPrototypeChainOrRareData));
+                LValue cachedPrototypeChainOrRareData = loadStructureCachedPrototypeChainOrRareData(structure);
                 m_out.branch(m_out.notNull(cachedPrototypeChainOrRareData), unsure(notNullCase), unsure(slowCase));
 
                 LBasicBlock lastNext = m_out.appendTo(notNullCase, rareDataCase);
@@ -6675,7 +6823,7 @@ private:
         m_out.branch(m_out.isZero64(structure), rarely(slowCase), usually(hasStructure));
 
         m_out.appendTo(hasStructure, checkGlobalObjectCase);
-        LValue classInfo = m_out.bitAnd(m_out.loadPtr(structure, m_heaps.Structure_classInfo), m_out.constIntPtr(Structure::classInfoMask));
+        LValue classInfo = loadStructureClassInfo(structure);
         m_out.branch(m_out.equal(classInfo, m_out.constIntPtr(m_node->isInternalPromise() ? JSInternalPromise::info() : JSPromise::info())), usually(checkGlobalObjectCase), rarely(slowCase));
 
         m_out.appendTo(checkGlobalObjectCase, fastAllocationCase);
@@ -6731,7 +6879,7 @@ private:
         m_out.branch(m_out.isZero64(structure), rarely(slowCase), usually(hasStructure));
 
         m_out.appendTo(hasStructure, checkGlobalObjectCase);
-        LValue classInfo = m_out.bitAnd(m_out.loadPtr(structure, m_heaps.Structure_classInfo), m_out.constIntPtr(Structure::classInfoMask));
+        LValue classInfo = loadStructureClassInfo(structure);
         m_out.branch(m_out.equal(classInfo, m_out.constIntPtr(JSClass::info())), usually(checkGlobalObjectCase), rarely(slowCase));
 
         m_out.appendTo(checkGlobalObjectCase, fastAllocationCase);
@@ -13210,7 +13358,7 @@ private:
             LBasicBlock continuation = m_out.newBlock();
 
             LValue structure = loadStructure(cell);
-            LValue classInfo = m_out.bitAnd(m_out.loadPtr(structure, m_heaps.Structure_classInfo), m_out.constIntPtr(Structure::classInfoMask));
+            LValue classInfo = loadStructureClassInfo(structure);
             ValueFromBlock otherAtStart = m_out.anchor(classInfo);
             m_out.jump(loop);
 
@@ -18217,6 +18365,26 @@ private:
         TypedPointer address = m_out.baseIndex(m_heaps.structureTable, tableBase, m_out.zeroExtPtr(tableIndex));
         LValue encodedStructureBits = m_out.loadPtr(address);
         return m_out.bitXor(encodedStructureBits, entropyBits);
+    }
+
+    LValue loadStructureClassInfo(LValue structure)
+    {
+        LValue result = m_out.loadPtr(structure, m_heaps.Structure_classInfo);
+#if CPU(ADDRESS64)
+        return m_out.bitAnd(m_out.constIntPtr(Structure::classInfoMask), result);
+#else
+        return result;
+#endif
+    }
+
+    LValue loadStructureCachedPrototypeChainOrRareData(LValue structure)
+    {
+        LValue result = m_out.loadPtr(structure, m_heaps.Structure_cachedPrototypeChainOrRareData);
+#if CPU(ADDRESS64)
+        return m_out.bitAnd(m_out.constIntPtr(Structure::cachedPrototypeChainOrRareDataMask), result);
+#else
+        return result;
+#endif
     }
 
     LValue weakPointer(JSCell* pointer)

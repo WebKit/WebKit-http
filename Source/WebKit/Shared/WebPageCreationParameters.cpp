@@ -138,12 +138,14 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << oldPageID;
     encoder << overriddenMediaType;
     encoder << corsDisablingPatterns;
+    encoder << processDisplayName;
 
     encoder << shouldCaptureAudioInUIProcess;
     encoder << shouldCaptureAudioInGPUProcess;
     encoder << shouldCaptureVideoInUIProcess;
     encoder << shouldCaptureVideoInGPUProcess;
     encoder << shouldCaptureDisplayInUIProcess;
+    encoder << shouldRenderCanvasInGPUProcess;
 
 #if PLATFORM(GTK)
     encoder << themeName;
@@ -441,6 +443,12 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     parameters.corsDisablingPatterns = WTFMove(*corsDisablingPatterns);
 
+    Optional<String> processDisplayName;
+    decoder >> processDisplayName;
+    if (!processDisplayName)
+        return WTF::nullopt;
+    parameters.processDisplayName = WTFMove(*processDisplayName);
+    
     if (!decoder.decode(parameters.shouldCaptureAudioInUIProcess))
         return WTF::nullopt;
 
@@ -454,6 +462,9 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
 
     if (!decoder.decode(parameters.shouldCaptureDisplayInUIProcess))
+        return WTF::nullopt;
+
+    if (!decoder.decode(parameters.shouldRenderCanvasInGPUProcess))
         return WTF::nullopt;
 
 #if PLATFORM(GTK)

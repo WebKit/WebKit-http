@@ -302,7 +302,7 @@ void HTMLLinkElement::process()
         {
             bool previous = m_isHandlingBeforeLoad;
             m_isHandlingBeforeLoad = true;
-            makeScopeExit([&] { m_isHandlingBeforeLoad = previous; });
+            auto scopeExit = makeScopeExit([&] { m_isHandlingBeforeLoad = previous; });
             if (!shouldLoadLink())
                 return;
         }
@@ -586,7 +586,7 @@ void HTMLLinkElement::handleClick(Event& event)
     RefPtr<Frame> frame = document().frame();
     if (!frame)
         return;
-    frame->loader().urlSelected(url, target(), &event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
+    frame->loader().urlSelected(url, target(), &event, LockHistory::No, LockBackForwardList::No, ReferrerPolicy::EmptyString, document().shouldOpenExternalURLsPolicyToPropagate());
 }
 
 URL HTMLLinkElement::href() const

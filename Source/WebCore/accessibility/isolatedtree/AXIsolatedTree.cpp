@@ -137,7 +137,8 @@ RefPtr<AXIsolatedObject> AXIsolatedTree::nodeForID(AXID axID) const
 
 Vector<RefPtr<AXCoreObject>> AXIsolatedTree::objectsForIDs(Vector<AXID> axIDs) const
 {
-    Vector<RefPtr<AXCoreObject>> result(axIDs.size());
+    Vector<RefPtr<AXCoreObject>> result;
+    result.reserveCapacity(axIDs.size());
 
     for (const auto& axID : axIDs) {
         if (auto object = nodeForID(axID))
@@ -149,7 +150,6 @@ Vector<RefPtr<AXCoreObject>> AXIsolatedTree::objectsForIDs(Vector<AXID> axIDs) c
 
 RefPtr<AXIsolatedObject> AXIsolatedTree::focusedUIElement()
 {
-    m_focusedNodeID = m_pendingFocusedNodeID;
     return nodeForID(m_focusedNodeID);
 }
     
@@ -165,6 +165,27 @@ void AXIsolatedTree::setRootNode(Ref<AXIsolatedObject>& root)
     m_readerThreadNodeMap.add(root->objectID(), WTFMove(root));
 }
     
+void AXIsolatedTree::setFocusedNode(AXID axID)
+{
+    ASSERT(isMainThread());
+    LockHolder locker { m_changeLogLock };
+    m_focusedNodeID = axID;
+    if (axID == InvalidAXID)
+        return;
+
+    if (m_readerThreadNodeMap.contains(m_focusedNodeID))
+        return; // Nothing to do, the focus is set.
+
+    // If the focused object is in the pending appends, add it to the reader
+    // map, so that we can return the right focused object if requested before
+    // pending appends are applied.
+    for (const auto& item : m_pendingAppends) {
+        if (item.m_isolatedObject->objectID() == m_focusedNodeID
+            && m_readerThreadNodeMap.add(m_focusedNodeID, item.m_isolatedObject.get()) && item.m_wrapper)
+            m_readerThreadNodeMap.get(m_focusedNodeID)->attachPlatformWrapper(item.m_wrapper);
+    }
+}
+
 void AXIsolatedTree::setFocusedNodeID(AXID axID)
 {
     LockHolder locker { m_changeLogLock };
@@ -174,7 +195,6 @@ void AXIsolatedTree::setFocusedNodeID(AXID axID)
 void AXIsolatedTree::removeNode(AXID axID)
 {
     LockHolder locker { m_changeLogLock };
-    ASSERT(m_readerThreadNodeMap.contains(axID));
     m_pendingRemovals.append(axID);
 }
 
@@ -215,17 +235,24 @@ void AXIsolatedTree::applyPendingChanges()
     m_pendingRemovals.clear();
 
     for (const auto& item : m_pendingAppends) {
-        ASSERT(!m_readerThreadNodeMap.contains(item.m_isolatedObject->objectID())
-            || item.m_isolatedObject->objectID() == m_rootNodeID);
+        AXID axID = item.m_isolatedObject->objectID();
 
-        if (item.m_wrapper)
-            item.m_isolatedObject->attachPlatformWrapper(item.m_wrapper);
+        if (m_readerThreadNodeMap.get(axID) != &item.m_isolatedObject.get()) {
+            // The new IsolatedObject is a replacement for an existing object
+            // as the result of an update. Thus detach the existing one before
+            // adding the new one.
+            if (auto object = nodeForID(axID))
+                object->detach(AccessibilityDetachmentType::ElementDestroyed);
+            m_readerThreadNodeMap.remove(axID);
+        }
 
-        m_readerThreadNodeMap.add(item.m_isolatedObject->objectID(), item.m_isolatedObject.get());
+        if (m_readerThreadNodeMap.add(axID, item.m_isolatedObject.get()) && item.m_wrapper)
+            m_readerThreadNodeMap.get(axID)->attachPlatformWrapper(item.m_wrapper);
+
         // The reference count of the just added IsolatedObject must be 2
         // because it is referenced by m_readerThreadNodeMap and m_pendingAppends.
         // When m_pendingAppends is cleared, the object will be held only by m_readerThreadNodeMap.
-        ASSERT(m_readerThreadNodeMap.get(item.m_isolatedObject->objectID())->refCount() == 2);
+        ASSERT(m_readerThreadNodeMap.get(axID)->refCount() == 2);
     }
     m_pendingAppends.clear();
 }

@@ -1492,7 +1492,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 
 bool AccessibilityRenderObject::isLoaded() const
 {
-    return !m_renderer->document().parser();
+    return m_renderer ? !m_renderer->document().parser() : false;
 }
 
 double AccessibilityRenderObject::estimatedLoadingProgress() const
@@ -1572,9 +1572,13 @@ String AccessibilityRenderObject::selectedText() const
 
 String AccessibilityRenderObject::accessKey() const
 {
+    if (!m_renderer)
+        return String();
+
     Node* node = m_renderer->node();
     if (!is<Element>(node))
-        return nullAtom();
+        return String();
+
     return downcast<Element>(*node).attributeWithoutSynchronization(accesskeyAttr);
 }
 
@@ -2206,19 +2210,19 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
 
     Node* innerNode = nullptr;
     
-    // locate the node containing the point
+    // Locate the node containing the point
+    // FIXME: Remove this loop and instead add HitTestRequest::AllowVisibleChildFrameContentOnly to the hit test request type.
     LayoutPoint pointResult;
     while (1) {
-        LayoutPoint ourpoint;
+        LayoutPoint pointToUse;
 #if PLATFORM(MAC)
-        ourpoint = frameView->screenToContents(point);
+        pointToUse = frameView->screenToContents(point);
 #else
-        ourpoint = point;
+        pointToUse = point;
 #endif
-        HitTestRequest request(HitTestRequest::ReadOnly |
-                               HitTestRequest::Active);
-        HitTestResult result(ourpoint);
-        renderView->document().hitTest(request, result);
+        constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active };
+        HitTestResult result { pointToUse };
+        renderView->document().hitTest(hitType, result);
         innerNode = result.innerNode();
         if (!innerNode)
             return VisiblePosition();
@@ -2427,9 +2431,9 @@ AXCoreObject* AccessibilityRenderObject::accessibilityHitTest(const IntPoint& po
 
     RenderLayer* layer = downcast<RenderBox>(*m_renderer).layer();
      
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
-    HitTestResult hitTestResult = HitTestResult(point);
-    layer->hitTest(request, hitTestResult);
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::AccessibilityHitTest };
+    HitTestResult hitTestResult { point };
+    layer->hitTest(hitType, hitTestResult);
     Node* node = hitTestResult.innerNode();
     if (!node)
         return nullptr;
@@ -3854,8 +3858,10 @@ String AccessibilityRenderObject::passwordFieldValue() const
 ScrollableArea* AccessibilityRenderObject::getScrollableAreaIfScrollable() const
 {
     // If the parent is a scroll view, then this object isn't really scrollable, the parent ScrollView should handle the scrolling.
-    if (parentObject() && parentObject()->isAccessibilityScrollView())
-        return nullptr;
+    if (auto* parent = parentObject()) {
+        if (parent->isScrollView())
+            return nullptr;
+    }
 
     if (!is<RenderBox>(renderer()))
         return nullptr;

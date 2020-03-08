@@ -721,7 +721,6 @@ css/CSSNamedImageValue.cpp
 css/CSSNamespaceRule.cpp
 css/CSSPageRule.cpp
 css/CSSPaintImageValue.cpp
-css/CSSPendingSubstitutionValue.cpp
 css/CSSPrimitiveValue.cpp
 css/CSSProperty.cpp
 css/CSSPropertySourceData.cpp
@@ -1430,6 +1429,7 @@ layout/blockformatting/BlockFormattingContextGeometry.cpp
 layout/blockformatting/BlockFormattingContextQuirks.cpp
 layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
+layout/blockformatting/PrecomputedBlockMarginCollapse.cpp
 layout/displaytree/DisplayBox.cpp
 layout/displaytree/DisplayInlineContent.cpp
 layout/displaytree/DisplayPainter.cpp
@@ -1822,6 +1822,7 @@ platform/audio/VectorMath.cpp
 platform/audio/ZeroPole.cpp
 
 platform/encryptedmedia/CDMFactory.cpp
+platform/encryptedmedia/CDMPrivate.cpp
 platform/encryptedmedia/CDMProxy.cpp
 
 platform/graphics/ANGLEWebKitBridge.cpp
@@ -1874,6 +1875,7 @@ platform/graphics/ImageBufferBackend.cpp
 platform/graphics/ImageDecoder.cpp
 platform/graphics/ImageFrame.cpp
 platform/graphics/ImageSource.cpp
+platform/graphics/InbandGenericCue.cpp
 platform/graphics/IntPoint.cpp
 platform/graphics/IntRect.cpp
 platform/graphics/IntSize.cpp

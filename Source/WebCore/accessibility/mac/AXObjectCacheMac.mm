@@ -34,6 +34,7 @@
 #import "RenderObject.h"
 #import "WebAccessibilityObjectWrapperMac.h"
 #import <pal/spi/cocoa/NSAccessibilitySPI.h>
+#import <pal/spi/mac/HIServicesSPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <ApplicationServices/ApplicationServicesPriv.h>
@@ -364,7 +365,7 @@ void AXObjectCache::postPlatformNotification(AXCoreObject* obj, AXNotification n
     AXPostNotificationWithUserInfo(obj->wrapper(), macNotification, nil, skipSystemNotification);
 }
 
-void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject* object, const AXTextStateChangeIntent& intent, const VisibleSelection& selection)
+void AXObjectCache::postTextStateChangePlatformNotification(AXCoreObject* object, const AXTextStateChangeIntent& intent, const VisibleSelection& selection)
 {
     if (!object)
         object = rootWebArea();
@@ -403,7 +404,7 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
         }
     }
     if (!selection.isNone()) {
-        if (id textMarkerRange = [object->wrapper() textMarkerRangeFromVisiblePositions:selection.visibleStart() endPosition:selection.visibleEnd()])
+        if (id textMarkerRange = textMarkerRangeFromVisiblePositions(this, selection.visibleStart(), selection.visibleEnd()))
             [userInfo setObject:textMarkerRange forKey:NSAccessibilitySelectedTextMarkerRangeAttribute];
     }
 
@@ -419,7 +420,7 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
     [userInfo release];
 }
 
-static void addTextMarkerFor(NSMutableDictionary* change, AccessibilityObject& object, const VisiblePosition& position)
+static void addTextMarkerFor(NSMutableDictionary* change, AXCoreObject& object, const VisiblePosition& position)
 {
     if (position.isNull())
         return;
@@ -427,14 +428,14 @@ static void addTextMarkerFor(NSMutableDictionary* change, AccessibilityObject& o
         [change setObject:textMarker forKey:NSAccessibilityTextChangeValueStartMarker];
 }
 
-static void addTextMarkerFor(NSMutableDictionary* change, AccessibilityObject& object, HTMLTextFormControlElement& textControl)
+static void addTextMarkerFor(NSMutableDictionary* change, AXCoreObject& object, HTMLTextFormControlElement& textControl)
 {
     if (id textMarker = [object.wrapper() textMarkerForFirstPositionInTextControl:textControl])
         [change setObject:textMarker forKey:NSAccessibilityTextChangeValueStartMarker];
 }
 
 template <typename TextMarkerTargetType>
-static NSDictionary *textReplacementChangeDictionary(AccessibilityObject& object, AXTextEditType type, const String& string, TextMarkerTargetType& markerTarget)
+static NSDictionary *textReplacementChangeDictionary(AXCoreObject& object, AXTextEditType type, const String& string, TextMarkerTargetType& markerTarget)
 {
     NSString *text = (NSString *)string;
     NSUInteger length = [text length];
@@ -459,7 +460,7 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
     postTextReplacementPlatformNotification(object, AXTextEditTypeUnknown, emptyString(), type, text, position);
 }
 
-static void postUserInfoForChanges(AccessibilityObject& rootWebArea, AccessibilityObject& object, NSMutableArray* changes)
+static void postUserInfoForChanges(AXCoreObject& rootWebArea, AXCoreObject& object, NSMutableArray* changes)
 {
     NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] initWithCapacity:4];
     [userInfo setObject:@(platformChangeTypeForWebCoreChangeType(AXTextStateChangeTypeEdit)) forKey:NSAccessibilityTextStateChangeTypeKey];
@@ -476,7 +477,7 @@ static void postUserInfoForChanges(AccessibilityObject& rootWebArea, Accessibili
     [userInfo release];
 }
 
-void AXObjectCache::postTextReplacementPlatformNotification(AccessibilityObject* object, AXTextEditType deletionType, const String& deletedText, AXTextEditType insertionType, const String& insertedText, const VisiblePosition& position)
+void AXObjectCache::postTextReplacementPlatformNotification(AXCoreObject* object, AXTextEditType deletionType, const String& deletedText, AXTextEditType insertionType, const String& insertedText, const VisiblePosition& position)
 {
     if (!object)
         object = rootWebArea();
@@ -489,11 +490,13 @@ void AXObjectCache::postTextReplacementPlatformNotification(AccessibilityObject*
         [changes addObject:change];
     if (NSDictionary *change = textReplacementChangeDictionary(*object, insertionType, insertedText, position))
         [changes addObject:change];
-    postUserInfoForChanges(*rootWebArea(), *object, changes);
+
+    if (auto* root = rootWebArea())
+        postUserInfoForChanges(*root, *object, changes);
     [changes release];
 }
 
-void AXObjectCache::postTextReplacementPlatformNotificationForTextControl(AccessibilityObject* object, const String& deletedText, const String& insertedText, HTMLTextFormControlElement& textControl)
+void AXObjectCache::postTextReplacementPlatformNotificationForTextControl(AXCoreObject* object, const String& deletedText, const String& insertedText, HTMLTextFormControlElement& textControl)
 {
     if (!object)
         object = rootWebArea();
@@ -506,7 +509,9 @@ void AXObjectCache::postTextReplacementPlatformNotificationForTextControl(Access
         [changes addObject:change];
     if (NSDictionary *change = textReplacementChangeDictionary(*object, AXTextEditTypeInsert, insertedText, textControl))
         [changes addObject:change];
-    postUserInfoForChanges(*rootWebArea(), *object, changes);
+
+    if (auto* root = rootWebArea())
+        postUserInfoForChanges(*root, *object, changes);
     [changes release];
 }
 
@@ -539,6 +544,48 @@ void AXObjectCache::handleScrolledToAnchor(const Node*)
 
 void AXObjectCache::platformPerformDeferredCacheUpdate()
 {
+}
+
+// TextMarker utility functions.
+
+static id AXTextMarkerRange(id startMarker, id endMarker)
+{
+    ASSERT(startMarker);
+    ASSERT(endMarker);
+    ASSERT(CFGetTypeID((__bridge CFTypeRef)startMarker) == AXTextMarkerGetTypeID());
+    ASSERT(CFGetTypeID((__bridge CFTypeRef)endMarker) == AXTextMarkerGetTypeID());
+    return CFBridgingRelease(AXTextMarkerRangeCreate(kCFAllocatorDefault, (AXTextMarkerRef)startMarker, (AXTextMarkerRef)endMarker));
+}
+
+id textMarkerRangeFromMarkers(id textMarker1, id textMarker2)
+{
+    if (!textMarker1 || !textMarker2)
+        return nil;
+
+    return AXTextMarkerRange(textMarker1, textMarker2);
+}
+
+id textMarkerForVisiblePosition(AXObjectCache* cache, const VisiblePosition& visiblePos)
+{
+    ASSERT(cache);
+    if (!cache)
+        return nil;
+
+    auto textMarkerData = cache->textMarkerDataForVisiblePosition(visiblePos);
+    if (!textMarkerData)
+        return nil;
+
+    return CFBridgingRelease(AXTextMarkerCreate(kCFAllocatorDefault, (const UInt8*)&textMarkerData.value(), sizeof(textMarkerData.value())));
+}
+
+id textMarkerRangeFromVisiblePositions(AXObjectCache* cache, const VisiblePosition& startPosition, const VisiblePosition& endPosition)
+{
+    if (!cache)
+        return nil;
+
+    id startTextMarker = textMarkerForVisiblePosition(cache, startPosition);
+    id endTextMarker = textMarkerForVisiblePosition(cache, endPosition);
+    return textMarkerRangeFromMarkers(startTextMarker, endTextMarker);
 }
 
 }

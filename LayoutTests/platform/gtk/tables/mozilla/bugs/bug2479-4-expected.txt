@@ -184,19 +184,19 @@ layer at (0,0) size 785x2620
         RenderBlock {P} at (0,0) size 769x83
           RenderText {#text} at (0,0) size 259x17
             text run at (0,0) width 259: "How does your browser fare on this test?"
-          RenderMenuList {SELECT} at (2,20) size 617x30 [color=#2E3436] [bgcolor=#FFFFFF] [border: (1px solid #2E3436)]
-            RenderBlock (anonymous) at (1,1) size 615x28
-              RenderText at (9,5) size 581x17
-                text run at (9,5) width 581: "The tests all render identically, and this browser may or may not grok CSS2 tables."
-          RenderText {#text} at (621,26) size 4x17
-            text run at (621,26) width 4: " "
-          RenderInline {LABEL} at (0,0) size 695x49
-            RenderText {#text} at (625,26) size 70x17
-              text run at (625,26) width 70: "Comment: "
+          RenderMenuList {SELECT} at (2,20) size 609x30 [bgcolor=#FFFFFF] [border: (1px solid #000000)]
+            RenderBlock (anonymous) at (1,1) size 607x28
+              RenderText at (5,5) size 581x17
+                text run at (5,5) width 581: "The tests all render identically, and this browser may or may not grok CSS2 tables."
+          RenderText {#text} at (613,26) size 4x17
+            text run at (613,26) width 4: " "
+          RenderInline {LABEL} at (0,0) size 687x49
+            RenderText {#text} at (617,26) size 70x17
+              text run at (617,26) width 70: "Comment: "
             RenderTextControl {INPUT} at (2,55) size 191x24 [bgcolor=#FFFFFF] [border: (2px inset #000000)]
           RenderText {#text} at (195,58) size 4x17
             text run at (195,58) width 4: " "
-          RenderButton {INPUT} at (201,54) size 66x27 [color=#2E3436] [bgcolor=#C0C0C0] [border: (2px outset #C0C0C0)]
+          RenderButton {INPUT} at (201,54) size 66x27 [bgcolor=#C0C0C0] [border: (2px outset #C0C0C0)]
             RenderBlock (anonymous) at (8,4) size 50x18
               RenderText at (0,0) size 50x17
                 text run at (0,0) width 50: "Submit"

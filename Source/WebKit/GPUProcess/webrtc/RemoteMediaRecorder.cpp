@@ -35,9 +35,8 @@
 #include <WebCore/WebAudioBufferList.h>
 #include <wtf/CompletionHandler.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<RemoteMediaRecorder> RemoteMediaRecorder::create(GPUConnectionToWebProcess& gpuConnectionToWebProcess, MediaRecorderIdentifier identifier, bool recordAudio, int width, int height)
 {
@@ -111,7 +110,7 @@ void RemoteMediaRecorder::videoSampleAvailable(WebCore::RemoteVideoSample&& remo
         return;
     }
 
-    auto sampleBuffer = m_imageTransferSession->createMediaSample(remoteSample.surface(), remoteSample.time(), remoteSample.size());
+    auto sampleBuffer = m_imageTransferSession->createMediaSample(remoteSample);
     if (!sampleBuffer) {
         ASSERT_NOT_REACHED();
         return;

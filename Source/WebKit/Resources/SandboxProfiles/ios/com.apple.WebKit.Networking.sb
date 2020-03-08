@@ -484,8 +484,6 @@
     (sysctl-name-prefix "kern.monotonicclock")
     (sysctl-name "kern.monotoniclock_offset_usecs")
     (sysctl-name "kern.ngroups")
-    (sysctl-name "kern.osrelease")
-    (sysctl-name "kern.ostype")
     (sysctl-name "kern.saved_ids")
     (sysctl-name "kern.usrstack")
     (sysctl-name "kern.usrstack64")
@@ -569,6 +567,8 @@
         "kern.maxfilesperproc"
         "kern.memorystatus_level"
         "kern.osproductversion" ;; Needed by CFNetwork (HSTS store and others)
+        "kern.ostype" ;; Needed by NSURLSession
+        "kern.osrelease" ;; Ditto.
         "kern.osvariant_status" ;; Needed for bundle loading
         "kern.osversion" ;; Needed by WebKit and ASL logging.
         "kern.secure_kernel" ;; Needed by XPC bundle resolution
@@ -663,6 +663,7 @@
     (ipc-posix-name "containermanagerd.fb_check"))
 
 (allow file-read*
+    (literal "/dev/aes_0")
     (literal "/dev/random")
     (literal "/dev/urandom"))
 
@@ -673,3 +674,7 @@
     (well-known-system-group-container-literal "/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"))
 (allow iokit-get-properties
     (iokit-property "IORegistryEntryPropertyKeys"))
+
+;; Needed for TCC.
+(allow mach-lookup
+    (global-name "com.apple.tccd"))

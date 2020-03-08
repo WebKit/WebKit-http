@@ -182,8 +182,7 @@ CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties& declaration
 
 void CSSParser::parseSelector(const String& string, CSSSelectorList& selectorList)
 {
-    CSSTokenizer tokenizer(string);
-    selectorList = CSSSelectorParser::parseSelector(tokenizer.tokenRange(), m_context, nullptr);
+    selectorList = parseCSSSelector(CSSTokenizer(string).tokenRange(), m_context, nullptr);
 }
 
 Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const String& string, const Element* element)
@@ -208,29 +207,27 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
     auto direction = style.direction();
     auto writingMode = style.writingMode();
 
-    if (value.isPendingSubstitutionValue()) {
-        // FIXME: Should have a resolvedShorthands cache to stop this from being done
-        // over and over for each longhand value.
-        const CSSPendingSubstitutionValue& pendingSubstitution = downcast<CSSPendingSubstitutionValue>(value);
-        CSSPropertyID shorthandID = pendingSubstitution.shorthandPropertyId();
+    if (is<CSSPendingSubstitutionValue>(value)) {
+        // FIXME: Should have a resolvedShorthands cache to stop this from being done over and over for each longhand value.
+        auto& substitution = downcast<CSSPendingSubstitutionValue>(value);
+
+        auto shorthandID = substitution.shorthandPropertyId();
         if (CSSProperty::isDirectionAwareProperty(shorthandID))
             shorthandID = CSSProperty::resolveDirectionAwareProperty(shorthandID, direction, writingMode);
-        CSSVariableReferenceValue* shorthandValue = pendingSubstitution.shorthandValue();
 
-        auto resolvedData = shorthandValue->resolveVariableReferences(builderState);
+        auto resolvedData = substitution.shorthandValue().resolveVariableReferences(builderState);
         if (!resolvedData)
             return nullptr;
-        Vector<CSSParserToken> resolvedTokens = resolvedData->tokens();
-        
+
         ParsedPropertyVector parsedProperties;
-        if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedTokens, m_context, parsedProperties, StyleRuleType::Style))
+        if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedData->tokens(), m_context, parsedProperties, StyleRuleType::Style))
             return nullptr;
-        
+
         for (auto& property : parsedProperties) {
             if (property.id() == propID)
                 return property.value();
         }
-        
+
         return nullptr;
     }
 
@@ -263,7 +260,7 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
     return CSSPropertyParser::parseTypedCustomPropertyValue(name, syntax, resolvedData->tokens(), builderState, m_context);
 }
 
-std::unique_ptr<Vector<double>> CSSParser::parseKeyframeKeyList(const String& selector)
+Vector<double> CSSParser::parseKeyframeKeyList(const String& selector)
 {
     return CSSParserImpl::parseKeyframeKeyList(selector);
 }

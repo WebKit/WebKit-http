@@ -2060,7 +2060,11 @@ static NSMutableSet *knownPluginMIMETypes()
 #if PLATFORM(IOS_FAMILY)
 #define WebPDFView ([WebView _getPDFViewClass])
 #endif
+#if PLATFORM(MACCATALYST)
+    if (!viewClass || !repClass) {
+#else
     if (!viewClass || !repClass || [[WebPDFView supportedMIMETypes] containsObject:MIMEType]) {
+#endif
 #if PLATFORM(IOS_FAMILY)
 #undef WebPDFView
 #endif
@@ -3038,7 +3042,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setStandalone([preferences _standalone]);
     settings.setTelephoneNumberParsingEnabled([preferences _telephoneNumberParsingEnabled]);
     settings.setAllowMultiElementImplicitSubmission([preferences _allowMultiElementImplicitFormSubmission]);
-    settings.setLayoutInterval(Seconds::fromMilliseconds([preferences _layoutInterval]));
     settings.setMaxParseDuration([preferences _maxParseDuration]);
     settings.setAlwaysUseAcceleratedOverflowScroll([preferences _alwaysUseAcceleratedOverflowScroll]);
     settings.setContentChangeObserverEnabled([preferences contentChangeObserverEnabled]);
@@ -9310,11 +9313,11 @@ bool LayerFlushController::flushLayers()
 }
 
 #if PLATFORM(IOS_FAMILY)
-- (void)_scheduleLayerFlushForPendingTileCacheRepaint
+- (void)_scheduleRenderingUpdateForPendingTileCacheRepaint
 {
     auto* coreFrame = [self _mainCoreFrame];
     if (auto* view = coreFrame->view())
-        view->scheduleLayerFlushAllowingThrottling();
+        view->scheduleRenderingUpdate();
 }
 #endif
 

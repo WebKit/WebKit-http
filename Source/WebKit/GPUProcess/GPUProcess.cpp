@@ -39,8 +39,10 @@
 #include "SandboxExtension.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcessPoolMessages.h"
+#include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/MockAudioSharedUnit.h>
+#include <WebCore/RuntimeApplicationChecks.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
@@ -48,6 +50,10 @@
 #include <wtf/RunLoop.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/AtomString.h>
+
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+#include "RemoteAudioSessionProxyManager.h"
+#endif
 
 namespace WebKit {
 using namespace WebCore;
@@ -108,6 +114,10 @@ void GPUProcess::initializeGPUProcess(GPUProcessCreationParameters&& parameters)
     WTF::Thread::setCurrentThreadIsUserInitiated();
     AtomString::init();
 
+#if PLATFORM(IOS_FAMILY)
+    DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
+#endif
+
 #if ENABLE(MEDIA_STREAM)
     setMockCaptureDevicesEnabled(parameters.useMockCaptureDevices);
     SandboxExtension::consumePermanently(parameters.cameraSandboxExtensionHandle);
@@ -116,6 +126,15 @@ void GPUProcess::initializeGPUProcess(GPUProcessCreationParameters&& parameters)
     SandboxExtension::consumePermanently(parameters.tccSandboxExtensionHandle);
 #endif
 #endif
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    m_contextForVisibilityPropagation = LayerHostingContext::createForExternalHostingProcess({
+        m_canShowWhileLocked
+    });
+    send(Messages::GPUProcessProxy::DidCreateContextForVisibilityPropagation(m_contextForVisibilityPropagation->contextID()));
+#endif
+
+    WebCore::setPresentingApplicationPID(parameters.parentPID);
 }
 
 void GPUProcess::prepareToSuspend(bool isSuspensionImminent, CompletionHandler<void()>&& completionHandler)
@@ -148,12 +167,18 @@ GPUConnectionToWebProcess* GPUProcess::webProcessConnection(ProcessIdentifier id
     return m_webProcessConnections.get(identifier);
 }
 
+#if ENABLE(MEDIA_STREAM)
 void GPUProcess::setMockCaptureDevicesEnabled(bool isEnabled)
 {
-#if ENABLE(MEDIA_STREAM)
     MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(isEnabled);
-#endif
 }
+
+void GPUProcess::setOrientationForMediaCapture(uint64_t orientation)
+{
+    for (auto& connection : m_webProcessConnections.values())
+        connection->setOrientationForMediaCapture(orientation);
+}
+#endif
 
 void GPUProcess::addSession(PAL::SessionID sessionID, GPUProcessSessionParameters&& parameters)
 {
@@ -188,6 +213,15 @@ const String& GPUProcess::mediaKeysStorageDirectory(PAL::SessionID sessionID) co
 {
     ASSERT(m_sessions.contains(sessionID));
     return m_sessions.find(sessionID)->value.mediaKeysStorageDirectory;
+}
+#endif
+
+#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+RemoteAudioSessionProxyManager& GPUProcess::audioSessionManager() const
+{
+    if (!m_audioSessionManager)
+        m_audioSessionManager = WTF::makeUnique<RemoteAudioSessionProxyManager>();
+    return *m_audioSessionManager;
 }
 #endif
 

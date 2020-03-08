@@ -160,8 +160,16 @@ private:
     void addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& receiver) final { m_process.addMessageReceiver(messageReceiverName, receiver); }
     void removeMessageReceiver(IPC::StringReference messageReceiverName) final { m_process.removeMessageReceiver(messageReceiverName); }
     IPC::Connection& connection() final { return *m_process.connection(); }
-    PlatformMediaSessionManager& sessionManager() final { return PlatformMediaSessionManager::sharedManager(); }
+    Logger& logger() final
+    {
+        if (!m_logger) {
+            m_logger = Logger::create(this);
+            m_logger->setEnabled(this, m_process.sessionID().isAlwaysOnLoggingAllowed());
+        }
+        return *m_logger;
+    }
 
+    RefPtr<Logger> m_logger;
     WebProcessProxy& m_process;
 };
 #endif
@@ -705,6 +713,12 @@ void WebProcessProxy::getNetworkProcessConnection(Messages::WebProcessProxy::Get
 void WebProcessProxy::getGPUProcessConnection(Messages::WebProcessProxy::GetGPUProcessConnection::DelayedReply&& reply)
 {
     m_processPool->getGPUProcessConnection(*this, WTFMove(reply));
+}
+
+void WebProcessProxy::gpuProcessCrashed()
+{
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
+        page->gpuProcessCrashed();
 }
 #endif
 
@@ -1697,6 +1711,7 @@ void WebProcessProxy::disableServiceWorkers()
         return;
 
     m_serviceWorkerInformation = { };
+    updateBackgroundResponsivenessTimer();
 
 #if ENABLE(SERVICE_WORKER)
     processPool().removeFromServiceWorkerProcesses(*this);
@@ -1740,10 +1755,19 @@ void WebProcessProxy::enableServiceWorkers(const Optional<UserContentControllerI
         nullptr,
         { }
     };
+    updateBackgroundResponsivenessTimer();
 #if ENABLE(SERVICE_WORKER)
     updateServiceWorkerProcessAssertion();
 #endif
 }
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+void WebProcessProxy::didCreateContextInGPUProcessForVisibilityPropagation(LayerHostingContextID contextID)
+{
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
+        page->didCreateContextInGPUProcessForVisibilityPropagation(contextID);
+}
+#endif
 
 } // namespace WebKit
 

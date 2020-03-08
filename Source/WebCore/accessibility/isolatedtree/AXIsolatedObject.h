@@ -94,12 +94,13 @@ private:
         ARIAFlowToElements,
         ARIALandmarkRoleDescription,
         ARIATreeItemContent,
-        ARIATreeItemDisclosedRows,
         ARIATreeRows,
         ARIARoleAttribute,
         ARIAOwnsElements,
         AXColumnCount,
+        AXColumnIndex,
         AXRowCount,
+        AXRowIndex,
         BlockquoteLevel,
         BoundingBoxRect,
         CanHaveSelectedChildren,
@@ -120,7 +121,10 @@ private:
         ColorValue,
         Columns,
         ColumnCount,
+        ColumnHeader,
         ColumnHeaders,
+        ColumnIndex,
+        ColumnIndexRange,
         ComputedLabel,
         ComputedRoleString,
         CurrentState,
@@ -128,6 +132,8 @@ private:
         DatetimeAttributeValue,
         DecrementButton,
         Description,
+        DisclosedByRow,
+        DisclosedRows,
         DocumentEncoding,
         DocumentURI,
         EditableAncestor,
@@ -138,6 +144,7 @@ private:
         FileUploadButtonReturnsValueInTitle,
         FocusableAncestor,
         HasARIAValueNow,
+        HasApplePDFAnnotationAttribute,
         HasChildren,
         HasPopup,
         HeaderContainer,
@@ -282,6 +289,8 @@ private:
         Rows,
         RowCount,
         RowHeaders,
+        RowIndex,
+        RowIndexRange,
         SelectedChildren,
         SelectedRadioButton,
         SelectedTabItem,
@@ -320,6 +329,7 @@ private:
         VerticalScrollBar,
         VisibleChildren,
         VisibleRows,
+        WebArea,
     };
     
     typedef std::pair<AXID, AXID> AccessibilityIsolatedTreeMathMultiscriptPair;
@@ -328,8 +338,8 @@ private:
         AccessibilityTextSource textSource;
         Vector<AXID> textElements;
     };
-    
-    using AttributeValueVariant = Variant<std::nullptr_t, String, bool, int, unsigned, double, float, uint64_t, Color, URL, LayoutRect, AXID, IntPoint, OptionSet<SpeakAs>, Vector<AccessibilityIsolatedTreeText>, Vector<AXID>, Vector<AccessibilityIsolatedTreeMathMultiscriptPair>, Vector<String>>;
+
+    using AttributeValueVariant = Variant<std::nullptr_t, String, bool, int, unsigned, double, float, uint64_t, Color, URL, LayoutRect, FloatRect, AXID, IntPoint, OptionSet<SpeakAs>, std::pair<unsigned, unsigned>, Vector<AccessibilityIsolatedTreeText>, Vector<AXID>, Vector<AccessibilityIsolatedTreeMathMultiscriptPair>, Vector<String>>;
     void setProperty(AXPropertyName, AttributeValueVariant&&, bool shouldRemove = false);
     void setObjectProperty(AXPropertyName, AXCoreObject*);
     void setObjectVectorProperty(AXPropertyName, const AccessibilityChildrenVector&);
@@ -348,6 +358,7 @@ private:
     template<typename T> T rectAttributeValue(AXPropertyName) const;
     template<typename T> Vector<T> vectorAttributeValue(AXPropertyName) const;
     template<typename T> OptionSet<T> optionSetAttributeValue(AXPropertyName) const;
+    template<typename T> std::pair<T, T> pairAttributeValue(AXPropertyName) const;
 
     void fillChildrenVectorForProperty(AXPropertyName, AccessibilityChildrenVector&) const;
     void setMathscripts(AXPropertyName, AXCoreObject&);
@@ -398,12 +409,31 @@ private:
     int axColumnCount() const override { return intAttributeValue(AXPropertyName::AXColumnCount); }
     int axRowCount() const override { return intAttributeValue(AXPropertyName::AXRowCount); }
 
-    bool isTableRow() const override { return boolAttributeValue(AXPropertyName::IsTableRow); }
-    bool isTableColumn() const override { return boolAttributeValue(AXPropertyName::IsTableColumn); }
+    // Table cell support.
     bool isTableCell() const override { return boolAttributeValue(AXPropertyName::IsTableCell); }
+    // Returns the start location and row span of the cell.
+    std::pair<unsigned, unsigned> rowIndexRange() const override { return pairAttributeValue<unsigned>(AXPropertyName::RowIndexRange); }
+    // Returns the start location and column span of the cell.
+    std::pair<unsigned, unsigned> columnIndexRange() const override { return pairAttributeValue<unsigned>(AXPropertyName::ColumnIndexRange); }
+    int axColumnIndex() const override { return intAttributeValue(AXPropertyName::AXColumnIndex); }
+    int axRowIndex() const override { return intAttributeValue(AXPropertyName::AXRowIndex); }
+
+    // Table column support.
+    bool isTableColumn() const override { return boolAttributeValue(AXPropertyName::IsTableColumn); }
+    unsigned columnIndex() const override { return unsignedAttributeValue(AXPropertyName::ColumnIndex); }
+    AXCoreObject* columnHeader() override { return objectAttributeValue(AXPropertyName::ColumnHeader); }
+
+    // Table row support.
+    bool isTableRow() const override { return boolAttributeValue(AXPropertyName::IsTableRow); }
+    unsigned rowIndex() const override { return unsignedAttributeValue(AXPropertyName::RowIndex); }
+
+    // ARIA tree/grid row support.
+    bool isARIATreeGridRow() const override { return boolAttributeValue(AXPropertyName::IsARIATreeGridRow); }
+    AccessibilityChildrenVector disclosedRows() override { return tree()->objectsForIDs(vectorAttributeValue<AXID>(AXPropertyName::DisclosedRows)); }
+    AXCoreObject* disclosedByRow() const override { return objectAttributeValue(AXPropertyName::DisclosedByRow); }
+
     bool isFieldset() const override { return boolAttributeValue(AXPropertyName::IsFieldset); }
     bool isGroup() const override { return boolAttributeValue(AXPropertyName::IsGroup); }
-    bool isARIATreeGridRow() const override { return boolAttributeValue(AXPropertyName::IsARIATreeGridRow); }
     bool isMenuList() const override { return boolAttributeValue(AXPropertyName::IsMenuList); }
     bool isMenuListPopup() const override { return boolAttributeValue(AXPropertyName::IsMenuListPopup); }
     bool isMenuListOption() const override { return boolAttributeValue(AXPropertyName::IsMenuListOption); }
@@ -506,7 +536,6 @@ private:
     bool isValueAutofillAvailable() const override { return boolAttributeValue(AXPropertyName::IsValueAutofillAvailable); }
     AutoFillButtonType valueAutofillButtonType() const override { return static_cast<AutoFillButtonType>(intAttributeValue(AXPropertyName::ValueAutofillButtonType)); }
     void ariaTreeRows(AccessibilityChildrenVector& children) override { fillChildrenVectorForProperty(AXPropertyName::ARIATreeRows, children); }
-    void ariaTreeItemDisclosedRows(AccessibilityChildrenVector& children) override { fillChildrenVectorForProperty(AXPropertyName::ARIATreeItemDisclosedRows, children); }
     void ariaTreeItemContent(AccessibilityChildrenVector& children) override { fillChildrenVectorForProperty(AXPropertyName::ARIATreeItemContent, children); }
     URL url() const override { return urlAttributeValue(AXPropertyName::URL); }
     String accessKey() const override { return stringAttributeValue(AXPropertyName::AccessKey); }
@@ -616,7 +645,7 @@ private:
     VisiblePositionRange visiblePositionRangeForRange(const PlainTextRange&) const override { return VisiblePositionRange(); }
     VisiblePositionRange lineRangeForPosition(const VisiblePosition&) const override { return VisiblePositionRange(); }
     RefPtr<Range> rangeForPlainTextRange(const PlainTextRange&) const override { return nullptr; }
-    String stringForRange(RefPtr<Range>) const override { return String(); }
+    String stringForRange(RefPtr<Range>) const override;
     IntRect boundsForVisiblePositionRange(const VisiblePositionRange&) const override { return IntRect(); }
     IntRect boundsForRange(const RefPtr<Range>) const override { return IntRect(); }
     int lengthForVisiblePositionRange(const VisiblePositionRange&) const override { return 0; }
@@ -685,10 +714,13 @@ private:
     bool isAccessibilityNodeObject() const override;
     bool isAccessibilityRenderObject() const override;
     bool isAccessibilityScrollbar() const override;
-    bool isAccessibilityScrollView() const override;
+    bool isAccessibilityScrollViewInstance() const override;
     bool isAccessibilitySVGRoot() const override;
     bool isAccessibilitySVGElement() const override;
     bool isAccessibilityTableInstance() const override;
+    bool isAccessibilityTableColumnInstance() const override;
+    bool isAccessibilityProgressIndicatorInstance() const override;
+
     bool isAttachmentElement() const override;
     bool isNativeImage() const override;
     bool isImageButton() const override;
@@ -845,8 +877,9 @@ private:
     void overrideAttachmentParent(AXCoreObject* parent) override;
     bool accessibilityIgnoreAttachment() const override;
     AccessibilityObjectInclusion accessibilityPlatformIncludesObject() const override;
-    bool hasApplePDFAnnotationAttribute() const override;
+    bool hasApplePDFAnnotationAttribute() const override { return boolAttributeValue(AXPropertyName::HasApplePDFAnnotationAttribute); }
     const AccessibilityScrollView* ancestorAccessibilityScrollView(bool includeSelf) const override;
+    AXCoreObject* webAreaObject() const override { return objectAttributeValue(AXPropertyName::WebArea); }
     void setIsIgnoredFromParentData(AccessibilityIsIgnoredFromParentData&) override;
     void clearIsIgnoredFromParentData() override;
     void setIsIgnoredFromParentDataForChild(AXCoreObject*) override;

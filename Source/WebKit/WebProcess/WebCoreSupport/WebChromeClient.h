@@ -37,6 +37,7 @@ enum class StorageAccessWasGranted : bool;
 
 namespace WebKit {
 
+class RemoteRenderingBackend;
 class WebFrame;
 class WebPage;
 
@@ -217,7 +218,6 @@ private:
     void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer*) final;
     void setNeedsOneShotDrawingSynchronization() final;
     void scheduleRenderingUpdate() final;
-    bool adjustRenderingUpdateThrottling(OptionSet<WebCore::RenderingUpdateThrottleState>) final;
 
     void contentRuleListNotification(const URL&, const WebCore::ContentRuleListResults&) final;
 
@@ -231,6 +231,11 @@ private:
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) const final;
+#endif
+
+#if ENABLE(GPU_PROCESS)
+    RemoteRenderingBackend& ensureRemoteRenderingBackend() const;
+    std::unique_ptr<WebCore::ImageBuffer> createImageBuffer(const WebCore::FloatSize&, WebCore::ShouldAccelerate, WebCore::ShouldUseDisplayList, WebCore::RenderingPurpose, float resolutionScale, WebCore::ColorSpace) const final;
 #endif
 
     CompositingTriggerFlags allowedCompositingTriggers() const final
@@ -250,7 +255,6 @@ private:
     }
 
     bool layerTreeStateIsFrozen() const final;
-    bool renderingUpdateThrottlingIsActive() const final;
 
 #if ENABLE(ASYNC_SCROLLING)
     RefPtr<WebCore::ScrollingCoordinator> createScrollingCoordinator(WebCore::Page&) const final;
@@ -390,7 +394,9 @@ private:
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;
     mutable bool m_cachedMainFrameHasHorizontalScrollbar { false };
     mutable bool m_cachedMainFrameHasVerticalScrollbar { false };
-
+#if ENABLE(GPU_PROCESS)
+    mutable std::unique_ptr<RemoteRenderingBackend> m_remoteRenderingBackend;
+#endif
     WebPage& m_page;
 };
 

@@ -344,11 +344,13 @@ public:
     virtual ~InspectorStubFrontend();
 
 private:
+    bool supportsDockSide(DockSide) final { return false; }
     void attachWindow(DockSide) final { }
     void detachWindow() final { }
     void closeWindow() final;
     void reopen() final { }
     void bringToFront() final { }
+    void setForcedAppearance(InspectorFrontendClient::Appearance) final { }
     String localizedStringsURL() const final { return String(); }
     DebuggableType debuggableType() const final { return DebuggableType::Page; }
     String targetPlatformName() const { return "Unknown"_s; }
@@ -531,6 +533,8 @@ void Internals::resetToConsistentState(Page& page)
     page.setMockMediaPlaybackTargetPickerState(emptyString(), MediaPlaybackTargetContext::Unknown);
 #endif
 
+    MediaResourceLoader::recordResponsesForTesting();
+
     page.setShowAllPlugins(false);
     page.setLowPowerModeEnabledOverrideForTesting(WTF::nullopt);
 
@@ -547,7 +551,6 @@ void Internals::resetToConsistentState(Page& page)
     rtcProvider.disableNonLocalhostConnections();
     RuntimeEnabledFeatures::sharedFeatures().setWebRTCVP8CodecEnabled(true);
     page.settings().setWebRTCEncryptionEnabled(true);
-    rtcProvider.setUseGPUProcess(false);
 #endif
 
     page.setFullscreenAutoHideDuration(0_s);
@@ -1578,7 +1581,6 @@ void Internals::setUseGPUProcessForWebRTC(bool useGPUProcess)
     if (!document || !document->page())
         return;
 
-    document->page()->libWebRTCProvider().setUseGPUProcess(useGPUProcess);
     document->page()->mediaRecorderProvider().setUseGPUProcess(useGPUProcess);
 #endif
 }
@@ -2168,13 +2170,13 @@ ExceptionOr<RefPtr<NodeList>> Internals::nodesFromRect(Document& document, int c
     float zoomFactor = frame->pageZoomFactor();
     LayoutPoint point(centerX * zoomFactor + frameView->scrollX(), centerY * zoomFactor + frameView->scrollY());
 
-    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::CollectMultipleElements;
+    OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::CollectMultipleElements };
     if (ignoreClipping)
-        hitType |= HitTestRequest::IgnoreClipping;
+        hitType.add(HitTestRequest::IgnoreClipping);
     if (!allowUserAgentShadowContent)
-        hitType |= HitTestRequest::DisallowUserAgentShadowContent;
+        hitType.add(HitTestRequest::DisallowUserAgentShadowContent);
     if (allowChildFrameContent)
-        hitType |= HitTestRequest::AllowChildFrameContent;
+        hitType.add(HitTestRequest::AllowChildFrameContent);
 
     HitTestRequest request(hitType);
 
@@ -3374,6 +3376,14 @@ ExceptionOr<Optional<Internals::CompositingPolicy>> Internals::compositingPolicy
     }
 
     return { Internals::CompositingPolicy::Normal };
+}
+
+void Internals::updateLayoutAndStyleForAllFrames()
+{
+    auto* document = contextDocument();
+    if (!document || !document->view())
+        return;
+    document->view()->updateLayoutAndStyleIfNeededRecursive();
 }
 
 ExceptionOr<void> Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* node)
@@ -5471,6 +5481,11 @@ int Internals::readPreferenceInteger(const String& domain, const String& key)
 
 #if !PLATFORM(COCOA)
 String Internals::encodedPreferenceValue(const String& domain, const String& key)
+{
+    return emptyString();
+}
+
+String Internals::getUTIFromMIMEType(const String& mimeType)
 {
     return emptyString();
 }

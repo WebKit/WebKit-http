@@ -45,7 +45,6 @@
 #include "StyledElement.h"
 #include "WebAnimationUtilities.h"
 #include <wtf/IsoMallocInlines.h>
-#include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Optional.h>
 #include <wtf/text/TextStream.h>
@@ -55,20 +54,10 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(WebAnimation);
 
-HashSet<WebAnimation*>& WebAnimation::instances(const LockHolder&)
+HashSet<WebAnimation*>& WebAnimation::instances()
 {
     static NeverDestroyed<HashSet<WebAnimation*>> instances;
     return instances;
-}
-
-Lock& WebAnimation::instancesMutex()
-{
-    static LazyNeverDestroyed<Lock> mutex;
-    static std::once_flag initializeMutex;
-    std::call_once(initializeMutex, [] {
-        mutex.construct();
-    });
-    return mutex.get();
 }
 
 Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect)
@@ -102,8 +91,7 @@ WebAnimation::WebAnimation(Document& document)
     m_readyPromise->resolve(*this);
     suspendIfNeeded();
 
-    LockHolder lock(instancesMutex());
-    instances(lock).add(this);
+    instances().add(this);
 }
 
 WebAnimation::~WebAnimation()
@@ -113,9 +101,8 @@ WebAnimation::~WebAnimation()
     if (m_timeline)
         m_timeline->forgetAnimation(this);
 
-    LockHolder lock(instancesMutex());
-    ASSERT(instances(lock).contains(this));
-    instances(lock).remove(this);
+    ASSERT(instances().contains(this));
+    instances().remove(this);
 }
 
 void WebAnimation::contextDestroyed()
@@ -202,6 +189,11 @@ void WebAnimation::setEffect(RefPtr<AnimationEffect>&& newEffect)
     invalidateEffect();
 }
 
+AnimationTimeline* WebAnimation::timeline() const
+{
+    return m_timeline.get();
+}
+
 void WebAnimation::setEffectInternal(RefPtr<AnimationEffect>&& newEffect, bool doNotRemoveFromTimeline)
 {
     if (m_effect == newEffect)
@@ -240,7 +232,7 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
     // https://drafts.csswg.org/web-animations-1/#setting-the-timeline
 
     // 2. If new timeline is the same object as old timeline, abort this procedure.
-    if (timeline == m_timeline)
+    if (timeline == m_timeline.get())
         return;
 
     // 4. If the animation start time of animation is resolved, make animation's hold time unresolved.
@@ -265,7 +257,7 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
     auto protectedThis = makeRef(*this);
     setTimelineInternal(WTFMove(timeline));
 
-    setSuspended(is<DocumentTimeline>(m_timeline) && downcast<DocumentTimeline>(*m_timeline).animationsAreSuspended());
+    setSuspended(is<DocumentTimeline>(m_timeline.get()) && downcast<DocumentTimeline>(*m_timeline).animationsAreSuspended());
 
     // 5. Run the procedure to update an animation's finished state for animation with the did seek flag set to false,
     // and the synchronously notify flag set to false.
@@ -276,13 +268,13 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
 
 void WebAnimation::setTimelineInternal(RefPtr<AnimationTimeline>&& timeline)
 {
-    if (m_timeline == timeline)
+    if (m_timeline.get() == timeline)
         return;
 
     if (m_timeline)
         m_timeline->removeAnimation(*this);
 
-    m_timeline = WTFMove(timeline);
+    m_timeline = makeWeakPtr(timeline.get());
 
     if (m_effect)
         m_effect->animationTimelineDidChange(m_timeline.get());
@@ -690,7 +682,7 @@ void WebAnimation::enqueueAnimationPlaybackEvent(const AtomString& type, Optiona
 
 void WebAnimation::enqueueAnimationEvent(Ref<AnimationEventBase>&& event)
 {
-    if (is<DocumentTimeline>(m_timeline)) {
+    if (is<DocumentTimeline>(m_timeline.get())) {
         // If animation has a document for timing, then append event to its document for timing's pending animation event queue along
         // with its target, animation. If animation is associated with an active timeline that defines a procedure to convert timeline times
         // to origin-relative time, let the scheduled event time be the result of applying that procedure to timeline time. Otherwise, the
@@ -1245,7 +1237,7 @@ void WebAnimation::setSuspended(bool isSuspended)
 
 void WebAnimation::acceleratedStateDidChange()
 {
-    if (is<DocumentTimeline>(m_timeline))
+    if (is<DocumentTimeline>(m_timeline.get()))
         downcast<DocumentTimeline>(*m_timeline).animationAcceleratedRunningStateDidChange(*this);
 }
 

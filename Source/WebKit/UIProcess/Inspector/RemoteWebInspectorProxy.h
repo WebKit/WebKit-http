@@ -28,6 +28,7 @@
 #include "APIObject.h"
 #include "MessageReceiver.h"
 #include <WebCore/FloatRect.h>
+#include <WebCore/InspectorFrontendClient.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
@@ -118,6 +119,7 @@ private:
     void save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void append(const String& filename, const String& content);
     void setSheetRect(const WebCore::FloatRect&);
+    void setForcedAppearance(WebCore::InspectorFrontendClient::Appearance);
     void startWindowDrag();
     void openInNewTab(const String& url);
     void showCertificate(const WebCore::CertificateInfo&);
@@ -134,6 +136,7 @@ private:
     void platformSave(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void platformAppend(const String& filename, const String& content);
     void platformSetSheetRect(const WebCore::FloatRect&);
+    void platformSetForcedAppearance(WebCore::InspectorFrontendClient::Appearance);
     void platformStartWindowDrag();
     void platformOpenInNewTab(const String& url);
     void platformShowCertificate(const WebCore::CertificateInfo&);

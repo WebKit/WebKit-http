@@ -26,14 +26,9 @@
 
 WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentView
 {
-    constructor(identifier)
+    constructor()
     {
-        let tabBarItem = WI.PinnedTabBarItem.fromTabInfo(WI.SettingsTabContentView.tabInfo());
-
-        super(identifier || "settings", "settings", tabBarItem);
-
-        // Ensures that the Settings tab is displayable from a pinned tab bar item.
-        tabBarItem.representedObject = this;
+        super(SettingsTabContentView.tabInfo());
 
         this._selectedSettingsView = null;
         this._settingsViews = [];
@@ -42,10 +37,15 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
     static tabInfo()
     {
         return {
+            identifier: SettingsTabContentView.Type,
             image: "Images/Gear.svg",
             title: WI.UIString("Settings"),
-            isEphemeral: true,
         };
+    }
+
+    static shouldPinTab()
+    {
+        return true;
     }
 
     static shouldSaveTab()
@@ -201,6 +201,22 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
     _createGeneralSettingsView()
     {
         let generalSettingsView = new WI.SettingsView("general", WI.UIString("General"));
+
+        if (CSS.supports("color-scheme", "light") && CSS.supports("color-scheme", "dark")) {
+            const appearanceValues = [
+                ["system", WI.UIString("System", "System @ Settings General Appearance", "Label of dropdown item used for forcing Web Inspector to be shown using the system's theme")],
+                [WI.SettingEditor.SelectSpacerKey, null],
+                ["light", WI.UIString("Light", "Light @ Settings General Appearance", "Label of dropdown item used for forcing Web Inspector to be shown using a light theme")],
+                ["dark", WI.UIString("Dark", "Dark @ Settings General Appearance", "Label of dropdown item used for forcing Web Inspector to be shown using a dark theme")],
+            ];
+            let appearanceEditor = generalSettingsView.addGroupWithCustomSetting(WI.UIString("Appearance:"), WI.SettingEditor.Type.Select, {values: appearanceValues});
+            appearanceEditor.value = WI.settings.frontendAppearance.value;
+            appearanceEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => {
+                WI.settings.frontendAppearance.value = appearanceEditor.value;
+            }, WI.settings.frontendAppearance);
+
+            generalSettingsView.addSeparator();
+        }
 
         const indentValues = [WI.UIString("Tabs"), WI.UIString("Spaces")];
         let indentEditor = generalSettingsView.addGroupWithCustomSetting(WI.UIString("Prefer indent using:"), WI.SettingEditor.Type.Select, {values: indentValues});
@@ -360,9 +376,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             experimentalSettingsView.addSeparator();
         }
 
-        experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
-        experimentalSettingsView.addSeparator();
-
         if (InspectorBackend.hasDomain("CSS")) {
             let stylesGroup = experimentalSettingsView.addGroup(WI.UIString("Styles:"));
             stylesGroup.addSetting(WI.settings.experimentalEnableStylesJumpToEffective, WI.UIString("Show Jump to Effective Property Button"));
@@ -386,7 +399,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         }
 
         listenForChange(WI.settings.experimentalEnablePreviewFeatures);
-        listenForChange(WI.settings.experimentalEnableNewTabBar);
 
         if (InspectorBackend.hasDomain("CSS"))
             listenForChange(WI.settings.experimentalEnableStylesJumpToEffective);

@@ -46,6 +46,11 @@
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "RemoteCDMInstanceIdentifier.h"
+#include "RemoteCDMInstanceProxy.h"
+#endif
+
 namespace WTF {
 class MachSendRight;
 }
@@ -76,11 +81,24 @@ public:
     MediaPlayerPrivateRemoteIdentifier idendifier() const { return m_id; }
     void invalidate();
 
+    void updateVideoFullscreenInlineImage();
+    void setVideoFullscreenMode(WebCore::MediaPlayer::VideoFullscreenMode);
+
+    void setBufferingPolicy(WebCore::MediaPlayer::BufferingPolicy);
+
+    void videoFullscreenStandbyChanged();
+
+#if PLATFORM(IOS_FAMILY)
+    void accessLog(CompletionHandler<void(String)>&&);
+    void errorLog(CompletionHandler<void(String)>&&);
+#endif
+
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     void getConfiguration(RemoteMediaPlayerConfiguration&);
 
-    void prepareForPlayback(bool privateMode, WebCore::MediaPlayerEnums::Preload, bool preservesPitch, bool prepareForRendering, float videoContentScale, CompletionHandler<void(Optional<LayerHostingContextID>&&)>&&);
+    void prepareForPlayback(bool privateMode, WebCore::MediaPlayerEnums::Preload, bool preservesPitch, bool prepareForRendering, float videoContentScale, CompletionHandler<void(Optional<LayerHostingContextID>&& inlineLayerHostingContextId, Optional<LayerHostingContextID>&& fullscreenLayerHostingContextId)>&&);
     void prepareForRendering();
 
     void load(URL&&, Optional<SandboxExtension::Handle>&&, const WebCore::ContentType&, const String&, CompletionHandler<void(RemoteMediaPlayerConfiguration&&)>&&);
@@ -103,7 +121,9 @@ public:
 
     void setVisible(bool);
     void setShouldMaintainAspectRatio(bool);
-    void setVideoFullscreenFrame(WebCore::FloatRect);
+    void enterFullscreen(CompletionHandler<void()>&&);
+    void exitFullscreen(CompletionHandler<void()>&&);
+    void setVideoFullscreenFrameFenced(const WebCore::FloatRect&, const WTF::MachSendRight&);
     void setVideoFullscreenGravity(WebCore::MediaPlayerEnums::VideoGravity);
     void acceleratedRenderingStateChanged(bool);
     void setShouldDisableSleep(bool);
@@ -126,6 +146,16 @@ public:
     void keyAdded();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    void cdmInstanceAttached(RemoteCDMInstanceIdentifier&&);
+    void cdmInstanceDetached(RemoteCDMInstanceIdentifier&&);
+    void attemptToDecryptWithInstance(RemoteCDMInstanceIdentifier&&);
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
+    void setShouldContinueAfterKeyNeeded(bool);
+#endif
+
     void beginSimulatedHDCPError();
     void endSimulatedHDCPError();
 
@@ -133,6 +163,10 @@ public:
 
     void applicationWillResignActive();
     void applicationDidBecomeActive();
+
+    void notifyTrackModeChanged();
+    void tracksChanged();
+    void syncTextTrackBounds();
 
     Ref<WebCore::PlatformMediaResource> requestResource(WebCore::ResourceRequest&&, WebCore::PlatformMediaResourceLoader::LoadOptions);
     void removeResource(RemoteMediaResourceIdentifier);
@@ -168,7 +202,7 @@ private:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String&) const final;
-    bool mediaPlayerKeyNeeded(Uint8Array*) final;
+    void mediaPlayerKeyNeeded(Uint8Array*) final;
     String mediaPlayerMediaKeysStorageDirectory() const final;
 #endif
 
@@ -187,8 +221,6 @@ private:
     bool mediaPlayerIsFullscreenPermitted() const final;
     bool mediaPlayerIsVideo() const final;
     float mediaPlayerContentsScale() const final;
-    void mediaPlayerPause() final;
-    void mediaPlayerPlay() final;
     bool mediaPlayerPlatformVolumeConfigurationRequired() const final;
     WebCore::CachedResourceLoader* mediaPlayerCachedResourceLoader() final;
     RefPtr<WebCore::PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() final;
@@ -239,18 +271,22 @@ private:
     RefPtr<SandboxExtension> m_sandboxExtension;
     Ref<IPC::Connection> m_webProcessConnection;
     RefPtr<WebCore::MediaPlayer> m_player;
-    std::unique_ptr<LayerHostingContext> m_layerHostingContext;
+    std::unique_ptr<LayerHostingContext> m_inlineLayerHostingContext;
+    std::unique_ptr<LayerHostingContext> m_fullscreenLayerHostingContext;
     RemoteMediaPlayerManagerProxy& m_manager;
     WebCore::MediaPlayerEnums::MediaEngineIdentifier m_engineIdentifier;
     Vector<WebCore::ContentType> m_typesRequiringHardwareSupport;
     RunLoop::Timer<RemoteMediaPlayerProxy> m_updateCachedStateMessageTimer;
     RemoteMediaPlayerState m_cachedState;
     RemoteMediaPlayerProxyConfiguration m_configuration;
-    bool m_seekableChanged { true };
     bool m_bufferedChanged { true };
     bool m_renderingCanBeAccelerated { true };
     WebCore::LayoutRect m_videoContentBoxRect;
     float m_videoContentScale { 1.0 };
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
+    bool m_shouldContinueAfterKeyNeeded { false };
+#endif
 
 #if !RELEASE_LOG_DISABLED
     const Logger& m_logger;

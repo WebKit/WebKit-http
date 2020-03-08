@@ -67,9 +67,8 @@ private:
     void computePositionToAvoidFloats(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
     void computeVerticalPositionForFloatClear(const FloatingContext&, const Box&);
 
-    void precomputeVerticalPosition(const Box&, const HorizontalConstraints&, const VerticalConstraints&);
     void precomputeVerticalPositionForAncestors(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
-    void precomputeVerticalPositionForFormattingRoot(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
+    void precomputeVerticalPositionForBoxAndAncestors(const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
 
     IntrinsicWidthConstraints computedIntrinsicWidthConstraints() override;
     LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&, const VerticalConstraints&) const;
@@ -102,12 +101,15 @@ private:
     // This class implements margin collapsing for block formatting context.
     class MarginCollapse {
     public:
-        UsedVerticalMargin::CollapsedValues collapsedVerticalValues(const Box&, UsedVerticalMargin::NonCollapsedValues);
+        struct CollapsedAndPositiveNegativeValues {
+            UsedVerticalMargin::CollapsedValues collapsedValues;
+            PositiveAndNegativeVerticalMargin positiveAndNegativeVerticalValues;
+        };
+        CollapsedAndPositiveNegativeValues collapsedVerticalValues(const Box&, UsedVerticalMargin::NonCollapsedValues);
 
         PrecomputedMarginBefore precomputedMarginBefore(const Box&, UsedVerticalMargin::NonCollapsedValues);
         LayoutUnit marginBeforeIgnoringCollapsingThrough(const Box&, UsedVerticalMargin::NonCollapsedValues);
         static void updateMarginAfterForPreviousSibling(BlockFormattingContext&, const MarginCollapse&, const Box&);
-        PositiveAndNegativeVerticalMargin resolvedPositiveNegativeMarginValues(const Box&, const UsedVerticalMargin::NonCollapsedValues&);
 
         bool marginBeforeCollapsesWithParentMarginBefore(const Box&) const;
         bool marginBeforeCollapsesWithFirstInFlowChildMarginBefore(const Box&) const;
@@ -130,6 +132,13 @@ private:
         PositiveAndNegativeVerticalMargin::Values positiveNegativeValues(const Box&, MarginType) const;
         PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginBefore(const Box&, UsedVerticalMargin::NonCollapsedValues) const;
         PositiveAndNegativeVerticalMargin::Values positiveNegativeMarginAfter(const Box&, UsedVerticalMargin::NonCollapsedValues) const;
+
+        PositiveAndNegativeVerticalMargin::Values precomputedPositiveNegativeMarginBefore(const Box&, UsedVerticalMargin::NonCollapsedValues) const;
+        PositiveAndNegativeVerticalMargin::Values precomputedPositiveNegativeValues(const Box&) const;
+
+        PositiveAndNegativeVerticalMargin::Values computedPositiveAndNegativeMargin(PositiveAndNegativeVerticalMargin::Values, PositiveAndNegativeVerticalMargin::Values) const;
+        Optional<LayoutUnit> marginValue(PositiveAndNegativeVerticalMargin::Values) const;
+
         bool hasClearance(const Box&) const;
 
         LayoutState& layoutState() { return m_blockFormattingContext.layoutState(); }
@@ -158,17 +167,16 @@ private:
     };
     BlockFormattingContext::Quirks quirks() const { return Quirks(*this); }
 
-    void setPrecomputedMarginBefore(const Box&, const PrecomputedMarginBefore&);
-    void removePrecomputedMarginBefore(const Box& layoutBox) { m_precomputedMarginBeforeList.remove(&layoutBox); }
-    bool hasPrecomputedMarginBefore(const Box&) const;
     Optional<LayoutUnit> usedAvailableWidthForFloatAvoider(const FloatingContext&, const Box&, const ConstraintsPair<HorizontalConstraints>&, const ConstraintsPair<VerticalConstraints>&);
-#if ASSERT_ENABLED
-    PrecomputedMarginBefore precomputedMarginBefore(const Box& layoutBox) const { return m_precomputedMarginBeforeList.get(&layoutBox); }
-#endif
 
     const BlockFormattingState& formattingState() const { return downcast<BlockFormattingState>(FormattingContext::formattingState()); }
     BlockFormattingState& formattingState() { return downcast<BlockFormattingState>(FormattingContext::formattingState()); }
 
+#if ASSERT_ENABLED
+    void setPrecomputedMarginBefore(const Box& layoutBox, const PrecomputedMarginBefore& precomputedMarginBefore) { m_precomputedMarginBeforeList.set(&layoutBox, precomputedMarginBefore); }
+    PrecomputedMarginBefore precomputedMarginBefore(const Box& layoutBox) const { return m_precomputedMarginBeforeList.get(&layoutBox); }
+    bool hasPrecomputedMarginBefore(const Box& layoutBox) const { return m_precomputedMarginBeforeList.contains(&layoutBox); }
+#endif
 private:
     HashMap<const Box*, PrecomputedMarginBefore> m_precomputedMarginBeforeList;
 };

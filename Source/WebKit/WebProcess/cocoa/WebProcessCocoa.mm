@@ -67,6 +67,7 @@
 #import <WebCore/PictureInPictureSupport.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SWContextManager.h>
+#import <WebCore/UTIUtilities.h>
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
@@ -251,15 +252,17 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     if (parameters.compilerServiceExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.compilerServiceExtensionHandle);
 
-    if (parameters.launchServicesOpenExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.launchServicesOpenExtensionHandle);
-
-    if (parameters.diagnosticsExtensionHandle)
-        SandboxExtension::consumePermanently(*parameters.diagnosticsExtensionHandle);
-
     if (parameters.contentFilterExtensionHandle)
         SandboxExtension::consumePermanently(*parameters.contentFilterExtensionHandle);
     ParentalControlsContentFilter::setHasConsumedSandboxExtension(parameters.contentFilterExtensionHandle.hasValue());
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    if (parameters.diagnosticsExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.diagnosticsExtensionHandle);
+
+    for (size_t i = 0, size = parameters.dynamicMachExtensionHandles.size(); i < size; ++i)
+        SandboxExtension::consumePermanently(parameters.dynamicMachExtensionHandles[i]);
 #endif
     
 #if PLATFORM(COCOA)
@@ -272,6 +275,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 
     if (parameters.mimeTypesMap)
         overriddenMimeTypesMap() = WTFMove(parameters.mimeTypesMap);
+
+    setUTIFromMIMETypeMap(WTFMove(parameters.mapUTIFromMIMEType));
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -283,6 +288,11 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     // FIXME(207716): The following should be removed when the GPU process is complete.
     for (size_t i = 0, size = parameters.mediaExtensionHandles.size(); i < size; ++i)
         SandboxExtension::consumePermanently(parameters.mediaExtensionHandles[i]);
+
+#if !ENABLE(CFPREFS_DIRECT_MODE)
+    if (parameters.preferencesExtensionHandle)
+        SandboxExtension::consumePermanently(*parameters.preferencesExtensionHandle);
+#endif
 #endif
 }
 
@@ -658,14 +668,20 @@ static RetainPtr<NSArray<NSString *>> activePagesOrigins(const HashMap<PageIdent
 }
 #endif
 
-void WebProcess::updateActivePages()
+void WebProcess::updateActivePages(const String& overrideDisplayName)
 {
 #if PLATFORM(MAC)
-    auto activeOrigins = activePagesOrigins(m_pageMap);
+    if (!overrideDisplayName) {
+        auto activeOrigins = activePagesOrigins(m_pageMap);
 
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [activeOrigins = WTFMove(activeOrigins)] {
-        _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activeOrigins.get(), nullptr);
-    });
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [activeOrigins = WTFMove(activeOrigins)] {
+            _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activeOrigins.get(), nullptr);
+        });
+    } else {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, overrideDisplayName.createCFString().get(), nullptr);
+        });
+    }
 #endif
 }
 

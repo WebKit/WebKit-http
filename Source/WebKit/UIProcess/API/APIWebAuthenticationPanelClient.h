@@ -27,18 +27,17 @@
 
 #if ENABLE(WEB_AUTHN)
 
+#include "WebAuthenticationFlags.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
+#include <wtf/spi/cocoa/SecuritySPI.h>
 #include <wtf/text/WTFString.h>
+
+OBJC_CLASS LAContext;
 
 namespace WebCore {
 class AuthenticatorAssertionResponse;
-}
-
-namespace WebKit {
-enum class WebAuthenticationStatus : uint8_t;
-enum class WebAuthenticationResult : bool;
 }
 
 namespace API {
@@ -52,6 +51,7 @@ public:
     virtual void dismissPanel(WebKit::WebAuthenticationResult) const { }
     virtual void requestPin(uint64_t, CompletionHandler<void(const WTF::String&)>&& completionHandler) const { completionHandler(emptyString()); }
     virtual void selectAssertionResponse(Vector<Ref<WebCore::AuthenticatorAssertionResponse>>&& responses, CompletionHandler<void(const WebCore::AuthenticatorAssertionResponse&)>&& completionHandler) const { ASSERT(!responses.isEmpty()); completionHandler(responses[0]); }
+    virtual void decidePolicyForLocalAuthenticator(CompletionHandler<void(WebKit::LocalAuthenticatorPolicy)>&& completionHandler) const { completionHandler(WebKit::LocalAuthenticatorPolicy::Disallow); }
 };
 
 } // namespace API

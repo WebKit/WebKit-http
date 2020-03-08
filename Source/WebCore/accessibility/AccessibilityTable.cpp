@@ -418,7 +418,7 @@ void AccessibilityTable::addChildren()
     unsigned length = maxColumnCount;
     for (unsigned i = 0; i < length; ++i) {
         auto& column = downcast<AccessibilityTableColumn>(*axCache->getOrCreate(AccessibilityRole::Column));
-        column.setColumnIndex((int)i);
+        column.setColumnIndex(i);
         column.setParent(this);
         m_columns.append(&column);
         if (!column.accessibilityIsIgnored())
@@ -538,7 +538,7 @@ AXCoreObject::AccessibilityChildrenVector AccessibilityTable::columnHeaders()
     AccessibilityChildrenVector columnsCopy = m_columns;
 
     for (const auto& column : columnsCopy) {
-        if (AXCoreObject* header = downcast<AccessibilityTableColumn>(*column).headerObject())
+        if (auto* header = column->columnHeader())
             headers.append(header);
     }
 
@@ -637,19 +637,16 @@ AccessibilityTableCell* AccessibilityTable::cellForColumnAndRow(unsigned column,
             ASSERT(is<AccessibilityTableCell>(*child));
             if (!is<AccessibilityTableCell>(*child))
                 continue;
-            
-            std::pair<unsigned, unsigned> columnRange;
-            std::pair<unsigned, unsigned> rowRange;
-            auto& tableCellChild = downcast<AccessibilityTableCell>(*child);
-            tableCellChild.columnIndexRange(columnRange);
-            tableCellChild.rowIndexRange(rowRange);
-            
+
+            auto columnRange = child->columnIndexRange();
+            auto rowRange = child->rowIndexRange();
+
             if ((column >= columnRange.first && column < (columnRange.first + columnRange.second))
                 && (row >= rowRange.first && row < (rowRange.first + rowRange.second)))
-                return &tableCellChild;
+                return downcast<AccessibilityTableCell>(child);
         }
     }
-    
+
     return nullptr;
 }
 

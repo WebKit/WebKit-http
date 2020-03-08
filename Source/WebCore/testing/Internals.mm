@@ -34,6 +34,7 @@
 #import "HitTestResult.h"
 #import "MediaPlayerPrivate.h"
 #import "Range.h"
+#import "UTIUtilities.h"
 #import <AVFoundation/AVPlayer.h>
 #import <wtf/cocoa/NSURLExtras.h>
 
@@ -67,7 +68,8 @@ ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, 
 
     document->updateLayoutIgnorePendingStylesheets();
 
-    HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+    constexpr OptionSet<HitTestRequest::RequestType> hitType { HitTestRequest::ReadOnly, HitTestRequest::Active, HitTestRequest::DisallowUserAgentShadowContent, HitTestRequest::AllowChildFrameContent };
+    HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y), hitType);
     RefPtr<Range> range;
     std::tie(range, std::ignore) = DictionaryLookup::rangeAtHitTestResult(result);
     return WTFMove(range);
@@ -97,6 +99,11 @@ String Internals::encodedPreferenceValue(const String& domain, const String& key
     ASSERT(!e);
     auto encodedString = [data base64EncodedStringWithOptions:0];
     return encodedString;
+}
+
+String Internals::getUTIFromMIMEType(const String& mimeType)
+{
+    return UTIFromMIMEType(mimeType);
 }
 
 }

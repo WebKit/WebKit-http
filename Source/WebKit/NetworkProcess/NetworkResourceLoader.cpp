@@ -323,8 +323,15 @@ void NetworkResourceLoader::startNetworkLoad(ResourceRequest&& request, FirstLoa
     if (request.url().protocolIsBlob())
         parameters.blobFileReferences = networkSession->blobRegistry().filesInBlob(originalRequest().url());
 
-    if (m_parameters.pageHasResourceLoadClient)
-        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidSendRequest(m_parameters.webPageProxyID, resourceLoadInfo(), request), 0);
+    if (m_parameters.pageHasResourceLoadClient) {
+        Optional<IPC::FormDataReference> httpBody;
+        if (auto* formData = request.httpBody()) {
+            static constexpr auto maxSerializedRequestSize = 1024 * 1024;
+            if (formData->lengthInBytes() <= maxSerializedRequestSize)
+                httpBody = IPC::FormDataReference { formData };
+        }
+        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidSendRequest(m_parameters.webPageProxyID, resourceLoadInfo(), request, httpBody), 0);
+    }
 
     parameters.request = WTFMove(request);
     parameters.isNavigatingToAppBoundDomain = m_parameters.isNavigatingToAppBoundDomain;
@@ -335,10 +342,32 @@ void NetworkResourceLoader::startNetworkLoad(ResourceRequest&& request, FirstLoa
 
 ResourceLoadInfo NetworkResourceLoader::resourceLoadInfo()
 {
-    return {
+    auto loadedFromCache = [] (const ResourceResponse& response) {
+        switch (response.source()) {
+        case ResourceResponse::Source::DiskCache:
+        case ResourceResponse::Source::DiskCacheAfterValidation:
+        case ResourceResponse::Source::MemoryCache:
+        case ResourceResponse::Source::MemoryCacheAfterValidation:
+        case ResourceResponse::Source::ApplicationCache:
+        case ResourceResponse::Source::DOMCache:
+            return true;
+        case ResourceResponse::Source::Unknown:
+        case ResourceResponse::Source::Network:
+        case ResourceResponse::Source::ServiceWorker:
+        case ResourceResponse::Source::InspectorOverride:
+            break;
+        }
+        return false;
+    };
+    
+    return ResourceLoadInfo {
         m_resourceLoadID,
         m_parameters.webFrameID,
         m_parameters.parentFrameID,
+        originalRequest().url(),
+        originalRequest().httpMethod(),
+        WallTime::now(),
+        loadedFromCache(m_response)
     };
 }
 
@@ -643,7 +672,7 @@ void NetworkResourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLo
     tryStoreAsCacheEntry();
 
     if (m_parameters.pageHasResourceLoadClient)
-        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidCompleteWithError(m_parameters.webPageProxyID, resourceLoadInfo(), { }), 0);
+        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidCompleteWithError(m_parameters.webPageProxyID, resourceLoadInfo(), m_response, { }), 0);
 
     cleanup(LoadResult::Success);
 }
@@ -679,7 +708,7 @@ void NetworkResourceLoader::didFailLoading(const ResourceError& error)
     }
 
     if (m_parameters.pageHasResourceLoadClient)
-        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidCompleteWithError(m_parameters.webPageProxyID, resourceLoadInfo(), error), 0);
+        m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidCompleteWithError(m_parameters.webPageProxyID, resourceLoadInfo(), { }, error), 0);
 
     cleanup(LoadResult::Failure);
 }
@@ -950,7 +979,7 @@ void NetworkResourceLoader::bufferingTimerFired()
     if (m_bufferedData->isEmpty())
         return;
 
-    send(Messages::WebResourceLoader::DidReceiveData({ *m_bufferedData }, m_bufferedDataEncodedDataLength));
+    send(Messages::WebResourceLoader::DidReceiveSharedBuffer({ *m_bufferedData }, m_bufferedDataEncodedDataLength));
 
     m_bufferedData = SharedBuffer::create();
     m_bufferedDataEncodedDataLength = 0;
@@ -960,7 +989,7 @@ void NetworkResourceLoader::sendBuffer(SharedBuffer& buffer, size_t encodedDataL
 {
     ASSERT(!isSynchronous());
 
-    send(Messages::WebResourceLoader::DidReceiveData({ buffer }, encodedDataLength));
+    send(Messages::WebResourceLoader::DidReceiveSharedBuffer({ buffer }, encodedDataLength));
 }
 
 void NetworkResourceLoader::tryStoreAsCacheEntry()
@@ -1274,7 +1303,7 @@ static void logCookieInformationInternal(NetworkConnectionToWebProcess& connecti
         LOCAL_LOG(R"(    "domain": "%{public}s",)", escapedDomain.utf8().data());
         LOCAL_LOG(R"(    "path": "%{public}s",)", escapedPath.utf8().data());
         LOCAL_LOG(R"(    "created": %f,)", cookie.created);
-        LOCAL_LOG(R"(    "expires": %f,)", cookie.expires);
+        LOCAL_LOG(R"(    "expires": %f,)", cookie.expires.valueOr(0));
         LOCAL_LOG(R"(    "httpOnly": %{public}s,)", cookie.httpOnly ? "true" : "false");
         LOCAL_LOG(R"(    "secure": %{public}s,)", cookie.secure ? "true" : "false");
         LOCAL_LOG(R"(    "session": %{public}s,)", cookie.session ? "true" : "false");

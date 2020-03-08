@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,6 +52,10 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << httpProxy;
     encoder << httpsProxy;
 #endif
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    encoder << alternativeServiceDirectory;
+    encoder << alternativeServiceDirectoryExtensionHandle;
+#endif
 #if USE(SOUP)
     encoder << cookiePersistentStoragePath;
     encoder << cookiePersistentStorageType;
@@ -63,6 +67,7 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << resourceLoadStatisticsDirectory;
     encoder << resourceLoadStatisticsDirectoryExtensionHandle;
     encoder << enableResourceLoadStatistics;
+    encoder << isItpStateExplicitlySet;
     encoder << enableResourceLoadStatisticsLogTestingEvent;
     encoder << shouldIncludeLocalhostInResourceLoadStatistics;
     encoder << enableResourceLoadStatisticsDebugMode;
@@ -140,6 +145,18 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         return WTF::nullopt;
 #endif
 
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+    Optional<String> alternativeServiceDirectory;
+    decoder >> alternativeServiceDirectory;
+    if (!alternativeServiceDirectory)
+        return WTF::nullopt;
+
+    Optional<SandboxExtension::Handle> alternativeServiceDirectoryExtensionHandle;
+    decoder >> alternativeServiceDirectoryExtensionHandle;
+    if (!alternativeServiceDirectoryExtensionHandle)
+        return WTF::nullopt;
+#endif
+
 #if USE(SOUP)
     Optional<String> cookiePersistentStoragePath;
     decoder >> cookiePersistentStoragePath;
@@ -177,6 +194,11 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     Optional<bool> enableResourceLoadStatistics;
     decoder >> enableResourceLoadStatistics;
     if (!enableResourceLoadStatistics)
+        return WTF::nullopt;
+
+    Optional<bool> isItpStateExplicitlySet;
+    decoder >> isItpStateExplicitlySet;
+    if (!isItpStateExplicitlySet)
         return WTF::nullopt;
 
     Optional<bool> enableResourceLoadStatisticsLogTestingEvent;
@@ -289,6 +311,10 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*httpProxy)
         , WTFMove(*httpsProxy)
 #endif
+#if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
+        , WTFMove(*alternativeServiceDirectory)
+        , WTFMove(*alternativeServiceDirectoryExtensionHandle)
+#endif
 #if USE(SOUP)
         , WTFMove(*cookiePersistentStoragePath)
         , WTFMove(*cookiePersistentStorageType)
@@ -300,6 +326,7 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*resourceLoadStatisticsDirectory)
         , WTFMove(*resourceLoadStatisticsDirectoryExtensionHandle)
         , WTFMove(*enableResourceLoadStatistics)
+        , WTFMove(*isItpStateExplicitlySet)
         , WTFMove(*enableResourceLoadStatisticsLogTestingEvent)
         , WTFMove(*shouldIncludeLocalhostInResourceLoadStatistics)
         , WTFMove(*enableResourceLoadStatisticsDebugMode)

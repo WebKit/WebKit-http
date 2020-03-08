@@ -62,6 +62,7 @@ list(APPEND WebKit_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/Authentication/cocoa"
     "${WEBKIT_DIR}/UIProcess/Cocoa"
     "${WEBKIT_DIR}/UIProcess/Cocoa/SOAuthorization"
+    "${WEBKIT_DIR}/UIProcess/Inspector/Cocoa"
     "${WEBKIT_DIR}/UIProcess/Inspector/mac"
     "${WEBKIT_DIR}/UIProcess/Launcher/mac"
     "${WEBKIT_DIR}/UIProcess/RemoteLayerTree"
@@ -160,6 +161,11 @@ list(APPEND WebKit_MESSAGES_IN_FILES
     GPUProcess/GPUConnectionToWebProcess.messages.in
     GPUProcess/GPUProcess.messages.in
 
+    GPUProcess/media/RemoteAudioDestinationManager.messages.in
+    GPUProcess/media/RemoteMediaPlayerManagerProxy.messages.in
+    GPUProcess/media/RemoteMediaPlayerProxy.messages.in
+    GPUProcess/media/RemoteMediaResourceManager.messages.in
+
     GPUProcess/webrtc/LibWebRTCCodecsProxy.messages.in
     GPUProcess/webrtc/RemoteSampleBufferDisplayLayerManager.messages.in
     GPUProcess/webrtc/RemoteAudioMediaStreamTrackRendererManager.messages.in
@@ -170,10 +176,6 @@ list(APPEND WebKit_MESSAGES_IN_FILES
     GPUProcess/webrtc/RemoteAudioMediaStreamTrackRenderer.messages.in
     GPUProcess/webrtc/RemoteSampleBufferDisplayLayerManager.messages.in
 
-    GPUProcess/media/RemoteMediaPlayerProxy.messages.in
-    GPUProcess/media/RemoteMediaResourceManager.messages.in
-    GPUProcess/media/RemoteMediaPlayerManagerProxy.messages.in
-    
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
 
     Shared/ApplePay/WebPaymentCoordinatorProxy.messages.in

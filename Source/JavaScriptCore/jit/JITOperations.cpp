@@ -214,7 +214,7 @@ EncodedJSValue JIT_OPERATION operationTryGetByIdOptimize(JSGlobalObject* globalO
 
     CodeBlock* codeBlock = callFrame->codeBlock();
     if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()) && !slot.isTaintedByOpaqueObject() && (slot.isCacheableValue() || slot.isCacheableGetter() || slot.isUnset()))
-        repatchGetBy(globalObject, codeBlock, baseValue, ident, slot, *stubInfo, GetByKind::Try);
+        repatchGetBy(globalObject, codeBlock, baseValue, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), slot, *stubInfo, GetByKind::Try);
 
     return JSValue::encode(slot.getPureResult());
 }
@@ -270,7 +270,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdDirectOptimize(JSGlobalObject* glob
 
     CodeBlock* codeBlock = callFrame->codeBlock();
     if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()))
-        repatchGetBy(globalObject, codeBlock, baseValue, ident, slot, *stubInfo, GetByKind::Direct);
+        repatchGetBy(globalObject, codeBlock, baseValue, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), slot, *stubInfo, GetByKind::Direct);
 
     RELEASE_AND_RETURN(scope, JSValue::encode(found ? slot.getValue(globalObject, ident) : jsUndefined()));
 }
@@ -330,7 +330,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(JSGlobalObject* globalObje
         
         CodeBlock* codeBlock = callFrame->codeBlock();
         if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()))
-            repatchGetBy(globalObject, codeBlock, baseValue, ident, slot, *stubInfo, GetByKind::Normal);
+            repatchGetBy(globalObject, codeBlock, baseValue, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), slot, *stubInfo, GetByKind::Normal);
         return found ? slot.getValue(globalObject, ident) : jsUndefined();
     }));
 }
@@ -387,7 +387,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdWithThisOptimize(JSGlobalObject* gl
         
         CodeBlock* codeBlock = callFrame->codeBlock();
         if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()))
-            repatchGetBy(globalObject, codeBlock, baseValue, ident, slot, *stubInfo, GetByKind::WithThis);
+            repatchGetBy(globalObject, codeBlock, baseValue, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), slot, *stubInfo, GetByKind::WithThis);
         return found ? slot.getValue(globalObject, ident) : jsUndefined();
     }));
 }
@@ -2022,7 +2022,7 @@ EncodedJSValue JIT_OPERATION operationGetByValOptimize(JSGlobalObject* globalObj
                 LOG_IC((ICEvent::OperationGetByValOptimize, baseValue.classInfoOrNull(vm), propertyName, baseValue == slot.slotBase())); 
                 
                 if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull(), propertyName.impl()))
-                    repatchGetBy(globalObject, codeBlock, baseValue, subscript.asCell(), slot, *stubInfo, GetByKind::NormalByVal);
+                    repatchGetBy(globalObject, codeBlock, baseValue, CacheableIdentifier::createFromCell(subscript.asCell()), slot, *stubInfo, GetByKind::NormalByVal);
                 return found ? slot.getValue(globalObject, propertyName) : jsUndefined();
             }));
         }
@@ -2142,7 +2142,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyGeneric(JSGlobalObject* 
     return JSValue::encode(jsBoolean(object->hasPropertyGeneric(globalObject, index, PropertySlot::InternalMethodType::GetOwnProperty)));
 }
     
-static bool deleteById(JSGlobalObject* globalObject, CallFrame* callFrame, VM& vm, JSValue base, UniquedStringImpl* uid)
+static bool deleteById(JSGlobalObject* globalObject, CallFrame* callFrame, VM& vm, DeletePropertySlot& slot, JSValue base, UniquedStringImpl* uid)
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
 
@@ -2150,31 +2150,51 @@ static bool deleteById(JSGlobalObject* globalObject, CallFrame* callFrame, VM& v
     RETURN_IF_EXCEPTION(scope, false);
     if (!baseObj)
         return false;
-    bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, globalObject, Identifier::fromUid(vm, uid));
+    bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, globalObject, Identifier::fromUid(vm, uid), slot);
     RETURN_IF_EXCEPTION(scope, false);
     if (!couldDelete && callFrame->codeBlock()->isStrictMode())
         throwTypeError(globalObject, scope, UnableToDeletePropertyError);
     return couldDelete;
 }
 
-
-EncodedJSValue JIT_OPERATION operationDeleteByIdJSResult(JSGlobalObject* globalObject, EncodedJSValue encodedBase, UniquedStringImpl* uid)
+size_t JIT_OPERATION operationDeleteByIdOptimize(JSGlobalObject* globalObject, StructureStubInfo* stubInfo, EncodedJSValue encodedBase, UniquedStringImpl* uid)
 {
     VM& vm = globalObject->vm();
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
-    return JSValue::encode(jsBoolean(deleteById(globalObject, callFrame, vm, JSValue::decode(encodedBase), uid)));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue baseValue = JSValue::decode(encodedBase);
+
+    DeletePropertySlot slot;
+    Structure* oldStructure = baseValue.structureOrNull();
+
+    bool result = deleteById(globalObject, callFrame, vm, slot, baseValue, uid);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    if (baseValue.isObject()) {
+        const Identifier ident = Identifier::fromUid(vm, uid);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+        if (!parseIndex(ident)) {
+            CodeBlock* codeBlock = callFrame->codeBlock();
+            if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()))
+                repatchDeleteBy(globalObject, codeBlock, slot, baseValue, oldStructure, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(ident), *stubInfo, DelByKind::Normal);
+        }
+    }
+
+    return result;
 }
 
-size_t JIT_OPERATION operationDeleteById(JSGlobalObject* globalObject, EncodedJSValue encodedBase, UniquedStringImpl* uid)
+size_t JIT_OPERATION operationDeleteByIdGeneric(JSGlobalObject* globalObject, StructureStubInfo*, EncodedJSValue encodedBase, UniquedStringImpl* uid)
 {
     VM& vm = globalObject->vm();
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
-    return deleteById(globalObject, callFrame, vm, JSValue::decode(encodedBase), uid);
+    DeletePropertySlot slot;
+    return deleteById(globalObject, callFrame, vm, slot, JSValue::decode(encodedBase), uid);
 }
 
-static bool deleteByVal(JSGlobalObject* globalObject, CallFrame* callFrame, VM& vm, JSValue base, JSValue key)
+static bool deleteByVal(JSGlobalObject* globalObject, CallFrame* callFrame, VM& vm, DeletePropertySlot& slot, JSValue base, JSValue key)
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
 
@@ -2190,7 +2210,7 @@ static bool deleteByVal(JSGlobalObject* globalObject, CallFrame* callFrame, VM& 
     else {
         Identifier property = key.toPropertyKey(globalObject);
         RETURN_IF_EXCEPTION(scope, false);
-        couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, globalObject, property);
+        couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, globalObject, property, slot);
     }
     RETURN_IF_EXCEPTION(scope, false);
     if (!couldDelete && callFrame->codeBlock()->isStrictMode())
@@ -2198,20 +2218,42 @@ static bool deleteByVal(JSGlobalObject* globalObject, CallFrame* callFrame, VM& 
     return couldDelete;
 }
 
-EncodedJSValue JIT_OPERATION operationDeleteByValJSResult(JSGlobalObject* globalObject, EncodedJSValue encodedBase,  EncodedJSValue encodedKey)
+size_t JIT_OPERATION operationDeleteByValOptimize(JSGlobalObject* globalObject, StructureStubInfo* stubInfo, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript)
 {
     VM& vm = globalObject->vm();
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
-    return JSValue::encode(jsBoolean(deleteByVal(globalObject, callFrame, vm, JSValue::decode(encodedBase), JSValue::decode(encodedKey))));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue baseValue = JSValue::decode(encodedBase);
+    JSValue subscript = JSValue::decode(encodedSubscript);
+
+    DeletePropertySlot slot;
+    Structure* oldStructure = baseValue.structureOrNull();
+
+    bool result = deleteByVal(globalObject, callFrame, vm, slot, baseValue, subscript);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    if (baseValue.isObject() && CacheableIdentifier::isCacheableIdentifierCell(subscript)) {
+        const Identifier propertyName = subscript.toPropertyKey(globalObject);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+        if (subscript.isSymbol() || !parseIndex(propertyName)) {
+            CodeBlock* codeBlock = callFrame->codeBlock();
+            if (stubInfo->considerCaching(vm, codeBlock, baseValue.structureOrNull()))
+                repatchDeleteBy(globalObject, codeBlock, slot, baseValue, oldStructure, CacheableIdentifier::createFromCell(subscript.asCell()), *stubInfo, DelByKind::NormalByVal);
+        }
+    }
+
+    return result;
 }
 
-size_t JIT_OPERATION operationDeleteByVal(JSGlobalObject* globalObject, EncodedJSValue encodedBase, EncodedJSValue encodedKey)
+size_t JIT_OPERATION operationDeleteByValGeneric(JSGlobalObject* globalObject, StructureStubInfo*, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript)
 {
     VM& vm = globalObject->vm();
     CallFrame* callFrame = DECLARE_CALL_FRAME(vm);
     JITOperationPrologueCallFrameTracer tracer(vm, callFrame);
-    return deleteByVal(globalObject, callFrame, vm, JSValue::decode(encodedBase), JSValue::decode(encodedKey));
+    DeletePropertySlot slot;
+    return deleteByVal(globalObject, callFrame, vm, slot, JSValue::decode(encodedBase), JSValue::decode(encodedSubscript));
 }
 
 JSCell* JIT_OPERATION operationPushWithScope(JSGlobalObject* globalObject, JSCell* currentScopeCell, EncodedJSValue objectValue)

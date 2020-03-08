@@ -27,6 +27,7 @@
 #include "JSDollarVM.h"
 
 #include "BuiltinExecutableCreator.h"
+#include "BuiltinNames.h"
 #include "CodeBlock.h"
 #include "DOMAttributeGetterSetter.h"
 #include "DOMJITGetterSetter.h"
@@ -556,7 +557,7 @@ public:
         RELEASE_ASSERT_NOT_REACHED();
     }
 
-    static NO_RETURN_DUE_TO_CRASH bool deleteProperty(JSCell*, JSGlobalObject*, PropertyName)
+    static NO_RETURN_DUE_TO_CRASH bool deleteProperty(JSCell*, JSGlobalObject*, PropertyName, DeletePropertySlot&)
     {
         RELEASE_ASSERT_NOT_REACHED();
     }
@@ -2379,8 +2380,9 @@ static EncodedJSValue JSC_HOST_CALL functionGetPrivateProperty(JSGlobalObject* g
         return encodedJSUndefined();
 
     String str = asString(callFrame->argument(1))->value(globalObject);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    SymbolImpl* symbol = vm.propertyNames->lookUpPrivateName(Identifier::fromString(vm, str));
+    SymbolImpl* symbol = vm.propertyNames->builtinNames().lookUpPrivateName(str);
     if (!symbol)
         return throwVMError(globalObject, scope, "Unknown private name.");
 
@@ -2850,6 +2852,15 @@ static EncodedJSValue JSC_HOST_CALL functionGetConcurrently(JSGlobalObject* glob
     return JSValue::encode(result);
 }
 
+static EncodedJSValue JSC_HOST_CALL functionHasOwnLengthProperty(JSGlobalObject* globalObject, CallFrame* callFrame)
+{
+    VM& vm = globalObject->vm();
+
+    JSObject* target = asObject(callFrame->uncheckedArgument(0));
+    JSFunction* function = jsDynamicCast<JSFunction*>(vm, target);
+    return JSValue::encode(jsBoolean(function->canAssumeNameAndLengthAreOriginal(vm)));
+}
+
 void JSDollarVM::finishCreation(VM& vm)
 {
     DollarVMAssertScope assertScope;
@@ -2982,6 +2993,8 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "getStructureTransitionList", JSDollarVMHelper::functionGetStructureTransitionList, 1);
     addFunction(vm, "getConcurrently", functionGetConcurrently, 2);
+
+    addFunction(vm, "hasOwnLengthProperty", functionHasOwnLengthProperty, 1);
 
     m_objectDoingSideEffectPutWithoutCorrectSlotStatusStructure.set(vm, this, ObjectDoingSideEffectPutWithoutCorrectSlotStatus::createStructure(vm, globalObject, jsNull()));
 }

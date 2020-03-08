@@ -28,6 +28,7 @@
 
 #if PLATFORM(COCOA) && ENABLE(GPU_PROCESS) && ENABLE(MEDIA_STREAM)
 
+#include "DataReference.h"
 #include "GPUProcessConnection.h"
 #include "RemoteMediaRecorderManagerMessages.h"
 #include "RemoteMediaRecorderMessages.h"
@@ -39,9 +40,8 @@
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/WebAudioBufferList.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 MediaRecorderPrivate::MediaRecorderPrivate(const MediaStreamPrivate& stream)
     : m_identifier(MediaRecorderIdentifier::generate())

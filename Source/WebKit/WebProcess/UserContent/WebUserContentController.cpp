@@ -101,13 +101,13 @@ InjectedBundleScriptWorld* WebUserContentController::worldForIdentifier(ContentW
     return iterator == worldMap().end() ? nullptr : iterator->value.first.get();
 }
 
-void WebUserContentController::addUserContentWorld(const std::pair<ContentWorldIdentifier, String>& world)
+InjectedBundleScriptWorld* WebUserContentController::addContentWorld(const std::pair<ContentWorldIdentifier, String>& world)
 {
     ASSERT(world.first);
     if (world.first == pageContentWorldIdentifier())
-        return;
-
-    worldMap().ensure(world.first, [&] {
+        return nullptr;
+    
+    auto addResult = worldMap().ensure(world.first, [&] {
 #if PLATFORM(GTK) || PLATFORM(WPE)
         // The GLib API doesn't allow to create script worlds from the UI process. We need to
         // use the existing world created by the web extension if any. The world name is used
@@ -117,15 +117,19 @@ void WebUserContentController::addUserContentWorld(const std::pair<ContentWorldI
 #endif
         return std::make_pair(InjectedBundleScriptWorld::create(world.second, InjectedBundleScriptWorld::Type::User), 1);
     });
+    
+    if (addResult.isNewEntry)
+        return addResult.iterator->value.first.get();
+    return nullptr;
 }
 
-void WebUserContentController::addUserContentWorlds(const Vector<std::pair<ContentWorldIdentifier, String>>& worlds)
+void WebUserContentController::addContentWorlds(const Vector<std::pair<ContentWorldIdentifier, String>>& worlds)
 {
     for (auto& world : worlds)
-        addUserContentWorld(world);
+        addContentWorld(world);
 }
 
-void WebUserContentController::removeUserContentWorlds(const Vector<ContentWorldIdentifier>& worldIdentifiers)
+void WebUserContentController::removeContentWorlds(const Vector<ContentWorldIdentifier>& worldIdentifiers)
 {
     for (auto& worldIdentifier : worldIdentifiers) {
         ASSERT(worldIdentifier);
@@ -133,7 +137,7 @@ void WebUserContentController::removeUserContentWorlds(const Vector<ContentWorld
 
         auto it = worldMap().find(worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to remove a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to remove a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
             return;
         }
 
@@ -149,7 +153,7 @@ void WebUserContentController::addUserScripts(Vector<WebUserScriptData>&& userSc
     for (const auto& userScriptData : userScripts) {
         auto it = worldMap().find(userScriptData.worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to add a UserScript to a UserContentWorld (id=%" PRIu64 ") that does not exist.", userScriptData.worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to add a UserScript to a ContentWorld (id=%" PRIu64 ") that does not exist.", userScriptData.worldIdentifier.toUInt64());
             continue;
         }
 
@@ -162,7 +166,7 @@ void WebUserContentController::removeUserScript(ContentWorldIdentifier worldIden
 {
     auto it = worldMap().find(worldIdentifier);
     if (it == worldMap().end()) {
-        WTFLogAlways("Trying to remove a UserScript from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+        WTFLogAlways("Trying to remove a UserScript from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
         return;
     }
 
@@ -174,7 +178,7 @@ void WebUserContentController::removeAllUserScripts(const Vector<ContentWorldIde
     for (auto& worldIdentifier : worldIdentifiers) {
         auto it = worldMap().find(worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to remove all UserScripts from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to remove all UserScripts from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
             return;
         }
 
@@ -187,7 +191,7 @@ void WebUserContentController::addUserStyleSheets(const Vector<WebUserStyleSheet
     for (const auto& userStyleSheetData : userStyleSheets) {
         auto it = worldMap().find(userStyleSheetData.worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to add a UserStyleSheet to a UserContentWorld (id=%" PRIu64 ") that does not exist.", userStyleSheetData.worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to add a UserStyleSheet to a ContentWorld (id=%" PRIu64 ") that does not exist.", userStyleSheetData.worldIdentifier.toUInt64());
             continue;
         }
         
@@ -202,7 +206,7 @@ void WebUserContentController::removeUserStyleSheet(ContentWorldIdentifier world
 {
     auto it = worldMap().find(worldIdentifier);
     if (it == worldMap().end()) {
-        WTFLogAlways("Trying to remove a UserStyleSheet from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+        WTFLogAlways("Trying to remove a UserStyleSheet from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
         return;
     }
 
@@ -215,7 +219,7 @@ void WebUserContentController::removeAllUserStyleSheets(const Vector<ContentWorl
     for (auto& worldIdentifier : worldIdentifiers) {
         auto it = worldMap().find(worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to remove all UserStyleSheets from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to remove all UserStyleSheets from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
             return;
         }
 
@@ -278,7 +282,7 @@ void WebUserContentController::addUserScriptMessageHandlers(const Vector<WebScri
     for (auto& handler : scriptMessageHandlers) {
         auto it = worldMap().find(handler.worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to add a UserScriptMessageHandler to a UserContentWorld (id=%" PRIu64 ") that does not exist.", handler.worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to add a UserScriptMessageHandler to a ContentWorld (id=%" PRIu64 ") that does not exist.", handler.worldIdentifier.toUInt64());
             continue;
         }
 
@@ -294,7 +298,7 @@ void WebUserContentController::removeUserScriptMessageHandler(ContentWorldIdenti
 #if ENABLE(USER_MESSAGE_HANDLERS)
     auto it = worldMap().find(worldIdentifier);
     if (it == worldMap().end()) {
-        WTFLogAlways("Trying to remove a UserScriptMessageHandler from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+        WTFLogAlways("Trying to remove a UserScriptMessageHandler from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
         return;
     }
 
@@ -312,7 +316,7 @@ void WebUserContentController::removeAllUserScriptMessageHandlers(const Vector<C
     for (auto& worldIdentifier : worldIdentifiers) {
         auto it = worldMap().find(worldIdentifier);
         if (it == worldMap().end()) {
-            WTFLogAlways("Trying to remove all UserScriptMessageHandler from a UserContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
+            WTFLogAlways("Trying to remove all UserScriptMessageHandler from a ContentWorld (id=%" PRIu64 ") that does not exist.", worldIdentifier.toUInt64());
             return;
         }
 
@@ -451,6 +455,13 @@ void WebUserContentController::addUserStyleSheetInternal(InjectedBundleScriptWor
     if (userStyleSheetIdentifier && styleSheetsInWorld.findMatching([&](auto& pair) { return pair.first == userStyleSheetIdentifier; }) != notFound)
         return;
 
+    if (auto pageID = userStyleSheet.pageID()) {
+        if (auto* webPage = WebProcess::singleton().webPage(*pageID)) {
+            if (auto* page = webPage->corePage())
+                page->injectUserStyleSheet(userStyleSheet);
+        }
+    }
+
     styleSheetsInWorld.append(std::make_pair(userStyleSheetIdentifier, WTFMove(userStyleSheet)));
 }
 
@@ -487,8 +498,19 @@ void WebUserContentController::removeUserStyleSheetInternal(InjectedBundleScript
         return;
 
     auto& stylesheets = it->value;
-    bool sheetsChanged = stylesheets.removeFirstMatching([userStyleSheetIdentifier](auto& pair) {
-        return pair.first == userStyleSheetIdentifier;
+
+    bool sheetsChanged = stylesheets.removeFirstMatching([&](auto& pair) {
+        if (pair.first != userStyleSheetIdentifier)
+            return false;
+
+        auto& userStyleSheet = pair.second;
+        if (auto pageID = userStyleSheet.pageID()) {
+            if (auto* webPage = WebProcess::singleton().webPage(*pageID)) {
+                if (auto* page = webPage->corePage())
+                    page->removeInjectedUserStyleSheet(userStyleSheet);
+            }
+        }
+        return true;
     });
 
     if (!sheetsChanged)
