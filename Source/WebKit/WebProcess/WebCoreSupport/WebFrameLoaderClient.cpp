@@ -844,7 +844,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     uint64_t listenerID = m_frame->setUpPolicyListener(identifier, WTFMove(function), WebFrame::ForNavigationAction::No);
     if (!webPage->send(Messages::WebPageProxy::DecidePolicyForResponse(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), identifier, navigationID, response, request,
         canShowResponse, downloadAttribute, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
-        m_frame->didReceivePolicyDecision(listenerID, identifier, PolicyAction::Ignore, 0, { }, { });
+        m_frame->didReceivePolicyDecision(listenerID, PolicyDecision { identifier, NavigatingToAppBoundDomain::No, PolicyAction::Ignore, 0, { }, { } });
 }
 
 void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request,
@@ -995,21 +995,17 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     Ref<WebFrame> protect(*m_frame);
 
     if (policyDecisionMode == PolicyDecisionMode::Synchronous) {
-        uint64_t newNavigationID;
-        WebCore::PolicyCheckIdentifier responseIdentifier;
-        PolicyAction policyAction;
-        DownloadID downloadID;
-        Optional<WebsitePoliciesData> websitePolicies;
+        PolicyDecision policyDecision;
 
         if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), m_frame->isMainFrame(), SecurityOriginData::fromFrame(coreFrame),
             requestIdentifier, documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request,
             IPC::FormDataReference { request.httpBody() }, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())),
-            Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(responseIdentifier, policyAction, newNavigationID, downloadID, websitePolicies))) {
-            m_frame->didReceivePolicyDecision(listenerID, requestIdentifier, PolicyAction::Ignore, 0, { }, { });
+            Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(policyDecision))) {
+            m_frame->didReceivePolicyDecision(listenerID, PolicyDecision { requestIdentifier, NavigatingToAppBoundDomain::No, PolicyAction::Ignore, 0, { }, { } });
             return;
         }
 
-        m_frame->didReceivePolicyDecision(listenerID, responseIdentifier, policyAction, 0, downloadID, { });
+        m_frame->didReceivePolicyDecision(listenerID, PolicyDecision { policyDecision.identifier, policyDecision.isNavigatingToAppBoundDomain, policyDecision.policyAction, 0, policyDecision.downloadID, { }});
         return;
     }
 
@@ -1017,7 +1013,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     if (!webPage->send(Messages::WebPageProxy::DecidePolicyForNavigationActionAsync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame),
         requestIdentifier, documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request,
         IPC::FormDataReference { request.httpBody() }, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), listenerID)))
-        m_frame->didReceivePolicyDecision(listenerID, requestIdentifier, PolicyAction::Ignore, 0, { }, { });
+        m_frame->didReceivePolicyDecision(listenerID, PolicyDecision { requestIdentifier, NavigatingToAppBoundDomain::No, PolicyAction::Ignore, 0, { }, { } });
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()

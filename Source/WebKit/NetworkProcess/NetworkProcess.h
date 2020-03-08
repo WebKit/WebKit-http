@@ -180,6 +180,8 @@ public:
     void processDidResume();
     void resume();
 
+    CacheModel cacheModel() const { return m_cacheModel; }
+
     // Diagnostic messages logging.
     void logDiagnosticMessage(WebPageProxyIdentifier, const String& message, const String& description, WebCore::ShouldSample);
     void logDiagnosticMessageWithResult(WebPageProxyIdentifier, const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample);
@@ -268,6 +270,8 @@ public:
     using CacheStorageRootPathCallback = CompletionHandler<void(String&&)>;
     void cacheStorageRootPath(PAL::SessionID, CacheStorageRootPathCallback&&);
 
+    void preconnectTo(PAL::SessionID, const URL&, const String&, WebCore::StoredCredentialsPolicy);
+
     void setSessionIsControlledByAutomation(PAL::SessionID, bool);
     bool sessionIsControlledByAutomation(PAL::SessionID) const;
 
@@ -286,10 +290,6 @@ public:
     void clearLegacyPrivateBrowsingLocalStorage();
 
     void resetQuota(PAL::SessionID, CompletionHandler<void()>&&);
-
-#if ENABLE(SANDBOX_EXTENSIONS)
-    void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, CompletionHandler<void(SandboxExtension::HandleArray&&)>&&);
-#endif
 
 #if ENABLE(SERVICE_WORKER)
     WebCore::SWServer* swServerForSessionIfExists(PAL::SessionID sessionID) { return m_swServers.get(sessionID); }
@@ -342,6 +342,8 @@ public:
     Seconds serviceWorkerFetchTimeout() const { return m_serviceWorkerFetchTimeout; }
 
     void cookieAcceptPolicyChanged(WebCore::HTTPCookieAcceptPolicy);
+    void hasAppBoundSession(PAL::SessionID, CompletionHandler<void(bool)>&&) const;
+    void setInAppBrowserPrivacyEnabled(PAL::SessionID, bool enable, CompletionHandler<void()>&&);
 
 private:
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
@@ -410,7 +412,7 @@ private:
     void applicationDidEnterBackground();
     void applicationWillEnterForeground();
 
-    void setCacheModel(CacheModel, String overrideCacheStorageDirectory);
+    void setCacheModel(CacheModel);
     void setCacheModelSynchronouslyForTesting(CacheModel, CompletionHandler<void()>&&);
     void allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo&, const String& host);
     void clearCacheForAllOrigins(uint32_t cachesToClear);

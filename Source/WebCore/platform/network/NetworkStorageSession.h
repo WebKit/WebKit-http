@@ -51,7 +51,6 @@ typedef struct _SoupCookieJar SoupCookieJar;
 #endif
 
 #if USE(CURL)
-#include "CookieJarCurl.h"
 #include "CookieJarDB.h"
 #include <wtf/UniqueRef.h>
 #endif
@@ -139,10 +138,10 @@ public:
     WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID);
     ~NetworkStorageSession();
 
-    const CookieJarCurl& cookieStorage() const { return m_cookieStorage; };
     CookieJarDB& cookieDatabase() const;
     WEBCORE_EXPORT void setCookieDatabase(UniqueRef<CookieJarDB>&&);
-
+    WEBCORE_EXPORT void setCookiesFromHTTPResponse(const URL& firstParty, const URL&, const String&) const;
+    WEBCORE_EXPORT void setCookieAcceptPolicy(CookieAcceptPolicy) const;
     WEBCORE_EXPORT void setProxySettings(CurlProxySettings&&);
 #else
     WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
@@ -235,7 +234,6 @@ private:
 #elif USE(HAIKU)
     BUrlContext* m_context;
 #elif USE(CURL)
-    UniqueRef<CookieJarCurl> m_cookieStorage;
     mutable UniqueRef<CookieJarDB> m_cookieDatabase;
 #else
     RefPtr<NetworkingContext> m_context;

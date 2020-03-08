@@ -155,6 +155,8 @@ http/tests/navigation/useragent-reload.php [ Skip ]
 storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Skip ]
 storage/indexeddb/IDBObject-leak.html [ Skip ]
 fast/forms/call-text-did-change-in-text-field-when-typing.html [ Skip ]
+http/tests/in-app-browser-privacy/ [ Skip ]
+
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -2884,6 +2886,8 @@ webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Skip ]
 
 [ Debug ] fast/multicol/crash-in-vertical-writing-mode.html [ Skip ]
 
+webkit.org/b/202805 [ Debug ] fast/multicol/fragflow-gains-new-in-flow-descendant-crash.html [ Crash ]
+
 webkit.org/b/187269 [ Debug ] imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html [ Skip ]
 
 webkit.org/b/185308 legacy-animation-engine/animations/combo-transform-translate+scale.html [ Pass Failure ]
@@ -3076,6 +3080,7 @@ fast/text/design-system-ui-16.html [ ImageOnlyFailure ]
 
 # Lazy load for iframes is not supported yet.
 webkit.org/b/196698 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/iframe-loading-lazy.html [ Skip ]
+webkit.org/b/196698 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-001.sub.html [ Skip ]
 
 webkit.org/b/202517 imported/w3c/web-platform-tests/2dcontext/text-styles/2d.text.draw.baseline.ideographic.html [ Skip ]
 
@@ -3339,10 +3344,18 @@ webkit.org/b/197673 http/wpt/mediarecorder/MediaRecorder-AV-audio-video-dataavai
 # Re-enable as each chunk of tests are verified with ANGLE backend.
 webgl/2.0.0 [ Skip ]
 
+webgl/2.0.0/conformance2/samplers [ Pass ]
+webgl/2.0.0/conformance2/transform_feedback [ Pass ]
+webgl/2.0.0/conformance2/textures/misc/tex-image-and-sub-image-with-array-buffer-view-sub-source.html [ Pass ]
+
 # pre-wrap progression. Other rendering engines agree with the result.
 webkit.org/b/206168 [ Debug ] fast/dom/insert-span-into-long-text-bug-28245.html [ Skip ]
 
 webkit.org/b/206676 imported/w3c/web-platform-tests/requestidlecallback/callback-xhr-sync.html [ Pass Failure ]
+
+# wpt intersection-observer failures
+webkit.org/b/208052 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-effects.sub.html [ Timeout ]
+webkit.org/b/208052 imported/w3c/web-platform-tests/intersection-observer/v2/cross-origin-occlusion.sub.html [ Timeout ]
 
 # wpt css-backgrounds failures
 webkit.org/b/206753 imported/w3c/web-platform-tests/css/css-backgrounds/background-attachment-local/attachment-local-clipping-color-4.html [ ImageOnlyFailure ]

@@ -3223,7 +3223,12 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
 - (UIColor *)insertionPointColor
 {
+    // On macCatalyst we need to explicitly return the color we have calculated, rather than rely on textTraits, as on macCatalyst, UIKit ignores text traits.
+#if PLATFORM(MACCATALYST)
+    return [self _cascadeInteractionTintColor];
+#else
     return [self.textInputTraits insertionPointColor];
+#endif
 }
 
 - (UIColor *)selectionBarColor
@@ -3236,22 +3241,22 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
     return [self.textInputTraits selectionHighlightColor];
 }
 
+- (UIColor *)_cascadeInteractionTintColor
+{
+    if (!self.webView.configuration._textInteractionGesturesEnabled)
+        return [UIColor clearColor];
+
+    if (!_page->editorState().isMissingPostLayoutData) {
+        WebCore::Color caretColor = _page->editorState().postLayoutData().caretColor;
+        if (caretColor.isValid())
+            return [UIColor colorWithCGColor:cachedCGColor(caretColor)];
+    }
+    return [self _inheritedInteractionTintColor];
+}
+
 - (void)_updateInteractionTintColor
 {
-    UIColor *tintColor = ^{
-        if (!self.webView.configuration._textInteractionGesturesEnabled)
-            return [UIColor clearColor];
-
-        if (!_page->editorState().isMissingPostLayoutData) {
-            WebCore::Color caretColor = _page->editorState().postLayoutData().caretColor;
-            if (caretColor.isValid())
-                return [UIColor colorWithCGColor:cachedCGColor(caretColor)];
-        }
-        
-        return [self _inheritedInteractionTintColor];    
-    }();
-
-    [_traits _setColorsToMatchTintColor:tintColor];
+    [_traits _setColorsToMatchTintColor:[self _cascadeInteractionTintColor]];
 }
 
 - (void)tintColorDidChange
@@ -4252,7 +4257,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 #endif
     [self _elementDidBlur];
     [self _cancelLongPressGestureRecognizer];
-    [self _hideContextMenuHintContainer];
+    [self _hideTargetedPreviewContainerViews];
     [_webView _didCommitLoadForMainFrame];
 
     _hasValidPositionInformation = NO;
@@ -5772,7 +5777,9 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     // selection rect before we can zoom and reveal the selection. Non-selectable elements (e.g. <select>) can be zoomed
     // immediately because they have no selection to reveal.
     BOOL needsEditorStateUpdate = mayContainSelectableText(_focusedElementInformation.elementType);
-    if (!needsEditorStateUpdate)
+    if (needsEditorStateUpdate)
+        _page->setWaitingForPostLayoutEditorStateUpdateAfterFocusingElement(true);
+    else
         [self _zoomToRevealFocusedElement];
 
     [self _updateAccessory];
@@ -5844,6 +5851,8 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
         [_webView didEndFormControlInteraction];
         _page->setIsShowingInputViewForFocusedElement(false);
     }
+
+    _page->setWaitingForPostLayoutEditorStateUpdateAfterFocusingElement(false);
 
     if (!_isChangingFocus)
         _didAccessoryTabInitiateFocus = NO;
@@ -6752,7 +6761,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     else
         sourceRect = positionInformation.bounds;
 
-    CGRect frameInContainerViewCoordinates = [self convertRect:sourceRect toView:self.containerViewForTargetedPreviews];
+    CGRect frameInContainerViewCoordinates = [self convertRect:sourceRect toView:self.containerForContextMenuHintPreviews];
     context.get()[getkDataDetectorsSourceRectKey()] = [NSValue valueWithCGRect:frameInContainerViewCoordinates];
 #endif
     
@@ -6812,8 +6821,23 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     return WebCore::IOSApplication::isDataActivation();
 }
 
-// FIXME: This is used for drag previews and context menu hints; it needs a better name.
-- (UIView *)containerViewForTargetedPreviews
+- (UIView *)containerForDragPreviews
+{
+    if (_dragPreviewContainerView) {
+        ASSERT([_dragPreviewContainerView superview]);
+        [_dragPreviewContainerView setHidden:NO];
+        return _dragPreviewContainerView.get();
+    }
+
+    _dragPreviewContainerView = adoptNS([[UIView alloc] init]);
+    [_dragPreviewContainerView layer].anchorPoint = CGPointZero;
+    [_dragPreviewContainerView layer].name = @"Drag Preview Container";
+    [_interactionViewsContainerView addSubview:_dragPreviewContainerView.get()];
+
+    return _dragPreviewContainerView.get();
+}
+
+- (UIView *)containerForContextMenuHintPreviews
 {
     if (_contextMenuHintContainerView) {
         ASSERT([_contextMenuHintContainerView superview]);
@@ -6823,14 +6847,15 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
     _contextMenuHintContainerView = adoptNS([[UIView alloc] init]);
     [_contextMenuHintContainerView layer].anchorPoint = CGPointZero;
-    [_contextMenuHintContainerView layer].name = @"Context Menu Container";
+    [_contextMenuHintContainerView layer].name = @"Context Menu Hint Container";
     [_interactionViewsContainerView addSubview:_contextMenuHintContainerView.get()];
 
     return _contextMenuHintContainerView.get();
 }
 
-- (void)_hideContextMenuHintContainer
+- (void)_hideTargetedPreviewContainerViews
 {
+    [_dragPreviewContainerView setHidden:YES];
     [_contextMenuHintContainerView setHidden:YES];
 }
 
@@ -7058,6 +7083,7 @@ static UIDropOperation dropOperationForWebCoreDragOperation(WebCore::DragOperati
     [[WebItemProviderPasteboard sharedInstance] clearRegistrationLists];
     [self _restoreCalloutBarIfNeeded];
 
+    [std::exchange(_dragPreviewContainerView, nil) removeFromSuperview];
     [std::exchange(_visibleContentViewSnapshot, nil) removeFromSuperview];
     [_editDropCaretView remove];
     _editDropCaretView = nil;
@@ -7125,7 +7151,7 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     [_unselectedContentSnapshot setFrame:data->contentImageWithoutSelectionRectInRootViewCoordinates];
 
     [self insertSubview:_unselectedContentSnapshot.get() belowSubview:_visibleContentViewSnapshot.get()];
-    _dragDropInteractionState.deliverDelayedDropPreview(self, self.containerViewForTargetedPreviews, data.value());
+    _dragDropInteractionState.deliverDelayedDropPreview(self, self.containerForDragPreviews, data.value());
 }
 
 - (void)_didPerformDragOperation:(BOOL)handled
@@ -7562,7 +7588,7 @@ static Vector<WebCore::IntSize> sizesOfPlaceholderElementsToInsertWhenDroppingIt
         if (overriddenPreview)
             return overriddenPreview;
     }
-    return _dragDropInteractionState.previewForDragItem(item, self, self.containerViewForTargetedPreviews);
+    return _dragDropInteractionState.previewForDragItem(item, self, self.containerForDragPreviews);
 }
 
 - (void)dragInteraction:(UIDragInteraction *)interaction willAnimateLiftWithAnimator:(id <UIDragAnimating>)animator session:(id <UIDragSession>)session
@@ -8745,22 +8771,22 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     return adoptNS([[UITargetedPreview alloc] initWithView:snapshotView parameters:parameters.get() target:target.get()]);
 }
 
-- (UITargetedPreview *)_createTargetedPreviewIfPossible
+- (UITargetedPreview *)_createTargetedContextMenuHintPreviewIfPossible
 {
     RetainPtr<UITargetedPreview> targetedPreview;
 
     if (_positionInformation.isLink && _positionInformation.linkIndicator.contentImage) {
         auto indicator = _positionInformation.linkIndicator;
         auto textIndicatorImage = uiImageForImage(indicator.contentImage.get());
-        targetedPreview = createTargetedPreview(textIndicatorImage.get(), self, self.containerViewForTargetedPreviews, indicator.textBoundingRectInRootViewCoordinates, indicator.textRectsInBoundingRectCoordinates, [UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)]);
+        targetedPreview = createTargetedPreview(textIndicatorImage.get(), self, self.containerForContextMenuHintPreviews, indicator.textBoundingRectInRootViewCoordinates, indicator.textRectsInBoundingRectCoordinates, [UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)]);
     } else if ((_positionInformation.isAttachment || _positionInformation.isImage) && _positionInformation.image) {
         auto cgImage = _positionInformation.image->makeCGImageCopy();
         auto image = adoptNS([[UIImage alloc] initWithCGImage:cgImage.get()]);
-        targetedPreview = createTargetedPreview(image.get(), self, self.containerViewForTargetedPreviews, _positionInformation.bounds, { }, nil);
+        targetedPreview = createTargetedPreview(image.get(), self, self.containerForContextMenuHintPreviews, _positionInformation.bounds, { }, nil);
     }
 
     if (!targetedPreview)
-        targetedPreview = createFallbackTargetedPreview(self, self.containerViewForTargetedPreviews, _positionInformation.bounds);
+        targetedPreview = createFallbackTargetedPreview(self, self.containerForContextMenuHintPreviews, _positionInformation.bounds);
 
     if (_positionInformation.containerScrollingNodeID) {
         UIScrollView *positionTrackingView = self.webView.scrollView;
@@ -8778,7 +8804,7 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
 {
     [self _startSuppressingSelectionAssistantForReason:WebKit::InteractionIsHappening];
-    return [self _createTargetedPreviewIfPossible];
+    return [self _createTargetedContextMenuHintPreviewIfPossible];
 }
 
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator

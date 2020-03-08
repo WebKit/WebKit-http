@@ -34,6 +34,7 @@
 #include "RemoteMediaPlayerProxyMessages.h"
 #include "SandboxExtension.h"
 #include "TextTrackPrivateRemote.h"
+#include "VideoLayerRemote.h"
 #include "VideoTrackPrivateRemote.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
@@ -42,6 +43,7 @@
 #include <WebCore/PlatformLayer.h>
 #include <WebCore/PlatformTimeRanges.h>
 #include <wtf/HashMap.h>
+#include <wtf/MachSendRight.h>
 #include <wtf/MainThread.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/URL.h>
@@ -67,19 +69,24 @@ using namespace WebCore;
 } while (0)
 #endif
 
-MediaPlayerPrivateRemote::MediaPlayerPrivateRemote(MediaPlayer* player, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier, MediaPlayerPrivateRemoteIdentifier playerIdentifier, RemoteMediaPlayerManager& manager, const RemoteMediaPlayerConfiguration& configuration)
+MediaPlayerPrivateRemote::MediaPlayerPrivateRemote(MediaPlayer* player, MediaPlayerEnums::MediaEngineIdentifier engineIdentifier, MediaPlayerPrivateRemoteIdentifier playerIdentifier, RemoteMediaPlayerManager& manager)
     : m_player(player)
     , m_mediaResourceLoader(player->createResourceLoader())
     , m_manager(manager)
     , m_remoteEngineIdentifier(engineIdentifier)
     , m_id(playerIdentifier)
-    , m_configuration(configuration)
 #if !RELEASE_LOG_DISABLED
     , m_logger(&player->mediaPlayerLogger())
     , m_logIdentifier(player->mediaPlayerLogIdentifier())
 #endif
 {
     INFO_LOG(LOGIDENTIFIER);
+}
+
+void MediaPlayerPrivateRemote::setConfiguration(RemoteMediaPlayerConfiguration&& configuration)
+{
+    m_configuration = WTFMove(configuration);
+    m_player->mediaEngineUpdated();
 }
 
 MediaPlayerPrivateRemote::~MediaPlayerPrivateRemote()
@@ -90,17 +97,16 @@ MediaPlayerPrivateRemote::~MediaPlayerPrivateRemote()
 
 void MediaPlayerPrivateRemote::prepareForPlayback(bool privateMode, MediaPlayer::Preload preload, bool preservesPitch, bool prepare)
 {
-    auto layoutRect = m_player->playerContentBoxRect();
     auto scale = m_player->playerContentsScale();
 
-    connection().sendWithAsyncReply(Messages::RemoteMediaPlayerProxy::PrepareForPlayback(privateMode, preload, preservesPitch, prepare, layoutRect, scale), [weakThis = makeWeakPtr(*this), this](auto contextId) mutable {
+    connection().sendWithAsyncReply(Messages::RemoteMediaPlayerProxy::PrepareForPlayback(privateMode, preload, preservesPitch, prepare, scale), [weakThis = makeWeakPtr(*this), this](auto contextId) mutable {
         if (!weakThis)
             return;
 
         if (!contextId)
             return;
 
-        m_videoLayer = LayerHostingContext::createPlatformLayerForHostingContext(contextId.value());
+        m_videoInlineLayer = createVideoLayerRemote(this, contextId.value());
     }, m_id);
 }
 
@@ -305,6 +311,7 @@ void MediaPlayerPrivateRemote::sizeChanged(WebCore::FloatSize naturalSize)
 
 void MediaPlayerPrivateRemote::firstVideoFrameAvailable()
 {
+    INFO_LOG(LOGIDENTIFIER);
     m_player->firstVideoFrameAvailable();
 }
 
@@ -484,6 +491,40 @@ void MediaPlayerPrivateRemote::parseWebVTTCueDataStruct(TrackPrivateRemoteIdenti
         track->parseWebVTTCueDataStruct(WTFMove(data));
 }
 
+void MediaPlayerPrivateRemote::addDataCue(TrackPrivateRemoteIdentifier identifier, MediaTime&& start, MediaTime&& end, IPC::DataReference&& data)
+{
+    ASSERT(m_textTracks.contains(identifier));
+
+    if (const auto& track = m_textTracks.get(identifier))
+        track->addDataCue(WTFMove(start), WTFMove(end), WTFMove(data));
+}
+
+#if ENABLE(DATACUE_VALUE)
+void MediaPlayerPrivateRemote::addDataCueWithType(TrackPrivateRemoteIdentifier identifier, MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&& data, String&& type)
+{
+    ASSERT(m_textTracks.contains(identifier));
+
+    if (const auto& track = m_textTracks.get(identifier))
+        track->addDataCueWithType(WTFMove(start), WTFMove(end), WTFMove(data), WTFMove(type));
+}
+
+void MediaPlayerPrivateRemote::updateDataCue(TrackPrivateRemoteIdentifier identifier, MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&& data)
+{
+    ASSERT(m_textTracks.contains(identifier));
+
+    if (const auto& track = m_textTracks.get(identifier))
+        track->updateDataCue(WTFMove(start), WTFMove(end), WTFMove(data));
+}
+
+void MediaPlayerPrivateRemote::removeDataCue(TrackPrivateRemoteIdentifier identifier, MediaTime&& start, MediaTime&& end, SerializedPlatformDataCueValue&& data)
+{
+    ASSERT(m_textTracks.contains(identifier));
+
+    if (const auto& track = m_textTracks.get(identifier))
+        track->removeDataCue(WTFMove(start), WTFMove(end), WTFMove(data));
+}
+#endif
+
 void MediaPlayerPrivateRemote::addRemoteVideoTrack(TrackPrivateRemoteIdentifier identifier, TrackPrivateRemoteConfiguration&& configuration)
 {
     auto addResult = m_videoTracks.ensure(identifier, [&] {
@@ -547,7 +588,7 @@ void MediaPlayerPrivateRemote::load(MediaStreamPrivate&)
 
 PlatformLayer* MediaPlayerPrivateRemote::platformLayer() const
 {
-    return m_videoLayer.get();
+    return m_videoInlineLayer.get();
 }
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -670,6 +711,13 @@ unsigned long long MediaPlayerPrivateRemote::totalBytes() const
     notImplemented();
     return 0;
 }
+
+#if PLATFORM(COCOA)
+void MediaPlayerPrivateRemote::setVideoInlineSizeFenced(const IntSize& size, const WTF::MachSendRight& machSendRight)
+{
+    connection().send(Messages::RemoteMediaPlayerProxy::SetVideoInlineSizeFenced(size, machSendRight), m_id);
+}
+#endif
 
 void MediaPlayerPrivateRemote::paint(GraphicsContext&, const FloatRect&)
 {

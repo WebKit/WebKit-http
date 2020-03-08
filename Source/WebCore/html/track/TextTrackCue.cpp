@@ -38,7 +38,6 @@
 #include "CSSValueKeywords.h"
 #include "DOMRect.h"
 #include "Event.h"
-#include "HTMLCollection.h"
 #include "HTMLDivElement.h"
 #include "HTMLStyleElement.h"
 #include "Logging.h"
@@ -341,11 +340,11 @@ void TextTrackCue::setIsActive(bool active)
 
 unsigned TextTrackCue::cueIndex() const
 {
-    ASSERT(m_track && m_track->cues());
-    if (!m_track || !m_track->cues())
+    ASSERT(m_track && m_track->cuesInternal());
+    if (!m_track || !m_track->cuesInternal())
         return std::numeric_limits<unsigned>::max();
 
-    return m_track->cues()->cueIndex(*this);
+    return m_track->cuesInternal()->cueIndex(*this);
 }
 
 bool TextTrackCue::isOrderedBefore(const TextTrackCue* other) const

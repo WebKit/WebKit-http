@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@
 #include <WebCore/Chrome.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/Editor.h>
+#include <WebCore/ElementChildIterator.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/File.h>
 #include <WebCore/Frame.h>
@@ -71,7 +72,6 @@
 #include <WebCore/JSElement.h>
 #include <WebCore/JSFile.h>
 #include <WebCore/JSRange.h>
-#include <WebCore/NodeTraversal.h>
 #include <WebCore/Page.h>
 #include <WebCore/PluginDocument.h>
 #include <WebCore/RenderTreeAsText.h>
@@ -252,12 +252,12 @@ void WebFrame::invalidatePolicyListener()
         completionHandler();
 }
 
-void WebFrame::didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyCheckIdentifier identifier, PolicyAction action, uint64_t navigationID, DownloadID downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
+void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyDecision&& policyDecision)
 {
     if (!m_coreFrame || !m_policyListenerID || listenerID != m_policyListenerID || !m_policyFunction)
         return;
 
-    ASSERT(identifier == m_policyIdentifier);
+    ASSERT(policyDecision.identifier == m_policyIdentifier);
     m_policyIdentifier = WTF::nullopt;
 
     FramePolicyFunction function = WTFMove(m_policyFunction);
@@ -265,20 +265,20 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyChec
 
     invalidatePolicyListener();
 
-    if (forNavigationAction && m_frameLoaderClient && websitePolicies) {
+    if (forNavigationAction && m_frameLoaderClient && policyDecision.websitePoliciesData) {
         ASSERT(page());
         if (page())
-            page()->setAllowsContentJavaScriptFromMostRecentNavigation(websitePolicies->allowsContentJavaScript);
-        m_frameLoaderClient->applyToDocumentLoader(WTFMove(*websitePolicies));
+            page()->setAllowsContentJavaScriptFromMostRecentNavigation(policyDecision.websitePoliciesData->allowsContentJavaScript);
+        m_frameLoaderClient->applyToDocumentLoader(WTFMove(*policyDecision.websitePoliciesData));
     }
 
-    m_policyDownloadID = downloadID;
-    if (navigationID) {
+    m_policyDownloadID = policyDecision.downloadID;
+    if (policyDecision.navigationID) {
         if (WebDocumentLoader* documentLoader = static_cast<WebDocumentLoader*>(m_coreFrame->loader().policyDocumentLoader()))
-            documentLoader->setNavigationID(navigationID);
+            documentLoader->setNavigationID(policyDecision.navigationID);
     }
 
-    function(action, identifier);
+    function(policyDecision.policyAction, policyDecision.identifier);
 }
 
 void WebFrame::startDownload(const WebCore::ResourceRequest& request, const String& suggestedName)
@@ -666,17 +666,8 @@ bool WebFrame::containsAnyFormElements() const
     if (!m_coreFrame)
         return false;
     
-    Document* document = m_coreFrame->document();
-    if (!document)
-        return false;
-
-    for (Node* node = document->documentElement(); node; node = NodeTraversal::next(*node)) {
-        if (!is<Element>(*node))
-            continue;
-        if (is<HTMLFormElement>(*node))
-            return true;
-    }
-    return false;
+    auto* document = m_coreFrame->document();
+    return document && childrenOfType<HTMLFormElement>(*document).first();
 }
 
 bool WebFrame::containsAnyFormControls() const
@@ -684,14 +675,12 @@ bool WebFrame::containsAnyFormControls() const
     if (!m_coreFrame)
         return false;
     
-    Document* document = m_coreFrame->document();
+    auto* document = m_coreFrame->document();
     if (!document)
         return false;
 
-    for (Node* node = document->documentElement(); node; node = NodeTraversal::next(*node)) {
-        if (!is<Element>(*node))
-            continue;
-        if (is<HTMLInputElement>(*node) || is<HTMLSelectElement>(*node) || is<HTMLTextAreaElement>(*node))
+    for (auto& child : childrenOfType<Element>(*document)) {
+        if (is<HTMLTextFormControlElement>(child) || is<HTMLSelectElement>(child))
             return true;
     }
     return false;
@@ -846,7 +835,7 @@ RefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     if (!snapshot)
         return nullptr;
 
-    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->internalSize(), { });
+    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->backendSize(), { });
     if (!sharedSnapshot)
         return nullptr;
 

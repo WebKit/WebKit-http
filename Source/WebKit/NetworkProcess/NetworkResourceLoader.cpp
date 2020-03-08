@@ -230,7 +230,6 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
         if (auto* session = m_connection->networkProcess().networkSession(sessionID())) {
             if (auto entry = session->prefetchCache().take(request.url())) {
                 RELEASE_LOG_IF_ALLOWED("retrieveCacheEntry: retrieved an entry from the prefetch cache (isRedirect=%d)", !entry->redirectRequest.isNull());
-                // FIXME: Deal with credentials (https://bugs.webkit.org/show_bug.cgi?id=200000)
                 if (!entry->redirectRequest.isNull()) {
                     auto cacheEntry = m_cache->makeRedirectEntry(request, entry->response, entry->redirectRequest);
                     retrieveCacheEntryInternal(WTFMove(cacheEntry), ResourceRequest { request });
@@ -328,6 +327,7 @@ void NetworkResourceLoader::startNetworkLoad(ResourceRequest&& request, FirstLoa
         m_connection->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::ResourceLoadDidSendRequest(m_parameters.webPageProxyID, resourceLoadInfo(), request), 0);
 
     parameters.request = WTFMove(request);
+    parameters.isNavigatingToAppBoundDomain = m_parameters.isNavigatingToAppBoundDomain;
     m_networkLoad = makeUnique<NetworkLoad>(*this, &networkSession->blobRegistry(), WTFMove(parameters), *networkSession);
 
     RELEASE_LOG_IF_ALLOWED("startNetworkLoad: Going to the network (description=%" PUBLIC_LOG_STRING ")", m_networkLoad->description().utf8().data());
@@ -549,6 +549,11 @@ void NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
 
     if (isCrossOriginPrefetch()) {
         RELEASE_LOG_IF_ALLOWED("didReceiveResponse: Using response for cross-origin prefetch");
+        if (response.httpHeaderField(HTTPHeaderName::Vary).contains("Cookie")) {
+            RELEASE_LOG_IF_ALLOWED("didReceiveResponse: Canceling cross-origin prefetch for Vary: Cookie");
+            abort();
+            return completionHandler(PolicyAction::Ignore);
+        }
         return completionHandler(PolicyAction::Use);
     }
 
@@ -584,8 +589,8 @@ void NetworkResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int rep
     ASSERT(!m_cacheEntryForValidation);
 
     if (m_bufferedDataForCache) {
-        // Prevent memory growth in case of streaming data.
-        const size_t maximumCacheBufferSize = 10 * 1024 * 1024;
+        // Prevent memory growth in case of streaming data and limit size of entries in the cache.
+        const size_t maximumCacheBufferSize = m_cache->capacity() / 8;
         if (m_bufferedDataForCache->size() + buffer->size() <= maximumCacheBufferSize)
             m_bufferedDataForCache->append(buffer.get());
         else

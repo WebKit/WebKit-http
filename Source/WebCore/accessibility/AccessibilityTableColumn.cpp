@@ -31,7 +31,6 @@
 
 #include "AXObjectCache.h"
 #include "AccessibilityTableCell.h"
-#include "HTMLCollection.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "RenderTable.h"
@@ -82,7 +81,7 @@ AXCoreObject* AccessibilityTableColumn::headerObject()
         return nullptr;
 
     auto& parentTable = downcast<AccessibilityTable>(*m_parent);
-    if (!parentTable.isExposableThroughAccessibility())
+    if (!parentTable.isExposable())
         return nullptr;
     
     if (parentTable.isAriaTable()) {
@@ -192,7 +191,7 @@ void AccessibilityTableColumn::addChildren()
         return;
 
     auto& parentTable = downcast<AccessibilityTable>(*m_parent);
-    if (!parentTable.isExposableThroughAccessibility())
+    if (!parentTable.isExposable())
         return;
     
     int numRows = parentTable.rowCount();

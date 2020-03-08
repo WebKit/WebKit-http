@@ -1,3 +1,493 @@
+2020-02-24  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Link to result archives
+        https://bugs.webkit.org/show_bug.cgi?id=207646
+        <rdar://problem/59395807>
+
+        Rubber-stamped by Aakash Jain.
+
+        * resultsdbpy/resultsdbpy/view/static/js/archiveRouter.js: Added.
+        (_ArchiveRouter): Retrieve json from archive-router endpoint.
+        (_ArchiveRouter.prototype._determineArgumentFromAncestry): Given an argument, default and ancestry values,
+        return the most specific value.
+        (_ArchiveRouter.prototype.hasArchive): Check if a suite and mode have an archive link.
+        (_ArchiveRouter.prototype.pathFor): Construct the path for archive access.
+        (_ArchiveRouter.prototype.labelFor): Return a label for an archive link.
+        * resultsdbpy/resultsdbpy/view/static/js/investigate.js:
+        (parametersForInstance): Extract from lambda function.
+        (testRunLink): Use parametersForInstance instead of a lambda function.
+        (archiveLink): Return an archive link for data. 
+        (contentForData): Add archive link to view.
+        * resultsdbpy/resultsdbpy/view/static/js/timeline.js:
+        (TimelineFromEndpoint): Accept both suite and test.
+        (TimelineFromEndpoint.prototype.render.onDotEnterFactory): Add archive link to pop-over.
+        * resultsdbpy/resultsdbpy/view/templates/search.html: Pass suite and test to TimelineEndpoint.
+        * resultsdbpy/resultsdbpy/view/templates/suite_results.html: Pass suite to TimelineEndpoint.
+        * resultsdbpy/resultsdbpy/view/view_routes.py:
+        (ViewRoutes.__init__): Add archive_route dictionary.
+
+2020-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        WKWebViewConfiguration._corsDisablingPatterns should also disable CORS for non-DocumentThreadableLoader loading
+        https://bugs.webkit.org/show_bug.cgi?id=208035
+        <rdar://problem/58011337>
+
+        Reviewed by Tim Hatcher.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2020-02-22  Darin Adler  <darin@apple.com>
+
+        Fix some include mistakes and make some coding style tweaks to WebKit and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=208099
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        Sorted includes the traditional way. Added an include of AccessibilityCommonMac.h
+        so we can use the -[NSString createJSStringRef] method.
+        (-[NSString createJSStringRef]): Deleted. This is a duplicate of the method
+        defined in AccessibilityCommonMac.mm, and was causing a linker warning.
+
+2020-02-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry.html is failing in iOS 13.4 beta
+        https://bugs.webkit.org/show_bug.cgi?id=208096
+        <rdar://problem/59632008>
+
+        Reviewed by Alexey Proskuryakov.
+
+        In the iOS 13.4 beta, the fix for <rdar://problem/56422337> changed -[UIDatePicker setCalendar:], such that
+        if the new calendar locale matches that of the current calendar's locale (and several other properties of the
+        new NSCalendar are also unchanged), then the UIDatePicker's calendar will also avoid changing.
+
+        In our layout tests, the mechanism we use to simulate the user changing their preferred calendar is no longer
+        compatible with the above change since the swizzled NSCalendar instance does not have a locale set, so it will
+        default to the same locale as the one used in the original NSCalendar. This means the call to -setCalendar: ends
+        up being a no-op, so the test fails to override the simulated Japanese calendar type with a Gregorian calendar
+        in the credit card expiry field.
+
+        To fix this, additionally specify a calendar locale identifier when generating the mock NSCalendar.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        (WTR::UIScriptController::setDefaultCalendarType):
+        * WebKitTestRunner/TestController.h:
+
+        Change m_overriddenCalendarIdentifier to m_overriddenCalendarAndLocaleIdentifiers, a pair of calendar
+        identifier and calendar locale identifier.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::swizzledCalendar):
+        (WTR::TestController::overriddenCalendarIdentifier const):
+        (WTR::TestController::overriddenCalendarLocaleIdentifier const):
+
+        Clean these up by returning the `NSString *` instead of making another `RetainPtr`.
+
+        (WTR::TestController::setDefaultCalendarType):
+
+        Plumb the new calendar's locale identifier through this method.
+
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+        (WTR::TestController::getOverriddenCalendarIdentifier const): Deleted.
+        * WebKitTestRunner/cocoa/UIScriptControllerCocoa.h:
+        * WebKitTestRunner/cocoa/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptControllerCocoa::setDefaultCalendarType):
+
+2020-02-21  Kate Cheney  <katherine_cheney@apple.com>
+
+        App-bound domains should have separate Network Sessions
+        https://bugs.webkit.org/show_bug.cgi?id=208026
+        <rdar://problem/59434006>
+
+        Reviewed by Brent Fulgham.
+
+        This patch is mostly test infrastructure involving 3 functions.
+        One sets in-app browser privacy as enabled in the network process
+        manually for the test. One ensures that setting the WebView category
+        works properly, and the last one checks for an app-bound session for
+        an app-bound navigation.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::getWebViewCategory):
+        (WTR::TestRunner::callDidReceiveWebViewCategoryCallback):
+        (WTR::TestRunner::hasAppBoundSession):
+        (WTR::TestRunner::setInAppBrowserPrivacyEnabled):
+        (WTR::TestRunner::callDidSetInAppBrowserPrivacyEnabledCallback):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        Clearing the bundleID should happen right before setting a new one, 
+        otherwise it clears the ID after it is set and returns a null ID.
+
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::getWebViewCategory):
+        (WTR::InAppBrowserPrivacyCallbackContext::InAppBrowserPrivacyCallbackContext):
+        (WTR::inAppBrowserPrivacyBooleanResultCallback):
+        (WTR::inAppBrowserPrivacyVoidResultCallback):
+        (WTR::TestController::hasAppBoundSession):
+        (WTR::TestController::setInAppBrowserPrivacyEnabled):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        (WTR::TestInvocation::didSetInAppBrowserPrivacyEnabled):
+        (WTR::TestInvocation::didReceivePrevalentDomains):
+        (WTR::TestInvocation::didReceiveWebViewCategory):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::getWebViewCategory):
+
+2020-02-21  Jonathan Bedard  <jbedard@apple.com>
+
+        Build DumpRenderTree and WebKitTestRunner for macCatalyst
+        https://bugs.webkit.org/show_bug.cgi?id=208068
+        <rdar://problem/59676596>
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/ios/TextInputControllerIOS.m: Import WebKitLegacy explicitly.
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Use cocoatouch instead of SDK.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig: Ditto.
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig: Ditto.
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeLibrary.xcconfig: Ditto.
+        * DumpRenderTree/mac/Configurations/TestNetscapePlugIn.xcconfig: Ditto.
+        * DumpRenderTree/mac/EditingDelegate.mm: Import WebKitLegacy explicitly.
+        * DumpRenderTree/mac/EventSendingController.h: Ditto.
+        * DumpRenderTree/mac/ObjCPlugin.m: Ditto.
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm: Ditto.
+        * Makefile: Add DumpRenderTree and WebKitTestRunner.
+        * WebKitTestRunner/Configurations/Base.xcconfig: Use cocoatouch instead of SDK.
+        * WebKitTestRunner/Configurations/InjectedBundle.xcconfig: Ditto.
+        * WebKitTestRunner/Configurations/WebKitTestRunner.xcconfig: Ditto.
+
+2020-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Add build step to Validate ChangeLog for commit-queue
+        https://bugs.webkit.org/show_bug.cgi?id=208064
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ValidateChangeLogAndReviewer): Build step to validate ChangeLog.
+        (ValidateChangeLogAndReviewer.start):
+        (ValidateChangeLogAndReviewer.evaluateCommand): If the validation fails, comment on bug and mark patch as cq-.
+        (SetCommitQueueMinusFlagOnPatch.start): End the build (after marking the patch cq-) if build_finish_summary property is set.
+
+2020-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Add build step to set cq- flag on bugzilla patch
+        https://bugs.webkit.org/show_bug.cgi?id=208021
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (BugzillaMixin.set_cq_minus_flag_on_patch):
+        (SetCommitQueueMinusFlagOnPatch):
+        (SetCommitQueueMinusFlagOnPatch.start):
+        (SetCommitQueueMinusFlagOnPatch.getResultSummary):
+
+2020-02-20  Matt Lewis  <jlewis3@apple.com>
+
+        Stub repositories fail to upload some results due to missing head svn revision
+        https://bugs.webkit.org/show_bug.cgi?id=207684
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/common/host_mock.py: Added in call for creating stub repo checkout information for upload tests.
+        (MockHost.__init__):
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py:
+        (summarize_results): Changed call to head_svn_revision to port.commits_for_upload() to bring
+        * Scripts/webkitpy/layout_tests/models/test_run_results_unittest.py:
+        (SummarizedResultsTest.setUp): Added in new required parameter for testing.
+        * Scripts/webkitpy/port/base.py:
+        (Port.commits_for_upload): Removed the forced movement up the systems tree that prevented us 
+        from using mock SCMs and more
+        * Scripts/webkitpy/port/test.py: Added function to make the checkout_information.json for upload testing.
+
+2020-02-21  Diego Pino Garcia  <dpino@igalia.com>
+
+        [JSCOnly] Add --verbose flag when running JavaScriptCore tests
+        https://bugs.webkit.org/show_bug.cgi?id=208051
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Verbose flag prints out each test name executed. Without this flag
+        stdout prints out one or two periods.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunJavaScriptCoreTests.start):
+
+2020-02-21  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [WPE][GTK] googleapis.com is a public suffix, defeating isGoogle() check in UserAgentQuirks.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=207984
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2020-02-20  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] Improve user agent quirk for Google Docs and Google Drive
+        https://bugs.webkit.org/show_bug.cgi?id=206506
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::assertUserAgentForURLHasFirefoxBrowserQuirk):
+        (TestWebKitAPI::TEST):
+
+2020-02-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        check-webkit-style: Check if *_EXPORT and *_EXPORT_PRIVATE macros are used under corresponding directories
+        https://bugs.webkit.org/show_bug.cgi?id=207380
+
+        Reviewed by Jonathan Bedard.
+
+        Added a new rule 'build/export_macro'.
+
+        Removed a obsolete rule 'readability/webkit_export' which was used
+        only by Chromium port (r148185).
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_FunctionState.export_macro):
+        (check_function_definition):
+        (_unix_path): Added.
+        (is_generated_file): Use _unix_path.
+        (check_has_config_header): Ditto.
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_export_macro_check):
+        (WebKitStyleTest.test_webkit_export_check): Deleted.
+
+2020-02-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Add prettier toolbar button icons
+        https://bugs.webkit.org/show_bug.cgi?id=207999
+
+        Reviewed by Ross Kirsling.
+
+        Use a custom toolbar button icons instead of system stock icons.
+
+        Fixed a bug toolbar button dropdown arrows always looked being
+        hovered. TBSTYLE_FLAT should be given.
+
+        Removed the window border line of Progress Indicator.
+
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::createToolbar):
+        * MiniBrowser/win/MiniBrowserLib.rc:
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/toolbar.bmp: Added.
+
+2020-02-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Update run-webkit-tests help description for skip-failing-tests
+        https://bugs.webkit.org/show_bug.cgi?id=208031
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+
+2020-02-20  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r255677): Reloading tab with beforeunload prompt closes tab when asking to stay on page
+        https://bugs.webkit.org/show_bug.cgi?id=208015
+        <rdar://problem/59591630>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ModalAlerts.mm:
+        (TEST):
+
+2020-02-20  Tim Horton  <timothy_horton@apple.com>
+
+        WKWebView with non-zero origin has the wrong top content inset with NSWindowStyleMaskFullSizeContentView
+        https://bugs.webkit.org/show_bug.cgi?id=207998
+        <rdar://problem/40942425>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/TopContentInset.mm: Renamed from Tools/TestWebKitAPI/Tests/WebKitCocoa/FullscreenTopContentInset.mm.
+        (-[FullscreenChangeMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+        Add some tests for top content insets.
+
+2020-02-20  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Correctly report JSC tests for windows (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=207910
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/run-javascriptcore-tests:
+        (configurationForUpload): Use the major version instead of the sub-minor version
+        for version name.
+
+2020-02-20  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WPE::libwpe target
+        https://bugs.webkit.org/show_bug.cgi?id=207970
+
+        Reviewed by Adrian Perez de Castro.
+
+        Use the WPE::libwpe target.
+
+        * MiniBrowser/wpe/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/glib/PlatformWPE.cmake:
+        * wpe/backends/CMakeLists.txt:
+
+2020-02-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Add 'Go Home' menu item and toolbar button
+        https://bugs.webkit.org/show_bug.cgi?id=207749
+
+        Reviewed by Ross Kirsling.
+
+        Added "Set Default URL to Current URL" menu item like Mac MiniBrowser.
+
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::createToolbar):
+        (MainWindow::WndProc):
+        (MainWindow::setDefaultURLToCurrentURL):
+        (MainWindow::goHome): Added.
+        (MainWindow::onURLBarEnter):
+        * MiniBrowser/win/MainWindow.h:
+        * MiniBrowser/win/MiniBrowserLib.rc:
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/MiniBrowserReplace.h:
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain):
+
+2020-02-19  Peng Liu  <peng.liu6@apple.com>
+
+        Fix check-webkit-style errors related to AVFoundationSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=207834
+
+        Reviewed by Daniel Bates.
+
+        Revert the change in r256770 regarding the headers ordering.
+        Headers in the same category should be in sorted order (case sensitive, as done by the command-line sort tool or the Xcode sort selection command).
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_include_line):
+
+2020-02-19  Jonathan Bedard  <jbedard@apple.com>
+
+        results.webkit.org: Correctly report JSC tests for windows
+        https://bugs.webkit.org/show_bug.cgi?id=207910
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/run-javascriptcore-tests:
+        (configurationForUpload): Give Windows a version name.
+        * Scripts/webkitdirs.pm:
+        (determineWinVersion): Correctly parse Windows 10 version numbers, conform to
+        Version dictionary.
+
+2020-02-19  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix assertions in storage access API layout tests after r256882.
+
+        Drop dead testRunner code to toggle storage access API feature.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStorageAccessAPIEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2020-02-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Support 2D axis, smooth-motion events
+        https://bugs.webkit.org/show_bug.cgi?id=207881
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wpe/jhbuild.modules: Bump to a newer libwpe commit.
+
+2020-02-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r256851.
+
+        Broke internal bots
+
+        Reverted changeset:
+
+        "Stub repositories fail to upload some results due to missing
+        head svn revision"
+        https://bugs.webkit.org/show_bug.cgi?id=207684
+        https://trac.webkit.org/changeset/256851
+
+2020-02-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Support back/forward mouse buttons by handing APPCOMMAND_BROWSER_BACKWARD and APPCOMMAND_BROWSER_FORWARD
+        https://bugs.webkit.org/show_bug.cgi?id=207883
+
+        Reviewed by Ross Kirsling.
+
+        Unlike other mouse buttons, 4th and 5th mouse buttons are
+        processed differently. Clicking them dispatches WM_XBUTTONDOWN and
+        WM_XBUTTONUP events to the window under the mouse cursor.
+        Unhandled WM_XBUTTONUP events are automatically converted to
+        WM_APPCOMMAND. And, unhandle WM_APPCOMMAND are propagated to the
+        parent window.
+        <https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-appcommand>
+
+        Unlike other WM_* commands, WM_APPCOMMAND should return 1 if it is
+        handled.
+
+        * MiniBrowser/win/BrowserWindow.h:
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::WndProc):
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (WebKitBrowserWindow::navigateForwardOrBackward):
+        * MiniBrowser/win/WebKitBrowserWindow.h:
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.cpp:
+        (WebKitLegacyBrowserWindow::navigateForwardOrBackward):
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.h:
+
+2020-02-18  Alex Christensen  <achristensen@webkit.org>
+
+        Expand WKRemoteObjectCoder supported POD types to encode NSURLResponse types
+        https://bugs.webkit.org/show_bug.cgi?id=207912
+        <rdar://problem/59556922>
+
+        Reviewed by Brian Weinstein.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.h:
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistryPlugIn.mm:
+        (-[RemoteObjectRegistryPlugIn sendRequest:response:challenge:error:completionHandler:]):
+
+2020-02-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Web process may crash under ServicesOverlayController::buildPotentialHighlightsIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=207899
+        <rdar://problem/55658207>
+
+        Reviewed by Tim Horton and Simon Fraser.
+
+        Make it possible to run tests on macOS with services controls enabled, via a new TestOptions flag.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
 2020-02-18  Matt Lewis  <jlewis3@apple.com>
 
         Stub repositories fail to upload some results due to missing head svn revision

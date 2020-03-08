@@ -64,7 +64,6 @@ def main(argv, stdout, stderr):
         host = MockHost()
     else:
         host = Host()
-        host.initialize_scm()
 
     if options.lint_test_files:
         from webkitpy.layout_tests.lint_test_expectations import lint
@@ -181,7 +180,7 @@ def parse_args(args):
                  "option while others can have a default value that can be overridden here."),
 
         optparse.make_option("--skip-failing-tests", action="store_true",
-            default=False, help="Skip tests that are expected to fail. "
+            default=False, help="Skip tests that are marked as failing or flaky. "
                  "Note: When using this option, you might miss new crashes "
                  "in these tests."),
         optparse.make_option("--additional-drt-flag", action="append",

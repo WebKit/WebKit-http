@@ -390,7 +390,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/ElementChildIterator.h
     dom/ElementContext.h
     dom/ElementData.h
-    dom/ElementDescendantIterator.h
     dom/ElementIdentifier.h
     dom/ElementIterator.h
     dom/ElementIteratorAssertions.h
@@ -998,6 +997,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/ScrollbarThemeComposite.h
     platform/SearchPopupMenu.h
     platform/SerializedPlatformDataCue.h
+    platform/SerializedPlatformDataCueValue.h
     platform/SharedBuffer.h
     platform/SharedStringHash.h
     platform/SuddenTermination.h
@@ -1042,6 +1042,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/ColorHash.h
     platform/graphics/ColorSpace.h
     platform/graphics/ComplexTextController.h
+    platform/graphics/ConcreteImageBuffer.h
     platform/graphics/DashArray.h
     platform/graphics/DecodingOptions.h
     platform/graphics/DisplayRefreshMonitor.h
@@ -1093,7 +1094,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/Image.h
     platform/graphics/ImageBackingStore.h
     platform/graphics/ImageBuffer.h
-    platform/graphics/ImageBufferData.h
+    platform/graphics/ImageBufferBackend.h
     platform/graphics/ImageFrame.h
     platform/graphics/ImageObserver.h
     platform/graphics/ImageOrientation.h
@@ -1126,6 +1127,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/PathUtilities.h
     platform/graphics/Pattern.h
     platform/graphics/PlatformDisplay.h
+    platform/graphics/PlatformImageBuffer.h
     platform/graphics/PlatformLayer.h
     platform/graphics/PlatformMediaResourceLoader.h
     platform/graphics/PlatformTextTrack.h

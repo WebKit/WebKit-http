@@ -1044,7 +1044,7 @@ Element* AccessibilityNodeObject::mouseButtonListener(MouseButtonListenerResultF
 
     // check if our parent is a mouse button listener
     // FIXME: Do the continuation search like anchorElement does
-    for (auto& element : elementLineage(is<Element>(*node) ? downcast<Element>(node) : node->parentElement())) {
+    for (auto& element : lineageOfType<Element>(is<Element>(*node) ? downcast<Element>(*node) : *node->parentElement())) {
         // If we've reached the body and this is not a control element, do not expose press action for this element unless filter is IncludeBodyElement.
         // It can cause false positives, where every piece of text is labeled as accepting press actions.
         if (element.hasTagName(bodyTag) && isStaticText() && filter == ExcludeBodyElement)
@@ -1739,7 +1739,7 @@ static bool shouldUseAccessibilityObjectInnerText(AccessibilityObject* obj, Acce
     if (is<AccessibilityList>(*obj))
         return false;
 
-    if (is<AccessibilityTable>(*obj) && downcast<AccessibilityTable>(*obj).isExposableThroughAccessibility())
+    if (is<AccessibilityTable>(*obj) && downcast<AccessibilityTable>(*obj).isExposable())
         return false;
 
     if (obj->isTree() || obj->isCanvas())

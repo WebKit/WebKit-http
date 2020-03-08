@@ -33,6 +33,7 @@
 #include "Microtasks.h"
 #include "MutationObserver.h"
 #include "SecurityOrigin.h"
+#include "ThreadGlobalData.h"
 
 namespace WebCore {
 
@@ -152,6 +153,19 @@ CustomElementQueue& WindowEventLoop::backupElementQueue()
     if (!m_customElementQueue)
         m_customElementQueue = makeUnique<CustomElementQueue>();
     return *m_customElementQueue;
+}
+
+void WindowEventLoop::breakToAllowRenderingUpdate()
+{
+#if PLATFORM(MAC)
+    // On Mac rendering updates happen in a runloop observer.
+    // Avoid running timers and doing other work (like processing asyncronous IPC) until it is completed.
+
+    // FIXME: Also bail out from the task loop in EventLoop::run().
+    threadGlobalData().threadTimers().breakFireLoopForRenderingUpdate();
+
+    RunLoop::main().suspendFunctionDispatchForCurrentCycle();
+#endif
 }
 
 } // namespace WebCore

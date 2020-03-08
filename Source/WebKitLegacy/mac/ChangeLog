@@ -1,3 +1,148 @@
+2020-02-22  Darin Adler  <darin@apple.com>
+
+        Fix some include mistakes and make some coding style tweaks to WebKit and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=208099
+
+        Reviewed by Antti Koivisto.
+
+        * DOM/DOMDocument.mm: Removed unneeded includes and re-sorted.
+        * DOM/DOMDocumentFragment.mm: Ditto.
+        * DOM/DOMHTMLFieldSetElement.mm: Ditto.
+
+2020-02-22  Jer Noble  <jer.noble@apple.com>
+
+        Stop using QTKit for rendering WK1 video fullscreen controls
+        https://bugs.webkit.org/show_bug.cgi?id=207795
+        <rdar://problem/48894915>
+
+        Reviewed by Jon Lee.
+
+        Switch to using AVPlayerView instead of QTHUD to render our fullscreen controls.
+
+        In addition, switch to a modern NSWindow fullscreen API, with custom, smooth animations which 
+        move the fullscreen window to a separate space. This requires subclassing AVPlayerView so that
+        fullscreen toggling will signal to the controller, so that our fullscreen button and the inline
+        version of same don't get out of sync. Because AVPlayerView requires an AVPlayer in order to
+        display the video layer, and we won't necessarily have an AVPlayer for MSE-backed videos, instead
+        install a custom overlay view inside the AVPlayerView in which to host the fullscreen video layer.
+
+        * WebView/WebVideoFullscreenController.h:
+        * WebView/WebVideoFullscreenController.mm:
+        (-[WebOverlayLayer layoutSublayers]):
+        (WebAVPlayerView_delegate):
+        (WebAVPlayerView_setDelegate):
+        (WebAVPlayerView_isFullScreen):
+        (WebAVPlayerView_enterFullScreen):
+        (WebAVPlayerView_exitFullScreen):
+        (allocWebAVPlayerViewInstance):
+        (-[WebVideoFullscreenController init]):
+        (-[WebVideoFullscreenController dealloc]):
+        (-[WebVideoFullscreenController fullscreenWindow]):
+        (-[WebVideoFullscreenController windowDidLoad]):
+        (-[WebVideoFullscreenController setVideoElement:]):
+        (-[WebVideoFullscreenController enterFullscreen:]):
+        (-[WebVideoFullscreenController exitFullscreen]):
+        (-[WebVideoFullscreenController applicationDidResignActive:]):
+        (-[WebVideoFullscreenController _requestExit]):
+        (-[WebVideoFullscreenController _requestEnter]):
+        (-[WebVideoFullscreenController cancelOperation:]):
+        (-[WebVideoFullscreenController playerViewIsFullScreen:]):
+        (-[WebVideoFullscreenController playerViewRequestEnterFullscreen:]):
+        (-[WebVideoFullscreenController playerViewRequestExitFullscreen:]):
+        (-[WebVideoFullscreenController customWindowsToEnterFullScreenForWindow:]):
+        (-[WebVideoFullscreenController window:startCustomAnimationToEnterFullScreenWithDuration:]):
+        (-[WebVideoFullscreenController customWindowsToExitFullScreenForWindow:]):
+        (-[WebVideoFullscreenController window:startCustomAnimationToExitFullScreenWithDuration:]):
+        (-[WebVideoFullscreenController windowDidEnterFullScreen:]):
+        (-[WebVideoFullscreenController windowWillExitFullScreen:]):
+        (-[WebVideoFullscreenController windowDidExitFullScreen:]):
+        (-[WebVideoFullscreenController clearFadeAnimation]): Deleted.
+        (-[WebVideoFullscreenController windowDidExitFullscreen]): Deleted.
+        (-[WebVideoFullscreenController windowDidEnterFullscreen]): Deleted.
+        (frameExpandedToRatioOfFrame): Deleted.
+        (createBackgroundFullscreenWindow): Deleted.
+        (-[WebVideoFullscreenController setupFadeAnimationIfNeededAndFadeIn:]): Deleted.
+        (-[WebVideoFullscreenController applicationDidChangeScreenParameters:]): Deleted.
+        (-[WebVideoFullscreenController updateMenuAndDockForFullscreen]): Deleted.
+        (-[WebVideoFullscreenController requestExitFullscreenWithAnimation:]): Deleted.
+        (-[WebVideoFullscreenController requestExitFullscreen]): Deleted.
+        (-[WebVideoFullscreenController fadeHUDIn]): Deleted.
+        (-[WebVideoFullscreenController observeValueForKeyPath:ofObject:change:context:]): Deleted.
+        (-[WebVideoFullscreenController rateChanged:]): Deleted.
+        (-[WebVideoFullscreenWindow initWithContentRect:styleMask:backing:defer:]): Deleted.
+        (-[WebVideoFullscreenWindow dealloc]): Deleted.
+        (-[WebVideoFullscreenWindow resignFirstResponder]): Deleted.
+        (-[WebVideoFullscreenWindow canBecomeKeyWindow]): Deleted.
+        (-[WebVideoFullscreenWindow mouseDown:]): Deleted.
+        (-[WebVideoFullscreenWindow cancelOperation:]): Deleted.
+        (-[WebVideoFullscreenWindow animatedResizeDidEnd]): Deleted.
+        (-[WebVideoFullscreenWindow animateFromRect:toRect:withSubAnimation:controllerAction:]): Deleted.
+        (-[WebVideoFullscreenWindow animationDidEnd:]): Deleted.
+        (-[WebVideoFullscreenWindow mouseMoved:]): Deleted.
+        * WebView/WebVideoFullscreenHUDWindowController.h: Removed.
+        * WebView/WebVideoFullscreenHUDWindowController.mm: Removed.
+
+2020-02-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Large form controls are rendered at the wrong NSControlSize
+        https://bugs.webkit.org/show_bug.cgi?id=208043
+        <rdar://problem/59659134>
+
+        Reviewed by Tim Horton.
+
+        See WebCore ChangeLog for more details.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2020-02-21  Daniel Bates  <dabates@apple.com>
+
+        [iOS][Legacy WebKit] Expose SPI for Page::revealCurrentSelection()
+        https://bugs.webkit.org/show_bug.cgi?id=207960
+        <rdar://problem/59604163>
+
+        Reviewed by Wenson Hsieh.
+
+        Together with <https://bugs.webkit.org/show_bug.cgi?id=207955> this allows a client to reveal
+        the current selection when it's ready to do so.
+
+        * WebView/WebView.mm:
+        (-[WebView revealCurrentSelection]): Added.
+        * WebView/WebViewPrivate.h:
+
+2020-02-20  Megan Gardner  <megan_gardner@apple.com>
+
+        Expose caret color for clients
+        https://bugs.webkit.org/show_bug.cgi?id=207963
+        <rdar://problem/57383170>
+
+        Reviewed by Daniel Bates.
+
+        Expose caret color for clients to use.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame textInsertionColor]):
+        * WebView/WebFramePrivate.h:
+
+2020-02-19  Daniel Bates  <dabates@apple.com>
+
+        [iOS][LegacyWebKit] Override EditorClient::shouldRevealCurrentSelectionAfterInsertion()
+        https://bugs.webkit.org/show_bug.cgi?id=207955
+        <rdar://problem/59602916>
+
+        Reviewed by Wenson Hsieh.
+
+        Wire up EditorClient::shouldRevealCurrentSelectionAfterInsertion() in Legacy WebKit. This
+        allows Legacy WebKit clients to toggle whether the current selection is revealed after
+        an insertion, which they may want to do to achieve a desired UI effect.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::shouldRevealCurrentSelectionAfterInsertion const): Added. Ask the _UIKitDelegateForwarder
+        if it responds to -shouldRevealCurrentSelectionAfterInsertion. If it does then return its
+        response. Otherwise, return true to do what we do now: reveal the current selection after
+        an insertion.
+
 2020-02-18  Simon Fraser  <simon.fraser@apple.com>
 
         Move from "layer flush" terminology to "rendering update"

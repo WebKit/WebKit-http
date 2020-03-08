@@ -45,28 +45,24 @@ static const size_t kWebAudioBufferSize = 128;
 static const size_t kLowPowerVideoBufferSize = 4096;
 
 #if PLATFORM(MAC)
-static MediaSessionManagerCocoa* platformMediaSessionManager = nullptr;
-
-PlatformMediaSessionManager& PlatformMediaSessionManager::sharedManager()
+std::unique_ptr<PlatformMediaSessionManager> PlatformMediaSessionManager::create()
 {
-    if (!platformMediaSessionManager)
-        platformMediaSessionManager = new MediaSessionManagerCocoa;
-    return *platformMediaSessionManager;
+    return makeUnique<MediaSessionManagerCocoa>();
 }
+#endif // !PLATFORM(MAC)
 
-PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists()
+MediaSessionManagerCocoa::MediaSessionManagerCocoa()
+    : m_systemSleepListener(PAL::SystemSleepListener::create(*this))
 {
-    return platformMediaSessionManager;
 }
-#endif
 
 void MediaSessionManagerCocoa::updateSessionState()
 {
-    int videoCount = count(PlatformMediaSession::Video);
-    int videoAudioCount = count(PlatformMediaSession::VideoAudio);
-    int audioCount = count(PlatformMediaSession::Audio);
-    int webAudioCount = count(PlatformMediaSession::WebAudio);
-    int captureCount = count(PlatformMediaSession::MediaStreamCapturingAudio);
+    int videoCount = count(PlatformMediaSession::MediaType::Video);
+    int videoAudioCount = count(PlatformMediaSession::MediaType::VideoAudio);
+    int audioCount = count(PlatformMediaSession::MediaType::Audio);
+    int webAudioCount = count(PlatformMediaSession::MediaType::WebAudio);
+    int captureCount = countActiveAudioCaptureSources();
     ALWAYS_LOG(LOGIDENTIFIER, "types: "
         "AudioCapture(", captureCount, "), "
         "Video(", videoCount, "), "
@@ -85,7 +81,7 @@ void MediaSessionManagerCocoa::updateSessionState()
         // causes media LayoutTests to fail on 10.8.
 
         size_t bufferSize;
-        if (audioHardwareListener() && audioHardwareListener()->outputDeviceSupportsLowPowerMode())
+        if (m_audioHardwareListener && m_audioHardwareListener->outputDeviceSupportsLowPowerMode())
             bufferSize = kLowPowerVideoBufferSize;
         else
             bufferSize = kWebAudioBufferSize;
@@ -99,7 +95,7 @@ void MediaSessionManagerCocoa::updateSessionState()
     bool hasAudibleAudioOrVideoMediaType = false;
     forEachSession([&hasAudibleAudioOrVideoMediaType] (auto& session) mutable {
         auto type = session.mediaType();
-        if ((type == PlatformMediaSession::VideoAudio || type == PlatformMediaSession::Audio) && session.canProduceAudio() && session.hasPlayedSinceLastInterruption())
+        if ((type == PlatformMediaSession::MediaType::VideoAudio || type == PlatformMediaSession::MediaType::Audio) && session.canProduceAudio() && session.hasPlayedSinceLastInterruption())
             hasAudibleAudioOrVideoMediaType = true;
         if (session.isPlayingToWirelessPlaybackTarget())
             hasAudibleAudioOrVideoMediaType = true;
@@ -155,10 +151,35 @@ void MediaSessionManagerCocoa::sessionDidEndRemoteScrubbing(const PlatformMediaS
     scheduleUpdateNowPlayingInfo();
 }
 
+void MediaSessionManagerCocoa::addSession(PlatformMediaSession& session)
+{
+    if (!m_remoteCommandListener)
+        m_remoteCommandListener = RemoteCommandListener::create(*this);
+
+    if (!m_audioHardwareListener)
+        m_audioHardwareListener = AudioHardwareListener::create(*this);
+
+    PlatformMediaSessionManager::addSession(session);
+}
+
 void MediaSessionManagerCocoa::removeSession(PlatformMediaSession& session)
 {
     PlatformMediaSessionManager::removeSession(session);
+
+    if (hasNoSession()) {
+        m_remoteCommandListener = nullptr;
+        m_audioHardwareListener = nullptr;
+    }
+
     scheduleUpdateNowPlayingInfo();
+}
+
+void MediaSessionManagerCocoa::setCurrentSession(PlatformMediaSession& session)
+{
+    PlatformMediaSessionManager::setCurrentSession(session);
+
+    if (m_remoteCommandListener)
+        m_remoteCommandListener->updateSupportedCommands();
 }
 
 void MediaSessionManagerCocoa::sessionWillEndPlayback(PlatformMediaSession& session, DelayCallingUpdateNowPlaying delayCallingUpdateNowPlaying)

@@ -54,6 +54,7 @@ class ResourceRequest;
 enum class ShouldSample : bool;
 enum class StorageAccessPromptWasShown : bool;
 enum class StorageAccessWasGranted : bool;
+enum class StoredCredentialsPolicy : uint8_t;
 class SecurityOrigin;
 struct SecurityOriginData;
 struct ClientOrigin;
@@ -104,6 +105,8 @@ public:
     void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebKit::WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostNames, CompletionHandler<void()>&&);
 
     void getLocalStorageDetails(PAL::SessionID, CompletionHandler<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&&);
+
+    void preconnectTo(PAL::SessionID, const URL&, const String&, WebCore::StoredCredentialsPolicy);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void clearPrevalentResource(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
@@ -213,6 +216,9 @@ public:
     void resourceLoadDidReceiveResponse(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceResponse&&);
     void resourceLoadDidCompleteWithError(WebPageProxyIdentifier, ResourceLoadInfo&&, WebCore::ResourceError&&);
 
+    void hasAppBoundSession(PAL::SessionID, CompletionHandler<void(bool)>&&);
+    void setInAppBrowserPrivacyEnabled(PAL::SessionID, bool, CompletionHandler<void()>&&);
+    
 private:
     // AuxiliaryProcessProxy
     ASCIILiteral processName() const final { return "Networking"_s; }
@@ -257,10 +263,6 @@ private:
 
 #if ENABLE(CONTENT_EXTENSIONS)
     void contentExtensionRules(UserContentControllerIdentifier);
-#endif
-
-#if ENABLE(SANDBOX_EXTENSIONS)
-    void getSandboxExtensionsForBlobFiles(const Vector<String>& paths, Messages::NetworkProcessProxy::GetSandboxExtensionsForBlobFilesAsyncReply&&);
 #endif
 
 #if ENABLE(SERVICE_WORKER)

@@ -264,7 +264,8 @@ void FrameView::reset()
 void FrameView::resetLayoutMilestones()
 {
     m_firstLayoutCallbackPending = false;
-    m_isVisuallyNonEmpty = false;
+    m_firstVisuallyNonEmptyLayoutMilestoneIsPending = true;
+    m_contentQualifiesAsVisuallyNonEmpty = false;
     m_hasReachedSignificantRenderedTextThreshold = false;
     m_renderedSignificantAmountOfText = false;
     m_visuallyNonEmptyCharacterCount = 0;
@@ -799,14 +800,18 @@ void FrameView::willRecalcStyle()
     renderView->compositor().willRecalcStyle();
 }
 
-void FrameView::styleDidChange()
+void FrameView::styleAndRenderTreeDidChange()
 {
-    ScrollView::styleDidChange();
-    RenderView* renderView = this->renderView();
+    ScrollView::styleAndRenderTreeDidChange();
+    auto* renderView = this->renderView();
     if (!renderView)
         return;
 
-    RenderLayer* layerTreeMutationRoot = renderView->takeStyleChangeLayerTreeMutationRoot();
+    if (!m_contentQualifiesAsVisuallyNonEmpty) {
+        // Let's check whether the newly constructed content qualifies as non-empty now.
+        m_contentQualifiesAsVisuallyNonEmpty = qualifiesAsVisuallyNonEmpty();
+    }
+    auto* layerTreeMutationRoot = renderView->takeStyleChangeLayerTreeMutationRoot();
     if (layerTreeMutationRoot && !needsLayout())
         layerTreeMutationRoot->updateLayerPositionsAfterStyleChange();
 }
@@ -2849,7 +2854,7 @@ void FrameView::disableLayerFlushThrottlingTemporarilyForInteraction()
 
 void FrameView::loadProgressingStatusChanged()
 {
-    if (!m_isVisuallyNonEmpty && frame().loader().isComplete())
+    if (m_firstVisuallyNonEmptyLayoutMilestoneIsPending && frame().loader().isComplete())
         fireLayoutRelatedMilestonesIfNeeded();
     updateLayerFlushThrottling();
     adjustTiledBackingCoverage();
@@ -3270,6 +3275,7 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
 
 bool FrameView::updateEmbeddedObjects()
 {
+    SetForScope<bool> inUpdateEmbeddedObjects(m_inUpdateEmbeddedObjects, true);
     if (layoutContext().isLayoutNested() || !m_embeddedObjectsToUpdate || m_embeddedObjectsToUpdate->isEmpty())
         return true;
 
@@ -4387,17 +4393,6 @@ void FrameView::incrementVisuallyNonEmptyCharacterCount(const String& inlineText
     ++m_textRendererCountForVisuallyNonEmptyCharacters;
 }
 
-static bool elementOverflowRectIsLargerThanThreshold(const Element& element)
-{
-    // Require the document to grow a bit.
-    // Using a value of 48 allows the header on Google's search page to render immediately before search results populate later.
-    static const int documentHeightThreshold = 48;
-    if (auto* elementRenderBox = element.renderBox())
-        return snappedIntRect(elementRenderBox->layoutOverflowRect()).height() >= documentHeightThreshold;
-
-    return false;
-}
-
 void FrameView::updateHasReachedSignificantRenderedTextThreshold()
 {
     if (m_hasReachedSignificantRenderedTextThreshold)
@@ -4430,11 +4425,6 @@ bool FrameView::qualifiesAsSignificantRenderedText() const
     auto* document = frame().document();
     if (!document || document->styleScope().hasPendingSheetsBeforeBody())
         return false;
-
-    auto* documentElement = document->documentElement();
-    if (!documentElement || !elementOverflowRectIsLargerThanThreshold(*documentElement))
-        return false;
-
     return m_hasReachedSignificantRenderedTextThreshold;
 }
 
@@ -4466,9 +4456,6 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
         return false;
 
     if (!isVisible(frame().document()->body()))
-        return false;
-
-    if (!elementOverflowRectIsLargerThanThreshold(*documentElement))
         return false;
 
     // The first few hundred characters rarely contain the interesting content of the page.
@@ -5153,11 +5140,17 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
             page->startCountingRelevantRepaintedObjects();
     }
 
-    if (!m_isVisuallyNonEmpty && qualifiesAsVisuallyNonEmpty()) {
-        m_isVisuallyNonEmpty = true;
-        addPaintPendingMilestones(DidFirstMeaningfulPaint);
-        if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
-            milestonesAchieved.add(DidFirstVisuallyNonEmptyLayout);
+    if (m_firstVisuallyNonEmptyLayoutMilestoneIsPending) {
+        if (!m_contentQualifiesAsVisuallyNonEmpty)
+            m_contentQualifiesAsVisuallyNonEmpty = qualifiesAsVisuallyNonEmpty();
+
+        if (m_contentQualifiesAsVisuallyNonEmpty) {
+            m_firstVisuallyNonEmptyLayoutMilestoneIsPending = false;
+
+            addPaintPendingMilestones(DidFirstMeaningfulPaint);
+            if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
+                milestonesAchieved.add(DidFirstVisuallyNonEmptyLayout);
+        }
     }
 
     if (!m_renderedSignificantAmountOfText && qualifiesAsSignificantRenderedText()) {

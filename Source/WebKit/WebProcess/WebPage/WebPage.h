@@ -45,6 +45,7 @@
 #include "MessageSender.h"
 #include "OptionalCallbackID.h"
 #include "Plugin.h"
+#include "PolicyDecision.h"
 #include "SandboxExtension.h"
 #include "ShareSheetCallbackID.h"
 #include "SharedMemory.h"
@@ -416,7 +417,7 @@ public:
 #endif
 
 #if ENABLE(DATALIST_ELEMENT)
-    void setActiveDataListSuggestionPicker(WebDataListSuggestionPicker*);
+    void setActiveDataListSuggestionPicker(WebDataListSuggestionPicker&);
     void didSelectDataListOption(const String&);
     void didCloseSuggestions();
 #endif
@@ -636,6 +637,9 @@ public:
     void setCanShowPlaceholder(const WebCore::ElementContext&, bool);
 
 #if PLATFORM(IOS_FAMILY)
+    bool shouldRevealCurrentSelectionAfterInsertion() const { return m_shouldRevealCurrentSelectionAfterInsertion; }
+    void setShouldRevealCurrentSelectionAfterInsertion(bool);
+
     WebCore::FloatSize screenSize() const;
     WebCore::FloatSize availableScreenSize() const;
     WebCore::FloatSize overrideScreenSize() const;
@@ -1282,6 +1286,9 @@ public:
     WebCore::AllowsContentJavaScript allowsContentJavaScriptFromMostRecentNavigation() const { return m_allowsContentJavaScriptFromMostRecentNavigation; }
     void setAllowsContentJavaScriptFromMostRecentNavigation(WebCore::AllowsContentJavaScript allows) { m_allowsContentJavaScriptFromMostRecentNavigation = allows; }
 
+    void setIsNavigatingToAppBoundDomain(NavigatingToAppBoundDomain);
+    NavigatingToAppBoundDomain isNavigatingToAppBoundDomain() const { return m_isNavigatingToAppBoundDomain; }
+    
 private:
     WebPage(WebCore::PageIdentifier, WebPageCreationParameters&&);
 
@@ -1375,7 +1382,7 @@ private:
 
     String sourceForFrame(WebFrame*);
 
-    void loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&&, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& failingURL, const UserData&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    void loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&&, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& failingURL, const UserData&, NavigatingToAppBoundDomain, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 
     // Actions
     void tryClose(CompletionHandler<void(bool)>&&);
@@ -1488,7 +1495,7 @@ private:
     bool parentProcessHasServiceWorkerEntitlement() const { return true; }
 #endif
 
-    void didReceivePolicyDecision(WebCore::FrameIdentifier, uint64_t listenerID, WebCore::PolicyCheckIdentifier, WebCore::PolicyAction, uint64_t navigationID, const DownloadID&, Optional<WebsitePoliciesData>&&);
+    void didReceivePolicyDecision(WebCore::FrameIdentifier, uint64_t listenerID, PolicyDecision&&);
     void continueWillSubmitForm(WebCore::FrameIdentifier, uint64_t listenerID);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
@@ -1941,6 +1948,7 @@ private:
     bool m_userHasChangedPageScaleFactor { false };
     bool m_hasStablePageScaleFactor { true };
     bool m_isInStableState { true };
+    bool m_shouldRevealCurrentSelectionAfterInsertion { true };
     MonotonicTime m_oldestNonStableUpdateVisibleContentRectsTimestamp;
     Seconds m_estimatedLatency { 0 };
     WebCore::FloatSize m_screenSize;
@@ -2061,6 +2069,8 @@ private:
 #if PLATFORM(GTK)
     String m_themeName;
 #endif
+    
+    NavigatingToAppBoundDomain m_isNavigatingToAppBoundDomain { NavigatingToAppBoundDomain::No };
 };
 
 #if !PLATFORM(IOS_FAMILY)

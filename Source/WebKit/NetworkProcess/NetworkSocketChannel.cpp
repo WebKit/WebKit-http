@@ -30,6 +30,7 @@
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcess.h"
 #include "NetworkSession.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebSocketChannelMessages.h"
 #include "WebSocketTask.h"
 
@@ -121,6 +122,17 @@ void NetworkSocketChannel::didClose(unsigned short code, const String& reason)
 void NetworkSocketChannel::didReceiveMessageError(const String& errorMessage)
 {
     send(Messages::WebSocketChannel::DidReceiveMessageError { errorMessage });
+}
+
+void NetworkSocketChannel::didSendHandshakeRequest(ResourceRequest&& request)
+{
+    send(Messages::WebSocketChannel::DidSendHandshakeRequest { request });
+}
+
+void NetworkSocketChannel::didReceiveHandshakeResponse(ResourceResponse&& response)
+{
+    response.sanitizeHTTPHeaderFields(ResourceResponse::SanitizationType::CrossOriginSafe);
+    send(Messages::WebSocketChannel::DidReceiveHandshakeResponse { response });
 }
 
 IPC::Connection* NetworkSocketChannel::messageSenderConnection() const

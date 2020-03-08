@@ -1331,6 +1331,8 @@ void Page::updateRendering()
     });
 
     forEachDocument([] (Document& document) {
+        if (!document.domWindow())
+            return;
         DOMHighResTimeStamp timestamp = document.domWindow()->nowTimestamp();
         document.updateAnimationsAndSendEvents(timestamp);
         // FIXME: Run the fullscreen steps.
@@ -2999,6 +3001,11 @@ bool Page::shouldDisableCorsForRequestTo(const URL& url) const
     return WTF::anyOf(m_corsDisablingPatterns, [&] (const auto& pattern) {
         return pattern.matches(url);
     });
+}
+
+void Page::revealCurrentSelection()
+{
+    focusController().focusedOrMainFrame().selection().revealSelection(SelectionRevealMode::Reveal, ScrollAlignment::alignCenterIfNeeded);
 }
 
 } // namespace WebCore

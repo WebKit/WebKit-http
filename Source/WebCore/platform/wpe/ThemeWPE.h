@@ -25,13 +25,19 @@
 
 #pragma once
 
+#include "Color.h"
 #include "Theme.h"
 
 namespace WebCore {
 
+class Path;
+
 class ThemeWPE final : public Theme {
 public:
+    static Color focusColor();
     static void paintFocus(GraphicsContext&, const FloatRect&, int offset);
+    static void paintFocus(GraphicsContext&, const Path&, const Color&);
+    static void paintFocus(GraphicsContext&, const Vector<FloatRect>&, const Color&);
     enum class ArrowDirection { Up, Down };
     static void paintArrow(GraphicsContext&, ArrowDirection);
 

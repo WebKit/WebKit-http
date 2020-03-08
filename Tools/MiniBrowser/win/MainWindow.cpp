@@ -46,9 +46,11 @@ namespace WebCore {
 float deviceScaleFactorForWindow(HWND);
 }
 
-static constexpr int kToolbarImageSize = 24;
+static const wchar_t* kMiniBrowserRegistryKey = L"Software\\WebKit\\MiniBrowser";
+
+static constexpr int kToolbarImageSize = 32;
 static constexpr int kToolbarURLBarIndex = 4;
-static constexpr int kToolbarProgressIndicatorIndex = 6;
+static constexpr int kToolbarProgressIndicatorIndex = 5;
 
 static WNDPROC DefEditProc = nullptr;
 
@@ -118,31 +120,29 @@ Ref<MainWindow> MainWindow::create()
 void MainWindow::createToolbar(HINSTANCE hInstance)
 {
     m_hToolbarWnd = CreateWindowEx(0, TOOLBARCLASSNAME, nullptr, 
-        WS_CHILD | WS_BORDER | TBSTYLE_LIST | TBSTYLE_TOOLTIPS, 0, 0, 0, 0, 
+        WS_CHILD | WS_BORDER | TBSTYLE_FLAT | TBSTYLE_LIST | TBSTYLE_TOOLTIPS, 0, 0, 0, 0, 
         m_hMainWnd, nullptr, hInstance, nullptr);
         
     if (!m_hToolbarWnd)
         return;
 
     const int ImageListID = 0;
-    const int numButtons = 3;
+    const int numButtons = 4;
 
     HIMAGELIST hImageList;
-    hImageList = ImageList_Create(kToolbarImageSize, kToolbarImageSize, ILC_COLOR16 | ILC_MASK, numButtons, 0);
+    hImageList = ImageList_LoadImage(hInstance, MAKEINTRESOURCE(IDB_TOOLBAR), kToolbarImageSize, 0, CLR_DEFAULT, IMAGE_BITMAP, 0);
 
     SendMessage(m_hToolbarWnd, TB_SETIMAGELIST, ImageListID, reinterpret_cast<LPARAM>(hImageList));
-    SendMessage(m_hToolbarWnd, TB_LOADIMAGES, IDB_HIST_LARGE_COLOR, reinterpret_cast<LPARAM>(HINST_COMMCTRL));
     SendMessage(m_hToolbarWnd, TB_SETEXTENDEDSTYLE, 0, TBSTYLE_EX_DRAWDDARROWS | TBSTYLE_EX_MIXEDBUTTONS);
 
     const DWORD buttonStyles = BTNS_AUTOSIZE;
 
     TBBUTTON tbButtons[] = {
-        { MAKELONG(HIST_BACK,  ImageListID), IDM_HISTORY_BACKWARD, TBSTATE_ENABLED, buttonStyles | BTNS_DROPDOWN, { }, 0, (INT_PTR)L"Back" },
-        { MAKELONG(HIST_FORWARD, ImageListID), IDM_HISTORY_FORWARD, TBSTATE_ENABLED, buttonStyles | BTNS_DROPDOWN, { }, 0, (INT_PTR)L"Forward"},
-        { I_IMAGENONE, IDM_RELOAD, TBSTATE_ENABLED, buttonStyles | BTNS_SHOWTEXT, { }, 0, (INT_PTR)L"↺"},
-        { I_IMAGENONE, IDM_RELOAD, 0, buttonStyles | BTNS_SHOWTEXT, { }, 0, (INT_PTR)L"⌂"},
+        { MAKELONG(0, ImageListID), IDM_HISTORY_BACKWARD, TBSTATE_ENABLED, buttonStyles | BTNS_DROPDOWN, { }, 0, (INT_PTR)L"Back" },
+        { MAKELONG(1, ImageListID), IDM_HISTORY_FORWARD, TBSTATE_ENABLED, buttonStyles | BTNS_DROPDOWN, { }, 0, (INT_PTR)L"Forward"},
+        { MAKELONG(2, ImageListID), IDM_RELOAD, TBSTATE_ENABLED, buttonStyles, { }, 0, (INT_PTR)L"Reload"},
+        { MAKELONG(3, ImageListID), IDM_GO_HOME, TBSTATE_ENABLED, buttonStyles, { }, 0, (INT_PTR)L"Home"},
         { 0, 0, TBSTATE_ENABLED, BTNS_SEP, { }, 0, 0}, // URL bar
-        { MAKELONG(HIST_ADDTOFAVORITES, ImageListID), IDM_ABOUT, 0, buttonStyles, { }, 0, (INT_PTR)L"Add to Bookmarks"},
         { 0, 0, TBSTATE_ENABLED, BTNS_SEP, { }, 0, 0}, // Progress indicator
     };
     ASSERT(tbButtons[kToolbarURLBarIndex].fsStyle == BTNS_SEP);
@@ -150,11 +150,10 @@ void MainWindow::createToolbar(HINSTANCE hInstance)
 
     SendMessage(m_hToolbarWnd, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
     SendMessage(m_hToolbarWnd, TB_ADDBUTTONS, _countof(tbButtons), reinterpret_cast<LPARAM>(&tbButtons));
-    SendMessage(m_hToolbarWnd, TB_AUTOSIZE, 0, 0);
     ShowWindow(m_hToolbarWnd, true);
 
     m_hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, 0, 0, 0, 0, m_hToolbarWnd, 0, hInstance, 0);
-    m_hProgressIndicator = CreateWindow(L"STATIC", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | SS_CENTER | SS_CENTERIMAGE, 0, 0, 0, 0, m_hToolbarWnd, 0, hInstance, 0);
+    m_hProgressIndicator = CreateWindow(L"STATIC", 0, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE, 0, 0, 0, 0, m_hToolbarWnd, 0, hInstance, 0);
 
     DefEditProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(m_hURLBarWnd, GWLP_WNDPROC));
     SetWindowLongPtr(m_hURLBarWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditProc));
@@ -253,6 +252,7 @@ void MainWindow::resizeSubViews()
 
 LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    LRESULT result = 0;
     RefPtr<MainWindow> thisWindow = reinterpret_cast<MainWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
     switch (message) {
     case WM_ACTIVATE:
@@ -265,6 +265,29 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
     case WM_CREATE:
         SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(reinterpret_cast<LPCREATESTRUCT>(lParam)->lpCreateParams));
         break;
+    case WM_APPCOMMAND: {
+        auto cmd = GET_APPCOMMAND_LPARAM(lParam);
+        switch (cmd) {
+        case APPCOMMAND_BROWSER_BACKWARD:
+            thisWindow->browserWindow()->navigateForwardOrBackward(false);
+            result = 1;
+            break;
+        case APPCOMMAND_BROWSER_FORWARD:
+            thisWindow->browserWindow()->navigateForwardOrBackward(true);
+            result = 1;
+            break;
+        case APPCOMMAND_BROWSER_HOME:
+            thisWindow->goHome();
+            break;
+        case APPCOMMAND_BROWSER_REFRESH:
+            thisWindow->browserWindow()->reload();
+            result = 1;
+            break;
+        case APPCOMMAND_BROWSER_STOP:
+            break;
+        }
+        break;
+    }
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         int wmEvent = HIWORD(wParam);
@@ -306,6 +329,9 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
         case IDM_ABOUT:
             DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
             break;
+        case IDM_GO_HOME:
+            thisWindow->goHome();
+            break;
         case IDM_EXIT:
             DestroyWindow(hWnd);
             break;
@@ -318,6 +344,9 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
         case IDM_PROXY_SETTINGS:
             thisWindow->browserWindow()->openProxySettings();
             break;
+        case IDM_SET_DEFAULT_URL:
+            thisWindow->setDefaultURLToCurrentURL();
+            break;
         case IDM_CACHES:
             if (!::IsWindow(thisWindow->m_hCacheWnd)) {
                 thisWindow->m_hCacheWnd = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_CACHES), hWnd, cachesDialogProc, reinterpret_cast<LPARAM>(thisWindow.get()));
@@ -326,7 +355,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
             break;
         case IDM_HISTORY_BACKWARD:
         case IDM_HISTORY_FORWARD:
-            thisWindow->browserWindow()->navigateForwardOrBackward(wmId);
+            thisWindow->browserWindow()->navigateForwardOrBackward(wmId == IDM_HISTORY_FORWARD);
             break;
         case IDM_UA_OTHER:
             DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_USER_AGENT), hWnd, customUserAgentDialogProc, reinterpret_cast<LPARAM>(thisWindow.get()));
@@ -375,7 +404,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
-    return 0;
+    return result;
 }
 
 static bool menuItemIsChecked(const MENUITEMINFO& info)
@@ -400,6 +429,16 @@ static void turnOffOtherUserAgents(HMENU menu)
         info.fState = MFS_UNCHECKED;
         ::SetMenuItemInfo(menu, menuToClear, FALSE, &info);
     }
+}
+
+void MainWindow::setDefaultURLToCurrentURL()
+{
+    wchar_t url[INTERNET_MAX_URL_LENGTH];
+    GetWindowText(m_hURLBarWnd, url, INTERNET_MAX_URL_LENGTH);
+    auto length = wcslen(url);
+    if (!length)
+        return;
+    RegSetKeyValue(HKEY_CURRENT_USER, kMiniBrowserRegistryKey, L"DefaultURL", REG_SZ, url, (length + 1) * sizeof(wchar_t));
 }
 
 bool MainWindow::toggleMenuItem(UINT menuID)
@@ -564,12 +603,21 @@ void MainWindow::loadURL(std::wstring url)
     SetFocus(m_browserWindow->hwnd());
 }
 
+void MainWindow::goHome()
+{
+    std::wstring defaultURL = L"https://www.webkit.org/";
+    wchar_t url[INTERNET_MAX_URL_LENGTH];
+    DWORD urlLength = sizeof(url);
+    if (!RegGetValue(HKEY_CURRENT_USER, kMiniBrowserRegistryKey, L"DefaultURL", RRF_RT_REG_SZ, nullptr, &url, &urlLength))
+        defaultURL = url;
+    loadURL(defaultURL);
+}
+
 void MainWindow::onURLBarEnter()
 {
-    wchar_t strPtr[INTERNET_MAX_URL_LENGTH];
-    GetWindowText(m_hURLBarWnd, strPtr, INTERNET_MAX_URL_LENGTH);
-    strPtr[INTERNET_MAX_URL_LENGTH - 1] = 0;
-    loadURL(strPtr);
+    wchar_t url[INTERNET_MAX_URL_LENGTH];
+    GetWindowText(m_hURLBarWnd, url, INTERNET_MAX_URL_LENGTH);
+    loadURL(url);
 }
 
 void MainWindow::updateDeviceScaleFactor()

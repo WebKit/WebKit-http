@@ -35,7 +35,7 @@ public:
 
     String extraDefaultStyleSheet() override;
 #if ENABLE(VIDEO)
-    String mediaControlsStyleSheet() override;
+    String extraMediaControlsStyleSheet() override;
     String mediaControlsScript() override;
 #endif
 
@@ -47,6 +47,18 @@ private:
     bool supportsFocusRing(const RenderStyle&) const override;
 
     void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
+
+    Color platformFocusRingColor(OptionSet<StyleColor::Options>) const override;
+
+    Color platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
+
+    Color platformActiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformActiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
 
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
@@ -61,6 +73,16 @@ private:
     Seconds animationDurationForProgressBar(RenderProgress&) const override;
     IntRect progressBarRectForBounds(const RenderObject&, const IntRect&) const override;
     bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSliderThumbSize(RenderStyle&, const Element*) const override;
+    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
+#if ENABLE(VIDEO)
+    bool paintMediaSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintMediaVolumeSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+#endif
+
 };
 
 } // namespace WebCore

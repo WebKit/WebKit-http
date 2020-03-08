@@ -44,7 +44,6 @@
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
-#include "NetworkResourceLoadMap.h"
 #include "NetworkResourceLoader.h"
 #include "NetworkSession.h"
 #include "NetworkSessionCreationParameters.h"
@@ -79,6 +78,7 @@
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/StorageQuotaManager.h>
 #include <wtf/Algorithms.h>
@@ -325,7 +325,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         memoryPressureHandler.install();
     }
 
-    setCacheModel(parameters.cacheModel, parameters.defaultDataStoreParameters.networkSessionParameters.networkCacheDirectory);
+    setCacheModel(parameters.cacheModel);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     m_isITPDatabaseEnabled = parameters.shouldEnableITPDatabase;
@@ -1300,6 +1300,32 @@ void NetworkProcess::setFirstPartyWebsiteDataRemovalModeForTesting(PAL::SessionI
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
+void NetworkProcess::preconnectTo(PAL::SessionID sessionID, const URL& url, const String& userAgent, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
+{
+#if ENABLE(SERVER_PRECONNECT)
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
+    if (supplement<LegacyCustomProtocolManager>()->supportsScheme(url.protocol().toString()))
+        return;
+#endif
+
+    NetworkLoadParameters parameters;
+    parameters.request = ResourceRequest { url };
+    if (!userAgent.isEmpty()) {
+        // FIXME: we add user-agent to the preconnect request because otherwise the preconnect
+        // gets thrown away by CFNetwork when using an HTTPS proxy (<rdar://problem/59434166>).
+        parameters.request.setHTTPUserAgent(userAgent);
+    }
+    parameters.storedCredentialsPolicy = storedCredentialsPolicy;
+    parameters.shouldPreconnectOnly = PreconnectOnly::Yes;
+
+    new PreconnectTask(*this, sessionID, WTFMove(parameters), [](const WebCore::ResourceError&) { });
+#else
+    UNUSED_PARAM(url);
+    UNUSED_PARAM(userAgent);
+    UNUSED_PARAM(storedCredentialsPolicy);
+#endif
+}
+
 bool NetworkProcess::sessionIsControlledByAutomation(PAL::SessionID sessionID) const
 {
     return m_sessionsControlledByAutomation.contains(sessionID);
@@ -2016,11 +2042,11 @@ void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloa
 
 void NetworkProcess::setCacheModelSynchronouslyForTesting(CacheModel cacheModel, CompletionHandler<void()>&& completionHandler)
 {
-    setCacheModel(cacheModel, { });
+    setCacheModel(cacheModel);
     completionHandler();
 }
 
-void NetworkProcess::setCacheModel(CacheModel cacheModel, String cacheStorageDirectory)
+void NetworkProcess::setCacheModel(CacheModel cacheModel)
 {
     if (m_hasSetCacheModel && (cacheModel == m_cacheModel))
         return;
@@ -2028,28 +2054,9 @@ void NetworkProcess::setCacheModel(CacheModel cacheModel, String cacheStorageDir
     m_hasSetCacheModel = true;
     m_cacheModel = cacheModel;
 
-    unsigned urlCacheMemoryCapacity = 0;
-    uint64_t urlCacheDiskCapacity = 0;
-    uint64_t diskFreeSize = 0;
-
-    // FIXME: Move the cache model to WebsiteDataStore so we don't need to assume the first cache is on the same volume as all caches.
-    forEachNetworkSession([&](auto& session) {
-        if (!cacheStorageDirectory.isNull())
-            return;
+    forEachNetworkSession([](auto& session) {
         if (auto* cache = session.cache())
-            cacheStorageDirectory = cache->storageDirectory();
-    });
-
-    if (FileSystem::getVolumeFreeSpace(cacheStorageDirectory, diskFreeSize)) {
-        // As a fudge factor, use 1000 instead of 1024, in case the reported byte
-        // count doesn't align exactly to a megabyte boundary.
-        diskFreeSize /= KB * 1000;
-        calculateURLCacheSizes(cacheModel, diskFreeSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
-    }
-
-    forEachNetworkSession([urlCacheDiskCapacity](auto& session) {
-        if (auto* cache = session.cache())
-            cache->setCapacity(urlCacheDiskCapacity);
+            cache->updateCapacity();
     });
 }
 
@@ -2377,13 +2384,6 @@ void NetworkProcess::resetQuota(PAL::SessionID sessionID, CompletionHandler<void
     completionHandler();
 }
 
-#if ENABLE(SANDBOX_EXTENSIONS)
-void NetworkProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, CompletionHandler<void(SandboxExtension::HandleArray&&)>&& completionHandler)
-{
-    parentProcessConnection()->sendWithAsyncReply(Messages::NetworkProcessProxy::GetSandboxExtensionsForBlobFiles(filenames), WTFMove(completionHandler));
-}
-#endif // ENABLE(SANDBOX_EXTENSIONS)
-
 #if ENABLE(SERVICE_WORKER)
 void NetworkProcess::forEachSWServer(const Function<void(SWServer&)>& callback)
 {
@@ -2600,6 +2600,25 @@ void NetworkProcess::resetServiceWorkerFetchTimeoutForTesting(CompletionHandler<
 {
     m_serviceWorkerFetchTimeout = defaultServiceWorkerFetchTimeout;
     completionHandler();
+}
+
+void NetworkProcess::hasAppBoundSession(PAL::SessionID sessionID, CompletionHandler<void(bool)>&& completionHandler) const
+{
+    bool result = false;
+    if (auto* networkSession = this->networkSession(sessionID))
+        result = networkSession->hasAppBoundSession();
+    completionHandler(result);
+}
+
+void NetworkProcess::setInAppBrowserPrivacyEnabled(PAL::SessionID sessionID, bool enable, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        networkSession->setInAppBrowserPrivacyEnabled(enable);
+        completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
 }
 
 } // namespace WebKit

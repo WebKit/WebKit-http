@@ -72,6 +72,7 @@
 #import <WebCore/DragController.h>
 #import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
+#import <WebCore/EditorClient.h>
 #import <WebCore/Element.h>
 #import <WebCore/ElementAncestorIterator.h>
 #import <WebCore/EventHandler.h>
@@ -116,6 +117,7 @@
 #import <WebCore/Quirks.h>
 #import <WebCore/RenderBlock.h>
 #import <WebCore/RenderImage.h>
+#import <WebCore/RenderLayer.h>
 #import <WebCore/RenderThemeIOS.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -208,6 +210,11 @@ bool WebPage::isTransparentOrFullyClipped(const Element& element) const
 void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     FrameView* view = frame.view();
+    if (!view) {
+        result.isMissingPostLayoutData = true;
+        return;
+    }
+
     if (frame.editor().hasComposition()) {
         RefPtr<Range> compositionRange = frame.editor().compositionRange();
         Vector<WebCore::SelectionRect> compositionRects;
@@ -227,7 +234,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     // to avoid the need to force a synchronous layout here to compute these entries. If we
     // have a composition or are using a hardware keyboard then we send the full editor state
     // immediately so that the UIProcess can update UI, including the position of the caret.
-    bool needsLayout = !frame.view() || frame.view()->needsLayout();
+    bool needsLayout = view->needsLayout();
     bool requiresPostLayoutData = frame.editor().hasComposition();
 #if !PLATFORM(MACCATALYST)
     requiresPostLayoutData |= m_keyboardIsAttached;
@@ -274,7 +281,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
         if (m_focusedElement && m_focusedElement->renderer()) {
             auto& renderer = *m_focusedElement->renderer();
             postLayoutData.focusedElementRect = rootViewInteractionBoundsForElement(*m_focusedElement);
-            postLayoutData.caretColor = renderer.style().caretColor();
+            postLayoutData.caretColor = CaretBase::computeCaretColor(renderer.style(), renderer.element());
         }
         if (result.isContentEditable) {
             if (auto editableRootOrFormControl = makeRefPtr(selection.rootEditableElement())) {
@@ -585,9 +592,18 @@ IntRect WebPage::rectForElementAtInteractionLocation() const
 
 void WebPage::updateSelectionAppearance()
 {
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-    if (!frame.editor().ignoreSelectionChanges() && (frame.editor().hasComposition() || !frame.selection().selection().isNone()))
-        didChangeSelection();
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    auto& editor = frame.editor();
+    if (editor.ignoreSelectionChanges())
+        return;
+
+    if (editor.client() && !editor.client()->shouldRevealCurrentSelectionAfterInsertion())
+        return;
+
+    if (!editor.hasComposition() && frame.selection().selection().isNone())
+        return;
+
+    didChangeSelection();
 }
 
 static void dispatchSyntheticMouseMove(Frame& mainFrame, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers, WebCore::PointerID pointerId = WebCore::mousePointerID)
@@ -2498,11 +2514,12 @@ void WebPage::requestAutocorrectionContext()
     send(Messages::WebPageProxy::HandleAutocorrectionContext(autocorrectionContext()));
 }
 
-static HTMLAnchorElement* containingLinkElement(Element* element)
+static HTMLAnchorElement* containingLinkAnchorElement(Element& element)
 {
-    for (auto& currentElement : elementLineage(element)) {
-        if (currentElement.isLink() && is<HTMLAnchorElement>(currentElement))
-            return downcast<HTMLAnchorElement>(&currentElement);
+    // FIXME: There is code in the drag controller that supports any link, even if it's not an HTMLAnchorElement. Why is this different?
+    for (auto& currentElement : lineageOfType<HTMLAnchorElement>(element)) {
+        if (currentElement.isLink())
+            return &currentElement;
     }
     return nullptr;
 }
@@ -2672,7 +2689,7 @@ static void elementPositionInformation(WebPage& page, Element& element, const In
 {
     Element* linkElement = nullptr;
     if (element.renderer() && element.renderer()->isRenderImage())
-        linkElement = containingLinkElement(&element);
+        linkElement = containingLinkAnchorElement(element);
     else if (element.isLink())
         linkElement = &element;
 
@@ -2941,7 +2958,7 @@ void WebPage::performActionOnElement(uint32_t action)
         if (is<RenderImage>(*element.renderer())) {
             URL url;
             String title;
-            if (auto* linkElement = containingLinkElement(&element)) {
+            if (auto* linkElement = containingLinkAnchorElement(element)) {
                 url = linkElement->href();
                 title = linkElement->attributeWithoutSynchronization(HTMLNames::titleAttr);
                 if (!title.length())
@@ -4199,6 +4216,17 @@ void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest reques
 #endif
 
     completionHandler(context);
+}
+
+void WebPage::setShouldRevealCurrentSelectionAfterInsertion(bool shouldRevealCurrentSelectionAfterInsertion)
+{
+    if (m_shouldRevealCurrentSelectionAfterInsertion == shouldRevealCurrentSelectionAfterInsertion)
+        return;
+    m_shouldRevealCurrentSelectionAfterInsertion = shouldRevealCurrentSelectionAfterInsertion;
+    if (!shouldRevealCurrentSelectionAfterInsertion)
+        return;
+    m_page->revealCurrentSelection();
+    scheduleFullEditorStateUpdate();
 }
 
 #if USE(QUICK_LOOK)

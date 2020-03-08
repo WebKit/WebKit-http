@@ -181,7 +181,7 @@ public:
     void setPreparedToReturnVideoLayerToInline(bool);
     void waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler = [] { });
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
+    WEBCORE_EXPORT void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
 #ifdef __OBJC__
     PlatformLayer* videoFullscreenLayer() const { return m_videoFullscreenLayer.get(); }
 #endif
@@ -446,7 +446,7 @@ public:
     virtual void fullscreenModeChanged(VideoFullscreenMode);
 
     void enterFullscreen(VideoFullscreenMode);
-    void enterFullscreen() override;
+    WEBCORE_EXPORT void enterFullscreen() override;
     WEBCORE_EXPORT void exitFullscreen();
     WEBCORE_EXPORT void setVideoFullscreenStandby(bool);
 
@@ -877,7 +877,6 @@ private:
     PlatformMediaSession::MediaType mediaType() const override;
     PlatformMediaSession::MediaType presentationType() const override;
     PlatformMediaSession::DisplayType displayType() const override;
-    PlatformMediaSession::CharacteristicsFlags characteristics() const final;
 
     void suspendPlayback() override;
     void resumeAutoplaying() override;
@@ -891,7 +890,6 @@ private:
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
-    bool processingUserGestureForMedia() const final;
     bool hasMediaStreamSource() const final;
     void processIsSuspendedChanged() final;
 
@@ -900,6 +898,8 @@ private:
 #if USE(AUDIO_SESSION) && PLATFORM(MAC)
     void hardwareMutedStateDidChange(AudioSession*) final;
 #endif
+
+    bool processingUserGestureForMedia() const;
 
     bool effectiveMuted() const;
     double effectiveVolume() const;

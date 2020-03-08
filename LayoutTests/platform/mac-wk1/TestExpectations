@@ -163,6 +163,8 @@ http/tests/lazyload [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/disconnected-image-loading-lazy.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-below-viewport-dynamic.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-001.sub.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-cross-origin-ifame-002.sub.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-in-viewport-dynamic.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-load-event.html [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/image-loading-lazy-move-document.html [ Skip ]
@@ -448,9 +450,6 @@ imported/blink/compositing/reorder-z-with-style.html [ Pass Timeout ]
 imported/blink/svg/custom/marker-layout-invalidation.html [ Pass Timeout ]
 imported/blink/fast/css/crash-corner-present.html [ Pass Timeout ]
 imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeout ]
-
-# ASAN test only fails on WK1:
-webgl/1.0.3/151055_asan.html [ Failure ]
 
 # Lacking WK1 TestRunner API that evaluates JavaScript through JSC APIs and not WebCore APIs.
 inspector/script-profiler/event-type-API.html [ Skip ]
@@ -781,8 +780,6 @@ webkit.org/b/190350 [ Mojave ] storage/indexeddb/database-odd-names.html [ Failu
 
 webkit.org/b/190832 [ Debug ] fast/forms/state-restore-to-non-edited-controls.html [ Pass Failure ]
 
-webkit.org/b/190833 [ Debug ] inspector/codemirror/prettyprinting-css.html [ Slow ]
-
 webkit.org/b/190849 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny.html [ Pass Failure ]
 
 webkit.org/b/186406 [ Mojave+ ] compositing/iframes/display-none-subframe.html [ Pass Failure ]
@@ -944,3 +941,14 @@ webkit.org/b/207857 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Pass Tim
 
 webkit.org/b/207891 imported/w3c/web-platform-tests/css/css-position/fixed-z-index-blend.html [ Pass Failure ]
 http/tests/websocket/web-socket-loads-captured-in-per-page-domains.html [ Skip ]
+
+webkit.org/b/206178 [ Mojave ] editing/spelling/spellcheck-attribute.html [ Pass Crash ]
+
+webkit.org/b/208022 [ Debug ] http/tests/history/back-to-post.php [ Pass Failure ]
+
+webkit.org/b/208059 [ Debug ] legacy-animation-engine/compositing/transitions/add-remove-transition.html [ Pass Failure ]
+
+webkit.org/b/208065 [ Debug ] legacy-animation-engine/animations/animation-direction-normal.html [ Pass Failure ]
+
+# prefetch not supported in WK1
+http/wpt/prefetch [ Skip ]

@@ -1764,6 +1764,7 @@ platform/ScrollableArea.cpp
 platform/Scrollbar.cpp
 platform/ScrollbarTheme.cpp
 platform/ScrollbarThemeComposite.cpp
+platform/SerializedPlatformDataCue.cpp
 platform/SharedBuffer.cpp
 platform/SharedBufferChunkReader.cpp
 platform/SharedStringHash.cpp
@@ -1869,6 +1870,7 @@ platform/graphics/HEVCUtilities.cpp
 platform/graphics/Icon.cpp
 platform/graphics/Image.cpp
 platform/graphics/ImageBuffer.cpp
+platform/graphics/ImageBufferBackend.cpp
 platform/graphics/ImageDecoder.cpp
 platform/graphics/ImageFrame.cpp
 platform/graphics/ImageSource.cpp
@@ -1900,6 +1902,7 @@ platform/graphics/WidthIterator.cpp
 platform/graphics/cpu/arm/filters/FELightingNEON.cpp
 
 platform/graphics/displaylists/DisplayList.cpp
+platform/graphics/displaylists/DisplayListDrawingContext.cpp
 platform/graphics/displaylists/DisplayListItems.cpp
 platform/graphics/displaylists/DisplayListRecorder.cpp
 platform/graphics/displaylists/DisplayListReplayer.cpp

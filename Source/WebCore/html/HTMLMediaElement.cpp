@@ -1332,7 +1332,7 @@ void HTMLMediaElement::selectMediaResource()
             mode = Attribute;
             ASSERT(m_player);
             if (!m_player) {
-                ERROR_LOG(logSiteIdentifier, " has srcAttr but m_player is not created");
+                ERROR_LOG(logSiteIdentifier, "has srcAttr but m_player is not created");
                 return;
             }
         } else if (auto firstSource = childrenOfType<HTMLSourceElement>(*this).first()) {
@@ -3473,11 +3473,13 @@ void HTMLMediaElement::play(DOMPromiseDeferred<void>&& promise)
     if (!success) {
         if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
             setAutoplayEventPlaybackState(AutoplayEventPlaybackState::PreventedAutoplay);
+        ERROR_LOG(LOGIDENTIFIER, "rejecting promise: ", success.value());
         promise.reject(NotAllowedError);
         return;
     }
 
     if (m_error && m_error->code() == MediaError::MEDIA_ERR_SRC_NOT_SUPPORTED) {
+        ERROR_LOG(LOGIDENTIFIER, "rejecting promise because of error");
         promise.reject(NotSupportedError, "The operation is not supported.");
         return;
     }
@@ -3495,6 +3497,7 @@ void HTMLMediaElement::play()
 
     auto success = m_mediaSession->playbackPermitted();
     if (!success) {
+        ERROR_LOG(LOGIDENTIFIER, "playback not permitted: ", success.value());
         if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
             setAutoplayEventPlaybackState(AutoplayEventPlaybackState::PreventedAutoplay);
         return;
@@ -4650,7 +4653,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
     // each still is a child of this media element before using.
     Vector<Ref<HTMLSourceElement>> potentialSourceNodes;
     auto sources = childrenOfType<HTMLSourceElement>(*this);
-    for (auto next = m_nextChildNodeToConsider ? sources.beginAt(*m_nextChildNodeToConsider) : sources.begin(), end = sources.end(); next != end; ++next)
+    for (auto next = m_nextChildNodeToConsider ? sources.beginAt(*m_nextChildNodeToConsider) : sources.begin(); next; ++next)
         potentialSourceNodes.append(*next);
 
     for (auto& source : potentialSourceNodes) {
@@ -5094,7 +5097,8 @@ void HTMLMediaElement::scheduleMediaEngineWasUpdated()
 
 void HTMLMediaElement::mediaEngineWasUpdated()
 {
-    INFO_LOG(LOGIDENTIFIER);
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     beginProcessingMediaPlayerCallback();
     updateRenderer();
     endProcessingMediaPlayerCallback();
@@ -5129,7 +5133,7 @@ void HTMLMediaElement::mediaEngineWasUpdated()
 
 void HTMLMediaElement::mediaPlayerEngineUpdated()
 {
-    INFO_LOG(LOGIDENTIFIER);
+    INFO_LOG(LOGIDENTIFIER, m_player->engineDescription());
 
 #if ENABLE(MEDIA_SOURCE)
     m_droppedVideoFrames = 0;
@@ -5789,7 +5793,7 @@ void HTMLMediaElement::mediaVolumeDidChange()
 
 void HTMLMediaElement::visibilityStateChanged()
 {
-    bool elementIsHidden = document().hidden() && m_videoFullscreenMode != VideoFullscreenModePictureInPicture;
+    bool elementIsHidden = document().hidden() && m_videoFullscreenMode == VideoFullscreenModeNone;
     if (elementIsHidden == m_elementIsHidden)
         return;
 
@@ -6916,7 +6920,7 @@ HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
     if (PlatformMediaSessionManager::sharedManager().processIsSuspended())
         return SleepType::None;
 
-    bool shouldBeAbleToSleep = mediaType() != PlatformMediaSession::VideoAudio;
+    bool shouldBeAbleToSleep = mediaType() != PlatformMediaSession::MediaType::VideoAudio;
 #if ENABLE(MEDIA_STREAM)
     // Remote media stream video tracks may have their corresponding audio tracks being played outside of the media element. Let's ensure to not IDLE the screen in that case.
     // FIXME: We should check that audio is being/to be played. Ideally, we would come up with a media stream agnostic heuristisc.
@@ -7517,8 +7521,8 @@ PlatformMediaSession::MediaType HTMLMediaElement::mediaType() const
 {
     if (m_player && m_readyState >= HAVE_METADATA) {
         if (hasVideo() && hasAudio() && !muted())
-            return PlatformMediaSession::VideoAudio;
-        return hasVideo() ? PlatformMediaSession::Video : PlatformMediaSession::Audio;
+            return PlatformMediaSession::MediaType::VideoAudio;
+        return hasVideo() ? PlatformMediaSession::MediaType::Video : PlatformMediaSession::MediaType::Audio;
     }
 
     return presentationType();
@@ -7527,9 +7531,9 @@ PlatformMediaSession::MediaType HTMLMediaElement::mediaType() const
 PlatformMediaSession::MediaType HTMLMediaElement::presentationType() const
 {
     if (hasTagName(HTMLNames::videoTag))
-        return muted() ? PlatformMediaSession::Video : PlatformMediaSession::VideoAudio;
+        return muted() ? PlatformMediaSession::MediaType::Video : PlatformMediaSession::MediaType::VideoAudio;
 
-    return PlatformMediaSession::Audio;
+    return PlatformMediaSession::MediaType::Audio;
 }
 
 PlatformMediaSession::DisplayType HTMLMediaElement::displayType() const
@@ -7543,20 +7547,6 @@ PlatformMediaSession::DisplayType HTMLMediaElement::displayType() const
 
     ASSERT_NOT_REACHED();
     return PlatformMediaSession::Normal;
-}
-
-PlatformMediaSession::CharacteristicsFlags HTMLMediaElement::characteristics() const
-{
-    if (m_readyState < HAVE_METADATA)
-        return PlatformMediaSession::HasNothing;
-
-    PlatformMediaSession::CharacteristicsFlags state = PlatformMediaSession::HasNothing;
-    if (isVideo() && hasVideo())
-        state |= PlatformMediaSession::HasVideo;
-    if (this->hasAudio())
-        state |= PlatformMediaSession::HasAudio;
-
-    return state;
 }
 
 bool HTMLMediaElement::canProduceAudio() const

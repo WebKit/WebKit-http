@@ -326,14 +326,17 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
         if (auto* contentSecurityPolicy = document->contentSecurityPolicy())
             loadParameters.cspResponseHeaders = contentSecurityPolicy->responseHeaders();
     }
+    
+    auto* webFrameLoaderClient = frame ? toWebFrameLoaderClient(frame->loader().client()) : nullptr;
+    auto* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
+    auto* webPage = webFrame ? webFrame->page() : nullptr;
+    if (webPage)
+        loadParameters.isNavigatingToAppBoundDomain = webPage->isNavigatingToAppBoundDomain();
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (document) {
         loadParameters.mainDocumentURL = document->topDocument().url();
         // FIXME: Instead of passing userContentControllerIdentifier, the NetworkProcess should be able to get it using webPageId.
-        auto* webFrameLoaderClient = toWebFrameLoaderClient(resourceLoader.frame()->loader().client());
-        auto* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
-        auto* webPage = webFrame ? webFrame->page() : nullptr;
         if (webPage)
             loadParameters.userContentControllerIdentifier = webPage->userContentControllerIdentifier();
     }
@@ -601,6 +604,10 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
             loadParameters.cspResponseHeaders = contentSecurityPolicy->responseHeaders();
     }
     loadParameters.originalRequestHeaders = originalRequestHeaders;
+    
+    if (webPage)
+        loadParameters.isNavigatingToAppBoundDomain = webPage->isNavigatingToAppBoundDomain();
+
     addParametersFromFrame(webFrame->coreFrame(), loadParameters);
 
     data.shrink(0);
@@ -627,6 +634,13 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
 void WebLoaderStrategy::pageLoadCompleted(Page& page)
 {
     WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PageLoadCompleted(WebPage::fromCorePage(page).identifier()), 0);
+}
+
+void WebLoaderStrategy::browsingContextRemoved(Frame& frame)
+{
+    ASSERT(frame.page());
+    auto& page = WebPage::fromCorePage(*frame.page());
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::BrowsingContextRemoved(page.webPageProxyIdentifier(), page.identifier(), WebFrame::fromCoreFrame(frame)->frameID()), 0);
 }
 
 static uint64_t generateLoadIdentifier()
@@ -668,13 +682,16 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
             loadParameters.cspResponseHeaders = contentSecurityPolicy->responseHeaders();
     }
     addParametersFromFrame(&frame, loadParameters);
-
+    
+    auto* webFrameLoaderClient = toWebFrameLoaderClient(frame.loader().client());
+    auto* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
+    auto* webPage = webFrame ? webFrame->page() : nullptr;
+    if (webPage)
+        loadParameters.isNavigatingToAppBoundDomain = webPage->isNavigatingToAppBoundDomain();
+    
 #if ENABLE(CONTENT_EXTENSIONS)
     loadParameters.mainDocumentURL = document->topDocument().url();
     // FIXME: Instead of passing userContentControllerIdentifier, we should just pass webPageId to NetworkProcess.
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame.loader().client());
-    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
-    WebPage* webPage = webFrame ? webFrame->page() : nullptr;
     if (webPage)
         loadParameters.userContentControllerIdentifier = webPage->userContentControllerIdentifier();
 #endif
@@ -724,6 +741,13 @@ void WebLoaderStrategy::preconnectTo(WebCore::ResourceRequest&& request, WebPage
 
     NetworkResourceLoadParameters parameters;
     parameters.request = WTFMove(request);
+    if (parameters.request.httpUserAgent().isEmpty()) {
+        // FIXME: we add user-agent to the preconnect request because otherwise the preconnect
+        // gets thrown away by CFNetwork when using an HTTPS proxy (<rdar://problem/59434166>).
+        String webPageUserAgent = webPage.userAgent(parameters.request.url());
+        if (!webPageUserAgent.isEmpty())
+            parameters.request.setHTTPUserAgent(webPageUserAgent);
+    }
     parameters.webPageProxyID = webPage.webPageProxyIdentifier();
     parameters.webPageID = webPage.identifier();
     parameters.webFrameID = webFrame.frameID();

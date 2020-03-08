@@ -1070,7 +1070,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     result.isContentRichlyEditable = selection.isContentRichlyEditable();
     result.isInPasswordField = selection.isInPasswordField();
     result.hasComposition = editor.hasComposition();
-    result.shouldIgnoreSelectionChanges = editor.ignoreSelectionChanges();
+    result.shouldIgnoreSelectionChanges = editor.ignoreSelectionChanges() || (editor.client() && !editor.client()->shouldRevealCurrentSelectionAfterInsertion());
 
     if (auto* document = frame.document())
         result.originIdentifierForPasteboard = document->originIdentifierForPasteboard();
@@ -1570,12 +1570,9 @@ void WebPage::platformDidReceiveLoadParameters(const LoadParameters& loadParamet
 
 void WebPage::loadRequest(LoadParameters&& loadParameters)
 {
-    SendStopResponsivenessTimer stopper;
+    setIsNavigatingToAppBoundDomain(loadParameters.isNavigatingToAppBoundDomain);
 
-    if (loadParameters.request.url().protocolIsInHTTPFamily() && !SecurityOrigin::isLocalHostOrLoopbackIPAddress(loadParameters.request.url().host())) {
-        ResourceRequest urlOnlyPreconnectRequest { loadParameters.request.url() };
-        WebProcess::singleton().webLoaderStrategy().preconnectTo(WTFMove(urlOnlyPreconnectRequest), *this, *m_mainFrame, StoredCredentialsPolicy::Use);
-    }
+    SendStopResponsivenessTimer stopper;
 
     m_pendingNavigationID = loadParameters.navigationID;
     m_pendingWebsitePolicies = WTFMove(loadParameters.websitePolicies);
@@ -1609,8 +1606,10 @@ NO_RETURN void WebPage::loadRequestWaitingForProcessLaunch(LoadParameters&&, URL
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-void WebPage::loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& websitePolicies, Ref<SharedBuffer>&& sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, const UserData& userData, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
+void WebPage::loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& websitePolicies, Ref<SharedBuffer>&& sharedBuffer, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& unreachableURL, const UserData& userData, NavigatingToAppBoundDomain isNavigatingToAppBoundDomain, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
 {
+    setIsNavigatingToAppBoundDomain(isNavigatingToAppBoundDomain);
+
     SendStopResponsivenessTimer stopper;
 
     m_pendingNavigationID = navigationID;
@@ -1627,6 +1626,7 @@ void WebPage::loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLo
     // Initate the load in WebCore.
     FrameLoadRequest frameLoadRequest(*m_mainFrame->coreFrame(), request, shouldOpenExternalURLsPolicy, substituteData);
     frameLoadRequest.setShouldTreatAsContinuingLoad(shouldTreatAsContinuingLoad);
+    frameLoadRequest.setIsRequestFromClientOrUserInput();
     m_mainFrame->coreFrame()->loader().load(WTFMove(frameLoadRequest));
 }
 
@@ -1636,7 +1636,7 @@ void WebPage::loadData(LoadParameters&& loadParameters)
 
     auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(loadParameters.data.data()), loadParameters.data.size());
     URL baseURL = loadParameters.baseURLString.isEmpty() ? WTF::blankURL() : URL(URL(), loadParameters.baseURLString);
-    loadDataImpl(loadParameters.navigationID, loadParameters.shouldTreatAsContinuingLoad, WTFMove(loadParameters.websitePolicies), WTFMove(sharedBuffer), loadParameters.MIMEType, loadParameters.encodingName, baseURL, URL(), loadParameters.userData, loadParameters.shouldOpenExternalURLsPolicy);
+    loadDataImpl(loadParameters.navigationID, loadParameters.shouldTreatAsContinuingLoad, WTFMove(loadParameters.websitePolicies), WTFMove(sharedBuffer), loadParameters.MIMEType, loadParameters.encodingName, baseURL, URL(), loadParameters.userData, loadParameters.isNavigatingToAppBoundDomain, loadParameters.shouldOpenExternalURLsPolicy);
 }
 
 void WebPage::loadAlternateHTML(LoadParameters&& loadParameters)
@@ -1648,7 +1648,7 @@ void WebPage::loadAlternateHTML(LoadParameters&& loadParameters)
     URL provisionalLoadErrorURL = loadParameters.provisionalLoadErrorURLString.isEmpty() ? URL() : URL(URL(), loadParameters.provisionalLoadErrorURLString);
     auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(loadParameters.data.data()), loadParameters.data.size());
     m_mainFrame->coreFrame()->loader().setProvisionalLoadErrorBeingHandledURL(provisionalLoadErrorURL);    
-    loadDataImpl(loadParameters.navigationID, loadParameters.shouldTreatAsContinuingLoad, WTFMove(loadParameters.websitePolicies), WTFMove(sharedBuffer), loadParameters.MIMEType, loadParameters.encodingName, baseURL, unreachableURL, loadParameters.userData);
+    loadDataImpl(loadParameters.navigationID, loadParameters.shouldTreatAsContinuingLoad, WTFMove(loadParameters.websitePolicies), WTFMove(sharedBuffer), loadParameters.MIMEType, loadParameters.encodingName, baseURL, unreachableURL, loadParameters.userData, loadParameters.isNavigatingToAppBoundDomain);
     m_mainFrame->coreFrame()->loader().setProvisionalLoadErrorBeingHandledURL({ });
 }
 
@@ -3262,12 +3262,13 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
         pluginView->setLayerHostingMode(m_layerHostingMode);
 }
 
-void WebPage::didReceivePolicyDecision(FrameIdentifier frameID, uint64_t listenerID, PolicyCheckIdentifier identifier, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
+void WebPage::didReceivePolicyDecision(FrameIdentifier frameID, uint64_t listenerID, PolicyDecision&& policyDecision)
 {
+    setIsNavigatingToAppBoundDomain(policyDecision.isNavigatingToAppBoundDomain);
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
         return;
-    frame->didReceivePolicyDecision(listenerID, identifier, policyAction, navigationID, downloadID, WTFMove(websitePolicies));
+    frame->didReceivePolicyDecision(listenerID, WTFMove(policyDecision));
 }
 
 void WebPage::continueWillSubmitForm(FrameIdentifier frameID, uint64_t listenerID)
@@ -3450,12 +3451,10 @@ void WebPage::getContentsAsString(ContentAsStringIncludesChildFrames includeChil
     }
     case ContentAsStringIncludesChildFrames::Yes: {
         StringBuilder builder;
-        for (RefPtr<Frame> frame = &corePage()->mainFrame(); frame; frame = frame->tree().traverseNextRendered()) {
+        for (RefPtr<Frame> frame = m_mainFrame->coreFrame(); frame; frame = frame->tree().traverseNextRendered()) {
             if (auto* webFrame = WebFrame::fromCoreFrame(*frame)) {
-                if (!builder.isEmpty()) {
-                    builder.append('\n');
-                    builder.append('\n');
-                }
+                if (!builder.isEmpty())
+                    builder.appendLiteral("\n\n");
 
                 builder.append(webFrame->contentsAsString());
             }
@@ -4105,9 +4104,9 @@ void WebPage::didChooseColor(const WebCore::Color& color)
 
 #if ENABLE(DATALIST_ELEMENT)
 
-void WebPage::setActiveDataListSuggestionPicker(WebDataListSuggestionPicker* dataListSuggestionPicker)
+void WebPage::setActiveDataListSuggestionPicker(WebDataListSuggestionPicker& dataListSuggestionPicker)
 {
-    m_activeDataListSuggestionPicker = makeWeakPtr(dataListSuggestionPicker);
+    m_activeDataListSuggestionPicker = makeWeakPtr(&dataListSuggestionPicker);
 }
 
 void WebPage::didSelectDataListOption(const String& selectedOption)
@@ -5865,6 +5864,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     m_scaleWasSetByUIProcess = false;
     m_userHasChangedPageScaleFactor = false;
     m_estimatedLatency = Seconds(1.0 / 60);
+    m_shouldRevealCurrentSelectionAfterInsertion = true;
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     WebProcess::singleton().eventDispatcher().clearQueuedTouchEventsForPage(*this);
@@ -7007,6 +7007,11 @@ void WebPage::setOverriddenMediaType(const String& mediaType)
 
     m_overriddenMediaType = mediaType;
     m_page->setNeedsRecalcStyleInAllFrames();
+}
+
+void WebPage::setIsNavigatingToAppBoundDomain(NavigatingToAppBoundDomain isNavigatingToAppBoundDomain)
+{
+    m_isNavigatingToAppBoundDomain = isNavigatingToAppBoundDomain;
 }
 
 } // namespace WebKit

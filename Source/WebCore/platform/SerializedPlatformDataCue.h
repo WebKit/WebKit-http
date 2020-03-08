@@ -27,6 +27,7 @@
 
 #if ENABLE(VIDEO)
 
+#include "SerializedPlatformDataCueValue.h"
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/RefCounted.h>
 
@@ -34,16 +35,23 @@ namespace WebCore {
 
 class SerializedPlatformDataCue : public RefCounted<SerializedPlatformDataCue> {
 public:
+    WEBCORE_EXPORT static Ref<SerializedPlatformDataCue> create(SerializedPlatformDataCueValue&&);
+
     virtual ~SerializedPlatformDataCue() = default;
 
-    virtual JSC::JSValue deserialize(JSC::JSGlobalObject*) const = 0;
-    virtual RefPtr<JSC::ArrayBuffer> data() const = 0;
-    virtual bool isEqual(const SerializedPlatformDataCue&) const = 0;
+    virtual JSC::JSValue deserialize(JSC::JSGlobalObject*) const { return JSC::jsNull(); }
+    virtual RefPtr<JSC::ArrayBuffer> data() const { return { }; }
+    virtual bool isEqual(const SerializedPlatformDataCue&) const { return false; }
 
-    enum PlatformType {
+    enum class PlatformType {
+        None,
         ObjC,
     };
-    virtual PlatformType platformType() const = 0;
+    virtual PlatformType platformType() const { return PlatformType::None; }
+
+    virtual bool encodingRequiresPlatformData() const { return false; }
+
+    virtual SerializedPlatformDataCueValue encodableValue() const { return { }; }
 
 protected:
     SerializedPlatformDataCue() = default;

@@ -49,6 +49,7 @@
 #include "DocumentMarkerController.h"
 #include "Editing.h"
 #include "EditorClient.h"
+#include "ElementIterator.h"
 #include "EventHandler.h"
 #include "EventNames.h"
 #include "File.h"
@@ -61,7 +62,7 @@
 #include "GraphicsContext.h"
 #include "HTMLAttachmentElement.h"
 #include "HTMLBRElement.h"
-#include "HTMLCollection.h"
+#include "HTMLBodyElement.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLImageElement.h"
@@ -1292,12 +1293,17 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
                 TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionFinal : TypingCommand::TextCompositionNone);
             }
 
-            // Reveal the current selection
-            if (Frame* editedFrame = document->frame())
-                if (Page* page = editedFrame->page()) {
-                    SelectionRevealMode revealMode = SelectionRevealMode::Reveal;
-                    page->focusController().focusedOrMainFrame().selection().revealSelection(revealMode, ScrollAlignment::alignCenterIfNeeded);
+            // Reveal the current selection. Note that focus may have changed after insertion.
+            // FIXME: Selection is allowed even if setIgnoreSelectionChanges(true). Ideally setIgnoreSelectionChanges()
+            // should be moved from Editor to a page-level like object. If it must remain a frame-specific concept
+            // then this code should conditionalize revealing selection on whether the ignoreSelectionChanges() bit
+            // is set for the newly focused frame.
+            if (client() && client()->shouldRevealCurrentSelectionAfterInsertion()) {
+                if (auto* editedFrame = document->frame()) {
+                    if (auto* page = editedFrame->page())
+                        page->revealCurrentSelection();
                 }
+            }
         }
     }
 
@@ -3426,23 +3432,18 @@ void Editor::textDidChangeInTextArea(Element* e)
 
 void Editor::applyEditingStyleToBodyElement() const
 {
-    auto collection = document().getElementsByTagName(HTMLNames::bodyTag->localName());
-    unsigned length = collection->length();
-    for (unsigned i = 0; i < length; ++i)
-        applyEditingStyleToElement(collection->item(i));
-}
+    // FIXME: Not clear it's valuable to do this to all body elements rather than just doing it on the single one returned by Document::body.
+    Vector<Ref<HTMLBodyElement>> bodies;
+    for (auto& body : descendantsOfType<HTMLBodyElement>(document()))
+        bodies.append(body);
 
-void Editor::applyEditingStyleToElement(Element* element) const
-{
-    ASSERT(!element || is<StyledElement>(*element));
-    if (!is<StyledElement>(element))
-        return;
-
-    // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
-    auto& style = downcast<StyledElement>(*element).cssomStyle();
-    style.setPropertyInternal(CSSPropertyWordWrap, "break-word", false);
-    style.setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false);
-    style.setPropertyInternal(CSSPropertyLineBreak, "after-white-space", false);
+    for (auto& body : bodies) {
+        // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
+        auto& style = body->cssomStyle();
+        style.setPropertyInternal(CSSPropertyWordWrap, "break-word", false);
+        style.setPropertyInternal(CSSPropertyWebkitNbspMode, "space", false);
+        style.setPropertyInternal(CSSPropertyLineBreak, "after-white-space", false);
+    }
 }
 
 bool Editor::findString(const String& target, FindOptions options)

@@ -1285,19 +1285,6 @@ void NetworkProcessProxy::didDestroyWebUserContentControllerProxy(WebUserContent
 }
 #endif
 
-#if ENABLE(SANDBOX_EXTENSIONS)
-void NetworkProcessProxy::getSandboxExtensionsForBlobFiles(const Vector<String>& paths, Messages::NetworkProcessProxy::GetSandboxExtensionsForBlobFiles::AsyncReply&& reply)
-{
-    SandboxExtension::HandleArray extensions;
-    extensions.allocate(paths.size());
-    for (size_t i = 0; i < paths.size(); ++i) {
-        // ReadWrite is required for creating hard links, which is something that might be done with these extensions.
-        SandboxExtension::createHandle(paths[i], SandboxExtension::Type::ReadWrite, extensions[i]);
-    }
-    reply(WTFMove(extensions));
-}
-#endif
-
 #if ENABLE(SERVICE_WORKER)
 void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcess(RegistrableDomain&& registrableDomain, PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
@@ -1429,6 +1416,13 @@ void NetworkProcessProxy::getLocalStorageDetails(PAL::SessionID sessionID, Compl
     sendWithAsyncReply(Messages::NetworkProcess::GetLocalStorageOriginDetails(sessionID), WTFMove(completionHandler));
 }
 
+void NetworkProcessProxy::preconnectTo(PAL::SessionID sessionID, const URL& url, const String& userAgent, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
+{
+    if (!url.isValid() || !url.protocolIsInHTTPFamily() || SecurityOrigin::isLocalHostOrLoopbackIPAddress(url.host()))
+        return;
+    send(Messages::NetworkProcess::PreconnectTo(sessionID, url, userAgent, storedCredentialsPolicy), 0);
+}
+
 void NetworkProcessProxy::updateProcessAssertion()
 {
     if (processPool().hasForegroundWebProcesses()) {
@@ -1452,6 +1446,27 @@ void NetworkProcessProxy::resetQuota(PAL::SessionID sessionID, CompletionHandler
 {
     sendWithAsyncReply(Messages::NetworkProcess::ResetQuota(sessionID), WTFMove(completionHandler));
 }
+
+void NetworkProcessProxy::hasAppBoundSession(PAL::SessionID sessionID, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (!canSendMessage()) {
+        completionHandler(false);
+        return;
+    }
+    
+    sendWithAsyncReply(Messages::NetworkProcess::HasAppBoundSession(sessionID), WTFMove(completionHandler));
+}
+
+void NetworkProcessProxy::setInAppBrowserPrivacyEnabled(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (!canSendMessage()) {
+        completionHandler();
+        return;
+    }
+    
+    sendWithAsyncReply(Messages::NetworkProcess::SetInAppBrowserPrivacyEnabled(sessionID, value), WTFMove(completionHandler));
+}
+
 
 } // namespace WebKit
 

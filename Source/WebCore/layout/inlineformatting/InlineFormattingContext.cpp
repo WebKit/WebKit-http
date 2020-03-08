@@ -62,8 +62,8 @@ static inline const Box* nextInlineLevelBoxToLayout(const Box& layoutBox, const 
     // Only inline boxes may have relevant descendant content.
     if (layoutBox.isInlineBox()) {
         if (is<ContainerBox>(layoutBox) && downcast<ContainerBox>(layoutBox).hasInFlowOrFloatingChild()) {
-            // Anonymous inline boxes/line breaks can't have descendant content by definition.
-            ASSERT(!layoutBox.isAnonymous() && !layoutBox.isLineBreakBox());
+            // Anonymous inline text boxes/line breaks can't have descendant content by definition.
+            ASSERT(!layoutBox.isInlineTextBox() && !layoutBox.isLineBreakBox());
             return downcast<ContainerBox>(layoutBox).firstInFlowOrFloatingChild();
         }
     }
@@ -89,8 +89,7 @@ void InlineFormattingContext::layoutInFlowContent(InvalidationState& invalidatio
 
         if (layoutBox->isAtomicInlineLevelBox() || layoutBox->isFloatingPositioned()) {
             // Inline-blocks, inline-tables and replaced elements (img, video) can be sized but not yet positioned.
-            if (layoutBox->establishesFormattingContext()) {
-                ASSERT(is<ContainerBox>(*layoutBox));
+            if (is<ContainerBox>(layoutBox) && layoutBox->establishesFormattingContext()) {
                 ASSERT(layoutBox->isInlineBlockBox() || layoutBox->isInlineTableBox() || layoutBox->isFloatingPositioned());
                 auto& containerBox = downcast<ContainerBox>(*layoutBox);
                 computeBorderAndPadding(containerBox, horizontalConstraints);
@@ -118,7 +117,7 @@ void InlineFormattingContext::layoutInFlowContent(InvalidationState& invalidatio
             }
         } else if (layoutBox->isInlineBox()) {
             // Text wrapper boxes (anonymous inline level boxes) and <br>s don't generate display boxes (only display runs).
-            if (!layoutBox->isAnonymous() && !layoutBox->isLineBreakBox()) {
+            if (!layoutBox->isInlineTextBox() && !layoutBox->isLineBreakBox()) {
                 // Inline boxes (<span>) can't get sized/positioned yet. At this point we can only compute their margins, borders and paddings.
                 computeBorderAndPadding(*layoutBox, horizontalConstraints);
                 computeHorizontalMargin(*layoutBox, horizontalConstraints);
@@ -166,7 +165,7 @@ void InlineFormattingContext::lineLayout(InlineItems& inlineItems, LineLayoutCon
         ASSERT(lineBuilder.hasIntrusiveFloat());
         // Move the next line below the intrusive float.
         auto floatingContext = FloatingContext { root(), *this, formattingState().floatingState() };
-        auto floatConstraints = floatingContext.constraints(lineLogicalTop, toLayoutUnit(lineContent.lineBox.logicalBottom()) );
+        auto floatConstraints = floatingContext.constraints(lineLogicalTop, toLayoutUnit(lineContent.lineBox.logicalBottom()));
         ASSERT(floatConstraints.left || floatConstraints.right);
         static auto inifitePoint = PointInContextRoot::max();
         // In case of left and right constraints, we need to pick the one that's closer to the current line.
@@ -191,7 +190,7 @@ FormattingContext::IntrinsicWidthConstraints InlineFormattingContext::computedIn
     auto* layoutBox = root().firstInFlowOrFloatingChild();
     // In order to compute the max/min widths, we need to compute margins, borders and paddings for certain inline boxes first.
     while (layoutBox) {
-        if (layoutBox->isAnonymous()) {
+        if (layoutBox->isInlineTextBox() || layoutBox->isLineBreakBox()) {
             layoutBox = nextInlineLevelBoxToLayout(*layoutBox, root());
             continue;
         }
@@ -325,7 +324,7 @@ void InlineFormattingContext::collectInlineContentIfNeeded()
     while (!layoutQueue.isEmpty()) {
         while (true) {
             auto& layoutBox = *layoutQueue.last();
-            auto isBoxWithInlineContent = layoutBox.isInlineBox() && !layoutBox.isAnonymous() && !layoutBox.isLineBreakBox();
+            auto isBoxWithInlineContent = layoutBox.isInlineBox() && !layoutBox.isInlineTextBox() && !layoutBox.isLineBreakBox();
             if (!isBoxWithInlineContent)
                 break;
             // This is the start of an inline box (e.g. <span>).
@@ -345,8 +344,7 @@ void InlineFormattingContext::collectInlineContentIfNeeded()
                 formattingState.addInlineItem({ layoutBox, InlineItem::Type::Float });
             else if (layoutBox.isAtomicInlineLevelBox())
                 formattingState.addInlineItem({ layoutBox, InlineItem::Type::Box });
-            else if (layoutBox.isAnonymous()) {
-                ASSERT(layoutBox.isInlineTextBox());
+            else if (layoutBox.isInlineTextBox()) {
                 InlineTextItem::createAndAppendTextItems(formattingState.inlineItems(), downcast<InlineTextBox>(layoutBox));
             } else if (layoutBox.isInlineBox())
                 formattingState.addInlineItem({ layoutBox, InlineItem::Type::ContainerEnd });

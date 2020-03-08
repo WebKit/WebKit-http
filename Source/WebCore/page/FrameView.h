@@ -138,7 +138,7 @@ public:
 #endif
 
     void willRecalcStyle();
-    void styleDidChange() override;
+    void styleAndRenderTreeDidChange() override;
     bool updateCompositingLayersAfterStyleChange();
     void updateCompositingLayersAfterLayout();
 
@@ -396,7 +396,7 @@ public:
 
     void incrementVisuallyNonEmptyCharacterCount(const String&);
     void incrementVisuallyNonEmptyPixelCount(const IntSize&);
-    bool isVisuallyNonEmpty() const { return m_isVisuallyNonEmpty; }
+    bool isVisuallyNonEmpty() const { return m_contentQualifiesAsVisuallyNonEmpty; }
     WEBCORE_EXPORT bool qualifiesAsVisuallyNonEmpty() const;
 
     WEBCORE_EXPORT void enableAutoSizeMode(bool enable, const IntSize& minSize);
@@ -655,6 +655,8 @@ public:
     void renderLayerDidScroll(const RenderLayer&);
 
     WEBCORE_EXPORT void scrollToOffsetWithAnimation(const ScrollOffset&, ScrollType = ScrollType::Programmatic, ScrollClamping = ScrollClamping::Clamped);
+
+    bool inUpdateEmbeddedObjects() const { return m_inUpdateEmbeddedObjects; }
 
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) final;
@@ -918,7 +920,8 @@ private:
 
     bool m_isPainting { false };
 
-    bool m_isVisuallyNonEmpty { false };
+    bool m_contentQualifiesAsVisuallyNonEmpty { false };
+    bool m_firstVisuallyNonEmptyLayoutMilestoneIsPending { true };
 
     bool m_renderedSignificantAmountOfText { false };
     bool m_hasReachedSignificantRenderedTextThreshold { false };
@@ -934,6 +937,7 @@ private:
     bool m_inAutoSize { false };
     // True if autosize has been run since m_shouldAutoSize was set.
     bool m_didRunAutosize { false };
+    bool m_inUpdateEmbeddedObjects { false };
 };
 
 inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)

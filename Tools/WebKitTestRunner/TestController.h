@@ -260,6 +260,8 @@ public:
     void getAllStorageAccessEntries();
     void getPrevalentDomains();
     void clearPrevalentDomains();
+    void getWebViewCategory();
+    void setInAppBrowserPrivacyEnabled(bool);
 
     WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }
     void setOpenPanelFileURLs(WKArrayRef fileURLs) { m_openPanelFileURLs = fileURLs; }
@@ -298,6 +300,7 @@ public:
     void resetMockMediaDevices();
     void setMockCameraOrientation(uint64_t);
     bool isMockRealtimeMediaSourceCenterEnabled() const;
+    bool hasAppBoundSession();
 
     void injectUserScript(WKStringRef);
     
@@ -310,8 +313,9 @@ public:
     bool keyExistsInKeychain(const String& attrLabel, const String& applicationTagBase64);
 
 #if PLATFORM(COCOA)
-    RetainPtr<NSString> getOverriddenCalendarIdentifier() const;
-    void setDefaultCalendarType(NSString *identifier);
+    NSString *overriddenCalendarIdentifier() const;
+    NSString *overriddenCalendarLocaleIdentifier() const;
+    void setDefaultCalendarType(NSString *identifier, NSString *localeIdentifier);
 #endif // PLATFORM(COCOA)
 
 #if PLATFORM(IOS_FAMILY)
@@ -504,7 +508,7 @@ private:
     std::unique_ptr<TestInvocation> m_currentInvocation;
 #if PLATFORM(COCOA)
     std::unique_ptr<ClassMethodSwizzler> m_calendarSwizzler;
-    RetainPtr<NSString> m_overriddenCalendarIdentifier;
+    std::pair<RetainPtr<NSString>, RetainPtr<NSString>> m_overriddenCalendarAndLocaleIdentifiers;
 #endif // PLATFORM(COCOA)
     bool m_verbose { false };
     bool m_printSeparators { false };

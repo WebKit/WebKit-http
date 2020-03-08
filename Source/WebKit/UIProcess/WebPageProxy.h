@@ -40,6 +40,7 @@
 #include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
 #include "PageLoadState.h"
+#include "PolicyDecision.h"
 #include "ProcessTerminationReason.h"
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
@@ -402,7 +403,6 @@ struct ElementDidFocusArguments {
 
 #if PLATFORM(COCOA)
 using DrawToPDFCallback = GenericCallback<const IPC::DataReference&>;
-typedef GenericCallback<const WTF::MachSendRight&> MachSendRightCallback;
 typedef GenericCallback<bool, bool, String, double, double, uint64_t> NowPlayingInfoCallback;
 #endif
 
@@ -700,6 +700,8 @@ public:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+    void setShouldRevealCurrentSelectionAfterInsertion(bool);
+
     double displayedContentScale() const { return m_lastVisibleContentRectUpdate.scale(); }
     const WebCore::FloatRect& exposedContentRect() const { return m_lastVisibleContentRectUpdate.exposedContentRect(); }
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredContentRect(); }
@@ -1462,7 +1464,10 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     void setIsKeyboardAnimatingIn(bool isKeyboardAnimatingIn) { m_isKeyboardAnimatingIn = isKeyboardAnimatingIn; }
+
+    void setWaitingForPostLayoutEditorStateUpdateAfterFocusingElement(bool waitingForPostLayoutEditorStateUpdateAfterFocusingElement) { m_waitingForPostLayoutEditorStateUpdateAfterFocusingElement = waitingForPostLayoutEditorStateUpdateAfterFocusingElement; }
     bool waitingForPostLayoutEditorStateUpdateAfterFocusingElement() const { return m_waitingForPostLayoutEditorStateUpdateAfterFocusingElement; }
+
     const Function<bool()>& deviceOrientationUserPermissionHandlerForTesting() const { return m_deviceOrientationUserPermissionHandlerForTesting; };
     void setDeviceOrientationUserPermissionHandlerForTesting(Function<bool()>&& handler) { m_deviceOrientationUserPermissionHandlerForTesting = WTFMove(handler); }
 #endif
@@ -1608,8 +1613,8 @@ public:
     void decidePolicyForResponseShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, WebCore::FrameIdentifier, WebCore::SecurityOriginData&& frameSecurityOrigin, WebCore::PolicyCheckIdentifier,
         uint64_t navigationID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, const String& downloadAttribute, uint64_t listenerID, const UserData&);
     void startURLSchemeTaskShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, URLSchemeTaskParameters&&);
-    void loadDataWithNavigationShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, API::Navigation&, const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow);
-    void loadRequestWithNavigationShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt);
+    void loadDataWithNavigationShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, API::Navigation&, const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, NavigatingToAppBoundDomain, Optional<WebsitePoliciesData>&& = WTF::nullopt, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    void loadRequestWithNavigationShared(Ref<WebProcessProxy>&&, WebCore::PageIdentifier, API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, NavigatingToAppBoundDomain, Optional<WebsitePoliciesData>&& = WTF::nullopt);
     void backForwardGoToItemShared(Ref<WebProcessProxy>&&, const WebCore::BackForwardItemIdentifier&, CompletionHandler<void(SandboxExtension::Handle&&, const WebBackForwardListCounts&)>&&);
     void decidePolicyForNavigationActionSyncShared(Ref<WebProcessProxy>&&, WebCore::FrameIdentifier, bool isMainFrame, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
         FrameInfoData&&, Optional<WebPageProxyIdentifier> originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
@@ -1764,6 +1769,8 @@ private:
     void didChangeProgress(double);
     void didFinishProgress();
     void setNetworkRequestsInProgress(bool);
+
+    void preconnectTo(const URL&);
 
     void hasInsecureContent(CompletionHandler<void(WebCore::HasInsecureContent, WebCore::UsedLegacyTLS)>&&);
 
@@ -2011,9 +2018,6 @@ private:
 #if ENABLE(APPLICATION_MANIFEST)
     void applicationManifestCallback(const Optional<WebCore::ApplicationManifest>&, CallbackID);
 #endif
-#if PLATFORM(COCOA)
-    void machSendRightCallback(const WTF::MachSendRight&, CallbackID);
-#endif
     void rectForCharacterRangeCallback(const WebCore::IntRect&, const EditingRange&, CallbackID);
 #if PLATFORM(MAC)
     void attributedStringForCharacterRangeCallback(const AttributedString&, const EditingRange&, CallbackID);
@@ -2247,6 +2251,11 @@ private:
 
     void tryCloseTimedOut();
     void makeStorageSpaceRequest(WebCore::FrameIdentifier, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, CompletionHandler<void(uint64_t)>&&);
+        
+    bool isAppBoundDomain(const WebCore::RegistrableDomain&) const;
+    bool isAppBoundDomain(const URL&) const;
+    void setIsNavigatingToAppBoundDomain(bool isMainFrame, const URL&);
+    NavigatingToAppBoundDomain isNavigatingToAppBoundDomain() const { return m_isNavigatingToAppBoundDomain; }
 
     const Identifier m_identifier;
     WebCore::PageIdentifier m_webPageID;
@@ -2716,6 +2725,12 @@ private:
     bool m_isLayerTreeFrozenDueToSwipeAnimation { false };
     
     String m_overriddenMediaType;
+
+    struct InjectedBundleMessage {
+        String messageName;
+        RefPtr<API::Object> messageBody;
+    };
+    Vector<InjectedBundleMessage> m_pendingInjectedBundleMessages;
         
 #if PLATFORM(IOS_FAMILY) && ENABLE(DEVICE_ORIENTATION)
     std::unique_ptr<WebDeviceOrientationUpdateProviderProxy> m_webDeviceOrientationUpdateProviderProxy;
@@ -2724,6 +2739,8 @@ private:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     MonotonicTime m_didFinishDocumentLoadForMainFrameTimestamp;
 #endif
+        
+    NavigatingToAppBoundDomain m_isNavigatingToAppBoundDomain { NavigatingToAppBoundDomain::No };
 };
 
 } // namespace WebKit

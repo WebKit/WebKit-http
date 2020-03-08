@@ -760,6 +760,13 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         TestController::singleton().setStatisticsShouldBlockThirdPartyCookies(WKBooleanGetValue(value), false);
         return;
     }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "SetInAppBrowserPrivacyEnabled")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setInAppBrowserPrivacyEnabled(WKBooleanGetValue(value));
+        return;
+    }
 
     if (WKStringIsEqualToUTF8CString(messageName, "RunUIProcessScript")) {
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
@@ -798,6 +805,11 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 
     if (WKStringIsEqualToUTF8CString(messageName, "SetOpenPanelFileURLs")) {
         TestController::singleton().setOpenPanelFileURLs(static_cast<WKArrayRef>(messageBody));
+        return;
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "GetWebViewCategory")) {
+        TestController::singleton().getWebViewCategory();
         return;
     }
 
@@ -929,12 +941,6 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         return nullptr;
     }
 
-    if (WKStringIsEqualToUTF8CString(messageName, "SetStorageAccessAPIEnabled")) {
-        WKBooleanRef accept = static_cast<WKBooleanRef>(messageBody);
-        WKContextSetStorageAccessAPIEnabled(TestController::singleton().context(), WKBooleanGetValue(accept));
-        return nullptr;
-    }
-
     if (WKStringIsEqualToUTF8CString(messageName, "GetAllStorageAccessEntries")) {
         TestController::singleton().getAllStorageAccessEntries();
         return nullptr;
@@ -1007,6 +1013,11 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
     if (WKStringIsEqualToUTF8CString(messageName, "IsMockRealtimeMediaSourceCenterEnabled")) {
         bool isMockRealtimeMediaSourceCenterEnabled = TestController::singleton().isMockRealtimeMediaSourceCenterEnabled();
         return adoptWK(WKBooleanCreate(isMockRealtimeMediaSourceCenterEnabled));
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "HasAppBoundSession")) {
+        bool hasAppBoundSession = TestController::singleton().hasAppBoundSession();
+        return adoptWK(WKBooleanCreate(hasAppBoundSession));
     }
 
 #if PLATFORM(MAC)
@@ -1876,6 +1887,12 @@ void TestInvocation::didSetShouldBlockThirdPartyCookies()
     WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), nullptr);
 }
 
+void TestInvocation::didSetInAppBrowserPrivacyEnabled()
+{
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("CallDidSetInAppBrowserPrivacyEnabled"));
+    WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), nullptr);
+}
+
 void TestInvocation::didSetFirstPartyWebsiteDataRemovalMode()
 {
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("CallDidSetFirstPartyWebsiteDataRemovalMode"));
@@ -1954,7 +1971,15 @@ void TestInvocation::didReceivePrevalentDomains(Vector<String>&& domains)
     WKRetainPtr<WKMutableArrayRef> messageBody = adoptWK(WKMutableArrayCreate());
     for (auto& domain : domains)
         WKArrayAppendItem(messageBody.get(), adoptWK(WKStringCreateWithUTF8CString(domain.utf8().data())).get());
+
+    WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), messageBody.get());
+}
+
+void TestInvocation::didReceiveWebViewCategory(String& webViewCategory)
+{
+    WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("CallDidReceiveWebViewCategory"));
     
+    WKRetainPtr<WKStringRef> messageBody = adoptWK(WKStringCreateWithUTF8CString(webViewCategory.utf8().data()));
     WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), messageBody.get());
 }
 

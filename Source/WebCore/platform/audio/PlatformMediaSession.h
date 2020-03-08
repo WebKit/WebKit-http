@@ -41,6 +41,7 @@ namespace WebCore {
 class Document;
 class MediaPlaybackTarget;
 class PlatformMediaSessionClient;
+class PlatformMediaSessionManager;
 enum class DelayCallingUpdateNowPlaying { No, Yes };
 
 class PlatformMediaSession
@@ -54,18 +55,16 @@ class PlatformMediaSession
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static std::unique_ptr<PlatformMediaSession> create(PlatformMediaSessionClient&);
+    static std::unique_ptr<PlatformMediaSession> create(PlatformMediaSessionManager&, PlatformMediaSessionClient&);
 
-    PlatformMediaSession(PlatformMediaSessionClient&);
     virtual ~PlatformMediaSession();
 
-    enum MediaType {
+    enum class MediaType {
         None = 0,
         Video,
         VideoAudio,
         Audio,
         WebAudio,
-        MediaStreamCapturingAudio,
     };
     MediaType mediaType() const;
     MediaType presentationType() const;
@@ -97,14 +96,6 @@ public:
         MayResumePlaying = 1 << 0,
     };
 
-    enum Characteristics {
-        HasNothing = 0,
-        HasAudio = 1 << 0,
-        HasVideo = 1 << 1,
-    };
-    typedef unsigned CharacteristicsFlags;
-
-    CharacteristicsFlags characteristics() const;
     void clientCharacteristicsChanged();
 
     void beginInterruption(InterruptionType);
@@ -198,12 +189,22 @@ public:
     bool canPlayConcurrently(const PlatformMediaSession&) const;
     bool shouldOverridePauseDuringRouteChange() const;
 
+    class AudioCaptureSource : public CanMakeWeakPtr<AudioCaptureSource> {
+    public:
+        virtual ~AudioCaptureSource() = default;
+        virtual bool isCapturingAudio() const = 0;
+    };
+
 protected:
+    PlatformMediaSession(PlatformMediaSessionManager&, PlatformMediaSessionClient&);
     PlatformMediaSessionClient& client() const { return m_client; }
+
+    PlatformMediaSessionManager& manager();
 
 private:
     bool processClientWillPausePlayback(DelayCallingUpdateNowPlaying);
 
+    WeakPtr<PlatformMediaSessionManager> m_manager;
     PlatformMediaSessionClient& m_client;
     State m_state;
     State m_stateToRestore;
@@ -229,7 +230,6 @@ public:
     virtual PlatformMediaSession::MediaType mediaType() const = 0;
     virtual PlatformMediaSession::MediaType presentationType() const = 0;
     virtual PlatformMediaSession::DisplayType displayType() const { return PlatformMediaSession::Normal; }
-    virtual PlatformMediaSession::CharacteristicsFlags characteristics() const = 0;
 
     virtual void resumeAutoplaying() { }
     virtual void mayResumePlayback(bool shouldResume) = 0;
@@ -262,8 +262,6 @@ public:
 
     virtual DocumentIdentifier hostingDocumentIdentifier() const = 0;
     virtual String sourceApplicationIdentifier() const = 0;
-
-    virtual bool processingUserGestureForMedia() const = 0;
 
     virtual bool hasMediaStreamSource() const { return false; }
 
