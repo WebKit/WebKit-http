@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PlatformStrategiesHaiku.h"
 
+#include <WebCore/MediaStrategy.h>
+
 #include "BlobRegistryImpl.h"
 #include "NetworkStorageSession.h"
 #include "wtf/NeverDestroyed.h"
@@ -98,3 +100,21 @@ void PlatformStrategiesHaiku::deleteCookie(const NetworkStorageSession& session,
 {
     session.deleteCookie(url, cookieName);
 }
+
+
+class WebMediaStrategy final : public MediaStrategy {
+private:
+#if ENABLE(WEB_AUDIO)
+    std::unique_ptr<AudioDestination> createAudioDestination(AudioIOCallback& callback, const String& inputDeviceId,
+        unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate) override
+    {
+        return AudioDestination::create(callback, inputDeviceId, numberOfInputChannels, numberOfOutputChannels, sampleRate);
+    }
+#endif
+};
+
+MediaStrategy* PlatformStrategiesHaiku::createMediaStrategy()
+{
+    return new WebMediaStrategy;
+}
+

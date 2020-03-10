@@ -42,6 +42,7 @@ private:
     WebCore::LoaderStrategy* createLoaderStrategy() override;
     WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     WebCore::BlobRegistry* createBlobRegistry() override;
+	WebCore::MediaStrategy* createMediaStrategy() override;
 
     // WebCore::CookiesStrategy
     virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&);
