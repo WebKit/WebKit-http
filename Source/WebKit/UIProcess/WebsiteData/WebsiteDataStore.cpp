@@ -29,6 +29,7 @@
 #include "APIProcessPoolConfiguration.h"
 #include "APIWebsiteDataRecord.h"
 #include "APIWebsiteDataStore.h"
+#include "DeviceIdHashSaltStorage.h"
 #include "NetworkProcessMessages.h"
 #include "StorageManager.h"
 #include "StorageProcessCreationParameters.h"
@@ -95,6 +96,7 @@ WebsiteDataStore::WebsiteDataStore(Configuration configuration, PAL::SessionID s
     : m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
     , m_storageManager(StorageManager::create(m_configuration.localStorageDirectory, m_configuration.localStorageQuota))
+    , m_deviceIdHashSaltStorage(DeviceIdHashSaltStorage::create())
     , m_queue(WorkQueue::create("com.apple.WebKit.WebsiteDataStore"))
 {
     WTF::setProcessPrivileges(allPrivileges());
@@ -472,6 +474,19 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
         });
     }
 
+    if (m_deviceIdHashSaltStorage && dataTypes.contains(WebsiteDataType::DeviceIdHashSalt)) {
+        callbackAggregator->addPendingCallback();
+
+        m_deviceIdHashSaltStorage->getDeviceIdHashSaltOrigins([callbackAggregator](auto&& origins) {
+            WebsiteData websiteData;
+
+            while (!origins.isEmpty())
+                websiteData.entries.append(WebsiteData::Entry { origins.takeAny(), WebsiteDataType::DeviceIdHashSalt, 0 });
+
+            callbackAggregator->removePendingCallback(WTFMove(websiteData));
+        });
+    }
+
     if (dataTypes.contains(WebsiteDataType::OfflineWebApplicationCache) && isPersistent()) {
         callbackAggregator->addPendingCallback();
 
@@ -794,6 +809,14 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, WallTime
         });
     }
 
+    if (m_deviceIdHashSaltStorage && (dataTypes.contains(WebsiteDataType::DeviceIdHashSalt) || (dataTypes.contains(WebsiteDataType::Cookies)))) {
+        callbackAggregator->addPendingCallback();
+
+        m_deviceIdHashSaltStorage->deleteDeviceIdHashSaltOriginsModifiedSince(modifiedSince, [callbackAggregator] {
+            callbackAggregator->removePendingCallback();
+        });
+    }
+
     if (dataTypes.contains(WebsiteDataType::OfflineWebApplicationCache) && isPersistent()) {
         callbackAggregator->addPendingCallback();
 
@@ -1079,6 +1102,14 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
         callbackAggregator->addPendingCallback();
 
         m_storageManager->deleteLocalStorageEntriesForOrigins(origins, [callbackAggregator] {
+            callbackAggregator->removePendingCallback();
+        });
+    }
+
+    if (m_deviceIdHashSaltStorage && (dataTypes.contains(WebsiteDataType::DeviceIdHashSalt) || (dataTypes.contains(WebsiteDataType::Cookies)))) {
+        callbackAggregator->addPendingCallback();
+
+        m_deviceIdHashSaltStorage->deleteDeviceIdHashSaltForOrigins(origins, [callbackAggregator] {
             callbackAggregator->removePendingCallback();
         });
     }

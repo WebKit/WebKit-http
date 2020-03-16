@@ -29,22 +29,17 @@ rtc_static_library("video_capture_module") {
   deps = [
     "..:module_api",
     "../..:webrtc_common",
-    "../../:typedefs",
     "../../api:libjingle_peerconnection_api",
-    "../../api:video_frame_api",
-    "../../api:video_frame_api_i420",
+    "../../api/video:video_frame",
+    "../../api/video:video_frame_i420",
     "../../common_video",
     "../../media:rtc_media_base",
     "../../rtc_base:rtc_base_approved",
     "../../rtc_base:stringutils",
+    "../../rtc_base/synchronization:rw_lock_wrapper",
     "../../system_wrappers",
     "//third_party/libyuv",
   ]
-
-  if (!build_with_chromium && is_clang) {
-    # Suppress warnings from the Chromium Clang plugin (bugs.webrtc.org/163).
-    suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
-  }
 }
 
 rtc_static_library("video_capture") {
@@ -59,11 +54,6 @@ rtc_static_library("video_capture") {
     "../../rtc_base:rtc_base_approved",
     "../../system_wrappers",
   ]
-
-  if (!build_with_chromium && is_clang) {
-    # Suppress warnings from the Chromium Clang plugin (bugs.webrtc.org/163).
-    suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
-  }
 }
 
 if (!build_with_chromium) {
@@ -77,28 +67,9 @@ if (!build_with_chromium) {
     }
   }
 
-  config("video_capture_internal_impl_warnings_config") {
-    if (is_win && is_clang) {
-      cflags = [
-        "-Wno-comment",
-        "-Wno-ignored-attributes",
-
-        # See https://bugs.chromium.org/p/webrtc/issues/detail?id=6269
-        # for -Wno-ignored-qualifiers
-        "-Wno-ignored-qualifiers",
-        "-Wno-microsoft-extra-qualification",
-        "-Wno-missing-braces",
-        "-Wno-overloaded-virtual",
-        "-Wno-reorder",
-        "-Wno-writable-strings",
-      ]
-    }
-  }
-
   if (is_ios || is_mac) {
     rtc_source_set("video_capture_internal_impl_objc") {
       visibility = [ ":video_capture_internal_impl" ]
-      configs += [ ":video_capture_internal_impl_warnings_config" ]
 
       deps = [
         ":video_capture_module",
@@ -118,17 +89,10 @@ if (!build_with_chromium) {
       ]
 
       all_dependent_configs = [ ":video_capture_internal_impl_config" ]
-
-      if (!build_with_chromium && is_clang) {
-        # Suppress warnings from the Chromium Clang plugin (bugs.webrtc.org/163).
-        suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
-      }
     }
   }
 
   rtc_source_set("video_capture_internal_impl") {
-    configs += [ ":video_capture_internal_impl_warnings_config" ]
-
     deps = [
       ":video_capture_module",
       "../../rtc_base:checks",
@@ -165,7 +129,7 @@ if (!build_with_chromium) {
         "windows/video_capture_mf.h",
       ]
 
-      libs = [ "Strmiids.lib" ]
+      libs = [ "strmiids.lib" ]
 
       if (build_with_mozilla) {
         sources += [
@@ -183,11 +147,6 @@ if (!build_with_chromium) {
     }
 
     all_dependent_configs = [ ":video_capture_internal_impl_config" ]
-
-    if (!build_with_chromium && is_clang) {
-      # Suppress warnings from the Chromium Clang plugin (bugs.webrtc.org/163).
-      suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
-    }
 
     if (build_with_mozilla && is_android) {
       include_dirs = [
@@ -208,12 +167,6 @@ if (!build_with_chromium) {
       sources = [
         "test/video_capture_unittest.cc",
       ]
-
-      cflags = []
-      if (is_linux || is_mac) {
-        cflags += [ "-Wno-write-strings" ]
-      }
-
       ldflags = []
       if (is_linux || is_mac) {
         ldflags += [
@@ -232,22 +185,16 @@ if (!build_with_chromium) {
       deps = [
         ":video_capture_internal_impl",
         ":video_capture_module",
-        "../../api:video_frame_api",
-        "../../api:video_frame_api_i420",
+        "../../api/video:video_frame",
+        "../../api/video:video_frame_i420",
         "../../common_video:common_video",
         "../../rtc_base:rtc_base_approved",
         "../../system_wrappers:system_wrappers",
-        "../../system_wrappers:system_wrappers_default",
         "../../test:video_test_common",
         "../utility",
         "//testing/gtest",
       ]
       deps += [ "../../test:test_main" ]
-
-      if (!build_with_chromium && is_clang) {
-        # Suppress warnings from the Chromium Clang plugin (bugs.webrtc.org/163).
-        suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
-      }
     }
   }
 }

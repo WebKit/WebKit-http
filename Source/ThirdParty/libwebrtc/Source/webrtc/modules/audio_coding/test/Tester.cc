@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "modules/audio_coding/include/audio_coding_module.h"
-#include "modules/audio_coding/test/APITest.h"
 #include "modules/audio_coding/test/EncodeDecodeTest.h"
 #include "modules/audio_coding/test/PacketLossTest.h"
 #include "modules/audio_coding/test/TestAllCodecs.h"
@@ -42,17 +41,10 @@ TEST(AudioCodingModuleTest, TestEncodeDecode) {
   webrtc::EncodeDecodeTest(ACM_TEST_MODE).Perform();
 }
 
-#if defined(WEBRTC_CODEC_RED)
-#if defined(WEBRTC_ANDROID)
-TEST(AudioCodingModuleTest, DISABLED_TestRedFec) {
-#else
 TEST(AudioCodingModuleTest, TestRedFec) {
-#endif
   webrtc::TestRedFec().Perform();
 }
-#endif
 
-#if defined(WEBRTC_CODEC_ISAC) || defined(WEBRTC_CODEC_ISACFX)
 #if defined(WEBRTC_ANDROID)
 TEST(AudioCodingModuleTest, DISABLED_TestIsac) {
 #else
@@ -60,7 +52,6 @@ TEST(AudioCodingModuleTest, TestIsac) {
 #endif
   webrtc::ISACTest(ACM_TEST_MODE).Perform();
 }
-#endif
 
 #if (defined(WEBRTC_CODEC_ISAC) || defined(WEBRTC_CODEC_ISACFX)) && \
     defined(WEBRTC_CODEC_ILBC)
@@ -69,7 +60,7 @@ TEST(AudioCodingModuleTest, DISABLED_TwoWayCommunication) {
 #else
 TEST(AudioCodingModuleTest, TwoWayCommunication) {
 #endif
-  webrtc::TwoWayCommunication(ACM_TEST_MODE).Perform();
+  webrtc::TwoWayCommunication().Perform();
 }
 #endif
 
@@ -82,12 +73,7 @@ TEST(AudioCodingModuleTest, TestStereo) {
   webrtc::TestStereo(ACM_TEST_MODE).Perform();
 }
 
-// Disabled on ios as flaky, see https://crbug.com/webrtc/7057
-#if defined(WEBRTC_ANDROID) || defined(WEBRTC_IOS)
-TEST(AudioCodingModuleTest, DISABLED_TestWebRtcVadDtx) {
-#else
 TEST(AudioCodingModuleTest, TestWebRtcVadDtx) {
-#endif
   webrtc::TestWebRtcVadDtx().Perform();
 }
 
@@ -116,7 +102,7 @@ TEST(AudioCodingModuleTest, TestPacketLossBurst) {
 #if defined(WEBRTC_IOS)
 TEST(AudioCodingModuleTest, DISABLED_TestPacketLossStereo) {
 #else
-  TEST(AudioCodingModuleTest, TestPacketLossStereo) {
+TEST(AudioCodingModuleTest, TestPacketLossStereo) {
 #endif
   webrtc::PacketLossTest(2, 10, 10, 1).Perform();
 }
@@ -133,7 +119,7 @@ TEST(AudioCodingModuleTest, TestPacketLossStereoBurst) {
 // The full API test is too long to run automatically on bots, but can be used
 // for offline testing. User interaction is needed.
 #ifdef ACM_TEST_FULL_API
-  TEST(AudioCodingModuleTest, TestAPI) {
-    webrtc::APITest().Perform();
-  }
+TEST(AudioCodingModuleTest, TestAPI) {
+  webrtc::APITest().Perform();
+}
 #endif

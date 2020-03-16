@@ -855,7 +855,6 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
-    [preferences setWebRTCLegacyAPIEnabled:YES];
     [preferences setWebAuthenticationEnabled:NO];
     [preferences setCacheAPIEnabled:NO];
     [preferences setReadableByteStreamAPIEnabled:YES];
@@ -868,6 +867,9 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setCrossOriginWindowPolicySupportEnabled:YES];
     [preferences setServerTimingEnabled:YES];
     [preferences setIntersectionObserverEnabled:YES];
+    preferences.sourceBufferChangeTypeEnabled = YES;
+    [preferences setCSSOMViewScrollingAPIEnabled:YES];
+    [preferences setMediaRecorderEnabled:YES];
 }
 
 // Called before each test.

@@ -12,7 +12,6 @@
 
 #include <deque>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "modules/audio_processing/aec3/frame_blocker.h"
 #include "modules/audio_processing/aec3/mock/mock_block_processor.h"
 #include "modules/audio_processing/audio_buffer.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gmock.h"
 #include "test/gtest.h"
 
@@ -104,6 +104,8 @@ class CaptureTransportVerificationProcessor : public BlockProcessor {
 
   void GetMetrics(EchoControl::Metrics* metrics) const override {}
 
+  void SetAudioBufferDelay(size_t delay_ms) override{};
+
  private:
   RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(CaptureTransportVerificationProcessor);
 };
@@ -131,6 +133,8 @@ class RenderTransportVerificationProcessor : public BlockProcessor {
   void UpdateEchoLeakageStatus(bool leakage_detected) override {}
 
   void GetMetrics(EchoControl::Metrics* metrics) const override {}
+
+  void SetAudioBufferDelay(size_t delay_ms) override{};
 
  private:
   std::deque<std::vector<std::vector<float>>> received_render_blocks_;
@@ -600,15 +604,15 @@ class EchoCanceller3Tester {
 };
 
 std::string ProduceDebugText(int sample_rate_hz) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Sample rate: " << sample_rate_hz;
-  return ss.str();
+  return ss.Release();
 }
 
 std::string ProduceDebugText(int sample_rate_hz, int variant) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Sample rate: " << sample_rate_hz << ", variant: " << variant;
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace
@@ -679,11 +683,6 @@ TEST(EchoCanceller3Messaging, EchoLeakage) {
       EchoCanceller3Tester(rate).RunEchoLeakageVerificationTest(variant);
     }
   }
-}
-
-TEST(EchoCanceller3, ConfigValidation) {
-  EchoCanceller3Config config;
-  EXPECT_TRUE(EchoCanceller3::Validate(config));
 }
 
 #if RTC_DCHECK_IS_ON && GTEST_HAS_DEATH_TEST && !defined(WEBRTC_ANDROID)

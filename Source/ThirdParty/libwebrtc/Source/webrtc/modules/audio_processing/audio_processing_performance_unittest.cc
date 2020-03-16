@@ -17,7 +17,6 @@
 
 #include "api/array_view.h"
 #include "modules/audio_processing/test/test_utils.h"
-#include "modules/include/module_common_types.h"
 #include "rtc_base/atomicops.h"
 #include "rtc_base/numerics/safe_conversions.h"
 #include "rtc_base/platform_thread.h"
@@ -26,14 +25,6 @@
 #include "system_wrappers/include/event_wrapper.h"
 #include "test/gtest.h"
 #include "test/testsupport/perf_test.h"
-
-// Check to verify that the define for the intelligibility enhancer is properly
-// set.
-#if !defined(WEBRTC_INTELLIGIBILITY_ENHANCER) || \
-    (WEBRTC_INTELLIGIBILITY_ENHANCER != 0 &&     \
-     WEBRTC_INTELLIGIBILITY_ENHANCER != 1)
-#error "Set WEBRTC_INTELLIGIBILITY_ENHANCER to either 0 or 1"
-#endif
 
 namespace webrtc {
 
@@ -50,8 +41,6 @@ enum class ProcessorType { kRender, kCapture };
 enum class SettingsType {
   kDefaultApmDesktop,
   kDefaultApmMobile,
-  kDefaultApmDesktopAndBeamformer,
-  kDefaultApmDesktopAndIntelligibilityEnhancer,
   kAllSubmodulesTurnedOff,
   kDefaultApmDesktopWithoutDelayAgnostic,
   kDefaultApmDesktopWithoutExtendedFilter
@@ -101,31 +90,6 @@ struct SimulationConfig {
         simulation_configs.push_back(SimulationConfig(sample_rate, settings));
       }
     }
-
-#if WEBRTC_INTELLIGIBILITY_ENHANCER == 1
-    const SettingsType intelligibility_enhancer_settings[] = {
-        SettingsType::kDefaultApmDesktopAndIntelligibilityEnhancer};
-
-    const int intelligibility_enhancer_sample_rates[] = {8000, 16000, 32000,
-                                                         48000};
-
-    for (auto sample_rate : intelligibility_enhancer_sample_rates) {
-      for (auto settings : intelligibility_enhancer_settings) {
-        simulation_configs.push_back(SimulationConfig(sample_rate, settings));
-      }
-    }
-#endif
-
-    const SettingsType beamformer_settings[] = {
-        SettingsType::kDefaultApmDesktopAndBeamformer};
-
-    const int beamformer_sample_rates[] = {8000, 16000, 32000, 48000};
-
-    for (auto sample_rate : beamformer_sample_rates) {
-      for (auto settings : beamformer_settings) {
-        simulation_configs.push_back(SimulationConfig(sample_rate, settings));
-      }
-    }
 #endif
 
     const SettingsType mobile_settings[] = {SettingsType::kDefaultApmMobile};
@@ -150,12 +114,6 @@ struct SimulationConfig {
       case SettingsType::kDefaultApmDesktop:
         description = "DefaultApmDesktop";
         break;
-      case SettingsType::kDefaultApmDesktopAndBeamformer:
-        description = "DefaultApmDesktopAndBeamformer";
-        break;
-      case SettingsType::kDefaultApmDesktopAndIntelligibilityEnhancer:
-        description = "DefaultApmDesktopAndIntelligibilityEnhancer";
-        break;
       case SettingsType::kAllSubmodulesTurnedOff:
         description = "AllSubmodulesOff";
         break;
@@ -176,13 +134,9 @@ struct SimulationConfig {
 // Handler for the frame counters.
 class FrameCounters {
  public:
-  void IncreaseRenderCounter() {
-    rtc::AtomicOps::Increment(&render_count_);
-  }
+  void IncreaseRenderCounter() { rtc::AtomicOps::Increment(&render_count_); }
 
-  void IncreaseCaptureCounter() {
-    rtc::AtomicOps::Increment(&capture_count_);
-  }
+  void IncreaseCaptureCounter() { rtc::AtomicOps::Increment(&capture_count_); }
 
   int CaptureMinusRenderCounters() const {
     // The return value will be approximate, but that's good enough since
@@ -212,9 +166,7 @@ class FrameCounters {
 // Class that represents a flag that can only be raised.
 class LockedFlag {
  public:
-  bool get_flag() const {
-    return rtc::AtomicOps::AcquireLoad(&flag_);
-  }
+  bool get_flag() const { return rtc::AtomicOps::AcquireLoad(&flag_); }
 
   void set_flag() {
     if (!get_flag())  // read-only operation to avoid affecting the cache-line.
@@ -264,9 +216,8 @@ class TimedThreadApiProcessor {
         "_" + std::to_string(simulation_config_->sample_rate_hz) + "Hz";
 
     webrtc::test::PrintResultMeanAndError(
-        "apm_timing", sample_rate_name, processor_name,
-        GetDurationAverage(), GetDurationStandardDeviation(),
-        "us", false);
+        "apm_timing", sample_rate_name, processor_name, GetDurationAverage(),
+        GetDurationStandardDeviation(), "us", false);
 
     if (kPrintAllDurations) {
       webrtc::test::PrintResultList("apm_call_durations", sample_rate_name,
@@ -501,11 +452,10 @@ class CallSimulator : public ::testing::TestWithParam<SimulationConfig> {
       ASSERT_EQ(apm->kNoError, apm->gain_control()->Enable(true));
       ASSERT_EQ(apm->kNoError, apm->noise_suppression()->Enable(true));
       ASSERT_EQ(apm->kNoError, apm->voice_detection()->Enable(true));
-      ASSERT_EQ(apm->kNoError, apm->echo_control_mobile()->Enable(false));
-      ASSERT_EQ(apm->kNoError, apm->echo_cancellation()->Enable(true));
-      ASSERT_EQ(apm->kNoError, apm->echo_cancellation()->enable_metrics(true));
-      ASSERT_EQ(apm->kNoError,
-                apm->echo_cancellation()->enable_delay_logging(true));
+      AudioProcessing::Config apm_config = apm->GetConfig();
+      apm_config.echo_canceller.enabled = true;
+      apm_config.echo_canceller.mobile_mode = false;
+      apm->ApplyConfig(apm_config);
     };
 
     // Lambda function for setting the default APM runtime settings for mobile.
@@ -517,8 +467,10 @@ class CallSimulator : public ::testing::TestWithParam<SimulationConfig> {
       ASSERT_EQ(apm->kNoError, apm->gain_control()->Enable(true));
       ASSERT_EQ(apm->kNoError, apm->noise_suppression()->Enable(true));
       ASSERT_EQ(apm->kNoError, apm->voice_detection()->Enable(true));
-      ASSERT_EQ(apm->kNoError, apm->echo_control_mobile()->Enable(true));
-      ASSERT_EQ(apm->kNoError, apm->echo_cancellation()->Enable(false));
+      AudioProcessing::Config apm_config = apm->GetConfig();
+      apm_config.echo_canceller.enabled = true;
+      apm_config.echo_canceller.mobile_mode = true;
+      apm->ApplyConfig(apm_config);
     };
 
     // Lambda function for turning off all of the APM runtime settings
@@ -531,29 +483,15 @@ class CallSimulator : public ::testing::TestWithParam<SimulationConfig> {
       ASSERT_EQ(apm->kNoError, apm->gain_control()->Enable(false));
       ASSERT_EQ(apm->kNoError, apm->noise_suppression()->Enable(false));
       ASSERT_EQ(apm->kNoError, apm->voice_detection()->Enable(false));
-      ASSERT_EQ(apm->kNoError, apm->echo_control_mobile()->Enable(false));
-      ASSERT_EQ(apm->kNoError, apm->echo_cancellation()->Enable(false));
-      ASSERT_EQ(apm->kNoError, apm->echo_cancellation()->enable_metrics(false));
-      ASSERT_EQ(apm->kNoError,
-                apm->echo_cancellation()->enable_delay_logging(false));
+      AudioProcessing::Config apm_config = apm->GetConfig();
+      apm_config.echo_canceller.enabled = false;
+      apm->ApplyConfig(apm_config);
     };
 
     // Lambda function for adding default desktop APM settings to a config.
     auto add_default_desktop_config = [](Config* config) {
       config->Set<ExtendedFilter>(new ExtendedFilter(true));
       config->Set<DelayAgnostic>(new DelayAgnostic(true));
-    };
-
-    // Lambda function for adding beamformer settings to a config.
-    auto add_beamformer_config = [](Config* config) {
-      const size_t num_mics = 2;
-      const std::vector<Point> array_geometry =
-          ParseArrayGeometry("0 0 0 0.05 0 0", num_mics);
-      RTC_CHECK_EQ(array_geometry.size(), num_mics);
-
-      config->Set<Beamforming>(
-          new Beamforming(true, array_geometry,
-                          SphericalPointf(DegreesToRadians(90), 0.f, 1.f)));
     };
 
     int num_capture_channels = 1;
@@ -566,27 +504,6 @@ class CallSimulator : public ::testing::TestWithParam<SimulationConfig> {
       }
       case SettingsType::kDefaultApmDesktop: {
         Config config;
-        add_default_desktop_config(&config);
-        apm_.reset(AudioProcessingBuilder().Create(config));
-        ASSERT_TRUE(!!apm_);
-        set_default_desktop_apm_runtime_settings(apm_.get());
-        apm_->SetExtraOptions(config);
-        break;
-      }
-      case SettingsType::kDefaultApmDesktopAndBeamformer: {
-        Config config;
-        add_beamformer_config(&config);
-        add_default_desktop_config(&config);
-        apm_.reset(AudioProcessingBuilder().Create(config));
-        ASSERT_TRUE(!!apm_);
-        set_default_desktop_apm_runtime_settings(apm_.get());
-        apm_->SetExtraOptions(config);
-        num_capture_channels = 2;
-        break;
-      }
-      case SettingsType::kDefaultApmDesktopAndIntelligibilityEnhancer: {
-        Config config;
-        config.Set<Intelligibility>(new Intelligibility(true));
         add_default_desktop_config(&config);
         apm_.reset(AudioProcessingBuilder().Create(config));
         ASSERT_TRUE(!!apm_);

@@ -23,6 +23,41 @@
 #include "rtc_base/numerics/safe_conversions.h"
 #include "system_wrappers/include/field_trial.h"
 
+namespace {
+
+constexpr int kLimitProbability = 53687091;         // 1/20 in Q30.
+constexpr int kLimitProbabilityStreaming = 536871;  // 1/2000 in Q30.
+constexpr int kMaxStreamingPeakPeriodMs = 600000;   // 10 minutes in ms.
+constexpr int kCumulativeSumDrift = 2;  // Drift term for cumulative sum
+                                        // |iat_cumulative_sum_|.
+// Steady-state forgetting factor for |iat_vector_|, 0.9993 in Q15.
+constexpr int kIatFactor_ = 32745;
+constexpr int kMaxIat = 64;  // Max inter-arrival time to register.
+
+absl::optional<int> GetForcedLimitProbability() {
+  constexpr char kForceTargetDelayPercentileFieldTrial[] =
+      "WebRTC-Audio-NetEqForceTargetDelayPercentile";
+  const bool use_forced_target_delay_percentile =
+      webrtc::field_trial::IsEnabled(kForceTargetDelayPercentileFieldTrial);
+  if (use_forced_target_delay_percentile) {
+    const std::string field_trial_string = webrtc::field_trial::FindFullName(
+        kForceTargetDelayPercentileFieldTrial);
+    double percentile = -1.0;
+    if (sscanf(field_trial_string.c_str(), "Enabled-%lf", &percentile) == 1 &&
+        percentile >= 0.0 && percentile <= 100.0) {
+      return absl::make_optional<int>(static_cast<int>(
+          (1 << 30) * (100.0 - percentile) / 100.0 + 0.5));  // in Q30.
+    } else {
+      RTC_LOG(LS_WARNING) << "Invalid parameter for "
+                          << kForceTargetDelayPercentileFieldTrial
+                          << ", ignored.";
+    }
+  }
+  return absl::nullopt;
+}
+
+}  // namespace
+
 namespace webrtc {
 
 DelayManager::DelayManager(size_t max_packets_in_buffer,
@@ -40,15 +75,16 @@ DelayManager::DelayManager(size_t max_packets_in_buffer,
       last_seq_no_(0),
       last_timestamp_(0),
       minimum_delay_ms_(0),
-      least_required_delay_ms_(target_level_),
       maximum_delay_ms_(target_level_),
       iat_cumulative_sum_(0),
       max_iat_cumulative_sum_(0),
       peak_detector_(*peak_detector),
       last_pack_cng_or_dtmf_(1),
       frame_length_change_experiment_(
-          field_trial::IsEnabled("WebRTC-Audio-NetEqFramelengthExperiment")) {
+          field_trial::IsEnabled("WebRTC-Audio-NetEqFramelengthExperiment")),
+      forced_limit_probability_(GetForcedLimitProbability()) {
   assert(peak_detector);  // Should never be NULL.
+
   Reset();
 }
 
@@ -155,8 +191,9 @@ void DelayManager::UpdateCumulativeSums(int packet_len_ms,
       (packet_iat_stopwatch_->ElapsedMs() << 8) / packet_len_ms;
   // Calculate cumulative sum IAT with sequence number compensation. The sum
   // is zero if there is no clock-drift.
-  iat_cumulative_sum_ += (iat_packets_q8 -
-      (static_cast<int>(sequence_number - last_seq_no_) << 8));
+  iat_cumulative_sum_ +=
+      (iat_packets_q8 -
+       (static_cast<int>(sequence_number - last_seq_no_) << 8));
   // Subtract drift term.
   iat_cumulative_sum_ -= kCumulativeSumDrift;
   // Ensure not negative.
@@ -189,8 +226,8 @@ void DelayManager::UpdateHistogram(size_t iat_packets) {
   assert(iat_packets < iat_vector_.size());
   int vector_sum = 0;  // Sum up the vector elements as they are processed.
   // Multiply each element in |iat_vector_| with |iat_factor_|.
-  for (IATVector::iterator it = iat_vector_.begin();
-      it != iat_vector_.end(); ++it) {
+  for (IATVector::iterator it = iat_vector_.begin(); it != iat_vector_.end();
+       ++it) {
     *it = (static_cast<int64_t>(*it) * iat_factor_) >> 15;
     vector_sum += *it;
   }
@@ -233,10 +270,8 @@ void DelayManager::UpdateHistogram(size_t iat_packets) {
 // |least_required_level_| while the above limits are applied.
 // TODO(hlundin): Move this check to the buffer logistics class.
 void DelayManager::LimitTargetLevel() {
-  least_required_delay_ms_ = (target_level_ * packet_len_ms_) >> 8;
-
   if (packet_len_ms_ > 0 && minimum_delay_ms_ > 0) {
-    int minimum_delay_packet_q8 =  (minimum_delay_ms_ << 8) / packet_len_ms_;
+    int minimum_delay_packet_q8 = (minimum_delay_ms_ << 8) / packet_len_ms_;
     target_level_ = std::max(target_level_, minimum_delay_packet_q8);
   }
 
@@ -255,7 +290,7 @@ void DelayManager::LimitTargetLevel() {
 }
 
 int DelayManager::CalculateTargetLevel(int iat_packets) {
-  int limit_probability = kLimitProbability;
+  int limit_probability = forced_limit_probability_.value_or(kLimitProbability);
   if (streaming_mode_) {
     limit_probability = kLimitProbabilityStreaming;
   }
@@ -269,8 +304,8 @@ int DelayManager::CalculateTargetLevel(int iat_packets) {
   // (in Q30) by definition, and since the solution is often a low value for
   // |iat_index|, it is more efficient to start with |sum| = 1 and subtract
   // elements from the start of the histogram.
-  size_t index = 0;  // Start from the beginning of |iat_vector_|.
-  int sum = 1 << 30;  // Assign to 1 in Q30.
+  size_t index = 0;           // Start from the beginning of |iat_vector_|.
+  int sum = 1 << 30;          // Assign to 1 in Q30.
   sum -= iat_vector_[index];  // Ensure that target level is >= 1.
 
   do {
@@ -313,13 +348,12 @@ int DelayManager::SetPacketAudioLength(int length_ms) {
   return 0;
 }
 
-
 void DelayManager::Reset() {
   packet_len_ms_ = 0;  // Packet size unknown.
   streaming_mode_ = false;
   peak_detector_.Reset();
   ResetHistogram();  // Resets target levels too.
-  iat_factor_ = 0;  // Adapt the histogram faster for the first few packets.
+  iat_factor_ = 0;   // Adapt the histogram faster for the first few packets.
   packet_iat_stopwatch_ = tick_timer_->GetNewStopwatch();
   max_iat_stopwatch_ = tick_timer_->GetNewStopwatch();
   iat_cumulative_sum_ = 0;
@@ -467,12 +501,12 @@ bool DelayManager::SetMaximumDelay(int delay_ms) {
   return true;
 }
 
-int DelayManager::least_required_delay_ms() const {
-  return least_required_delay_ms_;
+int DelayManager::base_target_level() const {
+  return base_target_level_;
 }
-
-int DelayManager::base_target_level() const { return base_target_level_; }
-void DelayManager::set_streaming_mode(bool value) { streaming_mode_ = value; }
+void DelayManager::set_streaming_mode(bool value) {
+  streaming_mode_ = value;
+}
 int DelayManager::last_pack_cng_or_dtmf() const {
   return last_pack_cng_or_dtmf_;
 }

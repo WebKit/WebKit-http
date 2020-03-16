@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +37,15 @@ namespace WebCore {
 
 class LibWebRTCMediaEndpoint;
 class LibWebRTCProvider;
+class LibWebRTCRtpSenderBackend;
+class LibWebRTCRtpTransceiverBackend;
 class RTCRtpReceiver;
+class RTCRtpReceiverBackend;
 class RTCSessionDescription;
 class RTCStatsReport;
 class RealtimeIncomingAudioSource;
 class RealtimeIncomingVideoSource;
+class RealtimeMediaSource;
 class RealtimeOutgoingAudioSource;
 class RealtimeOutgoingVideoSource;
 
@@ -51,8 +55,9 @@ public:
     LibWebRTCPeerConnectionBackend(RTCPeerConnection&, LibWebRTCProvider&);
     ~LibWebRTCPeerConnectionBackend();
 
-    bool hasAudioSources() const { return m_audioSources.size(); }
-    bool hasVideoSources() const { return m_videoSources.size(); }
+    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&);
+
+    bool shouldOfferAllowToReceive(const char*) const;
 
 private:
     void doCreateOffer(RTCOfferOptions&&) final;
@@ -63,8 +68,9 @@ private:
     void doStop() final;
     std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) final;
     bool setConfiguration(MediaEndpointConfiguration&&) final;
-    void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) final;
-    Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) final;
+    void getStats(Ref<DeferredPromise>&&) final;
+    void getStats(RTCRtpSender&, Ref<DeferredPromise>&&) final;
+    void getStats(RTCRtpReceiver&, Ref<DeferredPromise>&&) final;
 
     RefPtr<RTCSessionDescription> localDescription() const final;
     RefPtr<RTCSessionDescription> currentLocalDescription() const final;
@@ -74,26 +80,26 @@ private:
     RefPtr<RTCSessionDescription> currentRemoteDescription() const final;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const final;
 
-    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) final;
-    RTCRtpParameters getParameters(RTCRtpSender&) const final;
-
     void emulatePlatformEvent(const String&) final { }
     void applyRotationForOutgoingVideoSources() final;
 
-    friend LibWebRTCMediaEndpoint;
+    friend class LibWebRTCMediaEndpoint;
+    friend class LibWebRTCRtpSenderBackend;
     RTCPeerConnection& connection() { return m_peerConnection; }
-    void addAudioSource(Ref<RealtimeOutgoingAudioSource>&&);
-    void addVideoSource(Ref<RealtimeOutgoingVideoSource>&&);
 
     void getStatsSucceeded(const DeferredPromise&, Ref<RTCStatsReport>&&);
-    void getStatsFailed(const DeferredPromise&, Exception&&);
 
-    Vector<RefPtr<MediaStream>> getRemoteStreams() const final { return m_remoteStreams; }
-    void removeRemoteStream(MediaStream*);
-    void addRemoteStream(Ref<MediaStream>&&);
+    ExceptionOr<Ref<RTCRtpSender>> addTrack(MediaStreamTrack&, Vector<String>&&) final;
+    void removeTrack(RTCRtpSender&) final;
 
-    void notifyAddedTrack(RTCRtpSender&) final;
-    void notifyRemovedTrack(RTCRtpSender&) final;
+    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(const String&, const RTCRtpTransceiverInit&) final;
+    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&) final;
+    void setSenderSourceFromTrack(LibWebRTCRtpSenderBackend&, MediaStreamTrack&);
+
+    RTCRtpTransceiver* existingTransceiver(WTF::Function<bool(LibWebRTCRtpTransceiverBackend&)>&&);
+    RTCRtpTransceiver& newRemoteTransceiver(std::unique_ptr<LibWebRTCRtpTransceiverBackend>&&, Ref<RealtimeMediaSource>&&);
+
+    void collectTransceivers() final;
 
     struct VideoReceiver {
         Ref<RTCRtpReceiver> receiver;
@@ -109,16 +115,20 @@ private:
 private:
     bool isLocalDescriptionSet() const final { return m_isLocalDescriptionSet; }
 
+    Ref<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpSender>&&, const RTCRtpTransceiverInit&, const String& trackId, const String& trackKind);
+
+    Ref<RTCRtpReceiver> createReceiver(const String& trackKind, const String& trackId);
+
+    template<typename T>
+    ExceptionOr<Ref<RTCRtpTransceiver>> addUnifiedPlanTransceiver(T&& trackOrKind, const RTCRtpTransceiverInit&);
+
+    Ref<RTCRtpReceiver> createReceiverForSource(Ref<RealtimeMediaSource>&&, std::unique_ptr<RTCRtpReceiverBackend>&&);
+
     Ref<LibWebRTCMediaEndpoint> m_endpoint;
     bool m_isLocalDescriptionSet { false };
     bool m_isRemoteDescriptionSet { false };
 
-    // FIXME: Make m_remoteStreams a Vector of Ref.
-    Vector<RefPtr<MediaStream>> m_remoteStreams;
     Vector<std::unique_ptr<webrtc::IceCandidateInterface>> m_pendingCandidates;
-    Vector<Ref<RealtimeOutgoingAudioSource>> m_audioSources;
-    Vector<Ref<RealtimeOutgoingVideoSource>> m_videoSources;
-    HashMap<const DeferredPromise*, Ref<DeferredPromise>> m_statsPromises;
     Vector<Ref<RTCRtpReceiver>> m_pendingReceivers;
 };
 

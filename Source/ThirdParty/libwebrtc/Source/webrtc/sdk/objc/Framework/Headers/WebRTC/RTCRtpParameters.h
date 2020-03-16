@@ -8,26 +8,4 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import <Foundation/Foundation.h>
-
-#import <WebRTC/RTCMacros.h>
-#import <WebRTC/RTCRtpCodecParameters.h>
-#import <WebRTC/RTCRtpEncodingParameters.h>
-
-NS_ASSUME_NONNULL_BEGIN
-
-RTC_EXPORT
-__attribute__((objc_runtime_name("WK_RTCRtpParameters")))
-@interface RTCRtpParameters : NSObject
-
-/** The currently active encodings in the order of preference. */
-@property(nonatomic, copy) NSArray<RTCRtpEncodingParameters *> *encodings;
-
-/** The negotiated set of send codecs in order of preference. */
-@property(nonatomic, copy) NSArray<RTCRtpCodecParameters *> *codecs;
-
-- (instancetype)init NS_DESIGNATED_INITIALIZER;
-
-@end
-
-NS_ASSUME_NONNULL_END
+#import "api/peerconnection/RTCRtpParameters.h"

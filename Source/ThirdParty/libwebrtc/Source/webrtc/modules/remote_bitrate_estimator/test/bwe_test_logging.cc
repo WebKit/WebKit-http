@@ -16,34 +16,37 @@
 #include <stdio.h>
 
 #include <algorithm>
-#include <sstream>
 
 #include "rtc_base/checks.h"
 #include "rtc_base/format_macros.h"
 #include "rtc_base/platform_thread.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace webrtc {
 namespace testing {
 namespace bwe {
 
-Logging Logging::g_Logging;
-
 static std::string ToString(uint32_t v) {
-  std::stringstream ss;
+  rtc::StringBuilder ss;
   ss << v;
-  return ss.str();
+  return ss.Release();
 }
+
+Logging::ThreadState::ThreadState() = default;
+Logging::ThreadState::~ThreadState() = default;
 
 Logging::Context::Context(uint32_t name, int64_t timestamp_ms, bool enabled) {
   Logging::GetInstance()->PushState(ToString(name), timestamp_ms, enabled);
 }
 
-Logging::Context::Context(const std::string& name, int64_t timestamp_ms,
+Logging::Context::Context(const std::string& name,
+                          int64_t timestamp_ms,
                           bool enabled) {
   Logging::GetInstance()->PushState(name, timestamp_ms, enabled);
 }
 
-Logging::Context::Context(const char* name, int64_t timestamp_ms,
+Logging::Context::Context(const char* name,
+                          int64_t timestamp_ms,
                           bool enabled) {
   Logging::GetInstance()->PushState(name, timestamp_ms, enabled);
 }
@@ -53,7 +56,8 @@ Logging::Context::~Context() {
 }
 
 Logging* Logging::GetInstance() {
-  return &g_Logging;
+  static Logging* logging = new Logging();
+  return logging;
 }
 
 void Logging::SetGlobalContext(uint32_t name) {
@@ -201,18 +205,16 @@ void Logging::PlotLabel(int figure,
   }
 }
 
-Logging::Logging()
-    : thread_map_() {
-}
+Logging::Logging() : thread_map_() {}
+
+Logging::~Logging() = default;
 
 Logging::State::State() : tag(""), timestamp_ms(0), enabled(true) {}
 
-Logging::State::State(const std::string& tag, int64_t timestamp_ms,
+Logging::State::State(const std::string& tag,
+                      int64_t timestamp_ms,
                       bool enabled)
-    : tag(tag),
-      timestamp_ms(timestamp_ms),
-      enabled(enabled) {
-}
+    : tag(tag), timestamp_ms(timestamp_ms), enabled(enabled) {}
 
 void Logging::State::MergePrevious(const State& previous) {
   if (tag.empty()) {
@@ -224,7 +226,8 @@ void Logging::State::MergePrevious(const State& previous) {
   enabled = previous.enabled && enabled;
 }
 
-void Logging::PushState(const std::string& append_to_tag, int64_t timestamp_ms,
+void Logging::PushState(const std::string& append_to_tag,
+                        int64_t timestamp_ms,
                         bool enabled) {
   rtc::CritScope cs(&crit_sect_);
   State new_state(append_to_tag, timestamp_ms, enabled);

@@ -15,9 +15,13 @@ namespace webrtc {
 
 MatchedFilterLagAggregator::MatchedFilterLagAggregator(
     ApmDataDumper* data_dumper,
-    size_t max_filter_lag)
-    : data_dumper_(data_dumper), histogram_(max_filter_lag + 1, 0) {
+    size_t max_filter_lag,
+    const EchoCanceller3Config::Delay::DelaySelectionThresholds& thresholds)
+    : data_dumper_(data_dumper),
+      histogram_(max_filter_lag + 1, 0),
+      thresholds_(thresholds) {
   RTC_DCHECK(data_dumper);
+  RTC_DCHECK_LE(thresholds_.initial, thresholds_.converged);
   histogram_data_.fill(0);
 }
 
@@ -30,7 +34,7 @@ void MatchedFilterLagAggregator::Reset() {
   significant_candidate_found_ = false;
 }
 
-rtc::Optional<DelayEstimate> MatchedFilterLagAggregator::Aggregate(
+absl::optional<DelayEstimate> MatchedFilterLagAggregator::Aggregate(
     rtc::ArrayView<const MatchedFilter::LagEstimate> lag_estimates) {
   // Choose the strongest lag estimate as the best one.
   float best_accuracy = 0.f;
@@ -67,14 +71,16 @@ rtc::Optional<DelayEstimate> MatchedFilterLagAggregator::Aggregate(
         std::distance(histogram_.begin(),
                       std::max_element(histogram_.begin(), histogram_.end()));
 
-    if (histogram_[candidate] > 25) {
-      significant_candidate_found_ = true;
+    significant_candidate_found_ =
+        significant_candidate_found_ ||
+        histogram_[candidate] > thresholds_.converged;
+    if (histogram_[candidate] > thresholds_.converged ||
+        (histogram_[candidate] > thresholds_.initial &&
+         !significant_candidate_found_)) {
       return DelayEstimate(DelayEstimate::Quality::kRefined, candidate);
-    } else if (!significant_candidate_found_) {
-      return DelayEstimate(DelayEstimate::Quality::kCoarse, candidate);
     }
   }
-  return rtc::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace webrtc

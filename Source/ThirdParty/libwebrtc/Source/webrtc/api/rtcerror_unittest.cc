@@ -58,15 +58,6 @@ struct MoveOnlyInt2 {
 
 namespace webrtc {
 
-// Simple test for ostream operator for RTCErrorType.
-TEST(RTCErrorTypeTest, OstreamOperator) {
-  std::ostringstream oss;
-  oss << webrtc::RTCErrorType::NONE << ' '
-      << webrtc::RTCErrorType::INVALID_PARAMETER << ' '
-      << webrtc::RTCErrorType::INTERNAL_ERROR;
-  EXPECT_EQ("NONE INVALID_PARAMETER INTERNAL_ERROR", oss.str());
-}
-
 // Test that the default constructor creates a "no error" error.
 TEST(RTCErrorTest, DefaultConstructor) {
   RTCError e;
@@ -231,7 +222,8 @@ TEST(RTCErrorOrTest, MoveValue) {
 #if RTC_DCHECK_IS_ON && GTEST_HAS_DEATH_TEST && !defined(WEBRTC_ANDROID)
 
 TEST(RTCErrorOrDeathTest, ConstructWithOkError) {
-  EXPECT_DEATH(RTCErrorOr<int> err = RTCError::OK(), "");
+  RTCErrorOr<int> err;
+  EXPECT_DEATH(err = RTCError::OK(), "");
 }
 
 TEST(RTCErrorOrDeathTest, DereferenceErrorValue) {

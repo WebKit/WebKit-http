@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -694,20 +694,20 @@ OSStatus CoreAudioSharedUnit::defaultOutputDevice(uint32_t* deviceID)
     return err;
 }
 
-CaptureSourceOrError CoreAudioCaptureSource::create(const String& deviceID, const MediaConstraints* constraints)
+CaptureSourceOrError CoreAudioCaptureSource::create(String&& deviceID, String&& hashSalt, const MediaConstraints* constraints)
 {
 #if PLATFORM(MAC)
     auto device = CoreAudioCaptureDeviceManager::singleton().coreAudioDeviceWithUID(deviceID);
     if (!device)
         return { };
 
-    auto source = adoptRef(*new CoreAudioCaptureSource(deviceID, device->label(), device->deviceID()));
+    auto source = adoptRef(*new CoreAudioCaptureSource(WTFMove(deviceID), String { device->label() }, WTFMove(hashSalt), device->deviceID()));
 #elif PLATFORM(IOS)
-    auto device = AVAudioSessionCaptureDeviceManager::singleton().audioSessionDeviceWithUID(deviceID);
+    auto device = AVAudioSessionCaptureDeviceManager::singleton().audioSessionDeviceWithUID(WTFMove(deviceID));
     if (!device)
         return { };
 
-    auto source = adoptRef(*new CoreAudioCaptureSource(deviceID, device->label(), 0));
+    auto source = adoptRef(*new CoreAudioCaptureSource(WTFMove(deviceID), String { device->label() }, WTFMove(hashSalt), 0));
 #endif
 
     if (constraints) {
@@ -769,13 +769,13 @@ void CoreAudioCaptureSourceFactory::scheduleReconfiguration()
     CoreAudioSharedUnit::singleton().reconfigureAudioUnit();
 }
 
-RealtimeMediaSource::AudioCaptureFactory& CoreAudioCaptureSource::factory()
+AudioCaptureFactory& CoreAudioCaptureSource::factory()
 {
     return CoreAudioCaptureSourceFactory::singleton();
 }
 
-CoreAudioCaptureSource::CoreAudioCaptureSource(const String& deviceID, const String& label, uint32_t persistentID)
-    : RealtimeMediaSource(deviceID, RealtimeMediaSource::Type::Audio, label)
+CoreAudioCaptureSource::CoreAudioCaptureSource(String&& deviceID, String&& label, String&& hashSalt, uint32_t persistentID)
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Audio, WTFMove(label), WTFMove(deviceID), WTFMove(hashSalt))
     , m_captureDeviceID(persistentID)
 {
     auto& unit = CoreAudioSharedUnit::singleton();
@@ -841,11 +841,11 @@ void CoreAudioCaptureSource::stopProducingData()
     unit.stopProducingData();
 }
 
-const RealtimeMediaSourceCapabilities& CoreAudioCaptureSource::capabilities() const
+const RealtimeMediaSourceCapabilities& CoreAudioCaptureSource::capabilities()
 {
     if (!m_capabilities) {
         RealtimeMediaSourceCapabilities capabilities(settings().supportedConstraints());
-        capabilities.setDeviceId(id());
+        capabilities.setDeviceId(hashedId());
         capabilities.setEchoCancellation(RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite);
         capabilities.setVolume(CapabilityValueOrRange(0.0, 1.0));
         capabilities.setSampleRate(CapabilityValueOrRange(8000, 96000));
@@ -854,13 +854,13 @@ const RealtimeMediaSourceCapabilities& CoreAudioCaptureSource::capabilities() co
     return m_capabilities.value();
 }
 
-const RealtimeMediaSourceSettings& CoreAudioCaptureSource::settings() const
+const RealtimeMediaSourceSettings& CoreAudioCaptureSource::settings()
 {
     if (!m_currentSettings) {
         RealtimeMediaSourceSettings settings;
         settings.setVolume(volume());
         settings.setSampleRate(sampleRate());
-        settings.setDeviceId(id());
+        settings.setDeviceId(hashedId());
         settings.setLabel(name());
         settings.setEchoCancellation(echoCancellation());
 
@@ -876,39 +876,18 @@ const RealtimeMediaSourceSettings& CoreAudioCaptureSource::settings() const
     return m_currentSettings.value();
 }
 
-void CoreAudioCaptureSource::settingsDidChange()
+void CoreAudioCaptureSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    m_currentSettings = std::nullopt;
-    RealtimeMediaSource::settingsDidChange();
-}
-
-bool CoreAudioCaptureSource::applySampleRate(int sampleRate)
-{
-    // FIXME: We should be able to describe sample rate as a discreet range constraint so that we only enter here with values that can be applied.
-    switch (sampleRate) {
-    case 8000:
-    case 16000:
-    case 32000:
-    case 44100:
-    case 48000:
-    case 96000:
-        break;
-    default:
-        return false;
+    if (settings.contains(RealtimeMediaSourceSettings::Flag::EchoCancellation)) {
+        CoreAudioSharedUnit::singleton().setEnableEchoCancellation(echoCancellation());
+        scheduleReconfiguration();
+    }
+    if (settings.contains(RealtimeMediaSourceSettings::Flag::SampleRate)) {
+        CoreAudioSharedUnit::singleton().setSampleRate(sampleRate());
+        scheduleReconfiguration();
     }
 
-    CoreAudioSharedUnit::singleton().setSampleRate(sampleRate);
-
-    scheduleReconfiguration();
-    return true;
-}
-
-bool CoreAudioCaptureSource::applyEchoCancellation(bool enableEchoCancellation)
-{
-    CoreAudioSharedUnit::singleton().setEnableEchoCancellation(enableEchoCancellation);
-
-    scheduleReconfiguration();
-    return true;
+    m_currentSettings = std::nullopt;
 }
 
 void CoreAudioCaptureSource::scheduleReconfiguration()

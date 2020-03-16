@@ -11,7 +11,9 @@
 #ifndef API_RTCERROR_H_
 #define API_RTCERROR_H_
 
+#ifdef UNIT_TEST
 #include <ostream>
+#endif  // UNIT_TEST
 #include <string>
 #include <utility>  // For std::move.
 
@@ -84,12 +86,9 @@ class RTCError {
   // Creates a "no error" error.
   RTCError() {}
   explicit RTCError(RTCErrorType type) : type_(type) {}
-  // For performance, prefer using the constructor that takes a const char* if
-  // the message is a static string.
-  RTCError(RTCErrorType type, const char* message)
-      : type_(type), static_message_(message), have_string_message_(false) {}
-  RTCError(RTCErrorType type, std::string&& message)
-      : type_(type), string_message_(message), have_string_message_(true) {}
+
+  RTCError(RTCErrorType type, std::string message)
+      : type_(type), message_(std::move(message)) {}
 
   // Delete the copy constructor and assignment operator; there aren't any use
   // cases where you should need to copy an RTCError, as opposed to moving it.
@@ -100,8 +99,6 @@ class RTCError {
   // Move constructor and move-assignment operator.
   RTCError(RTCError&& other);
   RTCError& operator=(RTCError&& other);
-
-  ~RTCError();
 
   // Identical to default constructed error.
   //
@@ -116,10 +113,8 @@ class RTCError {
   // anything but logging/diagnostics, since messages are not guaranteed to be
   // stable.
   const char* message() const;
-  // For performance, prefer using the method that takes a const char* if the
-  // message is a static string.
-  void set_message(const char* message);
-  void set_message(std::string&& message);
+
+  void set_message(std::string message);
 
   // Convenience method for situations where you only care whether or not an
   // error occurred.
@@ -127,32 +122,31 @@ class RTCError {
 
  private:
   RTCErrorType type_ = RTCErrorType::NONE;
-  // For performance, we use static strings wherever possible. But in some
-  // cases the error string may need to be constructed, in which case an
-  // std::string is used.
-  union {
-    const char* static_message_ = "";
-    std::string string_message_;
-  };
-  // Whether or not |static_message_| or |string_message_| is being used in the
-  // above union.
-  bool have_string_message_ = false;
+  std::string message_;
 };
 
 // Outputs the error as a friendly string. Update this method when adding a new
 // error type.
 //
 // Only intended to be used for logging/disagnostics.
-std::ostream& operator<<(std::ostream& stream, RTCErrorType error);
+std::string ToString(RTCErrorType error);
+
+#ifdef UNIT_TEST
+inline std::ostream& operator<<(  // no-presubmit-check TODO(webrtc:8982)
+    std::ostream& stream,         // no-presubmit-check TODO(webrtc:8982)
+    RTCErrorType error) {
+  return stream << ToString(error);
+}
+#endif  // UNIT_TEST
 
 // Helper macro that can be used by implementations to create an error with a
 // message and log it. |message| should be a string literal or movable
 // std::string.
-#define LOG_AND_RETURN_ERROR_EX(type, message, severity) \
-  {                                                      \
-    RTC_DCHECK(type != RTCErrorType::NONE);              \
-    RTC_LOG(severity) << message << " (" << type << ")"; \
-    return webrtc::RTCError(type, message);              \
+#define LOG_AND_RETURN_ERROR_EX(type, message, severity)           \
+  {                                                                \
+    RTC_DCHECK(type != RTCErrorType::NONE);                        \
+    RTC_LOG(severity) << message << " (" << ToString(type) << ")"; \
+    return webrtc::RTCError(type, message);                        \
   }
 
 #define LOG_AND_RETURN_ERROR(type, message) \

@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "modules/rtp_rtcp/source/rtcp_packet/psfb.h"
-#include "rtc_base/basictypes.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -27,6 +26,7 @@ class Remb : public Psfb {
   static constexpr size_t kMaxNumberOfSsrcs = 0xff;
 
   Remb();
+  Remb(const Remb&);
   ~Remb() override;
 
   // Parse assumes header is already parsed and validated.

@@ -16,16 +16,15 @@
 #include <string>
 #include <vector>
 
+#include "absl/types/optional.h"
 #include "api/array_view.h"
-#include "api/optional.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/common_header.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/dlrr.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/remb.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/report_block.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/target_bitrate.h"
 #include "modules/rtp_rtcp/source/rtcp_transceiver_config.h"
-#include "rtc_base/constructormagic.h"
-#include "rtc_base/weak_ptr.h"
+#include "rtc_base/cancelable_task_handle.h"
 #include "system_wrappers/include/ntp_time.h"
 
 namespace webrtc {
@@ -36,12 +35,16 @@ namespace webrtc {
 class RtcpTransceiverImpl {
  public:
   explicit RtcpTransceiverImpl(const RtcpTransceiverConfig& config);
+  RtcpTransceiverImpl(const RtcpTransceiverImpl&) = delete;
+  RtcpTransceiverImpl& operator=(const RtcpTransceiverImpl&) = delete;
   ~RtcpTransceiverImpl();
 
   void AddMediaReceiverRtcpObserver(uint32_t remote_ssrc,
                                     MediaReceiverRtcpObserver* observer);
   void RemoveMediaReceiverRtcpObserver(uint32_t remote_ssrc,
                                        MediaReceiverRtcpObserver* observer);
+
+  void SetReadyToSend(bool ready);
 
   void ReceivePacket(rtc::ArrayView<const uint8_t> packet, int64_t now_us);
 
@@ -88,13 +91,12 @@ class RtcpTransceiverImpl {
 
   const RtcpTransceiverConfig config_;
 
-  rtc::Optional<rtcp::Remb> remb_;
+  bool ready_to_send_;
+  absl::optional<rtcp::Remb> remb_;
   // TODO(danilchap): Remove entries from remote_senders_ that are no longer
   // needed.
   std::map<uint32_t, RemoteSenderState> remote_senders_;
-  rtc::WeakPtrFactory<RtcpTransceiverImpl> ptr_factory_;
-
-  RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(RtcpTransceiverImpl);
+  rtc::CancelableTaskHandle periodic_task_handle_;
 };
 
 }  // namespace webrtc

@@ -26,7 +26,7 @@ be found in the AUTHORS file in the root of the source tree.
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application android:label="NativeTests"
-            android:name="org.chromium.base.BaseChromiumApplication">
+            android:name="org.chromium.native_test.NativeTestApplication">
         <uses-library android:name="android.test.runner"/>
         <activity android:name=".RTCNativeUnitTestActivity"
                 android:label="NativeTest"
@@ -41,6 +41,7 @@ be found in the AUTHORS file in the root of the source tree.
 
     <instrumentation android:name="org.chromium.native_test.NativeTestInstrumentationTestRunner"
             android:targetPackage="org.webrtc.native_test"
-            android:label="Instrumentation entry point for org.webrtc.native_test"/>
+            android:label="Instrumentation entry point for org.webrtc.native_test"
+            chromium-junit3="true"/>
 
 </manifest>

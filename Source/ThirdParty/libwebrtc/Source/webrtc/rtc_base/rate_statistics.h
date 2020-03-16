@@ -13,8 +13,7 @@
 
 #include <memory>
 
-#include "api/optional.h"
-#include "typedefs.h"  // NOLINT(build/include)
+#include "absl/types/optional.h"
 
 namespace webrtc {
 
@@ -28,6 +27,11 @@ class RateStatistics {
   // scale = coefficient to convert counts/ms to desired unit
   //         ex: kBpsScale (8000) for bits/s if count represents bytes.
   RateStatistics(int64_t max_window_size_ms, float scale);
+
+  RateStatistics(const RateStatistics& other);
+
+  RateStatistics(RateStatistics&& other);
+
   ~RateStatistics();
 
   // Reset instance to original state.
@@ -42,7 +46,7 @@ class RateStatistics {
   // from a monotonic clock. Ie, it doesn't matter if this call moves the
   // window, since any subsequent call to Update or Rate would still have moved
   // the window as much or more.
-  rtc::Optional<uint32_t> Rate(int64_t now_ms) const;
+  absl::optional<uint32_t> Rate(int64_t now_ms) const;
 
   // Update the size of the averaging window. The maximum allowed value for
   // window_size_ms is max_window_size_ms as supplied in the constructor.

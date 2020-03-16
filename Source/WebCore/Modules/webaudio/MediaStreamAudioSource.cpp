@@ -34,12 +34,12 @@
 namespace WebCore {
 
 MediaStreamAudioSource::MediaStreamAudioSource(float sampleRate)
-    : RealtimeMediaSource(makeString("WebAudio-"_s, createCanonicalUUIDString()), RealtimeMediaSource::Type::Audio, "MediaStreamAudioDestinationNode")
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Audio, "MediaStreamAudioDestinationNode"_s)
 {
     m_currentSettings.setSampleRate(sampleRate);
 }
 
-const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities() const
+const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities()
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -47,7 +47,7 @@ const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities() co
     return RealtimeMediaSourceCapabilities::emptyCapabilities();
 }
 
-const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings() const
+const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings()
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430

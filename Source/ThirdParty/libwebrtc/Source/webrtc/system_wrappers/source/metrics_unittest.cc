@@ -9,7 +9,6 @@
  */
 
 #include "system_wrappers/include/metrics.h"
-#include "system_wrappers/include/metrics_default.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -29,7 +28,7 @@ class MetricsTest : public ::testing::Test {
   MetricsTest() {}
 
  protected:
-  virtual void SetUp() { metrics::Reset(); }
+  void SetUp() override { metrics::Reset(); }
 };
 
 TEST_F(MetricsTest, InitiallyNoSamples) {

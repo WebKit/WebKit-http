@@ -13,12 +13,11 @@
 
 #include <vector>
 
-#include "api/optional.h"
+#include "absl/types/optional.h"
 #include "modules/rtp_rtcp/source/rtcp_packet.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/dlrr.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/rrtr.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/target_bitrate.h"
-#include "modules/rtp_rtcp/source/rtcp_packet/voip_metric.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -28,6 +27,7 @@ class CommonHeader;
 class ExtendedReports : public RtcpPacket {
  public:
   static constexpr uint8_t kPacketType = 207;
+  static constexpr size_t kMaxNumberOfDlrrItems = 50;
 
   ExtendedReports();
   ~ExtendedReports() override;
@@ -38,17 +38,13 @@ class ExtendedReports : public RtcpPacket {
   void SetSenderSsrc(uint32_t ssrc) { sender_ssrc_ = ssrc; }
 
   void SetRrtr(const Rrtr& rrtr);
-  void AddDlrrItem(const ReceiveTimeInfo& time_info);
-  void SetVoipMetric(const VoipMetric& voip_metric);
+  bool AddDlrrItem(const ReceiveTimeInfo& time_info);
   void SetTargetBitrate(const TargetBitrate& target_bitrate);
 
   uint32_t sender_ssrc() const { return sender_ssrc_; }
-  const rtc::Optional<Rrtr>& rrtr() const { return rrtr_block_; }
+  const absl::optional<Rrtr>& rrtr() const { return rrtr_block_; }
   const Dlrr& dlrr() const { return dlrr_block_; }
-  const rtc::Optional<VoipMetric>& voip_metric() const {
-    return voip_metric_block_;
-  }
-  const rtc::Optional<TargetBitrate>& target_bitrate() const {
+  const absl::optional<TargetBitrate>& target_bitrate() const {
     return target_bitrate_;
   }
 
@@ -64,9 +60,6 @@ class ExtendedReports : public RtcpPacket {
 
   size_t RrtrLength() const { return rrtr_block_ ? Rrtr::kLength : 0; }
   size_t DlrrLength() const { return dlrr_block_.BlockLength(); }
-  size_t VoipMetricLength() const {
-    return voip_metric_block_ ? VoipMetric::kLength : 0;
-  }
   size_t TargetBitrateLength() const;
 
   void ParseRrtrBlock(const uint8_t* block, uint16_t block_length);
@@ -75,10 +68,9 @@ class ExtendedReports : public RtcpPacket {
   void ParseTargetBitrateBlock(const uint8_t* block, uint16_t block_length);
 
   uint32_t sender_ssrc_;
-  rtc::Optional<Rrtr> rrtr_block_;
+  absl::optional<Rrtr> rrtr_block_;
   Dlrr dlrr_block_;  // Dlrr without items treated same as no dlrr block.
-  rtc::Optional<VoipMetric> voip_metric_block_;
-  rtc::Optional<TargetBitrate> target_bitrate_;
+  absl::optional<TargetBitrate> target_bitrate_;
 };
 }  // namespace rtcp
 }  // namespace webrtc

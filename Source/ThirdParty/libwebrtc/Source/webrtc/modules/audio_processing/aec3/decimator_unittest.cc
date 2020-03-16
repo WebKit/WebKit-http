@@ -14,11 +14,11 @@
 #include <algorithm>
 #include <array>
 #include <numeric>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include "modules/audio_processing/aec3/aec3_common.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -26,9 +26,9 @@ namespace webrtc {
 namespace {
 
 std::string ProduceDebugText(int sample_rate_hz) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Sample rate: " << sample_rate_hz;
-  return ss.str();
+  return ss.Release();
 }
 
 constexpr size_t kDownSamplingFactors[] = {2, 4, 8};
@@ -95,21 +95,6 @@ TEST(Decimator, NoLeakageFromUpperFrequencies) {
                                             3.f / 8.f * rate, &input_power,
                                             &output_power);
       EXPECT_GT(0.0001f * input_power, output_power);
-    }
-  }
-}
-
-// Verifies that the impact of low-frequency content is small during the
-// downsampling.
-TEST(Decimator, NoImpactOnLowerFrequencies) {
-  float input_power;
-  float output_power;
-  for (auto rate : {8000, 16000, 32000, 48000}) {
-    for (auto down_sampling_factor : kDownSamplingFactors) {
-      ProduceDebugText(rate);
-      ProduceDecimatedSinusoidalOutputPower(rate, down_sampling_factor, 200.f,
-                                            &input_power, &output_power);
-      EXPECT_LT(0.7f * input_power, output_power);
     }
   }
 }

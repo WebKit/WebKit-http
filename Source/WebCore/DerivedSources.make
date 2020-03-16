@@ -47,6 +47,7 @@ VPATH = \
     $(WebCore)/Modules/mediasession \
     $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/mediastream \
+	$(WebCore)/Modules/mediarecorder \
     $(WebCore)/Modules/notifications \
     $(WebCore)/Modules/paymentrequest \
     $(WebCore)/Modules/plugins \
@@ -200,6 +201,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediacapabilities/ScreenLuminance.idl \
     $(WebCore)/Modules/mediacapabilities/VideoConfiguration.idl \
     $(WebCore)/Modules/mediacontrols/MediaControlsHost.idl \
+	$(WebCore)/Modules/mediarecorder/BlobEvent.idl \
+	$(WebCore)/Modules/mediarecorder/MediaRecorder.idl \
     $(WebCore)/Modules/mediasession/HTMLMediaElementMediaSession.idl \
     $(WebCore)/Modules/mediasession/MediaRemoteControls.idl \
     $(WebCore)/Modules/mediasession/MediaSession.idl \
@@ -217,23 +220,25 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/MediaDeviceInfo.idl \
     $(WebCore)/Modules/mediastream/MediaDevices.idl \
     $(WebCore)/Modules/mediastream/MediaStream.idl \
-    $(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
     $(WebCore)/Modules/mediastream/MediaTrackConstraints.idl \
     $(WebCore)/Modules/mediastream/MediaTrackSupportedConstraints.idl \
     $(WebCore)/Modules/mediastream/NavigatorMediaDevices.idl \
-    $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
     $(WebCore)/Modules/mediastream/RTCAnswerOptions.idl \
+    $(WebCore)/Modules/mediastream/RTCCertificate.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
     $(WebCore)/Modules/mediastream/RTCDataChannel.idl \
     $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCDegradationPreference.idl \
+    $(WebCore)/Modules/mediastream/RTCDtxStatus.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionIceEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCPriorityType.idl \
     $(WebCore)/Modules/mediastream/RTCIceConnectionState.idl \
     $(WebCore)/Modules/mediastream/RTCIceGatheringState.idl \
     $(WebCore)/Modules/mediastream/RTCIceServer.idl \
@@ -243,11 +248,20 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCOfferOptions.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpCapabilities.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpCodecParameters.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpContributingSource.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpEncodingParameters.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpFecParameters.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpHeaderExtensionParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpRtxParameters.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpSendParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
     $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpTransceiverDirection.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpSynchronizationSource.idl \
     $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
     $(WebCore)/Modules/mediastream/RTCSignalingState.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
@@ -1517,7 +1531,6 @@ CommandLineAPIModuleSource.h : CommandLineAPIModuleSource.js
 # WebCore JS Builtins
 
 WebCore_BUILTINS_SOURCES = \
-    $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionInternals.js \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \

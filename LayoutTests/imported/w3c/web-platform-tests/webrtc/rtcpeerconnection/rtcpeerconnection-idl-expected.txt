@@ -27,17 +27,13 @@ PASS RTCPeerConnection interface: existence and properties of interface prototyp
 PASS RTCPeerConnection interface: operation createOffer(RTCOfferOptions) 
 PASS Unscopable handled correctly for createOffer(RTCOfferOptions) on RTCPeerConnection 
 PASS RTCPeerConnection interface: operation createAnswer(RTCAnswerOptions) 
-PASS Unscopable handled correctly for createAnswer(RTCAnswerOptions) on RTCPeerConnection 
-FAIL RTCPeerConnection interface: operation setLocalDescription(RTCSessionDescription) assert_equals: property has wrong .length expected 1 but got 0
-PASS Unscopable handled correctly for setLocalDescription(RTCSessionDescription) on RTCPeerConnection 
+PASS RTCPeerConnection interface: operation setLocalDescription(RTCSessionDescription) 
 PASS RTCPeerConnection interface: attribute localDescription 
 PASS Unscopable handled correctly for localDescription property on RTCPeerConnection 
 PASS RTCPeerConnection interface: attribute currentLocalDescription 
 PASS Unscopable handled correctly for currentLocalDescription property on RTCPeerConnection 
 PASS RTCPeerConnection interface: attribute pendingLocalDescription 
-PASS Unscopable handled correctly for pendingLocalDescription property on RTCPeerConnection 
-FAIL RTCPeerConnection interface: operation setRemoteDescription(RTCSessionDescription) assert_equals: property has wrong .length expected 1 but got 0
-PASS Unscopable handled correctly for setRemoteDescription(RTCSessionDescription) on RTCPeerConnection 
+PASS RTCPeerConnection interface: operation setRemoteDescription(RTCSessionDescription) 
 PASS RTCPeerConnection interface: attribute remoteDescription 
 PASS Unscopable handled correctly for remoteDescription property on RTCPeerConnection 
 PASS RTCPeerConnection interface: attribute currentRemoteDescription 
@@ -73,15 +69,15 @@ PASS Unscopable handled correctly for onicegatheringstatechange property on RTCP
 FAIL RTCPeerConnection interface: operation createOffer(RTCSessionDescriptionCallback, RTCPeerConnectionErrorCallback, RTCOfferOptions) assert_throws: calling operation with this = null didn't throw TypeError function "function () {
             fn.apply(obj, args);
         }" did not throw
-PASS Unscopable handled correctly for createOffer(RTCSessionDescriptionCallback, RTCPeerConnectionErrorCallback, RTCOfferOptions) on RTCPeerConnection 
-FAIL RTCPeerConnection interface: operation setLocalDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) assert_equals: property has wrong .length expected 1 but got 0
-PASS Unscopable handled correctly for setLocalDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) on RTCPeerConnection 
+FAIL RTCPeerConnection interface: operation setLocalDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) assert_throws: calling operation with this = null didn't throw TypeError function "function () {
+            fn.apply(obj, args);
+        }" did not throw
 FAIL RTCPeerConnection interface: operation createAnswer(RTCSessionDescriptionCallback, RTCPeerConnectionErrorCallback) assert_throws: calling operation with this = null didn't throw TypeError function "function () {
             fn.apply(obj, args);
         }" did not throw
-PASS Unscopable handled correctly for createAnswer(RTCSessionDescriptionCallback, RTCPeerConnectionErrorCallback) on RTCPeerConnection 
-FAIL RTCPeerConnection interface: operation setRemoteDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) assert_equals: property has wrong .length expected 1 but got 0
-PASS Unscopable handled correctly for setRemoteDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) on RTCPeerConnection 
+FAIL RTCPeerConnection interface: operation setRemoteDescription(RTCSessionDescription, VoidFunction, RTCPeerConnectionErrorCallback) assert_throws: calling operation with this = null didn't throw TypeError function "function () {
+            fn.apply(obj, args);
+        }" did not throw
 FAIL RTCPeerConnection interface: operation addIceCandidate(RTCIceCandidate, VoidFunction, RTCPeerConnectionErrorCallback) assert_throws: calling operation with this = null didn't throw TypeError function "function () {
             fn.apply(obj, args);
         }" did not throw

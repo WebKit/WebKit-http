@@ -11,8 +11,9 @@
 #include <algorithm>
 
 #include "audio/test/audio_end_to_end_test.h"
+#include "call/fake_network_pipe.h"
+#include "call/simulated_network.h"
 #include "system_wrappers/include/sleep.h"
-#include "test/fake_audio_device.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -27,8 +28,8 @@ constexpr int kSampleRate = 48000;
 AudioEndToEndTest::AudioEndToEndTest()
     : EndToEndTest(CallTest::kDefaultTimeoutMs) {}
 
-FakeNetworkPipe::Config AudioEndToEndTest::GetNetworkPipeConfig() const {
-  return FakeNetworkPipe::Config();
+DefaultNetworkSimulationConfig AudioEndToEndTest::GetNetworkPipeConfig() const {
+  return DefaultNetworkSimulationConfig();
 }
 
 size_t AudioEndToEndTest::GetNumVideoStreams() const {
@@ -43,19 +44,19 @@ size_t AudioEndToEndTest::GetNumFlexfecStreams() const {
   return 0;
 }
 
-std::unique_ptr<test::FakeAudioDevice::Capturer>
-    AudioEndToEndTest::CreateCapturer() {
-  return test::FakeAudioDevice::CreatePulsedNoiseCapturer(32000, kSampleRate);
+std::unique_ptr<TestAudioDeviceModule::Capturer>
+AudioEndToEndTest::CreateCapturer() {
+  return TestAudioDeviceModule::CreatePulsedNoiseCapturer(32000, kSampleRate);
 }
 
-std::unique_ptr<test::FakeAudioDevice::Renderer>
-    AudioEndToEndTest::CreateRenderer() {
-  return test::FakeAudioDevice::CreateDiscardRenderer(kSampleRate);
+std::unique_ptr<TestAudioDeviceModule::Renderer>
+AudioEndToEndTest::CreateRenderer() {
+  return TestAudioDeviceModule::CreateDiscardRenderer(kSampleRate);
 }
 
 void AudioEndToEndTest::OnFakeAudioDevicesCreated(
-    test::FakeAudioDevice* send_audio_device,
-    test::FakeAudioDevice* recv_audio_device) {
+    TestAudioDeviceModule* send_audio_device,
+    TestAudioDeviceModule* recv_audio_device) {
   send_audio_device_ = send_audio_device;
 }
 
@@ -64,19 +65,25 @@ test::PacketTransport* AudioEndToEndTest::CreateSendTransport(
     Call* sender_call) {
   return new test::PacketTransport(
       task_queue, sender_call, this, test::PacketTransport::kSender,
-      test::CallTest::payload_type_map_, GetNetworkPipeConfig());
+      test::CallTest::payload_type_map_,
+      absl::make_unique<FakeNetworkPipe>(
+          Clock::GetRealTimeClock(),
+          absl::make_unique<SimulatedNetwork>(GetNetworkPipeConfig())));
 }
 
 test::PacketTransport* AudioEndToEndTest::CreateReceiveTransport(
-      SingleThreadedTaskQueueForTesting* task_queue) {
+    SingleThreadedTaskQueueForTesting* task_queue) {
   return new test::PacketTransport(
       task_queue, nullptr, this, test::PacketTransport::kReceiver,
-      test::CallTest::payload_type_map_, GetNetworkPipeConfig());
+      test::CallTest::payload_type_map_,
+      absl::make_unique<FakeNetworkPipe>(
+          Clock::GetRealTimeClock(),
+          absl::make_unique<SimulatedNetwork>(GetNetworkPipeConfig())));
 }
 
 void AudioEndToEndTest::ModifyAudioConfigs(
-  AudioSendStream::Config* send_config,
-  std::vector<AudioReceiveStream::Config>* receive_configs) {
+    AudioSendStream::Config* send_config,
+    std::vector<AudioReceiveStream::Config>* receive_configs) {
   // Large bitrate by default.
   const webrtc::SdpAudioFormat kDefaultFormat("opus", 48000, 2,
                                               {{"stereo", "1"}});

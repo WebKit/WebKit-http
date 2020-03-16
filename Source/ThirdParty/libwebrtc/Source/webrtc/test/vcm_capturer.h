@@ -17,14 +17,13 @@
 #include "modules/video_capture/video_capture.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/scoped_ref_ptr.h"
-#include "test/video_capturer.h"
+#include "test/test_video_capturer.h"
 
 namespace webrtc {
 namespace test {
 
-class VcmCapturer
-    : public VideoCapturer,
-      public rtc::VideoSinkInterface<VideoFrame> {
+class VcmCapturer : public TestVideoCapturer,
+                    public rtc::VideoSinkInterface<VideoFrame> {
  public:
   static VcmCapturer* Create(size_t width,
                              size_t height,
@@ -55,7 +54,7 @@ class VcmCapturer
   VideoCaptureCapability capability_;
 };
 
-}  // test
-}  // webrtc
+}  // namespace test
+}  // namespace webrtc
 
 #endif  // TEST_VCM_CAPTURER_H_

@@ -645,6 +645,8 @@ public:
 #endif
 
     void setPageVisibility(bool isVisible);
+    void setPageIsFocusedAndActive(bool);
+
 
 #if ENABLE(WEB_RTC)
     void setH264HardwareEncoderAllowed(bool allowed);
@@ -731,6 +733,10 @@ public:
 
     void notifyResourceLoadObserver();
 
+    unsigned primaryScreenDisplayID();
+
+    bool supportsVCPEncoder();
+        
 private:
     explicit Internals(Document&);
     Document* contextDocument() const;

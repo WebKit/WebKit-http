@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include "ExceptionOr.h"
 #include "MediaStreamRequest.h"
 #include "RealtimeMediaSource.h"
+#include "RealtimeMediaSourceFactory.h"
 #include "RealtimeMediaSourceSupportedConstraints.h"
 #include <wtf/Function.h>
 #include <wtf/RefPtr.h>
@@ -64,18 +65,20 @@ public:
     virtual void validateRequestConstraints(ValidConstraintsHandler&&, InvalidConstraintsHandler&&, const MediaStreamRequest&, String&&);
 
     using NewMediaStreamHandler = WTF::Function<void(RefPtr<MediaStreamPrivate>&&)>;
-    virtual void createMediaStream(NewMediaStreamHandler&&, CaptureDevice&& audioDevice, CaptureDevice&& videoDevice, const MediaStreamRequest&);
+    virtual void createMediaStream(NewMediaStreamHandler&&, String&&, CaptureDevice&& audioDevice, CaptureDevice&& videoDevice, const MediaStreamRequest&);
 
     WEBCORE_EXPORT virtual Vector<CaptureDevice> getMediaStreamDevices();
     WEBCORE_EXPORT std::optional<CaptureDevice> captureDeviceWithPersistentID(CaptureDevice::DeviceType, const String&);
     
     const RealtimeMediaSourceSupportedConstraints& supportedConstraints() { return m_supportedConstraints; }
 
-    virtual void setAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
-    virtual void unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
-    WEBCORE_EXPORT virtual RealtimeMediaSource::AudioCaptureFactory& audioFactory() = 0;
+    virtual void setAudioFactory(AudioCaptureFactory&) { }
+    virtual void unsetAudioFactory(AudioCaptureFactory&) { }
+    WEBCORE_EXPORT virtual AudioCaptureFactory& audioFactory() = 0;
 
-    virtual RealtimeMediaSource::VideoCaptureFactory& videoFactory() = 0;
+    virtual VideoCaptureFactory& videoFactory() = 0;
+
+    virtual DisplayCaptureFactory& displayCaptureFactory() = 0;
 
     virtual CaptureDeviceManager& audioCaptureDeviceManager() = 0;
     virtual CaptureDeviceManager& videoCaptureDeviceManager() = 0;
@@ -85,22 +88,31 @@ public:
     WEBCORE_EXPORT CaptureDevice captureDeviceWithUniqueID(const String& id, const String& hashSalt);
     WEBCORE_EXPORT ExceptionOr<void> setDeviceEnabled(const String&, bool);
 
-    using DevicesChangedObserverToken = unsigned;
-    DevicesChangedObserverToken addDevicesChangedObserver(std::function<void()>&&);
-    void removeDevicesChangedObserver(DevicesChangedObserverToken);
+    WEBCORE_EXPORT void setDevicesChangedObserver(std::function<void()>&&);
 
     void setVideoCapturePageState(bool, bool);
 
+    void captureDevicesChanged();
+
 protected:
     RealtimeMediaSourceCenter();
-
-    void captureDevicesChanged();
 
     static RealtimeMediaSourceCenter& platformCenter();
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
 
     CaptureDeviceManager* m_audioCaptureDeviceManager { nullptr };
     CaptureDeviceManager* m_videoCaptureDeviceManager { nullptr };
+
+private:
+    struct DeviceInfo {
+        unsigned fitnessScore;
+        CaptureDevice device;
+    };
+
+    void getDisplayMediaDevices(const MediaStreamRequest&, Vector<DeviceInfo>&, String&);
+    void getUserMediaDevices(const MediaStreamRequest&, String&&, Vector<DeviceInfo>& audioDevices, Vector<DeviceInfo>& videoDevices, String&);
+
+    WTF::Function<void()> m_deviceChangedObserver;
 };
 
 } // namespace WebCore

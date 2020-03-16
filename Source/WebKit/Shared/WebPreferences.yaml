@@ -470,6 +470,15 @@ UseGiantTiles:
   type: bool
   defaultValue: false
 
+MediaRecorderEnabled:
+    type: bool
+    defaultValue: false
+    webcoreBinding: RuntimeEnabledFeatures
+    condition: ENABLE(MEDIA_STREAM)
+    humanReadableName: "MediaRecorder"
+    humanReadableDescription: "MediaRecorder"
+    category: experimental
+
 MediaDevicesEnabled:
   type: bool
   defaultValue: false
@@ -492,6 +501,42 @@ PeerConnectionEnabled:
   type: bool
   defaultValue: WebCore::LibWebRTCProvider::webRTCAvailable()
   webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+
+WebRTCUnifiedPlanEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC Unified Plan"
+  humanReadableDescription: "Use WebRTC Unified Plan"
+  category: experimental
+
+WebRTCVP8CodecEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC VP8 codec"
+  humanReadableDescription: "Enable WebRTC VP8 codec"
+  category: experimental
+
+WebRTCH264SimulcastEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC H264 Simulcast"
+  humanReadableDescription: "Enable WebRTC H264 Simulcast"
+  category: experimental
+
+WebRTCMDNSICECandidatesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "WebRTC mDNS ICE candidates"
+  humanReadableDescription: "Enable WebRTC mDNS ICE candidates"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
   condition: ENABLE(WEB_RTC)
 
 UseLegacyTextAlignPositionedElementBehavior:
@@ -1146,23 +1191,6 @@ IntersectionObserverEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
   condition: ENABLE(INTERSECTION_OBSERVER)
-
-WebRTCLegacyAPIEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Enable Legacy WebRTC API"
-  humanReadableDescription: "Enable Legacy WebRTC API"
-  webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(WEB_RTC)
-
-MDNSICECandidatesEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Enable MDNS ICE candidates"
-  humanReadableDescription: "Enable MDNS ICE candidates"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
-  condition: ENABLE(WEB_RTC)
 
 FetchAPIKeepAliveEnabled:
   type: bool

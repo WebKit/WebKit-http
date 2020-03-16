@@ -25,9 +25,10 @@
 
 #pragma once
 
-#include "api/video_codecs/video_encoder_factory.h"
 #include "api/video/video_frame_buffer.h"
 #include "rtc_base/scoped_ref_ptr.h"
+#include "webrtc/media/engine/webrtcvideodecoderfactory.h"
+#include "webrtc/media/engine/webrtcvideoencoderfactory.h"
 
 typedef struct __CVBuffer* CVPixelBufferRef;
 
@@ -37,15 +38,17 @@ class VideoDecoderFactory;
 class VideoEncoderFactory;
 class VideoFrame;
 
-std::unique_ptr<webrtc::VideoEncoderFactory> createVideoToolboxEncoderFactory();
-std::unique_ptr<webrtc::VideoDecoderFactory> createVideoToolboxDecoderFactory();
+enum class WebKitCodecSupport { H264, H264AndVP8 };
+
+std::unique_ptr<webrtc::VideoEncoderFactory> createWebKitEncoderFactory(WebKitCodecSupport);
+std::unique_ptr<webrtc::VideoDecoderFactory> createWebKitDecoderFactory(WebKitCodecSupport);
 
 void setApplicationStatus(bool isActive);
 
 void setH264HardwareEncoderAllowed(bool);
 bool isH264HardwareEncoderAllowed();
 
-CVPixelBufferRef pixelBufferFromFrame(const VideoFrame&);
+CVPixelBufferRef pixelBufferFromFrame(const VideoFrame&, const std::function<CVPixelBufferRef(size_t, size_t)>&);
 rtc::scoped_refptr<webrtc::VideoFrameBuffer> pixelBufferToFrame(CVPixelBufferRef);
 
 }

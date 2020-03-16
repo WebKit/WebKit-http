@@ -39,6 +39,8 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
+    "${WEBCORE_DIR}/Modules/mediastream/libwebrtc"
+    "${WEBCORE_DIR}/Modules/mediarecorder"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/paymentrequest"
@@ -177,6 +179,7 @@ set(WebCore_IDL_INCLUDES
     Modules/beacon
     Modules/indexeddb
     Modules/mediacapabilities
+    Modules/mediarecorder
     Modules/mediasession
     Modules/mediastream
     Modules/notifications
@@ -281,6 +284,9 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/mediacontrols/MediaControlsHost.idl
 
+    Modules/mediarecorder/BlobEvent.idl
+    Modules/mediarecorder/MediaRecorder.idl
+
     Modules/mediasession/HTMLMediaElementMediaSession.idl
     Modules/mediasession/MediaRemoteControls.idl
     Modules/mediasession/MediaSession.idl
@@ -297,21 +303,22 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/MediaDeviceInfo.idl
     Modules/mediastream/MediaDevices.idl
     Modules/mediastream/MediaStream.idl
-    Modules/mediastream/MediaStreamEvent.idl
     Modules/mediastream/MediaStreamTrack.idl
     Modules/mediastream/MediaStreamTrackEvent.idl
     Modules/mediastream/MediaTrackConstraints.idl
     Modules/mediastream/MediaTrackSupportedConstraints.idl
     Modules/mediastream/NavigatorMediaDevices.idl
-    Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/OverconstrainedError.idl
     Modules/mediastream/OverconstrainedErrorEvent.idl
     Modules/mediastream/RTCAnswerOptions.idl
+    Modules/mediastream/RTCCertificate.idl
     Modules/mediastream/RTCConfiguration.idl
     Modules/mediastream/RTCDTMFSender.idl
     Modules/mediastream/RTCDTMFToneChangeEvent.idl
     Modules/mediastream/RTCDataChannel.idl
     Modules/mediastream/RTCDataChannelEvent.idl
+    Modules/mediastream/RTCDegradationPreference.idl
+    Modules/mediastream/RTCDtxStatus.idl
     Modules/mediastream/RTCIceCandidate.idl
     Modules/mediastream/RTCIceConnectionState.idl
     Modules/mediastream/RTCIceGatheringState.idl
@@ -323,9 +330,19 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCPeerConnection.idl
     Modules/mediastream/RTCPeerConnectionIceEvent.idl
     Modules/mediastream/RTCPeerConnectionState.idl
+    Modules/mediastream/RTCPriorityType.idl
+    Modules/mediastream/RTCRtpCapabilities.idl
+    Modules/mediastream/RTCRtpCodecParameters.idl
+    Modules/mediastream/RTCRtpContributingSource.idl
+    Modules/mediastream/RTCRtpEncodingParameters.idl
+    Modules/mediastream/RTCRtpFecParameters.idl
+    Modules/mediastream/RTCRtpHeaderExtensionParameters.idl
     Modules/mediastream/RTCRtpParameters.idl
     Modules/mediastream/RTCRtpReceiver.idl
+    Modules/mediastream/RTCRtpRtxParameters.idl
+    Modules/mediastream/RTCRtpSendParameters.idl
     Modules/mediastream/RTCRtpSender.idl
+    Modules/mediastream/RTCRtpSynchronizationSource.idl
     Modules/mediastream/RTCRtpTransceiver.idl
     Modules/mediastream/RTCRtpTransceiverDirection.idl
     Modules/mediastream/RTCSessionDescription.idl
@@ -1564,12 +1581,18 @@ endif ()
 
 if (USE_LIBWEBRTC)
   list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/libwebrtc/Source/"
-      "${THIRDPARTY_DIR}/libwebrtc/Source/webrtc")
+      "${THIRDPARTY_DIR}/libwebrtc/Source/webrtc"
+      "${THIRDPARTY_DIR}/libwebrtc/Source/third_party/abseil-cpp")
   list(APPEND WebCore_LIBRARIES webrtc)
   list(APPEND WebCore_SOURCES
+      Modules/mediastream/libwebrtc/LibWebRTCStatsCollector.cpp
       Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.cpp
       Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp
       Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCRtpReceiverBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCRtpTransceiverBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCUtils.cpp
       )
 endif ()
 
@@ -1838,7 +1861,6 @@ add_dependencies(WebCoreTestSupportBindings WebCore)
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
-    ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js

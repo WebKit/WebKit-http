@@ -25,23 +25,13 @@ MediaOptimization::MediaOptimization(Clock* clock)
     : clock_(clock),
       max_bit_rate_(0),
       max_frame_rate_(0),
-      frame_dropper_(new FrameDropper),
+      frame_dropper_(),
       incoming_frame_rate_(0) {
   memset(incoming_frame_times_, -1, sizeof(incoming_frame_times_));
+  frame_dropper_.SetRates(0, 0);
 }
 
-MediaOptimization::~MediaOptimization(void) {
-}
-
-void MediaOptimization::Reset() {
-  rtc::CritScope lock(&crit_sect_);
-  memset(incoming_frame_times_, -1, sizeof(incoming_frame_times_));
-  incoming_frame_rate_ = 0.0;
-  frame_dropper_->Reset();
-  frame_dropper_->SetRates(0, 0);
-  max_bit_rate_ = 0;
-  max_frame_rate_ = 0;
-}
+MediaOptimization::~MediaOptimization() = default;
 
 void MediaOptimization::SetEncodingData(int32_t max_bit_rate,
                                         uint32_t target_bitrate,
@@ -51,8 +41,8 @@ void MediaOptimization::SetEncodingData(int32_t max_bit_rate,
   max_bit_rate_ = max_bit_rate;
   max_frame_rate_ = static_cast<float>(max_frame_rate);
   float target_bitrate_kbps = static_cast<float>(target_bitrate) / 1000.0f;
-  frame_dropper_->Reset();
-  frame_dropper_->SetRates(target_bitrate_kbps, max_frame_rate_);
+  frame_dropper_.Reset();
+  frame_dropper_.SetRates(target_bitrate_kbps, max_frame_rate_);
 }
 
 uint32_t MediaOptimization::SetTargetRates(uint32_t target_bitrate) {
@@ -72,7 +62,7 @@ uint32_t MediaOptimization::SetTargetRates(uint32_t target_bitrate) {
     framerate = max_frame_rate_;
   }
 
-  frame_dropper_->SetRates(target_video_bitrate_kbps, framerate);
+  frame_dropper_.SetRates(target_video_bitrate_kbps, framerate);
 
   return video_target_bitrate;
 }
@@ -90,26 +80,27 @@ uint32_t MediaOptimization::InputFrameRateInternal() {
 }
 
 void MediaOptimization::UpdateWithEncodedData(
-    const EncodedImage& encoded_image) {
-  size_t encoded_length = encoded_image._length;
+    const size_t encoded_image_length,
+    const FrameType encoded_image_frametype) {
+  size_t encoded_length = encoded_image_length;
   rtc::CritScope lock(&crit_sect_);
   if (encoded_length > 0) {
-    const bool delta_frame = encoded_image._frameType != kVideoFrameKey;
-    frame_dropper_->Fill(encoded_length, delta_frame);
+    const bool delta_frame = encoded_image_frametype != kVideoFrameKey;
+    frame_dropper_.Fill(encoded_length, delta_frame);
   }
 }
 
 void MediaOptimization::EnableFrameDropper(bool enable) {
   rtc::CritScope lock(&crit_sect_);
-  frame_dropper_->Enable(enable);
+  frame_dropper_.Enable(enable);
 }
 
 bool MediaOptimization::DropFrame() {
   rtc::CritScope lock(&crit_sect_);
   UpdateIncomingFrameRate();
   // Leak appropriate number of bytes.
-  frame_dropper_->Leak((uint32_t)(InputFrameRateInternal() + 0.5f));
-  return frame_dropper_->DropFrame();
+  frame_dropper_.Leak(static_cast<uint32_t>(InputFrameRateInternal() + 0.5f));
+  return frame_dropper_.DropFrame();
 }
 
 void MediaOptimization::UpdateIncomingFrameRate() {

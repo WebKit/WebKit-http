@@ -46,11 +46,9 @@ NadaBweReceiver::NadaBweReceiver(int flow_id)
       last_congestion_signal_ms_(0),
       last_delays_index_(0),
       exp_smoothed_delay_ms_(-1),
-      est_queuing_delay_signal_ms_(0) {
-}
+      est_queuing_delay_signal_ms_(0) {}
 
-NadaBweReceiver::~NadaBweReceiver() {
-}
+NadaBweReceiver::~NadaBweReceiver() {}
 
 void NadaBweReceiver::ReceivePacket(int64_t arrival_time_ms,
                                     const MediaPacket& media_packet) {
@@ -59,8 +57,7 @@ void NadaBweReceiver::ReceivePacket(int64_t arrival_time_ms,
   const int64_t kDelayMaxThresholdMs = 400;  // Referred as d_max.
 
   clock_.AdvanceTimeMilliseconds(arrival_time_ms - clock_.TimeInMilliseconds());
-  recv_stats_->IncomingPacket(media_packet.header(),
-                              media_packet.payload_size(), false);
+  recv_stats_->OnRtpPacket(media_packet.GetRtpPacket());
   // Refered as x_n.
   int64_t delay_ms = arrival_time_ms - media_packet.sender_timestamp_ms();
 
@@ -119,9 +116,9 @@ FeedbackPacket* NadaBweReceiver::GetFeedback(int64_t now_ms) {
   int64_t corrected_send_time_ms = 0L;
 
   if (!received_packets_.empty()) {
-    PacketIdentifierNode* latest = *(received_packets_.begin());
+    PacketIdentifierNode& latest = *(received_packets_.begin());
     corrected_send_time_ms =
-        latest->send_time_ms + now_ms - latest->arrival_time_ms;
+        latest.send_time_ms + now_ms - latest.arrival_time_ms;
   }
 
   // Sends a tuple containing latest values of <d_hat_n, d_tilde_n, x_n, x'_n,
@@ -162,8 +159,7 @@ NadaBweSender::NadaBweSender(int kbps, BitrateObserver* observer, Clock* clock)
     : BweSender(kbps),  // Referred as "Reference Rate" = R_n.,
       clock_(clock),
       observer_(observer),
-      original_operating_mode_(true) {
-}
+      original_operating_mode_(true) {}
 
 NadaBweSender::NadaBweSender(BitrateObserver* observer, Clock* clock)
     : BweSender(kMinNadaBitrateKbps),  // Referred as "Reference Rate" = R_n.
@@ -171,8 +167,7 @@ NadaBweSender::NadaBweSender(BitrateObserver* observer, Clock* clock)
       observer_(observer),
       original_operating_mode_(true) {}
 
-NadaBweSender::~NadaBweSender() {
-}
+NadaBweSender::~NadaBweSender() {}
 
 int NadaBweSender::GetFeedbackIntervalMs() const {
   return 100;
@@ -243,8 +238,7 @@ int64_t NadaBweSender::TimeUntilNextProcess() {
   return 100;
 }
 
-void NadaBweSender::Process() {
-}
+void NadaBweSender::Process() {}
 
 void NadaBweSender::AcceleratedRampUp(const NadaFeedback& fb) {
   const int kMaxRampUpQueuingDelayMs = 50;  // Referred as T_th.

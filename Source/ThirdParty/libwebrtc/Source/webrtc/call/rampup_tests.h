@@ -13,9 +13,12 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "api/test/simulated_network.h"
 #include "call/call.h"
+#include "call/simulated_network.h"
 #include "logging/rtc_event_log/rtc_event_log.h"
 #include "rtc_base/event.h"
 #include "test/call_test.h"
@@ -62,10 +65,9 @@ class RampUpTester : public test::EndToEndTest {
                     const std::string& units) const;
   void TriggerTestDone();
 
-  webrtc::RtcEventLogNullImpl event_log_;
   rtc::Event stop_event_;
   Clock* const clock_;
-  FakeNetworkPipe::Config forward_transport_config_;
+  DefaultNetworkSimulationConfig forward_transport_config_;
   const size_t num_video_streams_;
   const size_t num_audio_streams_;
   const size_t num_flexfec_streams_;
@@ -75,12 +77,13 @@ class RampUpTester : public test::EndToEndTest {
   Call* sender_call_;
   VideoSendStream* send_stream_;
   test::PacketTransport* send_transport_;
+  SimulatedNetwork* send_simulated_network_;
 
  private:
   typedef std::map<uint32_t, uint32_t> SsrcMap;
   class VideoStreamFactory;
 
-  Call::Config GetSenderCallConfig() override;
+  void ModifySenderCallConfig(Call::Config* config) override;
   void OnVideoStreamsCreated(
       VideoSendStream* send_stream,
       const std::vector<VideoReceiveStream*>& receive_streams) override;
@@ -139,7 +142,7 @@ class RampUpDownUpTester : public RampUpTester {
     kTransitionToNextState,
   };
 
-  Call::Config GetReceiverCallConfig() override;
+  void ModifyReceiverCallConfig(Call::Config* config);
 
   std::string GetModifierString() const;
   int GetExpectedHighBitrate() const;

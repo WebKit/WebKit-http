@@ -11,12 +11,10 @@
 #ifndef SDK_ANDROID_SRC_JNI_ANDROIDMEDIACODECCOMMON_H_
 #define SDK_ANDROID_SRC_JNI_ANDROIDMEDIACODECCOMMON_H_
 
-#include <android/log.h>
 #include <string>
 
 #include "rtc_base/logging.h"
 #include "rtc_base/thread.h"
-#include "sdk/android/src/jni/classreferenceholder.h"
 #include "sdk/android/src/jni/jni_helpers.h"
 
 namespace webrtc {

@@ -52,21 +52,36 @@ static void initializeGStreamerDebug()
     });
 }
 
-class GStreamerVideoCaptureSourceFactory final : public RealtimeMediaSource::VideoCaptureFactory {
+class GStreamerVideoCaptureSourceFactory final : public VideoCaptureFactory {
 public:
-    CaptureSourceOrError createVideoCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
+    CaptureSourceOrError createVideoCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints) final
     {
-        return GStreamerVideoCaptureSource::create(device.persistentId(), constraints);
+        return GStreamerVideoCaptureSource::create(String { device.persistentId() }, WTFMove(hashSalt), constraints);
     }
 };
 
-RealtimeMediaSource::VideoCaptureFactory& libWebRTCVideoCaptureSourceFactory()
+VideoCaptureFactory& libWebRTCVideoCaptureSourceFactory()
 {
     static NeverDestroyed<GStreamerVideoCaptureSourceFactory> factory;
     return factory.get();
 }
 
-CaptureSourceOrError GStreamerVideoCaptureSource::create(const String& deviceID, const MediaConstraints* constraints)
+class GStreamerDisplayCaptureSourceFactory final : public DisplayCaptureFactory {
+public:
+    CaptureSourceOrError createDisplayCaptureSource(const CaptureDevice&, const MediaConstraints*) final
+    {
+        // FIXME: Implement this.
+        return { };
+    }
+};
+
+DisplayCaptureFactory& libWebRTCDisplayCaptureSourceFactory()
+{
+    static NeverDestroyed<GStreamerDisplayCaptureSourceFactory> factory;
+    return factory.get();
+}
+
+CaptureSourceOrError GStreamerVideoCaptureSource::create(String&& deviceID, String&& hashSalt, const MediaConstraints* constraints)
 {
     auto device = GStreamerVideoCaptureDeviceManager::singleton().gstreamerDeviceWithUID(deviceID);
     if (!device) {
@@ -74,7 +89,7 @@ CaptureSourceOrError GStreamerVideoCaptureSource::create(const String& deviceID,
         return CaptureSourceOrError(WTFMove(errorMessage));
     }
 
-    auto source = adoptRef(*new GStreamerVideoCaptureSource(device.value()));
+    auto source = adoptRef(*new GStreamerVideoCaptureSource(device.value(), WTFMove(hashSalt)));
 
     if (constraints) {
         auto result = source->applyConstraints(*constraints);
@@ -84,20 +99,25 @@ CaptureSourceOrError GStreamerVideoCaptureSource::create(const String& deviceID,
     return CaptureSourceOrError(WTFMove(source));
 }
 
-RealtimeMediaSource::VideoCaptureFactory& GStreamerVideoCaptureSource::factory()
+VideoCaptureFactory& GStreamerVideoCaptureSource::factory()
 {
     return libWebRTCVideoCaptureSourceFactory();
 }
 
-GStreamerVideoCaptureSource::GStreamerVideoCaptureSource(const String& deviceID, const String& name, const gchar *source_factory)
-    : RealtimeMediaSource(deviceID, RealtimeMediaSource::Type::Video, name)
+DisplayCaptureFactory& GStreamerVideoCaptureSource::displayFactory()
+{
+    return libWebRTCDisplayCaptureSourceFactory();
+}
+
+GStreamerVideoCaptureSource::GStreamerVideoCaptureSource(String&& deviceID, String&& name, String&& hashSalt, const gchar *source_factory)
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Video, WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt))
     , m_capturer(std::make_unique<GStreamerVideoCapturer>(source_factory))
 {
     initializeGStreamerDebug();
 }
 
-GStreamerVideoCaptureSource::GStreamerVideoCaptureSource(GStreamerCaptureDevice device)
-    : RealtimeMediaSource(device.persistentId(), RealtimeMediaSource::Type::Video, device.label())
+GStreamerVideoCaptureSource::GStreamerVideoCaptureSource(GStreamerCaptureDevice device, String&& hashSalt)
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Video, String { device.persistentId() }, String { device.label() }, WTFMove(hashSalt))
     , m_capturer(std::make_unique<GStreamerVideoCapturer>(device))
 {
     initializeGStreamerDebug();
@@ -107,18 +127,12 @@ GStreamerVideoCaptureSource::~GStreamerVideoCaptureSource()
 {
 }
 
-bool GStreamerVideoCaptureSource::applySize(const IntSize &size)
+void GStreamerVideoCaptureSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    m_capturer->setSize(size.width(), size.height());
-
-    return true;
-}
-
-bool GStreamerVideoCaptureSource::applyFrameRate(double framerate)
-{
-    m_capturer->setFrameRate(framerate);
-
-    return true;
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height }))
+        m_capturer->setSize(size().width(), size().height());
+    if (settings.contains(RealtimeMediaSourceSettings::Flag::FrameRate))
+        m_capturer->setFrameRate(frameRate());
 }
 
 void GStreamerVideoCaptureSource::startProducingData()
@@ -149,11 +163,10 @@ void GStreamerVideoCaptureSource::stopProducingData()
     m_capturer->stop();
 
     GST_INFO("Reset height and width after stopping source");
-    setHeight(0);
-    setWidth(0);
+    setSize({ 0, 0 });
 }
 
-const RealtimeMediaSourceCapabilities& GStreamerVideoCaptureSource::capabilities() const
+const RealtimeMediaSourceCapabilities& GStreamerVideoCaptureSource::capabilities()
 {
     if (m_capabilities)
         return m_capabilities.value();
@@ -229,7 +242,7 @@ const RealtimeMediaSourceCapabilities& GStreamerVideoCaptureSource::capabilities
             }
         }
 
-        capabilities.setDeviceId(id());
+        capabilities.setDeviceId(hashedId());
         capabilities.setWidth(CapabilityValueOrRange(minWidth, maxWidth));
         capabilities.setHeight(CapabilityValueOrRange(minHeight, maxHeight));
         capabilities.setFrameRate(CapabilityValueOrRange(minFramerate, maxFramerate));
@@ -239,11 +252,11 @@ const RealtimeMediaSourceCapabilities& GStreamerVideoCaptureSource::capabilities
     return m_capabilities.value();
 }
 
-const RealtimeMediaSourceSettings& GStreamerVideoCaptureSource::settings() const
+const RealtimeMediaSourceSettings& GStreamerVideoCaptureSource::settings()
 {
     if (!m_currentSettings) {
         RealtimeMediaSourceSettings settings;
-        settings.setDeviceId(id());
+        settings.setDeviceId(hashedId());
 
         RealtimeMediaSourceSupportedConstraints supportedConstraints;
         supportedConstraints.setSupportsDeviceId(true);

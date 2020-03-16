@@ -34,7 +34,13 @@
 
 #include "LibWebRTCMacros.h"
 #include "RealtimeMediaSource.h"
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/mediastreaminterface.h>
+
+ALLOW_UNUSED_PARAMETERS_END
+
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {
@@ -54,21 +60,25 @@ public:
 protected:
     RealtimeIncomingVideoSource(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&, String&&);
 
-    RealtimeMediaSourceSettings m_currentSettings;
-
 private:
     // RealtimeMediaSource API
     void startProducingData() final;
     void stopProducingData()  final;
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
 
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    const RealtimeMediaSourceSettings& settings() const final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
 
-    bool applySize(const IntSize&) final { return true; }
+    bool isIncomingVideoSource() const final { return true; }
 
+    std::optional<RealtimeMediaSourceSettings> m_currentSettings;
     rtc::scoped_refptr<webrtc::VideoTrackInterface> m_videoTrack;
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::RealtimeIncomingVideoSource)
+static bool isType(const WebCore::RealtimeMediaSource& source) { return source.isIncomingVideoSource(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // USE(LIBWEBRTC)

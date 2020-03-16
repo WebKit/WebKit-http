@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 
+#include "api/video_codecs/video_codec.h"
 #include "modules/rtp_rtcp/source/byte_io.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
@@ -25,7 +26,7 @@ namespace webrtc {
 const size_t kIvfHeaderSize = 32;
 
 IvfFileWriter::IvfFileWriter(rtc::File file, size_t byte_limit)
-    : codec_type_(kVideoCodecUnknown),
+    : codec_type_(kVideoCodecGeneric),
       bytes_written_(0),
       byte_limit_(byte_limit),
       num_frames_(0),
@@ -115,15 +116,14 @@ bool IvfFileWriter::InitFromFirstFrame(const EncodedImage& encoded_image,
   height_ = encoded_image._encodedHeight;
   RTC_CHECK_GT(width_, 0);
   RTC_CHECK_GT(height_, 0);
-  using_capture_timestamps_ = encoded_image._timeStamp == 0;
+  using_capture_timestamps_ = encoded_image.Timestamp() == 0;
 
   codec_type_ = codec_type;
 
   if (!WriteHeader())
     return false;
 
-  const char* codec_name =
-      CodecTypeToPayloadString(codec_type_);
+  const char* codec_name = CodecTypeToPayloadString(codec_type_);
   RTC_LOG(LS_WARNING) << "Created IVF file for codec data of type "
                       << codec_name << " at resolution " << width_ << " x "
                       << height_ << ", using "
@@ -152,7 +152,7 @@ bool IvfFileWriter::WriteFrame(const EncodedImage& encoded_image,
 
   int64_t timestamp = using_capture_timestamps_
                           ? encoded_image.capture_time_ms_
-                          : wrap_handler_.Unwrap(encoded_image._timeStamp);
+                          : wrap_handler_.Unwrap(encoded_image.Timestamp());
   if (last_timestamp_ != -1 && timestamp <= last_timestamp_) {
     RTC_LOG(LS_WARNING) << "Timestamp no increasing: " << last_timestamp_
                         << " -> " << timestamp;

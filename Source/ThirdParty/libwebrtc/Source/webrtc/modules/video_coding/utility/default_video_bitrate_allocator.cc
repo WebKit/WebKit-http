@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 
+#include <algorithm>
+
 namespace webrtc {
 
 DefaultVideoBitrateAllocator::DefaultVideoBitrateAllocator(
@@ -20,27 +22,33 @@ DefaultVideoBitrateAllocator::DefaultVideoBitrateAllocator(
 
 DefaultVideoBitrateAllocator::~DefaultVideoBitrateAllocator() {}
 
-BitrateAllocation DefaultVideoBitrateAllocator::GetAllocation(
+// TODO(http://crbug.com/webrtc/9671): Do not split bitrate between simulcast
+// streams, but allocate everything to the first stream.
+VideoBitrateAllocation DefaultVideoBitrateAllocator::GetAllocation(
     uint32_t total_bitrate_bps,
     uint32_t framerate) {
-  BitrateAllocation allocation;
-  if (total_bitrate_bps == 0)
+  VideoBitrateAllocation allocation;
+  if (total_bitrate_bps == 0 || !codec_.active)
     return allocation;
 
-  if (total_bitrate_bps < codec_.minBitrate * 1000) {
-    allocation.SetBitrate(0, 0, codec_.minBitrate * 1000);
-  } else if (codec_.maxBitrate > 0 &&
-             total_bitrate_bps > codec_.maxBitrate * 1000) {
-    allocation.SetBitrate(0, 0, codec_.maxBitrate * 1000);
-  } else {
-    allocation.SetBitrate(0, 0, total_bitrate_bps);
+  uint32_t allocated_bitrate_bps = total_bitrate_bps;
+  allocated_bitrate_bps =
+      std::max(allocated_bitrate_bps, codec_.minBitrate * 1000);
+  if (codec_.maxBitrate > 0) {
+    allocated_bitrate_bps =
+        std::min(allocated_bitrate_bps, codec_.maxBitrate * 1000);
   }
-  return allocation;
-}
+  size_t num_simulcast_streams =
+      std::max<size_t>(1, codec_.numberOfSimulcastStreams);
+  // The bitrate is split between all the streams in proportion of powers of 2
+  // e.g. 1:2, 1:2:4, etc.
+  for (size_t i = 0; i < num_simulcast_streams; i++) {
+    allocation.SetBitrate(
+        i, 0,
+        allocated_bitrate_bps * (1 << i) / ((1 << num_simulcast_streams) - 1));
+  }
 
-uint32_t DefaultVideoBitrateAllocator::GetPreferredBitrateBps(
-    uint32_t framerate) {
-  return GetAllocation(codec_.maxBitrate * 1000, framerate).get_sum_bps();
+  return allocation;
 }
 
 }  // namespace webrtc

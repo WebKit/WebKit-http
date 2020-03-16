@@ -15,7 +15,6 @@
 #include <string>
 #include <utility>  // For std::move.
 
-#include "api/mediaconstraintsinterface.h"
 #include "api/mediastreaminterface.h"
 #include "api/mediatypes.h"
 #include "api/ortc/ortcrtpreceiverinterface.h"
@@ -25,6 +24,7 @@
 #include "api/ortc/rtptransportinterface.h"
 #include "api/ortc/srtptransportinterface.h"
 #include "api/ortc/udptransportinterface.h"
+#include "api/peerconnectioninterface.h"
 #include "api/rtcerror.h"
 #include "api/rtpparameters.h"
 #include "rtc_base/network.h"
@@ -213,20 +213,6 @@ class OrtcFactoryInterface {
   // Version of the above method that uses default options.
   rtc::scoped_refptr<AudioSourceInterface> CreateAudioSource() {
     return CreateAudioSource(cricket::AudioOptions());
-  }
-
-  // Creates a video source object wrapping and taking ownership of |capturer|.
-  //
-  // |constraints| can be used for selection of resolution and frame rate, and
-  // may be null if no constraints are desired.
-  virtual rtc::scoped_refptr<VideoTrackSourceInterface> CreateVideoSource(
-      std::unique_ptr<cricket::VideoCapturer> capturer,
-      const MediaConstraintsInterface* constraints) = 0;
-
-  // Version of the above method that omits |constraints|.
-  rtc::scoped_refptr<VideoTrackSourceInterface> CreateVideoSource(
-      std::unique_ptr<cricket::VideoCapturer> capturer) {
-    return CreateVideoSource(std::move(capturer), nullptr);
   }
 
   // Creates a new local video track wrapping |source|. The same |source| can

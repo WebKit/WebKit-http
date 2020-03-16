@@ -112,6 +112,8 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool mediaRecorderEnabled() const { return m_isMediaRecorderEnabled; }
+    void setMediaRecorderEnabled(bool isEnabled) { m_isMediaRecorderEnabled = isEnabled; }
     bool mediaDevicesEnabled() const { return m_isMediaDevicesEnabled; }
     void setMediaDevicesEnabled(bool isEnabled) { m_isMediaDevicesEnabled = isEnabled; }
     bool mediaStreamEnabled() const { return m_isMediaStreamEnabled; }
@@ -121,12 +123,16 @@ public:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool webRTCVP8CodecEnabled() const { return m_isWebRTCVP8CodecEnabled; }
+    void setWebRTCVP8CodecEnabled(bool isEnabled) { m_isWebRTCVP8CodecEnabled = isEnabled; }
+    bool webRTCUnifiedPlanEnabled() const { return m_isWebRTCUnifiedPlanEnabled; }
+    void setWebRTCUnifiedPlanEnabled(bool isEnabled) { m_isWebRTCUnifiedPlanEnabled = isEnabled; }
     bool peerConnectionEnabled() const { return m_isPeerConnectionEnabled; }
     void setPeerConnectionEnabled(bool isEnabled) { m_isPeerConnectionEnabled = isEnabled; }
-    bool webRTCLegacyAPIEnabled() const { return m_webRTCLegacyAPIEnabled; }
-    void setWebRTCLegacyAPIEnabled(bool isEnabled) { m_webRTCLegacyAPIEnabled = isEnabled; }
-    bool mdnsICECandidatesEnabled() const { return m_mdnsICECandidatesEnabled; }
-    void setMDNSICECandidatesEnabled(bool isEnabled) { m_mdnsICECandidatesEnabled = isEnabled; }
+    bool webRTCMDNSICECandidatesEnabled() const { return m_isWebRTCMDNSICECandidatesEnabled; }
+    void setWebRTCMDNSICECandidatesEnabled(bool isEnabled) { m_isWebRTCMDNSICECandidatesEnabled = isEnabled; }
+    bool webRTCH264SimulcastEnabled() const { return m_isWebRTCH264SimulcastEnabled; }
+    void setWebRTCH264SimulcastEnabled(bool isEnabled) { m_isWebRTCH264SimulcastEnabled = isEnabled; }
 #endif
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
@@ -324,15 +330,18 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool m_isMediaRecorderEnabled { false };
     bool m_isMediaDevicesEnabled { false };
     bool m_isMediaStreamEnabled { true };
     bool m_isScreenCaptureEnabled { false };
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool m_isWebRTCVP8CodecEnabled { false };
+    bool m_isWebRTCUnifiedPlanEnabled { true };
     bool m_isPeerConnectionEnabled { true };
-    bool m_webRTCLegacyAPIEnabled { false };
-    bool m_mdnsICECandidatesEnabled { false };
+    bool m_isWebRTCMDNSICECandidatesEnabled { false };
+    bool m_isWebRTCH264SimulcastEnabled { true };
 #endif
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)

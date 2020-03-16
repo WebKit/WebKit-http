@@ -638,13 +638,13 @@ void Editor::replaceSelectionWithFragment(DocumentFragment& fragment, bool selec
 
     OptionSet<ReplaceSelectionCommand::CommandOption> options { ReplaceSelectionCommand::PreventNesting, ReplaceSelectionCommand::SanitizeFragment };
     if (selectReplacement)
-        options |= ReplaceSelectionCommand::SelectReplacement;
+        options.add(ReplaceSelectionCommand::SelectReplacement);
     if (smartReplace)
-        options |= ReplaceSelectionCommand::SmartReplace;
+        options.add(ReplaceSelectionCommand::SmartReplace);
     if (matchStyle)
-        options |= ReplaceSelectionCommand::MatchStyle;
+        options.add(ReplaceSelectionCommand::MatchStyle);
     if (mailBlockquoteHandling == MailBlockquoteHandling::IgnoreBlockquote)
-        options |= ReplaceSelectionCommand::IgnoreMailBlockquote;
+        options.add(ReplaceSelectionCommand::IgnoreMailBlockquote);
 
     auto command = ReplaceSelectionCommand::create(document(), &fragment, options, editingAction);
     command->apply();
@@ -1077,7 +1077,7 @@ void Editor::appliedEditing(CompositeEditCommand& command)
         // Don't clear the typing style with this selection change. We do those things elsewhere if necessary.
         OptionSet<FrameSelection::SetSelectionOption> options;
         if (command.isDictationCommand())
-            options |= FrameSelection::DictationTriggered;
+            options.add(FrameSelection::DictationTriggered);
 
         changeSelectionAfterCommand(newSelection, options);
     }
@@ -2343,7 +2343,7 @@ void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart,
     UNUSED_PARAM(doReplacement);
     OptionSet<TextCheckingType> textCheckingOptions;
     if (isContinuousSpellCheckingEnabled())
-        textCheckingOptions |= TextCheckingType::Spelling;
+        textCheckingOptions.add(TextCheckingType::Spelling);
     if (!textCheckingOptions.contains(TextCheckingType::Spelling))
         return;
 
@@ -2361,7 +2361,7 @@ void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart,
         OptionSet<TextCheckingType> textCheckingOptions;
 
         if (isContinuousSpellCheckingEnabled())
-            textCheckingOptions |= TextCheckingType::Spelling;
+            textCheckingOptions.add(TextCheckingType::Spelling);
 
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
         if (doReplacement
@@ -2370,13 +2370,13 @@ void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart,
                 || isAutomaticDashSubstitutionEnabled()
                 || isAutomaticTextReplacementEnabled()
                 || (textCheckingOptions.contains(TextCheckingType::Spelling) && isAutomaticSpellingCorrectionEnabled())))
-            textCheckingOptions |= TextCheckingType::Replacement;
+            textCheckingOptions.add(TextCheckingType::Replacement);
 #endif
         if (!textCheckingOptions.contains(TextCheckingType::Spelling) && !textCheckingOptions.contains(TextCheckingType::Replacement))
             return;
 
         if (isGrammarCheckingEnabled())
-            textCheckingOptions |= TextCheckingType::Grammar;
+            textCheckingOptions.add(TextCheckingType::Grammar);
 
         auto sentenceStart = startOfSentence(wordStart);
         auto sentenceEnd = endOfSentence(wordStart);
@@ -2842,7 +2842,7 @@ void Editor::markMisspellingsAndBadGrammar(const VisibleSelection& spellingSelec
         // markMisspellingsAndBadGrammar() is triggered by selection change, in which case we check spelling and grammar, but don't autocorrect misspellings.
         OptionSet<TextCheckingType> textCheckingOptions { TextCheckingType::Spelling };
         if (markGrammar && isGrammarCheckingEnabled())
-            textCheckingOptions |= TextCheckingType::Grammar;
+            textCheckingOptions.add(TextCheckingType::Grammar);
         auto spellCheckingRange = spellingSelection.toNormalizedRange();
         markAllMisspellingsAndBadGrammarInRanges(textCheckingOptions, spellCheckingRange.copyRef(), spellCheckingRange.copyRef(), grammarSelection.toNormalizedRange());
         return;
@@ -3737,30 +3737,30 @@ OptionSet<TextCheckingType> Editor::resolveTextCheckingTypeMask(const Node& root
 
     OptionSet<TextCheckingType> checkingTypes;
     if (shouldMarkSpelling)
-        checkingTypes |= TextCheckingType::Spelling;
+        checkingTypes.add(TextCheckingType::Spelling);
     if (shouldMarkGrammar)
-        checkingTypes |= TextCheckingType::Grammar;
+        checkingTypes.add(TextCheckingType::Grammar);
 #if !PLATFORM(IOS)
     if (shouldCheckForCorrection)
-        checkingTypes |= TextCheckingType::Correction;
+        checkingTypes.add(TextCheckingType::Correction);
     if (shouldShowCorrectionPanel)
-        checkingTypes |= TextCheckingType::ShowCorrectionPanel;
+        checkingTypes.add(TextCheckingType::ShowCorrectionPanel);
 
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
     bool shouldPerformReplacement = textCheckingOptions.contains(TextCheckingType::Replacement);
     if (shouldPerformReplacement) {
         if (!onlyAllowsTextReplacement) {
             if (isAutomaticLinkDetectionEnabled())
-                checkingTypes |= TextCheckingType::Link;
+                checkingTypes.add(TextCheckingType::Link);
             if (isAutomaticQuoteSubstitutionEnabled())
-                checkingTypes |= TextCheckingType::Quote;
+                checkingTypes.add(TextCheckingType::Quote);
             if (isAutomaticDashSubstitutionEnabled())
-                checkingTypes |= TextCheckingType::Dash;
+                checkingTypes.add(TextCheckingType::Dash);
             if (shouldMarkSpelling && isAutomaticSpellingCorrectionEnabled())
-                checkingTypes |= TextCheckingType::Correction;
+                checkingTypes.add(TextCheckingType::Correction);
         }
         if (isAutomaticTextReplacementEnabled())
-            checkingTypes |= TextCheckingType::Replacement;
+            checkingTypes.add(TextCheckingType::Replacement);
     }
 #endif
 #endif // !PLATFORM(IOS)

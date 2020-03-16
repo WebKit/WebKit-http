@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,23 +42,17 @@
 
 namespace WebCore {
 
-class MockRealtimeAudioSourceFactory : public RealtimeMediaSource::AudioCaptureFactory
-{
-public:
-    CaptureSourceOrError createAudioCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
-    {
-        for (auto& mockDevice : MockRealtimeMediaSource::audioDevices()) {
-            if (mockDevice.persistentId() == device.persistentId())
-                return MockRealtimeAudioSource::create(mockDevice.persistentId(), mockDevice.label(), constraints);
-        }
-        return { };
-    }
-};
-
 #if !PLATFORM(MAC) && !PLATFORM(IOS) && !(USE(GSTREAMER) && USE(LIBWEBRTC))
-CaptureSourceOrError MockRealtimeAudioSource::create(const String& deviceID, const String& name, const MediaConstraints* constraints)
+CaptureSourceOrError MockRealtimeAudioSource::create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints* constraints)
 {
-    auto source = adoptRef(*new MockRealtimeAudioSource(deviceID, name));
+#ifndef NDEBUG
+    auto device = MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(deviceID);
+    ASSERT(device);
+    if (!device)
+        return { };
+#endif
+
+    auto source = adoptRef(*new MockRealtimeAudioSource(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt)));
     if (constraints && source->applyConstraints(*constraints))
         return { };
 
@@ -66,59 +60,71 @@ CaptureSourceOrError MockRealtimeAudioSource::create(const String& deviceID, con
 }
 #endif
 
-static MockRealtimeAudioSourceFactory& mockAudioCaptureSourceFactory()
-{
-    static NeverDestroyed<MockRealtimeAudioSourceFactory> factory;
-    return factory.get();
-}
-
-RealtimeMediaSource::AudioCaptureFactory& MockRealtimeAudioSource::factory()
-{
-    return mockAudioCaptureSourceFactory();
-}
-
-MockRealtimeAudioSource::MockRealtimeAudioSource(const String& deviceID, const String& name)
-    : MockRealtimeMediaSource(deviceID, RealtimeMediaSource::Type::Audio, name)
+MockRealtimeAudioSource::MockRealtimeAudioSource(String&& deviceID, String&& name, String&& hashSalt)
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Audio, WTFMove(name), WTFMove(deviceID), WTFMove(hashSalt))
     , m_timer(RunLoop::current(), this, &MockRealtimeAudioSource::tick)
 {
+    auto device = MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(persistentID());
+    ASSERT(device);
+    m_device = *device;
 }
 
 MockRealtimeAudioSource::~MockRealtimeAudioSource()
 {
 #if PLATFORM(IOS)
-    MockRealtimeMediaSourceCenter::audioCaptureSourceFactory().unsetActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().audioFactory().unsetActiveSource(*this);
 #endif
 }
 
-void MockRealtimeAudioSource::updateSettings(RealtimeMediaSourceSettings& settings)
+const RealtimeMediaSourceSettings& MockRealtimeAudioSource::settings()
 {
-    settings.setVolume(volume());
-    settings.setEchoCancellation(echoCancellation());
-    settings.setSampleRate(sampleRate());
+    if (!m_currentSettings) {
+        RealtimeMediaSourceSettings settings;
+        settings.setDeviceId(hashedId());
+        settings.setVolume(volume());
+        settings.setEchoCancellation(echoCancellation());
+        settings.setSampleRate(sampleRate());
+
+        RealtimeMediaSourceSupportedConstraints supportedConstraints;
+        supportedConstraints.setSupportsDeviceId(true);
+        supportedConstraints.setSupportsVolume(true);
+        supportedConstraints.setSupportsEchoCancellation(true);
+        supportedConstraints.setSupportsSampleRate(true);
+        settings.setSupportedConstraints(supportedConstraints);
+
+        m_currentSettings = WTFMove(settings);
+    }
+    return m_currentSettings.value();
 }
 
-void MockRealtimeAudioSource::initializeCapabilities(RealtimeMediaSourceCapabilities& capabilities)
+const RealtimeMediaSourceCapabilities& MockRealtimeAudioSource::capabilities()
 {
-    capabilities.setVolume(CapabilityValueOrRange(0.0, 1.0));
-    capabilities.setEchoCancellation(RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite);
-    capabilities.setSampleRate(CapabilityValueOrRange(44100, 48000));
+    if (!m_capabilities) {
+        RealtimeMediaSourceCapabilities capabilities(settings().supportedConstraints());
+
+        capabilities.setDeviceId(hashedId());
+        capabilities.setVolume(CapabilityValueOrRange(0.0, 1.0));
+        capabilities.setEchoCancellation(RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite);
+        capabilities.setSampleRate(CapabilityValueOrRange(44100, 48000));
+
+        m_capabilities = WTFMove(capabilities);
+    }
+    return m_capabilities.value();
 }
 
-void MockRealtimeAudioSource::initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints& supportedConstraints)
+void MockRealtimeAudioSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>)
 {
-    supportedConstraints.setSupportsVolume(true);
-    supportedConstraints.setSupportsEchoCancellation(true);
-    supportedConstraints.setSupportsSampleRate(true);
+    m_currentSettings = std::nullopt;
 }
 
 void MockRealtimeAudioSource::startProducingData()
 {
 #if PLATFORM(IOS)
-    MockRealtimeMediaSourceCenter::audioCaptureSourceFactory().setActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().audioFactory().setActiveSource(*this);
 #endif
 
     if (!sampleRate())
-        setSampleRate(WTF::get<MockMicrophoneProperties>(device().properties).defaultSampleRate);
+        setSampleRate(WTF::get<MockMicrophoneProperties>(m_device.properties).defaultSampleRate);
 
     m_startTime = MonotonicTime::now();
     m_timer.startRepeating(renderInterval());
@@ -127,16 +133,7 @@ void MockRealtimeAudioSource::startProducingData()
 void MockRealtimeAudioSource::stopProducingData()
 {
     m_timer.stop();
-    m_elapsedTime += MonotonicTime::now() - m_startTime;
     m_startTime = MonotonicTime::nan();
-}
-
-Seconds MockRealtimeAudioSource::elapsedTime()
-{
-    if (std::isnan(m_startTime))
-        return m_elapsedTime;
-
-    return m_elapsedTime + (MonotonicTime::now() - m_startTime);
 }
 
 void MockRealtimeAudioSource::tick()

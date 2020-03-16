@@ -11,6 +11,7 @@
 #include <array>
 
 #include "common_audio/resampler/include/resampler.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 // TODO(andrew): this is a work-in-progress. Many more tests are needed.
@@ -23,17 +24,10 @@ const size_t kNumChannelsSize = sizeof(kNumChannels) / sizeof(*kNumChannels);
 
 // Rates we must support.
 const int kMaxRate = 96000;
-const int kRates[] = {
-  8000,
-  16000,
-  32000,
-  44000,
-  48000,
-  kMaxRate
-};
+const int kRates[] = {8000, 16000, 32000, 44000, 48000, kMaxRate};
 const size_t kRatesSize = sizeof(kRates) / sizeof(*kRates);
 const int kMaxChannels = 2;
-const size_t kDataSize = static_cast<size_t> (kMaxChannels * kMaxRate / 100);
+const size_t kDataSize = static_cast<size_t>(kMaxChannels * kMaxRate / 100);
 
 // TODO(andrew): should we be supporting these combinations?
 bool ValidRates(int in_rate, int out_rate) {
@@ -49,8 +43,8 @@ bool ValidRates(int in_rate, int out_rate) {
 class ResamplerTest : public testing::Test {
  protected:
   ResamplerTest();
-  virtual void SetUp();
-  virtual void TearDown();
+  void SetUp() override;
+  void TearDown() override;
 
   void ResetIfNeededAndPush(int in_rate, int out_rate, int num_channels);
 
@@ -71,7 +65,7 @@ void ResamplerTest::TearDown() {}
 void ResamplerTest::ResetIfNeededAndPush(int in_rate,
                                          int out_rate,
                                          int num_channels) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Input rate: " << in_rate << ", output rate: " << out_rate
      << ", channel count: " << num_channels;
   SCOPED_TRACE(ss.str());
@@ -97,9 +91,9 @@ TEST_F(ResamplerTest, Reset) {
   for (size_t i = 0; i < kRatesSize; ++i) {
     for (size_t j = 0; j < kRatesSize; ++j) {
       for (size_t k = 0; k < kNumChannelsSize; ++k) {
-        std::ostringstream ss;
+        rtc::StringBuilder ss;
         ss << "Input rate: " << kRates[i] << ", output rate: " << kRates[j]
-            << ", channels: " << kNumChannels[k];
+           << ", channels: " << kNumChannels[k];
         SCOPED_TRACE(ss.str());
         if (ValidRates(kRates[i], kRates[j]))
           EXPECT_EQ(0, rs_.Reset(kRates[i], kRates[j], kNumChannels[k]));
@@ -116,7 +110,7 @@ TEST_F(ResamplerTest, Mono) {
   const int kChannels = 1;
   for (size_t i = 0; i < kRatesSize; ++i) {
     for (size_t j = 0; j < kRatesSize; ++j) {
-      std::ostringstream ss;
+      rtc::StringBuilder ss;
       ss << "Input rate: " << kRates[i] << ", output rate: " << kRates[j];
       SCOPED_TRACE(ss.str());
 
@@ -124,8 +118,8 @@ TEST_F(ResamplerTest, Mono) {
         size_t in_length = static_cast<size_t>(kRates[i] / 100);
         size_t out_length = 0;
         EXPECT_EQ(0, rs_.Reset(kRates[i], kRates[j], kChannels));
-        EXPECT_EQ(0, rs_.Push(data_in_, in_length, data_out_, kDataSize,
-                              out_length));
+        EXPECT_EQ(
+            0, rs_.Push(data_in_, in_length, data_out_, kDataSize, out_length));
         EXPECT_EQ(static_cast<size_t>(kRates[j] / 100), out_length);
       } else {
         EXPECT_EQ(-1, rs_.Reset(kRates[i], kRates[j], kChannels));
@@ -138,21 +132,19 @@ TEST_F(ResamplerTest, Stereo) {
   const int kChannels = 2;
   for (size_t i = 0; i < kRatesSize; ++i) {
     for (size_t j = 0; j < kRatesSize; ++j) {
-      std::ostringstream ss;
+      rtc::StringBuilder ss;
       ss << "Input rate: " << kRates[i] << ", output rate: " << kRates[j];
       SCOPED_TRACE(ss.str());
 
       if (ValidRates(kRates[i], kRates[j])) {
         size_t in_length = static_cast<size_t>(kChannels * kRates[i] / 100);
         size_t out_length = 0;
-        EXPECT_EQ(0, rs_.Reset(kRates[i], kRates[j],
-                               kChannels));
-        EXPECT_EQ(0, rs_.Push(data_in_, in_length, data_out_, kDataSize,
-                              out_length));
+        EXPECT_EQ(0, rs_.Reset(kRates[i], kRates[j], kChannels));
+        EXPECT_EQ(
+            0, rs_.Push(data_in_, in_length, data_out_, kDataSize, out_length));
         EXPECT_EQ(static_cast<size_t>(kChannels * kRates[j] / 100), out_length);
       } else {
-        EXPECT_EQ(-1, rs_.Reset(kRates[i], kRates[j],
-                                kChannels));
+        EXPECT_EQ(-1, rs_.Reset(kRates[i], kRates[j], kChannels));
       }
     }
   }

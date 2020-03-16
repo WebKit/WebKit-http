@@ -24,6 +24,7 @@ import android.util.Log;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.appspot.apprtc.util.AppRTCUtils;
 import org.webrtc.ThreadUtils;
 
@@ -57,14 +58,16 @@ public class AppRTCAudioManager {
   }
 
   private final Context apprtcContext;
+  @Nullable
   private AudioManager audioManager;
 
+  @Nullable
   private AudioManagerEvents audioManagerEvents;
   private AudioManagerState amState;
   private int savedAudioMode = AudioManager.MODE_INVALID;
-  private boolean savedIsSpeakerPhoneOn = false;
-  private boolean savedIsMicrophoneMute = false;
-  private boolean hasWiredHeadset = false;
+  private boolean savedIsSpeakerPhoneOn;
+  private boolean savedIsMicrophoneMute;
+  private boolean hasWiredHeadset;
 
   // Default audio device; speaker phone for video calls or earpiece for audio
   // only calls.
@@ -90,7 +93,7 @@ public class AppRTCAudioManager {
   // relative to the view screen of a device and can therefore be used to
   // assist device switching (close to ear <=> use headset earpiece if
   // available, far from ear <=> use speaker phone).
-  private AppRTCProximitySensor proximitySensor = null;
+  @Nullable private AppRTCProximitySensor proximitySensor;
 
   // Handles all tasks related to Bluetooth headset devices.
   private final AppRTCBluetoothManager bluetoothManager;
@@ -103,6 +106,7 @@ public class AppRTCAudioManager {
   private BroadcastReceiver wiredHeadsetReceiver;
 
   // Callback method for changes in audio focus.
+  @Nullable
   private AudioManager.OnAudioFocusChangeListener audioFocusChangeListener;
 
   /**

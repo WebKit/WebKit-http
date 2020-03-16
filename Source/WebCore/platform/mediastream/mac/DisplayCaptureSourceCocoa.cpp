@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +29,13 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "Logging.h"
+#include "MediaSampleAVFObjC.h"
+#include "PixelBufferConformerCV.h"
+#include "PixelBufferResizer.h"
 #include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "RealtimeMediaSourceSettings.h"
+#include "RealtimeVideoUtilities.h"
 #include "Timer.h"
 #include <CoreMedia/CMSync.h>
 #include <mach/mach_time.h>
@@ -47,8 +51,8 @@
 namespace WebCore {
 using namespace PAL;
 
-DisplayCaptureSourceCocoa::DisplayCaptureSourceCocoa(const String& name)
-    : RealtimeMediaSource("", Type::Video, name)
+DisplayCaptureSourceCocoa::DisplayCaptureSourceCocoa(String&& name)
+    : RealtimeMediaSource(Type::Video, WTFMove(name))
     , m_timer(RunLoop::current(), this, &DisplayCaptureSourceCocoa::emitFrame)
 {
 }
@@ -60,7 +64,7 @@ DisplayCaptureSourceCocoa::~DisplayCaptureSourceCocoa()
 #endif
 }
 
-const RealtimeMediaSourceCapabilities& DisplayCaptureSourceCocoa::capabilities() const
+const RealtimeMediaSourceCapabilities& DisplayCaptureSourceCocoa::capabilities()
 {
     if (!m_capabilities) {
         RealtimeMediaSourceCapabilities capabilities(settings().supportedConstraints());
@@ -75,22 +79,26 @@ const RealtimeMediaSourceCapabilities& DisplayCaptureSourceCocoa::capabilities()
     return m_capabilities.value();
 }
 
-const RealtimeMediaSourceSettings& DisplayCaptureSourceCocoa::settings() const
+const RealtimeMediaSourceSettings& DisplayCaptureSourceCocoa::settings()
 {
     if (!m_currentSettings) {
         RealtimeMediaSourceSettings settings;
         settings.setFrameRate(frameRate());
-        auto size = this->size();
-        if (size.width() && size.height()) {
+        auto size = frameSize();
+        if (!size.isEmpty()) {
             settings.setWidth(size.width());
             settings.setHeight(size.height());
         }
+        settings.setDisplaySurface(surfaceType());
+        settings.setLogicalSurface(false);
 
         RealtimeMediaSourceSupportedConstraints supportedConstraints;
         supportedConstraints.setSupportsFrameRate(true);
         supportedConstraints.setSupportsWidth(true);
         supportedConstraints.setSupportsHeight(true);
-        supportedConstraints.setSupportsAspectRatio(true);
+        supportedConstraints.setSupportsDisplaySurface(true);
+        supportedConstraints.setSupportsLogicalSurface(true);
+
         settings.setSupportedConstraints(supportedConstraints);
 
         m_currentSettings = WTFMove(settings);
@@ -98,10 +106,17 @@ const RealtimeMediaSourceSettings& DisplayCaptureSourceCocoa::settings() const
     return m_currentSettings.value();
 }
 
-void DisplayCaptureSourceCocoa::settingsDidChange()
+void DisplayCaptureSourceCocoa::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    m_currentSettings = std::nullopt;
-    RealtimeMediaSource::settingsDidChange();
+    if (settings.contains(RealtimeMediaSourceSettings::Flag::FrameRate) && m_timer.isActive())
+        m_timer.startRepeating(1_s / frameRate());
+
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height })) {
+        m_bufferAttributes = nullptr;
+        m_lastSampleBuffer = nullptr;
+    }
+
+    m_currentSettings = { };
 }
 
 void DisplayCaptureSourceCocoa::startProducingData()
@@ -111,7 +126,7 @@ void DisplayCaptureSourceCocoa::startProducingData()
 #endif
 
     m_startTime = MonotonicTime::now();
-    m_timer.startRepeating(1_ms * lround(1000 / frameRate()));
+    m_timer.startRepeating(1_s / frameRate());
 }
 
 void DisplayCaptureSourceCocoa::stopProducingData()
@@ -129,21 +144,22 @@ Seconds DisplayCaptureSourceCocoa::elapsedTime()
     return m_elapsedTime + (MonotonicTime::now() - m_startTime);
 }
 
-bool DisplayCaptureSourceCocoa::applySize(const IntSize& newSize)
+IntSize DisplayCaptureSourceCocoa::frameSize() const
 {
-    if (size() == newSize)
-        return true;
+    IntSize frameSize = size();
+    if (frameSize.isEmpty())
+        frameSize = m_intrinsicSize;
 
-    m_bufferAttributes = nullptr;
-    return true;
+    return frameSize;
 }
 
-bool DisplayCaptureSourceCocoa::applyFrameRate(double rate)
+void DisplayCaptureSourceCocoa::setIntrinsicSize(const IntSize& size)
 {
-    if (m_timer.isActive())
-        m_timer.startRepeating(1_ms * lround(1000 / rate));
+    if (m_intrinsicSize == size)
+        return;
 
-    return true;
+    m_intrinsicSize = size;
+    m_lastSampleBuffer = nullptr;
 }
 
 void DisplayCaptureSourceCocoa::emitFrame()
@@ -151,7 +167,53 @@ void DisplayCaptureSourceCocoa::emitFrame()
     if (muted())
         return;
 
-    generateFrame();
+    auto pixelBuffer = generateFrame();
+    if (!pixelBuffer)
+        return;
+
+    if (m_lastSampleBuffer && m_lastFullSizedPixelBuffer && CFEqual(m_lastFullSizedPixelBuffer.get(), pixelBuffer.get())) {
+        videoSampleAvailable(MediaSampleAVFObjC::create(m_lastSampleBuffer.get()));
+        return;
+    }
+
+    m_lastFullSizedPixelBuffer = pixelBuffer;
+
+    int width = WTF::safeCast<int>(CVPixelBufferGetWidth(pixelBuffer.get()));
+    int height = WTF::safeCast<int>(CVPixelBufferGetHeight(pixelBuffer.get()));
+    auto requestedSize = frameSize();
+    if (width != requestedSize.width() || height != requestedSize.height()) {
+        if (m_pixelBufferResizer && !m_pixelBufferResizer->canResizeTo(requestedSize))
+            m_pixelBufferResizer = nullptr;
+
+        if (!m_pixelBufferResizer)
+            m_pixelBufferResizer = std::make_unique<PixelBufferResizer>(requestedSize, preferedPixelBufferFormat());
+
+        pixelBuffer = m_pixelBufferResizer->resize(pixelBuffer.get());
+    } else {
+        m_pixelBufferResizer = nullptr;
+
+        auto pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer.get());
+        if (pixelFormatType != preferedPixelBufferFormat()) {
+            if (!m_pixelBufferConformer) {
+                auto preferredFromat = preferedPixelBufferFormat();
+                auto conformerAttributes = adoptCF(CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+                auto videoType = adoptCF(CFNumberCreate(nullptr,  kCFNumberSInt32Type,  &preferredFromat));
+                CFDictionarySetValue(conformerAttributes.get(), kCVPixelBufferPixelFormatTypeKey, videoType.get());
+
+                m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>(conformerAttributes.get());
+            }
+
+            pixelBuffer = m_pixelBufferConformer->convert(pixelBuffer.get());
+        }
+    }
+    if (!pixelBuffer)
+        return;
+
+    m_lastSampleBuffer = sampleBufferFromPixelBuffer(pixelBuffer.get());
+    if (!m_lastSampleBuffer)
+        return;
+
+    videoSampleAvailable(MediaSampleAVFObjC::create(m_lastSampleBuffer.get()));
 }
 
 RetainPtr<CMSampleBufferRef> DisplayCaptureSourceCocoa::sampleBufferFromPixelBuffer(CVPixelBufferRef pixelBuffer)

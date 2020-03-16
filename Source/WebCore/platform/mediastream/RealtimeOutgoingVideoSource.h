@@ -33,10 +33,14 @@
 #include "LibWebRTCMacros.h"
 #include "MediaStreamTrackPrivate.h"
 #include <Timer.h>
+
+ALLOW_UNUSED_PARAMETERS_BEGIN
+
 #include <webrtc/api/mediastreaminterface.h>
-#include <webrtc/api/optional.h>
 #include <webrtc/common_video/include/i420_buffer_pool.h>
-#include <webrtc/api/videosinkinterface.h>
+
+ALLOW_UNUSED_PARAMETERS_END
+
 #include <wtf/Optional.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -54,9 +58,8 @@ public:
     void AddRef() const final { ref(); }
     rtc::RefCountReleaseStatus Release() const final
     {
-        auto result = hasOneRef() ? rtc::RefCountReleaseStatus::kDroppedLastRef : rtc::RefCountReleaseStatus::kOtherRefsRemained;
         deref();
-        return result;
+        return rtc::RefCountReleaseStatus::kOtherRefsRemained;
     }
 
     void setApplyRotation(bool shouldApplyRotation) { m_shouldApplyRotation = shouldApplyRotation; }
@@ -76,6 +79,8 @@ protected:
     bool m_shouldApplyRotation { false };
     webrtc::VideoRotation m_currentRotation { webrtc::kVideoRotation_0 };
 
+    virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> createBlackFrame(size_t width, size_t height) = 0;
+
 private:
     void sendBlackFramesIfNeeded();
     void sendOneBlackFrame();
@@ -88,7 +93,7 @@ private:
 
     // VideoTrackSourceInterface API
     bool is_screencast() const final { return false; }
-    rtc::Optional<bool> needs_denoising() const final { return rtc::Optional<bool>(); }
+    absl::optional<bool> needs_denoising() const final { return absl::optional<bool>(); }
     bool GetStats(Stats*) final { return false; };
 
     // MediaSourceInterface API

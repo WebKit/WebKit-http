@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,39 +41,47 @@ class MediaTime;
 namespace WebCore {
 
 class CaptureDeviceInfo;
+class PixelBufferConformerCV;
+class PixelBufferResizer;
 
 class DisplayCaptureSourceCocoa : public RealtimeMediaSource {
 public:
 
 protected:
-    DisplayCaptureSourceCocoa(const String& name);
+    DisplayCaptureSourceCocoa(String&& name);
     virtual ~DisplayCaptureSourceCocoa();
 
-    virtual void generateFrame() = 0;
+    virtual RetainPtr<CVPixelBufferRef> generateFrame() = 0;
+    virtual RealtimeMediaSourceSettings::DisplaySurfaceType surfaceType() const = 0;
+
     void startProducingData() override;
     void stopProducingData() override;
 
     Seconds elapsedTime();
-    bool applyFrameRate(double) override;
-    bool applySize(const IntSize&) override;
 
     RetainPtr<CMSampleBufferRef> sampleBufferFromPixelBuffer(CVPixelBufferRef);
 #if HAVE(IOSURFACE)
     RetainPtr<CVPixelBufferRef> pixelBufferFromIOSurface(IOSurfaceRef);
 #endif
 
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
+
+    const IntSize& intrinsicSize() const { return m_intrinsicSize; }
+    void setIntrinsicSize(const IntSize&);
+    IntSize frameSize() const;
+
 private:
 
     bool isCaptureSource() const final { return true; }
 
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    const RealtimeMediaSourceSettings& settings() const final;
-    void settingsDidChange() final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
 
     void emitFrame();
 
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    IntSize m_intrinsicSize;
+    std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    std::optional<RealtimeMediaSourceSettings> m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
 
     MonotonicTime m_startTime { MonotonicTime::nan() };
@@ -81,6 +89,11 @@ private:
 
     RetainPtr<CFMutableDictionaryRef> m_bufferAttributes;
     RunLoop::Timer<DisplayCaptureSourceCocoa> m_timer;
+
+    std::unique_ptr<PixelBufferResizer> m_pixelBufferResizer;
+    std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
+    RetainPtr<CVPixelBufferRef> m_lastFullSizedPixelBuffer;
+    RetainPtr<CMSampleBufferRef> m_lastSampleBuffer;
 };
 
 } // namespace WebCore

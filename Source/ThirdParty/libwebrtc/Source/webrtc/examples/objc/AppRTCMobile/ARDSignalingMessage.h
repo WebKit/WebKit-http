@@ -10,8 +10,8 @@
 
 #import <Foundation/Foundation.h>
 
-#import "WebRTC/RTCIceCandidate.h"
-#import "WebRTC/RTCSessionDescription.h"
+#import <WebRTC/RTCIceCandidate.h>
+#import <WebRTC/RTCSessionDescription.h>
 
 typedef enum {
   kARDSignalingMessageTypeCandidate,
@@ -42,8 +42,7 @@ typedef enum {
 
 @property(nonatomic, readonly) NSArray<RTCIceCandidate *> *candidates;
 
-- (instancetype)initWithRemovedCandidates:
-    (NSArray<RTCIceCandidate *> *)candidates;
+- (instancetype)initWithRemovedCandidates:(NSArray<RTCIceCandidate *> *)candidates;
 
 @end
 

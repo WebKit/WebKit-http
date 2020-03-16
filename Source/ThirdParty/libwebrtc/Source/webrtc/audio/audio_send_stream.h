@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "audio/time_interval.h"
+#include "audio/transport_feedback_packet_loss_tracker.h"
 #include "call/audio_send_stream.h"
 #include "call/audio_state.h"
 #include "call/bitrate_allocator.h"
@@ -22,7 +23,6 @@
 #include "rtc_base/constructormagic.h"
 #include "rtc_base/race_checker.h"
 #include "rtc_base/thread_checker.h"
-#include "voice_engine/transport_feedback_packet_loss_tracker.h"
 
 namespace webrtc {
 class RtcEventLog;
@@ -31,7 +31,7 @@ class RtcpRttStats;
 class RtpTransportControllerSendInterface;
 
 namespace voe {
-class ChannelProxy;
+class ChannelSendProxy;
 }  // namespace voe
 
 namespace internal {
@@ -49,7 +49,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
                   BitrateAllocator* bitrate_allocator,
                   RtcEventLog* event_log,
                   RtcpRttStats* rtcp_rtt_stats,
-                  const rtc::Optional<RtpState>& suspended_rtp_state,
+                  const absl::optional<RtpState>& suspended_rtp_state,
                   TimeInterval* overall_call_lifetime);
   // For unit tests, which need to supply a mock channel proxy.
   AudioSendStream(const webrtc::AudioSendStream::Config& config,
@@ -59,9 +59,9 @@ class AudioSendStream final : public webrtc::AudioSendStream,
                   BitrateAllocator* bitrate_allocator,
                   RtcEventLog* event_log,
                   RtcpRttStats* rtcp_rtt_stats,
-                  const rtc::Optional<RtpState>& suspended_rtp_state,
+                  const absl::optional<RtpState>& suspended_rtp_state,
                   TimeInterval* overall_call_lifetime,
-                  std::unique_ptr<voe::ChannelProxy> channel_proxy);
+                  std::unique_ptr<voe::ChannelSendProxy> channel_proxy);
   ~AudioSendStream() override;
 
   // webrtc::AudioSendStream implementation.
@@ -70,7 +70,9 @@ class AudioSendStream final : public webrtc::AudioSendStream,
   void Start() override;
   void Stop() override;
   void SendAudioData(std::unique_ptr<AudioFrame> audio_frame) override;
-  bool SendTelephoneEvent(int payload_type, int payload_frequency, int event,
+  bool SendTelephoneEvent(int payload_type,
+                          int payload_frequency,
+                          int event,
                           int duration_ms) override;
   void SetMuted(bool muted) override;
   webrtc::AudioSendStream::Stats GetStats() const override;
@@ -94,7 +96,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
   void SetTransportOverhead(int transport_overhead_per_packet);
 
   RtpState GetRtpState() const;
-  const voe::ChannelProxy& GetChannelProxy() const;
+  const voe::ChannelSendProxy& GetChannelProxy() const;
 
  private:
   class TimedTransport;
@@ -119,7 +121,8 @@ class AudioSendStream final : public webrtc::AudioSendStream,
 
   void ConfigureBitrateObserver(int min_bitrate_bps,
                                 int max_bitrate_bps,
-                                double bitrate_priority);
+                                double bitrate_priority,
+                                bool has_packet_feedback);
   void RemoveBitrateObserver();
 
   void RegisterCngPayloadType(int payload_type, int clockrate_hz);
@@ -130,7 +133,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
   rtc::TaskQueue* worker_queue_;
   webrtc::AudioSendStream::Config config_;
   rtc::scoped_refptr<webrtc::AudioState> audio_state_;
-  std::unique_ptr<voe::ChannelProxy> channel_proxy_;
+  std::unique_ptr<voe::ChannelSendProxy> channel_proxy_;
   RtcEventLog* const event_log_;
 
   int encoder_sample_rate_hz_ = 0;
@@ -145,7 +148,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
       RTC_GUARDED_BY(&packet_loss_tracker_cs_);
 
   RtpRtcp* rtp_rtcp_module_;
-  rtc::Optional<RtpState> const suspended_rtp_state_;
+  absl::optional<RtpState> const suspended_rtp_state_;
 
   std::unique_ptr<TimedTransport> timed_send_transport_adapter_;
   TimeInterval active_lifetime_;
@@ -157,6 +160,7 @@ class AudioSendStream final : public webrtc::AudioSendStream,
   struct ExtensionIds {
     int audio_level = 0;
     int transport_sequence_number = 0;
+    int mid = 0;
   };
   static ExtensionIds FindExtensionIds(
       const std::vector<RtpExtension>& extensions);

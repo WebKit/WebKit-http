@@ -26,22 +26,19 @@ class RtpPacketizerH264 : public RtpPacketizer {
  public:
   // Initialize with payload from encoder.
   // The payload_data must be exactly one encoded H264 frame.
-  RtpPacketizerH264(size_t max_payload_len,
-                    size_t last_packet_reduction_len,
-                    H264PacketizationMode packetization_mode);
+  RtpPacketizerH264(rtc::ArrayView<const uint8_t> payload,
+                    PayloadSizeLimits limits,
+                    H264PacketizationMode packetization_mode,
+                    const RTPFragmentationHeader& fragmentation);
 
-  virtual ~RtpPacketizerH264();
+  ~RtpPacketizerH264() override;
 
-  size_t SetPayloadData(const uint8_t* payload_data,
-                        size_t payload_size,
-                        const RTPFragmentationHeader* fragmentation) override;
+  size_t NumPackets() const override;
 
   // Get the next payload with H264 payload header.
   // Write payload and set marker bit of the |packet|.
   // Returns true on success, false otherwise.
   bool NextPacket(RtpPacketToSend* rtp_packet) override;
-
-  std::string ToString() override;
 
  private:
   // Input fragments (NAL units), with an optionally owned temporary buffer,
@@ -49,6 +46,7 @@ class RtpPacketizerH264 : public RtpPacketizer {
   struct Fragment {
     Fragment(const uint8_t* buffer, size_t length);
     explicit Fragment(const Fragment& fragment);
+    ~Fragment();
     const uint8_t* buffer = nullptr;
     size_t length = 0;
     std::unique_ptr<rtc::Buffer> tmp_buffer;
@@ -79,17 +77,16 @@ class RtpPacketizerH264 : public RtpPacketizer {
     uint8_t header;
   };
 
-  void GeneratePackets();
-  void PacketizeFuA(size_t fragment_index);
+  bool GeneratePackets(H264PacketizationMode packetization_mode);
+  bool PacketizeFuA(size_t fragment_index);
   size_t PacketizeStapA(size_t fragment_index);
-  void PacketizeSingleNalu(size_t fragment_index);
-  void NextAggregatePacket(RtpPacketToSend* rtp_packet, bool last);
+  bool PacketizeSingleNalu(size_t fragment_index);
+
+  void NextAggregatePacket(RtpPacketToSend* rtp_packet);
   void NextFragmentPacket(RtpPacketToSend* rtp_packet);
 
-  const size_t max_payload_len_;
-  const size_t last_packet_reduction_len_;
+  const PayloadSizeLimits limits_;
   size_t num_packets_left_;
-  const H264PacketizationMode packetization_mode_;
   std::deque<Fragment> input_fragments_;
   std::queue<PacketUnit> packets_;
 
@@ -100,7 +97,7 @@ class RtpPacketizerH264 : public RtpPacketizer {
 class RtpDepacketizerH264 : public RtpDepacketizer {
  public:
   RtpDepacketizerH264();
-  virtual ~RtpDepacketizerH264();
+  ~RtpDepacketizerH264() override;
 
   bool Parse(ParsedPayload* parsed_payload,
              const uint8_t* payload_data,

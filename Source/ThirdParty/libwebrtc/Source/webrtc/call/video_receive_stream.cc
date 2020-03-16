@@ -9,20 +9,21 @@
  */
 
 #include "call/video_receive_stream.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace webrtc {
 
-VideoReceiveStream::Decoder::Decoder() = default;
+VideoReceiveStream::Decoder::Decoder() : video_format("Unset") {}
 VideoReceiveStream::Decoder::Decoder(const Decoder&) = default;
 VideoReceiveStream::Decoder::~Decoder() = default;
 
 std::string VideoReceiveStream::Decoder::ToString() const {
-  std::stringstream ss;
-  ss << "{decoder: " << (decoder ? "(VideoDecoder)" : "nullptr");
-  ss << ", payload_type: " << payload_type;
-  ss << ", payload_name: " << payload_name;
+  char buf[1024];
+  rtc::SimpleStringBuilder ss(buf);
+  ss << "{payload_type: " << payload_type;
+  ss << ", payload_name: " << video_format.name;
   ss << ", codec_params: {";
-  for (const auto& it : codec_params)
+  for (const auto& it : video_format.parameters)
     ss << it.first << ": " << it.second;
   ss << '}';
   ss << '}';
@@ -34,7 +35,8 @@ VideoReceiveStream::Stats::Stats() = default;
 VideoReceiveStream::Stats::~Stats() = default;
 
 std::string VideoReceiveStream::Stats::ToString(int64_t time_ms) const {
-  std::stringstream ss;
+  char buf[1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "VideoReceiveStream stats: " << time_ms << ", {ssrc: " << ssrc << ", ";
   ss << "total_bps: " << total_bitrate_bps << ", ";
   ss << "width: " << width << ", ";
@@ -71,7 +73,8 @@ VideoReceiveStream::Config& VideoReceiveStream::Config::operator=(Config&&) =
 VideoReceiveStream::Config::Config::~Config() = default;
 
 std::string VideoReceiveStream::Config::ToString() const {
-  std::stringstream ss;
+  char buf[4 * 1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "{decoders: [";
   for (size_t i = 0; i < decoders.size(); ++i) {
     ss << decoders[i].ToString();
@@ -84,8 +87,6 @@ std::string VideoReceiveStream::Config::ToString() const {
   ss << ", render_delay_ms: " << render_delay_ms;
   if (!sync_group.empty())
     ss << ", sync_group: " << sync_group;
-  ss << ", pre_decode_callback: "
-     << (pre_decode_callback ? "(EncodedFrameObserver)" : "nullptr");
   ss << ", target_delay_ms: " << target_delay_ms;
   ss << '}';
 
@@ -97,7 +98,8 @@ VideoReceiveStream::Config::Rtp::Rtp(const Rtp&) = default;
 VideoReceiveStream::Config::Rtp::~Rtp() = default;
 
 std::string VideoReceiveStream::Config::Rtp::ToString() const {
-  std::stringstream ss;
+  char buf[2 * 1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "{remote_ssrc: " << remote_ssrc;
   ss << ", local_ssrc: " << local_ssrc;
   ss << ", rtcp_mode: "

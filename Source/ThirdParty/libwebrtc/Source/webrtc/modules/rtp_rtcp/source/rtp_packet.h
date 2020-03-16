@@ -13,21 +13,17 @@
 #include <vector>
 
 #include "api/array_view.h"
+#include "modules/rtp_rtcp/include/rtp_header_extension_map.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
-#include "rtc_base/basictypes.h"
 #include "rtc_base/copyonwritebuffer.h"
 
 namespace webrtc {
-class RtpHeaderExtensionMap;
 class Random;
 
 class RtpPacket {
  public:
   using ExtensionType = RTPExtensionType;
   using ExtensionManager = RtpHeaderExtensionMap;
-  static constexpr int kMaxExtensionHeaders = 14;
-  static constexpr int kMinExtensionId = 1;
-  static constexpr int kMaxExtensionId = 14;
 
   // |extensions| required for SetExtension/ReserveExtension functions during
   // packet creating and used if available in Parse function.
@@ -52,27 +48,31 @@ class RtpPacket {
   void IdentifyExtensions(const ExtensionManager& extensions);
 
   // Header.
-  bool Marker() const;
-  uint8_t PayloadType() const;
-  uint16_t SequenceNumber() const;
-  uint32_t Timestamp() const;
-  uint32_t Ssrc() const;
+  bool Marker() const { return marker_; }
+  uint8_t PayloadType() const { return payload_type_; }
+  uint16_t SequenceNumber() const { return sequence_number_; }
+  uint32_t Timestamp() const { return timestamp_; }
+  uint32_t Ssrc() const { return ssrc_; }
   std::vector<uint32_t> Csrcs() const;
 
-  size_t headers_size() const;
+  size_t headers_size() const { return payload_offset_; }
 
   // Payload.
-  size_t payload_size() const;
-  size_t padding_size() const;
-  rtc::ArrayView<const uint8_t> payload() const;
+  size_t payload_size() const { return payload_size_; }
+  size_t padding_size() const { return padding_size_; }
+  rtc::ArrayView<const uint8_t> payload() const {
+    return rtc::MakeArrayView(data() + payload_offset_, payload_size_);
+  }
 
   // Buffer.
-  rtc::CopyOnWriteBuffer Buffer() const;
-  size_t capacity() const;
-  size_t size() const;
-  const uint8_t* data() const;
-  size_t FreeCapacity() const;
-  size_t MaxPayloadSize() const;
+  rtc::CopyOnWriteBuffer Buffer() const { return buffer_; }
+  size_t capacity() const { return buffer_.capacity(); }
+  size_t size() const {
+    return payload_offset_ + payload_size_ + padding_size_;
+  }
+  const uint8_t* data() const { return buffer_.cdata(); }
+  size_t FreeCapacity() const { return capacity() - size(); }
+  size_t MaxPayloadSize() const { return capacity() - headers_size(); }
 
   // Reset fields and buffer.
   void Clear();
@@ -88,7 +88,7 @@ class RtpPacket {
   // Writes csrc list. Assumes:
   // a) There is enough room left in buffer.
   // b) Extension headers, payload or padding data has not already been added.
-  void SetCsrcs(const std::vector<uint32_t>& csrcs);
+  void SetCsrcs(rtc::ArrayView<const uint32_t> csrcs);
 
   // Header extensions.
   template <typename Extension>
@@ -97,26 +97,15 @@ class RtpPacket {
   template <typename Extension, typename... Values>
   bool GetExtension(Values...) const;
 
+  // Returns view of the raw extension or empty view on failure.
+  template <typename Extension>
+  rtc::ArrayView<const uint8_t> GetRawExtension() const;
+
   template <typename Extension, typename... Values>
   bool SetExtension(Values...);
 
   template <typename Extension>
   bool ReserveExtension();
-
-  // Following 4 helpers identify rtp header extension by |id| negotiated with
-  // remote peer and written in an rtp packet.
-  bool HasRawExtension(int id) const;
-
-  // Returns place where extension with |id| is stored.
-  // Returns empty arrayview if extension is not present.
-  rtc::ArrayView<const uint8_t> GetRawExtension(int id) const;
-
-  // Allocates and store header extension. Returns true on success.
-  bool SetRawExtension(int id, rtc::ArrayView<const uint8_t> data);
-
-  // Allocates and returns place to store rtp header extension.
-  // Returns empty arrayview on failure.
-  rtc::ArrayView<uint8_t> AllocateRawExtension(int id, size_t length);
 
   // Reserve size_bytes for payload. Returns nullptr on failure.
   uint8_t* SetPayloadSize(size_t size_bytes);
@@ -126,25 +115,46 @@ class RtpPacket {
 
  private:
   struct ExtensionInfo {
-    ExtensionType type;
-    uint16_t offset;
+    explicit ExtensionInfo(uint8_t id) : ExtensionInfo(id, 0, 0) {}
+    ExtensionInfo(uint8_t id, uint8_t length, uint16_t offset)
+        : id(id), length(length), offset(offset) {}
+    uint8_t id;
     uint8_t length;
+    uint16_t offset;
   };
 
   // Helper function for Parse. Fill header fields using data in given buffer,
   // but does not touch packet own buffer, leaving packet in invalid state.
   bool ParseBuffer(const uint8_t* buffer, size_t size);
 
+  // Returns pointer to extension info for a given id. Returns nullptr if not
+  // found.
+  const ExtensionInfo* FindExtensionInfo(int id) const;
+
+  // Returns reference to extension info for a given id. Creates a new entry
+  // with the specified id if not found.
+  ExtensionInfo& FindOrCreateExtensionInfo(int id);
+
   // Find an extension |type|.
   // Returns view of the raw extension or empty view on failure.
   rtc::ArrayView<const uint8_t> FindExtension(ExtensionType type) const;
+
+  // Allocates and returns place to store rtp header extension.
+  // Returns empty arrayview on failure.
+  rtc::ArrayView<uint8_t> AllocateRawExtension(int id, size_t length);
+
+  // Promotes existing one-byte header extensions to two-byte header extensions
+  // by rewriting the data and updates the corresponding extension offsets.
+  void PromoteToTwoByteHeaderExtension();
+
+  uint16_t SetExtensionLengthMaybeAddZeroPadding(size_t extensions_offset);
 
   // Find or allocate an extension |type|. Returns view of size |length|
   // to write raw extension to or an empty view on failure.
   rtc::ArrayView<uint8_t> AllocateExtension(ExtensionType type, size_t length);
 
-  uint8_t* WriteAt(size_t offset);
-  void WriteAt(size_t offset, uint8_t byte);
+  uint8_t* WriteAt(size_t offset) { return buffer_.data() + offset; }
+  void WriteAt(size_t offset, uint8_t byte) { buffer_.data()[offset] = byte; }
 
   // Header.
   bool marker_;
@@ -156,8 +166,9 @@ class RtpPacket {
   size_t payload_offset_;  // Match header size with csrcs and extensions.
   size_t payload_size_;
 
-  ExtensionInfo extension_entries_[kMaxExtensionHeaders];
-  uint16_t extensions_size_ = 0;  // Unaligned.
+  ExtensionManager extensions_;
+  std::vector<ExtensionInfo> extension_entries_;
+  size_t extensions_size_ = 0;  // Unaligned.
   rtc::CopyOnWriteBuffer buffer_;
 };
 
@@ -174,15 +185,18 @@ bool RtpPacket::GetExtension(Values... values) const {
   return Extension::Parse(raw, values...);
 }
 
+template <typename Extension>
+rtc::ArrayView<const uint8_t> RtpPacket::GetRawExtension() const {
+  return FindExtension(Extension::kId);
+}
+
 template <typename Extension, typename... Values>
 bool RtpPacket::SetExtension(Values... values) {
   const size_t value_size = Extension::ValueSize(values...);
-  if (value_size == 0 || value_size > 16)
-    return false;
   auto buffer = AllocateExtension(Extension::kId, value_size);
   if (buffer.empty())
     return false;
-  return Extension::Write(buffer.data(), values...);
+  return Extension::Write(buffer, values...);
 }
 
 template <typename Extension>

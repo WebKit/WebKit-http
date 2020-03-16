@@ -15,10 +15,9 @@
 #include <string.h>
 
 #include "modules/audio_coding/include/audio_coding_module.h"
-#include "modules/audio_coding/test/ACMTest.h"
 #include "modules/audio_coding/test/PCMFile.h"
 #include "modules/audio_coding/test/RTPFile.h"
-#include "typedefs.h"  // NOLINT(build/include)
+#include "modules/include/module_common_types.h"
 
 namespace webrtc {
 
@@ -53,8 +52,6 @@ class Sender {
   void Run();
   bool Add10MsData();
 
-  //for auto_test and logging
-  uint8_t testMode;
   uint8_t codeId;
 
  protected:
@@ -79,7 +76,6 @@ class Receiver {
 
   //for auto_test and logging
   uint8_t codeId;
-  uint8_t testMode;
 
  private:
   PCMFile _pcmFile;
@@ -98,20 +94,15 @@ class Receiver {
   uint32_t _nextTime;
 };
 
-class EncodeDecodeTest : public ACMTest {
+class EncodeDecodeTest {
  public:
-  EncodeDecodeTest();
-  explicit EncodeDecodeTest(int testMode);
-  void Perform() override;
+  explicit EncodeDecodeTest(int test_mode);
+  void Perform();
 
   uint16_t _playoutFreq;
-  uint8_t _testMode;
 
  private:
-  std::string EncodeToFile(int fileType,
-                           int codeId,
-                           int* codePars,
-                           int testMode);
+  std::string EncodeToFile(int fileType, int codeId, int* codePars);
 
  protected:
   Sender _sender;

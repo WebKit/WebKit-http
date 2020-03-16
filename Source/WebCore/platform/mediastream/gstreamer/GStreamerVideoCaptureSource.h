@@ -29,18 +29,20 @@ namespace WebCore {
 
 class GStreamerVideoCaptureSource : public RealtimeMediaSource {
 public:
-    static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
+    static CaptureSourceOrError create(String&& deviceID, String&& hashSalt, const MediaConstraints*);
     WEBCORE_EXPORT static VideoCaptureFactory& factory();
 
-    const RealtimeMediaSourceCapabilities& capabilities() const override;
-    const RealtimeMediaSourceSettings& settings() const override;
+    // FIXME: Implement this.
+    WEBCORE_EXPORT static DisplayCaptureFactory& displayFactory(); 
+
+    const RealtimeMediaSourceCapabilities& capabilities() override;
+    const RealtimeMediaSourceSettings& settings() override;
     GstElement* pipeline() { return m_capturer->pipeline(); }
     GStreamerCapturer* capturer() { return m_capturer.get(); }
 
-
 protected:
-    GStreamerVideoCaptureSource(const String& deviceID, const String& name, const gchar * source_factory);
-    GStreamerVideoCaptureSource(GStreamerCaptureDevice);
+    GStreamerVideoCaptureSource(String&& deviceID, String&& name, String&& hashSalt, const gchar * source_factory);
+    GStreamerVideoCaptureSource(GStreamerCaptureDevice, String&& hashSalt);
     virtual ~GStreamerVideoCaptureSource();
     void startProducingData() override;
     void stopProducingData() override;
@@ -52,9 +54,7 @@ private:
     static GstFlowReturn newSampleCallback(GstElement*, GStreamerVideoCaptureSource*);
 
     bool isCaptureSource() const final { return true; }
-    bool applySize(const IntSize&) final;
-    bool applyFrameRate(double) final;
-    bool applyAspectRatio(double) final { return true; }
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
 
     std::unique_ptr<GStreamerVideoCapturer> m_capturer;
 };

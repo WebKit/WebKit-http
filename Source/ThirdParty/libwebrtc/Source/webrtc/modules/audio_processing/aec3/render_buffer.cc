@@ -11,6 +11,7 @@
 #include "modules/audio_processing/aec3/render_buffer.h"
 
 #include <algorithm>
+#include <functional>
 
 #include "modules/audio_processing/aec3/aec3_common.h"
 #include "rtc_base/checks.h"
@@ -43,6 +44,30 @@ void RenderBuffer::SpectralSum(
     std::transform(X2->begin(), X2->end(),
                    spectrum_buffer_->buffer[position].begin(), X2->begin(),
                    std::plus<float>());
+    position = spectrum_buffer_->IncIndex(position);
+  }
+}
+
+void RenderBuffer::SpectralSums(
+    size_t num_spectra_shorter,
+    size_t num_spectra_longer,
+    std::array<float, kFftLengthBy2Plus1>* X2_shorter,
+    std::array<float, kFftLengthBy2Plus1>* X2_longer) const {
+  RTC_DCHECK_LE(num_spectra_shorter, num_spectra_longer);
+  X2_shorter->fill(0.f);
+  int position = spectrum_buffer_->read;
+  size_t j = 0;
+  for (; j < num_spectra_shorter; ++j) {
+    std::transform(X2_shorter->begin(), X2_shorter->end(),
+                   spectrum_buffer_->buffer[position].begin(),
+                   X2_shorter->begin(), std::plus<float>());
+    position = spectrum_buffer_->IncIndex(position);
+  }
+  std::copy(X2_shorter->begin(), X2_shorter->end(), X2_longer->begin());
+  for (; j < num_spectra_longer; ++j) {
+    std::transform(X2_longer->begin(), X2_longer->end(),
+                   spectrum_buffer_->buffer[position].begin(),
+                   X2_longer->begin(), std::plus<float>());
     position = spectrum_buffer_->IncIndex(position);
   }
 }

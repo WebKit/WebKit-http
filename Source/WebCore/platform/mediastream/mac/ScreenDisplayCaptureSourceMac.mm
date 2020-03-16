@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,12 +76,12 @@ static std::optional<CGDirectDisplayID> updateDisplayID(CGDirectDisplayID displa
     return std::nullopt;
 }
 
-CaptureSourceOrError ScreenDisplayCaptureSourceMac::create(const String& deviceID, const MediaConstraints* constraints)
+CaptureSourceOrError ScreenDisplayCaptureSourceMac::create(String&& deviceID, const MediaConstraints* constraints)
 {
     bool ok;
     auto displayID = deviceID.toUIntStrict(&ok);
     if (!ok) {
-        RELEASE_LOG(Media, "Display ID does not convert to 32-bit integer");
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::create: Display ID does not convert to 32-bit integer");
         return { };
     }
 
@@ -89,15 +89,15 @@ CaptureSourceOrError ScreenDisplayCaptureSourceMac::create(const String& deviceI
     if (!actualDisplayID)
         return { };
 
-    auto source = adoptRef(*new ScreenDisplayCaptureSourceMac(actualDisplayID.value()));
+    auto source = adoptRef(*new ScreenDisplayCaptureSourceMac(actualDisplayID.value(), "Screen"_s)); // FIXME: figure out what title to use
     if (constraints && source->applyConstraints(*constraints))
         return { };
 
     return CaptureSourceOrError(WTFMove(source));
 }
 
-ScreenDisplayCaptureSourceMac::ScreenDisplayCaptureSourceMac(uint32_t displayID)
-    : DisplayCaptureSourceCocoa("Screen")
+ScreenDisplayCaptureSourceMac::ScreenDisplayCaptureSourceMac(uint32_t displayID, String&& title)
+    : DisplayCaptureSourceCocoa(WTFMove(title))
     , m_displayID(displayID)
 {
 }
@@ -122,22 +122,19 @@ bool ScreenDisplayCaptureSourceMac::createDisplayStream()
 
     if (m_displayID != actualDisplayID.value()) {
         m_displayID = actualDisplayID.value();
-        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream(%p), display ID changed to %d", this, static_cast<int>(m_displayID));
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream: display ID changed to %d", static_cast<int>(m_displayID));
     }
 
     if (!m_displayStream) {
-        if (size().isEmpty()) {
-            RetainPtr<CGDisplayModeRef> displayMode = adoptCF(CGDisplayCopyDisplayMode(m_displayID));
-            auto screenWidth = CGDisplayModeGetPixelsWide(displayMode.get());
-            auto screenHeight = CGDisplayModeGetPixelsHigh(displayMode.get());
-            if (!screenWidth || !screenHeight) {
-                RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream(%p), unable to get screen width/height", this);
-                captureFailed();
-                return false;
-            }
-            setWidth(screenWidth);
-            setHeight(screenHeight);
+        auto displayMode = adoptCF(CGDisplayCopyDisplayMode(m_displayID));
+        auto screenWidth = CGDisplayModeGetPixelsWide(displayMode.get());
+        auto screenHeight = CGDisplayModeGetPixelsHigh(displayMode.get());
+        if (!screenWidth || !screenHeight) {
+            RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream: unable to get screen width/height");
+            captureFailed();
+            return false;
         }
+        setIntrinsicSize(IntSize(screenWidth, screenHeight));
 
         if (!m_captureQueue)
             m_captureQueue = adoptOSObject(dispatch_queue_create("ScreenDisplayCaptureSourceMac Capture Queue", DISPATCH_QUEUE_SERIAL));
@@ -168,9 +165,10 @@ bool ScreenDisplayCaptureSourceMac::createDisplayStream()
             weakThis->frameAvailable(status, displayTime, frameSurface, updateRef);
         });
 
-        m_displayStream = adoptCF(CGDisplayStreamCreateWithDispatchQueue(m_displayID, size().width(), size().height(), kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, streamOptions.get(), m_captureQueue.get(), m_frameAvailableBlock));
+        auto size = frameSize();
+        m_displayStream = adoptCF(CGDisplayStreamCreateWithDispatchQueue(m_displayID, size.width(), size.height(), kCVPixelFormatType_420YpCbCr8Planar, streamOptions.get(), m_captureQueue.get(), m_frameAvailableBlock));
         if (!m_displayStream) {
-            RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream(%p), CGDisplayStreamCreate failed", this);
+            RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::createDisplayStream: CGDisplayStreamCreate failed");
             captureFailed();
             return false;
         }
@@ -207,10 +205,10 @@ void ScreenDisplayCaptureSourceMac::stopProducingData()
     m_isRunning = false;
 }
 
-void ScreenDisplayCaptureSourceMac::generateFrame()
+RetainPtr<CVPixelBufferRef> ScreenDisplayCaptureSourceMac::generateFrame()
 {
     if (!m_currentFrame.ioSurface())
-        return;
+        return nullptr;
 
     DisplaySurface currentFrame;
     {
@@ -218,15 +216,7 @@ void ScreenDisplayCaptureSourceMac::generateFrame()
         currentFrame = m_currentFrame.ioSurface();
     }
 
-    auto pixelBuffer = pixelBufferFromIOSurface(currentFrame.ioSurface());
-    if (!pixelBuffer)
-        return;
-
-    auto sampleBuffer = sampleBufferFromPixelBuffer(pixelBuffer.get());
-    if (!sampleBuffer)
-        return;
-
-    videoSampleAvailable(MediaSampleAVFObjC::create(sampleBuffer.get()));
+    return pixelBufferFromIOSurface(currentFrame.ioSurface());
 }
 
 void ScreenDisplayCaptureSourceMac::startDisplayStream()
@@ -237,7 +227,7 @@ void ScreenDisplayCaptureSourceMac::startDisplayStream()
 
     if (m_displayID != actualDisplayID.value()) {
         m_displayID = actualDisplayID.value();
-        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::startDisplayStream(%p), display ID changed to %d", this, static_cast<int>(m_displayID));
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::startDisplayStream: display ID changed to %d", static_cast<int>(m_displayID));
     }
 
     if (!m_displayStream && !createDisplayStream())
@@ -245,7 +235,7 @@ void ScreenDisplayCaptureSourceMac::startDisplayStream()
 
     auto err = CGDisplayStreamStart(m_displayStream.get());
     if (err) {
-        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::startDisplayStream(%p), CGDisplayStreamStart failed with error %d", this, static_cast<int>(err));
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::startDisplayStream: CGDisplayStreamStart failed with error %d", static_cast<int>(err));
         captureFailed();
         return;
     }
@@ -253,21 +243,12 @@ void ScreenDisplayCaptureSourceMac::startDisplayStream()
     m_isRunning = true;
 }
 
-bool ScreenDisplayCaptureSourceMac::applySize(const IntSize& newSize)
+void ScreenDisplayCaptureSourceMac::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    if (!DisplayCaptureSourceCocoa::applySize(newSize))
-        return false;
-
-    m_displayStream = nullptr;
-    return true;
-}
-
-bool ScreenDisplayCaptureSourceMac::applyFrameRate(double rate)
-{
-    if (frameRate() != rate)
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height, RealtimeMediaSourceSettings::Flag::FrameRate }))
         m_displayStream = nullptr;
 
-    return DisplayCaptureSourceCocoa::applyFrameRate(rate);
+    return DisplayCaptureSourceCocoa::settingsDidChange(settings);
 }
 
 void ScreenDisplayCaptureSourceMac::commitConfiguration()
@@ -297,11 +278,11 @@ void ScreenDisplayCaptureSourceMac::frameAvailable(CGDisplayStreamFrameStatus st
         break;
 
     case kCGDisplayStreamFrameStatusFrameBlank:
-        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::frameAvailable(%p), kCGDisplayStreamFrameStatusFrameBlank", this);
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::frameAvailable: kCGDisplayStreamFrameStatusFrameBlank");
         break;
 
     case kCGDisplayStreamFrameStatusStopped:
-        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::frameAvailable(%p), kCGDisplayStreamFrameStatusStopped", this);
+        RELEASE_LOG(Media, "ScreenDisplayCaptureSourceMac::frameAvailable: kCGDisplayStreamFrameStatusStopped");
         break;
     }
 

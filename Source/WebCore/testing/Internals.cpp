@@ -29,6 +29,7 @@
 
 #include "AXObjectCache.h"
 #include "ActiveDOMCallbackMicrotask.h"
+#include "ActivityState.h"
 #include "AnimationTimeline.h"
 #include "ApplicationCacheStorage.h"
 #include "AudioSession.h"
@@ -273,6 +274,10 @@
 #import <WebKitAdditions/SystemPreviewDetection.cpp>
 #endif
 
+#if PLATFORM(MAC) && USE(LIBWEBRTC)
+#include <webrtc/sdk/WebKit/VideoProcessingSoftLink.h>
+#endif
+
 using JSC::CallData;
 using JSC::CallType;
 using JSC::CodeBlock;
@@ -500,6 +505,7 @@ void Internals::resetToConsistentState(Page& page)
     auto& rtcProvider = page.libWebRTCProvider();
     WebCore::useRealRTCPeerConnectionFactory(rtcProvider);
     rtcProvider.disableNonLocalhostConnections();
+    RuntimeEnabledFeatures::sharedFeatures().setWebRTCVP8CodecEnabled(true);
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
@@ -1387,6 +1393,9 @@ void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connect
 
 void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 {
+    // FIXME: We should upgrade mocks to support unified plan APIs, until then use plan B in tests using mock.
+
+    ASSERT(!RuntimeEnabledFeatures::sharedFeatures().webRTCUnifiedPlanEnabled());
     if (!LibWebRTCProvider::webRTCAvailable())
         return;
 
@@ -2241,7 +2250,7 @@ static ExceptionOr<FindOptions> parseFindOptions(const Vector<String>& optionLis
         bool found = false;
         for (auto& flag : flagList) {
             if (flag.name == option) {
-                result |= flag.value;
+                result.add(flag.value);
                 found = true;
                 break;
             }
@@ -3188,7 +3197,7 @@ void Internals::forceReload(bool endToEnd)
 {
     OptionSet<ReloadOption> reloadOptions;
     if (endToEnd)
-        reloadOptions |= ReloadOption::FromOrigin;
+        reloadOptions.add(ReloadOption::FromOrigin);
 
     frame()->loader().reload(reloadOptions);
 }
@@ -4340,9 +4349,25 @@ void Internals::setPageVisibility(bool isVisible)
     auto state = page.activityState();
 
     if (!isVisible)
-        state -= ActivityState::IsVisible;
+        state.remove(ActivityState::IsVisible);
     else
-        state |= ActivityState::IsVisible;
+        state.add(ActivityState::IsVisible);
+
+    page.setActivityState(state);
+}
+
+void Internals::setPageIsFocusedAndActive(bool isFocusedAndActive)
+{
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return;
+    auto& page = *document->page();
+    auto state = page.activityState();
+
+    if (!isFocusedAndActive)
+        state.remove({ ActivityState::IsFocused, ActivityState::WindowIsActive });
+    else
+        state.add({ ActivityState::IsFocused, ActivityState::WindowIsActive });
 
     page.setActivityState(state);
 }
@@ -4691,6 +4716,24 @@ size_t Internals::pluginCount()
 void Internals::notifyResourceLoadObserver()
 {
     ResourceLoadObserver::shared().notifyObserver();
+}
+
+unsigned Internals::primaryScreenDisplayID()
+{
+#if PLATFORM(MAC)
+    return WebCore::primaryScreenDisplayID();
+#else
+    return 0;
+#endif
+}
+
+bool Internals::supportsVCPEncoder()
+{
+#if defined(ENABLE_VCP_ENCODER)
+    return ENABLE_VCP_ENCODER;
+#else
+    return false;
+#endif
 }
 
 } // namespace WebCore

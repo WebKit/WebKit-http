@@ -11,10 +11,11 @@
 #import "modules/audio_device/ios/voice_processing_audio_unit.h"
 
 #include "rtc_base/checks.h"
+#include "rtc_base/system/fallthrough.h"
 #include "system_wrappers/include/metrics.h"
 
-#import "WebRTC/RTCLogging.h"
-#import "sdk/objc/Framework/Headers/WebRTC/RTCAudioSessionConfiguration.h"
+#import "sdk/objc/base//RTCLogging.h"
+#import "sdk/objc/components/audio/RTCAudioSessionConfiguration.h"
 
 #if !defined(NDEBUG)
 static void LogStreamDescription(AudioStreamBasicDescription description) {
@@ -444,12 +445,12 @@ void VoiceProcessingAudioUnit::DisposeAudioUnit() {
       case kStarted:
         Stop();
         // Fall through.
-        FALLTHROUGH();
+        RTC_FALLTHROUGH();
       case kInitialized:
         Uninitialize();
         break;
       case kUninitialized:
-        FALLTHROUGH();
+        RTC_FALLTHROUGH();
       case kInitRequired:
         break;
     }

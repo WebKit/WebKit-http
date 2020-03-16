@@ -147,6 +147,7 @@
 #include <WebCore/SSLKeyGenerator.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/SharedBuffer.h>
+#include <WebCore/ShouldSkipSafeBrowsingCheck.h>
 #include <WebCore/ShouldTreatAsContinuingLoad.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/TextIndicator.h>
@@ -1084,7 +1085,7 @@ RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, c
     return WTFMove(navigation);
 }
 
-void WebPageProxy::loadAlternateHTML(const IPC::DataReference& htmlData, const String& encoding, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData)
+void WebPageProxy::loadAlternateHTML(const IPC::DataReference& htmlData, const String& encoding, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData, bool forSafeBrowsing)
 {
     // When the UIProcess is in the process of handling a failing provisional load, do not attempt to
     // start a second alternative HTML load as this will prevent the page load state from being
@@ -1115,6 +1116,7 @@ void WebPageProxy::loadAlternateHTML(const IPC::DataReference& htmlData, const S
     loadParameters.unreachableURLString = unreachableURL;
     loadParameters.provisionalLoadErrorURLString = m_failingProvisionalLoadURL;
     loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
+    loadParameters.forSafeBrowsing = forSafeBrowsing;
     addPlatformLoadParameters(loadParameters);
 
     m_process->assumeReadAccessToBaseURL(baseURL);
@@ -1449,32 +1451,32 @@ void WebPageProxy::setSuppressVisibilityUpdates(bool flag)
 
 void WebPageProxy::updateActivityState(OptionSet<ActivityState::Flag> flagsToUpdate)
 {
-    m_activityState = m_activityState - flagsToUpdate;
+    m_activityState.remove(flagsToUpdate);
     if (flagsToUpdate & ActivityState::IsFocused && m_pageClient.isViewFocused())
-        m_activityState |= ActivityState::IsFocused;
+        m_activityState.add(ActivityState::IsFocused);
     if (flagsToUpdate & ActivityState::WindowIsActive && m_pageClient.isViewWindowActive())
-        m_activityState |= ActivityState::WindowIsActive;
+        m_activityState.add(ActivityState::WindowIsActive);
     if (flagsToUpdate & ActivityState::IsVisible && m_pageClient.isViewVisible())
-        m_activityState |= ActivityState::IsVisible;
+        m_activityState.add(ActivityState::IsVisible);
     if (flagsToUpdate & ActivityState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
-        m_activityState |= ActivityState::IsVisibleOrOccluded;
+        m_activityState.add(ActivityState::IsVisibleOrOccluded);
     if (flagsToUpdate & ActivityState::IsInWindow && m_pageClient.isViewInWindow())
-        m_activityState |= ActivityState::IsInWindow;
+        m_activityState.add(ActivityState::IsInWindow);
     if (flagsToUpdate & ActivityState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
-        m_activityState |= ActivityState::IsVisuallyIdle;
+        m_activityState.add(ActivityState::IsVisuallyIdle);
     if (flagsToUpdate & ActivityState::IsAudible && m_mediaState & MediaProducer::IsPlayingAudio && !(m_mutedState & MediaProducer::AudioIsMuted))
-        m_activityState |= ActivityState::IsAudible;
+        m_activityState.add(ActivityState::IsAudible);
     if (flagsToUpdate & ActivityState::IsLoading && m_pageLoadState.isLoading())
-        m_activityState |= ActivityState::IsLoading;
+        m_activityState.add(ActivityState::IsLoading);
     if (flagsToUpdate & ActivityState::IsCapturingMedia && m_mediaState & (MediaProducer::HasActiveAudioCaptureDevice | MediaProducer::HasActiveVideoCaptureDevice))
-        m_activityState |= ActivityState::IsCapturingMedia;
+        m_activityState.add(ActivityState::IsCapturingMedia);
 }
 
 void WebPageProxy::activityStateDidChange(OptionSet<ActivityState::Flag> mayHaveChanged, bool wantsSynchronousReply, ActivityStateChangeDispatchMode dispatchMode)
 {
     LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " activityStateDidChange - mayHaveChanged " << mayHaveChanged);
 
-    m_potentiallyChangedActivityStateFlags |= mayHaveChanged;
+    m_potentiallyChangedActivityStateFlags.add(mayHaveChanged);
     m_activityStateChangeWantsSynchronousReply = m_activityStateChangeWantsSynchronousReply || wantsSynchronousReply;
 
     if (m_suppressVisibilityUpdates && dispatchMode != ActivityStateChangeDispatchMode::Immediate)
@@ -1525,7 +1527,7 @@ void WebPageProxy::dispatchActivityStateChange()
 
     // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
     if (m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible)
-        m_potentiallyChangedActivityStateFlags |= { ActivityState::IsVisibleOrOccluded, ActivityState::IsVisuallyIdle };
+        m_potentiallyChangedActivityStateFlags.add({ ActivityState::IsVisibleOrOccluded, ActivityState::IsVisuallyIdle });
 
     // Record the prior view state, update the flags that may have changed,
     // and check which flags have actually changed.
@@ -3856,7 +3858,7 @@ void WebPageProxy::didChangeMainDocument(uint64_t frameID)
 void WebPageProxy::viewIsBecomingVisible()
 {
 #if ENABLE(MEDIA_STREAM)
-    userMediaPermissionRequestManager().processPregrantedRequests();
+    userMediaPermissionRequestManager().viewIsBecomingVisible();
 #endif
 }
 
@@ -3984,14 +3986,14 @@ void WebPageProxy::beginSafeBrowsingCheck(const URL&, WebFramePolicyListenerProx
 }
 #endif
 
-void WebPageProxy::decidePolicyForNavigationActionAsync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, uint64_t listenerID)
+void WebPageProxy::decidePolicyForNavigationActionAsync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck, uint64_t listenerID)
 {
-    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, PolicyDecisionSender::create([this, protectedThis = makeRef(*this), frameID, listenerID] (auto... args) {
+    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, shouldSkipSafeBrowsingCheck, PolicyDecisionSender::create([this, protectedThis = makeRef(*this), frameID, listenerID] (auto... args) {
         m_process->send(Messages::WebPage::DidReceivePolicyDecision(frameID, listenerID, args...), m_pageID);
     }));
 }
 
-void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, Ref<PolicyDecisionSender>&& sender)
+void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck, Ref<PolicyDecisionSender>&& sender)
 {
     LOG(Loading, "WebPageProxy::decidePolicyForNavigationAction - Original URL %s, current target URL %s", originalRequest.url().string().utf8().data(), request.url().string().utf8().data());
 
@@ -4068,8 +4070,9 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const WebCo
         }
 
         receivedPolicyDecision(policyAction, navigation.get(), WTFMove(data), WTFMove(sender));
-    }, ShouldExpectSafeBrowsingResult::Yes));
-    beginSafeBrowsingCheck(request.url(), listener);
+    }, shouldSkipSafeBrowsingCheck == ShouldSkipSafeBrowsingCheck::Yes ? ShouldExpectSafeBrowsingResult::No : ShouldExpectSafeBrowsingResult::Yes));
+    if (shouldSkipSafeBrowsingCheck == ShouldSkipSafeBrowsingCheck::No)
+        beginSafeBrowsingCheck(request.url(), listener);
 
     API::Navigation* mainFrameNavigation = frame->isMainFrame() ? navigation.get() : nullptr;
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameInfoData.frameID);
@@ -4097,11 +4100,11 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const WebCo
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
 }
 
-void WebPageProxy::decidePolicyForNavigationActionSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&& reply)
+void WebPageProxy::decidePolicyForNavigationActionSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&& reply)
 {
     auto sender = PolicyDecisionSender::create(WTFMove(reply));
     
-    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, sender.copyRef());
+    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, shouldSkipSafeBrowsingCheck, sender.copyRef());
 
     // If the client did not respond synchronously, proceed with the load.
     sender->send(PolicyAction::Use, navigationID, DownloadID(), std::nullopt);
@@ -4599,7 +4602,10 @@ void WebPageProxy::pageDidScroll()
     if (m_isKeyboardAnimatingIn)
         return;
 #endif
+
+#if !PLATFORM(IOS)
     closeOverlayedViews();
+#endif
 }
 
 void WebPageProxy::runOpenPanel(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const FileChooserSettings& settings)
@@ -4823,7 +4829,7 @@ void WebPageProxy::didCloseSuggestions()
     m_process->send(Messages::WebPage::DidCloseSuggestions(), m_pageID);
 }
 
-void WebPageProxy::didSelectOption(String& selectedOption)
+void WebPageProxy::didSelectOption(const String& selectedOption)
 {
     if (!isValid())
         return;
@@ -6480,6 +6486,14 @@ void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t 
     UNUSED_PARAM(frameID);
     UNUSED_PARAM(userMediaDocumentOriginData);
     UNUSED_PARAM(topLevelDocumentOriginData);
+#endif
+}
+
+void WebPageProxy::beginMonitoringCaptureDevices()
+{
+#if ENABLE(MEDIA_STREAM)
+    userMediaPermissionRequestManager().syncWithWebCorePrefs();
+    UserMediaProcessManager::singleton().beginMonitoringCaptureDevices();
 #endif
 }
 

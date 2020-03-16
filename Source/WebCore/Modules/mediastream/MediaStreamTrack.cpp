@@ -92,6 +92,59 @@ const String& MediaStreamTrack::label() const
     return m_private->label();
 }
 
+const AtomicString& MediaStreamTrack::contentHint() const
+{
+    static NeverDestroyed<const AtomicString> speechHint("speech", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> musicHint("music", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> detailHint("detail", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> textHint("text", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> motionHint("motion", AtomicString::ConstructFromLiteral);
+
+    switch (m_private->contentHint()) {
+    case MediaStreamTrackPrivate::HintValue::Empty:
+        return emptyAtom();
+    case MediaStreamTrackPrivate::HintValue::Speech:
+        return speechHint;
+    case MediaStreamTrackPrivate::HintValue::Music:
+        return musicHint;
+    case MediaStreamTrackPrivate::HintValue::Motion:
+        return motionHint;
+    case MediaStreamTrackPrivate::HintValue::Detail:
+        return detailHint;
+    case MediaStreamTrackPrivate::HintValue::Text:
+        return textHint;
+    default:
+        return emptyAtom();
+    }
+}
+
+void MediaStreamTrack::setContentHint(const String& hintValue)
+{
+    MediaStreamTrackPrivate::HintValue value;
+    if (m_private->type() == RealtimeMediaSource::Type::Audio) {
+        if (hintValue == "")
+            value = MediaStreamTrackPrivate::HintValue::Empty;
+        else if (hintValue == "speech")
+            value = MediaStreamTrackPrivate::HintValue::Speech;
+        else if (hintValue == "music")
+            value = MediaStreamTrackPrivate::HintValue::Music;
+        else
+            return;
+    } else {
+        if (hintValue == "")
+            value = MediaStreamTrackPrivate::HintValue::Empty;
+        else if (hintValue == "detail")
+            value = MediaStreamTrackPrivate::HintValue::Detail;
+        else if (hintValue == "motion")
+            value = MediaStreamTrackPrivate::HintValue::Motion;
+        else if (hintValue == "text")
+            value = MediaStreamTrackPrivate::HintValue::Text;
+        else
+            return;
+    }
+    m_private->setContentHint(value);
+}
+
 bool MediaStreamTrack::enabled() const
 {
     return m_private->enabled();
@@ -144,7 +197,7 @@ void MediaStreamTrack::stopTrack(StopMode mode)
     configureTrackRendering();
 }
 
-MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings(Document& document) const
+MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings() const
 {
     auto& settings = m_private->settings();
     TrackSettings result;
@@ -167,9 +220,9 @@ MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings(Document& document
     if (settings.supportsEchoCancellation())
         result.echoCancellation = settings.echoCancellation();
     if (settings.supportsDeviceId())
-        result.deviceId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(settings.deviceId(), document.deviceIDHashSalt());
+        result.deviceId = settings.deviceId();
     if (settings.supportsGroupId())
-        result.groupId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(settings.groupId(), document.deviceIDHashSalt());
+        result.groupId = settings.groupId();
 
     // FIXME: shouldn't this include displaySurface and logicalSurface?
 
@@ -234,7 +287,7 @@ static Vector<bool> capabilityBooleanVector(RealtimeMediaSourceCapabilities::Ech
     return result;
 }
 
-MediaStreamTrack::TrackCapabilities MediaStreamTrack::getCapabilities(Document& document) const
+MediaStreamTrack::TrackCapabilities MediaStreamTrack::getCapabilities() const
 {
     auto capabilities = m_private->capabilities();
     TrackCapabilities result;
@@ -257,9 +310,9 @@ MediaStreamTrack::TrackCapabilities MediaStreamTrack::getCapabilities(Document& 
     if (capabilities.supportsEchoCancellation())
         result.echoCancellation = capabilityBooleanVector(capabilities.echoCancellation());
     if (capabilities.supportsDeviceId())
-        result.deviceId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(capabilities.deviceId(), document.deviceIDHashSalt());
+        result.deviceId = capabilities.deviceId();
     if (capabilities.supportsGroupId())
-        result.groupId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(capabilities.groupId(), document.deviceIDHashSalt());
+        result.groupId = capabilities.groupId();
     return result;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 #import "CAAudioStreamDescription.h"
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
+#import "MockRealtimeMediaSourceCenter.h"
 #import "NotImplemented.h"
 #import "RealtimeMediaSourceSettings.h"
 #import "WebAudioBufferList.h"
@@ -85,9 +86,16 @@ static void addHum(float amplitude, float frequency, float sampleRate, uint64_t 
     }
 }
 
-CaptureSourceOrError MockRealtimeAudioSource::create(const String& deviceID, const String& name, const MediaConstraints* constraints)
+CaptureSourceOrError MockRealtimeAudioSource::create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints* constraints)
 {
-    auto source = adoptRef(*new MockRealtimeAudioSourceMac(deviceID, name));
+#ifndef NDEBUG
+    auto device = MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(deviceID);
+    ASSERT(device);
+    if (!device)
+        return { };
+#endif
+
+    auto source = adoptRef(*new MockRealtimeAudioSourceMac(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt)));
     // FIXME: We should report error messages
     if (constraints && source->applyConstraints(*constraints))
         return { };
@@ -95,8 +103,8 @@ CaptureSourceOrError MockRealtimeAudioSource::create(const String& deviceID, con
     return CaptureSourceOrError(WTFMove(source));
 }
 
-MockRealtimeAudioSourceMac::MockRealtimeAudioSourceMac(const String& deviceID, const String& name)
-    : MockRealtimeAudioSource(deviceID, name)
+MockRealtimeAudioSourceMac::MockRealtimeAudioSourceMac(String&& deviceID, String&& name, String&& hashSalt)
+    : MockRealtimeAudioSource(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt))
 {
 }
 
@@ -157,30 +165,27 @@ void MockRealtimeAudioSourceMac::render(Seconds delta)
     }
 }
 
-bool MockRealtimeAudioSourceMac::applySampleRate(int sampleRate)
+void MockRealtimeAudioSourceMac::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
 {
-    if (sampleRate < 44100 || sampleRate > 48000)
-        return false;
+    if (settings.contains(RealtimeMediaSourceSettings::Flag::SampleRate)) {
+        m_formatDescription = nullptr;
+        m_audioBufferList = nullptr;
 
-    if (sampleRate == this->sampleRate())
-        return true;
+        auto rate = sampleRate();
+        size_t sampleCount = 2 * rate;
 
-    m_formatDescription = nullptr;
-    m_audioBufferList = nullptr;
+        m_bipBopBuffer.grow(sampleCount);
+        m_bipBopBuffer.fill(0);
 
-    size_t sampleCount = 2 * sampleRate;
+        size_t bipBopSampleCount = ceil(BipBopDuration * rate);
+        size_t bipStart = 0;
+        size_t bopStart = rate;
 
-    m_bipBopBuffer.grow(sampleCount);
-    m_bipBopBuffer.fill(0);
+        addHum(BipBopVolume, BipFrequency, rate, 0, m_bipBopBuffer.data() + bipStart, bipBopSampleCount);
+        addHum(BipBopVolume, BopFrequency, rate, 0, m_bipBopBuffer.data() + bopStart, bipBopSampleCount);
+    }
 
-    size_t bipBopSampleCount = ceil(BipBopDuration * sampleRate);
-    size_t bipStart = 0;
-    size_t bopStart = sampleRate;
-
-    addHum(BipBopVolume, BipFrequency, sampleRate, 0, m_bipBopBuffer.data() + bipStart, bipBopSampleCount);
-    addHum(BipBopVolume, BopFrequency, sampleRate, 0, m_bipBopBuffer.data() + bopStart, bipBopSampleCount);
-
-    return true;
+    MockRealtimeAudioSource::settingsDidChange(settings);
 }
 
 } // namespace WebCore

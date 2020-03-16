@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,13 +41,13 @@ namespace WebCore {
 
 class ScreenDisplayCaptureSourceMac : public DisplayCaptureSourceCocoa {
 public:
-    static CaptureSourceOrError create(const String&, const MediaConstraints*);
+    static CaptureSourceOrError create(String&&, const MediaConstraints*);
 
     static std::optional<CaptureDevice> screenCaptureDeviceWithPersistentID(const String&);
     static void screenCaptureDevices(Vector<CaptureDevice>&);
 
 private:
-    ScreenDisplayCaptureSourceMac(uint32_t);
+    ScreenDisplayCaptureSourceMac(uint32_t, String&&);
     virtual ~ScreenDisplayCaptureSourceMac();
 
     static void displayReconfigurationCallBack(CGDirectDisplayID, CGDisplayChangeSummaryFlags, void*);
@@ -56,11 +56,12 @@ private:
 
     void frameAvailable(CGDisplayStreamFrameStatus, uint64_t, IOSurfaceRef, CGDisplayStreamUpdateRef);
 
-    void generateFrame() final;
+    RetainPtr<CVPixelBufferRef> generateFrame() final;
+    RealtimeMediaSourceSettings::DisplaySurfaceType surfaceType() const final { return RealtimeMediaSourceSettings::DisplaySurfaceType::Monitor; }
+
     void startProducingData() final;
     void stopProducingData() final;
-    bool applySize(const IntSize&) final;
-    bool applyFrameRate(double) final;
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
     void commitConfiguration() final;
 
     bool createDisplayStream();

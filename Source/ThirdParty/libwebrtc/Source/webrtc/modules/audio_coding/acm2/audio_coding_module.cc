@@ -12,11 +12,11 @@
 
 #include <algorithm>
 
-#include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "modules/audio_coding/acm2/acm_receiver.h"
 #include "modules/audio_coding/acm2/acm_resampler.h"
 #include "modules/audio_coding/acm2/codec_manager.h"
 #include "modules/audio_coding/acm2/rent_a_codec.h"
+#include "modules/include/module_common_types.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/numerics/safe_conversions.h"
@@ -50,14 +50,8 @@ class AudioCodingModuleImpl final : public AudioCodingModule {
   void ModifyEncoder(rtc::FunctionView<void(std::unique_ptr<AudioEncoder>*)>
                          modifier) override;
 
-  void QueryEncoder(
-      rtc::FunctionView<void(const AudioEncoder*)> query) override;
-
   // Get current send codec.
-  rtc::Optional<CodecInst> SendCodec() const override;
-
-  // Get current send frequency.
-  int SendFrequency() const override;
+  absl::optional<CodecInst> SendCodec() const override;
 
   // Sets the bitrate to the specified value in bits/sec. In case the codec does
   // not support the requested value it will choose an appropriate value
@@ -142,7 +136,7 @@ class AudioCodingModuleImpl final : public AudioCodingModule {
   // Get current received codec.
   int ReceiveCodec(CodecInst* current_codec) const override;
 
-  rtc::Optional<SdpAudioFormat> ReceiveFormat() const override;
+  absl::optional<SdpAudioFormat> ReceiveFormat() const override;
 
   // Incoming packet from network parsed and ready for decode.
   int IncomingPacket(const uint8_t* incoming_payload,
@@ -155,12 +149,7 @@ class AudioCodingModuleImpl final : public AudioCodingModule {
   // Maximum playout delay.
   int SetMaximumPlayoutDelay(int time_ms) override;
 
-  // Smallest latency NetEq will maintain.
-  int LeastRequiredDelayMs() const override;
-
-  RTC_DEPRECATED int32_t PlayoutTimestamp(uint32_t* timestamp) override;
-
-  rtc::Optional<uint32_t> PlayoutTimestamp() override;
+  absl::optional<uint32_t> PlayoutTimestamp() override;
 
   int FilteredCurrentDelayMs() const override;
 
@@ -171,15 +160,12 @@ class AudioCodingModuleImpl final : public AudioCodingModule {
   int PlayoutData10Ms(int desired_freq_hz,
                       AudioFrame* audio_frame,
                       bool* muted) override;
-  int PlayoutData10Ms(int desired_freq_hz, AudioFrame* audio_frame) override;
 
   /////////////////////////////////////////
   //   Statistics
   //
 
   int GetNetworkStatistics(NetworkStatistics* statistics) override;
-
-  int SetOpusApplication(OpusApplicationMode application) override;
 
   // If current send codec is Opus, informs it about the maximum playback rate
   // the receiver will render.
@@ -323,9 +309,10 @@ int DownMix(const AudioFrame& frame,
   if (!frame.muted()) {
     const int16_t* frame_data = frame.data();
     for (size_t n = 0; n < frame.samples_per_channel_; ++n) {
-      out_buff[n] = static_cast<int16_t>(
-          (static_cast<int32_t>(frame_data[2 * n]) +
-           static_cast<int32_t>(frame_data[2 * n + 1])) >> 1);
+      out_buff[n] =
+          static_cast<int16_t>((static_cast<int32_t>(frame_data[2 * n]) +
+                                static_cast<int32_t>(frame_data[2 * n + 1])) >>
+                               1);
     }
   } else {
     std::fill(out_buff, out_buff + frame.samples_per_channel_, 0);
@@ -472,7 +459,7 @@ int32_t AudioCodingModuleImpl::Encode(const InputData& input_data) {
   if (!HaveValidEncoder("Process"))
     return -1;
 
-  if(!first_frame_) {
+  if (!first_frame_) {
     RTC_DCHECK(IsNewerTimestamp(input_data.input_timestamp, last_timestamp_))
         << "Time should not move backwards";
   }
@@ -493,9 +480,10 @@ int32_t AudioCodingModuleImpl::Encode(const InputData& input_data) {
   // Clear the buffer before reuse - encoded data will get appended.
   encode_buffer_.Clear();
   encoded_info = encoder_stack_->Encode(
-      rtp_timestamp, rtc::ArrayView<const int16_t>(
-                         input_data.audio, input_data.audio_channel *
-                                               input_data.length_per_channel),
+      rtp_timestamp,
+      rtc::ArrayView<const int16_t>(
+          input_data.audio,
+          input_data.audio_channel * input_data.length_per_channel),
       &encode_buffer_);
 
   bitrate_logger_.MaybeLog(encoder_stack_->GetTargetBitrate() / 1000);
@@ -596,14 +584,8 @@ void AudioCodingModuleImpl::ModifyEncoder(
   modifier(&encoder_stack_);
 }
 
-void AudioCodingModuleImpl::QueryEncoder(
-    rtc::FunctionView<void(const AudioEncoder*)> query) {
-  rtc::CritScope lock(&acm_crit_sect_);
-  query(encoder_stack_.get());
-}
-
 // Get current send codec.
-rtc::Optional<CodecInst> AudioCodingModuleImpl::SendCodec() const {
+absl::optional<CodecInst> AudioCodingModuleImpl::SendCodec() const {
   rtc::CritScope lock(&acm_crit_sect_);
   if (encoder_factory_) {
     auto* ci = encoder_factory_->codec_manager.GetCodecInst();
@@ -616,31 +598,19 @@ rtc::Optional<CodecInst> AudioCodingModuleImpl::SendCodec() const {
     if (enc) {
       return acm2::CodecManager::ForgeCodecInst(enc.get());
     }
-    return rtc::nullopt;
+    return absl::nullopt;
   } else {
     return encoder_stack_
-               ? rtc::Optional<CodecInst>(
+               ? absl::optional<CodecInst>(
                      acm2::CodecManager::ForgeCodecInst(encoder_stack_.get()))
-               : rtc::nullopt;
+               : absl::nullopt;
   }
-}
-
-// Get current send frequency.
-int AudioCodingModuleImpl::SendFrequency() const {
-  rtc::CritScope lock(&acm_crit_sect_);
-
-  if (!encoder_stack_) {
-    RTC_LOG(LS_ERROR) << "SendFrequency Failed, no codec is registered";
-    return -1;
-  }
-
-  return encoder_stack_->SampleRateHz();
 }
 
 void AudioCodingModuleImpl::SetBitRate(int bitrate_bps) {
   rtc::CritScope lock(&acm_crit_sect_);
   if (encoder_stack_) {
-    encoder_stack_->OnReceivedUplinkBandwidth(bitrate_bps, rtc::nullopt);
+    encoder_stack_->OnReceivedUplinkBandwidth(bitrate_bps, absl::nullopt);
   }
 }
 
@@ -767,7 +737,6 @@ int AudioCodingModuleImpl::PreprocessToAddData(const AudioFrame& in_frame,
     expected_in_ts_ = in_frame.timestamp_;
   }
 
-
   if (!down_mix && !resample) {
     // No pre-processing is required.
     if (expected_in_ts_ == expected_codec_ts_) {
@@ -793,8 +762,8 @@ int AudioCodingModuleImpl::PreprocessToAddData(const AudioFrame& in_frame,
   if (down_mix) {
     // If a resampling is required the output of a down-mix is written into a
     // local buffer, otherwise, it will be written to the output frame.
-    int16_t* dest_ptr_audio = resample ?
-        audio : preprocess_frame_.mutable_data();
+    int16_t* dest_ptr_audio =
+        resample ? audio : preprocess_frame_.mutable_data();
     if (DownMix(in_frame, WEBRTC_10MS_PCM_AUDIO, dest_ptr_audio) < 0)
       return -1;
     preprocess_frame_.num_channels_ = 1;
@@ -912,7 +881,8 @@ int AudioCodingModuleImpl::SetVAD(bool enable_dtx,
 }
 
 // Get VAD/DTX settings.
-int AudioCodingModuleImpl::VAD(bool* dtx_enabled, bool* vad_enabled,
+int AudioCodingModuleImpl::VAD(bool* dtx_enabled,
+                               bool* vad_enabled,
                                ACMVADMode* mode) const {
   rtc::CritScope lock(&acm_crit_sect_);
   const auto* sp = encoder_factory_->codec_manager.GetStackParams();
@@ -1062,7 +1032,7 @@ int AudioCodingModuleImpl::ReceiveCodec(CodecInst* current_codec) const {
   return receiver_.LastAudioCodec(current_codec);
 }
 
-rtc::Optional<SdpAudioFormat> AudioCodingModuleImpl::ReceiveFormat() const {
+absl::optional<SdpAudioFormat> AudioCodingModuleImpl::ReceiveFormat() const {
   rtc::CritScope lock(&acm_crit_sect_);
   return receiver_.LastAudioFormat();
 }
@@ -1107,14 +1077,6 @@ int AudioCodingModuleImpl::PlayoutData10Ms(int desired_freq_hz,
   return 0;
 }
 
-int AudioCodingModuleImpl::PlayoutData10Ms(int desired_freq_hz,
-                                           AudioFrame* audio_frame) {
-  bool muted;
-  int ret = PlayoutData10Ms(desired_freq_hz, audio_frame, &muted);
-  RTC_DCHECK(!muted);
-  return ret;
-}
-
 /////////////////////////////////////////
 //   Statistics
 //
@@ -1131,26 +1093,6 @@ int AudioCodingModuleImpl::RegisterVADCallback(ACMVADCallback* vad_callback) {
   rtc::CritScope lock(&callback_crit_sect_);
   vad_callback_ = vad_callback;
   return 0;
-}
-
-int AudioCodingModuleImpl::SetOpusApplication(OpusApplicationMode application) {
-  rtc::CritScope lock(&acm_crit_sect_);
-  if (!HaveValidEncoder("SetOpusApplication")) {
-    return -1;
-  }
-  AudioEncoder::Application app;
-  switch (application) {
-    case kVoip:
-      app = AudioEncoder::Application::kSpeech;
-      break;
-    case kAudio:
-      app = AudioEncoder::Application::kAudio;
-      break;
-    default:
-      RTC_FATAL();
-      return 0;
-  }
-  return encoder_stack_->SetApplication(app) ? 0 : -1;
 }
 
 // Informs Opus encoder of the maximum playback rate the receiver will render.
@@ -1179,15 +1121,7 @@ int AudioCodingModuleImpl::DisableOpusDtx() {
   return encoder_stack_->SetDtx(false) ? 0 : -1;
 }
 
-int32_t AudioCodingModuleImpl::PlayoutTimestamp(uint32_t* timestamp) {
-  rtc::Optional<uint32_t> ts = PlayoutTimestamp();
-  if (!ts)
-    return -1;
-  *timestamp = *ts;
-  return 0;
-}
-
-rtc::Optional<uint32_t> AudioCodingModuleImpl::PlayoutTimestamp() {
+absl::optional<uint32_t> AudioCodingModuleImpl::PlayoutTimestamp() {
   return receiver_.GetPlayoutTimestamp();
 }
 
@@ -1224,12 +1158,8 @@ std::vector<uint16_t> AudioCodingModuleImpl::GetNackList(
   return receiver_.GetNackList(round_trip_time_ms);
 }
 
-int AudioCodingModuleImpl::LeastRequiredDelayMs() const {
-  return receiver_.LeastRequiredDelayMs();
-}
-
 void AudioCodingModuleImpl::GetDecodingCallStatistics(
-      AudioDecodingCallStats* call_stats) const {
+    AudioDecodingCallStats* call_stats) const {
   receiver_.GetDecodingCallStatistics(call_stats);
 }
 
@@ -1243,8 +1173,11 @@ ANAStats AudioCodingModuleImpl::GetANAStats() const {
 
 }  // namespace
 
-AudioCodingModule::Config::Config()
-    : neteq_config(), clock(Clock::GetRealTimeClock()) {
+AudioCodingModule::Config::Config(
+    rtc::scoped_refptr<AudioDecoderFactory> decoder_factory)
+    : neteq_config(),
+      clock(Clock::GetRealTimeClock()),
+      decoder_factory(decoder_factory) {
   // Post-decode VAD is disabled by default in NetEq, however, Audio
   // Conference Mixer relies on VAD decisions and fails without them.
   neteq_config.enable_post_decode_vad = true;
@@ -1253,34 +1186,7 @@ AudioCodingModule::Config::Config()
 AudioCodingModule::Config::Config(const Config&) = default;
 AudioCodingModule::Config::~Config() = default;
 
-AudioCodingModule* AudioCodingModule::Create(int id) {
-  RTC_UNUSED(id);
-  return Create();
-}
-
-// Create module
-AudioCodingModule* AudioCodingModule::Create() {
-  Config config;
-  config.clock = Clock::GetRealTimeClock();
-  config.decoder_factory = CreateBuiltinAudioDecoderFactory();
-  return Create(config);
-}
-
-AudioCodingModule* AudioCodingModule::Create(Clock* clock) {
-  Config config;
-  config.clock = clock;
-  config.decoder_factory = CreateBuiltinAudioDecoderFactory();
-  return Create(config);
-}
-
 AudioCodingModule* AudioCodingModule::Create(const Config& config) {
-  if (!config.decoder_factory) {
-    // TODO(ossu): Backwards compatibility. Will be removed after a deprecation
-    // cycle.
-    Config config_copy = config;
-    config_copy.decoder_factory = CreateBuiltinAudioDecoderFactory();
-    return new AudioCodingModuleImpl(config_copy);
-  }
   return new AudioCodingModuleImpl(config);
 }
 
@@ -1303,7 +1209,7 @@ int AudioCodingModule::Codec(const char* payload_name,
                              CodecInst* codec,
                              int sampling_freq_hz,
                              size_t channels) {
-  rtc::Optional<CodecInst> ci = acm2::RentACodec::CodecInstByParams(
+  absl::optional<CodecInst> ci = acm2::RentACodec::CodecInstByParams(
       payload_name, sampling_freq_hz, channels);
   if (ci) {
     *codec = *ci;
@@ -1323,21 +1229,13 @@ int AudioCodingModule::Codec(const char* payload_name,
 int AudioCodingModule::Codec(const char* payload_name,
                              int sampling_freq_hz,
                              size_t channels) {
-  rtc::Optional<acm2::RentACodec::CodecId> ci =
+  absl::optional<acm2::RentACodec::CodecId> ci =
       acm2::RentACodec::CodecIdByParams(payload_name, sampling_freq_hz,
                                         channels);
   if (!ci)
     return -1;
-  rtc::Optional<int> i = acm2::RentACodec::CodecIndexFromId(*ci);
+  absl::optional<int> i = acm2::RentACodec::CodecIndexFromId(*ci);
   return i ? *i : -1;
-}
-
-// Checks the validity of the parameters of the given codec
-bool AudioCodingModule::IsCodecValid(const CodecInst& codec) {
-  bool valid = acm2::RentACodec::IsCodecValid(codec);
-  if (!valid)
-    RTC_LOG(LS_ERROR) << "Invalid codec setting";
-  return valid;
 }
 
 }  // namespace webrtc

@@ -24,14 +24,19 @@
  */
 
 #include "WebKitUtilities.h"
-#include "Common/RTCUIApplicationStatusObserver.h"
-#include "VideoToolbox/objc_video_decoder_factory.h"
-#include "VideoToolbox/objc_video_encoder_factory.h"
-#import "WebRTC/RTCVideoCodecH264.h"
-#include "api/video/video_frame.h"
-#include <webrtc/sdk/objc/Framework/Classes/Video/objc_frame_buffer.h>
-#include <webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoFrameBuffer.h>
 
+//#include "Common/RTCUIApplicationStatusObserver.h"
+#import "WebRTC/RTCVideoCodecH264.h"
+
+#include "api/video/video_frame.h"
+#include "third_party/libyuv/include/libyuv/convert_from.h"
+#include "native/src/objc_frame_buffer.h"
+#include "Framework/Headers/WebRTC/RTCVideoCodecFactory.h"
+#include "Framework/Headers/WebRTC/RTCVideoFrame.h"
+#include "Framework/Headers/WebRTC/RTCVideoFrameBuffer.h"
+#include "Framework/Native/api/video_decoder_factory.h"
+#include "Framework/Native/api/video_encoder_factory.h"
+/*
 #if !defined(WEBRTC_IOS)
 __attribute__((objc_runtime_name("WK_RTCUIApplicationStatusObserver")))
 @interface RTCUIApplicationStatusObserver : NSObject
@@ -80,18 +85,20 @@ __attribute__((objc_runtime_name("WK_RTCUIApplicationStatusObserver")))
 }
 
 @end
-
+*/
 namespace webrtc {
 
 void setApplicationStatus(bool isActive)
 {
+/*
     if (isActive)
         [[RTCUIApplicationStatusObserver sharedInstance] setActive];
     else
         [[RTCUIApplicationStatusObserver sharedInstance] setInactive];
+ */
 }
 
-std::unique_ptr<webrtc::VideoEncoderFactory> createVideoToolboxEncoderFactory()
+std::unique_ptr<webrtc::VideoEncoderFactory> createWebKitEncoderFactory(WebKitCodecSupport codecSupport)
 {
 #if ENABLE_VCP_ENCODER
     static std::once_flag onceFlag;
@@ -99,12 +106,12 @@ std::unique_ptr<webrtc::VideoEncoderFactory> createVideoToolboxEncoderFactory()
         webrtc::VPModuleInitialize();
     });
 #endif
-    return std::make_unique<webrtc::ObjCVideoEncoderFactory>([[RTCVideoEncoderFactoryH264 alloc] init]);
+    return ObjCToNativeVideoEncoderFactory(codecSupport == WebKitCodecSupport::H264AndVP8 ? [[RTCDefaultVideoEncoderFactory alloc] init] : [[RTCVideoEncoderFactoryH264 alloc] init]);
 }
 
-std::unique_ptr<webrtc::VideoDecoderFactory> createVideoToolboxDecoderFactory()
+std::unique_ptr<webrtc::VideoDecoderFactory> createWebKitDecoderFactory(WebKitCodecSupport codecSupport)
 {
-    return std::make_unique<webrtc::ObjCVideoDecoderFactory>([[RTCVideoDecoderFactoryH264 alloc] init]);
+    return ObjCToNativeVideoDecoderFactory(codecSupport == WebKitCodecSupport::H264AndVP8 ? [[RTCDefaultVideoDecoderFactory alloc] init] : [[RTCVideoDecoderFactoryH264 alloc] init]);
 }
 
 static bool h264HardwareEncoderAllowed = true;
@@ -120,17 +127,58 @@ bool isH264HardwareEncoderAllowed()
 
 rtc::scoped_refptr<webrtc::VideoFrameBuffer> pixelBufferToFrame(CVPixelBufferRef pixelBuffer)
 {
-    RTCCVPixelBuffer *frameBuffer = [[RTCCVPixelBuffer alloc] initWithPixelBuffer: pixelBuffer];
-    return new rtc::RefCountedObject<webrtc::ObjCFrameBuffer>(frameBuffer);
+    RTCCVPixelBuffer *frameBuffer = [[RTCCVPixelBuffer alloc] initWithPixelBuffer:pixelBuffer];
+    return new rtc::RefCountedObject<ObjCFrameBuffer>(frameBuffer);
 }
 
-CVPixelBufferRef pixelBufferFromFrame(const VideoFrame& frame)
+static bool CopyVideoFrameToPixelBuffer(const rtc::scoped_refptr<webrtc::I420BufferInterface>& frame, CVPixelBufferRef pixel_buffer) {
+    RTC_DCHECK(pixel_buffer);
+    RTC_DCHECK(CVPixelBufferGetPixelFormatType(pixel_buffer) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange || CVPixelBufferGetPixelFormatType(pixel_buffer) == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange);
+    RTC_DCHECK_EQ(CVPixelBufferGetHeightOfPlane(pixel_buffer, 0), static_cast<size_t>(frame->height()));
+    RTC_DCHECK_EQ(CVPixelBufferGetWidthOfPlane(pixel_buffer, 0), static_cast<size_t>(frame->width()));
+
+    if (CVPixelBufferLockBaseAddress(pixel_buffer, 0) != kCVReturnSuccess)
+        return false;
+
+    uint8_t* dst_y = reinterpret_cast<uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(pixel_buffer, 0));
+    int dst_stride_y = CVPixelBufferGetBytesPerRowOfPlane(pixel_buffer, 0);
+
+    uint8_t* dst_uv = reinterpret_cast<uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(pixel_buffer, 1));
+    int dst_stride_uv = CVPixelBufferGetBytesPerRowOfPlane(pixel_buffer, 1);
+
+    int result = libyuv::I420ToNV12(
+        frame->DataY(), frame->StrideY(),
+        frame->DataU(), frame->StrideU(),
+        frame->DataV(), frame->StrideV(),
+        dst_y, dst_stride_y, dst_uv, dst_stride_uv,
+        frame->width(), frame->height());
+
+    CVPixelBufferUnlockBaseAddress(pixel_buffer, 0);
+
+    if (result)
+        return false;
+
+    return true;
+}
+
+
+CVPixelBufferRef pixelBufferFromFrame(const VideoFrame& frame, const std::function<CVPixelBufferRef(size_t, size_t)>& makePixelBuffer)
 {
-    auto buffer = frame.video_frame_buffer();
-    auto frameBuffer = static_cast<webrtc::ObjCFrameBuffer&>(*buffer).wrapped_frame_buffer();
-    if ([frameBuffer isKindOfClass: [RTCCVPixelBuffer class]])
-        return [(RTCCVPixelBuffer *)frameBuffer pixelBuffer];
-    return nullptr;
+    if (frame.video_frame_buffer()->type() != VideoFrameBuffer::Type::kNative) {
+        rtc::scoped_refptr<const I420BufferInterface> buffer = frame.video_frame_buffer()->GetI420();
+
+        auto pixelBuffer = makePixelBuffer(buffer->width(), buffer->height());
+        if (pixelBuffer)
+            CopyVideoFrameToPixelBuffer(frame.video_frame_buffer()->GetI420(), pixelBuffer);
+        return pixelBuffer;
+    }
+
+    auto *frameBuffer = static_cast<ObjCFrameBuffer*>(frame.video_frame_buffer().get())->wrapped_frame_buffer();
+    if (![frameBuffer isKindOfClass:[RTCCVPixelBuffer class]])
+        return nullptr;
+
+    auto *rtcPixelBuffer = (RTCCVPixelBuffer *)frameBuffer;
+    return rtcPixelBuffer.pixelBuffer;
 }
 
 }

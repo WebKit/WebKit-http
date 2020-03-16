@@ -10,22 +10,61 @@
 
 package org.webrtc;
 
-public class DefaultVideoDecoderFactory implements VideoDecoderFactory {
-  private final HardwareVideoDecoderFactory hardwareVideoDecoderFactory;
-  private final SoftwareVideoDecoderFactory softwareVideoDecoderFactory;
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
 
-  public DefaultVideoDecoderFactory(EglBase.Context eglContext) {
-    hardwareVideoDecoderFactory =
-        new HardwareVideoDecoderFactory(eglContext, false /* fallbackToSoftware */);
-    softwareVideoDecoderFactory = new SoftwareVideoDecoderFactory();
+/**
+ * Helper class that combines HW and SW decoders.
+ */
+public class DefaultVideoDecoderFactory implements VideoDecoderFactory {
+  private final VideoDecoderFactory hardwareVideoDecoderFactory;
+  private final VideoDecoderFactory softwareVideoDecoderFactory = new SoftwareVideoDecoderFactory();
+  private final @Nullable VideoDecoderFactory platformSoftwareVideoDecoderFactory;
+
+  /**
+   * Create decoder factory using default hardware decoder factory.
+   */
+  public DefaultVideoDecoderFactory(@Nullable EglBase.Context eglContext) {
+    this.hardwareVideoDecoderFactory = new HardwareVideoDecoderFactory(eglContext);
+    this.platformSoftwareVideoDecoderFactory = new PlatformSoftwareVideoDecoderFactory(eglContext);
+  }
+
+  /**
+   * Create decoder factory using explicit hardware decoder factory.
+   */
+  DefaultVideoDecoderFactory(VideoDecoderFactory hardwareVideoDecoderFactory) {
+    this.hardwareVideoDecoderFactory = hardwareVideoDecoderFactory;
+    this.platformSoftwareVideoDecoderFactory = null;
   }
 
   @Override
-  public VideoDecoder createDecoder(String codecType) {
-    VideoDecoder decoder = hardwareVideoDecoderFactory.createDecoder(codecType);
-    if (decoder != null) {
-      return decoder;
+  public @Nullable VideoDecoder createDecoder(VideoCodecInfo codecType) {
+    VideoDecoder softwareDecoder = softwareVideoDecoderFactory.createDecoder(codecType);
+    final VideoDecoder hardwareDecoder = hardwareVideoDecoderFactory.createDecoder(codecType);
+    if (softwareDecoder == null && platformSoftwareVideoDecoderFactory != null) {
+      softwareDecoder = platformSoftwareVideoDecoderFactory.createDecoder(codecType);
     }
-    return softwareVideoDecoderFactory.createDecoder(codecType);
+    if (hardwareDecoder != null && softwareDecoder != null) {
+      // Both hardware and software supported, wrap it in a software fallback
+      return new VideoDecoderFallback(
+          /* fallback= */ softwareDecoder, /* primary= */ hardwareDecoder);
+    }
+    return hardwareDecoder != null ? hardwareDecoder : softwareDecoder;
+  }
+
+  @Override
+  public VideoCodecInfo[] getSupportedCodecs() {
+    LinkedHashSet<VideoCodecInfo> supportedCodecInfos = new LinkedHashSet<VideoCodecInfo>();
+
+    supportedCodecInfos.addAll(Arrays.asList(softwareVideoDecoderFactory.getSupportedCodecs()));
+    supportedCodecInfos.addAll(Arrays.asList(hardwareVideoDecoderFactory.getSupportedCodecs()));
+    if (platformSoftwareVideoDecoderFactory != null) {
+      supportedCodecInfos.addAll(
+          Arrays.asList(platformSoftwareVideoDecoderFactory.getSupportedCodecs()));
+    }
+
+    return supportedCodecInfos.toArray(new VideoCodecInfo[supportedCodecInfos.size()]);
   }
 }

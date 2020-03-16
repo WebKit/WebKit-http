@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import "sdk/objc/Framework/Headers/WebRTC/RTCAudioSession.h"
+#import "sdk/objc/components/audio/RTCAudioSession.h"
 
 namespace webrtc {
 class AudioSessionObserver;
@@ -24,7 +24,6 @@ class AudioSessionObserver;
 /** |observer| is a raw pointer and should be kept alive
  *  for this object's lifetime.
  */
-- (instancetype)initWithObserver:(webrtc::AudioSessionObserver *)observer
-    NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithObserver:(webrtc::AudioSessionObserver *)observer NS_DESIGNATED_INITIALIZER;
 
 @end

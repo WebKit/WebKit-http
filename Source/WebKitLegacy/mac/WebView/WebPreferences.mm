@@ -658,10 +658,10 @@ public:
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMediaRecorderEnabledPreferenceKey,
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
@@ -2822,16 +2822,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
 }
 
-- (BOOL)webRTCLegacyAPIEnabled
-{
-    return [self _boolValueForKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
-}
-
-- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
-}
-
 - (BOOL)linkPreloadEnabled
 {
     return [self _boolValueForKey:WebKitLinkPreloadEnabledPreferenceKey];
@@ -3342,6 +3332,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaCapabilitiesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMediaCapabilitiesEnabledPreferenceKey];
+}
+
+- (BOOL)mediaRecorderEnabled
+{
+    return [self _boolValueForKey:WebKitMediaRecorderEnabledPreferenceKey];
+}
+
+- (void)setMediaRecorderEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaRecorderEnabledPreferenceKey];
 }
 
 - (BOOL)serverTimingEnabled

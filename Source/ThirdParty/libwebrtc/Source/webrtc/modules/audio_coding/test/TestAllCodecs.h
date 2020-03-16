@@ -13,10 +13,8 @@
 
 #include <memory>
 
-#include "modules/audio_coding/test/ACMTest.h"
 #include "modules/audio_coding/test/Channel.h"
 #include "modules/audio_coding/test/PCMFile.h"
-#include "typedefs.h"  // NOLINT(build/include)
 
 namespace webrtc {
 
@@ -48,20 +46,24 @@ class TestPack : public AudioPacketizationCallback {
   size_t payload_size_;
 };
 
-class TestAllCodecs : public ACMTest {
+class TestAllCodecs {
  public:
   explicit TestAllCodecs(int test_mode);
   ~TestAllCodecs();
 
-  void Perform() override;
+  void Perform();
 
  private:
   // The default value of '-1' indicates that the registration is based only on
   // codec name, and a sampling frequency matching is not required.
   // This is useful for codecs which support several sampling frequency.
   // Note! Only mono mode is tested in this test.
-  void RegisterSendCodec(char side, char* codec_name, int32_t sampling_freq_hz,
-                         int rate, int packet_size, size_t extra_byte);
+  void RegisterSendCodec(char side,
+                         char* codec_name,
+                         int32_t sampling_freq_hz,
+                         int rate,
+                         int packet_size,
+                         size_t extra_byte);
 
   void Run(TestPack* channel);
   void OpenOutFile(int test_number);

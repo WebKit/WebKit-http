@@ -37,8 +37,7 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
         conf_(false),
         sendbuf_size_(-1),
         recvbuf_size_(-1),
-        dscp_(rtc::DSCP_NO_CHANGE) {
-  }
+        dscp_(rtc::DSCP_NO_CHANGE) {}
 
   void SetDestination(MediaChannel* dest) { dest_ = dest; }
 
@@ -110,6 +109,7 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
   int sendbuf_size() const { return sendbuf_size_; }
   int recvbuf_size() const { return recvbuf_size_; }
   rtc::DiffServCodePoint dscp() const { return dscp_; }
+  rtc::PacketOptions options() const { return options_; }
 
  protected:
   virtual bool SendPacket(rtc::CopyOnWriteBuffer* packet,
@@ -121,12 +121,12 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
       return false;
     }
     sent_ssrcs_[cur_ssrc]++;
+    options_ = options;
 
     rtp_packets_.push_back(*packet);
     if (conf_) {
       for (size_t i = 0; i < conf_sent_ssrcs_.size(); ++i) {
-        if (!SetRtpSsrc(packet->data(), packet->size(),
-                        conf_sent_ssrcs_[i])) {
+        if (!SetRtpSsrc(packet->data(), packet->size(), conf_sent_ssrcs_[i])) {
           return false;
         }
         PostMessage(ST_RTP, *packet);
@@ -141,6 +141,7 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
                         const rtc::PacketOptions& options) {
     rtc::CritScope cs(&crit_);
     rtcp_packets_.push_back(*packet);
+    options_ = options;
     if (!conf_) {
       // don't worry about RTCP in conf mode for now
       PostMessage(ST_RTCP, *packet);
@@ -148,8 +149,7 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
     return true;
   }
 
-  virtual int SetOption(SocketType type, rtc::Socket::Option opt,
-                        int option) {
+  virtual int SetOption(SocketType type, rtc::Socket::Option opt, int option) {
     if (opt == rtc::Socket::OPT_SNDBUF) {
       sendbuf_size_ = option;
     } else if (opt == rtc::Socket::OPT_RCVBUF) {
@@ -166,15 +166,12 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
 
   virtual void OnMessage(rtc::Message* msg) {
     rtc::TypedMessageData<rtc::CopyOnWriteBuffer>* msg_data =
-        static_cast<rtc::TypedMessageData<rtc::CopyOnWriteBuffer>*>(
-            msg->pdata);
+        static_cast<rtc::TypedMessageData<rtc::CopyOnWriteBuffer>*>(msg->pdata);
     if (dest_) {
       if (msg->message_id == ST_RTP) {
-        dest_->OnPacketReceived(&msg_data->data(),
-                                rtc::CreatePacketTime(0));
+        dest_->OnPacketReceived(&msg_data->data(), rtc::CreatePacketTime(0));
       } else {
-        dest_->OnRtcpReceived(&msg_data->data(),
-                              rtc::CreatePacketTime(0));
+        dest_->OnRtcpReceived(&msg_data->data(), rtc::CreatePacketTime(0));
       }
     }
     delete msg_data;
@@ -221,6 +218,8 @@ class FakeNetworkInterface : public MediaChannel::NetworkInterface,
   int sendbuf_size_;
   int recvbuf_size_;
   rtc::DiffServCodePoint dscp_;
+  // Options of the most recently sent packet.
+  rtc::PacketOptions options_;
 };
 
 }  // namespace cricket
