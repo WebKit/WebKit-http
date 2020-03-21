@@ -233,7 +233,7 @@ public:
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 
-#if !LOG_DISABLED || PLATFORM(HAIKU)
+#if !LOG_DISABLED
     String description() const;
 #endif
 
