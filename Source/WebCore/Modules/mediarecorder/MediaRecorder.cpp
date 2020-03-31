@@ -246,6 +246,11 @@ void MediaRecorder::scheduleDeferredTask(Function<void()>&& function)
     });
 }
 
+bool MediaRecorder::virtualHasPendingActivity() const
+{
+    return m_state != RecordingState::Inactive;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)

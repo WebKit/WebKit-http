@@ -80,9 +80,6 @@ public:
 
     const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
 
-    // ActiveDOMObject
-    bool hasPendingActivity() const override;
-
     unsigned internalInstanceSessionObjectRefCount() const { return m_instanceSession->refCount(); }
 
 private:
@@ -104,7 +101,8 @@ private:
     void derefEventTarget() override { deref(); }
 
     // ActiveDOMObject
-    const char* activeDOMObjectName() const override;
+    const char* activeDOMObjectName() const final;
+    bool virtualHasPendingActivity() const final;
 
     WeakPtr<MediaKeys> m_keys;
     String m_sessionId;

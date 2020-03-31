@@ -5767,7 +5767,7 @@ void HTMLMediaElement::resume()
     updateRenderer();
 }
 
-bool HTMLMediaElement::hasPendingActivity() const
+bool HTMLMediaElement::virtualHasPendingActivity() const
 {
     return (hasAudio() && isPlaying()) || m_asyncEventQueue->hasPendingEvents() || m_creatingControls;
 }
