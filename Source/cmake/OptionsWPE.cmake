@@ -44,6 +44,12 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEBDRIVER PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_CRYPTO PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_XSLT PUBLIC ON)
 
+# Supported platforms.
+WEBKIT_OPTION_DEFINE(USE_WPEWEBKIT_PLATFORM_WESTEROS "Whether to enable support for the Westeros platform" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_WPEWEBKIT_PLATFORM_BCM_NEXUS "Whether to enable support for the Broadcom Nexus platform" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_WPEWEBKIT_PLATFORM_INTEL_CE "Whether to enable support for the Intel CE" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_WPEWEBKIT_PLATFORM_RPI "Whether to enable support for the raspberry pi" PUBLIC OFF)
+
 # Private options shared with other WebKit ports. Add options here only if
 # we need a value different from the default defined in WebKitFeatures.cmake.
 # Changing these options is completely unsupported.

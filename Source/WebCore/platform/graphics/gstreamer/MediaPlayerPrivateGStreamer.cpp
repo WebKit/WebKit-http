@@ -2143,6 +2143,16 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             gst_element_state_get_name(currentState), '_', gst_element_state_get_name(newState)).utf8();
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
 
+#if USE(GSTREAMER_HOLEPUNCH)
+        if (currentState == GST_STATE_NULL && newState == GST_STATE_READY) {
+            // If we didn't create a video sink, store a reference to the created one.
+            if (!m_videoSink)
+                g_object_get(m_pipeline.get(), "video-sink", &m_videoSink.outPtr(), nullptr);
+
+            // Ensure that there's a buffer with the transparent rectangle available when playback is going to start.
+            pushNextHolePunchBuffer();
+        }
+#endif
         break;
     }
     case GST_MESSAGE_BUFFERING:
@@ -3096,9 +3106,11 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
             GST_WARNING("The videoflip element is missing, video rotation support is now disabled. Please check your gst-plugins-good installation.");
     }
 
+#if !USE(GSTREAMER_HOLEPUNCH)
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
     if (videoSinkPad)
         g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
+#endif
 }
 
 bool MediaPlayerPrivateGStreamer::didPassCORSAccessCheck() const
@@ -3573,9 +3585,16 @@ GstElement* MediaPlayerPrivateGStreamer::createVideoSinkGL()
 #if USE(GSTREAMER_HOLEPUNCH)
 static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect)
 {
-    // Here goes the platform-dependant code to set to the videoSink the size
-    // and position of the video rendering window. Mark them unused as default.
-    UNUSED_PARAM(videoSink);
+    if (!videoSink)
+        return;
+
+#if USE(WESTEROS_SINK) || USE(WPEWEBKIT_PLATFORM_BCM_NEXUS)
+    // Valid for brcmvideosink and westerossink.
+    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", rect.x(), rect.y(), rect.width(), rect.height()));
+    g_object_set(videoSink, "rectangle", rectString.get(), nullptr);
+    return;
+#endif
+
     UNUSED_PARAM(rect);
 }
 
@@ -3591,9 +3610,21 @@ GstElement* MediaPlayerPrivateGStreamer::createHolePunchVideoSink()
 {
     // Here goes the platform-dependant code to create the videoSink. As a default
     // we use a fakeVideoSink so nothing is drawn to the page.
-    GstElement* videoSink =  gst_element_factory_make("fakevideosink", nullptr);
 
+#if USE(WESTEROS_SINK)
+    // Westeros using holepunch.
+    GRefPtr<GstElementFactory> westerosfactory = adoptGRef(gst_element_factory_find("westerossink"));
+    GstElement* videoSink = gst_element_factory_create(westerosfactory.get(), "WesterosVideoSink");
+    g_object_set(G_OBJECT(videoSink), "zorder", 0.0f, nullptr);
     return videoSink;
+#endif
+
+#if USE(WPEWEBKIT_PLATFORM_BCM_NEXUS)
+    // Nexus boxes use autovideosink.
+    return nullptr;
+#endif
+
+    return gst_element_factory_make("fakevideosink", nullptr);
 }
 
 void MediaPlayerPrivateGStreamer::pushNextHolePunchBuffer()
