@@ -66,7 +66,7 @@ static void findMatchingFontStyle(const font_family& fontFamily, bool bold, bool
     for (int i = 0; i < numStyles; i++) {
         if (get_font_style(const_cast<char*>(fontFamily), i, fontStyle) == B_OK) {
             String styleName(*fontStyle);
-            if ((oblique && bold) && (styleName == "BoldItalic" || styleName == "Bold Oblique"))
+            if ((oblique && bold) && (styleName == "Bold Italic" || styleName == "Bold Oblique"))
                 return;
             if ((oblique && !bold) && (styleName == "Italic" || styleName == "Oblique"))
                 return;
@@ -80,7 +80,7 @@ static void findMatchingFontStyle(const font_family& fontFamily, bool bold, bool
     }
 
     // Didn't find matching style
-    memset(fontStyle, 0, sizeof(font_style));
+    memset(*fontStyle, 0, sizeof(font_style));
 }
 
 // #pragma mark -
@@ -170,25 +170,25 @@ bool FontPlatformData::isFixedPitch() const
 void
 FontPlatformData::SetFallBackSerifFont(const BString& font)
 {
-	strncpy(m_FallbackSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+	strlcpy(m_FallbackSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH);
 }
 
 void
 FontPlatformData::SetFallBackSansSerifFont(const BString& font)
 {
-	strncpy(m_FallbackSansSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+	strlcpy(m_FallbackSansSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH);
 }
 
 void
 FontPlatformData::SetFallBackFixedFont(const BString& font)
 {
-	strncpy(m_FallbackFixedFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+	strlcpy(m_FallbackFixedFontFamily, font.String(), B_FONT_FAMILY_LENGTH);
 }
 
 void
 FontPlatformData::SetFallBackStandardFont(const BString& font)
 {
-	strncpy(m_FallbackStandardFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+	strlcpy(m_FallbackStandardFontFamily, font.String(), B_FONT_FAMILY_LENGTH);
 }
 
 RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
@@ -196,6 +196,13 @@ RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 	notImplemented();
 	return nullptr;
 }
+
+#if !LOG_DISABLED
+String FontPlatformData::description() const
+{
+    return String();
+}
+#endif
 
 } // namespace WebCore
 
