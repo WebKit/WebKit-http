@@ -45,6 +45,7 @@
 #import <WebCore/PlatformMediaSessionManager.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
+#import <WebCore/SimpleRange.h>
 #import <WebCore/TextIterator.h>
 
 #if PLATFORM(COCOA)
@@ -70,7 +71,7 @@ void WebPage::requestActiveNowPlayingSessionInfo(CallbackID callbackID)
         title = sharedManager->lastUpdatedNowPlayingTitle();
         duration = sharedManager->lastUpdatedNowPlayingDuration();
         elapsedTime = sharedManager->lastUpdatedNowPlayingElapsedTime();
-        uniqueIdentifier = sharedManager->lastUpdatedNowPlayingInfoUniqueIdentifier();
+        uniqueIdentifier = sharedManager->lastUpdatedNowPlayingInfoUniqueIdentifier().toUInt64();
         registeredAsNowPlayingApplication = sharedManager->registeredAsNowPlayingApplication();
     }
 
@@ -184,6 +185,24 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
     
     editor.setIsGettingDictionaryPopupInfo(false);
     return dictionaryPopupInfo;
+}
+
+void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& replacementEditingRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool registerUndoGroup)
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    Ref<Frame> protector { frame };
+
+    if (replacementEditingRange.location != notFound) {
+        auto replacementRange = EditingRange::toRange(frame, replacementEditingRange);
+        if (replacementRange)
+            frame.selection().setSelection(VisibleSelection { *replacementRange, SEL_DEFAULT_AFFINITY });
+    }
+
+    if (registerUndoGroup)
+        send(Messages::WebPageProxy::RegisterInsertionUndoGrouping { });
+
+    ASSERT(!frame.editor().hasComposition());
+    frame.editor().insertDictatedText(text, dictationAlternativeLocations, nullptr /* triggeringEvent */);
 }
 
 void WebPage::accessibilityTransferRemoteToken(RetainPtr<NSData> remoteToken)

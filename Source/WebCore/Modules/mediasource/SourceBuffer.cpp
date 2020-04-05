@@ -1247,7 +1247,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment(const Init
             // FIXME: Implement steps 5.4.1-5.4.8.1 as per Editor's Draft 09 January 2015, and reorder this
             // 5.4.1 Let new text track be a new TextTrack object with its properties populated with the
             // appropriate information from the initialization segment.
-            auto newTextTrack = InbandTextTrack::create(*scriptExecutionContext(), *this, textTrackPrivate);
+            auto newTextTrack = InbandTextTrack::create(document(), *this, textTrackPrivate);
 
             // 5.4.2 If the mode property on new text track equals "showing" or "hidden", then set active
             // track flag to true.
@@ -2097,7 +2097,7 @@ void SourceBuffer::updateMinimumUpcomingPresentationTime(TrackBuffer& trackBuffe
     }
 
     auto minPts = std::min_element(trackBuffer.decodeQueue.begin(), trackBuffer.decodeQueue.end(), [](auto& left, auto& right) -> bool {
-        return left.second->outputPresentationTime() < right.second->outputPresentationTime();
+        return left.second->presentationTime() < right.second->presentationTime();
     });
 
     if (minPts == trackBuffer.decodeQueue.end()) {
@@ -2106,7 +2106,7 @@ void SourceBuffer::updateMinimumUpcomingPresentationTime(TrackBuffer& trackBuffe
         return;
     }
 
-    trackBuffer.minimumEnqueuedPresentationTime = minPts->second->outputPresentationTime();
+    trackBuffer.minimumEnqueuedPresentationTime = minPts->second->presentationTime();
     m_private->setMinimumUpcomingPresentationTime(trackID, trackBuffer.minimumEnqueuedPresentationTime);
 }
 

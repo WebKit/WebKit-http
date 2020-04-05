@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -214,12 +214,6 @@
 #define DEFAULT_SERVICE_WORKERS_ENABLED false
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-#define DEFAULT_POINTER_EVENTS_ENABLED true
-#else
-#define DEFAULT_POINTER_EVENTS_ENABLED false
-#endif
-
 #if PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(WPE)
 #define DEFAULT_PROCESS_SWAP_ON_CROSS_SITE_NAVIGATION_ENABLED true
 #else
@@ -230,25 +224,6 @@
 #define DEFAULT_CONIC_GRADIENT_ENABLED true
 #else
 #define DEFAULT_CONIC_GRADIENT_ENABLED false
-#endif
-
-#if ENABLE(GPU_PROCESS_FOR_WEBRTC)
-#define DEFAULT_CAPTURE_AUDIO_IN_GPUPROCESS true
-#define DEFAULT_CAPTURE_AUDIO_IN_UIPROCESS false
-#define DEFAULT_CAPTURE_VIDEO_IN_GPUPROCESS true
-#define DEFAULT_CAPTURE_VIDEO_IN_UIPROCESS false
-#define DEFAULT_WEBRTC_CODECS_IN_GPUPROCESS true
-#else
-#define DEFAULT_CAPTURE_AUDIO_IN_GPUPROCESS false
-#if PLATFORM(MAC)
-#define DEFAULT_CAPTURE_AUDIO_IN_UIPROCESS true
-#else
-#define DEFAULT_CAPTURE_AUDIO_IN_UIPROCESS false
-#endif
-
-#define DEFAULT_CAPTURE_VIDEO_IN_GPUPROCESS false
-#define DEFAULT_CAPTURE_VIDEO_IN_UIPROCESS false
-#define DEFAULT_WEBRTC_CODECS_IN_GPUPROCESS false
 #endif
 
 #if PLATFORM(WATCHOS)
@@ -283,14 +258,6 @@
 #define DEFAULT_APPLE_PAY_ENABLED true
 #else
 #define DEFAULT_APPLE_PAY_ENABLED false
-#endif
-
-#if PLATFORM(IOS_FAMILY) || USE(NICOSIA)
-#define DEFAULT_ASYNC_FRAME_SCROLLING_ENABLED true
-#define DEFAULT_ASYNC_OVERFLOW_SCROLLING_ENABLED true
-#else
-#define DEFAULT_ASYNC_FRAME_SCROLLING_ENABLED false
-#define DEFAULT_ASYNC_OVERFLOW_SCROLLING_ENABLED false
 #endif
 
 #if ENABLE(EXPERIMENTAL_FEATURES) && (PLATFORM(GTK) || PLATFORM(WPE))
@@ -330,6 +297,39 @@ bool defaultTextAutosizingUsesIdempotentMode();
 #endif
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 bool allowsDeprecatedSynchronousXMLHttpRequestDuringUnload();
+#endif
+
+bool defaultAsyncFrameScrollingEnabled();
+bool defaultAsyncOverflowScrollingEnabled();
+
+#if ENABLE(GPU_PROCESS)
+bool defaultUseGPUProcessForMedia();
+#endif
+
+bool defaultRenderCanvasInGPUProcessEnabled();
+
+#if ENABLE(MEDIA_STREAM)
+bool defaultCaptureAudioInGPUProcessEnabled();
+bool defaultCaptureAudioInUIProcessEnabled();
+bool defaultCaptureVideoInGPUProcessEnabled();
+#endif
+
+#if ENABLE(WEB_RTC)
+bool defaultWebRTCCodecsInGPUProcess();
+#endif
+
+#if ENABLE(WEBGL2)
+bool defaultWebGL2Enabled();
+#endif
+
+#if ENABLE(WEBGPU)
+bool defaultWebGPUEnabled();
+#endif
+
+bool defaultInAppBrowserPrivacy();
+
+#if HAVE(INCREMENTAL_PDF_APIS)
+bool defaultIncrementalPDFEnabled();
 #endif
 
 } // namespace WebKit

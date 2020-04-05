@@ -30,6 +30,7 @@
 #include "Connection.h"
 #include "MediaPlayerPrivateRemoteIdentifier.h"
 #include "MessageReceiver.h"
+#include "RemoteLegacyCDMSessionIdentifier.h"
 #include "RemoteMediaPlayerConfiguration.h"
 #include "RemoteMediaPlayerProxyConfiguration.h"
 #include "RemoteMediaPlayerState.h"
@@ -109,8 +110,8 @@ public:
     void play();
     void pause();
 
-    void seek(MediaTime&&);
-    void seekWithTolerance(MediaTime&&, MediaTime&& negativeTolerance, MediaTime&& positiveTolerance);
+    void seek(const MediaTime&);
+    void seekWithTolerance(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance);
 
     void setVolume(double);
     void setMuted(bool);
@@ -140,9 +141,11 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void setWirelessVideoPlaybackDisabled(bool);
     void setShouldPlayToPlaybackTarget(bool);
+    void setWirelessPlaybackTarget(const WebCore::MediaPlaybackTargetContext&);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void setLegacyCDMSession(RemoteLegacyCDMSessionIdentifier&& instanceId);
     void keyAdded();
 #endif
 
@@ -168,8 +171,13 @@ public:
     void tracksChanged();
     void syncTextTrackBounds();
 
+    void performTaskAtMediaTime(const MediaTime&, WallTime, CompletionHandler<void(Optional<MediaTime>)>&&);
+    void wouldTaintOrigin(struct WebCore::SecurityOriginData, CompletionHandler<void(Optional<bool>)>&&);
+
     Ref<WebCore::PlatformMediaResource> requestResource(WebCore::ResourceRequest&&, WebCore::PlatformMediaResourceLoader::LoadOptions);
     void removeResource(RemoteMediaResourceIdentifier);
+
+    RefPtr<WebCore::MediaPlayer> mediaPlayer() { return m_player; }
 
 private:
     // MediaPlayerClient
@@ -279,13 +287,17 @@ private:
     RunLoop::Timer<RemoteMediaPlayerProxy> m_updateCachedStateMessageTimer;
     RemoteMediaPlayerState m_cachedState;
     RemoteMediaPlayerProxyConfiguration m_configuration;
-    bool m_bufferedChanged { true };
-    bool m_renderingCanBeAccelerated { true };
+    CompletionHandler<void(Optional<MediaTime>)> m_performTaskAtMediaTimeCompletionHandler;
+
     WebCore::LayoutRect m_videoContentBoxRect;
     float m_videoContentScale { 1.0 };
 
+    bool m_bufferedChanged { true };
+    bool m_renderingCanBeAccelerated { true };
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(ENCRYPTED_MEDIA)
     bool m_shouldContinueAfterKeyNeeded { false };
+    RemoteLegacyCDMSessionIdentifier m_legacySession;
 #endif
 
 #if !RELEASE_LOG_DISABLED

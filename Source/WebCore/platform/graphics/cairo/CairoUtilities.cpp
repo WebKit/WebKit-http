@@ -30,12 +30,12 @@
 #if USE(CAIRO)
 
 #include "AffineTransform.h"
+#include "CairoUniquePtr.h"
 #include "Color.h"
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "IntRect.h"
 #include "Path.h"
-#include "PlatformPathCairo.h"
 #include "RefPtrCairo.h"
 #include "Region.h"
 #include <wtf/Assertions.h>
@@ -94,9 +94,8 @@ void setSourceRGBAFromColor(cairo_t* context, const Color& color)
 
 void appendPathToCairoContext(cairo_t* to, cairo_t* from)
 {
-    auto cairoPath = cairo_copy_path(from);
-    cairo_append_path(to, cairoPath);
-    cairo_path_destroy(cairoPath);
+    CairoUniquePtr<cairo_path_t> cairoPath(cairo_copy_path(from));
+    cairo_append_path(to, cairoPath.get());
 }
 
 void setPathOnCairoContext(cairo_t* to, cairo_t* from)
@@ -109,7 +108,7 @@ void appendWebCorePathToCairoContext(cairo_t* context, const Path& path)
 {
     if (path.isEmpty())
         return;
-    appendPathToCairoContext(context, path.platformPath()->context());
+    appendPathToCairoContext(context, path.cairoPath());
 }
 
 void appendRegionToCairoContext(cairo_t* to, const cairo_region_t* region)

@@ -64,15 +64,15 @@ public:
 
     struct NodeChange {
         Ref<AXIsolatedObject> m_isolatedObject;
-        AccessibilityObjectWrapper* m_wrapper;
+        RetainPtr<AccessibilityObjectWrapper> m_wrapper;
         NodeChange(AXIsolatedObject&, AccessibilityObjectWrapper*);
         NodeChange(const NodeChange&);
     };
 
     // Call on main thread
     void appendNodeChanges(const Vector<NodeChange>&);
+    // Removes the given node and all its descendants.
     void removeNode(AXID);
-    void removeSubtree(AXID);
 
     // Both setRootNode and setFocusedNode must be called only during the
     // generation of the IsolatedTree.

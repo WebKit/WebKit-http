@@ -592,7 +592,7 @@ WebRTCVP8CodecEnabled:
 
 WebRTCPlatformCodecsInGPUProcessEnabled:
   type: bool
-  defaultValue: DEFAULT_WEBRTC_CODECS_IN_GPUPROCESS
+  defaultValue: defaultWebRTCCodecsInGPUProcess()
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC Platform Codecs in GPU Process"
@@ -1261,6 +1261,22 @@ ShouldUseServiceWorkerShortTimeout:
   defaultValue: false
   type: bool
 
+IsInAppBrowserPrivacyEnabled:
+    type: bool
+    defaultValue: defaultInAppBrowserPrivacy()
+    humanReadableName: "In-App Browser Privacy"
+    humanReadableDescription: "Enable In-App Browser Privacy"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: debug
+
+NeedsInAppBrowserPrivacyQuirks:
+    type: bool
+    defaultValue: true
+    humanReadableName: "Needs In-App Browser Privacy Quirks"
+    humanReadableDescription: "Enable quirks needed to support In-App Browser privacy"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: debug
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1308,14 +1324,6 @@ VisualViewportAPIEnabled:
   defaultValue: true
   humanReadableName: "Visual Viewport API"
   humanReadableDescription: "Enable Visual Viewport API"
-  category: experimental
-
-PointerEventsEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Pointer Events"
-  humanReadableDescription: "Enable Pointer Events"
-  webcoreBinding: RuntimeEnabledFeatures
   category: experimental
 
 SyntheticEditingCommandsEnabled:
@@ -1389,7 +1397,7 @@ WebGL2Enabled:
 
 WebGPUEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: defaultWebGPUEnabled()
   humanReadableName: "WebGPU"
   humanReadableDescription: "WebGPU Sketch prototype"
   category: experimental
@@ -1530,7 +1538,7 @@ GenericCueAPIEnabled:
 
 CaptureVideoInUIProcessEnabled:
   type: bool
-  defaultValue: DEFAULT_CAPTURE_VIDEO_IN_UIPROCESS
+  defaultValue: false
   humanReadableName: "Capture video in UI Process"
   humanReadableDescription: "Enable video capture in UI Process"
   category: experimental
@@ -1539,7 +1547,7 @@ CaptureVideoInUIProcessEnabled:
 
 CaptureVideoInGPUProcessEnabled:
   type: bool
-  defaultValue: DEFAULT_CAPTURE_VIDEO_IN_GPUPROCESS
+  defaultValue: defaultCaptureVideoInGPUProcessEnabled()
   humanReadableName: "Capture video in GPU Process"
   humanReadableDescription: "Enable video capture in GPU Process"
   category: internal
@@ -1594,14 +1602,14 @@ ServiceWorkersEnabled:
 
 AsyncFrameScrollingEnabled:
   type: bool
-  defaultValue: DEFAULT_ASYNC_FRAME_SCROLLING_ENABLED
+  defaultValue: defaultAsyncFrameScrollingEnabled()
   humanReadableName: "Async Frame Scrolling"
   humanReadableDescription: "Perform frame scrolling off the main thread"
   category: internal
 
 AsyncOverflowScrollingEnabled:
   type: bool
-  defaultValue: DEFAULT_ASYNC_OVERFLOW_SCROLLING_ENABLED
+  defaultValue: defaultAsyncOverflowScrollingEnabled()
   humanReadableName: "Async Overflow Scrolling"
   humanReadableDescription: "Perform overflow scrolling off the main thread"
   category: internal
@@ -1729,8 +1737,8 @@ LayoutFormattingContextIntegrationEnabled:
 
 CaptureAudioInUIProcessEnabled:
   type: bool
-  defaultValue: DEFAULT_CAPTURE_AUDIO_IN_UIPROCESS
-  humanReadableName: "Capture Audio in UI Process"
+  defaultValue: defaultCaptureAudioInUIProcessEnabled()
+  humanReadableName: "Capture audio in UI Process"
   humanReadableDescription: "Enable audio capture in UI Process"
   category: internal
   webcoreBinding: none
@@ -1738,8 +1746,8 @@ CaptureAudioInUIProcessEnabled:
 
 CaptureAudioInGPUProcessEnabled:
   type: bool
-  defaultValue: DEFAULT_CAPTURE_AUDIO_IN_GPUPROCESS
-  humanReadableName: "Capture Audio in GPU Process"
+  defaultValue: defaultCaptureAudioInGPUProcessEnabled()
+  humanReadableName: "Capture audio in GPU Process"
   humanReadableDescription: "Enable audio capture in GPU Process"
   category: internal
   webcoreBinding: none
@@ -1747,7 +1755,7 @@ CaptureAudioInGPUProcessEnabled:
 
 RenderCanvasInGPUProcessEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: defaultRenderCanvasInGPUProcessEnabled()
   humanReadableName: "Render canvas in GPU Process"
   humanReadableDescription: "Enable canvas rendering in GPU Process"
   category: internal
@@ -1929,21 +1937,13 @@ RemotePlaybackEnabled:
   humanReadableDescription: "Enable Remote Playback API"
 
 UseGPUProcessForMedia:
-    type: bool
-    defaultValue: false
-    condition: ENABLE(GPU_PROCESS)
-    humanReadableName: "Media in GPU Process"
-    humanReadableDescription: "Do all media loading and playback in the GPU Process"
-    category: internal
-    webcoreName: useGPUProcessForMedia
-
-IsInAppBrowserPrivacyEnabled:
-    type: bool
-    defaultValue: false
-    humanReadableName: "In-App Browser Privacy"
-    humanReadableDescription: "Enable In-App Browser Privacy"
-    webcoreBinding: RuntimeEnabledFeatures
-    category: internal
+  type: bool
+  defaultValue: defaultUseGPUProcessForMedia()
+  condition: ENABLE(GPU_PROCESS)
+  humanReadableName: "Media in GPU Process"
+  humanReadableDescription: "Do all media loading and playback in the GPU Process"
+  category: internal
+  webcoreName: useGPUProcessForMedia
 
 DialogElementEnabled:
     type: bool
@@ -1955,7 +1955,7 @@ DialogElementEnabled:
 
 IsAccessibilityIsolatedTreeEnabled:
     type: bool
-    defaultValue: false
+    defaultValue: true
     humanReadableName: "Isolated Accessibility Tree Mode"
     humanReadableDescription: "Enable an accessibility hierarchy for VoiceOver that can be accessed on a secondary thread for improved performance"
     webcoreBinding: RuntimeEnabledFeatures
@@ -1969,6 +1969,15 @@ WebShareFileAPIEnabled:
     humanReadableDescription: "Enable level 2 of Web Share API"
     webcoreBinding: RuntimeEnabledFeatures
     category: experimental
+
+IncrementalPDFLoadingEnabled:
+  type: bool
+  defaultValue: defaultIncrementalPDFEnabled()
+  humanReadableName: "Incremental PDF Loading"
+  humanReadableDescription: "Enable Incremental PDF Loading on supported platforms"
+  category: experimental
+  condition: HAVE(INCREMENTAL_PDF_APIS)
+  webcoreBinding: RuntimeEnabledFeatures
 
 # Deprecated
 

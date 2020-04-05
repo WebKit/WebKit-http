@@ -586,9 +586,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (void)setWebAnimationsMutableTimelinesEnabled:(BOOL)flag;
 - (BOOL)webAnimationsMutableTimelinesEnabled;
 
-- (void)setPointerEventsEnabled:(BOOL)flag;
-- (BOOL)pointerEventsEnabled;
-
 - (void)setSyntheticEditingCommandsEnabled:(BOOL)flag;
 - (BOOL)syntheticEditingCommandsEnabled;
 
@@ -642,6 +639,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 
 - (BOOL)isInAppBrowserPrivacyEnabled;
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag;
+
+- (BOOL)needsInAppBrowserPrivacyQuirks;
+- (void)setNeedsInAppBrowserPrivacyQuirks:(BOOL)flag;
 
 - (void)setWebSQLEnabled:(BOOL)flag;
 - (BOOL)webSQLEnabled;

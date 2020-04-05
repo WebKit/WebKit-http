@@ -466,6 +466,7 @@ public:
     Frame* frame() const override;
     Frame* mainFrame() const override;
     Document* topDocument() const override;
+    ScrollView* scrollView() const override { return nullptr; }
     ScrollView* scrollViewAncestor() const override;
     String language() const override;
     // 1-based, to match the aria-level spec.
@@ -764,6 +765,7 @@ public:
     uint64_t sessionID() const override;
     String documentURI() const override;
     String documentEncoding() const override;
+    AccessibilityChildrenVector documentLinks() override { return AccessibilityChildrenVector(); }
 
 protected:
     AccessibilityObject() = default;

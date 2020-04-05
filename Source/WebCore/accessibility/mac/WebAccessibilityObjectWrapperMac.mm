@@ -1294,7 +1294,7 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
 
 - (id)textMarkerRangeFromVisiblePositions:(const VisiblePosition&)startPosition endPosition:(const VisiblePosition&)endPosition
 {
-    auto* backingObject = self.updateObjectBackingStore;
+    auto* backingObject = self.axBackingObject;
     if (!backingObject)
         return nil;
 
@@ -1437,7 +1437,7 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
         [additional addObject:NSAccessibilityExpandedTextValueAttribute];
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (_AXUIElementRequestServicedBySecondaryAXThread() && AXObjectCache::clientSupportsIsolatedTree())
+    if (AXObjectCache::isIsolatedTreeEnabled() && _AXUIElementRequestServicedBySecondaryAXThread())
         [additional addObject:NSAccessibilityRelativeFrameAttribute];
 #endif
     
@@ -2271,15 +2271,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 - (id)scrollViewParent
 {
     return Accessibility::retrieveAutoreleasedValueFromMainThread<id>([protectedSelf = RetainPtr<WebAccessibilityObjectWrapper>(self)] () -> RetainPtr<id> {
-        if (!is<AccessibilityScrollView>(protectedSelf.get().axBackingObject))
+        auto* backingObject = protectedSelf.get().axBackingObject;
+        if (!backingObject || !backingObject->isScrollView())
             return nil;
 
         // If this scroll view provides it's parent object (because it's a sub-frame), then
         // we should not find the remoteAccessibilityParent.
-        if (protectedSelf.get().axBackingObject->parentObject())
+        if (backingObject->parentObject())
             return nil;
 
-        ScrollView* scroll = downcast<AccessibilityScrollView>(*protectedSelf.get().axBackingObject).scrollView();
+        auto* scroll = backingObject->scrollView();
         if (!scroll)
             return nil;
 
@@ -2413,11 +2414,9 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
 
     if (backingObject->isWebArea()) {
-        if ([attributeName isEqualToString:@"AXLinkUIElements"]) {
-            AccessibilityObject::AccessibilityChildrenVector links;
-            downcast<AccessibilityRenderObject>(*backingObject).getDocumentLinks(links);
-            return convertToNSArray(links);
-        }
+        if ([attributeName isEqualToString:@"AXLinkUIElements"])
+            return convertToNSArray(backingObject->documentLinks());
+
         if ([attributeName isEqualToString:@"AXLoaded"])
             return [NSNumber numberWithBool:backingObject->isLoaded()];
         if ([attributeName isEqualToString:@"AXLayoutCount"])
@@ -3421,8 +3420,8 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     if (frameView) {
         // Find the appropriate scroll view to use to convert the contents to the window.
         for (auto* parent = self.axBackingObject->parentObject(); parent; parent = parent->parentObject()) {
-            if (is<AccessibilityScrollView>(*parent)) {
-                if (auto scrollView = downcast<AccessibilityScrollView>(*parent).scrollView()) {
+            if (parent->isScrollView()) {
+                if (auto* scrollView = parent->scrollView()) {
                     if (!frameView->platformWidget())
                         rect = scrollView->contentsToRootView(rect);
                     else

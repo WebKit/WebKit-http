@@ -46,6 +46,7 @@
 #endif
 
 #ifdef __unix
+#if defined(__unix) || defined(__unix__)
 #define BOS_UNIX 1
 #endif
 

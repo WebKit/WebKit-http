@@ -1,3 +1,125 @@
+2020-03-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: AXI: no way to expand/collapse sidebar sections with Tab navigation
+        https://bugs.webkit.org/show_bug.cgi?id=208562
+        <rdar://problem/60028941>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header):
+        (.details-section > .header::before):
+        Increase the height of the clickble area so it matches the height
+        of the header section.
+
+        (.details-section .header:focus):
+        (.details-section .header:focus::before):
+        Adjust the focus ring around the expand/collapse triangle so it has rounded corners.
+
+        * UserInterface/Views/DetailsSection.js:
+        (WI.DetailsSection):
+        (WI.DetailsSection.prototype._headerElementClicked):
+        (WI.DetailsSection.prototype._headerElementMouseDown):
+        (WI.DetailsSection.prototype._headerElementKeyPress):
+
+2020-03-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: AXI: scope bars should be focusable when navigating by pressing Tab
+        https://bugs.webkit.org/show_bug.cgi?id=208277
+        <rdar://problem/59828111>
+
+        Reviewed by Devin Rousso.
+
+        Make resource type filter in the Network tab and message type filter in the Console tab focusable.
+
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header > nav):
+        (.content-view.audit-test-group > header > nav > .scope-bar):
+        Prevent outline of the focused scope bar item from clipping.
+
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li:focus):
+        (.scope-bar > li:focus::after,):
+        * UserInterface/Views/ScopeBar.js:
+        (WI.ScopeBar):
+        (WI.ScopeBar.prototype._handleKeyDown):
+        Make Arrow Left an Arrow Right keys move focus within the scope bar.
+        This matches the behavior of macOS radio buttons.
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WI.ScopeBarItem.prototype.get scopeBar):
+        (WI.ScopeBarItem.prototype.set scopeBar):
+        (WI.ScopeBarItem.prototype.toggle):
+        (WI.ScopeBarItem.prototype._updateSelected):
+        (WI.ScopeBarItem.prototype._handleMouseDown):
+
+        (WI.ScopeBarItem.prototype._handleKeyDown):
+        Allow to toggle focused scope bar item by pressing Space or Enter.
+
+2020-03-06  Jon Davis  <jond@apple.com>
+
+        Fixed missing icons for WI.ThreadTreeElement and selected Heap Snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=208719
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Images/InstrumentIcons.svg: Removed.
+        * UserInterface/Images/TypeIcons.svg:
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.css:
+        (.timeline-overview-graph.heap-allocations > img.snapshot.selected):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table > .table .cell.dom-node.name .icon):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints-container .tree-outline .item.event-target-window .icon):
+        (@media (prefers-color-scheme: dark) .sidebar > .panel.navigation.sources > .content > .breakpoints-container .tree-outline .item.event-target-window .icon):
+        * UserInterface/Views/ThreadTreeElement.css:
+        (.tree-outline > .item.thread .icon):
+        (.tree-outline > .item.thread + ol > .item.truncated-call-frames .icon):
+        (@media (prefers-color-scheme: dark) .tree-outline > .item.thread .icon):
+        (@media (prefers-color-scheme: dark) .tree-outline > .item.thread + ol > .item.truncated-call-frames .icon):
+        * UserInterface/Views/TimelineIcons.css:
+        (.network-icon .icon):
+        (.script-icon .icon):
+        (.cpu-icon .icon):
+        (.memory-icon .icon):
+        (.heap-allocations-icon .icon):
+        (.layout-icon .icon):
+        (.rendering-frame-icon .icon):
+        (.media-icon .icon):
+        (@media (prefers-color-scheme: dark) .network-icon .icon):
+        (@media (prefers-color-scheme: dark) .script-icon .icon):
+        (@media (prefers-color-scheme: dark) .cpu-icon .icon):
+        (@media (prefers-color-scheme: dark) .memory-icon .icon):
+        (@media (prefers-color-scheme: dark) .heap-allocations-icon .icon):
+        (@media (prefers-color-scheme: dark) .layout-icon .icon):
+        (@media (prefers-color-scheme: dark) .rendering-frame-icon .icon):
+        (@media (prefers-color-scheme: dark) .media-icon .icon):
+
+2020-03-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: AXI: annotate tab panels
+        https://bugs.webkit.org/show_bug.cgi?id=208542
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        Remove `role=main` since it was providing very generic and not useful description to VoiceOver.
+
+2020-03-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: AXI: can't leave Styles and Computed panels by pressing Tab
+        https://bugs.webkit.org/show_bug.cgi?id=208549
+        <rdar://problem/60020149>
+
+        Reviewed by Devin Rousso.
+
+        Remove focus cycling inside of the Styles and Computed panels.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._handleForcedPseudoClassCheckboxKeydown):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._handleFilterBarInputFieldKeyDown):
+
 2020-03-04  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: the execution context picker is shown on pages with only one execution context if there are internal execution contexts

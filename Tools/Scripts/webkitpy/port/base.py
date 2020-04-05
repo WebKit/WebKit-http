@@ -1036,7 +1036,7 @@ class Port(object):
         self._web_platform_test_server.start()
 
     def web_platform_test_server_doc_root(self):
-        return web_platform_test_server.doc_root(self) + self.TEST_PATH_SEPARATOR
+        return web_platform_test_server.doc_root(self).replace('\\', self.TEST_PATH_SEPARATOR) + self.TEST_PATH_SEPARATOR
 
     def web_platform_test_server_base_http_url(self):
         return web_platform_test_server.base_http_url(self)
@@ -1612,9 +1612,23 @@ class Port(object):
         commits = []
         for repo_id, path in repos.items():
             scm = SCMDetector(self._filesystem, self._executive).detect_scm_system(path)
+
+            # If using git-svn for WebKit, prefer the SVN branch/revision.
+            svn_revision = scm.svn_revision(path)
+            if repo_id == 'webkit' and svn_revision:
+                used_revision = svn_revision
+            else:
+                used_revision = scm.native_revision(path)
+
+            svn_branch = scm.svn_branch(path)
+            if repo_id == 'webkit' and svn_branch:
+                used_branch = svn_branch
+            else:
+                used_branch = scm.native_branch(path)
+
             commits.append(Upload.create_commit(
                 repository_id=repo_id,
-                id=scm.native_revision(path),
-                branch=scm.native_branch(path),
+                id=used_revision,
+                branch=used_branch,
             ))
         return commits

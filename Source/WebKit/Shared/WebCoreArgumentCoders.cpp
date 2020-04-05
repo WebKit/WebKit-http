@@ -29,6 +29,8 @@
 #include "DataReference.h"
 #include "ShareableBitmap.h"
 #include "SharedBufferDataReference.h"
+#include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
 #include <WebCore/CacheQueryOptions.h>
@@ -2074,7 +2076,7 @@ Optional<GrammarDetail> ArgumentCoder<GrammarDetail>::decode(Decoder& decoder)
 
 void ArgumentCoder<TextCheckingRequestData>::encode(Encoder& encoder, const TextCheckingRequestData& request)
 {
-    encoder << request.sequence();
+    encoder << request.identifier();
     encoder << request.text();
     encoder << request.checkingTypes();
     encoder.encodeEnum(request.processType());
@@ -2082,8 +2084,8 @@ void ArgumentCoder<TextCheckingRequestData>::encode(Encoder& encoder, const Text
 
 bool ArgumentCoder<TextCheckingRequestData>::decode(Decoder& decoder, TextCheckingRequestData& request)
 {
-    int sequence;
-    if (!decoder.decode(sequence))
+    Optional<TextCheckingRequestIdentifier> identifier;
+    if (!decoder.decode(identifier))
         return false;
 
     String text;
@@ -2098,7 +2100,7 @@ bool ArgumentCoder<TextCheckingRequestData>::decode(Decoder& decoder, TextChecki
     if (!decoder.decodeEnum(processType))
         return false;
 
-    request = TextCheckingRequestData { sequence, text, checkingTypes, processType };
+    request = TextCheckingRequestData { identifier, text, checkingTypes, processType };
     return true;
 }
 
@@ -3241,6 +3243,20 @@ Optional<RefPtr<SharedBuffer>> ArgumentCoder<RefPtr<WebCore::SharedBuffer>>::dec
     return buffer;
 }
 
+void ArgumentCoder<Ref<WebCore::SharedBuffer>>::encode(Encoder& encoder, const Ref<WebCore::SharedBuffer>& buffer)
+{
+    encodeSharedBuffer(encoder, buffer.ptr());
+}
+
+Optional<Ref<SharedBuffer>> ArgumentCoder<Ref<WebCore::SharedBuffer>>::decode(Decoder& decoder)
+{
+    RefPtr<SharedBuffer> buffer;
+    if (!decodeSharedBuffer(decoder, buffer) || !buffer)
+        return WTF::nullopt;
+
+    return buffer.releaseNonNull();
+}
+
 #if ENABLE(ENCRYPTED_MEDIA)
 void ArgumentCoder<WebCore::CDMInstanceSession::Message>::encode(Encoder& encoder, const WebCore::CDMInstanceSession::Message& message)
 {
@@ -3295,5 +3311,61 @@ Optional<WebCore::CDMInstanceSession::KeyStatusVector> ArgumentCoder<WebCore::CD
     return keyStatuses;
 }
 #endif // ENABLE(ENCRYPTED_MEDIA)
+
+void ArgumentCoder<Ref<WebCore::ImageData>>::encode(Encoder& encoder, const Ref<WebCore::ImageData>& imageData)
+{
+    // FIXME: Copying from the ImageData to the SharedBuffer is slow. Invent some way for the SharedBuffer to be populated directly.
+    auto sharedBuffer = WebCore::SharedBuffer::create(imageData->data()->data(), imageData->data()->byteLength());
+    encoder << imageData->size();
+    encoder << sharedBuffer;
+}
+
+Optional<Ref<WebCore::ImageData>> ArgumentCoder<Ref<WebCore::ImageData>>::decode(Decoder& decoder)
+{
+    Optional<IntSize> imageDataSize;
+    Optional<Ref<SharedBuffer>> data;
+
+    decoder >> imageDataSize;
+    if (!imageDataSize)
+        return WTF::nullopt;
+
+    decoder >> data;
+    if (!data)
+        return WTF::nullopt;
+
+    // FIXME: Copying from the SharedBuffer into the ImageData is slow. Invent some way for the ImageData to simply just retain the SharedBuffer, and use it internally.
+    // Alternatively, we could create an overload for putImageData() which operates on the SharedBuffer directly.
+    auto imageData = ImageData::create(*imageDataSize, Uint8ClampedArray::create(reinterpret_cast<const uint8_t*>((*data)->data()), (*data)->size()));
+    if (!imageData)
+        return WTF::nullopt;
+
+    return { imageData.releaseNonNull() };
+}
+
+void ArgumentCoder<RefPtr<WebCore::ImageData>>::encode(Encoder& encoder, const RefPtr<WebCore::ImageData>& imageData)
+{
+    if (!imageData) {
+        encoder << false;
+        return;
+    }
+
+    encoder << true;
+    ArgumentCoder<Ref<WebCore::ImageData>>::encode(encoder, imageData.copyRef().releaseNonNull());
+}
+
+Optional<RefPtr<WebCore::ImageData>> ArgumentCoder<RefPtr<WebCore::ImageData>>::decode(Decoder& decoder)
+{
+    bool isEngaged;
+    if (!decoder.decode(isEngaged))
+        return WTF::nullopt;
+
+    if (!isEngaged)
+        return RefPtr<WebCore::ImageData>();
+
+    auto result = ArgumentCoder<Ref<WebCore::ImageData>>::decode(decoder);
+    if (!result)
+        return WTF::nullopt;
+    return { WTFMove(*result) };
+}
 
 } // namespace IPC

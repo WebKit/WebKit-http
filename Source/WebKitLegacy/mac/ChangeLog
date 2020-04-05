@@ -1,3 +1,179 @@
+2020-03-09  Simon Fraser  <simon.fraser@apple.com>
+
+        ASSERT(!m_textCheckingRequest) on editing/spelling/spellcheck-async-remove-frame.html
+        https://bugs.webkit.org/show_bug.cgi?id=126606
+
+        Reviewed by Wenson Hsieh.
+
+        SpellChecker's sequence numbers need to be unique between frames, because they are sent out
+        to EditorClient which may be one per web view, so use a static to hold the current
+        sequence number.
+
+        Also convert from int to TextCheckingSequence to make them easier to find, and use
+        Markable and Optional in TextCheckingRequestData to represent the unset state.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (-[WebEditorSpellCheckResponder initWithClient:identifier:results:]):
+        (-[WebEditorSpellCheckResponder perform]):
+        (WebEditorClient::didCheckSucceed):
+        (WebEditorClient::requestCheckingOfString):
+        (-[WebEditorSpellCheckResponder initWithClient:sequence:results:]): Deleted.
+
+2020-03-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove obsolete feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=208830
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE_CUSTOM_SCHEME_HANDLER and ENABLE_MAC_VIDEO_TOOLBOX since they
+        are no longer used.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm: ENABLE(WIRELESS_TARGET_PLAYBACK) -> ENABLE(WIRELESS_PLAYBACK_TARGET)
+        (+[WebPreferences initialize]):
+        (-[WebPreferences allowsAirPlayForMediaPlayback]):
+        (-[WebPreferences setAllowsAirPlayForMediaPlayback:]):
+
+2020-03-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the compile-time flag for Pointer Events
+        https://bugs.webkit.org/show_bug.cgi?id=208821
+        <rdar://problem/60223471>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-07  Darin Adler  <darin@apple.com>
+
+        Begin moving off of live ranges for WebKit internals
+        https://bugs.webkit.org/show_bug.cgi?id=208432
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebContextMenuClient.mm: Added include.
+        * WebView/WebFrame.mm: Ditto.
+        (-[WebFrame _convertToNSRange:]): Initialized out arguments.
+
+2020-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Create a flag to disable in-app browser quirks
+        https://bugs.webkit.org/show_bug.cgi?id=208777
+        <rdar://problem/60062197>
+
+        Reviewed by Simon Fraser.
+
+        This patch makes the following changes:
+
+        1. Adds a new flag 'NeedsInAppBrowserPrivacyQuirks' to allow quirks to be toggled
+           during testing.
+        2. Reclassify this new flag, and the existing 'InAppBrowserPrivacyEnabled' flag from 
+           'settings' to Internal Debug settings
+
+        The renamed flags are covered by existing tests.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Add new flag.
+        (-[WebPreferences needsInAppBrowserPrivacyQuirks]): Ditto.
+        (-[WebPreferences setNeedsInAppBrowserPrivacyQuirks:]): Ditto.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+
+2020-03-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Implement support for dictation alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=208720
+        <rdar://problem/58540114>
+
+        Reviewed by Brent Fulgham.
+
+        Part 3
+
+        Guard code that requires USE(AUTOCORRECTION_PANEL) to be enabled. Specifically, -_showDictationAlternativeUI
+        calls -handleAcceptedAlternativeText, but the latter is only compiled in when USE(AUTOCORRECTION_PANEL)
+        is enabled.
+
+        Note that I haven't enable USE_DICTATION_ALTERNATIVES on iOS. So, this code isn't being
+        compiled for iOS. I will do that in a subsequent change once after all the code is in place
+        to do so.
+
+        * WebView/WebView.mm:
+
+2020-03-05  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        <rdar://problem/59296762>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove JSC related defines.
+
+2020-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Flaky Test: editing/spelling/spellcheck-async.html
+        https://bugs.webkit.org/show_bug.cgi?id=160571
+
+        Reviewed by Ryosuke Niwa.
+        
+        Second try to fix this crash; the WebEditorClient can go away before all the NSSpellChecker
+        callbacks are done (which happens off the main thread), so store a WeakPtr<WebEditorClient>.
+        We have to create the WeakPtr on the main thread, and it gets copied into the first block.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (-[WebEditorSpellCheckResponder initWithClient:sequence:results:]):
+        (-[WebEditorSpellCheckResponder perform]):
+        (WebEditorClient::requestCheckingOfString):
+
+2020-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Flaky Test: editing/spelling/spellcheck-async.html
+        https://bugs.webkit.org/show_bug.cgi?id=160571
+
+        Reviewed by Tim Horton.
+        
+        The old code called -performSelector:target:... with an autoreleased target,
+        and nothing keeps the target alive until the call to -perform on the main thread.
+
+        Change this to a block which copies in a RetainPtr<> to make ownership clearer
+        and fix the crash.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::requestCheckingOfString):
+
+2020-03-06  Jer Noble  <jer.noble@apple.com>
+
+        [GPUP] Convert CDMFactory away from platformStrategies() and use WebProcess settings instead
+        https://bugs.webkit.org/show_bug.cgi?id=208699
+
+        Reviewed by Youenn Fablet.
+
+        Remove Legacy CDM support from WebPlatformStrategies.
+
+        * WebCoreSupport/WebPlatformStrategies.mm:
+
+2020-03-06  Antoine Quint  <graouts@webkit.org>
+
+        Remove the experimental flag for Pointer Events
+        https://bugs.webkit.org/show_bug.cgi?id=208655
+        <rdar://problem/60090545>
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences syntheticEditingCommandsEnabled]):
+        (-[WebPreferences setSyntheticEditingCommandsEnabled:]):
+        (-[WebPreferences pointerEventsEnabled]): Deleted.
+        (-[WebPreferences setPointerEventsEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+
 2020-03-05  youenn fablet  <youenn@apple.com>
 
         Export NowPlaying commands to GPUProcess when media playing in GPUProcess is enabled

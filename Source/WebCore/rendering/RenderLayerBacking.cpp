@@ -1612,13 +1612,14 @@ void RenderLayerBacking::updateDrawsContent(PaintedContentsInfo& contentsInfo)
         m_backgroundLayer->setDrawsContent(m_backgroundLayerPaintsFixedRootBackground ? hasPaintedContent : contentsInfo.paintsBoxDecorations());
 }
 
+#if ENABLE(ASYNC_SCROLLING)
 void RenderLayerBacking::updateEventRegion()
 {
     if (paintsIntoCompositedAncestor())
         return;
 
     bool hasTouchActionElements = false;
-#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY)
     hasTouchActionElements = renderer().document().mayHaveElementsWithNonAutoTouchAction();
 #endif
     if (m_owningLayer.isRenderViewLayer() && !hasTouchActionElements)
@@ -1634,10 +1635,18 @@ void RenderLayerBacking::updateEventRegion()
         auto eventRegionContext = eventRegion.makeContext();
         auto layerOffset = graphicsLayer.scrollOffset() - roundedIntSize(graphicsLayer.offsetFromRenderer());
 
-        if (&graphicsLayer == m_scrolledContentsLayer && renderer().visibleToHitTesting()) {
-            // Initialize scrolled contents layer with layer-sized event region as it can all used for scrolling.
-            // This avoids generating unnecessarily complex event regions. We still need to to do the paint to capture touch-action regions.
-            eventRegionContext.unite(enclosingIntRect(FloatRect(-layerOffset, graphicsLayer.size())), RenderStyle::defaultStyle());
+        if (renderer().visibleToHitTesting()) {
+            if (&graphicsLayer == m_scrollContainerLayer) {
+                eventRegionContext.unite(enclosingIntRect(FloatRect({ }, graphicsLayer.size())), RenderStyle::defaultStyle());
+                graphicsLayer.setEventRegion(WTFMove(eventRegion));
+                return;
+            }
+
+            if (&graphicsLayer == m_scrolledContentsLayer) {
+                // Initialize scrolled contents layer with layer-sized event region as it can all used for scrolling.
+                // This avoids generating unnecessarily complex event regions. We still need to to do the paint to capture touch-action regions.
+                eventRegionContext.unite(enclosingIntRect(FloatRect(-layerOffset, graphicsLayer.size())), RenderStyle::defaultStyle());
+            }
         }
 
         auto dirtyRect = enclosingIntRect(FloatRect(FloatPoint(graphicsLayer.offsetFromRenderer()), graphicsLayer.size()));
@@ -1650,9 +1659,13 @@ void RenderLayerBacking::updateEventRegion()
 
     updateEventRegionForLayer(*m_graphicsLayer);
 
+    if (m_scrollContainerLayer)
+        updateEventRegionForLayer(*m_scrollContainerLayer);
+
     if (m_scrolledContentsLayer)
         updateEventRegionForLayer(*m_scrolledContentsLayer);
 }
+#endif
 
 bool RenderLayerBacking::updateAncestorClippingStack(Vector<CompositedClipData>&& clippingData)
 {
@@ -2044,6 +2057,11 @@ void RenderLayerBacking::detachFromScrollingCoordinator(OptionSet<ScrollCoordina
         LOG_WITH_STREAM(Compositing, stream << "Detaching Scrolling node " << m_scrollingNodeID);
         scrollingCoordinator->unparentChildrenAndDestroyNode(m_scrollingNodeID);
         m_scrollingNodeID = 0;
+        
+#if ENABLE(SCROLLING_THREAD)
+        if (m_scrollContainerLayer)
+            m_scrollContainerLayer->setScrollingNodeID(0);
+#endif
     }
 
     if (roles.contains(ScrollCoordinationRole::ScrollingProxy) && m_ancestorClippingStack) {
@@ -2067,6 +2085,38 @@ void RenderLayerBacking::detachFromScrollingCoordinator(OptionSet<ScrollCoordina
         LOG_WITH_STREAM(Compositing, stream << "Detaching Positioned node " << m_positioningNodeID);
         scrollingCoordinator->unparentChildrenAndDestroyNode(m_positioningNodeID);
         m_positioningNodeID = 0;
+#if ENABLE(SCROLLING_THREAD)
+        m_graphicsLayer->setScrollingNodeID(0);
+#endif
+    }
+}
+
+void RenderLayerBacking::setScrollingNodeIDForRole(ScrollingNodeID nodeID, ScrollCoordinationRole role)
+{
+    switch (role) {
+    case ScrollCoordinationRole::Scrolling:
+        m_scrollingNodeID = nodeID;
+#if ENABLE(SCROLLING_THREAD)
+        if (m_scrollContainerLayer)
+            m_scrollContainerLayer->setScrollingNodeID(m_scrollingNodeID);
+#endif
+        break;
+    case ScrollCoordinationRole::ScrollingProxy:
+        // These nodeIDs are stored in m_ancestorClippingStack.
+        ASSERT_NOT_REACHED();
+        break;
+    case ScrollCoordinationRole::FrameHosting:
+        m_frameHostingNodeID = nodeID;
+        break;
+    case ScrollCoordinationRole::ViewportConstrained:
+        m_viewportConstrainedNodeID = nodeID;
+        break;
+    case ScrollCoordinationRole::Positioning:
+        m_positioningNodeID = nodeID;
+#if ENABLE(SCROLLING_THREAD)
+        m_graphicsLayer->setScrollingNodeID(m_positioningNodeID);
+#endif
+        break;
     }
 }
 
@@ -2928,7 +2978,6 @@ OptionSet<RenderLayer::PaintLayerFlag> RenderLayerBacking::paintFlagsForLayer(co
     return paintFlags;
 }
 
-#if ENABLE(POINTER_EVENTS)
 static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize contentOffset, GraphicsContext& destContext)
 {
     auto toIndex = [](TouchAction touchAction) -> unsigned {
@@ -3002,7 +3051,6 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
 
     return fillPattern;
 }
-#endif // ENABLE(POINTER_EVENTS)
 
 void RenderLayerBacking::paintDebugOverlays(const GraphicsLayer* graphicsLayer, GraphicsContext& context)
 {
@@ -3022,7 +3070,6 @@ void RenderLayerBacking::paintDebugOverlays(const GraphicsLayer* graphicsLayer, 
     for (auto rect : eventRegion.region().rects())
         context.fillRect(rect);
 
-#if ENABLE(POINTER_EVENTS)
     const TouchAction touchActionList[] = {
         TouchAction::None,
         TouchAction::Manipulation,
@@ -3044,7 +3091,6 @@ void RenderLayerBacking::paintDebugOverlays(const GraphicsLayer* graphicsLayer, 
         for (auto rect : actionRegion->rects())
             context.fillRect(rect);
     }
-#endif // ENABLE(POINTER_EVENTS)
 }
 
 // Up-call from compositing layer drawing callback.

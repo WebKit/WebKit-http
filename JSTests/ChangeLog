@@ -1,3 +1,84 @@
+2020-03-10  Paulo Matos  <pmatos@igalia.com>
+
+        JSC 32bits is failing on new test stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js
+        https://bugs.webkit.org/show_bug.cgi?id=206864
+
+        Reviewed by Yusuke Suzuki.
+
+        Add new test to memory limited devices - behaviour is the same as 
+        numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js
+        but it creates 25 threads instead of 100.
+
+        * stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access_memory-limited.js: Added.
+        (let.theCode):
+
+2020-03-09  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        @putByValDirect does not perform [[DefineOwnProperty]] correctly
+        https://bugs.webkit.org/show_bug.cgi?id=208708
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml: Mark 46 test cases as passing.
+
+2020-03-09  Caio Lima  <ticaiolima@gmail.com>
+
+        Tail calls are broken on ARM_THUMB2 and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=197797
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/tail-call-with-spilled-registers.js: Added.
+
+2020-03-07  Mark Lam  <mark.lam@apple.com>
+
+        Remove bad assertion in FTLLowerDFGToB3's compileDelBy().
+        https://bugs.webkit.org/show_bug.cgi?id=208764
+        <rdar://problem/59940095>
+
+        Reviewed by Keith Miller.
+
+        * stress/delete-by-val-with-base-and-subscript-using-same-cell.js: Added.
+        * stress/delete-by-val-with-base-and-subscript-using-same-non-cell.js: Added.
+
+2020-03-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Enable public class fields
+        https://bugs.webkit.org/show_bug.cgi?id=208756
+
+        Reviewed by Mark Lam.
+
+        Rename useClassFields to usePublicClassFields to keep separate from usePrivateClassFields once
+        it is implemented.
+
+        * stress/big-int-as-property-name.js:
+        * stress/class-fields-bytecode-cache.js:
+        * stress/class-fields-computed-to-property-key.js:
+        * stress/class-fields-function-name.js:
+        * stress/class-fields-harmony.js:
+        * stress/class-fields-proxy-define-property.js:
+        * stress/class-fields-stress-instance.js:
+        * stress/class-fields-to-property-key-const-string-ftl.js:
+        * stress/class-fields-to-property-key-const-symbol-ftl.js:
+        * stress/class-fields-to-property-key-slow-object-tostring-ftl.js:
+        * stress/class-fields-to-property-key-slow-object-valueof-ftl.js:
+        * stress/class-fields-to-property-key-string-object-ftl.js:
+        * stress/class-fields-to-property-key-string-or-string-object-ftl.js:
+        * stress/generator-syntax.js:
+        * stress/method-name.js:
+        * test262/config.yaml:
+
+2020-03-06  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.stringify should call replacer on deleted properties
+        https://bugs.webkit.org/show_bug.cgi?id=208725
+
+        Reviewed by Ross Kirsling.
+
+        * microbenchmarks/json-stringify-many-objects-to-json.js: Added.
+        * microbenchmarks/json-stringify-many-objects.js: Added.
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
 2020-03-04  Mark Lam  <mark.lam@apple.com>
 
         Handle an out of memory error while constructing the BytecodeGenerator.

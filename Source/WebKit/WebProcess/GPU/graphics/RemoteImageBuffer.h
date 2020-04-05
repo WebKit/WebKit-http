@@ -30,6 +30,7 @@
 #include "RemoteImageBufferMessageHandler.h"
 #include <WebCore/DisplayListImageBuffer.h>
 #include <WebCore/DisplayListItems.h>
+#include <WebCore/DisplayListRecorder.h>
 
 namespace WebKit {
 
@@ -72,6 +73,23 @@ protected:
         return m_backend.get();
     }
 
+    RefPtr<WebCore::ImageData> getImageData(WebCore::AlphaPremultiplication outputFormat, const WebCore::IntRect& srcRect) const override
+    {
+        auto& displayList = m_drawingContext.displayList();
+        const_cast<RemoteImageBuffer*>(this)->RemoteImageBufferMessageHandler::flushDrawingContext(displayList);
+        auto result = const_cast<RemoteImageBuffer*>(this)->RemoteImageBufferMessageHandler::getImageData(outputFormat, srcRect);
+        // getImageData is synchronous, which means we've already received the CommitImageBufferFlushContext message.
+        return result;
+    }
+
+    void putImageData(WebCore::AlphaPremultiplication inputFormat, const WebCore::ImageData& imageData, const WebCore::IntRect& srcRect, const WebCore::IntPoint& destPoint = { }) override
+    {
+        // The math inside ImageData::create() doesn't agree with the math inside ImageBufferBackend::putImageData() about how m_resolutionScale interacts with the data in the ImageBuffer.
+        // This means that putImageData() is only called when m_resolutionScale == 1.
+        ASSERT(m_backend->resolutionScale() == 1);
+        m_drawingContext.recorder().putImageData(inputFormat, imageData, srcRect, destPoint);
+    }
+
     void flushContext() override
     {
         flushDrawingContext();
@@ -82,8 +100,17 @@ protected:
     {
         auto& displayList = m_drawingContext.displayList();
         if (displayList.itemCount()) {
+            RemoteImageBufferMessageHandler::flushDrawingContextAndWaitCommit(displayList);
+            displayList.clear();
+        }
+    }
+    
+    void willAppendItem(const WebCore::DisplayList::Item&) override
+    {
+        constexpr size_t DisplayListBatchSize = 512;
+        auto& displayList = m_drawingContext.displayList();
+        if (displayList.itemCount() >= DisplayListBatchSize) {
             RemoteImageBufferMessageHandler::flushDrawingContext(displayList);
-            RemoteImageBufferMessageHandler::waitForCommitImageBufferFlushContext();
             displayList.clear();
         }
     }

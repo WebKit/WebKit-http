@@ -118,7 +118,7 @@ NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& par
 
     if (synchronousReply || parameters.shouldRestrictHTTPResponseAccess || parameters.options.keepAlive) {
         NetworkLoadChecker::LoadType requestLoadType = isMainFrameLoad() ? NetworkLoadChecker::LoadType::MainFrame : NetworkLoadChecker::LoadType::Other;
-        m_networkLoadChecker = makeUnique<NetworkLoadChecker>(connection.networkProcess(), &connection.schemeRegistry(), FetchOptions { m_parameters.options }, sessionID(), m_parameters.webPageProxyID, HTTPHeaderMap { m_parameters.originalRequestHeaders }, URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.topOrigin.copyRef(), m_parameters.preflightPolicy, originalRequest().httpReferrer(), m_parameters.isHTTPSUpgradeEnabled, shouldCaptureExtraNetworkLoadMetrics(), requestLoadType);
+        m_networkLoadChecker = makeUnique<NetworkLoadChecker>(connection.networkProcess(), this,  &connection.schemeRegistry(), FetchOptions { m_parameters.options }, sessionID(), m_parameters.webPageProxyID, HTTPHeaderMap { m_parameters.originalRequestHeaders }, URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.topOrigin.copyRef(), m_parameters.preflightPolicy, originalRequest().httpReferrer(), m_parameters.isHTTPSUpgradeEnabled, shouldCaptureExtraNetworkLoadMetrics(), requestLoadType);
         if (m_parameters.cspResponseHeaders)
             m_networkLoadChecker->setCSPResponseHeaders(ContentSecurityPolicyResponseHeaders { m_parameters.cspResponseHeaders.value() });
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -359,7 +359,62 @@ ResourceLoadInfo NetworkResourceLoader::resourceLoadInfo()
         }
         return false;
     };
-    
+
+    auto resourceType = [] (WebCore::ResourceRequestBase::Requester requester, WebCore::FetchOptions::Destination destination) {
+        switch (requester) {
+        case WebCore::ResourceRequestBase::Requester::XHR:
+            return ResourceLoadInfo::Type::XMLHTTPRequest;
+        case WebCore::ResourceRequestBase::Requester::Fetch:
+            return ResourceLoadInfo::Type::Fetch;
+        case WebCore::ResourceRequestBase::Requester::Ping:
+            return ResourceLoadInfo::Type::Ping;
+        case WebCore::ResourceRequestBase::Requester::Beacon:
+            return ResourceLoadInfo::Type::Beacon;
+        default:
+            break;
+        }
+
+        switch (destination) {
+        case WebCore::FetchOptions::Destination::EmptyString:
+            return ResourceLoadInfo::Type::Other;
+        case WebCore::FetchOptions::Destination::Audio:
+            return ResourceLoadInfo::Type::Media;
+        case WebCore::FetchOptions::Destination::Document:
+            return ResourceLoadInfo::Type::Document;
+        case WebCore::FetchOptions::Destination::Embed:
+            return ResourceLoadInfo::Type::Object;
+        case WebCore::FetchOptions::Destination::Font:
+            return ResourceLoadInfo::Type::Font;
+        case WebCore::FetchOptions::Destination::Image:
+            return ResourceLoadInfo::Type::Image;
+        case WebCore::FetchOptions::Destination::Manifest:
+            return ResourceLoadInfo::Type::ApplicationManifest;
+        case WebCore::FetchOptions::Destination::Object:
+            return ResourceLoadInfo::Type::Object;
+        case WebCore::FetchOptions::Destination::Report:
+            return ResourceLoadInfo::Type::CSPReport;
+        case WebCore::FetchOptions::Destination::Script:
+            return ResourceLoadInfo::Type::Script;
+        case WebCore::FetchOptions::Destination::Serviceworker:
+            return ResourceLoadInfo::Type::Other;
+        case WebCore::FetchOptions::Destination::Sharedworker:
+            return ResourceLoadInfo::Type::Other;
+        case WebCore::FetchOptions::Destination::Style:
+            return ResourceLoadInfo::Type::Stylesheet;
+        case WebCore::FetchOptions::Destination::Track:
+            return ResourceLoadInfo::Type::Media;
+        case WebCore::FetchOptions::Destination::Video:
+            return ResourceLoadInfo::Type::Media;
+        case WebCore::FetchOptions::Destination::Worker:
+            return ResourceLoadInfo::Type::Other;
+        case WebCore::FetchOptions::Destination::Xslt:
+            return ResourceLoadInfo::Type::XSLT;
+        }
+
+        ASSERT_NOT_REACHED();
+        return ResourceLoadInfo::Type::Other;
+    };
+
     return ResourceLoadInfo {
         m_resourceLoadID,
         m_parameters.webFrameID,
@@ -367,7 +422,8 @@ ResourceLoadInfo NetworkResourceLoader::resourceLoadInfo()
         originalRequest().url(),
         originalRequest().httpMethod(),
         WallTime::now(),
-        loadedFromCache(m_response)
+        loadedFromCache(m_response),
+        resourceType(originalRequest().requester(), m_parameters.options.destination)
     };
 }
 
@@ -868,7 +924,7 @@ void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest
 
 #if ENABLE(SERVICE_WORKER)
     if (parameters().options.mode == FetchOptions::Mode::Navigate) {
-        if (auto serviceWorkerFetchTask = m_connection->swConnection().createFetchTask(*this, newRequest)) {
+        if (auto serviceWorkerFetchTask = m_connection->createFetchTask(*this, newRequest)) {
             RELEASE_LOG_IF_ALLOWED("continueWillSendRequest: Created a ServiceWorkerFetchTask to handle the redirect (fetchIdentifier=%" PRIu64 ")", serviceWorkerFetchTask->fetchIdentifier().toUInt64());
             m_networkLoad = nullptr;
             m_serviceWorkerFetchTask = WTFMove(serviceWorkerFetchTask);
@@ -1190,6 +1246,11 @@ bool NetworkResourceLoader::shouldCaptureExtraNetworkLoadMetrics() const
     return m_shouldCaptureExtraNetworkLoadMetrics;
 }
 
+bool NetworkResourceLoader::crossOriginAccessControlCheckEnabled() const
+{
+    return m_parameters.crossOriginAccessControlCheckEnabled;
+}
+
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 bool NetworkResourceLoader::shouldLogCookieInformation(NetworkConnectionToWebProcess& connection, const PAL::SessionID& sessionID)
 {
@@ -1387,7 +1448,7 @@ void NetworkResourceLoader::startWithServiceWorker()
 {
     RELEASE_LOG_IF_ALLOWED("startWithServiceWorker:");
     ASSERT(!m_serviceWorkerFetchTask);
-    m_serviceWorkerFetchTask = m_connection->swConnection().createFetchTask(*this, originalRequest());
+    m_serviceWorkerFetchTask = m_connection->createFetchTask(*this, originalRequest());
     if (m_serviceWorkerFetchTask) {
         RELEASE_LOG_IF_ALLOWED("startWithServiceWorker: Created a ServiceWorkerFetchTask (fetchIdentifier=%" PRIu64 ")", m_serviceWorkerFetchTask->fetchIdentifier().toUInt64());
         return;

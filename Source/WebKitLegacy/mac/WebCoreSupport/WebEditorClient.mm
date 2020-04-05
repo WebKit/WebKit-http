@@ -1080,7 +1080,7 @@ bool WebEditorClient::spellingUIIsShowing()
 void WebEditorClient::getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection& currentSelection, Vector<String>& guesses)
 {
     guesses.clear();
-    NSString* language = nil;
+    NSString *language = nil;
     NSOrthography* orthography = nil;
     NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
     NSDictionary *options = @{ NSTextCheckingInsertionPointKey :  [NSNumber numberWithUnsignedInteger:insertionPointFromCurrentSelection(currentSelection)] };
@@ -1092,8 +1092,8 @@ void WebEditorClient::getGuessesForWord(const String& word, const String& contex
     unsigned count = [stringsArray count];
 
     if (count > 0) {
-        NSEnumerator* enumerator = [stringsArray objectEnumerator];
-        NSString* string;
+        NSEnumerator *enumerator = [stringsArray objectEnumerator];
+        NSString *string;
         while ((string = [enumerator nextObject]) != nil)
             guesses.append(string);
     }
@@ -1211,57 +1211,67 @@ void WebEditorClient::handleAcceptedCandidateWithSoftSpaces(TextCheckingResult a
 
 @interface WebEditorSpellCheckResponder : NSObject
 {
-    WebEditorClient* _client;
-    int _sequence;
+    WeakPtr<WebEditorClient> _client;
+    TextCheckingRequestIdentifier _identifier;
     RetainPtr<NSArray> _results;
 }
-- (id)initWithClient:(WebEditorClient*)client sequence:(int)sequence results:(NSArray*)results;
+- (id)initWithClient:(WeakPtr<WebEditorClient>)client identifier:(TextCheckingRequestIdentifier)identifier results:(NSArray *)results;
 - (void)perform;
 @end
 
 @implementation WebEditorSpellCheckResponder
-- (id)initWithClient:(WebEditorClient*)client sequence:(int)sequence results:(NSArray*)results
+- (id)initWithClient:(WeakPtr<WebEditorClient>)client identifier:(TextCheckingRequestIdentifier)identifier results:(NSArray *)results
 {
     self = [super init];
     if (!self)
         return nil;
     _client = client;
-    _sequence = sequence;
+    _identifier = identifier;
     _results = results;
     return self;
 }
 
 - (void)perform
 {
-    _client->didCheckSucceed(_sequence, _results.get());
+    if (_client)
+        _client->didCheckSucceed(_identifier, _results.get());
 }
 
 @end
 
-void WebEditorClient::didCheckSucceed(int sequence, NSArray* results)
+void WebEditorClient::didCheckSucceed(TextCheckingRequestIdentifier identifier, NSArray *results)
 {
-    ASSERT_UNUSED(sequence, sequence == m_textCheckingRequest->data().sequence());
-    m_textCheckingRequest->didSucceed(core(results, m_textCheckingRequest->data().checkingTypes()));
-    m_textCheckingRequest = nullptr;
+    auto requestOptional = m_requestsInFlight.take(identifier);
+    ASSERT(requestOptional);
+    if (!requestOptional)
+        return;
+    
+    auto request = WTFMove(requestOptional.value());
+    ASSERT(identifier == request->data().identifier().value());
+    request->didSucceed(core(results, request->data().checkingTypes()));
 }
 
 #endif
 
-void WebEditorClient::requestCheckingOfString(WebCore::TextCheckingRequest& request, const VisibleSelection& currentSelection)
+void WebEditorClient::requestCheckingOfString(TextCheckingRequest& request, const VisibleSelection& currentSelection)
 {
 #if !PLATFORM(IOS_FAMILY)
-    ASSERT(!m_textCheckingRequest);
-    m_textCheckingRequest = &request;
+    ASSERT(request.data().identifier());
+    auto identifier = request.data().identifier().value();
 
-    int sequence = m_textCheckingRequest->data().sequence();
-    NSRange range = NSMakeRange(0, m_textCheckingRequest->data().text().length());
-    NSRunLoop* currentLoop = [NSRunLoop currentRunLoop];
-    NSDictionary *options = @{ NSTextCheckingInsertionPointKey :  [NSNumber numberWithUnsignedInteger:insertionPointFromCurrentSelection(currentSelection)] };
-    [[NSSpellChecker sharedSpellChecker] requestCheckingOfString:m_textCheckingRequest->data().text() range:range types:NSTextCheckingAllSystemTypes options:options inSpellDocumentWithTag:0 completionHandler:^(NSInteger, NSArray* results, NSOrthography*, NSInteger) {
-            [currentLoop performSelector:@selector(perform) 
-                                  target:[[[WebEditorSpellCheckResponder alloc] initWithClient:this sequence:sequence results:results] autorelease]
-                                argument:nil order:0 modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+    ASSERT(!m_requestsInFlight.contains(identifier));
+    m_requestsInFlight.add(identifier, makeRef(request));
+
+    NSRange range = NSMakeRange(0, request.data().text().length());
+    NSRunLoop *currentLoop = [NSRunLoop currentRunLoop];
+    WeakPtr<WebEditorClient> weakThis = makeWeakPtr(*this);
+    NSDictionary *options = @{ NSTextCheckingInsertionPointKey : [NSNumber numberWithUnsignedInteger:insertionPointFromCurrentSelection(currentSelection)] };
+    [[NSSpellChecker sharedSpellChecker] requestCheckingOfString:request.data().text() range:range types:NSTextCheckingAllSystemTypes options:options inSpellDocumentWithTag:0 completionHandler:^(NSInteger, NSArray *results, NSOrthography *, NSInteger) {
+        RetainPtr<WebEditorSpellCheckResponder> responder = adoptNS([[WebEditorSpellCheckResponder alloc] initWithClient:weakThis identifier:identifier results:results]);
+        [currentLoop performBlock:^{
+            [responder perform];
         }];
+    }];
 #endif
 }
 

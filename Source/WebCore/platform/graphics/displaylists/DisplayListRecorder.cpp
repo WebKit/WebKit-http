@@ -36,9 +36,10 @@
 namespace WebCore {
 namespace DisplayList {
 
-Recorder::Recorder(GraphicsContext& context, DisplayList& displayList, const GraphicsContextState& state, const FloatRect& initialClip, const AffineTransform& baseCTM)
+Recorder::Recorder(GraphicsContext& context, DisplayList& displayList, const GraphicsContextState& state, const FloatRect& initialClip, const AffineTransform& baseCTM, Observer* observer)
     : GraphicsContextImpl(context, initialClip, baseCTM)
     , m_displayList(displayList)
+    , m_observer(observer)
 {
     LOG_WITH_STREAM(DisplayLists, stream << "\nRecording with clip " << initialClip);
     m_stateStack.append(ContextState(state, baseCTM, initialClip));
@@ -50,8 +51,16 @@ Recorder::~Recorder()
     LOG(DisplayLists, "Recorded display list:\n%s", m_displayList.description().data());
 }
 
+void Recorder::putImageData(WebCore::AlphaPremultiplication inputFormat, const WebCore::ImageData& imageData, const WebCore::IntRect& srcRect, const WebCore::IntPoint& destPoint)
+{
+    appendItem(WebCore::DisplayList::PutImageData::create(inputFormat, imageData, srcRect, destPoint));
+}
+
 void Recorder::willAppendItem(const Item& item)
 {
+    if (m_observer)
+        m_observer->willAppendItem(item);
+
     if (item.isDrawingItem()
 #if USE(CG)
         || item.type() == ItemType::ApplyStrokePattern || item.type() == ItemType::ApplyStrokePattern
@@ -143,7 +152,7 @@ void Recorder::drawPattern(Image& image, const FloatRect& destRect, const FloatR
 void Recorder::save()
 {
     appendItem(Save::create());
-    m_stateStack.append(m_stateStack.last().cloneForSave(m_displayList.itemCount() - 1));
+    m_stateStack.append(m_stateStack.last().cloneForSave());
 }
 
 void Recorder::restore()
@@ -152,24 +161,12 @@ void Recorder::restore()
         return;
 
     bool stateUsedForDrawing = currentState().wasUsedForDrawing;
-    size_t saveIndex = currentState().saveItemIndex;
 
     m_stateStack.removeLast();
     // Have to avoid eliding nested Save/Restore when a descendant state contains drawing items.
     currentState().wasUsedForDrawing |= stateUsedForDrawing;
 
-    if (!stateUsedForDrawing && saveIndex) {
-        // This Save/Restore didn't contain any drawing items. Roll back to just before the last save.
-        m_displayList.removeItemsFromIndex(saveIndex);
-        return;
-    }
-
     appendItem(Restore::create());
-
-    if (saveIndex) {
-        Save& saveItem = downcast<Save>(m_displayList.itemAt(saveIndex));
-        saveItem.setRestoreIndex(m_displayList.itemCount() - 1);
-    }
 }
 
 void Recorder::translate(float x, float y)
@@ -407,6 +404,8 @@ void Recorder::updateItemExtent(DrawingItem& item) const
 {
     if (Optional<FloatRect> rect = item.localBounds(graphicsContext()))
         item.setExtent(extentFromLocalBounds(rect.value()));
+    else if (Optional<FloatRect> rect = item.globalBounds())
+        item.setExtent(rect.value());
 }
 
 // FIXME: share with ShadowData

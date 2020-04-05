@@ -35,6 +35,7 @@
 #include "MediaPlayerPrivateRemoteMessages.h"
 #include "RemoteCDMFactory.h"
 #include "RemoteCDMProxy.h"
+#include "RemoteLegacyCDMFactory.h"
 #include "RemoteMediaPlayerManager.h"
 #include "RemoteMediaPlayerManagerMessages.h"
 #include "SampleBufferDisplayLayerMessages.h"
@@ -44,6 +45,7 @@
 #include "WebPage.h"
 #include "WebPageMessages.h"
 #include "WebProcess.h"
+#include <WebCore/PlatformMediaSessionManager.h>
 #include <WebCore/SharedBuffer.h>
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -81,10 +83,22 @@ SampleBufferDisplayLayerManager& GPUProcessConnection::sampleBufferDisplayLayerM
 }
 #endif
 
+RemoteMediaPlayerManager& GPUProcessConnection::mediaPlayerManager()
+{
+    return *WebProcess::singleton().supplement<RemoteMediaPlayerManager>();
+}
+
 #if ENABLE(ENCRYPTED_MEDIA)
 RemoteCDMFactory& GPUProcessConnection::cdmFactory()
 {
     return *WebProcess::singleton().supplement<RemoteCDMFactory>();
+}
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+RemoteLegacyCDMFactory& GPUProcessConnection::legacyCDMFactory()
+{
+    return *WebProcess::singleton().supplement<RemoteLegacyCDMFactory>();
 }
 #endif
 
@@ -126,6 +140,12 @@ bool GPUProcessConnection::dispatchMessage(IPC::Connection& connection, IPC::Dec
 bool GPUProcessConnection::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     return messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
+}
+
+void GPUProcessConnection::didReceiveRemoteCommand(PlatformMediaSession::RemoteControlCommandType type, Optional<double> argument)
+{
+    const PlatformMediaSession::RemoteCommandArgument value { argument ? *argument : 0 };
+    PlatformMediaSessionManager::sharedManager().processDidReceiveRemoteControlCommand(type, argument ? &value : nullptr);
 }
 
 } // namespace WebKit

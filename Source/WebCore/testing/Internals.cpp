@@ -185,6 +185,7 @@
 #include "StyleScope.h"
 #include "StyleSheetContents.h"
 #include "TextIterator.h"
+#include "TextPlaceholderElement.h"
 #include "TreeScope.h"
 #include "TypeConversions.h"
 #include "UserGestureIndicator.h"
@@ -1436,6 +1437,17 @@ void Internals::setCanShowPlaceholder(Element& element, bool canShowPlaceholder)
         downcast<HTMLTextFormControlElement>(element).setCanShowPlaceholder(canShowPlaceholder);
 }
 
+Element* Internals::insertTextPlaceholder(int width, int height)
+{
+    return frame()->editor().insertTextPlaceholder(IntSize { width, height }).get();
+}
+
+void Internals::removeTextPlaceholder(Element& element)
+{
+    if (is<TextPlaceholderElement>(element))
+        frame()->editor().removeTextPlaceholder(downcast<TextPlaceholderElement>(element));
+}
+
 void Internals::selectColorInColorChooser(HTMLInputElement& element, const String& colorValue)
 {
     element.selectColor(colorValue);
@@ -2062,22 +2074,22 @@ ExceptionOr<void> Internals::setDelegatesScrolling(bool enabled)
     return { };
 }
 
-ExceptionOr<int> Internals::lastSpellCheckRequestSequence()
+ExceptionOr<uint64_t> Internals::lastSpellCheckRequestSequence()
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    return document->frame()->editor().spellChecker().lastRequestSequence();
+    return document->frame()->editor().spellChecker().lastRequestIdentifier().toUInt64();
 }
 
-ExceptionOr<int> Internals::lastSpellCheckProcessedSequence()
+ExceptionOr<uint64_t> Internals::lastSpellCheckProcessedSequence()
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    return document->frame()->editor().spellChecker().lastProcessedSequence();
+    return document->frame()->editor().spellChecker().lastProcessedIdentifier().toUInt64();
 }
 
 Vector<String> Internals::userPreferredLanguages() const
@@ -4165,7 +4177,7 @@ ExceptionOr<Internals::NowPlayingState> Internals::nowPlayingState() const
     return { { PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingTitle(),
         PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingDuration(),
         PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingElapsedTime(),
-        PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingInfoUniqueIdentifier(),
+        PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingInfoUniqueIdentifier().toUInt64(),
         PlatformMediaSessionManager::sharedManager().hasActiveNowPlayingSession(),
         PlatformMediaSessionManager::sharedManager().registeredAsNowPlayingApplication()
     } };
@@ -5486,6 +5498,11 @@ String Internals::encodedPreferenceValue(const String& domain, const String& key
 }
 
 String Internals::getUTIFromMIMEType(const String& mimeType)
+{
+    return emptyString();
+}
+
+String Internals::getUTIFromTag(const String& tagClass, const String& tag, const String& conformingToUTI)
 {
     return emptyString();
 }

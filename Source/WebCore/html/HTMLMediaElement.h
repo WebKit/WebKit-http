@@ -38,6 +38,7 @@
 #include "MediaElementSession.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaSessionIdentifier.h"
 #include "VisibilityChangeClient.h"
 #include <wtf/Function.h>
 #include <wtf/LoggerHelper.h>
@@ -592,7 +593,7 @@ public:
     void applicationWillResignActive();
     void applicationDidBecomeActive();
 
-    uint64_t mediaSessionUniqueIdentifier() const;
+    MediaSessionIdentifier mediaSessionUniqueIdentifier() const;
     String mediaSessionTitle() const;
     String sourceApplicationIdentifier() const;
 
@@ -618,6 +619,8 @@ protected:
     bool isMediaElement() const final { return true; }
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+
+    SecurityOriginData documentSecurityOrigin() const final;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool mediaControlsDependOnPageScaleFactor() const { return m_mediaControlsDependOnPageScaleFactor; }
@@ -1211,6 +1214,7 @@ private:
     bool m_isPlayingToWirelessTarget { false };
     bool m_playingOnSecondScreen { false };
     bool m_removedBehaviorRestrictionsAfterFirstUserGesture { false };
+    MediaSessionIdentifier m_mediaSessionIdentifier;
 };
 
 String convertEnumerationToString(HTMLMediaElement::AutoplayEventPlaybackState);

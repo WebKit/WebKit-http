@@ -27,6 +27,7 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 
+#import <UIKit/NSTextAlternatives.h>
 #import <UIKit/UIAlertController_Private.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItem_Private.h>
@@ -92,11 +93,12 @@
 #if HAVE(LINK_PREVIEW)
 #import <UIKit/UIPreviewAction_Private.h>
 #import <UIKit/UIPreviewItemController.h>
+#endif
+
 #if USE(UICONTEXTMENU)
 #import <UIKit/UIContextMenuInteraction_ForSpringBoardOnly.h>
 #import <UIKit/UIContextMenuInteraction_ForWebKitOnly.h>
 #import <UIKit/UIContextMenuInteraction_Private.h>
-#endif
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -1097,13 +1099,25 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @property (nonatomic, strong) UIImage *image;
 @end
 
+typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
+    _UIContextMenuLayoutActionsOnly = 1,
+    _UIContextMenuLayoutCompactMenu = 3,
+};
+
 @interface _UIContextMenuStyle : NSObject <NSCopying>
+@property (nonatomic) _UIContextMenuLayout preferredLayout;
++ (instancetype)defaultStyle;
 @end
 
 #if USE(UICONTEXTMENU)
 @interface UITargetedPreview ()
 @property (nonatomic, strong, setter=_setOverridePositionTrackingView:) UIView *overridePositionTrackingView;
 @end
+
+@interface UIContextMenuInteraction ()
+- (void)_presentMenuAtLocation:(CGPoint)location;
+@end
+
 #endif // USE(UICONTEXTMENU)
 
 #if HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)
@@ -1114,6 +1128,14 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @end
 #endif // HAVE(LINK_PREVIEW) && USE(UICONTEXTMENU)
 
+@interface NSTextAlternatives : NSObject
+- (id)initWithPrimaryString:(NSString *)primaryString alternativeStrings:(NSArray<NSString *> *)alternativeStrings;
+- (id)initWithPrimaryString:(NSString *)primaryString alternativeStrings:(NSArray<NSString *> *)alternativeStrings isLowConfidence:(BOOL)lowConfidence;
+
+@property (readonly) NSString *primaryString;
+@property (readonly) NSArray<NSString *> *alternativeStrings;
+@property (readonly) BOOL isLowConfidence;
+@end
 
 #endif // USE(APPLE_INTERNAL_SDK)
 

@@ -1,3 +1,128 @@
+2020-03-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove obsolete feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=208830
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE_CUSTOM_SCHEME_HANDLER and ENABLE_MAC_VIDEO_TOOLBOX since they
+        are no longer used.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the compile-time flag for Pointer Events
+        https://bugs.webkit.org/show_bug.cgi?id=208821
+        <rdar://problem/60223471>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Mapping to UTI from tag and tag class should be performed in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=208783
+
+        Reviewed by Brent Fulgham.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/NSUTTypeRecordSPI.h: Added.
+
+2020-03-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Some fixes for building Mac port
+        https://bugs.webkit.org/show_bug.cgi?id=208770
+
+        Reviewed by Don Olmstead.
+
+        * pal/PlatformMac.cmake:
+
+2020-03-08  Andres Gonzalez  <andresg_22@apple.com>
+
+        Implementation of AccessibilitySupport AXSIsolatedTreeMode.
+        https://bugs.webkit.org/show_bug.cgi?id=208691
+        <rdar://problem/60178602>
+
+        Reviewed by Chris Fleizach.
+
+        Added softlinking for the AccessibilitySupport library (libAccessibility.tbd).
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+        * pal/spi/cocoa/AccessibilitySupportSPI.h: Added.
+        * pal/spi/cocoa/AccessibilitySupportSoftLink.cpp: Added.
+        * pal/spi/cocoa/AccessibilitySupportSoftLink.h: Added.
+
+2020-03-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Implement support for dictation alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=208720
+        <rdar://problem/58540114>
+
+        Reviewed by Wenson Hsieh.
+
+        Part 1
+
+        Expose some more SPI.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2020-03-05  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        <rdar://problem/59296762>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove JSC related defines.
+
+2020-03-07  chris fleizach  <cfleizach@apple.com>
+
+        Unreviewed, rolling out r258047.
+
+        Referenced SPI not yet available for Safari builders.
+
+        Reverted changeset:
+
+        "Implementation of AccessibilitySupport AXSIsolatedTreeMode."
+        https://bugs.webkit.org/show_bug.cgi?id=208691
+        https://trac.webkit.org/changeset/258047
+
+2020-03-06  Andres Gonzalez  <andresg_22@apple.com>
+
+        Implementation of AccessibilitySupport AXSIsolatedTreeMode.
+        https://bugs.webkit.org/show_bug.cgi?id=208691
+
+        Reviewed by Chris Fleizach.
+
+        * pal/spi/cocoa/AccessibilitySupportSPI.h:
+        Added constants and prototypes used in AXIsolatedTreeMode support.
+
+2020-03-06  Peng Liu  <peng.liu6@apple.com>
+
+        Use the feature flags mechanism to give default feature preference values
+        https://bugs.webkit.org/show_bug.cgi?id=208607
+
+        Reviewed by Simon Fraser.
+
+        A follow up patch to fix a build error on old SDKs.
+
+        * pal/spi/cocoa/FeatureFlagsSPI.h:
+
+2020-03-06  Peng Liu  <peng.liu6@apple.com>
+
+        Use the feature flags mechanism to give default feature preference values
+        https://bugs.webkit.org/show_bug.cgi?id=208607
+
+        Reviewed by Youenn Fablet.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/FeatureFlagsSPI.h: Added.
+
 2020-03-05  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Optimize Path::encode on platforms that support CGPathGetNumberOfElements

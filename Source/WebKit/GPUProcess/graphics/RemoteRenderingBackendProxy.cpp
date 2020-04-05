@@ -100,10 +100,24 @@ void RemoteRenderingBackendProxy::releaseImageBuffer(ImageBufferIdentifier image
     ASSERT_UNUSED(found, found);
 }
 
-void RemoteRenderingBackendProxy::flushImageBufferDrawingContext(const WebCore::DisplayList::DisplayList& displayList, ImageBufferFlushIdentifier flushIdentifier, ImageBufferIdentifier imageBufferIdentifier)
+void RemoteRenderingBackendProxy::getImageData(WebCore::AlphaPremultiplication outputFormat, WebCore::IntRect srcRect, ImageBufferIdentifier imageBufferIdentifier, CompletionHandler<void(IPC::ImageDataReference&&)>&& completionHandler)
+{
+    if (auto imageBuffer = m_imageBufferMessageHandlerMap.get(imageBufferIdentifier)) {
+        auto imageData = imageBuffer->getImageData(outputFormat, srcRect);
+        completionHandler(IPC::ImageDataReference(WTFMove(imageData)));
+    }
+}
+
+void RemoteRenderingBackendProxy::flushImageBufferDrawingContext(const WebCore::DisplayList::DisplayList& displayList, ImageBufferIdentifier imageBufferIdentifier)
 {
     if (auto imageBuffer = m_imageBufferMessageHandlerMap.get(imageBufferIdentifier))
-        imageBuffer->flushDrawingContext(displayList, flushIdentifier);
+        imageBuffer->flushDrawingContext(displayList);
+}
+
+void RemoteRenderingBackendProxy::flushImageBufferDrawingContextAndCommit(const WebCore::DisplayList::DisplayList& displayList, ImageBufferFlushIdentifier flushIdentifier, ImageBufferIdentifier imageBufferIdentifier)
+{
+    if (auto imageBuffer = m_imageBufferMessageHandlerMap.get(imageBufferIdentifier))
+        imageBuffer->flushDrawingContextAndCommit(displayList, flushIdentifier);
 }
 
 } // namespace WebKit

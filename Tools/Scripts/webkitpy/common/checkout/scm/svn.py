@@ -276,16 +276,19 @@ class SVN(SCM, SVNRepository):
     def svn_revision(self, path):
         return self.value_from_svn_info(path, 'Revision')
 
-    def native_revision(self, path):
-        return self.svn_revision(path)
-
-    def native_branch(self, path):
+    def svn_branch(self, path):
         relative_url = self.value_from_svn_info(path, 'Relative URL')[2:]
         if relative_url.startswith('trunk'):
             return 'trunk'
         elif relative_url.startswith('branch'):
             return relative_url.split('/')[1]
         raise Exception('{} is not a branch'.format(relative_url.split('/')[0]))
+
+    def native_revision(self, path):
+        return self.svn_revision(path)
+
+    def native_branch(self, path):
+        return self.svn_branch(path)
 
     def timestamp_of_revision(self, path, revision):
         # We use --xml to get timestamps like 2013-02-08T08:18:04.964409Z
@@ -369,7 +372,7 @@ class SVN(SCM, SVNRepository):
     def apply_reverse_diff(self, revision):
         # '-c -revision' applies the inverse diff of 'revision'
         svn_merge_args = ['merge', '--non-interactive', '-c', '-%s' % revision, self._repository_url()]
-        _log.warning("svn merge has been known to take more than 10 minutes to complete.  It is recommended you use git for rollouts.")
+        _log.warning("svn merge has been known to take more than 10 minutes to complete. It is recommended you use git for reverts.")
         _log.debug("Running 'svn %s'" % " ".join(svn_merge_args))
         # FIXME: Should this use cwd=self.checkout_root?
         self._run_svn(svn_merge_args)

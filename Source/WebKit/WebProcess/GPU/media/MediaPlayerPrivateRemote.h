@@ -35,6 +35,7 @@
 #include "RemoteMediaResourceProxy.h"
 #include "TrackPrivateRemoteIdentifier.h"
 #include <WebCore/MediaPlayerPrivate.h>
+#include <WebCore/SecurityOriginData.h>
 #include <wtf/LoggerHelper.h>
 #include <wtf/MediaTime.h>
 #include <wtf/WeakPtr.h>
@@ -75,7 +76,7 @@ public:
     MediaPlayerPrivateRemote(WebCore::MediaPlayer*, WebCore::MediaPlayerEnums::MediaEngineIdentifier, MediaPlayerPrivateRemoteIdentifier, RemoteMediaPlayerManager&);
     ~MediaPlayerPrivateRemote();
 
-    void setConfiguration(RemoteMediaPlayerConfiguration&&);
+    void setConfiguration(RemoteMediaPlayerConfiguration&&, WebCore::SecurityOriginData&&);
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
@@ -233,7 +234,6 @@ private:
 #endif
 
     bool hasClosedCaptions() const final;
-    void setClosedCaptionsVisible(bool) final;
 
     double maxFastForwardRate() const final;
     double minFastReverseRate() const final;
@@ -305,8 +305,10 @@ private:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<WebCore::LegacyCDMSession> createSession(const String&, WebCore::LegacyCDMSessionClient*) final;
+    void setCDM(WebCore::LegacyCDM*) final;
     void setCDMSession(WebCore::LegacyCDMSession*) final;
     void keyAdded() final;
+    void mediaPlayerKeyNeeded(IPC::DataReference&&);
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -325,10 +327,6 @@ private:
     void setTextTrackRepresentation(WebCore::TextTrackRepresentation*) final;
     void syncTextTrackBounds() final;
     void tracksChanged() final;
-#endif
-
-#if USE(GSTREAMER)
-    void simulateAudioInterruption() final;
 #endif
 
     void beginSimulatedHDCPError() final;
@@ -355,7 +353,7 @@ private:
     AVPlayer *objCAVFoundationAVPlayer() const final { return nullptr; }
 #endif
 
-    bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) final;
+    bool performTaskAtMediaTime(Function<void()>&&, const MediaTime&) final;
 
     WebCore::MediaPlayer* m_player { nullptr };
     RefPtr<WebCore::PlatformMediaResourceLoader> m_mediaResourceLoader;
@@ -374,6 +372,9 @@ private:
     HashMap<TrackPrivateRemoteIdentifier, Ref<AudioTrackPrivateRemote>> m_audioTracks;
     HashMap<TrackPrivateRemoteIdentifier, Ref<VideoTrackPrivateRemote>> m_videoTracks;
     HashMap<TrackPrivateRemoteIdentifier, Ref<TextTrackPrivateRemote>> m_textTracks;
+
+    WebCore::SecurityOriginData m_documentSecurityOrigin;
+    mutable HashMap<WebCore::SecurityOriginData, Optional<bool>> m_wouldTaintOriginCache;
 
     double m_volume { 1 };
     double m_rate { 1 };

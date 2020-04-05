@@ -77,11 +77,14 @@ static LayerToPlatformCALayerMap& layerToPlatformLayerMap()
     return layerMap;
 }
 
+
 RefPtr<PlatformCALayer> PlatformCALayer::platformCALayerForLayer(void* platformLayer)
 {
     if (!platformLayer)
-        return 0;
+        return nullptr;
 
+    static Lock lock;
+    LockHolder lockHolder(lock);
     return layerToPlatformLayerMap().get(platformLayer);
 }
 
@@ -1030,6 +1033,16 @@ void PlatformCALayerCocoa::updateCustomAppearance(GraphicsLayer::CustomAppearanc
         break;
     }
 #endif
+}
+
+void PlatformCALayerCocoa::setEventRegion(const EventRegion& eventRegion)
+{
+    m_eventRegion = eventRegion;
+}
+
+bool PlatformCALayerCocoa::eventRegionContainsPoint(IntPoint point) const
+{
+    return m_eventRegion.contains(point);
 }
 
 GraphicsLayer::EmbeddedViewID PlatformCALayerCocoa::embeddedViewID() const

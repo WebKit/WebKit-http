@@ -119,6 +119,8 @@ messages -> WebPage LegacyReceiver {
     RequestDocumentEditingContext(struct WebKit::DocumentEditingContextRequest request) -> (struct WebKit::DocumentEditingContext response) Async
 GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType command)
     SetShouldRevealCurrentSelectionAfterInsertion(bool shouldRevealCurrentSelectionAfterInsertion)
+    InsertTextPlaceholder(WebCore::IntSize size) -> (Optional<WebCore::ElementContext> placeholder) Async
+    RemoveTextPlaceholder(struct WebCore::ElementContext placeholder) -> () Async
 #endif
 
     SetControlledByAutomation(bool controlled)
@@ -139,10 +141,8 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     TouchEvent(WebKit::WebTouchEvent event)
 #endif
 
-#if ENABLE(POINTER_EVENTS)
     CancelPointer(WebCore::PointerID pointerId, WebCore::IntPoint documentPoint)
     TouchWithIdentifierWasRemoved(WebCore::PointerID pointerId)
-#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     DidEndColorPicker()
@@ -370,10 +370,6 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     CaptureDevicesChanged()
 #endif
 
-#if ENABLE(WEB_RTC)
-    DisableICECandidateFiltering()
-    EnableICECandidateFiltering()
-#endif
 #if ENABLE(WEB_RTC) && USE(LIBWEBRTC)
     EnableEnumeratingAllNetworkInterfaces()
     DisableEnumeratingAllNetworkInterfaces()
@@ -449,7 +445,10 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     AcceptsFirstMouse(int eventNumber, WebKit::WebMouseEvent event) -> (bool result) Synchronous
 
     SetTextAsync(String text)
+
     InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, struct WebKit::InsertTextOptions options)
+    InsertDictatedTextAsync(String text, struct WebKit::EditingRange replacementRange, Vector<WebCore::DictationAlternative> dictationAlternatives, bool registerUndoGroup)
+
     HasMarkedText() -> (bool hasMarkedText) Async
     GetMarkedRangeAsync(WebKit::CallbackID callbackID)
     GetSelectedRangeAsync(WebKit::CallbackID callbackID)
@@ -459,7 +458,6 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     ConfirmCompositionAsync()
 #endif
 #if PLATFORM(MAC)
-    InsertDictatedTextAsync(String text, struct WebKit::EditingRange replacementRange, Vector<WebCore::DictationAlternative> dictationAlternatives, bool registerUndoGroup)
     AttributedSubstringForCharacterRangeAsync(struct WebKit::EditingRange range, WebKit::CallbackID callbackID);
     FontAtSelection(WebKit::CallbackID callbackID)
 #endif

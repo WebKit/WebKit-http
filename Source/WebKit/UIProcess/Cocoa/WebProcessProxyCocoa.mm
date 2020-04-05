@@ -194,26 +194,6 @@ void WebProcessProxy::releaseHighPerformanceGPU()
 }
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-void WebProcessProxy::processWasResumed(CompletionHandler<void()>&& completionHandler)
-{
-    CompletionHandlerCallingScope exitScope(WTFMove(completionHandler));
-
-    if (m_throttler.shouldBeRunnable()) {
-        // The process becoming unsuspended was not unexpected.
-        return;
-    }
-
-    // The WebProcess was awakened by something other than the UIProcess. Take out an assertion for a
-    // limited duration to allow whatever task needs to be accomplished time to complete.
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::processWasResumed() Process was unexpectedly resumed, starting background activity", this);
-    auto backgroundActivityTimeoutHandler = [activity = m_throttler.backgroundActivity("WebProcess was unexpectedly resumed"_s), weakThis = makeWeakPtr(this)] {
-        RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::processWasResumed() - lambda, background activity timed out", weakThis.get());
-    };
-    m_unexpectedActivityTimer = makeUnique<WebCore::DeferrableOneShotTimer>(WTFMove(backgroundActivityTimeoutHandler), unexpectedActivityDuration);
-}
-#endif
-
 #if ENABLE(REMOTE_INSPECTOR)
 void WebProcessProxy::enableRemoteInspectorIfNeeded()
 {
@@ -225,4 +205,43 @@ void WebProcessProxy::enableRemoteInspectorIfNeeded()
         send(Messages::WebProcess::EnableRemoteWebInspector(handle), 0);
 }
 #endif
+
+void WebProcessProxy::unblockAccessibilityServerIfNeeded()
+{
+    if (m_hasSentMessageToUnblockAccessibilityServer)
+        return;
+    if (!_AXSApplicationAccessibilityEnabled())
+        return;
+    if (!processIdentifier())
+        return;
+    if (!canSendMessage())
+        return;
+
+    SandboxExtension::Handle handle;
+#if PLATFORM(IOS_FAMILY)
+    if (!SandboxExtension::createHandleForMachLookup("com.apple.iphone.axserver-systemwide", connection() ? connection()->getAuditToken() : WTF::nullopt, handle))
+        return;
+#endif
+
+    send(Messages::WebProcess::UnblockAccessibilityServer(handle), 0);
+    m_hasSentMessageToUnblockAccessibilityServer = true;
+}
+
+void WebProcessProxy::unblockPreferenceServiceIfNeeded()
+{
+    if (m_hasSentMessageToUnblockPreferenceService)
+        return;
+    if (!processIdentifier())
+        return;
+    if (!canSendMessage())
+        return;
+
+    SandboxExtension::Handle handle;
+    if (!SandboxExtension::createHandleForMachLookup("com.apple.cfprefsd.daemon", connection() ? connection()->getAuditToken() : WTF::nullopt, handle))
+        return;
+
+    send(Messages::WebProcess::UnblockPreferenceService(handle), 0);
+    m_hasSentMessageToUnblockPreferenceService = true;
+}
+
 }

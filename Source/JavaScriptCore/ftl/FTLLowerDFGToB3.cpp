@@ -5195,7 +5195,6 @@ private:
                     if constexpr (kind == DelByKind::Normal)
                         return CCallHelpers::TrustedImmPtr(subscriptValue);
                     else {
-                        ASSERT(base.gpr() != params[2].gpr());
                         ASSERT(params.gpScratch(0) != params[2].gpr());
                         if (node->child2().useKind() == UntypedUse)
                             slowCases.append(jit.branchIfNotCell(JSValueRegs(params[2].gpr())));
@@ -10496,7 +10495,7 @@ private:
             FPRReg input = params[1].fpr();
             FPRReg temp = params.fpScratch(0);
             jit.roundTowardZeroDouble(input, temp);
-            jit.compareDouble(MacroAssembler::DoubleEqual, input, temp, result);
+            jit.compareDouble(MacroAssembler::DoubleEqualAndOrdered, input, temp, result);
         });
         ValueFromBlock patchpointResult = m_out.anchor(patchpoint);
         m_out.jump(continuation);

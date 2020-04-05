@@ -46,7 +46,6 @@
 #include "ImageBuffer.h"
 #include "Path.h"
 #include "PlatformContextCairo.h"
-#include "PlatformPathCairo.h"
 #include "ShadowBlur.h"
 #include <algorithm>
 #include <cairo.h>
@@ -88,7 +87,7 @@ static void prepareCairoContextSource(cairo_t* cr, cairo_pattern_t* pattern, cai
 static void clipForPatternFilling(cairo_t* cr, const FloatSize& patternSize, const AffineTransform& patternTransform, bool repeatX, bool repeatY)
 {
     // Hold current cairo path in a variable for restoring it after configuring the pattern clip rectangle.
-    auto currentPath = cairo_copy_path(cr);
+    CairoUniquePtr<cairo_path_t> currentPath(cairo_copy_path(cr));
     cairo_new_path(cr);
 
     // Initialize clipping extent from current cairo clip extents, then shrink if needed according to pattern.
@@ -113,8 +112,7 @@ static void clipForPatternFilling(cairo_t* cr, const FloatSize& patternSize, con
     }
 
     // Restoring cairo path.
-    cairo_append_path(cr, currentPath);
-    cairo_path_destroy(currentPath);
+    cairo_append_path(cr, currentPath.get());
 }
 
 static void prepareForFilling(cairo_t* cr, const Cairo::FillSource& fillSource, PatternAdjustment patternAdjustment)
@@ -211,9 +209,7 @@ static inline void drawPathShadow(PlatformContextCairo& platformContext, const F
 
     // Calculate the extents of the rendered solid paths.
     cairo_t* cairoContext = platformContext.cr();
-    std::unique_ptr<cairo_path_t, void(*)(cairo_path_t*)> path(cairo_copy_path(cairoContext), [](cairo_path_t* path) {
-        cairo_path_destroy(path);
-    });
+    CairoUniquePtr<cairo_path_t> path(cairo_copy_path(cairoContext));
 
     FloatRect solidFigureExtents;
     double x0 = 0;
@@ -780,7 +776,7 @@ void fillRectWithRoundedHole(PlatformContextCairo& platformContext, const FloatR
     cairo_t* cr = platformContext.cr();
 
     cairo_save(cr);
-    setPathOnCairoContext(platformContext.cr(), path.platformPath()->context());
+    setPathOnCairoContext(platformContext.cr(), path.cairoPath());
     fillCurrentCairoPath(platformContext, fillSource);
     cairo_restore(cr);
 }
@@ -789,7 +785,7 @@ void fillPath(PlatformContextCairo& platformContext, const Path& path, const Fil
 {
     cairo_t* cr = platformContext.cr();
 
-    setPathOnCairoContext(cr, path.platformPath()->context());
+    setPathOnCairoContext(cr, path.cairoPath());
     drawPathShadow(platformContext, fillSource, { }, shadowState, Fill);
     fillCurrentCairoPath(platformContext, fillSource);
 }
@@ -812,7 +808,7 @@ void strokePath(PlatformContextCairo& platformContext, const Path& path, const S
 {
     cairo_t* cr = platformContext.cr();
 
-    setPathOnCairoContext(cr, path.platformPath()->context());
+    setPathOnCairoContext(cr, path.cairoPath());
     drawPathShadow(platformContext, { }, strokeSource, shadowState, Stroke);
     prepareForStroking(cr, strokeSource, PreserveAlpha);
     cairo_stroke(cr);
@@ -1285,7 +1281,7 @@ void clipPath(PlatformContextCairo& platformContext, const Path& path, WindRule 
     cairo_t* cr = platformContext.cr();
 
     if (!path.isNull())
-        setPathOnCairoContext(cr, path.platformPath()->context());
+        setPathOnCairoContext(cr, path.cairoPath());
 
     cairo_fill_rule_t savedFillRule = cairo_get_fill_rule(cr);
     cairo_set_fill_rule(cr, clipRule == WindRule::EvenOdd ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING);

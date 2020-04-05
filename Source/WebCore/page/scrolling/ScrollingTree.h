@@ -92,7 +92,7 @@ public:
 
     void notifyRelatedNodesAfterScrollPositionChange(ScrollingTreeScrollingNode& changedNode);
 
-    virtual void reportSynchronousScrollingReasonsChanged(MonotonicTime, SynchronousScrollingReasons) { }
+    virtual void reportSynchronousScrollingReasonsChanged(MonotonicTime, OptionSet<SynchronousScrollingReason>) { }
     virtual void reportExposedUnfilledArea(MonotonicTime, unsigned /* unfilledArea */) { }
 
 #if PLATFORM(IOS_FAMILY)
@@ -161,6 +161,9 @@ public:
     bool isMonitoringWheelEvents() const { return m_isMonitoringWheelEvents; }
     bool inCommitTreeState() const { return m_inCommitTreeState; }
 
+    virtual void lockLayersForHitTesting() { }
+    virtual void unlockLayersForHitTesting() { }
+
 protected:
     void setMainFrameScrollPosition(FloatPoint);
 
@@ -174,7 +177,7 @@ private:
 
     void notifyRelatedNodesRecursive(ScrollingTreeNode&);
 
-    ScrollingTreeNode* scrollingNodeForPoint(FloatPoint);
+    WEBCORE_EXPORT virtual RefPtr<ScrollingTreeNode> scrollingNodeForPoint(FloatPoint);
 
     Lock m_treeMutex; // Protects the scrolling tree.
 
@@ -214,6 +217,7 @@ private:
     Lock m_swipeStateMutex;
     SwipeState m_swipeState;
 
+private:
     unsigned m_fixedOrStickyNodeCount { 0 };
     bool m_isHandlingProgrammaticScroll { false };
     bool m_isMonitoringWheelEvents { false };
@@ -222,7 +226,7 @@ private:
     bool m_wasScrolledByDelegatedScrollingSincePreviousCommit { false };
     bool m_inCommitTreeState { false };
 };
-    
+
 } // namespace WebCore
 
 #define SPECIALIZE_TYPE_TRAITS_SCROLLING_TREE(ToValueTypeName, predicate) \

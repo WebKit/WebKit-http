@@ -216,6 +216,42 @@ TEST(TextManipulation, StartTextManipulationFindParagraphsWithMultileTokens)
     EXPECT_STREQ("Kit", items[1].tokens[1].content.UTF8String);
 }
 
+TEST(TextManipulation, StartTextManipulationFindAttributeContent)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<!DOCTYPE html><html><head><title>hey</title></head>"
+        "<body><div><span aria-label=\"this is greet\">hello</span><img src=\"apple.gif\" alt=\"fruit\"></body></html>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 4UL);
+    EXPECT_EQ(items[0].tokens.count, 1UL);
+    EXPECT_STREQ("hey", items[0].tokens[0].content.UTF8String);
+    EXPECT_FALSE(items[0].tokens[0].isExcluded);
+
+    EXPECT_EQ(items[1].tokens.count, 1UL);
+    EXPECT_STREQ("this is greet", items[1].tokens[0].content.UTF8String);
+    EXPECT_FALSE(items[1].tokens[0].isExcluded);
+
+    EXPECT_EQ(items[2].tokens.count, 1UL);
+    EXPECT_STREQ("fruit", items[2].tokens[0].content.UTF8String);
+    EXPECT_FALSE(items[2].tokens[0].isExcluded);
+
+    EXPECT_EQ(items[3].tokens.count, 2UL);
+    EXPECT_STREQ("hello", items[3].tokens[0].content.UTF8String);
+    EXPECT_FALSE(items[3].tokens[0].isExcluded);
+    EXPECT_STREQ("[]", items[3].tokens[1].content.UTF8String);
+    EXPECT_TRUE(items[3].tokens[1].isExcluded);
+}
+
 TEST(TextManipulation, StartTextManipulationSupportsLegacyDelegateCallback)
 {
     auto delegate = adoptNS([[LegacyTextManipulationDelegate alloc] init]);
@@ -695,6 +731,179 @@ TEST(TextManipulation, CompleteTextManipulationReplaceMultipleSimpleParagraphsAt
     TestWebKitAPI::Util::run(&done);
     EXPECT_WK_STREQ("<p>Hello, world.</p><p>Hello, <b>kittens</b> are <em>cute</em></p>",
         [webView stringByEvaluatingJavaScript:@"document.body.innerHTML"]);
+}
+
+TEST(TextManipulation, CompleteTextManipulationShouldPreserveImagesAsExcludedTokens)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<!DOCTYPE html><html><body><div>hello, <img src=\"apple.gif\"> world</div></body></html>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 1UL);
+    auto *tokens = items[0].tokens;
+    EXPECT_EQ(tokens.count, 3UL);
+    EXPECT_STREQ("hello, ", tokens[0].content.UTF8String);
+    EXPECT_FALSE(tokens[0].isExcluded);
+    EXPECT_STREQ("[]", tokens[1].content.UTF8String);
+    EXPECT_TRUE(tokens[1].isExcluded);
+    EXPECT_STREQ(" world", tokens[2].content.UTF8String);
+    EXPECT_FALSE(tokens[2].isExcluded);
+
+    done = false;
+    [webView _completeTextManipulationForItems:@[(_WKTextManipulationItem *)createItem(items[0].identifier, {
+        { tokens[0].identifier, @"this is " },
+        { tokens[1].identifier, nil },
+        { tokens[2].identifier, @" a test" }
+    })] completion:^(NSArray<NSError *> *errors) {
+        EXPECT_EQ(errors, nil);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_WK_STREQ("<div>this is <img src=\"apple.gif\"> a test</div>", [webView stringByEvaluatingJavaScript:@"document.body.innerHTML"]);
+}
+
+TEST(TextManipulation, CompleteTextManipulationShouldPreserveSVGAsExcludedTokens)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<!DOCTYPE html><html><body>"
+    "<section><div style=\"display: inline-block;\">hello</div>"
+    "<div style=\"display: inline-block;\"><span style=\"display: inline-flex;\">"
+    "<svg viewBox=\"0 0 20 20\" width=\"20\" height=\"20\"><rect width=\"20\" height=\"20\" fill=\"#06f\"></rect></svg>"
+    "</span></div></section><p>world</p></body></html>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 2UL);
+    auto *tokens = items[0].tokens;
+    EXPECT_EQ(tokens.count, 2UL);
+    EXPECT_STREQ("hello", tokens[0].content.UTF8String);
+    EXPECT_FALSE(tokens[0].isExcluded);
+    EXPECT_STREQ("[]", tokens[1].content.UTF8String);
+    EXPECT_TRUE(tokens[1].isExcluded);
+    
+    EXPECT_EQ(items[1].tokens.count, 1UL);
+    EXPECT_STREQ("world", items[1].tokens[0].content.UTF8String);
+    EXPECT_FALSE(items[1].tokens[0].isExcluded);
+
+    done = false;
+    [webView _completeTextManipulationForItems:@[(_WKTextManipulationItem *)createItem(items[0].identifier, {
+        { tokens[0].identifier, @"hey" },
+        { tokens[1].identifier, nil },
+    })] completion:^(NSArray<NSError *> *errors) {
+        EXPECT_EQ(errors, nil);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_WK_STREQ("<section><div style=\"display: inline-block;\">hey</div>"
+    "<div style=\"display: inline-block;\"><span style=\"display: inline-flex;\">"
+    "<svg viewBox=\"0 0 20 20\" width=\"20\" height=\"20\"><rect width=\"20\" height=\"20\" fill=\"#06f\"></rect></svg>"
+    "</span></div></section><p>world</p>", [webView stringByEvaluatingJavaScript:@"document.body.innerHTML"]);
+}
+
+TEST(TextManipulation, CompleteTextManipulationShouldPreserveOrderOfBlockImage)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<!DOCTYPE html><html><body><svg viewBox=\"0 0 10 10\" width=\"100\" height=\"100\">"
+    "<rect width=\"10\" height=\"10\" fill=\"red\"></rect></svg><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE"
+    "AAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAAxJREFUCNdjYKhnAAABAgCAbV7tZwAAAABJRU5ErkJggg==\""
+    "style=\"display: block; width: 100px;\"><section>helllo world</section></body></html>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 2UL);
+    EXPECT_EQ(items[0].tokens.count, 2UL);
+    EXPECT_STREQ("[]", items[0].tokens[0].content.UTF8String);
+    EXPECT_TRUE(items[0].tokens[0].isExcluded);
+    EXPECT_STREQ("[]", items[0].tokens[1].content.UTF8String);
+    EXPECT_TRUE(items[0].tokens[1].isExcluded);
+
+    auto *tokens = items[1].tokens;
+    EXPECT_EQ(tokens.count, 1UL);
+    EXPECT_STREQ("helllo world", tokens[0].content.UTF8String);
+    EXPECT_FALSE(tokens[0].isExcluded);
+
+    done = false;
+    [webView _completeTextManipulationForItems:@[
+        (_WKTextManipulationItem *)createItem(items[0].identifier, { { items[0].tokens[0].identifier, nil } }),
+        (_WKTextManipulationItem *)createItem(items[1].identifier, { { items[1].tokens[0].identifier, @"hello, world" } }),
+    ] completion:^(NSArray<NSError *> *errors) {
+        EXPECT_EQ(errors, nil);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_WK_STREQ("<svg viewBox=\"0 0 10 10\" width=\"100\" height=\"100\"><rect width=\"10\" height=\"10\" fill=\"red\"></rect></svg>"
+    "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAAxJREFUCN"
+    "djYKhnAAABAgCAbV7tZwAAAABJRU5ErkJggg==\" style=\"display: block; width: 100px;\"><section>hello, world</section>",
+        [webView stringByEvaluatingJavaScript:@"document.body.innerHTML"]);
+}
+
+TEST(TextManipulation, CompleteTextManipulationShouldReplaceAttributeContent)
+{
+    auto delegate = adoptNS([[TextManipulationDelegate alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
+    [webView _setTextManipulationDelegate:delegate.get()];
+
+    [webView synchronouslyLoadHTMLString:@"<!DOCTYPE html><html><head><title>hey</title></head>"
+        "<body><div><span aria-label=\"this is greet\">hello</span><img src=\"apple.gif\" alt=\"fruit\"></div></body></html>"];
+
+    done = false;
+    [webView _startTextManipulationsWithConfiguration:nil completion:^{
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    auto *items = [delegate items];
+    EXPECT_EQ(items.count, 4UL);
+    EXPECT_EQ(items[0].tokens.count, 1UL);
+    EXPECT_STREQ("hey", items[0].tokens[0].content.UTF8String);
+
+    EXPECT_EQ(items[1].tokens.count, 1UL);
+    EXPECT_STREQ("this is greet", items[1].tokens[0].content.UTF8String);
+
+    EXPECT_EQ(items[2].tokens.count, 1UL);
+    EXPECT_STREQ("fruit", items[2].tokens[0].content.UTF8String);
+
+    EXPECT_EQ(items[3].tokens.count, 2UL);
+    EXPECT_STREQ("hello", items[3].tokens[0].content.UTF8String);
+    EXPECT_STREQ("[]", items[3].tokens[1].content.UTF8String);
+
+    done = false;
+    [webView _completeTextManipulationForItems:@[
+        (_WKTextManipulationItem *)createItem(items[0].identifier, { { items[0].tokens[0].identifier, @"Hello" } }),
+        (_WKTextManipulationItem *)createItem(items[1].identifier, { { items[1].tokens[0].identifier, @"This is a greeting" } }),
+        (_WKTextManipulationItem *)createItem(items[2].identifier, { { items[2].tokens[0].identifier, @"Apple" } }),
+    ] completion:^(NSArray<NSError *> *errors) {
+        EXPECT_EQ(errors, nil);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+    EXPECT_WK_STREQ("<head><title>Hello</title></head><body><div><span aria-label=\"This is a greeting\">hello</span>"
+        "<img src=\"apple.gif\" alt=\"Apple\"></div></body>", [webView stringByEvaluatingJavaScript:@"document.documentElement.innerHTML"]);
 }
 
 TEST(TextManipulation, CompleteTextManipulationShouldBatchItemCallback)

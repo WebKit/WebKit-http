@@ -233,11 +233,6 @@ void PageClientImpl::gpuProcessCrashed()
 }
 #endif
 
-void PageClientImpl::pageClosed()
-{
-    notImplemented();
-}
-
 void PageClientImpl::preferencesDidChange()
 {
     notImplemented();
@@ -946,7 +941,6 @@ RetainPtr<WKDrawingView> PageClientImpl::createDrawingView(WebCore::GraphicsLaye
 }
 #endif
 
-#if ENABLE(POINTER_EVENTS)
 void PageClientImpl::cancelPointersForGestureRecognizer(UIGestureRecognizer* gestureRecognizer)
 {
     [m_contentView cancelPointersForGestureRecognizer:gestureRecognizer];
@@ -956,12 +950,20 @@ WTF::Optional<unsigned> PageClientImpl::activeTouchIdentifierForGestureRecognize
 {
     return [m_contentView activeTouchIdentifierForGestureRecognizer:gestureRecognizer];
 }
-#endif
 
 void PageClientImpl::handleAutocorrectionContext(const WebAutocorrectionContext& context)
 {
     [m_contentView _handleAutocorrectionContext:context];
 }
+
+#if USE(DICTATION_ALTERNATIVES)
+
+void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect&, uint64_t)
+{
+    notImplemented();
+}
+
+#endif
 
 } // namespace WebKit
 

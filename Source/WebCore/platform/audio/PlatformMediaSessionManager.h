@@ -27,6 +27,7 @@
 #define PlatformMediaSessionManager_h
 
 #include "DocumentIdentifier.h"
+#include "MediaSessionIdentifier.h"
 #include "PlatformMediaSession.h"
 #include "Timer.h"
 #include <wtf/AggregateLogger.h>
@@ -68,7 +69,7 @@ public:
     virtual String lastUpdatedNowPlayingTitle() const { return emptyString(); }
     virtual double lastUpdatedNowPlayingDuration() const { return NAN; }
     virtual double lastUpdatedNowPlayingElapsedTime() const { return NAN; }
-    virtual uint64_t lastUpdatedNowPlayingInfoUniqueIdentifier() const { return 0; }
+    virtual MediaSessionIdentifier lastUpdatedNowPlayingInfoUniqueIdentifier() const { return { }; }
     virtual bool registeredAsNowPlayingApplication() const { return false; }
     virtual void prepareToSendUserMediaPermissionRequest() { }
 
@@ -137,6 +138,8 @@ public:
     WEBCORE_EXPORT void addAudioCaptureSource(PlatformMediaSession::AudioCaptureSource&);
     WEBCORE_EXPORT void removeAudioCaptureSource(PlatformMediaSession::AudioCaptureSource&);
 
+    WEBCORE_EXPORT void processDidReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*);
+
 protected:
     friend class PlatformMediaSession;
     PlatformMediaSessionManager();
@@ -163,7 +166,6 @@ protected:
     int countActiveAudioCaptureSources();
     bool hasNoSession() const;
 
-    WEBCORE_EXPORT void processDidReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*);
     bool computeSupportsSeeking() const;
 
     WEBCORE_EXPORT void processSystemWillSleep();

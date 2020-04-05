@@ -138,6 +138,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << oldPageID;
     encoder << overriddenMediaType;
     encoder << corsDisablingPatterns;
+    encoder << crossOriginAccessControlCheckEnabled;
     encoder << processDisplayName;
 
     encoder << shouldCaptureAudioInUIProcess;
@@ -146,6 +147,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldCaptureVideoInGPUProcess;
     encoder << shouldCaptureDisplayInUIProcess;
     encoder << shouldRenderCanvasInGPUProcess;
+    encoder << needsInAppBrowserPrivacyQuirks;
 
 #if PLATFORM(GTK)
     encoder << themeName;
@@ -443,6 +445,12 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     parameters.corsDisablingPatterns = WTFMove(*corsDisablingPatterns);
 
+    Optional<bool> crossOriginAccessControlCheckEnabled;
+    decoder >> crossOriginAccessControlCheckEnabled;
+    if (!crossOriginAccessControlCheckEnabled)
+        return WTF::nullopt;
+    parameters.crossOriginAccessControlCheckEnabled = *crossOriginAccessControlCheckEnabled;
+    
     Optional<String> processDisplayName;
     decoder >> processDisplayName;
     if (!processDisplayName)
@@ -467,6 +475,9 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!decoder.decode(parameters.shouldRenderCanvasInGPUProcess))
         return WTF::nullopt;
 
+    if (!decoder.decode(parameters.needsInAppBrowserPrivacyQuirks))
+        return WTF::nullopt;
+    
 #if PLATFORM(GTK)
     if (!decoder.decode(parameters.themeName))
         return WTF::nullopt;

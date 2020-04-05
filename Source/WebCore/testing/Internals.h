@@ -238,6 +238,9 @@ public:
     String visiblePlaceholder(Element&);
     void setCanShowPlaceholder(Element&, bool);
 
+    Element* insertTextPlaceholder(int width, int height);
+    void removeTextPlaceholder(Element&);
+
     void selectColorInColorChooser(HTMLInputElement&, const String& colorValue);
     ExceptionOr<Vector<String>> formControlStateOfPreviousHistoryItem();
     ExceptionOr<void> setFormControlStateOfPreviousHistoryItem(const Vector<String>&);
@@ -301,8 +304,8 @@ public:
 
     ExceptionOr<void> setDelegatesScrolling(bool enabled);
 
-    ExceptionOr<int> lastSpellCheckRequestSequence();
-    ExceptionOr<int> lastSpellCheckProcessedSequence();
+    ExceptionOr<uint64_t> lastSpellCheckRequestSequence();
+    ExceptionOr<uint64_t> lastSpellCheckProcessedSequence();
 
     Vector<String> userPreferredLanguages() const;
     void setUserPreferredLanguages(const Vector<String>&);
@@ -940,6 +943,7 @@ public:
     String mediaMIMETypeForExtension(const String& extension);
 
     String getUTIFromMIMEType(const String& mimeType);
+    String getUTIFromTag(const String& tagClass, const String& tag, const String& conformingToUTI);
 
     bool supportsPictureInPicture();
 

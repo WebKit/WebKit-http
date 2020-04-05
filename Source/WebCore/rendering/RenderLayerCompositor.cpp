@@ -27,6 +27,7 @@
 
 #include "RenderLayerCompositor.h"
 
+#include "AsyncScrollingCoordinator.h"
 #include "CSSAnimationController.h"
 #include "CSSPropertyNames.h"
 #include "CanvasRenderingContext.h"
@@ -517,6 +518,9 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         SetForScope<bool> flushingLayersScope(m_flushingLayers, true);
 
         if (auto* rootLayer = rootGraphicsLayer()) {
+#if ENABLE(SCROLLING_THREAD)
+            LayerTreeHitTestLocker layerLocker(scrollingCoordinator());
+#endif
             FloatRect visibleRect = visibleRectForLayerFlushing();
             LOG_WITH_STREAM(Compositing,  stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges (is root " << isFlushRoot << ") visible rect " << visibleRect);
             rootLayer->flushCompositingState(visibleRect);
@@ -1217,10 +1221,12 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
         } else if (layer.needsScrollingTreeUpdate())
             scrollingNodeChanges.add(ScrollingNodeChangeFlags::LayerGeometry);
 
+#if ENABLE(ASYNC_SCROLLING)
         // This needs to happen after any geometry update.
         // FIXME: Use separate bit for event region invalidation.
         if (layerNeedsUpdate || layer.needsCompositingConfigurationUpdate())
             layerBacking->updateEventRegion();
+#endif
 
         if (auto* reflection = layer.reflectionLayer()) {
             if (auto* reflectionBacking = reflection->backing()) {
@@ -2034,8 +2040,18 @@ void RenderLayerCompositor::updateScrollLayerClipping()
     if (!layerForClipping)
         return;
 
-    layerForClipping->setSize(m_renderView.frameView().sizeForVisibleContent());
+    auto layerSize = m_renderView.frameView().sizeForVisibleContent();
+    layerForClipping->setSize(layerSize);
     layerForClipping->setPosition(positionForClipLayer());
+
+#if ENABLE(SCROLLING_THREAD)
+    if (layerForClipping == m_clipLayer) {
+        EventRegion eventRegion;
+        auto eventRegionContext = eventRegion.makeContext();
+        eventRegionContext.unite(IntRect({ }, layerSize), RenderStyle::defaultStyle());
+        m_clipLayer->setEventRegion(WTFMove(eventRegion));
+    }
+#endif
 }
 
 FloatPoint RenderLayerCompositor::positionForClipLayer() const
@@ -3178,7 +3194,15 @@ bool RenderLayerCompositor::useCoordinatedScrollingForLayer(const RenderLayer& l
 
 static bool isScrolledByOverflowScrollLayer(const RenderLayer& layer, const RenderLayer& overflowScrollLayer)
 {
-    return layer.boxScrollingScope() == overflowScrollLayer.contentsScrollingScope();
+    bool scrolledByOverflowScroll = false;
+    traverseAncestorLayers(layer, [&](const RenderLayer& ancestorLayer, bool inContainingBlockChain, bool) {
+        if (&ancestorLayer == &overflowScrollLayer) {
+            scrolledByOverflowScroll = inContainingBlockChain;
+            return AncestorTraversal::Stop;
+        }
+        return AncestorTraversal::Continue;
+    });
+    return scrolledByOverflowScroll;
 }
 
 static RenderLayer* enclosingCompositedScrollingLayer(const RenderLayer& layer, const RenderLayer& intermediateLayer, bool& sawIntermediateLayer)
@@ -3873,7 +3897,7 @@ void RenderLayerCompositor::ensureRootLayer()
             m_overflowControlsHostLayer->setName("overflow controls host");
 
             m_scrolledContentsLayer = GraphicsLayer::create(graphicsLayerFactory(), *this, GraphicsLayer::Type::ScrolledContents);
-            m_scrolledContentsLayer->setName("scrolled contents");
+            m_scrolledContentsLayer->setName("frame scrolled contents");
             m_scrolledContentsLayer->setAnchorPoint({ });
 
 #if PLATFORM(IOS_FAMILY)
@@ -4221,6 +4245,12 @@ ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, S
         return 0;
     
     backing->setScrollingNodeIDForRole(nodeID, role);
+
+#if ENABLE(SCROLLING_THREAD)
+    if (nodeType == ScrollingNodeType::Subframe)
+        m_clipLayer->setScrollingNodeID(nodeID);
+#endif
+
     m_scrollingNodeToLayerMap.add(nodeID, makeWeakPtr(layer));
 
     return nodeID;
@@ -4528,6 +4558,10 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingProxyRole(
             return treeState.parentNodeID.valueOr(0);
         }
         entry.overflowScrollProxyNodeID = nodeID;
+#if ENABLE(SCROLLING_THREAD)
+        if (entry.clippingLayer)
+            entry.clippingLayer->setScrollingNodeID(nodeID);
+#endif
 
         if (changes & ScrollingNodeChangeFlags::Layer)
             scrollingCoordinator->setNodeLayers(entry.overflowScrollProxyNodeID, { entry.clippingLayer.get() });

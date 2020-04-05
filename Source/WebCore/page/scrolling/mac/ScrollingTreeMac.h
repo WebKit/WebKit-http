@@ -39,6 +39,14 @@ private:
     explicit ScrollingTreeMac(AsyncScrollingCoordinator&);
 
     Ref<ScrollingTreeNode> createScrollingTreeNode(ScrollingNodeType, ScrollingNodeID) final;
+
+    RefPtr<ScrollingTreeNode> scrollingNodeForPoint(FloatPoint) final;
+
+    void lockLayersForHitTesting() final;
+    void unlockLayersForHitTesting() final;
+
+    // This lock protects the CALayer/PlatformCALayer tree.
+    Lock m_layerHitTestMutex;
 };
 
 } // namespace WebCore

@@ -824,6 +824,7 @@ dom/Attr.cpp
 dom/BeforeLoadEvent.cpp
 dom/BeforeTextInsertedEvent.cpp
 dom/BeforeUnloadEvent.cpp
+dom/BoundaryPoint.cpp
 dom/CDATASection.cpp
 dom/CharacterData.cpp
 dom/ChildListMutationScope.cpp
@@ -949,6 +950,7 @@ dom/SecurityOriginPolicy.cpp
 dom/SecurityPolicyViolationEvent.cpp
 dom/SelectorQuery.cpp
 dom/ShadowRoot.cpp
+dom/SimpleRange.cpp
 dom/SimulatedClick.cpp
 dom/SlotAssignment.cpp
 dom/SpaceSplitString.cpp
@@ -1348,6 +1350,7 @@ html/shadow/ProgressShadowElement.cpp
 html/shadow/SliderThumbElement.cpp
 html/shadow/SpinButtonElement.cpp
 html/shadow/TextControlInnerElements.cpp
+html/shadow/TextPlaceholderElement.cpp
 
 inspector/CommandLineAPIHost.cpp
 inspector/CommandLineAPIModule.cpp
@@ -1741,6 +1744,7 @@ platform/LowPowerModeNotifier.cpp
 platform/MIMETypeRegistry.cpp
 platform/MainThreadSharedTimer.cpp
 platform/NotImplemented.cpp
+platform/NowPlayingManager.cpp
 platform/Pasteboard.cpp
 platform/PasteboardCustomData.cpp
 platform/PasteboardWriterData.cpp
@@ -1822,6 +1826,7 @@ platform/audio/VectorMath.cpp
 platform/audio/ZeroPole.cpp
 
 platform/encryptedmedia/CDMFactory.cpp
+platform/encryptedmedia/CDMLogging.cpp
 platform/encryptedmedia/CDMPrivate.cpp
 platform/encryptedmedia/CDMProxy.cpp
 

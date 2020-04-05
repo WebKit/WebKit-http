@@ -33,9 +33,9 @@
 namespace WebCore {
 namespace DisplayList {
 
-DrawingContext::DrawingContext(const FloatSize& logicalSize)
+DrawingContext::DrawingContext(const FloatSize& logicalSize, Recorder::Observer* observer)
     : m_context([&](GraphicsContext& displayListContext) {
-        return makeUnique<Recorder>(displayListContext, m_displayList, GraphicsContextState(), FloatRect({ }, logicalSize), AffineTransform());
+        return makeUnique<Recorder>(displayListContext, m_displayList, GraphicsContextState(), FloatRect({ }, logicalSize), AffineTransform(), observer);
     })
 {
 }
@@ -44,6 +44,13 @@ void DrawingContext::setTracksDisplayListReplay(bool tracksDisplayListReplay)
 {
     m_tracksDisplayListReplay = tracksDisplayListReplay;
     m_replayedDisplayList.reset();
+}
+
+Recorder& DrawingContext::recorder()
+{
+    auto* graphicsContextImpl = context().impl();
+    ASSERT(graphicsContextImpl);
+    return static_cast<Recorder&>(*graphicsContextImpl);
 }
 
 void DrawingContext::replayDisplayList(GraphicsContext& destContext)

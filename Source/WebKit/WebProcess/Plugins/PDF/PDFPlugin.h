@@ -34,15 +34,14 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/AffineTransform.h>
 #include <WebCore/FindOptions.h>
+#include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/ScrollableArea.h>
+#include <wtf/HashMap.h>
+#include <wtf/Identified.h>
+#include <wtf/Range.h>
+#include <wtf/RangeSet.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Threading.h>
-
-// For now, disable new PDF APIs by default even on platforms where otherwise enabled.
-// FIXME: Enable this when ready.
-#ifdef HAVE_INCREMENTAL_PDF_APIS
-#undef HAVE_INCREMENTAL_PDF_APIS
-#endif
 
 typedef const struct OpaqueJSContext* JSContextRef;
 typedef struct OpaqueJSValue* JSObjectRef;
@@ -75,7 +74,11 @@ class PDFPluginPasswordField;
 class PluginView;
 class WebFrame;
 
-class PDFPlugin final : public Plugin, private WebCore::ScrollableArea {
+class PDFPlugin final : public Plugin, private WebCore::ScrollableArea
+#if HAVE(INCREMENTAL_PDF_APIS)
+    , private WebCore::NetscapePlugInStreamLoaderClient
+#endif
+{
 public:
     static Ref<PDFPlugin> create(WebFrame&);
     ~PDFPlugin();
@@ -261,8 +264,6 @@ private:
     NSData *rawData() const { return (__bridge NSData *)m_data.get(); }
 #endif
 
-    WebFrame* webFrame() const { return m_frame; }
-
     JSObjectRef makeJSPDFDoc(JSContextRef);
     static JSValueRef jsPDFDocPrint(JSContextRef, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);
 
@@ -274,7 +275,7 @@ private:
     PluginView* pluginView();
     const PluginView* pluginView() const;
 
-    WebFrame* m_frame;
+    WebFrame& m_frame;
 
     bool m_isPostScript { false };
     bool m_pdfDocumentWasMutated { false };
@@ -309,6 +310,7 @@ private:
 
     String m_suggestedFilename;
     RetainPtr<CFMutableDataRef> m_data;
+    uint64_t m_streamedBytes { 0 };
 
     RetainPtr<PDFDocument> m_pdfDocument;
 
@@ -323,17 +325,53 @@ private:
     void threadEntry(Ref<PDFPlugin>&&);
     void adoptBackgroundThreadDocument();
 
-    struct ByteRangeRequest {
-        off_t position { 0 };
-        size_t count { 0 };
-        CompletionHandler<void(const uint8_t*, size_t count)> completionHandler;
+    // WebCore::NetscapePlugInStreamLoaderClient
+    void willSendRequest(WebCore::NetscapePlugInStreamLoader*, WebCore::ResourceRequest&&, const WebCore::ResourceResponse& redirectResponse, CompletionHandler<void(WebCore::ResourceRequest&&)>&&) final;
+    void didReceiveResponse(WebCore::NetscapePlugInStreamLoader*, const WebCore::ResourceResponse&) final;
+    void didReceiveData(WebCore::NetscapePlugInStreamLoader*, const char*, int) final;
+    void didFail(WebCore::NetscapePlugInStreamLoader*, const WebCore::ResourceError&) final;
+    void didFinishLoading(WebCore::NetscapePlugInStreamLoader*) final;
+
+    class ByteRangeRequest : public Identified<ByteRangeRequest> {
+    public:
+        ByteRangeRequest() = default;
+        ByteRangeRequest(uint64_t position, size_t count, CompletionHandler<void(const uint8_t*, size_t count)>&& completionHandler)
+            : m_position(position)
+            , m_count(count)
+            , m_completionHandler(WTFMove(completionHandler))
+        {
+        }
+
+        WebCore::NetscapePlugInStreamLoader* streamLoader() { return m_streamLoader; }
+        void setStreamLoader(WebCore::NetscapePlugInStreamLoader* loader) { m_streamLoader = loader; }
+        void clearStreamLoader();
+        void addData(const uint8_t* data, size_t count) { m_accumulatedData.append(data, count); }
+
+        void completeWithBytes(const uint8_t*, size_t, PDFPlugin&);
+        void completeWithAccumulatedData(PDFPlugin&);
+
+        bool maybeComplete(PDFPlugin&);
+        void completeUnconditionally(PDFPlugin&);
+
+    private:
+        uint64_t m_position { 0 };
+        size_t m_count { 0 };
+        CompletionHandler<void(const uint8_t*, size_t count)> m_completionHandler;
+        Vector<uint8_t> m_accumulatedData;
+        WebCore::NetscapePlugInStreamLoader* m_streamLoader { nullptr };
     };
-    void unconditionalCompleteRangeRequest(ByteRangeRequest&);
     void unconditionalCompleteOutstandingRangeRequests();
+
+    ByteRangeRequest* byteRangeRequestForLoader(WebCore::NetscapePlugInStreamLoader&);
+    void forgetLoader(WebCore::NetscapePlugInStreamLoader&);
+    void cancelAndForgetLoader(WebCore::NetscapePlugInStreamLoader&);
 
     RetainPtr<PDFDocument> m_backgroundThreadDocument;
     RefPtr<Thread> m_pdfThread;
-    Vector<ByteRangeRequest> m_outstandingByteRangeRequests;
+    HashMap<uint64_t, ByteRangeRequest> m_outstandingByteRangeRequests;
+    HashMap<RefPtr<WebCore::NetscapePlugInStreamLoader>, uint64_t> m_streamLoaderMap;
+    RangeSet<WTF::Range<uint64_t>> m_completedRanges;
+    bool m_incrementalPDFLoadingEnabled;
 #endif
 };
 

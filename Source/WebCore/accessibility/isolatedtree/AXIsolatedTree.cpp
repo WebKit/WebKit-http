@@ -182,7 +182,7 @@ void AXIsolatedTree::setFocusedNode(AXID axID)
     for (const auto& item : m_pendingAppends) {
         if (item.m_isolatedObject->objectID() == m_focusedNodeID
             && m_readerThreadNodeMap.add(m_focusedNodeID, item.m_isolatedObject.get()) && item.m_wrapper)
-            m_readerThreadNodeMap.get(m_focusedNodeID)->attachPlatformWrapper(item.m_wrapper);
+            m_readerThreadNodeMap.get(m_focusedNodeID)->attachPlatformWrapper(item.m_wrapper.get());
     }
 }
 
@@ -198,26 +198,11 @@ void AXIsolatedTree::removeNode(AXID axID)
     m_pendingRemovals.append(axID);
 }
 
-void AXIsolatedTree::removeSubtree(AXID axID)
+void AXIsolatedTree::appendNodeChanges(const Vector<NodeChange>& changes)
 {
     LockHolder locker { m_changeLogLock };
-    m_pendingRemovals.append(axID);
-
-    auto object = nodeForID(axID);
-    if (!object)
-        return;
-    auto childrenIDs(object->m_childrenIDs);
-    locker.unlockEarly();
-
-    for (const auto& childID : childrenIDs)
-        removeSubtree(childID);
-}
-
-void AXIsolatedTree::appendNodeChanges(const Vector<NodeChange>& log)
-{
-    LockHolder locker { m_changeLogLock };
-    for (const auto& node : log)
-        m_pendingAppends.append(node);
+    for (const auto& nodeChange : changes)
+        m_pendingAppends.append(nodeChange);
 }
 
 void AXIsolatedTree::applyPendingChanges()
@@ -227,15 +212,21 @@ void AXIsolatedTree::applyPendingChanges()
 
     m_focusedNodeID = m_pendingFocusedNodeID;
 
-    for (const auto& axID : m_pendingRemovals) {
-        if (auto object = nodeForID(axID))
+    while (m_pendingRemovals.size()) {
+        auto axID = m_pendingRemovals.takeLast();
+        if (axID == InvalidAXID)
+            continue;
+
+        if (auto object = nodeForID(axID)) {
             object->detach(AccessibilityDetachmentType::ElementDestroyed);
-        m_readerThreadNodeMap.remove(axID);
+            m_pendingRemovals.appendVector(object->m_childrenIDs);
+        }
     }
-    m_pendingRemovals.clear();
 
     for (const auto& item : m_pendingAppends) {
         AXID axID = item.m_isolatedObject->objectID();
+        if (axID == InvalidAXID)
+            continue;
 
         if (m_readerThreadNodeMap.get(axID) != &item.m_isolatedObject.get()) {
             // The new IsolatedObject is a replacement for an existing object
@@ -247,7 +238,7 @@ void AXIsolatedTree::applyPendingChanges()
         }
 
         if (m_readerThreadNodeMap.add(axID, item.m_isolatedObject.get()) && item.m_wrapper)
-            m_readerThreadNodeMap.get(axID)->attachPlatformWrapper(item.m_wrapper);
+            m_readerThreadNodeMap.get(axID)->attachPlatformWrapper(item.m_wrapper.get());
 
         // The reference count of the just added IsolatedObject must be 2
         // because it is referenced by m_readerThreadNodeMap and m_pendingAppends.

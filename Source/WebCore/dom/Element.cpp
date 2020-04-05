@@ -305,8 +305,6 @@ static bool isForceEvent(const PlatformMouseEvent& platformEvent)
     return platformEvent.type() == PlatformEvent::MouseForceChanged || platformEvent.type() == PlatformEvent::MouseForceDown || platformEvent.type() == PlatformEvent::MouseForceUp;
 }
 
-#if ENABLE(POINTER_EVENTS)
-
 static bool isCompatibilityMouseEvent(const MouseEvent& mouseEvent)
 {
     // https://www.w3.org/TR/pointerevents/#compatibility-mapping-with-mouse-events
@@ -314,42 +312,31 @@ static bool isCompatibilityMouseEvent(const MouseEvent& mouseEvent)
     return type != eventNames().clickEvent && type != eventNames().mouseoverEvent && type != eventNames().mouseoutEvent && type != eventNames().mouseenterEvent && type != eventNames().mouseleaveEvent;
 }
 
-#endif
-
 enum class ShouldIgnoreMouseEvent : bool { No, Yes };
 static ShouldIgnoreMouseEvent dispatchPointerEventIfNeeded(Element& element, const MouseEvent& mouseEvent, const PlatformMouseEvent& platformEvent, bool& didNotSwallowEvent)
 {
-#if ENABLE(POINTER_EVENTS)
-    if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
-        if (auto* page = element.document().page()) {
-            auto& pointerCaptureController = page->pointerCaptureController();
+    if (auto* page = element.document().page()) {
+        auto& pointerCaptureController = page->pointerCaptureController();
 #if ENABLE(TOUCH_EVENTS)
-            if (platformEvent.pointerId() != mousePointerID && mouseEvent.type() != eventNames().clickEvent && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(platformEvent.pointerId()))
-                return ShouldIgnoreMouseEvent::Yes;
+        if (platformEvent.pointerId() != mousePointerID && mouseEvent.type() != eventNames().clickEvent && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(platformEvent.pointerId()))
+            return ShouldIgnoreMouseEvent::Yes;
 #else
-            UNUSED_PARAM(platformEvent);
+        UNUSED_PARAM(platformEvent);
 #endif
-            if (platformEvent.syntheticClickType() != NoTap)
-                return ShouldIgnoreMouseEvent::No;
+        if (platformEvent.syntheticClickType() != NoTap)
+            return ShouldIgnoreMouseEvent::No;
 
-            if (auto pointerEvent = pointerCaptureController.pointerEventForMouseEvent(mouseEvent)) {
-                pointerCaptureController.dispatchEvent(*pointerEvent, &element);
-                if (isCompatibilityMouseEvent(mouseEvent) && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(pointerEvent->pointerId()))
+        if (auto pointerEvent = pointerCaptureController.pointerEventForMouseEvent(mouseEvent)) {
+            pointerCaptureController.dispatchEvent(*pointerEvent, &element);
+            if (isCompatibilityMouseEvent(mouseEvent) && pointerCaptureController.preventsCompatibilityMouseEventsForIdentifier(pointerEvent->pointerId()))
+                return ShouldIgnoreMouseEvent::Yes;
+            if (pointerEvent->defaultPrevented() || pointerEvent->defaultHandled()) {
+                didNotSwallowEvent = false;
+                if (pointerEvent->type() == eventNames().pointerdownEvent)
                     return ShouldIgnoreMouseEvent::Yes;
-                if (pointerEvent->defaultPrevented() || pointerEvent->defaultHandled()) {
-                    didNotSwallowEvent = false;
-                    if (pointerEvent->type() == eventNames().pointerdownEvent)
-                        return ShouldIgnoreMouseEvent::Yes;
-                }
             }
         }
     }
-#else
-    UNUSED_PARAM(element);
-    UNUSED_PARAM(mouseEvent);
-    UNUSED_PARAM(platformEvent);
-    UNUSED_PARAM(didNotSwallowEvent);
-#endif
 
     return ShouldIgnoreMouseEvent::No;
 }
@@ -1901,10 +1888,8 @@ URL Element::absoluteLinkURL() const
 
 bool Element::allowsDoubleTapGesture() const
 {
-#if ENABLE(POINTER_EVENTS)
     if (renderStyle() && renderStyle()->touchActions() != TouchAction::Auto)
         return false;
-#endif
 
     Element* parent = parentElement();
     return !parent || parent->allowsDoubleTapGesture();
@@ -2065,7 +2050,7 @@ void Element::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
         CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, newDocument);
 
 #if ENABLE(INTERSECTION_OBSERVER)
-    if (auto* observerData = intersectionObserverData()) {
+    if (auto* observerData = intersectionObserverDataIfExists()) {
         for (const auto& observer : observerData->observers) {
             if (observer->hasObservationTargets()) {
                 oldDocument.removeIntersectionObserver(*observer);
@@ -2199,10 +2184,8 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
     if (document().page())
         document().page()->pointerLockController().elementRemoved(*this);
 #endif
-#if ENABLE(POINTER_EVENTS)
-    if (document().page() && RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled())
+    if (document().page())
         document().page()->pointerCaptureController().elementWasRemoved(*this);
-#endif
 
     setSavedLayerScrollPosition(ScrollPosition());
 
@@ -3349,7 +3332,10 @@ bool Element::isVisibleWithoutResolvingFullStyle() const
         return false;
 
     for (auto& element : composedTreeAncestors(const_cast<Element&>(*this))) {
-        if (element.existingComputedStyle()->display() == DisplayType::None)
+        auto* style = element.existingComputedStyle();
+        if (!style)
+            style = element.resolveComputedStyle(ResolveComputedStyleMode::RenderedOnly);
+        if (!style || style->display() == DisplayType::None)
             return false;
     }
 
@@ -3685,8 +3671,6 @@ void Element::setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(boo
 
 #endif
 
-#if ENABLE(POINTER_EVENTS)
-
 ExceptionOr<void> Element::setPointerCapture(int32_t pointerId)
 {
     if (document().page())
@@ -3708,8 +3692,6 @@ bool Element::hasPointerCapture(int32_t pointerId)
     return false;
 }
 
-#endif
-
 #if ENABLE(POINTER_LOCK)
 
 void Element::requestPointerLock()
@@ -3724,16 +3706,20 @@ void Element::requestPointerLock()
 
 void Element::disconnectFromIntersectionObservers()
 {
-    auto* observerData = intersectionObserverData();
+    auto* observerData = intersectionObserverDataIfExists();
     if (!observerData)
         return;
 
-    for (const auto& registration : observerData->registrations)
-        registration.observer->targetDestroyed(*this);
+    for (const auto& registration : observerData->registrations) {
+        if (registration.observer)
+            registration.observer->targetDestroyed(*this);
+    }
     observerData->registrations.clear();
 
-    for (const auto& observer : observerData->observers)
-        observer->rootDestroyed();
+    for (const auto& observer : observerData->observers) {
+        if (observer)
+            observer->rootDestroyed();
+    }
     observerData->observers.clear();
 }
 
@@ -3745,7 +3731,7 @@ IntersectionObserverData& Element::ensureIntersectionObserverData()
     return *rareData.intersectionObserverData();
 }
 
-IntersectionObserverData* Element::intersectionObserverData()
+IntersectionObserverData* Element::intersectionObserverDataIfExists()
 {
     return hasRareData() ? elementRareData()->intersectionObserverData() : nullptr;
 }

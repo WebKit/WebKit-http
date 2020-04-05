@@ -1,3 +1,449 @@
+2020-03-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Fix iso-subspace static_assert for JSJavaScriptCallFramePrototype
+        https://bugs.webkit.org/show_bug.cgi?id=208874
+
+        Reviewed by Saam Barati.
+
+        This static_assert should ensure the condition for JSJavaScriptCallFramePrototype, not for JSInjectedScriptHostPrototype.
+
+        * inspector/JSJavaScriptCallFramePrototype.h:
+
+2020-03-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove obsolete feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=208830
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE_CUSTOM_SCHEME_HANDLER and ENABLE_MAC_VIDEO_TOOLBOX since they
+        are no longer used.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-09  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        @putByValDirect does not perform [[DefineOwnProperty]] correctly
+        https://bugs.webkit.org/show_bug.cgi?id=208708
+
+        Reviewed by Yusuke Suzuki.
+
+        This change adds inSparseIndexingMode() check to canDoFastPutDirectIndex(), fixing slow path
+        of @putByValDirect() to perform [[DefineOwnProperty]] according to spec [1] and aligning JSC
+        with V8 and SpiderMonkey.
+
+        This patch preserves existing behavior for Arguments exotic objects (thus the checks order)
+        and aligns slow path checks in JSObject::putDirectIndexSlowOrBeyondVectorLength
+        with JSObject::defineOwnIndexedProperty.
+
+        JetStream2 benchmark is neutral.
+
+        [1]: https://tc39.es/ecma262/#sec-validateandapplypropertydescriptor
+
+        * runtime/JSObject.cpp:
+        (JSC::canDoFastPutDirectIndex):
+
+2020-03-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the compile-time flag for Pointer Events
+        https://bugs.webkit.org/show_bug.cgi?id=208821
+        <rdar://problem/60223471>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-09  Caio Lima  <ticaiolima@gmail.com>
+
+        Tail calls are broken on ARM_THUMB2 and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=197797
+
+        Reviewed by Yusuke Suzuki.
+
+        `prepareForTailCall` operation expects that header size + parameters
+        size is aligned with stack (alignment is 16-bytes for every architecture).
+        This means that headerSizeInBytes + argumentsIncludingThisInBytes needs
+        to be multiple of 16. This was not being preserved during getter IC code
+        for 32-bits. The code generated was taking in account only
+        headerSizeInRegisters (it is 4 on 32-bits) and argumentsIncludingThis
+        (that is always 1 for getters) and allocating 32-bytes when applying
+        operation `(headerSize + argumentsIncludingThis) * 8 - sizeof(CallerFrameAndPC)`.
+        This results in a stack frame with size of 40 bytes (after we push
+        `lr` and `sp`). Since `prepareForTailCall` expects frames to be
+        16-bytes aligned, it will then calculate the top of such frame
+        considering it is 48 bytes, cloberring values of previous frame and
+        causing unexpected behavior. This patch is fixing how this IC code
+        calculates the stack frame using `roundArgumentCountToAlignFrame(numberOfParameters)`
+        aligning with what we do on code without IC installed.
+        This was not a problem for getter and setter IC on 64-bits because
+        `roundArgumentCountToAlignFrame(1) == 1` and `roundArgumentCountToAlignFrame(2) == 3`
+        while it is `roundArgumentCountToAlignFrame(1) == 2` and
+        `roundArgumentCountToAlignFrame(2) == 2` for MIPS and ARMv7.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+
+2020-03-08  Brady Eidson  <beidson@apple.com>
+
+        Remember completed subranges during incremental PDF loading.
+        https://bugs.webkit.org/show_bug.cgi?id=208785
+
+        Reviewed by Tim Horton.
+
+        Move 'using WTF::Range' from the WTF/Range.h header to these JSC users.
+        
+        The alternative to making these 3 changes was to make over 20 changes up in the WebCore/WebKits
+        to resolve the conflict with WebCore::Range.
+        
+        * b3/B3HeapRange.h:
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.cpp:
+        * heap/JITStubRoutineSet.h:
+
+2020-03-07  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        REGRESSION (r258049): Unchecked JS exception in jsc::Stringifier::toJSON
+        https://bugs.webkit.org/show_bug.cgi?id=208766
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::toJSON): Add missing RELEASE_AND_RETURN.
+
+2020-03-07  Mark Lam  <mark.lam@apple.com>
+
+        Remove bad assertion in FTLLowerDFGToB3's compileDelBy().
+        https://bugs.webkit.org/show_bug.cgi?id=208764
+        <rdar://problem/59940095>
+
+        Reviewed by Keith Miller.
+
+        The assertion ASSERT(base.gpr() != params[2].gpr()) is wrong because it is legal
+        JS to pass in the same value as the base and subscript.  The runtime will handle
+        it properly.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileDelBy):
+
+2020-03-05  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        <rdar://problem/59296762>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove JSC related defines.
+
+2020-03-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Enable public class fields
+        https://bugs.webkit.org/show_bug.cgi?id=208756
+
+        Reviewed by Mark Lam.
+
+        This patch turns public-class-fields feature on, implemented in r254653.
+        To separate from private-class-fields, this patch renames the flag from useClassFields to usePublicClassFields,
+        and first enable public-class-fields feature.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionCallValueNode::emitBytecode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        * runtime/OptionsList.h:
+
+2020-03-06  Mark Lam  <mark.lam@apple.com>
+
+        Add "AndOrdered" to the names of ordered DoubleConditions.
+        https://bugs.webkit.org/show_bug.cgi?id=208736
+
+        Reviewed by Keith Miller.
+
+        Renamed the following:
+            DoubleEqual ==> DoubleEqualAndOrdered
+            DoubleNotEqual ==> DoubleNotEqualAndOrdered
+            DoubleGreaterThan ==> DoubleGreaterThanAndOrdered
+            DoubleGreaterThanOrEqual ==> DoubleGreaterThanOrEqualAndOrdered
+            DoubleLessThan ==> DoubleLessThanAndOrdered
+            DoubleLessThanOrEqual ==> DoubleLessThanOrEqualAndOrdered
+
+        The comment for these enums in MacroAssemblerARM64.h says:
+            // These conditions will only evaluate to true if the comparison is ordered - i.e. neither operand is NaN.
+
+        Adding "AndOrdered" to their names makes this property explicit.
+
+        From reading the original names, one might intuitively think that these conditions
+        map directly to the C++ double comparisons.  This intuition is incorrect.
+        Consider the DoubleNotEqual case: let's compare 2 doubles, a and b:
+
+            result = (a != b);
+
+        For C++, if either a or b are NaNs, then a != b will actually return true.
+        This is contrary to the behavior documented in the MacroAssemblerARM64.h comment
+        above about how DoubleNotEqual should behave.  In our code, DoubleNotEqual actually
+        means DoubleNotEqualAndOrdered.  The C++ != behavior actually matches our
+        DoubleNotEqualOrUnordered condition instead.
+
+        The tendency to want to associate DoubleNotEqual with the behavior of the C++
+        != operator is precisely why we should give these conditions better names.
+        Adding the "AndOperand" name make the expected behavior explicit in the name, and
+        leave no room for confusion with C++ double comparison semantics.
+
+        * assembler/MacroAssembler.cpp:
+        (WTF::printInternal):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::invert):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::moveConditionallyAfterFloatingPointCompare):
+        (JSC::MacroAssemblerARM64::moveDoubleConditionallyAfterFloatingPointCompare):
+        (JSC::MacroAssemblerARM64::jumpAfterFloatingPointCompare):
+        (JSC::MacroAssemblerARM64::floatingPointCompare):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::branchDouble):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::branchDouble):
+        (JSC::MacroAssemblerMIPS::branchDoubleNonZero):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::branchDoubleNonZero):
+        (JSC::MacroAssemblerX86Common::moveConditionallyDouble):
+        (JSC::MacroAssemblerX86Common::invert):
+        (JSC::MacroAssemblerX86Common::floatingPointCompare):
+        (JSC::MacroAssemblerX86Common::jumpAfterFloatingPointCompare):
+        (JSC::MacroAssemblerX86Common::moveConditionallyAfterFloatingPointCompare):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::truncateDoubleToUint64):
+        (JSC::MacroAssemblerX86_64::truncateFloatToUint64):
+        * assembler/testmasm.cpp:
+        (JSC::testCompareDouble):
+        (JSC::testCompareDoubleSameArg):
+        (JSC::testMoveConditionallyFloatingPoint):
+        (JSC::testMoveDoubleConditionallyDouble):
+        (JSC::testMoveDoubleConditionallyDoubleDestSameAsThenCase):
+        (JSC::testMoveDoubleConditionallyDoubleDestSameAsElseCase):
+        (JSC::testMoveDoubleConditionallyFloat):
+        (JSC::testMoveDoubleConditionallyFloatDestSameAsThenCase):
+        (JSC::testMoveDoubleConditionallyFloatDestSameAsElseCase):
+        (JSC::testMoveConditionallyFloatingPointSameArg):
+        (JSC::run):
+        * b3/B3LowerToAir.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::compileClampDoubleToByte):
+        (JSC::DFG::SpeculativeJIT::compileArithRounding):
+        (JSC::DFG::SpeculativeJIT::compileArithMinMax):
+        (JSC::DFG::SpeculativeJIT::compileArithPow):
+        (JSC::DFG::SpeculativeJIT::compileStrictEq):
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+        (JSC::DFG::SpeculativeJIT::compileNormalizeMapKey):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNumberIsInteger):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchIfNotNaN):
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emitSlow_op_jless):
+        (JSC::JIT::emitSlow_op_jlesseq):
+        (JSC::JIT::emitSlow_op_jgreater):
+        (JSC::JIT::emitSlow_op_jgreatereq):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emitBinaryDoubleOp):
+        * jit/ThunkGenerators.cpp:
+        (JSC::floorThunkGenerator):
+        (JSC::roundThunkGenerator):
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Le>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Lt>):
+        (JSC::Wasm::AirIRGenerator::addFloatingPointMinOrMax):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Gt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Ge>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Lt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Le>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Ge>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Gt>):
+
+2020-03-06  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r258038): Build failure on Windows 10 bots
+        <https://bugs.webkit.org/show_bug.cgi?id=208731>
+        <rdar://problem/59222568>
+
+        * assembler/testmasm.cpp:
+        (JSC::testCompareDouble):
+        (JSC::testCompareDoubleSameArg):
+        (JSC::testMoveConditionallyFloatingPoint):
+        (JSC::testMoveConditionallyFloatingPointSameArg):
+        - Add RELEASE_ASSERT_NOT_REACHED() statements to try to fix the
+          bots.
+
+2020-03-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Put remaining fixed-sized cells into IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=208754
+
+        Reviewed by Keith Miller.
+
+        Put remaining fixed-sized cells into IsoSubspace. Now all the fixed-sized cells have their own IsoSubspaces.
+
+        1. JSArray (We need to care about RAMification number, or compensate RAMification regression with improvements).
+        2. Inspector's objects
+        3. All prototype objects have one IsoSubspace since they are plain objects.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::JSInjectedScriptHost):
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.h:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::JSJavaScriptCallFrame):
+        * inspector/JSJavaScriptCallFrame.h:
+        * inspector/JSJavaScriptCallFramePrototype.h:
+        * jsc.cpp:
+        (JSC::Masquerader::subspaceFor):
+        (JSCMemoryFootprint::subspaceFor):
+        * runtime/ArrayIteratorPrototype.h:
+        * runtime/ArrayPrototype.h:
+        * runtime/AsyncFromSyncIteratorPrototype.h:
+        * runtime/AsyncFunctionPrototype.h:
+        * runtime/AsyncGeneratorFunctionPrototype.h:
+        * runtime/AsyncGeneratorPrototype.h:
+        * runtime/AsyncIteratorPrototype.h:
+        * runtime/AtomicsObject.h:
+        * runtime/BigIntPrototype.h:
+        * runtime/ConsoleObject.h:
+        * runtime/DatePrototype.h:
+        * runtime/ErrorPrototype.h:
+        * runtime/ExceptionHelpers.h:
+        * runtime/GeneratorFunctionPrototype.h:
+        * runtime/GeneratorPrototype.h:
+        * runtime/InspectorInstrumentationObject.h:
+        * runtime/IntlCollatorPrototype.h:
+        * runtime/IntlDateTimeFormatPrototype.h:
+        * runtime/IntlNumberFormatPrototype.h:
+        * runtime/IntlObject.h:
+        * runtime/IntlPluralRulesPrototype.h:
+        * runtime/IteratorPrototype.h:
+        * runtime/JSArray.h:
+        (JSC::JSArray::subspaceFor):
+        * runtime/JSArrayBufferPrototype.h:
+        * runtime/JSDataViewPrototype.h:
+        * runtime/JSDestructibleObject.h:
+        (JSC::JSDestructibleObject::subspaceFor): Deleted.
+        * runtime/JSGenericTypedArrayViewPrototype.h:
+        * runtime/JSModuleLoader.h:
+        * runtime/JSONObject.h:
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSFinalObject::subspaceFor):
+        (JSC::JSObject::subspaceFor): Deleted.
+        * runtime/JSPromisePrototype.h:
+        (JSC::JSPromisePrototype::subspaceFor):
+        * runtime/JSTypedArrayViewPrototype.h:
+        * runtime/MapIteratorPrototype.h:
+        * runtime/MapPrototype.h:
+        * runtime/MathObject.h:
+        * runtime/NativeErrorPrototype.h:
+        * runtime/ObjectPrototype.h:
+        * runtime/ReflectObject.h:
+        * runtime/RegExpPrototype.h:
+        * runtime/RegExpStringIteratorPrototype.h:
+        * runtime/SetIteratorPrototype.h:
+        * runtime/SetPrototype.h:
+        * runtime/StringIteratorPrototype.h:
+        * runtime/SymbolPrototype.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * runtime/WeakMapPrototype.h:
+        * runtime/WeakObjectRefPrototype.h:
+        * runtime/WeakSetPrototype.h:
+        * tools/JSDollarVM.cpp:
+        * tools/JSDollarVM.h:
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/WebAssemblyCompileErrorPrototype.h:
+        * wasm/js/WebAssemblyGlobalPrototype.h:
+        * wasm/js/WebAssemblyInstancePrototype.h:
+        * wasm/js/WebAssemblyLinkErrorPrototype.h:
+        * wasm/js/WebAssemblyMemoryPrototype.h:
+        * wasm/js/WebAssemblyModulePrototype.h:
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.h:
+        * wasm/js/WebAssemblyTablePrototype.h:
+
+2020-03-06  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSON.stringify should call replacer on deleted properties
+        https://bugs.webkit.org/show_bug.cgi?id=208725
+
+        Reviewed by Ross Kirsling.
+
+        This change removes extra `hasProperty` check from `appendNextProperty` as
+        it does not exist in the spec [1], aligning JSC with V8 and SpiderMonkey.
+
+        This patch also replaces 3 usages of `getPropertySlot` with semantically
+        equivalent (yet more concise) `get` and inlines `toJSONImpl` (this change
+        is performance-neutral).
+
+        [1]: https://tc39.es/ecma262/#sec-serializejsonobject (steps 6, 8.a)
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::toJSON):
+        (JSC::Stringifier::Holder::appendNextProperty):
+        (JSC::Stringifier::toJSONImpl): Deleted.
+
+2020-03-06  Mark Lam  <mark.lam@apple.com>
+
+        Fix some issues in the ARM64 moveConditionallyAfterFloatingPointCompare() and moveDoubleConditionallyAfterFloatingPointCompare().
+        https://bugs.webkit.org/show_bug.cgi?id=208731
+        <rdar://problem/59222568>
+
+        Reviewed by Saam Barati.
+
+        Both the ARM64 moveConditionallyAfterFloatingPointCompare() and
+        moveDoubleConditionallyAfterFloatingPointCompare() had the following issues:
+
+        1. For the DoubleNotEqual condition, they fail to set the result register if
+           one or both of the comparison operands is a NaN.
+
+        2. For the DoubleEqualOrUnordered condition, they can clobber the else case
+           input register if one of the comparison operands is a NaN.
+
+        This patch fixes both of these, and exhaustive testmasm test cases for affected
+        MacroAssembler instruction emitters using these functions.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::moveConditionallyAfterFloatingPointCompare):
+        (JSC::MacroAssemblerARM64::moveDoubleConditionallyAfterFloatingPointCompare):
+        * assembler/testmasm.cpp:
+        (JSC::testCompareDouble):
+        (JSC::testCompareDoubleSameArg):
+        (JSC::testMoveConditionallyFloatingPoint):
+        (JSC::testMoveConditionallyDouble2):
+        (JSC::testMoveConditionallyDouble3):
+        (JSC::testMoveConditionallyDouble3DestSameAsThenCase):
+        (JSC::testMoveConditionallyDouble3DestSameAsElseCase):
+        (JSC::testMoveConditionallyFloat2):
+        (JSC::testMoveConditionallyFloat3):
+        (JSC::testMoveConditionallyFloat3DestSameAsThenCase):
+        (JSC::testMoveConditionallyFloat3DestSameAsElseCase):
+        (JSC::testMoveDoubleConditionallyDouble):
+        (JSC::testMoveDoubleConditionallyDoubleDestSameAsThenCase):
+        (JSC::testMoveDoubleConditionallyDoubleDestSameAsElseCase):
+        (JSC::testMoveDoubleConditionallyFloat):
+        (JSC::testMoveDoubleConditionallyFloatDestSameAsThenCase):
+        (JSC::testMoveDoubleConditionallyFloatDestSameAsElseCase):
+        (JSC::testMoveConditionallyFloatingPointSameArg):
+        (JSC::testMoveConditionallyDouble2SameArg):
+        (JSC::testMoveConditionallyDouble3SameArg):
+        (JSC::testMoveConditionallyFloat2SameArg):
+        (JSC::testMoveConditionallyFloat3SameArg):
+        (JSC::testMoveDoubleConditionallyDoubleSameArg):
+        (JSC::testMoveDoubleConditionallyFloatSameArg):
+        (JSC::run):
+
 2020-03-05  Paulo Matos  <pmatos@igalia.com>
 
         [JSCOnly] 32-bits warning on memset of JSValue

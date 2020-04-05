@@ -31,6 +31,7 @@
 #include "DataReference.h"
 #include "GPUConnectionToWebProcessMessages.h"
 #include "GPUProcess.h"
+#include "GPUProcessConnectionMessages.h"
 #include "GPUProcessMessages.h"
 #include "GPUProcessProxyMessages.h"
 #include "LibWebRTCCodecsProxy.h"
@@ -61,7 +62,7 @@
 #include "WebErrors.h"
 #include "WebProcessMessages.h"
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
-#include <WebCore/PlatformMediaSessionManager.h>
+#include <WebCore/NowPlayingManager.h>
 
 #if PLATFORM(COCOA)
 #include <WebCore/MediaSessionManagerCocoa.h>
@@ -80,6 +81,17 @@
 #include "RemoteAudioSessionProxy.h"
 #include "RemoteAudioSessionProxyManager.h"
 #include "RemoteAudioSessionProxyMessages.h"
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include "RemoteMediaSessionHelperProxy.h"
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#include "RemoteLegacyCDMFactoryProxy.h"
+#include "RemoteLegacyCDMFactoryProxyMessages.h"
+#include "RemoteLegacyCDMProxyMessages.h"
+#include "RemoteLegacyCDMSessionProxyMessages.h"
 #endif
 
 namespace WebKit {
@@ -266,22 +278,49 @@ void GPUConnectionToWebProcess::releaseRenderingBackend(RenderingBackendIdentifi
     ASSERT_UNUSED(found, found);
 }
 
-#if PLATFORM(COCOA)
 void GPUConnectionToWebProcess::clearNowPlayingInfo()
 {
-    MediaSessionManagerCocoa::clearNowPlayingInfo();
+    gpuProcess().nowPlayingManager().clearNowPlayingInfoClient(*this);
 }
 
-void GPUConnectionToWebProcess::setNowPlayingInfo(bool setAsNowPlayingApplication, const NowPlayingInfo& nowPlayingInfo)
+void GPUConnectionToWebProcess::setNowPlayingInfo(bool setAsNowPlayingApplication, NowPlayingInfo&& nowPlayingInfo)
 {
-    MediaSessionManagerCocoa::setNowPlayingInfo(setAsNowPlayingApplication, nowPlayingInfo);
+    gpuProcess().nowPlayingManager().setNowPlayingInfo(*this, WTFMove(nowPlayingInfo));
 }
-#endif
+
+void GPUConnectionToWebProcess::didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType type, Optional<double> argument)
+{
+    connection().send(Messages::GPUProcessConnection::DidReceiveRemoteCommand { type, argument }, 0);
+}
 
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
 void GPUConnectionToWebProcess::ensureAudioSession(EnsureAudioSessionCompletion&& completion)
 {
     completion(audioSessionProxy().configuration());
+}
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+RemoteMediaSessionHelperProxy& GPUConnectionToWebProcess::mediaSessionHelperProxy()
+{
+    if (!m_mediaSessionHelperProxy)
+        m_mediaSessionHelperProxy = makeUnique<RemoteMediaSessionHelperProxy>(*this);
+    return *m_mediaSessionHelperProxy;
+}
+
+void GPUConnectionToWebProcess::ensureMediaSessionHelper()
+{
+    mediaSessionHelperProxy();
+}
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+RemoteLegacyCDMFactoryProxy& GPUConnectionToWebProcess::legacyCdmFactoryProxy()
+{
+    if (!m_legacyCdmFactoryProxy)
+        m_legacyCdmFactoryProxy = makeUnique<RemoteLegacyCDMFactoryProxy>(*this);
+
+    return *m_legacyCdmFactoryProxy;
 }
 #endif
 
@@ -368,6 +407,12 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
         return true;
     }
 #endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    if (decoder.messageReceiverName() == Messages::RemoteLegacyCDMFactoryProxy::messageReceiverName()) {
+        legacyCdmFactoryProxy().didReceiveMessageFromWebProcess(connection, decoder);
+        return true;
+    }
+#endif
 
     return messageReceiverMap().dispatchMessage(connection, decoder);
 }
@@ -382,18 +427,10 @@ bool GPUConnectionToWebProcess::dispatchSyncMessage(IPC::Connection& connection,
         remoteMediaPlayerManagerProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
         return true;
     }
-#if ENABLE(MEDIA_STREAM)
-    if (decoder.messageReceiverName() == Messages::UserMediaCaptureManagerProxy::messageReceiverName()) {
-        userMediaCaptureManagerProxy().didReceiveSyncMessageFromGPUProcess(connection, decoder, replyEncoder);
+    if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerProxy::messageReceiverName()) {
+        remoteMediaPlayerManagerProxy().didReceiveSyncPlayerMessage(connection, decoder, replyEncoder);
         return true;
     }
-#if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK)
-    if (decoder.messageReceiverName() == Messages::RemoteSampleBufferDisplayLayerManager::messageReceiverName()) {
-        sampleBufferDisplayLayerManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
-        return true;
-    }
-#endif
-#endif
 #if ENABLE(ENCRYPTED_MEDIA)
     if (decoder.messageReceiverName() == Messages::RemoteCDMFactoryProxy::messageReceiverName()) {
         cdmFactoryProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
@@ -418,6 +455,12 @@ bool GPUConnectionToWebProcess::dispatchSyncMessage(IPC::Connection& connection,
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
     if (decoder.messageReceiverName() == Messages::RemoteAudioSessionProxy::messageReceiverName()) {
         audioSessionProxy().didReceiveSyncMessage(connection, decoder, replyEncoder);
+        return true;
+    }
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    if (decoder.messageReceiverName() == Messages::RemoteLegacyCDMFactoryProxy::messageReceiverName()) {
+        legacyCdmFactoryProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
         return true;
     }
 #endif

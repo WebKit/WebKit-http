@@ -156,15 +156,20 @@ std::unique_ptr<MediaPlayerPrivateInterface> RemoteMediaPlayerManager::createRem
     proxyConfiguration.shouldUsePersistentCache = player->shouldUsePersistentCache();
     proxyConfiguration.isVideo = player->isVideoPlayer();
 
+    auto documentSecurityOrigin = player->documentSecurityOrigin();
+    proxyConfiguration.documentSecurityOrigin = documentSecurityOrigin;
+
     auto identifier = MediaPlayerPrivateRemoteIdentifier::generate();
     RemoteMediaPlayerConfiguration playerConfiguration;
-    gpuProcessConnection().connection().sendWithAsyncReply(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(identifier, remoteEngineIdentifier, proxyConfiguration), [this, weakThis = makeWeakPtr(this), identifier](auto&& playerConfiguration) {
+    auto completionHandler = [this, weakThis = makeWeakPtr(this), identifier, documentSecurityOrigin = WTFMove(documentSecurityOrigin)](auto&& playerConfiguration) mutable {
         if (!weakThis)
             return;
 
         if (const auto& player = m_players.get(identifier))
-            player->setConfiguration(WTFMove(playerConfiguration));
-    }, 0);
+            player->setConfiguration(WTFMove(playerConfiguration), WTFMove(documentSecurityOrigin));
+    };
+
+    gpuProcessConnection().connection().sendWithAsyncReply(Messages::RemoteMediaPlayerManagerProxy::CreateMediaPlayer(identifier, remoteEngineIdentifier, proxyConfiguration), completionHandler, 0);
 
     auto remotePlayer = MediaPlayerPrivateRemote::create(player, remoteEngineIdentifier, identifier, *this);
     m_players.add(identifier, makeWeakPtr(*remotePlayer));
@@ -177,6 +182,17 @@ void RemoteMediaPlayerManager::deleteRemoteMediaPlayer(MediaPlayerPrivateRemoteI
     m_players.take(id);
     gpuProcessConnection().connection().send(Messages::RemoteMediaPlayerManagerProxy::DeleteMediaPlayer(id), 0);
 }
+
+MediaPlayerPrivateRemoteIdentifier RemoteMediaPlayerManager::findRemotePlayerId(const MediaPlayerPrivateInterface* player)
+{
+    for (auto pair : m_players) {
+        if (pair.value == player)
+            return pair.key;
+    }
+
+    return { };
+}
+
 
 void RemoteMediaPlayerManager::getSupportedTypes(MediaPlayerEnums::MediaEngineIdentifier remoteEngineIdentifier, HashSet<String, ASCIICaseInsensitiveHash>& result)
 {
@@ -251,8 +267,8 @@ void RemoteMediaPlayerManager::updatePreferences(const Settings& settings)
 
 #if PLATFORM(COCOA) && ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
     if (settings.useGPUProcessForMedia()) {
-        WebCore::SampleBufferDisplayLayer::setCreator([](auto& client, bool hideRootLayer, auto size) {
-            return WebProcess::singleton().ensureGPUProcessConnection().sampleBufferDisplayLayerManager().createLayer(client, hideRootLayer, size);
+        WebCore::SampleBufferDisplayLayer::setCreator([](auto& client) {
+            return WebProcess::singleton().ensureGPUProcessConnection().sampleBufferDisplayLayerManager().createLayer(client);
         });
     }
 #endif

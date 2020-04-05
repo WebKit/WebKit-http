@@ -64,6 +64,7 @@ class CachedResourceLoader;
 class GraphicsContextGLOpenGL;
 class GraphicsContext;
 class InbandTextTrackPrivate;
+class LegacyCDM;
 class LegacyCDMSessionClient;
 class MediaPlaybackTarget;
 class MediaPlayer;
@@ -77,6 +78,7 @@ class TextTrackRepresentation;
 
 struct Cookie;
 struct GraphicsDeviceAdapter;
+struct SecurityOriginData;
 
 struct MediaEngineSupportParameters {
     ContentType type;
@@ -270,6 +272,8 @@ public:
     virtual void mediaPlayerBufferedTimeRangesChanged() { }
     virtual void mediaPlayerSeekableTimeRangesChanged() { }
 
+    virtual SecurityOriginData documentSecurityOrigin() const { return { }; }
+
 #if !RELEASE_LOG_DISABLED
     virtual const void* mediaPlayerLogIdentifier() { return nullptr; }
     virtual const Logger& mediaPlayerLogger() = 0;
@@ -355,6 +359,7 @@ public:
     enum MediaKeyException { NoError, InvalidPlayerState, KeySystemNotSupported };
 
     std::unique_ptr<LegacyCDMSession> createSession(const String& keySystem, LegacyCDMSessionClient*);
+    void setCDM(LegacyCDM*);
     void setCDMSession(LegacyCDMSession*);
     void keyAdded();
 #endif
@@ -600,7 +605,7 @@ public:
     AVPlayer *objCAVFoundationAVPlayer() const;
 #endif
 
-    bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime);
+    bool performTaskAtMediaTime(Function<void()>&&, const MediaTime&);
 
     bool shouldIgnoreIntrinsicSize();
 
@@ -618,10 +623,13 @@ public:
     bool isLooping() const { return client().mediaPlayerIsLooping(); }
 
     void remoteEngineFailedToLoad();
+    SecurityOriginData documentSecurityOrigin() const;
 
 #if USE(GSTREAMER)
     void requestInstallMissingPlugins(const String& details, const String& description, MediaPlayerRequestInstallMissingPluginsCallback& callback) { client().requestInstallMissingPlugins(details, description, callback); }
 #endif
+
+    const MediaPlayerPrivateInterface* playerPrivate() const { return m_private.get(); }
 
 private:
     MediaPlayer(MediaPlayerClient&);

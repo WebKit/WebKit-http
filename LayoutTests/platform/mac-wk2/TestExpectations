@@ -352,7 +352,6 @@ webkit.org/b/179796 http/tests/cache/disk-cache/disk-cache-validation-back-navig
 webkit.org/b/150241 webarchive/loading/object.html [ Pass Crash ] 
 
 webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure ]
-webkit.org/b/150942 legacy-animation-engine/animations/multiple-backgrounds.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/151326 webarchive/loading/missing-data.html [ Pass Crash ]
 
@@ -660,7 +659,6 @@ webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plug
 webkit.org/b/171939 [ Sierra Release ] media/track/track-cue-rendering-on-resize.html [ Pass Timeout ]
 
 webkit.org/b/171947 [ Sierra Release ] transitions/extra-transition.html [ Pass Failure ]
-webkit.org/b/171947 [ Sierra Release ] legacy-animation-engine/transitions/extra-transition.html [ Pass Failure ]
 
 webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
 
@@ -679,8 +677,6 @@ webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass 
 webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
 
 webkit.org/b/187649 editing/selection/update-selection-by-style-change.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/172397 legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
 # Touch events are not available on open source bots, thus only tested on Mac.
 http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
@@ -1001,7 +997,7 @@ webkit.org/b/207460 webgpu/whlsl/separate-shader-modules/separate-shader-modules
 
 webkit.org/b/207465 [ Debug ] storage/indexeddb/intversion-long-queue.html [ Pass Failure ]
 
-webkit.org/b/207466 [ Debug ] http/wpt/service-workers/service-worker-networkprocess-crash.html [ Pass Failure ]
+webkit.org/b/207466 http/wpt/service-workers/service-worker-networkprocess-crash.html [ Pass Failure ]
 
 webkit.org/b/207474 http/tests/cache-storage/cache-records-persistency.https.html [ Pass Failure ]
 
@@ -1073,8 +1069,6 @@ webkit.org/b/208062 http/wpt/fetch/disable-speculative-for-reload.html [ Pass Fa
 
 webkit.org/b/208222 [ Release ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Pass Failure ]
 
-webkit.org/b/208264 [ Release ] fast/harness/uiscriptcontroller/concurrent-ui-side-scripts.html [ Pass Failure ]
-
 webkit.org/b/208340 webgpu/whlsl/textures-sample.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/208390 [ Debug ] fast/css-custom-paint/delay-repaint.html [ Pass Failure ]
@@ -1089,8 +1083,6 @@ webkit.org/b/208476 css3/shapes/shape-outside/shape-image/shape-image-025.html [
 
 webkit.org/b/208577 [ Release ] fast/hidpi/image-srcset-relative-svg-canvas.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/208584 fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Pass Failure ]
-
 webkit.org/b/208590 [ Debug ] fast/events/beforeunload-prompt.html [ Pass Crash ]
 
-webkit.org/b/208648 [ Debug ] editing/execCommand/append-node-under-document.html [ Pass Crash ]
+webkit.org/b/208889 fast/images/decode-render-animated-image.html [ Pass ImageOnlyFailure ]

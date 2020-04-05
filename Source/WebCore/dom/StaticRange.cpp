@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,35 +26,34 @@
 #include "config.h"
 #include "StaticRange.h"
 
-#include "DOMException.h"
-#include "Node.h"
 #include "Range.h"
 
 namespace WebCore {
 
-StaticRange::StaticRange(Ref<Node>&& startContainer, unsigned startOffset, Ref<Node>&& endContainer, unsigned endOffset)
-    : m_startContainer(WTFMove(startContainer))
-    , m_startOffset(startOffset)
-    , m_endContainer(WTFMove(endContainer))
-    , m_endOffset(endOffset)
+StaticRange::StaticRange(SimpleRange&& range)
+    : SimpleRange(WTFMove(range))
 {
 }
 
-StaticRange::~StaticRange() = default;
-
-Ref<StaticRange> StaticRange::create(Ref<Node>&& startContainer, unsigned startOffset, Ref<Node>&& endContainer, unsigned endOffset)
+Ref<StaticRange> StaticRange::create(SimpleRange&& range)
 {
-    return adoptRef(*new StaticRange(WTFMove(startContainer), startOffset, WTFMove(endContainer), endOffset));
+    return adoptRef(*new StaticRange(WTFMove(range)));
 }
 
-Ref<StaticRange> StaticRange::createFromRange(const Range& range)
+static bool isDocumentTypeOrAttr(Node& node)
 {
-    return StaticRange::create(range.startContainer(), range.startOffset(), range.endContainer(), range.endOffset());
-}
+    // Before calling nodeType, do two fast non-virtual checks that cover almost all normal nodes, but are false for DocumentType and Attr.
+    if (is<ContainerNode>(node) || is<Text>(node))
+        return false;
 
-static inline bool isDocumentTypeOrAttr(Node& node)
-{
-    return node.isDocumentTypeNode() || node.isAttributeNode();
+    // Call nodeType explicitly and use a switch so we don't have to call it twice.
+    switch (node.nodeType()) {
+    case Node::ATTRIBUTE_NODE:
+    case Node::DOCUMENT_TYPE_NODE:
+        return true;
+    default:
+        return false;
+    }
 }
 
 ExceptionOr<Ref<StaticRange>> StaticRange::create(Init&& init)
@@ -63,27 +62,7 @@ ExceptionOr<Ref<StaticRange>> StaticRange::create(Init&& init)
     ASSERT(init.endContainer);
     if (isDocumentTypeOrAttr(*init.startContainer) || isDocumentTypeOrAttr(*init.endContainer))
         return Exception { InvalidNodeTypeError };
-    return StaticRange::create(init.startContainer.releaseNonNull(), init.startOffset, init.endContainer.releaseNonNull(), init.endOffset);
-}
-
-Node* StaticRange::startContainer() const
-{
-    return (Node*)m_startContainer.ptr();
-}
-
-Node* StaticRange::endContainer() const
-{
-    return (Node*)m_endContainer.ptr();
-}
-
-bool StaticRange::collapsed() const
-{
-    return m_startOffset == m_endOffset && m_startContainer.ptr() == m_endContainer.ptr();
-}
-
-bool StaticRange::operator==(const StaticRange& other) const
-{
-    return (m_startOffset == other.startOffset() && m_endOffset == other.endOffset() && m_startContainer->isEqualNode(other.startContainer()) && m_endContainer->isEqualNode(other.endContainer()));
+    return create({ { init.startContainer.releaseNonNull(), init.startOffset }, { init.endContainer.releaseNonNull(), init.endOffset } });
 }
 
 }

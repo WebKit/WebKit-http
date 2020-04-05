@@ -461,6 +461,7 @@ public:
     virtual bool isSpinButtonElement() const { return false; }
     virtual bool isTextFormControlElement() const { return false; }
     virtual bool isTextField() const { return false; }
+    virtual bool isTextPlaceholderElement() const { return false; }
     virtual bool isOptionalFormControl() const { return false; }
     virtual bool isRequiredFormControl() const { return false; }
     virtual bool isInRange() const { return false; }
@@ -497,11 +498,9 @@ public:
     WEBCORE_EXPORT virtual void webkitRequestFullscreen();
 #endif
 
-#if ENABLE(POINTER_EVENTS)
     ExceptionOr<void> setPointerCapture(int32_t);
     ExceptionOr<void> releasePointerCapture(int32_t);
     bool hasPointerCapture(int32_t);
-#endif
 
 #if ENABLE(POINTER_LOCK)
     WEBCORE_EXPORT void requestPointerLock();
@@ -591,7 +590,7 @@ public:
 
 #if ENABLE(INTERSECTION_OBSERVER)
     IntersectionObserverData& ensureIntersectionObserverData();
-    IntersectionObserverData* intersectionObserverData();
+    IntersectionObserverData* intersectionObserverDataIfExists();
 #endif
 
 #if ENABLE(RESIZE_OBSERVER)

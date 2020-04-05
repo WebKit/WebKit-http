@@ -2795,12 +2795,13 @@ sub GenerateHeader
         }
     }
 
-    # FIXME: We put this unconditionally to put all the WebCore JS wrappers in each IsoSubspace.
-    # https://bugs.webkit.org/show_bug.cgi?id=205107
-    if (IsDOMGlobalObject($interface)) {
-        push(@headerContent, "    template<typename, JSC::SubspaceAccess> static JSC::IsoSubspace* subspaceFor(JSC::VM& vm) { return subspaceForImpl(vm); }\n");
-        push(@headerContent, "    static JSC::IsoSubspace* subspaceForImpl(JSC::VM& vm);\n");
-    }
+    push(@headerContent, "    template<typename, JSC::SubspaceAccess mode> static JSC::IsoSubspace* subspaceFor(JSC::VM& vm)\n");
+    push(@headerContent, "    {\n");
+    push(@headerContent, "        if constexpr (mode == JSC::SubspaceAccess::Concurrently)\n");
+    push(@headerContent, "            return nullptr;\n");
+    push(@headerContent, "        return subspaceForImpl(vm);\n");
+    push(@headerContent, "    }\n");
+    push(@headerContent, "    static JSC::IsoSubspace* subspaceForImpl(JSC::VM& vm);\n");
 
     # visit function
     if ($needsVisitChildren) {
@@ -2821,9 +2822,6 @@ sub GenerateHeader
             # program resumed since the last call to visitChildren or visitOutputConstraints. Since
             # this just calls visitAdditionalChildren, you usually don't have to worry about this.
             push(@headerContent, "    static void visitOutputConstraints(JSCell*, JSC::SlotVisitor&);\n");
-            if (!IsDOMGlobalObject($interface)) {
-                push(@headerContent, "    template<typename, JSC::SubspaceAccess> static JSC::CompleteSubspace* subspaceFor(JSC::VM& vm) { return outputConstraintSubspaceFor(vm); }\n");
-            }
         }
     }
 
@@ -4662,13 +4660,34 @@ sub GenerateImplementation
     GenerateIterableDefinition($interface) if $interface->iterable;
     GenerateSerializerDefinition($interface, $className) if $interface->serializable;
 
+    AddToImplIncludes("DOMIsoSubspaces.h");
+    AddToImplIncludes("WebCoreJSClientData.h");
+    AddToImplIncludes("<JavaScriptCore/JSDestructibleObjectHeapCellType.h>");
+    AddToImplIncludes("<JavaScriptCore/SubspaceInlines.h>");
+    push(@implContent, "JSC::IsoSubspace* ${className}::subspaceForImpl(JSC::VM& vm)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    auto& clientData = *static_cast<JSVMClientData*>(vm.clientData);\n");
+    push(@implContent, "    auto& spaces = clientData.subspaces();\n");
+    push(@implContent, "    if (auto* space = spaces.m_subspaceFor${interfaceName}.get())\n");
+    push(@implContent, "        return space;\n");
     if (IsDOMGlobalObject($interface)) {
-        AddToImplIncludes("WebCoreJSClientData.h");
-        push(@implContent, "JSC::IsoSubspace* ${className}::subspaceForImpl(JSC::VM& vm)\n");
-        push(@implContent, "{\n");
-        push(@implContent, "    return &static_cast<JSVMClientData*>(vm.clientData)->subspaceFor${className}();\n");
-        push(@implContent, "}\n\n");
+        push(@implContent, "    spaces.m_subspaceFor${interfaceName} = makeUnique<IsoSubspace> ISO_SUBSPACE_INIT(vm.heap, clientData.m_heapCellTypeFor${className}.get(), ${className});\n");
+    } else {
+        push(@implContent, "    static_assert(std::is_base_of_v<JSC::JSDestructibleObject, ${className}> || !${className}::needsDestruction);\n");
+        push(@implContent, "    if constexpr (std::is_base_of_v<JSC::JSDestructibleObject, ${className}>)\n");
+        push(@implContent, "        spaces.m_subspaceFor${interfaceName} = makeUnique<IsoSubspace> ISO_SUBSPACE_INIT(vm.heap, vm.destructibleObjectHeapCellType.get(), ${className});\n");
+        push(@implContent, "    else\n");
+        push(@implContent, "        spaces.m_subspaceFor${interfaceName} = makeUnique<IsoSubspace> ISO_SUBSPACE_INIT(vm.heap, vm.cellHeapCellType.get(), ${className});\n");
     }
+    push(@implContent, "    auto* space = spaces.m_subspaceFor${interfaceName}.get();\n");
+    push(@implContent, "IGNORE_WARNINGS_BEGIN(\"unreachable-code\")\n");
+    push(@implContent, "IGNORE_WARNINGS_BEGIN(\"tautological-compare\")\n");
+    push(@implContent, "    if (&${className}::visitOutputConstraints != &JSC::JSCell::visitOutputConstraints)\n");
+    push(@implContent, "        clientData.outputConstraintSpaces().append(space);\n");
+    push(@implContent, "IGNORE_WARNINGS_END\n");
+    push(@implContent, "IGNORE_WARNINGS_END\n");
+    push(@implContent, "    return space;\n");
+    push(@implContent, "}\n\n");
 
     if ($needsVisitChildren) {
         push(@implContent, "void ${className}::visitChildren(JSCell* cell, SlotVisitor& visitor)\n");
@@ -6483,10 +6502,58 @@ struct ${iteratorTraitsName} {
     using ValueType = ${iteratorTraitsValueType};
 };
 
-using ${iteratorName} = JSDOMIterator<${className}, ${iteratorTraitsName}>;
+using ${iteratorName}Base = JSDOMIteratorBase<${className}, ${iteratorTraitsName}>;
+class ${iteratorName} final : public ${iteratorName}Base {
+public:
+    using Base = ${iteratorName}Base;
+    DECLARE_INFO;
+
+    template<typename, JSC::SubspaceAccess mode> static JSC::IsoSubspace* subspaceFor(JSC::VM& vm)
+    {
+        if constexpr (mode == JSC::SubspaceAccess::Concurrently)
+            return nullptr;
+        auto& clientData = *static_cast<JSVMClientData*>(vm.clientData);
+        auto& spaces = clientData.subspaces();
+        if (auto* space = spaces.m_subspaceFor${iteratorName}.get())
+            return space;
+        static_assert(std::is_base_of_v<JSC::JSDestructibleObject, ${iteratorName}> || !${iteratorName}::needsDestruction);
+        if constexpr (std::is_base_of_v<JSC::JSDestructibleObject, ${iteratorName}>)
+            spaces.m_subspaceFor${iteratorName} = makeUnique<IsoSubspace> ISO_SUBSPACE_INIT(vm.heap, vm.destructibleObjectHeapCellType.get(), ${iteratorName});
+        else
+            spaces.m_subspaceFor${iteratorName} = makeUnique<IsoSubspace> ISO_SUBSPACE_INIT(vm.heap, vm.cellHeapCellType.get(), ${iteratorName});
+        auto* space = spaces.m_subspaceFor${iteratorName}.get();
+IGNORE_WARNINGS_BEGIN(\"unreachable-code\")
+IGNORE_WARNINGS_BEGIN(\"tautological-compare\")
+        if (&${iteratorName}::visitOutputConstraints != &JSC::JSCell::visitOutputConstraints)
+            clientData.outputConstraintSpaces().append(space);
+IGNORE_WARNINGS_END
+IGNORE_WARNINGS_END
+        return space;
+    }
+
+    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+    {
+        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+    }
+
+    static ${iteratorName}* create(JSC::VM& vm, JSC::Structure* structure, ${className}& iteratedObject, IterationKind kind)
+    {
+        auto* instance = new (NotNull, JSC::allocateCell<${iteratorName}>(vm.heap)) ${iteratorName}(structure, iteratedObject, kind);
+        instance->finishCreation(vm);
+        return instance;
+    }
+
+private:
+    ${iteratorName}(JSC::Structure* structure, ${className}& iteratedObject, IterationKind kind)
+        : Base(structure, iteratedObject, kind)
+    {
+    }
+};
+
 using ${iteratorPrototypeName} = JSDOMIteratorPrototype<${className}, ${iteratorTraitsName}>;
 
 template<>
+const JSC::ClassInfo ${iteratorName}Base::s_info = { "${visibleInterfaceName} Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(${iteratorName}Base) };
 const JSC::ClassInfo ${iteratorName}::s_info = { "${visibleInterfaceName} Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(${iteratorName}) };
 
 template<>
@@ -7190,7 +7257,7 @@ sub GeneratePrototypeDeclaration
     my $prototypeClassName = "${className}Prototype";
 
     my %structureFlags = ();
-    push(@$outputArray, "class ${prototypeClassName} : public JSC::JSNonFinalObject {\n");
+    push(@$outputArray, "class ${prototypeClassName} final : public JSC::JSNonFinalObject {\n");
     push(@$outputArray, "public:\n");
     push(@$outputArray, "    using Base = JSC::JSNonFinalObject;\n");
 
@@ -7202,6 +7269,13 @@ sub GeneratePrototypeDeclaration
     push(@$outputArray, "    }\n\n");
 
     push(@$outputArray, "    DECLARE_INFO;\n");
+
+    push(@$outputArray, "    template<typename CellType, JSC::SubspaceAccess>\n");
+    push(@$outputArray, "    static JSC::IsoSubspace* subspaceFor(JSC::VM& vm)\n");
+    push(@$outputArray, "    {\n");
+    push(@$outputArray, "        STATIC_ASSERT_ISO_SUBSPACE_SHARABLE(${prototypeClassName}, Base);\n");
+    push(@$outputArray, "        return &vm.plainObjectSpace;\n");
+    push(@$outputArray, "    }\n");
 
     push(@$outputArray, "    static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)\n");
     push(@$outputArray, "    {\n");

@@ -28,10 +28,26 @@
 
 #import "WebProcessPool.h"
 
+#import <wtf/ObjCRuntimeExtras.h>
+
+static IMP registerDefaultsOriginal = nil;
+static bool registeringDefaults = false;
+
+static void registerDefaultsOverride(id self, SEL selector, NSDictionary<NSString *, id> *dictionary)
+{
+    registeringDefaults = true;
+    if (registerDefaultsOriginal)
+        wtfCallIMP<void>(registerDefaultsOriginal, self, selector, dictionary);
+    registeringDefaults = false;
+}
+
 @implementation WKUserDefaults
 
 - (void)_notifyObserversOfChangeFromValuesForKeys:(NSDictionary<NSString *, id> *)oldValues toValuesForKeys:(NSDictionary<NSString *, id> *)newValues
 {
+    if (registeringDefaults)
+        return;
+
     [super _notifyObserversOfChangeFromValuesForKeys:oldValues toValuesForKeys:newValues];
 
     if ([oldValues isEqualToDictionary:newValues])
@@ -83,6 +99,15 @@
         instance = [[[self class] alloc] init];
 
     return instance;
+}
+
++ (void)swizzleRegisterDefaults
+{
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        Method registerDefaultsMethod = class_getInstanceMethod(objc_getClass("NSUserDefaults"), @selector(registerDefaults:));
+        registerDefaultsOriginal = method_setImplementation(registerDefaultsMethod, (IMP)registerDefaultsOverride);
+    });
 }
 
 - (instancetype)init

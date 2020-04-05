@@ -602,6 +602,8 @@ public:
 
     bool supportsInternalLinks() const;
 
+    GraphicsContextImpl* impl() { return m_impl.get(); }
+
 private:
     void platformInit(PlatformGraphicsContext*);
     void platformDestroy();

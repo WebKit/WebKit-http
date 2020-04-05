@@ -170,6 +170,8 @@ public:
     bool isRunningServiceWorkers() const { return !!m_serviceWorkerInformation; }
     bool isStandaloneServiceWorkerProcess() const { return isRunningServiceWorkers() && !pageCount(); }
 
+    bool isDummyProcessProxy() const;
+
     void didCreateWebPageInProcess(WebCore::PageIdentifier);
 
     void addVisitedLinkStoreUser(VisitedLinkStore&, WebPageProxyIdentifier);
@@ -334,12 +336,9 @@ public:
     void enableRemoteInspectorIfNeeded();
 #endif
     
-#if PLATFORM(IOS_FAMILY)
+#if PLATFORM(COCOA)
     void unblockAccessibilityServerIfNeeded();
-#endif
-
-#if PLATFORM(IOS_FAMILY)
-    void processWasResumed(CompletionHandler<void()>&&);
+    void unblockPreferenceServiceIfNeeded();
 #endif
 
     void webPageMediaStateDidChange(WebPageProxy&);
@@ -528,9 +527,10 @@ private:
     std::unique_ptr<ProcessThrottler::BackgroundActivity> m_activityForHoldingLockedFiles;
     ForegroundWebProcessToken m_foregroundToken;
     BackgroundWebProcessToken m_backgroundToken;
-#if PLATFORM(IOS_FAMILY)
+
+#if PLATFORM(COCOA)
     bool m_hasSentMessageToUnblockAccessibilityServer { false };
-    std::unique_ptr<WebCore::DeferrableOneShotTimer> m_unexpectedActivityTimer;
+    bool m_hasSentMessageToUnblockPreferenceService { false };
 #endif
 
     HashMap<String, uint64_t> m_pageURLRetainCountMap;

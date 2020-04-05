@@ -230,10 +230,6 @@
 #define ENABLE_CUSTOM_CURSOR_SUPPORT 1
 #endif
 
-#if !defined(ENABLE_CUSTOM_SCHEME_HANDLER)
-#define ENABLE_CUSTOM_SCHEME_HANDLER 0
-#endif
-
 #if !defined(ENABLE_DARK_MODE_CSS)
 #define ENABLE_DARK_MODE_CSS 0
 #endif
@@ -256,6 +252,10 @@
 
 #if !defined(ENABLE_ENCRYPTED_MEDIA)
 #define ENABLE_ENCRYPTED_MEDIA 0
+#endif
+
+#if !defined(ENABLE_FAST_JIT_PERMISSIONS)
+#define ENABLE_FAST_JIT_PERMISSIONS 0
 #endif
 
 #if !defined(ENABLE_FILTERS_LEVEL_2)
@@ -437,6 +437,10 @@
 #endif
 #endif
 
+#if !defined(ENABLE_SEPARATED_WX_HEAP)
+#define ENABLE_SEPARATED_WX_HEAP 0
+#endif
+
 #if !defined(ENABLE_SMOOTH_SCROLLING)
 #define ENABLE_SMOOTH_SCROLLING 0
 #endif
@@ -539,10 +543,6 @@
 
 #if !defined(ENABLE_DATA_DETECTION)
 #define ENABLE_DATA_DETECTION 0
-#endif
-
-#if !defined(ENABLE_GPU_PROCESS_FOR_WEBRTC)
-#define ENABLE_GPU_PROCESS_FOR_WEBRTC 0
 #endif
 
 /*
@@ -717,10 +717,6 @@
 #define ENABLE_DFG_REGISTER_ALLOCATION_VALIDATION 1
 #endif
 
-#if !defined(ENABLE_SEPARATED_WX_HEAP) && PLATFORM(IOS_FAMILY) && CPU(ARM64) && (!ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E))
-#define ENABLE_SEPARATED_WX_HEAP 1
-#endif
-
 /* Determine if we need to enable Computed Goto Opcodes or not: */
 #if HAVE(COMPUTED_GOTO) || !ENABLE(C_LOOP)
 #define ENABLE_COMPUTED_GOTO_OPCODES 1
@@ -817,6 +813,9 @@
 #define ENABLE_OPENTYPE_MATH 1
 #endif
 
+#if !defined(ENABLE_INLINE_PATH_DATA) && USE(CG)
+#define ENABLE_INLINE_PATH_DATA 1
+#endif
 
 /* Disable SharedArrayBuffers until Spectre security concerns are mitigated. */
 #define ENABLE_SHARED_ARRAY_BUFFER 0
@@ -872,4 +871,4 @@
 #error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
 #endif
 
-#define ENABLE_CFPREFS_DIRECT_MODE 0
+#define ENABLE_CFPREFS_DIRECT_MODE 1

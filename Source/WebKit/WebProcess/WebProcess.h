@@ -66,11 +66,6 @@
 #include <wtf/MachSendRight.h>
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-#include "ProcessTaskStateObserver.h"
-OBJC_CLASS BKSProcessAssertion;
-#endif
-
 #if PLATFORM(WAYLAND) && USE(WPE_RENDERER)
 #include <WebCore/PlatformDisplayLibWPE.h>
 #endif
@@ -106,6 +101,7 @@ struct ServiceWorkerContextData;
 
 namespace WebKit {
 
+class DependencyProcessAssertion;
 class EventDispatcher;
 class GamepadData;
 class GPUProcessConnection;
@@ -142,11 +138,7 @@ struct WebsiteDataStoreParameters;
 class LayerHostingContext;
 #endif
 
-class WebProcess
-    : public AuxiliaryProcess
-#if PLATFORM(IOS_FAMILY)
-    , ProcessTaskStateObserver::Client
-#endif
+class WebProcess : public AuxiliaryProcess
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -299,8 +291,6 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     void accessibilityProcessSuspendedNotification(bool);
-    
-    void unblockAccessibilityServer(const SandboxExtension::Handle&);
 #endif
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
@@ -313,6 +303,8 @@ public:
     void enableRemoteWebInspector(const SandboxExtension::Handle&);
 #endif
     void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
+    void unblockAccessibilityServer(const SandboxExtension::Handle&);
+    void unblockPreferenceService(const SandboxExtension::Handle&);
 #endif
 
     bool areAllPagesThrottleable() const;
@@ -331,6 +323,10 @@ public:
 
 #if PLATFORM(MAC)
     void updatePageScreenProperties();
+#endif
+
+#if ENABLE(GPU_PROCESS)
+    void setUseGPUProcessForMedia(bool);
 #endif
 
 private:
@@ -497,11 +493,8 @@ private:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-    void processTaskStateDidChange(ProcessTaskStateObserver::TaskState) final;
     bool shouldFreezeOnSuspension() const;
     void updateFreezerStatus();
-
-    void releaseProcessWasResumedAssertions();
 #endif
 
 #if ENABLE(VIDEO)
@@ -516,8 +509,6 @@ private:
 #endif
 
     bool isAlwaysOnLoggingAllowed() { return m_sessionID ? m_sessionID->isAlwaysOnLoggingAllowed() : true; }
-
-    void setUseGPUProcessForMedia(bool);
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
@@ -591,10 +582,7 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
-    RefPtr<ProcessTaskStateObserver> m_taskStateObserver;
-    Lock m_processWasResumedAssertionsLock;
-    RetainPtr<BKSProcessAssertion> m_processWasResumedUIAssertion;
-    RetainPtr<BKSProcessAssertion> m_processWasResumedOwnAssertion;
+    std::unique_ptr<DependencyProcessAssertion> m_uiProcessDependencyProcessAssertion;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };

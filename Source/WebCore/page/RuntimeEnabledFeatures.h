@@ -174,9 +174,6 @@ public:
     void setCSSCustomPropertiesAndValuesEnabled(bool isEnabled) { m_CSSCustomPropertiesAndValuesEnabled = isEnabled; }
     bool cssCustomPropertiesAndValuesEnabled() const { return m_CSSCustomPropertiesAndValuesEnabled; }
 
-    void setPointerEventsEnabled(bool isEnabled) { m_pointerEventsEnabled = isEnabled; }
-    bool pointerEventsEnabled() const { return m_pointerEventsEnabled; }
-
     void setSyntheticEditingCommandsEnabled(bool isEnabled) { m_syntheticEditingCommandsEnabled = isEnabled; }
     bool syntheticEditingCommandsEnabled() const { return m_syntheticEditingCommandsEnabled; }
 
@@ -397,6 +394,9 @@ public:
     void setIsInAppBrowserPrivacyEnabled(bool isEnabled) { m_isInAppBrowserPrivacyEnabled = isEnabled; }
     bool isInAppBrowserPrivacyEnabled() const { return m_isInAppBrowserPrivacyEnabled; }
 
+    void setNeedsInAppBrowserPrivacyQuirks(bool isEnabled) { m_needsInAppBrowserPrivacyQuirks = isEnabled; }
+    bool needsInAppBrowserPrivacyQuirks() const { return m_needsInAppBrowserPrivacyQuirks; }
+
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     void setIsAccessibilityIsolatedTreeEnabled(bool isEnabled) { m_accessibilityIsolatedTree = isEnabled; }
     bool isAccessibilityIsolatedTreeEnabled() const { return m_accessibilityIsolatedTree; }
@@ -404,6 +404,11 @@ public:
     
     void setWebShareFileAPIEnabled(bool isEnabled) { m_webShareFileAPIEnabled = isEnabled; }
     bool webShareFileAPIEnabled() const { return m_webShareFileAPIEnabled; }
+
+#if HAVE(INCREMENTAL_PDF_APIS)
+    void setIncrementalPDFLoadingEnabled(bool isEnabled) { m_incrementalPDFLoadingEnabled = isEnabled; }
+    bool incrementalPDFLoadingEnabled() const { return m_incrementalPDFLoadingEnabled; }
+#endif
 
 private:
     // Never instantiate.
@@ -452,7 +457,6 @@ private:
     bool m_attrStyleEnabled { false };
     bool m_webAPIStatisticsEnabled { false };
     bool m_CSSCustomPropertiesAndValuesEnabled { false };
-    bool m_pointerEventsEnabled { true };
     bool m_syntheticEditingCommandsEnabled { true };
     bool m_dialogElementEnabled { false };
     bool m_webSQLEnabled { false };
@@ -606,11 +610,16 @@ private:
     bool m_isCSSShadowPartsEnabled { true };
 
     bool m_isInAppBrowserPrivacyEnabled { false };
+    bool m_needsInAppBrowserPrivacyQuirks { false };
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     bool m_accessibilityIsolatedTree { false };
 #endif
     bool m_webShareFileAPIEnabled { false };
+
+#if HAVE(INCREMENTAL_PDF_APIS)
+    bool m_incrementalPDFLoadingEnabled { false };
+#endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

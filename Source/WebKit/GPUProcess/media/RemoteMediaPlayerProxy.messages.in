@@ -80,7 +80,7 @@ messages -> RemoteMediaPlayerProxy NotRefCounted {
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    # SetCDMSession
+    SetLegacyCDMSession(WebKit::RemoteLegacyCDMSessionIdentifier instanceId)
     KeyAdded()
 #endif
 
@@ -105,6 +105,11 @@ messages -> RemoteMediaPlayerProxy NotRefCounted {
     NotifyTrackModeChanged()
     TracksChanged()
     SyncTextTrackBounds()
+
+    SetWirelessPlaybackTarget(WebCore::MediaPlaybackTargetContext target)
+
+    PerformTaskAtMediaTime(MediaTime mediaTime, WallTime messageTime) -> (Optional<MediaTime> mediaTime) Async
+    WouldTaintOrigin(struct WebCore::SecurityOriginData origin) -> (Optional<bool> wouldTaint) Synchronous
 
 #if PLATFORM(IOS_FAMILY)
     ErrorLog() -> (String errorLog) Synchronous

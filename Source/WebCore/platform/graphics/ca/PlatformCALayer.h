@@ -27,8 +27,8 @@
 
 #include "FloatRoundedRect.h"
 #include "GraphicsLayer.h"
-#include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
 
@@ -47,7 +47,7 @@ class PlatformCALayerClient;
 
 typedef Vector<RefPtr<PlatformCALayer>> PlatformCALayerList;
 
-class WEBCORE_EXPORT PlatformCALayer : public RefCounted<PlatformCALayer> {
+class WEBCORE_EXPORT PlatformCALayer : public ThreadSafeRefCounted<PlatformCALayer> {
 #if PLATFORM(COCOA)
     friend class PlatformCALayerCocoa;
 #elif PLATFORM(WIN)
@@ -235,8 +235,14 @@ public:
     virtual WindRule shapeWindRule() const = 0;
     virtual void setShapeWindRule(WindRule) = 0;
 
-    virtual void setEventRegion(const EventRegion&) = 0;
+    virtual void setEventRegion(const EventRegion&) { }
+    virtual bool eventRegionContainsPoint(IntPoint) const { return false; }
     
+#if ENABLE(SCROLLING_THREAD)
+    virtual ScrollingNodeID scrollingNodeID() const { return 0; }
+    virtual void setScrollingNodeID(ScrollingNodeID) { }
+#endif
+
     virtual GraphicsLayer::CustomAppearance customAppearance() const = 0;
     virtual void updateCustomAppearance(GraphicsLayer::CustomAppearance) = 0;
 

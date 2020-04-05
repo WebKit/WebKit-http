@@ -30,6 +30,7 @@
 #include "Connection.h"
 #include "MessageReceiverMap.h"
 #include "SampleBufferDisplayLayerManager.h"
+#include <WebCore/PlatformMediaSession.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,6 +41,8 @@ class DataReference;
 namespace WebKit {
 
 class RemoteCDMFactory;
+class RemoteMediaPlayerManager;
+class RemoteLegacyCDMFactory;
 
 class GPUProcessConnection : public RefCounted<GPUProcessConnection>, IPC::Connection::Client {
 public:
@@ -60,8 +63,14 @@ public:
     SampleBufferDisplayLayerManager& sampleBufferDisplayLayerManager();
 #endif
 
+    RemoteMediaPlayerManager& mediaPlayerManager();
+
 #if ENABLE(ENCRYPTED_MEDIA)
     RemoteCDMFactory& cdmFactory();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    RemoteLegacyCDMFactory& legacyCDMFactory();
 #endif
 
 private:
@@ -75,6 +84,8 @@ private:
 
     bool dispatchMessage(IPC::Connection&, IPC::Decoder&);
     bool dispatchSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
+
+    void didReceiveRemoteCommand(WebCore::PlatformMediaSession::RemoteControlCommandType, Optional<double>);
 
     // The connection from the web process to the GPU process.
     Ref<IPC::Connection> m_connection;

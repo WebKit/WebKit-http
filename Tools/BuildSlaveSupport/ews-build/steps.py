@@ -218,7 +218,7 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
         d.addCallback(lambda res: shell.ShellCommand.start(self))
 
     def hideStepIf(self, results, step):
-        return results == SUCCESS and self.getProperty('validated', '') == False
+        return results == SUCCESS and self.getProperty('sensitive', False)
 
     def getResultSummary(self):
         if self.results != SUCCESS:
@@ -329,7 +329,7 @@ class BugzillaMixin(object):
     addURLs = False
     bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
     bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
-    rollout_preamble = 'ROLLOUT of r'
+    revert_preamble = 'REVERT of r'
 
     @defer.inlineCallbacks
     def _addToLog(self, logName, message):
@@ -338,6 +338,19 @@ class BugzillaMixin(object):
         except KeyError:
             log = yield self.addLog(logName)
         log.addStdout(message)
+
+    def fetch_data_from_url_with_authentication(self, url):
+        response = None
+        try:
+            response = requests.get(url, params={'Bugzilla_api_key': self.get_bugzilla_api_key()})
+            if response.status_code != 200:
+                self._addToLog('stdio', 'Accessed {url} with unexpected status code {status_code}.\n'.format(url=url, status_code=response.status_code))
+                return None
+        except Exception as e:
+            # Catching all exceptions here to safeguard api key.
+            self._addToLog('stdio', 'Failed to access {url}.\n'.format(url=url))
+            return None
+        return response
 
     def fetch_data_from_url(self, url):
         response = None
@@ -356,7 +369,7 @@ class BugzillaMixin(object):
 
     def get_patch_json(self, patch_id):
         patch_url = '{}rest/bug/attachment/{}'.format(BUG_SERVER_URL, patch_id)
-        patch = self.fetch_data_from_url(patch_url)
+        patch = self.fetch_data_from_url_with_authentication(patch_url)
         if not patch:
             return None
         patch_json = patch.json().get('attachments')
@@ -366,7 +379,7 @@ class BugzillaMixin(object):
 
     def get_bug_json(self, bug_id):
         bug_url = '{}rest/bug/{}'.format(BUG_SERVER_URL, bug_id)
-        bug = self.fetch_data_from_url(bug_url)
+        bug = self.fetch_data_from_url_with_authentication(bug_url)
         if not bug:
             return None
         bugs_json = bug.json().get('bugs')
@@ -394,8 +407,8 @@ class BugzillaMixin(object):
         patch_author = patch_json.get('creator')
         self.setProperty('patch_author', patch_author)
         patch_title = patch_json.get('summary')
-        if patch_title.startswith(self.rollout_preamble):
-            self.setProperty('rollout', True)
+        if patch_title.startswith(self.revert_preamble):
+            self.setProperty('revert', True)
         if self.addURLs:
             self.addURL('Patch by: {}'.format(patch_author), '')
         return patch_json.get('is_obsolete')
@@ -457,6 +470,10 @@ class BugzillaMixin(object):
             return -1
 
         bug_title = bug_json.get('summary')
+        sensitive = bug_json.get('product') == 'Security'
+        if sensitive:
+            self.setProperty('sensitive', True)
+            bug_title = ''
         if self.addURLs:
             self.addURL(u'Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
         if bug_json.get('status') in self.bug_closed_statuses:
@@ -464,8 +481,12 @@ class BugzillaMixin(object):
         return 0
 
     def get_bugzilla_api_key(self):
-        passwords = json.load(open('passwords.json'))
-        return passwords['BUGZILLA_API_KEY']
+        try:
+            passwords = json.load(open('passwords.json'))
+            return passwords.get('BUGZILLA_API_KEY', '')
+        except:
+            print('Error in reading Bugzilla api key')
+            return ''
 
     def remove_flags_on_patch(self, patch_id):
         patch_url = '{}rest/bug/attachment/{}'.format(BUG_SERVER_URL, patch_id)
@@ -606,7 +627,6 @@ class ValidatePatch(buildstep.BuildStep, BugzillaMixin):
 
         if obsolete == -1 or review_denied == -1 or bug_closed == -1:
             self.finished(WARNINGS)
-            self.setProperty('validated', False)
             return None
 
         if self.verifyBugClosed:
@@ -1210,7 +1230,7 @@ class CompileWebKit(shell.Compile):
         super(CompileWebKit, self).__init__(logEnviron=False, **kwargs)
 
     def doStepIf(self, step):
-        return not (self.getProperty('rollout') and self.getProperty('buildername', '').lower() == 'commit-queue')
+        return not (self.getProperty('revert') and self.getProperty('buildername', '').lower() == 'commit-queue')
 
     def start(self):
         platform = self.getProperty('platform')
@@ -1598,6 +1618,9 @@ class RunWebKitTests(shell.Test):
         shell.Test.__init__(self, logEnviron=False, **kwargs)
         self.incorrectLayoutLines = []
 
+    def doStepIf(self, step):
+        return not (self.getProperty('revert') and self.getProperty('buildername', '').lower() == 'commit-queue')
+
     def start(self):
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
         self.addLogObserver('stdio', self.log_observer)
@@ -1903,9 +1926,6 @@ class RunWebKit1Tests(RunWebKitTests):
         self.setProperty('use-dump-render-tree', True)
         return RunWebKitTests.start(self)
 
-    def doStepIf(self, step):
-        return not (self.getProperty('rollout') and self.getProperty('buildername', '').lower() == 'commit-queue')
-
 
 class ArchiveBuiltProduct(shell.ShellCommand):
     command = ['python', 'Tools/BuildSlaveSupport/built-product-archive',
@@ -1974,7 +1994,7 @@ class TransferToS3(master.MasterShellCommand):
         return super(TransferToS3, self).finished(results)
 
     def hideStepIf(self, results, step):
-        return results == SUCCESS and self.getProperty('validated', '') == False
+        return results == SUCCESS and self.getProperty('sensitive', False)
 
     def getResultSummary(self):
         if self.results != SUCCESS:
@@ -2515,6 +2535,7 @@ class PushCommitToWebKitRepo(shell.ShellCommand):
             self.descriptionDone = commit_summary
             self.setProperty('build_summary', 'Committed r{}'.format(svn_revision))
             self.build.addStepsAfterCurrentStep([CommentOnBug(), RemoveFlagsOnPatch(), CloseBug()])
+            self.addURL('r{}'.format(svn_revision), self.url_for_revision(svn_revision))
         else:
             self.setProperty('bugzilla_comment_text', self.comment_text_for_bug())
             self.setProperty('build_finish_summary', 'Failed to commit to WebKit repository')

@@ -135,6 +135,7 @@ private:
         DisclosedByRow,
         DisclosedRows,
         DocumentEncoding,
+        DocumentLinks,
         DocumentURI,
         EditableAncestor,
         ElementRect,
@@ -611,6 +612,7 @@ private:
     AXCoreObject* incrementButton() override { return objectAttributeValue(AXPropertyName::IncrementButton); }
     AXCoreObject* decrementButton() override { return objectAttributeValue(AXPropertyName::DecrementButton); }
     bool isIncrementor() const override { return boolAttributeValue(AXPropertyName::IsIncrementor); }
+    AccessibilityChildrenVector documentLinks() override { return tree()->objectsForIDs(vectorAttributeValue<AXID>(AXPropertyName::DocumentLinks)); }
 
     String stringValue() const override { return stringAttributeValue(AXPropertyName::StringValue); }
 
@@ -827,6 +829,7 @@ private:
     Frame* frame() const override;
     Frame* mainFrame() const override;
     Document* topDocument() const override;
+    ScrollView* scrollView() const override;
     ScrollView* scrollViewAncestor() const override;
     void childrenChanged() override;
     void textChanged() override;

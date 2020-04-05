@@ -123,12 +123,12 @@ public:
 
     enum DoubleCondition {
         // These conditions will only evaluate to true if the comparison is ordered - i.e. neither operand is NaN.
-        DoubleEqual = Assembler::ConditionEQ,
-        DoubleNotEqual = Assembler::ConditionVC, // Not the right flag! check for this & handle differently.
-        DoubleGreaterThan = Assembler::ConditionGT,
-        DoubleGreaterThanOrEqual = Assembler::ConditionGE,
-        DoubleLessThan = Assembler::ConditionLO,
-        DoubleLessThanOrEqual = Assembler::ConditionLS,
+        DoubleEqualAndOrdered = Assembler::ConditionEQ,
+        DoubleNotEqualAndOrdered = Assembler::ConditionVC, // Not the right flag! check for this & handle differently.
+        DoubleGreaterThanAndOrdered = Assembler::ConditionGT,
+        DoubleGreaterThanOrEqualAndOrdered = Assembler::ConditionGE,
+        DoubleLessThanAndOrdered = Assembler::ConditionLO,
+        DoubleLessThanOrEqualAndOrdered = Assembler::ConditionLS,
         // If either operand is NaN, these conditions always evaluate to true.
         DoubleEqualOrUnordered = Assembler::ConditionVS, // Not the right flag! check for this & handle differently.
         DoubleNotEqualOrUnordered = Assembler::ConditionNE,
@@ -2006,7 +2006,7 @@ public:
     template<int datasize>
     void moveConditionallyAfterFloatingPointCompare(DoubleCondition cond, RegisterID src, RegisterID dest)
     {
-        if (cond == DoubleNotEqual) {
+        if (cond == DoubleNotEqualAndOrdered) {
             Jump unordered = makeBranch(Assembler::ConditionVS);
             m_assembler.csel<datasize>(dest, src, dest, Assembler::ConditionNE);
             unordered.link(this);
@@ -2027,19 +2027,36 @@ public:
     template<int datasize>
     void moveConditionallyAfterFloatingPointCompare(DoubleCondition cond, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
     {
-        if (cond == DoubleNotEqual) {
-            Jump unordered = makeBranch(Assembler::ConditionVS);
-            m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
-            unordered.link(this);
+        if (cond == DoubleNotEqualAndOrdered) {
+            if (dest == thenCase) {
+                // If the compare is unordered, elseCase is copied to thenCase and the
+                // next csel has all arguments equal to elseCase.
+                // If the compare is ordered, dest is unchanged and NE decides
+                // what value to set.
+                m_assembler.csel<datasize>(thenCase, elseCase, thenCase, Assembler::ConditionNE);
+                m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
+            } else {
+                move(elseCase, dest);
+                Jump unordered = makeBranch(Assembler::ConditionVS);
+                m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
+                unordered.link(this);
+            }
             return;
         }
         if (cond == DoubleEqualOrUnordered) {
-            // If the compare is unordered, thenCase is copied to elseCase and the
-            // next csel has all arguments equal to thenCase.
-            // If the compare is ordered, dest is unchanged and EQ decides
-            // what value to set.
-            m_assembler.csel<datasize>(elseCase, thenCase, elseCase, Assembler::ConditionVS);
-            m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+            if (dest == elseCase) {
+                // If the compare is unordered, thenCase is copied to elseCase and the
+                // next csel has all arguments equal to thenCase.
+                // If the compare is ordered, dest is unchanged and EQ decides
+                // what value to set.
+                m_assembler.csel<datasize>(elseCase, thenCase, elseCase, Assembler::ConditionVS);
+                m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+            } else {
+                move(thenCase, dest);
+                Jump unordered = makeBranch(Assembler::ConditionVS);
+                m_assembler.csel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+                unordered.link(this);
+            }
             return;
         }
         m_assembler.csel<datasize>(dest, thenCase, elseCase, ARM64Condition(cond));
@@ -2048,19 +2065,36 @@ public:
     template<int datasize>
     void moveDoubleConditionallyAfterFloatingPointCompare(DoubleCondition cond, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
     {
-        if (cond == DoubleNotEqual) {
-            Jump unordered = makeBranch(Assembler::ConditionVS);
-            m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
-            unordered.link(this);
+        if (cond == DoubleNotEqualAndOrdered) {
+            if (dest == thenCase) {
+                // If the compare is unordered, elseCase is copied to thenCase and the
+                // next fcsel has all arguments equal to elseCase.
+                // If the compare is ordered, dest is unchanged and NE decides
+                // what value to set.
+                m_assembler.fcsel<datasize>(thenCase, elseCase, thenCase, Assembler::ConditionVS);
+                m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
+            } else {
+                m_assembler.fmov<64>(dest, elseCase);
+                Jump unordered = makeBranch(Assembler::ConditionVS);
+                m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionNE);
+                unordered.link(this);
+            }
             return;
         }
         if (cond == DoubleEqualOrUnordered) {
-            // If the compare is unordered, thenCase is copied to elseCase and the
-            // next csel has all arguments equal to thenCase.
-            // If the compare is ordered, dest is unchanged and EQ decides
-            // what value to set.
-            m_assembler.fcsel<datasize>(elseCase, thenCase, elseCase, Assembler::ConditionVS);
-            m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+            if (dest == elseCase) {
+                // If the compare is unordered, thenCase is copied to elseCase and the
+                // next csel has all arguments equal to thenCase.
+                // If the compare is ordered, dest is unchanged and EQ decides
+                // what value to set.
+                m_assembler.fcsel<datasize>(elseCase, thenCase, elseCase, Assembler::ConditionVS);
+                m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+            } else {
+                m_assembler.fmov<64>(dest, thenCase);
+                Jump unordered = makeBranch(Assembler::ConditionVS);
+                m_assembler.fcsel<datasize>(dest, thenCase, elseCase, Assembler::ConditionEQ);
+                unordered.link(this);
+            }
             return;
         }
         m_assembler.fcsel<datasize>(dest, thenCase, elseCase, ARM64Condition(cond));
@@ -4583,7 +4617,7 @@ protected:
 
     Jump jumpAfterFloatingPointCompare(DoubleCondition cond)
     {
-        if (cond == DoubleNotEqual) {
+        if (cond == DoubleNotEqualAndOrdered) {
             // ConditionNE jumps if NotEqual *or* unordered - force the unordered cases not to jump.
             Jump unordered = makeBranch(Assembler::ConditionVS);
             Jump result = makeBranch(Assembler::ConditionNE);
@@ -4605,7 +4639,7 @@ protected:
     template<typename Function>
     void floatingPointCompare(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest, Function compare)
     {
-        if (cond == DoubleNotEqual) {
+        if (cond == DoubleNotEqualAndOrdered) {
             // ConditionNE sets 1 if NotEqual *or* unordered - force the unordered cases not to set 1.
             move(TrustedImm32(0), dest);
             compare(left, right);

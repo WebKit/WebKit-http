@@ -54,13 +54,13 @@ OBJC_CLASS CALayer;
 OBJC_CLASS NSFileWrapper;
 OBJC_CLASS NSMenu;
 OBJC_CLASS NSSet;
+OBJC_CLASS NSTextAlternatives;
 OBJC_CLASS UIGestureRecognizer;
 OBJC_CLASS WKDrawingView;
 OBJC_CLASS _WKRemoteObjectRegistry;
 
 #if USE(APPKIT)
 OBJC_CLASS WKView;
-OBJC_CLASS NSTextAlternatives;
 #endif
 #endif
 
@@ -353,6 +353,13 @@ public:
 
     virtual void takeFocus(WebCore::FocusDirection) { }
 
+#if USE(DICTATION_ALTERNATIVES)
+    virtual uint64_t addDictationAlternatives(const RetainPtr<NSTextAlternatives>&) = 0;
+    virtual void removeDictationAlternatives(uint64_t dictationContext) = 0;
+    virtual void showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext) = 0;
+    virtual Vector<String> dictationAlternatives(uint64_t dictationContext) = 0;
+#endif
+
 #if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
@@ -376,18 +383,12 @@ public:
     virtual NSView *inspectorAttachmentView() = 0;
     virtual _WKRemoteObjectRegistry *remoteObjectRegistry() = 0;
 
-#if USE(APPKIT)
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize) = 0;
-#if USE(DICTATION_ALTERNATIVES)
-    virtual uint64_t addDictationAlternatives(const RetainPtr<NSTextAlternatives>&) = 0;
-    virtual void removeDictationAlternatives(uint64_t dictationContext) = 0;
-    virtual void showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext) = 0;
-    virtual Vector<String> dictationAlternatives(uint64_t dictationContext) = 0;
-#endif // USE(DICTATION_ALTERNATIVES)
+
 #if USE(INSERTION_UNDO_GROUPING)
     virtual void registerInsertionUndoGrouping() = 0;
-#endif // USE(INSERTION_UNDO_GROUPING)
-#endif // USE(APPKIT)
+#endif
+
     virtual void setEditableElementIsFocused(bool) = 0;
 #endif // PLATFORM(MAC)
 
@@ -517,7 +518,7 @@ public:
     virtual RetainPtr<WKDrawingView> createDrawingView(WebCore::GraphicsLayer::EmbeddedViewID) { return nullptr; }
 #endif
 
-#if ENABLE(POINTER_EVENTS) && PLATFORM(COCOA)
+#if PLATFORM(COCOA)
     virtual void cancelPointersForGestureRecognizer(UIGestureRecognizer*) { }
     virtual WTF::Optional<unsigned> activeTouchIdentifierForGestureRecognizer(UIGestureRecognizer*) { return WTF::nullopt; }
 #endif

@@ -1,3 +1,583 @@
+2020-03-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Sync FeatureList.pm with CMake definitions
+        https://bugs.webkit.org/show_bug.cgi?id=208866
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2020-03-10  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] Add unit tests for commit queue factory
+        https://bugs.webkit.org/show_bug.cgi?id=208862
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/factories_unittest.py:
+        (TestCommitQueueFactory):
+        (TestCommitQueueFactory.test_commit_queue_factory): Added unit-test for commit-queue factory.
+
+2020-03-10  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Status bubble should only display important messages in pop-over - part 3
+        https://bugs.webkit.org/show_bug.cgi?id=208865
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble): Added more strings to STEPS_TO_HIDE.
+
+2020-03-10  Lauro Moura  <lmoura@igalia.com>
+
+        [WPE] MiniBrowser: Close child WebViews when exiting
+        https://bugs.webkit.org/show_bug.cgi?id=208689
+
+        Reviewed by Carlos Garcia Campos.
+
+        Store created views so we can release them before exiting.
+
+        * MiniBrowser/wpe/main.cpp:
+        (webViewClose):
+        (createWebView):
+        (main):
+
+2020-03-10  Aakash Jain  <aakash_jain@apple.com>
+
+        Add ValidateCommiterAndReviewer and ValidateChangeLogAndReviewer build steps in commit-queue
+        https://bugs.webkit.org/show_bug.cgi?id=208861
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (Factory.__init__): Remove verifycqplus parameter.
+        (CommitQueueFactory): Inherit from factory.BuildFactory base class instead of custom Factory class.
+        (CommitQueueFactory.__init__): Add required build steps, especially ValidateCommiterAndReviewer, 
+        UpdateWorkingDirectory and ValidateChangeLogAndReviewer.
+
+2020-03-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] API favicon test flaky timeouts
+        https://bugs.webkit.org/show_bug.cgi?id=208189
+
+        Reviewed by Carlos Garcia Campos.
+
+        Sometimes the favicon changes already during the load. Keeping
+        track of it in the WebView favicon property notification handler
+        gets us rid of the race.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitFaviconDatabase.cpp:
+        (testFaviconDatabaseGetFavicon):
+
+2020-03-10  Aakash Jain  <aakash_jain@apple.com>
+
+        Generate commit-queue status bubble from new EWS
+        https://bugs.webkit.org/show_bug.cgi?id=208811
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble._build_bubbles_for_patch):
+
+2020-03-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove obsolete feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=208830
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE_CUSTOM_SCHEME_HANDLER and ENABLE_MAC_VIDEO_TOOLBOX since they
+        are no longer used.
+
+        Also remove ENABLE_POINTER_EVENTS since the FeaturesDefines.xcconfig was not modified
+        when the compilation flag was removed in r258148.
+
+        Remove ENABLE_ACCELERATED_OVERFLOW_SCROLLING, ENABLE_CSS_IMAGE_ORIENTATION,
+        ENABLE_CUSTOM_SCHEME_HANDLER, and ENABLE_FETCH_API from FeatureList.pm.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2020-03-09  Kate Cheney  <katherine_cheney@apple.com>
+
+        WebKitTestRunner bundleID should not be cleared before every test
+        https://bugs.webkit.org/show_bug.cgi?id=208823
+        <rdar://problem/60204539>
+
+        Reviewed by Per Arne Vollan.
+
+        This is causing test failures for layout tests which rely on the Info.plist 
+        bundle identifier (not the one set via the override method).
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+
+2020-03-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Notification observer is not removed
+        https://bugs.webkit.org/show_bug.cgi?id=208834
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/EnableAccessibility.mm: Added.
+        (TEST):
+
+2020-03-06  Brian Burg  <bburg@apple.com>
+
+        upload.py gets confused by git-svn checkouts, unable to upload test results from my desk build
+        https://bugs.webkit.org/show_bug.cgi?id=208729
+        <rdar://problem/60105447>
+
+        Reviewed by Jonathan Bedard.
+
+        Improve upload.py to look for the svn branch and revision for the 'webkit'
+        project and prefer those to the git equivalents (eg, prefer trunk/rNNNNN to master/<hash>).
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git):
+        (Git.git_svn_id_regexp):
+        (Git._field_from_git_svn_id):
+        (Git.svn_revision):
+        (Git.svn_branch):
+        (Git.svn_url):
+        (Git.native_branch):
+        Refactor svn revision, branch, url to use the same regexp and helper code.
+
+        * Scripts/webkitpy/common/checkout/scm/stub_repository.py:
+        (StubRepository.svn_branch):
+        Expose a stub since this is used unconditionally by Port.commits_for_upload.
+
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.svn_branch):
+        (SVN.native_revision):
+        (SVN):
+        (SVN.native_branch):
+        Refactor so the actual implementation is contained in svn_revision / svn_branch.
+        The native_* methods call out to the SVN equivalents since this is an SVN repository.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.commits_for_upload):
+        Add special git-svn handling for the WebKit repository so that SVN branch and revision
+        is preferred over the git equivalents.
+
+2020-03-09  Antoine Quint  <graouts@apple.com>
+
+        TestWebKitAPI fails to build on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=208820
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TLSDeprecation.mm:
+
+2020-03-09  Jonathan Bedard  <jbedard@apple.com>
+
+        resultsdbpy: Add tool to manage resultsdbpy container
+        https://bugs.webkit.org/show_bug.cgi?id=208743
+
+        Rubber-stamped by Aakash Jain.
+
+        Add tool to start, stop and restart the resultsdbpy Docker container.
+
+        * resultsdbpy/resultsdbpy/container: Added.
+
+2020-03-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Surrounding text for input methods should not be limited to the current paragraph
+        https://bugs.webkit.org/show_bug.cgi?id=208706
+
+        Reviewed by Žan Doberšek.
+
+        Add test case to check surrounding text in multiline context.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestInputMethodContext.cpp:
+        (testWebKitInputMethodContextSurrounding):
+
+2020-03-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Mapping to UTI from tag and tag class should be performed in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=208783
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2020-03-07  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Replace the use of term "rollout" to "revert" in various tools
+        https://bugs.webkit.org/show_bug.cgi?id=208775
+
+        Reviewed by Ryosuke Niwa.
+
+        See this webkit-dev thread for the originating discussion:
+        https://lists.webkit.org/pipermail/webkit-dev/2020-March/031132.html
+
+        'rollout' is a confusing term to anyone unacquainted with WebKit;
+        consensus seems to be that 'revert' would be the best replacement (as opposed to 'rollback').
+
+        Given the long legacy of this term within WebKit, it's important to deprecate and not remove 'rollout' commands.
+        As such, this patch aims to make 'revert' the preferred term everywhere without making 'rollout' fail.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/Trac.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/checkout.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/controllers.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/model_unittests.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/trac_unittests.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui/actions.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/ui/actions_unittests.js:
+        * BuildSlaveSupport/ews-build/steps.py:
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+        * Scripts/webkit-tools-completion.sh:
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        * Scripts/webkitpy/common/net/bugzilla/attachment.py:
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        * Scripts/webkitpy/tool/bot/commitqueuetask.py:
+        * Scripts/webkitpy/tool/bot/feeders.py:
+        * Scripts/webkitpy/tool/bot/feeders_unittest.py:
+        * Scripts/webkitpy/tool/bot/irc_command.py:
+        * Scripts/webkitpy/tool/bot/irc_command_unittest.py:
+        * Scripts/webkitpy/tool/bot/ircbot_unittest.py:
+        * Scripts/webkitpy/tool/bot/sheriff.py:
+        * Scripts/webkitpy/tool/commands/download.py:
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/commands/newcommitbot.py:
+        * Scripts/webkitpy/tool/commands/newcommitbot_unittest.py:
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        * Scripts/webkitpy/tool/commands/sheriffbot_unittest.py:
+        * Scripts/webkitpy/tool/servers/gardeningserver_unittest.py:
+        * Scripts/webkitpy/tool/steps/__init__.py:
+        * Scripts/webkitpy/tool/steps/postdiffforrevert.py:
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert.py:
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert_unittest.py:
+        * Scripts/webkitpy/tool/steps/reopenbugafterrevert.py: Renamed from Tools/Scripts/webkitpy/tool/steps/reopenbugafterrollout.py.
+
+2020-03-07  David Quesada  <david_quesada@apple.com>
+
+        Crash in -[_WKRemoteObjectRegistry _invokeMethod:] block when calling a reply block after the web view has deallocated
+        https://bugs.webkit.org/show_bug.cgi?id=208781
+        rdar://problem/60061016
+
+        Reviewed by Alex Christensen.
+
+        Add a test that recreates the conditions of this crash:
+        - Send a message from the injected bundle to the UI process that contains a reply block.
+        - Hold a reference to the reply block.
+        - Let the web view deallocate.
+        - Call the block, and expect not to crash.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.h:
+        (localObjectInterface):
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.mm:
+        (-[LocalObject doSomethingWithCompletionHandler:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistryPlugIn.mm:
+        (-[RemoteObjectRegistryPlugIn callUIProcessMethodWithReplyBlock]):
+
+2020-03-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        TextManipulationController should work with ARIA labels
+        https://bugs.webkit.org/show_bug.cgi?id=208759
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+        (TextManipulation.StartTextManipulationFindAttributeContent): Added.
+        (TextManipulation.CompleteTextManipulationShouldPreserveOrderOfBlockImage): Updated
+        the expected number of tokens for the first item as the very first image is correctly
+        detected per the code change. 
+        (TextManipulation.CompleteTextManipulationShouldReplaceAttributeContent): Added.
+
+2020-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        Regression r258042: Failing API test TestWebKitAPI.URLSchemeHandler.Frames
+        https://bugs.webkit.org/show_bug.cgi?id=208767
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+        The frameID of the main frame before loading is only 0 on Mac right now.
+        The test is still good because it validates that execution works in the main frame before loading.
+
+2020-03-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] commit queue is not skipping layout tests for rollout patches
+        https://bugs.webkit.org/show_bug.cgi?id=208716
+
+        Unreviewed minor fix.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitTests.doStepIf):
+        (RunWebKit1Tests.doStepIf): Moved to base class RunWebKitTests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-test.
+
+2020-03-05  Sam Weinig  <weinig@apple.com>
+
+        Move JavaScriptCore related feature defines from FeatureDefines.xcconfig to PlatformEnableCocoa.h
+        https://bugs.webkit.org/show_bug.cgi?id=207436
+        <rdar://problem/59296762>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        Remove JSC related defines.
+
+2020-03-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Provide a way to run tests in isolated tree mode
+        https://bugs.webkit.org/show_bug.cgi?id=208629
+        <rdar://problem/60075583>
+
+        Reviewed by Ryosuke Niwa.
+
+        Provide the ability to run tests for accessibility in the isolated tree mode.
+        This sends a flag over to the injected bundle which calls the right HIServices override so that
+        the system thinks it is in isolated mode.
+
+        * Scripts/compare-webkit-configurations:
+        (flag_for_comparison):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py:
+        (parse_args):
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.cmd_line):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        (WTR::AccessibilityController::AccessibilityController):
+        (WTR::AccessibilityController::setAccessibilityIsolatedTreeMode):
+        (WTR::AccessibilityController::updateIsolatedTreeMode):
+        (WTR::AccessibilityController::executeOnAXThreadIfPossible):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.h:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/Options.cpp:
+        (WTR::handleOptionAccessibilityIsolatedTreeMode):
+        (WTR::OptionsHandler::OptionsHandler):
+        * WebKitTestRunner/Options.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::TestController::resetStateToConsistentValues):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::accessibilityIsolatedTreeMode const):
+
+2020-03-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Re-enable CFPrefs direct mode
+        https://bugs.webkit.org/show_bug.cgi?id=208690
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/GrantAccessToPreferencesService.mm: Added.
+        (TEST):
+        * TestWebKitAPI/Tests/ios/AccessibilityTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+2020-03-06  Kate Cheney  <katherine_cheney@apple.com>
+
+        UIProcess needs mechanism to specify AppBound domains
+        https://bugs.webkit.org/show_bug.cgi?id=208528
+        <rdar://problem/59980340>
+
+        Reviewed by Brent Fulgham.
+
+        Added test app-bound domains to the plist and tested that the domains
+        are properly stored in the website data store after a navigation.
+
+        * TestWebKitAPI/Info.plist:
+        * TestWebKitAPI/Tests/WebKitCocoa/InAppBrowserPrivacy.mm:
+        (TEST):
+
+2020-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to disable cross origin access control checks
+        https://bugs.webkit.org/show_bug.cgi?id=208748
+
+        Reviewed by Tim Hatcher.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+        Add a test that verifies this SPI allows Access-Control-Allow-Origin: * with credentials.
+
+2020-03-06  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [webkitpy] Fix executive on Windows to run wpt server correctly
+        https://bugs.webkit.org/show_bug.cgi?id=208693
+
+        Reviewed by Jonathan Bedard.
+
+        Bug fix for Windows environment a) fixing a typo. b) fixing path
+        c) fix how to kill subprocesses.
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive._windows_kill_command):
+        (Executive.interrupt):
+        (Executive.kill_all):
+        * Scripts/webkitpy/port/base.py:
+        (Port.web_platform_test_server_doc_root):
+
+2020-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Evaluating JavaScript in main frame before loading should succeed
+        https://bugs.webkit.org/show_bug.cgi?id=208733
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2020-03-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        TextManipulationController should preserve images
+        https://bugs.webkit.org/show_bug.cgi?id=208692
+
+        Reviewed by Wenson Hsieh.
+
+        Added tests for preserving images and their ordering.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TextManipulation.mm:
+        (TextManipulation.CompleteTextManipulationShouldPreserveImagesAsExcludedTokens):
+        (TextManipulation.CompleteTextManipulationShouldPreserveSVGAsExcludedTokens):
+        (TextManipulation.CompleteTextManipulationShouldPreserveOrderOfBlockImage):
+
+2020-03-06  David Quesada  <david_quesada@apple.com>
+
+        Add _WKResourceLoadInfo.resourceType SPI
+        https://bugs.webkit.org/show_bug.cgi?id=208723
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadDelegate.mm:
+        (TEST):
+
+2020-03-06  Jonathan Bedard  <jbedard@apple.com>
+
+        Stop reporting to webkit-test-results.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=207218
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunWebKitTests):
+
+2020-03-06  Sihui Liu  <sihui_liu@apple.com>
+
+        UIProcess crash after using _prepareForMoveToWindow, then deallocating the WKWebView before moving to the window
+        https://bugs.webkit.org/show_bug.cgi?id=208365
+        <rdar://problem/59877296>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PrepareForMoveToWindow.mm:
+        (TEST):
+
+2020-03-06  Aakash Jain  <aakash_jain@apple.com>
+
+        EWS should be able to fetch patch status for security bugs while processing them
+        https://bugs.webkit.org/show_bug.cgi?id=206511
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (BugzillaMixin.fetch_data_from_url_with_authentication): Method to fetch data from bugzilla using api key.
+        (BugzillaMixin.get_patch_json): 
+        (BugzillaMixin.get_bug_json):
+        (BugzillaMixin._is_bug_closed):
+        (ApplyPatch.hideStepIf): Use 'sensitive' build property instead of 'validated'.
+        (TransferToS3.hideStepIf): Ditto.
+
+2020-03-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews] commit-queue should show the trac url for the commit on the build page
+        https://bugs.webkit.org/show_bug.cgi?id=208715
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (PushCommitToWebKitRepo.evaluateCommand):
+
+2020-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ResourceLoadDelegate.LoadInfo API test after r257816
+        https://bugs.webkit.org/show_bug.cgi?id=208550
+
+        * TestWebKitAPI/cocoa/HTTPServer.mm:
+        (TestWebKitAPI::HTTPServer::respondToRequests):
+        Sometimes we need a separate read to read the HTTP body after a request header, sometimes it comes in the same read.
+        If it comes in the same read, send the response immediately.  Otherwise read the HTTP body then send the response.
+
+2020-03-06  Lauro Moura <lmoura@igalia.com>
+
+        [WPE][WebDriver] MiniBrowser should react to close session commands
+        https://bugs.webkit.org/show_bug.cgi?id=207529
+
+        Reviewed by Carlos Garcia Campos.
+
+        Do not call g_object_unref on the first created view if it has already
+        been disposed in the "close" signal handler.
+
+        Based on original patch by Yury Semikhatsky.
+
+        * MiniBrowser/wpe/main.cpp:
+        (main):
+
+2020-03-06  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [WPE][GTK] Use Firefox user agent quirk more aggressively on Google Docs
+        https://bugs.webkit.org/show_bug.cgi?id=208647
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2020-03-05  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKNavigationDelegatePrivate SPI to inform application of subframe navigations
+        https://bugs.webkit.org/show_bug.cgi?id=208670
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Navigation.mm:
+        (-[FrameNavigationDelegate waitForNavigations:]):
+        (-[FrameNavigationDelegate requests]):
+        (-[FrameNavigationDelegate frames]):
+        (-[FrameNavigationDelegate callbacks]):
+        (-[FrameNavigationDelegate _webView:didStartProvisionalLoadWithRequest:inFrame:]):
+        (-[FrameNavigationDelegate _webView:didFailProvisionalLoadWithRequest:inFrame:withError:]):
+        (-[FrameNavigationDelegate _webView:didCommitLoadWithRequest:inFrame:]):
+        (-[FrameNavigationDelegate _webView:didFailLoadWithRequest:inFrame:withError:]):
+        (-[FrameNavigationDelegate _webView:didFinishLoadWithRequest:inFrame:]):
+        (TEST):
+
+2020-03-05  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKFrameInfo._parentFrameHandle SPI
+        https://bugs.webkit.org/show_bug.cgi?id=208674
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2020-03-05  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthn] Implement SPI -[_WKWebAuthenticationPanelDelegate panel:selectAssertionResponse:source:completionHandler:]
+        https://bugs.webkit.org/show_bug.cgi?id=208626
+        <rdar://problem/60074148>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKWebAuthenticationPanel.mm:
+        (-[TestWebAuthenticationPanelDelegate panel:selectAssertionResponse:source:completionHandler:]):
+        (TestWebKitAPI::TEST):
+        (-[TestWebAuthenticationPanelDelegate panel:selectAssertionResponse:completionHandler:]): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-get-assertion-hid-multiple-accounts.html:
+        * TestWebKitAPI/Tests/WebKitCocoa/web-authentication-get-assertion-la.html: Added.
+
 2020-03-05  Antoine Quint  <graouts@apple.com>
 
         Page-specific UserStyleSheets should wait until the initial empty document has been removed to be injected

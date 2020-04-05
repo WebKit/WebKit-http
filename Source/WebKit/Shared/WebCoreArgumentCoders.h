@@ -30,6 +30,7 @@
 #include <WebCore/ColorSpace.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/ImageData.h>
 #include <WebCore/IndexedDB.h>
 #include <WebCore/InputMode.h>
 #include <WebCore/MediaSelectionOption.h>
@@ -136,9 +137,7 @@ struct ResourceLoadStatistics;
 struct ScrollableAreaParameters;
 struct TextCheckingResult;
 struct TextIndicatorData;
-#if ENABLE(POINTER_EVENTS)
 struct TouchActionData;
-#endif
 struct VelocityData;
 struct ViewportAttributes;
 struct WindowFeatures;
@@ -227,12 +226,10 @@ template<> struct ArgumentCoder<WebCore::DOMCacheEngine::Record> {
     static Optional<WebCore::DOMCacheEngine::Record> decode(Decoder&);
 };
 
-#if ENABLE(POINTER_EVENTS)
 template<> struct ArgumentCoder<WebCore::TouchActionData> {
     static void encode(Encoder&, const WebCore::TouchActionData&);
     static Optional<WebCore::TouchActionData> decode(Decoder&);
 };
-#endif
 
 template<> struct ArgumentCoder<WebCore::EventTrackingRegions> {
     static void encode(Encoder&, const WebCore::EventTrackingRegions&);
@@ -841,6 +838,11 @@ template<> struct ArgumentCoder<RefPtr<WebCore::SharedBuffer>> {
     static Optional<RefPtr<WebCore::SharedBuffer>> decode(Decoder&);
 };
 
+template<> struct ArgumentCoder<Ref<WebCore::SharedBuffer>> {
+    static void encode(Encoder&, const Ref<WebCore::SharedBuffer>&);
+    static Optional<Ref<WebCore::SharedBuffer>> decode(Decoder&);
+};
+
 #if ENABLE(ENCRYPTED_MEDIA)
 template<> struct ArgumentCoder<WebCore::CDMInstanceSession::Message> {
     static void encode(Encoder&, const WebCore::CDMInstanceSession::Message&);
@@ -852,6 +854,16 @@ template<> struct ArgumentCoder<WebCore::CDMInstanceSession::KeyStatusVector> {
     static Optional<WebCore::CDMInstanceSession::KeyStatusVector> decode(Decoder&);
 };
 #endif
+
+template<> struct ArgumentCoder<RefPtr<WebCore::ImageData>> {
+    static void encode(Encoder&, const RefPtr<WebCore::ImageData>&);
+    static Optional<RefPtr<WebCore::ImageData>> decode(Decoder&);
+};
+
+template<> struct ArgumentCoder<Ref<WebCore::ImageData>> {
+    static void encode(Encoder&, const Ref<WebCore::ImageData>&);
+    static Optional<Ref<WebCore::ImageData>> decode(Decoder&);
+};
 
 } // namespace IPC
 

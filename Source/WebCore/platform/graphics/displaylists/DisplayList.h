@@ -81,6 +81,7 @@ enum class ItemType : uint8_t {
     FillRectWithRoundedHole,
     FillPath,
     FillEllipse,
+    PutImageData,
     StrokeRect,
     StrokePath,
     StrokeEllipse,
@@ -178,7 +179,6 @@ public:
     }
 
     WEBCORE_EXPORT void clear();
-    void removeItemsFromIndex(size_t);
 
     size_t itemCount() const { return m_list.size(); }
     size_t sizeInBytes() const;

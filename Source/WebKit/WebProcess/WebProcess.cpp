@@ -31,6 +31,7 @@
 #include "APIPageHandle.h"
 #include "AuthenticationManager.h"
 #include "AuxiliaryProcessMessages.h"
+#include "DependencyProcessAssertion.h"
 #include "DrawingArea.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
@@ -43,6 +44,7 @@
 #include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
 #include "RemoteAudioSession.h"
+#include "RemoteLegacyCDMFactory.h"
 #include "StatisticsData.h"
 #include "StorageAreaMap.h"
 #include "UserData.h"
@@ -179,8 +181,13 @@
 #include "RemoteCDMFactory.h"
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+#include "RemoteMediaSessionHelper.h"
+#endif
+
 #define RELEASE_LOG_SESSION_ID (m_sessionID ? m_sessionID->toUInt64() : 0)
 #define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), channel, "%p - [sessionID=%" PRIu64 "] WebProcess::" fmt, this, RELEASE_LOG_SESSION_ID, ##__VA_ARGS__)
 
 // This should be less than plugInAutoStartExpirationTimeThreshold in PlugInAutoStartProvider.
 static const Seconds plugInAutoStartExpirationTimeUpdateThreshold { 29 * 24 * 60 * 60 };
@@ -249,6 +256,10 @@ WebProcess::WebProcess()
     addSupplement<RemoteCDMFactory>();
 #endif
 
+#if ENABLE(GPU_PROCESS) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    addSupplement<RemoteLegacyCDMFactory>();
+#endif
+
     Gigacage::forbidDisablingPrimitiveGigacage();
 }
 
@@ -286,7 +297,14 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
     m_eventDispatcher->initializeConnection(connection);
 #if PLATFORM(IOS_FAMILY)
     m_viewUpdateDispatcher->initializeConnection(connection);
+
+    ASSERT(!m_uiProcessDependencyProcessAssertion);
+    if (auto remoteProcessID = connection->remoteProcessID())
+        m_uiProcessDependencyProcessAssertion = makeUnique<DependencyProcessAssertion>(remoteProcessID, "WebContent process dependency on UIProcess"_s);
+    else
+        RELEASE_LOG_ERROR_IF_ALLOWED(ProcessSuspension, "Unable to create a process depending assertion on UIProcess because remoteProcessID is 0");
 #endif // PLATFORM(IOS_FAMILY)
+
     m_webInspectorInterruptDispatcher->initializeConnection(connection);
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -297,12 +315,6 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
         supplement->initializeConnection(connection);
 
     m_webConnection = WebConnectionToUIProcess::create(this);
-
-#if PLATFORM(IOS_FAMILY)
-    // Make sure we have an IPC::Connection before creating the ProcessTaskStateObserver since it may call
-    // WebProcess::processTaskStateDidChange() on a background thread and deference the IPC connection.
-    m_taskStateObserver = ProcessTaskStateObserver::create(*this);
-#endif
 }
 
 void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
@@ -471,8 +483,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     WebResourceLoadObserver::setShouldLogUserInteraction(parameters.shouldLogUserInteraction);
 #endif
-
-    setUseGPUProcessForMedia(parameters.useGPUProcessForMedia);
 
     RELEASE_LOG_IF_ALLOWED(Process, "initializeWebProcess: Presenting process = %d", WebCore::presentingApplicationPID());
 }
@@ -1977,14 +1987,6 @@ void WebProcess::clearCurrentModifierStateForTesting()
     PlatformKeyboardEvent::setCurrentModifierState({ });
 }
 
-#if PLATFORM(IOS_FAMILY)
-void WebProcess::unblockAccessibilityServer(const SandboxExtension::Handle& handle)
-{
-    bool ok = SandboxExtension::consumePermanently(handle);
-    ASSERT_UNUSED(ok, ok);
-}
-#endif
-
 bool WebProcess::areAllPagesThrottleable() const
 {
     return WTF::allOf(m_pageMap.values(), [](auto& page) {
@@ -2000,6 +2002,7 @@ void WebProcess::setShouldBlockThirdPartyCookiesForTesting(ThirdPartyCookieBlock
 }
 #endif
 
+#if ENABLE(GPU_PROCESS)
 void WebProcess::setUseGPUProcessForMedia(bool useGPUProcessForMedia)
 {
     if (useGPUProcessForMedia == m_useGPUProcessForMedia)
@@ -2007,15 +2010,41 @@ void WebProcess::setUseGPUProcessForMedia(bool useGPUProcessForMedia)
 
     m_useGPUProcessForMedia = useGPUProcessForMedia;
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    auto& cdmFactories = CDMFactory::registeredFactories();
+    cdmFactories.clear();
+
+    if (useGPUProcessForMedia)
+        ensureGPUProcessConnection().cdmFactory().registerFactory(cdmFactories);
+    else
+        CDMFactory::platformRegisterFactories(cdmFactories);
+#endif
+
 #if USE(AUDIO_SESSION)
     if (useGPUProcessForMedia)
         AudioSession::setSharedSession(RemoteAudioSession::create(*this));
     else
         AudioSession::setSharedSession(AudioSession::create());
 #endif
+
+#if PLATFORM(IOS_FAMILY)
+    if (useGPUProcessForMedia)
+        MediaSessionHelper::setSharedHelper(makeUniqueRef<RemoteMediaSessionHelper>(*this));
+    else
+        MediaSessionHelper::resetSharedHelper();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    if (useGPUProcessForMedia)
+        ensureGPUProcessConnection().legacyCDMFactory().registerFactory();
+    else
+        LegacyCDM::resetFactories();
+#endif
 }
+#endif
 
 } // namespace WebKit
 
 #undef RELEASE_LOG_SESSION_ID
 #undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ERROR_IF_ALLOWED

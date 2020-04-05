@@ -43,25 +43,6 @@ bool WebProcessProxy::fullKeyboardAccessEnabled()
 #endif
 }
 
-void WebProcessProxy::unblockAccessibilityServerIfNeeded()
-{
-    if (m_hasSentMessageToUnblockAccessibilityServer)
-        return;
-    if (!_AXSApplicationAccessibilityEnabled())
-        return;
-    if (!processIdentifier())
-        return;
-    if (!canSendMessage())
-        return;
-
-    SandboxExtension::Handle handle;
-    if (!SandboxExtension::createHandleForMachLookup("com.apple.iphone.axserver-systemwide", connection() ? connection()->getAuditToken() : WTF::nullopt, handle))
-        return;
-
-    send(Messages::WebProcess::UnblockAccessibilityServer(handle), 0);
-    m_hasSentMessageToUnblockAccessibilityServer = true;
-}
-
 } // namespace WebKit
 
 #endif // PLATFORM(IOS_FAMILY)

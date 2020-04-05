@@ -53,6 +53,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include <WebCore/RenderThemeIOS.h>
+#include <WebCore/UTTypeRecordSwizzler.h>
 #endif
 
 namespace API {
@@ -223,11 +224,14 @@ struct WebProcessCreationParameters {
     WebCore::RenderThemeIOS::CSSValueToSystemColorMap cssValueToSystemColorMap;
     WebCore::Color focusRingColor;
     String localizedDeviceModel;
+#if USE(UTTYPE_SWIZZLER)
+    Vector<WebCore::UTTypeItem> vectorOfUTTypeItem;
+#endif
 #endif
 
 #if PLATFORM(COCOA)
     SandboxExtension::HandleArray mediaExtensionHandles; // FIXME(207716): Remove when GPU process is complete.
-#if !ENABLE(CFPREFS_DIRECT_MODE)
+#if ENABLE(CFPREFS_DIRECT_MODE)
     Optional<SandboxExtension::Handle> preferencesExtensionHandle;
 #endif
 #endif

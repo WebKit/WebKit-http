@@ -563,7 +563,7 @@ public:
 
         @YES, WebKitShouldRespectImageOrientationKey,
 #endif // PLATFORM(IOS_FAMILY)
-#if ENABLE(WIRELESS_TARGET_PLAYBACK)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
         @YES, WebKitAllowsAirPlayForMediaPlaybackPreferenceKey,
 #endif
         @YES, WebKitAllowsPictureInPictureMediaPlaybackPreferenceKey,
@@ -657,7 +657,6 @@ public:
 #endif
         @NO, WebKitDirectoryUploadEnabledPreferenceKey,
         @YES, WebKitWebAnimationsEnabledPreferenceKey,
-        @YES, WebKitPointerEventsEnabledPreferenceKey,
         @YES, WebKitSyntheticEditingCommandsEnabledPreferenceKey,
 
 #if PLATFORM(IOS_FAMILY)
@@ -711,9 +710,10 @@ public:
         @NO, WebKitAsyncClipboardAPIEnabledPreferenceKey,
         @NO, WebKitLinkPreloadResponsiveImagesEnabledPreferenceKey,
         @YES, WebKitCSSShadowPartsEnabledPreferenceKey,
-        @NO, WebKitInAppBrowserPrivacyEnabledPreferenceKey,
+        @NO, WebKitInternalDebugInAppBrowserPrivacyEnabledPreferenceKey,
         @NO, WebKitAspectRatioOfImgFromWidthAndHeightEnabledPreferenceKey,
         @NO, WebKitWebSQLEnabledPreferenceKey,
+        @YES, WebKitInternalDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -1323,7 +1323,7 @@ public:
 
 - (BOOL)allowsAirPlayForMediaPlayback
 {
-#if ENABLE(WIRELESS_TARGET_PLAYBACK)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     return [self _boolValueForKey:WebKitAllowsAirPlayForMediaPlaybackPreferenceKey];
 #else
     return false;
@@ -1332,7 +1332,7 @@ public:
 
 - (void)setAllowsAirPlayForMediaPlayback:(BOOL)flag
 {
-#if ENABLE(WIRELESS_TARGET_PLAYBACK)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     [self _setBoolValue:flag forKey:WebKitAllowsAirPlayForMediaPlaybackPreferenceKey];
 #endif
 }
@@ -3238,24 +3238,14 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitWebAnimationsMutableTimelinesEnabledPreferenceKey];
 }
 
-- (BOOL)pointerEventsEnabled
-{
-    return [self _boolValueForKey:WebKitPointerEventsEnabledPreferenceKey];
-}
-
-- (void)setPointerEventsEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitPointerEventsEnabledPreferenceKey];
-}
-
 - (BOOL)syntheticEditingCommandsEnabled
 {
-    return [self _boolValueForKey:WebKitPointerEventsEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitSyntheticEditingCommandsEnabledPreferenceKey];
 }
 
 - (void)setSyntheticEditingCommandsEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitPointerEventsEnabledPreferenceKey];
+    [self _setBoolValue:flag forKey:WebKitSyntheticEditingCommandsEnabledPreferenceKey];
 }
 
 - (BOOL)fetchAPIKeepAliveEnabled
@@ -3652,12 +3642,22 @@ static NSString *classIBCreatorID = nil;
 
 - (BOOL)isInAppBrowserPrivacyEnabled
 {
-    return [self _boolValueForKey:WebKitInAppBrowserPrivacyEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitInternalDebugInAppBrowserPrivacyEnabledPreferenceKey];
 }
 
 - (void)setInAppBrowserPrivacyEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitInAppBrowserPrivacyEnabledPreferenceKey];
+    [self _setBoolValue:flag forKey:WebKitInternalDebugInAppBrowserPrivacyEnabledPreferenceKey];
+}
+
+- (BOOL)needsInAppBrowserPrivacyQuirks
+{
+    return [self _boolValueForKey:WebKitInternalDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey];
+}
+
+- (void)setNeedsInAppBrowserPrivacyQuirks:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitInternalDebugNeedsInAppBrowserPrivacyQuirksPreferenceKey];
 }
 
 - (BOOL)aspectRatioOfImgFromWidthAndHeightEnabled

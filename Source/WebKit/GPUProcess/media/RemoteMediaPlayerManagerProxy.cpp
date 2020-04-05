@@ -198,6 +198,20 @@ void RemoteMediaPlayerManagerProxy::didReceivePlayerMessage(IPC::Connection& con
         player->didReceiveMessage(connection, decoder);
 }
 
+void RemoteMediaPlayerManagerProxy::didReceiveSyncPlayerMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& encoder)
+{
+    if (auto* player = m_proxies.get(makeObjectIdentifier<MediaPlayerPrivateRemoteIdentifierType>(decoder.destinationID())))
+        player->didReceiveSyncMessage(connection, decoder, encoder);
+}
+
+RemoteMediaPlayerProxy* RemoteMediaPlayerManagerProxy::getProxy(const MediaPlayerPrivateRemoteIdentifier& id)
+{
+    auto results = m_proxies.find(id);
+    if (results != m_proxies.end())
+        return results->value.get();
+    return nullptr;
+}
+
 #if !RELEASE_LOG_DISABLED
 const Logger& RemoteMediaPlayerManagerProxy::logger() const
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
@@ -226,6 +226,7 @@
 #include <WebCore/Settings.h>
 #include <WebCore/ShadowRoot.h>
 #include <WebCore/SharedBuffer.h>
+#include <WebCore/SimpleRange.h>
 #include <WebCore/StyleProperties.h>
 #include <WebCore/SubframeLoader.h>
 #include <WebCore/SubstituteData.h>
@@ -326,6 +327,9 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "RemoteCDMFactory.h"
 #endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#include "RemoteLegacyCDMFactory.h"
+#endif
 #endif
 
 namespace WebKit {
@@ -396,6 +400,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
     , m_alwaysShowsHorizontalScroller { parameters.alwaysShowsHorizontalScroller }
     , m_alwaysShowsVerticalScroller { parameters.alwaysShowsVerticalScroller }
     , m_shouldRenderCanvasInGPUProcess { parameters.shouldRenderCanvasInGPUProcess }
+    , m_needsInAppBrowserPrivacyQuirks { parameters.needsInAppBrowserPrivacyQuirks }
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     , m_determinePrimarySnapshottedPlugInTimer(RunLoop::main(), this, &WebPage::determinePrimarySnapshottedPlugInTimerFired)
 #endif
@@ -529,6 +534,8 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 #endif
 
     pageConfiguration.corsDisablingPatterns = WTFMove(parameters.corsDisablingPatterns);
+    if (!parameters.crossOriginAccessControlCheckEnabled)
+        CrossOriginAccessControlCheckDisabler::singleton().setCrossOriginAccessControlCheckEnabled(false);
 
 #if ENABLE(ATTACHMENT_ELEMENT) && PLATFORM(IOS_FAMILY)
     if (parameters.frontboardExtensionHandle)
@@ -700,7 +707,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 
 #if ENABLE(WEB_RTC)
     if (!parameters.iceCandidateFilteringEnabled)
-        disableICECandidateFiltering();
+        m_page->disableICECandidateFiltering();
 #if USE(LIBWEBRTC)
     if (parameters.enumeratingAllNetworkInterfacesEnabled)
         enableEnumeratingAllNetworkInterfaces();
@@ -743,15 +750,6 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 }
 
 #if ENABLE(WEB_RTC)
-void WebPage::disableICECandidateFiltering()
-{
-    m_page->disableICECandidateFiltering();
-}
-
-void WebPage::enableICECandidateFiltering()
-{
-    m_page->enableICECandidateFiltering();
-}
 
 #if USE(LIBWEBRTC)
 void WebPage::disableEnumeratingAllNetworkInterfaces()
@@ -1676,7 +1674,7 @@ void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint do
     auto mouseEvent = MouseEvent::create(eventNames().clickEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, Event::IsComposed::Yes,
         MonotonicTime::now(), nullptr, singleClick, screenPoint, documentPoint, { }, { }, 0, 0, nullptr, 0, WebCore::NoTap);
 
-    mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.ptr(), LockHistory::No, LockBackForwardList::No, ReferrerPolicy::NoReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    mainFrame->loader().changeLocation(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.ptr(), LockHistory::No, LockBackForwardList::No, ReferrerPolicy::NoReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 }
 
 void WebPage::stopLoadingFrame(FrameIdentifier frameID)
@@ -3039,7 +3037,6 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 }
 #endif
 
-#if ENABLE(POINTER_EVENTS)
 void WebPage::cancelPointer(WebCore::PointerID pointerId, const WebCore::IntPoint& documentPoint)
 {
     m_page->pointerCaptureController().cancelPointer(pointerId, documentPoint);
@@ -3049,7 +3046,6 @@ void WebPage::touchWithIdentifierWasRemoved(WebCore::PointerID pointerId)
 {
     m_page->pointerCaptureController().touchWithIdentifierWasRemoved(pointerId);
 }
-#endif
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 static bool handleGestureEvent(const WebGestureEvent& event, Page* page)
@@ -3460,7 +3456,7 @@ void WebPage::runJavaScript(WebFrame* frame, RunJavaScriptParameters&& parameter
         send(Messages::WebPageProxy::ScriptValueCallback(dataReference, details, callbackID));
     };
     
-    if (RuntimeEnabledFeatures::sharedFeatures().isInAppBrowserPrivacyEnabled() && frame->isMainFrame() && hasNavigatedAwayFromAppBoundDomain() == NavigatedAwayFromAppBoundDomain::Yes) {
+    if (hasNavigatedAwayFromAppBoundDomain() == NavigatedAwayFromAppBoundDomain::Yes && !m_needsInAppBrowserPrivacyQuirks) {
         send(Messages::WebPageProxy::ScriptValueCallback({ }, ExceptionDetails { "Unable to execute JavaScript"_s }, callbackID));
         return;
     }
@@ -3727,6 +3723,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     // FIXME: useGPUProcessForMedia should be a RuntimeEnabledFeature since it's global.
     static_cast<WebMediaStrategy&>(platformStrategies()->mediaStrategy()).setUseGPUProcess(settings.useGPUProcessForMedia());
     WebProcess::singleton().supplement<RemoteMediaPlayerManager>()->updatePreferences(settings);
+    WebProcess::singleton().setUseGPUProcessForMedia(settings.useGPUProcessForMedia());
 #endif
 }
 
@@ -5477,9 +5474,9 @@ void WebPage::deleteSurrounding(int64_t offset, unsigned characterCount)
         return;
 
     auto selectionStart = selection.visibleStart();
-    auto paragraphRange = makeRange(startOfParagraph(selectionStart), selectionStart);
-    auto cursorPosition = TextIterator::rangeLength(paragraphRange.get());
-    auto& rootNode = paragraphRange->startContainer().treeScope().rootNode();
+    auto surroundingRange = makeRange(startOfEditableContent(selectionStart), selectionStart);
+    auto cursorPosition = TextIterator::rangeLength(surroundingRange.get());
+    auto& rootNode = surroundingRange->startContainer().treeScope().rootNode();
     auto selectionRange = TextIterator::rangeFromLocationAndLength(&rootNode, cursorPosition + offset, characterCount);
     if (!selectionRange)
         return;

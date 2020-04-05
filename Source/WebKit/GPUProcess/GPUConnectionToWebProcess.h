@@ -33,15 +33,11 @@
 #include "RemoteAudioSessionIdentifier.h"
 #include "RemoteRenderingBackendProxy.h"
 #include "RenderingBackendIdentifier.h"
+#include <WebCore/NowPlayingManager.h>
 #include <WebCore/ProcessIdentifier.h>
 #include <pal/SessionID.h>
 #include <wtf/Logger.h>
 #include <wtf/RefCounted.h>
-#include <wtf/WeakPtr.h>
-
-namespace WebCore {
-class PlatformMediaSessionManager;
-}
 
 namespace WebKit {
 
@@ -52,16 +48,18 @@ class RemoteAudioMediaStreamTrackRendererManager;
 class RemoteAudioSessionProxy;
 class RemoteAudioSessionProxyManager;
 class RemoteCDMFactoryProxy;
+class RemoteLegacyCDMFactoryProxy;
 class RemoteMediaPlayerManagerProxy;
 class RemoteMediaRecorderManager;
 class RemoteMediaResourceManager;
+class RemoteMediaSessionHelperProxy;
 class RemoteSampleBufferDisplayLayerManager;
 class UserMediaCaptureManagerProxy;
 struct RemoteAudioSessionConfiguration;
 
 class GPUConnectionToWebProcess
     : public RefCounted<GPUConnectionToWebProcess>
-    , public CanMakeWeakPtr<GPUConnectionToWebProcess>
+    , public WebCore::NowPlayingManager::Client
     , IPC::Connection::Client {
 public:
     static Ref<GPUConnectionToWebProcess> create(GPUProcess&, WebCore::ProcessIdentifier, IPC::Connection::Identifier, PAL::SessionID);
@@ -91,8 +89,14 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     RemoteCDMFactoryProxy& cdmFactoryProxy();
 #endif
-
+#if PLATFORM(IOS_FAMILY)
+    RemoteMediaSessionHelperProxy& mediaSessionHelperProxy();
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    RemoteLegacyCDMFactoryProxy& legacyCdmFactoryProxy();
+#endif
     RemoteMediaPlayerManagerProxy& remoteMediaPlayerManagerProxy();
+
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
     RemoteAudioSessionProxyManager& audioSessionManager();
 #endif
@@ -119,14 +123,17 @@ private:
 
     void createRenderingBackend(RenderingBackendIdentifier);
     void releaseRenderingBackend(RenderingBackendIdentifier);
-#if PLATFORM(COCOA)
+
     void clearNowPlayingInfo();
-    void setNowPlayingInfo(bool setAsNowPlayingApplication, const WebCore::NowPlayingInfo&);
-#endif
+    void setNowPlayingInfo(bool setAsNowPlayingApplication, WebCore::NowPlayingInfo&&);
 
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
     using EnsureAudioSessionCompletion = CompletionHandler<void(const RemoteAudioSessionConfiguration&)>;
     void ensureAudioSession(EnsureAudioSessionCompletion&&);
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    void ensureMediaSessionHelper();
 #endif
 
     // IPC::Connection::Client
@@ -137,6 +144,9 @@ private:
 
     bool dispatchMessage(IPC::Connection&, IPC::Decoder&);
     bool dispatchSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
+
+    // NowPlayingManager::Client
+    void didReceiveRemoteControlCommand(WebCore::PlatformMediaSession::RemoteControlCommandType, Optional<double>) final;
 
     RefPtr<Logger> m_logger;
 
@@ -159,8 +169,7 @@ private:
 #if PLATFORM(COCOA) && USE(LIBWEBRTC)
     std::unique_ptr<LibWebRTCCodecsProxy> m_libWebRTCCodecsProxy;
 #endif
-    std::unique_ptr<WebCore::PlatformMediaSessionManager> m_sessionManager;
-    
+
     using RemoteRenderingBackendProxyMap = HashMap<RenderingBackendIdentifier, std::unique_ptr<RemoteRenderingBackendProxy>>;
     RemoteRenderingBackendProxyMap m_remoteRenderingBackendProxyMap;
 
@@ -169,6 +178,12 @@ private:
 #endif
 #if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
     std::unique_ptr<RemoteAudioSessionProxy> m_audioSessionProxy;
+#endif
+#if PLATFORM(IOS_FAMILY)
+    std::unique_ptr<RemoteMediaSessionHelperProxy> m_mediaSessionHelperProxy;
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    std::unique_ptr<RemoteLegacyCDMFactoryProxy> m_legacyCdmFactoryProxy;
 #endif
 };
 

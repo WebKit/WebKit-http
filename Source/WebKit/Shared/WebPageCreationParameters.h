@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -209,6 +209,7 @@ struct WebPageCreationParameters {
 
     String overriddenMediaType;
     Vector<String> corsDisablingPatterns;
+    bool crossOriginAccessControlCheckEnabled { true };
     String processDisplayName;
 
     bool shouldCaptureAudioInUIProcess { false };
@@ -217,6 +218,7 @@ struct WebPageCreationParameters {
     bool shouldCaptureVideoInGPUProcess { false };
     bool shouldCaptureDisplayInUIProcess { false };
     bool shouldRenderCanvasInGPUProcess { false };
+    bool needsInAppBrowserPrivacyQuirks { false };
 
 #if PLATFORM(GTK)
     String themeName;

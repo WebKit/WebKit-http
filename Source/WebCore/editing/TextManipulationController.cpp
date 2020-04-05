@@ -30,6 +30,7 @@
 #include "Editing.h"
 #include "ElementAncestorIterator.h"
 #include "EventLoop.h"
+#include "HTMLNames.h"
 #include "NodeTraversal.h"
 #include "PseudoElement.h"
 #include "Range.h"
@@ -132,67 +133,187 @@ void TextManipulationController::startObservingParagraphs(ManipulationItemCallba
     m_callback = WTFMove(callback);
     m_exclusionRules = WTFMove(exclusionRules);
 
-    VisiblePosition start = firstPositionInNode(m_document.get());
-    VisiblePosition end = lastPositionInNode(m_document.get());
-
-    observeParagraphs(start, end);
+    observeParagraphs(firstPositionInNode(m_document.get()), lastPositionInNode(m_document.get()));
     flushPendingItemsForCallback();
 }
 
-void TextManipulationController::observeParagraphs(VisiblePosition& start, VisiblePosition& end)
+class ParagraphContentIterator {
+public:
+    ParagraphContentIterator(const Position& start, const Position& end)
+        : m_iterator(start, end)
+        , m_iteratorNode(m_iterator.atEnd() ? nullptr : m_iterator.range()->firstNode())
+        , m_currentNodeForFindingInvisibleContent(start.firstNode())
+        , m_pastEndNode(end.firstNode())
+    {
+    }
+
+    void advance()
+    {
+        // FIXME: Add a node callback to TextIterator instead of traversing the node tree twice like this.
+        if (m_currentNodeForFindingInvisibleContent != m_iteratorNode && m_currentNodeForFindingInvisibleContent != m_pastEndNode) {
+            moveCurrentNodeForward();
+            return;
+        }
+
+        if (m_iterator.atEnd())
+            return;
+
+        auto previousIteratorNode = m_iteratorNode;
+
+        m_iterator.advance();
+        m_iteratorNode = m_iterator.atEnd() ? nullptr : m_iterator.range()->firstNode();
+        if (previousIteratorNode != m_iteratorNode)
+            moveCurrentNodeForward();
+    }
+
+    struct CurrentContent {
+        RefPtr<Node> node;
+        StringView text;
+        bool isTextContent { false };
+        bool isReplacedContent { false };
+    };
+
+    CurrentContent currentContent()
+    {
+        CurrentContent content;
+        if (m_currentNodeForFindingInvisibleContent && m_currentNodeForFindingInvisibleContent != m_iteratorNode)
+            content = { m_currentNodeForFindingInvisibleContent.copyRef(), StringView { } };
+        else
+            content = { m_iterator.node(), m_iterator.text(), true };
+        if (content.node) {
+            if (auto* renderer = content.node->renderer()) {
+                if (renderer->isRenderReplaced()) {
+                    content.isTextContent = false;
+                    content.isReplacedContent = true;
+                }
+            }
+        }
+        return content;
+    }
+
+    Position startPosition()
+    {
+        return m_iterator.range()->startPosition();
+    }
+
+    Position endPosition()
+    {
+        return m_iterator.range()->endPosition();
+    }
+
+    bool atEnd() const { return m_iterator.atEnd() && m_currentNodeForFindingInvisibleContent == m_pastEndNode; }
+
+private:
+    void moveCurrentNodeForward()
+    {
+        m_currentNodeForFindingInvisibleContent = NodeTraversal::next(*m_currentNodeForFindingInvisibleContent);
+        if (!m_currentNodeForFindingInvisibleContent)
+            m_currentNodeForFindingInvisibleContent = m_pastEndNode;
+    }
+
+    TextIterator m_iterator;
+    RefPtr<Node> m_iteratorNode;
+    RefPtr<Node> m_currentNodeForFindingInvisibleContent;
+    RefPtr<Node> m_pastEndNode;
+};
+
+static bool isAttributeForTextManipulation(const QualifiedName& nameToCheck)
 {
-    auto document = makeRefPtr(start.deepEquivalent().document());
+    using namespace HTMLNames;
+    static const QualifiedName* const attributeNames[] = {
+        &titleAttr.get(),
+        &altAttr.get(),
+        &placeholderAttr.get(),
+        &aria_labelAttr.get(),
+        &aria_placeholderAttr.get(),
+        &aria_roledescriptionAttr.get(),
+        &aria_valuetextAttr.get(),
+    };
+    for (auto& entry : attributeNames) {
+        if (*entry == nameToCheck)
+            return true;
+    }
+    return false;
+}
+
+void TextManipulationController::observeParagraphs(const Position& start, const Position& end)
+{
+    auto document = makeRefPtr(start.document());
     ASSERT(document);
-    TextIterator iterator { start.deepEquivalent(), end.deepEquivalent() };
-    if (document != start.deepEquivalent().document() || document != end.deepEquivalent().document())
+    ParagraphContentIterator iterator { start, end };
+    VisiblePosition visibleStart = start;
+    VisiblePosition visibleEnd = end;
+    if (document != start.document() || document != end.document())
         return; // TextIterator's constructor may have updated the layout and executed arbitrary scripts.
 
     ExclusionRuleMatcher exclusionRuleMatcher(m_exclusionRules);
     Vector<ManipulationToken> tokensInCurrentParagraph;
-    Position startOfCurrentParagraph = start.deepEquivalent();
-    while (!iterator.atEnd()) {
-        StringView currentText = iterator.text();
-
-        if (startOfCurrentParagraph.isNull())
-            startOfCurrentParagraph = iterator.range()->startPosition();
-
-        if (auto* currentNode = iterator.node()) {
-            if (RefPtr<Element> currentElementAncestor = is<Element>(currentNode) ? downcast<Element>(currentNode) : currentNode->parentOrShadowHostElement()) {
+    Position startOfCurrentParagraph = visibleStart.deepEquivalent();
+    for (; !iterator.atEnd(); iterator.advance()) {
+        auto content = iterator.currentContent();
+        if (content.node) {
+            if (RefPtr<Element> currentElementAncestor = is<Element>(*content.node) ? downcast<Element>(content.node.get()) : content.node->parentOrShadowHostElement()) {
                 if (isInManipulatedElement(*currentElementAncestor))
                     return; // We can exit early here because scheduleObservartionUpdate calls this function on each paragraph separately.
             }
+
+            if (is<Element>(*content.node)) {
+                auto& currentElement = downcast<Element>(*content.node);
+                if (!content.isTextContent && (content.node->hasTagName(HTMLNames::titleTag) || content.node->hasTagName(HTMLNames::optionTag))) {
+                    addItem(ManipulationItemData { Position(), Position(), makeWeakPtr(currentElement), nullQName(),
+                        { ManipulationToken { m_tokenIdentifier.generate(), currentElement.textContent() } } });
+                }
+                if (currentElement.hasAttributes()) {
+                    for (auto& attribute : currentElement.attributesIterator()) {
+                        if (isAttributeForTextManipulation(attribute.name())) {
+                            addItem(ManipulationItemData { Position(), Position(), makeWeakPtr(currentElement), attribute.name(),
+                                { ManipulationToken { m_tokenIdentifier.generate(), attribute.value() } } });
+                        }
+                    }
+                }
+            }
+
+            if (startOfCurrentParagraph.isNull() && content.isTextContent)
+                startOfCurrentParagraph = iterator.startPosition();
         }
 
-        size_t endOfLastNewLine = 0;
+        if (content.isReplacedContent) {
+            tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), "[]", true /* isExcluded */});
+            continue;
+        }
+
+        if (!content.isTextContent)
+            continue;
+
+        size_t startOfCurrentLine = 0;
         size_t offsetOfNextNewLine = 0;
-        while ((offsetOfNextNewLine = currentText.find('\n', endOfLastNewLine)) != notFound) {
-            if (endOfLastNewLine < offsetOfNextNewLine) {
-                auto stringUntilEndOfLine = currentText.substring(endOfLastNewLine, offsetOfNextNewLine - endOfLastNewLine).toString();
-                tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), stringUntilEndOfLine, exclusionRuleMatcher.isExcluded(iterator.node()) });
+        StringView currentText = content.text;
+        while ((offsetOfNextNewLine = currentText.find('\n', startOfCurrentLine)) != notFound) {
+            if (startOfCurrentLine < offsetOfNextNewLine) {
+                auto stringUntilEndOfLine = currentText.substring(startOfCurrentLine, offsetOfNextNewLine - startOfCurrentLine).toString();
+                tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), stringUntilEndOfLine, exclusionRuleMatcher.isExcluded(content.node.get()) });
             }
 
-            auto lastRange = iterator.range();
-            if (offsetOfNextNewLine < currentText.length()) {
-                lastRange->setStart(firstPositionInOrBeforeNode(iterator.node())); // Move the start to the beginning of the current node.
-                TextIterator::subrange(lastRange, 0, offsetOfNextNewLine);
+            if (!tokensInCurrentParagraph.isEmpty()) {
+                Position endOfCurrentParagraph = iterator.endPosition();
+                if (is<Text>(content.node)) {
+                    auto& textNode = downcast<Text>(*content.node);
+                    endOfCurrentParagraph = Position(&textNode, offsetOfNextNewLine);
+                    startOfCurrentParagraph = Position(&textNode, offsetOfNextNewLine + 1);
+                }
+                addItem(ManipulationItemData { startOfCurrentParagraph, endOfCurrentParagraph, nullptr, nullQName(), WTFMove(tokensInCurrentParagraph) });
+                startOfCurrentParagraph.clear();
             }
-            Position endOfCurrentParagraph = lastRange->endPosition();
-
-            if (!tokensInCurrentParagraph.isEmpty())
-                addItem(startOfCurrentParagraph, endOfCurrentParagraph, WTFMove(tokensInCurrentParagraph));
-            startOfCurrentParagraph.clear();
-            endOfLastNewLine = offsetOfNextNewLine + 1;
+            startOfCurrentLine = offsetOfNextNewLine + 1;
         }
 
-        auto remainingText = currentText.substring(endOfLastNewLine);
+        auto remainingText = currentText.substring(startOfCurrentLine);
         if (remainingText.length())
-            tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), remainingText.toString(), exclusionRuleMatcher.isExcluded(iterator.node()) });
-
-        iterator.advance();
+            tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), remainingText.toString(), exclusionRuleMatcher.isExcluded(content.node.get()) });
     }
 
     if (!tokensInCurrentParagraph.isEmpty())
-        addItem(startOfCurrentParagraph, end.deepEquivalent(), WTFMove(tokensInCurrentParagraph));
+        addItem(ManipulationItemData { startOfCurrentParagraph, visibleEnd.deepEquivalent(), nullptr, nullQName(), WTFMove(tokensInCurrentParagraph) });
 }
 
 void TextManipulationController::didCreateRendererForElement(Element& element)
@@ -257,13 +378,13 @@ void TextManipulationController::scheduleObservartionUpdate()
             if (!controller)
                 return; // Finding the start/end of paragraph may have updated layout & executed arbitrary scripts.
 
-            controller->observeParagraphs(start, end);
+            controller->observeParagraphs(start.deepEquivalent(), end.deepEquivalent());
         }
         controller->flushPendingItemsForCallback();
     });
 }
 
-void TextManipulationController::addItem(const Position& startOfParagraph, const Position& endOfParagraph, Vector<ManipulationToken>&& tokens)
+void TextManipulationController::addItem(ManipulationItemData&& itemData)
 {
     const unsigned itemCallbackBatchingSize = 128;
 
@@ -271,9 +392,9 @@ void TextManipulationController::addItem(const Position& startOfParagraph, const
     auto newID = m_itemIdentifier.generate();
     m_pendingItemsForCallback.append(ManipulationItem {
         newID,
-        tokens.map([](auto& token) { return token; })
+        itemData.tokens.map([](auto& token) { return token; })
     });
-    m_items.add(newID, ManipulationItemData { startOfParagraph, endOfParagraph, WTFMove(tokens) });
+    m_items.add(newID, WTFMove(itemData));
 
     if (m_pendingItemsForCallback.size() >= itemCallbackBatchingSize)
         flushPendingItemsForCallback();
@@ -335,36 +456,58 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     if (item.start.isOrphan() || item.end.isOrphan())
         return ManipulationFailureType::ContentChanged;
 
-    TextIterator iterator { item.start, item.end };
     size_t currentTokenIndex = 0;
     HashMap<TokenIdentifier, TokenExchangeData> tokenExchangeMap;
 
+    if (item.start.isNull() && item.end.isNull()) {
+        RELEASE_ASSERT(item.tokens.size() == 1);
+        auto element = makeRefPtr(item.element.get());
+        if (!element)
+            return ManipulationFailureType::ContentChanged;
+        if (replacementTokens.size() > 1)
+            return ManipulationFailureType::InvalidToken;
+        String newValue;
+        if (!replacementTokens.isEmpty()) {
+            if (replacementTokens[0].identifier != item.tokens[0].identifier)
+                return ManipulationFailureType::InvalidToken;
+            newValue = replacementTokens[0].content;
+        }
+        if (item.attributeName == nullQName())
+            element->setTextContent(newValue);
+        else
+            element->setAttribute(item.attributeName, newValue);
+        return WTF::nullopt;
+    }
+
     RefPtr<Node> commonAncestor;
-    while (!iterator.atEnd()) {
-        auto string = iterator.text().toString();
+    ParagraphContentIterator iterator { item.start, item.end };
+    HashSet<Ref<Node>> excludedNodes;
+    for (; !iterator.atEnd(); iterator.advance()) {
+        auto content = iterator.currentContent();
+
+        if (!content.isReplacedContent && !content.isTextContent)
+            continue;
+
         if (currentTokenIndex >= item.tokens.size())
             return ManipulationFailureType::ContentChanged;
+
         auto& currentToken = item.tokens[currentTokenIndex];
-        if (iterator.text() != currentToken.content)
+        if (!content.isReplacedContent && content.text != currentToken.content)
             return ManipulationFailureType::ContentChanged;
 
-        auto currentNode = makeRefPtr(iterator.node());
-        tokenExchangeMap.set(currentToken.identifier, TokenExchangeData { currentNode.copyRef(), currentToken.content, currentToken.isExcluded });
+        tokenExchangeMap.set(currentToken.identifier, TokenExchangeData { content.node.copyRef(), currentToken.content, currentToken.isExcluded });
+        ++currentTokenIndex;
 
-        if (currentNode) {
-            // FIXME: Take care of when currentNode is nullptr.
+        // FIXME: Take care of when currentNode is nullptr.
+        if (content.node) {
             if (!commonAncestor)
-                commonAncestor = currentNode;
-            else if (!currentNode->isDescendantOf(commonAncestor.get())) {
-                commonAncestor = Range::commonAncestorContainer(commonAncestor.get(), currentNode.get());
+                commonAncestor = content.node;
+            else if (!content.node->isDescendantOf(commonAncestor.get())) {
+                commonAncestor = Range::commonAncestorContainer(commonAncestor.get(), content.node.get());
                 ASSERT(commonAncestor);
             }
         }
-
-        iterator.advance();
-        ++currentTokenIndex;
     }
-    ASSERT(commonAncestor);
 
     RefPtr<Node> nodeAfterStart = item.start.computeNodeAfterPosition();
     if (!nodeAfterStart)
@@ -398,7 +541,9 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
             exchangeData.isConsumed = true;
             if (!newToken.content.isNull() && newToken.content != exchangeData.originalContent)
                 return ManipulationFailureType::ExclusionViolation;
-            contentNode = Text::create(commonAncestor->document(), exchangeData.originalContent);
+            contentNode = exchangeData.node;
+            for (RefPtr<Node> currentDescendentNode = NodeTraversal::next(*contentNode, contentNode.get()); currentDescendentNode; currentDescendentNode = NodeTraversal::next(*currentDescendentNode, contentNode.get()))
+                nodesToRemove.remove(*currentDescendentNode);
         } else
             contentNode = Text::create(commonAncestor->document(), newToken.content);
 
@@ -436,17 +581,21 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     }
 
     Position insertionPoint = item.start;
+    if (insertionPoint.anchorNode() != insertionPoint.containerNode())
+        insertionPoint = insertionPoint.parentAnchoredEquivalent();
     while (insertionPoint.containerNode() != commonAncestor)
         insertionPoint = positionInParentBeforeNode(insertionPoint.containerNode());
     ASSERT(!insertionPoint.isNull());
+    ASSERT(!insertionPoint.isOrphan());
 
     for (auto& node : nodesToRemove)
         node->remove();
 
     for (auto& insertion : insertions) {
-        if (!insertion.parentIfDifferentFromCommonAncestor)
-            insertionPoint.containerNode()->insertBefore(insertion.child, insertionPoint.computeNodeBeforePosition());
-        else
+        if (!insertion.parentIfDifferentFromCommonAncestor) {
+            insertionPoint.containerNode()->insertBefore(insertion.child, insertionPoint.computeNodeAfterPosition());
+            insertionPoint = positionInParentAfterNode(insertion.child.ptr());
+        } else
             insertion.parentIfDifferentFromCommonAncestor->appendChild(insertion.child);
         if (is<Element>(insertion.child.get()))
             m_manipulatedElements.add(downcast<Element>(insertion.child.get()));

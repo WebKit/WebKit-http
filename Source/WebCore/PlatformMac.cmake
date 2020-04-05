@@ -157,9 +157,9 @@ list(APPEND WebCore_SOURCES
     dom/DataTransferMac.mm
     dom/SlotAssignment.cpp
 
+    editing/cocoa/AlternativeTextUIController.mm
     editing/cocoa/AutofillElements.cpp
 
-    editing/mac/AlternativeTextUIController.mm
     editing/mac/EditorMac.mm
     editing/mac/TextAlternativeWithRange.mm
     editing/mac/TextUndoInsertionMarkupMac.mm
@@ -181,7 +181,7 @@ list(APPEND WebCore_SOURCES
     page/scrolling/mac/ScrollingCoordinatorMac.mm
     page/scrolling/mac/ScrollingMomentumCalculatorMac.mm
     page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm
-    page/scrolling/mac/ScrollingTreeMac.cpp
+    page/scrolling/mac/ScrollingTreeMac.mm
 
     platform/CPUMonitor.cpp
     platform/LocalizedStrings.cpp
@@ -474,11 +474,11 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     crypto/keys/CryptoRsaKeyAlgorithm.h
     crypto/keys/CryptoKeyEC.h
 
+    editing/cocoa/AlternativeTextUIController.h
     editing/cocoa/AutofillElements.h
     editing/cocoa/DataDetection.h
     editing/cocoa/HTMLConverter.h
 
-    editing/mac/AlternativeTextUIController.h
     editing/mac/DictionaryLookup.h
     editing/mac/TextAlternativeWithRange.h
     editing/mac/TextUndoInsertionMarkupMac.h

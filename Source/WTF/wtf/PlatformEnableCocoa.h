@@ -247,8 +247,19 @@
 #define ENABLE_DATA_DETECTION 1
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101600) || (PLATFORM(IOS_SIMULATOR) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 140000)
-#define ENABLE_GPU_PROCESS_FOR_WEBRTC 1
-#else
-#define ENABLE_GPU_PROCESS_FOR_WEBRTC 0
+#if !defined(ENABLE_INTL)
+#define ENABLE_INTL 1
+#endif
+
+/* FIXME: This should probably be HAVE_FAST_JIT_PERMISSIONS and may be entirely unnecessary due to runtime checking support via os_thread_self_restrict_rwx_is_supported() */
+#if !defined(ENABLE_FAST_JIT_PERMISSIONS) && CPU(ARM64) && !(OS(TVOS) || OS(WATCHOS)) && USE(APPLE_INTERNAL_SDK)
+#define ENABLE_FAST_JIT_PERMISSIONS 1
+#endif
+
+#if !defined(ENABLE_SEPARATED_WX_HEAP) && PLATFORM(IOS_FAMILY) && CPU(ARM64) && (!ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E))
+#define ENABLE_SEPARATED_WX_HEAP 1
+#endif
+
+#if !defined(ENABLE_FTL_JIT) && !USE(JSVALUE32_64) && !PLATFORM(IOS_FAMILY_SIMULATOR)
+#define ENABLE_FTL_JIT 1
 #endif

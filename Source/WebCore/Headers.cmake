@@ -356,6 +356,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/ActiveDOMObject.h
     dom/Attr.h
     dom/Attribute.h
+    dom/BoundaryPoint.h
     dom/CDATASection.h
     dom/CallbackResult.h
     dom/CharacterData.h
@@ -451,8 +452,10 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/SecurityPolicyViolationEvent.h
     dom/ShadowRoot.h
     dom/ShadowRootMode.h
+    dom/SimpleRange.h
     dom/SimulatedClickOptions.h
     dom/SpaceSplitString.h
+    dom/StaticRange.h
     dom/StyledElement.h
     dom/SuccessOr.h
     dom/TaskSource.h
@@ -628,6 +631,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     html/HTMLUnknownElement.h
     html/HTMLVideoElement.h
     html/ImageBitmap.h
+    html/ImageData.h
     html/ImageDocument.h
     html/InputMode.h
     html/LabelableElement.h
@@ -950,7 +954,9 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/MIMETypeRegistry.h
     platform/MediaSample.h
     platform/MediaSelectionOption.h
+    platform/MediaSessionIdentifier.h
     platform/MediaStrategy.h
+    platform/NowPlayingManager.h
     platform/NotImplemented.h
     platform/OrientationNotifier.h
     platform/PODInterval.h
@@ -1124,6 +1130,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/InbandGenericCue.h
     platform/graphics/InbandTextTrackPrivate.h
     platform/graphics/InbandTextTrackPrivateClient.h
+    platform/graphics/InlinePathData.h
     platform/graphics/IntPoint.h
     platform/graphics/IntPointHash.h
     platform/graphics/IntRect.h
