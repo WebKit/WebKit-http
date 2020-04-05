@@ -81,6 +81,7 @@ function installDependenciesWithApt {
         $(aptIfElse libpng-dev libpng12-dev) \
         libseccomp-dev \
         libsqlite3-dev \
+        libsystemd-dev \
         libtasn1-6-dev \
         libtool \
         libwebp-dev \
@@ -110,6 +111,10 @@ function installDependenciesWithApt {
         ruby \
         ruby-highline \
         ruby-json"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
@@ -192,6 +197,7 @@ function installDependenciesWithPacman {
         ruby
         sed \
         sqlite \
+        libsystemd \
         texinfo \
         which \
         zlib \
@@ -213,6 +219,10 @@ function installDependenciesWithPacman {
         python2-psutil \
         ruby \
         ttf-liberation"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
@@ -305,6 +315,7 @@ function installDependenciesWithDnf {
         perl-version \
         ruby \
         sqlite-devel \
+        systemd-devel \
         zlib-devel"
 
     # These are dependencies necessary for running tests.
@@ -325,6 +336,10 @@ function installDependenciesWithDnf {
         ruby \
         rubygem-highline \
         rubygem-json"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \

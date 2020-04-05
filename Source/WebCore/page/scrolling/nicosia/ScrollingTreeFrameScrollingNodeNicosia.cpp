@@ -37,6 +37,10 @@
 #include "ScrollingStateFrameScrollingNode.h"
 #include "ScrollingTree.h"
 
+#if ENABLE(KINETIC_SCROLLING)
+#include "ScrollAnimationKinetic.h"
+#endif
+
 namespace WebCore {
 
 Ref<ScrollingTreeFrameScrollingNode> ScrollingTreeFrameScrollingNodeNicosia::create(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
@@ -47,6 +51,20 @@ Ref<ScrollingTreeFrameScrollingNode> ScrollingTreeFrameScrollingNodeNicosia::cre
 ScrollingTreeFrameScrollingNodeNicosia::ScrollingTreeFrameScrollingNodeNicosia(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
     : ScrollingTreeFrameScrollingNode(scrollingTree, nodeType, nodeID)
 {
+#if ENABLE(KINETIC_SCROLLING)
+    m_kineticAnimation = makeUnique<ScrollAnimationKinetic>(
+        [this]() -> ScrollAnimationKinetic::ScrollExtents {
+            return { IntPoint(minimumScrollPosition()), IntPoint(maximumScrollPosition()) };
+        },
+        [this](FloatPoint&& position) {
+            auto* scrollLayer = static_cast<Nicosia::PlatformLayer*>(scrolledContentsLayer());
+            ASSERT(scrollLayer);
+            auto& compositionLayer = downcast<Nicosia::CompositionLayer>(*scrollLayer);
+
+            auto updateScope = compositionLayer.createUpdateScope();
+            scrollTo(position);
+        });
+#endif
 }
 
 ScrollingTreeFrameScrollingNodeNicosia::~ScrollingTreeFrameScrollingNodeNicosia() = default;
@@ -107,13 +125,37 @@ ScrollingEventResult ScrollingTreeFrameScrollingNodeNicosia::handleWheelEvent(co
         auto& compositionLayer = downcast<Nicosia::CompositionLayer>(*scrollLayer);
 
         auto updateScope = compositionLayer.createUpdateScope();
-        scrollBy({ wheelEvent.deltaX(), -wheelEvent.deltaY() });
+        scrollBy({ -wheelEvent.deltaX(), -wheelEvent.deltaY() });
+
+#if ENABLE(KINETIC_SCROLLING)
+        m_kineticAnimation->appendToScrollHistory(wheelEvent);
+#endif
     }
+
+#if ENABLE(KINETIC_SCROLLING)
+    m_kineticAnimation->stop();
+    if (wheelEvent.isEndOfNonMomentumScroll()) {
+        m_kineticAnimation->start(currentScrollPosition(), m_kineticAnimation->computeVelocity(), canHaveHorizontalScrollbar(), canHaveVerticalScrollbar());
+        m_kineticAnimation->clearScrollHistory();
+    }
+    if (wheelEvent.isTransitioningToMomentumScroll()) {
+        m_kineticAnimation->start(currentScrollPosition(), wheelEvent.swipeVelocity(), canHaveHorizontalScrollbar(), canHaveVerticalScrollbar());
+        m_kineticAnimation->clearScrollHistory();
+    }
+#endif
 
     scrollingTree().setOrClearLatchedNode(wheelEvent, scrollingNodeID());
 
     // FIXME: This needs to return whether the event was handled.
     return ScrollingEventResult::DidHandleEvent;
+}
+
+void ScrollingTreeFrameScrollingNodeNicosia::stopScrollAnimations()
+{
+#if ENABLE(KINETIC_SCROLLING)
+    m_kineticAnimation->stop();
+    m_kineticAnimation->clearScrollHistory();
+#endif
 }
 
 FloatPoint ScrollingTreeFrameScrollingNodeNicosia::adjustedScrollPosition(const FloatPoint& position, ScrollClamping clamping) const
@@ -140,7 +182,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionScrollingLayers()
 
     auto scrollPosition = currentScrollPosition();
 
-    compositionLayer.accessStaging(
+    compositionLayer.updateState(
         [&scrollPosition](Nicosia::CompositionLayer::LayerState& state)
         {
             state.position = -scrollPosition;
@@ -158,7 +200,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionRelatedLayers()
     auto applyLayerPosition =
         [](auto& layer, auto&& position)
         {
-            layer.accessStaging(
+            layer.updateState(
                 [&position](Nicosia::CompositionLayer::LayerState& state)
                 {
                     state.position = position;
@@ -171,7 +213,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionRelatedLayers()
 
     float topContentInset = this->topContentInset();
     if (m_insetClipLayer && m_rootContentsLayer) {
-        m_insetClipLayer->accessStaging(
+        m_insetClipLayer->updateState(
             [&scrollPosition, &topContentInset](Nicosia::CompositionLayer::LayerState& state)
             {
                 state.position = { state.position.x(), FrameView::yPositionForInsetClipLayer(scrollPosition, topContentInset) };

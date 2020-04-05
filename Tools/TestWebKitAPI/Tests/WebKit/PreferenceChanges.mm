@@ -31,6 +31,8 @@
 #import "TestWKWebView.h"
 #import <WebKit/PreferenceObserver.h>
 
+#import <wtf/ObjCRuntimeExtras.h>
+
 static bool done = false;
 
 @interface WKTestPreferenceObserver : WKPreferenceObserver
@@ -41,18 +43,22 @@ static bool done = false;
 - (void)preferenceDidChange:(NSString *)domain key:(NSString *)key encodedValue:(NSString *)encodedValue
 {
     done = true;
+    [super preferenceDidChange:domain key:key encodedValue:encodedValue];
 }
 @end
+
+static const CFStringRef testKey = CFSTR("testkey");
+static const CFStringRef testDomain = CFSTR("kCFPreferencesAnyApplication");
 
 TEST(WebKit, PreferenceObserver)
 {
     done = false;
 
-    CFPreferencesSetAppValue(CFSTR("testkey"), CFSTR("1"), CFSTR("com.apple.coremedia"));
+    CFPreferencesSetAppValue(testKey, CFSTR("1"), testDomain);
 
     auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
 
-    CFPreferencesSetAppValue(CFSTR("testkey"), CFSTR("2"), CFSTR("com.apple.coremedia"));
+    CFPreferencesSetAppValue(testKey, CFSTR("2"), testDomain);
 
     TestWebKitAPI::Util::run(&done);
 }
@@ -63,22 +69,24 @@ TEST(WebKit, PreferenceObserverArray)
 
     NSArray *array = @[@1, @2, @3];
 
-    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:@"com.apple.coremedia"]);
-    [userDefaults.get() setObject:array forKey:@"testkey"];
+    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:(NSString *)testDomain]);
+    [userDefaults.get() setObject:array forKey:(NSString *)testKey];
 
     auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
 
     NSArray *changedArray = @[@3, @2, @1];
-    [userDefaults.get() setObject:changedArray forKey:@"testkey"];
+    [userDefaults.get() setObject:changedArray forKey:(NSString *)testKey];
 
     TestWebKitAPI::Util::run(&done);
 }
 
 TEST(WebKit, PreferenceChanges)
 {
-    CFPreferencesSetAppValue(CFSTR("testkey"), CFSTR("1"), CFSTR("com.apple.coremedia"));
+    auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
 
-    EXPECT_EQ(1, CFPreferencesGetAppIntegerValue(CFSTR("testkey"), CFSTR("com.apple.coremedia"), nullptr));
+    CFPreferencesSetAppValue(testKey, CFSTR("1"), testDomain);
+
+    EXPECT_EQ(1, CFPreferencesGetAppIntegerValue(testKey, testDomain, nullptr));
 
     auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
@@ -86,22 +94,25 @@ TEST(WebKit, PreferenceChanges)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
 
     auto preferenceValue = [&] {
-        return [webView stringByEvaluatingJavaScript:@"window.internals.readPreferenceInteger(\"com.apple.coremedia\", \"testkey\")"].intValue;
+        NSString *js = [NSString stringWithFormat:@"window.internals.readPreferenceInteger(\"%@\",\"%@\")", (NSString *)testDomain, (NSString *)testKey];
+        return [webView stringByEvaluatingJavaScript:js].intValue;
     };
 
     EXPECT_EQ(preferenceValue(), 1);
 
-    CFPreferencesSetAppValue(CFSTR("testkey"), CFSTR("2"), CFSTR("com.apple.coremedia"));
+    CFPreferencesSetAppValue(testKey, CFSTR("2"), testDomain);
 
     EXPECT_EQ(preferenceValue(), 2);
 }
 
 TEST(WebKit, PreferenceChangesArray)
 {
+    auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
+
     NSArray *array = @[@1, @2, @3];
 
-    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:@"com.apple.coremedia"]);
-    [userDefaults.get() setObject:array forKey:@"testkey"];
+    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:(NSString *)testDomain]);
+    [userDefaults.get() setObject:array forKey:(NSString *)testKey];
 
     auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
@@ -109,13 +120,14 @@ TEST(WebKit, PreferenceChangesArray)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
 
     auto preferenceValue = [&] {
-        return [webView stringByEvaluatingJavaScript:@"window.internals.encodedPreferenceValue(\"com.apple.coremedia\", \"testkey\")"];
+        NSString *js = [NSString stringWithFormat:@"window.internals.encodedPreferenceValue(\"%@\",\"%@\")", (NSString *)testDomain, (NSString *)testKey];
+        return [webView stringByEvaluatingJavaScript:js];
     };
 
     preferenceValue();
 
     NSArray *changedArray = @[@3, @2, @1];
-    [userDefaults.get() setObject:changedArray forKey:@"testkey"];
+    [userDefaults.get() setObject:changedArray forKey:(NSString *)testKey];
 
     auto encodedString = preferenceValue();
     auto encodedData = adoptNS([[NSData alloc] initWithBase64EncodedString:encodedString options:0]);
@@ -125,6 +137,143 @@ TEST(WebKit, PreferenceChangesArray)
     ASSERT_TRUE(!err);
     ASSERT_TRUE(object);
     ASSERT_TRUE([object isEqual:changedArray]);
+}
+
+TEST(WebKit, PreferenceChangesDictionary)
+{
+    auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
+
+    NSDictionary *dict = @{
+        @"a" : @1,
+        @"b" : @2,
+    };
+
+    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:(NSString *)testDomain]);
+    [userDefaults.get() setObject:dict forKey:(NSString *)testKey];
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+    configuration.get().processPool = (WKProcessPool *)context.get();
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
+
+    auto preferenceValue = [&] {
+        NSString *js = [NSString stringWithFormat:@"window.internals.encodedPreferenceValue(\"%@\",\"%@\")", (NSString *)testDomain, (NSString *)testKey];
+        return [webView stringByEvaluatingJavaScript:js];
+    };
+
+    preferenceValue();
+
+    NSDictionary *changedDict = @{
+        @"a" : @1,
+        @"b" : @2,
+        @"c" : @3,
+    };
+    [userDefaults.get() setObject:changedDict forKey:(NSString *)testKey];
+
+    auto encodedString = preferenceValue();
+    auto encodedData = adoptNS([[NSData alloc] initWithBase64EncodedString:encodedString options:0]);
+    ASSERT_TRUE(encodedData);
+    NSError *err = nil;
+    auto object = retainPtr([NSKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:encodedData.get() error:&err]);
+    ASSERT_TRUE(!err);
+    ASSERT_TRUE(object);
+    ASSERT_TRUE([object isEqual:changedDict]);
+}
+
+TEST(WebKit, PreferenceChangesData)
+{
+    auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
+
+    NSData *data = [NSData dataWithBytes:"abc" length:3];
+
+    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:(NSString *)testDomain]);
+    [userDefaults.get() setObject:data forKey:(NSString *)testKey];
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+    configuration.get().processPool = (WKProcessPool *)context.get();
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
+
+    auto preferenceValue = [&] {
+        NSString *js = [NSString stringWithFormat:@"window.internals.encodedPreferenceValue(\"%@\",\"%@\")", (NSString *)testDomain, (NSString *)testKey];
+        return [webView stringByEvaluatingJavaScript:js];
+    };
+
+    preferenceValue();
+
+    NSData *changedData = [NSData dataWithBytes:"abcd" length:4];
+    [userDefaults.get() setObject:changedData forKey:(NSString *)testKey];
+
+    auto encodedString = preferenceValue();
+    auto encodedData = adoptNS([[NSData alloc] initWithBase64EncodedString:encodedString options:0]);
+    ASSERT_TRUE(encodedData);
+    NSError *err = nil;
+    auto object = retainPtr([NSKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:encodedData.get() error:&err]);
+    ASSERT_TRUE(!err);
+    ASSERT_TRUE(object);
+    ASSERT_TRUE([object isEqual:changedData]);
+}
+
+TEST(WebKit, PreferenceChangesDate)
+{
+    auto observer = adoptNS([[WKTestPreferenceObserver alloc] init]);
+
+    NSDate *date = [NSDate dateWithTimeIntervalSinceNow:0];
+
+    auto userDefaults = adoptNS([[NSUserDefaults alloc] initWithSuiteName:(NSString *)testDomain]);
+    [userDefaults.get() setObject:date forKey:(NSString *)testKey];
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+    configuration.get().processPool = (WKProcessPool *)context.get();
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
+
+    auto preferenceValue = [&] {
+        NSString *js = [NSString stringWithFormat:@"window.internals.encodedPreferenceValue(\"%@\",\"%@\")", (NSString *)testDomain, (NSString *)testKey];
+        return [webView stringByEvaluatingJavaScript:js];
+    };
+
+    preferenceValue();
+
+    NSDate *changedDate = [NSDate dateWithTimeIntervalSinceNow:10];
+    [userDefaults.get() setObject:changedDate forKey:(NSString *)testKey];
+
+    auto encodedString = preferenceValue();
+    auto encodedData = adoptNS([[NSData alloc] initWithBase64EncodedString:encodedString options:0]);
+    ASSERT_TRUE(encodedData);
+    NSError *err = nil;
+    auto object = retainPtr([NSKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:encodedData.get() error:&err]);
+    ASSERT_TRUE(!err);
+    ASSERT_TRUE(object);
+    ASSERT_TRUE([object isEqual:changedDate]);
+}
+
+static IMP sharedInstanceMethodOriginal = nil;
+
+static WKPreferenceObserver *sharedInstanceMethodOverride(id self, SEL selector)
+{
+    done = true;
+    return wtfCallIMP<WKPreferenceObserver *>(sharedInstanceMethodOriginal, self, selector);
+}
+
+TEST(WebKit, PreferenceObserverStartedOnActivation)
+{
+    done = false;
+    Method sharedInstanceMethod = class_getClassMethod(objc_getClass("WKPreferenceObserver"), @selector(sharedInstance));
+    ASSERT(sharedInstanceMethod);
+    sharedInstanceMethodOriginal = method_setImplementation(sharedInstanceMethod, (IMP)sharedInstanceMethodOverride);
+    ASSERT(sharedInstanceMethodOriginal);
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+    configuration.get().processPool = (WKProcessPool *)context.get();
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 300, 300) configuration:configuration.get() addToWindow:YES]);
+
+    [webView synchronouslyLoadTestPageNamed:@"simple"];
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:NSApplicationDidBecomeActiveNotification object:NSApp userInfo:nil];
+
+    TestWebKitAPI::Util::run(&done);
 }
 
 #endif // WK_HAVE_C_SPI

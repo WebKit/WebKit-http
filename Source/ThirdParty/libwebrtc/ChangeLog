@@ -1,3 +1,171 @@
+2020-04-02  Keith Rollin  <krollin@apple.com>
+
+        Sort libwebrtc Xcode project file
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-04-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Build fix after r259385.
+
+        Reviewed by David Kilzer, Youenn Fablet.
+
+        Convert isStandardFrameSize() into a lambda function since it only has one call site.
+
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+        (isStandardFrameSize): Deleted.
+
+2020-04-02  Youenn Fablet  <youenn@apple.com>
+
+        Temporarily restrict kVTVideoEncoderSpecification_RequiredLowLatency use to iOS
+        https://bugs.webkit.org/show_bug.cgi?id=209902
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.h:
+        Our setup with this key does not work yet on MacOS, disable it for now on MacOS.
+
+2020-04-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed, fix libwebrtc build with GCC 9 after the M82 bump.
+
+        GCC 9 fails to process the FrameGeneratorCapturerConfig::ImageSlides::Crop
+        class, throwing an error due to the default member initializer for the
+        `scroll_duration` member being required before the end of the
+        encapsulating FrameGeneratorCapturerConfig::ImageSlides class.
+
+        This can be avoided by default-initializing the
+        FrameGeneratorCapturerConfig::ImageSlides::Crop member variable instead
+        of specific members of that class.
+
+        Similar fix will be pushed to the upstream repository.
+
+        * Source/webrtc/test/frame_generator_capturer.h:
+
+2020-04-01  youenn fablet  <youenn@apple.com> and Victor M. Jaquez <vjaquez@igalia.com>
+
+        Bump libwebrtc to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209542
+
+        Reviewed by Eric Carlson.
+
+        * CMakeLists.txt:
+        * Source/webrtc: Updated.
+        * Source/webrtc/audio/utility/channel_mixer.cc: Added cstring.h include.
+        * Source/webrtc/modules/audio_processing/aec3/reverb_model_estimator.h: Added memoty.h include.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-04-01  Youenn Fablet  <youenn@apple.com>
+
+        Use kVTVideoEncoderSpecification_RequiredLowLatency instead of kVTVideoEncoderList_EncoderID
+        https://bugs.webkit.org/show_bug.cgi?id=209800
+
+        Reviewed by Eric Carlson.
+
+        For recent OS versions, disable use of VCP.
+        Instead, use VTB compression session with kVTVideoEncoderSpecification_RequiredLowLatency set to true.
+        We keep MacOS code path checking frame size for public builds running on devices without hardware encoders.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.h:
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 encode:codecSpecificInfo:frameTypes:]):
+        (-[RTCVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+        (isStandardFrameSize): Deleted.
+
+2020-03-27  youenn fablet  <youenn@apple.com>
+
+        Bump boringssl version to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209538
+
+        Reviewed by Eric Carlson.
+
+        * CMakeLists.txt:
+        * Source/third_party/boringssl: Updated.
+        * WebKit/0001-Tweaking-boringssl-include-of-internal.h.patch: Removed.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-03-26  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION(r259042): It creates some test failures (Requested by youenn on #webkit).
+        Roll back the patch.
+
+2020-03-26  youenn fablet  <youenn@apple.com>
+
+        Bump boringssl version to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209538
+
+        Reviewed by Eric Carlson.
+
+        * CMakeLists.txt:
+        * Source/third_party/boringssl: Updated.
+        * WebKit/0001-Tweaking-boringssl-include-of-internal.h.patch: Removed.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-03-25  youenn fablet  <youenn@apple.com>
+
+        Bump opus to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209540
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/opus: Updated.
+
+2020-03-25  youenn fablet  <youenn@apple.com>
+
+        Bump libyuv to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209539
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/libyuv: Updated.
+
+2020-03-25  youenn fablet  <youenn@apple.com>
+
+        Bump rnnoise to M82
+        https://bugs.webkit.org/show_bug.cgi?id=209541
+
+        Reviewed by Eric Carlson.
+
+        * CMakeLists.txt:
+        * Source/third_party/rnnoise: Updated.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2020-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Cherry pick usrsctp commit 790a7a2555aefb392a5a69923f1e9d17b4968467
+        https://bugs.webkit.org/show_bug.cgi?id=209204
+        <rdar://problem/59362671>
+
+        Reviewed by Youenn Fablet.
+
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_auth.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_pcb.c:
+
+2020-03-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] libopus 1.1 its enough for building WebKitGTK with ENABLE_WEB_RTC
+        https://bugs.webkit.org/show_bug.cgi?id=209209
+
+        Reviewed by Konstantin Tokarev.
+
+        Ubuntu 18.04 ships libopus 1.1.2 which its enough for building with -DENABLE_WEB_RTC=ON
+
+        * CMakeLists.txt:
+
+2020-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Eleminate mismatches between Find* module names and variables they set
+        https://bugs.webkit.org/show_bug.cgi?id=208948
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+        * cmake/FindAlsaLib.cmake:
+        * cmake/FindLibEvent.cmake:
+        * cmake/FindLibOpus.cmake: Renamed from Source/ThirdParty/libwebrtc/cmake/FindOpus.cmake.
+        * cmake/FindLibVpx.cmake: Renamed from Source/ThirdParty/libwebrtc/cmake/FindVpx.cmake.
+
 2020-03-02  Alan Coon  <alancoon@apple.com>
 
         Add new Mac target numbers

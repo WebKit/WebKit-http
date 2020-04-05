@@ -55,6 +55,7 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
 #if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
     encoder << alternativeServiceDirectory;
     encoder << alternativeServiceDirectoryExtensionHandle;
+    encoder << http3Enabled;
 #endif
 #if USE(SOUP)
     encoder << cookiePersistentStoragePath;
@@ -64,19 +65,6 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << cookiePersistentStorageFile;
     encoder << proxySettings;
 #endif
-    encoder << resourceLoadStatisticsDirectory;
-    encoder << resourceLoadStatisticsDirectoryExtensionHandle;
-    encoder << enableResourceLoadStatistics;
-    encoder << isItpStateExplicitlySet;
-    encoder << enableResourceLoadStatisticsLogTestingEvent;
-    encoder << shouldIncludeLocalhostInResourceLoadStatistics;
-    encoder << enableResourceLoadStatisticsDebugMode;
-    encoder << resourceLoadStatisticsManualPrevalentResource;
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-    encoder << thirdPartyCookieBlockingMode;
-#endif
-    encoder << firstPartyWebsiteDataRemovalMode;
-
     encoder << networkCacheDirectory << networkCacheDirectoryExtensionHandle;
 
     encoder << deviceManagementRestrictionsEnabled;
@@ -90,6 +78,7 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << suppressesConnectionTerminationOnSystemChange;
     encoder << allowsServerPreconnect;
     encoder << isInAppBrowserPrivacyEnabled;
+    encoder << resourceLoadStatisticsParameters;
 }
 
 Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
@@ -155,6 +144,11 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     decoder >> alternativeServiceDirectoryExtensionHandle;
     if (!alternativeServiceDirectoryExtensionHandle)
         return WTF::nullopt;
+    
+    Optional<bool> http3Enabled;
+    decoder >> http3Enabled;
+    if (!http3Enabled)
+        return WTF::nullopt;
 #endif
 
 #if USE(SOUP)
@@ -180,58 +174,6 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!proxySettings)
         return WTF::nullopt;
 #endif
-
-    Optional<String> resourceLoadStatisticsDirectory;
-    decoder >> resourceLoadStatisticsDirectory;
-    if (!resourceLoadStatisticsDirectory)
-        return WTF::nullopt;
-
-    Optional<SandboxExtension::Handle> resourceLoadStatisticsDirectoryExtensionHandle;
-    decoder >> resourceLoadStatisticsDirectoryExtensionHandle;
-    if (!resourceLoadStatisticsDirectoryExtensionHandle)
-        return WTF::nullopt;
-
-    Optional<bool> enableResourceLoadStatistics;
-    decoder >> enableResourceLoadStatistics;
-    if (!enableResourceLoadStatistics)
-        return WTF::nullopt;
-
-    Optional<bool> isItpStateExplicitlySet;
-    decoder >> isItpStateExplicitlySet;
-    if (!isItpStateExplicitlySet)
-        return WTF::nullopt;
-
-    Optional<bool> enableResourceLoadStatisticsLogTestingEvent;
-    decoder >> enableResourceLoadStatisticsLogTestingEvent;
-    if (!enableResourceLoadStatisticsLogTestingEvent)
-        return WTF::nullopt;
-
-    Optional<bool> shouldIncludeLocalhostInResourceLoadStatistics;
-    decoder >> shouldIncludeLocalhostInResourceLoadStatistics;
-    if (!shouldIncludeLocalhostInResourceLoadStatistics)
-        return WTF::nullopt;
-
-    Optional<bool> enableResourceLoadStatisticsDebugMode;
-    decoder >> enableResourceLoadStatisticsDebugMode;
-    if (!enableResourceLoadStatisticsDebugMode)
-        return WTF::nullopt;
-
-    Optional<WebCore::RegistrableDomain> resourceLoadStatisticsManualPrevalentResource;
-    decoder >> resourceLoadStatisticsManualPrevalentResource;
-    if (!resourceLoadStatisticsManualPrevalentResource)
-        return WTF::nullopt;
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-    Optional<WebCore::ThirdPartyCookieBlockingMode> thirdPartyCookieBlockingMode;
-    decoder >> thirdPartyCookieBlockingMode;
-    if (!thirdPartyCookieBlockingMode)
-        return WTF::nullopt;
-#endif
-
-    Optional<WebCore::FirstPartyWebsiteDataRemovalMode> firstPartyWebsiteDataRemovalMode;
-    decoder >> firstPartyWebsiteDataRemovalMode;
-    if (!firstPartyWebsiteDataRemovalMode)
-        return WTF::nullopt;
 
     Optional<String> networkCacheDirectory;
     decoder >> networkCacheDirectory;
@@ -298,6 +240,11 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!isInAppBrowserPrivacyEnabled)
         return WTF::nullopt;
 
+    Optional<ResourceLoadStatisticsParameters> resourceLoadStatisticsParameters;
+    decoder >> resourceLoadStatisticsParameters;
+    if (!resourceLoadStatisticsParameters)
+        return WTF::nullopt;
+    
     return {{
         *sessionID
         , WTFMove(*boundInterfaceIdentifier)
@@ -314,6 +261,7 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
 #if HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
         , WTFMove(*alternativeServiceDirectory)
         , WTFMove(*alternativeServiceDirectoryExtensionHandle)
+        , WTFMove(*http3Enabled)
 #endif
 #if USE(SOUP)
         , WTFMove(*cookiePersistentStoragePath)
@@ -323,20 +271,8 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*cookiePersistentStorageFile)
         , WTFMove(*proxySettings)
 #endif
-        , WTFMove(*resourceLoadStatisticsDirectory)
-        , WTFMove(*resourceLoadStatisticsDirectoryExtensionHandle)
-        , WTFMove(*enableResourceLoadStatistics)
-        , WTFMove(*isItpStateExplicitlySet)
-        , WTFMove(*enableResourceLoadStatisticsLogTestingEvent)
-        , WTFMove(*shouldIncludeLocalhostInResourceLoadStatistics)
-        , WTFMove(*enableResourceLoadStatisticsDebugMode)
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
-        , WTFMove(*thirdPartyCookieBlockingMode)
-#endif
-        , WTFMove(*firstPartyWebsiteDataRemovalMode)
         , WTFMove(*deviceManagementRestrictionsEnabled)
         , WTFMove(*allLoadsBlockedByDeviceManagementRestrictionsForTesting)
-        , WTFMove(*resourceLoadStatisticsManualPrevalentResource)
         , WTFMove(*networkCacheDirectory)
         , WTFMove(*networkCacheDirectoryExtensionHandle)
         , WTFMove(*dataConnectionServiceType)
@@ -348,6 +284,7 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*suppressesConnectionTerminationOnSystemChange)
         , WTFMove(*allowsServerPreconnect)
         , WTFMove(*isInAppBrowserPrivacyEnabled)
+        , WTFMove(*resourceLoadStatisticsParameters)
     }};
 }
 

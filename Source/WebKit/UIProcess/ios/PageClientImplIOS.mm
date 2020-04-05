@@ -151,14 +151,11 @@ bool PageClientImpl::isViewVisible()
 
 bool PageClientImpl::isApplicationVisible()
 {
-    switch (applicationType([m_webView window])) {
-    case ApplicationType::Application:
+    auto* window = [m_webView window];
+    if (!window || applicationType(window) == ApplicationType::Application)
         return [[UIApplication sharedApplication] applicationState] != UIApplicationStateBackground;
-    case ApplicationType::ViewService:
-    case ApplicationType::Extension:
-        break;
-    }
 
+    // Complex code path for extensions and view services.
     UIViewController *serviceViewController = nil;
     for (UIView *view = m_webView.get().get(); view; view = view.superview) {
         UIViewController *viewController = [UIViewController viewControllerForView:view];
@@ -653,9 +650,9 @@ void PageClientImpl::showPlaybackTargetPicker(bool hasVideo, const IntRect& elem
     [m_contentView _showPlaybackTargetPicker:hasVideo fromRect:elementRect routeSharingPolicy:policy routingContextUID:contextUID];
 }
 
-bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::OpenPanelParameters* parameters, WebOpenPanelResultListenerProxy* listener)
+bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, const FrameInfoData& frameInfo, API::OpenPanelParameters* parameters, WebOpenPanelResultListenerProxy* listener)
 {
-    [m_contentView _showRunOpenPanel:parameters resultListener:listener];
+    [m_contentView _showRunOpenPanel:parameters frameInfo:frameInfo resultListener:listener];
     return true;
 }
 

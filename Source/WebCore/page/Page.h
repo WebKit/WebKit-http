@@ -40,7 +40,6 @@
 #include "UserInterfaceLayoutDirection.h"
 #include "ViewportArguments.h"
 #include "VisibilityState.h"
-#include "WheelEventTestMonitor.h"
 #include <memory>
 #include <pal/SessionID.h>
 #include <wtf/Assertions.h>
@@ -147,6 +146,7 @@ class VisibleSelection;
 class VisitedLinkStore;
 class WebGLStateTracker;
 class WheelEventDeltaFilter;
+class WheelEventTestMonitor;
 
 using SharedStringHash = uint32_t;
 
@@ -266,10 +266,10 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<DOMRectList> nonFastScrollableRects();
+    WEBCORE_EXPORT Ref<DOMRectList> nonFastScrollableRectsForTesting();
 
-    WEBCORE_EXPORT Ref<DOMRectList> touchEventRectsForEvent(const String& eventName);
-    WEBCORE_EXPORT Ref<DOMRectList> passiveTouchEventListenerRects();
+    WEBCORE_EXPORT Ref<DOMRectList> touchEventRectsForEventForTesting(const String& eventName);
+    WEBCORE_EXPORT Ref<DOMRectList> passiveTouchEventListenerRectsForTesting();
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -428,13 +428,14 @@ public:
     ServicesOverlayController& servicesOverlayController() { return *m_servicesOverlayController; }
 #endif
 
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
     ScrollLatchingState* latchingState();
-    void pushNewLatchingState();
+    const Vector<ScrollLatchingState>& latchingStateStack() const { return m_latchingState; }
+    void pushNewLatchingState(ScrollLatchingState&&);
     void popLatchingState();
     void resetLatchingState();
     void removeLatchingStateForTarget(Element&);
-#endif // PLATFORM(MAC)
+#endif // ENABLE(WHEEL_EVENT_LATCHING)
 
 #if ENABLE(APPLE_PAY)
     PaymentCoordinator& paymentCoordinator() const { return *m_paymentCoordinator; }
@@ -474,6 +475,8 @@ public:
 
     WEBCORE_EXPORT void layoutIfNeeded();
     WEBCORE_EXPORT void updateRendering();
+    
+    WEBCORE_EXPORT void scheduleRenderingUpdate();
 
     WEBCORE_EXPORT void suspendScriptedAnimations();
     WEBCORE_EXPORT void resumeScriptedAnimations();
@@ -647,10 +650,10 @@ public:
     WEBCORE_EXPORT void playbackTargetPickerWasDismissed(uint64_t);
 #endif
 
-    RefPtr<WheelEventTestMonitor> wheelEventTestMonitor() const { return m_wheelEventTestMonitor; }
+    WEBCORE_EXPORT RefPtr<WheelEventTestMonitor> wheelEventTestMonitor() const;
     WEBCORE_EXPORT WheelEventTestMonitor& ensureWheelEventTestMonitor();
-    void clearWheelEventTestMonitor() { m_wheelEventTestMonitor = nullptr; }
-    bool isMonitoringWheelEvents() const { return !!m_wheelEventTestMonitor; }
+    WEBCORE_EXPORT void clearWheelEventTestMonitor();
+    WEBCORE_EXPORT bool isMonitoringWheelEvents() const;
 
 #if ENABLE(VIDEO)
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
@@ -699,6 +702,9 @@ public:
     bool isOnlyNonUtilityPage() const;
     bool isUtilityPage() const { return m_isUtilityPage; }
 
+    bool loadsSubresources() const { return m_loadsSubresources; }
+    bool loadsFromNetwork() const { return m_loadsFromNetwork; }
+
     bool isLowPowerModeEnabled() const;
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(Optional<bool>);
 
@@ -724,6 +730,9 @@ public:
 
     WEBCORE_EXPORT void injectUserStyleSheet(UserStyleSheet&);
     WEBCORE_EXPORT void removeInjectedUserStyleSheet(UserStyleSheet&);
+
+    bool shouldFireResizeEvents() const { return m_shouldFireResizeEvents; }
+    void setShouldFireResizeEvents(bool shouldFireResizeEvents) { m_shouldFireResizeEvents = shouldFireResizeEvents; }
 
 private:
     struct Navigation {
@@ -761,6 +770,8 @@ private:
     void updateTimerThrottlingState();
     void updateDOMTimerAlignmentInterval();
     void domTimerAlignmentIntervalIncreaseTimerFired();
+
+    void doAfterUpdateRendering();
 
     const std::unique_ptr<Chrome> m_chrome;
     const std::unique_ptr<DragCaretController> m_dragCaretController;
@@ -971,7 +982,7 @@ private:
     Optional<Navigation> m_navigationToLogWhenVisible;
 
     std::unique_ptr<PerformanceLogging> m_performanceLogging;
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
     Vector<ScrollLatchingState> m_latchingState;
 #endif
 #if PLATFORM(MAC) && (ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION))
@@ -1001,6 +1012,9 @@ private:
 
     Vector<UserContentURLPattern> m_corsDisablingPatterns;
     Vector<UserStyleSheet> m_userStyleSheetsPendingInjection;
+    bool m_shouldFireResizeEvents { true };
+    bool m_loadsSubresources { true };
+    bool m_loadsFromNetwork { true };
 };
 
 inline PageGroup& Page::group()

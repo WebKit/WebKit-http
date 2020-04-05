@@ -1926,6 +1926,21 @@ CGSize WebViewImpl::minimumSizeForAutoLayout() const
     return m_page->minimumSizeForAutoLayout();
 }
 
+void WebViewImpl::setSizeToContentAutoSizeMaximumSize(CGSize sizeToContentAutoSizeMaximumSize)
+{
+    bool expandsToFit = sizeToContentAutoSizeMaximumSize.width > 0 && sizeToContentAutoSizeMaximumSize.height > 0;
+
+    m_page->setSizeToContentAutoSizeMaximumSize(WebCore::IntSize(sizeToContentAutoSizeMaximumSize));
+    m_page->setMainFrameIsScrollable(!expandsToFit);
+
+    setClipsToVisibleRect(expandsToFit);
+}
+
+CGSize WebViewImpl::sizeToContentAutoSizeMaximumSize() const
+{
+    return m_page->sizeToContentAutoSizeMaximumSize();
+}
+
 void WebViewImpl::setShouldExpandToViewHeightForAutoLayout(bool shouldExpandToViewHeightForAutoLayout)
 {
     m_page->setAutoSizingShouldExpandToViewHeight(shouldExpandToViewHeightForAutoLayout);
@@ -1942,6 +1957,7 @@ void WebViewImpl::setIntrinsicContentSize(CGSize intrinsicContentSize)
     // so we can report that that dimension is flexible. If not, we need to report our intrinsic width
     // so that autolayout will know to provide space for us.
 
+    // FIXME: what to do here?
     CGSize intrinsicContentSizeAcknowledgingFlexibleWidth = intrinsicContentSize;
     if (intrinsicContentSize.width < m_page->minimumSizeForAutoLayout().width())
         intrinsicContentSizeAcknowledgingFlexibleWidth.width = NSViewNoIntrinsicMetric;
@@ -3366,12 +3382,9 @@ static constexpr WebCore::TextCheckingType coreTextCheckingType(NSTextCheckingTy
 
 static WebCore::TextCheckingResult textCheckingResultFromNSTextCheckingResult(NSTextCheckingResult *nsResult)
 {
-    NSRange resultRange = [nsResult range];
-
     WebCore::TextCheckingResult result;
     result.type = coreTextCheckingType(nsResult.resultType);
-    result.location = resultRange.location;
-    result.length = resultRange.length;
+    result.range = nsResult.range;
     result.replacement = nsResult.replacementString;
     return result;
 }
@@ -4037,7 +4050,9 @@ bool WebViewImpl::performDragOperation(id <NSDraggingInfo> draggingInfo)
         m_page->createSandboxExtensionsIfNeeded(fileNames, sandboxExtensionHandle, sandboxExtensionForUpload);
     }
 
-    m_page->performDragOperation(*dragData, draggingInfo.draggingPasteboard.name, WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
+    String draggingPasteboardName = draggingInfo.draggingPasteboard.name;
+    m_page->grantAccessToCurrentPasteboardData(draggingPasteboardName);
+    m_page->performDragOperation(*dragData, draggingPasteboardName, WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
     delete dragData;
 
     return true;
@@ -4331,6 +4346,7 @@ void WebViewImpl::requestDOMPasteAccess(const WebCore::IntRect&, const String& o
     NSData *data = [NSPasteboard.generalPasteboard dataForType:@(WebCore::PasteboardCustomData::cocoaType())];
     auto buffer = WebCore::SharedBuffer::create(data);
     if (WebCore::PasteboardCustomData::fromSharedBuffer(buffer.get()).origin() == originIdentifier) {
+        m_page->grantAccessToCurrentPasteboardData(NSPasteboardNameGeneral);
         completion(WebCore::DOMPasteAccessResponse::GrantedForGesture);
         return;
     }
@@ -4347,6 +4363,9 @@ void WebViewImpl::requestDOMPasteAccess(const WebCore::IntRect&, const String& o
 
 void WebViewImpl::handleDOMPasteRequestWithResult(WebCore::DOMPasteAccessResponse response)
 {
+    if (response == WebCore::DOMPasteAccessResponse::GrantedForCommand || response == WebCore::DOMPasteAccessResponse::GrantedForGesture)
+        m_page->grantAccessToCurrentPasteboardData(NSPasteboardNameGeneral);
+
     if (auto handler = std::exchange(m_domPasteRequestHandler, { }))
         handler(response);
     [m_domPasteMenu removeAllItems];
@@ -4844,9 +4863,11 @@ void WebViewImpl::insertText(id string, NSRange replacementRange)
 
     String eventText = text;
     eventText.replace(NSBackTabCharacter, NSTabCharacter); // same thing is done in KeyEventMac.mm in WebCore
-    if (!dictationAlternatives.isEmpty())
-        m_page->insertDictatedTextAsync(eventText, replacementRange, dictationAlternatives, registerUndoGroup);
-    else {
+    if (!dictationAlternatives.isEmpty()) {
+        InsertTextOptions options;
+        options.registerUndoGroup = registerUndoGroup;
+        m_page->insertDictatedTextAsync(eventText, replacementRange, dictationAlternatives, WTFMove(options));
+    } else {
         InsertTextOptions options;
         options.registerUndoGroup = registerUndoGroup;
         options.editingRangeIsRelativeTo = m_isTextInsertionReplacingSoftSpace ? EditingRangeIsRelativeTo::Paragraph : EditingRangeIsRelativeTo::EditableRoot;

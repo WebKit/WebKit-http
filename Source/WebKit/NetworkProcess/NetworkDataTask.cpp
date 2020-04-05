@@ -26,6 +26,7 @@
 #include "config.h"
 #include "NetworkDataTask.h"
 
+#include "AuthenticationManager.h"
 #include "NetworkDataTaskBlob.h"
 #include "NetworkLoadParameters.h"
 #include "NetworkSession.h"
@@ -110,6 +111,11 @@ void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, Negotiated
             return;
         }
     }
+
+    response.setSource(ResourceResponse::Source::Network);
+    if (negotiatedLegacyTLS == NegotiatedLegacyTLS::Yes)
+        response.setUsedLegacyTLS(UsedLegacyTLS::Yes);
+
     if (m_client)
         m_client->didReceiveResponse(WTFMove(response), negotiatedLegacyTLS, WTFMove(completionHandler));
     else

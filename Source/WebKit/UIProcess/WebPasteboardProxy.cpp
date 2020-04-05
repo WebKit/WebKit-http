@@ -68,6 +68,15 @@ void WebPasteboardProxy::removeWebProcessProxy(WebProcessProxy& webProcessProxy)
     m_webProcessProxyList.remove(&webProcessProxy);
 }
 
+WebProcessProxy* WebPasteboardProxy::webProcessProxyForConnection(IPC::Connection& connection) const
+{
+    for (auto* webProcessProxy : m_webProcessProxyList) {
+        if (webProcessProxy->hasConnection(connection))
+            return webProcessProxy;
+    }
+    return nullptr;
+}
+
 #if !PLATFORM(COCOA)
 
 void WebPasteboardProxy::typesSafeForDOMToReadAndWrite(const String&, const String&, CompletionHandler<void(Vector<String>&&)>&& completionHandler)
@@ -75,7 +84,7 @@ void WebPasteboardProxy::typesSafeForDOMToReadAndWrite(const String&, const Stri
     completionHandler({ });
 }
 
-void WebPasteboardProxy::writeCustomData(const Vector<WebCore::PasteboardCustomData>&, const String&, CompletionHandler<void(int64_t)>&& completionHandler)
+void WebPasteboardProxy::writeCustomData(IPC::Connection&, const Vector<WebCore::PasteboardCustomData>&, const String&, CompletionHandler<void(int64_t)>&& completionHandler)
 {
     completionHandler(0);
 }
@@ -95,24 +104,39 @@ void WebPasteboardProxy::getPasteboardItemsCount(const String&, CompletionHandle
     completionHandler(0);
 }
 
-void WebPasteboardProxy::readURLFromPasteboard(size_t, const String&, CompletionHandler<void(String&& url, String&& title)>&& completionHandler)
+void WebPasteboardProxy::readURLFromPasteboard(IPC::Connection&, size_t, const String&, CompletionHandler<void(String&& url, String&& title)>&& completionHandler)
 {
     completionHandler({ }, { });
 }
 
-void WebPasteboardProxy::readBufferFromPasteboard(size_t, const String&, const String&, CompletionHandler<void(SharedMemory::Handle&&, uint64_t size)>&& completionHandler)
+void WebPasteboardProxy::readBufferFromPasteboard(IPC::Connection&, size_t, const String&, const String&, CompletionHandler<void(SharedMemory::Handle&&, uint64_t size)>&& completionHandler)
 {
     completionHandler({ }, 0);
 }
 
 #if !USE(LIBWPE)
 
-void WebPasteboardProxy::readStringFromPasteboard(size_t, const String&, const String&, CompletionHandler<void(String&&)>&& completionHandler)
+void WebPasteboardProxy::readStringFromPasteboard(IPC::Connection&, size_t, const String&, const String&, CompletionHandler<void(String&&)>&& completionHandler)
 {
     completionHandler({ });
 }
 
 #endif // !USE(LIBWPE)
+
+void WebPasteboardProxy::containsStringSafeForDOMToReadForType(const String&, const String&, CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(false);
+}
+
+void WebPasteboardProxy::containsURLStringSuitableForLoading(const String&, CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(false);
+}
+
+void WebPasteboardProxy::urlStringSuitableForLoading(IPC::Connection&, const String&, CompletionHandler<void(String&& url, String&& title)>&& completionHandler)
+{
+    completionHandler({ }, { });
+}
 
 #endif // !PLATFORM(COCOA)
 

@@ -67,21 +67,22 @@ void UIApplicationInstantiateSingleton(Class principalClass);
 WTF_EXTERN_C_END
 
 @interface UITextSuggestion : NSObject
-
+@property (nonatomic, copy) NSString *displayText;
 @end
 
-@interface UITextInputTraits : NSObject <UITextInputTraits>
+@protocol UITextInputTraits_Private <NSObject, UITextInputTraits>
+@property (nonatomic, readonly) UIColor *insertionPointColor;
+@property (nonatomic, readonly) UIColor *selectionBarColor;
+@property (nonatomic, readwrite) BOOL isSingleLineDocument;
+@end
+
+@interface UITextInputTraits : NSObject <UITextInputTraits, UITextInputTraits_Private, NSCopying>
 @end
 
 @protocol UIDragInteractionDelegate_ForWebKitOnly <UIDragInteractionDelegate>
 @optional
 - (void)_dragInteraction:(UIDragInteraction *)interaction prepareForSession:(id<UIDragSession>)session completion:(void(^)(void))completion;
 - (void)_dragInteraction:(UIDragInteraction *)interaction itemsForAddingToSession:(id <UIDragSession>)session withTouchAtPoint:(CGPoint)point completion:(void(^)(NSArray<UIDragItem *> *))completion;
-@end
-
-@protocol UITextInputTraits_Private <NSObject, UITextInputTraits>
-@property (nonatomic, readonly) UIColor *insertionPointColor;
-@property (nonatomic, readonly) UIColor *selectionBarColor;
 @end
 
 @class WebEvent;
@@ -208,6 +209,10 @@ IGNORE_WARNINGS_END
 
 @interface UIKeyboardImpl : UIView
 + (instancetype)sharedInstance;
+@end
+
+@protocol UITextInputSuggestionDelegate <UITextInputDelegate>
+- (void)setSuggestions:(NSArray <UITextSuggestion*> *)suggestions;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)

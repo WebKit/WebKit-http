@@ -186,17 +186,37 @@ class TestCommitQueueFactory(TestCase):
             _BuildStepFactory(steps.UpdateWorkingDirectory),
             _BuildStepFactory(steps.ApplyPatch),
             _BuildStepFactory(steps.ValidateChangeLogAndReviewer),
+            _BuildStepFactory(steps.FindModifiedChangeLogs),
             _BuildStepFactory(steps.KillOldProcesses),
             _BuildStepFactory(steps.CompileWebKit, skipUpload=True),
             _BuildStepFactory(steps.KillOldProcesses),
             _BuildStepFactory(steps.ValidatePatch, addURLs=False, verifycqplus=True),
+            _BuildStepFactory(steps.CheckPatchStatusOnEWSQueues),
             _BuildStepFactory(steps.RunWebKitTests),
             _BuildStepFactory(steps.ValidatePatch, addURLs=False, verifycqplus=True),
             _BuildStepFactory(steps.CheckOutSource),
             _BuildStepFactory(steps.UpdateWorkingDirectory),
             _BuildStepFactory(steps.ApplyPatch),
-            _BuildStepFactory(steps.FindModifiedChangeLogs),
             _BuildStepFactory(steps.CreateLocalGITCommit),
             _BuildStepFactory(steps.PushCommitToWebKitRepo),
+            _BuildStepFactory(steps.SetBuildSummary),
+        ])
+
+
+class TestGTKFactory(TestCase):
+    def test_gtk_factory(self):
+        factory = factories.GTKTestsFactory(platform='gtk', configuration='release', architectures=["x86_64"])
+        self.assertBuildSteps(factory.steps, [
+            _BuildStepFactory(steps.ConfigureBuild, platform='gtk', configuration='release', architectures=["x86_64"], buildOnly=False, triggers=None, remotes=None, additionalArguments=None),
+            _BuildStepFactory(steps.ValidatePatch),
+            _BuildStepFactory(steps.PrintConfiguration),
+            _BuildStepFactory(steps.CheckOutSource),
+            _BuildStepFactory(steps.CheckOutSpecificRevision),
+            _BuildStepFactory(steps.ApplyPatch),
+            _BuildStepFactory(steps.InstallGtkDependencies),
+            _BuildStepFactory(steps.DownloadBuiltProduct),
+            _BuildStepFactory(steps.ExtractBuiltProduct),
+            _BuildStepFactory(steps.KillOldProcesses),
+            _BuildStepFactory(steps.RunWebKitTests),
             _BuildStepFactory(steps.SetBuildSummary),
         ])

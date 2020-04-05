@@ -68,12 +68,10 @@ void WebPage::sendMessageToWebExtension(UserMessage&& message)
     sendMessageToWebExtensionWithReply(WTFMove(message), [](UserMessage&&) { });
 }
 
-void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
+void WebPage::getPlatformEditorState(Frame& frame, EditorState& result) const
 {
-    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No || !frame.view() || frame.view()->needsLayout()) {
-        result.isMissingPostLayoutData = true;
+    if (result.isMissingPostLayoutData || !frame.view() || frame.view()->needsLayout())
         return;
-    }
 
     auto& postLayoutData = result.postLayoutData();
     postLayoutData.caretRectAtStart = frame.selection().absoluteCaretBounds();
@@ -115,13 +113,19 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
             auto clonedRange = surroundingRange->cloneRange();
             surroundingRange->setEnd(compositionRange->startPosition());
             clonedRange->setStart(compositionRange->endPosition());
-            postLayoutData.surroundingContext = plainText(surroundingRange.get()) + plainText(clonedRange.ptr());
-            postLayoutData.surroundingContextCursorPosition = TextIterator::rangeLength(surroundingRange.get());
+            postLayoutData.surroundingContext = plainText(*surroundingRange) + plainText(clonedRange);
+            postLayoutData.surroundingContextCursorPosition = characterCount(*surroundingRange);
             postLayoutData.surroundingContextSelectionPosition = postLayoutData.surroundingContextCursorPosition;
         } else {
-            postLayoutData.surroundingContext = plainText(surroundingRange.get());
-            postLayoutData.surroundingContextCursorPosition = TextIterator::rangeLength(makeRange(surroundingStart, selectionStart).get());
-            postLayoutData.surroundingContextSelectionPosition = TextIterator::rangeLength(makeRange(surroundingStart, selection.visibleEnd()).get());
+            postLayoutData.surroundingContext = plainText(*surroundingRange);
+            if (surroundingStart.isNull() || selectionStart.isNull())
+                postLayoutData.surroundingContextCursorPosition = 0;
+            else
+                postLayoutData.surroundingContextCursorPosition = characterCount(*makeRange(surroundingStart, selectionStart));
+            if (surroundingStart.isNull() || selection.visibleEnd().isNull())
+                postLayoutData.surroundingContextSelectionPosition = 0;
+            else
+                postLayoutData.surroundingContextSelectionPosition = characterCount(*makeRange(surroundingStart, selection.visibleEnd()));
         }
     }
 }

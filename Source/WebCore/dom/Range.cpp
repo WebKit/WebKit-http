@@ -951,7 +951,7 @@ String Range::text() const
     // FIXME: As with innerText, we'd like this to work even if there are no render objects.
     startContainer().document().updateLayout();
 
-    return plainText(this);
+    return plainText(*this);
 }
 
 // https://w3c.github.io/DOM-Parsing/#widl-Range-createContextualFragment-DocumentFragment-DOMString-fragment
@@ -1867,6 +1867,18 @@ FloatRect Range::boundingRect(CoordinateSpace space, OptionSet<BoundingRectBehav
 FloatRect Range::absoluteBoundingRect(OptionSet<BoundingRectBehavior> rectOptions) const
 {
     return boundingRect(CoordinateSpace::Absolute, rectOptions);
+}
+
+Ref<Range> createLiveRange(const SimpleRange& range)
+{
+    return Range::create(range.start.document(), range.start.container.ptr(), range.start.offset, range.end.container.ptr(), range.end.offset);
+}
+
+RefPtr<Range> createLiveRange(const Optional<SimpleRange>& range)
+{
+    if (!range)
+        return nullptr;
+    return createLiveRange(*range);
 }
 
 WTF::TextStream& operator<<(WTF::TextStream& ts, const RangeBoundaryPoint& r)

@@ -35,6 +35,7 @@
 
 @interface NSAccessibilityRemoteUIElement : NSObject
 
++ (BOOL)isRemoteUIApp;
 + (void)setRemoteUIApp:(BOOL)flag;
 + (NSData *)remoteTokenForLocalUIElement:(id)localUIElement;
 + (void)registerRemoteUIProcessIdentifier:(pid_t)pid;
@@ -52,6 +53,8 @@
 #endif // USE(APPLE_INTERNAL_SDK)
 
 WTF_EXTERN_C_BEGIN
+
+extern NSString *const NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification;
 
 void NSAccessibilityHandleFocusChanged();
 void NSAccessibilityUnregisterUniqueIdForUIElement(id element);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2020 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #include "config.h"
 #include "VisiblePosition.h"
 
+#include "BoundaryPoint.h"
 #include "Document.h"
 #include "Editing.h"
 #include "FloatQuad.h"
@@ -817,6 +818,11 @@ bool areVisiblePositionsInSameTreeScope(const VisiblePosition& a, const VisibleP
 bool VisiblePosition::equals(const VisiblePosition& other) const
 {
     return m_affinity == other.m_affinity && m_deepPosition.equals(other.m_deepPosition);
+}
+
+Optional<BoundaryPoint> makeBoundaryPoint(const VisiblePosition& position)
+{
+    return makeBoundaryPoint(position.deepEquivalent());
 }
 
 TextStream& operator<<(TextStream& stream, EAffinity affinity)

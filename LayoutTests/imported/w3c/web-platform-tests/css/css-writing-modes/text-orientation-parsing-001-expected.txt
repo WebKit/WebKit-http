@@ -1,0 +1,10 @@
+
+PASS text-orientation initial value 
+PASS -webkit-text-orientation: upright 
+PASS -webkit-text-orientation: sideways 
+PASS text-orientation should inherit 
+PASS -webkit-text-orientation: mixed 
+PASS -webkit-text-orientation: initial 
+PASS -webkit-text-orientation: inherit 
+PASS -webkit-text-orientation: foo 
+

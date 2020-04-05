@@ -191,7 +191,7 @@ ReplacementFragment::ReplacementFragment(DocumentFragment* fragment, const Visib
     }
     
     RefPtr<Range> range = VisibleSelection::selectionFromContentsOfNode(holder.get()).toNormalizedRange();
-    String text = plainText(range.get(), static_cast<TextIteratorBehavior>(TextIteratorEmitsOriginalText | TextIteratorIgnoresStyleVisibility));
+    String text = range ? plainText(*range, static_cast<TextIteratorBehavior>(TextIteratorEmitsOriginalText | TextIteratorIgnoresStyleVisibility)) : emptyString();
 
     removeInterchangeNodes(holder.get());
     removeUnrenderedNodes(holder.get());
@@ -388,7 +388,7 @@ inline void ReplaceSelectionCommand::InsertedNodes::willRemoveNodePreservingChil
         m_firstNodeInserted = NodeTraversal::next(*node);
     if (m_lastNodeInserted == node) {
         m_lastNodeInserted = node->lastChild() ? node->lastChild() : NodeTraversal::nextSkippingChildren(*node);
-        if (!m_lastNodeInserted) {
+        if (!m_lastNodeInserted && m_firstNodeInserted) {
             // If the last inserted node is at the end of the document and doesn't have any children, look backwards for the
             // previous node as the last inserted node, clamping to the first inserted node if needed to ensure that the
             // document position of the last inserted node is not behind the first inserted node.

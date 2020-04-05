@@ -142,11 +142,6 @@ int64_t WebPlatformStrategies::changeCount(const String& pasteboardName)
     return PlatformPasteboard(pasteboardName).changeCount();
 }
 
-String WebPlatformStrategies::uniqueName()
-{
-    return PlatformPasteboard::uniqueName();
-}
-
 Color WebPlatformStrategies::color(const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).color();    
@@ -202,6 +197,11 @@ int64_t WebPlatformStrategies::writeCustomData(const Vector<WebCore::PasteboardC
     return PlatformPasteboard(pasteboardName).write(data);
 }
 
+bool WebPlatformStrategies::containsStringSafeForDOMToReadForType(const String& pasteboardName, const String& type)
+{
+    return PlatformPasteboard(pasteboardName).containsStringSafeForDOMToReadForType(type);
+}
+
 Optional<WebCore::PasteboardItemInfo> WebPlatformStrategies::informationForItemAtIndex(size_t index, const String& pasteboardName, int64_t changeCount)
 {
     return PlatformPasteboard(pasteboardName).informationForItemAtIndex(index, changeCount);
@@ -230,6 +230,16 @@ URL WebPlatformStrategies::readURLFromPasteboard(size_t index, const String& pas
 String WebPlatformStrategies::readStringFromPasteboard(size_t index, const String& type, const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).readString(index, type);
+}
+
+bool WebPlatformStrategies::containsURLStringSuitableForLoading(const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).containsURLStringSuitableForLoading();
+}
+
+String WebPlatformStrategies::urlStringSuitableForLoading(const String& pasteboardName, String& title)
+{
+    return PlatformPasteboard(pasteboardName).urlStringSuitableForLoading(title);
 }
 
 #if PLATFORM(IOS_FAMILY)

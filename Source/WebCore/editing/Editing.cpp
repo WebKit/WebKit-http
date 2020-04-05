@@ -1083,15 +1083,23 @@ int indexForVisiblePosition(const VisiblePosition& visiblePosition, RefPtr<Conta
             scope = &document;
     }
 
-    auto range = Range::create(document, firstPositionInNode(scope.get()), position.parentAnchoredEquivalent());
-    return TextIterator::rangeLength(range.ptr(), true);
+    auto start = makeBoundaryPoint(firstPositionInNode(scope.get()));
+    auto end = makeBoundaryPoint(position.parentAnchoredEquivalent());
+    if (!start || !end)
+        return 0;
+
+    return characterCount({ *start, *end }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
 }
 
 // FIXME: Merge this function with the one above.
 int indexForVisiblePosition(Node& node, const VisiblePosition& visiblePosition, bool forSelectionPreservation)
 {
-    auto range = Range::create(node.document(), firstPositionInNode(&node), visiblePosition.deepEquivalent().parentAnchoredEquivalent());
-    return TextIterator::rangeLength(range.ptr(), forSelectionPreservation);
+    auto start = makeBoundaryPoint(firstPositionInNode(&node));
+    auto end = makeBoundaryPoint(visiblePosition.deepEquivalent().parentAnchoredEquivalent());
+    if (!start || !end)
+        return 0;
+
+    return characterCount({ *start, *end }, forSelectionPreservation ? TextIteratorEmitsCharactersBetweenAllVisiblePositions : TextIteratorDefaultBehavior);
 }
 
 VisiblePosition visiblePositionForPositionWithOffset(const VisiblePosition& position, int offset)
@@ -1106,12 +1114,9 @@ VisiblePosition visiblePositionForPositionWithOffset(const VisiblePosition& posi
 
 VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope)
 {
-    auto range = TextIterator::rangeFromLocationAndLength(scope, index, 0, true);
-    // Check for an invalid index. Certain editing operations invalidate indices because 
-    // of problems with TextIteratorEmitsCharactersBetweenAllVisiblePositions.
-    if (!range)
+    if (!scope)
         return { };
-    return { range->startPosition() };
+    return { createLegacyEditingPosition(resolveCharacterLocation(makeRangeSelectingNodeContents(*scope), index, TextIteratorEmitsCharactersBetweenAllVisiblePositions)) };
 }
 
 VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node& node, int index)
@@ -1128,10 +1133,10 @@ VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node& node, int in
         // FIXME: workaround for collapsed range (where only start position is correct) emitted for some emitted newlines.
         it.advance(1);
         if (!it.atEnd())
-            return VisiblePosition(it.range()->startPosition());
+            return VisiblePosition(createLegacyEditingPosition(it.range().start));
     }
 
-    return { it.atEnd() ? range->endPosition() : it.range()->endPosition(), UPSTREAM };
+    return { it.atEnd() ? range->endPosition() : createLegacyEditingPosition(it.range().end), UPSTREAM };
 }
 
 // Determines whether two positions are visibly next to each other (first then second)
@@ -1307,7 +1312,7 @@ IntRect absoluteBoundsForLocalCaretRect(RenderBlock* rendererForCaretPainting, c
 HashSet<RefPtr<HTMLImageElement>> visibleImageElementsInRangeWithNonLoadedImages(const Range& range)
 {
     HashSet<RefPtr<HTMLImageElement>> result;
-    for (TextIterator iterator(&range); !iterator.atEnd(); iterator.advance()) {
+    for (TextIterator iterator(range); !iterator.atEnd(); iterator.advance()) {
         if (!is<HTMLImageElement>(iterator.node()))
             continue;
 

@@ -56,6 +56,7 @@ public:
     bool shouldDispatchedSimulatedMouseEventsAssumeDefaultPrevented(EventTarget*) const;
     Optional<Event::IsCancelable> simulatedMouseEventTypeForTarget(EventTarget*) const;
     bool shouldMakeTouchEventNonCancelableForTarget(EventTarget*) const;
+    bool shouldPreventPointerMediaQueryFromEvaluatingToCoarse() const;
 #endif
     bool shouldDisablePointerEventsQuirk() const;
     bool needsInputModeNoneImplicitly(const HTMLElement&) const;
@@ -92,6 +93,8 @@ public:
 
     bool shouldDisableElementFullscreenQuirk() const;
 
+    bool needsCanPlayAfterSeekedQuirk() const;
+
 private:
     bool needsQuirks() const;
 
@@ -113,6 +116,7 @@ private:
 #if ENABLE(TOUCH_EVENTS)
     mutable Optional<bool> m_shouldDispatchSimulatedMouseEventsQuirk;
 #endif
+    mutable Optional<bool> m_needsCanPlayAfterSeekedQuirk;
 };
 
 }

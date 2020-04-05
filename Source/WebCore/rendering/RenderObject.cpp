@@ -1524,22 +1524,6 @@ VisiblePosition RenderObject::positionForPoint(const LayoutPoint&, const RenderF
     return createVisiblePosition(caretMinOffset(), DOWNSTREAM);
 }
 
-void RenderObject::updateDragState(bool dragOn)
-{
-    bool valueChanged = (dragOn != isDragging());
-    setIsDragging(dragOn);
-
-    if (!is<RenderElement>(*this))
-        return;
-    auto& renderElement = downcast<RenderElement>(*this);
-
-    if (valueChanged && renderElement.element() && (style().affectedByDrag() || renderElement.element()->childrenAffectedByDrag()))
-        renderElement.element()->invalidateStyleForSubtree();
-
-    for (auto& child : childrenOfType<RenderObject>(renderElement))
-        child.updateDragState(dragOn);
-}
-
 bool RenderObject::isComposited() const
 {
     return hasLayer() && downcast<RenderLayerModelObject>(*this).layer()->isComposited();
@@ -1568,21 +1552,24 @@ bool RenderObject::hitTest(const HitTestRequest& request, HitTestResult& result,
     return inside;
 }
 
-void RenderObject::updateHitTestResult(HitTestResult& result, const LayoutPoint& point)
+Node* RenderObject::nodeForHitTest() const
 {
-    if (result.innerNode())
-        return;
-
-    Node* node = this->node();
-
+    auto* node = this->node();
     // If we hit the anonymous renderers inside generated content we should
     // actually hit the generated content so walk up to the PseudoElement.
     if (!node && parent() && parent()->isBeforeOrAfterContent()) {
         for (auto* renderer = parent(); renderer && !node; renderer = renderer->parent())
             node = renderer->element();
     }
+    return node;
+}
 
-    if (node) {
+void RenderObject::updateHitTestResult(HitTestResult& result, const LayoutPoint& point)
+{
+    if (result.innerNode())
+        return;
+
+    if (auto* node = nodeForHitTest()) {
         result.setInnerNode(node);
         if (!result.innerNonSharedNode())
             result.setInnerNonSharedNode(node);
@@ -1854,12 +1841,6 @@ void RenderObject::calculateBorderStyleColor(const BorderStyle& style, const Box
         if (differenceSquared(color, Color::white) > differenceSquared(baseLightColor, Color::white))
             color = color.light();
     }
-}
-
-void RenderObject::setIsDragging(bool isDragging)
-{
-    if (isDragging || hasRareData())
-        ensureRareData().setIsDragging(isDragging);
 }
 
 void RenderObject::setHasReflection(bool hasReflection)

@@ -133,6 +133,7 @@
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
+#include "NavigatorBeacon.h"
 #include "NavigatorMediaDevices.h"
 #include "NetworkLoadInformation.h"
 #include "Page.h"
@@ -192,6 +193,7 @@
 #include "UserMediaController.h"
 #include "ViewportArguments.h"
 #include "VoidCallback.h"
+#include "WebAnimation.h"
 #include "WebCoreJSClientData.h"
 #include "WindowProxy.h"
 #include "WorkerThread.h"
@@ -237,6 +239,7 @@
 #if ENABLE(VIDEO_TRACK)
 #include "CaptionUserPreferences.h"
 #include "PageGroup.h"
+#include "TextTrack.h"
 #include "TextTrackCueGeneric.h"
 #endif
 
@@ -488,7 +491,7 @@ void Internals::resetToConsistentState(Page& page)
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
-        mainFrameView->enableAutoSizeMode(false, { });
+        mainFrameView->enableFixedWidthAutoSizeMode(false, { });
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
 #endif
@@ -634,6 +637,23 @@ InternalSettings* Internals::settings() const
     if (!page)
         return nullptr;
     return InternalSettings::from(page);
+}
+
+unsigned Internals::inflightBeaconsCount() const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return 0;
+
+    auto* window = document->domWindow();
+    if (!window)
+        return 0;
+
+    auto* navigator = window->optionalNavigator();
+    if (!navigator)
+        return 0;
+
+    return NavigatorBeacon::from(*navigator)->inflightBeaconsCount();
 }
 
 unsigned Internals::workerThreadCount() const
@@ -1014,6 +1034,15 @@ ExceptionOr<unsigned> Internals::lastSpatialNavigationCandidateCount() const
         return Exception { InvalidAccessError };
 
     return contextDocument()->page()->lastSpatialNavigationCandidateCount();
+}
+
+bool Internals::animationWithIdExists(const String& id) const
+{
+    for (auto* animation : WebAnimation::instances()) {
+        if (animation->id() == id)
+            return true;
+    }
+    return false;
 }
 
 unsigned Internals::numberOfActiveAnimations() const
@@ -2015,25 +2044,19 @@ ExceptionOr<void> Internals::invalidateControlTints()
     return { };
 }
 
-RefPtr<Range> Internals::rangeFromLocationAndLength(Element& scope, int rangeLocation, int rangeLength)
+RefPtr<Range> Internals::rangeFromLocationAndLength(Element& scope, unsigned rangeLocation, unsigned rangeLength)
 {
-    return TextIterator::rangeFromLocationAndLength(&scope, rangeLocation, rangeLength);
+    return createLiveRange(resolveCharacterRange(makeRangeSelectingNodeContents(scope), { rangeLocation, rangeLength }));
 }
 
 unsigned Internals::locationFromRange(Element& scope, const Range& range)
 {
-    size_t location = 0;
-    size_t unusedLength = 0;
-    TextIterator::getLocationAndLengthFromRange(&scope, &range, location, unusedLength);
-    return location;
+    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), range).location);
 }
 
 unsigned Internals::lengthFromRange(Element& scope, const Range& range)
 {
-    size_t unusedLocation = 0;
-    size_t length = 0;
-    TextIterator::getLocationAndLengthFromRange(&scope, &range, unusedLocation, length);
-    return length;
+    return clampTo<unsigned>(characterRange(makeBoundaryPointBeforeNodeContents(scope), range).length);
 }
 
 String Internals::rangeAsText(const Range& range)
@@ -2043,17 +2066,20 @@ String Internals::rangeAsText(const Range& range)
 
 String Internals::rangeAsTextUsingBackwardsTextIterator(const Range& range)
 {
-    return plainTextUsingBackwardsTextIteratorForTesting(range);
+    String result;
+    for (SimplifiedBackwardsTextIterator backwardsIterator(range); !backwardsIterator.atEnd(); backwardsIterator.advance())
+        result.insert(backwardsIterator.text().toString(), 0);
+    return result;
 }
 
-Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
+Ref<Range> Internals::subrange(Range& range, unsigned rangeLocation, unsigned rangeLength)
 {
-    return TextIterator::subrange(range, rangeLocation, rangeLength);
+    return createLiveRange(resolveCharacterRange(range, { rangeLocation, rangeLength }));
 }
 
 RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
 {
-    return findClosestPlainText(searchRange, text, { }, targetOffset);
+    return createLiveRange(findClosestPlainText(searchRange, text, { }, targetOffset));
 }
 
 #if !PLATFORM(MAC)
@@ -2150,7 +2176,7 @@ ExceptionOr<Ref<DOMRectList>> Internals::touchEventRectsForEvent(const String& e
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-    return document->page()->touchEventRectsForEvent(eventName);
+    return document->page()->touchEventRectsForEventForTesting(eventName);
 }
 
 ExceptionOr<Ref<DOMRectList>> Internals::passiveTouchEventListenerRects()
@@ -2159,7 +2185,7 @@ ExceptionOr<Ref<DOMRectList>> Internals::passiveTouchEventListenerRects()
     if (!document || !document->page())
         return Exception { InvalidAccessError };
 
-    return document->page()->passiveTouchEventListenerRects();
+    return document->page()->passiveTouchEventListenerRectsForTesting();
 }
 
 // FIXME: Remove the document argument. It is almost always the same as
@@ -2403,8 +2429,7 @@ void Internals::handleAcceptedCandidate(const String& candidate, unsigned locati
 
     TextCheckingResult result;
     result.type = TextCheckingType::None;
-    result.location = location;
-    result.length = length;
+    result.range = { location, length };
     result.replacement = candidate;
     contextDocument()->frame()->editor().handleAcceptedCandidate(result);
 }
@@ -2835,7 +2860,7 @@ ExceptionOr<Ref<DOMRectList>> Internals::nonFastScrollableRects() const
     if (!page)
         return DOMRectList::create();
 
-    return page->nonFastScrollableRects();
+    return page->nonFastScrollableRectsForTesting();
 }
 
 ExceptionOr<void> Internals::setElementUsesDisplayListDrawing(Element& element, bool usesDisplayListDrawing)
@@ -3553,12 +3578,12 @@ void Internals::reloadExpiredOnly()
     frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
-void Internals::enableAutoSizeMode(bool enabled, int width, int height)
+void Internals::enableFixedWidthAutoSizeMode(bool enabled, int width, int height)
 {
     auto* document = contextDocument();
     if (!document || !document->view())
         return;
-    document->view()->enableAutoSizeMode(enabled, { width, height });
+    document->view()->enableFixedWidthAutoSizeMode(enabled, { width, height });
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -3768,6 +3793,11 @@ RefPtr<TextTrackCueGeneric> Internals::createGenericCue(double startTime, double
     if (!document || !document->page())
         return nullptr;
     return TextTrackCueGeneric::create(*document, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), text);
+}
+
+ExceptionOr<String> Internals::textTrackBCP47Language(TextTrack& track)
+{
+    return String { track.validBCP47Language() };
 }
 #endif
 
@@ -5119,12 +5149,11 @@ void Internals::hasServiceWorkerRegistration(const String& clientURL, HasRegistr
     });
 }
 
-void Internals::terminateServiceWorker(ServiceWorker& worker)
+void Internals::terminateServiceWorker(ServiceWorker& worker, DOMPromiseDeferred<void>&& promise)
 {
-    if (!contextDocument())
-        return;
-
-    ServiceWorkerProvider::singleton().serviceWorkerConnection().syncTerminateWorker(worker.identifier());
+    ServiceWorkerProvider::singleton().terminateWorkerForTesting(worker.identifier(), [promise = WTFMove(promise)]() mutable {
+        promise.resolve();
+    });
 }
 
 void Internals::isServiceWorkerRunning(ServiceWorker& worker, DOMPromiseDeferred<IDLBoolean>&& promise)
@@ -5230,7 +5259,7 @@ void Internals::notifyResourceLoadObserver()
 
 unsigned Internals::primaryScreenDisplayID()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     return WebCore::primaryScreenDisplayID();
 #else
     return 0;
@@ -5487,24 +5516,26 @@ int Internals::readPreferenceInteger(const String& domain, const String& key)
     Boolean keyExistsAndHasValidFormat = false;
     return CFPreferencesGetAppIntegerValue(key.createCFString().get(), domain.createCFString().get(), &keyExistsAndHasValidFormat);
 #else
+    UNUSED_PARAM(domain);
+    UNUSED_PARAM(key);
     return -1;
 #endif
 }
 
 #if !PLATFORM(COCOA)
-String Internals::encodedPreferenceValue(const String& domain, const String& key)
+String Internals::encodedPreferenceValue(const String&, const String&)
 {
     return emptyString();
 }
 
-String Internals::getUTIFromMIMEType(const String& mimeType)
+String Internals::getUTIFromTag(const String&, const String&, const String&)
 {
     return emptyString();
 }
 
-String Internals::getUTIFromTag(const String& tagClass, const String& tag, const String& conformingToUTI)
+bool Internals::isRemoteUIAppForAccessibility()
 {
-    return emptyString();
+    return false;
 }
 #endif
 
@@ -5522,6 +5553,19 @@ String Internals::focusRingColor()
 {
     OptionSet<StyleColor::Options> options;
     return RenderTheme::singleton().focusRingColor(options).cssText();
+}
+
+unsigned Internals::createSleepDisabler(const String& reason, bool display)
+{
+    static unsigned lastUsedIdentifier = 0;
+    auto sleepDisabler = makeUnique<WebCore::SleepDisabler>(reason.utf8().data(), display ? PAL::SleepDisabler::Type::Display : PAL::SleepDisabler::Type::System);
+    m_sleepDisablers.add(++lastUsedIdentifier, WTFMove(sleepDisabler));
+    return lastUsedIdentifier;
+}
+
+bool Internals::destroySleepDisabler(unsigned identifier)
+{
+    return m_sleepDisablers.remove(identifier);
 }
 
 } // namespace WebCore

@@ -2,6 +2,7 @@
 <html>
 <head>
     <script src="../../resources/js-test-pre.js"></script>
+    <script src="../../resources/platform-helper.js"></script>
 </head>
 <body onload="start()">
 <p id="description"></p>
@@ -13,22 +14,19 @@
     let context;
     let mediaStream;
     let video;
-    
     let buffer;
+    
+    let timeout;
 
-    function isPixelBlack(pixel)
+    function updateWatchdog()
     {
-        return pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0 && pixel[3] === 255;
-    }
+        if (timeout)
+            clearTimeout(timeout);
 
-    function isPixelTransparent(pixel)
-    {
-        return pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0 && pixel[3] === 0;
-    }
-
-    function isPixelWhite(pixel)
-    {
-        return pixel[0] === 255 && pixel[1] === 255 && pixel[2] === 255 && pixel[3] === 255;
+        timeout = setTimeout(() => {
+            console.log("Test took too long, timing out!");
+            finishJSTest();
+        }, 30000);
     }
 
     function canvasShouldBeBlack()
@@ -63,6 +61,8 @@
         } else {
             debug('');
             video.pause();
+            if (timeout)
+                clearTimeout(timeout);
             finishJSTest();
         }
     }
@@ -70,6 +70,7 @@
     function reenableTrack()
     {
         mediaStream.getVideoTracks()[0].enabled = true;
+        updateWatchdog();
         debug(`<br> === video track reenabled, should render current frame ===`);
 
         // The video is not guaranteed to render non-black frames before the canvas is drawn to and the pixels are checked.
@@ -96,6 +97,7 @@
     function disableAllTracks()
     {
         mediaStream.getVideoTracks()[0].enabled = false;
+        updateWatchdog();
         debug('<br> === all video tracks disabled ===');
         
         // The video is not guaranteed to render black frames before the canvas is drawn to and the pixels are checked.
@@ -105,6 +107,7 @@
 
     function beginTestRound()
     {
+        updateWatchdog();
         debug('<br> === beginning round of pixel tests ===');
         attempt(10, checkPixels, disableAllTracks);
     }
@@ -125,6 +128,8 @@
 
         video = document.querySelector('video');
         video.addEventListener('canplay', canplay);
+        
+        updateWatchdog();
 
         navigator.mediaDevices.getUserMedia({ video : true })
             .then((stream) => {

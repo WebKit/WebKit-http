@@ -550,7 +550,7 @@ WKWebsiteDataStoreRef TestController::defaultWebsiteDataStore()
 
 WKWebsiteDataStoreRef TestController::websiteDataStore()
 {
-    return WKPageConfigurationGetWebsiteDataStore(WKPageCopyPageConfiguration(m_mainWebView->page()));
+    return WKPageConfigurationGetWebsiteDataStore(adoptWK(WKPageCopyPageConfiguration(m_mainWebView->page())).get());
 }
 
 WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(const TestOptions& options)
@@ -791,6 +791,9 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
     // Generally, the tests should default to running at 1x. updateWindowScaleForTest() will adjust the scale to
     // something else for specific tests that need to run at a different window scale.
     m_mainWebView->changeWindowScaleIfNeeded(1);
+    
+    if (!options.applicationBundleIdentifier.isEmpty())
+        reinitializeAppBoundDomains();
 }
 
 void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test)
@@ -1126,7 +1129,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     setAllowsAnySSLCertificate(true);
 
     statisticsResetToConsistentState();
-    clearPrevalentDomains();
+    clearLoadedThirdPartyDomains();
 
     clearAdClickAttribution();
 
@@ -1481,8 +1484,6 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableEditableImages = parseBooleanTestHeaderValue(value);
         else if (key == "editable")
             testOptions.editable = parseBooleanTestHeaderValue(value);
-        else if (key == "enableUndoManagerAPI")
-            testOptions.enableUndoManagerAPI = parseBooleanTestHeaderValue(value);
         else if (key == "shouldHandleRunOpenPanel")
             testOptions.shouldHandleRunOpenPanel = parseBooleanTestHeaderValue(value);
         else if (key == "shouldPresentPopovers")
@@ -3109,6 +3110,7 @@ PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parent
 
 WKContextRef TestController::platformAdjustContext(WKContextRef context, WKContextConfigurationRef contextConfiguration)
 {
+    WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(WKContextGetWebsiteDataStore(context), true);
     return context;
 }
 
@@ -3130,11 +3132,11 @@ void TestController::getAllStorageAccessEntries()
 {
 }
 
-void TestController::getPrevalentDomains()
+void TestController::loadedThirdPartyDomains()
 {
 }
 
-void TestController::clearPrevalentDomains()
+void TestController::clearLoadedThirdPartyDomains()
 {
 }
 
@@ -3628,7 +3630,7 @@ void TestController::statisticsClearInMemoryAndPersistentStore()
     ResourceStatisticsCallbackContext context(*this);
     WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore(websiteDataStore(), &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
-    m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    m_currentInvocation->didClearStatisticsInMemoryAndPersistentStore();
 }
 
 void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
@@ -3636,7 +3638,7 @@ void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours
     ResourceStatisticsCallbackContext context(*this);
     WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours(websiteDataStore(), hours, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
-    m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    m_currentInvocation->didClearStatisticsInMemoryAndPersistentStore();
 }
 
 void TestController::statisticsClearThroughWebsiteDataRemoval()
@@ -3699,6 +3701,14 @@ void TestController::setStatisticsFirstPartyWebsiteDataRemovalMode(bool value)
     WKWebsiteDataStoreSetResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(websiteDataStore(), value, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetFirstPartyWebsiteDataRemovalMode();
+}
+
+void TestController::setStatisticsToSameSiteStrictCookies(WKStringRef hostName)
+{
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetResourceLoadStatisticsToSameSiteStrictCookiesForTesting(websiteDataStore(), hostName, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetToSameSiteStrictCookies();
 }
 
 void TestController::statisticsResetToConsistentState()
@@ -3780,6 +3790,11 @@ void TestController::setInAppBrowserPrivacyEnabled(bool value)
     WKWebsiteDataStoreSetInAppBrowserPrivacyEnabled(TestController::websiteDataStore(), value, &context, inAppBrowserPrivacyVoidResultCallback);
     runUntil(context.done, noTimeout);
     m_currentInvocation->didSetInAppBrowserPrivacyEnabled();
+}
+
+void TestController::reinitializeAppBoundDomains()
+{
+    WKWebsiteDataStoreReinitializeAppBoundDomains(TestController::websiteDataStore());
 }
 
 #if !PLATFORM(COCOA)

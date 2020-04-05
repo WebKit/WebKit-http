@@ -352,7 +352,7 @@ static inline bool lastChildHasContinuation(RenderElement& renderer)
 
 AccessibilityObject* AccessibilityRenderObject::nextSibling() const
 {
-    if (!m_renderer)
+    if (!m_renderer || is<RenderView>(*m_renderer))
         return nullptr;
 
     RenderObject* nextSibling = nullptr;
@@ -384,7 +384,7 @@ AccessibilityObject* AccessibilityRenderObject::nextSibling() const
 
     // Case 5: node has no next sibling, and its parent is an inline with a continuation.
     // Case 5.1: After case 4, (the element was inline w/ continuation but had no sibling), then check it's parent.
-    if (!nextSibling && isInlineWithContinuation(*m_renderer->parent())) {
+    if (!nextSibling && m_renderer->parent() && isInlineWithContinuation(*m_renderer->parent())) {
         auto& continuation = *downcast<RenderInline>(*m_renderer->parent()).continuation();
         
         // Case 5a: continuation is a block - in this case the block itself is the next sibling.
@@ -664,7 +664,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
                 // style update/layout here. See also AXObjectCache::deferTextChangedIfNeeded().
                 ASSERT_WITH_SECURITY_IMPLICATION(!nodeDocument->childNeedsStyleRecalc());
                 ASSERT_WITH_SECURITY_IMPLICATION(!nodeDocument->view()->layoutContext().isInRenderTreeLayout());
-                return plainText(textRange.get(), textIteratorBehaviorForTextRange());
+                return plainText(*textRange, textIteratorBehaviorForTextRange());
             }
         }
     
@@ -1641,20 +1641,21 @@ void AccessibilityRenderObject::setSelectedTextRange(const PlainTextRange& range
 
 URL AccessibilityRenderObject::url() const
 {
-    if (isLink() && is<HTMLAnchorElement>(*m_renderer->node())) {
+    auto* node = this->node();
+    if (isLink() && is<HTMLAnchorElement>(node)) {
         if (HTMLAnchorElement* anchor = downcast<HTMLAnchorElement>(anchorElement()))
             return anchor->href();
     }
-    
-    if (isWebArea())
+
+    if (m_renderer && isWebArea())
         return m_renderer->document().url();
-    
-    if (isImage() && is<HTMLImageElement>(m_renderer->node()))
-        return downcast<HTMLImageElement>(*m_renderer->node()).src();
-    
-    if (isInputImage())
-        return downcast<HTMLInputElement>(*m_renderer->node()).src();
-    
+
+    if (isImage() && is<HTMLImageElement>(node))
+        return downcast<HTMLImageElement>(node)->src();
+
+    if (isInputImage() && is<HTMLInputElement>(node))
+        return downcast<HTMLInputElement>(node)->src();
+
     return URL();
 }
 
@@ -2080,16 +2081,15 @@ bool AccessibilityRenderObject::nodeIsTextControl(const Node* node) const
     return false;
 }
 
-IntRect AccessibilityRenderObject::boundsForRects(LayoutRect const& rect1, LayoutRect const& rect2, RefPtr<Range> const& dataRange)
+static IntRect boundsForRects(const LayoutRect& rect1, const LayoutRect& rect2, const SimpleRange& dataRange)
 {
     LayoutRect ourRect = rect1;
     ourRect.unite(rect2);
-    
-    // if the rectangle spans lines and contains multiple text chars, use the range's bounding box intead
+
+    // If the rectangle spans lines and contains multiple text characters, use the range's bounding box intead.
     if (rect1.maxY() != rect2.maxY()) {
-        LayoutRect boundingBox = dataRange->absoluteBoundingBox();
-        String rangeString = plainText(dataRange.get());
-        if (rangeString.length() > 1 && !boundingBox.isEmpty())
+        LayoutRect boundingBox = createLiveRange(dataRange)->absoluteBoundingBox();
+        if (characterCount(dataRange) > 1 && !boundingBox.isEmpty())
             ourRect = boundingBox;
     }
 
@@ -2119,8 +2119,7 @@ IntRect AccessibilityRenderObject::boundsForVisiblePositionRange(const VisiblePo
         }
     }
     
-    RefPtr<Range> dataRange = makeRange(range.start, range.end);
-    return boundsForRects(rect1, rect2, dataRange);
+    return boundsForRects(rect1, rect2, *makeRange(range.start, range.end));
 }
 
 IntRect AccessibilityRenderObject::boundsForRange(const RefPtr<Range> range) const
@@ -2151,7 +2150,7 @@ IntRect AccessibilityRenderObject::boundsForRange(const RefPtr<Range> range) con
         }
     }
     
-    return boundsForRects(rect1, rect2, range);
+    return boundsForRects(rect1, rect2, *range);
 }
 
 bool AccessibilityRenderObject::isVisiblePositionRangeInDifferentDocument(const VisiblePositionRange& range) const

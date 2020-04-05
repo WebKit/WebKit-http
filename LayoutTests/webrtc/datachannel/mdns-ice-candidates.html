@@ -50,9 +50,11 @@ function sendMessages(channel)
     channel.send("four");
 }
 
-promise_test((test) => {
-    return new Promise((resolve, reject) => {
+let connection;
+promise_test(async (test) => {
+    await new Promise((resolve, reject) => {
         createConnections((localConnection) => {
+            connection = localConnection;
             localConnection.createDataChannel('sendDataChannel');
         }, () => {
         }, {
@@ -66,6 +68,8 @@ promise_test((test) => {
         });
         setTimeout(() => { reject("Test timed out"); }, 5000);
     });
+
+    assert_true(connection.localDescription.sdp.includes(".local "));
 }, "Getting some MDNS candidates");
 
 var finishTest;
@@ -148,6 +152,29 @@ promise_test((test) => {
         setTimeout(() => { reject("Test timed out"); }, 5000);
     });
 }, "Basic data channel exchange from offerer to receiver 2");
+
+promise_test(async (test) => {
+    const pc = new RTCPeerConnection();
+    const channel = pc.createDataChannel('sendDataChannel');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const channel2 = pc.createDataChannel('sendDataChannel2');
+    const offer2 = await pc.createOffer();
+    const description = pc.localDescription;
+
+    // Make sure we can apply the filtered description.
+    await pc.setLocalDescription(description);
+
+    const lines = description.sdp.split('\r\n').filter(line => {
+        return line.indexOf('a=candidate') === 0;
+    });
+
+    assert_true(lines.length > 0, "candidates are gathered");
+    assert_true(lines[0].includes(' host '), "candidate is host");
+    assert_true(lines[0].includes('.local '), "candidate is mDNS");
+}, "Ensure that local description SDP filtering is correctly filtering mDNS local candidates");
 
     </script>
   </body>

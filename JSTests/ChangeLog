@@ -1,3 +1,445 @@
+2020-04-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Intl.NumberFormat.prototype.format must preserve sign of -0
+        https://bugs.webkit.org/show_bug.cgi?id=209880
+
+        Reviewed by Keith Miller.
+
+        * test262/config.yaml:
+        This test was skipped as ICU version-dependent, but it shouldn't be.
+
+        * test262/expectations.yaml:
+        Mark four test cases as passing.
+
+2020-04-01  Justin Michaud  <justin@justinmichaud.com>
+
+        Delete IC incorrectly caches for proxies
+        https://bugs.webkit.org/show_bug.cgi?id=209777
+
+        Reviewed by Mark Lam.
+
+        * stress/delete-property-ic-proxy.js: Added.
+        (obj1.this.foo1):
+        (foo1.foo2):
+        (foo1):
+        (foo2.foo3):
+        (foo2):
+        * stress/delete-property-inline-cache.js:
+
+2020-04-01  Paulo Matos  <pmatos@igalia.com>
+
+        [JSC] Reenable non-cloop LLint, JIT and DFG on 32-bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=191163
+
+        Reviewed by Adrian Perez de Castro.
+
+        Re-enable tests for 32bits.
+
+        * stress/op_add.js:
+        * stress/op_bitand.js:
+        * stress/op_bitor.js:
+        * stress/op_bitxor.js:
+        * stress/op_lshift-ConstVar.js:
+        * stress/op_lshift-VarConst.js:
+        * stress/op_lshift-VarVar.js:
+        * stress/op_mod-ConstVar.js:
+        * stress/op_mod-VarConst.js:
+        * stress/op_mod-VarVar.js:
+        * stress/op_mul-ConstVar.js:
+        * stress/op_mul-VarConst.js:
+        * stress/op_mul-VarVar.js:
+        * stress/op_rshift-ConstVar.js:
+        * stress/op_rshift-VarConst.js:
+        * stress/op_rshift-VarVar.js:
+        * stress/op_sub-ConstVar.js:
+        * stress/op_sub-VarConst.js:
+        * stress/op_sub-VarVar.js:
+        * stress/op_urshift-ConstVar.js:
+        * stress/op_urshift-VarConst.js:
+        * stress/op_urshift-VarVar.js:
+        * stress/spread-forward-call-varargs-stack-overflow.js:
+        * stress/value-to-boolean.js:
+
+2020-03-30  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Add support in named capture group identifiers for direct surrogate pairs
+        https://bugs.webkit.org/show_bug.cgi?id=178174
+
+        Reviewed by Darin Adler and Michael Saboff.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-03-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        RegExp.prototype.exec must always access lastIndex
+        https://bugs.webkit.org/show_bug.cgi?id=209375
+
+        Reviewed by Saam Barati.
+
+        * mozilla/ecma_3/RegExp/15.10.6.2-2.js:
+        Sync test with mozilla-central's copy.
+        (https://searchfox.org/mozilla-central/source/js/src/tests/non262/RegExp/15.10.6.2-2.js)
+
+        * stress/regexp-exec-always-accesses-lastindex.js: Added.
+
+        * test262/expectations.yaml:
+        Mark eight test cases as passing.
+
+2020-03-30  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] Public class field should accept "static" as field name
+        https://bugs.webkit.org/show_bug.cgi?id=209703
+
+        Reviewed by Ross Kirsling.
+
+        * stress/class-fields-with-special-names.js: Added.
+
+2020-03-28  Caio Lima  <ticaiolima@gmail.com>
+
+        stress/test-out-of-memory.js test gaderning
+        https://bugs.webkit.org/show_bug.cgi?id=209701
+
+        Unreviewed test gardening.
+
+        * stress/test-out-of-memory.js:
+
+2020-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Skip stress/test-out-of-memory.js on memory limited devices.
+        https://bugs.webkit.org/show_bug.cgi?id=209690
+        <rdar://problem/60659198>
+
+        Reviewed by Keith Miller.
+
+        * stress/test-out-of-memory.js:
+
+2020-03-27  Paulo Matos  <pmatos@igalia.com>
+
+        Skip new memory test stress/typed-array-oom-in... in memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=209661
+
+        Reviewed by Keith Miller.
+
+        * stress/typed-array-oom-in-buffer-accessor.js:
+
+2020-03-27  Paulo Matos  <pmatos@igalia.com>
+
+        Pass hardness for test numberingSystemsForLocale-cached-... through test header
+        https://bugs.webkit.org/show_bug.cgi?id=209476
+
+        Reviewed by Yusuke Suzuki.
+
+        Improvement over change r258190. Instead of creating a new test file
+        duplicating contents where a hardness parameter is different, pass this
+        through the test header using the -e flag to jsc.
+
+        * stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js:
+        * stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access_memory-limited.js: Removed.
+
+2020-03-26  Michael Saboff  <msaboff@apple.com>
+
+        Refactor YARR Stack Overflow Checks
+        https://bugs.webkit.org/show_bug.cgi?id=209435
+        rdar://problem/58988252
+
+        Reviewed by Mark Lam.
+
+        Added a new test and removed a now obsolete test.
+
+        * stress/regexp-compile-oom.js: Removed because the test is no longer valid.
+        Previously when therer where different stack check mechanisims we failed different.
+        This test was based on the different failure modes.  With these changes, most of
+        the contain subtests no longer throw as this test expects.
+        * stress/regexp-huge-oom.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2020-03-26  Keith Miller  <keith_miller@apple.com>
+
+        TypedArrays should more gracefully handle OOM during slowDownAndWasteMemory
+        https://bugs.webkit.org/show_bug.cgi?id=209611
+
+        Reviewed by Tadeu Zagallo.
+
+        * stress/typed-array-oom-in-buffer-accessor.js: Added.
+        (try.foo):
+
+2020-03-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed, reimport test262 once more to make bot green.
+
+        * test262/expectations.yaml:
+        * test262/harness/assert.js:
+        * test262/harness/propertyHelper.js:
+        * test262/latest-changes-summary.txt:
+        * test262/test/built-ins/JSON/stringify/replacer-function-stack-overflow.js: Removed.
+        * test262/test/built-ins/JSON/stringify/value-tojson-stack-overflow.js: Removed.
+        * test262/test/built-ins/NativeErrors/AggregateError/newtarget-is-undefined.js: Added.
+        * test262/test/built-ins/RegExp/prototype/Symbol.replace/poisoned-stdlib.js:
+        * test262/test/harness/assert-samevalue-zeros.js:
+        * test262/test/language/expressions/class/elements/private-field-after-optional-chain.js: Added.
+        * test262/test/language/statements/class/elements/private-field-after-optional-chain.js: Added.
+        * test262/test262-Revision.txt:
+
+2020-03-25  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        RegExp.prototype[@@replace] relies on globals and doesn't perform ToLength
+        https://bugs.webkit.org/show_bug.cgi?id=173867
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2020-03-25  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Invalid numeric and named references should be early syntax errors
+        https://bugs.webkit.org/show_bug.cgi?id=178175
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 44 test cases as passing.
+
+2020-03-25  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        \b escapes inside character classes should be valid in Unicode patterns
+        https://bugs.webkit.org/show_bug.cgi?id=209528
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2020-03-24  Tadeu Zagallo  <tzagallo@apple.com>
+
+        LLIntGenerator must link switch jumps to otherwise redundant labels
+        https://bugs.webkit.org/show_bug.cgi?id=209333
+        <rdar://problem/60827987>
+
+        Reviewed by Saam Barati.
+
+        * wasm/stress/terminal-jump-switch-target.js: Added.
+
+2020-03-24  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Update test262 to commit dfc7ecc6785e
+        https://bugs.webkit.org/show_bug.cgi?id=209449
+
+        Unreviewed test gardening.
+
+        * test262/expectations.yaml:
+        * test262/harness/propertyHelper.js:
+        * test262/latest-changes-summary.txt:
+        * test262/test/*: Updated.
+        * test262/test262-Revision.txt:
+
+2020-03-24  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Update test262 to commit 79146e5cf48d
+        https://bugs.webkit.org/show_bug.cgi?id=209449
+
+        Reviewed by Keith Miller.
+
+        * test262/config.yaml: Add 3 tests that timeout.
+        * test262/expectations.yaml:
+        * test262/latest-changes-summary.txt:
+        * test262/test/*: Updated.
+        * test262/test262-Revision.txt:
+
+2020-03-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Caller of Delete IC should emit write-barrier onto owner
+        https://bugs.webkit.org/show_bug.cgi?id=209392
+        <rdar://problem/60683173>
+
+        Reviewed by Saam Barati.
+
+        * stress/delete-ic-requires-write-barrier.js: Added.
+        (foo):
+
+2020-03-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG OSR exit cannot find StructureStubInfo for put_by_val if CodeBlock is once converved from Baseline to LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=209327
+        <rdar://problem/60631061>
+
+        Reviewed by Saam Barati.
+
+        * stress/osr-exit-attempts-to-find-stubinfo-which-is-cleared-by-previous-baseline-to-llint-conversion.js: Added.
+        (setter):
+        (foo):
+
+2020-03-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Catch parameters must not be lexically redeclared
+        https://bugs.webkit.org/show_bug.cgi?id=208976
+
+        Reviewed by Keith Miller.
+
+        * test262/expectations.yaml:
+        Mark four test cases as passing.
+
+2020-03-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        hasObservableSideEffectsForRegExpSplit doesn't check for @@match override
+        https://bugs.webkit.org/show_bug.cgi?id=209363
+
+        Reviewed by Michael Saboff.
+
+        * test262/expectations.yaml:
+        Mark two test cases as passing.
+
+2020-03-20  Ross Kirsling  <ross.kirsling@sony.com>
+
+        RegExp.prototype[@@replace] doesn't coerce result index to integer
+        https://bugs.webkit.org/show_bug.cgi?id=209323
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        Mark six test cases as passing.
+
+2020-03-19  Tomas Popela  <tpopela@redhat.com>
+
+        [JSC][BigEndians] Several JSC stress tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=194007
+
+        Reviewed by Michael Catanzaro.
+
+        Adapt the DataView tests to be able to pass on little endian as well
+        as the big endian hardware. Do so by introducing method that determine
+        the endianess and based on its value it saves the expected results in
+        the right format.
+
+        * stress/dataview-get-cse.js:
+        (getIsLittleEndian):
+        (adjustForEndianess):
+        (test3.foo):
+        (test3):
+        * stress/dataview-jit-get.js:
+        (getIsLittleEndian):
+        (test1.adjustForEndianess):
+        (test1):
+        (test2.adjustForEndianess):
+        (test2):
+        (test3.adjustForEndianess):
+        (test3):
+        (adjustForEndianessUint32):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        * stress/dataview-jit-neuter.js:
+        (getIsLittleEndian):
+        (adjustForEndianess):
+        (test):
+        (test2):
+        * stress/dataview-jit-set-nan.js:
+        (getIsLittleEndian):
+        (adjustForEndianessFloat32):
+        (test):
+        * stress/dataview-jit-set.js:
+        (getIsLittleEndian):
+        (readHex):
+        (adjustForEndianessUint16):
+        (test):
+        (test2):
+        (adjustForEndianessUint32):
+        (test3):
+        (test4):
+        (adjustForEndianessFloat32):
+        (test5):
+        (adjustForEndianessFloat64):
+        (test6):
+        (isLittleEndian): Deleted.
+
+2020-03-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Add a way to mark a rejected promise as handled
+        https://bugs.webkit.org/show_bug.cgi?id=209241
+
+        Reviewed by Michael Saboff.
+
+        * stress/reject-as-handled.js: Added.
+        (shouldBe):
+        (set new):
+
+2020-03-16  Keith Miller  <keith_miller@apple.com>
+
+        JavaScript identifier grammar supports unescaped astral symbols, but JSC doesn’t
+        https://bugs.webkit.org/show_bug.cgi?id=208998
+
+        Reviewed by Michael Saboff.
+
+        * stress/unicode-identifiers-with-surrogate-pairs.js: Added.
+        (let.c.of.chars.eval.foo):
+        (throwsSyntaxError):
+        (let.c.of.continueChars.throwsSyntaxError.foo):
+
+2020-03-13  Saam Barati  <sbarati@apple.com>
+
+        skip wasm/function-tests/grow-memory-cause-gc.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=209069
+        <rdar://problem/59954558>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/grow-memory-cause-gc.js:
+
+2020-03-13  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Bound functions should pass correct NewTarget value
+        https://bugs.webkit.org/show_bug.cgi?id=209057
+
+        Reviewed by Keith Miller.
+
+        * test262/expectations.yaml: Mark 4 test cases as passing.
+
+2020-03-11  Keith Miller  <keith_miller@apple.com>
+
+        Test262-runner should always consider crashes as new failures
+        https://bugs.webkit.org/show_bug.cgi?id=208943
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+
+2020-03-11  Keith Miller  <keith_miller@apple.com>
+
+        Throws incorrectly a syntax error when declaring a top level catch variable the same as a parameter
+        https://bugs.webkit.org/show_bug.cgi?id=189914
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/es6/globalParamCatchNewTargetSyntaxError.baseline-jsc:
+        * stress/catch-destructuring-shadow-lexical-const-variable-global.js: Added.
+        (catch):
+        * stress/catch-destructuring-shadow-lexical-variable-class.js: Added.
+        (Foo):
+        (Bar):
+        (Baz):
+        * stress/catch-destructuring-shadow-lexical-variable-function.js: Added.
+        (foo):
+        (bar):
+        * stress/catch-destructuring-shadow-lexical-variable-global.js: Added.
+        (catch):
+        * stress/catch-destructuring-shadow-var-global.js: Added.
+        (catch):
+        * test262/expectations.yaml:
+
+2020-03-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Re-import test262 to acquire DST fix
+        https://bugs.webkit.org/show_bug.cgi?id=208901
+
+        Reviewed by Don Olmstead.
+
+        * test262/latest-changes-summary.txt:
+        * test262/test/built-ins/AggregateError/newtarget-proto-fallback.js:
+        * test262/test/built-ins/Array/prototype/filter/create-proto-from-ctor-realm-array.js:
+        * test262/test/built-ins/Array/prototype/indexOf/15.4.4.14-4-4.js:
+        * test262/test/built-ins/Date/parse/without-utc-offset.js:
+        * test262/test262-Revision.txt:
+
 2020-03-10  Paulo Matos  <pmatos@igalia.com>
 
         JSC 32bits is failing on new test stress/numberingSystemsForLocale-cached-strings-should-be-immortal-and-safe-for-concurrent-access.js

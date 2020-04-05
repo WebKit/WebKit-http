@@ -370,11 +370,6 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     CaptureDevicesChanged()
 #endif
 
-#if ENABLE(WEB_RTC) && USE(LIBWEBRTC)
-    EnableEnumeratingAllNetworkInterfaces()
-    DisableEnumeratingAllNetworkInterfaces()
-#endif
-
     StopAllMediaPlayback();
     SuspendAllMediaPlayback();
     ResumeAllMediaPlayback();
@@ -447,7 +442,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     SetTextAsync(String text)
 
     InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, struct WebKit::InsertTextOptions options)
-    InsertDictatedTextAsync(String text, struct WebKit::EditingRange replacementRange, Vector<WebCore::DictationAlternative> dictationAlternatives, bool registerUndoGroup)
+    InsertDictatedTextAsync(String text, struct WebKit::EditingRange replacementRange, Vector<WebCore::DictationAlternative> dictationAlternatives, struct WebKit::InsertTextOptions options)
 
     HasMarkedText() -> (bool hasMarkedText) Async
     GetMarkedRangeAsync(WebKit::CallbackID callbackID)
@@ -466,6 +461,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     SetAlwaysShowsVerticalScroller(bool alwaysShowsVerticalScroller)
 
     SetMinimumSizeForAutoLayout(WebCore::IntSize size)
+    SetSizeToContentAutoSizeMaximumSize(WebCore::IntSize size)
     SetAutoSizingShouldExpandToViewHeight(bool shouldExpand)
 
     SetViewportSizeForCSSViewportUnits(Optional<WebCore::IntSize> viewportSize)
@@ -498,13 +494,15 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
     HandleAcceptedCandidate(struct WebCore::TextCheckingResult acceptedCandidate)
 
-    SetUseSystemAppearance(bool useSystemAppearance);
+    SetUseSystemAppearance(bool useSystemAppearance)
 
-    SetHeaderBannerHeightForTesting(int height);
-    SetFooterBannerHeightForTesting(int height);
+    SetHeaderBannerHeightForTesting(int height)
+    SetFooterBannerHeightForTesting(int height)
+
+    DidEndMagnificationGesture()
 #endif
 
-    EffectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel);
+    EffectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel)
 
 #if PLATFORM(GTK)
     ThemeDidChange(String themeName)
@@ -582,8 +580,8 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     WasLoadedWithDataTransferFromPrevalentResource()
-    ClearPrevalentDomains()
-    GetPrevalentDomains() -> (Vector<WebCore::RegistrableDomain> domains) Async
+    ClearLoadedThirdPartyDomains()
+    LoadedThirdPartyDomains() -> (Vector<WebCore::RegistrableDomain> domains) Async
 #endif
 
 #if USE(SYSTEM_PREVIEW)
@@ -600,6 +598,8 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
     SetOverriddenMediaType(String mediaType)
     GetProcessDisplayName() -> (String displayName) Async
+
+    SetShouldFireResizeEvents(bool shouldFireResizeEvents)
 
     SetHasResourceLoadClient(bool has)
     SetIsNavigatingToAppBoundDomainTesting(bool isNavigatingToAppBoundDomain) -> () Async

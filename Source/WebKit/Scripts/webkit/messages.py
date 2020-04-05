@@ -204,6 +204,7 @@ def forward_declarations_for_namespace(namespace, kind_and_types):
 def types_that_cannot_be_forward_declared():
     return frozenset([
         'MachSendRight',
+        'MediaTime',
         'String',
         'WebCore::ColorSpace',
         'WebCore::DocumentIdentifier',
@@ -221,6 +222,7 @@ def types_that_cannot_be_forward_declared():
         'WebCore::ServiceWorkerOrClientData',
         'WebCore::ServiceWorkerOrClientIdentifier',
         'WebCore::ServiceWorkerRegistrationIdentifier',
+        'WebCore::SleepDisablerIdentifier',
         'WebCore::SWServerConnectionIdentifier',
         'WebKit::ActivityStateChangeID',
         'WebKit::AudioMediaStreamTrackRendererIdentifier',
@@ -279,6 +281,7 @@ def forward_declarations_and_headers(receiver):
 
     non_template_wtf_types = frozenset([
         'MachSendRight',
+        'MediaType',
         'String',
     ])
 
@@ -332,6 +335,7 @@ def forward_declarations_and_headers_for_replies(receiver):
 
     non_template_wtf_types = frozenset([
         'MachSendRight',
+        'MediaTime',
         'String',
     ])
 
@@ -562,6 +566,7 @@ def headers_for_type(type):
         'JSC::MessageSource': ['<JavaScriptCore/ConsoleTypes.h>'],
         'Inspector::InspectorTargetType': ['<JavaScriptCore/InspectorTarget.h>'],
         'Inspector::FrontendChannel::ConnectionType': ['<JavaScriptCore/InspectorFrontendChannel.h>'],
+        'MediaTime': ['<wtf/MediaTime.h>'],
         'MonotonicTime': ['<wtf/MonotonicTime.h>'],
         'Seconds': ['<wtf/Seconds.h>'],
         'WallTime': ['<wtf/WallTime.h>'],
@@ -623,6 +628,7 @@ def headers_for_type(type):
         'WebCore::TextCheckingType': ['<WebCore/TextChecking.h>'],
         'WebCore::TextIndicatorData': ['<WebCore/TextIndicator.h>'],
         'WebCore::ThirdPartyCookieBlockingMode': ['<WebCore/NetworkStorageSession.h>'],
+        'WebCore::SameSiteStrictEnforcementEnabled': ['<WebCore/NetworkStorageSession.h>'],
         'WebCore::FirstPartyWebsiteDataRemovalMode': ['<WebCore/NetworkStorageSession.h>'],
         'WebCore::UsedLegacyTLS': ['<WebCore/ResourceResponseBase.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],

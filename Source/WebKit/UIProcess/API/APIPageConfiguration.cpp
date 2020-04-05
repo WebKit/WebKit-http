@@ -68,7 +68,6 @@ Ref<PageConfiguration> PageConfiguration::copy() const
     copy->m_userContentController = this->m_userContentController;
     copy->m_pageGroup = this->m_pageGroup;
     copy->m_preferences = this->m_preferences;
-    copy->m_preferenceValues = this->m_preferenceValues;
     copy->m_relatedPage = this->m_relatedPage;
     copy->m_visitedLinkStore = this->m_visitedLinkStore;
     copy->m_websiteDataStore = this->m_websiteDataStore;
@@ -94,6 +93,9 @@ Ref<PageConfiguration> PageConfiguration::copy() const
     copy->m_webViewCategory = this->m_webViewCategory;
 
     copy->m_processDisplayName = this->m_processDisplayName;
+    copy->m_ignoresAppBoundDomains = this->m_ignoresAppBoundDomains;
+    copy->m_loadsSubresources = this->m_loadsSubresources;
+    copy->m_loadsFromNetwork = this->m_loadsFromNetwork;
 
     return copy;
 }

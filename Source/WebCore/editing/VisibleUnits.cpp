@@ -33,6 +33,7 @@
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
+#include "Range.h"
 #include "RenderBlockFlow.h"
 #include "RenderObject.h"
 #include "RenderedPosition.h"
@@ -488,7 +489,7 @@ static void appendRepeatedCharacter(Vector<UChar, 1024>& buffer, UChar character
 unsigned suffixLengthForRange(const Range& forwardsScanRange, Vector<UChar, 1024>& string)
 {
     unsigned suffixLength = 0;
-    TextIterator forwardsIterator(&forwardsScanRange);
+    TextIterator forwardsIterator(forwardsScanRange);
     while (!forwardsIterator.atEnd()) {
         StringView text = forwardsIterator.text();
         unsigned i = endOfFirstWordBoundaryContext(text);
@@ -608,7 +609,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
         result = forwardsScanRange->setStart(start);
         if (result.hasException())
             return { };
-        for (TextIterator forwardsIterator(forwardsScanRange.ptr()); !forwardsIterator.atEnd(); forwardsIterator.advance())
+        for (TextIterator forwardsIterator(forwardsScanRange); !forwardsIterator.atEnd(); forwardsIterator.advance())
             append(string, forwardsIterator.text());
         suffixLength = string.size();
     } else if (requiresContextForWordBoundary(c.characterBefore())) {
@@ -635,7 +636,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
     if (!next)
         return VisiblePosition(it.atEnd() ? searchRange->startPosition() : pos, DOWNSTREAM);
 
-    Node& node = it.atEnd() ? searchRange->startContainer() : it.range()->startContainer();
+    auto& node = it.atEnd() ? searchRange->startContainer() : it.range().start.container.get();
     if ((!suffixLength && node.isTextNode() && static_cast<int>(next) <= node.maxCharacterOffset()) || (node.renderer() && node.renderer()->isBR() && !next)) {
         // The next variable contains a usable index into a text node
         return VisiblePosition(createLegacyEditingPosition(&node, next), DOWNSTREAM);
@@ -646,7 +647,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
     if (next < string.size() - suffixLength)
         charIt.advance(string.size() - suffixLength - next);
     // FIXME: charIt can get out of shadow host.
-    return VisiblePosition(charIt.range()->endPosition(), DOWNSTREAM);
+    return { createLegacyEditingPosition(charIt.range().end), DOWNSTREAM };
 }
 
 static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunction searchFunction)
@@ -673,7 +674,7 @@ static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunc
     searchRange->selectNodeContents(*boundary);
     if (start.deprecatedNode())
         searchRange->setStart(*start.deprecatedNode(), start.deprecatedEditingOffset());
-    TextIterator it(searchRange.ptr(), TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+    TextIterator it(searchRange, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
     unsigned next = forwardSearchForBoundaryWithTextIterator(it, string, prefixLength, searchFunction);
     
     if (it.atEnd() && next == string.size())
@@ -682,20 +683,18 @@ static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunc
         // Use the character iterator to translate the next value into a DOM position.
         CharacterIterator charIt(searchRange, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
         charIt.advance(next - prefixLength - 1);
-        RefPtr<Range> characterRange = charIt.range();
-        pos = characterRange->endPosition();
+        auto characterRange = charIt.range();
+        pos = createLegacyEditingPosition(characterRange.end);
         
         if (charIt.text()[0] == '\n') {
             // FIXME: workaround for collapsed range (where only start position is correct) emitted for some emitted newlines (see rdar://5192593)
-            VisiblePosition visPos = VisiblePosition(pos);
-            if (visPos == VisiblePosition(characterRange->startPosition())) {
+            if (VisiblePosition(pos) == VisiblePosition(createLegacyEditingPosition(characterRange.start))) {
                 charIt.advance(1);
-                pos = charIt.range()->startPosition();
+                pos = createLegacyEditingPosition(charIt.range().start);
             }
         }
     }
 
-    // generate VisiblePosition, use UPSTREAM affinity if possible
     return VisiblePosition(pos, VP_UPSTREAM_IF_POSSIBLE);
 }
 
@@ -1902,20 +1901,13 @@ RefPtr<Range> enclosingTextUnitOfGranularity(const VisiblePosition& vp, TextGran
     return Range::create(prevBoundary.deepEquivalent().deprecatedNode()->document(), prevBoundary, nextBoundary);
 }
 
-int distanceBetweenPositions(const VisiblePosition& vp, const VisiblePosition& other)
+std::ptrdiff_t distanceBetweenPositions(const VisiblePosition& a, const VisiblePosition& b)
 {
-    if (vp.isNull() || other.isNull())
+    if (a.isNull() || b.isNull())
         return 0;
-
-    bool thisIsStart = (vp < other);
-
-    // Start must come first in the Range constructor.
-    auto range = Range::create(vp.deepEquivalent().deprecatedNode()->document(),
-                                        (thisIsStart ? vp : other),
-                                        (thisIsStart ? other : vp));
-    int distance = TextIterator::rangeLength(range.ptr());
-
-    return (thisIsStart ? -distance : distance);
+    return a < b
+        ? -characterCount({ *makeBoundaryPoint(a), *makeBoundaryPoint(b) })
+        : characterCount({ *makeBoundaryPoint(b), *makeBoundaryPoint(a) });
 }
 
 void charactersAroundPosition(const VisiblePosition& position, UChar32& oneAfter, UChar32& oneBefore, UChar32& twoBefore)
@@ -1942,7 +1934,7 @@ void charactersAroundPosition(const VisiblePosition& position, UChar32& oneAfter
     }
 
     if (startPosition != endPosition) {
-        String characterString = plainText(Range::create(position.deepEquivalent().anchorNode()->document(), startPosition, endPosition).ptr()).replace(noBreakSpace, ' ');
+        String characterString = plainText({ *makeBoundaryPoint(startPosition), *makeBoundaryPoint(endPosition) }).replace(noBreakSpace, ' ');
         for (int i = characterString.length() - 1, index = 0; i >= 0 && index < maxCharacters; --i) {
             if (!index && nextPosition.isNull())
                 index++;

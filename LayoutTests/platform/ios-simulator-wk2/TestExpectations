@@ -28,7 +28,7 @@ webkit.org/b/173861 http/tests/webrtc/filtering-ice-candidate-cross-origin-frame
 
 webkit.org/b/172384 fast/hidpi/hidpi-long-page-with-inset-element.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/175865 quicklook/multi-sheet-numbers-09.html [ Pass Failure ]
+webkit.org/b/175865 quicklook/multi-sheet-numbers-09.html [ Skip ]
 
 webkit.org/b/187699 [ Debug ] fast/forms/submit-change-fragment.html [ Pass Timeout ]
 
@@ -60,8 +60,6 @@ webkit.org/b/196403 imported/w3c/web-platform-tests/mediacapture-record/MediaRec
 webkit.org/b/195341 fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html [ Pass Failure ]
 
 webkit.org/b/186581 [ Debug ] fast/parser/xml-error-adopted.xml [ Pass Timeout ]
-
-webkit.org/b/196944 imported/w3c/web-platform-tests/hr-time/test_cross_frame_start.html [ Pass Failure ]
 
 webkit.org/b/197207 http/wpt/resource-timing/rt-resources-per-frame.html [ Pass Failure ]
 
@@ -99,3 +97,5 @@ webkit.org/b/208036 http/wpt/cache-storage/cache-put-keys.https.any.worker.html 
 webkit.org/b/208837 [ Release ] fast/css-custom-paint/constructor.html [ Pass Timeout ]
 
 webkit.org/b/208840 editing/selection/selection-change-in-mutation-event-by-remove-children.html [ Pass Timeout ]
+
+webkit.org/b/209234 [ Release ] platform/ios/ios/plugin/youtube-flash-plugin-iframe-no-height-or-width.html [ Pass Failure ]

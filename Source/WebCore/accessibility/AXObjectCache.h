@@ -143,7 +143,7 @@ public:
     explicit AXObjectCache(Document&);
     ~AXObjectCache();
 
-    WEBCORE_EXPORT static AXCoreObject* focusedUIElementForPage(const Page*);
+    WEBCORE_EXPORT AXCoreObject* focusedUIElementForPage(const Page*);
 
     // Returns the root object for the entire document.
     WEBCORE_EXPORT AXCoreObject* rootObject();
@@ -349,17 +349,20 @@ public:
     void performDeferredCacheUpdate();
     void deferTextReplacementNotificationForTextControl(HTMLTextFormControlElement&, const String& previousValue);
 
-    RefPtr<Range> rangeMatchesTextNearRange(RefPtr<Range>, const String&);
+    Optional<SimpleRange> rangeMatchesTextNearRange(const SimpleRange&, const String&);
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     WEBCORE_EXPORT static bool isIsolatedTreeEnabled();
 private:
     static bool clientSupportsIsolatedTree();
     AXCoreObject* isolatedTreeRootObject();
-    static AXCoreObject* isolatedTreeFocusedObject(Document&);
+    AXCoreObject* isolatedTreeFocusedObject();
     void setIsolatedTreeFocusedObject(Node*);
     static Ref<AXIsolatedTree> generateIsolatedTree(PageIdentifier, Document&);
-    void updateIsolatedTree(AXCoreObject*, AXNotification);
+    RefPtr<AXIsolatedTree> getOrCreateIsolatedTree() const;
+    void updateIsolatedTree(AXCoreObject&, AXNotification);
+    void updateIsolatedTree(const Vector<std::pair<RefPtr<AXCoreObject>, AXNotification>>&);
+    static void initializeSecondaryAXThread();
 #endif
 
 protected:

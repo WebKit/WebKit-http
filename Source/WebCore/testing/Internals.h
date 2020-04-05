@@ -35,6 +35,7 @@
 #include "OrientationNotifier.h"
 #include "PageConsoleClient.h"
 #include "RealtimeMediaSource.h"
+#include "SleepDisabler.h"
 #include "TextIndicator.h"
 #include <JavaScriptCore/Float32Array.h>
 #include <wtf/Optional.h>
@@ -98,6 +99,7 @@ class SerializedScriptValue;
 class SourceBuffer;
 class StringCallback;
 class StyleSheet;
+class TextTrack;
 class TimeRanges;
 class TypeConversions;
 class UnsuspendableActiveDOMObject;
@@ -209,6 +211,7 @@ public:
     ExceptionOr<unsigned> lastSpatialNavigationCandidateCount() const;
 
     // CSS Animation testing.
+    bool animationWithIdExists(const String&) const;
     unsigned numberOfActiveAnimations() const;
     ExceptionOr<bool> animationsAreSuspended() const;
     ExceptionOr<void> suspendAnimations() const;
@@ -293,12 +296,12 @@ public:
 
     ExceptionOr<void> invalidateControlTints();
 
-    RefPtr<Range> rangeFromLocationAndLength(Element& scope, int rangeLocation, int rangeLength);
+    RefPtr<Range> rangeFromLocationAndLength(Element& scope, unsigned rangeLocation, unsigned rangeLength);
     unsigned locationFromRange(Element& scope, const Range&);
     unsigned lengthFromRange(Element& scope, const Range&);
     String rangeAsText(const Range&);
     String rangeAsTextUsingBackwardsTextIterator(const Range&);
-    Ref<Range> subrange(Range&, int rangeLocation, int rangeLength);
+    Ref<Range> subrange(Range&, unsigned rangeLocation, unsigned rangeLength);
     ExceptionOr<RefPtr<Range>> rangeForDictionaryLookupAtLocation(int x, int y);
     RefPtr<Range> rangeOfStringNearLocation(const Range&, const String&, unsigned);
 
@@ -536,7 +539,7 @@ public:
     void forceReload(bool endToEnd);
     void reloadExpiredOnly();
 
-    void enableAutoSizeMode(bool enabled, int width, int height);
+    void enableFixedWidthAutoSizeMode(bool enabled, int width, int height);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void initializeMockCDM();
@@ -594,6 +597,7 @@ public:
     ExceptionOr<void> setCaptionDisplayMode(const String&);
 #if ENABLE(VIDEO_TRACK)
     RefPtr<TextTrackCueGeneric> createGenericCue(double startTime, double endTime, String text);
+    ExceptionOr<String> textTrackBCP47Language(TextTrack&);
 #endif
 
 #if ENABLE(VIDEO)
@@ -654,6 +658,8 @@ public:
 
     void simulateSystemSleep() const;
     void simulateSystemWake() const;
+
+    unsigned inflightBeaconsCount() const;
 
     enum class PageOverlayType { View, Document };
     ExceptionOr<Ref<MockPageOverlay>> installMockPageOverlay(PageOverlayType);
@@ -778,7 +784,7 @@ public:
 #if ENABLE(SERVICE_WORKER)
     using HasRegistrationPromise = DOMPromiseDeferred<IDLBoolean>;
     void hasServiceWorkerRegistration(const String& clientURL, HasRegistrationPromise&&);
-    void terminateServiceWorker(ServiceWorker&);
+    void terminateServiceWorker(ServiceWorker&, DOMPromiseDeferred<void>&&);
     void isServiceWorkerRunning(ServiceWorker&, DOMPromiseDeferred<IDLBoolean>&&);
 #endif
 
@@ -843,11 +849,13 @@ public:
         String name;
         String value;
         String domain;
+        String path;
         // Expiration dates are expressed as milliseconds since the UNIX epoch.
         double expires { 0 };
         bool isHttpOnly { false };
         bool isSecure { false };
         bool isSession { false };
+        bool isSameSiteNone { false };
         bool isSameSiteLax { false };
         bool isSameSiteStrict { false };
 
@@ -855,14 +863,16 @@ public:
             : name(cookie.name)
             , value(cookie.value)
             , domain(cookie.domain)
+            , path(cookie.path)
             , expires(cookie.expires.valueOr(0))
             , isHttpOnly(cookie.httpOnly)
             , isSecure(cookie.secure)
             , isSession(cookie.session)
+            , isSameSiteNone(cookie.sameSite == Cookie::SameSitePolicy::None)
             , isSameSiteLax(cookie.sameSite == Cookie::SameSitePolicy::Lax)
             , isSameSiteStrict(cookie.sameSite == Cookie::SameSitePolicy::Strict)
         {
-            ASSERT(!(isSameSiteLax && isSameSiteStrict));
+            ASSERT(!(isSameSiteLax && isSameSiteStrict) && !(isSameSiteLax && isSameSiteNone) && !(isSameSiteStrict && isSameSiteNone));
         }
 
         CookieData()
@@ -942,12 +952,16 @@ public:
 
     String mediaMIMETypeForExtension(const String& extension);
 
-    String getUTIFromMIMEType(const String& mimeType);
     String getUTIFromTag(const String& tagClass, const String& tag, const String& conformingToUTI);
 
     bool supportsPictureInPicture();
 
     String focusRingColor();
+
+    bool isRemoteUIAppForAccessibility();
+
+    unsigned createSleepDisabler(const String& reason, bool display);
+    bool destroySleepDisabler(unsigned identifier);
 
 private:
     explicit Internals(Document&);
@@ -970,6 +984,8 @@ private:
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
     RefPtr<CacheStorageConnection> m_cacheStorageConnection;
+
+    HashMap<unsigned, std::unique_ptr<WebCore::SleepDisabler>> m_sleepDisablers;
 };
 
 } // namespace WebCore

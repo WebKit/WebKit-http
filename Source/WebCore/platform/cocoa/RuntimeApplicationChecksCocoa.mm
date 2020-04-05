@@ -75,24 +75,6 @@ void clearApplicationBundleIdentifierTestingOverride()
 #endif
 }
 
-static Optional<uint32_t>& applicationSDKVersionOverride()
-{
-    static NeverDestroyed<Optional<uint32_t>> version;
-    return version;
-}
-
-void setApplicationSDKVersion(uint32_t version)
-{
-    applicationSDKVersionOverride() = version;
-}
-
-uint32_t applicationSDKVersion()
-{
-    if (applicationSDKVersionOverride())
-        return *applicationSDKVersionOverride();
-    return dyld_get_program_sdk_version();
-}
-
 bool isInWebProcess()
 {
     static bool mainBundleIsWebProcess = [[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.WebKit.WebContent"];
@@ -267,6 +249,12 @@ bool IOSApplication::isDumpRenderTree()
     return isDumpRenderTree;
 }
 
+bool IOSApplication::isJesusCalling()
+{
+    static bool isJesusCalling = applicationBundleIsEqualTo("com.thomasnelson.jesuscalling"_s);
+    return isJesusCalling;
+}
+
 bool IOSApplication::isMobileStore()
 {
     static bool isMobileStore = applicationBundleIsEqualTo("com.apple.MobileStore"_s);
@@ -355,6 +343,24 @@ bool IOSApplication::isMiniBrowser()
 {
     static bool isMiniBrowser = applicationBundleIsEqualTo("org.webkit.MiniBrowser"_s);
     return isMiniBrowser;
+}
+
+bool IOSApplication::isNews()
+{
+    static bool isNews = applicationBundleIsEqualTo("com.apple.news"_s);
+    return isNews;
+}
+
+bool IOSApplication::isStocks()
+{
+    static bool isStocks = applicationBundleIsEqualTo("com.apple.stocks"_s);
+    return isStocks;
+}
+
+bool IOSApplication::isFeedly()
+{
+    static bool isFeedly = applicationBundleIsEqualTo("com.devhd.feedly"_s);
+    return isFeedly;
 }
 
 #endif

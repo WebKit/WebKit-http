@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayPrototype.h"
+#include "CacheableIdentifierInlines.h"
 #include "DFGAbstractValue.h"
 #include "DFGGraph.h"
 #include "JSCInlines.h"
@@ -186,7 +187,7 @@ static bool canBecomeGetArrayLength(Graph& graph, Node* node)
 {
     if (node->op() != GetById)
         return false;
-    auto uid = graph.identifiers()[node->identifierNumber()];
+    auto uid = node->cacheableIdentifier().uid();
     return uid == graph.m_vm.propertyNames->length.impl();
 }
 
@@ -510,7 +511,8 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
         
     case Array::SlowPutArrayStorage:
         switch (arrayClass()) {
-        case Array::OriginalArray: {
+        case Array::OriginalArray:
+        case Array::OriginalCopyOnWriteArray: {
             CRASH();
             return false;
         }
@@ -529,8 +531,26 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
             }
             return true;
         }
-        
-        default: {
+
+        // Array::OriginalNonArray can be shown when the value is a TypedArray with original structure.
+        // But here, we already filtered TypedArrays. So, just handle it like a NonArray.
+        case Array::NonArray:
+        case Array::OriginalNonArray: {
+            if (arrayModesAlreadyChecked(value.m_arrayModes, asArrayModesIgnoringTypedArrays(NonArrayWithArrayStorage) | asArrayModesIgnoringTypedArrays(NonArrayWithSlowPutArrayStorage)))
+                return true;
+            if (value.m_structure.isTop())
+                return false;
+            for (unsigned i = value.m_structure.size(); i--;) {
+                RegisteredStructure structure = value.m_structure[i];
+                if (!hasAnyArrayStorage(structure->indexingType()))
+                    return false;
+                if (structure->indexingType() & IsArray)
+                    return false;
+            }
+            return true;
+        }
+
+        case Array::PossiblyArray: {
             if (arrayModesAlreadyChecked(value.m_arrayModes, asArrayModesIgnoringTypedArrays(NonArrayWithArrayStorage) | asArrayModesIgnoringTypedArrays(ArrayWithArrayStorage) | asArrayModesIgnoringTypedArrays(NonArrayWithSlowPutArrayStorage) | asArrayModesIgnoringTypedArrays(ArrayWithSlowPutArrayStorage)))
                 return true;
             if (value.m_structure.isTop())
@@ -541,7 +561,8 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
                     return false;
             }
             return true;
-        } }
+        }
+        }
         
     case Array::DirectArguments:
         return speculationChecked(value.m_type, SpecDirectArguments);

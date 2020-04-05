@@ -927,7 +927,7 @@ static JSValueRef callAfterScrollingCompletes(JSContextRef context, JSObjectRef 
         return JSValueMakeUndefined(context);
 
     WebCore::Frame* coreFrame = core(static_cast<WebFrame*>(frame2.get()));
-    WebCoreTestSupport::setTestCallbackAndStartNotificationTimer(*coreFrame, globalContext, jsCallbackFunction);
+    WebCoreTestSupport::setWheelEventMonitorTestCallbackAndStartMonitoring(false, false, *coreFrame, globalContext, jsCallbackFunction);
 
     return JSValueMakeUndefined(context);
 }

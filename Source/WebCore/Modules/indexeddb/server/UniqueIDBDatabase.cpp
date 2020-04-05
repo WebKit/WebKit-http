@@ -1124,9 +1124,9 @@ static void errorOpenDBRequestForUserDelete(ServerOpenDBRequest& request)
         request.connection().didDeleteDatabase(result);
 }
 
-void UniqueIDBDatabase::immediateCloseForUserDelete()
+void UniqueIDBDatabase::immediateClose()
 {
-    LOG(IndexedDB, "UniqueIDBDatabase::immediateCloseForUserDelete");
+    LOG(IndexedDB, "UniqueIDBDatabase::immediateClose");
 
     // Error out all transactions.
     // Pending transactions must be cleared before in-progress transactions,
@@ -1188,6 +1188,18 @@ void UniqueIDBDatabase::close()
         m_backingStore->close();
         m_backingStore = nullptr;
     }
+}
+
+bool UniqueIDBDatabase::tryClose()
+{
+    if (m_backingStore && m_backingStore->isEphemeral())
+        return false;
+
+    if (hasAnyOpenConnections() || m_versionChangeDatabaseConnection)
+        return false;
+
+    close();
+    return true;
 }
 
 RefPtr<ServerOpenDBRequest> UniqueIDBDatabase::takeNextRunnableRequest(RequestType requestType)

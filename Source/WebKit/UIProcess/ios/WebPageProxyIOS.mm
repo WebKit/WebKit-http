@@ -404,9 +404,6 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
         m_hitRenderTreeSizeThreshold = true;
         didReachLayoutMilestone(WebCore::ReachedSessionRestorationRenderTreeSizeThreshold);
     }
-
-    if (auto arguments = std::exchange(m_deferredElementDidFocusArguments, nullptr))
-        pageClient().elementDidFocus(arguments->information, arguments->userIsInteracting, arguments->blurPreviousNode, arguments->activityStateChanges, arguments->userData.get());
 }
 
 bool WebPageProxy::updateLayoutViewportParameters(const WebKit::RemoteLayerTreeTransaction& layerTreeTransaction)
@@ -667,13 +664,14 @@ void WebPageProxy::performActionOnElement(uint32_t action)
 void WebPageProxy::saveImageToLibrary(const SharedMemory::Handle& imageHandle, uint64_t imageSize)
 {
     MESSAGE_CHECK(!imageHandle.isNull());
-    MESSAGE_CHECK(imageSize);
+    // SharedMemory::Handle::size() is rounded up to the nearest page.
+    MESSAGE_CHECK(imageSize && imageSize <= imageHandle.size());
 
     auto sharedMemoryBuffer = SharedMemory::map(imageHandle, SharedMemory::Protection::ReadOnly);
     if (!sharedMemoryBuffer)
         return;
 
-    auto buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), imageSize);
+    auto buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), static_cast<size_t>(imageSize));
     pageClient().saveImageToLibrary(WTFMove(buffer));
 }
 
@@ -986,19 +984,12 @@ void WebPageProxy::elementDidFocus(const FocusedElementInformation& information,
     m_pendingInputModeChange = WTF::nullopt;
 
     API::Object* userDataObject = process().transformHandlesToObjects(userData.object()).get();
-    if (m_editorState.isMissingPostLayoutData) {
-        // FIXME: We should try to eliminate m_deferredElementDidFocusArguments altogether, in favor of only deferring actions that are dependent on post-layout editor state information.
-        m_deferredElementDidFocusArguments = makeUnique<ElementDidFocusArguments>(ElementDidFocusArguments { information, userIsInteracting, blurPreviousNode, activityStateChanges, userDataObject });
-        return;
-    }
-
     pageClient().elementDidFocus(information, userIsInteracting, blurPreviousNode, activityStateChanges, userDataObject);
 }
 
 void WebPageProxy::elementDidBlur()
 {
     m_pendingInputModeChange = WTF::nullopt;
-    m_deferredElementDidFocusArguments = nullptr;
     pageClient().elementDidBlur();
 }
 
@@ -1145,8 +1136,7 @@ uint32_t WebPageProxy::computePagesForPrintingAndDrawToPDF(FrameIdentifier frame
 
     uint32_t pageCount = 0;
     auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivity("WebPageProxy::computePagesForPrintingAndDrawToPDF"_s));
-    using Message = Messages::WebPage::ComputePagesForPrintingAndDrawToPDF;
-    process().sendSync(Message(frameID, printInfo, callbackID), Message::Reply(pageCount), m_webPageID, Seconds::infinity());
+    process().sendSync(Messages::WebPage::ComputePagesForPrintingAndDrawToPDF(frameID, printInfo, callbackID), Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::Reply(pageCount), m_webPageID, Seconds::infinity());
     return pageCount;
 }
 
@@ -1529,13 +1519,16 @@ WebContentMode WebPageProxy::effectiveContentModeAfterAdjustingPolicies(API::Web
     return WebContentMode::Desktop;
 }
 
-bool WebPageProxy::shouldUseForegroundPriorityForClientNavigation() const
+bool WebPageProxy::shouldForceForegroundPriorityForClientNavigation() const
 {
     // The client may request that we do client navigations at foreground priority, even if the
     // view is not visible, as long as the application is foreground.
     if (!configuration().clientNavigationsRunAtForegroundPriority())
         return false;
 
+    // This setting only applies to background views. There is no need to force foreground
+    // priority for foreground views since they get foreground priority by virtue of being
+    // visible.
     if (isViewVisible())
         return false;
 
@@ -1549,6 +1542,21 @@ void WebPageProxy::setShouldRevealCurrentSelectionAfterInsertion(bool shouldReve
         send(Messages::WebPage::SetShouldRevealCurrentSelectionAfterInsertion(shouldRevealCurrentSelectionAfterInsertion));
 }
 
+void WebPageProxy::willOpenAppLink()
+{
+    if (m_openingAppLinkActivity && m_openingAppLinkActivity->isValid())
+        return;
+
+    // We take a background activity for 25 seconds when switching to another app via an app link in case the WebPage
+    // needs to run script to pass information to the native app.
+    // We chose 25 seconds because the system only gives us 30 seconds and we don't want to get too close to that limit
+    // to avoid assertion invalidation (or even termination).
+    m_openingAppLinkActivity = process().throttler().backgroundActivity("Opening AppLink"_s).moveToUniquePtr();
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 25 * NSEC_PER_SEC), dispatch_get_main_queue(), [weakThis = makeWeakPtr(*this)] {
+        if (weakThis)
+            weakThis->m_openingAppLinkActivity = nullptr;
+    });
+}
 
 #if PLATFORM(IOS)
 void WebPageProxy::grantAccessToAssetServices()
@@ -1564,6 +1572,11 @@ void WebPageProxy::revokeAccessToAssetServices()
     process().send(Messages::WebProcess::RevokeAccessToAssetServices(), 0);
 }
 #endif
+
+void WebPageProxy::willPerformPasteCommand()
+{
+    grantAccessToCurrentPasteboardData(UIPasteboardNameGeneral);
+}
 
 } // namespace WebKit
 

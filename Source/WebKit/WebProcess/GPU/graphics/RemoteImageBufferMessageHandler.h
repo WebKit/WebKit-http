@@ -27,6 +27,7 @@
 
 #if ENABLE(GPU_PROCESS)
 
+#include "ImageBufferBackendHandle.h"
 #include "ImageBufferFlushIdentifier.h"
 #include "ImageBufferIdentifier.h"
 #include <WebCore/ColorSpace.h>
@@ -66,8 +67,8 @@ protected:
     void waitForCommitImageBufferFlushContext();
 
     // Messages to be sent. See RemoteRenderingBackendProxy.messages.in.
-    void flushDrawingContext(const WebCore::DisplayList::DisplayList&);
-    void flushDrawingContextAndWaitCommit(const WebCore::DisplayList::DisplayList&);
+    void flushDrawingContext(WebCore::DisplayList::DisplayList&);
+    void flushDrawingContextAndWaitCommit(WebCore::DisplayList::DisplayList&);
 
 private:
     WeakPtr<RemoteRenderingBackend> m_remoteRenderingBackend;

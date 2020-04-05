@@ -362,30 +362,38 @@ WI.contentLoaded = function()
     WI.stepIntoAlternateKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Semicolon, WI.debuggerStepInto);
     WI.stepOutAlternateKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift | WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Semicolon, WI.debuggerStepOut);
 
-    WI._settingsKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Comma, WI._handleSettingsKeyboardShortcut);
+    WI.settingsKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Comma, WI._handleSettingsKeyboardShortcut);
 
     WI._togglePreviousDockConfigurationKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, "D", WI._togglePreviousDockConfiguration);
 
-    WI._closeTabBarButton = new WI.ButtonNavigationItem("dock-close", WI.UIString("Close"), "Images/CloseLarge.svg");
-    WI._closeTabBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, WI.close);
-
     let dockingConfigurationNavigationItems = [];
 
-    if (InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Right) && InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Left)) {
+    let supportsDockRight = InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Right);
+    let supportsDockLeft = InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Left);
+    let supportsDockBottom = InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Bottom);
+    let supportsUndocked = InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Undocked);
+
+    if (supportsDockRight || supportsDockLeft || supportsDockBottom) {
+        WI._closeTabBarButton = new WI.ButtonNavigationItem("dock-close", WI.UIString("Close"), "Images/CloseLarge.svg");
+        WI._closeTabBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, WI.close);
+        dockingConfigurationNavigationItems.push(WI._closeTabBarButton);
+    }
+
+    if ((supportsDockRight || supportsDockLeft) && (supportsDockBottom || supportsUndocked)) {
         WI._dockToSideTabBarButton = new WI.ButtonNavigationItem("dock-right", WI.UIString("Dock to side of window"), WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL ? "Images/DockLeft.svg" : "Images/DockRight.svg", 16, 16);
         WI._dockToSideTabBarButton.element.classList.add(WI.Popover.IgnoreAutoDismissClassName);
         WI._dockToSideTabBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL ? WI._dockLeft : WI._dockRight);
         dockingConfigurationNavigationItems.push(WI._dockToSideTabBarButton);
     }
 
-    if (InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Bottom)) {
+    if (supportsDockBottom && (supportsDockRight || supportsDockLeft || supportsUndocked)) {
         WI._dockBottomTabBarButton = new WI.ButtonNavigationItem("dock-bottom", WI.UIString("Dock to bottom of window"), "Images/DockBottom.svg", 16, 16);
         WI._dockBottomTabBarButton.element.classList.add(WI.Popover.IgnoreAutoDismissClassName);
         WI._dockBottomTabBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, WI._dockBottom);
         dockingConfigurationNavigationItems.push(WI._dockBottomTabBarButton);
     }
 
-    if (InspectorFrontendHost.supportsDockSide(WI.DockConfiguration.Undocked)) {
+    if (supportsUndocked && (supportsDockRight || supportsDockLeft || supportsDockBottom)) {
         WI._undockTabBarButton = new WI.ButtonNavigationItem("undock", WI.UIString("Detach into separate window"), "Images/Undock.svg", 16, 16);
         WI._undockTabBarButton.element.classList.add(WI.Popover.IgnoreAutoDismissClassName);
         WI._undockTabBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, WI._undock);
@@ -426,7 +434,6 @@ WI.contentLoaded = function()
     }
 
     WI.tabBar.addNavigationItemBefore(new WI.GroupNavigationItem([
-        WI._closeTabBarButton,
         ...dockingConfigurationNavigationItems,
         ...inspectedPageControlNavigationItems,
     ]));
@@ -466,12 +473,16 @@ WI.contentLoaded = function()
     WI.consoleManager.addEventListener(WI.ConsoleManager.Event.Cleared, WI._updateConsoleTabBarButtons, WI);
     WI._updateConsoleTabBarButtons();
 
-    WI._dockedResizerElement = document.getElementById("docked-resizer");
-    WI._dockedResizerElement.classList.add(WI.Popover.IgnoreAutoDismissClassName);
-    WI._dockedResizerElement.addEventListener("mousedown", WI._handleDockedResizerMouseDown);
+    if (supportsDockRight || supportsDockLeft || supportsDockBottom) {
+        WI._dockedResizerElement = document.getElementById("docked-resizer");
+        WI._dockedResizerElement.classList.add(WI.Popover.IgnoreAutoDismissClassName);
+        WI._dockedResizerElement.addEventListener("mousedown", WI._handleDockedResizerMouseDown);
+    }
 
-    let undockedTitleAreaElement = document.getElementById("undocked-title-area");
-    undockedTitleAreaElement.addEventListener("mousedown", WI._handleUndockedTitleAreaMouseDown);
+    if (supportsUndocked) {
+        let undockedTitleAreaElement = document.getElementById("undocked-title-area");
+        undockedTitleAreaElement.addEventListener("mousedown", WI._handleUndockedTitleAreaMouseDown);
+    }
 
     WI._dockingAvailable = false;
 
@@ -839,6 +850,11 @@ WI.updateDockingAvailability = function(available)
 {
     WI._dockingAvailable = available;
 
+    if (!WI._dockingAvailable) {
+        WI.updateDockedState(WI.DockConfiguration.Undocked);
+        return;
+    }
+
     WI._updateDockNavigationItems();
 };
 
@@ -881,13 +897,28 @@ WI.updateDockedState = function(side)
 
     WI._updateDockNavigationItems();
 
+    WI.tabBar.resetCachedWidths();
+
     if (!WI.dockedConfigurationSupportsSplitContentBrowser() && !WI.doesCurrentTabSupportSplitContentBrowser())
         WI.hideSplitConsole();
+
+    if (side === WI.DockConfiguration.Undocked && WI.Platform.name === "mac") {
+        // When undocking, the first visible focusable element steals focus. Undo this.
+        document.body.addEventListener("focusin", function(event) {
+            let firstFocusableElement = document.querySelector("[tabindex='0']:not(.hidden)");
+            if (firstFocusableElement === event.target) {
+                if (WI.previousFocusElement)
+                    WI.previousFocusElement.focus();
+                else
+                    event.target.blur();
+            }
+        }, {once: true, capture: true});
+    }
 };
 
 WI.resizeDockedFrameMouseDown = function(event)
 {
-    console.assert(WI.dockConfiguration !== WI.DockConfiguration.Undocked);
+    console.assert(WI.dockConfiguration && WI.dockConfiguration !== WI.DockConfiguration.Undocked);
 
     if (event.button !== 0 || event.ctrlKey)
         return;
@@ -1102,7 +1133,7 @@ WI.isShowingSplitConsole = function()
 
 WI.dockedConfigurationSupportsSplitContentBrowser = function()
 {
-    return WI.dockConfiguration !== WI.DockConfiguration.Bottom;
+    return !WI.dockConfiguration || WI.dockConfiguration !== WI.DockConfiguration.Bottom;
 };
 
 WI.doesCurrentTabSupportSplitContentBrowser = function()
@@ -1863,10 +1894,11 @@ WI._togglePreviousDockConfiguration = function(event)
 
 WI._updateDockNavigationItems = function()
 {
-    let docked = WI.dockConfiguration !== WI.DockConfiguration.Undocked;
+    let docked = WI.dockedConfigurationSupportsSplitContentBrowser && WI.dockConfiguration !== WI.DockConfiguration.Undocked;
 
     if (WI._dockingAvailable || docked) {
-        WI._closeTabBarButton.hidden = !docked;
+        if (WI._closeTabBarButton)
+            WI._closeTabBarButton.hidden = !docked;
         if (WI._dockToSideTabBarButton)
             WI._dockToSideTabBarButton.hidden = WI.dockConfiguration === WI.DockConfiguration.Right || WI.dockConfiguration === WI.DockConfiguration.Left;
         if (WI._dockBottomTabBarButton)
@@ -1874,7 +1906,8 @@ WI._updateDockNavigationItems = function()
         if (WI._undockTabBarButton)
             WI._undockTabBarButton.hidden = WI.dockConfiguration === WI.DockConfiguration.Undocked;
     } else {
-        WI._closeTabBarButton.hidden = true;
+        if (WI._closeTabBarButton)
+            WI._closeTabBarButton.hidden = true;
         if (WI._dockToSideTabBarButton)
             WI._dockToSideTabBarButton.hidden = true;
         if (WI._dockBottomTabBarButton)
@@ -1925,7 +1958,7 @@ WI._tabBrowserSelectedTabContentViewDidChange = function(event)
 {
     let selectedTabBarItem = WI.tabBar.selectedTabBarItem;
     if (selectedTabBarItem) {
-        WI._contentElement.ariaLabel = selectedTabBarItem.title || "";
+        WI._contentElement.ariaLabel = selectedTabBarItem.displayName || "";
 
         if (selectedTabBarItem.representedObject.constructor.shouldSaveTab())
             WI._selectedTabIndexSetting.value = WI.tabBar.tabBarItems.indexOf(selectedTabBarItem);
@@ -2336,7 +2369,7 @@ WI._updateInspectModeTabBarButton = function()
 
 WI._updateTabBarDividers = function()
 {
-    let closeHidden = WI._closeTabBarButton.hidden;
+    let closeHidden = WI._closeTabBarButton?.hidden;
     let dockToSideHidden = WI._dockToSideTabBarButton?.hidden;
     let dockBottomHidden = WI._dockBottomTabBarButton?.hidden;
     let undockHidden = WI._undockTabBarButton?.hidden;
@@ -3354,3 +3387,5 @@ WI.DockConfiguration = {
     Bottom: "bottom",
     Undocked: "undocked",
 };
+
+WI.DockConfigurationChangedLayoutReason = Symbol("dock-configuration-changed");

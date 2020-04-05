@@ -104,6 +104,12 @@ shouldThrow('let r = new RegExp("/(?<g\u{1019b}oupName1>abc)/u")', '"SyntaxError
 shouldThrow('let r = new RegExp("/(?<\u200cgroupName1>abc)/u")', '"SyntaxError: Invalid regular expression: invalid group specifier name"');
 shouldThrow('let r = new RegExp("/(?<\u200dgroupName1>abc)/u")', '"SyntaxError: Invalid regular expression: invalid group specifier name"');
 
+// Check that invalid \u escape errors are not get overriden.
+shouldThrow('/(?<\\u>.)/u', '"SyntaxError: Invalid regular expression: invalid Unicode \\\\u escape"');
+shouldThrow('/\\k<\\uzzz>/u', '"SyntaxError: Invalid regular expression: invalid Unicode \\\\u escape"');
+shouldThrow('/(?<\\u{>.)/u', '"SyntaxError: Invalid regular expression: invalid Unicode code point \\\\u{} escape"');
+shouldThrow('/\\k<\\u{0>/u', '"SyntaxError: Invalid regular expression: invalid Unicode code point \\\\u{} escape"');
+
 // Check the named forward references work
 shouldBe('"XzzXzz".match(/\\\k<z>X(?<z>z*)X\\\k<z>/)', '["XzzXzz", "zz"]');
 shouldBe('"XzzXzz".match(/\\\k<z>X(?<z>z*)X\\\k<z>/u)', '["XzzXzz", "zz"]');
@@ -111,6 +117,7 @@ shouldBe('"1122332211".match(/\\\k<ones>\\\k<twos>\\\k<threes>(?<ones>1*)(?<twos
 shouldBe('"1122332211".match(/\\\k<ones>\\\k<twos>\\\k<threes>(?<ones>1*)(?<twos>2*)(?<threes>3*)\\\k<threes>\\\k<twos>\\\k<ones>/u)', '["1122332211", "11", "22", "3"]');
 
 // Check that a named forward reference for a non-existent named capture
-// matches for non-unicode patterns and throws for unicode patterns.
+// matches for non-Unicode patterns w/o a named group and throws for patterns with a named group or Unicode flag.
 shouldBe('"\\\k<z>XzzX".match(/\\\k<z>X(z*)X/)', '["k<z>XzzX", "zz"]');
-shouldThrow('"\\\k<z>XzzX".match(/\\\k<z>X(z*)X/u)', '"SyntaxError: Invalid regular expression: invalid backreference for Unicode pattern"');
+shouldThrow('"\\\k<z>XzzX".match(/\\\k<z>X(z*)X/u)', '"SyntaxError: Invalid regular expression: invalid \\\\k<> named backreference"');
+shouldThrow('/\\\k<xxx(?<a>y)(/', '"SyntaxError: Invalid regular expression: invalid \\\\k<> named backreference"');

@@ -71,33 +71,33 @@ RemoteAudioSessionConfiguration RemoteAudioSessionProxy::configuration()
     };
 }
 
-void RemoteAudioSessionProxy::setCategory(WebCore::AudioSession::CategoryType category, WebCore::RouteSharingPolicy policy)
+void RemoteAudioSessionProxy::setCategory(AudioSession::CategoryType category, RouteSharingPolicy policy)
 {
     m_category = category;
     m_routeSharingPolicy = policy;
-    audioSessionManager().setCategoryForProcess(m_gpuConnection.webProcessIdentifier(), category, policy);
+    audioSessionManager().setCategoryForProcess(*this, category, policy);
 }
 
 void RemoteAudioSessionProxy::setPreferredBufferSize(uint64_t size)
 {
     m_preferredBufferSize = size;
-    audioSessionManager().setPreferredBufferSizeForProcess(m_gpuConnection.webProcessIdentifier(), size);
+    audioSessionManager().setPreferredBufferSizeForProcess(*this, size);
 }
 
 void RemoteAudioSessionProxy::tryToSetActive(bool active, SetActiveCompletion&& completion)
 {
-    m_active = audioSessionManager().tryToSetActiveForProcess(m_gpuConnection.webProcessIdentifier(), active);
+    m_active = audioSessionManager().tryToSetActiveForProcess(*this, active);
     completion(m_active);
 }
 
-void RemoteAudioSessionProxy::beginInterruption(WebCore::PlatformMediaSession::InterruptionType type)
+void RemoteAudioSessionProxy::beginInterruption()
 {
-    connection().send(Messages::RemoteAudioSession::BeginInterruption(type), { });
+    connection().send(Messages::RemoteAudioSession::BeginInterruption(), { });
 }
 
-void RemoteAudioSessionProxy::endInterruption(WebCore::PlatformMediaSession::EndInterruptionFlags flags)
+void RemoteAudioSessionProxy::endInterruption(AudioSession::MayResume mayResume)
 {
-    connection().send(Messages::RemoteAudioSession::EndInterruption(flags), { });
+    connection().send(Messages::RemoteAudioSession::EndInterruption(mayResume), { });
 }
 
 RemoteAudioSessionProxyManager& RemoteAudioSessionProxy::audioSessionManager()

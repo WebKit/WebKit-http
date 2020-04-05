@@ -282,11 +282,6 @@ String PlatformPasteboard::platformPasteboardTypeForSafeTypeForDOMToReadAndWrite
     return { };
 }
 
-String PlatformPasteboard::uniqueName()
-{
-    return [[NSPasteboard pasteboardWithUniqueName] name];
-}
-
 Color PlatformPasteboard::color()
 {
     return colorFromNSColor([NSColor colorFromPasteboard:m_pasteboard.get()]);
@@ -342,8 +337,11 @@ int64_t PlatformPasteboard::setBufferForType(SharedBuffer* buffer, const String&
 
 int64_t PlatformPasteboard::setURL(const PasteboardURL& pasteboardURL)
 {
-    NSURL *cocoaURL = pasteboardURL.url;
-    NSArray *urlWithTitle = @[ @[ cocoaURL.absoluteString ], @[ pasteboardURL.title ] ];
+    auto urlString = [(NSURL *)pasteboardURL.url absoluteString];
+    if (!urlString)
+        return 0;
+
+    NSArray *urlWithTitle = @[ @[ urlString ], @[ pasteboardURL.title ] ];
     NSString *pasteboardType = [NSString stringWithUTF8String:WebURLsWithTitlesPboardType];
     BOOL didWriteData = [m_pasteboard.get() setPropertyList:urlWithTitle forType:pasteboardType];
     if (!didWriteData)
@@ -542,6 +540,12 @@ NSPasteboardItem *PlatformPasteboard::itemAtIndex(size_t index) const
 {
     NSArray<NSPasteboardItem *> *items = [m_pasteboard pasteboardItems];
     return index >= items.count ? nil : items[index];
+}
+
+bool PlatformPasteboard::containsURLStringSuitableForLoading()
+{
+    String unusedTitle;
+    return !urlStringSuitableForLoading(unusedTitle).isEmpty();
 }
 
 }

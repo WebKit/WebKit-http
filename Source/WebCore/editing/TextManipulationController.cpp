@@ -30,6 +30,7 @@
 #include "Editing.h"
 #include "ElementAncestorIterator.h"
 #include "EventLoop.h"
+#include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "NodeTraversal.h"
 #include "PseudoElement.h"
@@ -140,8 +141,8 @@ void TextManipulationController::startObservingParagraphs(ManipulationItemCallba
 class ParagraphContentIterator {
 public:
     ParagraphContentIterator(const Position& start, const Position& end)
-        : m_iterator(start, end)
-        , m_iteratorNode(m_iterator.atEnd() ? nullptr : m_iterator.range()->firstNode())
+        : m_iterator({ *makeBoundaryPoint(start), *makeBoundaryPoint(end) })
+        , m_iteratorNode(m_iterator.atEnd() ? nullptr : createLiveRange(m_iterator.range())->firstNode())
         , m_currentNodeForFindingInvisibleContent(start.firstNode())
         , m_pastEndNode(end.firstNode())
     {
@@ -161,7 +162,7 @@ public:
         auto previousIteratorNode = m_iteratorNode;
 
         m_iterator.advance();
-        m_iteratorNode = m_iterator.atEnd() ? nullptr : m_iterator.range()->firstNode();
+        m_iteratorNode = m_iterator.atEnd() ? nullptr : createLiveRange(m_iterator.range())->firstNode();
         if (previousIteratorNode != m_iteratorNode)
             moveCurrentNodeForward();
     }
@@ -193,12 +194,12 @@ public:
 
     Position startPosition()
     {
-        return m_iterator.range()->startPosition();
+        return createLegacyEditingPosition(m_iterator.range().start);
     }
 
     Position endPosition()
     {
-        return m_iterator.range()->endPosition();
+        return createLegacyEditingPosition(m_iterator.range().end);
     }
 
     bool atEnd() const { return m_iterator.atEnd() && m_currentNodeForFindingInvisibleContent == m_pastEndNode; }
@@ -278,6 +279,8 @@ void TextManipulationController::observeParagraphs(const Position& start, const 
         }
 
         if (content.isReplacedContent) {
+            if (startOfCurrentParagraph.isNull())
+                startOfCurrentParagraph = positionBeforeNode(content.node.get());
             tokensInCurrentParagraph.append(ManipulationToken { m_tokenIdentifier.generate(), "[]", true /* isExcluded */});
             continue;
         }
@@ -459,7 +462,7 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     size_t currentTokenIndex = 0;
     HashMap<TokenIdentifier, TokenExchangeData> tokenExchangeMap;
 
-    if (item.start.isNull() && item.end.isNull()) {
+    if (item.start.isNull() || item.end.isNull()) {
         RELEASE_ASSERT(item.tokens.size() == 1);
         auto element = makeRefPtr(item.element.get());
         if (!element)
@@ -480,10 +483,15 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
     }
 
     RefPtr<Node> commonAncestor;
+    RefPtr<Node> firstContentNode;
     ParagraphContentIterator iterator { item.start, item.end };
     HashSet<Ref<Node>> excludedNodes;
+    HashSet<Ref<Node>> nodesToRemove;
     for (; !iterator.atEnd(); iterator.advance()) {
         auto content = iterator.currentContent();
+        
+        if (content.node)
+            nodesToRemove.add(*content.node);
 
         if (!content.isReplacedContent && !content.isTextContent)
             continue;
@@ -497,32 +505,23 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
 
         tokenExchangeMap.set(currentToken.identifier, TokenExchangeData { content.node.copyRef(), currentToken.content, currentToken.isExcluded });
         ++currentTokenIndex;
+        
+        if (!firstContentNode)
+            firstContentNode = content.node;
 
         // FIXME: Take care of when currentNode is nullptr.
-        if (content.node) {
+        if (RefPtr<Node> parent = content.node ? content.node->parentNode() : nullptr) {
             if (!commonAncestor)
-                commonAncestor = content.node;
-            else if (!content.node->isDescendantOf(commonAncestor.get())) {
-                commonAncestor = Range::commonAncestorContainer(commonAncestor.get(), content.node.get());
+                commonAncestor = parent;
+            else if (!parent->isDescendantOf(commonAncestor.get())) {
+                commonAncestor = Range::commonAncestorContainer(commonAncestor.get(), parent.get());
                 ASSERT(commonAncestor);
             }
         }
     }
 
-    RefPtr<Node> nodeAfterStart = item.start.computeNodeAfterPosition();
-    if (!nodeAfterStart)
-        nodeAfterStart = item.start.containerNode();
-
-    RefPtr<Node> nodeAfterEnd = item.end.computeNodeAfterPosition();
-    if (!nodeAfterEnd)
-        nodeAfterEnd = NodeTraversal::nextSkippingChildren(*item.end.containerNode());
-
-    HashSet<Ref<Node>> nodesToRemove;
-    for (RefPtr<Node> currentNode = nodeAfterStart; currentNode && currentNode != nodeAfterEnd; currentNode = NodeTraversal::next(*currentNode)) {
-        if (commonAncestor == currentNode)
-            commonAncestor = currentNode->parentNode();
-        nodesToRemove.add(*currentNode);
-    }
+    for (auto node = commonAncestor; node; node = node->parentNode())
+        nodesToRemove.remove(*node);
 
     Vector<Ref<Node>> currentElementStack;
     HashSet<Ref<Node>> reusedOriginalNodes;
@@ -580,9 +579,7 @@ auto TextManipulationController::replace(const ManipulationItemData& item, const
         }
     }
 
-    Position insertionPoint = item.start;
-    if (insertionPoint.anchorNode() != insertionPoint.containerNode())
-        insertionPoint = insertionPoint.parentAnchoredEquivalent();
+    Position insertionPoint = positionBeforeNode(firstContentNode.get()).parentAnchoredEquivalent();
     while (insertionPoint.containerNode() != commonAncestor)
         insertionPoint = positionInParentBeforeNode(insertionPoint.containerNode());
     ASSERT(!insertionPoint.isNull());

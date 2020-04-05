@@ -437,6 +437,7 @@ public:
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours, JSValueRef callback);
     void statisticsClearThroughWebsiteDataRemoval(JSValueRef callback);
     void statisticsDeleteCookiesForHost(JSStringRef hostName, bool includeHttpOnlyCookies);
+    void statisticsCallClearInMemoryAndPersistentStoreCallback();
     void statisticsCallClearThroughWebsiteDataRemovalCallback();
     bool isStatisticsHasLocalStorage(JSStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
@@ -447,10 +448,12 @@ public:
     void statisticsCallDidSetShouldBlockThirdPartyCookiesCallback();
     void setStatisticsFirstPartyWebsiteDataRemovalMode(bool value, JSValueRef callback);
     void statisticsCallDidSetFirstPartyWebsiteDataRemovalModeCallback();
+    void statisticsSetToSameSiteStrictCookies(JSStringRef hostName, JSValueRef callback);
+    void statisticsCallDidSetToSameSiteStrictCookiesCallback();
     void statisticsResetToConsistentState(JSValueRef completionHandler);
     void statisticsCallDidResetToConsistentStateCallback();
-    void getPrevalentDomains(JSValueRef callback);
-    void callDidReceivePrevalentDomainsCallback(Vector<String>&& domains);
+    void loadedThirdPartyDomains(JSValueRef callback);
+    void callDidReceiveLoadedThirdPartyDomainsCallback(Vector<String>&& domains);
 
     // Injected bundle form client.
     void installTextDidChangeInTextFieldCallback(JSValueRef callback);
@@ -512,8 +515,8 @@ public:
 
     // FIXME(189876)
     void addTestKeyToKeychain(JSStringRef privateKeyBase64, JSStringRef attrLabel, JSStringRef applicationTagBase64);
-    void cleanUpKeychain(JSStringRef attrLabel, JSStringRef applicationTagBase64);
-    bool keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicationTagBase64);
+    void cleanUpKeychain(JSStringRef attrLabel, JSStringRef applicationLabelBase64);
+    bool keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicationLabelBase64);
 
     unsigned long serverTrustEvaluationCallbackCallsCount();
 

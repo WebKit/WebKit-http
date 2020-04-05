@@ -52,8 +52,8 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << gapBetweenPages;
     encoder << paginationLineGridEnabled;
     encoder << userAgent;
+    encoder << itemStatesWereRestoredByAPIRequest;
     encoder << itemStates;
-    encoder << userContentControllerID;
     encoder << visitedLinkTableID;
     encoder << canRunBeforeUnloadConfirmPanel;
     encoder << canRunModal;
@@ -67,6 +67,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << mayStartMediaWhenInWindow;
     encoder << mediaPlaybackIsSuspended;
     encoder << minimumSizeForAutoLayout;
+    encoder << sizeToContentAutoSizeMaximumSize;
     encoder << autoSizingShouldExpandToViewHeight;
     encoder << viewportSizeForCSSViewportUnits;
     encoder.encodeEnum(scrollPinningBehavior);
@@ -127,17 +128,13 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << needsFontAttributes;
     encoder << iceCandidateFilteringEnabled;
     encoder << enumeratingAllNetworkInterfacesEnabled;
-    encoder << userContentWorlds;
-    encoder << userScripts;
-    encoder << userStyleSheets;
-    encoder << messageHandlers;
-#if ENABLE(CONTENT_EXTENSIONS)
-    encoder << contentRuleLists;
-#endif
+    encoder << userContentControllerParameters;
     encoder << backgroundColor;
     encoder << oldPageID;
     encoder << overriddenMediaType;
     encoder << corsDisablingPatterns;
+    encoder << loadsSubresources;
+    encoder << loadsFromNetwork;
     encoder << crossOriginAccessControlCheckEnabled;
     encoder << processDisplayName;
 
@@ -210,17 +207,17 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     parameters.userAgent = WTFMove(*userAgent);
 
+    Optional<bool> itemStatesWereRestoredByAPIRequest;
+    decoder >> itemStatesWereRestoredByAPIRequest;
+    if (!itemStatesWereRestoredByAPIRequest)
+        return WTF::nullopt;
+    parameters.itemStatesWereRestoredByAPIRequest = *itemStatesWereRestoredByAPIRequest;
+
     Optional<Vector<BackForwardListItemState>> itemStates;
     decoder >> itemStates;
     if (!itemStates)
         return WTF::nullopt;
     parameters.itemStates = WTFMove(*itemStates);
-
-    Optional<UserContentControllerIdentifier> userContentControllerIdentifier;
-    decoder >> userContentControllerIdentifier;
-    if (!userContentControllerIdentifier)
-        return WTF::nullopt;
-    parameters.userContentControllerID = *userContentControllerIdentifier;
 
     if (!decoder.decode(parameters.visitedLinkTableID))
         return WTF::nullopt;
@@ -247,6 +244,8 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!decoder.decode(parameters.mediaPlaybackIsSuspended))
         return WTF::nullopt;
     if (!decoder.decode(parameters.minimumSizeForAutoLayout))
+        return WTF::nullopt;
+    if (!decoder.decode(parameters.sizeToContentAutoSizeMaximumSize))
         return WTF::nullopt;
     if (!decoder.decode(parameters.autoSizingShouldExpandToViewHeight))
         return WTF::nullopt;
@@ -392,37 +391,11 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!decoder.decode(parameters.enumeratingAllNetworkInterfacesEnabled))
         return WTF::nullopt;
 
-    Optional<Vector<std::pair<ContentWorldIdentifier, String>>> userContentWorlds;
-    decoder >> userContentWorlds;
-    if (!userContentWorlds)
+    Optional<UserContentControllerParameters> userContentControllerParameters;
+    decoder >> userContentControllerParameters;
+    if (!userContentControllerParameters)
         return WTF::nullopt;
-    parameters.userContentWorlds = WTFMove(*userContentWorlds);
-
-    Optional<Vector<WebUserScriptData>> userScripts;
-    decoder >> userScripts;
-    if (!userScripts)
-        return WTF::nullopt;
-    parameters.userScripts = WTFMove(*userScripts);
-    
-    Optional<Vector<WebUserStyleSheetData>> userStyleSheets;
-    decoder >> userStyleSheets;
-    if (!userStyleSheets)
-        return WTF::nullopt;
-    parameters.userStyleSheets = WTFMove(*userStyleSheets);
-    
-    Optional<Vector<WebScriptMessageHandlerData>> messageHandlers;
-    decoder >> messageHandlers;
-    if (!messageHandlers)
-        return WTF::nullopt;
-    parameters.messageHandlers = WTFMove(*messageHandlers);
-    
-#if ENABLE(CONTENT_EXTENSIONS)
-    Optional<Vector<std::pair<String, WebCompiledContentRuleListData>>> contentRuleLists;
-    decoder >> contentRuleLists;
-    if (!contentRuleLists)
-        return WTF::nullopt;
-    parameters.contentRuleLists = WTFMove(*contentRuleLists);
-#endif
+    parameters.userContentControllerParameters = WTFMove(*userContentControllerParameters);
 
     Optional<Optional<WebCore::Color>> backgroundColor;
     decoder >> backgroundColor;
@@ -444,6 +417,18 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!corsDisablingPatterns)
         return WTF::nullopt;
     parameters.corsDisablingPatterns = WTFMove(*corsDisablingPatterns);
+
+    Optional<bool> loadsSubresources;
+    decoder >> loadsSubresources;
+    if (!loadsSubresources)
+        return WTF::nullopt;
+    parameters.loadsSubresources = *loadsSubresources;
+
+    Optional<bool> loadsFromNetwork;
+    decoder >> loadsFromNetwork;
+    if (!loadsFromNetwork)
+        return WTF::nullopt;
+    parameters.loadsFromNetwork = *loadsFromNetwork;
 
     Optional<bool> crossOriginAccessControlCheckEnabled;
     decoder >> crossOriginAccessControlCheckEnabled;

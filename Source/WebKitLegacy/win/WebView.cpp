@@ -2038,8 +2038,10 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
         IntSize logicalScrollDelta(-deltaX * scaleFactor, -deltaY * scaleFactor);
 
         RenderLayer* scrollableLayer = nullptr;
-        if (m_gestureTargetNode && m_gestureTargetNode->renderer() && m_gestureTargetNode->renderer()->enclosingLayer())
-            scrollableLayer = m_gestureTargetNode->renderer()->enclosingLayer()->enclosingScrollableLayer();
+        if (m_gestureTargetNode && m_gestureTargetNode->renderer()) {
+            if (auto* layer = m_gestureTargetNode->renderer()->enclosingLayer())
+                scrollableLayer = layer->enclosingScrollableLayer(IncludeSelfOrNot::ExcludeSelf, CrossFrameBoundaries::Yes);
+        }
 
         if (!scrollableLayer) {
             // We might directly hit the document without hitting any nodes
@@ -3117,6 +3119,8 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     m_inspectorClient = new WebInspectorClient(this);
 
     auto storageProvider = PageStorageSessionProvider::create();
+
+    WebFrame* webFrame = WebFrame::createInstance();
     PageConfiguration configuration(
         PAL::SessionID::defaultSessionID(),
         makeUniqueRef<WebEditorClient>(this),
@@ -3126,13 +3130,13 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
         BackForwardList::create(),
         CookieJar::create(storageProvider.copyRef()),
         makeUniqueRef<WebProgressTrackerClient>(),
+        makeUniqueRef<WebFrameLoaderClient>(webFrame),
         makeUniqueRef<MediaRecorderProvider>()
     );
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.dragClient = makeUnique<WebDragClient>(this);
     configuration.inspectorClient = m_inspectorClient;
-    configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
     configuration.applicationCacheStorage = &WebApplicationCache::storage();
     configuration.databaseProvider = &WebDatabaseProvider::singleton();
     configuration.storageNamespaceProvider = &m_webViewGroup->storageNamespaceProvider();
@@ -3152,7 +3156,6 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
             m_page->settings().setFTPDirectoryTemplatePath(toString(path));
     }
 
-    WebFrame* webFrame = WebFrame::createInstance();
     webFrame->initWithWebView(this, m_page);
     static_cast<WebFrameLoaderClient&>(m_page->mainFrame().loader().client()).setWebFrame(webFrame);
     static_cast<WebProgressTrackerClient&>(m_page->progress().client()).setWebFrame(webFrame);
@@ -7761,23 +7764,19 @@ HRESULT WebView::firstRectForCharacterRangeForTesting(UINT location, UINT length
     if (!m_page)
         return E_FAIL;
 
-    IntRect resultIntRect;
-    resultIntRect.setLocation(IntPoint(0, 0));
-    resultIntRect.setSize(IntSize(0, 0));
-    
-    if (location > INT_MAX)
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    auto* element = frame.selection().rootEditableElementOrDocumentElement();
+    if (!element)
         return E_FAIL;
-    if (length > INT_MAX || location + length > INT_MAX)
-        length = INT_MAX - location;
-        
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-    RefPtr<Range> range = TextIterator::rangeFromLocationAndLength(frame.selection().rootEditableElementOrDocumentElement(), location, length);
+
+    auto characterRange = CharacterRange(location, length);
+    RefPtr<Range> range = createLiveRange(resolveCharacterRange(makeRangeSelectingNodeContents(*element), characterRange));
 
     if (!range)
         return E_FAIL;
-     
+
     IntRect rect = frame.editor().firstRectForRange(range.get());
-    resultIntRect = frame.view()->contentsToWindow(rect);
+    IntRect resultIntRect = frame.view()->contentsToWindow(rect);
 
     resultIntRect.scale(deviceScaleFactor());
 
@@ -7803,14 +7802,16 @@ HRESULT WebView::selectedRangeForTesting(_Out_ UINT* location, _Out_ UINT* lengt
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
     RefPtr<Range> range = frame.editor().selectedRange();
+    if (!range)
+        return E_FAIL;
 
-    size_t locationSize;
-    size_t lengthSize;
-    if (range && TextIterator::getLocationAndLengthFromRange(frame.selection().rootEditableElementOrDocumentElement(), range.get(), locationSize, lengthSize)) {
-        *location = static_cast<UINT>(locationSize);
-        *length = static_cast<UINT>(lengthSize);
-    }
+    auto* element = frame.selection().rootEditableElementOrDocumentElement();
+    if (!element)
+        return E_FAIL;
 
+    auto relativeRange = characterRange(makeBoundaryPointBeforeNodeContents(*element), *range);
+    *location = static_cast<UINT>(relativeRange.location);
+    *length = static_cast<UINT>(relativeRange.length);
     return S_OK;
 }
 

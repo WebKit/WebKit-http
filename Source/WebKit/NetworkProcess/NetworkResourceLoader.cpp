@@ -59,6 +59,7 @@
 #include <WebCore/SameSiteInfo.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SharedBuffer.h>
+#include <wtf/Expected.h>
 #include <wtf/RunLoop.h>
 
 #if USE(QUICK_LOOK)
@@ -247,7 +248,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
     }
 
     RELEASE_LOG_IF_ALLOWED("retrieveCacheEntry: Checking the HTTP disk cache");
-    m_cache->retrieve(request, globalFrameID(), [this, weakThis = makeWeakPtr(*this), request = ResourceRequest { request }](auto entry, auto info) mutable {
+    m_cache->retrieve(request, globalFrameID(), m_parameters.isNavigatingToAppBoundDomain, [this, weakThis = makeWeakPtr(*this), request = ResourceRequest { request }](auto entry, auto info) mutable {
         if (!weakThis)
             return;
 
@@ -466,7 +467,7 @@ void NetworkResourceLoader::convertToDownload(DownloadID downloadID, const Resou
 
     // This can happen if the resource came from the disk cache.
     if (!m_networkLoad) {
-        m_connection->networkProcess().downloadManager().startDownload(sessionID(), downloadID, request);
+        m_connection->networkProcess().downloadManager().startDownload(sessionID(), downloadID, request, m_parameters.isNavigatingToAppBoundDomain);
         abort();
         return;
     }
@@ -810,8 +811,12 @@ void NetworkResourceLoader::willSendRedirectedRequest(ResourceRequest&& request,
     m_redirectResponse = redirectResponse;
 
     Optional<AdClickAttribution::Conversion> adClickConversion;
-    if (!sessionID().isEphemeral())
-        adClickConversion = AdClickAttribution::parseConversionRequest(redirectRequest.url());
+    if (!sessionID().isEphemeral()) {
+        if (auto result = AdClickAttribution::parseConversionRequest(redirectRequest.url()))
+            adClickConversion = result.value();
+        else if (!result.error().isEmpty())
+            addConsoleMessage(MessageSource::AdClickAttribution, MessageLevel::Error, result.error());
+    }
 
     auto maxAgeCap = validateCacheEntryForMaxAgeCapValidation(request, redirectRequest, redirectResponse);
     if (redirectResponse.source() == ResourceResponse::Source::Network && canUseCachedRedirect(request))

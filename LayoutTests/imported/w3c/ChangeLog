@@ -1,3 +1,1330 @@
+2020-03-30  Devin Rousso  <drousso@apple.com>
+
+        [CSS Selectors 4] Add support for `:is()` with the same logic for the existing `:matches()`
+        https://bugs.webkit.org/show_bug.cgi?id=209707
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/css/selectors/invalidation/is-expected.txt:
+
+2020-03-30  Antti Koivisto  <antti@apple.com>
+
+        Update css/selectors WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=209726
+
+        Reviewed by Antoine Quint.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/selectors/CHANGES: Removed.
+        * web-platform-tests/css/selectors/META.yml: Added.
+        * web-platform-tests/css/selectors/Makefile: Removed.
+        * web-platform-tests/css/selectors/OWNERS: Removed.
+        * web-platform-tests/css/selectors/README: Removed.
+        * web-platform-tests/css/selectors/TODO: Removed.
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/cssom-expected.txt:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/cssom.html:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/resources/syntax-quirks.html:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/resources/syntax-xml.xhtml:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/resources/w3c-import.log:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/semantics-expected.txt:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/semantics.html:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/syntax-expected.txt:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/syntax.html:
+        * web-platform-tests/css/selectors/attribute-selectors/attribute-case/w3c-import.log:
+        * web-platform-tests/css/selectors/attribute-selectors/style-attribute-selector-expected.txt: Added.
+        * web-platform-tests/css/selectors/attribute-selectors/style-attribute-selector.html: Added.
+        * web-platform-tests/css/selectors/attribute-selectors/w3c-import.log: Added.
+        * web-platform-tests/css/selectors/css3-modsel-1.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-10.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-100.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-100b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-101.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-101b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-102.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-102b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-103.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-103b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-104.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-104b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-105.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-105b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-106.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-106b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-107.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-107b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-108.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-108b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-109.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-109b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-11.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-110.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-110b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-111.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-111b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-112.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-112b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-113.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-113b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-114.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-114b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-115.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-115b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-116.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-116b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-117.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-117b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-118.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-119.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-12.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-120.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-121.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-122.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-123.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-123b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-124.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-124b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-125.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-125b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-126.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-126b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-127.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-127b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-128.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-128b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-129.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-129b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-13.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-130.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-130b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-131.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-131b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-132.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-132b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-133.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-133b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-134.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-134b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-135.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-135b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-136.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-136b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-137.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-137b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-138.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-138b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-139.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-139b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-14.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-140.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-140b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-141.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-141b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-142.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-142b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-143.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-143b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-144.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-145a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-145b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-146a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-146b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-147a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-147b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-148.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-149.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-149b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-14b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-14c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-14d.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-14e.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-15.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-150.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-151.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-152.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-153.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-154.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-155.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-155a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-155b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-155c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-155d.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-156.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-156b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-156c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-157.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-158.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-159.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-15b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-15c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-16.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-160.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-161.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-162.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-163.xml-disabled-contains-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-164.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-165.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-166.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-166a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-167.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-167a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-168.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-168a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-169.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-169a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-17.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-170.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-170a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-170b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-170c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-170d.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-171.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-172a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-172b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-173a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-173b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-174a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-174b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-175a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-175b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-175c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-176.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-177a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-177b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-178.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-179.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-179a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-18.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-180.xml-disabled-because-we-want-to-allow-for-expansion: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-180a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-181.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-182.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-183.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184d.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184e.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-184f.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-18a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-18b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-18c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-19.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-19a.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-19b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-2.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-20.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-21.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-21b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-21c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-22.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-23.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-24.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-25.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-27.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-27a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-27b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-28.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-28b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-28c.pl-draft: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-29.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-29b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-3.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-30.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-31.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-32.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-33.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-34.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-35.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-36.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-37.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-38.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-39.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-39a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-39b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-39c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-3a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-4.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-40.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-41.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-41a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-42.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-42a.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-43.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-43b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-44.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-44b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-44c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-44d.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-45.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-45b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-45c.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-46.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-46b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-47.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-48.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-49.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-5.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-50.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-51.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-52.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-53.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-54.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-55.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-56.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-57.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-57b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-58.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-59.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-6.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-60.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-61.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-62.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-63.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-64.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-65.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-66.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-66b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-67.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-68.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-69.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-7.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-70.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-72.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-72b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-73.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-73b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-74.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-74b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-75.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-75b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-76.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-76b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-77.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-77b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-78.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-78b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-79.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-7b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-7c.xml-disabled-due-to-limitations-in-the-build-system: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-7d.xml-disabled-due-to-limitations-in-the-build-system: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-8.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-80.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-81.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-81b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-82.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-82b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-83.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-84.xml-disabled-contains-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-84b.xml-disabled-contains-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-85.xml-disabled-contains-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-86.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-87.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-87b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-88.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-88b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-89.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-9.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-90.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-90b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-91.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-92.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-93.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-94.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-94b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-95.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-96.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-96b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-97.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-97b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-98.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-98b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-99.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-99b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d1.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d1b.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d2.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d3.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d4.xml: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5a.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5b.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5c.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5d.xml-removed: Removed.
+        * web-platform-tests/css/selectors/css3-modsel-d5e.xml-removed: Removed.
+        * web-platform-tests/css/selectors/floating-first-letter-05d0-expected.html: Added.
+        * web-platform-tests/css/selectors/floating-first-letter-05d0.html: Added.
+        * web-platform-tests/css/selectors/floating-first-letter-feff-expected.html: Added.
+        * web-platform-tests/css/selectors/floating-first-letter-feff.html: Added.
+        * web-platform-tests/css/selectors/focus-visible-005-expected.txt:
+        * web-platform-tests/css/selectors/focus-visible-005.html:
+        * web-platform-tests/css/selectors/focus-visible-007-expected.txt: Added.
+        * web-platform-tests/css/selectors/focus-visible-007.html: Added.
+        * web-platform-tests/css/selectors/focus-visible-009-expected.txt: Added.
+        * web-platform-tests/css/selectors/focus-visible-009.html: Added.
+        * web-platform-tests/css/selectors/focus-visible-010-expected.txt: Added.
+        * web-platform-tests/css/selectors/focus-visible-010.html: Added.
+        * web-platform-tests/css/selectors/focus-visible-011-expected.txt: Added.
+        * web-platform-tests/css/selectors/focus-visible-011.html: Added.
+        * web-platform-tests/css/selectors/historical-xmlid-expected.xht: Added.
+        * web-platform-tests/css/selectors/historical-xmlid.xht: Added.
+        * web-platform-tests/css/selectors/htaccess: Removed.
+        * web-platform-tests/css/selectors/html-full.css: Removed.
+        * web-platform-tests/css/selectors/html-shell.css: Removed.
+        * web-platform-tests/css/selectors/i18n/META.yml: Added.
+        * web-platform-tests/css/selectors/i18n/OWNERS: Removed.
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-004.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-005.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-006.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-007.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-008.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-009.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-010.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-011.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-012.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-014.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-015.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-016.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-024.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-025.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-026.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-027.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-028.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-029.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-030.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-031.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-032.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-034.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-035.html:
+        * web-platform-tests/css/selectors/i18n/css3-selectors-lang-036.html:
+        * web-platform-tests/css/selectors/i18n/w3c-import.log:
+        * web-platform-tests/css/selectors/invalidation/attribute-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/attribute.html: Added.
+        * web-platform-tests/css/selectors/invalidation/defined-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/defined.html: Added.
+        * web-platform-tests/css/selectors/invalidation/enabled-disabled-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/enabled-disabled.html: Added.
+        * web-platform-tests/css/selectors/invalidation/first-child-last-child-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/first-child-last-child.html: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-001-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-001.html: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-002-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-002.html: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-003-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-003.html: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-004-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/insert-sibling-004.html: Added.
+        * web-platform-tests/css/selectors/invalidation/is-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/is.html: Added.
+        * web-platform-tests/css/selectors/invalidation/matches-expected.txt: Removed.
+        * web-platform-tests/css/selectors/invalidation/matches.html: Removed.
+        * web-platform-tests/css/selectors/invalidation/quirks-mode-stylesheet-dynamic-add-001.html:
+        * web-platform-tests/css/selectors/invalidation/sibling-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/sibling.html: Added.
+        * web-platform-tests/css/selectors/invalidation/w3c-import.log:
+        * web-platform-tests/css/selectors/invalidation/where-expected.txt: Added.
+        * web-platform-tests/css/selectors/invalidation/where.html: Added.
+        * web-platform-tests/css/selectors/is-nested-expected.txt: Added.
+        * web-platform-tests/css/selectors/is-nested.html: Added.
+        * web-platform-tests/css/selectors/is-specificity-expected.txt: Added.
+        * web-platform-tests/css/selectors/is-specificity.html: Added.
+        * web-platform-tests/css/selectors/matches-nested-expected.txt: Removed.
+        * web-platform-tests/css/selectors/matches-nested.html: Removed.
+        * web-platform-tests/css/selectors/matches-specificity-expected.txt: Removed.
+        * web-platform-tests/css/selectors/matches-specificity.html: Removed.
+        * web-platform-tests/css/selectors/not-links-expected.html: Added.
+        * web-platform-tests/css/selectors/not-links.html: Added.
+        * web-platform-tests/css/selectors/of-type-selectors-expected.xhtml:
+        * web-platform-tests/css/selectors/of-type-selectors.xhtml:
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-1.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-10.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-100.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-100b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-101-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-101.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-101b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-101b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-102-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-102.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-102b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-103-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-103.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-103b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-103b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-104.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-104b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-105-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-105.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-105b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-105b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-106-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-106.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-106b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-106b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-107.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-107b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-108-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-108.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-108b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-108b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-109-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-109.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-109b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-109b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-11.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-110-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-110.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-110b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-110b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-111.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-111b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-112-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-112.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-112b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-112b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-113.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-113b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-114.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-114b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-115-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-115.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-115b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-115b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-116-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-116.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-116b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-116b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-117-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-117.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-117b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-117b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-118.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-119.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-120.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-121.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-122-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-122.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-123.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-123b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-124.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-124b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-125-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-125.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-125b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-125b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-126-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-126.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-126b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-126b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-127-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-127.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-127b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-127b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-128-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-128.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-128b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-128b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-129-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-129.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-129b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-129b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-13.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-130.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-130b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-131.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-131b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-132.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-132b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-133.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-133b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-134-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-134.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-134b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-134b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-135-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-135.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-135b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-135b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-136-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-136.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-136b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-136b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-137.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-137b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-138.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-138b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-139.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-139b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-140.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-140b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-141-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-141.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-141b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-141b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-142-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-142.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-142b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-142b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-143-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-143.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-143b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-143b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-144.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-145a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-145b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-146a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-146b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-147a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-147b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-148-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-148.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-149-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-149.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-149b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-149b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14d.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-14e.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-15.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-150.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-151-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-151.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-152-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-152.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-153.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-154-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-154.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155c-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155d-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-155d.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156c-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-156c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-157-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-157.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-158-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-158.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-15b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-15b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-160-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-160.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-166.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-166a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-167.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-167a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-168-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-168.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-168a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-168a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-169-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-169.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-169a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-169a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170c-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170d-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-170d.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-171.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-172a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-172a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-172b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-172b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-173a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-173a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-173b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-173b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-174a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-174b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175c-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-175c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-176-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-176.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-177b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-177b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-178-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-178.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-179-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-179.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-179a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-180a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-181.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-182.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-183.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184a-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184c-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184d-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184d.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184e-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184e.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184f-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-184f.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-2.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-21b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-21c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-22.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-23.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-24.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-25.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-27.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-27a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-27b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-28.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-28b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-29.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-29b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-3.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-30.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-31.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-32.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-33.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-34.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-35.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-36.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-37.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-38.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-39.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-39a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-39b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-39c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-3a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-4.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-41.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-41a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-42.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-42a.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-43.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-43b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-44.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-44b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-44c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-44d.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-45.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-45b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-45c.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-46.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-46b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-47.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-48-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-48.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-49-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-49.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-5.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-50.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-51.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-52.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-53.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-54-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-54.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-55-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-55.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-56-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-56.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-57.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-57b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-59-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-59.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-6.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-60-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-60.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-66b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-67.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-68.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-69.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-7.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-70.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-72.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-72b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-73.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-73b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-74.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-74b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-75.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-75b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-76.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-76b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-77.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-77b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-78.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-78b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-79.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-7b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-7b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-8.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-80.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-81.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-81b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-82.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-82b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-83-expected.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-83.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-86.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-87-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-87.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-87b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-87b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-88.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-88b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-89.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-9.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-90-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-90.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-90b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-90b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-91.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-92.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-93.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-94.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-94b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-95.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-96.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-96b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-97.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-97b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-98.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-98b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-99-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-99.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-99b-expected.xht: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-99b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-d1.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-d1b.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-d2.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-d3.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/css3-modsel-d4.xml: Added.
+        * web-platform-tests/css/selectors/old-tests/w3c-import.log: Added.
+        * web-platform-tests/css/selectors/remove-hovered-element-expected.html: Added.
+        * web-platform-tests/css/selectors/remove-hovered-element.html: Added.
+        * web-platform-tests/css/selectors/resources/w3c-import.log:
+        * web-platform-tests/css/selectors/root-siblings.htm: Added.
+        * web-platform-tests/css/selectors/scope-selector-expected.txt: Added.
+        * web-platform-tests/css/selectors/scope-selector.html: Added.
+        * web-platform-tests/css/selectors/selector-placeholder-shown-emptify-placeholder-expected.txt: Added.
+        * web-platform-tests/css/selectors/selector-placeholder-shown-emptify-placeholder.html: Added.
+        * web-platform-tests/css/selectors/selectors-case-sensitive-001-expected.txt: Added.
+        * web-platform-tests/css/selectors/selectors-case-sensitive-001.html: Added.
+        * web-platform-tests/css/selectors/selectors-empty-001.xml:
+        * web-platform-tests/css/selectors/sharing-in-svg-use-expected.html: Added.
+        * web-platform-tests/css/selectors/sharing-in-svg-use.html: Added.
+        * web-platform-tests/css/selectors/tng.css: Removed.
+        * web-platform-tests/css/selectors/user-invalid.html:
+        * web-platform-tests/css/selectors/w3c-import.log:
+        * web-platform-tests/css/selectors/webkit-pseudo-element-expected.txt: Added.
+        * web-platform-tests/css/selectors/webkit-pseudo-element.html: Added.
+        * web-platform-tests/css/selectors/x-pseudo-element-expected.txt: Added.
+        * web-platform-tests/css/selectors/x-pseudo-element.html: Added.
+        * web-platform-tests/css/selectors/xhtml-full.css: Removed.
+        * web-platform-tests/css/selectors/xhtml-shell.css: Removed.
+        * web-platform-tests/css/selectors/xml-full.css: Removed.
+        * web-platform-tests/css/selectors/xml-shell.css: Removed.
+
+2020-03-26  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Sync wpt/domxpath and re-sync wpt/css/cssom-view from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=209574
+
+        Reviewed by Antti Koivisto.
+
+        web-platform-tests revision: 1137f4bff2b7
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/cssom-view/*: Updated.
+        * web-platform-tests/domxpath/*: Added.
+
+2020-03-26  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r254669): Expand media button doesn't work on first try on photos on reddit.com
+        https://bugs.webkit.org/show_bug.cgi?id=209590
+        <rdar://problem/60461809>
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/html/rendering/replaced-elements/attributes-for-embedded-content-and-images/img-aspect-ratio-expected.txt:
+
+        Failure here shifts to a different subtest. This one uses fractional pixels and LayoutUnit accuracy is not sufficient to compute the exact ratio.
+
+2020-03-25  Frank Yang  <guowei_yang@apple.com>
+        
+        WebKit uses Alphabetic Baseline when "-webkit-text-orientation" is "mixed" in Vertical Writing Mode 
+        https://bugs.webkit.org/show_bug.cgi?id=208824
+
+        Reviewed by Myles C. Maxfield.
+
+        Those -expected.txt files need to be updated since previously they are expecting 
+        failures, but after the code change those failures are actually passing, so the 
+        expected.txt files need to be updated.        
+
+        * web-platform-tests/css/css-grid/alignment/grid-alignment-style-changes-008-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-container-baseline-001-expected.txt:
+
+
+2020-03-23  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: getAllResponseHeaders() sorting
+        https://bugs.webkit.org/show_bug.cgi?id=200565
+
+        Reviewed by Darin Adler.
+
+        Update improved test result.
+
+        * web-platform-tests/xhr/getallresponseheaders-expected.txt:
+
+2020-03-23  Chris Dumez  <cdumez@apple.com>
+
+        Port window.postMessage to the HTML event loop
+        https://bugs.webkit.org/show_bug.cgi?id=209359
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline test now that the logging ordering is slightly different.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2020-03-20  youenn fablet  <youenn@apple.com>
+
+        Add routines to check about:blank and about:srcdoc URLs
+        https://bugs.webkit.org/show_bug.cgi?id=209174
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/html/dom/usvstring-reflection.https-expected.txt:
+
+2020-03-19  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Changes in grid or elements inside the grid affects margin on other elements in the grid
+        https://bugs.webkit.org/show_bug.cgi?id=209203
+
+        Reviewed by Darin Adler.
+
+        Imported new Web Platform tests to detect regressions in the auto-margins logic durignn relayouts.
+
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-001.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-002.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-003.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-004.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-005.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-006.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-007.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-008-expected.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-block-axis-alignment-auto-margins-008.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-001.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-002.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-003.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-004.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-005.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-006.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-007.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-008-expected.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-inline-axis-alignment-auto-margins-008.html: Added.
+
+2020-03-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update imported/w3c/web-platform-tests/css/css-text/line-break/line-break-{strict,normal}-015.xht
+        https://bugs.webkit.org/show_bug.cgi?id=209250
+        <rdar://problem/59957596>
+
+        Update them according to https://github.com/web-platform-tests/wpt/commit/7d24adef541b2e836f2b2f9534ce3f0e078f5782
+
+        Reviewed by Antti Koivisto.
+
+        * platform/ios/TestExpectations: Mark as failing on old OSes
+        * platform/mac/TestExpectations: Mark as failing on old OSes
+        * web-platform-tests/css/css-text/line-break/line-break-normal-015-expected.xht:
+        * web-platform-tests/css/css-text/line-break/line-break-normal-015.xht:
+        * web-platform-tests/css/css-text/line-break/line-break-strict-015-expected.xht:
+        * web-platform-tests/css/css-text/line-break/line-break-strict-015.xht:
+
+2020-03-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Mark promises as handled when rejected
+        https://bugs.webkit.org/show_bug.cgi?id=209240
+        <rdar://problem/60592305>
+
+        Reviewed by Youenn Fablet.
+
+        Add the new WPT tests added for this spec change (https://github.com/web-platform-tests/wpt/pull/22314) and revert some workarounds
+        made in our copy of WPT tests to previously silence flaky console output related to promise rejections (added in r258275 and r258276).
+
+        * web-platform-tests/web-animations/interfaces/Animation/finished-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/finished.html:
+        * web-platform-tests/web-animations/interfaces/Animation/ready-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html:
+
+2020-03-18  Frank Yang  <guowei_yang@apple.com>
+
+        [CSS Writing Modes] Import css/css-writing-modes from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=209088
+
+        Reviewed by Myles C. Maxfield.
+
+        Imported new tests in css-writing-mode from web platform tests. Those
+        tests are important for testing CSS property behaviors like "text-orientation"
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/css-writing-modes/*: Added.
+ 
+
+2020-03-18  youenn fablet  <youenn@apple.com>
+
+        Make sure a preflight fails if response headers are invalid
+        https://bugs.webkit.org/show_bug.cgi?id=208924
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-preflight-response-validation.any-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-response-validation.any.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-response-validation.any.js: Added.
+        (corsPreflightResponseValidation):
+        * web-platform-tests/fetch/api/cors/cors-preflight-response-validation.any.worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-response-validation.any.worker.html: Added.
+
+2020-03-17  Frederic Wang  <fwang@igalia.com>
+
+        Update wpt tests imported/w3c/web-platform-tests/html/rendering/non-replaced-elements/the-page
+        https://bugs.webkit.org/show_bug.cgi?id=209178
+
+        Reviewed by Rob Buis.
+
+        * resources/resource-files.json:
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/iframe-scrolling-attribute-expected.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/iframe-scrolling-attribute-values-expected.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/iframe-scrolling-attribute-values.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/iframe-scrolling-attribute.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/support/big-page.html: Added.
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/support/w3c-import.log:
+        * web-platform-tests/html/rendering/non-replaced-elements/the-page/w3c-import.log:
+
+2020-03-17  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Sync web-platform-tests/css/css-cascade from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=209150
+
+        Reviewed by Youenn Fablet.
+
+        Sync web-platform-tests/css/css-cascade from upstream ec2bf5a86c00.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-cascade/*: Added.
+
+2020-03-16  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILURE: !result.innerNode() || (request.resultIsElementList() && result.listBasedTestResult().size()) in RenderLayer::hitTestContents()
+        https://bugs.webkit.org/show_bug.cgi?id=209112
+
+        Reviewed by Darin Adler.
+
+        Update test result now that more sub-tests are passing.
+
+        * web-platform-tests/shadow-dom/DocumentOrShadowRoot-prototype-elementFromPoint-expected.txt:
+
+2020-03-16  youenn fablet  <youenn@apple.com>
+
+        RTCRtpSender of kind video should have a null dtmf attribute
+        https://bugs.webkit.org/show_bug.cgi?id=209135
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpSender.https-expected.txt: Added.
+        * web-platform-tests/webrtc/RTCRtpSender.https.html: Added.
+
+2020-03-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] Import wpt tests
+        https://bugs.webkit.org/show_bug.cgi?id=208989
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/webxr/META.yml: Added.
+        * web-platform-tests/webxr/ar-module/idlharness.https.window.html: Added.
+        * web-platform-tests/webxr/ar-module/idlharness.https.window.js: Added.
+        (async idl_array):
+        * web-platform-tests/webxr/ar-module/w3c-import.log: Added.
+        * web-platform-tests/webxr/ar-module/xrDevice_isSessionSupported_immersive-ar.https.html: Added.
+        * web-platform-tests/webxr/ar-module/xrDevice_requestSession_immersive-ar.https.html: Added.
+        * web-platform-tests/webxr/ar-module/xrSession_environmentBlendMode.https.html: Added.
+        * web-platform-tests/webxr/dom-overlay/ar_dom_overlay.https.html: Added.
+        * web-platform-tests/webxr/dom-overlay/w3c-import.log: Added.
+        * web-platform-tests/webxr/events_input_source_recreation.https.html: Added.
+        * web-platform-tests/webxr/events_input_sources_change.https.html: Added.
+        * web-platform-tests/webxr/events_referenceSpace_reset_immersive.https.html: Added.
+        * web-platform-tests/webxr/events_referenceSpace_reset_inline.https.html: Added.
+        * web-platform-tests/webxr/events_session_select.https.html: Added.
+        * web-platform-tests/webxr/events_session_select_subframe.https.html: Added.
+        * web-platform-tests/webxr/events_session_squeeze.https.html: Added.
+        * web-platform-tests/webxr/exclusive_requestFrame_nolayer.https.html: Added.
+        * web-platform-tests/webxr/gamepads-module/idlharness.https.window.html: Added.
+        * web-platform-tests/webxr/gamepads-module/idlharness.https.window.js: Added.
+        (async idl_array):
+        * web-platform-tests/webxr/gamepads-module/w3c-import.log: Added.
+        * web-platform-tests/webxr/gamepads-module/xrInputSource_gamepad_disconnect.https.html: Added.
+        * web-platform-tests/webxr/gamepads-module/xrInputSource_gamepad_input_registered.https.html: Added.
+        * web-platform-tests/webxr/getInputPose_handedness.https.html: Added.
+        * web-platform-tests/webxr/getInputPose_pointer.https.html: Added.
+        * web-platform-tests/webxr/getViewerPose_emulatedPosition.https.html: Added.
+        * web-platform-tests/webxr/hit-test/ar_hittest_subscription_refSpaces.https.html: Added.
+        * web-platform-tests/webxr/hit-test/ar_hittest_subscription_states.https.html: Added.
+        * web-platform-tests/webxr/hit-test/w3c-import.log: Added.
+        * web-platform-tests/webxr/hit-test/xrRay_constructor.https.html: Added.
+        * web-platform-tests/webxr/hit-test/xrRay_matrix.https.html: Added.
+        * web-platform-tests/webxr/idlharness.https.window.html: Added.
+        * web-platform-tests/webxr/idlharness.https.window.js: Added.
+        (async idl_array):
+        * web-platform-tests/webxr/navigator_xr_sameObject.https.html: Added.
+        * web-platform-tests/webxr/render_state_vertical_fov_immersive.https.html: Added.
+        * web-platform-tests/webxr/render_state_vertical_fov_inline.https.html: Added.
+        * web-platform-tests/webxr/resources/w3c-import.log: Added.
+        * web-platform-tests/webxr/resources/webxr_check.html: Added.
+        * web-platform-tests/webxr/resources/webxr_math_utils.js: Added.
+        (let.transform_point_by_matrix):
+        (let.normalize_quaternion):
+        (let.conjugate_quaternion):
+        (let.multiply_quaternions):
+        (let.normalize_perspective):
+        (let.transform_point_by_quaternion):
+        * web-platform-tests/webxr/resources/webxr_test_asserts.js: Added.
+        (const.assert_point_approx_equals):
+        (const.assert_point_significantly_not_equals):
+        (const.assert_transform_approx_equals):
+        (const.assert_matrix_approx_equals):
+        (const.assert_matrix_significantly_not_equals):
+        (const.assert_ray_approx_equals):
+        * web-platform-tests/webxr/resources/webxr_test_constants.js: Added.
+        * web-platform-tests/webxr/resources/webxr_test_constants_fake_world.js: Added.
+        (createFakeWorld):
+        * web-platform-tests/webxr/resources/webxr_util.js: Added.
+        (xr_promise_test):
+        (async let):
+        (async xr_session_promise_test):
+        (async promise_simulate_user_activation):
+        * web-platform-tests/webxr/w3c-import.log: Added.
+        * web-platform-tests/webxr/webGLCanvasContext_create_xrcompatible.https.html: Added.
+        * web-platform-tests/webxr/webGLCanvasContext_makecompatible_contextlost.https.html: Added.
+        * web-platform-tests/webxr/webxr-supported-by-feature-policy.html: Added.
+        * web-platform-tests/webxr/webxr_availability.http.sub.html: Added.
+        * web-platform-tests/webxr/webxr_feature_policy.https.html: Added.
+        * web-platform-tests/webxr/webxr_feature_policy.https.html.headers: Added.
+        * web-platform-tests/webxr/xrBoundedReferenceSpace_updates.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_disconnect_ends.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_isSessionSupported_immersive.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_isSessionSupported_immersive_unsupported.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_isSessionSupported_inline.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_immersive.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_immersive_no_gesture.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_immersive_unsupported.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_no_mode.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_non_immersive_no_gesture.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_optionalFeatures.https.html: Added.
+        * web-platform-tests/webxr/xrDevice_requestSession_requiredFeatures_unknown.https.html: Added.
+        * web-platform-tests/webxr/xrFrame_getPose.https.html: Added.
+        * web-platform-tests/webxr/xrFrame_getViewerPose_getPose.https.html: Added.
+        * web-platform-tests/webxr/xrFrame_lifetime.https.html: Added.
+        * web-platform-tests/webxr/xrFrame_session_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrInputSource_add_remove.https.html: Added.
+        * web-platform-tests/webxr/xrInputSource_emulatedPosition.https.html: Added.
+        * web-platform-tests/webxr/xrInputSource_profiles.https.html: Added.
+        * web-platform-tests/webxr/xrInputSource_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrPose_transform_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrReferenceSpace_originOffset.https.html: Added.
+        * web-platform-tests/webxr/xrReferenceSpace_originOffsetBounded.https.html: Added.
+        * web-platform-tests/webxr/xrReferenceSpace_originOffset_viewer.https.html: Added.
+        * web-platform-tests/webxr/xrRigidTransform_constructor.https.html: Added.
+        * web-platform-tests/webxr/xrRigidTransform_inverse.https.html: Added.
+        * web-platform-tests/webxr/xrRigidTransform_matrix.https.html: Added.
+        * web-platform-tests/webxr/xrRigidTransform_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrSession_cancelAnimationFrame.https.html: Added.
+        * web-platform-tests/webxr/xrSession_cancelAnimationFrame_invalidhandle.https.html: Added.
+        * web-platform-tests/webxr/xrSession_end.https.html: Added.
+        * web-platform-tests/webxr/xrSession_features_deviceSupport.https.html: Added.
+        * web-platform-tests/webxr/xrSession_input_events_end.https.html: Added.
+        * web-platform-tests/webxr/xrSession_prevent_multiple_exclusive.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestAnimationFrame_callback_calls.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestAnimationFrame_data_valid.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestAnimationFrame_getViewerPose.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestAnimationFrame_timestamp.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestReferenceSpace.https.html: Added.
+        * web-platform-tests/webxr/xrSession_requestReferenceSpace_features.https.html: Added.
+        * web-platform-tests/webxr/xrSession_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrSession_viewer_availability.https.html: Added.
+        * web-platform-tests/webxr/xrSession_viewer_referenceSpace.https.html: Added.
+        * web-platform-tests/webxr/xrSession_visibilityState.https.html: Added.
+        * web-platform-tests/webxr/xrStationaryReferenceSpace_floorlevel_updates.https.html: Added.
+        * web-platform-tests/webxr/xrView_eyes.https.html: Added.
+        * web-platform-tests/webxr/xrView_match.https.html: Added.
+        * web-platform-tests/webxr/xrView_oneframeupdate.https.html: Added.
+        * web-platform-tests/webxr/xrView_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrViewerPose_views_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrViewport_valid.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_constructor.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_framebuffer_draw.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_framebuffer_sameObject.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_framebuffer_scale.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_opaque_framebuffer.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_opaque_framebuffer_stencil.https.html: Added.
+        * web-platform-tests/webxr/xrWebGLLayer_viewports.https.html: Added.
+
+2020-03-16  youenn fablet  <youenn@apple.com>
+
+        Unique origins should not be Potentially Trustworthy
+        https://bugs.webkit.org/show_bug.cgi?id=209049
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/service-workers/service-worker/interfaces-window.https-expected.txt:
+
+2020-03-16  youenn fablet  <youenn@apple.com>
+
+        Remove the use of empty WebRTC sources for receiver tracks
+        https://bugs.webkit.org/show_bug.cgi?id=209061
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-track-stats.https-expected.txt:
+
+2020-03-14  Rob Buis  <rbuis@igalia.com>
+
+        Set Origin header value to null rather than omitting it
+        https://bugs.webkit.org/show_bug.cgi?id=186030
+
+        Reviewed by Youenn Fablet.
+
+        Update improved test result.
+
+        * web-platform-tests/fetch/origin/assorted.window-expected.txt:
+
+2020-03-13  Antoine Quint  <graouts@apple.com>
+
+        [iOS] 9 imported/w3c/web-platform-tests/pointerevents/pointerevent tests are failing since import in r253630
+        https://bugs.webkit.org/show_bug.cgi?id=209064
+        <rdar://problem/60330378>
+
+        Reviewed by Simon Fraser.
+
+        In r253630 we imported a host of new and updated WPT tests and these included changes to testdriver.js that our testdriver-vendor.js
+        implementation didn't know to handle. Specifically, pauses are now added after each pointer action to add a 16ms delay.
+
+        It was a mistake to use a stationary touch for pauses, instead we shuld just increase the time offset with the value set in the pause
+        and avoid changing any other state, so no resetting the last known x and y values, or adding a new touch into the event stream that
+        will be passed to UIScriptController.
+
+        And since there is now a built-in pause between pointer actions, there is also no need to set a harcoded value for a default
+        timeoffset, this is now provided directly by the action input.
+
+        * web-platform-tests/resources/testdriver-vendor.js:
+
+2020-03-12  Chris Dumez  <cdumez@apple.com>
+
+        [ Mac ] fast/history/page-cache-webdatabase-pending-transaction.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=207010
+        <rdar://problem/59035295>
+
+        Unreviewed, silence console messages to address flakiness.
+
+        * web-platform-tests/workers/WorkerGlobalScope_ErrorEvent_lineno-expected.txt:
+
+2020-03-12  Rob Buis  <rbuis@igalia.com>
+
+        Implement wildcard behavior for Cross-Origin-Expose-Headers
+        https://bugs.webkit.org/show_bug.cgi?id=208800
+
+        Reviewed by Youenn Fablet.
+
+        Update improved test results and add a test for testing
+        xhr and wildcard behavior for Cross-Origin-Expose-Headers behavior.
+
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any.worker-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-cors-exposed-header-names.https-expected.txt:
+        * web-platform-tests/xhr/cors-expose-star.sub.any-expected.txt: Added.
+        * web-platform-tests/xhr/cors-expose-star.sub.any.html: Added.
+        * web-platform-tests/xhr/cors-expose-star.sub.any.js: Added.
+        (sharedHeaders.string_appeared_here.async_test):
+        (string_appeared_here.async_test):
+        * web-platform-tests/xhr/resources/top.txt: Added.
+
+2020-03-11  Antoine Quint  <graouts@webkit.org>
+
+        [ macOS wk1 ] imported/w3c/web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html is flaky failing
+        https://bugs.webkit.org/show_bug.cgi?id=207566
+        <rdar://problem/59355382>
+
+        Reviewed by Dean Jackson.
+
+        We silence the unhandled Promise warning so that the test output is both cleaner and more stable.
+
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html:
+
+2020-03-11  Antoine Quint  <graouts@webkit.org>
+
+        REGRESSION: (r255821) [ iOS Mac wk1 ] imported/w3c/web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html
+        https://bugs.webkit.org/show_bug.cgi?id=207278
+        <rdar://problem/59195524>
+
+        Reviewed by Dean Jackson.
+
+        We silence the unhandled Promise warning so that the test output is both cleaner and more stable.
+
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html:
+
+2020-03-11  Chris Dumez  <cdumez@apple.com>
+
+        Defer async scripts until DOMContentLoaded or first paint, whichever comes first
+        https://bugs.webkit.org/show_bug.cgi?id=208896
+
+        Reviewed by Darin Adler.
+
+        Rebbaseline WPT test due to script execution timing change.
+
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/execution-timing/085-expected.txt:
+
 2020-03-10  Rob Buis  <rbuis@igalia.com>
 
         Align with Origin header changes

@@ -41,6 +41,10 @@
 // This needs to be here because Document.h also depends on it.
 #define DUMP_NODE_STATISTICS 0
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class ContainerNode;
@@ -537,7 +541,7 @@ protected:
         IsShadowRootFlag = 1 << 7,
         IsConnectedFlag = 1 << 8,
         IsInShadowTreeFlag = 1 << 9,
-        StyleAffectedByFocusWithinFlag = 1 << 10,
+        // UnusedFlag = 1 << 10,
         HasEventTargetDataFlag = 1 << 11,
 
         // These bits are used by derived classes, pulled up here so they can
@@ -561,7 +565,7 @@ protected:
 
         ChildrenAffectedByFirstChildRulesFlag = 1 << 25,
         ChildrenAffectedByLastChildRulesFlag = 1 << 26,
-        ChildrenAffectedByHoverRulesFlag = 1 << 27,
+        // UnusedFlag = 1 << 27,
 
         AffectsNextSiblingElementStyle = 1 << 28,
         StyleIsAffectedByPreviousSibling = 1 << 29,
@@ -601,18 +605,15 @@ protected:
     static constexpr uint32_t s_refCountMask = ~static_cast<uint32_t>(1);
 
     enum class ElementStyleFlag : uint8_t {
-        StyleAffectedByActive = 1 << 0,
-        StyleAffectedByEmpty = 1 << 1,
-        ChildrenAffectedByDrag = 1 << 2,
-
+        StyleAffectedByEmpty                                    = 1 << 0,
         // Bits for dynamic child matching.
         // We optimize for :first-child and :last-child. The other positional child selectors like nth-child or
         // *-child-of-type, we will just give up and re-evaluate whenever children change at all.
-        ChildrenAffectedByForwardPositionalRules = 1 << 3,
-        DescendantsAffectedByForwardPositionalRules = 1 << 4,
-        ChildrenAffectedByBackwardPositionalRules = 1 << 5,
-        DescendantsAffectedByBackwardPositionalRules = 1 << 6,
-        ChildrenAffectedByPropertyBasedBackwardPositionalRules = 1 << 7,
+        ChildrenAffectedByForwardPositionalRules                = 1 << 1,
+        DescendantsAffectedByForwardPositionalRules             = 1 << 2,
+        ChildrenAffectedByBackwardPositionalRules               = 1 << 3,
+        DescendantsAffectedByBackwardPositionalRules            = 1 << 4,
+        ChildrenAffectedByPropertyBasedBackwardPositionalRules  = 1 << 5,
     };
 
     bool hasStyleFlag(ElementStyleFlag state) const { return m_rendererWithStyleFlags.type() & static_cast<uint8_t>(state); }
@@ -791,6 +792,8 @@ inline void Node::setTreeScopeRecursively(TreeScope& newTreeScope)
 }
 
 bool areNodesConnectedInSameTreeScope(const Node*, const Node*);
+
+WTF::TextStream& operator<<(WTF::TextStream&, const Node&);
 
 } // namespace WebCore
 

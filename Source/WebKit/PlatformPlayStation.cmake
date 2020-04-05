@@ -1,6 +1,7 @@
 set(WebKit_OUTPUT_NAME SceWebKit)
 set(WebKit_WebProcess_OUTPUT_NAME WebKitWebProcess)
 set(WebKit_NetworkProcess_OUTPUT_NAME WebKitNetworkProcess)
+set(WebKit_GPUProcess_OUTPUT_NAME WebKitGPUProcess)
 set(WebKit_PluginProcess_OUTPUT_NAME WebKitPluginProcess)
 
 add_definitions(-DBUILDING_WEBKIT)
@@ -15,7 +16,16 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
+list(APPEND GPUProcess_SOURCES
+    GPUProcess/EntryPoint/unix/GPUProcessMain.cpp
+)
+
 list(APPEND WebKit_SOURCES
+    GPUProcess/media/playstation/RemoteMediaPlayerProxyPlayStation.cpp
+
+    GPUProcess/playstation/GPUProcessMainPlayStation.cpp
+    GPUProcess/playstation/GPUProcessPlayStation.cpp
+
     NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp
     NetworkProcess/Classifier/WebResourceLoadStatisticsTelemetry.cpp
 
@@ -95,6 +105,8 @@ list(APPEND WebKit_SOURCES
     UIProcess/playstation/WebPageProxyPlayStation.cpp
     UIProcess/playstation/WebProcessPoolPlayStation.cpp
 
+    WebProcess/GPU/media/playstation/VideoLayerRemotePlayStation.cpp
+
     WebProcess/InjectedBundle/playstation/InjectedBundlePlayStation.cpp
 
     WebProcess/WebCoreSupport/curl/WebFrameNetworkingContext.cpp
@@ -116,6 +128,7 @@ list(APPEND WebKit_SOURCES
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/NetworkProcess/curl"
     "${WEBKIT_DIR}/Platform/IPC/unix"
+    "${WEBKIT_DIR}/Platform/generic"
     "${WEBKIT_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
     "${WEBKIT_DIR}/Shared/libwpe"
@@ -291,6 +304,13 @@ list(APPEND WebKit_PUBLIC_FRAMEWORK_HEADERS
     UIProcess/API/C/curl/WKWebsiteDataStoreRefCurl.h
 
     UIProcess/API/C/playstation/WKView.h
+)
+
+# Both PAL and WebCore are built as object libraries. The WebKit:: interface
+# targets are used. A limitation of that is the object files are not propagated
+# so they are added here.
+list(APPEND WebKit_PRIVATE_LIBRARIES
+    $<TARGET_OBJECTS:PAL>
 )
 
 WEBKIT_MAKE_FORWARDING_HEADERS(WebKit

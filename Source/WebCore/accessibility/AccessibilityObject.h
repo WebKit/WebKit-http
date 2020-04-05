@@ -69,28 +69,11 @@ class ScrollableArea;
 struct AccessibilityText {
     String text;
     AccessibilityTextSource textSource;
-    Vector<RefPtr<AXCoreObject>> textElements;
     
     AccessibilityText(const String& t, const AccessibilityTextSource& s)
         : text(t)
         , textSource(s)
     { }
-
-    AccessibilityText(const String& t, const AccessibilityTextSource& s, Vector<AXCoreObject*> elements)
-        : text(t)
-        , textSource(s)
-    {
-        textElements.reserveCapacity(elements.size());
-        for (auto element : elements)
-            textElements.uncheckedAppend(element);
-    }
-
-    AccessibilityText(const String& t, const AccessibilityTextSource& s, AXCoreObject* element)
-        : text(t)
-        , textSource(s)
-    {
-        textElements.append(element);
-    }
 };
 
 bool nodeHasPresentationRole(Node*);
@@ -114,9 +97,9 @@ public:
     bool isAccessibilitySVGRoot() const override { return false; }
     bool isAccessibilitySVGElement() const override { return false; }
     bool isAccessibilityTableInstance() const override { return false; }
-    bool isAccessibilityProgressIndicatorInstance() const override { return false; }
-
     bool isAccessibilityTableColumnInstance() const override { return false; }
+    bool isAccessibilityProgressIndicatorInstance() const override { return false; }
+    bool isAXIsolatedObjectInstance() const override { return false; }
 
     bool isAttachmentElement() const override { return false; }
     bool isHeading() const override { return false; }
@@ -459,6 +442,10 @@ public:
     String accessKey() const override { return nullAtom(); }
     String actionVerb() const override;
     Widget* widget() const override { return nullptr; }
+    PlatformWidget platformWidget() const override { return nullptr; }
+#if PLATFORM(COCOA)
+    RemoteAXObjectRef remoteParentObject() const override;
+#endif
     Widget* widgetForAttachmentView() const override { return nullptr; }
     Page* page() const override;
     Document* document() const override;

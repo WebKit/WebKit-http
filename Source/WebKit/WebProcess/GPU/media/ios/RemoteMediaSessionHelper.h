@@ -28,6 +28,7 @@
 #if ENABLE(GPU_PROCESS) && PLATFORM(IOS_FAMILY)
 
 #include "MessageReceiver.h"
+#include <WebCore/MediaPlaybackTargetContext.h>
 #include <WebCore/MediaSessionHelperIOS.h>
 
 namespace WebKit {
@@ -44,10 +45,8 @@ public:
     IPC::Connection& connection();
 
     using HasAvailableTargets = WebCore::MediaSessionHelperClient::HasAvailableTargets;
-    using InterruptionType = WebCore::MediaSessionHelperClient::InterruptionType;
     using PlayingToAutomotiveHeadUnit = WebCore::MediaSessionHelperClient::PlayingToAutomotiveHeadUnit;
     using ShouldPause = WebCore::MediaSessionHelperClient::ShouldPause;
-    using ShouldResume = WebCore::MediaSessionHelperClient::ShouldResume;
     using SupportsAirPlayVideo = WebCore::MediaSessionHelperClient::SupportsAirPlayVideo;
     using SuspendedUnderLock = WebCore::MediaSessionHelperClient::SuspendedUnderLock;
 
@@ -61,7 +60,6 @@ private:
     void providePresentingApplicationPID(int) final;
 
     // Messages
-    void receivedInterruption(InterruptionType, ShouldResume);
     void applicationWillEnterForeground(SuspendedUnderLock);
     void applicationDidEnterBackground(SuspendedUnderLock);
     void applicationWillBecomeInactive();

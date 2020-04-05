@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,6 @@
 #include <WebCore/CompositionUnderline.h>
 #include <WebCore/Credential.h>
 #include <WebCore/Cursor.h>
-#include <WebCore/DataListSuggestionPicker.h>
 #include <WebCore/DatabaseDetails.h>
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
@@ -118,6 +117,8 @@
 #include <WebCore/MediaConstraints.h>
 #endif
 
+// FIXME: Seems like we could use std::tuple to cut down the code below a lot!
+
 namespace IPC {
 using namespace WebCore;
 using namespace WebKit;
@@ -155,6 +156,9 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
         return true;
 
 #if USE(UNIX_DOMAIN_SOCKETS)
+    if (!decoder.bufferIsLargeEnoughToContain<uint8_t>(bufferSize))
+        return false;
+
     Vector<uint8_t> data;
     data.grow(bufferSize);
     if (!decoder.decodeFixedLengthData(data.data(), data.size(), 1))
@@ -164,6 +168,10 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
 #else
     SharedMemory::Handle handle;
     if (!decoder.decode(handle))
+        return false;
+
+    // SharedMemory::Handle::size() is rounded up to the nearest page.
+    if (bufferSize > handle.size())
         return false;
 
     auto sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
@@ -193,9 +201,12 @@ static bool decodeTypesAndData(Decoder& decoder, Vector<String>& types, Vector<R
 
     ASSERT(dataSize == types.size());
 
-    data.resize(dataSize);
-    for (auto& buffer : data)
-        decodeSharedBuffer(decoder, buffer);
+    for (uint64_t i = 0; i < dataSize; i++) {
+        RefPtr<SharedBuffer> buffer;
+        if (!decodeSharedBuffer(decoder, buffer))
+            return false;
+        data.append(WTFMove(buffer));
+    }
 
     return true;
 }
@@ -238,6 +249,27 @@ bool ArgumentCoder<CacheQueryOptions>::decode(Decoder& decoder, CacheQueryOption
     options.ignoreVary = ignoreVary;
     options.cacheName = WTFMove(cacheName);
     return true;
+}
+
+void ArgumentCoder<CharacterRange>::encode(Encoder& encoder, const CharacterRange& range)
+{
+    encoder << static_cast<uint64_t>(range.location);
+    encoder << static_cast<uint64_t>(range.length);
+}
+
+Optional<CharacterRange> ArgumentCoder<CharacterRange>::decode(Decoder& decoder)
+{
+    Optional<uint64_t> location;
+    decoder >> location;
+    if (!location)
+        return WTF::nullopt;
+
+    Optional<uint64_t> length;
+    decoder >> length;
+    if (!length)
+        return WTF::nullopt;
+
+    return { { *location, *length } };
 }
 
 void ArgumentCoder<DOMCacheEngine::CacheInfo>::encode(Encoder& encoder, const DOMCacheEngine::CacheInfo& info)
@@ -1082,7 +1114,7 @@ static void encodeNativeImage(Encoder& encoder, NativeImagePtr image)
     if (!graphicsContext)
         return;
 
-    graphicsContext->drawNativeImage(image, { }, FloatRect({ }, imageSize), FloatRect({ }, imageSize));
+    graphicsContext->drawNativeImage(image, imageSize, FloatRect({ }, imageSize), FloatRect({ }, imageSize));
 
     ShareableBitmap::Handle handle;
     bitmap->createHandle(handle);
@@ -1688,29 +1720,6 @@ bool ArgumentCoder<DatabaseDetails>::decode(Decoder& decoder, DatabaseDetails& d
     return true;
 }
 
-#if ENABLE(DATALIST_ELEMENT)
-void ArgumentCoder<DataListSuggestionInformation>::encode(Encoder& encoder, const WebCore::DataListSuggestionInformation& info)
-{
-    encoder.encodeEnum(info.activationType);
-    encoder << info.suggestions;
-    encoder << info.elementRect;
-}
-
-bool ArgumentCoder<DataListSuggestionInformation>::decode(Decoder& decoder, WebCore::DataListSuggestionInformation& info)
-{
-    if (!decoder.decodeEnum(info.activationType))
-        return false;
-
-    if (!decoder.decode(info.suggestions))
-        return false;
-
-    if (!decoder.decode(info.elementRect))
-        return false;
-
-    return true;
-}
-#endif
-
 template<> struct ArgumentCoder<PasteboardCustomData::Entry> {
     static void encode(Encoder&, const PasteboardCustomData::Entry&);
     static bool decode(Decoder&, PasteboardCustomData::Entry&);
@@ -2043,22 +2052,16 @@ bool ArgumentCoder<ShareDataWithParsedURL>::decode(Decoder& decoder, ShareDataWi
 
 void ArgumentCoder<GrammarDetail>::encode(Encoder& encoder, const GrammarDetail& detail)
 {
-    encoder << detail.location;
-    encoder << detail.length;
+    encoder << detail.range;
     encoder << detail.guesses;
     encoder << detail.userDescription;
 }
 
 Optional<GrammarDetail> ArgumentCoder<GrammarDetail>::decode(Decoder& decoder)
 {
-    Optional<int> location;
-    decoder >> location;
-    if (!location)
-        return WTF::nullopt;
-
-    Optional<int> length;
-    decoder >> length;
-    if (!length)
+    Optional<CharacterRange> range;
+    decoder >> range;
+    if (!range)
         return WTF::nullopt;
 
     Optional<Vector<String>> guesses;
@@ -2071,7 +2074,7 @@ Optional<GrammarDetail> ArgumentCoder<GrammarDetail>::decode(Decoder& decoder)
     if (!userDescription)
         return WTF::nullopt;
 
-    return {{ WTFMove(*location), WTFMove(*length), WTFMove(*guesses), WTFMove(*userDescription) }};
+    return { { *range, WTFMove(*guesses), WTFMove(*userDescription) } };
 }
 
 void ArgumentCoder<TextCheckingRequestData>::encode(Encoder& encoder, const TextCheckingRequestData& request)
@@ -2107,8 +2110,7 @@ bool ArgumentCoder<TextCheckingRequestData>::decode(Decoder& decoder, TextChecki
 void ArgumentCoder<TextCheckingResult>::encode(Encoder& encoder, const TextCheckingResult& result)
 {
     encoder.encodeEnum(result.type);
-    encoder << result.location;
-    encoder << result.length;
+    encoder << result.range;
     encoder << result.details;
     encoder << result.replacement;
 }
@@ -2119,14 +2121,9 @@ Optional<TextCheckingResult> ArgumentCoder<TextCheckingResult>::decode(Decoder& 
     if (!decoder.decodeEnum(type))
         return WTF::nullopt;
     
-    Optional<int> location;
-    decoder >> location;
-    if (!location)
-        return WTF::nullopt;
-
-    Optional<int> length;
-    decoder >> length;
-    if (!length)
+    Optional<CharacterRange> range;
+    decoder >> range;
+    if (!range)
         return WTF::nullopt;
 
     Optional<Vector<GrammarDetail>> details;
@@ -2139,7 +2136,7 @@ Optional<TextCheckingResult> ArgumentCoder<TextCheckingResult>::decode(Decoder& 
     if (!replacement)
         return WTF::nullopt;
 
-    return {{ WTFMove(type), WTFMove(*location), WTFMove(*length), WTFMove(*details), WTFMove(*replacement) }};
+    return { { type, *range, WTFMove(*details), WTFMove(*replacement) } };
 }
 
 void ArgumentCoder<UserStyleSheet>::encode(Encoder& encoder, const UserStyleSheet& userStyleSheet)

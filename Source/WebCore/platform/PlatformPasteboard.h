@@ -64,7 +64,6 @@ public:
 #endif
     WEBCORE_EXPORT Optional<PasteboardItemInfo> informationForItemAtIndex(size_t index, int64_t changeCount);
     WEBCORE_EXPORT Optional<Vector<PasteboardItemInfo>> allPasteboardItemInfo(int64_t changeCount);
-    WEBCORE_EXPORT static String uniqueName();
 
     enum class IncludeImageTypes : bool { No, Yes };
     static String platformPasteboardTypeForSafeTypeForDOMToReadAndWrite(const String& domType, IncludeImageTypes = IncludeImageTypes::No);
@@ -100,10 +99,16 @@ public:
     WEBCORE_EXPORT int64_t write(const Vector<PasteboardCustomData>&);
     WEBCORE_EXPORT int64_t write(const PasteboardCustomData&);
     WEBCORE_EXPORT Vector<String> typesSafeForDOMToReadAndWrite(const String& origin) const;
+    WEBCORE_EXPORT bool containsStringSafeForDOMToReadForType(const String&) const;
 
 #if PLATFORM(GTK)
     WEBCORE_EXPORT void writeToClipboard(const SelectionData&, WTF::Function<void()>&& primarySelectionCleared);
     WEBCORE_EXPORT Ref<SelectionData> readFromClipboard();
+#endif
+
+#if PLATFORM(COCOA)
+    WEBCORE_EXPORT bool containsURLStringSuitableForLoading();
+    WEBCORE_EXPORT String urlStringSuitableForLoading(String& title);
 #endif
 
 private:

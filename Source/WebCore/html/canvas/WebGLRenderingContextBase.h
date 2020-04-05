@@ -359,6 +359,8 @@ public:
     
     unsigned getMaxVertexAttribs() const { return m_maxVertexAttribs; }
 
+    bool isContextUnrecoverablyLost() const;
+
     // Instanced Array helper functions.
     void drawArraysInstanced(GCGLenum mode, GCGLint first, GCGLsizei count, GCGLsizei primcount);
     void drawElementsInstanced(GCGLenum mode, GCGLsizei count, GCGLenum type, long long offset, GCGLsizei primcount);
@@ -372,9 +374,6 @@ public:
     void forceContextLost() override;
     void recycleContext() override;
     void dispatchContextChangedNotification() override;
-
-    // ActiveDOMObject
-    bool hasPendingActivity() const final;
 
 protected:
     WebGLRenderingContextBase(CanvasBase&, WebGLContextAttributes);
@@ -440,9 +439,11 @@ protected:
 
     bool validateWebGLObject(const char*, WebGLObject*);
 
+#if !USE(ANGLE)
     bool validateDrawArrays(const char* functionName, GCGLenum mode, GCGLint first, GCGLsizei count, GCGLsizei primcount);
     bool validateDrawElements(const char* functionName, GCGLenum mode, GCGLsizei count, GCGLenum type, long long offset, unsigned& numElements, GCGLsizei primcount);
     bool validateNPOTTextureLevel(GCGLsizei width, GCGLsizei height, GCGLint level, const char* functionName);
+#endif
 
     // Adds a compressed texture format.
     void addCompressedTextureFormat(GCGLenum);
@@ -462,13 +463,6 @@ protected:
     RefPtr<GraphicsContextGLOpenGL> m_context;
     RefPtr<WebGLContextGroup> m_contextGroup;
 
-    // Dispatches a context lost event once it is determined that one is needed.
-    // This is used both for synthetic and real context losses. For real ones, it's
-    // likely that there's no JavaScript on the stack, but that might be dependent
-    // on how exactly the platform discovers that the context was lost. For better
-    // portability we always defer the dispatch of the event.
-    SuspendableTimer m_dispatchContextLostEventTimer;
-    SuspendableTimer m_dispatchContextChangedEventTimer;
     bool m_restoreAllowed { false };
     SuspendableTimer m_restoreTimer;
 
@@ -512,11 +506,13 @@ protected:
     };
     Vector<VertexAttribValue> m_vertexAttribValue;
     unsigned m_maxVertexAttribs;
+#if !USE(ANGLE)
     RefPtr<WebGLBuffer> m_vertexAttrib0Buffer;
     long m_vertexAttrib0BufferSize { 0 };
     GCGLfloat m_vertexAttrib0BufferValue[4];
     bool m_forceAttrib0BufferRefill { true };
     bool m_vertexAttrib0UsedBefore { false };
+#endif
 
     RefPtr<WebGLProgram> m_currentProgram;
     RefPtr<WebGLFramebuffer> m_framebufferBinding;
@@ -527,8 +523,9 @@ protected:
         RefPtr<WebGLTexture> textureCubeMapBinding;
     };
     Vector<TextureUnitState> m_textureUnits;
+#if !USE(ANGLE)
     HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_unrenderableTextureUnits;
-
+#endif
     unsigned long m_activeTextureUnit;
 
     RefPtr<WebGLTexture> m_blackTexture2D;
@@ -646,11 +643,12 @@ protected:
     void restoreStateAfterClear();
 
     ExceptionOr<void> texImageSource2D(GCGLenum target, GCGLint level, GCGLint internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, TexImageSource&&);
-    void texImage2DBase(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, const void* pixels);
+    void texImage2DBase(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLint border, GCGLenum format, GCGLenum type, GCGLsizei byteLength, const void* pixels);
     void texImage2DImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Image*, GraphicsContextGL::DOMSource, bool flipY, bool premultiplyAlpha);
-    void texSubImage2DBase(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum internalformat, GCGLenum format, GCGLenum type, const void* pixels);
+    void texSubImage2DBase(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum internalformat, GCGLenum format, GCGLenum type, GCGLsizei byteLength, const void* pixels);
     void texSubImage2DImpl(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLenum format, GCGLenum type, Image*, GraphicsContextGL::DOMSource, bool flipY, bool premultiplyAlpha);
 
+#if !USE(ANGLE)
     bool checkTextureCompleteness(const char*, bool);
 
     void createFallbackBlackTextures1x1();
@@ -660,14 +658,15 @@ protected:
     // is valid.
     bool isTexInternalFormatColorBufferCombinationValid(GCGLenum texInternalFormat, GCGLenum colorBufferFormat);
 
-    // Helper function to get the bound framebuffer's color buffer format.
-    GCGLenum getBoundFramebufferColorFormat();
+    // Helper function to get the bound read framebuffer's color buffer format.
+    GCGLenum getBoundReadFramebufferColorFormat();
 
-    // Helper function to get the bound framebuffer's width.
-    int getBoundFramebufferWidth();
+    // Helper function to get the bound read framebuffer's width.
+    int getBoundReadFramebufferWidth();
 
-    // Helper function to get the bound framebuffer's height.
-    int getBoundFramebufferHeight();
+    // Helper function to get the bound read framebuffer's height.
+    int getBoundReadFramebufferHeight();
+#endif
 
     // Helper function to verify limits on the length of uniform and attribute locations.
     bool validateLocationLength(const char* functionName, const String&);
@@ -744,6 +743,7 @@ protected:
     // Generates GL error and returns false if the format is not settable.
     bool validateSettableTexInternalFormat(const char* functionName, GCGLenum format);
 
+#if !USE(ANGLE)
     // Helper function to validate compressed texture data is correct size
     // for the given format and dimensions.
     bool validateCompressedTexFuncData(const char* functionName, GCGLsizei width, GCGLsizei height, GCGLenum format, ArrayBufferView& pixels);
@@ -759,6 +759,7 @@ protected:
     // the given format.
     bool validateCompressedTexSubDimensions(const char* functionName, GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset,
         GCGLsizei width, GCGLsizei height, GCGLenum format, WebGLTexture*);
+#endif
 
     // Helper function to validate mode for draw{Arrays/Elements}.
     bool validateDrawMode(const char* functionName, GCGLenum);
@@ -820,11 +821,13 @@ protected:
 
     bool validateAndCacheBufferBinding(const char* functionName, GCGLenum target, WebGLBuffer*);
 
+#if !USE(ANGLE)
     // Helpers for simulating vertexAttrib0.
     void initVertexAttrib0();
     Optional<bool> simulateVertexAttrib0(GCGLuint numVertex);
     bool validateSimulatedVertexAttrib0(GCGLuint numVertex);
     void restoreStatesAfterVertexAttrib0Simulation();
+#endif
 
     // Wrapper for GraphicsContextGLOpenGL::synthesizeGLError that sends a message to the JavaScript console.
     enum ConsoleDisplayPreference { DisplayInConsole, DontDisplayInConsole };
@@ -860,8 +863,7 @@ protected:
     template <typename T> unsigned getMaxIndex(const RefPtr<JSC::ArrayBuffer> elementArrayBuffer, GCGLintptr uoffset, GCGLsizei n);
 
 private:
-    void dispatchContextLostEvent();
-    void dispatchContextChangedEvent();
+    void scheduleTaskToDispatchContextLostEvent();
     // Helper for restoration after context lost.
     void maybeRestoreContext();
 

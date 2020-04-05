@@ -60,6 +60,9 @@ IDBServer::IDBServer(PAL::SessionID sessionID, const String& databaseDirectoryPa
 IDBServer::~IDBServer()
 {
     ASSERT(!isMainThread());
+
+    for (auto& database : m_uniqueIDBDatabaseMap.values())
+        database->immediateClose();
 }
 
 void IDBServer::registerConnection(IDBConnectionToClient& connection)
@@ -169,6 +172,8 @@ void IDBServer::deleteDatabase(const IDBRequestData& requestData)
         database = &getOrCreateUniqueIDBDatabase(requestData.databaseIdentifier());
 
     database->handleDelete(*connection, requestData);
+    if (database->tryClose())
+        m_uniqueIDBDatabaseMap.remove(database->identifier());
 }
 
 std::unique_ptr<UniqueIDBDatabase> IDBServer::closeAndTakeUniqueIDBDatabase(UniqueIDBDatabase& database)
@@ -392,11 +397,14 @@ void IDBServer::establishTransaction(uint64_t databaseConnectionIdentifier, cons
     ASSERT(!isMainThread());
     ASSERT(m_lock.isHeld());
 
-    auto databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
+    auto* databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
     if (!databaseConnection)
         return;
 
+    auto* database = databaseConnection->database();
     databaseConnection->establishTransaction(info);
+    if (database->tryClose())
+        m_uniqueIDBDatabaseMap.remove(database->identifier());
 }
 
 void IDBServer::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -447,11 +455,14 @@ void IDBServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)
     ASSERT(!isMainThread());
     ASSERT(m_lock.isHeld());
 
-    auto databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
+    auto* databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
     if (!databaseConnection)
         return;
 
+    auto* database = databaseConnection->database();
     databaseConnection->connectionClosedFromClient();
+    if (database->tryClose())
+        m_uniqueIDBDatabaseMap.remove(database->identifier());
 }
 
 void IDBServer::abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
@@ -492,6 +503,8 @@ void IDBServer::openDBRequestCancelled(const IDBRequestData& requestData)
         return;
 
     uniqueIDBDatabase->openDBRequestCancelled(requestData.requestIdentifier());
+    if (uniqueIDBDatabase->tryClose())
+        m_uniqueIDBDatabaseMap.remove(uniqueIDBDatabase->identifier());
 }
 
 void IDBServer::getAllDatabaseNames(IDBConnectionIdentifier serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
@@ -534,7 +547,7 @@ void IDBServer::closeAndDeleteDatabasesModifiedSince(WallTime modificationTime)
 
     HashSet<UniqueIDBDatabase*> openDatabases;
     for (auto& database : m_uniqueIDBDatabaseMap.values())
-        database->immediateCloseForUserDelete();
+        database->immediateClose();
 
     m_uniqueIDBDatabaseMap.clear();
 
@@ -561,7 +574,7 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
     }
 
     for (auto& database : openDatabases) {
-        database->immediateCloseForUserDelete();
+        database->immediateClose();
         m_uniqueIDBDatabaseMap.remove(database->identifier());
     }
 

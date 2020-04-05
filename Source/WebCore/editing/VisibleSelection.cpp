@@ -30,9 +30,9 @@
 #include "Editing.h"
 #include "Element.h"
 #include "HTMLInputElement.h"
+#include "Range.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "SimpleRange.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
 #include <stdio.h>
@@ -243,7 +243,7 @@ void VisibleSelection::appendTrailingWhitespace()
         UChar c = charIt.text()[0];
         if ((!isSpaceOrNewline(c) && c != noBreakSpace) || c == '\n')
             break;
-        m_end = charIt.range()->endPosition();
+        m_end = createLegacyEditingPosition(charIt.range().end);
     }
 }
 

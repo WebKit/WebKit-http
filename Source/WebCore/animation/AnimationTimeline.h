@@ -61,11 +61,9 @@ public:
     Vector<RefPtr<WebAnimation>> animationsForElement(Element&, Ordering ordering = Ordering::Unsorted) const;
 
     void elementWasRemoved(Element&);
-    void removeAnimationsForElement(Element&);
 
     void willChangeRendererForElement(Element&);
-    void willDestroyRendererForElement(Element&);
-    void cancelDeclarativeAnimationsForElement(Element&);
+    void cancelDeclarativeAnimationsForElement(Element&, WebAnimation::Silently);
 
     virtual void animationWasAddedToElement(WebAnimation&, Element&);
     virtual void animationWasRemovedFromElement(WebAnimation&, Element&);
@@ -75,10 +73,6 @@ public:
     void updateCSSAnimationsForElement(Element&, const RenderStyle* currentStyle, const RenderStyle& afterChangeStyle);
     void updateCSSTransitionsForElement(Element&, const RenderStyle& currentStyle, const RenderStyle& afterChangeStyle);
 
-    using AnimationCollection = ListHashSet<RefPtr<WebAnimation>>;
-    using ElementToAnimationsMap = HashMap<Element*, AnimationCollection>;
-    using PropertyToTransitionMap = HashMap<CSSPropertyID, RefPtr<CSSTransition>>;
-
     virtual ~AnimationTimeline();
 
 protected:
@@ -86,22 +80,11 @@ protected:
 
     Vector<WeakPtr<WebAnimation>> m_allAnimations;
     AnimationCollection m_animations;
-    HashMap<Element*, PropertyToTransitionMap> m_elementToCompletedCSSTransitionByCSSPropertyID;
 
 private:
-    using CSSAnimationCollection = ListHashSet<RefPtr<CSSAnimation>>;
-    using ElementToCSSAnimationsMap = HashMap<Element*, CSSAnimationCollection>;
-
     void updateGlobalPosition(WebAnimation&);
-    PropertyToTransitionMap& ensureRunningTransitionsByProperty(Element&);
-    void updateCSSTransitionsForElementAndProperty(Element&, CSSPropertyID, const RenderStyle& currentStyle, const RenderStyle& afterChangeStyle, PropertyToTransitionMap&, PropertyToTransitionMap&, const MonotonicTime);
+    void updateCSSTransitionsForElementAndProperty(Element&, CSSPropertyID, const RenderStyle& currentStyle, const RenderStyle& afterChangeStyle, const MonotonicTime);
     void removeCSSAnimationCreatedByMarkup(Element&, CSSAnimation&);
-
-    ElementToAnimationsMap m_elementToAnimationsMap;
-    ElementToAnimationsMap m_elementToCSSAnimationsMap;
-    ElementToAnimationsMap m_elementToCSSTransitionsMap;
-    ElementToCSSAnimationsMap m_elementToCSSAnimationsCreatedByMarkupMap;
-    HashMap<Element*, PropertyToTransitionMap> m_elementToRunningCSSTransitionByCSSPropertyID;
 
     Markable<Seconds, Seconds::MarkableTraits> m_currentTime;
 };

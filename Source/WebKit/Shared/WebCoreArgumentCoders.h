@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,6 +69,7 @@ class MachSendRight;
 #endif
 
 namespace WebCore {
+
 class AbsolutePositionConstraints;
 class AffineTransform;
 class AuthenticationChallenge;
@@ -116,6 +117,7 @@ class TransformationMatrix;
 class UserStyleSheet;
 
 struct CacheQueryOptions;
+struct CharacterRange;
 struct CompositionUnderline;
 struct DictationAlternative;
 struct DictionaryPopupInfo;
@@ -142,7 +144,7 @@ struct VelocityData;
 struct ViewportAttributes;
 struct WindowFeatures;
     
-template <typename> class RectEdges;
+template<typename> class RectEdges;
 using FloatBoxExtent = RectEdges<float>;
 
 #if PLATFORM(COCOA)
@@ -159,10 +161,6 @@ struct PasteboardWebContent;
 
 #if ENABLE(META_VIEWPORT)
 struct ViewportArguments;
-#endif
-
-#if ENABLE(DATALIST_ELEMENT)
-struct DataListSuggestionInformation;
 #endif
 
 #if USE(SOUP)
@@ -214,6 +212,11 @@ template<> struct ArgumentCoder<WebCore::AffineTransform> {
 template<> struct ArgumentCoder<WebCore::CacheQueryOptions> {
     static void encode(Encoder&, const WebCore::CacheQueryOptions&);
     static bool decode(Decoder&, WebCore::CacheQueryOptions&);
+};
+
+template<> struct ArgumentCoder<WebCore::CharacterRange> {
+    static void encode(Encoder&, const WebCore::CharacterRange&);
+    static Optional<WebCore::CharacterRange> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::DOMCacheEngine::CacheInfo> {
@@ -535,13 +538,6 @@ template<> struct ArgumentCoder<WebCore::DatabaseDetails> {
     static void encode(Encoder&, const WebCore::DatabaseDetails&);
     static bool decode(Decoder&, WebCore::DatabaseDetails&);
 };
-
-#if ENABLE(DATALIST_ELEMENT)
-template<> struct ArgumentCoder<WebCore::DataListSuggestionInformation> {
-    static void encode(Encoder&, const WebCore::DataListSuggestionInformation&);
-    static bool decode(Decoder&, WebCore::DataListSuggestionInformation&);
-};
-#endif
 
 template<> struct ArgumentCoder<WebCore::DictationAlternative> {
     static void encode(Encoder&, const WebCore::DictationAlternative&);

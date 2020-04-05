@@ -133,6 +133,7 @@ function installDependenciesWithApt {
         libsoup2.4-dev \
         libsqlite3-dev \
         libsrtp2-dev \
+        libsystemd-dev \
         libtasn1-6-dev \
         libtheora-dev \
         libtool \
@@ -177,6 +178,10 @@ function installDependenciesWithApt {
         ruby-highline \
         weston \
         xvfb"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
@@ -307,6 +312,7 @@ function installDependenciesWithPacman {
         libsecret \
         libsoup \
         libsrtp \
+        libsystemd \
         sqlite \
         libtasn1 \
         libtheora \
@@ -347,6 +353,10 @@ function installDependenciesWithPacman {
         ttf-liberation \
         weston \
         xorg-server-xvfb"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     # Note: Could not find libegl-mesa
@@ -492,6 +502,7 @@ function installDependenciesWithDnf {
         redhat-rpm-config \
         ruby \
         sqlite-devel \
+        systemd-devel \
         upower-devel \
         woff2-devel"
 
@@ -521,6 +532,10 @@ function installDependenciesWithDnf {
         rubygem-highline \
         weston-devel \
         xorg-x11-server-Xvfb"
+
+    # These are dependencies necessary for building with the Flatpak SDK.
+    packages="$packages \
+        flatpak"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \

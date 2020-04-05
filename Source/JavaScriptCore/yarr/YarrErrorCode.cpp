@@ -51,8 +51,10 @@ const char* errorMessage(ErrorCode error)
         REGEXP_ERROR_PREFIX "range out of order in character class",                // CharacterClassRangeOutOfOrder
         REGEXP_ERROR_PREFIX "invalid range in character class for Unicode pattern", // CharacterClassRangeInvalid
         REGEXP_ERROR_PREFIX "\\ at end of pattern",                                 // EscapeUnterminated
-        REGEXP_ERROR_PREFIX "invalid Unicode {} escape",                            // InvalidUnicodeEscape
+        REGEXP_ERROR_PREFIX "invalid Unicode \\u escape",                           // InvalidUnicodeEscape
+        REGEXP_ERROR_PREFIX "invalid Unicode code point \\u{} escape",              // InvalidUnicodeCodePointEscape
         REGEXP_ERROR_PREFIX "invalid backreference for Unicode pattern",            // InvalidBackreference
+        REGEXP_ERROR_PREFIX "invalid \\k<> named backreference",                    // InvalidNamedBackReference
         REGEXP_ERROR_PREFIX "invalid escaped character for Unicode pattern",        // InvalidIdentityEscape
         REGEXP_ERROR_PREFIX "invalid \\c escape for Unicode pattern",               // InvalidControlLetterEscape
         REGEXP_ERROR_PREFIX "invalid property expression",                          // InvalidUnicodePropertyExpression
@@ -86,7 +88,9 @@ JSObject* errorToThrow(JSGlobalObject* globalObject, ErrorCode error)
     case ErrorCode::CharacterClassRangeInvalid:
     case ErrorCode::EscapeUnterminated:
     case ErrorCode::InvalidUnicodeEscape:
+    case ErrorCode::InvalidUnicodeCodePointEscape:
     case ErrorCode::InvalidBackreference:
+    case ErrorCode::InvalidNamedBackReference:
     case ErrorCode::InvalidIdentityEscape:
     case ErrorCode::InvalidControlLetterEscape:
     case ErrorCode::InvalidUnicodePropertyExpression:

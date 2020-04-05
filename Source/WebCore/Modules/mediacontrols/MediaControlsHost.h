@@ -28,7 +28,9 @@
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -71,6 +73,7 @@ public:
 
     enum class ForceUpdate { Yes, No };
     void updateCaptionDisplaySizes(ForceUpdate = ForceUpdate::No);
+    void updateTextTrackRepresentationImageIfNeeded();
     void enteredFullscreen();
     void exitedFullscreen();
 

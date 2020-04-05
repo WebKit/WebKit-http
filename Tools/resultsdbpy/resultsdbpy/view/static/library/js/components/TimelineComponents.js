@@ -385,10 +385,8 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
         let endScalesIndex = startScalesIndex + Math.ceil((renderWidth) / dotWidth);
         if (endScalesIndex >= scales.length)
             endScalesIndex = scales.length - 1;
-        let currentDotIndex = startScalesIndex - (scales.length - dots.length);
-        if (currentDotIndex < 0)
-            currentDotIndex = 0;
-        for (let i = currentDotIndex; i <= startScalesIndex; i++) {
+        let currentDotIndex = 0;
+        for (let i = currentDotIndex; i <= startScalesIndex && currentDotIndex < dots.length; i++) {
             const compResult = comp(scales[startScalesIndex], getScale(dots[currentDotIndex]));
             if (!reversed) {
                 if (compResult > 0)
@@ -606,12 +604,12 @@ Timeline.ExpandableSeriesWithHeaderExpanderComponent = (mainSeriesWithLable, opt
 Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     // Get configuration
     const getScaleKey = typeof option.getScaleFunc === "function" ? option.getScaleFunc : (a) => a;
-    const comp = typeof option.compareFunc === "function" ? option.compareFunc : (a, b) => a - b;
+    const comp = typeof option.compareFunc === "function" ? option.compareFunc : (a, b) => b - a;
     const onScaleClick = typeof option.onScaleClick === "function" ? option.onScaleClick : null;
     const onScaleEnter = typeof option.onScaleEnter === "function" ? option.onScaleEnter : null;
     const onScaleLeave = typeof option.onScaleLeave === "function" ? option.onScaleLeave : null;
     const sortData = option.sortData === true ? option.sortData : false;
-    const getLabel = typeof option.getLabelFunc === "function" ? option.getLabelFunc : (a) => a;
+    const getLabel = typeof option.getLabelFunc === "function" ? option.getLabelFunc : (a) => `${a}`;
     const isTop = typeof option.isTop === "boolean" ? option.isTop : false;
 
     // Get the css value, this component assume to use with webkit.css

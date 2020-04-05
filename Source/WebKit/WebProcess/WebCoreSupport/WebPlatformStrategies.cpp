@@ -173,13 +173,6 @@ int64_t WebPlatformStrategies::changeCount(const String& pasteboardName)
     return changeCount;
 }
 
-String WebPlatformStrategies::uniqueName()
-{
-    String pasteboardName;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardUniqueName(), Messages::WebPasteboardProxy::GetPasteboardUniqueName::Reply(pasteboardName), 0);
-    return pasteboardName;
-}
-
 Color WebPlatformStrategies::color(const String& pasteboardName)
 {
     Color color;
@@ -251,6 +244,20 @@ int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
     uint64_t numberOfFiles { 0 };
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetNumberOfFiles(pasteboardName), Messages::WebPasteboardProxy::GetNumberOfFiles::Reply(numberOfFiles), 0);
     return numberOfFiles;
+}
+
+bool WebPlatformStrategies::containsURLStringSuitableForLoading(const String& pasteboardName)
+{
+    bool result;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ContainsURLStringSuitableForLoading(pasteboardName), Messages::WebPasteboardProxy::ContainsURLStringSuitableForLoading::Reply(result), 0);
+    return result;
+}
+
+String WebPlatformStrategies::urlStringSuitableForLoading(const String& pasteboardName, String& title)
+{
+    String url;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::URLStringSuitableForLoading(pasteboardName), Messages::WebPasteboardProxy::URLStringSuitableForLoading::Reply(url, title), 0);
+    return url;
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -333,6 +340,13 @@ int64_t WebPlatformStrategies::writeCustomData(const Vector<PasteboardCustomData
     int64_t newChangeCount { 0 };
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::WriteCustomData(data, pasteboardName), Messages::WebPasteboardProxy::WriteCustomData::Reply(newChangeCount), 0);
     return newChangeCount;
+}
+
+bool WebPlatformStrategies::containsStringSafeForDOMToReadForType(const String& type, const String& pasteboardName)
+{
+    bool result = false;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ContainsStringSafeForDOMToReadForType(type, pasteboardName), Messages::WebPasteboardProxy::ContainsStringSafeForDOMToReadForType::Reply(result), 0);
+    return result;
 }
 
 int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)

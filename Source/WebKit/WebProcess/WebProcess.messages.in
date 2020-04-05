@@ -67,7 +67,6 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 
     SetEnhancedAccessibility(bool flag)
 
-    GetWebCoreStatistics(uint64_t callbackID)
     GarbageCollectJavaScriptObjects()
     SetJavaScriptGarbageCollectorTimerEnabled(bool enable)
 
@@ -112,16 +111,15 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
     SetHasSuspendedPageProxy(bool hasSuspendedPageProxy);
     SetIsInProcessCache(bool isInProcessCache)
     MarkIsNoLongerPrewarmed()
-    UpdateActivePages(String overrideDisplayName)
     GetActivePagesOriginsForTesting() -> (Vector<String> activeOrigins) Async
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     SetScreenProperties(struct WebCore::ScreenProperties screenProperties)
-#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+#endif
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     ScrollerStylePreferenceChanged(bool useOvelayScrollbars)
     DisplayConfigurationChanged(CGDirectDisplayID displayID, CGDisplayChangeSummaryFlags flags)
     DisplayWasRefreshed(uint32_t displayID)
-#endif
 #endif
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
@@ -169,8 +167,10 @@ messages -> WebProcess LegacyReceiver NotRefCounted {
 #endif
 
 #if PLATFORM(COCOA)
-    NotifyPreferencesChanged(String domain, String key, Optional<String> encodedValue)
     UnblockAccessibilityServer(WebKit::SandboxExtension::Handle handle)
+#if ENABLE(CFPREFS_DIRECT_MODE)
+    NotifyPreferencesChanged(String domain, String key, Optional<String> encodedValue)
     UnblockPreferenceService(WebKit::SandboxExtension::Handle handle)
+#endif
 #endif
 }

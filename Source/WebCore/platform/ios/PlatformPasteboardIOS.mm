@@ -60,7 +60,7 @@ PlatformPasteboard::PlatformPasteboard()
 #if PASTEBOARD_SUPPORTS_ITEM_PROVIDERS
 PlatformPasteboard::PlatformPasteboard(const String& name)
 {
-    if (name == "data interaction pasteboard")
+    if (name == Pasteboard::nameOfDragPasteboard())
         m_pasteboard = [WebItemProviderPasteboard sharedInstance];
     else
         m_pasteboard = [PAL::getUIPasteboardClass() generalPasteboard];
@@ -314,11 +314,6 @@ int64_t PlatformPasteboard::setStringForType(const String&, const String&)
 int64_t PlatformPasteboard::changeCount() const
 {
     return [m_pasteboard changeCount];
-}
-
-String PlatformPasteboard::uniqueName()
-{
-    return String();
 }
 
 String PlatformPasteboard::platformPasteboardTypeForSafeTypeForDOMToReadAndWrite(const String& domType, IncludeImageTypes includeImageTypes)
@@ -768,6 +763,24 @@ void PlatformPasteboard::updateSupportedTypeIdentifiers(const Vector<String>& ty
 int64_t PlatformPasteboard::write(const PasteboardCustomData& data)
 {
     return write(Vector<PasteboardCustomData> { data });
+}
+
+bool PlatformPasteboard::containsURLStringSuitableForLoading()
+{
+    Vector<String> types;
+    getTypes(types);
+    if (!types.contains(String(kUTTypeURL)))
+        return false;
+
+    auto urlString = stringForType(kUTTypeURL);
+    if (urlString.isEmpty()) {
+        // On iOS, we don't get access to the contents of NSItemProviders until we perform the drag operation.
+        // Thus, we consider DragData to contain an URL if it contains the `public.url` UTI type. Later down the
+        // road, when we perform the drag operation, we can then check if the URL's protocol is http or https,
+        // and if it isn't, we bail out of page navigation.
+        return true;
+    }
+    return URL { [NSURL URLWithString:urlString] }.protocolIsInHTTPFamily();
 }
 
 }

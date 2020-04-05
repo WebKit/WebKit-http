@@ -46,6 +46,12 @@ use Text::ParseWords;
 setConfiguration();
 my $configuration = configuration();
 
+if (shouldUseFlatpak()) {
+    my @command = (File::Spec->catfile(sourceDir(), "Tools", "Scripts", "run-javascriptcore-tests"));
+    runInFlatpak(@command);
+}
+
+
 # These variables are intentionally left undefined.
 my $root;
 my $showHelp;
@@ -539,7 +545,7 @@ sub runTest {
     chdir($productDir) or die "Failed to switch directory to '$productDir'\n";
     my @command = (testPath($productDir, $testName));
     unshift @command, ("xcrun", "-sdk", xcodeSDK(), "sim") if willUseIOSSimulatorSDK();
-    unshift @command, wrapperPrefixIfNeeded() if shouldUseJhbuild();
+    unshift @command, wrapperPrefixIfNeeded() if isGtk() or isWPE();
 
     if ($envVars ne "") {
         foreach my $var (split(/\s+/, $envVars)) {
@@ -681,6 +687,13 @@ sub runJSCStressTests
             "JSTests/complex.yaml",
             "JSTests/ChakraCore.yaml",
             "JSTests/wasm.yaml");
+
+        my $internalTestsDir = File::Spec->catdir(dirname(sourceDir()), "Internal", "Tests", "InternalJSTests");
+        if (-e $internalTestsDir and -d $internalTestsDir) {
+            push(@testList, File::Spec->catfile($internalTestsDir, "internal-js-tests.yaml"));
+            push(@testList, File::Spec->catfile($internalTestsDir, "regress.yaml"));
+        }
+
         $hasTestsToRun = 1;
     }
 
@@ -782,7 +795,7 @@ sub runJSCStressTests
         push(@jscStressDriverCmd, "--no-copy");
     }
 
-    unshift @jscStressDriverCmd, wrapperPrefixIfNeeded() if shouldUseJhbuild();
+    unshift @jscStressDriverCmd, wrapperPrefixIfNeeded() if isGtk() or isWPE();
 
     # End option processing, the rest of the arguments are tests
     push(@jscStressDriverCmd, "--");
@@ -797,7 +810,7 @@ sub runJSCStressTests
     }
 
     if (!$hasTestsToRun) {
-        exit(0);
+        return;
     }
 
     print "Running: " . join(" ", @jscStressDriverCmd) . "\n";

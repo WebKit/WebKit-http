@@ -37,12 +37,9 @@
 #include "LibWebRTCCodecsProxy.h"
 #include "LibWebRTCCodecsProxyMessages.h"
 #include "Logging.h"
-#include "RemoteAudioDestinationManager.h"
-#include "RemoteAudioDestinationManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererManager.h"
 #include "RemoteAudioMediaStreamTrackRendererManagerMessages.h"
 #include "RemoteAudioMediaStreamTrackRendererMessages.h"
-#include "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #include "RemoteMediaPlayerManagerProxy.h"
 #include "RemoteMediaPlayerManagerProxyMessages.h"
 #include "RemoteMediaPlayerProxy.h"
@@ -56,8 +53,6 @@
 #include "RemoteSampleBufferDisplayLayerManagerMessages.h"
 #include "RemoteSampleBufferDisplayLayerMessages.h"
 #include "RemoteScrollingCoordinatorTransaction.h"
-#include "UserMediaCaptureManagerProxy.h"
-#include "UserMediaCaptureManagerProxyMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebProcessMessages.h"
@@ -65,6 +60,7 @@
 #include <WebCore/NowPlayingManager.h>
 
 #if PLATFORM(COCOA)
+#include "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #include <WebCore/MediaSessionManagerCocoa.h>
 #include <WebCore/MediaSessionManagerIOS.h>
 #endif
@@ -77,7 +73,17 @@
 #include "RemoteCDMProxyMessages.h"
 #endif
 
-#if ENABLE(GPU_PROCESS) && USE(AUDIO_SESSION)
+#if ENABLE(MEDIA_STREAM)
+#include "UserMediaCaptureManagerProxy.h"
+#include "UserMediaCaptureManagerProxyMessages.h"
+#endif
+
+#if ENABLE(WEB_AUDIO)
+#include "RemoteAudioDestinationManager.h"
+#include "RemoteAudioDestinationManagerMessages.h"
+#endif
+
+#if USE(AUDIO_SESSION)
 #include "RemoteAudioSessionProxy.h"
 #include "RemoteAudioSessionProxyManager.h"
 #include "RemoteAudioSessionProxyMessages.h"
@@ -111,17 +117,27 @@ private:
     void addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& receiver) final { }
     void removeMessageReceiver(IPC::StringReference messageReceiverName) final { }
     IPC::Connection& connection() final { return m_process.connection(); }
-#if PLATFORM(IOS)
-    void willStartCameraCapture() final
+    bool willStartCapture(CaptureDevice::DeviceType type) const final
     {
-        if (m_providedPresentingApplicationPID)
-            return;
-        m_providedPresentingApplicationPID = true;
-        MediaSessionManageriOS::providePresentingApplicationPID();
-    }
-
-    bool m_providedPresentingApplicationPID { false };
+        switch (type) {
+        case CaptureDevice::DeviceType::Unknown:
+            return false;
+        case CaptureDevice::DeviceType::Microphone:
+            return m_process.allowsAudioCapture();
+        case CaptureDevice::DeviceType::Camera:
+            if (!m_process.allowsVideoCapture())
+                return false;
+#if PLATFORM(IOS)
+            MediaSessionManageriOS::providePresentingApplicationPID();
 #endif
+            return true;
+            break;
+        case CaptureDevice::DeviceType::Screen:
+            return m_process.allowsDisplayCapture();
+        case CaptureDevice::DeviceType::Window:
+            return m_process.allowsDisplayCapture();
+        }
+    }
 
     GPUConnectionToWebProcess& m_process;
 };
@@ -151,10 +167,12 @@ GPUConnectionToWebProcess::~GPUConnectionToWebProcess()
 
 void GPUConnectionToWebProcess::didClose(IPC::Connection&)
 {
+#if USE(AUDIO_SESSION)
     if (m_audioSessionProxy) {
-        gpuProcess().audioSessionManager().removeProxy(webProcessIdentifier());
+        gpuProcess().audioSessionManager().removeProxy(*m_audioSessionProxy);
         m_audioSessionProxy = nullptr;
     }
+#endif
 }
 
 Logger& GPUConnectionToWebProcess::logger()
@@ -173,6 +191,7 @@ void GPUConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection& connec
     CRASH();
 }
 
+#if ENABLE(WEB_AUDIO)
 RemoteAudioDestinationManager& GPUConnectionToWebProcess::remoteAudioDestinationManager()
 {
     if (!m_remoteAudioDestinationManager)
@@ -180,6 +199,7 @@ RemoteAudioDestinationManager& GPUConnectionToWebProcess::remoteAudioDestination
 
     return *m_remoteAudioDestinationManager;
 }
+#endif
 
 RemoteMediaResourceManager& GPUConnectionToWebProcess::remoteMediaResourceManager()
 {
@@ -258,7 +278,7 @@ RemoteAudioSessionProxy& GPUConnectionToWebProcess::audioSessionProxy()
 {
     if (!m_audioSessionProxy) {
         m_audioSessionProxy = RemoteAudioSessionProxy::create(*this).moveToUniquePtr();
-        gpuProcess().audioSessionManager().addProxy(makeWeakPtr(m_audioSessionProxy.get()));
+        gpuProcess().audioSessionManager().addProxy(*m_audioSessionProxy);
     }
     return *m_audioSessionProxy;
 }
@@ -326,10 +346,12 @@ RemoteLegacyCDMFactoryProxy& GPUConnectionToWebProcess::legacyCdmFactoryProxy()
 
 bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
+#if ENABLE(WEB_AUDIO)
     if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
         remoteAudioDestinationManager().didReceiveMessageFromWebProcess(connection, decoder);
         return true;
     }
+#endif
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveMessageFromWebProcess(connection, decoder);
         return true;
@@ -419,10 +441,12 @@ bool GPUConnectionToWebProcess::dispatchMessage(IPC::Connection& connection, IPC
 
 bool GPUConnectionToWebProcess::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
+#if ENABLE(WEB_AUDIO)
     if (decoder.messageReceiverName() == Messages::RemoteAudioDestinationManager::messageReceiverName()) {
         remoteAudioDestinationManager().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
         return true;
     }
+#endif
     if (decoder.messageReceiverName() == Messages::RemoteMediaPlayerManagerProxy::messageReceiverName()) {
         remoteMediaPlayerManagerProxy().didReceiveSyncMessageFromWebProcess(connection, decoder, replyEncoder);
         return true;
@@ -484,6 +508,13 @@ const String& GPUConnectionToWebProcess::mediaKeysStorageDirectory() const
 void GPUConnectionToWebProcess::setOrientationForMediaCapture(uint64_t orientation)
 {
     userMediaCaptureManagerProxy().setOrientation(orientation);
+}
+
+void GPUConnectionToWebProcess::updateCaptureAccess(bool allowAudioCapture, bool allowVideoCapture, bool allowDisplayCapture)
+{
+    m_allowsAudioCapture |= allowAudioCapture;
+    m_allowsVideoCapture |= allowVideoCapture;
+    m_allowsDisplayCapture |= allowDisplayCapture;
 }
 #endif
 

@@ -76,9 +76,6 @@ public:
     void updateStateFromServer(ServiceWorkerRegistrationState, RefPtr<ServiceWorker>&&);
     void queueTaskToFireUpdateFoundEvent();
 
-    // ActiveDOMObject.
-    bool hasPendingActivity() const final;
-
 private:
     ServiceWorkerRegistration(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);
 
@@ -90,6 +87,7 @@ private:
     // ActiveDOMObject.
     const char* activeDOMObjectName() const final;
     void stop() final;
+    bool virtualHasPendingActivity() const final;
 
     ServiceWorkerRegistrationData m_registrationData;
     Ref<ServiceWorkerContainer> m_container;
@@ -97,8 +95,6 @@ private:
     RefPtr<ServiceWorker> m_installingWorker;
     RefPtr<ServiceWorker> m_waitingWorker;
     RefPtr<ServiceWorker> m_activeWorker;
-
-    bool m_isStopped { false };
 };
 
 } // namespace WebCore

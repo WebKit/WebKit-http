@@ -75,11 +75,11 @@ IDBDatabase::~IDBDatabase()
     m_connectionProxy->unregisterDatabaseConnection(*this);
 }
 
-bool IDBDatabase::hasPendingActivity() const
+bool IDBDatabase::virtualHasPendingActivity() const
 {
     ASSERT(canCurrentThreadAccessThreadLocalData(originThread()) || Thread::mayBeGCThread());
 
-    if (m_closedInServer || isContextStopped())
+    if (m_closedInServer)
         return false;
 
     if (!m_activeTransactions.isEmpty() || !m_committingTransactions.isEmpty() || !m_abortingTransactions.isEmpty())

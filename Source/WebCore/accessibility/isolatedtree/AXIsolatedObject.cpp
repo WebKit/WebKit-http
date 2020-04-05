@@ -100,8 +100,6 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::IsMenuRelated, object.isMenuRelated());
     setProperty(AXPropertyName::IsMeter, object.isMeter());
     setProperty(AXPropertyName::IsMultiSelectable, object.isMultiSelectable());
-    setProperty(AXPropertyName::IsOffScreen, object.isOffScreen());
-    setProperty(AXPropertyName::IsOnScreen, object.isOnScreen());
     setProperty(AXPropertyName::IsOrderedList, object.isOrderedList());
     setProperty(AXPropertyName::IsOutput, object.isOutput());
     setProperty(AXPropertyName::IsPasswordField, object.isPasswordField());
@@ -123,13 +121,13 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::IsValueAutofilled, object.isValueAutofilled());
     setProperty(AXPropertyName::IsVisible, object.isVisible());
     setProperty(AXPropertyName::IsVisited, object.isVisited());
-    setProperty(AXPropertyName::RelativeFrame, object.relativeFrame());
     setProperty(AXPropertyName::RoleDescription, object.roleDescription().isolatedCopy());
     setProperty(AXPropertyName::RolePlatformString, object.rolePlatformString().isolatedCopy());
     setProperty(AXPropertyName::RoleValue, static_cast<int>(object.roleValue()));
     setProperty(AXPropertyName::SpeechHint, object.speechHintAttributeValue().isolatedCopy());
-    setProperty(AXPropertyName::Title, object.titleAttributeValue().isolatedCopy());
     setProperty(AXPropertyName::SupportsDatetimeAttribute, object.supportsDatetimeAttribute());
+    setProperty(AXPropertyName::Title, object.title().isolatedCopy());
+    setProperty(AXPropertyName::TitleAttributeValue, object.titleAttributeValue().isolatedCopy());
     setProperty(AXPropertyName::DatetimeAttributeValue, object.datetimeAttributeValue());
     setProperty(AXPropertyName::CanSetFocusAttribute, object.canSetFocusAttribute());
     setProperty(AXPropertyName::CanSetTextRangeAttributes, object.canSetTextRangeAttributes());
@@ -148,8 +146,8 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::ValueForRange, object.valueForRange());
     setProperty(AXPropertyName::MaxValueForRange, object.maxValueForRange());
     setProperty(AXPropertyName::MinValueForRange, object.minValueForRange());
-    setProperty(AXPropertyName::SelectedRadioButton, object.selectedRadioButton());
-    setProperty(AXPropertyName::SelectedTabItem, object.selectedTabItem());
+    setObjectProperty(AXPropertyName::SelectedRadioButton, object.selectedRadioButton());
+    setObjectProperty(AXPropertyName::SelectedTabItem, object.selectedTabItem());
     setProperty(AXPropertyName::LayoutCount, object.layoutCount());
     setProperty(AXPropertyName::EstimatedLoadingProgress, object.estimatedLoadingProgress());
     setProperty(AXPropertyName::SupportsARIAOwns, object.supportsARIAOwns());
@@ -191,7 +189,7 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     setProperty(AXPropertyName::ClickPoint, object.clickPoint());
     setProperty(AXPropertyName::ComputedRoleString, object.computedRoleString());
     setProperty(AXPropertyName::ValueAutofillButtonType, static_cast<int>(object.valueAutofillButtonType()));
-    setProperty(AXPropertyName::URL, object.url());
+    setProperty(AXPropertyName::URL, object.url().isolatedCopy());
     setProperty(AXPropertyName::AccessKey, object.accessKey());
     setProperty(AXPropertyName::ActionVerb, object.actionVerb());
     setProperty(AXPropertyName::ReadOnlyValue, object.readOnlyValue());
@@ -229,7 +227,7 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
         setObjectVectorProperty(AXPropertyName::ColumnHeaders, object.columnHeaders());
         setObjectVectorProperty(AXPropertyName::RowHeaders, object.rowHeaders());
         setObjectVectorProperty(AXPropertyName::VisibleRows, object.visibleRows());
-        setProperty(AXPropertyName::HeaderContainer, object.headerContainer());
+        setObjectProperty(AXPropertyName::HeaderContainer, object.headerContainer());
         setProperty(AXPropertyName::AXColumnCount, object.axColumnCount());
         setProperty(AXPropertyName::AXRowCount, object.axRowCount());
     }
@@ -247,7 +245,7 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     if (object.isTableColumn()) {
         setProperty(AXPropertyName::IsTableColumn, true);
         setProperty(AXPropertyName::ColumnIndex, object.columnIndex());
-        setProperty(AXPropertyName::ColumnHeader, object.columnHeader());
+        setObjectProperty(AXPropertyName::ColumnHeader, object.columnHeader());
     } else if (object.isTableRow()) {
         setProperty(AXPropertyName::IsTableRow, true);
         setProperty(AXPropertyName::RowIndex, object.rowIndex());
@@ -256,7 +254,7 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
     if (object.isARIATreeGridRow()) {
         setProperty(AXPropertyName::IsARIATreeGridRow, true);
         setObjectVectorProperty(AXPropertyName::DisclosedRows, object.disclosedRows());
-        setProperty(AXPropertyName::DisclosedByRow, object.disclosedByRow());
+        setObjectProperty(AXPropertyName::DisclosedByRow, object.disclosedByRow());
     }
 
     if (object.isTreeItem())
@@ -317,8 +315,6 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
         AccessibilityIsolatedTreeText isolatedText;
         isolatedText.text = text.text;
         isolatedText.textSource = text.textSource;
-        for (auto object : text.textElements)
-            isolatedText.textElements.append(object->objectID());
         isolatedTexts.uncheckedAppend(isolatedText);
     }
     setProperty(AXPropertyName::AccessibilityText, isolatedTexts);
@@ -377,7 +373,16 @@ void AXIsolatedObject::initializeAttributeData(AXCoreObject& object, bool isRoot
         setMathscripts(AXPropertyName::MathPrescripts, object);
         setMathscripts(AXPropertyName::MathPostscripts, object);
     }
-    
+
+    if (object.isScrollView()) {
+#if PLATFORM(COCOA)
+        setProperty(AXPropertyName::PlatformWidget, object.platformWidget());
+        setProperty(AXPropertyName::RemoteParentObject, object.remoteParentObject());
+#else
+        setProperty(AXPropertyName::PlatformWidget, object.platformWidget());
+#endif
+    }
+
     if (isRoot) {
         setObjectProperty(AXPropertyName::WebArea, object.webAreaObject());
         setProperty(AXPropertyName::PreventKeyboardDOMEventDispatch, object.preventKeyboardDOMEventDispatch());
@@ -520,10 +525,6 @@ void AXIsolatedObject::accessibilityText(Vector<AccessibilityText>& texts) const
     auto isolatedTexts = vectorAttributeValue<AccessibilityIsolatedTreeText>(AXPropertyName::AccessibilityText);
     for (const auto& isolatedText : isolatedTexts) {
         AccessibilityText text(isolatedText.text, isolatedText.textSource);
-        for (const auto& axID : isolatedText.textElements) {
-            if (auto object = tree()->nodeForID(axID))
-                text.textElements.append(object);
-        }
         texts.append(text);
     }
 }
@@ -588,9 +589,7 @@ void AXIsolatedObject::mathPostscripts(AccessibilityMathMultiscriptPairs& pairs)
 
 AXCoreObject* AXIsolatedObject::focusedUIElement() const
 {
-    if (auto focusedElement = tree()->focusedUIElement())
-        return focusedElement.get();
-    return nullptr;
+    return tree()->focusedUIElement().get();
 }
     
 AXCoreObject* AXIsolatedObject::parentObjectUnignored() const
@@ -700,15 +699,17 @@ void AXIsolatedObject::colorValue(int& r, int& g, int& b) const
 
 AXCoreObject* AXIsolatedObject::accessibilityHitTest(const IntPoint& point) const
 {
-    if (!relativeFrame().contains(point))
-        return nullptr;
-    for (const auto& childID : m_childrenIDs) {
-        auto child = tree()->nodeForID(childID);
-        ASSERT(child);
-        if (child && child->relativeFrame().contains(point))
-            return child->accessibilityHitTest(point);
-    }
-    return const_cast<AXIsolatedObject*>(this);
+    AXID axID = Accessibility::retrieveValueFromMainThread<AXID>([&point, this] () -> AXID {
+        if (auto* object = associatedAXObject()) {
+            object->updateChildrenIfNecessary();
+            if (auto* axObject = object->accessibilityHitTest(point))
+                return axObject->objectID();
+        }
+
+        return InvalidAXID;
+    });
+
+    return tree()->nodeForID(axID).get();
 }
 
 IntPoint AXIsolatedObject::intPointAttributeValue(AXPropertyName propertyName) const
@@ -834,7 +835,7 @@ bool AXIsolatedObject::boolAttributeValue(AXPropertyName propertyName) const
     );
 }
 
-const String AXIsolatedObject::stringAttributeValue(AXPropertyName propertyName) const
+String AXIsolatedObject::stringAttributeValue(AXPropertyName propertyName) const
 {
     auto value = m_attributeMap.get(propertyName);
     return WTF::switchOn(value,
@@ -908,6 +909,16 @@ void AXIsolatedObject::findMatchingObjects(AccessibilitySearchCriteria* criteria
 
     criteria->anchorObject = this;
     Accessibility::findMatchingObjects(*criteria, results);
+}
+
+FloatRect AXIsolatedObject::relativeFrame() const
+{
+    // Retrieve this on the main thread because we require the scroll ancestor to convert to the right scroll offset.
+    return Accessibility::retrieveValueFromMainThread<FloatRect>([this] () -> FloatRect {
+        if (auto* axObject = associatedAXObject())
+            return axObject->relativeFrame();
+        return { };
+    });
 }
 
 bool AXIsolatedObject::replaceTextInRange(const String&, const PlainTextRange&)
@@ -1477,12 +1488,6 @@ bool AXIsolatedObject::hasAttributesRequiredForInclusion() const
 }
 
 String AXIsolatedObject::accessibilityDescription() const
-{
-    ASSERT_NOT_REACHED();
-    return String();
-}
-
-String AXIsolatedObject::title() const
 {
     ASSERT_NOT_REACHED();
     return String();

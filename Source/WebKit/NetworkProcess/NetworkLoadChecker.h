@@ -50,6 +50,7 @@ namespace WebKit {
 
 class NetworkCORSPreflightChecker;
 class NetworkProcess;
+class NetworkResourceLoader;
 class NetworkSchemeRegistry;
 
 class NetworkLoadChecker : public CanMakeWeakPtr<NetworkLoadChecker> {
@@ -152,7 +153,11 @@ private:
     String m_referrer;
     bool m_checkContentExtensions { false };
     bool m_shouldCaptureExtraNetworkLoadMetrics { false };
+
+#if PLATFORM(COCOA)
     bool m_isHTTPSUpgradeEnabled { false };
+#endif
+
     WebCore::NetworkLoadInformation m_loadInformation;
 
     LoadType m_requestLoadType;

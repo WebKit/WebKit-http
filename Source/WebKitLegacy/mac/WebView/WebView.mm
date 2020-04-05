@@ -1427,6 +1427,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if (WebCore::IOSApplication::isMobileSafari())
             WebCore::DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
+
+#if ENABLE(VIDEO)
+        WebCore::HTMLMediaElement::setMediaCacheDirectory(FileSystem::pathByAppendingComponent(NSTemporaryDirectory(), "MediaCache/"_s));
+#endif
         didOneTimeInitialization = true;
     }
 
@@ -1443,6 +1447,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         BackForwardList::create(self),
         WebCore::CookieJar::create(storageProvider.copyRef()),
         makeUniqueRef<WebProgressTrackerClient>(self),
+        makeUniqueRef<WebFrameLoaderClient>(),
         makeUniqueRef<WebCore::MediaRecorderProvider>()
     );
 #if !PLATFORM(IOS_FAMILY)
@@ -1465,7 +1470,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
 
     pageConfiguration.alternativeTextClient = makeUnique<WebAlternativeTextClient>(self);
-    pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.applicationCacheStorage = &webApplicationCacheStorage();
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.pluginInfoProvider = &WebPluginInfoProvider::singleton();
@@ -1714,6 +1718,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         BackForwardList::create(self),
         WebCore::CookieJar::create(storageProvider.copyRef()),
         makeUniqueRef<WebProgressTrackerClient>(self),
+        makeUniqueRef<WebFrameLoaderClient>(),
         makeUniqueRef<WebCore::MediaRecorderProvider>()
     );
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
@@ -1726,7 +1731,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
 
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
-    pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.applicationCacheStorage = &webApplicationCacheStorage();
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
@@ -7274,12 +7278,9 @@ constexpr WebCore::TextCheckingType coreTextCheckingType(NSTextCheckingType type
 
 static WebCore::TextCheckingResult textCheckingResultFromNSTextCheckingResult(NSTextCheckingResult *nsResult)
 {
-    NSRange resultRange = nsResult.range;
-
     WebCore::TextCheckingResult result;
     result.type = coreTextCheckingType(nsResult.resultType);
-    result.location = resultRange.location;
-    result.length = resultRange.length;
+    result.range = nsResult.range;
     result.replacement = nsResult.replacementString;
     return result;
 }
@@ -9312,9 +9313,8 @@ bool LayerFlushController::flushLayers()
 #if PLATFORM(IOS_FAMILY)
 - (void)_scheduleRenderingUpdateForPendingTileCacheRepaint
 {
-    auto* coreFrame = [self _mainCoreFrame];
-    if (auto* view = coreFrame->view())
-        view->scheduleRenderingUpdate();
+    if (auto* page = _private->page)
+        page->scheduleRenderingUpdate();
 }
 #endif
 

@@ -747,6 +747,7 @@ pluginsEnabled:
 usesBackForwardCache:
   initial: false
   onChange: usesBackForwardCacheChanged
+  excludeFromInternalSettings: true
 
 dnsPrefetchingEnabled:
   initial: false
@@ -858,7 +859,7 @@ clientCoordinatesRelativeToLayoutViewport:
 incompleteImageBorderEnabled:
   initial: false
 
-shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
+shouldDeferAsynchronousScriptsUntilAfterDocumentLoadOrFirstPaint:
   initial: true
 
 shouldIgnoreMetaViewport:
@@ -907,6 +908,9 @@ isFirstPartyWebsiteDataRemovalLiveOnTestingEnabled:
   initial: false
 
 isFirstPartyWebsiteDataRemovalReproTestingEnabled:
+  initial: false
+
+isSameSiteStrictEnforcementEnabled:
   initial: false
 
 isLoggedInAPIEnabled:

@@ -1422,13 +1422,27 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_tryGetById(BytecodeGenerator& 
     RefPtr<RegisterID> base = generator.emitNode(node);
     node = node->m_next;
 
-    // Since this is a builtin we expect the creator to use a string literal as the second argument.
     ASSERT(node->m_expr->isString());
     const Identifier& ident = static_cast<StringNode*>(node->m_expr)->value();
     ASSERT(!node->m_next);
 
     RefPtr<RegisterID> finalDest = generator.finalDestination(dst);
     return generator.emitTryGetById(finalDest.get(), base.get(), ident);
+}
+
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_tryGetByIdWithWellKnownSymbol(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> base = generator.emitNode(node);
+    node = node->m_next;
+
+    ASSERT(node->m_expr->isString());
+    SymbolImpl* symbol = generator.vm().propertyNames->builtinNames().lookUpWellKnownSymbol(static_cast<StringNode*>(node->m_expr)->value());
+    RELEASE_ASSERT(symbol);
+    ASSERT(!node->m_next);
+
+    RefPtr<RegisterID> finalDest = generator.finalDestination(dst);
+    return generator.emitTryGetById(finalDest.get(), base.get(), generator.parserArena().identifierArena().makeIdentifier(generator.vm(), symbol));
 }
 
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toNumber(BytecodeGenerator& generator, RegisterID* dst)
@@ -1865,7 +1879,7 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
 
 static RegisterID* emitIncOrDec(BytecodeGenerator& generator, RegisterID* srcDst, Operator oper)
 {
-    return (oper == OpPlusPlus) ? generator.emitInc(srcDst) : generator.emitDec(srcDst);
+    return (oper == Operator::PlusPlus) ? generator.emitInc(srcDst) : generator.emitDec(srcDst);
 }
 
 static RegisterID* emitPostIncOrDec(BytecodeGenerator& generator, RegisterID* dst, RegisterID* srcDst, Operator oper)
@@ -1994,7 +2008,7 @@ RegisterID* PostfixNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
         return emitDot(generator, dst);
 
     ASSERT(m_expr->isFunctionCall());
-    return emitThrowReferenceError(generator, m_operator == OpPlusPlus
+    return emitThrowReferenceError(generator, m_operator == Operator::PlusPlus
         ? "Postfix ++ operator applied to value that is not a reference."_s
         : "Postfix -- operator applied to value that is not a reference."_s);
 }
@@ -2216,7 +2230,7 @@ RegisterID* PrefixNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
         return emitDot(generator, dst);
 
     ASSERT(m_expr->isFunctionCall());
-    return emitThrowReferenceError(generator, m_operator == OpPlusPlus
+    return emitThrowReferenceError(generator, m_operator == Operator::PlusPlus
         ? "Prefix ++ operator applied to value that is not a reference."_s
         : "Prefix -- operator applied to value that is not a reference."_s);
 }
@@ -2648,7 +2662,7 @@ RegisterID* LogicalOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     Ref<Label> target = generator.newLabel();
     
     generator.emitNode(temp.get(), m_expr1);
-    if (m_operator == OpLogicalAnd)
+    if (m_operator == LogicalOperator::And)
         generator.emitJumpIfFalse(temp.get(), target.get());
     else
         generator.emitJumpIfTrue(temp.get(), target.get());
@@ -2664,7 +2678,7 @@ void LogicalOpNode::emitBytecodeInConditionContext(BytecodeGenerator& generator,
         generator.emitDebugHook(this);
 
     Ref<Label> afterExpr1 = generator.newLabel();
-    if (m_operator == OpLogicalAnd)
+    if (m_operator == LogicalOperator::And)
         generator.emitNodeInConditionContext(m_expr1, afterExpr1.get(), falseTarget, FallThroughMeansTrue);
     else 
         generator.emitNodeInConditionContext(m_expr1, trueTarget, afterExpr1.get(), FallThroughMeansFalse);
@@ -2742,47 +2756,47 @@ static ALWAYS_INLINE RegisterID* emitReadModifyAssignment(BytecodeGenerator& gen
 {
     OpcodeID opcodeID;
     switch (oper) {
-        case OpMultEq:
-            opcodeID = op_mul;
-            break;
-        case OpDivEq:
-            opcodeID = op_div;
-            break;
-        case OpPlusEq:
-            if (m_right->isAdd() && m_right->resultDescriptor().definitelyIsString())
-                return static_cast<AddNode*>(m_right)->emitStrcat(generator, dst, src1, emitExpressionInfoForMe);
-            opcodeID = op_add;
-            break;
-        case OpMinusEq:
-            opcodeID = op_sub;
-            break;
-        case OpLShift:
-            opcodeID = op_lshift;
-            break;
-        case OpRShift:
-            opcodeID = op_rshift;
-            break;
-        case OpURShift:
-            opcodeID = op_urshift;
-            break;
-        case OpAndEq:
-            opcodeID = op_bitand;
-            break;
-        case OpXOrEq:
-            opcodeID = op_bitxor;
-            break;
-        case OpOrEq:
-            opcodeID = op_bitor;
-            break;
-        case OpModEq:
-            opcodeID = op_mod;
-            break;
-        case OpPowEq:
-            opcodeID = op_pow;
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return dst;
+    case Operator::MultEq:
+        opcodeID = op_mul;
+        break;
+    case Operator::DivEq:
+        opcodeID = op_div;
+        break;
+    case Operator::PlusEq:
+        if (m_right->isAdd() && m_right->resultDescriptor().definitelyIsString())
+            return static_cast<AddNode*>(m_right)->emitStrcat(generator, dst, src1, emitExpressionInfoForMe);
+        opcodeID = op_add;
+        break;
+    case Operator::MinusEq:
+        opcodeID = op_sub;
+        break;
+    case Operator::LShift:
+        opcodeID = op_lshift;
+        break;
+    case Operator::RShift:
+        opcodeID = op_rshift;
+        break;
+    case Operator::URShift:
+        opcodeID = op_urshift;
+        break;
+    case Operator::BitAndEq:
+        opcodeID = op_bitand;
+        break;
+    case Operator::BitXOrEq:
+        opcodeID = op_bitxor;
+        break;
+    case Operator::BitOrEq:
+        opcodeID = op_bitor;
+        break;
+    case Operator::ModEq:
+        opcodeID = op_mod;
+        break;
+    case Operator::PowEq:
+        opcodeID = op_pow;
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return dst;
     }
 
     RegisterID* src2 = generator.emitNode(m_right);
@@ -2792,7 +2806,7 @@ static ALWAYS_INLINE RegisterID* emitReadModifyAssignment(BytecodeGenerator& gen
     if (emitExpressionInfoForMe)
         generator.emitExpressionInfo(emitExpressionInfoForMe->divot(), emitExpressionInfoForMe->divotStart(), emitExpressionInfoForMe->divotEnd());
     RegisterID* result = generator.emitBinaryOp(opcodeID, dst, src1, src2, types);
-    if (oper == OpURShift)
+    if (oper == Operator::URShift)
         return generator.emitUnaryOp<OpUnsigned>(result, result);
     return result;
 }
@@ -2947,7 +2961,7 @@ RegisterID* ReadModifyDotNode::emitBytecode(BytecodeGenerator& generator, Regist
         value = generator.emitGetById(generator.tempDestination(dst), base.get(), thisValue.get(), m_ident);
     } else
         value = generator.emitGetById(generator.tempDestination(dst), base.get(), m_ident);
-    RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, static_cast<JSC::Operator>(m_operator), OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
+    RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     RegisterID* ret;
@@ -3011,7 +3025,7 @@ RegisterID* ReadModifyBracketNode::emitBytecode(BytecodeGenerator& generator, Re
         value = generator.emitGetByVal(generator.tempDestination(dst), base.get(), thisValue.get(), property.get());
     } else
         value = generator.emitGetByVal(generator.tempDestination(dst), base.get(), property.get());
-    RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, static_cast<JSC::Operator>(m_operator), OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
+    RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     if (m_base->isSuperNode())

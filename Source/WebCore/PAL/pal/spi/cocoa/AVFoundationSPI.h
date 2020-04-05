@@ -77,12 +77,21 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) NSString *deviceName;
 + (instancetype)outputContext;
 + (nullable AVOutputContext *)sharedAudioPresentationOutputContext;
++ (nullable AVOutputContext *)outputContextForID:(NSString *)ID;
 @property (readonly) BOOL supportsMultipleOutputDevices;
 @property (readonly) NSArray<AVOutputDevice *> *outputDevices;
+@property (nonatomic, readonly, nullable) AVOutputDevice *outputDevice;
 @end
+
+typedef NS_OPTIONS(NSUInteger, AVOutputDeviceFeatures) {
+    AVOutputDeviceFeatureAudio = (1UL << 0),
+    AVOutputDeviceFeatureScreen = (1UL << 1),
+    AVOutputDeviceFeatureVideo = (1UL << 2),
+};
 
 @interface AVOutputDevice : NSObject
 @property (nonatomic, readonly) NSString *name;
+@property (nonatomic, readonly) AVOutputDeviceFeatures deviceFeatures;
 @end
 
 #if !PLATFORM(IOS_FAMILY)
@@ -124,7 +133,7 @@ NS_ASSUME_NONNULL_END
 
 #endif // PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR)
 
-#if !PLATFORM(IOS_FAMILY)
+#if ENABLE(MEDIA_SOURCE)
 
 #pragma mark -
 #pragma mark AVStreamDataParser
@@ -163,7 +172,7 @@ NS_ASSUME_NONNULL_END
 @end
 #endif
 
-#endif // !PLATFORM(IOS_FAMILY)
+#endif // ENABLE(MEDIA_SOURCE)
 
 #endif // USE(APPLE_INTERNAL_SDK)
 
@@ -174,6 +183,7 @@ NS_ASSUME_NONNULL_END
 @property (readonly, nullable) NSData *contentProtectionSessionIdentifier;
 - (void)expire;
 - (void)processContentKeyRequestWithIdentifier:(nullable id)identifier initializationData:(nullable NSData *)initializationData options:(nullable NSDictionary<NSString *, id> *)options;
+- (void)associateContentKeyRequest:(nonnull AVContentKeyRequest *)contentKeyRequest;
 @end
 
 @interface AVContentKeySession (AVContentKeyGroup_Support)
@@ -181,7 +191,7 @@ NS_ASSUME_NONNULL_END
 @end
 #endif // HAVE(AVCONTENTKEYSESSION)
 
-#if PLATFORM(MAC) && !USE(APPLE_INTERNAL_SDK)
+#if ENABLE(MEDIA_SOURCE) && !USE(APPLE_INTERNAL_SDK)
 NS_ASSUME_NONNULL_BEGIN
 @interface AVStreamDataParser (AVStreamDataParserPrivate)
 + (NSString *)outputMIMECodecParameterForInputMIMECodecParameter:(NSString *)inputMIMECodecParameter;
@@ -354,3 +364,20 @@ typedef NS_ENUM(NSInteger, AVPlayerResourceConservationLevel) {
 
 @end
 #endif
+
+#if HAVE(AVSAMPLEBUFFERVIDEOOUTPUT)
+#if USE(APPLE_INTERNAL_SDK)
+#include <AVFoundation/AVSampleBufferVideoOutput.h>
+#else
+
+NS_ASSUME_NONNULL_BEGIN
+@interface AVSampleBufferVideoOutput : NSObject
+- (CVPixelBufferRef)copyPixelBufferForSourceTime:(CMTime)sourceTime sourceTimeForDisplay:(nullable CMTime *)outSourceTimeForDisplay;
+@end
+NS_ASSUME_NONNULL_END
+
+@interface AVSampleBufferDisplayLayer (VideoOutput)
+@property (nonatomic, nullable) AVSampleBufferVideoOutput *output;
+@end
+#endif // USE(APPLE_INTERNAL_SDK)
+#endif // HAVE(AVSAMPLEBUFFERVIDEOOUTPUT)

@@ -1,3 +1,399 @@
+2020-04-01  Darin Adler  <darin@apple.com>
+
+        Remove all uses of live ranges from TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=209723
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::updateSpellingUIWithGrammarString): Remove some unnecessary
+        use of local variabels for NSString.
+        (WebEditorClient::requestCandidatesForSelection): Pass a reference to a live
+        range to plainText.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringForRange:]): Ditto.
+        (-[WebFrame _convertToNSRange:]): Use characterRange instead of
+        TextIterator::getLocationAndLengthFromRange.
+
+2020-04-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTMLFormElement should use WeakPtr to keep track of its associated elements
+        https://bugs.webkit.org/show_bug.cgi?id=209894
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation elementWithName:inForm:]):
+        (-[WebHTMLRepresentation controlsInForm:]):
+
+2020-03-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Datalist option's label not used
+        https://bugs.webkit.org/show_bug.cgi?id=201768
+        <rdar://problem/55361186>
+
+        Reviewed by Darin Adler.
+
+        See WebCore/ChangeLog and WebKit/ChangeLog for more details.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2020-03-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to log messages from the network process
+        https://bugs.webkit.org/show_bug.cgi?id=204775
+
+        Reviewed by Brian Burg.
+
+        ITP can be influenced by multiple pages simultaneously, meaning that sending a console
+        message to the Web Inspector that's connected to the page that caused a change may not be
+        useful as developers often don't test in complete isolation. As such, having a way to
+        broadcast a console message to all Web Inspectors ensures that any changes caused by any
+        page are always able to be seen, no matter which page is being actively inspected.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageSource):
+        Add `ITPDebug` and `AdClickAttribution` message sources.
+
+2020-03-29  Darin Adler  <darin@apple.com>
+
+        Move TextIterator::rangeFromLocationAndLength off of live ranges
+        https://bugs.webkit.org/show_bug.cgi?id=209408
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::checkTextOfParagraph): Use CharacterRange,
+        resolveCharacterLocation/Range.
+        (WebEditorClient::checkGrammarOfString): Ditto.
+        (core): Ditto.
+        (WebEditorClient::updateSpellingUIWithGrammarString): Ditto.
+        (WebEditorClient::handleAcceptedCandidateWithSoftSpaces): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]): Ditto.
+        * WebView/WebView.mm:
+        (textCheckingResultFromNSTextCheckingResult): Ditto.
+
+2020-03-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        DragData::containsURL() should avoid reading URL strings from the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=209642
+        Work towards <rdar://problem/59611585>
+
+        Reviewed by Tim Horton.
+
+        See WebCore/ChangeLog for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::containsURLStringSuitableForLoading):
+        (WebPlatformStrategies::urlStringSuitableForLoading):
+
+2020-03-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Avoid querying pasteboard strings while dragging content over a potential drop target
+        https://bugs.webkit.org/show_bug.cgi?id=209531
+
+        Reviewed by Tim Horton and Ryosuke Niwa.
+
+        Add PasteboardStrategy plumbing; see WebCore for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::containsStringSafeForDOMToReadForType):
+
+2020-03-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove the unused method PasteboardStrategy::uniqueName()
+        https://bugs.webkit.org/show_bug.cgi?id=209452
+
+        Reviewed by Tim Horton.
+
+        See WebCore/ChangeLog for more detail.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::uniqueName): Deleted.
+
+2020-03-23  Darin Adler  <darin@apple.com>
+
+        Change TextIterator::rangeLength to not require a live range
+        https://bugs.webkit.org/show_bug.cgi?id=209207
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (insertionPointFromCurrentSelection): Use characterCount.
+        (WebEditorClient::requestCandidatesForSelection): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]): Ditto.
+
+2020-03-23  youenn fablet  <youenn@apple.com>
+
+        Rename blankURL to aboutBlankURL
+        https://bugs.webkit.org/show_bug.cgi?id=209344
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::updateGlobalHistory):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2020-03-20  Jer Noble  <jer.noble@apple.com>
+
+        Ensure media cache directory is created before passing to AVURLAsset.
+        https://bugs.webkit.org/show_bug.cgi?id=209341
+
+        Reviewed by Eric Carlson.
+
+        MediaPlayerPrivateAVFoundaionObjC will no longer create an asset cache in a temporary
+        directory by default; ensure that it's media cache directory is set during initialization.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2020-03-20  Timothy Horton  <timothy_horton@apple.com>
+
+        Improve the previous build fix.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        Darin points out that we have USE(WEB_THREAD), so might as well use it!
+
+2020-03-20  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2020-03-20  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream a variety of Cocoa-platform HAVE and ENABLE macros
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-20  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r258748.
+
+        This commit broke the Catalina build
+
+        Reverted changeset:
+
+        "Upstream a variety of Cocoa-platform HAVE and ENABLE macros"
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+        https://trac.webkit.org/changeset/258748
+
+2020-03-19  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream a variety of Cocoa-platform HAVE and ENABLE macros
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+
+        Reviewed by Andy Estes.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2020-03-19  youenn fablet  <youenn@apple.com>
+
+        Make URL::path() return a StringView
+        https://bugs.webkit.org/show_bug.cgi?id=209173
+
+        Reviewed by Alex Christensen.
+
+        * Misc/WebNSURLExtras.mm:
+        (-[NSString _webkit_stringByReplacingValidPercentEscapes]):
+
+2020-03-18  youenn fablet  <youenn@apple.com>
+
+        FrameLoader should own its FrameLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=208918
+
+        Reviewed by Geoff Garen.
+
+        Update according new Frame/FrameLoader constructors and FrameLoaderClient interface.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        (WebFrameLoaderClient::setWebFrame):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::~WebFrameLoaderClient):
+        (WebFrameLoaderClient::cancelledError const):
+        (WebFrameLoaderClient::blockedError const):
+        (WebFrameLoaderClient::blockedByContentBlockerError const):
+        (WebFrameLoaderClient::cannotShowURLError const):
+        (WebFrameLoaderClient::interruptedForPolicyChangeError const):
+        (WebFrameLoaderClient::blockedByContentFilterError const):
+        (WebFrameLoaderClient::cannotShowMIMETypeError const):
+        (WebFrameLoaderClient::fileDoesNotExistError const):
+        (WebFrameLoaderClient::pluginWillHandleLoadError const):
+        (WebFrameLoaderClient::shouldFallBack const):
+        (WebFrameLoaderClient::userAgent const):
+        * WebView/WebFrame.mm:
+        (+[WebFrame _createFrameWithPage:frameName:frameView:ownerElement:]):
+        (+[WebFrame _createMainFrameWithPage:frameName:frameView:]):
+        (+[WebFrame _createMainFrameWithSimpleHTMLDocumentWithPage:frameView:style:]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2020-03-17  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: [ macOS wk1 ] ASSERTION FAILED: _notifications.contains(notificationID) imported/w3c/web-platform-tests/notifications/constructor-basic.html is flaky crashing
+        https://bugs.webkit.org/show_bug.cgi?id=207307
+        <rdar://problem/59206964>
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebNotification.h:
+        * WebView/WebNotification.mm:
+        (-[WebNotification finalize]):
+
+2020-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r258339.
+        https://bugs.webkit.org/show_bug.cgi?id=209179
+
+        "Is it sometimes breaking rendering" (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "FrameLoader should own its FrameLoaderClient"
+        https://bugs.webkit.org/show_bug.cgi?id=208918
+        https://trac.webkit.org/changeset/258339
+
+2020-03-15  Darin Adler  <darin@apple.com>
+
+        Move most of TextIterator off of live ranges
+        https://bugs.webkit.org/show_bug.cgi?id=209129
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebFrame.mm: Removed an include.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _legacyAttributedStringFrom:offset:to:offset:]):
+        Add casts to unsigned.
+
+        * WebView/WebTextIterator.mm:
+        (-[WebTextIterator initWithRange:]): Leave _private->_textIterator
+        as a nullptr if the passed-in range is nil since we no longer offer
+        a way to create an empty TextIterator; other clients don't seem to
+        need one.
+        (-[WebTextIterator advance]): Check _private->_textIterator for null.
+        (-[WebTextIterator atEnd]): Ditto.
+        (-[WebTextIterator currentRange]): Ditto.
+        (-[WebTextIterator currentTextPointer]): Ditto.
+        (-[WebTextIterator currentTextLength]): Ditto.
+        (-[WebTextIterator currentNode]): Ditto.
+        (-[WebTextIterator currentText]): Ditto.
+
+2020-03-16  Timothy Horton  <timothy_horton@apple.com>
+
+        Always include System.framework in WebKitLegacy's CPLUSPLUSFLAGS
+        https://bugs.webkit.org/show_bug.cgi?id=209147
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+        Bring WebKitLegacy's xcconfigs in line with all the other projects,
+        adding System.framework globally, and in Base.xcconfig.
+
+2020-03-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove FrameView::scheduleRenderingUpdate()
+        https://bugs.webkit.org/show_bug.cgi?id=209109
+
+        Reviewed by Antti Koivisto.
+
+        FrameView::scheduleRenderingUpdate() called through to compositor(), but that just
+        turned around to call scheduleRenderingUpdate() via Page. So Remove it and change
+        callers to call Page::scheduleRenderingUpdate() directly.
+
+        * WebView/WebView.mm:
+
+2020-03-13  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] IDLs, stubs and build configuration for WPE
+        https://bugs.webkit.org/show_bug.cgi?id=208702
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_WEBXR, off by default.
+
+2020-03-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Should not use variable-length-array (VLA)
+        https://bugs.webkit.org/show_bug.cgi?id=209043
+
+        Reviewed by Mark Lam.
+
+        * Configurations/Base.xcconfig:
+
+2020-03-12  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct preference handling and naming conventions in AppBound browsing preferences
+        https://bugs.webkit.org/show_bug.cgi?id=209031
+        <rdar://problem/60396298>
+
+        Reviewed by John Wilander.
+
+        This patch consistently uses the correct naming scheme for WebKit Internal Debug flags.
+        They should be 'WebKitDebug', not 'WebKitInternal' or 'WebKitInternalDebug'.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences isInAppBrowserPrivacyEnabled]):
+        (-[WebPreferences setInAppBrowserPrivacyEnabled:]):
+        (-[WebPreferences needsInAppBrowserPrivacyQuirks]):
+        (-[WebPreferences setNeedsInAppBrowserPrivacyQuirks:]):
+
+2020-03-12  youenn fablet  <youenn@apple.com>
+
+        FrameLoader should own its FrameLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=208918
+
+        Reviewed by Geoffrey Garen.
+
+        Update according new Frame/FrameLoader constructors and FrameLoaderClient interface.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        (WebFrameLoaderClient::setWebFrame):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::~WebFrameLoaderClient):
+        (WebFrameLoaderClient::cancelledError const):
+        (WebFrameLoaderClient::blockedError const):
+        (WebFrameLoaderClient::blockedByContentBlockerError const):
+        (WebFrameLoaderClient::cannotShowURLError const):
+        (WebFrameLoaderClient::interruptedForPolicyChangeError const):
+        (WebFrameLoaderClient::blockedByContentFilterError const):
+        (WebFrameLoaderClient::cannotShowMIMETypeError const):
+        (WebFrameLoaderClient::fileDoesNotExistError const):
+        (WebFrameLoaderClient::pluginWillHandleLoadError const):
+        (WebFrameLoaderClient::shouldFallBack const):
+        (WebFrameLoaderClient::userAgent const):
+        * WebView/WebFrame.mm:
+        (+[WebFrame _createFrameWithPage:frameName:frameView:ownerElement:]):
+        (+[WebFrame _createMainFrameWithPage:frameName:frameView:]):
+        (+[WebFrame _createMainFrameWithSimpleHTMLDocumentWithPage:frameView:style:]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2020-03-08  Darin Adler  <darin@apple.com>
+
+        Make TextIterator::range return a SimpleRange
+        https://bugs.webkit.org/show_bug.cgi?id=208797
+
+        Reviewed by Don Olmstead.
+
+        * WebView/WebTextIterator.mm:
+        (-[WebTextIterator currentRange]): Use createLiveRange.
+
 2020-03-09  Simon Fraser  <simon.fraser@apple.com>
 
         ASSERT(!m_textCheckingRequest) on editing/spelling/spellcheck-async-remove-frame.html

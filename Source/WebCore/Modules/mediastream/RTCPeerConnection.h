@@ -172,9 +172,6 @@ public:
 
     void clearController() { m_controller = nullptr; }
 
-    // ActiveDOMObject.
-    bool hasPendingActivity() const final;
-    
     Document* document();
 
     void doTask(Function<void()>&&);
@@ -195,7 +192,6 @@ private:
     RTCPeerConnection(Document&);
 
     ExceptionOr<void> initializeConfiguration(RTCConfiguration&&);
-    Ref<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpSender>&&, const RTCRtpTransceiverInit&, const String& trackId, const String& trackKind);
 
     void registerToController(RTCController&);
     void unregisterFromController();
@@ -213,6 +209,7 @@ private:
     const char* activeDOMObjectName() const final;
     void suspend(ReasonForSuspension) final;
     void resume() final;
+    bool virtualHasPendingActivity() const final;
 
     void updateConnectionState();
     bool doClose();

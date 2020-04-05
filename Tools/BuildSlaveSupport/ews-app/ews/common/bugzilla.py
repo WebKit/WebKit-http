@@ -33,6 +33,7 @@ from ews.models.patch import Patch
 from ews.thirdparty.BeautifulSoup import BeautifulSoup, SoupStrainer
 import ews.common.util as util
 import ews.config as config
+import dateutil.parser
 
 _log = logging.getLogger(__name__)
 
@@ -49,6 +50,21 @@ class Bugzilla():
         Bugzilla.save_attachment(attachment_id, attachment_data)
         attachment_json['path'] = Bugzilla.file_path_for_patch(attachment_id)
         return attachment_json
+
+    @classmethod
+    def get_cq_plus_timestamp(cls, attachment_id):
+        attachment_json = Bugzilla._fetch_attachment_json(attachment_id)
+        if not attachment_json:
+            _log.warn('Unable to fetch attachment {}.'.format(attachment_id))
+            return None
+
+        for flag in attachment_json.get('flags'):
+            if flag.get('name') == 'commit-queue' and flag.get('status') == '+':
+                try:
+                    return dateutil.parser.parse(flag.get('modification_date'))
+                except:
+                    _log.error('Unable to parse timestamp: {}'.format(flag.get('modification_date')))
+        return None
 
     @classmethod
     def save_attachment(cls, attachment_id, attachment_data):
@@ -158,7 +174,7 @@ class BugzillaBeautifulSoup():
         attempts = 0
         while not authenticated:
             attempts += 1
-            _log.info('Logging in as {}...'.format(username))
+            _log.debug('Logging in as {}...'.format(username))
             self.browser.open(config.BUG_SERVER_URL + 'index.cgi?GoAheadAndLogIn=1')
             self.browser.select_form(name="login")
             self.browser['Bugzilla_login'] = username
@@ -196,7 +212,7 @@ class BugzillaBeautifulSoup():
     def _load_query(self, query):
         self.authenticate()
         full_url = '{}{}'.format(config.BUG_SERVER_URL, query)
-        _log.info('Getting list of patches needing review, URL: {}'.format(full_url))
+        _log.debug('Getting list of patches needing review, URL: {}'.format(full_url))
         return self.browser.open(full_url)
 
     def _parse_attachment_ids_request_query(self, page, since=None):

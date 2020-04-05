@@ -38,12 +38,9 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
-#include <wtf/MachSendRight.h>
-#endif
-
-#if PLATFORM(MAC)
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScreenProperties.h>
+#include <wtf/MachSendRight.h>
 #endif
 
 #if USE(SOUP)
@@ -181,6 +178,7 @@ struct WebProcessCreationParameters {
 
 #if PLATFORM(COCOA)
     Vector<String> mediaMIMETypes;
+    WebCore::ScreenProperties screenProperties;
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
@@ -188,7 +186,6 @@ struct WebProcessCreationParameters {
 #endif
 
 #if PLATFORM(MAC)
-    WebCore::ScreenProperties screenProperties;
     bool useOverlayScrollbars { true };
 #endif
 
@@ -213,9 +210,9 @@ struct WebProcessCreationParameters {
 #if PLATFORM(COCOA)
     Optional<SandboxExtension::Handle> neHelperExtensionHandle;
     Optional<SandboxExtension::Handle> neSessionManagerExtensionHandle;
+    Optional<SandboxExtension::Handle> mapDBExtensionHandle;
     bool systemHasBattery { false };
     Optional<HashMap<String, Vector<String>, ASCIICaseInsensitiveHash>> mimeTypesMap;
-    HashMap<String, String> mapUTIFromMIMEType;
 #endif
 
 #if PLATFORM(IOS_FAMILY)

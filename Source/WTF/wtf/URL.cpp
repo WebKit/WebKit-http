@@ -357,10 +357,10 @@ String URL::query() const
     return m_string.substring(m_pathEnd + 1, m_queryEnd - (m_pathEnd + 1)); 
 }
 
-String URL::path() const
+StringView URL::path() const
 {
     unsigned portEnd = m_hostEnd + m_portLength;
-    return m_string.substring(portEnd, m_pathEnd - portEnd);
+    return StringView(m_string).substring(portEnd, m_pathEnd - portEnd);
 }
 
 bool URL::setProtocol(const String& s)
@@ -867,10 +867,16 @@ bool protocolIsInHTTPFamily(const String& url)
         && (url[4] == ':' || (isASCIIAlphaCaselessEqual(url[4], 's') && length >= 6 && url[5] == ':'));
 }
 
-const URL& blankURL()
+const URL& aboutBlankURL()
 {
     static NeverDestroyed<URL> staticBlankURL(URL(), "about:blank");
     return staticBlankURL;
+}
+
+const URL& aboutSrcDocURL()
+{
+    static NeverDestroyed<URL> staticAboutSrcDocURL(URL(), "about:srcdoc");
+    return staticAboutSrcDocURL;
 }
 
 bool URL::protocolIsAbout() const
@@ -1013,6 +1019,16 @@ URL URL::fakeURLWithRelativePart(const String& relativePart)
 URL URL::fileURLWithFileSystemPath(const String& filePath)
 {
     return URL(URL(), "file:///" + filePath);
+}
+
+bool URL::isAboutBlank() const
+{
+    return protocolIsAbout() && path() == "blank";
+}
+
+bool URL::isAboutSrcDoc() const
+{
+    return protocolIsAbout() && path() == "srcdoc";
 }
 
 TextStream& operator<<(TextStream& ts, const URL& url)

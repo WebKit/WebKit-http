@@ -31,7 +31,6 @@
 #include "MediaDeviceSandboxExtensions.h"
 #endif
 #include "PluginProcessConnectionManager.h"
-#include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
 #include "StorageAreaIdentifier.h"
 #include "TextCheckerState.h"
@@ -47,9 +46,6 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
-#if PLATFORM(MAC)
-#include <WebCore/ScreenProperties.h>
-#endif
 #include <WebCore/ServiceWorkerTypes.h>
 #include <WebCore/Timer.h>
 #include <pal/HysteresisActivity.h>
@@ -62,6 +58,7 @@
 #include <wtf/text/AtomStringHash.h>
 
 #if PLATFORM(COCOA)
+#include <WebCore/ScreenProperties.h>
 #include <dispatch/dispatch.h>
 #include <wtf/MachSendRight.h>
 #endif
@@ -187,6 +184,7 @@ public:
     bool fullKeyboardAccessEnabled() const { return m_fullKeyboardAccessEnabled; }
 
     WebFrame* webFrame(WebCore::FrameIdentifier) const;
+    Vector<WebFrame*> webFrames() const;
     void addWebFrame(WebCore::FrameIdentifier, WebFrame*);
     void removeWebFrame(WebCore::FrameIdentifier);
 
@@ -199,8 +197,6 @@ public:
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
     void setTextCheckerState(const TextCheckerState&);
-
-    void clearResourceCaches(ResourceCachesToClear = AllResourceCaches);
     
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginProcessConnectionManager& pluginProcessConnectionManager();
@@ -302,9 +298,11 @@ public:
 #if ENABLE(REMOTE_INSPECTOR)
     void enableRemoteWebInspector(const SandboxExtension::Handle&);
 #endif
-    void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
     void unblockAccessibilityServer(const SandboxExtension::Handle&);
+#if ENABLE(CFPREFS_DIRECT_MODE)
+    void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
     void unblockPreferenceService(const SandboxExtension::Handle&);
+#endif
 #endif
 
     bool areAllPagesThrottleable() const;
@@ -392,7 +390,6 @@ private:
     void startMemorySampler(SandboxExtension::Handle&&, const String&, const double);
     void stopMemorySampler();
     
-    void getWebCoreStatistics(uint64_t callbackID);
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
@@ -475,16 +472,14 @@ private:
     // Implemented in generated WebProcessMessageReceiver.cpp
     void didReceiveWebProcessMessage(IPC::Connection&, IPC::Decoder&);
 
-#if PLATFORM(MAC)
-    void setScreenProperties(const WebCore::ScreenProperties&);
-#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void scrollerStylePreferenceChanged(bool useOverlayScrollbars);
     void displayConfigurationChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags);
     void displayWasRefreshed(CGDirectDisplayID);
 #endif
-#endif
 
 #if PLATFORM(COCOA)
+    void setScreenProperties(const WebCore::ScreenProperties&);
     void updateProcessName();
 #endif
 

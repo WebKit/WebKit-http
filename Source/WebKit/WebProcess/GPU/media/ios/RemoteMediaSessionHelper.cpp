@@ -29,6 +29,8 @@
 #if ENABLE(GPU_PROCESS) && PLATFORM(IOS_FAMILY)
 
 #include "Connection.h"
+#include "GPUConnectionToWebProcessMessages.h"
+#include "GPUProcessConnection.h"
 #include "RemoteMediaSessionHelperProxyMessages.h"
 #include "WebProcess.h"
 #include <WebCore/MediaPlaybackTargetCocoa.h>
@@ -74,12 +76,6 @@ void RemoteMediaSessionHelper::stopMonitoringWirelessRoutes()
 void RemoteMediaSessionHelper::providePresentingApplicationPID(int pid)
 {
     connection().send(Messages::RemoteMediaSessionHelperProxy::ProvidePresentingApplicationPID(pid), { });
-}
-
-void RemoteMediaSessionHelper::receivedInterruption(InterruptionType type, ShouldResume shouldResume)
-{
-    for (auto& client : m_clients)
-        client.receivedInterruption(type, shouldResume);
 }
 
 void RemoteMediaSessionHelper::applicationWillEnterForeground(SuspendedUnderLock suspendedUnderLock)

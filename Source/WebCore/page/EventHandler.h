@@ -209,11 +209,12 @@ public:
     void defaultWheelEventHandler(Node*, WheelEvent&);
     bool handlePasteGlobalSelection(const PlatformMouseEvent&);
 
-    void platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>& eventTarget, RefPtr<ContainerNode>& scrollableContainer, WeakPtr<ScrollableArea>&, bool& isOverWidget);
-    void platformRecordWheelEvent(const PlatformWheelEvent&);
-    bool platformCompleteWheelEvent(const PlatformWheelEvent&, ContainerNode* scrollableContainer, const WeakPtr<ScrollableArea>&);
+    void determineWheelEventTarget(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>& eventTarget, RefPtr<ContainerNode>& scrollableContainer, WeakPtr<ScrollableArea>&, bool& isOverWidget);
+    void recordWheelEventForDeltaFilter(const PlatformWheelEvent&);
+    bool processWheelEventForScrolling(const PlatformWheelEvent&, ContainerNode* scrollableContainer, const WeakPtr<ScrollableArea>&);
+    void processWheelEventForScrollSnap(const PlatformWheelEvent&, const WeakPtr<ScrollableArea>&);
+
     bool platformCompletePlatformWidgetWheelEvent(const PlatformWheelEvent&, const Widget&, ContainerNode* scrollableContainer);
-    void platformNotifyIfEndGesture(const PlatformWheelEvent&, const WeakPtr<ScrollableArea>&);
 
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
     using TouchArray = Vector<RefPtr<Touch>>;
@@ -238,6 +239,7 @@ public:
 #elif ENABLE(MAC_GESTURE_EVENTS)
     bool dispatchGestureEvent(const PlatformGestureEvent&, const AtomString&, const EventTargetSet&, float, float);
     WEBCORE_EXPORT bool handleGestureEvent(const PlatformGestureEvent&);
+    WEBCORE_EXPORT void didEndMagnificationGesture();
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -494,6 +496,7 @@ private:
 #endif
 
     void clearOrScheduleClearingLatchedStateIfNeeded(const PlatformWheelEvent&);
+    void clearLatchedStateTimerFired();
     void clearLatchedState();
 
     bool shouldSendMouseEventsToInactiveWindows() const;
@@ -525,7 +528,7 @@ private:
     Timer m_cursorUpdateTimer;
 
 #if PLATFORM(MAC)
-    Timer m_pendingMomentumWheelEventsTimer;
+    Timer m_clearLatchingStateTimer;
 #endif
 
     std::unique_ptr<AutoscrollController> m_autoscrollController;

@@ -38,6 +38,10 @@
 
 namespace JSC {
 
+namespace DFG {
+struct ArrayBufferViewWatchpointAdaptor;
+}
+
 class VM;
 
 class FireDetail {
@@ -159,6 +163,8 @@ protected:
 
 private:
     friend class WatchpointSet;
+    // ArrayBufferViewWatchpointAdaptor can fire watchpoints if it tries to attach a watchpoint to a view but can't allocate the ArrayBuffer.
+    friend struct DFG::ArrayBufferViewWatchpointAdaptor;
     void fire(VM&, const FireDetail&);
 
     Type m_type;

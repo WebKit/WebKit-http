@@ -27,6 +27,7 @@
 #import "WebPage.h"
 
 #import "AttributedString.h"
+#import "InsertTextOptions.h"
 #import "LoadParameters.h"
 #import "PluginView.h"
 #import "WKAccessibilityWebPageObjectBase.h"
@@ -35,23 +36,26 @@
 #import "WebRemoteObjectRegistry.h"
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
+#import <WebCore/EventNames.h>
 #import <WebCore/FocusController.h>
+#import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
+#import <WebCore/HTMLOListElement.h>
+#import <WebCore/HTMLUListElement.h>
 #import <WebCore/HitTestResult.h>
 #import <WebCore/NodeRenderStyle.h>
 #import <WebCore/PaymentCoordinator.h>
 #import <WebCore/PlatformMediaSessionManager.h>
+#import <WebCore/Range.h>
 #import <WebCore/RenderElement.h>
-#import <WebCore/RenderObject.h>
 #import <WebCore/SimpleRange.h>
-#import <WebCore/TextIterator.h>
 
 #if PLATFORM(COCOA)
 
 namespace WebKit {
-using namespace WebCore;
 
 void WebPage::platformDidReceiveLoadParameters(const LoadParameters& loadParameters)
 {
@@ -121,29 +125,28 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
 {
     Editor& editor = frame.editor();
     editor.setIsGettingDictionaryPopupInfo(true);
-    
+
     DictionaryPopupInfo dictionaryPopupInfo;
     if (range.text().stripWhiteSpace().isEmpty()) {
         editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
     }
-    
+
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
     if (quads.isEmpty()) {
         editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
     }
-    
+
     IntRect rangeRect = frame.view()->contentsToWindow(quads[0].enclosingBoundingBox());
-    
+
     const RenderStyle* style = range.startContainer().renderStyle();
     float scaledAscent = style ? style->fontMetrics().ascent() * pageScaleFactor() : 0;
     dictionaryPopupInfo.origin = FloatPoint(rangeRect.x(), rangeRect.y() + scaledAscent);
     dictionaryPopupInfo.options = options;
 
 #if PLATFORM(MAC)
-
     NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
     
     RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
@@ -161,9 +164,8 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
         
         [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
     }];
-
 #endif // PLATFORM(MAC)
-    
+
     TextIndicatorOptions indicatorOptions = TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
     if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
         indicatorOptions |= TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
@@ -173,21 +175,19 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& ra
         editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
     }
-    
+
     dictionaryPopupInfo.textIndicator = textIndicator->data();
 #if PLATFORM(MAC)
     dictionaryPopupInfo.attributedString = scaledNSAttributedString;
-#endif // PLATFORM(MAC)
-    
-#if PLATFORM(MACCATALYST)
+#elif PLATFORM(MACCATALYST)
     dictionaryPopupInfo.attributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:range.text()]);
-#endif // PLATFORM(MACCATALYST)
-    
+#endif
+
     editor.setIsGettingDictionaryPopupInfo(false);
     return dictionaryPopupInfo;
 }
 
-void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& replacementEditingRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool registerUndoGroup)
+void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& replacementEditingRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, InsertTextOptions&& options)
 {
     auto& frame = m_page->focusController().focusedOrMainFrame();
     Ref<Frame> protector { frame };
@@ -198,11 +198,20 @@ void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& re
             frame.selection().setSelection(VisibleSelection { *replacementRange, SEL_DEFAULT_AFFINITY });
     }
 
-    if (registerUndoGroup)
+    if (options.registerUndoGroup)
         send(Messages::WebPageProxy::RegisterInsertionUndoGrouping { });
+
+    RefPtr<Element> focusedElement = frame.document() ? frame.document()->focusedElement() : nullptr;
+    if (focusedElement && options.shouldSimulateKeyboardInput)
+        focusedElement->dispatchEvent(Event::create(eventNames().keydownEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes));
 
     ASSERT(!frame.editor().hasComposition());
     frame.editor().insertDictatedText(text, dictationAlternativeLocations, nullptr /* triggeringEvent */);
+
+    if (focusedElement && options.shouldSimulateKeyboardInput) {
+        focusedElement->dispatchEvent(Event::create(eventNames().keyupEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes));
+        focusedElement->dispatchEvent(Event::create(eventNames().changeEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes));
+    }
 }
 
 void WebPage::accessibilityTransferRemoteToken(RetainPtr<NSData> remoteToken)
@@ -230,12 +239,9 @@ void WebPage::getContentsAsAttributedString(CompletionHandler<void(const Attribu
     }
 
     NSDictionary* documentAttributes = nil;
+    auto attributedString = attributedStringFromRange(rangeOfContents(*documentElement), &documentAttributes);
 
-    AttributedString result;
-    result.string = attributedStringFromRange(rangeOfContents(*documentElement), &documentAttributes);
-    result.documentAttributes = documentAttributes;
-
-    completionHandler({ result });
+    completionHandler({ WTFMove(attributedString), WTFMove(documentAttributes) });
 }
 
 void WebPage::setRemoteObjectRegistry(WebRemoteObjectRegistry* registry)
@@ -312,6 +318,71 @@ void WebPage::getProcessDisplayName(CompletionHandler<void(String&&)>&& completi
 #else
     completionHandler({ });
 #endif
+}
+
+void WebPage::getPlatformEditorStateCommon(const Frame& frame, EditorState& result) const
+{
+    if (result.isMissingPostLayoutData)
+        return;
+
+    const auto& selection = frame.selection().selection();
+
+    if (!result.isContentEditable || selection.isNone())
+        return;
+
+    auto& postLayoutData = result.postLayoutData();
+    if (auto editingStyle = EditingStyle::styleAtSelectionStart(selection)) {
+        if (editingStyle->hasStyle(CSSPropertyFontWeight, "bold"_s))
+            postLayoutData.typingAttributes |= AttributeBold;
+
+        if (editingStyle->hasStyle(CSSPropertyFontStyle, "italic"_s) || editingStyle->hasStyle(CSSPropertyFontStyle, "oblique"_s))
+            postLayoutData.typingAttributes |= AttributeItalics;
+
+        if (editingStyle->hasStyle(CSSPropertyWebkitTextDecorationsInEffect, "underline"_s))
+            postLayoutData.typingAttributes |= AttributeUnderline;
+
+        if (auto* styleProperties = editingStyle->style()) {
+            bool isLeftToRight = styleProperties->propertyAsValueID(CSSPropertyDirection) == CSSValueLtr;
+            switch (styleProperties->propertyAsValueID(CSSPropertyTextAlign)) {
+            case CSSValueRight:
+            case CSSValueWebkitRight:
+                postLayoutData.textAlignment = RightAlignment;
+                break;
+            case CSSValueLeft:
+            case CSSValueWebkitLeft:
+                postLayoutData.textAlignment = LeftAlignment;
+                break;
+            case CSSValueCenter:
+            case CSSValueWebkitCenter:
+                postLayoutData.textAlignment = CenterAlignment;
+                break;
+            case CSSValueJustify:
+                postLayoutData.textAlignment = JustifiedAlignment;
+                break;
+            case CSSValueStart:
+                postLayoutData.textAlignment = isLeftToRight ? LeftAlignment : RightAlignment;
+                break;
+            case CSSValueEnd:
+                postLayoutData.textAlignment = isLeftToRight ? RightAlignment : LeftAlignment;
+                break;
+            default:
+                break;
+            }
+            if (auto textColor = styleProperties->propertyAsColor(CSSPropertyColor))
+                postLayoutData.textColor = *textColor;
+        }
+    }
+
+    if (auto* enclosingListElement = enclosingList(selection.start().containerNode())) {
+        if (is<HTMLUListElement>(*enclosingListElement))
+            postLayoutData.enclosingListType = UnorderedList;
+        else if (is<HTMLOListElement>(*enclosingListElement))
+            postLayoutData.enclosingListType = OrderedList;
+        else
+            ASSERT_NOT_REACHED();
+    }
+
+    postLayoutData.baseWritingDirection = frame.editor().baseWritingDirectionForSelectionStart();
 }
 
 } // namespace WebKit

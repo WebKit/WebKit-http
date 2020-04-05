@@ -148,6 +148,7 @@ namespace JSC {
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpPrototypeSymbolMatch) \
     macro(regExpPrototypeSymbolReplace) \
     macro(regExpSearchFast) \
     macro(regExpSplitFast) \
@@ -158,8 +159,9 @@ namespace JSC {
     macro(regExpStringIteratorUnicode) \
     macro(regExpStringIteratorDone) \
     macro(stringIncludesInternal) \
+    macro(stringIndexOfInternal) \
     macro(stringSplitFast) \
-    macro(stringSubstrInternal) \
+    macro(stringSubstringInternal) \
     macro(makeBoundFunction) \
     macro(hasOwnLengthProperty) \
     macro(importModule) \

@@ -173,14 +173,6 @@ void WebProcessPool::platformInitialize()
         installMemoryPressureHandler();
 
     setLegacyCustomProtocolManagerClient(makeUnique<LegacyCustomProtocolManagerClient>());
-
-#if ENABLE(CFPREFS_DIRECT_MODE)
-    [WKPreferenceObserver swizzleRegisterDefaults];
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-        // Start observing preference changes.
-        [WKPreferenceObserver sharedInstance];
-    });
-#endif
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -261,7 +253,7 @@ static const Vector<String>& mediaRelatedMachServices()
         "com.apple.coremedia.visualcontext.xpc", "com.apple.airplay.apsynccontroller.xpc",
         "com.apple.audio.AURemoteIOServer"
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
         "com.apple.coremedia.endpointstream.xpc", "com.apple.coremedia.endpointplaybacksession.xpc",
         "com.apple.coremedia.endpointremotecontrolsession.xpc", "com.apple.coremedia.videodecoder",
         "com.apple.coremedia.videoencoder"
@@ -361,10 +353,10 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     parameters.shouldLogUserInteraction = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
 #endif
-    
-#if PLATFORM(MAC)
+
     auto screenProperties = WebCore::collectScreenProperties();
     parameters.screenProperties = WTFMove(screenProperties);
+#if PLATFORM(MAC)
     parameters.useOverlayScrollbars = ([NSScroller preferredScrollerStyle] == NSScrollerStyleOverlay);
 #endif
     
@@ -380,7 +372,6 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     if (!WebCore::IOSApplication::isMobileSafari() || _AXSApplicationAccessibilityEnabled()) {
         static const char* services[] = {
             "com.apple.lsd.open",
-            "com.apple.lsd.mapdb",
             "com.apple.mobileassetd",
             "com.apple.iconservices",
             "com.apple.PowerManagement.control",
@@ -414,7 +405,10 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
     }
     parameters.systemHasBattery = systemHasBattery();
     parameters.mimeTypesMap = commonMimeTypesMap();
-    parameters.mapUTIFromMIMEType = createUTIFromMIMETypeMap();
+
+    SandboxExtension::Handle mapDBHandle;
+    SandboxExtension::createHandleForMachLookup("com.apple.lsd.mapdb", WTF::nullopt, mapDBHandle, SandboxExtension::Flags::NoReport);
+    parameters.mapDBExtensionHandle = WTFMove(mapDBHandle);
 #endif
     
 #if PLATFORM(IOS)
@@ -450,7 +444,7 @@ void WebProcessPool::platformInitializeWebProcess(const WebProcessProxy& process
             SandboxExtension::createHandleForMachLookup(services[i], WTF::nullopt, parameters.mediaExtensionHandles[i]);
     }
 
-#if ENABLE(CFPREFS_DIRECT_MODE)
+#if ENABLE(CFPREFS_DIRECT_MODE) && PLATFORM(IOS_FAMILY)
     if (_AXSApplicationAccessibilityEnabled()) {
         SandboxExtension::Handle preferencesExtensionHandle;
         SandboxExtension::createHandleForMachLookup("com.apple.cfprefsd.daemon", WTF::nullopt, preferencesExtensionHandle);
@@ -608,11 +602,28 @@ void WebProcessPool::remoteWebInspectorEnabledCallback(CFNotificationCenterRef, 
 }
 #endif
 
+#if ENABLE(CFPREFS_DIRECT_MODE)
+void WebProcessPool::startObservingPreferenceChanges()
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            // Start observing preference changes.
+            [WKPreferenceObserver sharedInstance];
+        });
+    });
+}
+#endif
+
 void WebProcessPool::registerNotificationObservers()
 {
 #if !PLATFORM(IOS_FAMILY)
     // Listen for enhanced accessibility changes and propagate them to the WebProcess.
     m_enhancedAccessibilityObserver = [[NSNotificationCenter defaultCenter] addObserverForName:WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *note) {
+#if ENABLE(CFPREFS_DIRECT_MODE)
+        for (auto& process : m_processes)
+            process->unblockPreferenceServiceIfNeeded();
+#endif
         setEnhancedAccessibility([[[note userInfo] objectForKey:@"AXEnhancedUserInterface"] boolValue]);
     }];
 
@@ -648,6 +659,9 @@ void WebProcessPool::registerNotificationObservers()
 #endif
 
     m_activationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidBecomeActiveNotification object:NSApp queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
+#if ENABLE(CFPREFS_DIRECT_MODE)
+        startObservingPreferenceChanges();
+#endif
         setApplicationIsActive(true);
     }];
 
@@ -661,13 +675,20 @@ void WebProcessPool::registerNotificationObservers()
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, remoteWebInspectorEnabledCallback, static_cast<CFStringRef>(CFSTR(WIRServiceEnabledNotification)), nullptr, CFNotificationSuspensionBehaviorCoalesce);
 #endif
 #endif // PLATFORM(IOS)
-#endif // !PLATFORM(IOS_FAMILY)
     m_accessibilityEnabledObserver = [[NSNotificationCenter defaultCenter] addObserverForName:(__bridge id)kAXSApplicationAccessibilityEnabledNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *) {
         for (size_t i = 0; i < m_processes.size(); ++i) {
+#if ENABLE(CFPREFS_DIRECT_MODE)
             m_processes[i]->unblockPreferenceServiceIfNeeded();
+#endif
             m_processes[i]->unblockAccessibilityServerIfNeeded();
         }
     }];
+#if ENABLE(CFPREFS_DIRECT_MODE)
+    m_activationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:@"UIApplicationDidBecomeActiveNotification" object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
+        startObservingPreferenceChanges();
+    }];
+#endif
+#endif // !PLATFORM(IOS_FAMILY)
 }
 
 void WebProcessPool::unregisterNotificationObservers()
@@ -682,7 +703,6 @@ void WebProcessPool::unregisterNotificationObservers()
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     [[NSNotificationCenter defaultCenter] removeObserver:m_scrollerStyleNotificationObserver.get()];
 #endif
-    [[NSNotificationCenter defaultCenter] removeObserver:m_activationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_deactivationObserver.get()];
 #elif !PLATFORM(MACCATALYST)
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, static_cast<CFStringRef>(UIBacklightLevelChangedNotification) , nullptr);
@@ -691,8 +711,9 @@ void WebProcessPool::unregisterNotificationObservers()
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, CFSTR(WIRServiceEnabledNotification), nullptr);
 #endif
 #endif // PLATFORM(IOS)
-#endif // !PLATFORM(IOS_FAMILY)
     [[NSNotificationCenter defaultCenter] removeObserver:m_accessibilityEnabledObserver.get()];
+#endif // !PLATFORM(IOS_FAMILY)
+    [[NSNotificationCenter defaultCenter] removeObserver:m_activationObserver.get()];
 }
 
 static CFURLStorageSessionRef privateBrowsingSession()
@@ -845,10 +866,12 @@ NSSet *WebProcessPool::allowedClassesForParameterCoding() const
     return m_classesForParameterCoder.get();
 }
 
+#if ENABLE(CFPREFS_DIRECT_MODE)
 void WebProcessPool::notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue)
 {
     for (auto process : m_processes)
         process->send(Messages::WebProcess::NotifyPreferencesChanged(domain, key, encodedValue), 0);
 }
+#endif
 
 } // namespace WebKit

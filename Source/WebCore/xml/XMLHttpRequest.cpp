@@ -811,22 +811,29 @@ String XMLHttpRequest::getAllResponseHeaders() const
         return emptyString();
 
     if (!m_allResponseHeaders) {
-        Vector<String> headers;
+        Vector<std::pair<String, String>> headers;
         headers.reserveInitialCapacity(m_response.httpHeaderFields().size());
 
-        for (auto& header : m_response.httpHeaderFields()) {
-            StringBuilder stringBuilder;
-            stringBuilder.append(header.key.convertToASCIILowercase());
-            stringBuilder.appendLiteral(": ");
-            stringBuilder.append(header.value);
-            stringBuilder.appendLiteral("\r\n");
-            headers.uncheckedAppend(stringBuilder.toString());
-        }
-        std::sort(headers.begin(), headers.end(), WTF::codePointCompareLessThan);
+        for (auto& header : m_response.httpHeaderFields())
+            headers.uncheckedAppend(std::make_pair(header.key, header.value));
+
+        std::sort(headers.begin(), headers.end(), [] (const std::pair<String, String>& x, const std::pair<String, String>& y) {
+            unsigned xLength = x.first.length();
+            unsigned yLength = y.first.length();
+            unsigned commonLength = std::min(xLength, yLength);
+            for (unsigned i = 0; i < commonLength; ++i) {
+                auto xCharacter = toASCIIUpper(x.first[i]);
+                auto yCharacter = toASCIIUpper(y.first[i]);
+                if (xCharacter != yCharacter)
+                    return xCharacter < yCharacter;
+            }
+            return xLength < yLength;
+        });
 
         StringBuilder stringBuilder;
         for (auto& header : headers)
-            stringBuilder.append(header);
+            stringBuilder.append(lowercase(header.first), ": ", header.second, "\r\n");
+
         m_allResponseHeaders = stringBuilder.toString();
     }
 
@@ -1170,12 +1177,9 @@ void XMLHttpRequest::eventListenersDidChange()
 
 // An XMLHttpRequest object must not be garbage collected if its state is either opened with the send() flag set, headers received, or loading, and
 // it has one or more event listeners registered whose type is one of readystatechange, progress, abort, error, load, timeout, and loadend.
-bool XMLHttpRequest::hasPendingActivity() const
+bool XMLHttpRequest::virtualHasPendingActivity() const
 {
-    if (ActiveDOMObject::hasPendingActivity())
-        return true;
-
-    if (!m_hasRelevantEventListener)
+    if (!m_hasRelevantEventListener && !(m_upload && m_upload->hasRelevantEventListener()))
         return false;
 
     switch (readyState()) {

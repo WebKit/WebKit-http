@@ -48,6 +48,7 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "ScriptDisallowedScope.h"
+#include "SecurityPolicy.h"
 #include "TextEncoding.h"
 #include <wtf/WallTime.h>
 
@@ -69,7 +70,7 @@ static void appendMailtoPostFormDataToURL(URL& url, const FormData& data, const 
 
     if (equalLettersIgnoringASCIICase(encodingType, "text/plain")) {
         // Convention seems to be to decode, and s/&/\r\n/. Also, spaces are encoded as %20.
-        body = decodeURLEscapeSequences(body.replaceWithLiteral('&', "\r\n").replace('+', ' ') + "\r\n");
+        body = decodeURLEscapeSequences(makeString(body.replaceWithLiteral('&', "\r\n").replace('+', ' '), "\r\n"));
     }
 
     Vector<char> bodyData;
@@ -247,8 +248,11 @@ void FormSubmission::populateFrameLoadRequest(FrameLoadRequest& frameRequest)
     }
 
     frameRequest.resourceRequest().setURL(requestURL());
-    FrameLoader::addHTTPOriginIfNeeded(frameRequest.resourceRequest(), m_origin);
-    FrameLoader::addHTTPUpgradeInsecureRequestsIfNeeded(frameRequest.resourceRequest());
+    if (doesRequestNeedHTTPOriginHeader(frameRequest.resourceRequest())) {
+        auto securityOrigin = SecurityOrigin::createFromString(m_origin);
+        auto origin = SecurityPolicy::generateOriginHeader(frameRequest.requester().referrerPolicy(), frameRequest.resourceRequest().url(), securityOrigin);
+        frameRequest.resourceRequest().setHTTPOrigin(origin);
+    }
 }
 
 }

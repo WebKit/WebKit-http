@@ -197,6 +197,7 @@ fast/dom/Geolocation/ [ Skip ]
 
 # TODO This port doesn't support Notifications.
 http/tests/notifications/ [ Skip ]
+http/wpt/notifications/ [ Skip ]
 fast/history/page-cache-notification-showing.html [ Skip ]
 fast/history/page-cache-notification-suspendable.html [ Skip ]
 
@@ -411,7 +412,7 @@ http/wpt/css/css-highlight-api/ [ Skip ]
 # Pre-HMTL5 parser quirks only apply to the mac port for now.
 fast/parser/pre-html5-parser-quirks.html [ Skip ]
 
-# Requires WebP support.
+# Requires APNG and WebP support.
 fast/canvas/canvas-toDataURL-webp.html [ Skip ]
 fast/images/webp-image-decoding.html [ Skip ]
 fast/images/webp-color-profile-lossless.html [ Skip ]
@@ -420,6 +421,7 @@ fast/images/webp-color-profile-lossy.html [ Skip ]
 http/tests/images/webp-partial-load.html [ Skip ]
 http/tests/images/webp-progressive-load.html [ Skip ]
 fast/images/animated-webp-expected.html [ Skip ]
+fast/images/animated-png-loop-count.html [ Skip ]
 
 # TODO The following tests requires the DRT's dumpUserGestureInFrameLoadCallbacks
 # method. But that method is not implemented in win port since win port can't
@@ -1595,6 +1597,7 @@ webkit.org/b/140867 [ Debug ] accessibility/focusable-div.html [ Skip ]
 [ Debug ] accessibility/hang-in-isignored.html [ Skip ] # Crash (Debug Assertion)
 [ Debug ] accessibility/heading-title-includes-links.html [ Skip ]
 webkit.org/b/140867 [ Debug ] accessibility/spinbutton-value.html [ Skip ]
+accessibility/url-test.html [ Skip ]
 
 # Missing support for scrollTo* methods.
 accessibility/scroll-to-global-point-iframe-nested.html [ Skip ]
@@ -2140,6 +2143,8 @@ webkit.org/b/97026 fast/forms/state-restore-broken-state.html [ Failure ]
 
 # Search fields do change in size. May be correct behavior
 fast/forms/searchfield-heights.html [ Failure ]
+fast/forms/placeholder-content-center.html [ ImageOnlyFailure ]
+fast/forms/placeholder-content-line-height.html [ ImageOnlyFailure ]
 
 # Test uses "required" form element property which currently does not work on Safari
 fast/forms/validation-message-user-modify.html [ Failure ]
@@ -2863,6 +2868,14 @@ webkit.org/b/140519 [ Debug ] fast/selectors/querySelector-id-with-multiple-elem
 fast/selectors/querySelector-window-inactive.html [ Failure ]
 fast/selectors/read-only-read-write-input-basics.html [ Failure ]
 
+# Win port sometimes forces synchronous style recalc on focus/hover making these unreliable.
+fast/selectors/style-invalidation-focus-change-descendants.html [ Pass Failure ]
+fast/selectors/style-invalidation-focus-change-siblings.html [ Pass Failure ]
+fast/selectors/style-invalidation-focus-within-change-descendants.html [ Pass Failure ]
+fast/selectors/style-invalidation-focus-within-change-siblings.html [ Pass Failure ]
+fast/selectors/style-invalidation-hover-change-descendants.html [ Pass Failure ]
+fast/selectors/style-invalidation-hover-change-siblings.html [ Pass Failure ]
+
 fast/shapes/shape-outside-floats/shape-outside-image-fit-002.html [ Pass ImageOnlyFailure ]
 
 fast/table/border-collapsing/cached-change-tbody-border-width.html [ Pass Failure ]
@@ -3231,7 +3244,6 @@ fast/repaint/shadow-multiple-strict-vertical.html [ Failure ]
 fast/repaint/shadow-multiple-vertical.html [ Failure ]
 fast/repaint/vertical-text-repaint.html [ Failure ]
 fast/repaint/zoomed-fixed-background.html [ Failure ]
-fast/scrolling/scroll-container-horizontally.html [ Failure ]
 fast/selectors/nth-child-bounds.html [ Failure ]
 fast/selectors/nth-last-child-bounds.html [ Failure ]
 fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Failure ]
@@ -3644,6 +3656,7 @@ fast/text/font-weight-fallback.html [ Skip ]
 http/tests/cache/cache-control-immutable-https.html [ Skip ]
 http/tests/inspector/network/resource-request-headers.html [ Skip ]
 http/tests/inspector/network/har/har-page.html [ Skip ]
+http/tests/inspector/network/har/har-page-aggressive-gc.html [ Skip ]
 http/tests/local/blob/send-hybrid-blob-using-open-panel.html [ Skip ]
 http/tests/security/contentSecurityPolicy/cross-origin-plugin-document-allowed-in-child-window.html [ Skip ]
 http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window.html [ Skip ]
@@ -4461,6 +4474,16 @@ webkit.org/b/207495 webanimations/width-and-opacity-separate-animation-yields-co
 
 webkit.org/b/207499 webanimations/transform-accelerated-animation-finishes-before-removal.html [ Pass Failure ]
 
+webkit.org/b/209426 http/wpt/css/css-animations/start-animation-001.html  [ Pass Failure ]
+
+webkit.org/b/209455 http/tests/misc/last-modified-parsing.html [ Failure ]
+
+webkit.org/b/209583 webanimations/no-scheduling-while-filling-accelerated.html [ Skip ]
+
+webkit.org/b/209582 webanimations/css-transition-in-flight-reversal-accelerated.html [ Skip ]
+
+webkit.org/b/209601 animations/many-pseudo-animations.html [ Pass Failure ]
+
 # IntersectionObserver is off by default
 http/tests/lazyload [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/below-viewport-image-loading-lazy-load-event.html [ Skip ]
@@ -4484,3 +4507,6 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/
 
 # prefetch not supported in WK1
 http/wpt/prefetch [ Skip ]
+
+fast/text/combining-character-sequence-vertical.html [ Failure ]
+

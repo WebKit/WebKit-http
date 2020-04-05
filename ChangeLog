@@ -1,3 +1,262 @@
+2020-04-01  Don Olmstead  <don.olmstead@sony.com>
+
+        [GPUP][PlayStation] Enable GPU Process
+        https://bugs.webkit.org/show_bug.cgi?id=209865
+
+        Reviewed by Eric Carlson.
+
+        Enable GPU Process for development builds as an experimental feature.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-04-01  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Use OBJECT libraries for WebCore and PAL
+        https://bugs.webkit.org/show_bug.cgi?id=209835
+
+        Reviewed by Ross Kirsling.
+
+        When compiling WebCore in debug mode ranlib was having issues with the size of
+        libWebCore.a. This is similar to what happened with Visual Studio and WinCairo.
+
+        Additionally hidden visibility defaults are added for the port.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2020-03-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Can't create WebGL context after r259139
+        https://bugs.webkit.org/show_bug.cgi?id=209722
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsWPE.cmake: Disable WebGL2 for WPE until
+        the ANGLE-backed implementation can be used for it.
+
+2020-03-26  Don Olmstead  <don.olmstead@sony.com>
+
+        [MSVC] Remove experimental lambda processor usage
+        https://bugs.webkit.org/show_bug.cgi?id=209358
+
+        Reviewed by Fujii Hironori.
+
+        Remove /experimental:newLambdaProcessor since WebKit is no longer able to build
+        with this setting as of Visual Studio 16.5.0.
+
+        * Source/cmake/OptionsMSVC.cmake:
+
+2020-03-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] lld-link: error: /manifestdependency: is not allowed in .drectve
+        https://bugs.webkit.org/show_bug.cgi?id=204831
+
+        Reviewed by Ross Kirsling.
+
+        * Source/cmake/WebKitMacros.cmake (WEBKIT_EXECUTABLE): Added /manifestdependency linkder option if WIN32.
+
+2020-03-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r259035.
+        https://bugs.webkit.org/show_bug.cgi?id=209597
+
+        broke windows layout-tests (Requested by aakashjain on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Win] lld-link: error: /manifestdependency: is not allowed in
+        .drectve"
+        https://bugs.webkit.org/show_bug.cgi?id=204831
+        https://trac.webkit.org/changeset/259035
+
+2020-03-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] lld-link: error: /manifestdependency: is not allowed in .drectve
+        https://bugs.webkit.org/show_bug.cgi?id=204831
+
+        Reviewed by Ross Kirsling.
+
+        clang-cl doesn't support #pragma comment(linker, "/manifestdependency ..").
+        Use an linker option instead.
+
+        * Source/cmake/WebKitMacros.cmake (WEBKIT_EXECUTABLE): Added -manifestdependency linkder option if WIN32.
+
+2020-03-23  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] Allow distributors to brand user agent
+        https://bugs.webkit.org/show_bug.cgi?id=162611
+
+        Reviewed by Adrian Perez de Castro.
+
+        Add build option for inserting distributor branding into the user agent string.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-03-23  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][WPE] Disable systemd logging by default
+
+        Rubber-stamped by Žan Doberšek.
+
+        The logAlways logs are filling the journal way too fast currently,
+        specially on EWS running tests and buildbots. For the time being
+        disable logging until we figure out a better way to handle this.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-03-21  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] Use ${PYTHON_EXECUTABLE} to run generate-gtkdoc
+        https://bugs.webkit.org/show_bug.cgi?id=208970
+
+        Reviewed by Konstantin Tokarev.
+
+        There's no need to rely on shebangs when executing python scripts from CMake. This should
+        ensure the script always works even if the shebang does not.
+
+        * Source/cmake/GtkDoc.cmake:
+
+2020-03-20  Justin Michaud  <justin@justinmichaud.com>
+
+        Fix JSCOnly build without unified sources
+        https://bugs.webkit.org/show_bug.cgi?id=209343
+
+        Reviewed by Keith Miller.
+
+        * .gitignore:
+
+2020-03-17  Philippe Normand  <pnormand@igalia.com>
+
+        RELEASE_LOG should not be Cocoa specific
+        https://bugs.webkit.org/show_bug.cgi?id=195182
+
+        Reviewed by Konstantin Tokarev.
+
+        Add a Systemd Journald Logger implementation, enabled by default
+        in the GTK and WPE ports. When this is enabled, release logs will
+        be sent to the Systemd Journal. To retrieve media logs for
+        instance, this command can be used:
+
+        $ journalctl WEBKIT_SUBSYSTEM=WebKitGTK WEBKIT_CHANNEL=Media
+
+        * Source/cmake/FindSystemd.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-03-16  Keith Rollin  <krollin@apple.com>
+
+        Remove support for WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=208894
+        <rdar://problem/60297590>
+
+        Reviewed by Brent Fulgham.
+
+        This project provided support for facilities that are now handled
+        elsewhere and is no longer needed.
+
+        * .gitignore:
+        * Source/PlatformWin.cmake:
+        * Source/cmake/OptionsAppleWin.cmake:
+
+2020-03-13  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebXR] IDLs, stubs and build configuration for WPE
+        https://bugs.webkit.org/show_bug.cgi?id=208702
+
+        Reviewed by Dean Jackson.
+
+        Added a new compile flag for WEBXR which depends on WEBGL.
+
+        For the WPE port, added OpenXR detection and USE_OPENXR define to be
+        used in the sources. It also adds a dependency between USE_OPENXR and
+        ENABLE_WEBXR.
+
+        Largely based on previous work by Žan Doberšek.
+
+        * Source/cmake/FindOpenXR.cmake: Added.
+        * Source/cmake/OptionsWPE.cmake: Added mandatory OpenXR dependency if
+        WEBXR is enabled exposing USE_OPENXR to the build.
+        * Source/cmake/WebKitFeatures.cmake: Added ENABLE_WEBXR.
+        * Source/cmake/tools/vsprops/FeatureDefines.props: Ditto.
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props: Ditto.
+
+2020-03-14  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [CMake] Warning when ccache is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=208952
+
+        Reviewed by Daniel Bates.
+
+        Change the warning when ccache is not installed to a status message. We shouldn't be
+        printing warnings except when there is an actual problem.
+
+        * Source/cmake/WebKitCCache.cmake:
+
+2020-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Eleminate mismatches between Find* module names and variables they set
+        https://bugs.webkit.org/show_bug.cgi?id=208948
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindLibseccomp.cmake:
+        * Source/cmake/FindWPEBackend_fdo.cmake: Renamed from Source/cmake/FindWPEBackend-fdo.cmake.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2020-03-12  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Find modules should find pkg-config with find_package(PkgConfig QUIET)
+        https://bugs.webkit.org/show_bug.cgi?id=208948
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindATK.cmake:
+        * Source/cmake/FindATKBridge.cmake:
+        * Source/cmake/FindATSPI.cmake:
+        * Source/cmake/FindCairo.cmake:
+        * Source/cmake/FindCairoGL.cmake:
+        * Source/cmake/FindEGL.cmake:
+        * Source/cmake/FindEnchant.cmake:
+        * Source/cmake/FindFontconfig.cmake:
+        * Source/cmake/FindGDK3.cmake:
+        * Source/cmake/FindGLIB.cmake:
+        * Source/cmake/FindGObjectIntrospection.cmake:
+        * Source/cmake/FindGStreamer.cmake:
+        * Source/cmake/FindGTK3.cmake:
+        * Source/cmake/FindGTKUnixPrint.cmake:
+        * Source/cmake/FindHarfBuzz.cmake:
+        * Source/cmake/FindLibEpoxy.cmake:
+        * Source/cmake/FindLibNotify.cmake:
+        * Source/cmake/FindLibPSL.cmake:
+        * Source/cmake/FindLibSoup.cmake:
+        * Source/cmake/FindLibseccomp.cmake:
+        * Source/cmake/FindLibsecret.cmake:
+        * Source/cmake/FindLibtasn1.cmake:
+        * Source/cmake/FindLibxkbcommon.cmake:
+        * Source/cmake/FindNghttp2.cmake:
+        * Source/cmake/FindOpenGL.cmake:
+        * Source/cmake/FindOpenGLES2.cmake:
+        * Source/cmake/FindOpenJPEG.cmake:
+        * Source/cmake/FindSQLite3.cmake:
+        * Source/cmake/FindWOFF2Dec.cmake:
+        * Source/cmake/FindWPE.cmake:
+        * Source/cmake/FindWPEBackend-fdo.cmake:
+        * Source/cmake/FindWayland.cmake:
+        * Source/cmake/FindWaylandProtocols.cmake:
+        * Source/cmake/FindWebP.cmake:
+
+2020-03-12  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Avoid calling FPHSA multiple time in FindPerlModules.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=208948
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindPerlModules.cmake:
+
 2020-03-09  Don Olmstead  <don.olmstead@sony.com>
 
         Add script to search for feature defines

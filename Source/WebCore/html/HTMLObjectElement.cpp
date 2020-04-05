@@ -54,7 +54,6 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include "RuntimeApplicationChecks.h"
-#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -75,6 +74,11 @@ Ref<HTMLObjectElement> HTMLObjectElement::create(const QualifiedName& tagName, D
     auto result = adoptRef(*new HTMLObjectElement(tagName, document, form));
     result->finishCreating();
     return result;
+}
+
+HTMLObjectElement::~HTMLObjectElement()
+{
+    clearForm();
 }
 
 int HTMLObjectElement::defaultTabIndex() const

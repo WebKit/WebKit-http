@@ -276,6 +276,10 @@ public:
 #if USE(GSTREAMER_GL)
     virtual void waitForCPUSync()
     {
+        // No need for OpenGL synchronization when using the OpenMAX decoder.
+        if (m_videoDecoderPlatform == GstVideoDecoderPlatform::OpenMAX)
+            return;
+
         GstGLSyncMeta* meta = gst_buffer_get_gl_sync_meta(m_buffer.get());
         if (meta) {
             GstMemory* mem = gst_buffer_peek_memory(m_buffer.get(), 0);
@@ -425,15 +429,18 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_preload(player->preload())
     , m_maxTimeLoadedAtLastDidLoadingProgress(MediaTime::zeroTime())
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::repaint)
-    , m_readyTimerHandler(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::readyTimerFired
-)
+    , m_readyTimerHandler(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::readyTimerFired)
 #if USE(TEXTURE_MAPPER_GL)
 #if USE(NICOSIA)
     , m_nicosiaLayer(Nicosia::ContentLayer::create(Nicosia::ContentLayerTextureMapperImpl::createFactory(*this)))
 #else
     , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy()))
 #endif
-#endif      
+#endif
+#if !RELEASE_LOG_DISABLED
+    , m_logger(player->mediaPlayerLogger())
+    , m_logIdentifier(player->mediaPlayerLogIdentifier())
+#endif
 {
 #if USE(GLIB)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
@@ -799,7 +806,7 @@ void MediaPlayerPrivateGStreamer::updatePlaybackRate()
     if (!m_isChangingRate)
         return;
 
-    GST_INFO_OBJECT(pipeline(), "Set Rate to %f", m_playbackRate);
+    GST_INFO_OBJECT(pipeline(), "Set playback rate to %f", m_playbackRate);
 
     // Mute the sound if the playback rate is negative or too extreme and audio pitch is not adjusted.
     bool mute = m_playbackRate <= 0 || (!m_shouldPreservePitch && (m_playbackRate < 0.8 || m_playbackRate > 2));
@@ -810,8 +817,8 @@ void MediaPlayerPrivateGStreamer::updatePlaybackRate()
         g_object_set(m_pipeline.get(), "mute", mute, nullptr);
         m_lastPlaybackRate = m_playbackRate;
     } else {
+        GST_ERROR_OBJECT(pipeline(), "Set rate to %f failed", m_playbackRate);
         m_playbackRate = m_lastPlaybackRate;
-        GST_ERROR("Set rate to %f failed", m_playbackRate);
     }
 
     if (m_isPlaybackRatePaused) {
@@ -858,8 +865,9 @@ void MediaPlayerPrivateGStreamer::setRate(float rate)
 {
     float rateClamped = clampTo(rate, -20.0, 20.0);
     if (rateClamped != rate)
-        GST_WARNING("Clamping original rate (%f) to [-20, 20] (%f), higher rates cause crashes", rate, rateClamped);
+        GST_WARNING_OBJECT(pipeline(), "Clamping original rate (%f) to [-20, 20] (%f), higher rates cause crashes", rate, rateClamped);
 
+    GST_DEBUG_OBJECT(pipeline(), "Setting playback rate to %f", rateClamped);
     // Avoid useless playback rate update.
     if (m_playbackRate == rateClamped) {
         // And make sure that upper layers were notified if rate was set.
@@ -905,6 +913,7 @@ double MediaPlayerPrivateGStreamer::rate() const
 
 void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 {
+    GST_DEBUG_OBJECT(pipeline(), "Preserving audio pitch: %s", boolForPrinting(preservesPitch));
     m_shouldPreservePitch = preservesPitch;
 }
 
@@ -1227,6 +1236,9 @@ void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
 
 static void setSyncOnClock(GstElement *element, bool sync)
 {
+    if (!element)
+        return;
+
     if (!GST_IS_BIN(element)) {
         g_object_set(element, "sync", sync, NULL);
         return;
@@ -2986,6 +2998,8 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
             player->m_videoDecoderPlatform = GstVideoDecoderPlatform::Video4Linux;
         else if (g_str_has_prefix(elementName.get(), "imxvpudec"))
             player->m_videoDecoderPlatform = GstVideoDecoderPlatform::ImxVPU;
+        else if (g_str_has_prefix(elementName.get(), "omx"))
+            player->m_videoDecoderPlatform = GstVideoDecoderPlatform::OpenMAX;
 
 #if USE(TEXTURE_MAPPER_GL)
         player->updateTextureMapperFlags();
@@ -3835,6 +3849,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
     UNUSED_PARAM(parameters);
     return result;
 }
+
+#if !RELEASE_LOG_DISABLED
+WTFLogChannel& MediaPlayerPrivateGStreamer::logChannel() const
+{
+    return WebCore::LogMedia;
+}
+#endif
 
 }
 

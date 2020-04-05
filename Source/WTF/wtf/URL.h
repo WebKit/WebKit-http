@@ -106,7 +106,7 @@ public:
     String protocolHostAndPort() const;
     String user() const;
     String pass() const;
-    String path() const;
+    StringView path() const;
     String lastPathComponent() const;
     String query() const;
     String fragmentIdentifier() const;
@@ -136,8 +136,10 @@ public:
     bool protocolIsAbout() const;
     bool protocolIsInHTTPFamily() const;
     bool isLocalFile() const;
-    bool isBlankURL() const;
     bool cannotBeABaseURL() const { return m_cannotBeABaseURL; }
+
+    bool isAboutBlank() const;
+    bool isAboutSrcDoc() const;
 
     bool isMatchingDomain(const String&) const;
 
@@ -266,7 +268,8 @@ WTF_EXPORT_PRIVATE bool equalIgnoringQueryAndFragment(const URL&, const URL&);
 WTF_EXPORT_PRIVATE bool protocolHostAndPortAreEqual(const URL&, const URL&);
 WTF_EXPORT_PRIVATE bool hostsAreEqual(const URL&, const URL&);
 
-WTF_EXPORT_PRIVATE const URL& blankURL();
+WTF_EXPORT_PRIVATE const URL& aboutBlankURL();
+WTF_EXPORT_PRIVATE const URL& aboutSrcDocURL();
 
 // Functions to do URL operations on strings.
 // These are operations that aren't faster on a parsed URL.
@@ -393,3 +396,6 @@ template<> struct DefaultHash<URL>;
 template<> struct HashTraits<URL>;
 
 } // namespace WTF
+
+using WTF::aboutBlankURL;
+using WTF::aboutSrcDocURL;

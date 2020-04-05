@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "Connection.h"
 #include "MessageReceiver.h"
 #include "UserMediaCaptureManager.h"
+#include <WebCore/CaptureDevice.h>
 #include <WebCore/OrientationNotifier.h>
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/RealtimeMediaSourceIdentifier.h>
@@ -53,7 +54,7 @@ public:
         virtual void addMessageReceiver(IPC::StringReference, IPC::MessageReceiver&) = 0;
         virtual void removeMessageReceiver(IPC::StringReference) = 0;
         virtual IPC::Connection& connection() = 0;
-        virtual void willStartCameraCapture() { }
+        virtual bool willStartCapture(WebCore::CaptureDevice::DeviceType) const = 0;
         virtual Logger& logger() = 0;
     };
     explicit UserMediaCaptureManagerProxy(UniqueRef<ConnectionProxy>&&);
@@ -74,10 +75,10 @@ private:
     void stopProducingData(WebCore::RealtimeMediaSourceIdentifier);
     void end(WebCore::RealtimeMediaSourceIdentifier);
     void capabilities(WebCore::RealtimeMediaSourceIdentifier, CompletionHandler<void(WebCore::RealtimeMediaSourceCapabilities&&)>&&);
-    void setMuted(WebCore::RealtimeMediaSourceIdentifier, bool);
     void applyConstraints(WebCore::RealtimeMediaSourceIdentifier, const WebCore::MediaConstraints&);
     void clone(WebCore::RealtimeMediaSourceIdentifier clonedID, WebCore::RealtimeMediaSourceIdentifier cloneID);
     void requestToEnd(WebCore::RealtimeMediaSourceIdentifier);
+    void setShouldApplyRotation(WebCore::RealtimeMediaSourceIdentifier, bool shouldApplyRotation);
 
     class SourceProxy;
     friend class SourceProxy;

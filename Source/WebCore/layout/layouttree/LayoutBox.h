@@ -40,6 +40,7 @@ class Box;
 namespace Layout {
 
 class ContainerBox;
+class InitialContainingBlock;
 class LayoutState;
 class TreeBuilder;
 
@@ -61,11 +62,12 @@ public:
     };
 
     enum BaseTypeFlag {
-        BoxFlag                = 1 << 0,
-        InlineTextBox          = 1 << 1,
-        LineBreakBox           = 1 << 2,
-        ReplacedBox            = 1 << 3,
-        ContainerBoxFlag       = 1 << 4
+        BoxFlag                    = 1 << 0,
+        InlineTextBoxFlag          = 1 << 1,
+        LineBreakBoxFlag           = 1 << 2,
+        ReplacedBoxFlag            = 1 << 3,
+        InitialContainingBlockFlag = 1 << 4,
+        ContainerBoxFlag           = 1 << 5
     };
     typedef unsigned BaseTypeFlags;
 
@@ -93,12 +95,11 @@ public:
 
     bool isFloatingOrOutOfFlowPositioned() const { return isFloatingPositioned() || isOutOfFlowPositioned(); }
 
-    const ContainerBox* containingBlock() const;
+    const ContainerBox& containingBlock() const;
     const ContainerBox& formattingContextRoot() const;
-    const ContainerBox& initialContainingBlock() const;
+    const InitialContainingBlock& initialContainingBlock() const;
 
-    bool isDescendantOf(const ContainerBox&) const;
-    bool isContainingBlockDescendantOf(const ContainerBox&) const;
+    bool isInFormattingContextOf(const ContainerBox&) const;
 
     bool isAnonymous() const { return m_isAnonymous; }
 
@@ -109,7 +110,7 @@ public:
     bool isInlineBlockBox() const;
     bool isInlineTableBox() const;
     bool isBlockContainerBox() const;
-    bool isInitialContainingBlock() const;
+    bool isInitialContainingBlock() const { return m_baseTypeFlags & InitialContainingBlockFlag; }
 
     bool isDocumentBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Document; }
     bool isBodyBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Body; }
@@ -126,7 +127,7 @@ public:
     bool isIFrame() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::IFrame; }
     bool isImage() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Image; }
 
-    const ContainerBox* parent() const { return m_parent; }
+    const ContainerBox& parent() const { return *m_parent; }
     const Box* nextSibling() const { return m_nextSibling; }
     const Box* nextInFlowSibling() const;
     const Box* nextInFlowOrFloatingSibling() const;
@@ -138,9 +139,9 @@ public:
     Box* nextSibling() { return m_nextSibling; }
 
     bool isContainerBox() const { return m_baseTypeFlags & ContainerBoxFlag; }
-    bool isInlineTextBox() const { return m_baseTypeFlags & InlineTextBox; }
-    bool isLineBreakBox() const { return m_baseTypeFlags & LineBreakBox; }
-    bool isReplacedBox() const { return m_baseTypeFlags & ReplacedBox; }
+    bool isInlineTextBox() const { return m_baseTypeFlags & InlineTextBoxFlag; }
+    bool isLineBreakBox() const { return m_baseTypeFlags & LineBreakBoxFlag; }
+    bool isReplacedBox() const { return m_baseTypeFlags & ReplacedBoxFlag; }
 
     bool isPaddingApplicable() const;
     bool isOverflowVisible() const;

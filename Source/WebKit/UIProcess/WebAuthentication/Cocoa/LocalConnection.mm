@@ -39,17 +39,42 @@
 #import "LocalAuthenticationSoftLink.h"
 
 namespace WebKit {
+using namespace WebCore;
 
-void LocalConnection::verifyUser(SecAccessControlRef accessControl, UserVerificationCallback&& completionHandler) const
+namespace {
+static String bundleName()
 {
+    String bundleName;
+
+#if PLATFORM(MAC)
+    bundleName = [[NSRunningApplication currentApplication] localizedName];
+#endif
+
+    return bundleName;
+}
+} // namespace
+
+void LocalConnection::verifyUser(const String& rpId, ClientDataType type, SecAccessControlRef accessControl, UserVerificationCallback&& completionHandler) const
+{
+    String title;
+    switch (type) {
+    case ClientDataType::Create:
+        title = makeCredentialTouchIDPromptTitle(bundleName(), rpId);
+        break;
+    case ClientDataType::Get:
+        title = getAssertionTouchIDPromptTitle(bundleName(), rpId);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
     auto context = adoptNS([allocLAContextInstance() init]);
 
     auto options = adoptNS([[NSMutableDictionary alloc] init]);
-    if ([context biometryType] == LABiometryTypeTouchID)
-        [options setObject:WebCore::touchIDPromptTitle() forKey:@(LAOptionAuthenticationTitle)];
-#if PLATFORM(iOS)
-    [options setObject:WebCore::biometricFallbackPromptTitle() forKey:@(LAOptionPasscodeTitle)];
-#endif
+    if ([context biometryType] == LABiometryTypeTouchID) {
+        [options setObject:title forKey:@(LAOptionAuthenticationTitle)];
+        [options setObject:@NO forKey:@(LAOptionFallbackVisible)];
+    }
 
     auto reply = makeBlockPtr([context, completionHandler = WTFMove(completionHandler)] (NSDictionary *, NSError *error) mutable {
         ASSERT(!RunLoop::isMain());

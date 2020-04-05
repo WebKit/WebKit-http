@@ -68,7 +68,8 @@ public:
 
     CMSampleBufferRef sampleBuffer() const { return m_sample.get(); }
 
-    String toJSONString() const override;
+    bool isHomogeneous() const;
+    Vector<Ref<MediaSampleAVFObjC>> divideIntoHomogeneousSamples();
 
 protected:
     MediaSampleAVFObjC(RetainPtr<CMSampleBufferRef>&& sample)

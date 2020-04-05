@@ -262,8 +262,7 @@
       ],
       "nicks" : [
          "gskachkov"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Alex Christensen" : {
       "emails" : [
@@ -492,8 +491,7 @@
       "expertise" : "CSS, HTML DOM, Core DOM, Canvas, JavaScript DOM bindings, Memory use",
       "nicks" : [
          "kling"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Andrei Bucur" : {
       "emails" : [
@@ -1247,6 +1245,17 @@
          "cjerdonek"
       ]
    },
+   "Chris Lord" : {
+      "emails" : [
+         "clord@igalia.com",
+         "chris@igalia.com",
+         "contact@chrislord.net"
+      ],
+      "nicks" : [
+         "cwiiis"
+      ],
+      "status" : "committer"
+   },
    "Chris Marrin" : {
       "emails" : [
          "cmarrin@apple.com"
@@ -1490,8 +1499,7 @@
       ],
       "nicks" : [
          "realdawei"
-      ],
-      "status" : "contributor"
+      ]
    },
    "David Grogan" : {
       "emails" : [
@@ -1809,6 +1817,15 @@
       "nicks" : [
          "dwim"
       ]
+   },
+   "Doug Kelly" : {
+      "emails" : [
+         "dougk@apple.com"
+      ],
+      "nicks" : [
+         "dougk"
+      ],
+      "status" : "committer"
    },
    "Doug Russell" : {
       "emails" : [
@@ -2259,6 +2276,14 @@
       ],
       "status" : "committer"
    },
+   "Guowei Yang" : {
+      "emails" : [
+         "guowei_yang@apple.com"
+      ],
+      "nicks" : [
+         "frank"
+      ]
+   },
    "Gurpreet Kaur" : {
       "emails" : [
          "gur.trio@gmail.com",
@@ -2279,8 +2304,7 @@
       "expertise" : "WebKitGTK API, Soup HTTP backend, Debian Packaging, A little bit of Epiphany",
       "nicks" : [
          "kov"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Gwang Yoon Hwang" : {
       "emails" : [
@@ -2509,6 +2533,15 @@
       ],
       "status" : "reviewer"
    },
+   "Jack Lee" : {
+      "emails" : [
+         "shihchieh_lee@apple.com"
+      ],
+      "nicks" : [
+         "jackl"
+      ],
+      "status" : "committer"
+   },
    "Jacky Jiang" : {
       "emails" : [
          "jkjiang@webkit.org",
@@ -2663,8 +2696,7 @@
       ],
       "nicks" : [
          "jmarcell"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Javier Fernandez" : {
       "emails" : [
@@ -3154,7 +3186,8 @@
    },
    "Justin Michaud" : {
       "emails" : [
-         "justin_michaud@apple.com"
+         "justin_michaud@apple.com",
+         "justin@justinmichaud.com"
       ],
       "status" : "committer"
    },
@@ -4169,8 +4202,7 @@
       "expertise" : "Accessibility",
       "nicks" : [
          "n_wang"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Naoki Takano" : {
       "emails" : [
@@ -4237,6 +4269,12 @@
       "nicks" : [
          "NVI",
          "nvasilyev"
+      ],
+      "status" : "committer"
+   },
+   "Nikolaos Mouchtaris" : {
+      "emails" : [
+         "nmouchtaris@apple.com"
       ],
       "status" : "committer"
    },
@@ -4935,8 +4973,7 @@
    "Shawn Roberts" : {
       "emails" : [
          "sroberts@apple.com"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Shawn Singh" : {
       "emails" : [
@@ -5115,8 +5152,7 @@
       "expertise" : "JavaScript/ECMAScript, WebAssembly",
       "nicks" : [
          "sukol"
-      ],
-      "status" : "contributor"
+      ]
    },
    "Sungmann Cho" : {
       "emails" : [
@@ -5839,14 +5875,14 @@
       ]
    },
    "Zhifei Fang" : {
-     "emails" : [
+      "emails" : [
          "zhifei_fang@apple.com"
-     ],
-     "nicks" : [
+      ],
+      "nicks" : [
          "zhifei_fang",
          "z.f"
-     ],
-     "status" : "committer"
+      ],
+      "status" : "committer"
    },
    "Zoltan Arvai" : {
       "emails" : [

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "WebProcessProxy.h"
 #include <WebCore/AudioSession.h>
 #include <WebCore/CARingBuffer.h>
+#include <WebCore/ImageRotationSessionVT.h>
 #include <WebCore/MediaConstraints.h>
 #include <WebCore/RealtimeMediaSourceCenter.h>
 #include <WebCore/RemoteVideoSample.h>
@@ -96,6 +97,8 @@ public:
         m_source->requestToEnd(*this);
     }
 
+    void setShouldApplyRotation(bool shouldApplyRotation) { m_shouldApplyRotation = true; }
+
 private:
     void sourceStopped() final {
         if (m_source->captureDidFail()) {
@@ -135,12 +138,41 @@ private:
     void videoSampleAvailable(MediaSample& sample) final
     {
 #if HAVE(IOSURFACE)
-        auto remoteSample = RemoteVideoSample::create(sample);
+        std::unique_ptr<RemoteVideoSample> remoteSample;
+        if (m_shouldApplyRotation && sample.videoRotation() != MediaSample::VideoRotation::None) {
+            auto pixelBuffer = rotatePixelBuffer(sample);
+            remoteSample = RemoteVideoSample::create(pixelBuffer.get(), sample.presentationTime());
+        } else
+            remoteSample = RemoteVideoSample::create(sample);
         if (remoteSample)
             m_connection->send(Messages::UserMediaCaptureManager::RemoteVideoSampleAvailable(m_id, WTFMove(*remoteSample)), 0);
 #else
         ASSERT_NOT_REACHED();
 #endif
+    }
+
+    RetainPtr<CVPixelBufferRef> rotatePixelBuffer(MediaSample& sample)
+    {
+        if (!m_rotationSession)
+            m_rotationSession = makeUnique<ImageRotationSessionVT>();
+
+        ImageRotationSessionVT::RotationProperties rotation;
+        switch (sample.videoRotation()) {
+        case MediaSample::VideoRotation::None:
+            ASSERT_NOT_REACHED();
+            rotation.angle = 0;
+            break;
+        case MediaSample::VideoRotation::UpsideDown:
+            rotation.angle = 180;
+            break;
+        case MediaSample::VideoRotation::Right:
+            rotation.angle = 90;
+            break;
+        case MediaSample::VideoRotation::Left:
+            rotation.angle = 270;
+            break;
+        }
+        return m_rotationSession->rotate(sample, rotation, ImageRotationSessionVT::IsCGImageCompatible::No);
     }
 
     void storageChanged(SharedMemory* storage) final {
@@ -164,6 +196,8 @@ private:
     CAAudioStreamDescription m_description { };
     int64_t m_numberOfFrames { 0 };
     bool m_isEnded { false };
+    std::unique_ptr<ImageRotationSessionVT> m_rotationSession;
+    bool m_shouldApplyRotation { false };
 };
 
 UserMediaCaptureManagerProxy::UserMediaCaptureManagerProxy(UniqueRef<ConnectionProxy>&& connectionProxy)
@@ -179,6 +213,9 @@ UserMediaCaptureManagerProxy::~UserMediaCaptureManagerProxy()
 
 void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(RealtimeMediaSourceIdentifier id, const CaptureDevice& device, String&& hashSalt, const MediaConstraints& constraints, CompletionHandler<void(bool succeeded, String invalidConstraints, WebCore::RealtimeMediaSourceSettings&&, WebCore::RealtimeMediaSourceCapabilities&&)>&& completionHandler)
 {
+    if (!m_connectionProxy->willStartCapture(device.type()))
+        return completionHandler(false, "Request is not allowed"_s, RealtimeMediaSourceSettings { }, { });
+
     CaptureSourceOrError sourceOrError;
     switch (device.type()) {
     case WebCore::CaptureDevice::DeviceType::Microphone:
@@ -186,10 +223,8 @@ void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstrai
         break;
     case WebCore::CaptureDevice::DeviceType::Camera:
         sourceOrError = RealtimeMediaSourceCenter::singleton().videoCaptureFactory().createVideoCaptureSource(device, WTFMove(hashSalt), &constraints);
-        if (sourceOrError) {
+        if (sourceOrError)
             sourceOrError.captureSource->monitorOrientation(m_orientationNotifier);
-            m_connectionProxy->willStartCameraCapture();
-        }
         break;
     case WebCore::CaptureDevice::DeviceType::Screen:
     case WebCore::CaptureDevice::DeviceType::Window:
@@ -243,12 +278,6 @@ void UserMediaCaptureManagerProxy::capabilities(RealtimeMediaSourceIdentifier id
     completionHandler(WTFMove(capabilities));
 }
 
-void UserMediaCaptureManagerProxy::setMuted(RealtimeMediaSourceIdentifier id, bool muted)
-{
-    if (auto* proxy = m_proxies.get(id))
-        proxy->source().setMuted(muted);
-}
-
 void UserMediaCaptureManagerProxy::applyConstraints(RealtimeMediaSourceIdentifier id, const WebCore::MediaConstraints& constraints)
 {
     auto* proxy = m_proxies.get(id);
@@ -275,6 +304,12 @@ void UserMediaCaptureManagerProxy::requestToEnd(RealtimeMediaSourceIdentifier so
 {
     if (auto* proxy = m_proxies.get(sourceID))
         proxy->requestToEnd();
+}
+
+void UserMediaCaptureManagerProxy::setShouldApplyRotation(RealtimeMediaSourceIdentifier sourceID, bool shouldApplyRotation)
+{
+    if (auto* proxy = m_proxies.get(sourceID))
+        proxy->setShouldApplyRotation(shouldApplyRotation);
 }
 
 void UserMediaCaptureManagerProxy::clear()

@@ -29,7 +29,6 @@
 
 #include "AuxiliaryProcessProxy.h"
 #include "GPUProcessProxyMessagesReplies.h"
-#include "LayerHostingContext.h"
 #include "ProcessLauncher.h"
 #include "ProcessThrottler.h"
 #include "ProcessThrottlerClient.h"
@@ -37,6 +36,10 @@
 #include "WebProcessProxyMessagesReplies.h"
 #include <memory>
 #include <pal/SessionID.h>
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+#include "LayerHostingContext.h"
+#endif
 
 namespace WebKit {
 
@@ -63,6 +66,7 @@ public:
 #if ENABLE(MEDIA_STREAM)
     void setUseMockCaptureDevices(bool);
     void setOrientationForMediaCapture(uint64_t orientation);
+    void updateCaptureAccess(bool allowAudioCapture, bool allowVideoCapture, bool allowDisplayCapture, WebCore::ProcessIdentifier, CompletionHandler<void()>&&);
 #endif
 
     void removeSession(PAL::SessionID);

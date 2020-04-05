@@ -411,6 +411,31 @@ Modules/webgpu/WebGPUTexture.cpp
 Modules/webgpu/WebGPUTextureView.cpp
 Modules/webgpu/WorkerNavigatorGPU.cpp
 
+#if ENABLE_WEBXR
+
+Modules/webxr/NavigatorWebXR.cpp @no-unify
+Modules/webxr/WebXRBoundedReferenceSpace.cpp @no-unify
+Modules/webxr/WebXRFrame.cpp @no-unify
+Modules/webxr/WebXRInputSourceArray.cpp @no-unify
+Modules/webxr/WebXRInputSource.cpp @no-unify
+Modules/webxr/WebXRPose.cpp @no-unify
+Modules/webxr/WebXRReferenceSpace.cpp @no-unify
+Modules/webxr/WebXRRenderState.cpp @no-unify
+Modules/webxr/WebXRRigidTransform.cpp @no-unify
+Modules/webxr/WebXRSession.cpp @no-unify
+Modules/webxr/WebXRSpace.cpp @no-unify
+Modules/webxr/WebXRSystem.cpp @no-unify
+Modules/webxr/WebXRView.cpp @no-unify
+Modules/webxr/WebXRViewerPose.cpp @no-unify
+Modules/webxr/WebXRViewport.cpp @no-unify
+Modules/webxr/WebXRWebGLLayer.cpp @no-unify
+Modules/webxr/XRInputSourceEvent.cpp @no-unify
+Modules/webxr/XRInputSourcesChangeEvent.cpp @no-unify
+Modules/webxr/XRReferenceSpaceEvent.cpp @no-unify
+Modules/webxr/XRSessionEvent.cpp @no-unify
+
+#endif
+
 accessibility/AXObjectCache.cpp
 accessibility/AccessibilityARIAGrid.cpp
 accessibility/AccessibilityARIAGridCell.cpp
@@ -455,6 +480,7 @@ animation/CSSAnimation.cpp
 animation/CSSTransition.cpp
 animation/DeclarativeAnimation.cpp
 animation/DocumentTimeline.cpp
+animation/ElementAnimationRareData.cpp
 animation/KeyframeEffect.cpp
 animation/KeyframeEffectStack.cpp
 animation/WebAnimation.cpp
@@ -824,7 +850,6 @@ dom/Attr.cpp
 dom/BeforeLoadEvent.cpp
 dom/BeforeTextInsertedEvent.cpp
 dom/BeforeUnloadEvent.cpp
-dom/BoundaryPoint.cpp
 dom/CDATASection.cpp
 dom/CharacterData.cpp
 dom/ChildListMutationScope.cpp
@@ -1456,6 +1481,7 @@ layout/invalidation/InvalidationContext.cpp
 layout/invalidation/InvalidationState.cpp
 layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainerBox.cpp
+layout/layouttree/LayoutInitialContainingBlock.cpp
 layout/layouttree/LayoutInlineTextBox.cpp
 layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplacedBox.cpp
@@ -1743,12 +1769,14 @@ platform/Logging.cpp
 platform/LowPowerModeNotifier.cpp
 platform/MIMETypeRegistry.cpp
 platform/MainThreadSharedTimer.cpp
+platform/MediaStrategy.cpp
 platform/NotImplemented.cpp
 platform/NowPlayingManager.cpp
 platform/Pasteboard.cpp
 platform/PasteboardCustomData.cpp
 platform/PasteboardWriterData.cpp
 platform/PlatformKeyboardEvent.cpp
+platform/PlatformScreen.cpp
 platform/PlatformSpeechSynthesisUtterance.cpp
 platform/PlatformSpeechSynthesisVoice.cpp
 platform/PlatformSpeechSynthesizer.cpp
@@ -1772,6 +1800,8 @@ platform/SerializedPlatformDataCue.cpp
 platform/SharedBuffer.cpp
 platform/SharedBufferChunkReader.cpp
 platform/SharedStringHash.cpp
+platform/SleepDisabler.cpp
+platform/SleepDisablerClient.cpp
 platform/StaticPasteboard.cpp
 platform/Theme.cpp
 platform/ThreadGlobalData.cpp
@@ -2076,6 +2106,9 @@ platform/text/TextEncoding.cpp
 platform/text/TextEncodingDetectorICU.cpp
 platform/text/TextEncodingRegistry.cpp
 
+platform/xr/PlatformXR.cpp @no-unify
+platform/xr/openxr/PlatformXR.cpp @no-unify
+
 plugins/DOMMimeType.cpp
 plugins/DOMMimeTypeArray.cpp
 plugins/DOMPlugin.cpp
@@ -2158,7 +2191,6 @@ rendering/RenderListItem.cpp
 rendering/RenderListMarker.cpp
 rendering/RenderMarquee.cpp
 rendering/RenderMedia.cpp
-rendering/RenderMediaControlElements.cpp
 rendering/RenderMediaControls.cpp
 rendering/RenderMenuList.cpp
 rendering/RenderMeter.cpp
@@ -2373,6 +2405,7 @@ style/InspectorCSSOMWrappers.cpp
 style/MatchedDeclarationsCache.cpp
 style/PageRuleCollector.cpp
 style/PropertyCascade.cpp
+style/PseudoClassChangeInvalidation.cpp
 style/RuleData.cpp
 style/RuleFeature.cpp
 style/RuleSet.cpp
@@ -2536,6 +2569,7 @@ workers/AbstractWorker.cpp
 workers/DedicatedWorkerGlobalScope.cpp
 workers/DedicatedWorkerThread.cpp
 workers/Worker.cpp
+workers/WorkerAnimationController.cpp
 workers/WorkerConsoleClient.cpp
 workers/WorkerEventLoop.cpp
 workers/WorkerGlobalScope.cpp
@@ -3522,6 +3556,41 @@ JSXPathExpression.cpp
 JSXPathNSResolver.cpp
 JSXPathResult.cpp
 JSXSLTProcessor.cpp
+
+#if ENABLE_WEBXR
+
+JSWebXRBoundedReferenceSpace.cpp
+JSXREnvironmentBlendMode.cpp
+JSXREye.cpp
+JSWebXRFrame.cpp
+JSXRFrameRequestCallback.cpp
+JSXRHandedness.cpp
+JSWebXRInputSource.cpp
+JSWebXRInputSourceArray.cpp
+JSXRInputSourceEvent.cpp
+JSXRInputSourcesChangeEvent.cpp
+JSWebXRPose.cpp
+JSWebXRReferenceSpace.cpp
+JSXRReferenceSpaceEvent.cpp
+JSXRReferenceSpaceType.cpp
+JSWebXRRenderState.cpp
+JSXRRenderStateInit.cpp
+JSWebXRRigidTransform.cpp
+JSWebXRSession.cpp
+JSXRSessionEvent.cpp
+JSXRSessionInit.cpp
+JSXRSessionMode.cpp
+JSWebXRSpace.cpp
+JSWebXRSystem.cpp
+JSXRTargetRayMode.cpp
+JSWebXRView.cpp
+JSWebXRViewerPose.cpp
+JSWebXRViewport.cpp
+JSXRVisibilityState.cpp
+JSWebXRWebGLLayer.cpp
+JSXRWebGLLayerInit.cpp
+
+#endif
 
 #if ENABLE_GAMEPAD
 

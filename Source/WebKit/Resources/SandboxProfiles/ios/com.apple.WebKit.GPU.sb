@@ -102,8 +102,6 @@
         (allow file-read* asset-access-filter)
         (if (memq 'with-media-playback options)
             (play-media asset-access-filter))
-        (allow mach-lookup (with report) (with telemetry)
-               (global-name "com.apple.mobileassetd" "com.apple.mobileassetd.v2"))
         (mobile-preferences-read "com.apple.MobileAsset")))
 
 (define-once (play-audio)
@@ -403,7 +401,6 @@
 
     (allow mach-lookup (with report) (with telemetry)
         (global-name-regex #"^com\.apple\.uikit\.viewservice\..+")
-        (xpc-service-name-regex #"\.apple-extension-service$") ;; <rdar://problem/19525887>
         (xpc-service-name-regex #"\.viewservice$") ;; <rdar://problem/31252371>
     )
 
@@ -439,16 +436,10 @@
 
 (deny file-write-mount file-write-unmount)
 
-(allow file-read-metadata (with no-times)
-       (vnode-type DIRECTORY))
-(with-filter (apple-signed-executable?)
-  (allow file-read-metadata
-         (vnode-type DIRECTORY)))
+(allow file-read-metadata
+    (vnode-type DIRECTORY))
 
-(with-filter (apple-signed-executable?)
-  (managed-configuration-read "CloudConfigurationDetails.plist")
-  (managed-configuration-read "CloudConfigurationSetAsideDetails.plist")
-  (mobile-preferences-read "com.apple.security"))
+(mobile-preferences-read "com.apple.security")
 
 (with-filter (system-attribute apple-internal)
   (mobile-preferences-read "com.apple.PrototypeTools"))
@@ -654,9 +645,6 @@
 (allow process-info-dirtycontrol (target self))
 (allow process-info-rusage (target self))
 (allow process-info-codesignature (target self))
-
-(with-filter (apple-signed-executable?)
-    (mobile-preferences-read "com.apple.demo-settings"))
 
 ;;;
 ;;; End common.sb content
@@ -881,10 +869,6 @@
 (accessibility-support)
 
 (media-accessibility-support)
-
-;; Remote Web Inspector
-(allow mach-lookup
-       (global-name "com.apple.webinspector"))
 
 ;; Various services required by CFNetwork and other frameworks
 (allow mach-lookup

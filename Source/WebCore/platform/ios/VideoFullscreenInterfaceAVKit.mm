@@ -59,6 +59,9 @@ using namespace WebCore;
 #import <pal/ios/UIKitSoftLink.h>
 
 SOFTLINK_AVKIT_FRAMEWORK()
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+SOFT_LINK_CLASS_OPTIONAL(AVKit, AVObservationController)
+#endif
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVPictureInPictureController)
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVPlayerViewController)
 SOFT_LINK_CLASS_OPTIONAL(AVKit, __AVPlayerLayerView)
@@ -276,9 +279,6 @@ static VideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullScre
         targetVideoFrame = largestRectWithAspectRatioInsideRect(videoAspectRatio, self.bounds);
     } else if ([AVLayerVideoGravityResizeAspectFill isEqualToString:self.videoGravity]) {
         sourceVideoFrame = smallestRectWithAspectRatioAroundRect(videoAspectRatio, self.modelVideoLayerFrame);
-        self.modelVideoLayerFrame = CGRectMake(0, 0, sourceVideoFrame.width(), sourceVideoFrame.height());
-        if (auto* model = _fullscreenInterface->videoFullscreenModel())
-            model->setVideoLayerFrame(self.modelVideoLayerFrame);
         targetVideoFrame = smallestRectWithAspectRatioAroundRect(videoAspectRatio, self.bounds);
     } else
         ASSERT_NOT_REACHED();
@@ -545,6 +545,10 @@ NS_ASSUME_NONNULL_END
     VideoFullscreenInterfaceAVKit *_fullscreenInterface;
     RetainPtr<UIViewController> _presentingViewController;
     RetainPtr<AVPlayerViewController> _avPlayerViewController;
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+    RetainPtr<NSTimer> _startPictureInPictureTimer;
+    RetainPtr<AVObservationController> _avPlayerViewControllerObservationController;
+#endif
     id<AVPlayerViewControllerDelegate_WebKitOnly> _delegate;
 }
 
@@ -556,12 +560,27 @@ NS_ASSUME_NONNULL_END
     _fullscreenInterface = interface;
     _avPlayerViewController = adoptNS([allocAVPlayerViewControllerInstance() initWithPlayerLayerView:interface->playerLayerView()]);
     _avPlayerViewController.get().modalPresentationStyle = UIModalPresentationOverFullScreen;
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+    _avPlayerViewControllerObservationController = adoptNS([allocAVObservationControllerInstance() initWithOwner:_avPlayerViewController.get()]);
+#endif
 #if PLATFORM(WATCHOS)
     _avPlayerViewController.get().delegate = self;
 #endif
 
     return self;
 }
+
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+- (void)dealloc
+{
+    [_startPictureInPictureTimer invalidate];
+    _startPictureInPictureTimer = nil;
+    [_avPlayerViewControllerObservationController stopAllObservation];
+    _avPlayerViewControllerObservationController = nil;
+
+    [super dealloc];
+}
+#endif
 
 - (BOOL)playerViewControllerShouldHandleDoneButtonTap:(AVPlayerViewController *)playerViewController
 {
@@ -615,6 +634,32 @@ NS_ASSUME_NONNULL_END
 #define MY_NO_RETURN NO_RETURN_DUE_TO_ASSERT
 #else
 #define MY_NO_RETURN
+#endif
+
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+static const NSTimeInterval startPictureInPictureTimeInterval = 0.5;
+
+- (void)tryToStartPictureInPicture MY_NO_RETURN
+{
+    if (_startPictureInPictureTimer)
+        return;
+
+    _startPictureInPictureTimer = [NSTimer scheduledTimerWithTimeInterval:startPictureInPictureTimeInterval repeats:NO block:^(NSTimer *_Nonnull) {
+        [_avPlayerViewControllerObservationController stopAllObservation];
+        _startPictureInPictureTimer = nil;
+        if (_fullscreenInterface)
+            _fullscreenInterface->failedToStartPictureInPicture();
+    }];
+
+    [_avPlayerViewControllerObservationController startObserving:_avPlayerViewController.get() keyPath:@"pictureInPicturePossible" includeInitialValue:YES observationHandler:^(id _Nonnull, id _Nonnull, id _Nonnull) {
+        if ([self isPictureInPicturePossible] && _startPictureInPictureTimer) {
+            [_avPlayerViewControllerObservationController stopAllObservation];
+            [_startPictureInPictureTimer invalidate];
+            _startPictureInPictureTimer = nil;
+            [self startPictureInPicture];
+        }
+    }];
+}
 #endif
 
 - (void)startPictureInPicture MY_NO_RETURN
@@ -1341,7 +1386,12 @@ void VideoFullscreenInterfaceAVKit::doEnterFullscreen()
         if ([m_playerViewController isPictureInPicturePossible])
             [m_playerViewController startPictureInPicture];
         else
+#if HAVE(HAVE_AVOBSERVATIONCONTROLLER)
+            [m_playerViewController tryToStartPictureInPicture];
+#else
             failedToStartPictureInPicture();
+#endif
+
         return;
     }
     m_enterFullscreenNeedsEnterPictureInPicture = false;

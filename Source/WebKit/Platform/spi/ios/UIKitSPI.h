@@ -41,6 +41,7 @@
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIDocumentMenuViewController_Private.h>
 #import <UIKit/UIDocumentPasswordView.h>
+#import <UIKit/UIDocumentPickerViewController_Private.h>
 #import <UIKit/UIFont_Private.h>
 #import <UIKit/UIGeometry_Private.h>
 #import <UIKit/UIGestureRecognizer_Private.h>
@@ -61,6 +62,7 @@
 #import <UIKit/UIPopoverPresentationController_Private.h>
 #import <UIKit/UIPresentationController_Private.h>
 #import <UIKit/UIResponder_Private.h>
+#import <UIKit/UIScene_Private.h>
 #import <UIKit/UIScrollView_Private.h>
 #import <UIKit/UIStringDrawing_Private.h>
 #import <UIKit/UITableViewCell_Private.h>
@@ -69,6 +71,7 @@
 #import <UIKit/UITextEffectsWindow.h>
 #import <UIKit/UITextInput_Private.h>
 #import <UIKit/UITextInteractionAssistant_Private.h>
+#import <UIKit/UITextInteraction_Private.h>
 #import <UIKit/UIViewControllerTransitioning_Private.h>
 #import <UIKit/UIViewController_Private.h>
 #import <UIKit/UIViewController_ViewService.h>
@@ -121,6 +124,13 @@
 
 #if __has_include(<UIKit/UITargetedPreview_Private.h>)
 #import <UIKit/UITargetedPreview_Private.h>
+#endif
+
+#if HAVE(UI_CURSOR_INTERACTION)
+#import <UIKit/_UICursorInteraction.h>
+#import <UIKit/_UICursorInteraction_ForWebKitOnly.h>
+#import <UIKit/_UICursorStyle.h>
+#import <UIKit/_UICursorStyle_Private.h>
 #endif
 
 #else // USE(APPLE_INTERNAL_SDK)
@@ -185,6 +195,7 @@ WTF_EXTERN_C_END
 - (void)_enqueueHIDEvent:(IOHIDEventRef)event;
 - (void)_handleHIDEvent:(IOHIDEventRef)event;
 - (void)handleKeyUIEvent:(UIEvent *)event;
+- (BOOL)_appAdoptsUISceneLifecycle;
 @end
 
 typedef NS_ENUM(NSInteger, UIDatePickerPrivateMode)  {
@@ -220,11 +231,19 @@ typedef enum {
     kUIKeyboardInputPreProcessed           = 1 << 7,
 } UIKeyboardInputFlags;
 
+#if PLATFORM(IOS) && !defined(__IPHONE_13_4)
+typedef NS_OPTIONS(NSInteger, UIEventButtonMask) {
+    UIEventButtonMaskPrimary = 1 << 0,
+    UIEventButtonMaskSecondary = 1 << 1,
+};
+#endif
+
 @interface UIEvent ()
 - (void *)_hidEvent;
 - (NSString *)_unmodifiedInput;
 - (NSString *)_modifiedInput;
 - (BOOL)_isKeyDown;
+- (UIEventButtonMask)_buttonMask;
 @end
 
 typedef enum {
@@ -363,12 +382,14 @@ typedef NS_ENUM(NSInteger, UIScrollViewIndicatorInsetAdjustmentBehavior) {
     UIScrollViewIndicatorInsetAdjustmentNever
 };
 
+#if PLATFORM(IOS) && !defined(__IPHONE_13_4)
 typedef enum {
     UIAxisNeither = 0,
     UIAxisHorizontal = 1 << 0,
     UIAxisVertical = 1 << 1,
     UIAxisBoth = (UIAxisHorizontal | UIAxisVertical),
 } UIAxis;
+#endif
 
 @interface UIScrollView ()
 - (void)_stopScrollingAndZoomingAnimations;
@@ -395,7 +416,14 @@ typedef enum {
 @end
 
 @interface UIGestureRecognizer ()
+#if PLATFORM(IOS) && !defined(__IPHONE_13_4)
 @property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
+#endif
+
+- (void)_hoverEntered:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverExited:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
+- (void)_hoverCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event;
 @end
 
 @interface UITapGestureRecognizer ()
@@ -421,6 +449,7 @@ typedef enum {
 @property (nonatomic, retain) UIColor *insertionPointColor;
 @property (nonatomic, retain) UIColor *selectionBarColor;
 @property (nonatomic, retain) UIColor *selectionHighlightColor;
+@property (nonatomic, readwrite) BOOL isSingleLineDocument;
 @end
 
 @protocol UITextInputDelegatePrivate
@@ -645,6 +674,10 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 @property (nonatomic, readonly, assign) UILongPressGestureRecognizer *forcePressGesture;
 @property (nonatomic, readonly, assign) UILongPressGestureRecognizer *loupeGesture;
 @property (nonatomic, readonly, assign) UITapGestureRecognizer *singleTapGesture;
+@end
+
+@interface UITextInteraction ()
+@property (class, nonatomic, readonly) CGFloat _maximumBeamSnappingLength;
 @end
 
 @protocol UIWKInteractionViewProtocol
@@ -932,6 +965,10 @@ typedef enum {
 
 @end
 
+@interface UIDocumentPickerViewController ()
+@property (nonatomic, assign, setter=_setIsContentManaged:, getter=_isContentManaged) BOOL isContentManaged;
+@end
+
 @interface UIViewControllerPreviewAction : NSObject <NSCopying>
 @end
 
@@ -985,6 +1022,7 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UIDragInteraction ()
 @property (nonatomic, assign, getter=_liftDelay, setter=_setLiftDelay:) NSTimeInterval liftDelay;
+- (void)_setAllowsPointerDragBeforeLiftDelay:(BOOL)allowsPointerDragBeforeLiftDelay;
 @end
 
 @interface UIDragItem ()
@@ -1001,6 +1039,9 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UIURLDragPreviewView : UIView
 + (instancetype)viewWithTitle:(NSString *)title URL:(NSURL *)url;
+@end
+
+@interface _UIParallaxTransitionPanGestureRecognizer : UIScreenEdgePanGestureRecognizer
 @end
 
 #endif
@@ -1135,6 +1176,33 @@ typedef NS_ENUM(NSUInteger, _UIContextMenuLayout) {
 @property (readonly) NSString *primaryString;
 @property (readonly) NSArray<NSString *> *alternativeStrings;
 @property (readonly) BOOL isLowConfidence;
+@end
+
+@protocol _UICursorInteractionDelegate
+@end
+
+@interface _UICursorInteraction : NSObject <UIInteraction>
+- (instancetype)initWithDelegate:(id <_UICursorInteractionDelegate>)delegate;
+- (void)invalidate;
+@property (nonatomic, assign, getter=_pausesCursorUpdatesWhilePanning, setter=_setPausesCursorUpdatesWhilePanning:) BOOL pausesCursorUpdatesWhilePanning;
+@end
+
+@interface _UICursorRegion : NSObject <NSCopying>
++ (instancetype)regionWithIdentifier:(id <NSObject>)identifier rect:(CGRect)rect;
+- (id <NSObject>)identifier;
+@end
+
+@interface _UICursor : NSObject
++ (instancetype)beamWithPreferredLength:(CGFloat)length axis:(UIAxis)axis;
++ (instancetype)linkCursor;
+@end
+
+@interface _UICursorStyle : NSObject
++ (instancetype)styleWithCursor:(_UICursor *)cursor constrainedAxes:(UIAxis)axes;
+@end
+
+@interface UITouch ()
+- (BOOL)_isPointerTouch;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
@@ -1353,5 +1421,8 @@ extern NSString * const NSTimeoutDocumentOption;
 extern NSString * const NSWebPreferencesDocumentOption;
 extern NSString * const NSWebResourceLoadDelegateDocumentOption;
 extern NSString * const NSTextSizeMultiplierDocumentOption;
+
+extern NSNotificationName const _UISceneWillBeginSystemSnapshotSequence;
+extern NSNotificationName const _UISceneDidCompleteSystemSnapshotSequence;
 
 WTF_EXTERN_C_END

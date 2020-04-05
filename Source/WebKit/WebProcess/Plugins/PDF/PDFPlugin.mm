@@ -92,11 +92,13 @@
 #import <wtf/UUID.h>
 #import <wtf/WTFSemaphore.h>
 #import <wtf/WorkQueue.h>
+#import <wtf/text/TextStream.h>
 
 #if HAVE(INCREMENTAL_PDF_APIS)
 @interface PDFDocument ()
 -(instancetype)initWithProvider:(CGDataProviderRef)dataProvider;
 -(void)preloadDataOfPagesInRange:(NSRange)range onQueue:(dispatch_queue_t)queue completion:(void (^)(NSIndexSet* loadedPageIndexes))completionBlock;
+@property (readwrite, nonatomic) BOOL hasHighLatencyDataProvider;
 @end
 #endif
 
@@ -632,10 +634,78 @@ PDFPlugin::~PDFPlugin()
 }
 
 #if HAVE(INCREMENTAL_PDF_APIS)
+#if !LOG_DISABLED
+void PDFPlugin::pdfLog(const String& message)
+{
+    if (!isMainThread()) {
+        callOnMainThread([this, protectedThis = makeRef(*this), message = message.isolatedCopy()] {
+            pdfLog(message);
+        });
+        return;
+    }
+
+    LOG_WITH_STREAM(IncrementalPDF, stream << message);
+    verboseLog();
+    LOG_WITH_STREAM(IncrementalPDFVerbose, stream << message);
+}
+
+void PDFPlugin::logStreamLoader(WTF::TextStream& stream, WebCore::NetscapePlugInStreamLoader& loader)
+{
+    ASSERT(isMainThread());
+
+    auto* request = byteRangeRequestForLoader(loader);
+    stream << "(";
+    if (!request) {
+        stream << "no range request found) ";
+        return;
+    }
+
+    stream << request->position() << "-" << request->position() + request->count() - 1 << ") ";
+}
+
+void PDFPlugin::verboseLog()
+{
+    ASSERT(isMainThread());
+
+    TextStream stream;
+    stream << "\n";
+    if (m_pdfThread)
+        stream << "Initial PDF thread is still in progress\n";
+    else
+        stream << "Initial PDF thread has completed\n";
+
+    stream << "Have completed " << m_completedRangeRequests << " range requests (" << m_completedNetworkRangeRequests << " from the network)\n";
+    stream << "There are " << m_threadsWaitingOnCallback << " data provider threads waiting on a reply\n";
+    stream << "There are " << m_outstandingByteRangeRequests.size() << " byte range requests outstanding\n";
+
+    stream << "There are " << m_streamLoaderMap.size() << " active network stream loaders: ";
+    for (auto& loader : m_streamLoaderMap.keys())
+        logStreamLoader(stream, *loader);
+    stream << "\n";
+
+    stream << "The main document loader has finished loading " << m_streamedBytes << " bytes, and is";
+    if (!m_documentFinishedLoading)
+        stream << " not";
+    stream << " complete";
+
+    LOG(IncrementalPDFVerbose, "%s", stream.release().utf8().data());
+}
+#endif // !LOG_DISABLED
+
 static size_t dataProviderGetBytesAtPositionCallback(void* info, void* buffer, off_t position, size_t count)
 {
-    ASSERT(!isMainThread());
-    LOG(PDF, "PDF data provider requesting %lu bytes at position %llu", count, position);
+    if (isMainThread()) {
+#if !LOG_DISABLED
+        ((PDFPlugin*)info)->pdfLog(makeString("Handling request for ", count, " bytes at position ", position, " synchronously on the main thread"));
+#endif
+        return ((PDFPlugin*)info)->getResourceBytesAtPositionMainThread(buffer, position, count);
+    }
+
+#if !LOG_DISABLED
+    Ref<PDFPlugin> debugPluginRef = *((PDFPlugin*)info);
+    debugPluginRef->incrementThreadsWaitingOnCallback();
+    debugPluginRef->pdfLog(makeString("PDF data provider requesting ", count, " bytes at position ", position));
+#endif
 
     Ref<PDFPlugin> plugin = *((PDFPlugin*)info);
     WTF::Semaphore dataSemaphore { 0 };
@@ -651,6 +721,12 @@ static size_t dataProviderGetBytesAtPositionCallback(void* info, void* buffer, o
     });
 
     dataSemaphore.wait();
+
+#if !LOG_DISABLED
+    debugPluginRef->decrementThreadsWaitingOnCallback();
+    debugPluginRef->pdfLog(makeString("PDF data provider received ", bytesProvided, " bytes of requested ", count));
+#endif
+
     return bytesProvided;
 }
 
@@ -658,7 +734,9 @@ static void dataProviderGetByteRangesCallback(void* info, CFMutableArrayRef buff
 {
     ASSERT(!isMainThread());
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
+    Ref<PDFPlugin> debugPluginRef = *((PDFPlugin*)info);
+    debugPluginRef->incrementThreadsWaitingOnCallback();
     TextStream stream;
     stream << "PDF data provider requesting " << count << " byte ranges (";
     for (size_t i = 0; i < count; ++i) {
@@ -667,7 +745,7 @@ static void dataProviderGetByteRangesCallback(void* info, CFMutableArrayRef buff
             stream << ", ";
     }
     stream << ")";
-    LOG(PDF, "%s", stream.release().utf8().data());
+    debugPluginRef->pdfLog(stream.release());
 #endif
 
     Ref<PDFPlugin> plugin = *((PDFPlugin*)info);
@@ -687,6 +765,11 @@ static void dataProviderGetByteRangesCallback(void* info, CFMutableArrayRef buff
     for (size_t i = 0; i < count; ++i)
         dataSemaphore.wait();
 
+#if !LOG_DISABLED
+    debugPluginRef->decrementThreadsWaitingOnCallback();
+    debugPluginRef->pdfLog(makeString("PDF data provider finished receiving the requested ", count, " byte ranges"));
+#endif
+
     for (auto& result : dataResults) {
         if (!result)
             result = adoptCF(CFDataCreate(kCFAllocatorDefault, 0, 0));
@@ -698,6 +781,15 @@ static void dataProviderReleaseInfoCallback(void* info)
 {
     ASSERT(!isMainThread());
     adoptRef((PDFPlugin*)info);
+}
+
+void PDFPlugin::maybeClearHighLatencyDataProviderFlag()
+{
+    if (!m_pdfDocument || !m_documentFinishedLoading)
+        return;
+
+    if ([m_pdfDocument.get() respondsToSelector:@selector(setHasHighLatencyDataProvider:)])
+        [m_pdfDocument.get() setHasHighLatencyDataProvider:NO];
 }
 
 void PDFPlugin::threadEntry(Ref<PDFPlugin>&& protectedPlugin)
@@ -728,6 +820,10 @@ void PDFPlugin::threadEntry(Ref<PDFPlugin>&& protectedPlugin)
 
     firstPageSemaphore.wait();
 
+#if !LOG_DISABLED
+    pdfLog("Finished preloading first page");
+#endif
+
     // The main thread dispatch below removes the last reference to the PDF thread.
     // It must be the last code executed in this function.
     callOnMainThread([protectedPlugin = WTFMove(protectedPlugin)] { });
@@ -738,6 +834,25 @@ void PDFPlugin::unconditionalCompleteOutstandingRangeRequests()
     for (auto& request : m_outstandingByteRangeRequests.values())
         request.completeUnconditionally(*this);
     m_outstandingByteRangeRequests.clear();
+}
+
+size_t PDFPlugin::getResourceBytesAtPositionMainThread(void* buffer, off_t position, size_t count)
+{
+    ASSERT(isMainThread());
+    ASSERT(m_documentFinishedLoading);
+    ASSERT(position >= 0);
+
+    auto cfLength = CFDataGetLength(m_data.get());
+    ASSERT(cfLength >= 0);
+
+    if ((unsigned)position + count > (unsigned)cfLength) {
+        // We could return partial data, but this method should only be called
+        // once the entire buffer is known, and therefore PDFKit should only
+        // be asking for valid ranges.
+        return 0;
+    }
+    memcpy(buffer, CFDataGetBytePtr(m_data.get()) + position, count);
+    return count;
 }
 
 void PDFPlugin::getResourceBytesAtPosition(size_t count, off_t position, CompletionHandler<void(const uint8_t*, size_t)>&& completionHandler)
@@ -769,7 +884,9 @@ void PDFPlugin::getResourceBytesAtPosition(size_t count, off_t position, Complet
     resourceRequest.setHTTPHeaderField(HTTPHeaderName::Range, makeString("bytes="_s, position, "-"_s, position + count - 1));
     resourceRequest.setCachePolicy(ResourceRequestCachePolicy::DoNotUseAnyCache);
 
-    LOG(PDF, "Scheduling a stream loader for request %llu (%lu bytes at %llu)\n", identifier, count, position);
+#if !LOG_DISABLED
+    pdfLog(makeString("Scheduling a stream loader for request ", identifier, " (", count, " bytes at ", position, ")"));
+#endif
 
     WebProcess::singleton().webLoaderStrategy().schedulePluginStreamLoad(*coreFrame, *this, WTFMove(resourceRequest), [this, protectedThis = makeRef(*this), identifier] (RefPtr<WebCore::NetscapePlugInStreamLoader>&& loader) {
         auto iterator = m_outstandingByteRangeRequests.find(identifier);
@@ -780,7 +897,10 @@ void PDFPlugin::getResourceBytesAtPosition(size_t count, off_t position, Complet
 
         iterator->value.setStreamLoader(loader.get());
         m_streamLoaderMap.set(WTFMove(loader), identifier);
-        LOG(PDF, "There are now %u stream loaders in flight", m_streamLoaderMap.size());
+
+#if !LOG_DISABLED
+        pdfLog(makeString("There are now ", m_streamLoaderMap.size(), " stream loaders in flight"));
+#endif
     });
 }
 
@@ -789,6 +909,10 @@ void PDFPlugin::adoptBackgroundThreadDocument()
     ASSERT(!m_pdfDocument);
     ASSERT(m_backgroundThreadDocument);
     ASSERT(isMainThread());
+
+#if !LOG_DISABLED
+    pdfLog("Adopting PDFDocument from background thread");
+#endif
 
     m_pdfDocument = WTFMove(m_backgroundThreadDocument);
 
@@ -814,7 +938,10 @@ void PDFPlugin::ByteRangeRequest::clearStreamLoader()
 
 void PDFPlugin::ByteRangeRequest::completeWithBytes(const uint8_t* data, size_t count, PDFPlugin& plugin)
 {
-    LOG(PDF, "Completing range request %llu (%lu bytes at %llu) with %lu bytes from the main PDF buffer", identifier(), m_count, m_position, count);
+#if !LOG_DISABLED
+    ++plugin.m_completedRangeRequests;
+    plugin.pdfLog(makeString("Completing range request ", identifier()," (", m_count," bytes at ", m_position,") with ", count," bytes from the main PDF buffer"));
+#endif
     m_completionHandler(data, count);
 
     if (m_streamLoader)
@@ -823,25 +950,24 @@ void PDFPlugin::ByteRangeRequest::completeWithBytes(const uint8_t* data, size_t 
 
 void PDFPlugin::ByteRangeRequest::completeWithAccumulatedData(PDFPlugin& plugin)
 {
-    LOG(PDF, "Completing range request %llu (%lu bytes at %llu) with %lu bytes from the network", identifier(), m_count, m_position, m_accumulatedData.size());
+#if !LOG_DISABLED
+    ++plugin.m_completedRangeRequests;
+    ++plugin.m_completedNetworkRangeRequests;
+    plugin.pdfLog(makeString("Completing range request ", identifier()," (", m_count," bytes at ", m_position,") with ", m_accumulatedData.size()," bytes from the network"));
+#endif
+
     m_completionHandler(m_accumulatedData.data(), m_accumulatedData.size());
-    
-    if (m_streamLoader)
-        plugin.forgetLoader(*m_streamLoader);
 
     // Fold this data into the main data buffer so that if something in its range is requested again (which happens quite often)
     // we do not need to hit the network layer again.
-
-    auto length = CFDataGetLength(plugin.m_data.get());
-    CFIndex targetSize = m_position + m_accumulatedData.size();
-    auto delta = targetSize - length;
-    if (delta > 0)
-        CFDataIncreaseLength(plugin.m_data.get(), delta);
-
+    plugin.ensureDataBufferLength(m_position + m_accumulatedData.size());
     if (m_accumulatedData.size()) {
         memcpy(CFDataGetMutableBytePtr(plugin.m_data.get()) + m_position, m_accumulatedData.data(), m_accumulatedData.size());
         plugin.m_completedRanges.add({ m_position, m_position + m_accumulatedData.size() - 1});
     }
+
+    if (m_streamLoader)
+        plugin.forgetLoader(*m_streamLoader);
 }
 
 bool PDFPlugin::ByteRangeRequest::maybeComplete(PDFPlugin& plugin)
@@ -852,7 +978,9 @@ bool PDFPlugin::ByteRangeRequest::maybeComplete(PDFPlugin& plugin)
     }
 
     if (plugin.m_completedRanges.contains({ m_position, m_position + m_count - 1 })) {
-        LOG(PDF, "Completing request %llu with a previously completed range", identifier());
+#if !LOG_DISABLED
+        plugin.pdfLog(makeString("Completing request %llu with a previously completed range", identifier()));
+#endif
         completeWithBytes(CFDataGetBytePtr(plugin.m_data.get()) + m_position, m_count, plugin);
         return true;
     }
@@ -922,7 +1050,7 @@ void PDFPlugin::didFail(NetscapePlugInStreamLoader* loader, const ResourceError&
             m_outstandingByteRangeRequests.remove(identifier);
     }
 
-    cancelAndForgetLoader(*loader);
+    forgetLoader(*loader);
 }
 
 void PDFPlugin::didFinishLoading(NetscapePlugInStreamLoader* loader)
@@ -965,7 +1093,9 @@ void PDFPlugin::forgetLoader(NetscapePlugInStreamLoader& loader)
 
     m_streamLoaderMap.remove(&loader);
 
-    LOG(PDF, "Forgot stream loader for range request %llu.\nThere are now %u stream loaders remaining.", identifier, m_streamLoaderMap.size());
+#if !LOG_DISABLED
+    pdfLog(makeString("Forgot stream loader for range request ", identifier,". There are now ", m_streamLoaderMap.size()," stream loaders remaining"));
+#endif
 }
 
 void PDFPlugin::cancelAndForgetLoader(NetscapePlugInStreamLoader& loader)
@@ -1305,30 +1435,38 @@ void PDFPlugin::convertPostScriptDataIfNeeded()
     m_data = PDFDocumentImage::convertPostScriptDataToPDF(WTFMove(m_data));
 }
 
-void PDFPlugin::pdfDocumentDidLoad()
+void PDFPlugin::documentDataDidFinishLoading()
 {
-    LOG(PDF, "PDF document finished loading with a total of %llu bytes", m_streamedBytes);
-
     addArchiveResource();
 
     m_documentFinishedLoading = true;
 
 #if HAVE(INCREMENTAL_PDF_APIS)
+#if !LOG_DISABLED
+    pdfLog(makeString("PDF document finished loading with a total of ", m_streamedBytes, " bytes"));
+#endif
     if (m_incrementalPDFLoadingEnabled) {
         // At this point we know all data for the document, and therefore we know how to answer any outstanding range requests.
         unconditionalCompleteOutstandingRangeRequests();
+        maybeClearHighLatencyDataProviderFlag();
     } else
 #endif
     {
         m_pdfDocument = adoptNS([[pdfDocumentClass() alloc] initWithData:rawData()]);
         installPDFDocument();
     }
+
+    tryRunScriptsInPDFDocument();
 }
 
 void PDFPlugin::installPDFDocument()
 {
     ASSERT(m_pdfDocument);
     ASSERT(isMainThread());
+
+#if HAVE(INCREMENTAL_PDF_APIS)
+    maybeClearHighLatencyDataProviderFlag();
+#endif
 
     updatePageAndDeviceScaleFactors();
 
@@ -1343,7 +1481,7 @@ void PDFPlugin::installPDFDocument()
     calculateSizes();
     updateScrollbars();
 
-    runScriptsInPDFDocument();
+    tryRunScriptsInPDFDocument();
 
     if ([m_pdfDocument isLocked])
         createPasswordEntryForm();
@@ -1391,7 +1529,7 @@ void PDFPlugin::streamDidFinishLoading(uint64_t streamID)
     ASSERT_UNUSED(streamID, streamID == pdfDocumentRequestID);
 
     convertPostScriptDataIfNeeded();
-    pdfDocumentDidLoad();
+    documentDataDidFinishLoading();
 }
 
 void PDFPlugin::streamDidFail(uint64_t streamID, bool wasCancelled)
@@ -1409,12 +1547,23 @@ void PDFPlugin::manualStreamDidReceiveResponse(const URL& responseURL, uint32_t 
         m_isPostScript = true;
 }
 
+void PDFPlugin::ensureDataBufferLength(uint64_t targetLength)
+{
+    ASSERT(m_data);
+
+    auto currentLength = CFDataGetLength(m_data.get());
+    ASSERT(currentLength >= 0);
+    if (targetLength > (uint64_t)currentLength)
+        CFDataIncreaseLength(m_data.get(), targetLength - currentLength);
+}
+
 void PDFPlugin::manualStreamDidReceiveData(const char* bytes, int length)
 {
     if (!m_data)
         m_data = adoptCF(CFDataCreateMutable(0, 0));
 
-    CFDataAppendBytes(m_data.get(), reinterpret_cast<const UInt8*>(bytes), length);
+    ensureDataBufferLength(m_streamedBytes + length);
+    memcpy(CFDataGetMutableBytePtr(m_data.get()) + m_streamedBytes, bytes, length);
     m_streamedBytes += length;
 
 #if HAVE(INCREMENTAL_PDF_APIS)
@@ -1441,7 +1590,7 @@ void PDFPlugin::manualStreamDidReceiveData(const char* bytes, int length)
 void PDFPlugin::manualStreamDidFinishLoading()
 {
     convertPostScriptDataIfNeeded();
-    pdfDocumentDidLoad();
+    documentDataDidFinishLoading();
 }
 
 void PDFPlugin::manualStreamDidFail(bool)
@@ -1453,19 +1602,43 @@ void PDFPlugin::manualStreamDidFail(bool)
 #endif
 }
 
-void PDFPlugin::runScriptsInPDFDocument()
+void PDFPlugin::tryRunScriptsInPDFDocument()
 {
-    Vector<RetainPtr<CFStringRef>> scripts;
-    getAllScriptsInPDFDocument([m_pdfDocument documentRef], scripts);
+    ASSERT(isMainThread());
 
-    if (scripts.isEmpty())
+    if (!m_pdfDocument || !m_documentFinishedLoading)
         return;
 
-    JSGlobalContextRef ctx = JSGlobalContextCreate(0);
-    JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx);
-    for (auto& script : scripts)
-        JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script.get()).get(), jsPDFDoc, nullptr, 0, nullptr);
-    JSGlobalContextRelease(ctx);
+    auto completionHandler = [this, protectedThis = makeRef(*this)] (Vector<RetainPtr<CFStringRef>>&& scripts) mutable {
+        if (scripts.isEmpty())
+            return;
+
+        JSGlobalContextRef ctx = JSGlobalContextCreate(nullptr);
+        JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx);
+        for (auto& script : scripts)
+            JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script.get()).get(), jsPDFDoc, nullptr, 1, nullptr);
+        JSGlobalContextRelease(ctx);
+    };
+
+#if HAVE(INCREMENTAL_PDF_APIS)
+    auto scriptUtilityQueue = WorkQueue::create("PDF script utility");
+    auto& rawQueue = scriptUtilityQueue.get();
+    RetainPtr<CGPDFDocumentRef> document = [m_pdfDocument documentRef];
+    rawQueue.dispatch([scriptUtilityQueue = WTFMove(scriptUtilityQueue), completionHandler = WTFMove(completionHandler), document = WTFMove(document)] () mutable {
+        ASSERT(!isMainThread());
+
+        Vector<RetainPtr<CFStringRef>> scripts;
+        getAllScriptsInPDFDocument(document.get(), scripts);
+
+        callOnMainThread([completionHandler = WTFMove(completionHandler), scripts = WTFMove(scripts)] () mutable {
+            completionHandler(WTFMove(scripts));
+        });
+    });
+#else
+    Vector<RetainPtr<CFStringRef>> scripts;
+    getAllScriptsInPDFDocument([m_pdfDocument documentRef], scripts);
+    completionHandler(WTFMove(scripts));
+#endif
 }
 
 void PDFPlugin::createPasswordEntryForm()

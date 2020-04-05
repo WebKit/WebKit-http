@@ -37,7 +37,6 @@
 #include "PlugInAutoStartProvider.h"
 #include "PluginInfoStore.h"
 #include "ProcessThrottler.h"
-#include "StatisticsRequest.h"
 #include "VisitedLinkStore.h"
 #include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
@@ -110,7 +109,6 @@ class WebPageProxy;
 class WebProcessCache;
 struct GPUProcessCreationParameters;
 struct NetworkProcessCreationParameters;
-struct StatisticsData;
 struct WebProcessCreationParameters;
 struct WebProcessDataStoreParameters;
     
@@ -359,8 +357,6 @@ public:
     void setHTTPPipeliningEnabled(bool);
     bool httpPipeliningEnabled() const;
 
-    void getStatistics(uint32_t statisticsMask, Function<void (API::Dictionary*, CallbackBase::Error)>&&);
-    
     bool javaScriptConfigurationFileEnabled() { return m_javaScriptConfigurationFileEnabled; }
     void setJavaScriptConfigurationFileEnabled(bool flag);
 #if PLATFORM(IOS_FAMILY)
@@ -541,7 +537,7 @@ public:
     void setUseSeparateServiceWorkerProcess(bool);
     bool useSeparateServiceWorkerProcess() const { return m_useSeparateServiceWorkerProcess; }
 
-#if PLATFORM(COCOA)
+#if ENABLE(CFPREFS_DIRECT_MODE)
     void notifyPreferencesChanged(const String& domain, const String& key, const Optional<String>& encodedValue);
 #endif
 
@@ -558,14 +554,10 @@ private:
     WebProcessProxy& createNewWebProcess(WebsiteDataStore*, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
     void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore*, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
 
-    void requestWebContentStatistics(StatisticsRequest&);
-
     void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
 
     void handleMessage(IPC::Connection&, const String& messageName, const UserData& messageBody);
     void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, CompletionHandler<void(UserData&&)>&&);
-
-    void didGetStatistics(const StatisticsData&, uint64_t callbackID);
 
 #if ENABLE(GAMEPAD)
     void startedUsingGamepads(IPC::Connection&);
@@ -617,6 +609,10 @@ private:
 #if ENABLE(REMOTE_INSPECTOR)
     static void remoteWebInspectorEnabledCallback(CFNotificationCenterRef, void *observer, CFStringRef name, const void *, CFDictionaryRef userInfo);
 #endif
+#endif
+
+#if ENABLE(CFPREFS_DIRECT_MODE)
+    void startObservingPreferenceChanges();
 #endif
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
@@ -699,7 +695,6 @@ private:
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     RetainPtr<NSObject> m_scrollerStyleNotificationObserver;
 #endif
-    RetainPtr<NSObject> m_activationObserver;
     RetainPtr<NSObject> m_deactivationObserver;
 
     std::unique_ptr<HighPerformanceGraphicsUsageSampler> m_highPerformanceGraphicsUsageSampler;
@@ -707,6 +702,7 @@ private:
 #endif
 
 #if PLATFORM(COCOA)
+    RetainPtr<NSObject> m_activationObserver;
     RetainPtr<NSObject> m_accessibilityEnabledObserver;
 #endif
 
@@ -717,7 +713,6 @@ private:
     std::unique_ptr<NetworkProcessProxy> m_networkProcess;
 
     HashMap<uint64_t, RefPtr<DictionaryCallback>> m_dictionaryCallbacks;
-    HashMap<uint64_t, RefPtr<StatisticsRequest>> m_statisticsRequests;
 
 #if USE(SOUP)
     bool m_ignoreTLSErrors { true };
@@ -811,10 +806,6 @@ private:
     bool m_isDelayedWebProcessLaunchDisabled { false };
 #endif
     bool m_useSeparateServiceWorkerProcess { false };
-
-#if PLATFORM(COCOA)
-    RetainPtr<WKPreferenceObserver> m_preferenceObserver;
-#endif
 };
 
 template<typename T>

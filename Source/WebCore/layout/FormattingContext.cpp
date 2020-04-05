@@ -35,6 +35,7 @@
 #include "LayoutContainerBox.h"
 #include "LayoutContext.h"
 #include "LayoutDescendantIterator.h"
+#include "LayoutInitialContainingBlock.h"
 #include "LayoutReplacedBox.h"
 #include "LayoutState.h"
 #include "Logging.h"
@@ -139,19 +140,17 @@ void FormattingContext::layoutOutOfFlowContent(InvalidationState& invalidationSt
     collectOutOfFlowDescendantsIfNeeded();
 
     auto horizontalConstraintsForLayoutBox = [&] (const auto& outOfFlowBox) {
-        auto* containingBlock = outOfFlowBox.containingBlock();
-        ASSERT(containingBlock);
-        if (containingBlock == &root())
+        auto& containingBlock = outOfFlowBox.containingBlock();
+        if (&containingBlock == &root())
             return rootHorizontalConstraints;
-        return Geometry::horizontalConstraintsForOutOfFlow(geometryForBox(*containingBlock));
+        return Geometry::horizontalConstraintsForOutOfFlow(geometryForBox(containingBlock));
     };
 
     auto verticalConstraintsForLayoutBox = [&] (const auto& outOfFlowBox) {
-        auto* containingBlock = outOfFlowBox.containingBlock();
-        ASSERT(containingBlock);
-        if (containingBlock == &root())
+        auto& containingBlock = outOfFlowBox.containingBlock();
+        if (&containingBlock == &root())
             return rootVerticalConstraints;
-        return Geometry::verticalConstraintsForOutOfFlow(geometryForBox(*containingBlock));
+        return Geometry::verticalConstraintsForOutOfFlow(geometryForBox(containingBlock));
     };
 
     for (auto& outOfFlowBox : formattingState().outOfFlowBoxes()) {
@@ -194,7 +193,7 @@ const Display::Box& FormattingContext::geometryForBox(const Box& layoutBox, Opti
     UNUSED_PARAM(escapeReason);
 #if ASSERT_ENABLED
     auto isOkToAccessDisplayBox = [&] {
-        if (!layoutBox.isInitialContainingBlock() && &layoutBox.formattingContextRoot() == &root()) {
+        if (!is<InitialContainingBlock>(layoutBox) && &layoutBox.formattingContextRoot() == &root()) {
             // This is the non-escape case of accessing a box's geometry information within the same formatting context.
             return true;
         }
@@ -206,17 +205,17 @@ const Display::Box& FormattingContext::geometryForBox(const Box& layoutBox, Opti
 
         if (*escapeReason == EscapeReason::DocumentBoxStrechesToViewportQuirk) {
             ASSERT(layoutState().inQuirksMode());
-            return layoutBox.isInitialContainingBlock();
+            return is<InitialContainingBlock>(layoutBox);
         }
 
         if (*escapeReason == EscapeReason::BodyStrechesToViewportQuirk) {
             ASSERT(layoutState().inQuirksMode());
-            return layoutBox.isInitialContainingBlock() || layoutBox.isDocumentBox();
+            return is<InitialContainingBlock>(layoutBox) || layoutBox.isDocumentBox();
 
         }
 
         if (*escapeReason == EscapeReason::StrokeOverflowNeedsViewportGeometry)
-            return layoutBox.isInitialContainingBlock();
+            return is<InitialContainingBlock>(layoutBox);
 
         if (*escapeReason == EscapeReason::NeedsGeometryFromEstablishedFormattingContext) {
             // This is the case when a formatting root collects geometry information from the established
@@ -245,7 +244,7 @@ const Display::Box& FormattingContext::geometryForBox(const Box& layoutBox, Opti
             ASSERT(layoutState().inQuirksMode());
             // Find the first containing block with fixed height quirk. See Quirks::heightValueOfNearestContainingBlockWithFixedHeight.
             // This is only to check if the targetFormattingRoot is an ancestor formatting root.
-            if (layoutBox.isInitialContainingBlock())
+            if (is<InitialContainingBlock>(layoutBox))
                 return true;
             auto& targetFormattingRoot = layoutBox.formattingContextRoot();
             auto* ancestorFormattingContextRoot = &root().formattingContextRoot();
@@ -253,7 +252,7 @@ const Display::Box& FormattingContext::geometryForBox(const Box& layoutBox, Opti
                 if (&targetFormattingRoot == ancestorFormattingContextRoot)
                     return true;
                 ancestorFormattingContextRoot = &ancestorFormattingContextRoot->formattingContextRoot();
-                if (ancestorFormattingContextRoot->isInitialContainingBlock())
+                if (is<InitialContainingBlock>(*ancestorFormattingContextRoot))
                     return true;
             }
             return false;
@@ -282,7 +281,7 @@ void FormattingContext::collectOutOfFlowDescendantsIfNeeded()
     auto& root = this->root();
     if (!root.hasChild())
         return;
-    if (!root.isPositioned() && !root.isInitialContainingBlock())
+    if (!root.isPositioned() && !is<InitialContainingBlock>(root))
         return;
     // Collect the out-of-flow descendants at the formatting root level (as opposed to at the containing block level, though they might be the same).
     // FIXME: Turn this into a register-self as boxes are being inserted.
@@ -303,7 +302,7 @@ void FormattingContext::validateGeometryConstraintsAfterLayout() const
     for (auto& layoutBox : descendantsOfType<Box>(formattingContextRoot)) {
         if (&layoutBox.formattingContextRoot() != &formattingContextRoot)
             continue;
-        auto& containingBlockGeometry = geometryForBox(*layoutBox.containingBlock());
+        auto& containingBlockGeometry = geometryForBox(layoutBox.containingBlock());
         auto& boxGeometry = geometryForBox(layoutBox);
 
         // 10.3.3 Block-level, non-replaced elements in normal flow

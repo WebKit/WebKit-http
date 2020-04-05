@@ -1017,14 +1017,6 @@ GraphicsLayer* FrameView::graphicsLayerForPlatformWidget(PlatformWidget platform
     return widgetLayer->backing()->parentForSublayers();
 }
 
-void FrameView::scheduleRenderingUpdate()
-{
-    RenderView* view = this->renderView();
-    if (!view)
-        return;
-    view->compositor().scheduleRenderingUpdate();
-}
-
 LayoutRect FrameView::fixedScrollableAreaBoundsInflatedForScrolling(const LayoutRect& uninflatedBounds) const
 {
     LayoutPoint scrollPosition;
@@ -3358,7 +3350,8 @@ void FrameView::sendResizeEventIfNeeded()
     if (!renderView || renderView->printing())
         return;
 
-    if (frame().page() && frame().page()->chrome().client().isSVGImageChromeClient())
+    auto* page = frame().page();
+    if (page && page->chrome().client().isSVGImageChromeClient())
         return;
 
     IntSize currentSize = sizeForResizeEvent();
@@ -3383,15 +3376,18 @@ void FrameView::sendResizeEventIfNeeded()
     }
 #endif
 
+    if (page && !page->shouldFireResizeEvents()) {
+        FRAMEVIEW_RELEASE_LOG_IF_ALLOWED(Events, "sendResizeEventIfNeeded: Not firing resize events because they are temporarily disabled for this page");
+        return;
+    }
+
     LOG_WITH_STREAM(Events, stream << "FrameView" << this << "sendResizeEventIfNeeded scheduling resize event for document" << frame().document() << ", size " << currentSize);
     frame().document()->setNeedsDOMWindowResizeEvent();
 
     bool isMainFrame = frame().isMainFrame();
     if (InspectorInstrumentation::hasFrontends() && isMainFrame) {
-        if (Page* page = frame().page()) {
-            if (InspectorClient* inspectorClient = page->inspectorController().inspectorClient())
-                inspectorClient->didResizeMainFrame(&frame());
-        }
+        if (InspectorClient* inspectorClient = page ? page->inspectorController().inspectorClient() : nullptr)
+            inspectorClient->didResizeMainFrame(&frame());
     }
 }
 
@@ -3427,10 +3423,32 @@ void FrameView::autoSizeIfEnabled()
     if (!firstChild)
         return;
 
-    LOG(Layout, "FrameView %p autoSizeIfEnabled", this);
     SetForScope<bool> changeInAutoSize(m_inAutoSize, true);
     if (layoutContext().subtreeLayoutRoot())
         layoutContext().convertSubtreeLayoutToFullLayout();
+
+    switch (m_autoSizeMode) {
+    case AutoSizeMode::SizeToContent:
+        performSizeToContentAutoSize();
+        break;
+    case AutoSizeMode::FixedWidth:
+        performFixedWidthAutoSize();
+        break;
+    }
+
+    if (auto* page = frame().page())
+        page->chrome().client().intrinsicContentsSizeChanged(m_autoSizeContentSize);
+
+    m_didRunAutosize = true;
+}
+
+void FrameView::performFixedWidthAutoSize()
+{
+    LOG(Layout, "FrameView %p performFixedWidthAutoSize", this);
+
+    auto* document = frame().document();
+    auto* renderView = document->renderView();
+    auto* firstChild = renderView->firstChild();
 
     ScrollbarMode horizonalScrollbarMode = ScrollbarAlwaysOff;
     ScrollbarMode verticalScrollbarMode = ScrollbarAlwaysOff;
@@ -3446,7 +3464,7 @@ void FrameView::autoSizeIfEnabled()
     Ref<FrameView> protectedThis(*this);
     document->updateStyleIfNeeded();
     document->updateLayoutIgnorePendingStylesheets();
-    // While the final content size could slightly be different after the next resize/layout (see below), we intentionally save and report 
+    // While the final content size could slightly be different after the next resize/layout (see below), we intentionally save and report
     // the current value to avoid unstable layout (e.g. content "height: 100%").
     // See also webkit.org/b/173561
     m_autoSizeContentSize = contentsSize();
@@ -3455,9 +3473,91 @@ void FrameView::autoSizeIfEnabled()
     auto finalHeight = m_autoSizeFixedMinimumHeight ? std::max(m_autoSizeFixedMinimumHeight, m_autoSizeContentSize.height()) : m_autoSizeContentSize.height();
     resize(finalWidth, finalHeight);
     document->updateLayoutIgnorePendingStylesheets();
-    if (auto* page = frame().page())
-        page->chrome().client().intrinsicContentsSizeChanged(m_autoSizeContentSize);
-    m_didRunAutosize = true;
+}
+
+void FrameView::performSizeToContentAutoSize()
+{
+    LOG(Layout, "FrameView %p performSizeToContentAutoSize", this);
+
+    auto* document = frame().document();
+    auto* renderView = document->renderView();
+
+    IntSize minAutoSize(1, 1);
+
+    // Start from the minimum size and allow it to grow.
+    resize(minAutoSize.width(), minAutoSize.height());
+    IntSize size = frameRect().size();
+    // Do the resizing twice. The first time is basically a rough calculation using the preferred width
+    // which may result in a height change during the second iteration.
+    for (int i = 0; i < 2; i++) {
+        // Update various sizes including contentsSize, scrollHeight, etc.
+        document->updateLayoutIgnorePendingStylesheets();
+        int width = renderView->minPreferredLogicalWidth();
+        int height = renderView->documentRect().height();
+        IntSize newSize(width, height);
+
+        // Check to see if a scrollbar is needed for a given dimension and
+        // if so, increase the other dimension to account for the scrollbar.
+        // Since the dimensions are only for the view rectangle, once a
+        // dimension exceeds the maximum, there is no need to increase it further.
+        if (newSize.width() > m_autoSizeConstraint.width()) {
+            RefPtr<Scrollbar> localHorizontalScrollbar = horizontalScrollbar();
+            if (!localHorizontalScrollbar)
+                localHorizontalScrollbar = createScrollbar(HorizontalScrollbar);
+            newSize.expand(0, localHorizontalScrollbar->occupiedHeight());
+
+            // Don't bother checking for a vertical scrollbar because the width is at
+            // already greater the maximum.
+        } else if (newSize.height() > m_autoSizeConstraint.height()) {
+            RefPtr<Scrollbar> localVerticalScrollbar = verticalScrollbar();
+            if (!localVerticalScrollbar)
+                localVerticalScrollbar = createScrollbar(VerticalScrollbar);
+            newSize.expand(localVerticalScrollbar->occupiedWidth(), 0);
+
+            // Don't bother checking for a horizontal scrollbar because the height is
+            // already greater the maximum.
+        }
+
+        // Ensure the size is at least the min bounds.
+        newSize = newSize.expandedTo(minAutoSize);
+
+        // Bound the dimensions by the max bounds and determine what scrollbars to show.
+        ScrollbarMode horizonalScrollbarMode = ScrollbarAlwaysOff;
+        if (newSize.width() > m_autoSizeConstraint.width()) {
+            newSize.setWidth(m_autoSizeConstraint.width());
+            horizonalScrollbarMode = ScrollbarAlwaysOn;
+        }
+        ScrollbarMode verticalScrollbarMode = ScrollbarAlwaysOff;
+        if (newSize.height() > m_autoSizeConstraint.height()) {
+            newSize.setHeight(m_autoSizeConstraint.height());
+            verticalScrollbarMode = ScrollbarAlwaysOn;
+        }
+
+        if (newSize == size)
+            continue;
+
+        // While loading only allow the size to increase (to avoid twitching during intermediate smaller states)
+        // unless autoresize has just been turned on or the maximum size is smaller than the current size.
+        if (m_didRunAutosize && size.height() <= m_autoSizeConstraint.height() && size.width() <= m_autoSizeConstraint.width()
+            && !frame().loader().isComplete() && (newSize.height() < size.height() || newSize.width() < size.width()))
+            break;
+
+        // The first time around, resize to the minimum height again; otherwise,
+        // on pages (e.g. quirks mode) where the body/document resize to the view size,
+        // we'll end up not shrinking back down after resizing to the computed preferred width.
+        resize(newSize.width(), i ? newSize.height() : minAutoSize.height());
+        // Force the scrollbar state to avoid the scrollbar code adding them and causing them to be needed. For example,
+        // a vertical scrollbar may cause text to wrap and thus increase the height (which is the only reason the scollbar is needed).
+        setVerticalScrollbarLock(false);
+        setHorizontalScrollbarLock(false);
+        setScrollbarModes(horizonalScrollbarMode, verticalScrollbarMode, true, true);
+    }
+    // All the resizing above may have invalidated style (for example if viewport units are being used).
+
+    document->updateStyleIfNeeded();
+    // FIXME: Use the final layout's result as the content size (webkit.org/b/173561).
+    document->updateLayoutIgnorePendingStylesheets();
+    m_autoSizeContentSize = contentsSize();
 }
 
 void FrameView::setAutoSizeFixedMinimumHeight(int fixedMinimumHeight)
@@ -4382,15 +4482,19 @@ void FrameView::checkAndDispatchDidReachVisuallyNonEmptyState()
 {
     auto qualifiesAsVisuallyNonEmpty = [&] {
         // No content yet.
-        Element* documentElement = frame().document()->documentElement();
+        auto& document = *frame().document();
+        auto* documentElement = document.documentElement();
         if (!documentElement || !documentElement->renderer())
             return false;
 
+        if (document.hasVisuallyNonEmptyCustomContent())
+            return true;
+
         // FIXME: We should also ignore renderers with non-final style.
-        if (frame().document()->styleScope().hasPendingSheetsBeforeBody())
+        if (document.styleScope().hasPendingSheetsBeforeBody())
             return false;
 
-        auto finishedParsingMainDocument = frame().loader().stateMachine().committedFirstRealDocumentLoad() && (frame().document()->readyState() == Document::Interactive || frame().document()->readyState() == Document::Complete);
+        auto finishedParsingMainDocument = frame().loader().stateMachine().committedFirstRealDocumentLoad() && (document.readyState() == Document::Interactive || document.readyState() == Document::Complete);
         // Ensure that we always fire visually non-empty milestone eventually.
         if (finishedParsingMainDocument && frame().loader().isComplete())
             return true;
@@ -4406,7 +4510,7 @@ void FrameView::checkAndDispatchDidReachVisuallyNonEmptyState()
         if (!isVisible(documentElement))
             return false;
 
-        if (!isVisible(frame().document()->body()))
+        if (!isVisible(document.body()))
             return false;
 
         // The first few hundred characters rarely contain the interesting content of the page.
@@ -4465,12 +4569,23 @@ bool FrameView::isViewForDocumentInFrame() const
     return &renderView->frameView() == this;
 }
 
-void FrameView::enableAutoSizeMode(bool enable, const IntSize& viewSize)
+void FrameView::enableFixedWidthAutoSizeMode(bool enable, const IntSize& viewSize)
+{
+    enableAutoSizeMode(enable, viewSize, AutoSizeMode::FixedWidth);
+}
+
+void FrameView::enableSizeToContentAutoSizeMode(bool enable, const IntSize& viewSize)
+{
+    enableAutoSizeMode(enable, viewSize, AutoSizeMode::SizeToContent);
+}
+
+void FrameView::enableAutoSizeMode(bool enable, const IntSize& viewSize, AutoSizeMode mode)
 {
     ASSERT(!enable || !viewSize.isEmpty());
     if (m_shouldAutoSize == enable && m_autoSizeConstraint == viewSize)
         return;
 
+    m_autoSizeMode = mode;
     m_shouldAutoSize = enable;
     m_autoSizeConstraint = viewSize;
     m_autoSizeContentSize = contentsSize();
@@ -4974,7 +5089,6 @@ bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
     return ScrollableArea::handleWheelEvent(wheelEvent);
 }
 
-
 bool FrameView::isVerticalDocument() const
 {
     RenderView* renderView = this->renderView();
@@ -5267,11 +5381,10 @@ void FrameView::setViewExposedRect(Optional<FloatRect> viewExposedRect)
         tiledBacking->setTiledScrollingIndicatorPosition(m_viewExposedRect ? m_viewExposedRect.value().location() : FloatPoint());
     }
 
-    if (auto* view = renderView())
-        view->compositor().scheduleRenderingUpdate();
-
-    if (auto* page = frame().page())
+    if (auto* page = frame().page()) {
+        page->scheduleRenderingUpdate();
         page->pageOverlayController().didChangeViewExposedRect();
+    }
 }
 
 void FrameView::clearViewportSizeOverrideForCSSViewportUnits()
@@ -5329,6 +5442,12 @@ IntSize FrameView::viewportSizeForCSSViewportUnits() const
 bool FrameView::shouldPlaceBlockDirectionScrollbarOnLeft() const
 {
     return renderView() && renderView()->shouldPlaceBlockDirectionScrollbarOnLeft();
+}
+
+TextStream& operator<<(TextStream& ts, const FrameView& view)
+{
+    ts << "FrameView " << &view << " frame " << view.frame();
+    return ts;
 }
 
 } // namespace WebCore

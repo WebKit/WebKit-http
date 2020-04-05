@@ -100,7 +100,6 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/SecurityOrigin.h>
-#import <WebCore/SimpleRange.h>
 #import <WebCore/SmartReplace.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/SubframeLoader.h>
@@ -305,7 +304,7 @@ WebView *getWebView(WebFrame *webFrame)
     WebView *webView = kit(page);
 
     WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
-    auto coreFrame = WebCore::Frame::create(page, ownerElement, new WebFrameLoaderClient(frame));
+    auto coreFrame = WebCore::Frame::create(page, ownerElement, makeUniqueRef<WebFrameLoaderClient>(frame));
     [frame release];
     frame->_private->coreFrame = coreFrame.ptr();
 
@@ -328,7 +327,7 @@ WebView *getWebView(WebFrame *webFrame)
 
     WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
     frame->_private->coreFrame = &page->mainFrame();
-    static_cast<WebFrameLoaderClient&>(page->mainFrame().loader().client()).setWebFrame(frame);
+    static_cast<WebFrameLoaderClient&>(page->mainFrame().loader().client()).setWebFrame(*frame);
     [frame release];
 
     page->mainFrame().tree().setName(name);
@@ -356,7 +355,7 @@ static NSURL *createUniqueWebDataURL();
     
     WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
     frame->_private->coreFrame = &page->mainFrame();
-    static_cast<WebFrameLoaderClient&>(page->mainFrame().loader().client()).setWebFrame(frame);
+    static_cast<WebFrameLoaderClient&>(page->mainFrame().loader().client()).setWebFrame(*frame);
     [frame release];
 
     frame->_private->coreFrame->initWithSimpleHTMLDocument(style, createUniqueWebDataURL());
@@ -588,7 +587,9 @@ static NSURL *createUniqueWebDataURL();
 
 - (NSString *)_stringForRange:(DOMRange *)range
 {
-    return plainText(core(range), WebCore::TextIteratorDefaultBehavior, true);
+    if (!range)
+        return @"";
+    return plainText(*core(range), WebCore::TextIteratorDefaultBehavior, true);
 }
 
 - (OptionSet<WebCore::PaintBehavior>)_paintBehaviorForDestinationContext:(CGContextRef)context
@@ -807,12 +808,15 @@ static NSURL *createUniqueWebDataURL();
     if (!range)
         return NSMakeRange(NSNotFound, 0);
 
-    size_t location = 0;
-    size_t length = 0;
-    if (!WebCore::TextIterator::getLocationAndLengthFromRange(_private->coreFrame->selection().rootEditableElementOrDocumentElement(), range, location, length))
+    auto frame = _private->coreFrame;
+    if (!frame)
         return NSMakeRange(NSNotFound, 0);
 
-    return NSMakeRange(location, length);
+    auto* element = frame->selection().rootEditableElementOrDocumentElement();
+    if (!element)
+        return NSMakeRange(NSNotFound, 0);
+
+    return characterRange(makeBoundaryPointBeforeNodeContents(*element), *range);
 }
 
 - (RefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange
@@ -820,12 +824,10 @@ static NSURL *createUniqueWebDataURL();
     return [self _convertToDOMRange:nsrange rangeIsRelativeTo:WebRangeIsRelativeTo::EditableRoot];
 }
 
-- (RefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo
+- (RefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)range rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo
 {
-    if (nsrange.location > INT_MAX)
+    if (range.location == NSNotFound)
         return nullptr;
-    if (nsrange.length > INT_MAX || nsrange.location + nsrange.length > INT_MAX)
-        nsrange.length = INT_MAX - nsrange.location;
 
     if (rangeIsRelativeTo == WebRangeIsRelativeTo::EditableRoot) {
         // Our critical assumption is that this code path is only called by input methods that
@@ -836,24 +838,18 @@ static NSURL *createUniqueWebDataURL();
         // That fits with AppKit's idea of an input context.
         auto* element = _private->coreFrame->selection().rootEditableElementOrDocumentElement();
         if (!element)
-            return nil;
-        return WebCore::TextIterator::rangeFromLocationAndLength(element, nsrange.location, nsrange.length);
+            return nullptr;
+        return createLiveRange(resolveCharacterRange(makeRangeSelectingNodeContents(*element), range));
     }
 
     ASSERT(rangeIsRelativeTo == WebRangeIsRelativeTo::Paragraph);
 
-    const auto& selection = _private->coreFrame->selection().selection();
-    RefPtr<WebCore::Range> selectedRange = selection.toNormalizedRange();
-    if (!selectedRange)
+    auto paragraphStart = makeBoundaryPoint(startOfParagraph(_private->coreFrame->selection().selection().visibleStart()));
+    if (!paragraphStart)
         return nullptr;
 
-    RefPtr<WebCore::Range> paragraphRange = makeRange(startOfParagraph(selection.visibleStart()), selection.visibleEnd());
-    if (!paragraphRange)
-        return nullptr;
-
-    auto& rootNode = paragraphRange.get()->startContainer().treeScope().rootNode();
-    int paragraphStartIndex = WebCore::TextIterator::rangeLength(WebCore::Range::create(rootNode.document(), &rootNode, 0, &paragraphRange->startContainer(), paragraphRange->startOffset()).ptr());
-    return WebCore::TextIterator::rangeFromLocationAndLength(&rootNode, paragraphStartIndex + static_cast<int>(nsrange.location), nsrange.length);
+    auto scopeEnd = makeRangeSelectingNodeContents(paragraphStart->container->treeScope().rootNode()).end;
+    return createLiveRange(WebCore::resolveCharacterRange({ WTFMove(*paragraphStart), WTFMove(scopeEnd) }, range));
 }
 
 - (DOMRange *)_convertNSRangeToDOMRange:(NSRange)nsrange
@@ -2534,7 +2530,7 @@ static NSURL *createUniqueWebDataURL()
     if (baseURL)
         baseURL = [baseURL absoluteURL];
     else {
-        baseURL = WTF::blankURL();
+        baseURL = aboutBlankURL();
         responseURL = createUniqueWebDataURL();
     }
     

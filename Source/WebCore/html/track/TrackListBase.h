@@ -27,7 +27,7 @@
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "ContextDestructionObserver.h"
+#include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
 #include <wtf/RefCounted.h>
@@ -40,7 +40,7 @@ class HTMLMediaElement;
 class Element;
 class TrackBase;
 
-class TrackListBase : public RefCounted<TrackListBase>, public EventTargetWithInlineData, public ContextDestructionObserver {
+class TrackListBase : public RefCounted<TrackListBase>, public EventTargetWithInlineData, public ActiveDOMObject {
     WTF_MAKE_ISO_ALLOCATED(TrackListBase);
 public:
     virtual ~TrackListBase();
@@ -75,6 +75,9 @@ protected:
 
 private:
     void scheduleTrackEvent(const AtomString& eventName, Ref<TrackBase>&&);
+
+    // ActiveDOMObject.
+    bool virtualHasPendingActivity() const override;
 
     // EventTarget
     void refEventTarget() final { ref(); }

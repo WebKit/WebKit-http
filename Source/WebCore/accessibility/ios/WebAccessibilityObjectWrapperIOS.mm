@@ -2252,16 +2252,17 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     VisiblePosition endVisiblePosition = [endMarker visiblePosition];
     if (endVisiblePosition.isNull())
         return nil;
-    
+
+    auto range = makeRange(startVisiblePosition, endVisiblePosition);
+    if (!range)
+        return nil;
+
     // iterate over the range to build the AX attributed string
     NSMutableArray* array = [[NSMutableArray alloc] init];
-    TextIterator it(makeRange(startVisiblePosition, endVisiblePosition).get());
+    TextIterator it(*range);
     for (; !it.atEnd(); it.advance()) {
-        // locate the node and starting offset for this range
-        Node& node = it.range()->startContainer();
-        ASSERT(&node == &it.range()->endContainer());
-        int offset = it.range()->startOffset();
-        
+        Node& node = it.range().start.container;
+
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
         if (it.text().length() != 0) {
             if (!attributed) {
@@ -2269,22 +2270,20 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
                 AccessibilityObject* linkObject = AccessibilityObject::anchorElementForNode(&node);
                 if ([self _addAccessibilityObject:linkObject toTextMarkerArray:array])
                     continue;
-                
+
                 // Next check if this region is represented by a heading.
                 AccessibilityObject* headingObject = AccessibilityObject::headingElementForNode(&node);
                 if ([self _addAccessibilityObject:headingObject toTextMarkerArray:array])
                     continue;
-                
-                String listMarkerText = AccessibilityObject::listMarkerTextForNodeAndPosition(&node, VisiblePosition(it.range()->startPosition()));
+
+                String listMarkerText = AccessibilityObject::listMarkerTextForNodeAndPosition(&node, VisiblePosition(createLegacyEditingPosition(it.range().start)));
                 
                 if (!listMarkerText.isEmpty()) 
                     [array addObject:listMarkerText];
                 // There was not an element representation, so just return the text.
                 [array addObject:it.text().createNSString().get()];
-            }
-            else
-            {
-                String listMarkerText = AccessibilityObject::listMarkerTextForNodeAndPosition(&node, VisiblePosition(it.range()->startPosition()));
+            } else {
+                String listMarkerText = AccessibilityObject::listMarkerTextForNodeAndPosition(&node, VisiblePosition(createLegacyEditingPosition(it.range().start)));
 
                 if (!listMarkerText.isEmpty()) {
                     NSMutableAttributedString* attrString = [[NSMutableAttributedString alloc] init];
@@ -2292,14 +2291,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
                     [array addObject:attrString];
                     [attrString release];
                 }
-                
+
                 NSMutableAttributedString *attrString = [[NSMutableAttributedString alloc] init];
                 AXAttributedStringAppendText(attrString, &node, it.text().createNSStringWithoutCopying().get());
                 [array addObject:attrString];
                 [attrString release];
             }
         } else {
-            Node* replacedNode = node.traverseToChildAt(offset);
+            Node* replacedNode = it.node();
             if (replacedNode) {
                 AccessibilityObject* obj = self.axBackingObject->axObjectCache()->getOrCreate(replacedNode->renderer());
                 if (obj && !obj->accessibilityIsIgnored())
@@ -2307,53 +2306,53 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
             }
         }
     }
-    
+
     return [array autorelease];
 }
 
-- (NSRange)_convertToNSRange:(Range *)range
+- (NSRange)_convertToNSRange:(Range *)liveRange
 {
-    if (!range)
+    if (!liveRange)
         return NSMakeRange(NSNotFound, 0);
 
-    Document* document = self.axBackingObject->document();
-    Element* selectionRoot = document->frame()->selection().selection().rootEditableElement();
-    Element* scope = selectionRoot ? selectionRoot : document->documentElement();
+    auto range = SimpleRange { *liveRange };
+
+    auto& document = range.start.document();
+    auto* frame = document.frame();
+    if (!frame)
+        return NSMakeRange(NSNotFound, 0);
+
+    auto* rootEditableElement = frame->selection().selection().rootEditableElement();
+    auto* scope = rootEditableElement ? rootEditableElement : document.documentElement();
+    if (!scope)
+        return NSMakeRange(NSNotFound, 0);
 
     // Mouse events may cause TSM to attempt to create an NSRange for a portion of the view
-    // that is not inside the current editable region.  These checks ensure we don't produce
+    // that is not inside the current editable region. These checks ensure we don't produce
     // potentially invalid data when responding to such requests.
-    if (&range->startContainer() != scope && !range->startContainer().isDescendantOf(scope))
-        return NSMakeRange(NSNotFound, 0);
-    if (&range->endContainer() != scope && !range->endContainer().isDescendantOf(scope))
+    if (!scope->contains(range.start.container.ptr()) || !scope->contains(range.end.container.ptr()))
         return NSMakeRange(NSNotFound, 0);
 
-    auto testRange = Range::create(scope->document(), scope, 0, &range->startContainer(), range->startOffset());
-    ASSERT(&testRange->startContainer() == scope);
-    int startPosition = TextIterator::rangeLength(testRange.ptr());
-    testRange->setEnd(range->endContainer(), range->endOffset());
-    ASSERT(&testRange->startContainer() == scope);
-    int endPosition = TextIterator::rangeLength(testRange.ptr());
-    return NSMakeRange(startPosition, endPosition - startPosition);
+    return NSMakeRange(characterCount({ { *scope, 0 }, range.start }), characterCount(range));
 }
 
-- (RefPtr<Range>)_convertToDOMRange:(NSRange)nsrange
+- (RefPtr<Range>)_convertToDOMRange:(NSRange)range
 {
-    if (nsrange.location > INT_MAX)
+    if (range.location == NSNotFound)
         return nullptr;
-    if (nsrange.length > INT_MAX || nsrange.location + nsrange.length > INT_MAX)
-        nsrange.length = INT_MAX - nsrange.location;
-        
+
     // our critical assumption is that we are only called by input methods that
     // concentrate on a given area containing the selection
     // We have to do this because of text fields and textareas. The DOM for those is not
     // directly in the document DOM, so serialization is problematic. Our solution is
     // to use the root editable element of the selection start as the positional base.
     // That fits with AppKit's idea of an input context.
-    Document* document = self.axBackingObject->document();
-    Element* selectionRoot = document->frame()->selection().selection().rootEditableElement();
-    Element* scope = selectionRoot ? selectionRoot : document->documentElement();
-    return TextIterator::rangeFromLocationAndLength(scope, nsrange.location, nsrange.length);
+    auto document = self.axBackingObject->document();
+    auto selectionRoot = document->frame()->selection().selection().rootEditableElement();
+    auto scope = selectionRoot ? selectionRoot : document->documentElement();
+    if (!scope)
+        return nullptr;
+    return createLiveRange(resolveCharacterRange(makeRangeSelectingNodeContents(*scope), range));
 }
 
 // This method is intended to take a text marker representing a VisiblePosition and convert it
@@ -2715,7 +2714,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     if (!cache)
         return nil;
     
-    return cache->rangeMatchesTextNearRange(originalRange, text);
+    return createLiveRange(cache->rangeMatchesTextNearRange(*originalRange, text));
 }
 
 // This is only used in the layout test.

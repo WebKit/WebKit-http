@@ -26,10 +26,11 @@
 #import "config.h"
 #import "WKMouseGestureRecognizer.h"
 
-#if HAVE(HOVER_GESTURE_RECOGNIZER)
+#if HAVE(UIKIT_WITH_MOUSE_SUPPORT)
 
 #import "NativeWebMouseEvent.h"
 #import "UIKitSPI.h"
+#import <pal/spi/ios/GraphicsServicesSPI.h>
 #import <wtf/Optional.h>
 
 static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFlags(UIKeyModifierFlags flags)
@@ -77,8 +78,8 @@ static OptionSet<WebKit::WebEvent::Modifier> webEventModifiersForUIKeyModifierFl
 
     [super setView:view];
 
-    if (view._window) {
-        UIHoverEvent *hoverEvent = [UIApp _hoverEventForWindow:view._window];
+    if (view.window) {
+        UIHoverEvent *hoverEvent = [UIApp _hoverEventForWindow:view.window];
         [hoverEvent setNeedsHitTestReset];
     }
 }

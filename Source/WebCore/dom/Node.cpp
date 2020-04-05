@@ -83,6 +83,7 @@
 #include <wtf/Variant.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -128,6 +129,8 @@ static const char* stringForRareDataUseType(NodeRareData::UseType useType)
         return "InteractionObserver";
     case NodeRareData::UseType::PseudoElements:
         return "PseudoElements";
+    case NodeRareData::UseType::Animations:
+        return "Animations";
     }
     return nullptr;
 }
@@ -1294,12 +1297,16 @@ Node::InsertedIntoAncestorResult Node::insertedIntoAncestor(InsertionType insert
     return InsertedIntoAncestorResult::Done;
 }
 
-void Node::removedFromAncestor(RemovalType removalType, ContainerNode&)
+void Node::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
     if (removalType.disconnectedFromDocument)
         clearFlag(IsConnectedFlag);
     if (isInShadowTree() && !treeScope().rootNode().isShadowRoot())
         clearFlag(IsInShadowTreeFlag);
+    if (removalType.disconnectedFromDocument) {
+        if (auto* cache = oldParentOfRemovedTree.document().existingAXObjectCache())
+            cache->remove(*this);
+    }
 }
 
 bool Node::isRootEditableElement() const
@@ -1331,7 +1338,7 @@ Document* Node::ownerDocument() const
 const URL& Node::baseURI() const
 {
     auto& url = document().baseURL();
-    return url.isNull() ? WTF::blankURL() : url;
+    return url.isNull() ? aboutBlankURL() : url;
 }
 
 bool Node::isEqualNode(Node* other) const
@@ -2608,6 +2615,20 @@ void* Node::opaqueRootSlow() const
         node = nextNode;
     }
     return const_cast<void*>(static_cast<const void*>(node));
+}
+
+TextStream& operator<<(TextStream& ts, const Node& node)
+{
+#if ENABLE(TREE_DEBUGGING)
+    const size_t FormatBufferSize = 512;
+    char s[FormatBufferSize];
+    node.formatForDebugger(s, FormatBufferSize);
+    ts << "node " << &node << " " << s;
+#else
+    ts << "node " << &node << " " << node.nodeName();
+#endif
+
+    return ts;
 }
 
 } // namespace WebCore

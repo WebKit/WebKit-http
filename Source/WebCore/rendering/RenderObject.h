@@ -427,7 +427,6 @@ public:
     bool isReplaced() const { return m_bitfields.isReplaced(); } // a "replaced" element (see CSS)
     bool isHorizontalWritingMode() const { return m_bitfields.horizontalWritingMode(); }
 
-    bool isDragging() const { return m_bitfields.hasRareData() && rareData().isDragging(); }
     bool hasReflection() const { return m_bitfields.hasRareData() && rareData().hasReflection(); }
     bool isRenderFragmentedFlow() const { return m_bitfields.hasRareData() && rareData().isRenderFragmentedFlow(); }
     bool hasOutlineAutoAncestor() const { return m_bitfields.hasRareData() && rareData().hasOutlineAutoAncestor(); }
@@ -476,8 +475,6 @@ public:
     bool hasTransform() const { return hasTransformRelatedProperty() && style().hasTransform(); }
 
     inline bool preservesNewline() const;
-
-    virtual void updateDragState(bool dragOn);
 
     RenderView& view() const { return *document().renderView(); };
 
@@ -541,7 +538,6 @@ public:
     void setHasLayer(bool b = true) { m_bitfields.setHasLayer(b); }
     void setHasTransformRelatedProperty(bool b = true) { m_bitfields.setHasTransformRelatedProperty(b); }
 
-    void setIsDragging(bool);
     void setHasReflection(bool = true);
     void setIsRenderFragmentedFlow(bool = true);
     void setHasOutlineAutoAncestor(bool = true);
@@ -557,7 +553,9 @@ public:
     bool isComposited() const;
 
     bool hitTest(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter = HitTestAll);
+    virtual Node* nodeForHitTest() const;
     virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&);
+
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
 
     virtual Position positionForPoint(const LayoutPoint&);
@@ -968,13 +966,11 @@ private:
         WTF_MAKE_FAST_ALLOCATED;
     public:
         RenderObjectRareData()
-            : m_isDragging(false)
-            , m_hasReflection(false)
+            : m_hasReflection(false)
             , m_isRenderFragmentedFlow(false)
             , m_hasOutlineAutoAncestor(false)
         {
         }
-        ADD_BOOLEAN_BITFIELD(isDragging, IsDragging);
         ADD_BOOLEAN_BITFIELD(hasReflection, HasReflection);
         ADD_BOOLEAN_BITFIELD(isRenderFragmentedFlow, IsRenderFragmentedFlow);
         ADD_BOOLEAN_BITFIELD(hasOutlineAutoAncestor, HasOutlineAutoAncestor);

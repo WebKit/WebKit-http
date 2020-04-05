@@ -115,8 +115,6 @@
         (allow file-read* asset-access-filter)
         (if (memq 'with-media-playback options)
             (play-media asset-access-filter))
-        (allow mach-lookup (with telemetry-backtrace)
-               (global-name "com.apple.mobileassetd" "com.apple.mobileassetd.v2"))
         (mobile-preferences-read "com.apple.MobileAsset")))
 
 (define-once (play-media . filters)
@@ -353,7 +351,7 @@
         "com.apple.mt"
         "com.apple.preferences.sounds")
 
-    (allow mach-lookup (with telemetry-backtrace)
+    (deny mach-lookup (with telemetry-backtrace)
         (global-name "com.apple.frontboard.systemappservices")                 ; -[UIViewServiceInterface _createProcessAssertion] -> SBSProcessIDForDisplayIdentifier()
     )
 
@@ -396,16 +394,10 @@
 
 (deny file-write-mount file-write-unmount)
 
-(allow file-read-metadata (with no-times)
-       (vnode-type DIRECTORY))
-(with-filter (apple-signed-executable?)
-  (allow file-read-metadata
-         (vnode-type DIRECTORY)))
+(allow file-read-metadata
+    (vnode-type DIRECTORY))
 
-(with-filter (apple-signed-executable?)
-  (managed-configuration-read "CloudConfigurationDetails.plist")
-  (managed-configuration-read "CloudConfigurationSetAsideDetails.plist")
-  (mobile-preferences-read "com.apple.security"))
+(mobile-preferences-read "com.apple.security")
 
 (with-filter (system-attribute apple-internal)
   (mobile-preferences-read "com.apple.PrototypeTools"))
@@ -538,13 +530,13 @@
     (global-name "com.apple.logd.events")
 )
 
-(deny mach-lookup (with telemetry)
+(deny mach-lookup (with telemetry-backtrace)
     (global-name "com.apple.distributed_notifications@1v3"))
 
 (allow ipc-posix-shm-read*
        (ipc-posix-name-prefix "apple.cfprefs."))
  
-(allow mach-lookup (with telemetry-backtrace)
+(deny mach-lookup (with telemetry-backtrace)
     (global-name "com.apple.lsd.mapdb"))
 
 ;; <rdar://problem/12413942>
@@ -605,9 +597,6 @@
 (allow process-info-rusage (target self))
 (allow process-info-codesignature (target self))
 
-(with-filter (apple-signed-executable?)
-    (mobile-preferences-read "com.apple.demo-settings"))
-
 ;;;
 ;;; End common.sb content
 ;;;
@@ -635,6 +624,10 @@
 
 ;; Permit reading assets via MobileAsset framework.
 (asset-access 'with-media-playback)
+
+;; FIXME(209309): Remove this telemetry once we have confirmed there are no more lookups.
+(deny mach-lookup (with telemetry-backtrace)
+       (global-name "com.apple.mobileassetd" "com.apple.mobileassetd.v2"))
 
 ;; allow 3rd party applications to access nsurlstoraged's top level domain data cache
 (allow-well-known-system-group-container-literal-read
@@ -668,7 +661,7 @@
 ;; <rdar://problem/7344719&26323449> LaunchServices app icons
 (allow file-read*
     (well-known-system-group-container-subpath "/systemgroup.com.apple.lsd.iconscache"))
-(allow mach-lookup (with telemetry-backtrace)
+(deny mach-lookup (with telemetry-backtrace)
     (xpc-service-name "com.apple.iconservices")
     (global-name "com.apple.iconservices"))
 
@@ -741,6 +734,7 @@
         "kern.osvariant_status"
         "kern.secure_kernel" ;; Needed by XPC bundle resolution
         "kern.version"
+        "sysctl.name2oid"
         "vm.footprint_suspend")
     (sysctl-name-regex #"^net.routetable") ;; <rdar://problem/57665153>
 )
@@ -777,6 +771,7 @@
     (iokit-property "dfr")
     (iokit-property "display-corner-radius") ;; <rdar://problem/50602737>
     (iokit-property "emu")
+    (iokit-property "external")
     (iokit-property "graphics-featureset-class") ;; <rdar://problem/49497720>
     (iokit-property "graphics-featureset-fallbacks") ;; <rdar://problem/51322072>
     (iokit-property "hdcp-hoover-protocol")
@@ -825,11 +820,7 @@
 
 (media-accessibility-support)
 
-;; Remote Web Inspector
-(allow mach-lookup (with report) (with telemetry)
-       (global-name "com.apple.webinspector"))
-
-(allow mach-lookup (with telemetry-backtrace)
+(deny mach-lookup (with telemetry-backtrace)
     (global-name "com.apple.PowerManagement.control"))
 
 (deny file-write-create (vnode-type SYMLINK))
@@ -844,6 +835,11 @@
 (allow file-read-data
     (literal "/usr/local/lib/log") ; <rdar://problem/36629495>
 )
+
+;; <rdar://problem/60983812>
+(deny file-write*
+    (home-subpath "/Library/Preferences/")
+    (with no-log))
 
 (allow mach-lookup
     (require-all
@@ -1056,5 +1052,84 @@
         (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/51134351>
         (syscall-number SYS_faccessat) ;; <rdar://problem/56998930>
         (syscall-number SYS_objc_bp_assist_cfg_np) ;; <rdar://problem/55924791>
+        (syscall-number SYS_shared_region_map_and_slide_2_np) ;; <rdar://problem/60294880>
+        (syscall-number SYS_ulock_wait2) ;; <rdar://problem/58743778>
+    )
+)
+
+(when (defined? 'mach-bootstrap)
+    (allow mach-bootstrap
+        (apply-message-filter
+            (allow xpc-message-send (with report) (with telemetry))
+            (allow xpc-message-send (message-number 206))
+            (allow xpc-message-send (message-number 207))
+            (allow xpc-message-send (message-number 711))
+            (allow xpc-message-send (message-number 712))
+            (allow xpc-message-send (message-number 718))
+            (allow xpc-message-send (message-number 800))
+            (allow xpc-message-send (message-number 803))
+            (allow xpc-message-send (message-number 804))
+            (allow xpc-message-send (message-number 805))
+        )
+    )
+)
+
+(when (defined? 'syscall-mach)
+    (allow syscall-mach (with report) (with telemetry))
+    (allow syscall-mach
+        (machtrap-number MSC__kernelrpc_mach_port_allocate_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_construct_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_deallocate_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_destruct_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_extract_member_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_get_attributes_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_guard_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_insert_member_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_insert_right_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_mod_refs_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_request_notification_trap)
+        (machtrap-number MSC__kernelrpc_mach_port_type_trap)
+        (machtrap-number MSC__kernelrpc_mach_vm_allocate_trap)
+        (machtrap-number MSC__kernelrpc_mach_vm_deallocate_trap)
+        (machtrap-number MSC__kernelrpc_mach_vm_map_trap)
+        (machtrap-number MSC__kernelrpc_mach_vm_protect_trap)
+        (machtrap-number MSC__kernelrpc_mach_vm_purgable_control_trap)
+        (machtrap-number MSC_host_create_mach_voucher_trap)
+        (machtrap-number MSC_host_self_trap)
+        (machtrap-number MSC_mach_generate_activity_id)
+        (machtrap-number MSC_mach_msg_trap)
+        (machtrap-number MSC_mach_reply_port)
+        (machtrap-number MSC_mach_voucher_extract_attr_recipe_trap)
+        (machtrap-number MSC_mk_timer_arm)
+        (machtrap-number MSC_mk_timer_arm_leeway)
+        (machtrap-number MSC_mk_timer_cancel)
+        (machtrap-number MSC_mk_timer_create)
+        (machtrap-number MSC_mk_timer_destroy)
+        (machtrap-number MSC_pid_for_task)
+        (machtrap-number MSC_semaphore_signal_trap)
+        (machtrap-number MSC_semaphore_timedwait_trap)
+        (machtrap-number MSC_semaphore_wait_trap)
+        (machtrap-number MSC_swtch_pri)
+        (machtrap-number MSC_thread_get_special_reply_port)
+        (machtrap-number MSC_thread_self_trap)
+    )
+)
+
+(when (defined? 'mach-kernel-endpoint)
+    (allow mach-kernel-endpoint
+        (apply-message-filter
+            (allow mach-message-send (with report) (with telemetry))
+        )
+    )
+)
+
+(when (defined? 'iokit-external-method)
+    (allow iokit-open
+        (apply-message-filter (with report) (with telemetry)
+            (allow
+             iokit-external-method
+             iokit-async-external-method
+             iokit-external-trap)
+        )
     )
 )

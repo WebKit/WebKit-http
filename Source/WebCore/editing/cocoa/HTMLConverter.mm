@@ -58,6 +58,7 @@
 #import "HTMLTableCellElement.h"
 #import "HTMLTextAreaElement.h"
 #import "LoaderNSURLExtras.h"
+#import "Range.h"
 #import "RenderImage.h"
 #import "RenderText.h"
 #import "StyleProperties.h"
@@ -2394,12 +2395,12 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
     NSUInteger stringLength = 0;
     RetainPtr<NSMutableDictionary> attrs = adoptNS([[NSMutableDictionary alloc] init]);
 
-    for (TextIterator it(&range); !it.atEnd(); it.advance()) {
-        RefPtr<Range> currentTextRange = it.range();
-        Node& startContainer = currentTextRange->startContainer();
-        Node& endContainer = currentTextRange->endContainer();
-        int startOffset = currentTextRange->startOffset();
-        int endOffset = currentTextRange->endOffset();
+    for (TextIterator it(range); !it.atEnd(); it.advance()) {
+        SimpleRange currentTextRange = it.range();
+        Node& startContainer = currentTextRange.start.container;
+        Node& endContainer = currentTextRange.end.container;
+        int startOffset = currentTextRange.start.offset;
+        int endOffset = currentTextRange.end.offset;
 
         if (includeOrSkipImages == IncludeImagesInAttributedString::Yes) {
             if (&startContainer == &endContainer && (startOffset == endOffset - 1)) {

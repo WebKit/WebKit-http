@@ -261,7 +261,7 @@ void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef
 
 void WKPageLoadPlainTextStringWithUserData(WKPageRef pageRef, WKStringRef plainTextStringRef, WKTypeRef userDataRef)
 {
-    loadString(pageRef, plainTextStringRef, "text/plain"_s, WTF::blankURL().string(), userDataRef);
+    loadString(pageRef, plainTextStringRef, "text/plain"_s, aboutBlankURL().string(), userDataRef);
 }
 
 void WKPageLoadWebArchiveData(WKPageRef pageRef, WKDataRef webArchiveDataRef)
@@ -367,8 +367,9 @@ bool WKPageWillHandleHorizontalScrollEvents(WKPageRef pageRef)
 
 void WKPageUpdateWebsitePolicies(WKPageRef pageRef, WKWebsitePoliciesRef websitePoliciesRef)
 {
+    RELEASE_ASSERT_WITH_MESSAGE(!toImpl(websitePoliciesRef)->websiteDataStore(), "Setting WebsitePolicies.websiteDataStore is only supported during WKFramePolicyListenerUseWithPolicies().");
+    RELEASE_ASSERT_WITH_MESSAGE(!toImpl(websitePoliciesRef)->userContentController(), "Setting WebsitePolicies.userContentController is only supported during WKFramePolicyListenerUseWithPolicies().");
     auto data = toImpl(websitePoliciesRef)->data();
-    RELEASE_ASSERT_WITH_MESSAGE(!data.websiteDataStoreParameters, "Setting WebsitePolicies.WebsiteDataStore is only supported during WKFramePolicyListenerUseWithPolicies().");
     toImpl(pageRef)->updateWebsitePolicies(WTFMove(data));
 }
 
@@ -1203,7 +1204,12 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
 
     WebPageProxy* webPageProxy = toImpl(pageRef);
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    // GCC 10 gets confused here and warns that WKPageSetPagePolicyClient is deprecated when we call
+    // makeUnique<LoaderClient>(). This seems to be a GCC bug. It's not really appropriate to use
+    // ALLOW_DEPRECATED_DECLARATIONS_BEGIN/END here because we are not using a deprecated symbol.
     auto loaderClient = makeUnique<LoaderClient>(wkClient);
+ALLOW_DEPRECATED_DECLARATIONS_END
 
     // It would be nice to get rid of this code and transition all clients to using didLayout instead of
     // didFirstLayoutInFrame and didFirstVisuallyNonEmptyLayoutInFrame. In the meantime, this is required
@@ -1285,7 +1291,12 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
         }
     };
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    // GCC 10 gets confused here and warns that WKPageSetPagePolicyClient is deprecated when we call
+    // makeUnique<PolicyClient>(). This seems to be a GCC bug. It's not really appropriate to use
+    // ALLOW_DEPRECATED_DECLARATIONS_BEGIN/END here because we are not using a deprecated symbol.
     toImpl(pageRef)->setPolicyClient(makeUnique<PolicyClient>(wkClient));
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 namespace WebKit {
@@ -1954,12 +1965,11 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.drawFooter(toAPI(&page), toAPI(&frame), toAPI(rect), m_client.base.clientInfo);
         }
 
-        void printFrame(WebPageProxy& page, WebFrameProxy& frame) final
+        void printFrame(WebPageProxy& page, WebFrameProxy& frame, CompletionHandler<void()>&& completionHandler) final
         {
-            if (!m_client.printFrame)
-                return;
-
-            m_client.printFrame(toAPI(&page), toAPI(&frame), m_client.base.clientInfo);
+            if (m_client.printFrame)
+                m_client.printFrame(toAPI(&page), toAPI(&frame), m_client.base.clientInfo);
+            completionHandler();
         }
 
         bool canRunModal() const final
@@ -2139,13 +2149,10 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
             m_client.decidePolicyForNavigationResponse(toAPI(&page), toAPI(navigationResponse.ptr()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didStartProvisionalNavigation(WebPageProxy& page, FrameInfoData&& frameInfo, ResourceRequest&&, API::Navigation* navigation, API::Object* userData) override
+        void didStartProvisionalNavigation(WebPageProxy& page, const ResourceRequest&, API::Navigation* navigation, API::Object* userData) override
         {
-            if (!frameInfo.isMainFrame)
-                return;
-            if (!m_client.didStartProvisionalNavigation)
-                return;
-            m_client.didStartProvisionalNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
+            if (m_client.didStartProvisionalNavigation)
+                m_client.didStartProvisionalNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
         }
 
         void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy& page, API::Navigation* navigation, API::Object* userData) override
@@ -2155,7 +2162,7 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
             m_client.didReceiveServerRedirectForProvisionalNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didFailProvisionalNavigationWithError(WebPageProxy& page, FrameInfoData&& frameInfo, WebCore::ResourceRequest&&, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
+        void didFailProvisionalNavigationWithError(WebPageProxy& page, FrameInfoData&& frameInfo, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
         {
             if (frameInfo.isMainFrame) {
                 if (m_client.didFailProvisionalNavigation)
@@ -2166,32 +2173,22 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
             }
         }
 
-        void didCommitNavigation(WebPageProxy& page, FrameInfoData&& frameInfo, ResourceRequest&&, API::Navigation* navigation, API::Object* userData) override
+        void didCommitNavigation(WebPageProxy& page, API::Navigation* navigation, API::Object* userData) override
         {
-            if (!frameInfo.isMainFrame)
-                return;
-
-            if (!m_client.didCommitNavigation)
-                return;
-            m_client.didCommitNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
+            if (m_client.didCommitNavigation)
+                m_client.didCommitNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didFinishNavigation(WebPageProxy& page, FrameInfoData&& frameInfo, ResourceRequest&&, API::Navigation* navigation, API::Object* userData) override
+        void didFinishNavigation(WebPageProxy& page, API::Navigation* navigation, API::Object* userData) override
         {
-            if (!frameInfo.isMainFrame)
-                return;
-            if (!m_client.didFinishNavigation)
-                return;
-            m_client.didFinishNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
+            if (m_client.didFinishNavigation)
+                m_client.didFinishNavigation(toAPI(&page), toAPI(navigation), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didFailNavigationWithError(WebPageProxy& page, FrameInfoData&& frameInfo, WebCore::ResourceRequest&&, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
+        void didFailNavigationWithError(WebPageProxy& page, const FrameInfoData&, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
         {
-            if (!frameInfo.isMainFrame)
-                return;
-            if (!m_client.didFailNavigation)
-                return;
-            m_client.didFailNavigation(toAPI(&page), toAPI(navigation), toAPI(error), toAPI(userData), m_client.base.clientInfo);
+            if (m_client.didFailNavigation)
+                m_client.didFailNavigation(toAPI(&page), toAPI(navigation), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
 
         void didFinishDocumentLoad(WebPageProxy& page, API::Navigation* navigation, API::Object* userData) override

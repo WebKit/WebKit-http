@@ -86,7 +86,6 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScrollView.h>
-#import <WebCore/SimpleRange.h>
 #import <WebCore/StyleInheritedData.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/VisibleUnits.h>
@@ -134,27 +133,32 @@ void WebPage::platformDetach()
     [m_mockAccessibilityElement setWebPage:nullptr];
 }
 
-void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
+void WebPage::getPlatformEditorState(Frame& frame, EditorState& result) const
 {
-    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No || !frame.view() || frame.view()->needsLayout() || !result.isContentEditable) {
-        result.isMissingPostLayoutData = true;
-        return;
-    }
+    getPlatformEditorStateCommon(frame, result);
 
-    const VisibleSelection& selection = frame.selection().selection();
+    if (result.isMissingPostLayoutData)
+        return;
+
+    auto& selection = frame.selection().selection();
     RefPtr<Range> selectedRange = selection.toNormalizedRange();
     if (!selectedRange)
         return;
 
     auto& postLayoutData = result.postLayoutData();
     VisiblePosition selectionStart = selection.visibleStart();
-    VisiblePosition selectionEnd = selection.visibleEnd();
-    VisiblePosition paragraphStart = startOfParagraph(selectionStart);
-    VisiblePosition paragraphEnd = endOfParagraph(selectionEnd);
+    auto selectionStartBoundary = makeBoundaryPoint(selectionStart);
+    auto selectionEnd = makeBoundaryPoint(selection.visibleEnd());
+    auto paragraphStart = makeBoundaryPoint(startOfParagraph(selectionStart));
 
-    postLayoutData.candidateRequestStartPosition = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
-    postLayoutData.selectedTextLength = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get()) - postLayoutData.candidateRequestStartPosition;
-    postLayoutData.paragraphContextForCandidateRequest = plainText(frame.editor().contextRangeForCandidateRequest().get());
+    if (!selectionStartBoundary || !selectionEnd || !paragraphStart)
+        return;
+
+    auto contextRangeForCandidateRequest = frame.editor().contextRangeForCandidateRequest();
+
+    postLayoutData.candidateRequestStartPosition = characterCount({ *paragraphStart, *selectionStartBoundary });
+    postLayoutData.selectedTextLength = characterCount({ *selectionStartBoundary, *selectionEnd });
+    postLayoutData.paragraphContextForCandidateRequest = contextRangeForCandidateRequest ? plainText(*contextRangeForCandidateRequest) : String();
     postLayoutData.stringForCandidateRequest = frame.editor().stringForCandidateRequest();
 
     IntRect rectForSelectionCandidates;
@@ -1043,6 +1047,13 @@ void WebPage::playbackTargetPickerWasDismissed(uint64_t contextId)
     m_page->playbackTargetPickerWasDismissed(contextId);
 }
 #endif
+
+void WebPage::didEndMagnificationGesture()
+{
+#if ENABLE(MAC_GESTURE_EVENTS)
+    m_page->mainFrame().eventHandler().didEndMagnificationGesture();
+#endif
+}
 
 } // namespace WebKit
 

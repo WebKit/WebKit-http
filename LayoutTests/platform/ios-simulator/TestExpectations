@@ -5,6 +5,7 @@
 
 accessibility/insert-newline.html [ Pass ]
 accessibility/misspelling-range.html [ Pass ]
+accessibility/url-test.html [ Pass ]
 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 fast/frames/sandboxed-iframe-close-top-noclose.html [ Failure ]
 fast/multicol/flexbox-rows.html [ Skip ]
@@ -117,6 +118,10 @@ webkit.org/b/189686 webgl/2.0.0/conformance/reading/read-pixels-test.html [ Slow
 # Crashes
 webkit.org/b/189686 webgl/2.0.0/conformance2/buffers/one-large-uniform-buffer.html [ Skip ]
 
+# This test takes a long time to execute in the simulator, since it creates a huge (empty) buffer
+# to draw lots of nothing.
+webkit.org/b/209416 fast/canvas/webgl/out-of-bounds-simulated-vertexAttrib0-drawArrays.html [ Pass Timeout ]
+
 imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-georgian.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-lower-greek.html [ Pass ]
 imported/w3c/web-platform-tests/css/css-lists/list-and-writing-mode-001.html [ Failure ]
@@ -128,8 +133,6 @@ webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 imported/w3c/web-platform-tests/wasm [ Skip ]
 
 webkit.org/b/201509 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_timeupdate_on_seek.html [ Failure ]
-
-webkit.org/b/202648 crypto/workers/subtle/aes-indexeddb.html [ Skip ]
 
 # WebGPU is not enabled on iOS Simulator.
 webgpu [ Skip ]

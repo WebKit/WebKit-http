@@ -35,6 +35,7 @@
 #include "HTTPHeaderValues.h"
 #include "ImageDecoder.h"
 #include "MemoryCache.h"
+#include "SecurityPolicy.h"
 #include "ServiceWorkerRegistrationData.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -220,23 +221,26 @@ void CachedResourceRequest::updateReferrerPolicy(ReferrerPolicy defaultPolicy)
         m_options.referrerPolicy = defaultPolicy;
 }
 
-void CachedResourceRequest::updateReferrerOriginAndUserAgentHeaders(FrameLoader& frameLoader)
+void CachedResourceRequest::updateReferrerAndOriginHeaders(FrameLoader& frameLoader)
 {
     // Implementing step 9 to 11 of https://fetch.spec.whatwg.org/#http-network-or-cache-fetch as of 16 March 2018
     String outgoingReferrer = frameLoader.outgoingReferrer();
     if (m_resourceRequest.hasHTTPReferrer())
         outgoingReferrer = m_resourceRequest.httpReferrer();
     updateRequestReferrer(m_resourceRequest, m_options.referrerPolicy, outgoingReferrer);
-    frameLoader.applyUserAgentIfNeeded(m_resourceRequest);
 
-    if (!m_resourceRequest.httpOrigin().isEmpty())
-        return;
-    String outgoingOrigin;
-    if (m_options.mode == FetchOptions::Mode::Cors)
-        outgoingOrigin = SecurityOrigin::createFromString(outgoingReferrer)->toString();
-    else
-        outgoingOrigin = SecurityPolicy::generateOriginHeader(m_options.referrerPolicy, m_resourceRequest.url(), SecurityOrigin::createFromString(outgoingReferrer));
-    FrameLoader::addHTTPOriginIfNeeded(m_resourceRequest, outgoingOrigin);
+    if (doesRequestNeedHTTPOriginHeader(m_resourceRequest)) {
+        auto outgoingOrigin = SecurityOrigin::createFromString(outgoingReferrer);
+        // FIXME: Should take referrer-policy into account in some cases, see https://github.com/web-platform-tests/wpt/issues/22298.
+        auto referrerPolicy = (m_options.mode == FetchOptions::Mode::Cors) ? ReferrerPolicy::UnsafeUrl : m_options.referrerPolicy;
+        auto origin = SecurityPolicy::generateOriginHeader(referrerPolicy, m_resourceRequest.url(), outgoingOrigin);
+        m_resourceRequest.setHTTPOrigin(origin);
+    }
+}
+
+void CachedResourceRequest::updateUserAgentHeader(FrameLoader& frameLoader)
+{
+    frameLoader.applyUserAgentIfNeeded(m_resourceRequest);
 }
 
 bool isRequestCrossOrigin(SecurityOrigin* origin, const URL& requestURL, const ResourceLoaderOptions& options)

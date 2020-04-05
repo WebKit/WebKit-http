@@ -54,6 +54,14 @@
 #include <wtf/URL.h>
 #include <wtf/text/CString.h>
 
+#if USE(NICOSIA)
+#include <WebCore/NicosiaPlatformLayer.h>
+#elif USE(COORDINATED_GRAPHICS)
+#include <WebCore/TextureMapperPlatformLayerProxyProvider.h>
+#elif USE(TEXTURE_MAPPER)
+#include <WebCore/TextureMapperPlatformLayer.h>
+#endif
+
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "RemoteCDMInstance.h"
 #endif
@@ -358,10 +366,12 @@ void MediaPlayerPrivateRemote::acceleratedRenderingStateChanged()
     connection().send(Messages::RemoteMediaPlayerProxy::AcceleratedRenderingStateChanged(m_player->supportsAcceleratedRendering()), m_id);
 }
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
 bool MediaPlayerPrivateRemote::canPlayToWirelessPlaybackTarget() const
 {
     return m_configuration.canPlayToWirelessPlaybackTarget;
 }
+#endif
 
 void MediaPlayerPrivateRemote::updateCachedState(RemoteMediaPlayerState&& state)
 {

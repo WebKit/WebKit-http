@@ -46,6 +46,7 @@
 #include "DocumentSharedObjectPool.h"
 #include "DocumentTimeline.h"
 #include "Editing.h"
+#include "ElementAnimationRareData.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
 #include "EventDispatcher.h"
@@ -85,6 +86,7 @@
 #include "PointerCaptureController.h"
 #include "PointerEvent.h"
 #include "PointerLockController.h"
+#include "PseudoClassChangeInvalidation.h"
 #include "RenderFragmentedFlow.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
@@ -627,21 +629,25 @@ bool Element::isUserActionElementHovered() const
     return document().userActionElements().isHovered(*this);
 }
 
+bool Element::isUserActionElementDragged() const
+{
+    ASSERT(isUserActionElement());
+    return document().userActionElements().isBeingDragged(*this);
+}
+
 void Element::setActive(bool flag, bool pause)
 {
     if (flag == active())
         return;
-
-    document().userActionElements().setActive(*this, flag);
-
-    auto* renderStyle = renderOrDisplayContentsStyle();
-    bool reactsToPress = (renderStyle && renderStyle->affectedByActive()) || styleAffectedByActive();
-    if (reactsToPress)
-        invalidateStyleForSubtree();
+    {
+        Style::PseudoClassChangeInvalidation styleInvalidation(*this, CSSSelector::PseudoClassActive);
+        document().userActionElements().setActive(*this, flag);
+    }
 
     if (!renderer())
         return;
 
+    bool reactsToPress = false;
     if (renderer()->style().hasAppearance() && renderer()->theme().stateChanged(*renderer(), ControlStates::PressedState))
         reactsToPress = true;
 
@@ -680,9 +686,11 @@ void Element::setFocus(bool flag)
 {
     if (flag == focused())
         return;
-
-    document().userActionElements().setFocused(*this, flag);
-    invalidateStyleForSubtree();
+    {
+        Style::PseudoClassChangeInvalidation focusStyleInvalidation(*this, CSSSelector::PseudoClassFocus);
+        Style::PseudoClassChangeInvalidation directFocusStyleInvalidation(*this, CSSSelector::PseudoClassDirectFocus);
+        document().userActionElements().setFocused(*this, flag);
+    }
 
     // Shadow host with a slot that contain focused element is not considered focused.
     for (auto* root = containingShadowRoot(); root; root = root->host()->containingShadowRoot()) {
@@ -690,35 +698,40 @@ void Element::setFocus(bool flag)
         root->host()->invalidateStyle();
     }
 
-    for (Element* element = this; element; element = element->parentElementInComposedTree())
+    for (auto* element = this; element; element = element->parentElementInComposedTree())
         element->setHasFocusWithin(flag);
+}
+
+void Element::setHasFocusWithin(bool flag)
+{
+    if (hasFocusWithin() == flag)
+        return;
+    {
+        Style::PseudoClassChangeInvalidation styleInvalidation(*this, CSSSelector::PseudoClassFocusWithin);
+        setFlag(flag, HasFocusWithin);
+    }
 }
 
 void Element::setHovered(bool flag)
 {
     if (flag == hovered())
         return;
-
-    document().userActionElements().setHovered(*this, flag);
-
-    auto* style = renderOrDisplayContentsStyle();
-    if (style && (style->affectedByHover() || childrenAffectedByHover()))
-        invalidateStyleForSubtree();
-
-    if (!renderer()) {
-        // When setting hover to false, the style needs to be recalc'd even when
-        // there's no renderer (imagine setting display:none in the :hover class,
-        // if a nil renderer would prevent this element from recalculating its
-        // style, it would never go back to its normal style and remain
-        // stuck in its hovered style).
-        if (!flag && !style)
-            invalidateStyleForSubtree();
-
-        return;
+    {
+        Style::PseudoClassChangeInvalidation styleInvalidation(*this, CSSSelector::PseudoClassHover);
+        document().userActionElements().setHovered(*this, flag);
     }
 
-    if (style->hasAppearance())
+    if (auto* style = renderStyle(); style && style->hasAppearance())
         renderer()->theme().stateChanged(*renderer(), ControlStates::HoverState);
+}
+
+void Element::setBeingDragged(bool flag)
+{
+    if (flag == isBeingDragged())
+        return;
+
+    Style::PseudoClassChangeInvalidation styleInvalidation(*this, CSSSelector::PseudoClassDrag);
+    document().userActionElements().setBeingDragged(*this, flag);
 }
 
 inline ScrollAlignment toScrollAlignmentForInlineDirection(Optional<ScrollLogicalPosition> position, WritingMode writingMode, bool isLTR)
@@ -2278,7 +2291,7 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 
         ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
 
-        shadowRoot.setHost(this);
+        shadowRoot.setHost(makeWeakPtr<Element>(this));
         shadowRoot.setParentTreeScope(treeScope());
 
 #if ASSERT_ENABLED
@@ -3184,7 +3197,7 @@ String Element::innerText()
     if (!renderer())
         return textContent(true);
 
-    return plainText(rangeOfContents(*this).ptr());
+    return plainText(makeRangeSelectingNodeContents(*this));
 }
 
 String Element::outerText()
@@ -3403,11 +3416,8 @@ void Element::setChildIndex(unsigned index)
 
 bool Element::hasFlagsSetDuringStylingOfChildren() const
 {
-    return styleAffectedByActive()
-        || childrenAffectedByHover()
-        || childrenAffectedByFirstChildRules()
+    return childrenAffectedByFirstChildRules()
         || childrenAffectedByLastChildRules()
-        || childrenAffectedByDrag()
         || childrenAffectedByForwardPositionalRules()
         || descendantsAffectedByForwardPositionalRules()
         || childrenAffectedByBackwardPositionalRules()
@@ -3738,26 +3748,35 @@ IntersectionObserverData* Element::intersectionObserverDataIfExists()
 
 #endif
 
+ElementAnimationRareData* Element::animationRareData() const
+{
+    return hasRareData() ? elementRareData()->elementAnimationRareData() : nullptr;
+}
+
+ElementAnimationRareData& Element::ensureAnimationRareData()
+{
+    return ensureElementRareData().ensureAnimationRareData();
+}
+
 KeyframeEffectStack* Element::keyframeEffectStack() const
 {
-    return hasRareData() ? elementRareData()->keyframeEffectStack() : nullptr;
+    if (auto* animationData = animationRareData())
+        return animationData->keyframeEffectStack();
+    return nullptr;
 }
 
 KeyframeEffectStack& Element::ensureKeyframeEffectStack()
 {
-    auto& rareData = ensureElementRareData();
-    if (!rareData.keyframeEffectStack())
-        rareData.setKeyframeEffectStack(makeUnique<KeyframeEffectStack>());
-    return *rareData.keyframeEffectStack();
+    return ensureAnimationRareData().ensureKeyframeEffectStack();
 }
 
 bool Element::hasKeyframeEffects() const
 {
-    if (!hasRareData())
-        return false;
-
-    auto* keyframeEffectStack = elementRareData()->keyframeEffectStack();
-    return keyframeEffectStack && keyframeEffectStack->hasEffects();
+    if (auto* animationData = animationRareData()) {
+        if (auto* keyframeEffectStack = animationData->keyframeEffectStack())
+            return keyframeEffectStack->hasEffects();
+    }
+    return false;
 }
 
 OptionSet<AnimationImpact> Element::applyKeyframeEffects(RenderStyle& targetStyle)
@@ -3776,6 +3795,83 @@ OptionSet<AnimationImpact> Element::applyKeyframeEffects(RenderStyle& targetStyl
     }
 
     return impact;
+}
+
+const AnimationCollection* Element::webAnimations() const
+{
+    if (auto* animationData = animationRareData())
+        return &animationData->webAnimations();
+    return nullptr;
+}
+
+const AnimationCollection* Element::cssAnimations() const
+{
+    if (auto* animationData = animationRareData())
+        return &animationData->cssAnimations();
+    return nullptr;
+}
+
+const AnimationCollection* Element::transitions() const
+{
+    if (auto* animationData = animationRareData())
+        return &animationData->transitions();
+    return nullptr;
+}
+
+bool Element::hasCompletedTransitionsForProperty(CSSPropertyID property) const
+{
+    if (auto* animationData = animationRareData())
+        return animationData->completedTransitionsByProperty().contains(property);
+    return false;
+}
+
+bool Element::hasRunningTransitionsForProperty(CSSPropertyID property) const
+{
+    if (auto* animationData = animationRareData())
+        return animationData->runningTransitionsByProperty().contains(property);
+    return false;
+}
+
+bool Element::hasRunningTransitions() const
+{
+    if (auto* animationData = animationRareData())
+        return !animationData->runningTransitionsByProperty().isEmpty();
+    return false;
+}
+
+AnimationCollection& Element::ensureWebAnimations()
+{
+    return ensureAnimationRareData().webAnimations();
+}
+
+AnimationCollection& Element::ensureCSSAnimations()
+{
+    return ensureAnimationRareData().cssAnimations();
+}
+
+AnimationCollection& Element::ensureTransitions()
+{
+    return ensureAnimationRareData().transitions();
+}
+
+CSSAnimationCollection& Element::animationsCreatedByMarkup()
+{
+    return ensureAnimationRareData().animationsCreatedByMarkup();
+}
+
+void Element::setAnimationsCreatedByMarkup(CSSAnimationCollection&& animations)
+{
+    ensureAnimationRareData().setAnimationsCreatedByMarkup(WTFMove(animations));
+}
+
+PropertyToTransitionMap& Element::ensureCompletedTransitionsByProperty()
+{
+    return ensureAnimationRareData().completedTransitionsByProperty();
+}
+
+PropertyToTransitionMap& Element::ensureRunningTransitionsByProperty()
+{
+    return ensureAnimationRareData().runningTransitionsByProperty();
 }
 
 #if ENABLE(RESIZE_OBSERVER)
@@ -4083,7 +4179,6 @@ void Element::resetComputedStyle()
 void Element::resetStyleRelations()
 {
     // FIXME: Make this code more consistent.
-    clearFlag(StyleAffectedByFocusWithinFlag);
     clearStyleFlags();
     if (!hasRareData())
         return;

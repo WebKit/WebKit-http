@@ -327,6 +327,11 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidClearStatisticsInMemoryAndPersistentStore")) {
+        m_testRunner->statisticsCallClearInMemoryAndPersistentStoreCallback();
+        return;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "CallDidClearStatisticsThroughWebsiteDataRemoval")) {
         m_testRunner->statisticsCallClearThroughWebsiteDataRemovalCallback();
         return;
@@ -349,6 +354,11 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
 
     if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetFirstPartyWebsiteDataRemovalMode")) {
         m_testRunner->statisticsCallDidSetFirstPartyWebsiteDataRemovalModeCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetToSameSiteStrictCookies")) {
+        m_testRunner->statisticsCallDidSetToSameSiteStrictCookiesCallback();
         return;
     }
 
@@ -415,7 +425,7 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
     
-    if (WKStringIsEqualToUTF8CString(messageName, "CallDidReceivePrevalentDomains")) {
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidReceiveLoadedThirdPartyDomains")) {
         ASSERT(messageBody);
         ASSERT(WKGetTypeID(messageBody) == WKArrayGetTypeID());
 
@@ -429,7 +439,7 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
                 domains.uncheckedAppend(toWTFString(static_cast<WKStringRef>(item)));
         }
 
-        m_testRunner->callDidReceivePrevalentDomainsCallback(WTFMove(domains));
+        m_testRunner->callDidReceiveLoadedThirdPartyDomainsCallback(WTFMove(domains));
         return;
     }
     

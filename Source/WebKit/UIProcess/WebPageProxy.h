@@ -295,23 +295,24 @@ class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebFullScreenManagerProxy;
 class PlaybackSessionManagerProxy;
-class WebNavigationState;
+class UserMediaPermissionRequestProxy;
 class VideoFullscreenManagerProxy;
 class WebAuthenticatorCoordinatorProxy;
 class WebBackForwardCache;
+class WebDeviceOrientationUpdateProviderProxy;
 class WebKeyboardEvent;
-class WebURLSchemeHandler;
 class WebMouseEvent;
+class WebNavigationState;
 class WebOpenPanelResultListenerProxy;
 class WebPageDebuggable;
 class WebPageGroup;
 class WebPageInspectorController;
 class WebProcessProxy;
+class WebURLSchemeHandler;
 class WebUserContentControllerProxy;
+class WebViewDidMoveToWindowObserver;
 class WebWheelEvent;
 class WebsiteDataStore;
-class WebDeviceOrientationUpdateProviderProxy;
-class WebViewDidMoveToWindowObserver;
 
 struct AttributedString;
 struct WebBackForwardListCounts;
@@ -394,14 +395,6 @@ typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t> 
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t> TouchesCallback;
 typedef GenericCallback<const Vector<WebCore::SelectionRect>&> SelectionRectsCallback;
 typedef GenericCallback<const FocusedElementInformation&> FocusedElementInformationCallback;
-struct ElementDidFocusArguments {
-    WTF_MAKE_STRUCT_FAST_ALLOCATED;
-    FocusedElementInformation information;
-    bool userIsInteracting;
-    bool blurPreviousNode;
-    OptionSet<WebCore::ActivityState::Flag> activityStateChanges;
-    RefPtr<API::Object> userData;
-};
 #endif
 
 #if PLATFORM(COCOA)
@@ -530,6 +523,8 @@ public:
 #if PLATFORM(IOS_FAMILY)
     bool allowsMediaDocumentInlinePlayback() const;
     void setAllowsMediaDocumentInlinePlayback(bool);
+
+    void willOpenAppLink();
 #endif
 
 #if USE(SYSTEM_PREVIEW)
@@ -855,7 +850,7 @@ public:
     void setTextAsync(const String&);
 
     void insertTextAsync(const String&, const EditingRange& replacementRange, InsertTextOptions&&);
-    void insertDictatedTextAsync(const String&, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>&, bool registerUndoGroup);
+    void insertDictatedTextAsync(const String&, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>&, InsertTextOptions&&);
 
     void hasMarkedText(CompletionHandler<void(bool)>&&);
     void getMarkedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&&);
@@ -1128,8 +1123,8 @@ public:
 
     class PolicyDecisionSender;
     enum class WillContinueLoadInNewProcess : bool { No, Yes };
-    void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, Optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&, WillContinueLoadInNewProcess = WillContinueLoadInNewProcess::No);
-    void receivedNavigationPolicyDecision(WebCore::PolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, API::WebsitePolicies*, Ref<PolicyDecisionSender>&&);
+    void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, RefPtr<API::WebsitePolicies>&&, Ref<PolicyDecisionSender>&&, WillContinueLoadInNewProcess = WillContinueLoadInNewProcess::No);
+    void receivedNavigationPolicyDecision(WebCore::PolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, RefPtr<API::WebsitePolicies>&&, Ref<PolicyDecisionSender>&&);
 
     void backForwardRemovedItem(const WebCore::BackForwardItemIdentifier&);
 
@@ -1235,7 +1230,7 @@ public:
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
 
-    WebPageCreationParameters creationParameters(WebProcessProxy&, DrawingAreaProxy&);
+    WebPageCreationParameters creationParameters(WebProcessProxy&, DrawingAreaProxy&, RefPtr<API::WebsitePolicies>&& = nullptr);
 
     void handleDownloadRequest(DownloadProxy&);
 
@@ -1349,6 +1344,9 @@ public:
     WebCore::IntSize minimumSizeForAutoLayout() const { return m_minimumSizeForAutoLayout; }
     void setMinimumSizeForAutoLayout(const WebCore::IntSize&);
 
+    WebCore::IntSize sizeToContentAutoSizeMaximumSize() const { return m_sizeToContentAutoSizeMaximumSize; }
+    void setSizeToContentAutoSizeMaximumSize(const WebCore::IntSize&);
+
     bool autoSizingShouldExpandToViewHeight() const { return m_autoSizingShouldExpandToViewHeight; }
     void setAutoSizingShouldExpandToViewHeight(bool);
 
@@ -1447,6 +1445,8 @@ public:
 
     void setHeaderBannerHeightForTesting(int);
     void setFooterBannerHeightForTesting(int);
+
+    void didEndMagnificationGesture();
 #endif
 
     bool scrollingUpdatesDisabledForTesting();
@@ -1566,8 +1566,8 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void requestStorageAccessConfirm(const WebCore::RegistrableDomain& subFrameDomain, const WebCore::RegistrableDomain& topFrameDomain, WebCore::FrameIdentifier, CompletionHandler<void(bool)>&&);
     void didCommitCrossSiteLoadWithDataTransferFromPrevalentResource();
-    void getPrevalentDomains(CompletionHandler<void(Vector<WebCore::RegistrableDomain>&&)>&&);
-    void clearPrevalentDomains();
+    void loadedThirdPartyDomains(CompletionHandler<void(Vector<WebCore::RegistrableDomain>&&)>&&);
+    void clearLoadedThirdPartyDomains();
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1676,6 +1676,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setMockCaptureDevicesEnabledOverride(Optional<bool>);
+    void willStartCapture(const UserMediaPermissionRequestProxy&, CompletionHandler<void()>&&);
 #endif
 
     void maybeInitializeSandboxExtensionHandle(WebProcessProxy&, const URL&, const URL& resourceDirectoryURL, SandboxExtension::Handle&, bool checkAssumedReadAccessToResourceURL = true);
@@ -1710,7 +1711,19 @@ public:
     void grantAccessToPreferenceService();
 #endif
 
+    void setShouldFireResizeEvents(bool);
+
     void setIsNavigatingToAppBoundDomainTesting(bool, CompletionHandler<void()>&&);
+    void isNavigatingToAppBoundDomainTesting(CompletionHandler<void(bool)>&&);
+    NavigatingToAppBoundDomain isNavigatingToAppBoundDomain() const { return m_isNavigatingToAppBoundDomain; }
+
+#if PLATFORM(COCOA)
+    void grantAccessToCurrentPasteboardData(const String& pasteboardName);
+#endif
+
+#if ENABLE(CONTEXT_MENUS)
+    void platformDidSelectItemFromActiveContextMenu(const WebContextMenuItemData&);
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, Ref<API::PageConfiguration>&&);
@@ -1719,7 +1732,7 @@ private:
     void notifyProcessPoolToPrewarm();
     bool shouldUseBackForwardCache() const;
 
-    bool shouldUseForegroundPriorityForClientNavigation() const;
+    bool shouldForceForegroundPriorityForClientNavigation() const;
 
     RefPtr<API::Navigation> goToBackForwardItem(WebBackForwardListItem&, WebCore::FrameLoadType);
 
@@ -1788,8 +1801,6 @@ private:
     void setNetworkRequestsInProgress(bool);
 
     void preconnectTo(const URL&);
-
-    void hasInsecureContent(CompletionHandler<void(WebCore::HasInsecureContent, WebCore::UsedLegacyTLS)>&&);
 
     void didDestroyNavigation(uint64_t navigationID);
 
@@ -1933,6 +1944,7 @@ private:
 #endif
 
     void requestDOMPasteAccess(const WebCore::IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&&);
+    void willPerformPasteCommand();
 
     // Back/Forward list management
     void backForwardAddItem(BackForwardListItemState&&);
@@ -2218,7 +2230,7 @@ private:
 
     void reportPageLoadResult(const WebCore::ResourceError& = { });
 
-    void continueNavigationInNewProcess(API::Navigation&, std::unique_ptr<SuspendedPageProxy>&&, Ref<WebProcessProxy>&&, ProcessSwapRequestedByClient, Optional<WebsitePoliciesData>&&);
+    void continueNavigationInNewProcess(API::Navigation&, std::unique_ptr<SuspendedPageProxy>&&, Ref<WebProcessProxy>&&, ProcessSwapRequestedByClient, RefPtr<API::WebsitePolicies>&&);
 
     void setNeedsFontAttributes(bool);
     void updateFontAttributesAfterEditorStateChange();
@@ -2270,7 +2282,6 @@ private:
     void makeStorageSpaceRequest(WebCore::FrameIdentifier, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, CompletionHandler<void(uint64_t)>&&);
         
     void setIsNavigatingToAppBoundDomain(bool isMainFrame, const URL&, NavigatingToAppBoundDomain);
-    NavigatingToAppBoundDomain isNavigatingToAppBoundDomain() const { return m_isNavigatingToAppBoundDomain; }
     NavigatedAwayFromAppBoundDomain hasNavigatedAwayFromAppBoundDomain() const { return m_hasNavigatedAwayFromAppBoundDomain; }
         
     const Identifier m_identifier;
@@ -2403,6 +2414,7 @@ private:
     std::unique_ptr<ProcessThrottler::ForegroundActivity> m_isCapturingActivity;
     std::unique_ptr<ProcessThrottler::ForegroundActivity> m_alwaysRunsAtForegroundPriorityActivity;
     RunLoop::Timer<WebPageProxy> m_audibleActivityTimer;
+    std::unique_ptr<ProcessThrottler::BackgroundActivity> m_openingAppLinkActivity;
 #endif
     bool m_initialCapitalizationEnabled { false };
     Optional<double> m_cpuLimit;
@@ -2594,6 +2606,8 @@ private:
     bool m_suppressVisibilityUpdates { false };
     bool m_autoSizingShouldExpandToViewHeight { false };
     WebCore::IntSize m_minimumSizeForAutoLayout;
+    WebCore::IntSize m_sizeToContentAutoSizeMaximumSize;
+
     Optional<WebCore::IntSize> m_viewportSizeForCSSViewportUnits;
 
     // Visual viewports
@@ -2630,7 +2644,6 @@ private:
 
     ActivityStateChangeID m_currentActivityStateChangeID { ActivityStateChangeAsynchronous };
 
-    WebPreferencesStore::ValueMap m_configurationPreferenceValues;
     OptionSet<WebCore::ActivityState::Flag> m_potentiallyChangedActivityStateFlags;
     bool m_activityStateChangeWantsSynchronousReply { false };
     Vector<CallbackID> m_nextActivityStateChangeCallbacks;
@@ -2662,7 +2675,6 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     Function<bool()> m_deviceOrientationUserPermissionHandlerForTesting;
-    std::unique_ptr<ElementDidFocusArguments> m_deferredElementDidFocusArguments;
     bool m_waitingForPostLayoutEditorStateUpdateAfterFocusingElement { false };
     WebCore::FloatSize m_maximumUnobscuredSize;
     bool m_lastObservedStateWasBackground { false };
@@ -2738,6 +2750,7 @@ private:
 #if USE(DIRECT2D)
     COMPtr<ID3D11Device1> m_device;
 #endif
+    bool m_sessionStateWasRestoredByAPIRequest { false };
     bool m_isQuotaIncreaseDenied { false };
     bool m_isLayerTreeFrozenDueToSwipeAnimation { false };
     
@@ -2759,6 +2772,7 @@ private:
         
     NavigatingToAppBoundDomain m_isNavigatingToAppBoundDomain { NavigatingToAppBoundDomain::No };
     NavigatedAwayFromAppBoundDomain m_hasNavigatedAwayFromAppBoundDomain { NavigatedAwayFromAppBoundDomain::No };
+    bool m_ignoresAppBoundDomains { false };
 };
 
 } // namespace WebKit

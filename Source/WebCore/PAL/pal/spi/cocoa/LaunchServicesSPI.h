@@ -106,3 +106,21 @@ OSStatus _RegisterApplication(CFDictionaryRef, ProcessSerialNumber*);
 WTF_EXTERN_C_END
 
 #endif // PLATFORM(MAC)
+
+#if PLATFORM(MAC) || PLATFORM(MACCATALYST)
+
+#if PLATFORM(MACCATALYST) && USE(APPLE_INTERNAL_SDK)
+enum LSSessionID {
+    kLSDefaultSessionID = -2,
+};
+#endif
+
+WTF_EXTERN_C_BEGIN
+
+typedef bool (^LSServerConnectionAllowedBlock) (CFDictionaryRef optionsRef);
+void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block);
+CFDictionaryRef _LSApplicationCheckIn(LSSessionID sessionID, CFDictionaryRef applicationInfo);
+
+WTF_EXTERN_C_END
+
+#endif // PLATFORM(MAC) || PLATFORM(MACCATALYST)

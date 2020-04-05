@@ -36,8 +36,8 @@ from twisted.trial import unittest
 
 from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, AnalyzeJSCTestsResults,
                    AnalyzeLayoutTestsResults, ApplyPatch, ApplyWatchList, ArchiveBuiltProduct, ArchiveTestResults,
-                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild,
-                   CleanUpGitIndexLock, CleanWorkingDirectory, CompileJSC, CompileJSCToT, CompileWebKit,
+                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckPatchStatusOnEWSQueues, CheckStyle,
+                   CleanBuild, CleanUpGitIndexLock, CleanWorkingDirectory, CompileJSC, CompileJSCToT, CompileWebKit,
                    CompileWebKitToT, ConfigureBuild, CreateLocalGITCommit,
                    DownloadBuiltProduct, DownloadBuiltProductFromMaster, ExtractBuiltProduct, ExtractTestResults,
                    FindModifiedChangeLogs, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
@@ -1061,8 +1061,26 @@ class TestAnalyzeCompileWebKitResults(BuildStepMixinAdditions, unittest.TestCase
             mock_step(CompileWebKitToT(), results=SUCCESS),
         ]
         self.setupStep(AnalyzeCompileWebKitResults(), previous_steps=previous_steps)
-        self.expectOutcome(result=FAILURE, state_string='Patch does not build (failure)')
-        return self.runStep()
+        self.setProperty('patch_id', '1234')
+        self.expectOutcome(result=FAILURE, state_string='Patch 1234 does not build (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
+        return rc
+
+    def test_patch_with_build_failure_on_commit_queue(self):
+        previous_steps = [
+            mock_step(CompileWebKit(), results=FAILURE),
+            mock_step(CompileWebKitToT(), results=SUCCESS),
+        ]
+        self.setupStep(AnalyzeCompileWebKitResults(), previous_steps=previous_steps)
+        self.setProperty('patch_id', '1234')
+        self.setProperty('buildername', 'commit-queue')
+        self.expectOutcome(result=FAILURE, state_string='Patch 1234 does not build (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), 'Patch 1234 does not build')
+        self.assertEqual(self.getProperty('build_finish_summary'), 'Patch 1234 does not build')
+        return rc
 
     def test_patch_with_ToT_failure(self):
         previous_steps = [
@@ -1527,6 +1545,16 @@ ts","version":4,"num_passes":42158,"pixel_tests_enabled":false,"date":"11:28AM o
         self.expectOutcome(result=SKIPPED, state_string='layout-tests (skipped)')
         return self.runStep()
 
+    def test_skip_for_mac_wk2_passed_patch_on_commit_queue(self):
+        self.configureStep()
+        self.setProperty('patch_id', '1234')
+        self.setProperty('buildername', 'Commit-Queue')
+        self.setProperty('fullPlatform', 'mac')
+        self.setProperty('configuration', 'debug')
+        self.setProperty('passed_mac_wk2', True)
+        self.expectOutcome(result=SKIPPED, state_string='layout-tests (skipped)')
+        return self.runStep()
+
     def test_parse_results_json_regression(self):
         self.configureStep()
         self.setProperty('fullPlatform', 'ios-simulator')
@@ -1804,10 +1832,25 @@ class TestAnalyzeLayoutTestsResults(BuildStepMixinAdditions, unittest.TestCase):
 
     def test_flaky_and_consistent_failures_without_clean_tree_failures(self):
         self.configureStep()
+        self.setProperty('buildername', 'iOS-13-Simulator-WK2-Tests-EWS')
         self.setProperty('first_run_failures', ['test1', 'test2'])
         self.setProperty('second_run_failures', ['test1'])
         self.expectOutcome(result=FAILURE, state_string='Found 1 new test failure: test1 (failure)')
-        return self.runStep()
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
+        return rc
+
+    def test_consistent_failure_without_clean_tree_failures_commit_queue(self):
+        self.configureStep()
+        self.setProperty('buildername', 'Commit-Queue')
+        self.setProperty('first_run_failures', ['test1'])
+        self.setProperty('second_run_failures', ['test1'])
+        self.expectOutcome(result=FAILURE, state_string='Found 1 new test failure: test1 (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), 'Found 1 new test failure: test1')
+        self.assertEqual(self.getProperty('build_finish_summary'), 'Found 1 new test failure: test1')
+        return rc
 
     def test_flaky_and_inconsistent_failures_without_clean_tree_failures(self):
         self.configureStep()
@@ -1997,6 +2040,71 @@ class TestUpdateWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
         )
         self.expectOutcome(result=FAILURE, state_string='Updated working directory (failure)')
         return self.runStep()
+
+
+class TestApplyPatch(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+
+        def mock_start(cls, *args, **kwargs):
+            from buildbot.steps import shell
+            return shell.ShellCommand.start(cls)
+        ApplyPatch.start = mock_start
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(ApplyPatch())
+        self.assertEqual(ApplyPatch.flunkOnFailure, True)
+        self.assertEqual(ApplyPatch.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=600,
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff'],
+                        ) +
+            0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Applied patch')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(ApplyPatch())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=600,
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff'],
+                        ) +
+            ExpectShell.log('stdio', stdout='Unexpected failure.') +
+            2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Patch does not apply')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
+        return rc
+
+    def test_failure_on_commit_queue(self):
+        self.setupStep(ApplyPatch())
+        self.setProperty('buildername', 'Commit-Queue')
+        self.setProperty('patch_id', '1234')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=600,
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff'],
+                        ) +
+            ExpectShell.log('stdio', stdout='Unexpected failure.') +
+            2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Patch does not apply')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), 'Attachment 1234 does not apply')
+        self.assertEqual(self.getProperty('build_finish_summary'), 'Patch 1234 does not apply')
+        return rc
 
 
 class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
@@ -3040,6 +3148,8 @@ class TestFindModifiedChangeLogs(BuildStepMixinAdditions, unittest.TestCase):
 
     def test_modified_changelogs(self):
         self.setupStep(FindModifiedChangeLogs())
+        self.assertEqual(FindModifiedChangeLogs.haltOnFailure, False)
+        self.setProperty('buildername', 'Commit-Queue')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=180,
@@ -3055,6 +3165,8 @@ M	Tools/TestWebKitAPI/CMakeLists.txt''') +
         self.expectOutcome(result=SUCCESS, state_string='Found modified ChangeLogs')
         rc = self.runStep()
         self.assertEqual(self.getProperty('modified_changelogs'), ['Source/WebCore/ChangeLog', 'Tools/ChangeLog'])
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
         return rc
 
     def test_success_added_changelog(self):
@@ -3071,10 +3183,14 @@ M	Tools/Scripts/run-api-tests''') +
         self.expectOutcome(result=SUCCESS, state_string='Found modified ChangeLogs')
         rc = self.runStep()
         self.assertEqual(self.getProperty('modified_changelogs'), ['Tools/Scripts/ChangeLog'])
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
         return rc
 
     def test_failure(self):
         self.setupStep(FindModifiedChangeLogs())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('buildername', 'Commit-Queue')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=180,
@@ -3083,8 +3199,11 @@ M	Tools/Scripts/run-api-tests''') +
             ExpectShell.log('stdio', stdout='Unexpected failure') +
             2,
         )
-        self.expectOutcome(result=FAILURE, state_string='Failed to find list of modified ChangeLogs')
-        return self.runStep()
+        self.expectOutcome(result=FAILURE, state_string='Failed to find any modified ChangeLog in Patch 1234')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), 'Unable to find any modified ChangeLog in Attachment 1234')
+        self.assertEqual(self.getProperty('build_finish_summary'), 'Unable to find any modified ChangeLog in Patch 1234')
+        return rc
 
 
 class TestCreateLocalGITCommit(BuildStepMixinAdditions, unittest.TestCase):
@@ -3097,6 +3216,8 @@ class TestCreateLocalGITCommit(BuildStepMixinAdditions, unittest.TestCase):
 
     def test_success(self):
         self.setupStep(CreateLocalGITCommit())
+        self.assertEqual(CreateLocalGITCommit.haltOnFailure, False)
+        self.setProperty('buildername', 'Commit-Queue')
         self.setProperty('modified_changelogs', ['Tools/Scripts/ChangeLog', 'Source/WebCore/ChangeLog'])
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
@@ -3106,15 +3227,21 @@ class TestCreateLocalGITCommit(BuildStepMixinAdditions, unittest.TestCase):
             0,
         )
         self.expectOutcome(result=SUCCESS, state_string='Created local git commit')
-        return self.runStep()
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), None)
+        self.assertEqual(self.getProperty('build_finish_summary'), None)
+        return rc
 
     def test_failure_no_changelog(self):
         self.setupStep(CreateLocalGITCommit())
-        self.expectOutcome(result=FAILURE, state_string='No modified ChangeLog file found')
+        self.setProperty('patch_id', '1234')
+        self.expectOutcome(result=FAILURE, state_string='No modified ChangeLog file found for Patch 1234')
         return self.runStep()
 
     def test_failure(self):
         self.setupStep(CreateLocalGITCommit())
+        self.setProperty('patch_id', '1234')
+        self.setProperty('buildername', 'Commit-Queue')
         self.setProperty('modified_changelogs', ['Tools/Scripts/ChangeLog'])
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
@@ -3125,7 +3252,10 @@ class TestCreateLocalGITCommit(BuildStepMixinAdditions, unittest.TestCase):
             2,
         )
         self.expectOutcome(result=FAILURE, state_string='Failed to create git commit')
-        return self.runStep()
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('bugzilla_comment_text'), 'Failed to create git commit for Attachment 1234')
+        self.assertEqual(self.getProperty('build_finish_summary'), 'Failed to create git commit for Patch 1234')
+        return rc
 
 
 class TestValidateCommiterAndReviewer(BuildStepMixinAdditions, unittest.TestCase):
@@ -3184,6 +3314,34 @@ class TestValidateCommiterAndReviewer(BuildStepMixinAdditions, unittest.TestCase
         self.expectHidden(False)
         self.expectOutcome(result=FAILURE, state_string='committer@webkit.org does not have reviewer permissions')
         return self.runStep()
+
+
+class TestCheckPatchStatusOnEWSQueues(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        CheckPatchStatusOnEWSQueues.get_patch_status = lambda cls, patch_id, queue: SUCCESS
+        self.setupStep(CheckPatchStatusOnEWSQueues())
+        self.setProperty('patch_id', '1234')
+        self.expectOutcome(result=SUCCESS, state_string='Checked patch status on other queues')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('passed_mac_wk2'), True)
+        return rc
+
+    def test_failure(self):
+        self.setupStep(CheckPatchStatusOnEWSQueues())
+        self.setProperty('patch_id', '1234')
+        CheckPatchStatusOnEWSQueues.get_patch_status = lambda cls, patch_id, queue: FAILURE
+        self.expectOutcome(result=SUCCESS, state_string='Checked patch status on other queues')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty('passed_mac_wk2'), None)
+        return rc
+
 
 class TestPushCommitToWebKitRepo(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):

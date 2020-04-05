@@ -45,29 +45,35 @@
     if (!self)
         return nil;
 
-    _textIterator = makeUnique<WebCore::TextIterator>(WebKit::toWebCoreRange(range));
+    if (!range)
+        return self;
+
+    _textIterator = makeUnique<WebCore::TextIterator>(*WebKit::toWebCoreRange(range));
     return self;
 }
 
 - (void)advance
 {
-    _textIterator->advance();
+    if (_textIterator)
+        _textIterator->advance();
     _upconvertedText.shrink(0);
 }
 
 - (BOOL)atEnd
 {
-    return _textIterator->atEnd();
+    return _textIterator && _textIterator->atEnd();
 }
 
 - (WKDOMRange *)currentRange
 {
-    return WebKit::toWKDOMRange(_textIterator->range().ptr());
+    return _textIterator ? WebKit::toWKDOMRange(createLiveRange(_textIterator->range()).ptr()) : nil;
 }
 
 // FIXME: Consider deprecating this method and creating one that does not require copying 8-bit characters.
 - (const unichar*)currentTextPointer
 {
+    if (!_textIterator)
+        return nullptr;
     StringView text = _textIterator->text();
     unsigned length = text.length();
     if (!length)
@@ -82,7 +88,7 @@
 
 - (NSUInteger)currentTextLength
 {
-    return _textIterator->text().length();
+    return _textIterator ? _textIterator->text().length() : 0;
 }
 
 @end

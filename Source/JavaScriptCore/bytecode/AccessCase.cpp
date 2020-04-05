@@ -129,15 +129,10 @@ std::unique_ptr<AccessCase> AccessCase::createDelete(
     VM& vm, JSCell* owner, CacheableIdentifier identifier, PropertyOffset offset, Structure* oldStructure, Structure* newStructure)
 {
     RELEASE_ASSERT(oldStructure == newStructure->previousID(vm));
-    if (!newStructure->outOfLineCapacity() && oldStructure->outOfLineCapacity()) {
-        // We do not cache this case so that we do not need to check the jscell.
-        // See the Delete code below.
-        bool mayNeedToCheckCell;
-        newStructure->mayHaveIndexingHeader(mayNeedToCheckCell);
-
-        if (mayNeedToCheckCell)
-            return nullptr;
-    }
+    // We do not cache this case so that we do not need to check the jscell, e.g. TypedArray cells require a check for neutering status.
+    // See the Delete code below.
+    if (!newStructure->canCacheDeleteIC())
+        return nullptr;
     return std::unique_ptr<AccessCase>(new AccessCase(vm, owner, Delete, identifier, offset, newStructure, { }, { }));
 }
 
@@ -155,22 +150,18 @@ std::unique_ptr<AccessCase> AccessCase::fromStructureStubInfo(
 
     case CacheType::PutByIdReplace:
         RELEASE_ASSERT(stubInfo.hasConstantIdentifier);
-        ASSERT(!identifier.isCell());
         return AccessCase::create(vm, owner, Replace, identifier, stubInfo.u.byIdSelf.offset, stubInfo.u.byIdSelf.baseObjectStructure.get());
 
     case CacheType::InByIdSelf:
         RELEASE_ASSERT(stubInfo.hasConstantIdentifier);
-        ASSERT(!identifier.isCell());
         return AccessCase::create(vm, owner, InHit, identifier, stubInfo.u.byIdSelf.offset, stubInfo.u.byIdSelf.baseObjectStructure.get());
 
     case CacheType::ArrayLength:
         RELEASE_ASSERT(stubInfo.hasConstantIdentifier);
-        ASSERT(!identifier.isCell());
         return AccessCase::create(vm, owner, AccessCase::ArrayLength, identifier);
 
     case CacheType::StringLength:
         RELEASE_ASSERT(stubInfo.hasConstantIdentifier);
-        ASSERT(!identifier.isCell());
         return AccessCase::create(vm, owner, AccessCase::StringLength, identifier);
 
     default:
@@ -592,6 +583,23 @@ bool AccessCase::canReplace(const AccessCase& other) const
 
     if (m_identifier != other.m_identifier)
         return false;
+
+    auto checkPolyProtoAndStructure = [&] {
+        if (m_polyProtoAccessChain) {
+            if (!other.m_polyProtoAccessChain)
+                return false;
+            // This is the only check we need since PolyProtoAccessChain contains the base structure.
+            // If we ever change it to contain only the prototype chain, we'll also need to change
+            // this to check the base structure.
+            return structure() == other.structure()
+                && *m_polyProtoAccessChain == *other.m_polyProtoAccessChain;
+        }
+
+        if (!guardedByStructureCheckSkippingConstantIdentifierCheck() || !other.guardedByStructureCheckSkippingConstantIdentifierCheck())
+            return false;
+
+        return structure() == other.structure();
+    };
     
     switch (type()) {
     case IndexedInt32Load:
@@ -653,32 +661,24 @@ bool AccessCase::canReplace(const AccessCase& other) const
     case Replace:
     case Miss:
     case GetGetter:
-    case Getter:
     case Setter:
     case CustomValueGetter:
     case CustomAccessorGetter:
     case CustomValueSetter:
     case CustomAccessorSetter:
-    case IntrinsicGetter:
     case InHit:
     case InMiss:
         if (other.type() != type())
             return false;
 
-        if (m_polyProtoAccessChain) {
-            if (!other.m_polyProtoAccessChain)
-                return false;
-            // This is the only check we need since PolyProtoAccessChain contains the base structure.
-            // If we ever change it to contain only the prototype chain, we'll also need to change
-            // this to check the base structure.
-            return structure() == other.structure()
-                && *m_polyProtoAccessChain == *other.m_polyProtoAccessChain;
-        }
+        return checkPolyProtoAndStructure();
 
-        if (!guardedByStructureCheckSkippingConstantIdentifierCheck() || !other.guardedByStructureCheckSkippingConstantIdentifierCheck())
+    case IntrinsicGetter:
+    case Getter:
+        if (other.type() != Getter && other.type() != IntrinsicGetter)
             return false;
 
-        return structure() == other.structure();
+        return checkPolyProtoAndStructure();
     }
     RELEASE_ASSERT_NOT_REACHED();
 }
@@ -1950,11 +1950,10 @@ void AccessCase::generateImpl(AccessGenerationState& state)
         ScratchRegisterAllocator::PreservedState preservedState =
             allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
 
-        bool mayNeedToCheckCell;
-        bool hasIndexingHeader = newStructure()->mayHaveIndexingHeader(mayNeedToCheckCell);
+        bool hasIndexingHeader = newStructure()->mayHaveIndexingHeader();
         // We do not cache this case yet so that we do not need to check the jscell.
         // See Structure::hasIndexingHeader and JSObject::deleteProperty.
-        ASSERT(!mayNeedToCheckCell);
+        ASSERT(newStructure()->canCacheDeleteIC());
         // Clear the butterfly if we have no properties, since our put code expects this.
         bool shouldNukeStructureAndClearButterfly = !newStructure()->outOfLineCapacity() && structure()->outOfLineCapacity() && !hasIndexingHeader;
 

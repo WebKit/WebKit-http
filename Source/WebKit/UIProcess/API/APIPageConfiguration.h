@@ -26,11 +26,12 @@
 #pragma once
 
 #include "APIObject.h"
-#include "WebPreferencesStore.h"
 #include "WebViewCategory.h"
 #include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS_FAMILY)
 OBJC_PROTOCOL(_UIClickInteractionDriving);
@@ -76,8 +77,6 @@ public:
 
     WebKit::WebPreferences* preferences();
     void setPreferences(WebKit::WebPreferences*);
-
-    WebKit::WebPreferencesStore::ValueMap& preferenceValues() { return m_preferenceValues; }
 
     WebKit::WebPageProxy* relatedPage() const;
     void setRelatedPage(WebKit::WebPageProxy*);
@@ -147,13 +146,21 @@ public:
     WebKit::WebViewCategory webViewCategory() const { return m_webViewCategory; }
     void setWebViewCategory(WebKit::WebViewCategory category) { m_webViewCategory = category; }
 
+    bool ignoresAppBoundDomains() const { return m_ignoresAppBoundDomains; }
+    void setIgnoresAppBoundDomains(bool shouldIgnore) { m_ignoresAppBoundDomains = shouldIgnore; }
+
+    bool loadsSubresources() const { return m_loadsSubresources; }
+    void setLoadsSubresources(bool loads) { m_loadsSubresources = loads; }
+
+    bool loadsFromNetwork() const { return m_loadsFromNetwork; }
+    void setLoadsFromNetwork(bool loads) { m_loadsFromNetwork = loads; }
+
 private:
 
     RefPtr<WebKit::WebProcessPool> m_processPool;
     RefPtr<WebKit::WebUserContentControllerProxy> m_userContentController;
     RefPtr<WebKit::WebPageGroup> m_pageGroup;
     RefPtr<WebKit::WebPreferences> m_preferences;
-    WebKit::WebPreferencesStore::ValueMap m_preferenceValues;
     RefPtr<WebKit::WebPageProxy> m_relatedPage;
     RefPtr<WebKit::VisitedLinkStore> m_visitedLinkStore;
 
@@ -161,7 +168,7 @@ private:
     RefPtr<WebsitePolicies> m_defaultWebsitePolicies;
 
 #if PLATFORM(IOS_FAMILY)
-    bool m_clientNavigationsRunAtForegroundPriority { false };
+    bool m_clientNavigationsRunAtForegroundPriority { true };
     bool m_alwaysRunsAtForegroundPriority { false };
     bool m_canShowWhileLocked { false };
     RetainPtr<_UIClickInteractionDriving> m_clickInteractionDriverForTesting;
@@ -187,6 +194,9 @@ private:
     bool m_crossOriginAccessControlCheckEnabled { true };
     WTF::String m_processDisplayName;
     WebKit::WebViewCategory m_webViewCategory { WebKit::WebViewCategory::AppBoundDomain };
+    bool m_ignoresAppBoundDomains { false };
+    bool m_loadsSubresources { true };
+    bool m_loadsFromNetwork { true };
 };
 
 } // namespace API

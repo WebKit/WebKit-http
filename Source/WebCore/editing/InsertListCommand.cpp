@@ -112,12 +112,13 @@ InsertListCommand::InsertListCommand(Document& document, Type type)
 
 void InsertListCommand::doApply()
 {
-    if (endingSelection().isNoneOrOrphaned() || !endingSelection().isContentRichlyEditable())
-        return;
-
     VisiblePosition visibleEnd = endingSelection().visibleEnd();
     VisiblePosition visibleStart = endingSelection().visibleStart();
-    // When a selection ends at the start of a paragraph, we rarely paint 
+
+    if (visibleEnd.isNull() || visibleStart.isNull() || !endingSelection().isContentRichlyEditable())
+        return;
+
+    // When a selection ends at the start of a paragraph, we rarely paint
     // the selection gap before that paragraph, because there often is no gap.  
     // In a case like this, it's not obvious to the user that the selection 
     // ends "inside" that paragraph, so it would be confusing if InsertUn{Ordered}List 
@@ -274,6 +275,10 @@ void InsertListCommand::unlistifyParagraph(const VisiblePosition& originalStart,
     Node* previousListChild;
     VisiblePosition start;
     VisiblePosition end;
+
+    if (!listNode->parentNode()->hasEditableStyle())
+        return;
+
     if (listChildNode->hasTagName(liTag)) {
         start = firstPositionInNode(listChildNode);
         end = lastPositionInNode(listChildNode);
@@ -388,6 +393,9 @@ RefPtr<HTMLElement> InsertListCommand::listifyParagraph(const VisiblePosition& o
         Node* listChild = enclosingListChild(insertionPos.deprecatedNode());
         if (listChild && listChild->hasTagName(liTag))
             insertionPos = positionInParentBeforeNode(listChild);
+
+        if (!isEditablePosition(insertionPos))
+            return 0;
 
         insertNodeAt(*listElement, insertionPos);
 

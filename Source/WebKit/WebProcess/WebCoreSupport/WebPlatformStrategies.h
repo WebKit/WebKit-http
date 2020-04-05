@@ -61,7 +61,6 @@ private:
     String stringForType(const String& pasteboardType, const String& pasteboardName) override;
     Vector<String> allStringsForType(const String& pasteboardType, const String& pasteboardName) override;
     int64_t changeCount(const String& pasteboardName) override;
-    String uniqueName() override;
     WebCore::Color color(const String& pasteboardName) override;
     URL url(const String& pasteboardName) override;
 
@@ -71,6 +70,9 @@ private:
     int64_t setURL(const WebCore::PasteboardURL&, const String& pasteboardName) override;
     int64_t setColor(const WebCore::Color&, const String& pasteboardName) override;
     int64_t setStringForType(const String&, const String& pasteboardType, const String& pasteboardName) override;
+
+    bool containsURLStringSuitableForLoading(const String& pasteboardName) override;
+    String urlStringSuitableForLoading(const String& pasteboardName, String& title) override;
 #endif
 #if PLATFORM(GTK)
     void writeToClipboard(const String& pasteboardName, const WebCore::SelectionData&) override;
@@ -90,6 +92,7 @@ private:
     Optional<Vector<WebCore::PasteboardItemInfo>> allPasteboardItemInfo(const String& pasteboardName, int64_t changeCount) override;
     Vector<String> typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin) override;
     int64_t writeCustomData(const Vector<WebCore::PasteboardCustomData>&, const String&) override;
+    bool containsStringSafeForDOMToReadForType(const String&, const String& pasteboardName) override;
 };
 
 } // namespace WebKit

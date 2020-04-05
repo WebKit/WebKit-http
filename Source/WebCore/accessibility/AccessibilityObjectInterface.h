@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "FrameLoaderClient.h"
 #include "HTMLTextFormControlElement.h"
 #include "LayoutRect.h"
 #include "Range.h"
 #include "TextIterator.h"
-#include "TextIteratorBehavior.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
 #include <wtf/RefCounted.h>
@@ -491,6 +491,7 @@ public:
     virtual bool isAccessibilityTableInstance() const = 0;
     virtual bool isAccessibilityTableColumnInstance() const = 0;
     virtual bool isAccessibilityProgressIndicatorInstance() const = 0;
+    virtual bool isAXIsolatedObjectInstance() const = 0;
 
     virtual bool isAttachmentElement() const = 0;
     virtual bool isHeading() const = 0;
@@ -634,7 +635,7 @@ public:
     virtual bool isIndeterminate() const = 0;
     virtual bool isLoaded() const = 0;
     virtual bool isMultiSelectable() const = 0;
-    // FIXME should need just one since onscreen should be !offscreen.
+    // FIXME: should need just one since onscreen should be !offscreen.
     virtual bool isOnScreen() const = 0;
     virtual bool isOffScreen() const = 0;
     virtual bool isPressed() const = 0;
@@ -811,9 +812,9 @@ public:
     {
         // If text is empty we return true.
         return text.isEmpty()
-            || findPlainText(title(), text, CaseInsensitive)
-            || findPlainText(accessibilityDescription(), text, CaseInsensitive)
-            || findPlainText(stringValue(), text, CaseInsensitive);
+            || containsPlainText(title(), text, CaseInsensitive)
+            || containsPlainText(accessibilityDescription(), text, CaseInsensitive)
+            || containsPlainText(stringValue(), text, CaseInsensitive);
     }
 
     // Methods for determining accessibility text.
@@ -868,6 +869,10 @@ public:
     virtual String accessKey() const = 0;
     virtual String actionVerb() const = 0;
     virtual Widget* widget() const = 0;
+    virtual PlatformWidget platformWidget() const = 0;
+#if PLATFORM(COCOA)
+    virtual RemoteAXObjectRef remoteParentObject() const = 0;
+#endif
     virtual Widget* widgetForAttachmentView() const = 0;
     virtual Page* page() const = 0;
     virtual Document* document() const = 0;
@@ -904,10 +909,12 @@ public:
     virtual void childrenChanged() = 0;
     virtual void textChanged() = 0;
     virtual void updateAccessibilityRole() = 0;
+
     virtual const AccessibilityChildrenVector& children(bool updateChildrenIfNeeded = true) = 0;
     virtual void addChildren() = 0;
     virtual void addChild(AXCoreObject*) = 0;
     virtual void insertChild(AXCoreObject*, unsigned) = 0;
+    Vector<AXID> childrenIDs();
 
     virtual bool shouldIgnoreAttributeRole() const = 0;
 
@@ -1200,6 +1207,14 @@ inline void AXCoreObject::detachWrapper(AccessibilityDetachmentType detachmentTy
     m_wrapper = nullptr;
 }
 #endif
+
+inline Vector<AXID> AXCoreObject::childrenIDs()
+{
+    Vector<AXID> childrenIDs;
+    for (const auto& child : children())
+        childrenIDs.append(child->objectID());
+    return childrenIDs;
+}
 
 namespace Accessibility {
 

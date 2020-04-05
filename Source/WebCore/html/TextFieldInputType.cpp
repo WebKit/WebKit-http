@@ -268,8 +268,8 @@ void TextFieldInputType::handleFocusEvent(Node* oldFocusedNode, FocusDirection)
     ASSERT_UNUSED(oldFocusedNode, oldFocusedNode != element());
     if (RefPtr<Frame> frame = element()->document().frame()) {
         frame->editor().textFieldDidBeginEditing(element());
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
-        if (element()->list() && m_dataListDropdownIndicator)
+#if ENABLE(DATALIST_ELEMENT)
+        if (shouldOnlyShowDataListDropdownButtonWhenFocusedOrEdited() && element()->list() && m_dataListDropdownIndicator)
             m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, suggestions().size() ? CSSValueBlock : CSSValueNone, true);
 #endif
     }
@@ -280,8 +280,8 @@ void TextFieldInputType::handleBlurEvent()
     InputType::handleBlurEvent();
     ASSERT(element());
     element()->endEditing();
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
-    if (element()->list() && m_dataListDropdownIndicator)
+#if ENABLE(DATALIST_ELEMENT)
+    if (shouldOnlyShowDataListDropdownButtonWhenFocusedOrEdited() && element()->list() && m_dataListDropdownIndicator)
         m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
 #endif
 }
@@ -448,6 +448,7 @@ bool TextFieldInputType::shouldUseInputMethod() const
 }
 
 #if ENABLE(DATALIST_ELEMENT)
+
 void TextFieldInputType::createDataListDropdownIndicator()
 {
     ASSERT(!m_dataListDropdownIndicator);
@@ -459,9 +460,18 @@ void TextFieldInputType::createDataListDropdownIndicator()
     m_container->appendChild(*m_dataListDropdownIndicator);
     m_dataListDropdownIndicator->setPseudo(AtomString("-webkit-list-button", AtomString::ConstructFromLiteral));
     m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
-
 }
+
+bool TextFieldInputType::shouldOnlyShowDataListDropdownButtonWhenFocusedOrEdited()
+{
+#if PLATFORM(IOS_FAMILY)
+    return true;
+#else
+    return false;
 #endif
+}
+
+#endif // ENABLE(DATALIST_ELEMENT)
 
 static String limitLength(const String& string, unsigned maxNumGraphemeClusters)
 {
@@ -667,10 +677,9 @@ void TextFieldInputType::didSetValueByUserEdit()
     if (RefPtr<Frame> frame = element()->document().frame())
         frame->editor().textDidChangeInTextField(element());
 #if ENABLE(DATALIST_ELEMENT)
-#if PLATFORM(IOS_FAMILY)
-    if (element()->list() && m_dataListDropdownIndicator)
+    if (shouldOnlyShowDataListDropdownButtonWhenFocusedOrEdited() && element()->list() && m_dataListDropdownIndicator)
         m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, suggestions().size() ? CSSValueBlock : CSSValueNone, true);
-#endif
+
     if (element()->list())
         displaySuggestions(DataListSuggestionActivationType::TextChanged);
 #endif
@@ -826,16 +835,15 @@ void TextFieldInputType::updateAutoFillButton()
 
 #if ENABLE(DATALIST_ELEMENT)
 
-void TextFieldInputType::listAttributeTargetChanged()
+void TextFieldInputType::dataListMayHaveChanged()
 {
-    m_cachedSuggestions = std::make_pair(String(), Vector<String>());
+    m_cachedSuggestions = { };
 
     if (!m_dataListDropdownIndicator)
         createDataListDropdownIndicator();
 
-#if !PLATFORM(IOS_FAMILY)
-    m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, element()->list() ? CSSValueBlock : CSSValueNone, true);
-#endif
+    if (!shouldOnlyShowDataListDropdownButtonWhenFocusedOrEdited())
+        m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, element()->list() ? CSSValueBlock : CSSValueNone, true);
 }
 
 HTMLElement* TextFieldInputType::dataListButtonElement() const
@@ -856,34 +864,39 @@ IntRect TextFieldInputType::elementRectInRootViewCoordinates() const
     return element()->document().view()->contentsToRootView(element()->renderer()->absoluteBoundingBoxRect());
 }
 
-Vector<String> TextFieldInputType::suggestions()
+Vector<DataListSuggestion> TextFieldInputType::suggestions()
 {
     // FIXME: Suggestions are "typing completions" and so should probably use the findPlainText algorithm rather than the simplistic "ignoring ASCII case" rules.
 
-    Vector<String> suggestions;
-    Vector<String> matchesContainingValue;
+    Vector<DataListSuggestion> suggestions;
+    Vector<DataListSuggestion> matchesContainingValue;
 
     String elementValue = element()->value();
 
     if (!m_cachedSuggestions.first.isNull() && equalIgnoringASCIICase(m_cachedSuggestions.first, elementValue))
         return m_cachedSuggestions.second;
 
+    auto* page = element()->document().page();
+    bool canShowLabels = page && page->chrome().client().canShowDataListSuggestionLabels();
     if (auto dataList = element()->dataList()) {
         for (auto& option : dataList->suggestions()) {
-            String value = option.value();
-            if (!element()->isValidValue(value))
+            DataListSuggestion suggestion;
+            suggestion.value = option.value();
+            if (!element()->isValidValue(suggestion.value))
                 continue;
-            value = sanitizeValue(value);
-            if (elementValue.isEmpty())
-                suggestions.append(value);
-            else if (value.startsWithIgnoringASCIICase(elementValue))
-                suggestions.append(value);
-            else if (value.containsIgnoringASCIICase(elementValue))
-                matchesContainingValue.append(value);
+            suggestion.value = sanitizeValue(suggestion.value);
+            suggestion.label = option.label();
+            if (suggestion.value == suggestion.label)
+                suggestion.label = { };
+
+            if (elementValue.isEmpty() || suggestion.value.startsWithIgnoringASCIICase(elementValue))
+                suggestions.append(WTFMove(suggestion));
+            else if (suggestion.value.containsIgnoringASCIICase(elementValue) || (canShowLabels && suggestion.label.containsIgnoringASCIICase(elementValue)))
+                matchesContainingValue.append(WTFMove(suggestion));
         }
     }
 
-    suggestions.appendVector(matchesContainingValue);
+    suggestions.appendVector(WTFMove(matchesContainingValue));
     m_cachedSuggestions = std::make_pair(elementValue, suggestions);
 
     return suggestions;
@@ -896,7 +909,7 @@ void TextFieldInputType::didSelectDataListOption(const String& selectedOption)
 
 void TextFieldInputType::didCloseSuggestions()
 {
-    m_cachedSuggestions = std::make_pair(String(), Vector<String>());
+    m_cachedSuggestions = { };
     m_suggestionPicker = nullptr;
     if (element()->renderer())
         element()->renderer()->repaint();

@@ -210,8 +210,10 @@ void WebProcessProxy::unblockAccessibilityServerIfNeeded()
 {
     if (m_hasSentMessageToUnblockAccessibilityServer)
         return;
+#if PLATFORM(IOS_FAMILY)
     if (!_AXSApplicationAccessibilityEnabled())
         return;
+#endif
     if (!processIdentifier())
         return;
     if (!canSendMessage())
@@ -227,6 +229,7 @@ void WebProcessProxy::unblockAccessibilityServerIfNeeded()
     m_hasSentMessageToUnblockAccessibilityServer = true;
 }
 
+#if ENABLE(CFPREFS_DIRECT_MODE)
 void WebProcessProxy::unblockPreferenceServiceIfNeeded()
 {
     if (m_hasSentMessageToUnblockPreferenceService)
@@ -243,5 +246,6 @@ void WebProcessProxy::unblockPreferenceServiceIfNeeded()
     send(Messages::WebProcess::UnblockPreferenceService(handle), 0);
     m_hasSentMessageToUnblockPreferenceService = true;
 }
+#endif
 
 }

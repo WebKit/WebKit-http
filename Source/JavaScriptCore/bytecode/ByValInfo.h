@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "CacheableIdentifier.h"
 #include "ClassInfo.h"
 #include "CodeLocation.h"
 #include "IndexingType.h"
@@ -37,6 +38,7 @@ class Symbol;
 
 #if ENABLE(JIT)
 
+class ArrayProfile;
 class StructureStubInfo;
 
 enum JITArrayMode : uint8_t {
@@ -225,11 +227,11 @@ inline JITArrayMode jitArrayModeForStructure(Structure* structure)
 struct ByValInfo {
     ByValInfo() { }
 
-    ByValInfo(BytecodeIndex bytecodeIndex, CodeLocationJump<JSInternalPtrTag> notIndexJump, CodeLocationJump<JSInternalPtrTag> badTypeJump, CodeLocationLabel<ExceptionHandlerPtrTag> exceptionHandler, JITArrayMode arrayMode, ArrayProfile* arrayProfile, CodeLocationLabel<JSInternalPtrTag> badTypeDoneTarget, CodeLocationLabel<JSInternalPtrTag> badTypeNextHotPathTarget, CodeLocationLabel<JSInternalPtrTag> slowPathTarget)
+    ByValInfo(BytecodeIndex bytecodeIndex, CodeLocationJump<JSInternalPtrTag> notIndexJump, CodeLocationJump<JSInternalPtrTag> badTypeJump, CodeLocationLabel<ExceptionHandlerPtrTag> exceptionHandler, JITArrayMode arrayMode, ArrayProfile* arrayProfile, CodeLocationLabel<JSInternalPtrTag> doneTarget, CodeLocationLabel<JSInternalPtrTag> badTypeNextHotPathTarget, CodeLocationLabel<JSInternalPtrTag> slowPathTarget)
         : notIndexJump(notIndexJump)
         , badTypeJump(badTypeJump)
         , exceptionHandler(exceptionHandler)
-        , badTypeDoneTarget(badTypeDoneTarget)
+        , doneTarget(doneTarget)
         , badTypeNextHotPathTarget(badTypeNextHotPathTarget)
         , slowPathTarget(slowPathTarget)
         , arrayProfile(arrayProfile)
@@ -242,18 +244,19 @@ struct ByValInfo {
     {
     }
 
+    void visitAggregate(SlotVisitor&);
+
     CodeLocationJump<JSInternalPtrTag> notIndexJump;
     CodeLocationJump<JSInternalPtrTag> badTypeJump;
     CodeLocationLabel<ExceptionHandlerPtrTag> exceptionHandler;
-    CodeLocationLabel<JSInternalPtrTag> badTypeDoneTarget;
+    CodeLocationLabel<JSInternalPtrTag> doneTarget;
     CodeLocationLabel<JSInternalPtrTag> badTypeNextHotPathTarget;
     CodeLocationLabel<JSInternalPtrTag> slowPathTarget;
     ArrayProfile* arrayProfile;
     BytecodeIndex bytecodeIndex;
     unsigned slowPathCount;
     RefPtr<JITStubRoutine> stubRoutine;
-    Identifier cachedId;
-    WriteBarrier<Symbol> cachedSymbol;
+    CacheableIdentifier cachedId; // Once we set cachedId, we must not change the value. JIT code relies on that configured cachedId is marked and retained by CodeBlock through ByValInfo.
     StructureStubInfo* stubInfo;
     JITArrayMode arrayMode; // The array mode that was baked into the inline JIT code.
     bool tookSlowPath : 1;

@@ -168,6 +168,11 @@ private:
         }
         return *m_logger;
     }
+    bool willStartCapture(CaptureDevice::DeviceType) const final
+    {
+        // FIXME: We should validate this is granted.
+        return true;
+    }
 
     RefPtr<Logger> m_logger;
     WebProcessProxy& m_process;
@@ -537,10 +542,10 @@ void WebProcessProxy::removeVisitedLinkStoreUser(VisitedLinkStore& visitedLinkSt
     }
 }
 
-void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy, WebPageCreationParameters& parameters)
+void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
 {
     m_webUserContentControllerProxies.add(&proxy);
-    proxy.addProcess(*this, parameters);
+    proxy.addProcess(*this);
 }
 
 void WebProcessProxy::didDestroyWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
@@ -906,10 +911,6 @@ bool WebProcessProxy::mayBecomeUnresponsive()
 
     return true;
 #endif
-
-#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(COCOA)
-    enableRemoteInspectorIfNeeded();
-#endif
 }
 
 void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
@@ -940,6 +941,9 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 
 #if PLATFORM(COCOA)
     unblockAccessibilityServerIfNeeded();
+#if ENABLE(REMOTE_INSPECTOR)
+    enableRemoteInspectorIfNeeded();
+#endif
 #endif
 
     if (m_shouldStartResponsivenessTimerWhenLaunched) {
@@ -1145,7 +1149,7 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
         return;
 
     auto protectedThis = makeRef(*this);
-    RELEASE_LOG_IF(isReleaseLoggingAllowed(), Process, "%p - WebProcessProxy::requestTermination - reason %d", this, reason);
+    RELEASE_LOG_ERROR_IF(isReleaseLoggingAllowed(), Process, "%p - WebProcessProxy::requestTermination - PID %d - reason %d", this, processIdentifier(), reason);
 
     AuxiliaryProcessProxy::terminate();
 
@@ -1775,6 +1779,24 @@ void WebProcessProxy::didCreateContextInGPUProcessForVisibilityPropagation(Layer
         page->didCreateContextInGPUProcessForVisibilityPropagation(contextID);
 }
 #endif
+
+void WebProcessProxy::didCreateSleepDisabler(SleepDisablerIdentifier identifier, const String& reason, bool display)
+{
+    MESSAGE_CHECK(identifier);
+    auto sleepDisabler = makeUnique<WebCore::SleepDisabler>(reason.utf8().data(), display ? PAL::SleepDisabler::Type::Display : PAL::SleepDisabler::Type::System);
+    m_sleepDisablers.add(identifier, WTFMove(sleepDisabler));
+}
+
+void WebProcessProxy::didDestroySleepDisabler(SleepDisablerIdentifier identifier)
+{
+    MESSAGE_CHECK(identifier);
+    m_sleepDisablers.remove(identifier);
+}
+
+bool WebProcessProxy::hasSleepDisabler() const
+{
+    return !m_sleepDisablers.isEmpty();
+}
 
 } // namespace WebKit
 

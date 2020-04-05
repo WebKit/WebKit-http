@@ -78,8 +78,30 @@ void RealtimeOutgoingVideoSource::unobserveSource()
 
 void RealtimeOutgoingVideoSource::setSource(Ref<MediaStreamTrackPrivate>&& newSource)
 {
+    ASSERT(isMainThread());
     ASSERT(!m_videoSource->hasObserver(*this));
     m_videoSource = WTFMove(newSource);
+
+    if (!m_areSinksAskingToApplyRotation)
+        return;
+    if (!m_videoSource->source().setShouldApplyRotation(true))
+        m_shouldApplyRotation = true;
+}
+
+void RealtimeOutgoingVideoSource::applyRotation()
+{
+    if (!isMainThread()) {
+        callOnMainThread([this, protectedThis = makeRef(*this)] {
+            applyRotation();
+        });
+        return;
+    }
+    if (m_areSinksAskingToApplyRotation)
+        return;
+
+    m_areSinksAskingToApplyRotation = true;
+    if (!m_videoSource->source().setShouldApplyRotation(true))
+        m_shouldApplyRotation = true;
 }
 
 void RealtimeOutgoingVideoSource::stop()
@@ -135,7 +157,7 @@ void RealtimeOutgoingVideoSource::AddOrUpdateSink(rtc::VideoSinkInterface<webrtc
     ASSERT(!sinkWants.black_frames);
 
     if (sinkWants.rotation_applied)
-        m_shouldApplyRotation = true;
+        applyRotation();
 
     auto locker = holdLock(m_sinksLock);
     m_sinks.add(sink);
@@ -161,7 +183,7 @@ void RealtimeOutgoingVideoSource::sendBlackFramesIfNeeded()
     if (!m_blackFrame) {
         auto width = m_width;
         auto height = m_height;
-        if (m_shouldApplyRotation && (m_currentRotation == webrtc::kVideoRotation_0 || m_currentRotation == webrtc::kVideoRotation_90))
+        if (m_shouldApplyRotation && (m_currentRotation == webrtc::kVideoRotation_270 || m_currentRotation == webrtc::kVideoRotation_90))
             std::swap(width, height);
         m_blackFrame = createBlackFrame(width, height);
         ASSERT(m_blackFrame);

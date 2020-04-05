@@ -262,13 +262,15 @@ public:
     void setStatisticsShouldDowngradeReferrer(bool value);
     void setStatisticsShouldBlockThirdPartyCookies(bool value, bool onlyOnSitesWithoutUserInteraction);
     void setStatisticsFirstPartyWebsiteDataRemovalMode(bool value);
+    void setStatisticsToSameSiteStrictCookies(WKStringRef hostName);
     void statisticsResetToConsistentState();
 
     void getAllStorageAccessEntries();
-    void getPrevalentDomains();
-    void clearPrevalentDomains();
+    void loadedThirdPartyDomains();
+    void clearLoadedThirdPartyDomains();
     void getWebViewCategory();
     void setInAppBrowserPrivacyEnabled(bool);
+    void reinitializeAppBoundDomains();
 
     WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }
     void setOpenPanelFileURLs(WKArrayRef fileURLs) { m_openPanelFileURLs = fileURLs; }
@@ -316,8 +318,8 @@ public:
     void setServiceWorkerFetchTimeoutForTesting(double seconds);
 
     void addTestKeyToKeychain(const String& privateKeyBase64, const String& attrLabel, const String& applicationTagBase64);
-    void cleanUpKeychain(const String& attrLabel, const String& applicationTagBase64);
-    bool keyExistsInKeychain(const String& attrLabel, const String& applicationTagBase64);
+    void cleanUpKeychain(const String& attrLabel, const String& applicationLabelBase64);
+    bool keyExistsInKeychain(const String& attrLabel, const String& applicationLabelBase64);
 
 #if PLATFORM(COCOA)
     NSString *overriddenCalendarIdentifier() const;

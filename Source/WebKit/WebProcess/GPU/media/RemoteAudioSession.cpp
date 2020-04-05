@@ -30,6 +30,7 @@
 
 #include "GPUConnectionToWebProcessMessages.h"
 #include "GPUProcessProxy.h"
+#include "RemoteAudioSessionMessages.h"
 #include "RemoteAudioSessionProxyMessages.h"
 #include <WebCore/PlatformMediaSessionManager.h>
 
@@ -48,9 +49,14 @@ RemoteAudioSession::RemoteAudioSession(WebProcess& process, RemoteAudioSessionCo
     : m_process(process)
     , m_configuration(WTFMove(configuration))
 {
+    m_process.ensureGPUProcessConnection().messageReceiverMap().addMessageReceiver(Messages::RemoteAudioSession::messageReceiverName(), 1, *this);
 }
 
-RemoteAudioSession::~RemoteAudioSession() = default;
+RemoteAudioSession::~RemoteAudioSession()
+{
+    if (auto* connection = m_process.existingGPUProcessConnection())
+        connection->messageReceiverMap().removeMessageReceiver(Messages::RemoteAudioSession::messageReceiverName(), 1);
+}
 
 IPC::Connection& RemoteAudioSession::connection()
 {
@@ -82,16 +88,6 @@ void RemoteAudioSession::configurationChanged(RemoteAudioSessionConfiguration&& 
 
     if (mutedStateChanged)
         handleMutedStateChange();
-}
-
-void RemoteAudioSession::beginInterruption(PlatformMediaSession::InterruptionType type)
-{
-    PlatformMediaSessionManager::sharedManager().beginInterruption(type);
-}
-
-void RemoteAudioSession::endInterruption(PlatformMediaSession::EndInterruptionFlags flags)
-{
-    PlatformMediaSessionManager::sharedManager().endInterruption(flags);
 }
 
 }

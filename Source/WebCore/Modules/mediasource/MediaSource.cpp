@@ -971,10 +971,9 @@ void MediaSource::openIfInEndedState()
     m_private->unmarkEndOfStream();
 }
 
-bool MediaSource::hasPendingActivity() const
+bool MediaSource::virtualHasPendingActivity() const
 {
-    return m_private || m_asyncEventQueue->hasPendingEvents()
-        || ActiveDOMObject::hasPendingActivity();
+    return m_private || m_asyncEventQueue->hasPendingActivity();
 }
 
 void MediaSource::stop()
@@ -1093,6 +1092,12 @@ WTFLogChannel& MediaSource::logChannel() const
     return LogMediaSource;
 }
 #endif
+
+void MediaSource::failedToCreateRenderer(RendererType type)
+{
+    if (auto context = scriptExecutionContext())
+        context->addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("MediaSource ", type == RendererType::Video ? "video" : "audio", " renderer creation failed."));
+}
 
 }
 

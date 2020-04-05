@@ -25,12 +25,9 @@
 
 #pragma once
 
-#include <wtf/Ref.h>
+#include "Node.h"
 
 namespace WebCore {
-
-class Document;
-class Node;
 
 struct BoundaryPoint {
     Ref<Node> container;
@@ -42,12 +39,14 @@ struct BoundaryPoint {
     BoundaryPoint(const BoundaryPoint&);
     BoundaryPoint(BoundaryPoint&&) = default;
     BoundaryPoint& operator=(const BoundaryPoint&);
-    BoundaryPoint& operator=(BoundaryPoint&&);
+    BoundaryPoint& operator=(BoundaryPoint&&) = default;
 
     Document& document() const;
 };
 
 bool operator==(const BoundaryPoint&, const BoundaryPoint&);
+
+BoundaryPoint makeBoundaryPointBeforeNodeContents(Node&);
 
 inline BoundaryPoint::BoundaryPoint(Ref<Node>&& container, unsigned offset)
     : container(WTFMove(container))
@@ -55,9 +54,32 @@ inline BoundaryPoint::BoundaryPoint(Ref<Node>&& container, unsigned offset)
 {
 }
 
+inline BoundaryPoint::BoundaryPoint(const BoundaryPoint& other)
+    : container(other.container.copyRef())
+    , offset(other.offset)
+{
+}
+
+inline BoundaryPoint& BoundaryPoint::operator=(const BoundaryPoint& other)
+{
+    container = other.container.copyRef();
+    offset = other.offset;
+    return *this;
+}
+
+inline Document& BoundaryPoint::document() const
+{
+    return container->document();
+}
+
 inline bool operator==(const BoundaryPoint& a, const BoundaryPoint& b)
 {
     return a.container.ptr() == b.container.ptr() && a.offset == b.offset;
+}
+
+inline BoundaryPoint makeBoundaryPointBeforeNodeContents(Node& node)
+{
+    return { node, 0 };
 }
 
 }

@@ -1,3 +1,122 @@
+2020-04-01  Darin Adler  <darin@apple.com>
+
+        Remove all uses of live ranges from TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=209723
+
+        Reviewed by Antti Koivisto.
+
+        * WebFrame.cpp:
+        (WebFrame::string): Use a SimpleRange instead of a live range
+        to call plainText.
+        * WebView.cpp:
+        (WebView::selectedRangeForTesting): Use a SimpleRange instead
+        of a live range to call characterRange instead of
+        TextIterator::getLocationAndLengthFromRange.
+
+2020-03-30  Simon Fraser  <simon.fraser@apple.com>
+
+        scrollIntoView() erroneously scrolls non-containing block scrollers
+        https://bugs.webkit.org/show_bug.cgi?id=209715
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView.cpp:
+        (WebView::gesture):
+
+2020-03-29  Darin Adler  <darin@apple.com>
+
+        Move TextIterator::rangeFromLocationAndLength off of live ranges
+        https://bugs.webkit.org/show_bug.cgi?id=209408
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::checkGrammarOfString): Use CharacterRange,
+        resolveCharacterLocation/Range.
+        (WebEditorClient::updateSpellingUIWithGrammarString): Ditto.
+        * WebView.cpp:
+        (WebView::firstRectForCharacterRangeForTesting): Ditto.
+
+2020-03-18  youenn fablet  <youenn@apple.com>
+
+        Make sure a preflight fails if response headers are invalid
+        https://bugs.webkit.org/show_bug.cgi?id=208924
+
+        Reviewed by Geoff Garen.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::cancelledError const):
+        (WebFrameLoaderClient::blockedError const):
+        (WebFrameLoaderClient::blockedByContentBlockerError const):
+        (WebFrameLoaderClient::cannotShowURLError const):
+        (WebFrameLoaderClient::interruptedForPolicyChangeError const):
+        (WebFrameLoaderClient::cannotShowMIMETypeError const):
+        (WebFrameLoaderClient::fileDoesNotExistError const):
+        (WebFrameLoaderClient::pluginWillHandleLoadError const):
+        (WebFrameLoaderClient::shouldFallBack const):
+        (WebFrameLoaderClient::userAgent const):
+        (WebFrameLoaderClient::frameLoaderDestroyed): Deleted.
+        (WebFrameLoaderClient::cancelledError): Deleted.
+        (WebFrameLoaderClient::blockedError): Deleted.
+        (WebFrameLoaderClient::blockedByContentBlockerError): Deleted.
+        (WebFrameLoaderClient::cannotShowURLError): Deleted.
+        (WebFrameLoaderClient::interruptedForPolicyChangeError): Deleted.
+        (WebFrameLoaderClient::cannotShowMIMETypeError): Deleted.
+        (WebFrameLoaderClient::fileDoesNotExistError): Deleted.
+        (WebFrameLoaderClient::pluginWillHandleLoadError): Deleted.
+        (WebFrameLoaderClient::shouldFallBack): Deleted.
+        (WebFrameLoaderClient::userAgent): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebFrame.cpp:
+        (WebFrame::createSubframeWithOwnerElement):
+
+2020-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r258339.
+        https://bugs.webkit.org/show_bug.cgi?id=209179
+
+        "Is it sometimes breaking rendering" (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "FrameLoader should own its FrameLoaderClient"
+        https://bugs.webkit.org/show_bug.cgi?id=208918
+        https://trac.webkit.org/changeset/258339
+
+2020-03-12  youenn fablet  <youenn@apple.com>
+
+        Make sure a preflight fails if response headers are invalid
+        https://bugs.webkit.org/show_bug.cgi?id=208924
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::cancelledError const):
+        (WebFrameLoaderClient::blockedError const):
+        (WebFrameLoaderClient::blockedByContentBlockerError const):
+        (WebFrameLoaderClient::cannotShowURLError const):
+        (WebFrameLoaderClient::interruptedForPolicyChangeError const):
+        (WebFrameLoaderClient::cannotShowMIMETypeError const):
+        (WebFrameLoaderClient::fileDoesNotExistError const):
+        (WebFrameLoaderClient::pluginWillHandleLoadError const):
+        (WebFrameLoaderClient::shouldFallBack const):
+        (WebFrameLoaderClient::userAgent const):
+        (WebFrameLoaderClient::frameLoaderDestroyed): Deleted.
+        (WebFrameLoaderClient::cancelledError): Deleted.
+        (WebFrameLoaderClient::blockedError): Deleted.
+        (WebFrameLoaderClient::blockedByContentBlockerError): Deleted.
+        (WebFrameLoaderClient::cannotShowURLError): Deleted.
+        (WebFrameLoaderClient::interruptedForPolicyChangeError): Deleted.
+        (WebFrameLoaderClient::cannotShowMIMETypeError): Deleted.
+        (WebFrameLoaderClient::fileDoesNotExistError): Deleted.
+        (WebFrameLoaderClient::pluginWillHandleLoadError): Deleted.
+        (WebFrameLoaderClient::shouldFallBack): Deleted.
+        (WebFrameLoaderClient::userAgent): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebFrame.cpp:
+        (WebFrame::createSubframeWithOwnerElement):
+
 2020-03-09  Don Olmstead  <don.olmstead@sony.com>
 
         Remove obsolete feature flags

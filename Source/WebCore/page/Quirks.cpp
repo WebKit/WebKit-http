@@ -332,6 +332,8 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
             return true;
         if (host == "nhl.com" || host.endsWith(".nhl.com"))
             return true;
+        if (host == "nba.com" || host.endsWith(".nba.com"))
+            return true;
         if (host.endsWith(".naver.com")) {
             // Disable the quirk for tv.naver.com subdomain to be able to simulate hover on videos.
             if (host == "tv.naver.com")
@@ -423,6 +425,15 @@ bool Quirks::shouldMakeTouchEventNonCancelableForTarget(EventTarget* target) con
     }
 
     return false;
+}
+
+bool Quirks::shouldPreventPointerMediaQueryFromEvaluatingToCoarse() const
+{
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+    return equalLettersIgnoringASCIICase(host, "shutterstock.com") || host.endsWithIgnoringASCIICase(".shutterstock.com");
 }
 #endif
 
@@ -708,6 +719,21 @@ bool Quirks::shouldDisableElementFullscreenQuirk() const
 #else
     return false;
 #endif
+}
+
+bool Quirks::needsCanPlayAfterSeekedQuirk() const
+{
+    if (!needsQuirks())
+        return false;
+
+    if (m_needsCanPlayAfterSeekedQuirk)
+        return *m_needsCanPlayAfterSeekedQuirk;
+
+    auto domain = m_document->securityOrigin().domain().convertToASCIILowercase();
+
+    m_needsCanPlayAfterSeekedQuirk = domain == "hulu.com" || domain.endsWith(".hulu.com");
+
+    return m_needsCanPlayAfterSeekedQuirk.value();
 }
 
 }

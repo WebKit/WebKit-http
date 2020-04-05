@@ -72,6 +72,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ObjCRuntimeExtras.h>
 #include <wtf/ProcessPrivilege.h>
+#include <wtf/text/TextStream.h>
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 #import <WebKitAdditions/EventHandlerMacGesture.cpp>
@@ -926,27 +927,34 @@ void EventHandler::clearOrScheduleClearingLatchedStateIfNeeded(const PlatformWhe
     // when handling wheel events.
     // Logic below installs a timer when non-momentum scrolling ends. If momentum scroll does not start within that interval,
     // reset the latched state. If it does, stop the timer, leaving the latched state untouched.
-    if (!m_pendingMomentumWheelEventsTimer.isActive()) {
-        if (event.isEndOfNonMomentumScroll())
-            m_pendingMomentumWheelEventsTimer.startOneShot(resetLatchedStateTimeout);
+    if (!m_clearLatchingStateTimer.isActive()) {
+        if (event.isEndOfNonMomentumScroll()) {
+            LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::clearOrScheduleClearingLatchedStateIfNeeded() - event" << event << ", scheduling clear timer");
+            m_clearLatchingStateTimer.startOneShot(resetLatchedStateTimeout);
+        }
     } else {
         // If another wheel event scrolling starts, stop the timer manually, and reset the latched state immediately.
         if (event.shouldConsiderLatching()) {
+            LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::clearOrScheduleClearingLatchedStateIfNeeded() - event" << event << ", timer pending, another scroll starting");
             if (auto* page = m_frame.page())
                 page->resetLatchingState();
-            m_pendingMomentumWheelEventsTimer.stop();
+            m_clearLatchingStateTimer.stop();
         } else if (event.isTransitioningToMomentumScroll()) {
-            // Wheel events machinary is transitioning to momenthum scrolling, so no need to reset latched state. Stop the timer.
-            m_pendingMomentumWheelEventsTimer.stop();
+            // Wheel events machinary is transitioning to momentum scrolling, so no need to reset latched state. Stop the timer.
+            m_clearLatchingStateTimer.stop();
         }
     }
 }
 
-void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheelEvent, const HitTestResult& result, RefPtr<Element>& wheelEventTarget, RefPtr<ContainerNode>& scrollableContainer, WeakPtr<ScrollableArea>& scrollableArea, bool& isOverWidget)
+void EventHandler::determineWheelEventTarget(const PlatformWheelEvent& wheelEvent, const HitTestResult& result, RefPtr<Element>& wheelEventTarget, RefPtr<ContainerNode>& scrollableContainer, WeakPtr<ScrollableArea>& scrollableArea, bool& isOverWidget)
 {
     clearOrScheduleClearingLatchedStateIfNeeded(wheelEvent);
 
-    FrameView* view = m_frame.view();
+    auto* page = m_frame.page();
+    if (!page)
+        return;
+
+    auto* view = m_frame.view();
 
     if (!view)
         scrollableContainer = wheelEventTarget;
@@ -962,31 +970,37 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
                 scrollableContainer = view->frame().document()->bodyOrFrameset();
                 scrollableArea = makeWeakPtr(static_cast<ScrollableArea&>(*view));
             }
+
+            LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::determineWheelEventTarget() - event" << wheelEvent << " found scrollableContainer" << ValueOrNull(scrollableContainer.get()) << " scrollableArea " << (scrollableArea ? scrollableArea.get() : nullptr));
         }
     }
-    
-    Page* page = m_frame.page();
-    if (scrollableArea && page && page->isMonitoringWheelEvents())
+
+    if (scrollableArea && page->isMonitoringWheelEvents())
         scrollableArea->scrollAnimator().setWheelEventTestMonitor(page->wheelEventTestMonitor());
 
-    ScrollLatchingState* latchingState = page ? page->latchingState() : nullptr;
+    auto* latchingState = page->latchingState();
     if (wheelEvent.shouldConsiderLatching()) {
-        if (scrollableContainer && scrollableArea && page) {
+        if (scrollableContainer && scrollableArea) {
             bool startingAtScrollLimit = scrolledToEdgeInDominantDirection(*scrollableContainer, *scrollableArea.get(), wheelEvent.deltaX(), wheelEvent.deltaY());
             if (!startingAtScrollLimit) {
-                page->pushNewLatchingState();
-                latchingState = page->latchingState();
-                latchingState->setStartedGestureAtScrollLimit(false);
-                latchingState->setWheelEventElement(wheelEventTarget.get());
-                latchingState->setFrame(&m_frame);
-                latchingState->setScrollableContainer(scrollableContainer.copyRef());
-                latchingState->setWidgetIsLatched(result.isOverWidget());
-                isOverWidget = latchingState->widgetIsLatched();
+                ScrollLatchingState latchingState;
+                latchingState.setStartedGestureAtScrollLimit(false);
+                latchingState.setWheelEventElement(wheelEventTarget.get());
+                latchingState.setFrame(&m_frame);
+                latchingState.setScrollableContainer(scrollableContainer.get());
+                latchingState.setWidgetIsLatched(result.isOverWidget());
+                page->pushNewLatchingState(WTFMove(latchingState));
+
                 page->wheelEventDeltaFilter()->beginFilteringDeltas();
+                isOverWidget = result.isOverWidget();
             }
+
+            LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::determineWheelEventTarget() - considering latching for " << wheelEvent << ", at scroll limit " << startingAtScrollLimit << ", latching state " << page->latchingStateStack());
         }
-    } else if (wheelEvent.shouldResetLatching())
+    } else if (wheelEvent.shouldResetLatching()) {
         clearLatchedState();
+        LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::determineWheelEventTarget() - reset latching for event " << wheelEvent << " latching state " << page->latchingStateStack());
+    }
 
     if (!wheelEvent.shouldResetLatching() && latchingState && latchingState->wheelEventElement()) {
         if (latchingIsLockedToPlatformFrame(m_frame))
@@ -1006,7 +1020,7 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
     }
 }
 
-void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& wheelEvent)
+void EventHandler::recordWheelEventForDeltaFilter(const PlatformWheelEvent& wheelEvent)
 {
     auto* page = m_frame.page();
     if (!page)
@@ -1025,17 +1039,17 @@ void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& wheelEvent
     page->wheelEventDeltaFilter()->updateFromDelta(FloatSize(wheelEvent.deltaX(), wheelEvent.deltaY()));
 }
 
-static FrameView* frameViewForLatchingState(Frame& frame, ScrollLatchingState* latchingState)
+static FrameView* frameViewForLatchingState(Frame& frame, const ScrollLatchingState& latchingState)
 {
     if (latchingIsLockedToPlatformFrame(frame))
         return frame.view();
 
-    return latchingState->frame() ? latchingState->frame()->view() : frame.view();
+    return latchingState.frame() ? latchingState.frame()->view() : frame.view();
 }
 
-bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& wheelEvent, ContainerNode* scrollableContainer, const WeakPtr<ScrollableArea>& scrollableArea)
+bool EventHandler::processWheelEventForScrolling(const PlatformWheelEvent& wheelEvent, ContainerNode* scrollableContainer, const WeakPtr<ScrollableArea>& scrollableArea)
 {
-    LOG_WITH_STREAM(Scrolling, stream << "EventHandler::platformCompleteWheelEvent " << wheelEvent << " - scrollableContainer " << scrollableContainer << " scrollableArea " << scrollableArea.get() << " use latched element " << wheelEvent.useLatchedEventElement());
+    LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::processWheelEventForScrolling " << wheelEvent << " - scrollableContainer " << scrollableContainer << " scrollableArea " << scrollableArea.get() << " use latched element " << wheelEvent.useLatchedEventElement());
 
     Ref<Frame> protectedFrame(m_frame);
 
@@ -1044,19 +1058,22 @@ bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& wheelEve
     if (!view)
         return false;
 
-    ScrollLatchingState* latchingState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
+    const auto* latchingState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
+
     if (wheelEvent.useLatchedEventElement() && !latchingIsLockedToAncestorOfThisFrame(m_frame) && latchingState && latchingState->scrollableContainer()) {
         m_isHandlingWheelEvent = false;
+
+        LOG_WITH_STREAM(ScrollLatching, stream << "  latching state " << *latchingState);
 
         // WebKit2 code path
         if (!frameHasPlatformWidget(m_frame) && !latchingState->startedGestureAtScrollLimit() && scrollableContainer == latchingState->scrollableContainer() && scrollableArea && view != scrollableArea) {
             // If we did not start at the scroll limit, do not pass the event on to be handled by enclosing scrollable regions.
-            LOG_WITH_STREAM(Scrolling, stream << "EventHandler " << this << " platformCompleteWheelEvent - latched to " << scrollableArea.get() << " and not propagating");
+            LOG_WITH_STREAM(Scrolling, stream << "EventHandler " << this << " processWheelEventForScrolling - latched to " << scrollableArea.get() << " and not propagating");
             return true;
         }
 
         if (!latchingState->startedGestureAtScrollLimit())
-            view = frameViewForLatchingState(m_frame, latchingState);
+            view = frameViewForLatchingState(m_frame, *latchingState);
 
         ASSERT(view);
 
@@ -1085,7 +1102,7 @@ bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelE
     if (frameHasPlatformWidget(m_frame) && widget.isFrameView())
         return true;
 
-    ScrollLatchingState* latchingState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
+    const auto* latchingState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
     if (!latchingState)
         return false;
 
@@ -1095,7 +1112,7 @@ bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelE
     return false;
 }
 
-void EventHandler::platformNotifyIfEndGesture(const PlatformWheelEvent& wheelEvent, const WeakPtr<ScrollableArea>& scrollableArea)
+void EventHandler::processWheelEventForScrollSnap(const PlatformWheelEvent& wheelEvent, const WeakPtr<ScrollableArea>& scrollableArea)
 {
     if (!scrollableArea)
         return;
@@ -1105,11 +1122,8 @@ void EventHandler::platformNotifyIfEndGesture(const PlatformWheelEvent& wheelEve
         return;
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    if (ScrollAnimator* scrollAnimator = scrollableArea->existingScrollAnimator()) {
+    if (ScrollAnimator* scrollAnimator = scrollableArea->existingScrollAnimator())
         scrollAnimator->processWheelEventForScrollSnap(wheelEvent);
-        if (scrollAnimator->isScrollSnapInProgress())
-            clearLatchedState();
-    }
 #endif
 }
 

@@ -913,6 +913,26 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     _pageConfiguration->setCORSDisablingPatterns(WTFMove(vector));
 }
 
+- (void)_setLoadsFromNetwork:(BOOL)loads
+{
+    _pageConfiguration->setLoadsFromNetwork(loads);
+}
+
+- (BOOL)_loadsFromNetwork
+{
+    return _pageConfiguration->loadsFromNetwork();
+}
+
+- (void)_setLoadsSubresources:(BOOL)loads
+{
+    _pageConfiguration->setLoadsSubresources(loads);
+}
+
+- (BOOL)_loadsSubresources
+{
+    return _pageConfiguration->loadsSubresources();
+}
+
 - (void)_setCrossOriginAccessControlCheckEnabled:(BOOL)enabled
 {
     _pageConfiguration->setCrossOriginAccessControlCheckEnabled(enabled);
@@ -1208,6 +1228,16 @@ static _WKWebViewCategory toWKWebViewCategory(WebKit::WebViewCategory category)
 - (void)_setWebViewCategory:(_WKWebViewCategory)category
 {
     _pageConfiguration->setWebViewCategory(toWebKitWebViewCategory(category));
+}
+
+- (BOOL)_ignoresAppBoundDomains
+{
+    return _pageConfiguration->ignoresAppBoundDomains();
+}
+
+- (void)_setIgnoresAppBoundDomains:(BOOL)ignoresAppBoundDomains
+{
+    _pageConfiguration->setIgnoresAppBoundDomains(ignoresAppBoundDomains);
 }
 
 - (NSString *)_processDisplayName

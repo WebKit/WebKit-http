@@ -36,6 +36,7 @@
 #import "SafeBrowsingWarning.h"
 #import "SharedBufferDataReference.h"
 #import "WebPageMessages.h"
+#import "WebPasteboardProxy.h"
 #import "WebProcessProxy.h"
 #import "WebsiteDataStore.h"
 #import <WebCore/DragItem.h>
@@ -77,6 +78,14 @@ void WebPageProxy::loadRecentSearches(const String& name, CompletionHandler<void
     }
 
     completionHandler(WebCore::loadRecentSearches(name));
+}
+
+void WebPageProxy::grantAccessToCurrentPasteboardData(const String& pasteboardName)
+{
+    if (!hasRunningProcess())
+        return;
+
+    WebPasteboardProxy::singleton().grantAccessToCurrentData(m_process.get(), pasteboardName);
 }
 
 void WebPageProxy::beginSafeBrowsingCheck(const URL& url, bool forMainFrameNavigation, WebFramePolicyListenerProxy& listener)
@@ -232,7 +241,7 @@ void WebPageProxy::performDictionaryLookupOfCurrentSelection()
     process().send(Messages::WebPage::PerformDictionaryLookupOfCurrentSelection(), m_webPageID);
 }
 
-void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<TextAlternativeWithRange>& dictationAlternativesWithRange, bool registerUndoGroup)
+void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<TextAlternativeWithRange>& dictationAlternativesWithRange, InsertTextOptions&& options)
 {
 #if USE(DICTATION_ALTERNATIVES)
     if (!hasRunningProcess())
@@ -246,18 +255,12 @@ void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRang
     }
 
     if (dictationAlternatives.isEmpty()) {
-        InsertTextOptions options;
-        options.registerUndoGroup = registerUndoGroup;
-
         insertTextAsync(text, replacementRange, WTFMove(options));
         return;
     }
 
-    process().send(Messages::WebPage::InsertDictatedTextAsync { text, replacementRange, dictationAlternatives, registerUndoGroup }, m_webPageID);
+    process().send(Messages::WebPage::InsertDictatedTextAsync { text, replacementRange, dictationAlternatives, WTFMove(options) }, m_webPageID);
 #else
-    InsertTextOptions options;
-    options.registerUndoGroup = registerUndoGroup;
-
     insertTextAsync(text, replacementRange, WTFMove(options));
 #endif
 }
@@ -352,7 +355,9 @@ void WebPageProxy::didCreateContextInGPUProcessForVisibilityPropagation(LayerHos
 
 void WebPageProxy::grantAccessToPreferenceService()
 {
+#if ENABLE(CFPREFS_DIRECT_MODE)
     process().unblockPreferenceServiceIfNeeded();
+#endif
 }
 
 } // namespace WebKit

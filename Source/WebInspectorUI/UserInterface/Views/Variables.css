@@ -124,7 +124,8 @@
 
     --timeline-marker-z-index: 4;
     --timeline-record-z-index: 8;
-    --timeline-selection-z-index: 16;
+    --timeline-current-time-z-index: 16;
+    --timeline-selection-z-index: 32;
 
     --timeline-odd-background-color: var(--background-color-content);
     --timeline-even-background-color: hsl(0, 0%, 96%);
@@ -196,9 +197,11 @@
     --diff-deletion-text-color: hsl(0, 100%, 35%);
     --diff-deletion-background-color: hsl(5, 100%, 94%);
     --diff-addition-border-color: hsl(90, 100%, 40%);
+
+    --color-picker-width: 256px;
 }
 
-body:matches(.window-inactive, .window-docked-inactive) {
+body.window-inactive {
     /* FIXME: Use CSS4 color blend functions once they're available. */
     --selected-background-color: hsla(212, 92%, 54%, 0.5);
 
@@ -207,7 +210,7 @@ body:matches(.window-inactive, .window-docked-inactive) {
     --glyph-opacity: 0.6;
 }
 
-body:matches(.window-inactive, .window-docked-inactive) * {
+body.window-inactive * {
     --border-color: hsl(0, 0%, 85%);
     --border-color-dark: hsl(0, 0%, 72%);
 }
@@ -349,16 +352,16 @@ body.mac-platform:not(.docked) {
         --diff-deletion-background-color: hsl(5, 40%, 28%);
     }
 
-    body:matches(.window-inactive, .window-docked-inactive) {
+    body.window-inactive {
         --selected-background-color: hsla(212, 92%, 64%, 0.5);
 
         --glyph-color: hsl(0, 0%, 52%);
         --glyph-color-disabled: hsla(0, 0%, 52%, 0.4);
     }
 
-    body:matches(.window-inactive, .window-docked-inactive) * {
+    body.window-inactive * {
         /* These properties are duplicated so that they have higher specificity than WebKit's stylesheet.
-        Otherwise, the variable definition inside 'body:matches(.window-inactive, .window-docked-inactive) *' in OpenSource overrides with a lighter color.
+        Otherwise, the variable definition inside 'body.window-inactive *' in OpenSource overrides with a lighter color.
         When merging to open source, we should guard the existing .window-inactive style with
         '@media not all' to avoid applying the definition too broadly. */
         --border-color: hsl(0, 0%, 33%);

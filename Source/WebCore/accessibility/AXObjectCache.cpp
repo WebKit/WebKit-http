@@ -235,14 +235,13 @@ AXObjectCache::~AXObjectCache()
     m_focusModalNodeTimer.stop();
     m_performCacheUpdateTimer.stop();
 
+    for (const auto& object : m_objects.values())
+        object->detach(AccessibilityDetachmentType::CacheDestroyed);
+
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    // Destroy the IsolatedTree before destroying the live tree.
     if (m_pageID)
         AXIsolatedTree::removeTreeForPageID(*m_pageID);
 #endif
-
-    for (const auto& object : m_objects.values())
-        object->detach(AccessibilityDetachmentType::CacheDestroyed);
 }
 
 void AXObjectCache::findModalNodes()
@@ -383,23 +382,9 @@ AXCoreObject* AXObjectCache::focusedObject(Document& document)
 }
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-AXCoreObject* AXObjectCache::isolatedTreeFocusedObject(Document& document)
+AXCoreObject* AXObjectCache::isolatedTreeFocusedObject()
 {
-    auto pageID = document.pageID();
-    if (!pageID)
-        return nullptr;
-
-    auto tree = AXIsolatedTree::treeForPageID(*pageID);
-    if (!tree) {
-        tree = generateIsolatedTree(*pageID, document);
-        // Now that we have created our tree, initialize the secondary thread,
-        // so future requests come in on the other thread.
-        if (_AXSIsolatedTreeModeFunctionIsAvailable() && _AXSIsolatedTreeMode_Soft() == AXSIsolatedTreeModeSecondaryThread)
-            _AXUIElementUseSecondaryAXThread(true);
-        _AXUIElementUseSecondaryAXThread(true);
-    }
-
-    if (tree)
+    if (auto tree = getOrCreateIsolatedTree())
         return tree->focusedUIElement().get();
 
     // Should not get here, couldn't create the IsolatedTree.
@@ -426,17 +411,17 @@ AXCoreObject* AXObjectCache::focusedUIElementForPage(const Page* page)
     if (!gAccessibilityEnabled)
         return nullptr;
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    if (isIsolatedTreeEnabled())
+        return isolatedTreeFocusedObject();
+#endif
+
     // get the focused node in the page
     Document* focusedDocument = page->focusController().focusedOrMainFrame().document();
     if (!focusedDocument)
         return nullptr;
 
     focusedDocument->updateStyleIfNeeded();
-
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    if (isIsolatedTreeEnabled())
-        return isolatedTreeFocusedObject(*focusedDocument);
-#endif
 
     return focusedObject(*focusedDocument);
 }
@@ -749,7 +734,16 @@ AXCoreObject* AXObjectCache::rootObject()
 }
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-AXCoreObject* AXObjectCache::isolatedTreeRootObject()
+
+void AXObjectCache::initializeSecondaryAXThread()
+{
+    // Now that we have created our tree, initialize the secondary thread,
+    // so future requests come in on the other thread.
+    if (_AXSIsolatedTreeModeFunctionIsAvailable() && _AXSIsolatedTreeMode_Soft() == AXSIsolatedTreeModeSecondaryThread)
+        _AXUIElementUseSecondaryAXThread(true);
+}
+
+RefPtr<AXIsolatedTree> AXObjectCache::getOrCreateIsolatedTree() const
 {
     if (!m_pageID)
         return nullptr;
@@ -759,14 +753,15 @@ AXCoreObject* AXObjectCache::isolatedTreeRootObject()
         tree = Accessibility::retrieveValueFromMainThread<RefPtr<AXIsolatedTree>>([this] () -> RefPtr<AXIsolatedTree> {
             return generateIsolatedTree(*m_pageID, m_document);
         });
-
-        // Now that we have created our tree, initialize the secondary thread,
-        // so future requests come in on the other thread.
-        if (_AXSIsolatedTreeModeFunctionIsAvailable() && _AXSIsolatedTreeMode_Soft() == AXSIsolatedTreeModeSecondaryThread)
-            _AXUIElementUseSecondaryAXThread(true);
+        AXObjectCache::initializeSecondaryAXThread();
     }
 
-    if (tree)
+    return tree;
+}
+
+AXCoreObject* AXObjectCache::isolatedTreeRootObject()
+{
+    if (auto tree = getOrCreateIsolatedTree())
         return tree->rootNode().get();
 
     // Should not get here, couldn't create the IsolatedTree.
@@ -1030,7 +1025,7 @@ void AXObjectCache::notificationPostTimerFired()
     // In tests, posting notifications has a tendency to immediately queue up other notifications, which can lead to unexpected behavior
     // when the notification list is cleared at the end. Instead copy this list at the start.
     auto notifications = WTFMove(m_notificationsToPost);
-    
+
     for (const auto& note : notifications) {
         AXCoreObject* obj = note.first.get();
         if (!obj->objectID())
@@ -1058,11 +1053,15 @@ void AXObjectCache::notificationPostTimerFired()
                 continue;
         }
         
-        postPlatformNotification(obj, notification);
-
         if (notification == AXChildrenChanged && obj->parentObjectIfExists() && obj->lastKnownIsIgnoredValue() != obj->accessibilityIsIgnored())
             childrenChanged(obj->parentObject());
+
+        postPlatformNotification(obj, notification);
     }
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    updateIsolatedTree(notifications);
+#endif
 }
 
 void AXObjectCache::passwordNotificationPostTimerFired()
@@ -1134,16 +1133,17 @@ void AXObjectCache::postNotification(AXCoreObject* object, Document* document, A
     if (!object)
         return;
 
-#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    updateIsolatedTree(object, notification);
-#endif
-
     if (postType == PostAsynchronously) {
         m_notificationsToPost.append(std::make_pair(object, notification));
         if (!m_notificationPostTimer.isActive())
             m_notificationPostTimer.startOneShot(0_s);
-    } else
+    } else {
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+        updateIsolatedTree(*object, notification);
+#endif
+
         postPlatformNotification(object, notification);
+    }
 }
 
 void AXObjectCache::checkedStateChanged(Node* node)
@@ -1375,7 +1375,7 @@ void AXObjectCache::postTextStateChangeNotification(const Position& position, co
     }
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    updateIsolatedTree(object, AXSelectedTextChanged);
+    updateIsolatedTree(*object, AXSelectedTextChanged);
 #endif
 
     postTextStateChangeNotification(object, intent, selection);
@@ -1425,7 +1425,7 @@ void AXObjectCache::postTextStateChangeNotification(Node* node, AXTextEditType t
     }
 
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-    updateIsolatedTree(object, AXValueChanged);
+    updateIsolatedTree(*object, AXValueChanged);
 #endif
 
     postTextStateChangePlatformNotification(object, type, text, position);
@@ -1789,7 +1789,7 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
     bool finished = false;
     int lastStartOffset = 0;
     
-    TextIterator iterator(range.get(), doNotEnterTextControls ? TextIteratorDefaultBehavior : TextIteratorEntersTextControls);
+    TextIterator iterator(*range, doNotEnterTextControls ? TextIteratorDefaultBehavior : TextIteratorEntersTextControls);
     
     // When the range has zero length, there might be replaced node or brTag that we need to increment the characterOffset.
     if (iterator.atEnd()) {
@@ -1810,21 +1810,20 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
         }
     }
     
-    // Sometimes text contents in a node are splitted into several iterations, so that iterator.range()->startOffset()
-    // might not be the correct character count. Here we use a previousNode object to keep track of that.
+    // Sometimes text contents in a node are split into several iterations, so that iterator.range().startOffset()
+    // might not be the total character count. Here we use a previousNode object to keep track of that.
     Node* previousNode = nullptr;
     for (; !iterator.atEnd(); iterator.advance()) {
         int currentLength = iterator.text().length();
         bool hasReplacedNodeOrBR = false;
-        
-        Node& node = iterator.range()->startContainer();
+
+        Node& node = iterator.range().start.container;
         currentNode = &node;
         
         // When currentLength == 0, we check if there's any replaced node.
         // If not, we skip the node with no length.
         if (!currentLength) {
-            int subOffset = iterator.range()->startOffset();
-            Node* childNode = node.traverseToChildAt(subOffset);
+            Node* childNode = iterator.node();
             if (AccessibilityObject::replacedNodeNeedsCharacter(childNode)) {
                 cumulativeOffset++;
                 currentLength++;
@@ -1837,8 +1836,7 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
             if (currentLength == 1) {
                 if (isHTMLSpace(iterator.text()[0])) {
                     // If the node has BR tag, we want to set the currentNode to it.
-                    int subOffset = iterator.range()->startOffset();
-                    Node* childNode = node.traverseToChildAt(subOffset);
+                    Node* childNode = iterator.node();
                     if (childNode && childNode->renderer() && childNode->renderer()->isBR()) {
                         currentNode = childNode;
                         hasReplacedNodeOrBR = true;
@@ -1867,11 +1865,10 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
 
         if (currentNode == previousNode) {
             lastLength += currentLength;
-            lastStartOffset = iterator.range()->endOffset() - lastLength;
-        }
-        else {
+            lastStartOffset = iterator.range().end.offset - lastLength;
+        } else {
             lastLength = currentLength;
-            lastStartOffset = hasReplacedNodeOrBR ? 0 : iterator.range()->startOffset();
+            lastStartOffset = hasReplacedNodeOrBR ? 0 : iterator.range().start.offset;
         }
         
         // Break early if we have advanced enough characters.
@@ -1902,21 +1899,17 @@ int AXObjectCache::lengthForRange(Range* range)
 {
     if (!range)
         return -1;
-    
     int length = 0;
-    for (TextIterator it(range); !it.atEnd(); it.advance()) {
+    for (TextIterator it(*range); !it.atEnd(); it.advance()) {
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
         if (it.text().length())
             length += it.text().length();
         else {
             // locate the node and starting offset for this replaced range
-            Node& node = it.range()->startContainer();
-            int offset = it.range()->startOffset();
-            if (AccessibilityObject::replacedNodeNeedsCharacter(node.traverseToChildAt(offset)))
+            if (AccessibilityObject::replacedNodeNeedsCharacter(it.node()))
                 ++length;
         }
     }
-        
     return length;
 }
 
@@ -1939,28 +1932,23 @@ RefPtr<Range> AXObjectCache::rangeForNodeContents(Node* node)
     return range;
 }
     
-RefPtr<Range> AXObjectCache::rangeMatchesTextNearRange(RefPtr<Range> originalRange, const String& matchText)
+Optional<SimpleRange> AXObjectCache::rangeMatchesTextNearRange(const SimpleRange& originalRange, const String& matchText)
 {
-    if (!originalRange)
-        return nullptr;
-    
     // Create a large enough range for searching the text within.
     unsigned textLength = matchText.length();
-    auto startPosition = visiblePositionForPositionWithOffset(originalRange->startPosition(), -textLength);
-    auto endPosition = visiblePositionForPositionWithOffset(originalRange->startPosition(), 2 * textLength);
-    
+    auto startPosition = visiblePositionForPositionWithOffset(createLegacyEditingPosition(originalRange.start), -textLength);
+    auto endPosition = visiblePositionForPositionWithOffset(createLegacyEditingPosition(originalRange.start), 2 * textLength);
     if (startPosition.isNull())
-        startPosition = firstPositionInOrBeforeNode(&originalRange->startContainer());
+        startPosition = firstPositionInOrBeforeNode(originalRange.start.container.ptr());
     if (endPosition.isNull())
-        endPosition = lastPositionInOrAfterNode(&originalRange->endContainer());
-    
-    auto searchRange = Range::create(m_document, startPosition, endPosition);
-    if (searchRange->collapsed())
-        return nullptr;
-    
-    auto range = Range::create(m_document, startPosition, originalRange->startPosition());
-    unsigned targetOffset = TextIterator::rangeLength(range.ptr(), true);
-    return findClosestPlainText(searchRange.get(), matchText, { }, targetOffset);
+        endPosition = lastPositionInOrAfterNode(originalRange.end.container.ptr());
+
+    auto searchRange = SimpleRange { *makeBoundaryPoint(startPosition), *makeBoundaryPoint(endPosition) };
+    if (searchRange.collapsed())
+        return WTF::nullopt;
+
+    auto targetOffset = characterCount({ searchRange.start, originalRange.start }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
+    return findClosestPlainText(searchRange, matchText, { }, targetOffset);
 }
 
 static bool isReplacedNodeOrBR(Node* node)
@@ -2002,12 +1990,11 @@ static bool characterOffsetsInOrder(const CharacterOffset& characterOffset1, con
 static Node* resetNodeAndOffsetForReplacedNode(Node* replacedNode, int& offset, int characterCount)
 {
     // Use this function to include the replaced node itself in the range we are creating.
-    if (!replacedNode)
+    auto nodeRange = AXObjectCache::rangeForNodeContents(replacedNode);
+    if (!nodeRange)
         return nullptr;
-    
-    RefPtr<Range> nodeRange = AXObjectCache::rangeForNodeContents(replacedNode);
-    int nodeLength = TextIterator::rangeLength(nodeRange.get());
-    offset = characterCount <= nodeLength ? replacedNode->computeNodeIndex() : replacedNode->computeNodeIndex() + 1;
+    bool isInNode = static_cast<unsigned>(characterCount) <= WebCore::characterCount(*nodeRange);
+    offset = replacedNode->computeNodeIndex() + (isInNode ? 0 : 1);
     return replacedNode->parentNode();
 }
 
@@ -2423,14 +2410,16 @@ CharacterOffset AXObjectCache::nextCharacterOffset(const CharacterOffset& charac
         return CharacterOffset();
     
     // We don't always move one 'character' at a time since there might be composed characters.
-    int nextOffset = Position::uncheckedNextOffset(characterOffset.node, characterOffset.offset);
+    unsigned nextOffset = Position::uncheckedNextOffset(characterOffset.node, characterOffset.offset);
     CharacterOffset next = characterOffsetForNodeAndOffset(*characterOffset.node, nextOffset);
     
     // To be consistent with VisiblePosition, we should consider the case that current node end to next node start counts 1 offset.
     if (!ignoreNextNodeStart && !next.isNull() && !isReplacedNodeOrBR(next.node) && next.node != characterOffset.node) {
-        int length = TextIterator::rangeLength(rangeForUnorderedCharacterOffsets(characterOffset, next).get());
-        if (length > nextOffset - characterOffset.offset)
-            next = characterOffsetForNodeAndOffset(*next.node, 0, TraverseOptionIncludeStart);
+        if (auto range = rangeForUnorderedCharacterOffsets(characterOffset, next)) {
+            auto length = characterCount(*range);
+            if (length > nextOffset - characterOffset.offset)
+                next = characterOffsetForNodeAndOffset(*next.node, 0, TraverseOptionIncludeStart);
+        }
     }
     
     return next;
@@ -2610,7 +2599,7 @@ CharacterOffset AXObjectCache::nextBoundary(const CharacterOffset& characterOffs
         return { };
     CharacterOffset end = startOrEndCharacterOffsetForRange(searchRange, false);
     
-    TextIterator it(searchRange.get(), TextIteratorEmitsObjectReplacementCharacters);
+    TextIterator it(*searchRange, TextIteratorEmitsObjectReplacementCharacters);
     unsigned next = forwardSearchForBoundaryWithTextIterator(it, string, prefixLength, searchFunction);
     
     if (it.atEnd() && next == string.size())
@@ -2651,7 +2640,7 @@ CharacterOffset AXObjectCache::previousBoundary(const CharacterOffset& character
             return { };
         if (!setRangeStartOrEndWithCharacterOffset(forwardsScanRange, endOfCurrentParagraph, false))
             return { };
-        for (TextIterator forwardsIterator(forwardsScanRange.ptr()); !forwardsIterator.atEnd(); forwardsIterator.advance())
+        for (TextIterator forwardsIterator(forwardsScanRange); !forwardsIterator.atEnd(); forwardsIterator.advance())
             append(string, forwardsIterator.text());
         suffixLength = string.size();
     } else if (requiresContextForWordBoundary(characterBefore(characterOffset))) {
@@ -2673,8 +2662,8 @@ CharacterOffset AXObjectCache::previousBoundary(const CharacterOffset& character
     if (!next)
         return it.atEnd() ? start : characterOffset;
     
-    Node& node = it.atEnd() ? searchRange->startContainer() : it.range()->startContainer();
-    
+    auto& node = it.atEnd() ? searchRange->startContainer() : it.range().start.container.get();
+
     // SimplifiedBackwardsTextIterator ignores replaced elements.
     if (AccessibilityObject::replacedNodeNeedsCharacter(characterOffset.node))
         return characterOffsetForNodeAndOffset(*characterOffset.node, 0);
@@ -3094,27 +3083,6 @@ void AXObjectCache::performDeferredCacheUpdate()
 }
     
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
-static Ref<AXIsolatedObject> createIsolatedTreeHierarchy(AXCoreObject& object, AXIsolatedTreeID treeID, AXID parentID, bool attachWrapper, Vector<AXIsolatedTree::NodeChange>& nodeChanges)
-{
-    auto isolatedObject = AXIsolatedObject::create(object, treeID, parentID);
-    if (attachWrapper) {
-        isolatedObject->attachPlatformWrapper(object.wrapper());
-        // Since this object has already an attached wrapper, set the wrapper
-        // in the NodeChange to null so that it is not re-attached.
-        nodeChanges.append(AXIsolatedTree::NodeChange(isolatedObject, nullptr));
-    } else {
-        // Set the wrapper in the NodeChange so that it is set on the AX thread.
-        nodeChanges.append(AXIsolatedTree::NodeChange(isolatedObject, object.wrapper()));
-    }
-
-    for (const auto& child : object.children()) {
-        auto staticChild = createIsolatedTreeHierarchy(*child, treeID, isolatedObject->objectID(), attachWrapper, nodeChanges);
-        isolatedObject->appendChild(staticChild->objectID());
-    }
-
-    return isolatedObject;
-}
-
 Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, Document& document)
 {
     RELEASE_ASSERT(isMainThread());
@@ -3129,12 +3097,8 @@ Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, D
     tree->setAXObjectCache(axObjectCache);
 
     auto* axRoot = axObjectCache->getOrCreate(document.view());
-    if (axRoot) {
-        Vector<AXIsolatedTree::NodeChange> nodeChanges;
-        auto isolatedRoot = createIsolatedTreeHierarchy(*axRoot, tree->treeIdentifier(), InvalidAXID, true, nodeChanges);
-        tree->setRootNode(isolatedRoot);
-        tree->appendNodeChanges(nodeChanges);
-    }
+    if (axRoot)
+        tree->generateSubtree(*axRoot, InvalidAXID, true);
 
     auto* axFocus = axObjectCache->focusedObject(document);
     if (axFocus)
@@ -3143,7 +3107,7 @@ Ref<AXIsolatedTree> AXObjectCache::generateIsolatedTree(PageIdentifier pageID, D
     return makeRef(*tree);
 }
 
-void AXObjectCache::updateIsolatedTree(AXCoreObject* object, AXNotification notification)
+void AXObjectCache::updateIsolatedTree(AXCoreObject& object, AXNotification notification)
 {
     if (!m_pageID)
         return;
@@ -3154,23 +3118,71 @@ void AXObjectCache::updateIsolatedTree(AXCoreObject* object, AXNotification noti
 
     switch (notification) {
     case AXCheckedStateChanged:
-    case AXChildrenChanged:
     case AXSelectedTextChanged:
     case AXValueChanged: {
-        tree->removeNode(object->objectID());
-        auto* parent = object->parentObject();
-        AXID parentID = parent ? parent->objectID() : InvalidAXID;
-        Vector<AXIsolatedTree::NodeChange> nodeChanges;
-        auto isolatedObject = createIsolatedTreeHierarchy(*object, tree->treeIdentifier(), parentID, false, nodeChanges);
-        tree->appendNodeChanges(nodeChanges);
+        if (object.objectID() != InvalidAXID)
+            tree->updateNode(object);
         break;
     }
     default:
         break;
     }
 }
+
+// FIXME: should be added to WTF::Vector.
+template<typename T, typename F>
+static bool appendIfNotContainsMatching(Vector<T>& vector, const T& value, F matches)
+{
+    if (vector.findMatching(matches) != notFound)
+        return false;
+    vector.append(value);
+    return true;
+}
+
+void AXObjectCache::updateIsolatedTree(const Vector<std::pair<RefPtr<AXCoreObject>, AXNotification>>& notifications)
+{
+    if (!m_pageID)
+        return;
+
+    auto tree = AXIsolatedTree::treeForPageID(*m_pageID);
+    if (!tree)
+        return;
+
+    // Filter out multiple notifications for the same object. This avoids
+    // updating the isolated tree multiple times unnecessarily.
+    Vector<std::pair<RefPtr<AXCoreObject>, AXNotification>> filteredNotifications;
+    for (const auto& notification : notifications) {
+        if (!notification.first || notification.first->objectID() == InvalidAXID)
+            continue;
+
+        switch (notification.second) {
+        case AXCheckedStateChanged:
+        case AXSelectedTextChanged:
+        case AXValueChanged: {
+            bool needsUpdate = appendIfNotContainsMatching(filteredNotifications, notification, [&notification] (const std::pair<RefPtr<AXCoreObject>, AXNotification>& note) {
+                return note.second == notification.second && note.first.get() == notification.first.get();
+            });
+
+            if (needsUpdate)
+                tree->updateNode(*notification.first);
+            break;
+        }
+        case AXChildrenChanged: {
+            bool needsUpdate = appendIfNotContainsMatching(filteredNotifications, notification, [&notification] (const std::pair<RefPtr<AXCoreObject>, AXNotification>& note) {
+                return note.second == notification.second && note.first.get() == notification.first.get();
+            });
+
+            if (needsUpdate)
+                tree->updateChildren(*notification.first);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
 #endif
-    
+
 void AXObjectCache::deferRecomputeIsIgnoredIfNeeded(Element* element)
 {
     if (!nodeAndRendererAreValid(element))

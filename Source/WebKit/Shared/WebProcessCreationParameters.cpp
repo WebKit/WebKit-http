@@ -141,10 +141,10 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 
 #if PLATFORM(COCOA)
     encoder << mediaMIMETypes;
+    encoder << screenProperties;
 #endif
 
 #if PLATFORM(MAC)
-    encoder << screenProperties;
     encoder << useOverlayScrollbars;
 #endif
 
@@ -169,9 +169,9 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << neHelperExtensionHandle;
     encoder << neSessionManagerExtensionHandle;
+    encoder << mapDBExtensionHandle;
     encoder << systemHasBattery;
     encoder << mimeTypesMap;
-    encoder << mapUTIFromMIMEType;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -388,14 +388,15 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
 #if PLATFORM(COCOA)
     if (!decoder.decode(parameters.mediaMIMETypes))
         return false;
-#endif
 
-#if PLATFORM(MAC)
     Optional<WebCore::ScreenProperties> screenProperties;
     decoder >> screenProperties;
     if (!screenProperties)
         return false;
     parameters.screenProperties = WTFMove(*screenProperties);
+#endif
+
+#if PLATFORM(MAC)
     if (!decoder.decode(parameters.useOverlayScrollbars))
         return false;
 #endif
@@ -456,6 +457,12 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     parameters.neSessionManagerExtensionHandle = WTFMove(*neSessionManagerExtensionHandle);
 
+    Optional<Optional<SandboxExtension::Handle>> mapDBExtensionHandle;
+    decoder >> mapDBExtensionHandle;
+    if (!mapDBExtensionHandle)
+        return false;
+    parameters.mapDBExtensionHandle = WTFMove(*mapDBExtensionHandle);
+
     Optional<bool> systemHasBattery;
     decoder >> systemHasBattery;
     if (!systemHasBattery)
@@ -467,12 +474,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!mimeTypesMap)
         return false;
     parameters.mimeTypesMap = WTFMove(*mimeTypesMap);
-
-    Optional<HashMap<String, String>> mapUTIFromMIMEType;
-    decoder >> mapUTIFromMIMEType;
-    if (!mapUTIFromMIMEType)
-        return false;
-    parameters.mapUTIFromMIMEType = WTFMove(*mapUTIFromMIMEType);
 #endif
 
 #if PLATFORM(IOS_FAMILY)

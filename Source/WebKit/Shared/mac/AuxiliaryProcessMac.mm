@@ -41,6 +41,7 @@
 #import <mach/mach.h>
 #import <mach/task.h>
 #import <pal/crypto/CryptoDigest.h>
+#import <pal/spi/cocoa/CoreServicesSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pwd.h>
 #import <stdlib.h>
@@ -65,16 +66,6 @@
 #else
 #define USE_CACHE_COMPILED_SANDBOX 0
 #endif
-
-#if PLATFORM(MACCATALYST) && USE(APPLE_INTERNAL_SDK)
-enum LSSessionID {
-    kLSDefaultSessionID = -2,
-};
-#endif
-
-typedef bool (^LSServerConnectionAllowedBlock) ( CFDictionaryRef optionsRef );
-extern "C" void _LSSetApplicationLaunchServicesServerConnectionStatus(uint64_t flags, LSServerConnectionAllowedBlock block);
-extern "C" CFDictionaryRef _LSApplicationCheckIn(LSSessionID sessionID, CFDictionaryRef applicationInfo);
 
 namespace WebKit {
 using namespace WebCore;
@@ -151,6 +142,11 @@ static void initializeTimerCoalescingPolicy()
 
 void AuxiliaryProcess::launchServicesCheckIn()
 {
+#if HAVE(CSCHECKFIXDISABLE)
+    // _CSCheckFixDisable() needs to be called before checking in with Launch Services.
+    _CSCheckFixDisable();
+#endif
+
     _LSSetApplicationLaunchServicesServerConnectionStatus(0, 0);
     RetainPtr<CFDictionaryRef> unused = _LSApplicationCheckIn(kLSDefaultSessionID, CFBundleGetInfoDictionary(CFBundleGetMainBundle()));
 }
@@ -718,7 +714,7 @@ void AuxiliaryProcess::setQOS(int latencyQOS, int throughputQOS)
 bool AuxiliaryProcess::isSystemWebKit()
 {
     static bool isSystemWebKit = []() -> bool {
-#if HAVE(ALTERNATE_SYSTEM_LAYOUT)
+#if HAVE(READ_ONLY_SYSTEM_VOLUME)
         if ([[webKit2Bundle() bundlePath] hasPrefix:@"/Library/Apple/System/"])
             return true;
 #endif

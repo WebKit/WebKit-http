@@ -89,6 +89,9 @@ static String buildUserAgentString(const UserAgentQuirks& quirks)
     else {
         uaString.append(platformForUAString());
         uaString.appendLiteral("; ");
+#if defined(USER_AGENT_BRANDING)
+        uaString.appendLiteral(USER_AGENT_BRANDING "; ");
+#endif
         uaString.append(platformVersionForUAString());
     }
 
@@ -101,15 +104,16 @@ static String buildUserAgentString(const UserAgentQuirks& quirks)
     uaString.append(versionForUAString());
     uaString.appendLiteral(" (KHTML, like Gecko) ");
 
-    // Note that Chrome UAs advertise *both* Chrome and Safari.
+    // Note that Chrome UAs advertise *both* Chrome/X and Safari/X, but it does
+    // not advertise Version/X.
     if (quirks.contains(UserAgentQuirks::NeedsChromeBrowser)) {
         uaString.append(UserAgentQuirks::stringForQuirk(UserAgentQuirks::NeedsChromeBrowser));
         uaString.appendLiteral(" ");
-    }
-
     // Version/X is mandatory *before* Safari/X to be a valid Safari UA. See
     // https://bugs.webkit.org/show_bug.cgi?id=133403 for details.
-    uaString.appendLiteral("Version/13.0 Safari/");
+    } else
+        uaString.appendLiteral("Version/13.0 ");
+    uaString.appendLiteral("Safari/");
     uaString.append(versionForUAString());
 
     return uaString.toString();
@@ -140,6 +144,14 @@ String standardUserAgent(const String& applicationName, const String& applicatio
         if (finalApplicationVersion.isEmpty())
             finalApplicationVersion = versionForUAString();
         userAgent = standardUserAgentStatic() + ' ' + applicationName + '/' + finalApplicationVersion;
+    }
+
+    static bool checked = false;
+    if (!checked) {
+        // For release builds, we'll only check the first resource load, mainly to ensure that any
+        // configured application details or user agent branding is OK.
+        RELEASE_ASSERT_WITH_MESSAGE(isValidUserAgentHeaderValue(userAgent), "%s is not a valid user agent header", userAgent.utf8().data());
+        checked = true;
     }
     ASSERT(isValidUserAgentHeaderValue(userAgent));
     return userAgent;

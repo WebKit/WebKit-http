@@ -140,6 +140,8 @@ public:
 
     WEBCORE_EXPORT void processDidReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*);
 
+    bool isInterrupted() const { return m_interrupted; }
+
 protected:
     friend class PlatformMediaSession;
     PlatformMediaSessionManager();
@@ -180,11 +182,6 @@ private:
 
     SessionRestrictions m_restrictions[static_cast<unsigned>(PlatformMediaSession::MediaType::WebAudio) + 1];
     mutable Vector<WeakPtr<PlatformMediaSession>> m_sessions;
-
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
-    RefPtr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_canPlayToTarget { false };
-#endif
 
     bool m_interrupted { false };
     mutable bool m_isApplicationInBackground { false };

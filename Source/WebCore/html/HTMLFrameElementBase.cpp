@@ -87,7 +87,7 @@ void HTMLFrameElementBase::openURL(LockHistory lockHistory, LockBackForwardList 
         return;
 
     if (m_URL.isEmpty())
-        m_URL = WTF::blankURL().string();
+        m_URL = aboutBlankURL().string();
 
     RefPtr<Frame> parentFrame = document().frame();
     if (!parentFrame)
@@ -153,7 +153,7 @@ void HTMLFrameElementBase::didAttachRenderers()
 URL HTMLFrameElementBase::location() const
 {
     if (hasAttributeWithoutSynchronization(srcdocAttr))
-        return URL({ }, "about:srcdoc");
+        return aboutSrcDocURL();
     return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
@@ -222,7 +222,10 @@ int HTMLFrameElementBase::height()
 
 ScrollbarMode HTMLFrameElementBase::scrollingMode() const
 {
-    return equalLettersIgnoringASCIICase(attributeWithoutSynchronization(scrollingAttr), "no")
+    auto scrollingAttribute = attributeWithoutSynchronization(scrollingAttr);
+    return equalLettersIgnoringASCIICase(scrollingAttribute, "no")
+        || equalLettersIgnoringASCIICase(scrollingAttribute, "noscroll")
+        || equalLettersIgnoringASCIICase(scrollingAttribute, "off")
         ? ScrollbarAlwaysOff : ScrollbarAuto;
 }
 

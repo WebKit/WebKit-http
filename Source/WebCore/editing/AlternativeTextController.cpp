@@ -130,9 +130,11 @@ void AlternativeTextController::applyPendingCorrection(const VisibleSelection& s
     VisiblePosition startOfSelection = selectionAfterTyping.visibleStart();
     VisibleSelection currentWord = VisibleSelection(startOfWord(startOfSelection, LeftWordIfOnBoundary), endOfWord(startOfSelection, RightWordIfOnBoundary));
     if (currentWord.visibleEnd() == startOfSelection) {
-        String wordText = plainText(currentWord.toNormalizedRange().get());
-        if (wordText.length() > 0 && isAmbiguousBoundaryCharacter(wordText[wordText.length() - 1]))
-            doApplyCorrection = false;
+        if (auto wordRange = currentWord.firstRange()) {
+            String wordText = plainText(*wordRange);
+            if (!wordText.isEmpty() && isAmbiguousBoundaryCharacter(wordText[wordText.length() - 1]))
+                doApplyCorrection = false;
+        }
     }
     if (doApplyCorrection)
         handleAlternativeTextUIResult(dismissSoon(ReasonForDismissingAlternativeTextAccepted)); 
@@ -155,7 +157,7 @@ void AlternativeTextController::show(Range& rangeToReplace, const String& replac
     FloatRect boundingBox = rootViewRectForRange(&rangeToReplace);
     if (boundingBox.isEmpty())
         return;
-    m_originalText = plainText(&rangeToReplace);
+    m_originalText = plainText(rangeToReplace);
     m_rangeWithAlternative = &rangeToReplace;
     m_details = replacement;
     m_isActive = true;
@@ -249,7 +251,7 @@ void AlternativeTextController::timerFired()
         if (replacementString.isEmpty())
             break;
         m_isActive = true;
-        m_originalText = plainText(m_rangeWithAlternative.get());
+        m_originalText = plainText(*m_rangeWithAlternative);
         FloatRect boundingBox = rootViewRectForRange(m_rangeWithAlternative.get());
         if (!boundingBox.isEmpty()) {
             if (AlternativeTextClient* client = alternativeTextClient())
@@ -258,9 +260,9 @@ void AlternativeTextController::timerFired()
     }
         break;
     case AlternativeTextTypeSpellingSuggestions: {
-        if (!m_rangeWithAlternative || plainText(m_rangeWithAlternative.get()) != m_originalText)
+        if (!m_rangeWithAlternative || plainText(*m_rangeWithAlternative) != m_originalText)
             break;
-        String paragraphText = plainText(&TextCheckingParagraph(*m_rangeWithAlternative).paragraphRange());
+        String paragraphText = plainText(TextCheckingParagraph(*m_rangeWithAlternative).paragraphRange());
         Vector<String> suggestions;
         textChecker()->getGuessesForWord(m_originalText, paragraphText, m_frame.selection().selection(), suggestions);
         if (suggestions.isEmpty()) {
@@ -303,7 +305,7 @@ void AlternativeTextController::handleAlternativeTextUIResult(const String& resu
     if (!rangeWithAlternative || m_frame.document() != &rangeWithAlternative->ownerDocument())
         return;
 
-    String currentWord = plainText(rangeWithAlternative);
+    String currentWord = plainText(*rangeWithAlternative);
     // Check to see if the word we are about to correct has been changed between timer firing and callback being triggered.
     if (currentWord != m_originalText)
         return;
@@ -416,7 +418,7 @@ TextCheckerClient* AlternativeTextController::textChecker()
     return nullptr;
 }
 
-void AlternativeTextController::recordAutocorrectionResponse(AutocorrectionResponse response, const String& replacedString, Range* replacementRange)
+void AlternativeTextController::recordAutocorrectionResponse(AutocorrectionResponse response, const String& replacedString, const SimpleRange& replacementRange)
 {
     if (auto client = alternativeTextClient())
         client->recordAutocorrectionResponse(response, replacedString, plainText(replacementRange));
@@ -475,7 +477,7 @@ void AlternativeTextController::markPrecedingWhitespaceForDeletedAutocorrectionA
         return;
 
     auto precedingCharacterRange = Range::create(*m_frame.document(), precedingCharacterPosition, endOfSelection);
-    String string = plainText(precedingCharacterRange.ptr());
+    String string = plainText(precedingCharacterRange);
     if (string.isEmpty() || !deprecatedIsEditingWhitespace(string[string.length() - 1]))
         return;
 
@@ -524,7 +526,7 @@ bool AlternativeTextController::respondToMarkerAtEndOfWord(const DocumentMarker&
         return false;
     Node* node = endOfWordPosition.containerNode();
     auto wordRange = Range::create(*m_frame.document(), node, marker.startOffset(), node, marker.endOffset());
-    String currentWord = plainText(wordRange.ptr());
+    String currentWord = plainText(wordRange);
     if (!currentWord.length())
         return false;
     m_originalText = currentWord;
@@ -580,52 +582,38 @@ String AlternativeTextController::markerDescriptionForAppliedAlternativeText(Alt
 
 void AlternativeTextController::applyAlternativeTextToRange(const Range& range, const String& alternative, AlternativeTextType alternativeType, OptionSet<DocumentMarker::MarkerType> markerTypesToAdd)
 {
-    auto paragraphRangeContainingCorrection = range.cloneRange();
-
-    setStart(paragraphRangeContainingCorrection.ptr(), startOfParagraph(range.startPosition()));
-    setEnd(paragraphRangeContainingCorrection.ptr(), endOfParagraph(range.endPosition()));
-
     // After we replace the word at range rangeWithAlternative, we need to add markers to that range.
-    // However, once the replacement took place, the value of rangeWithAlternative is not valid anymore.
-    // So before we carry out the replacement, we need to store the start position of rangeWithAlternative
-    // relative to the start position of the containing paragraph. We use correctionStartOffsetInParagraph
-    // to store this value. In order to obtain this offset, we need to first create a range
-    // which spans from the start of paragraph to the start position of rangeWithAlternative.
-    auto correctionStartOffsetInParagraphAsRange = Range::create(paragraphRangeContainingCorrection->startContainer().document(), paragraphRangeContainingCorrection->startPosition(), paragraphRangeContainingCorrection->startPosition());
-
-    Position startPositionOfRangeWithAlternative = range.startPosition();
-    if (!startPositionOfRangeWithAlternative.containerNode())
-        return;
-    auto setEndResult = correctionStartOffsetInParagraphAsRange->setEnd(*startPositionOfRangeWithAlternative.containerNode(), startPositionOfRangeWithAlternative.computeOffsetInContainerNode());
-    if (setEndResult.hasException())
-        return;
+    // So before we carry out the replacement,store the start position relative to the start position
+    // of the containing paragraph.
 
     // Take note of the location of autocorrection so that we can add marker after the replacement took place.
-    int correctionStartOffsetInParagraph = TextIterator::rangeLength(correctionStartOffsetInParagraphAsRange.ptr());
-
-    // Clone the range, since the caller of this method may want to keep the original range around.
-    auto rangeWithAlternative = range.cloneRange();
-
-    ContainerNode& rootNode = paragraphRangeContainingCorrection->startContainer().treeScope().rootNode();
-    int paragraphStartIndex = TextIterator::rangeLength(Range::create(rootNode.document(), &rootNode, 0, &paragraphRangeContainingCorrection->startContainer(), paragraphRangeContainingCorrection->startOffset()).ptr());
-    SpellingCorrectionCommand::create(rangeWithAlternative, alternative)->apply();
-    // Recalculate pragraphRangeContainingCorrection, since SpellingCorrectionCommand modified the DOM, such that the original paragraphRangeContainingCorrection is no longer valid. Radar: 10305315 Bugzilla: 89526
-    auto updatedParagraphRangeContainingCorrection = TextIterator::rangeFromLocationAndLength(&rootNode, paragraphStartIndex, correctionStartOffsetInParagraph + alternative.length());
-    if (!updatedParagraphRangeContainingCorrection)
+    auto correctionStartPosition = range.startPosition();
+    auto correctionStart { makeBoundaryPoint(correctionStartPosition) };
+    auto paragraphStart { makeBoundaryPoint(startOfParagraph(correctionStartPosition)) };
+    if (!correctionStart || !paragraphStart)
         return;
+    auto treeScopeRoot = makeRef(correctionStart->container->treeScope().rootNode());
+    auto treeScopeStart = BoundaryPoint { treeScopeRoot.get(), 0 };
+    auto correctionOffsetInParagraph = characterCount({ *paragraphStart, *correctionStart });
+    auto paragraphOffsetInTreeScope = characterCount({ treeScopeStart, *paragraphStart });
 
-    setEnd(updatedParagraphRangeContainingCorrection.get(), m_frame.selection().selection().start());
-    RefPtr<Range> replacementRange = TextIterator::subrange(*updatedParagraphRangeContainingCorrection, correctionStartOffsetInParagraph, alternative.length());
-    String newText = plainText(replacementRange.get());
+    // Clone the range, since the caller of may keep a refernece to the original range and modify it.
+    SpellingCorrectionCommand::create(range.cloneRange(), alternative)->apply();
+
+    // Recalculate pragraphRangeContainingCorrection, since SpellingCorrectionCommand modified the DOM, such that the original paragraphRangeContainingCorrection is no longer valid. Radar: 10305315 Bugzilla: 89526
+    auto updatedParagraphStartContainingCorrection = resolveCharacterLocation(makeRangeSelectingNodeContents(treeScopeRoot), paragraphOffsetInTreeScope);
+    auto updatedParagraphEndContainingCorrection = makeBoundaryPoint(m_frame.selection().selection().start());
+    if (!updatedParagraphEndContainingCorrection)
+        return;
+    auto replacementRange = resolveCharacterRange({ updatedParagraphStartContainingCorrection, *updatedParagraphEndContainingCorrection }, CharacterRange(correctionOffsetInParagraph, alternative.length()));
 
     // Check to see if replacement succeeded.
-    if (newText != alternative)
+    if (plainText(replacementRange) != alternative)
         return;
 
-    DocumentMarkerController& markers = replacementRange->startContainer().document().markers();
-
+    auto& markers = replacementRange.start.document().markers();
     for (auto markerType : markerTypesToAdd)
-        markers.addMarker(*replacementRange, markerType, markerDescriptionForAppliedAlternativeText(alternativeType, markerType));
+        markers.addMarker(replacementRange, markerType, markerDescriptionForAppliedAlternativeText(alternativeType, markerType));
 }
 
 #endif

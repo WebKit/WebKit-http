@@ -32,6 +32,7 @@
 #include "ArrayConstructor.h"
 #include "BasicBlockLocation.h"
 #include "BuiltinNames.h"
+#include "ByValInfo.h"
 #include "BytecodeGenerator.h"
 #include "BytecodeUseDef.h"
 #include "CacheableIdentifierInlines.h"
@@ -242,11 +243,11 @@ private:
     template<typename Op>
     void parseGetById(const Instruction*);
     void handleGetById(
-        VirtualRegister destination, SpeculatedType, Node* base, unsigned identifierNumber, GetByStatus, AccessType, unsigned instructionSize);
+        VirtualRegister destination, SpeculatedType, Node* base, CacheableIdentifier, unsigned identifierNumber, GetByStatus, AccessType, unsigned instructionSize);
     void emitPutById(
-        Node* base, unsigned identifierNumber, Node* value,  const PutByIdStatus&, bool isDirect);
+        Node* base, CacheableIdentifier, Node* value,  const PutByIdStatus&, bool isDirect);
     void handlePutById(
-        Node* base, unsigned identifierNumber, Node* value, const PutByIdStatus&,
+        Node* base, CacheableIdentifier, unsigned identifierNumber, Node* value, const PutByIdStatus&,
         bool isDirect, unsigned intructionSize);
     
     // Either register a watchpoint or emit a check for this condition. Returns false if the
@@ -2854,8 +2855,8 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
 
                 // Check that regExpObject's exec is actually the primodial RegExp.prototype.exec.
                 UniquedStringImpl* execPropertyID = m_vm->propertyNames->exec.impl();
-                unsigned execIndex = m_graph.identifiers().ensure(execPropertyID);
-                Node* actualProperty = addToGraph(TryGetById, OpInfo(execIndex), OpInfo(SpecFunction), Edge(regExpObject, CellUse));
+                m_graph.identifiers().ensure(execPropertyID);
+                Node* actualProperty = addToGraph(TryGetById, OpInfo(CacheableIdentifier::createFromImmortalIdentifier(execPropertyID)), OpInfo(SpecFunction), Edge(regExpObject, CellUse));
                 FrozenValue* regExpPrototypeExec = m_graph.freeze(globalObject->regExpProtoExecFunction());
                 addToGraph(CheckCell, OpInfo(regExpPrototypeExec), Edge(actualProperty, CellUse));
             }
@@ -4428,7 +4429,7 @@ Node* ByteCodeParser::store(Node* base, unsigned identifier, const PutByIdVarian
 }
 
 void ByteCodeParser::handleGetById(
-    VirtualRegister destination, SpeculatedType prediction, Node* base, unsigned identifierNumber,
+    VirtualRegister destination, SpeculatedType prediction, Node* base, CacheableIdentifier identifier, unsigned identifierNumber,
     GetByStatus getByStatus, AccessType type, unsigned instructionSize)
 {
     // Attempt to reduce the set of things in the GetByStatus.
@@ -4480,7 +4481,7 @@ void ByteCodeParser::handleGetById(
     ASSERT(type == AccessType::GetById || type == AccessType::GetByIdDirect ||  !getByStatus.makesCalls());
     if (!getByStatus.isSimple() || !getByStatus.numVariants() || !Options::useAccessInlining()) {
         set(destination,
-            addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+            addToGraph(getById, OpInfo(identifier), OpInfo(prediction), base));
         return;
     }
     
@@ -4493,7 +4494,7 @@ void ByteCodeParser::handleGetById(
             || !Options::usePolymorphicAccessInlining()
             || getByStatus.numVariants() > Options::maxPolymorphicAccessInliningListSize()) {
             set(destination,
-                addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+                addToGraph(getById, OpInfo(identifier), OpInfo(prediction), base));
             return;
         }
 
@@ -4507,7 +4508,7 @@ void ByteCodeParser::handleGetById(
         for (const GetByIdVariant& variant : getByStatus.variants()) {
             if (variant.intrinsic() != NoIntrinsic) {
                 set(destination,
-                    addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+                    addToGraph(getById, OpInfo(identifier), OpInfo(prediction), base));
                 return;
             }
 
@@ -4522,7 +4523,7 @@ void ByteCodeParser::handleGetById(
             GetByOffsetMethod method = planLoad(variant.conditionSet());
             if (!method) {
                 set(destination,
-                    addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+                    addToGraph(getById, OpInfo(identifier), OpInfo(prediction), base));
                 return;
             }
             
@@ -4549,7 +4550,7 @@ void ByteCodeParser::handleGetById(
     Node* loadedValue = load(prediction, base, identifierNumber, variant);
     if (!loadedValue) {
         set(destination,
-            addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+            addToGraph(getById, OpInfo(identifier), OpInfo(prediction), base));
         return;
     }
 
@@ -4614,22 +4615,22 @@ void ByteCodeParser::handleGetById(
 }
 
 void ByteCodeParser::emitPutById(
-    Node* base, unsigned identifierNumber, Node* value, const PutByIdStatus& putByIdStatus, bool isDirect)
+    Node* base, CacheableIdentifier identifier, Node* value, const PutByIdStatus& putByIdStatus, bool isDirect)
 {
     if (isDirect)
-        addToGraph(PutByIdDirect, OpInfo(identifierNumber), base, value);
+        addToGraph(PutByIdDirect, OpInfo(identifier), base, value);
     else
-        addToGraph(putByIdStatus.makesCalls() ? PutByIdFlush : PutById, OpInfo(identifierNumber), base, value);
+        addToGraph(putByIdStatus.makesCalls() ? PutByIdFlush : PutById, OpInfo(identifier), base, value);
 }
 
 void ByteCodeParser::handlePutById(
-    Node* base, unsigned identifierNumber, Node* value,
+    Node* base, CacheableIdentifier identifier, unsigned identifierNumber, Node* value,
     const PutByIdStatus& putByIdStatus, bool isDirect, unsigned instructionSize)
 {
     if (!putByIdStatus.isSimple() || !putByIdStatus.numVariants() || !Options::useAccessInlining()) {
         if (!putByIdStatus.isSet())
             addToGraph(ForceOSRExit);
-        emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+        emitPutById(base, identifier, value, putByIdStatus, isDirect);
         return;
     }
     
@@ -4637,7 +4638,7 @@ void ByteCodeParser::handlePutById(
         if (!m_graph.m_plan.isFTL() || putByIdStatus.makesCalls()
             || !Options::usePolymorphicAccessInlining()
             || putByIdStatus.numVariants() > Options::maxPolymorphicAccessInliningListSize()) {
-            emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+            emitPutById(base, identifier, value, putByIdStatus, isDirect);
             return;
         }
         
@@ -4646,7 +4647,7 @@ void ByteCodeParser::handlePutById(
                 if (putByIdStatus[variantIndex].kind() != PutByIdVariant::Transition)
                     continue;
                 if (!check(putByIdStatus[variantIndex].conditionSet())) {
-                    emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+                    emitPutById(base, identifier, value, putByIdStatus, isDirect);
                     return;
                 }
             }
@@ -4689,7 +4690,7 @@ void ByteCodeParser::handlePutById(
 
         addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.oldStructure())), base);
         if (!check(variant.conditionSet())) {
-            emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+            emitPutById(base, identifier, value, putByIdStatus, isDirect);
             return;
         }
 
@@ -4756,7 +4757,7 @@ void ByteCodeParser::handlePutById(
 
         Node* loadedValue = load(SpecCellOther, base, identifierNumber, variant);
         if (!loadedValue) {
-            emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+            emitPutById(base, identifier, value, putByIdStatus, isDirect);
             return;
         }
         
@@ -4800,7 +4801,7 @@ void ByteCodeParser::handlePutById(
     }
     
     default: {
-        emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
+        emitPutById(base, identifier, value, putByIdStatus, isDirect);
         return;
     } }
 }
@@ -4824,6 +4825,7 @@ void ByteCodeParser::parseGetById(const Instruction* currentInstruction)
     
     Node* base = get(bytecode.m_base);
     unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
+    UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
     
     AccessType type = AccessType::GetById;
     unsigned opcodeLength = currentInstruction->size();
@@ -4837,8 +4839,7 @@ void ByteCodeParser::parseGetById(const Instruction* currentInstruction)
         m_inlineStackTop->m_baselineMap, m_icContextStack,
         currentCodeOrigin());
 
-    handleGetById(
-        bytecode.m_dst, prediction, base, identifierNumber, getByStatus, type, opcodeLength);
+    handleGetById(bytecode.m_dst, prediction, base, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid), identifierNumber, getByStatus, type, opcodeLength);
 }
 
 static uint64_t makeDynamicVarOpInfo(unsigned identifierNumber, unsigned getPutInfo)
@@ -5744,9 +5745,9 @@ void ByteCodeParser::parseBlock(unsigned limit)
             Node* property = get(bytecode.m_property);
             bool shouldCompileAsGetById = false;
             GetByStatus getByStatus = GetByStatus::computeFor(m_inlineStackTop->m_profiledBlock, m_inlineStackTop->m_baselineMap, m_icContextStack, currentCodeOrigin());
-
             unsigned identifierNumber = 0;
 
+            CacheableIdentifier identifier;
             if (!m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)
                 && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType)
                 && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
@@ -5754,7 +5755,8 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 // FIXME: In the future, we should be able to do something like MultiGetByOffset in a multi identifier mode.
                 // That way, we could both switch on multiple structures and multiple identifiers (or int 32 properties).
                 // https://bugs.webkit.org/show_bug.cgi?id=204216
-                if (CacheableIdentifier identifier = getByStatus.singleIdentifier()) {
+                identifier = getByStatus.singleIdentifier();
+                if (identifier) {
                     UniquedStringImpl* uid = identifier.uid();
                     identifierNumber = m_graph.identifiers().ensure(identifier.uid());
                     if (identifier.isCell()) {
@@ -5770,7 +5772,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             }
 
             if (shouldCompileAsGetById)
-                handleGetById(bytecode.m_dst, prediction, base, identifierNumber, getByStatus, AccessType::GetById, currentInstruction->size());
+                handleGetById(bytecode.m_dst, prediction, base, identifier, identifierNumber, getByStatus, AccessType::GetById, currentInstruction->size());
             else {
                 ArrayMode arrayMode = getArrayMode(bytecode.metadata(codeBlock).m_arrayProfile, Array::Read);
                 // FIXME: We could consider making this not vararg, since it only uses three child
@@ -5880,9 +5882,9 @@ void ByteCodeParser::parseBlock(unsigned limit)
             Node* base = get(bytecode.m_base);
             Node* thisValue = get(bytecode.m_thisValue);
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
+            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
 
-            set(bytecode.m_dst,
-                addToGraph(GetByIdWithThis, OpInfo(identifierNumber), OpInfo(prediction), base, thisValue));
+            set(bytecode.m_dst, addToGraph(GetByIdWithThis, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), OpInfo(prediction), base, thisValue));
 
             NEXT_OPCODE(op_get_by_id_with_this);
         }
@@ -5891,6 +5893,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             Node* value = get(bytecode.m_value);
             Node* base = get(bytecode.m_base);
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
+            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
             bool direct = !!(bytecode.m_flags & PutByIdIsDirect);
 
             PutByIdStatus putByIdStatus = PutByIdStatus::computeFor(
@@ -5898,7 +5901,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 m_inlineStackTop->m_baselineMap, m_icContextStack,
                 currentCodeOrigin(), m_graph.identifiers()[identifierNumber]);
             
-            handlePutById(base, identifierNumber, value, putByIdStatus, direct, currentInstruction->size());
+            handlePutById(base, CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid), identifierNumber, value, putByIdStatus, direct, currentInstruction->size());
             NEXT_OPCODE(op_put_by_id);
         }
 
@@ -5908,8 +5911,9 @@ void ByteCodeParser::parseBlock(unsigned limit)
             Node* thisValue = get(bytecode.m_thisValue);
             Node* value = get(bytecode.m_value);
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
+            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
 
-            addToGraph(PutByIdWithThis, OpInfo(identifierNumber), base, thisValue, value);
+            addToGraph(PutByIdWithThis, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), base, thisValue, value);
             NEXT_OPCODE(op_put_by_id_with_this);
         }
 
@@ -5943,7 +5947,8 @@ void ByteCodeParser::parseBlock(unsigned limit)
             auto bytecode = currentInstruction->as<OpDelById>();
             Node* base = get(bytecode.m_base);
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
-            set(bytecode.m_dst, addToGraph(DeleteById, OpInfo(identifierNumber), base));
+            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
+            set(bytecode.m_dst, addToGraph(DeleteById, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), base));
             NEXT_OPCODE(op_del_by_id);
         }
 
@@ -6666,7 +6671,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 if (status.state() != GetByStatus::Simple
                     || status.numVariants() != 1
                     || status[0].structureSet().size() != 1) {
-                    set(bytecode.m_dst, addToGraph(GetByIdFlush, OpInfo(identifierNumber), OpInfo(prediction), get(bytecode.m_scope)));
+                    set(bytecode.m_dst, addToGraph(GetByIdFlush, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), OpInfo(prediction), get(bytecode.m_scope)));
                     break;
                 }
 
@@ -6845,7 +6850,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 if (status.numVariants() != 1
                     || status[0].kind() != PutByIdVariant::Replace
                     || status[0].structure().size() != 1) {
-                    addToGraph(PutById, OpInfo(identifierNumber), get(bytecode.m_scope), get(bytecode.m_value));
+                    addToGraph(PutById, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), get(bytecode.m_scope), get(bytecode.m_value));
                     break;
                 }
                 Node* base = weakJSConstant(globalObject);
@@ -7180,7 +7185,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 }
             }
 
-            set(bytecode.m_dst, addToGraph(InById, OpInfo(identifierNumber), base));
+            set(bytecode.m_dst, addToGraph(InById, OpInfo(CacheableIdentifier::createFromIdentifierOwnedByCodeBlock(m_inlineStackTop->m_profiledBlock, uid)), base));
             NEXT_OPCODE(op_in_by_id);
         }
 
@@ -7562,6 +7567,7 @@ void ByteCodeParser::handlePutByVal(Bytecode bytecode, unsigned instructionSize)
     bool isDirect = Bytecode::opcodeID == op_put_by_val_direct;
     bool compiledAsPutById = false;
     {
+        CacheableIdentifier identifier;
         unsigned identifierNumber = std::numeric_limits<unsigned>::max();
         PutByIdStatus putByIdStatus;
         {
@@ -7576,13 +7582,16 @@ void ByteCodeParser::handlePutByVal(Bytecode bytecode, unsigned instructionSize)
                 && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType)
                 && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
                 compiledAsPutById = true;
-                identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
+                identifier = byValInfo->cachedId;
+                identifierNumber = m_graph.identifiers().ensure(identifier.uid());
                 UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
+                FrozenValue* frozen = nullptr;
+                if (identifier.isCell())
+                    frozen = m_graph.freezeStrong(identifier.cell());
 
-                if (Symbol* symbol = byValInfo->cachedSymbol.get()) {
-                    FrozenValue* frozen = m_graph.freezeStrong(symbol);
+                if (identifier.isSymbolCell())
                     addToGraph(CheckCell, OpInfo(frozen), property);
-                } else {
+                else {
                     ASSERT(!uid->isSymbol());
                     addToGraph(CheckIdent, OpInfo(uid), property);
                 }
@@ -7595,7 +7604,7 @@ void ByteCodeParser::handlePutByVal(Bytecode bytecode, unsigned instructionSize)
         }
 
         if (compiledAsPutById)
-            handlePutById(base, identifierNumber, value, putByIdStatus, isDirect, instructionSize);
+            handlePutById(base, identifier, identifierNumber, value, putByIdStatus, isDirect, instructionSize);
     }
 
     if (!compiledAsPutById) {

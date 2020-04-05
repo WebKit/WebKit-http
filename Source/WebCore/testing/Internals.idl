@@ -239,7 +239,10 @@ enum CompositingPolicy {
     // Spatial Navigation testing
     [MayThrowException] unsigned long lastSpatialNavigationCandidateCount();
 
+    readonly attribute unsigned long inflightBeaconsCount;
+
     // CSS Animation testing.
+    boolean animationWithIdExists(DOMString id);
     unsigned long numberOfActiveAnimations();
     [MayThrowException] void suspendAnimations();
     [MayThrowException] void resumeAnimations();
@@ -322,12 +325,12 @@ enum CompositingPolicy {
 
     [MayThrowException] void scrollElementToRect(Element element, long x, long y, long w, long h);
 
-    Range? rangeFromLocationAndLength(Element scope, long rangeLocation, long rangeLength);
+    Range? rangeFromLocationAndLength(Element scope, unsigned long rangeLocation, unsigned long rangeLength);
     unsigned long locationFromRange(Element scope, Range range);
     unsigned long lengthFromRange(Element scope, Range range);
     DOMString rangeAsText(Range range);
     DOMString rangeAsTextUsingBackwardsTextIterator(Range range);
-    Range subrange(Range range, long rangeLocation, long rangeLength);
+    Range subrange(Range range, unsigned long rangeLocation, unsigned long rangeLength);
     [MayThrowException] Range? rangeForDictionaryLookupAtLocation(long x, long y);
     Range? rangeOfStringNearLocation(Range range, DOMString text, long targetOffset);
 
@@ -561,7 +564,7 @@ enum CompositingPolicy {
     void forceReload(boolean endToEnd);
     void reloadExpiredOnly();
 
-    void enableAutoSizeMode(boolean enabled, long width, long height);
+    void enableFixedWidthAutoSizeMode(boolean enabled, long width, long height);
 
     [Conditional=VIDEO] sequence<DOMString> mediaResponseSources(HTMLMediaElement media);
     [Conditional=VIDEO] sequence<DOMString> mediaResponseContentRanges(HTMLMediaElement media);
@@ -587,6 +590,7 @@ enum CompositingPolicy {
     [Conditional=VIDEO_TRACK, MayThrowException] void setPrimaryAudioTrackLanguageOverride(DOMString language);
     [Conditional=VIDEO_TRACK, MayThrowException] void setCaptionDisplayMode(DOMString mode);
     [Conditional=VIDEO_TRACK] TextTrackCueGeneric createGenericCue(double startTime, double endTime, DOMString text);
+    [Conditional=VIDEO_TRACK, MayThrowException] DOMString textTrackBCP47Language(TextTrack track);
 
     [Conditional=VIDEO] TimeRanges createTimeRanges(Float32Array startTimes, Float32Array
      endTimes);
@@ -766,7 +770,7 @@ enum CompositingPolicy {
     boolean audioSessionActive();
 
     [Conditional=SERVICE_WORKER] Promise<boolean> hasServiceWorkerRegistration(DOMString scopeURL);
-    [Conditional=SERVICE_WORKER] void terminateServiceWorker(ServiceWorker worker);
+    [Conditional=SERVICE_WORKER] Promise<void> terminateServiceWorker(ServiceWorker worker);
     [Conditional=SERVICE_WORKER] Promise<boolean> isServiceWorkerRunning(ServiceWorker worker);
 
     [CallWith=Document, Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
@@ -852,8 +856,12 @@ enum CompositingPolicy {
 
     DOMString mediaMIMETypeForExtension(DOMString extension);
 
-    DOMString getUTIFromMIMEType(DOMString mimeType);
     DOMString getUTIFromTag(DOMString tagClass, DOMString tag, DOMString conformingToUTI);
 
     boolean supportsPictureInPicture();
+
+    boolean isRemoteUIAppForAccessibility();
+
+    unsigned long createSleepDisabler(DOMString reason, boolean display);
+    boolean destroySleepDisabler(unsigned long identifier);
 };

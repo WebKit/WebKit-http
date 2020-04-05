@@ -858,25 +858,31 @@ static NSUInteger swizzledEventPressedMouseButtons()
     if ([phaseName isEqualToString: @"none"])
         phase = 0;
     else if ([phaseName isEqualToString: @"began"])
-        phase = 1; // kCGScrollPhaseBegan
+        phase = kCGScrollPhaseBegan;
     else if ([phaseName isEqualToString: @"changed"])
-        phase = 2; // kCGScrollPhaseChanged;
+        phase = kCGScrollPhaseChanged;
     else if ([phaseName isEqualToString: @"ended"])
-        phase = 4; // kCGScrollPhaseEnded
+        phase = kCGScrollPhaseEnded;
     else if ([phaseName isEqualToString: @"cancelled"])
-        phase = 8; // kCGScrollPhaseCancelled
+        phase = kCGScrollPhaseCancelled;
     else if ([phaseName isEqualToString: @"maybegin"])
-        phase = 128; // kCGScrollPhaseMayBegin
+        phase = kCGScrollPhaseMayBegin;
 
     uint32_t momentum = 0;
     if ([momentumName isEqualToString: @"none"])
-        momentum = 0; //kCGMomentumScrollPhaseNone;
+        momentum = kCGMomentumScrollPhaseNone;
     else if ([momentumName isEqualToString:@"begin"])
-        momentum = 1; // kCGMomentumScrollPhaseBegin;
+        momentum = kCGMomentumScrollPhaseBegin;
     else if ([momentumName isEqualToString:@"continue"])
-        momentum = 2; // kCGMomentumScrollPhaseContinue;
+        momentum = kCGMomentumScrollPhaseContinue;
     else if ([momentumName isEqualToString:@"end"])
-        momentum = 3; // kCGMomentumScrollPhaseEnd;
+        momentum = kCGMomentumScrollPhaseEnd;
+
+    if (phase == kCGScrollPhaseEnded || phase == kCGScrollPhaseCancelled)
+        _sentWheelPhaseEndOrCancel = YES;
+
+    if (momentum == kCGMomentumScrollPhaseEnd)
+        _sentMomentumPhaseEnd = YES;
 
     CGEventRef cgScrollEvent = CGEventCreateScrollWheelEvent(NULL, kCGScrollEventUnitLine, 2, y, x);
 
@@ -1389,6 +1395,8 @@ static NSUInteger swizzledEventPressedMouseButtons()
     if (!frame)
         return;
 
+    _sentWheelPhaseEndOrCancel = NO;
+    _sentMomentumPhaseEnd = NO;
     WebCoreTestSupport::monitorWheelEvents(*frame);
 #endif
 }
@@ -1405,7 +1413,7 @@ static NSUInteger swizzledEventPressedMouseButtons()
         return;
 
     JSGlobalContextRef globalContext = [mainFrame globalContext];
-    WebCoreTestSupport::setTestCallbackAndStartNotificationTimer(*frame, globalContext, jsCallbackFunction);
+    WebCoreTestSupport::setWheelEventMonitorTestCallbackAndStartMonitoring(_sentWheelPhaseEndOrCancel, _sentMomentumPhaseEnd, *frame, globalContext, jsCallbackFunction);
 #endif
 }
 

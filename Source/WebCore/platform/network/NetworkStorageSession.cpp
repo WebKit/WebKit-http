@@ -88,6 +88,14 @@ bool NetworkStorageSession::shouldBlockThirdPartyCookiesButKeepFirstPartyCookies
     return m_registrableDomainsToBlockButKeepCookiesFor.contains(registrableDomain);
 }
 
+#if !PLATFORM(COCOA)
+void NetworkStorageSession::setAllCookiesToSameSiteStrict(const RegistrableDomain&, CompletionHandler<void()>&& completionHandler)
+{
+    // Not implemented.
+    completionHandler();
+}
+#endif
+
 bool NetworkStorageSession::hasHadUserInteractionAsFirstParty(const RegistrableDomain& registrableDomain) const
 {
     if (registrableDomain.isEmpty())
@@ -166,14 +174,6 @@ void NetworkStorageSession::setDomainsWithUserInteractionAsFirstParty(const Vect
 {
     m_registrableDomainsWithUserInteractionAsFirstParty.clear();
     m_registrableDomainsWithUserInteractionAsFirstParty.add(domains.begin(), domains.end());
-}
-
-void NetworkStorageSession::removePrevalentDomains(const Vector<RegistrableDomain>& domains)
-{
-    for (auto& domain : domains) {
-        m_registrableDomainsToBlockAndDeleteCookiesFor.remove(domain);
-        m_registrableDomainsToBlockButKeepCookiesFor.remove(domain);
-    }
 }
 
 bool NetworkStorageSession::hasStorageAccess(const RegistrableDomain& resourceDomain, const RegistrableDomain& firstPartyDomain, Optional<FrameIdentifier> frameID, PageIdentifier pageID) const

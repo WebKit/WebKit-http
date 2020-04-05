@@ -36,7 +36,7 @@
 #include "InlineTextItem.h"
 #include "IntRect.h"
 #include "LayoutContainerBox.h"
-#include "LayoutDescendantIterator.h"
+#include "LayoutInitialContainingBlock.h"
 #include "LayoutState.h"
 #include "RenderStyle.h"
 #include "TextRun.h"
@@ -146,12 +146,12 @@ static Box absoluteDisplayBox(const Layout::LayoutState& layoutState, const Layo
     // Should never really happen but table code is way too incomplete.
     if (!layoutState.hasDisplayBox(layoutBox))
         return { };
-    if (layoutBox.isInitialContainingBlock())
+    if (is<Layout::InitialContainingBlock>(layoutBox))
         return layoutState.displayBoxForLayoutBox(layoutBox);
 
     auto absoluteBox = Box { layoutState.displayBoxForLayoutBox(layoutBox) };
-    for (auto* containerBox = layoutBox.containingBlock(); containerBox != &layoutBox.initialContainingBlock(); containerBox = containerBox->containingBlock())
-        absoluteBox.moveBy(layoutState.displayBoxForLayoutBox(*containerBox).topLeft());
+    for (auto* containingBlock = &layoutBox.containingBlock(); !is<Layout::InitialContainingBlock>(*containingBlock); containingBlock = &containingBlock->containingBlock())
+        absoluteBox.moveBy(layoutState.displayBoxForLayoutBox(*containingBlock).topLeft());
     return absoluteBox;
 }
 

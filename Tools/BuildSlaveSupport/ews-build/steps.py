@@ -37,7 +37,8 @@ import os
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
 S3URL = 'https://s3-us-west-2.amazonaws.com/'
-EWS_URL = 'https://ews-build.webkit.org/'
+EWS_BUILD_URL = 'https://ews-build.webkit.org/'
+EWS_URL = 'https://ews.webkit.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
 
@@ -192,8 +193,7 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     name = 'apply-patch'
     description = ['applying-patch']
     descriptionDone = ['Applied patch']
-    flunkOnFailure = True
-    haltOnFailure = True
+    haltOnFailure = False
     command = ['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
 
     def __init__(self, **kwargs):
@@ -224,6 +224,19 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
         if self.results != SUCCESS:
             return {u'step': u'Patch does not apply'}
         return super(ApplyPatch, self).getResultSummary()
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        patch_id = self.getProperty('patch_id', '')
+        if rc == FAILURE:
+            message = 'Patch {} does not apply'.format(patch_id)
+            if self.getProperty('buildername', '').lower() == 'commit-queue':
+                self.setProperty('bugzilla_comment_text', message.replace('Patch', 'Attachment'))
+                self.setProperty('build_finish_summary', message)
+                self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+            else:
+                self.build.buildFinished([message], FAILURE)
+        return rc
 
 
 class CheckPatchRelevance(buildstep.BuildStep):
@@ -450,9 +463,6 @@ class BugzillaMixin(object):
                     self.setProperty('patch_reviewer', patch_reviewer)
                     if self.addURLs:
                         self.addURL('Reviewed by: {}'.format(patch_reviewer), '')
-                    if patch_reviewer == patch_json.get('creator'):
-                        self._addToLog('stdio', 'Patch {} is r+ by the patch author {} itself. This seems like a mistake.\n'.format(patch_id, patch_reviewer))
-                        return 0
                     return 1
                 if review_status in ['-', '?']:
                     self._addToLog('stdio', 'Patch {} is marked r{}.\n'.format(patch_id, review_status))
@@ -1211,7 +1221,7 @@ class BuildLogLineObserver(logobserver.LogLineObserver, object):
         else:
             self.error_context_buffer.append(line)
 
-        if "rror:" in line and self.errorReceived:
+        if 'rror:' in line and self.errorReceived:
             map(self.errorReceived, self.error_context_buffer)
             self.error_context_buffer = []
 
@@ -1332,9 +1342,15 @@ class AnalyzeCompileWebKitResults(buildstep.BuildStep):
 
         self.finished(FAILURE)
         self.build.results = FAILURE
-        message = 'Patch does not build'
+        patch_id = self.getProperty('patch_id', '')
+        message = 'Patch {} does not build'.format(patch_id)
         self.descriptionDone = message
-        self.build.buildFinished([message], FAILURE)
+        if self.getProperty('buildername', '').lower() == 'commit-queue':
+            self.setProperty('bugzilla_comment_text', message)
+            self.setProperty('build_finish_summary', message)
+            self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+        else:
+            self.build.buildFinished([message], FAILURE)
 
         return defer.succeed(None)
 
@@ -1619,7 +1635,8 @@ class RunWebKitTests(shell.Test):
         self.incorrectLayoutLines = []
 
     def doStepIf(self, step):
-        return not (self.getProperty('revert') and self.getProperty('buildername', '').lower() == 'commit-queue')
+        return not ((self.getProperty('buildername', '').lower() == 'commit-queue') and
+                    (self.getProperty('revert') or self.getProperty('passed_mac_wk2')))
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
@@ -1823,7 +1840,13 @@ class AnalyzeLayoutTestsResults(buildstep.BuildStep):
         new_failures_string = ', '.join([failure_name for failure_name in new_failures])
         message = 'Found {} new test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
         self.descriptionDone = message
-        self.build.buildFinished([message], FAILURE)
+
+        if self.getProperty('buildername', '').lower() == 'commit-queue':
+            self.setProperty('bugzilla_comment_text', message)
+            self.setProperty('build_finish_summary', message)
+            self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+        else:
+            self.build.buildFinished([message], FAILURE)
         return defer.succeed(None)
 
     def report_pre_existing_failures(self, clean_tree_failures, flaky_failures):
@@ -2029,7 +2052,7 @@ class DownloadBuiltProduct(shell.ShellCommand):
 class DownloadBuiltProductFromMaster(DownloadBuiltProduct):
     command = ['python', 'Tools/BuildSlaveSupport/download-built-product',
         WithProperties('--%(configuration)s'),
-        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
+        WithProperties(EWS_BUILD_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
     haltOnFailure = True
     flunkOnFailure = True
 
@@ -2418,7 +2441,7 @@ class ApplyWatchList(shell.ShellCommand):
 
 
 class SetBuildSummary(buildstep.BuildStep):
-    name = "set-build-summary"
+    name = 'set-build-summary'
     descriptionDone = ['Set build summary']
     alwaysRun = True
     haltOnFailure = False
@@ -2441,7 +2464,7 @@ class FindModifiedChangeLogs(shell.ShellCommand):
     name = 'find-modified-changelogs'
     descriptionDone = ['Found modified ChangeLogs']
     command = ['git', 'diff', '-r', '--name-status', '--no-renames', '--no-ext-diff', '--full-index']
-    haltOnFailure = True
+    haltOnFailure = False
 
     def __init__(self, **kwargs):
         shell.ShellCommand.__init__(self, timeout=3 * 60, logEnviron=False, **kwargs)
@@ -2453,7 +2476,8 @@ class FindModifiedChangeLogs(shell.ShellCommand):
 
     def getResultSummary(self):
         if self.results != SUCCESS:
-            return {u'step': u'Failed to find list of modified ChangeLogs'}
+            patch_id = self.getProperty('patch_id', '')
+            return {u'step': u'Failed to find any modified ChangeLog in Patch {}'.format(patch_id)}
         return shell.ShellCommand.getResultSummary(self)
 
     def evaluateCommand(self, cmd):
@@ -2461,6 +2485,15 @@ class FindModifiedChangeLogs(shell.ShellCommand):
         log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
         modified_changelogs = self.extract_changelogs(log_text, self._status_regexp('MA'))
         self.setProperty('modified_changelogs', modified_changelogs)
+        if rc == FAILURE or not modified_changelogs:
+            patch_id = self.getProperty('patch_id', '')
+            message = 'Unable to find any modified ChangeLog in Patch {}'.format(patch_id)
+            if self.getProperty('buildername', '').lower() == 'commit-queue':
+                self.setProperty('bugzilla_comment_text', message.replace('Patch', 'Attachment'))
+                self.setProperty('build_finish_summary', message)
+                self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+            else:
+                self.build.buildFinished([message], FAILURE)
         return rc
 
     def is_path_to_changelog(self, path):
@@ -2484,7 +2517,7 @@ class FindModifiedChangeLogs(shell.ShellCommand):
 class CreateLocalGITCommit(shell.ShellCommand):
     name = 'create-local-git-commit'
     descriptionDone = ['Created local git commit']
-    haltOnFailure = True
+    haltOnFailure = False
 
     def __init__(self, **kwargs):
         shell.ShellCommand.__init__(self, timeout=5 * 60, logEnviron=False, **kwargs)
@@ -2492,8 +2525,9 @@ class CreateLocalGITCommit(shell.ShellCommand):
     def start(self):
         self.failure_message = None
         modified_changelogs = self.getProperty('modified_changelogs')
+        patch_id = self.getProperty('patch_id', '')
         if not modified_changelogs:
-            self.failure_message = u'No modified ChangeLog file found'
+            self.failure_message = u'No modified ChangeLog file found for Patch {}'.format(patch_id)
             self.finished(FAILURE)
             return None
 
@@ -2508,6 +2542,19 @@ class CreateLocalGITCommit(shell.ShellCommand):
         if self.results != SUCCESS:
             return {u'step': u'Failed to create git commit'}
         return shell.ShellCommand.getResultSummary(self)
+
+    def evaluateCommand(self, cmd):
+        rc = shell.ShellCommand.evaluateCommand(self, cmd)
+        if rc == FAILURE:
+            patch_id = self.getProperty('patch_id', '')
+            message = self.failure_message or 'Failed to create git commit for Patch {}'.format(patch_id)
+            if self.getProperty('buildername', '').lower() == 'commit-queue':
+                self.setProperty('bugzilla_comment_text', message.replace('Patch', 'Attachment'))
+                self.setProperty('build_finish_summary', message)
+                self.build.addStepsAfterCurrentStep([CommentOnBug(), SetCommitQueueMinusFlagOnPatch()])
+            else:
+                self.build.buildFinished([message], FAILURE)
+        return rc
 
 
 class PushCommitToWebKitRepo(shell.ShellCommand):
@@ -2561,3 +2608,39 @@ class PushCommitToWebKitRepo(shell.ShellCommand):
         if self.results != SUCCESS:
             return {u'step': u'Failed to push commit to Webkit repository'}
         return shell.ShellCommand.getResultSummary(self)
+
+
+class CheckPatchStatusOnEWSQueues(buildstep.BuildStep, BugzillaMixin):
+    name = 'check-status-on-other-ewses'
+    descriptionDone = ['Checked patch status on other queues']
+
+    def get_patch_status(self, patch_id, queue):
+        url = '{}status/{}'.format(EWS_URL, patch_id)
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                self._addToLog('stdio', 'Failed to access {} with status code: {}\n'.format(url, response.status_code))
+                return -1
+            queue_data = response.json().get(queue)
+            if not queue_data:
+                return -1
+            return queue_data.get('state')
+        except Exception as e:
+            self._addToLog('stdio', 'Failed to access {}\n'.format(url))
+            return -1
+
+    @defer.inlineCallbacks
+    def _addToLog(self, logName, message):
+        try:
+            log = self.getLog(logName)
+        except KeyError:
+            log = yield self.addLog(logName)
+        log.addStdout(message)
+
+    def start(self):
+        patch_id = self.getProperty('patch_id', '')
+        patch_status_on_mac_wk2 = self.get_patch_status(patch_id, 'mac-wk2')
+        if patch_status_on_mac_wk2 == SUCCESS:
+            self.setProperty('passed_mac_wk2', True)
+        self.finished(SUCCESS)
+        return None

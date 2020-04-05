@@ -1207,9 +1207,12 @@ IncompleteImageBorderEnabled:
   type: bool
   defaultValue: false
 
-ShouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
+ShouldDeferAsynchronousScriptsUntilAfterDocumentLoadOrFirstPaint:
   type: bool
-  defaultValue: false
+  defaultValue: true
+  humanReadableName: "Defer async scripts until DOMContentLoaded or first-paint"
+  humanReadableDescription: "Defer async scripts until DOMContentLoaded or first-paint"
+  category: experimental
 
 StorageAccessAPIEnabled:
   type: bool
@@ -1300,6 +1303,15 @@ ImageBitmapEnabled:
   humanReadableDescription: "Support for the ImageBitmap APIs"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
+
+HTTP3Enabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "HTTP3"
+  humanReadableDescription: "Enable HTTP3"
+  category: experimental
+  webcoreBinding: none
+  condition: HAVE(CFNETWORK_ALTERNATIVE_SERVICE)
 
 OffscreenCanvasEnabled:
   type: bool
@@ -1916,6 +1928,13 @@ IsFirstPartyWebsiteDataRemovalReproTestingEnabled:
   humanReadableDescription: "Remove all non-cookie website data after just 30 seconds of no user interaction when Intelligent Tracking Prevention is enabled"
   category: internal
 
+IsSameSiteStrictEnforcementEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "SameSite strict enforcement (ITP)"
+  humanReadableDescription: "Enable SameSite strict enforcement to mitigate bounce tracking"
+  category: experimental
+
 IsLoggedInAPIEnabled:
     type: bool
     defaultValue: false
@@ -1978,6 +1997,15 @@ IncrementalPDFLoadingEnabled:
   category: experimental
   condition: HAVE(INCREMENTAL_PDF_APIS)
   webcoreBinding: RuntimeEnabledFeatures
+
+WebXREnabled:
+  type: bool
+  defaultValue: defaultWebXREnabled()
+  humanReadableName: "WebXR Device API"
+  humanReadableDescription: "Adds support for accessing virtual reality (VR) and augmented reality (AR) devices, including sensors and head-mounted displays, on the Web"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEBXR)
 
 # Deprecated
 

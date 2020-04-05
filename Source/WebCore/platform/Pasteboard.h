@@ -254,6 +254,9 @@ public:
 #endif
 
 #if PLATFORM(COCOA)
+#if ENABLE(DRAG_SUPPORT)
+    WEBCORE_EXPORT static String nameOfDragPasteboard();
+#endif
     static bool shouldTreatCocoaTypeAsFile(const String&);
     WEBCORE_EXPORT static NSArray *supportedFileUploadPasteboardTypes();
     int64_t changeCount() const;

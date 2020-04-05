@@ -274,7 +274,7 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
     if (context.selector->match() == CSSSelector::PseudoElement) {
         if (context.selector->isCustomPseudoElement()) {
             // In functional pseudo class, custom pseudo elements are always disabled.
-            // FIXME: We should accept custom pseudo elements inside :matches().
+            // FIXME: We should accept custom pseudo elements inside :is()/:matches().
             if (context.inFunctionalPseudoClass)
                 return MatchResult::fails(Match::SelectorFailsCompletely);
             if (ShadowRoot* root = context.element->containingShadowRoot()) {
@@ -829,6 +829,7 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
                 break; // FIXME: Add the support for specifying relations on ShadowRoot.
             return isFirstOfType(element, element.tagQName()) && isLastOfType(element, element.tagQName());
         }
+        case CSSSelector::PseudoClassIs:
         case CSSSelector::PseudoClassMatches:
             {
                 bool hasMatchedAnything = false;
@@ -846,7 +847,7 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
                     unsigned localSpecificity = 0;
                     MatchResult result = matchRecursively(checkingContext, subcontext, localDynamicPseudoIdSet, localSpecificity);
 
-                    // Pseudo elements are not valid inside :matches
+                    // Pseudo elements are not valid inside :is()/:matches()
                     if (localDynamicPseudoIdSet)
                         continue;
 
@@ -999,20 +1000,13 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
         case CSSSelector::PseudoClassDirectFocus:
             return matchesDirectFocusPseudoClass(element);
         case CSSSelector::PseudoClassDrag:
-            addStyleRelation(checkingContext, element, Style::Relation::AffectedByDrag);
-
-            if (element.renderer() && element.renderer()->isDragging())
-                return true;
-            break;
+            return element.isBeingDragged();
         case CSSSelector::PseudoClassFocus:
             return matchesFocusPseudoClass(element);
         case CSSSelector::PseudoClassFocusWithin:
-            addStyleRelation(checkingContext, element, Style::Relation::AffectedByFocusWithin);
             return element.hasFocusWithin();
         case CSSSelector::PseudoClassHover:
             if (m_strictParsing || element.isLink() || canMatchHoverOrActiveInQuirksMode(context)) {
-                addStyleRelation(checkingContext, element, Style::Relation::AffectedByHover);
-
                 // See the comment in generateElementIsHovered() in SelectorCompiler.
                 if (checkingContext.resolvingMode == SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements && !context.isMatchElement)
                     return true;
@@ -1023,8 +1017,6 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             break;
         case CSSSelector::PseudoClassActive:
             if (m_strictParsing || element.isLink() || canMatchHoverOrActiveInQuirksMode(context)) {
-                addStyleRelation(checkingContext, element, Style::Relation::AffectedByActive);
-
                 if (element.active() || InspectorInstrumentation::forcePseudoState(element, CSSSelector::PseudoClassActive))
                     return true;
             }

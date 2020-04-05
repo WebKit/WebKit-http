@@ -1,3 +1,583 @@
+2020-04-02  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Replace UIKit background task with a RunningBoard FinishTaskInterruptable assertion
+        https://bugs.webkit.org/show_bug.cgi?id=209825
+        <rdar://problem/61118503>
+
+        Reviewed by Geoffrey Garen.
+
+        Add build-time flag for WebKit-specific assertion in RunningBoard.
+
+        * wtf/PlatformHave.h:
+
+2020-04-02  Keith Rollin  <krollin@apple.com>
+
+        Address static analysis warning in DataLog.cpp: Value stored to 'pathCharactersAvailable' is never read
+        https://bugs.webkit.org/show_bug.cgi?id=202153
+        <rdar://problem/55671845>
+
+        Reviewed by David Kilzer.
+
+        Bug 168914 introduced some code that will initialize a variable to
+        zero, but then never use that variable afterwards. Address this by
+        removing the assignment.
+
+        * wtf/DataLog.cpp:
+        (WTF::setDataFile):
+
+2020-03-31  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Update check for aarch64
+        https://bugs.webkit.org/show_bug.cgi?id=209322
+
+        Reviewed by Mark Lam.
+
+        CPU(ARM64) is used on Linux, so checking to avoid Apple platforms doesn't make much sense.
+        The comment implying that this is an Apple architecture also no longer makes sense.
+
+        * wtf/PlatformCPU.h:
+
+2020-03-31  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: destroy WebIDBServer when session is removed in network process
+        https://bugs.webkit.org/show_bug.cgi?id=209606
+        <rdar://problem/59310081>
+
+        Reviewed by Geoffrey Garen.
+
+        Add function to kill CrossThreadTaskHandler and make thread finish. Also add a callback to be called before 
+        thread finishes.
+
+        * wtf/CrossThreadTaskHandler.cpp:
+        (WTF::CrossThreadTaskHandler::CrossThreadTaskHandler):
+        (WTF::CrossThreadTaskHandler::setCompletionCallback):
+        (WTF::CrossThreadTaskHandler::kill):
+        * wtf/CrossThreadTaskHandler.h:
+
+2020-03-30  David Kilzer  <ddkilzer@apple.com>
+
+        Fix "Dead nested assignment" static analyzer warning in monthFromDayInYear()
+        <https://webkit.org/b/209718>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/DateMath.h:
+        (WTF::monthFromDayInYear): Change the last check so it doesn't
+        assign a value to `step`, thus avoiding the warning.
+
+2020-03-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a ScrollLatching log channel and improve some logging functionality
+        https://bugs.webkit.org/show_bug.cgi?id=209706
+
+        Reviewed by Darin Adler, David Kilzer.
+
+        * wtf/text/TextStream.h:
+        (WTF::ValueOrNull::ValueOrNull):
+        (WTF::operator<<):
+
+2020-03-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Define ENABLE_WHEEL_EVENT_LATCHING and use it to wrap wheel event latching code
+        https://bugs.webkit.org/show_bug.cgi?id=209693
+
+        Reviewed by Zalan Bujtas.
+
+        Define ENABLE_WHEEL_EVENT_LATCHING for macOS.
+
+        * wtf/PlatformEnable.h:
+
+2020-03-27  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        REGRESSION(r258857): Broke aarch64 JSCOnly CI
+        https://bugs.webkit.org/show_bug.cgi?id=209670
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Change aarch64 to use 4 KB rather than 64 KB as the ceiling on page size.
+
+        This change is definitely incorrect, because it will break our internal aarch64 CI that uses
+        64 KB pages. But maybe it will fix the public aarch64 CI bot that is using 4 KB pages?
+        Further investigation is required, because 64 KB should have been a safe value for all
+        platforms, but first step is to commit this and see what happens.
+
+        * wtf/PageBlock.h:
+
+2020-03-26  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        Fix various compiler warnings
+        https://bugs.webkit.org/show_bug.cgi?id=209438
+
+        Reviewed by Darin Adler.
+
+        Suppress -Wclass-memaccess warning. ConcurrentBuffer is documented to support types that are
+        bit-copyable but not copy-constructable. This is strange, but who am I to question it?
+
+        * wtf/ConcurrentBuffer.h:
+
+2020-03-25  Christopher Reid  <chris.reid@sony.com>
+
+        [PlayStation] Specify a 16 KB minimum page size
+        https://bugs.webkit.org/show_bug.cgi?id=209566
+
+        Reviewed by Ross Kirsling.
+
+        * wtf/PageBlock.h:
+
+2020-03-25  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove unused suspend functions in CrossThreadTaskHandler
+        https://bugs.webkit.org/show_bug.cgi?id=209553
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/CrossThreadTaskHandler.cpp:
+        (WTF::CrossThreadTaskHandler::taskRunLoop):
+        (WTF::CrossThreadTaskHandler::suspendAndWait): Deleted.
+        (WTF::CrossThreadTaskHandler::resume): Deleted.
+        * wtf/CrossThreadTaskHandler.h:
+
+2020-03-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Fix launch time regression with CF prefs direct mode enabled
+        https://bugs.webkit.org/show_bug.cgi?id=209244
+
+        Reviewed by Darin Adler.
+
+        Re-enable CF prefs direct mode.
+
+        * wtf/PlatformEnable.h:
+        * wtf/PlatformEnableCocoa.h:
+
+2020-03-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Deny access to database mapping service
+        https://bugs.webkit.org/show_bug.cgi?id=209339
+        <rdar://problem/56966010>
+
+        Reviewed by Brent Fulgham.
+
+        Disable the use of UTTypeRecord swizzling, since this is not needed with the new approach
+        of denying the database mapping service in this patch.
+
+        * wtf/PlatformUse.h:
+
+2020-03-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, reverting r258891.
+        https://bugs.webkit.org/show_bug.cgi?id=209459
+
+        Introduced layout test failures (Requested by perarne on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Deny access to database mapping service"
+        https://bugs.webkit.org/show_bug.cgi?id=209339
+        https://trac.webkit.org/changeset/258891
+
+2020-03-23  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Deny access to database mapping service
+        https://bugs.webkit.org/show_bug.cgi?id=209339
+        <rdar://problem/56966010>
+
+        Reviewed by Brent Fulgham.
+
+        Disable the use of UTTypeRecord swizzling, since this is not needed with the new approach
+        of denying the database mapping service in this patch.
+
+        * wtf/PlatformUse.h:
+
+2020-03-23  John Wilander  <wilander@apple.com>
+
+        Add the capability to change all of a website's cookies to SameSite=Strict
+        https://bugs.webkit.org/show_bug.cgi?id=209369
+        <rdar://problem/60710690>
+
+        Reviewed by Alex Christensen and David Kilzer.
+
+        * wtf/PlatformHave.h:
+            Adds HAVE_CFNETWORK_SAMESITE_COOKIE_API for macOS Catalina and up,
+            iOS 13 and up, Catalyst, watchOS, and Apple TV.
+
+2020-03-23  youenn fablet  <youenn@apple.com>
+
+        Rename blankURL to aboutBlankURL
+        https://bugs.webkit.org/show_bug.cgi?id=209344
+
+        Reviewed by Darin Adler.
+
+        Rename blankURL to aboutBlankURL and allow using it without WTF:: prefix.
+
+        * wtf/URL.cpp:
+        (WTF::aboutBlankURL):
+        (WTF::blankURL): Deleted.
+        * wtf/URL.h:
+
+2020-03-23  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: getAllResponseHeaders() sorting
+        https://bugs.webkit.org/show_bug.cgi?id=200565
+
+        Reviewed by Darin Adler.
+
+        Add a new manipulator that can efficiently convert
+        Strings to lower or upper ASCII.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::lowercase):
+        (WTF::uppercase):
+        * wtf/text/StringView.cpp:
+        (WTF::getCharactersWithASCIICaseInternal):
+        (WTF::StringView::getCharactersWithASCIICase const):
+        * wtf/text/StringView.h:
+
+2020-03-23  Antoine Quint  <graouts@apple.com>
+
+        DocumentTimeline / CSSTransition objects are leaking on CNN.com
+        https://bugs.webkit.org/show_bug.cgi?id=208069
+        <rdar://problem/59680143>
+
+        Reviewed by Darin Adler.
+
+        Integrating post-commit review feedback from Darin. 
+
+        * wtf/ListHashSet.h:
+        (WTF::=):
+
+2020-03-23  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        REGRESSION(r249808): [GTK] Crash in JSC Config::permanentlyFreeze() on architecture ppc64el
+        https://bugs.webkit.org/show_bug.cgi?id=209236
+
+        Reviewed by Mark Lam.
+
+        Add new CeilingOnPageSize constants, for use in JSC, in order to centralize our compile-time
+        page size guessing into one place. Improve the implementation of pageSize() to
+        RELEASE_ASSERT() when CeilingOnPageSize is wrong, so we can detect and fix it if so. (It
+        will be even easier to detect if we change RELEASE_ASSERT_WITH_MESSAGE() to actually print
+        its message in release builds.) Change pageSize() to use sysconf(_SC_PAGESIZE), which is
+        specified by POSIX, instead of getpagesize(), which is nonstandard.
+
+        * wtf/PageBlock.cpp:
+        (WTF::systemPageSize):
+        (WTF::pageSize):
+        * wtf/PageBlock.h:
+
+2020-03-23  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r258803.
+
+        This revision caused many layout tests and 10 API tests to
+        start failing/crashing
+
+        Reverted changeset:
+
+        "[Cocoa] Deny access to database mapping service"
+        https://bugs.webkit.org/show_bug.cgi?id=209339
+        https://trac.webkit.org/changeset/258803
+
+2020-03-23  youenn fablet  <youenn@apple.com>
+
+        StringView::startsWith and String::startsWith do not treat null strings the same
+        https://bugs.webkit.org/show_bug.cgi?id=209273
+
+        Reviewed by Darin Adler.
+
+        Align StringImpl with StringView and make startsWith return true if prefix is null.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::startsWith const):
+
+2020-03-22  Antoine Quint  <graouts@apple.com>
+
+        DocumentTimeline / CSSTransition objects are leaking on CNN.com
+        https://bugs.webkit.org/show_bug.cgi?id=208069
+        <rdar://problem/59680143>
+
+        Reviewed by Simon Fraser, Geoffrey Garen and Darin Adler.
+
+        If a CSSAnimation is set on an element using the `animation-name` CSS property, and later removed, it will leak due to the ListHashSet<RefPtr<CSSAnimation>>
+        (aka CSSAnimationCollection) member on ElementAnimationRareData being replaced to the new list, but the old list not being cleared from its members.
+
+        We fix the ListHashSet assignment operator to use swap ensuring previously held items are cleared.
+
+        * wtf/ListHashSet.h:
+        (WTF::=):
+
+2020-03-20  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Deny access to database mapping service
+        https://bugs.webkit.org/show_bug.cgi?id=209339
+        <rdar://problem/56966010>
+
+        Reviewed by Brent Fulgham.
+
+        Disable the use of UTTypeRecord swizzling, since this is not needed with the new approach
+        of denying the database mapping service in this patch.
+
+        * wtf/PlatformUse.h:
+
+2020-03-20  Oliver Hunt  <oliver@nerget,com>
+
+        Add correct annotations to block isa pointer
+        https://bugs.webkit.org/show_bug.cgi?id=209355
+        <rdar://problem/60431606>
+
+        Reviewed by Keith Miller.
+
+        Trivial definition update. 
+
+        * wtf/BlockPtr.h:
+        (WTF::BlockPtr<R):
+
+2020-03-20  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream a variety of Cocoa-platform HAVE and ENABLE macros
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+
+        Reviewed by Andy Estes.
+
+        * wtf/PlatformEnableCocoa.h:
+        * wtf/PlatformHave.h:
+
+2020-03-20  youenn fablet  <youenn@apple.com>
+
+        Add routines to check about:blank and about:srcdoc URLs
+        https://bugs.webkit.org/show_bug.cgi?id=209174
+
+        Reviewed by Alex Christensen.
+
+        * wtf/URL.cpp:
+        (WTF::aboutSrcDocURL):
+        (WTF::URL::isAboutBlank const):
+        (WTF::URL::isAboutSrcDoc const):
+        * wtf/URL.h:
+
+2020-03-20  Jacob Uphoff  <jacob_uphoff@apple.com>
+
+        Unreviewed, reverting r258748.
+
+        This commit broke the Catalina build
+
+        Reverted changeset:
+
+        "Upstream a variety of Cocoa-platform HAVE and ENABLE macros"
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+        https://trac.webkit.org/changeset/258748
+
+2020-03-19  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream a variety of Cocoa-platform HAVE and ENABLE macros
+        https://bugs.webkit.org/show_bug.cgi?id=209307
+
+        Reviewed by Andy Estes.
+
+        * wtf/PlatformEnableCocoa.h:
+        * wtf/PlatformHave.h:
+
+2020-03-19  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream the definition of HAVE_READ_ONLY_SYSTEM_VOLUME
+        https://bugs.webkit.org/show_bug.cgi?id=209305
+
+        Reviewed by Andy Estes.
+
+        * wtf/PlatformHave.h:
+
+2020-03-19  Tim Horton  <timothy_horton@apple.com>
+
+        Implement support for cursor interactions on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=209268
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformEnableCocoa.h:
+        Don't disable the contextmenu event on iOS anymore.
+
+        * wtf/PlatformHave.h:
+        Rename HAVE_HOVER_GESTURE_RECOGNIZER to HAVE_UIKIT_WITH_MOUSE_SUPPORT.
+        Add HAVE_UI_CURSOR_INTERACTION.
+        Enable HAVE_UI_PARALLAX_TRANSITION_GESTURE_RECOGNIZER on iOS.
+
+2020-03-19  Charlie Turner  <cturner@igalia.com>
+
+        Fix many warnings with Clang 7.0 on GTK x86-64 in Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=209146
+
+        Reviewed by Darin Adler.
+
+        * wtf/LoggerHelper.h: When the RELEASE_LOG is disabled, avoid warning
+        spam about unused channel names. Call sites often create locals for
+        the channel name outside of RELEASE_LOG ifdef's, which cause many
+        unused variable warnings.
+
+2020-03-19  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][WPE] Unreviewed, build fixes after r258547 when disabling release logging support
+
+        * wtf/Logger.h:
+        (WTF::Logger::logAlwaysVerbose const):
+
+2020-03-19  youenn fablet  <youenn@apple.com>
+
+        Make URL::path() return a StringView
+        https://bugs.webkit.org/show_bug.cgi?id=209173
+
+        Reviewed by Alex Christensen.
+
+        * wtf/URL.cpp:
+        (WTF::URL::path const):
+        * wtf/URL.h:
+        * wtf/text/StringView.h:
+        (WTF::startsWithLettersIgnoringASCIICase):
+        Add an overload for StringView.
+
+2020-03-18  Peng Liu  <peng.liu6@apple.com>
+
+        The value of [AVPlayerViewController isPictureInPicturePossible] is NO in the first attempt to enter PiP
+        https://bugs.webkit.org/show_bug.cgi?id=204979
+
+        Reviewed by Jer Noble.
+
+        A follow-up patch to fix build failures.
+
+        * wtf/PlatformHave.h:
+
+2020-03-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r254389): Cordova throws an exception because it expects a hyphen inside navigator.locale
+        https://bugs.webkit.org/show_bug.cgi?id=208969
+        <rdar://problem/59845517>
+
+        Reviewed by Darin Adler.
+
+        We want to thwart fingerprinting by minimizing the list of locales, but we also don't want to break existing apps.
+        We can achieve both by a linked-on-or-after check.
+
+        * wtf/cocoa/LanguageCocoa.mm:
+        (WTF::canMinimizeLanguages):
+
+2020-03-17  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r254856) Add exception for window.openDatabase to not masquerade as undefined in currently shipping Jesus Calling Devotional app
+        https://bugs.webkit.org/show_bug.cgi?id=209160
+        <rdar://problem/60297073>
+
+        Reviewed by Geoff Garen.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2020-03-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Cocoa] Disable CF prefs direct mode
+        https://bugs.webkit.org/show_bug.cgi?id=209166
+        <rdar://problem/60517387>
+
+        Reviewed by Brent Fulgham.
+
+        Revert <https://trac.webkit.org/changeset/258064> by disabling the CF prefs direct mode feature,
+        since it caused performance regressions.
+
+        * wtf/PlatformEnable.h:
+
+2020-03-17  Philippe Normand  <pnormand@igalia.com>
+
+        RELEASE_LOG should not be Cocoa specific
+        https://bugs.webkit.org/show_bug.cgi?id=195182
+
+        Reviewed by Konstantin Tokarev.
+
+        Add sd-journal logging support and wrap the os_log calls with the USE(OS_LOG) guard.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Logger.h:
+        (WTF::Logger::log):
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::toString):
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2020-03-16  Keith Miller  <keith_miller@apple.com>
+
+        JavaScript identifier grammar supports unescaped astral symbols, but JSC doesn’t
+        https://bugs.webkit.org/show_bug.cgi?id=208998
+
+        Reviewed by Michael Saboff.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromCodePoint):
+        * wtf/text/WTFString.h:
+
+2020-03-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Should not use variable-length-array (VLA)
+        https://bugs.webkit.org/show_bug.cgi?id=209043
+
+        Reviewed by Mark Lam.
+
+        * Configurations/Base.xcconfig:
+        * wtf/UUID.cpp:
+        (WTF::bootSessionUUIDString):
+
+2020-03-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Push applicationSDKVersion() down from WebCore into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=209030
+
+        Reviewed by Simon Fraser.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/cocoa/RuntimeApplicationChecksCocoa.cpp: Added.
+        * wtf/cocoa/RuntimeApplicationChecksCocoa.h: Added.
+        (WTF::applicationSDKVersionOverride):
+        (WTF::setApplicationSDKVersion):
+        (WTF::applicationSDKVersion):
+
+2020-03-11  Jer Noble  <jer.noble@apple.com>
+
+        Adopt AVSampleBufferVideoOutput
+        https://bugs.webkit.org/show_bug.cgi?id=208951
+
+        Reviewed by Eric Carlson.
+
+        * wtf/PlatformHave.h:
+
+2020-03-11  Jer Noble  <jer.noble@apple.com>
+
+        [EME] Issue an "encrypted" event when a new encrypted initialization segment is encountered
+        https://bugs.webkit.org/show_bug.cgi?id=208923
+
+        Reviewed by Eric Carlson.
+
+        * wtf/LoggerHelper.h:
+        (WTF::LoggerHelper::childLogIdentifier): Made static.
+
+2020-03-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Crash under WebKit::WebProcessPool::platformInitialize()
+        https://bugs.webkit.org/show_bug.cgi?id=208945
+
+        Reviewed by Brent Fulgham.
+
+        Add macro to optionally soft link library.
+
+        * wtf/cocoa/SoftLinking.h:
+
+2020-03-11  Alex Christensen  <achristensen@webkit.org>
+
+        Enable safe browsing warnings in Mac Catalyst WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=208944
+        <rdar://problem/58854302>
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformHave.h:
+
 2020-03-09  Megan Gardner  <megan_gardner@apple.com>
 
         Build Fix

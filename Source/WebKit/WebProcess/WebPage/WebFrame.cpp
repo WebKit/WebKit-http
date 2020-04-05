@@ -102,23 +102,21 @@ static uint64_t generateListenerID()
     return uniqueListenerID++;
 }
 
-Ref<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
+void WebFrame::initWithCoreMainFrame(WebPage& page, Frame& coreFrame)
 {
-    auto frame = create(std::unique_ptr<WebFrameLoaderClient>(static_cast<WebFrameLoaderClient*>(&coreFrame->loader().client())));
-    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()));
+    page.send(Messages::WebPageProxy::DidCreateMainFrame(frameID()));
 
-    frame->m_coreFrame = coreFrame;
-    frame->m_coreFrame->tree().setName(String());
-    frame->m_coreFrame->init();
-    return frame;
+    m_coreFrame = &coreFrame;
+    m_coreFrame->tree().setName(String());
+    m_coreFrame->init();
 }
 
 Ref<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
 {
-    auto frame = create(makeUnique<WebFrameLoaderClient>());
+    auto frame = create();
     page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()));
 
-    auto coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
+    auto coreFrame = Frame::create(page->corePage(), ownerElement, makeUniqueRef<WebFrameLoaderClient>(frame.get()));
     frame->m_coreFrame = coreFrame.ptr();
 
     coreFrame->tree().setName(frameName);
@@ -131,26 +129,19 @@ Ref<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, H
     return frame;
 }
 
-Ref<WebFrame> WebFrame::create(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
+WebFrame::WebFrame()
+    : m_frameID(FrameIdentifier::generate())
 {
-    auto frame = adoptRef(*new WebFrame(WTFMove(frameLoaderClient)));
-
-    // Add explict ref() that will be balanced in WebFrameLoaderClient::frameLoaderDestroyed().
-    frame->ref();
-
-    return frame;
-}
-
-WebFrame::WebFrame(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
-    : m_frameLoaderClient(WTFMove(frameLoaderClient))
-    , m_frameID(FrameIdentifier::generate())
-{
-    m_frameLoaderClient->setWebFrame(this);
     WebProcess::singleton().addWebFrame(m_frameID, this);
 
 #ifndef NDEBUG
     webFrameCounter.increment();
 #endif
+}
+
+WebFrameLoaderClient* WebFrame::frameLoaderClient() const
+{
+    return m_coreFrame ? static_cast<WebFrameLoaderClient*>(&m_coreFrame->loader().client()) : nullptr;
 }
 
 WebFrame::~WebFrame()
@@ -183,7 +174,7 @@ WebFrame* WebFrame::fromCoreFrame(const Frame& frame)
     if (!webFrameLoaderClient)
         return nullptr;
 
-    return webFrameLoaderClient->webFrame();
+    return &webFrameLoaderClient->webFrame();
 }
 
 FrameInfoData WebFrame::info() const
@@ -268,11 +259,11 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyDecision&& po
 
     invalidatePolicyListener();
 
-    if (forNavigationAction && m_frameLoaderClient && policyDecision.websitePoliciesData) {
+    if (forNavigationAction && frameLoaderClient() && policyDecision.websitePoliciesData) {
         ASSERT(page());
         if (page())
             page()->setAllowsContentJavaScriptFromMostRecentNavigation(policyDecision.websitePoliciesData->allowsContentJavaScript);
-        m_frameLoaderClient->applyToDocumentLoader(WTFMove(*policyDecision.websitePoliciesData));
+        frameLoaderClient()->applyToDocumentLoader(WTFMove(*policyDecision.websitePoliciesData));
     }
 
     m_policyDownloadID = policyDecision.downloadID;
@@ -291,7 +282,11 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
     auto policyDownloadID = m_policyDownloadID;
     m_policyDownloadID = { };
 
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(policyDownloadID, request, suggestedName), 0);
+    auto isAppBound = NavigatingToAppBoundDomain::No;
+    if (page())
+        isAppBound = page()->isNavigatingToAppBoundDomain();
+    
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(policyDownloadID, request,  isAppBound, suggestedName), 0);
 }
 
 void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
@@ -313,7 +308,11 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     else
         mainResourceLoadIdentifier = 0;
 
-    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
+    auto isAppBound = NavigatingToAppBoundDomain::No;
+    if (page())
+        isAppBound = page()->isNavigatingToAppBoundDomain();
+        
+    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(mainResourceLoadIdentifier, policyDownloadID, request, response, isAppBound), 0);
 }
 
 void WebFrame::addConsoleMessage(MessageSource messageSource, MessageLevel messageLevel, const String& message, uint64_t requestID)
@@ -363,20 +362,15 @@ String WebFrame::contentsAsString() const
         return builder.toString();
     }
 
-    Document* document = m_coreFrame->document();
+    auto document = m_coreFrame->document();
     if (!document)
         return String();
 
-    RefPtr<Element> documentElement = document->documentElement();
+    auto documentElement = document->documentElement();
     if (!documentElement)
         return String();
 
-    RefPtr<Range> range = document->createRange();
-
-    if (range->selectNode(*documentElement).hasException())
-        return String();
-
-    return plainText(range.get());
+    return plainText(makeRangeSelectingNodeContents(*documentElement));
 }
 
 String WebFrame::selectionAsString() const 

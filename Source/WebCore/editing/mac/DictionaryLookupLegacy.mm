@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2020 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -87,15 +87,16 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeForSelection(co
     auto selectionEnd = selection.visibleEnd();
 
     // As context, we are going to use the surrounding paragraphs of text.
-    auto paragraphStart = startOfParagraph(selectionStart);
-    auto paragraphEnd = endOfParagraph(selectionEnd);
+    auto paragraphStart = makeBoundaryPoint(startOfParagraph(selectionStart));
+    auto paragraphEnd = makeBoundaryPoint(endOfParagraph(selectionEnd));
+    if (!paragraphStart || !paragraphEnd)
+        return { nullptr, nil };
 
-    int lengthToSelectionStart = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
-    int lengthToSelectionEnd = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get());
-    NSRange rangeToPass = NSMakeRange(lengthToSelectionStart, lengthToSelectionEnd - lengthToSelectionStart);
+    auto selectionRange = SimpleRange { *makeBoundaryPoint(selectionStart), *makeBoundaryPoint(selectionEnd) };
+    auto paragraphRange = SimpleRange { *paragraphStart, *paragraphEnd };
 
     NSDictionary *options = nil;
-    tokenRange(plainText(makeRange(paragraphStart, paragraphEnd).get()), rangeToPass, &options);
+    tokenRange(plainText(paragraphRange), characterRange(paragraphRange, selectionRange), &options);
 
     return { selectedRange, options };
 }
@@ -133,16 +134,21 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeAtHitTestResult
     if (!fullCharacterRange)
         return { nullptr, nil };
 
-    NSRange rangeToPass = NSMakeRange(TextIterator::rangeLength(makeRange(fullCharacterRange->startPosition(), position).get()), 0);
+    auto fullCharacterStart = makeBoundaryPoint(fullCharacterRange->startPosition());
+    auto positionBoundary = makeBoundaryPoint(position);
+    if (!fullCharacterStart || !positionBoundary)
+        return { nullptr, nil };
+
+    NSRange rangeToPass = NSMakeRange(characterCount({ *fullCharacterStart, *positionBoundary }), 0);
     NSDictionary *options = nil;
-    NSRange extractedRange = tokenRange(plainText(fullCharacterRange.get()), rangeToPass, &options);
+    auto extractedRange = tokenRange(plainText(*fullCharacterRange), rangeToPass, &options);
 
     // tokenRange sometimes returns {NSNotFound, 0} if it was unable to determine a good string.
     // FIXME (159063): We shouldn't need to check for zero length here.
     if (extractedRange.location == NSNotFound || !extractedRange.length)
         return { nullptr, nil };
 
-    return { TextIterator::subrange(*fullCharacterRange, extractedRange.location, extractedRange.length), options };
+    return { createLiveRange(resolveCharacterRange(*fullCharacterRange, extractedRange)), options };
 }
 
 static void expandSelectionByCharacters(PDFSelection *selection, NSInteger numberOfCharactersToExpand, NSInteger& charactersAddedBeforeStart, NSInteger& charactersAddedAfterEnd)

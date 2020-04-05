@@ -29,6 +29,7 @@
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 
 #include "Logging.h"
+#include "NetworkProcess.h"
 #include "NetworkSession.h"
 #include "PluginProcessManager.h"
 #include "PluginProcessProxy.h"
@@ -55,7 +56,6 @@ constexpr unsigned operatingDatesWindowLong { 30 };
 constexpr unsigned operatingDatesWindowShort { 7 };
 constexpr Seconds operatingTimeWindowForLiveOnTesting { 1_h };
 
-#if !RELEASE_LOG_DISABLED
 static String domainsToString(const Vector<RegistrableDomain>& domains)
 {
     StringBuilder builder;
@@ -67,30 +67,29 @@ static String domainsToString(const Vector<RegistrableDomain>& domains)
     return builder.toString();
 }
 
-static String domainsToString(const Vector<std::pair<RegistrableDomain, WebsiteDataToRemove>>& domainsToRemoveWebsiteDataFor)
+static String domainsToString(const RegistrableDomainsToDeleteOrRestrictWebsiteDataFor& domainsToRemoveOrRestrictWebsiteDataFor)
 {
     StringBuilder builder;
-    for (auto& pair : domainsToRemoveWebsiteDataFor) {
-        auto& domain = pair.first;
-        auto& dataToRemove = pair.second;
+    for (auto& domain : domainsToRemoveOrRestrictWebsiteDataFor.domainsToDeleteAllCookiesFor) {
         if (!builder.isEmpty())
             builder.appendLiteral(", ");
         builder.append(domain.string());
-        switch (dataToRemove) {
-        case WebsiteDataToRemove::All:
-            builder.appendLiteral("(all data)");
-            break;
-        case WebsiteDataToRemove::AllButHttpOnlyCookies:
-            builder.appendLiteral("(all but HttpOnly cookies)");
-            break;
-        case WebsiteDataToRemove::AllButCookies:
-            builder.appendLiteral("(all but cookies)");
-            break;
-        }
+        builder.appendLiteral("(all data)");
+    }
+    for (auto& domain : domainsToRemoveOrRestrictWebsiteDataFor.domainsToDeleteAllButHttpOnlyCookiesFor) {
+        if (!builder.isEmpty())
+            builder.appendLiteral(", ");
+        builder.append(domain.string());
+        builder.appendLiteral("(all but HttpOnly cookies)");
+    }
+    for (auto& domain : domainsToRemoveOrRestrictWebsiteDataFor.domainsToDeleteAllNonCookieWebsiteDataFor) {
+        if (!builder.isEmpty())
+            builder.appendLiteral(", ");
+        builder.append(domain.string());
+        builder.appendLiteral("(all but cookies)");
     }
     return builder.toString();
 }
-#endif
 
 OperatingDate OperatingDate::fromWallTime(WallTime time)
 {
@@ -199,33 +198,40 @@ void ResourceLoadStatisticsStore::removeDataRecords(CompletionHandler<void()>&& 
         m_activePluginTokens.add(plugin->pluginProcessToken());
 #endif
 
-    auto domainsToRemoveWebsiteDataFor = registrableDomainsToRemoveWebsiteDataFor();
-    if (domainsToRemoveWebsiteDataFor.isEmpty()) {
+    auto domainsToDeleteOrRestrictWebsiteDataFor = registrableDomainsToDeleteOrRestrictWebsiteDataFor();
+    if (domainsToDeleteOrRestrictWebsiteDataFor.isEmpty()) {
         completionHandler();
         return;
     }
 
-    RELEASE_LOG_INFO_IF(m_debugLoggingEnabled, ITPDebug, "About to remove data records for %" PUBLIC_LOG_STRING ".", domainsToString(domainsToRemoveWebsiteDataFor).utf8().data());
+    if (UNLIKELY(m_debugLoggingEnabled)) {
+        RELEASE_LOG_INFO(ITPDebug, "About to remove data records for %" PUBLIC_LOG_STRING ".", domainsToString(domainsToDeleteOrRestrictWebsiteDataFor).utf8().data());
+        debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("[ITP] About to remove data records for: ["_s, domainsToString(domainsToDeleteOrRestrictWebsiteDataFor), "]."_s));
+    }
 
     setDataRecordsBeingRemoved(true);
 
-    RunLoop::main().dispatch([store = makeRef(m_store), domainsToRemoveWebsiteDataFor = crossThreadCopy(domainsToRemoveWebsiteDataFor), completionHandler = WTFMove(completionHandler), weakThis = makeWeakPtr(*this), shouldNotifyPagesWhenDataRecordsWereScanned = m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, workQueue = m_workQueue.copyRef()] () mutable {
-        store->deleteWebsiteDataForRegistrableDomains(WebResourceLoadStatisticsStore::monitoredDataTypes(), WTFMove(domainsToRemoveWebsiteDataFor), shouldNotifyPagesWhenDataRecordsWereScanned, [completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis), workQueue = workQueue.copyRef()](const HashSet<RegistrableDomain>& domainsWithDeletedWebsiteData) mutable {
+    RunLoop::main().dispatch([store = makeRef(m_store), domainsToDeleteOrRestrictWebsiteDataFor = crossThreadCopy(domainsToDeleteOrRestrictWebsiteDataFor), completionHandler = WTFMove(completionHandler), weakThis = makeWeakPtr(*this), shouldNotifyPagesWhenDataRecordsWereScanned = m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, workQueue = m_workQueue.copyRef()] () mutable {
+        store->deleteAndRestrictWebsiteDataForRegistrableDomains(WebResourceLoadStatisticsStore::monitoredDataTypes(), WTFMove(domainsToDeleteOrRestrictWebsiteDataFor), shouldNotifyPagesWhenDataRecordsWereScanned, [completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis), workQueue = workQueue.copyRef()](const HashSet<RegistrableDomain>& domainsWithDeletedWebsiteData) mutable {
             workQueue->dispatch([domainsWithDeletedWebsiteData = crossThreadCopy(domainsWithDeletedWebsiteData), completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis)] () mutable {
                 if (!weakThis) {
                     completionHandler();
                     return;
                 }
+
                 weakThis->incrementRecordsDeletedCountForDomains(WTFMove(domainsWithDeletedWebsiteData));
                 weakThis->setDataRecordsBeingRemoved(false);
-                
+
                 auto dataRecordRemovalCompletionHandlers = WTFMove(weakThis->m_dataRecordRemovalCompletionHandlers);
                 completionHandler();
-                
+
                 for (auto& dataRecordRemovalCompletionHandler : dataRecordRemovalCompletionHandlers)
                     dataRecordRemovalCompletionHandler();
 
-                RELEASE_LOG_INFO_IF(weakThis->m_debugLoggingEnabled, ITPDebug, "Done removing data records.");
+                if (UNLIKELY(weakThis->m_debugLoggingEnabled)) {
+                    RELEASE_LOG_INFO(ITPDebug, "Done removing data records.");
+                    weakThis->debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, "[ITP] Done removing data records"_s);
+                }
             });
         });
     });
@@ -286,11 +292,16 @@ void ResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode(bool enable
 {
     ASSERT(!RunLoop::isMain());
 
-    if (enable)
-        RELEASE_LOG_INFO(ITPDebug, "Turned ITP Debug Mode on.");
-
     m_debugModeEnabled = enable;
     m_debugLoggingEnabled = enable;
+
+    if (m_debugLoggingEnabled) {
+        RELEASE_LOG_INFO(ITPDebug, "Turned ITP Debug Mode on.");
+        debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, "[ITP] Turned Debug Mode on."_s);
+    } else {
+        RELEASE_LOG_INFO(ITPDebug, "Turned ITP Debug Mode off.");
+        debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, "[ITP] Turned Debug Mode off."_s);
+    }
 
     ensurePrevalentResourcesForDebugMode();
     // This will log the current cookie blocking state.
@@ -434,22 +445,6 @@ void ResourceLoadStatisticsStore::updateCookieBlockingForDomains(const Registrab
 }
     
 
-void ResourceLoadStatisticsStore::clearBlockingStateForDomains(const Vector<RegistrableDomain>& domains, CompletionHandler<void()>&& completionHandler)
-{
-    ASSERT(!RunLoop::isMain());
-
-    if (domains.isEmpty()) {
-        completionHandler();
-        return;
-    }
-
-    RunLoop::main().dispatch([store = makeRef(m_store), domains = crossThreadCopy(domains)] {
-        store->callRemoveDomainsHandler(domains);
-    });
-
-    completionHandler();
-}
-
 Optional<Seconds> ResourceLoadStatisticsStore::statisticsEpirationTime() const
 {
     ASSERT(!RunLoop::isMain());
@@ -591,25 +586,44 @@ void ResourceLoadStatisticsStore::didCreateNetworkProcess()
     updateClientSideCookiesAgeCap();
 }
 
+void ResourceLoadStatisticsStore::debugBroadcastConsoleMessage(MessageSource source, MessageLevel level, const String& message)
+{
+    if (!RunLoop::isMain()) {
+        RunLoop::main().dispatch([&, weakThis = makeWeakPtr(*this), source = crossThreadCopy(source), level = crossThreadCopy(level), message = crossThreadCopy(message)]() {
+            if (!weakThis)
+                return;
+
+            debugBroadcastConsoleMessage(source, level, message);
+        });
+        return;
+    }
+
+    if (auto* networkSession = m_store.networkSession())
+        networkSession->networkProcess().broadcastConsoleMessage(networkSession->sessionID(), source, level, message);
+}
+
 void ResourceLoadStatisticsStore::debugLogDomainsInBatches(const char* action, const RegistrableDomainsToBlockCookiesFor& domainsToBlock)
 {
     Vector<RegistrableDomain> domains;
     domains.appendVector(domainsToBlock.domainsToBlockAndDeleteCookiesFor);
     domains.appendVector(domainsToBlock.domainsToBlockButKeepCookiesFor);
-    static const auto maxNumberOfDomainsInOneLogStatement = 50;
     if (domains.isEmpty())
         return;
-    
+
+    debugBroadcastConsoleMessage(MessageSource::ITPDebug, MessageLevel::Info, makeString("[ITP] About to "_s, action, "cookies in third-party contexts for: ["_s, domainsToString(domains), "]."_s));
+
+    static const auto maxNumberOfDomainsInOneLogStatement = 50;
+
     if (domains.size() <= maxNumberOfDomainsInOneLogStatement) {
         RELEASE_LOG_INFO(ITPDebug, "About to %" PUBLIC_LOG_STRING " cookies in third-party contexts for: %" PUBLIC_LOG_STRING ".", action, domainsToString(domains).utf8().data());
         return;
     }
-    
+
     Vector<RegistrableDomain> batch;
     batch.reserveInitialCapacity(maxNumberOfDomainsInOneLogStatement);
     auto batchNumber = 1;
     unsigned numberOfBatches = std::ceil(domains.size() / static_cast<float>(maxNumberOfDomainsInOneLogStatement));
-    
+
     for (auto& domain : domains) {
         if (batch.size() == maxNumberOfDomainsInOneLogStatement) {
             RELEASE_LOG_INFO(ITPDebug, "About to %" PUBLIC_LOG_STRING " cookies in third-party contexts for (%{public}d of %u): %" PUBLIC_LOG_STRING ".", action, batchNumber, numberOfBatches, domainsToString(batch).utf8().data());

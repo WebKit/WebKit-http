@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayPrototype.h"
+#include "CacheableIdentifierInlines.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
@@ -957,18 +958,8 @@ private:
                         break;
                     }
                     
-                    if (canDoSaneChain) {
-                        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
-                        Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(vm());
-                        Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(vm());
-                        if (arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
-                            && objectPrototypeStructure->transitionWatchpointSetIsStillValid()
-                            && globalObject->arrayPrototypeChainIsSane()) {
-                            m_graph.registerAndWatchStructureTransition(arrayPrototypeStructure);
-                            m_graph.registerAndWatchStructureTransition(objectPrototypeStructure);
-                            node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
-                        }
-                    }
+                    if (canDoSaneChain)
+                        setSaneChainIfPossible(node);
                 }
                 break;
                 
@@ -1620,10 +1611,13 @@ private:
 
         case DeleteByVal: {
 #if USE(JSVALUE64)
-            if (node->child2()->shouldSpeculateCell())
-                fixEdge<CellUse>(node->child2());
+            if (node->child1()->shouldSpeculateCell()) {
+                fixEdge<CellUse>(node->child1());
+                if (node->child2()->shouldSpeculateCell())
+                    fixEdge<CellUse>(node->child2());
+            }
 #endif
-            FALLTHROUGH;
+            break;
         }
 
         case DeleteById: {
@@ -1639,7 +1633,7 @@ private:
             // FIXME: This should be done in the ByteCodeParser based on reading the
             // PolymorphicAccess, which will surely tell us that this is a AccessCase::ArrayLength.
             // https://bugs.webkit.org/show_bug.cgi?id=154990
-            auto uid = m_graph.identifiers()[node->identifierNumber()];
+            UniquedStringImpl* uid = node->cacheableIdentifier().uid();
             if (node->child1()->shouldSpeculateCellOrOther()
                 && !m_graph.hasExitSite(node->origin.semantic, BadType)
                 && !m_graph.hasExitSite(node->origin.semantic, BadCache)
@@ -1705,8 +1699,7 @@ private:
                 && !m_graph.hasExitSite(node->origin.semantic, BadCache)
                 && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
                 && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
-                
-                auto uid = m_graph.identifiers()[node->identifierNumber()];
+                UniquedStringImpl* uid = node->cacheableIdentifier().uid();
                 
                 if (uid == vm().propertyNames->lastIndex.impl()
                     && node->child1()->shouldSpeculateRegExpObject()) {
@@ -2026,6 +2019,12 @@ private:
             blessArrayOperation(m_graph.varArgChild(node, 0), m_graph.varArgChild(node, 1), m_graph.varArgChild(node, 2));
             fixEdge<CellUse>(m_graph.varArgChild(node, 0));
             fixEdge<Int32Use>(m_graph.varArgChild(node, 1));
+
+            ArrayMode arrayMode = node->arrayMode();
+            // FIXME: OutOfBounds shouldn't preclude going sane chain because OOB is just false and cannot have effects.
+            // See: https://bugs.webkit.org/show_bug.cgi?id=209456
+            if (arrayMode.isJSArrayWithOriginalStructure() && arrayMode.speculation() == Array::InBounds)
+                setSaneChainIfPossible(node);
             break;
         }
         case GetDirectPname: {
@@ -3267,11 +3266,10 @@ private:
             Edge(searchRegExp, RegExpObjectUse));
 
         auto emitPrimordialCheckFor = [&] (JSValue primordialProperty, UniquedStringImpl* propertyUID) {
-            unsigned index = m_graph.identifiers().ensure(propertyUID);
-
+            m_graph.identifiers().ensure(propertyUID);
             Node* actualProperty = m_insertionSet.insertNode(
                 m_indexInBlock, SpecNone, TryGetById, node->origin,
-                OpInfo(index), OpInfo(SpecFunction), Edge(searchRegExp, CellUse));
+                OpInfo(CacheableIdentifier::createFromImmortalIdentifier(propertyUID)), OpInfo(SpecFunction), Edge(searchRegExp, CellUse));
 
             m_insertionSet.insertNode(
                 m_indexInBlock, SpecNone, CheckCell, node->origin,
@@ -3338,6 +3336,21 @@ private:
         return m_insertionSet.insertNode(
             m_indexInBlock, SpecNone, GetIndexedPropertyStorage, origin,
             OpInfo(arrayMode.asWord()), Edge(array, KnownCellUse));
+    }
+
+    void setSaneChainIfPossible(Node* node)
+    {
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+        Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(vm());
+        Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(vm());
+        if (arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
+            && objectPrototypeStructure->transitionWatchpointSetIsStillValid()
+            && globalObject->arrayPrototypeChainIsSane()) {
+            m_graph.registerAndWatchStructureTransition(arrayPrototypeStructure);
+            m_graph.registerAndWatchStructureTransition(objectPrototypeStructure);
+            node->setArrayMode(node->arrayMode().withSpeculation(Array::SaneChain));
+            node->clearFlags(NodeMustGenerate);
+        }
     }
     
     void blessArrayOperation(Edge base, Edge index, Edge& storageChild)
@@ -3691,7 +3704,6 @@ private:
     void convertToHasIndexedProperty(Node* node)
     {
         node->setOp(HasIndexedProperty);
-        node->clearFlags(NodeMustGenerate);
 
         {
             unsigned firstChild = m_graph.m_varArgChildren.size();
@@ -3699,7 +3711,7 @@ private:
             m_graph.m_varArgChildren.append(node->child1());
             m_graph.m_varArgChildren.append(node->child2());
             m_graph.m_varArgChildren.append(Edge());
-            node->mergeFlags(NodeHasVarArgs);
+            node->setFlags(defaultFlags(HasIndexedProperty));
             node->children = AdjacencyList(AdjacencyList::Variable, firstChild, numChildren);
         }
 
@@ -3712,6 +3724,11 @@ private:
         node->setInternalMethodType(PropertySlot::InternalMethodType::HasProperty);
 
         blessArrayOperation(m_graph.varArgChild(node, 0), m_graph.varArgChild(node, 1), m_graph.varArgChild(node, 2));
+        auto arrayMode = node->arrayMode();
+        // FIXME: OutOfBounds shouldn't preclude going sane chain because OOB is just false and cannot have effects.
+        // See: https://bugs.webkit.org/show_bug.cgi?id=209456
+        if (arrayMode.isJSArrayWithOriginalStructure() && arrayMode.speculation() == Array::InBounds)
+            setSaneChainIfPossible(node);
 
         fixEdge<CellUse>(m_graph.varArgChild(node, 0));
         fixEdge<Int32Use>(m_graph.varArgChild(node, 1));

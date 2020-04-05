@@ -306,7 +306,7 @@ static inline bool didScrollInScrollableArea(ScrollableArea* scrollableArea, Whe
 static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, WheelEvent& wheelEvent, RefPtr<Element>& stopElement, const FloatSize& filteredPlatformDelta, const FloatSize& filteredVelocity)
 {
     bool shouldHandleEvent = wheelEvent.deltaX() || wheelEvent.deltaY();
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
     shouldHandleEvent |= wheelEvent.phase() == PlatformWheelEventPhaseEnded;
 #if ENABLE(CSS_SCROLL_SNAP)
     shouldHandleEvent |= wheelEvent.momentumPhase() == PlatformWheelEventPhaseEnded;
@@ -377,7 +377,7 @@ EventHandler::EventHandler(Frame& frame)
     , m_hoverTimer(*this, &EventHandler::hoverTimerFired)
     , m_cursorUpdateTimer(*this, &EventHandler::cursorUpdateTimerFired)
 #if PLATFORM(MAC)
-    , m_pendingMomentumWheelEventsTimer(*this, &EventHandler::clearLatchedState)
+    , m_clearLatchingStateTimer(*this, &EventHandler::clearLatchedStateTimerFired)
 #endif
     , m_autoscrollController(makeUnique<AutoscrollController>())
 #if !ENABLE(IOS_TOUCH_EVENTS)
@@ -654,10 +654,13 @@ bool EventHandler::handleMousePressEventTripleClick(const MouseEventWithHitTestR
     return updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), ParagraphGranularity);
 }
 
-static int textDistance(const Position& start, const Position& end)
+static uint64_t textDistance(const Position& start, const Position& end)
 {
-    auto range = Range::create(start.anchorNode()->document(), start, end);
-    return TextIterator::rangeLength(range.ptr(), true);
+    auto startBoundary = makeBoundaryPoint(start);
+    auto endBoundary = makeBoundaryPoint(end);
+    if (!startBoundary || !endBoundary)
+        return 0;
+    return characterCount({ *startBoundary, *endBoundary }, TextIteratorEmitsCharactersBetweenAllVisiblePositions);
 }
 
 bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestResults& event)
@@ -2708,19 +2711,25 @@ bool EventHandler::shouldSwapScrollDirection(const HitTestResult&, const Platfor
 
 #endif
 
+void EventHandler::clearLatchedStateTimerFired()
+{
+    LOG(ScrollLatching, "EventHandler %p clearLatchedStateTimerFired()", this);
+    clearLatchedState();
+}
+
 #if !PLATFORM(MAC)
 
-void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>&, RefPtr<ContainerNode>&, WeakPtr<ScrollableArea>&, bool&)
+void EventHandler::determineWheelEventTarget(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>&, RefPtr<ContainerNode>&, WeakPtr<ScrollableArea>&, bool&)
 {
 }
 
-void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& event)
+void EventHandler::recordWheelEventForDeltaFilter(const PlatformWheelEvent& event)
 {
     if (auto* page = m_frame.page())
         page->wheelEventDeltaFilter()->updateFromDelta(FloatSize(event.deltaX(), event.deltaY()));
 }
 
-bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, ContainerNode*, const WeakPtr<ScrollableArea>&)
+bool EventHandler::processWheelEventForScrolling(const PlatformWheelEvent& event, ContainerNode*, const WeakPtr<ScrollableArea>&)
 {
     Ref<Frame> protectedFrame(m_frame);
 
@@ -2737,7 +2746,7 @@ bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelE
     return true;
 }
 
-void EventHandler::platformNotifyIfEndGesture(const PlatformWheelEvent&, const WeakPtr<ScrollableArea>&)
+void EventHandler::processWheelEventForScrollSnap(const PlatformWheelEvent&, const WeakPtr<ScrollableArea>&)
 {
 }
 
@@ -2798,7 +2807,7 @@ bool EventHandler::completeWidgetWheelEvent(const PlatformWheelEvent& event, con
     if (scrollableArea)
         scrollableArea->setScrollShouldClearLatchedState(false);
 
-    platformNotifyIfEndGesture(event, scrollableArea);
+    processWheelEventForScrollSnap(event, scrollableArea);
 
     if (!widget->platformWidget())
         return true;
@@ -2827,6 +2836,10 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 #endif
 
 #if PLATFORM(COCOA)
+    LOG_WITH_STREAM(WheelEventTestMonitor, stream << "EventHandler::handleWheelEvent on main thread, phase " << event.phase() << " momentum phase " << event.momentumPhase());
+    if (auto monitor = m_frame.page()->wheelEventTestMonitor())
+        monitor->receivedWheelEvent(event);
+
     WheelEventTestMonitorCompletionDeferrer deferrer(m_frame.page()->wheelEventTestMonitor().get(), this, WheelEventTestMonitor::DeferReason::HandlingWheelEventOnMainThread);
 #endif
 
@@ -2841,9 +2854,9 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     RefPtr<ContainerNode> scrollableContainer;
     WeakPtr<ScrollableArea> scrollableArea;
     bool isOverWidget = result.isOverWidget();
-    platformPrepareForWheelEvents(event, result, element, scrollableContainer, scrollableArea, isOverWidget);
+    determineWheelEventTarget(event, result, element, scrollableContainer, scrollableArea, isOverWidget);
 
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
     if (event.phase() == PlatformWheelEventPhaseNone && event.momentumPhase() == PlatformWheelEventPhaseNone && m_frame.page())
         m_frame.page()->resetLatchingState();
 #endif
@@ -2851,7 +2864,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     // FIXME: It should not be necessary to do this mutation here.
     // Instead, the handlers should know convert vertical scrolls appropriately.
     PlatformWheelEvent adjustedEvent = shouldSwapScrollDirection(result, event) ? event.copySwappingDirection() : event;
-    platformRecordWheelEvent(adjustedEvent);
+    recordWheelEventForDeltaFilter(adjustedEvent);
 
     if (element) {
         if (isOverWidget) {
@@ -2869,7 +2882,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
                 scrollableArea->setScrollShouldClearLatchedState(false);
             }
 
-            platformNotifyIfEndGesture(adjustedEvent, scrollableArea);
+            processWheelEventForScrollSnap(adjustedEvent, scrollableArea);
             return true;
         }
     }
@@ -2877,8 +2890,8 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     if (scrollableArea)
         scrollableArea->setScrollShouldClearLatchedState(false);
 
-    bool handledEvent = platformCompleteWheelEvent(adjustedEvent, scrollableContainer.get(), scrollableArea);
-    platformNotifyIfEndGesture(adjustedEvent, scrollableArea);
+    bool handledEvent = processWheelEventForScrolling(adjustedEvent, scrollableContainer.get(), scrollableArea);
+    processWheelEventForScrollSnap(adjustedEvent, scrollableArea);
     return handledEvent;
 }
 
@@ -2888,7 +2901,8 @@ void EventHandler::clearLatchedState()
     if (!page)
         return;
 
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
+    LOG_WITH_STREAM(ScrollLatching, stream << "EventHandler::clearLatchedState()");
     page->resetLatchingState();
 #endif
     if (auto filter = page->wheelEventDeltaFilter())
@@ -2909,24 +2923,23 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent& wheelEv
         filteredPlatformDelta.setHeight(platformWheelEvent->deltaY());
     }
 
-#if PLATFORM(MAC)
+    RefPtr<Element> stopElement;
+#if ENABLE(WHEEL_EVENT_LATCHING)
     ScrollLatchingState* latchedState = m_frame.page() ? m_frame.page()->latchingState() : nullptr;
-    RefPtr<Element> stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
+    stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
 
     if (m_frame.page() && m_frame.page()->wheelEventDeltaFilter()->isFilteringDeltas()) {
         filteredPlatformDelta = m_frame.page()->wheelEventDeltaFilter()->filteredDelta();
         filteredVelocity = m_frame.page()->wheelEventDeltaFilter()->filteredVelocity();
     }
-#else
-    RefPtr<Element> stopElement;
 #endif
 
     if (handleWheelEventInAppropriateEnclosingBox(startNode, wheelEvent, stopElement, filteredPlatformDelta, filteredVelocity))
         wheelEvent.setDefaultHandled();
 
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
     if (latchedState && !latchedState->wheelEventElement())
-        latchedState->setPreviousWheelScrolledElement(WTFMove(stopElement));
+        latchedState->setPreviousWheelScrolledElement(stopElement.get());
 #endif
 }
 

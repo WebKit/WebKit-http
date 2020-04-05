@@ -28,6 +28,7 @@
 
 #include "GStreamerCommon.h"
 #include "GStreamerEMEUtilities.h"
+#include "Logging.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformLayer.h"
@@ -37,6 +38,7 @@
 #include <wtf/Atomics.h>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
+#include <wtf/LoggerHelper.h>
 #include <wtf/RunLoop.h>
 #include <wtf/WeakPtr.h>
 
@@ -115,7 +117,11 @@ class VideoTrackPrivateGStreamer;
 void registerWebKitGStreamerElements();
 
 // Use eager initialization for the WeakPtrFactory since we call makeWeakPtr() from another thread.
-class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface, public CanMakeWeakPtr<MediaPlayerPrivateGStreamer, WeakPtrFactoryInitialization::Eager>
+class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface
+    , public CanMakeWeakPtr<MediaPlayerPrivateGStreamer, WeakPtrFactoryInitialization::Eager>
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
 #if USE(TEXTURE_MAPPER_GL)
 #if USE(NICOSIA)
     , public Nicosia::ContentLayerTextureMapperImpl::Client
@@ -226,6 +232,16 @@ public:
     void flushCurrentBuffer();
 #endif
 
+#if !RELEASE_LOG_DISABLED
+    const Logger& logger() const final { return m_logger; }
+    const char* logClassName() const override { return "MediaPlayerPrivateGStreamer"; }
+    const void* logIdentifier() const final { return reinterpret_cast<const void*>(m_logIdentifier); }
+    WTFLogChannel& logChannel() const override;
+
+    const void* mediaPlayerLogIdentifier() { return logIdentifier(); }
+    const Logger& mediaPlayerLogger() { return logger(); }
+#endif
+
 protected:
     enum MainThreadNotification {
         VideoChanged = 1 << 0,
@@ -246,6 +262,7 @@ protected:
     virtual void sourceSetup(GstElement*);
     virtual void configurePlaySink() { }
     virtual bool changePipelineState(GstState);
+    virtual void updatePlaybackRate();
 
 #if USE(GSTREAMER_HOLEPUNCH)
     GstElement* createHolePunchVideoSink();
@@ -272,6 +289,7 @@ protected:
     void setStreamVolumeElement(GstStreamVolume*);
 
     void setPipeline(GstElement*);
+    GstElement* pipeline() const { return m_pipeline.get(); }
 
     void repaint();
     void cancelRepaint(bool destroying = false);
@@ -386,7 +404,6 @@ protected:
 private:
     bool isPlayerShuttingDown() const { return m_isPlayerShuttingDown.load(); }
     MediaTime maxTimeLoaded() const;
-    GstElement* pipeline() const { return m_pipeline.get(); }
     void setVideoSourceOrientation(ImageOrientation);
     MediaTime platformDuration() const;
     bool isMuted() const;
@@ -432,7 +449,6 @@ private:
     void purgeInvalidTextTracks(Vector<String> validTrackIds);
 #endif
     virtual bool doSeek(const MediaTime& position, float rate, GstSeekFlags seekType);
-    virtual void updatePlaybackRate();
 
     String engineDescription() const override { return "GStreamer"; }
     bool didPassCORSAccessCheck() const override;
@@ -528,6 +544,10 @@ private:
 private:
 #if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
     GUniquePtr<struct wpe_video_plane_display_dmabuf_source> m_wpeVideoPlaneDisplayDmaBuf;
+#endif
+#if !RELEASE_LOG_DISABLED
+    Ref<const Logger> m_logger;
+    const void* m_logIdentifier;
 #endif
 };
 

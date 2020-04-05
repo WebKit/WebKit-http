@@ -45,7 +45,6 @@
 #include "PluginProcessConnectionManager.h"
 #include "RemoteAudioSession.h"
 #include "RemoteLegacyCDMFactory.h"
-#include "StatisticsData.h"
 #include "StorageAreaMap.h"
 #include "UserData.h"
 #include "WebAutomationSessionProxy.h"
@@ -792,12 +791,17 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
     }
 #endif
 
-    LOG_ERROR("Unhandled web process message '%s:%s' (destination: %" PRIu64 ")", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID());
+    LOG_ERROR("Unhandled web process message '%s::%s' (destination: %" PRIu64 " pid: %d)", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data(), decoder.destinationID(), static_cast<int>(getCurrentProcessID()));
 }
 
 WebFrame* WebProcess::webFrame(FrameIdentifier frameID) const
 {
     return m_frameMap.get(frameID);
+}
+
+Vector<WebFrame*> WebProcess::webFrames() const
+{
+    return copyToVector(m_frameMap.values());
 }
 
 void WebProcess::addWebFrame(FrameIdentifier frameID, WebFrame* frame)
@@ -869,20 +873,6 @@ void WebProcess::userGestureTokenDestroyed(UserGestureToken& token)
 {
     auto identifier = m_userGestureTokens.take(&token);
     parentProcessConnection()->send(Messages::WebProcessProxy::DidDestroyUserGestureToken(identifier), 0);
-}
-
-void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear)
-{
-    // Toggling the cache model like this forces the cache to evict all its in-memory resources.
-    // FIXME: We need a better way to do this.
-    CacheModel cacheModel = m_cacheModel;
-    setCacheModel(CacheModel::DocumentViewer);
-    setCacheModel(cacheModel);
-
-    MemoryCache::singleton().evictResources();
-
-    // Empty the cross-origin preflight cache.
-    CrossOriginPreflightResultCache::singleton().clear();
 }
 
 static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& string)
@@ -1027,93 +1017,6 @@ void WebProcess::refreshPlugins()
 #if ENABLE(NETSCAPE_PLUGIN_API)
     WebPluginInfoProvider::singleton().refresh(false);
 #endif
-}
-
-static void fromCountedSetToHashMap(TypeCountSet* countedSet, HashMap<String, uint64_t>& map)
-{
-    TypeCountSet::const_iterator end = countedSet->end();
-    for (TypeCountSet::const_iterator it = countedSet->begin(); it != end; ++it)
-        map.set(it->key, it->value);
-}
-
-static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t>>& result)
-{
-    String imagesString("Images"_s);
-    String cssString("CSS"_s);
-    String xslString("XSL"_s);
-    String javaScriptString("JavaScript"_s);
-    
-    MemoryCache::Statistics memoryCacheStatistics = MemoryCache::singleton().getStatistics();
-    
-    HashMap<String, uint64_t> counts;
-    counts.set(imagesString, memoryCacheStatistics.images.count);
-    counts.set(cssString, memoryCacheStatistics.cssStyleSheets.count);
-    counts.set(xslString, memoryCacheStatistics.xslStyleSheets.count);
-    counts.set(javaScriptString, memoryCacheStatistics.scripts.count);
-    result.append(counts);
-    
-    HashMap<String, uint64_t> sizes;
-    sizes.set(imagesString, memoryCacheStatistics.images.size);
-    sizes.set(cssString, memoryCacheStatistics.cssStyleSheets.size);
-    sizes.set(xslString, memoryCacheStatistics.xslStyleSheets.size);
-    sizes.set(javaScriptString, memoryCacheStatistics.scripts.size);
-    result.append(sizes);
-    
-    HashMap<String, uint64_t> liveSizes;
-    liveSizes.set(imagesString, memoryCacheStatistics.images.liveSize);
-    liveSizes.set(cssString, memoryCacheStatistics.cssStyleSheets.liveSize);
-    liveSizes.set(xslString, memoryCacheStatistics.xslStyleSheets.liveSize);
-    liveSizes.set(javaScriptString, memoryCacheStatistics.scripts.liveSize);
-    result.append(liveSizes);
-    
-    HashMap<String, uint64_t> decodedSizes;
-    decodedSizes.set(imagesString, memoryCacheStatistics.images.decodedSize);
-    decodedSizes.set(cssString, memoryCacheStatistics.cssStyleSheets.decodedSize);
-    decodedSizes.set(xslString, memoryCacheStatistics.xslStyleSheets.decodedSize);
-    decodedSizes.set(javaScriptString, memoryCacheStatistics.scripts.decodedSize);
-    result.append(decodedSizes);
-}
-
-void WebProcess::getWebCoreStatistics(uint64_t callbackID)
-{
-    StatisticsData data;
-    
-    // Gather JavaScript statistics.
-    {
-        JSLockHolder lock(commonVM());
-        data.statisticsNumbers.set("JavaScriptObjectsCount"_s, commonVM().heap.objectCount());
-        data.statisticsNumbers.set("JavaScriptGlobalObjectsCount"_s, commonVM().heap.globalObjectCount());
-        data.statisticsNumbers.set("JavaScriptProtectedObjectsCount"_s, commonVM().heap.protectedObjectCount());
-        data.statisticsNumbers.set("JavaScriptProtectedGlobalObjectsCount"_s, commonVM().heap.protectedGlobalObjectCount());
-        
-        std::unique_ptr<TypeCountSet> protectedObjectTypeCounts(commonVM().heap.protectedObjectTypeCounts());
-        fromCountedSetToHashMap(protectedObjectTypeCounts.get(), data.javaScriptProtectedObjectTypeCounts);
-        
-        std::unique_ptr<TypeCountSet> objectTypeCounts(commonVM().heap.objectTypeCounts());
-        fromCountedSetToHashMap(objectTypeCounts.get(), data.javaScriptObjectTypeCounts);
-        
-        uint64_t javaScriptHeapSize = commonVM().heap.size();
-        data.statisticsNumbers.set("JavaScriptHeapSize"_s, javaScriptHeapSize);
-        data.statisticsNumbers.set("JavaScriptFreeSize"_s, commonVM().heap.capacity() - javaScriptHeapSize);
-    }
-
-    WTF::FastMallocStatistics fastMallocStatistics = WTF::fastMallocStatistics();
-    data.statisticsNumbers.set("FastMallocReservedVMBytes"_s, fastMallocStatistics.reservedVMBytes);
-    data.statisticsNumbers.set("FastMallocCommittedVMBytes"_s, fastMallocStatistics.committedVMBytes);
-    data.statisticsNumbers.set("FastMallocFreeListBytes"_s, fastMallocStatistics.freeListBytes);
-    
-    // Gather font statistics.
-    auto& fontCache = FontCache::singleton();
-    data.statisticsNumbers.set("CachedFontDataCount"_s, fontCache.fontCount());
-    data.statisticsNumbers.set("CachedFontDataInactiveCount"_s, fontCache.inactiveFontCount());
-    
-    // Gather glyph page statistics.
-    data.statisticsNumbers.set("GlyphPageCount"_s, GlyphPage::count());
-    
-    // Get WebCore memory cache statistics
-    getWebCoreMemoryCacheStatistics(data.webCoreCacheStatistics);
-    
-    parentProcessConnection()->send(Messages::WebProcessPool::DidGetStatistics(data, callbackID), 0);
 }
 
 void WebProcess::garbageCollectJavaScriptObjects()

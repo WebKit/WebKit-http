@@ -34,6 +34,7 @@
 #include <wtf/HashTraits.h>
 #include <wtf/MathExtras.h>
 #include <wtf/MediaTime.h>
+#include <wtf/Nonmovable.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/TriState.h>
 
@@ -636,5 +637,42 @@ bool isThisValueAltered(const PutPropertySlot&, JSObject* baseObject);
 
 // See section 7.2.9: https://tc39.github.io/ecma262/#sec-samevalue
 bool sameValue(JSGlobalObject*, JSValue a, JSValue b);
+
+#if COMPILER(GCC_COMPATIBLE)
+ALWAYS_INLINE void ensureStillAliveHere(JSValue value)
+{
+#if USE(JSVALUE64)
+    asm volatile ("" : : "r"(bitwise_cast<uint64_t>(value)) : "memory");
+#else
+    asm volatile ("" : : "r"(value.payload()) : "memory");
+#endif
+}
+#else
+JS_EXPORT_PRIVATE void ensureStillAliveHere(JSValue);
+#endif
+
+// Use EnsureStillAliveScope when you have a data structure that includes GC pointers, and you need
+// to remove it from the DOM and then use it in the same scope. For example, a 'once' event listener
+// needs to be removed from the DOM and then fired.
+class EnsureStillAliveScope {
+    WTF_FORBID_HEAP_ALLOCATION;
+    WTF_MAKE_NONCOPYABLE(EnsureStillAliveScope);
+    WTF_MAKE_NONMOVABLE(EnsureStillAliveScope);
+public:
+    EnsureStillAliveScope(JSValue value)
+        : m_value(value)
+    {
+    }
+
+    ~EnsureStillAliveScope()
+    {
+        ensureStillAliveHere(m_value);
+    }
+
+    JSValue value() const { return m_value; }
+
+private:
+    JSValue m_value;
+};
 
 } // namespace JSC

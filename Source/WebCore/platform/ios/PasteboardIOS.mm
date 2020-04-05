@@ -38,6 +38,7 @@
 #import "UTIUtilities.h"
 #import "WebNSAttributedStringExtras.h"
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <pal/ios/UIKitSoftLink.h>
 #import <wtf/URL.h>
 #import <wtf/text/StringHash.h>
 
@@ -51,22 +52,27 @@
 
 namespace WebCore {
 
-#if ENABLE(DRAG_SUPPORT)
-
 Pasteboard::Pasteboard(const String& pasteboardName)
     : m_pasteboardName(pasteboardName)
     , m_changeCount(platformStrategies()->pasteboardStrategy()->changeCount(pasteboardName))
 {
 }
 
+#if ENABLE(DRAG_SUPPORT)
+
 void Pasteboard::setDragImage(DragImage, const IntPoint&)
 {
     notImplemented();
 }
 
+String Pasteboard::nameOfDragPasteboard()
+{
+    return "drag and drop pasteboard";
+}
+
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
-    return makeUnique<Pasteboard>("data interaction pasteboard");
+    return makeUnique<Pasteboard>(Pasteboard::nameOfDragPasteboard());
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData)
@@ -74,7 +80,7 @@ std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dra
     return makeUnique<Pasteboard>(dragData.pasteboardName());
 }
 
-#endif
+#endif // ENABLE(DRAG_SUPPORT)
 
 static int64_t changeCountForPasteboard(const String& pasteboardName = { })
 {
@@ -101,7 +107,7 @@ void Pasteboard::writeMarkup(const String&)
 
 std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
-    return makeUnique<Pasteboard>(changeCountForPasteboard());
+    return makeUnique<Pasteboard>(PAL::get_UIKit_UIPasteboardNameGeneral());
 }
 
 void Pasteboard::write(const PasteboardWebContent& content)
@@ -345,10 +351,12 @@ void Pasteboard::read(PasteboardWebContentReader& reader, WebContentReadingPolic
 
 bool Pasteboard::respectsUTIFidelities() const
 {
-    // For now, data interaction is the only feature that uses item-provider-based pasteboard representations.
-    // In the future, we may need to consult the client layer to determine whether or not the pasteboard supports
-    // item types ranked by fidelity.
-    return m_pasteboardName == "data interaction pasteboard";
+#if ENABLE(DRAG_SUPPORT)
+    // FIXME: We should respect UTI fidelity for normal UIPasteboard-backed pasteboards as well.
+    return m_pasteboardName == Pasteboard::nameOfDragPasteboard();
+#else
+    return false;
+#endif
 }
 
 void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader, WebContentReadingPolicy policy, Optional<size_t> itemIndex)

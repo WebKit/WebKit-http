@@ -289,6 +289,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setOffscreenCanvasEnabled(enabled);
 #endif
 
+#if ENABLE(WEBXR)
+    if (preference == "WebKitWebXREnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setWebXREnabled(enabled);
+#endif
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
@@ -468,45 +473,6 @@ bool InjectedBundle::isPageBoxVisible(WebFrame* frame, int pageIndex)
 bool InjectedBundle::isProcessingUserGesture()
 {
     return UserGestureIndicator::processingUserGesture();
-}
-
-void InjectedBundle::addUserScript(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, String&& source, String&& url, API::Array* whitelist, API::Array* blacklist, WebCore::UserScriptInjectionTime injectionTime, WebCore::UserContentInjectedFrames injectedFrames)
-{
-    UserScript userScript { WTFMove(source), URL(URL(), url), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), injectionTime, injectedFrames };
-
-    pageGroup->userContentController().addUserScript(*scriptWorld, WTFMove(userScript));
-}
-
-void InjectedBundle::addUserStyleSheet(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& source, const String& url, API::Array* whitelist, API::Array* blacklist, WebCore::UserContentInjectedFrames injectedFrames)
-{
-    UserStyleSheet userStyleSheet{ source, URL(URL(), url), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), injectedFrames, UserStyleUserLevel };
-
-    pageGroup->userContentController().addUserStyleSheet(*scriptWorld, WTFMove(userStyleSheet));
-}
-
-void InjectedBundle::removeUserScript(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& url)
-{
-    pageGroup->userContentController().removeUserScriptWithURL(*scriptWorld, URL(URL(), url));
-}
-
-void InjectedBundle::removeUserStyleSheet(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& url)
-{
-    pageGroup->userContentController().removeUserStyleSheetWithURL(*scriptWorld, URL(URL(), url));
-}
-
-void InjectedBundle::removeUserScripts(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld)
-{
-    pageGroup->userContentController().removeUserScripts(*scriptWorld);
-}
-
-void InjectedBundle::removeUserStyleSheets(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld)
-{
-    pageGroup->userContentController().removeUserStyleSheets(*scriptWorld);
-}
-
-void InjectedBundle::removeAllUserContent(WebPageGroupProxy* pageGroup)
-{
-    pageGroup->userContentController().removeAllUserContent();
 }
 
 void InjectedBundle::garbageCollectJavaScriptObjects()

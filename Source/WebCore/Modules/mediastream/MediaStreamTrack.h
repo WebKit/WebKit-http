@@ -149,10 +149,9 @@ public:
     using RefCounted::ref;
     using RefCounted::deref;
 
-    // ActiveDOMObject API.
-    bool hasPendingActivity() const final;
-
     void setIdForTesting(String&& id) { m_private->setIdForTesting(WTFMove(id)); }
+
+    Document* document() const;
 
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return m_private->logger(); }
@@ -171,12 +170,11 @@ private:
 
     void configureTrackRendering();
 
-    Document* document() const;
-
     // ActiveDOMObject API.
     void stop() final { stopTrack(); }
     const char* activeDOMObjectName() const override;
     void suspend(ReasonForSuspension) final;
+    bool virtualHasPendingActivity() const final;
 
     // EventTarget
     void refEventTarget() final { ref(); }

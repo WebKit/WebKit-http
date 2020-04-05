@@ -92,6 +92,7 @@ private:
     void suspend(ReasonForSuspension) final;
     void stop() final;
     const char* activeDOMObjectName() const final;
+    bool virtualHasPendingActivity() const final;
     
     void stopRecordingInternal();
 
@@ -107,8 +108,6 @@ private:
     void trackEnabledChanged(MediaStreamTrackPrivate&) final { };
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) final;
     void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
-    
-    void scheduleDeferredTask(Function<void()>&&);
     
     static creatorFunction m_customCreator;
     

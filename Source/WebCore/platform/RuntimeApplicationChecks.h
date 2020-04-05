@@ -43,9 +43,6 @@ inline bool isInWebProcess() { return true; }
 bool isInWebProcess();
 bool isInNetworkProcess();
 
-WEBCORE_EXPORT void setApplicationSDKVersion(uint32_t);
-WEBCORE_EXPORT uint32_t applicationSDKVersion();
-
 WEBCORE_EXPORT void setApplicationBundleIdentifier(const String&);
 WEBCORE_EXPORT String applicationBundleIdentifier();
 WEBCORE_EXPORT void clearApplicationBundleIdentifierTestingOverride();
@@ -89,6 +86,7 @@ WEBCORE_EXPORT bool isWebBookmarksD();
 WEBCORE_EXPORT bool isDumpRenderTree();
 WEBCORE_EXPORT bool isMiniBrowser();
 bool isMobileStore();
+bool isJesusCalling();
 bool isSpringBoard();
 WEBCORE_EXPORT bool isWebProcess();
 WEBCORE_EXPORT bool isIBooks();
@@ -102,6 +100,9 @@ WEBCORE_EXPORT bool isAppleApplication();
 WEBCORE_EXPORT bool isEvernote();
 WEBCORE_EXPORT bool isEventbrite();
 WEBCORE_EXPORT bool isDataActivation();
+WEBCORE_EXPORT bool isNews();
+WEBCORE_EXPORT bool isStocks();
+WEBCORE_EXPORT bool isFeedly();
 
 } // IOSApplication
 

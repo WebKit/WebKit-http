@@ -195,7 +195,9 @@ public:
     void hasIsolatedSessionForTesting(const URL&, CompletionHandler<void(bool)>&&) const;
     void setResourceLoadStatisticsShouldDowngradeReferrerForTesting(bool, CompletionHandler<void()>&&);
     void setResourceLoadStatisticsShouldBlockThirdPartyCookiesForTesting(bool enabled, bool onlyOnSitesWithoutUserInteraction, CompletionHandler<void()>&&);
+    void setResourceLoadStatisticsShouldEnbleSameSiteStrictEnforcementForTesting(bool enabled, CompletionHandler<void()>&&);
     void setResourceLoadStatisticsFirstPartyWebsiteDataRemovalModeForTesting(bool enabled, CompletionHandler<void()>&&);
+    void setResourceLoadStatisticsToSameSiteStrictCookiesForTesting(const URL&, CompletionHandler<void()>&&);
     WebCore::ThirdPartyCookieBlockingMode thirdPartyCookieBlockingMode() const;
     bool isItpStateExplicitlySet() const { return m_isItpStateExplicitlySet; }
     void useExplicitITPState() { m_isItpStateExplicitlySet = true; }
@@ -278,26 +280,28 @@ public:
     static WTF::String defaultMediaKeysStorageDirectory();
     static WTF::String defaultDeviceIdHashSaltsStorageDirectory();
     static WTF::String defaultJavaScriptConfigurationDirectory();
+    static bool http3Enabled();
 
     void resetQuota(CompletionHandler<void()>&&);
     void hasAppBoundSession(CompletionHandler<void(bool)>&&) const;
     void setInAppBrowserPrivacyEnabled(bool enabled, CompletionHandler<void()>&&);
 
-    void beginAppBoundDomainCheck(WebCore::RegistrableDomain&&, WebFramePolicyListenerProxy&);
+    void beginAppBoundDomainCheck(const URL&, WebFramePolicyListenerProxy&);
     void appBoundDomainsForTesting(CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&&) const;
     void ensureAppBoundDomains(CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&&) const;
+    void reinitializeAppBoundDomains();
 
 private:
-    void initializeAppBoundDomains();
+    enum class ForceReinitialization : bool { No, Yes };
+    void initializeAppBoundDomains(ForceReinitialization = ForceReinitialization::No);
+
     void fetchDataAndApply(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, RefPtr<WorkQueue>&&, Function<void(Vector<WebsiteDataRecord>)>&& apply);
 
     void platformInitialize();
     void platformDestroy();
     static void platformRemoveRecentSearches(WallTime);
 
-#if USE(CURL) || USE(SOUP) || PLATFORM(HAIKU)
     void platformSetNetworkParameters(WebsiteDataStoreParameters&);
-#endif
 
     WebsiteDataStore();
 

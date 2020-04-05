@@ -669,7 +669,7 @@ void Editor::replaceSelectionWithFragment(DocumentFragment& fragment, SelectRepl
         return;
 
     AccessibilityReplacedText replacedText;
-    if (AXObjectCache::accessibilityEnabled() && editingAction == EditAction::Paste)
+    if (AXObjectCache::accessibilityEnabled() && (editingAction == EditAction::Paste || editingAction == EditAction::Insert))
         replacedText = AccessibilityReplacedText(selection);
 
     OptionSet<ReplaceSelectionCommand::CommandOption> options { ReplaceSelectionCommand::PreventNesting, ReplaceSelectionCommand::SanitizeFragment };
@@ -699,6 +699,12 @@ void Editor::replaceSelectionWithFragment(DocumentFragment& fragment, SelectRepl
     if (AXObjectCache::accessibilityEnabled() && editingAction == EditAction::Paste) {
         String text = AccessibilityObject::stringForVisiblePositionRange(command->visibleSelectionForInsertedText());
         replacedText.postTextStateChangeNotification(document().existingAXObjectCache(), AXTextEditTypePaste, text, m_frame.selection().selection());
+        command->composition()->setRangeDeletedByUnapply(replacedText.replacedRange());
+    }
+
+    if (AXObjectCache::accessibilityEnabled() && editingAction == EditAction::Insert) {
+        String text = command->documentFragmentPlainText();
+        replacedText.postTextStateChangeNotification(document().existingAXObjectCache(), AXTextEditTypeInsert, text, m_frame.selection().selection());
         command->composition()->setRangeDeletedByUnapply(replacedText.replacedRange());
     }
 
@@ -2217,15 +2223,15 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
     Node& searchEndNodeAfterWrap = spellingSearchRange->endContainer();
     int searchEndOffsetAfterWrap = spellingSearchRange->endOffset();
     
-    int misspellingOffset = 0;
+    uint64_t misspellingOffset = 0;
     GrammarDetail grammarDetail;
-    int grammarPhraseOffset = 0;
+    uint64_t grammarPhraseOffset = 0;
     RefPtr<Range> grammarSearchRange;
     String badGrammarPhrase;
     String misspelledWord;
 
     bool isSpelling = true;
-    int foundOffset = 0;
+    uint64_t foundOffset = 0;
     String foundItem;
     RefPtr<Range> firstMisspellingRange;
     if (unifiedTextCheckerEnabled()) {
@@ -2247,14 +2253,14 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
             // Stop looking at start of next misspelled word
             CharacterIterator chars(*grammarSearchRange);
             chars.advance(misspellingOffset);
-            grammarSearchRange->setEnd(chars.range()->startContainer(), chars.range()->startOffset());
+            grammarSearchRange->setEnd(chars.range().start.container, chars.range().start.offset);
         }
-    
+
         if (isGrammarCheckingEnabled())
             badGrammarPhrase = TextCheckingHelper(*client(), *grammarSearchRange).findFirstBadGrammar(grammarDetail, grammarPhraseOffset, false);
 #endif
     }
-    
+
     // If we found neither bad grammar nor a misspelled word, wrap and try again (but don't bother if we started at the beginning of the
     // block rather than at a selection).
     if (startedWithSelection && !misspelledWord && !badGrammarPhrase) {
@@ -2282,7 +2288,7 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
                 // Stop looking at start of next misspelled word
                 CharacterIterator chars(*grammarSearchRange);
                 chars.advance(misspellingOffset);
-                grammarSearchRange->setEnd(chars.range()->startContainer(), chars.range()->startOffset());
+                grammarSearchRange->setEnd(chars.range().start.container, chars.range().start.offset);
             }
 
             if (isGrammarCheckingEnabled())
@@ -2301,10 +2307,10 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
         // panel, and store a marker so we draw the green squiggle later.
         
         ASSERT(badGrammarPhrase.length() > 0);
-        ASSERT(grammarDetail.location != -1 && grammarDetail.length > 0);
+        ASSERT(grammarDetail.range.length > 0);
         
         // FIXME 4859190: This gets confused with doubled punctuation at the end of a paragraph
-        auto badGrammarRange = TextIterator::subrange(*grammarSearchRange, grammarPhraseOffset + grammarDetail.location, grammarDetail.length);
+        auto badGrammarRange = resolveCharacterRange(*grammarSearchRange, { grammarPhraseOffset + grammarDetail.range.location, grammarDetail.range.length });
         m_frame.selection().setSelection(VisibleSelection(badGrammarRange, SEL_DEFAULT_AFFINITY));
         m_frame.selection().revealSelection();
         
@@ -2316,7 +2322,7 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
         // We found a misspelling, but not any earlier bad grammar. Select the misspelling, update the spelling panel, and store
         // a marker so we draw the red squiggle later.
         
-        auto misspellingRange = TextIterator::subrange(spellingSearchRange, misspellingOffset, misspelledWord.length());
+        auto misspellingRange = resolveCharacterRange(spellingSearchRange, { misspellingOffset, misspelledWord.length() });
         m_frame.selection().setSelection(VisibleSelection(misspellingRange, DOWNSTREAM));
         m_frame.selection().revealSelection();
         
@@ -2586,8 +2592,7 @@ void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart,
         return;
     
     // Get the misspelled word.
-    const String misspelledWord = plainText(misspellingRange.get());
-    String autocorrectedString = textChecker()->getAutoCorrectSuggestionForMisspelledWord(misspelledWord);
+    String autocorrectedString = textChecker()->getAutoCorrectSuggestionForMisspelledWord(plainText(*misspellingRange));
 
     // If autocorrected word is non empty, replace the misspelled word by this word.
     if (!autocorrectedString.isEmpty()) {
@@ -2767,23 +2772,20 @@ void Editor::replaceRangeForSpellChecking(Range& rangeToReplace, const String& r
     SpellingCorrectionCommand::create(rangeToReplace, replacement)->apply();
 }
 
-static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingParagraph& paragraph, Range& rangeToReplace, const String& replacement, int resultLocation, int resultLength)
+static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingParagraph& paragraph, Range& rangeToReplace, const String& replacement, CharacterRange resultCharacterRange)
 {
-    auto& scope = downcast<ContainerNode>(paragraph.paragraphRange().startContainer().rootNode());
-
-    size_t paragraphLocation;
-    size_t paragraphLength;
-    TextIterator::getLocationAndLengthFromRange(&scope, &paragraph.paragraphRange(), paragraphLocation, paragraphLength);
+    auto scopeNode = makeRef(downcast<ContainerNode>(paragraph.paragraphRange().startContainer().rootNode()));
+    auto paragraphCharacterRange = characterRange(makeBoundaryPointBeforeNodeContents(scopeNode), paragraph.paragraphRange());
 
     SpellingCorrectionCommand::create(rangeToReplace, replacement)->apply();
 
     // TextCheckingParagraph may be orphaned after SpellingCorrectionCommand mutated DOM.
     // See <rdar://10305315>, http://webkit.org/b/89526.
 
-    RefPtr<Range> newParagraphRange = TextIterator::rangeFromLocationAndLength(&scope, paragraphLocation, paragraphLength + replacement.length() - resultLength);
-
-    auto spellCheckingRange = TextIterator::subrange(*newParagraphRange, resultLocation, replacement.length());
-    paragraph = TextCheckingParagraph(spellCheckingRange.copyRef(), spellCheckingRange.copyRef(), newParagraphRange.get());
+    paragraphCharacterRange.length += replacement.length() - resultCharacterRange.length;
+    auto newParagraphRange = resolveCharacterRange(makeRangeSelectingNodeContents(scopeNode), paragraphCharacterRange);
+    auto spellCheckingRange = resolveCharacterRange(newParagraphRange, { resultCharacterRange.location, replacement.length() });
+    paragraph = TextCheckingParagraph(createLiveRange(spellCheckingRange), createLiveRange(spellCheckingRange), createLiveRange(newParagraphRange));
 }
 
 void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<TextCheckingResult>& results)
@@ -2805,7 +2807,7 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
 #endif
 
     // Expand the range to encompass entire paragraphs, since text checking needs that much context.
-    int selectionOffset = 0;
+    uint64_t selectionOffset = 0;
     bool useAmbiguousBoundaryOffset = false;
     bool selectionChanged = false;
     bool restoreSelectionAfterChange = false;
@@ -2817,9 +2819,9 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
             Position caretPosition = m_frame.selection().selection().end();
             selectionOffset = paragraph.offsetTo(caretPosition).releaseReturnValue();
             restoreSelectionAfterChange = true;
-            if (selectionOffset > 0 && (selectionOffset > paragraph.textLength() || paragraph.textCharAt(selectionOffset - 1) == newlineCharacter))
+            if (selectionOffset > 0 && (selectionOffset > paragraph.text().length() || paragraph.text()[selectionOffset - 1] == newlineCharacter))
                 adjustSelectionForParagraphBoundaries = true;
-            if (selectionOffset > 0 && selectionOffset <= paragraph.textLength() && isAmbiguousBoundaryCharacter(paragraph.textCharAt(selectionOffset - 1)))
+            if (selectionOffset > 0 && selectionOffset <= paragraph.text().length() && isAmbiguousBoundaryCharacter(paragraph.text()[selectionOffset - 1]))
                 useAmbiguousBoundaryOffset = true;
         }
     }
@@ -2827,14 +2829,14 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
     int offsetDueToReplacement = 0;
 
     for (unsigned i = 0; i < results.size(); i++) {
-        const int spellingRangeEndOffset = paragraph.checkingEnd() + offsetDueToReplacement;
-        const TextCheckingType resultType = results[i].type;
-        const int resultLocation = results[i].location + offsetDueToReplacement;
-        const int resultLength = results[i].length;
-        const int resultEndLocation = resultLocation + resultLength;
-        const int automaticReplacementEndLocation = paragraph.automaticReplacementStart() + paragraph.automaticReplacementLength() + offsetDueToReplacement;
+        auto spellingRangeEndOffset = paragraph.checkingEnd() + offsetDueToReplacement;
+        TextCheckingType resultType = results[i].type;
+        auto resultLocation = results[i].range.location + offsetDueToReplacement;
+        auto resultLength = results[i].range.length;
+        auto resultEndLocation = resultLocation + resultLength;
+        auto automaticReplacementEndLocation = paragraph.automaticReplacementStart() + paragraph.automaticReplacementLength() + offsetDueToReplacement;
         const String& replacement = results[i].replacement;
-        const bool resultEndsAtAmbiguousBoundary = useAmbiguousBoundaryOffset && selectionOffset - 1 <= resultEndLocation;
+        bool resultEndsAtAmbiguousBoundary = useAmbiguousBoundaryOffset && selectionOffset - 1 <= resultEndLocation;
 
         // Only mark misspelling if:
         // 1. Current text checking isn't done for autocorrection, in which case shouldMarkSpelling is false.
@@ -2844,16 +2846,16 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
         if (shouldMarkSpelling && !shouldShowCorrectionPanel && resultType == TextCheckingType::Spelling
             && resultLocation >= paragraph.checkingStart() && resultEndLocation <= spellingRangeEndOffset && !resultEndsAtAmbiguousBoundary) {
             ASSERT(resultLength > 0 && resultLocation >= 0);
-            auto misspellingRange = paragraph.subrange(resultLocation, resultLength);
+            auto misspellingRange = paragraph.subrange({ resultLocation, resultLength });
             if (!m_alternativeTextController->isSpellingMarkerAllowed(misspellingRange))
                 continue;
             misspellingRange->startContainer().document().markers().addMarker(misspellingRange, DocumentMarker::Spelling, replacement);
-        } else if (shouldMarkGrammar && resultType == TextCheckingType::Grammar && paragraph.checkingRangeCovers(resultLocation, resultLength)) {
+        } else if (shouldMarkGrammar && resultType == TextCheckingType::Grammar && paragraph.checkingRangeCovers({ resultLocation, resultLength })) {
             ASSERT(resultLength > 0 && resultLocation >= 0);
             for (auto& detail : results[i].details) {
-                ASSERT(detail.length > 0 && detail.location >= 0);
-                if (paragraph.checkingRangeCovers(resultLocation + detail.location, detail.length)) {
-                    auto badGrammarRange = paragraph.subrange(resultLocation + detail.location, detail.length);
+                ASSERT(detail.range.length > 0 && detail.range.location >= 0);
+                if (paragraph.checkingRangeCovers({ resultLocation + detail.range.location, detail.range.length })) {
+                    auto badGrammarRange = paragraph.subrange({ resultLocation + detail.range.location, detail.range.length });
                     badGrammarRange->startContainer().document().markers().addMarker(badGrammarRange, DocumentMarker::Grammar, detail.userDescription);
                 }
             }
@@ -2871,7 +2873,7 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
             // 2. The result doesn't end at an ambiguous boundary.
             //    (FIXME: this is required until 6853027 is fixed and text checking can do this for us
             bool doReplacement = replacement.length() > 0 && !resultEndsAtAmbiguousBoundary;
-            auto rangeToReplace = paragraph.subrange(resultLocation, resultLength);
+            auto rangeToReplace = paragraph.subrange({ resultLocation, resultLength });
 
             // Adding links should be done only immediately after they are typed.
             if (resultType == TextCheckingType::Link && selectionOffset != resultEndLocation + 1)
@@ -2880,7 +2882,7 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
             if (!(shouldPerformReplacement || shouldCheckForCorrection || shouldMarkLink) || !doReplacement)
                 continue;
 
-            String replacedString = plainText(rangeToReplace.ptr());
+            String replacedString = plainText(rangeToReplace);
             const bool existingMarkersPermitReplacement = m_alternativeTextController->processMarkersOnTextToBeReplacedByResult(results[i], rangeToReplace, replacedString);
             if (!existingMarkersPermitReplacement)
                 continue;
@@ -2908,7 +2910,7 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
                 if (canEditRichly())
                     CreateLinkCommand::create(document(), replacement)->apply();
             } else if (canEdit() && shouldInsertText(replacement, rangeToReplace.ptr(), EditorInsertAction::Typed)) {
-                correctSpellcheckingPreservingTextCheckingParagraph(paragraph, rangeToReplace, replacement, resultLocation, resultLength);
+                correctSpellcheckingPreservingTextCheckingParagraph(paragraph, rangeToReplace, replacement, { resultLocation, resultLength });
 
                 if (AXObjectCache* cache = document().existingAXObjectCache()) {
                     if (Element* root = m_frame.selection().selection().rootEditableElement())
@@ -2916,7 +2918,7 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
                 }
 
                 // Skip all other results for the replaced text.
-                while (i + 1 < results.size() && results[i + 1].location + offsetDueToReplacement <= resultLocation)
+                while (i + 1 < results.size() && results[i + 1].range.location + offsetDueToReplacement <= resultLocation)
                     i++;
 
                 selectionChanged = true;
@@ -2925,8 +2927,8 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
                     selectionOffset += replacement.length() - resultLength;
 
                 if (resultType == TextCheckingType::Correction) {
-                    auto replacementRange = paragraph.subrange(resultLocation, replacement.length());
-                    m_alternativeTextController->recordAutocorrectionResponse(AutocorrectionResponse::Accepted, replacedString, replacementRange.ptr());
+                    auto replacementRange = paragraph.subrange({ resultLocation, replacement.length() });
+                    m_alternativeTextController->recordAutocorrectionResponse(AutocorrectionResponse::Accepted, replacedString, replacementRange.get());
 
                     // Add a marker so that corrections can easily be undone and won't be re-corrected.
                     m_alternativeTextController->markCorrection(replacementRange, replacedString);
@@ -2939,8 +2941,8 @@ void Editor::markAndReplaceFor(const SpellCheckRequest& request, const Vector<Te
         TextCheckingParagraph extendedParagraph(WTFMove(paragraph));
         // Restore the caret position if we have made any replacements
         extendedParagraph.expandRangeToNextEnd();
-        if (restoreSelectionAfterChange && selectionOffset >= 0 && selectionOffset <= extendedParagraph.rangeLength()) {
-            auto selectionRange = extendedParagraph.subrange(0, selectionOffset);
+        if (restoreSelectionAfterChange && selectionOffset <= extendedParagraph.rangeLength()) {
+            auto selectionRange = extendedParagraph.subrange({ 0, selectionOffset });
             m_frame.selection().moveTo(selectionRange->endPosition(), DOWNSTREAM);
             if (adjustSelectionForParagraphBoundaries)
                 m_frame.selection().modify(FrameSelection::AlterationMove, DirectionForward, CharacterGranularity);
@@ -2961,13 +2963,13 @@ void Editor::changeBackToReplacedString(const String& replacedString)
         return;
 
     RefPtr<Range> selection = selectedRange();
-    if (!shouldInsertText(replacedString, selection.get(), EditorInsertAction::Pasted))
+    if (!selection || !shouldInsertText(replacedString, selection.get(), EditorInsertAction::Pasted))
         return;
     
-    m_alternativeTextController->recordAutocorrectionResponse(AutocorrectionResponse::Reverted, replacedString, selection.get());
+    m_alternativeTextController->recordAutocorrectionResponse(AutocorrectionResponse::Reverted, replacedString, *selection);
     TextCheckingParagraph paragraph(*selection);
     replaceSelectionWithText(replacedString, SelectReplacement::No, SmartReplace::No, EditAction::Insert);
-    auto changedRange = paragraph.subrange(paragraph.checkingStart(), replacedString.length());
+    auto changedRange = paragraph.subrange(CharacterRange(paragraph.checkingStart(), replacedString.length()));
     changedRange->startContainer().document().markers().addMarker(changedRange, DocumentMarker::Replacement, String());
     m_alternativeTextController->markReversed(changedRange);
 #else
@@ -3196,7 +3198,7 @@ void Editor::transpose()
     VisibleSelection newSelection(*range, DOWNSTREAM);
 
     // Transpose the two characters.
-    String text = plainText(range.get());
+    String text = plainText(*range);
     if (text.length() != 2)
         return;
     String transposed = text.right(1) + text.left(1);
@@ -3216,7 +3218,7 @@ void Editor::transpose()
 
 void Editor::addRangeToKillRing(const Range& range, KillRingInsertionMode mode)
 {
-    addTextToKillRing(plainText(&range), mode);
+    addTextToKillRing(plainText(range), mode);
 }
 
 void Editor::addTextToKillRing(const String& text, KillRingInsertionMode mode)
@@ -3307,7 +3309,11 @@ String Editor::selectedText(TextIteratorBehavior behavior) const
 {
     // We remove '\0' characters because they are not visibly rendered to the user.
     auto& selection = m_frame.selection().selection();
-    return plainText(selection.start(), selection.end(), behavior).replaceWithLiteral('\0', "");
+    auto start = selection.start();
+    auto end = selection.end();
+    if (start.isNull() || start.isOrphan() || end.isNull() || end.isOrphan())
+        return emptyString();
+    return plainText(SimpleRange { *makeBoundaryPoint(start), *makeBoundaryPoint(end) }, behavior).replaceWithLiteral('\0', "");
 }
 
 RefPtr<TextPlaceholderElement> Editor::insertTextPlaceholder(const IntSize& size)
@@ -3528,7 +3534,7 @@ RefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRange,
             searchRange->setStart(*shadowTreeRoot, 0);
     }
 
-    RefPtr<Range> resultRange = findPlainText(*searchRange, target, options);
+    RefPtr<Range> resultRange = createLiveRange(findPlainText(*searchRange, target, options));
     // If we started in the reference range and the found range exactly matches the reference range, find again.
     // Build a selection with the found range to remove collapsed whitespace.
     // Compare ranges instead of selection objects to ignore the way that the current selection was made.
@@ -3546,7 +3552,7 @@ RefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRange,
                 searchRange->setStart(*shadowTreeRoot, 0);
         }
 
-        resultRange = findPlainText(*searchRange, target, options);
+        resultRange = createLiveRange(findPlainText(*searchRange, target, options));
     }
 
     // If nothing was found in the shadow tree, search in main content following the shadow tree.
@@ -3559,14 +3565,13 @@ RefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRange,
                 searchRange->setEndBefore(*shadowTreeRoot->shadowHost());
         }
 
-        resultRange = findPlainText(*searchRange, target, options);
+        resultRange = createLiveRange(findPlainText(*searchRange, target, options));
     }
 
     // If we didn't find anything and we're wrapping, search again in the entire document (this will
     // redundantly re-search the area already searched in some cases).
     if (resultRange->collapsed() && options.contains(WrapAround)) {
-        searchRange = rangeOfContents(document());
-        resultRange = findPlainText(*searchRange, target, options);
+        resultRange = createLiveRange(findPlainText(rangeOfContents(document()), target, options));
         // We used to return false here if we ended up with the same range that we started with
         // (e.g., the reference range was already the only instance of this text). But we decided that
         // this should be a success case instead, so we'll just fall through in that case.
@@ -3607,21 +3612,21 @@ unsigned Editor::countMatchesForText(const String& target, Range* range, FindOpt
     unsigned matchCount = 0;
     do {
         auto resultRange = findPlainText(*searchRange, target, options - Backwards);
-        if (resultRange->collapsed()) {
-            if (!resultRange->startContainer().isInShadowTree())
+        if (resultRange.collapsed()) {
+            if (!resultRange.start.container->isInShadowTree())
                 break;
 
-            searchRange->setStartAfter(*resultRange->startContainer().shadowHost());
+            searchRange->setStartAfter(*resultRange.start.container->shadowHost());
             searchRange->setEnd(originalEndContainer, originalEndOffset);
             continue;
         }
 
         ++matchCount;
         if (matches)
-            matches->append(resultRange.ptr());
-        
+            matches->append(createLiveRange(resultRange));
+
         if (markMatches)
-            document().markers().addMarker(resultRange, DocumentMarker::TextMatch);
+            document().markers().addMarker(createLiveRange(resultRange), DocumentMarker::TextMatch);
 
         // Stop looking if we hit the specified limit. A limit of 0 means no limit.
         if (limit > 0 && matchCount >= limit)
@@ -3631,7 +3636,7 @@ unsigned Editor::countMatchesForText(const String& target, Range* range, FindOpt
         // result range. There is no need to use a VisiblePosition here,
         // since findPlainText will use a TextIterator to go over the visible
         // text nodes. 
-        searchRange->setStart(resultRange->endContainer(), resultRange->endOffset());
+        searchRange->setStart(WTFMove(resultRange.end.container), resultRange.end.offset);
 
         Node* shadowTreeRoot = searchRange->shadowRoot();
         if (searchRange->collapsed() && shadowTreeRoot)
@@ -3768,12 +3773,9 @@ void Editor::scanRangeForTelephoneNumbers(Range& range, const StringView& string
 
         ASSERT(scannerPosition + relativeEndPosition < length);
 
-        unsigned subrangeOffset = scannerPosition + relativeStartPosition;
-        unsigned subrangeLength = relativeEndPosition - relativeStartPosition + 1;
+        auto subrange = resolveCharacterRange(range, CharacterRange(scannerPosition + relativeStartPosition, relativeEndPosition - relativeStartPosition + 1));
 
-        auto subrange = TextIterator::subrange(range, subrangeOffset, subrangeLength);
-
-        markedRanges.append(subrange.ptr());
+        markedRanges.append(createLiveRange(subrange));
         range.ownerDocument().markers().addMarker(subrange, DocumentMarker::TelephoneNumber);
 
         scannerPosition += relativeEndPosition + 1;
@@ -3970,7 +3972,7 @@ String Editor::stringForCandidateRequest() const
     const VisibleSelection& selection = m_frame.selection().selection();
     RefPtr<Range> rangeForCurrentlyTypedString = candidateRangeForSelection(m_frame);
     if (rangeForCurrentlyTypedString && candidateWouldReplaceText(selection))
-        return plainText(rangeForCurrentlyTypedString.get());
+        return plainText(*rangeForCurrentlyTypedString);
 
     return String();
 }
@@ -3983,14 +3985,14 @@ RefPtr<Range> Editor::contextRangeForCandidateRequest() const
 
 RefPtr<Range> Editor::rangeForTextCheckingResult(const TextCheckingResult& result) const
 {
-    if (!result.length)
+    if (!result.range.length)
         return nullptr;
 
     RefPtr<Range> contextRange = contextRangeForCandidateRequest();
     if (!contextRange)
         return nullptr;
 
-    return TextIterator::subrange(*contextRange, result.location, result.length);
+    return createLiveRange(resolveCharacterRange(*contextRange, result.range));
 }
 
 void Editor::scheduleEditorUIUpdate()

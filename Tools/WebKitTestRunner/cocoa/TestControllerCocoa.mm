@@ -149,9 +149,6 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
     if (options.enableEditableImages)
         [copiedConfiguration _setEditableImagesEnabled:YES];
 
-    if (options.enableUndoManagerAPI)
-        [copiedConfiguration _setUndoManagerAPIEnabled:YES];
-
     if (options.useEphemeralSession) {
         auto ephemeralWebsiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
         [ephemeralWebsiteDataStore _setResourceLoadStatisticsEnabled:YES];
@@ -184,6 +181,8 @@ PlatformWebView* TestController::platformCreateOtherPage(PlatformWebView* parent
 {
     WKWebViewConfiguration *newConfiguration = [[globalWebViewConfiguration copy] autorelease];
     newConfiguration._relatedWebView = static_cast<WKWebView*>(parentView->platformView());
+    if (newConfiguration._relatedWebView)
+        newConfiguration.websiteDataStore = newConfiguration._relatedWebView.configuration.websiteDataStore;
     PlatformWebView* view = new PlatformWebView(newConfiguration, options);
     finishCreatingPlatformWebView(view, options);
     return view;
@@ -342,28 +341,28 @@ void TestController::getAllStorageAccessEntries()
     }];
 }
 
-void TestController::getPrevalentDomains()
+void TestController::loadedThirdPartyDomains()
 {
     auto* parentView = mainWebView();
     if (!parentView)
         return;
     
-    [globalWebViewConfiguration.websiteDataStore _getPrevalentDomainsFor:parentView->platformView() completionHandler:^(NSArray<NSString *> *nsDomains) {
+    [globalWebViewConfiguration.websiteDataStore _loadedThirdPartyDomainsFor:parentView->platformView() completionHandler:^(NSArray<NSString *> *nsDomains) {
         Vector<String> domains;
         domains.reserveInitialCapacity(nsDomains.count);
         for (NSString *domain : nsDomains)
             domains.uncheckedAppend(domain);
-        m_currentInvocation->didReceivePrevalentDomains(WTFMove(domains));
+        m_currentInvocation->didReceiveLoadedThirdPartyDomains(WTFMove(domains));
     }];
 }
 
-void TestController::clearPrevalentDomains()
+void TestController::clearLoadedThirdPartyDomains()
 {
     auto* parentView = mainWebView();
     if (!parentView)
         return;
 
-    [globalWebViewConfiguration.websiteDataStore _clearPrevalentDomainsFor:parentView->platformView()];
+    [globalWebViewConfiguration.websiteDataStore _clearLoadedThirdPartyDomainsFor:parentView->platformView()];
 }
 
 void TestController::getWebViewCategory()
@@ -430,7 +429,7 @@ void TestController::addTestKeyToKeychain(const String& privateKeyBase64, const 
     ASSERT_UNUSED(status, !status);
 }
 
-void TestController::cleanUpKeychain(const String& attrLabel, const String& applicationTagBase64)
+void TestController::cleanUpKeychain(const String& attrLabel, const String& applicationLabelBase64)
 {
     auto deleteQuery = adoptNS([[NSMutableDictionary alloc] init]);
     [deleteQuery setObject:(id)kSecClassKey forKey:(id)kSecClass];
@@ -440,19 +439,19 @@ void TestController::cleanUpKeychain(const String& attrLabel, const String& appl
 #else
     [deleteQuery setObject:@YES forKey:(id)kSecAttrNoLegacy];
 #endif
-    if (!!applicationTagBase64)
-        [deleteQuery setObject:adoptNS([[NSData alloc] initWithBase64EncodedString:applicationTagBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get() forKey:(id)kSecAttrApplicationTag];
+    if (!!applicationLabelBase64)
+        [deleteQuery setObject:adoptNS([[NSData alloc] initWithBase64EncodedString:applicationLabelBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get() forKey:(id)kSecAttrApplicationLabel];
 
     SecItemDelete((__bridge CFDictionaryRef)deleteQuery.get());
 }
 
-bool TestController::keyExistsInKeychain(const String& attrLabel, const String& applicationTagBase64)
+bool TestController::keyExistsInKeychain(const String& attrLabel, const String& applicationLabelBase64)
 {
     NSDictionary *query = @{
         (id)kSecClass: (id)kSecClassKey,
         (id)kSecAttrKeyClass: (id)kSecAttrKeyClassPrivate,
         (id)kSecAttrLabel: attrLabel,
-        (id)kSecAttrApplicationTag: adoptNS([[NSData alloc] initWithBase64EncodedString:applicationTagBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get(),
+        (id)kSecAttrApplicationLabel: adoptNS([[NSData alloc] initWithBase64EncodedString:applicationLabelBase64 options:NSDataBase64DecodingIgnoreUnknownCharacters]).get(),
 #if HAVE(DATA_PROTECTION_KEYCHAIN)
         (id)kSecUseDataProtectionKeychain: @YES
 #else

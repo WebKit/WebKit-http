@@ -435,7 +435,12 @@ String StyledMarkupAccumulator::renderedTextRespectingRange(const Text& text)
             behavior = TextIteratorBehavesAsIfNodesFollowing;
     }
 
-    return plainText(Range::create(text.document(), start, end).ptr(), behavior);
+    auto startBoundary = makeBoundaryPoint(start);
+    auto endBoundary = makeBoundaryPoint(end);
+    if (!startBoundary || !endBoundary)
+        return emptyString();
+
+    return plainText({ WTFMove(*startBoundary), WTFMove(*endBoundary) }, behavior);
 }
 
 String StyledMarkupAccumulator::textContentRespectingRange(const Text& text)
@@ -1021,7 +1026,7 @@ Ref<DocumentFragment> createFragmentFromMarkup(Document& document, const String&
 
     fragment->parseHTML(markup, fakeBody.ptr(), parserContentPolicy);
     restoreAttachmentElementsInFragment(fragment);
-    if (!baseURL.isEmpty() && baseURL != WTF::blankURL() && baseURL != document.baseURL())
+    if (!baseURL.isEmpty() && baseURL != aboutBlankURL() && baseURL != document.baseURL())
         completeURLs(fragment.ptr(), baseURL);
 
     return fragment;

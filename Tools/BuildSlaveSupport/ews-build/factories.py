@@ -25,7 +25,7 @@ from buildbot.process import factory
 from buildbot.steps import trigger
 
 from steps import (ApplyPatch, ApplyWatchList, CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance,
-                   CheckStyle, CompileJSC, CompileWebKit, ConfigureBuild, CreateLocalGITCommit,
+                   CheckPatchStatusOnEWSQueues, CheckStyle, CompileJSC, CompileWebKit, ConfigureBuild, CreateLocalGITCommit,
                    DownloadBuiltProduct, ExtractBuiltProduct, FindModifiedChangeLogs, InstallGtkDependencies,
                    InstallWpeDependencies, KillOldProcesses, PrintConfiguration, PushCommitToWebKitRepo,
                    RunAPITests, RunBindingsTests, RunBuildWebKitOrgUnitTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests,
@@ -98,6 +98,8 @@ class BuildFactory(Factory):
     def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
         Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=False, triggers=triggers, additionalArguments=additionalArguments)
         self.addStep(KillOldProcesses())
+        if platform == 'gtk':
+            self.addStep(InstallGtkDependencies())
         self.addStep(CompileWebKit())
 
 
@@ -111,6 +113,8 @@ class TestFactory(Factory):
 
     def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
         Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=False, additionalArguments=additionalArguments)
+        if platform == 'gtk':
+            self.addStep(InstallGtkDependencies())
         self.getProduct()
         self.addStep(KillOldProcesses())
         if self.LayoutTestClass:
@@ -170,31 +174,12 @@ class WinCairoFactory(Factory):
         self.addStep(CompileWebKit(skipUpload=True))
 
 
-class GTKBuildFactory(Factory):
-    def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
-        Factory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=True, triggers=triggers, additionalArguments=additionalArguments)
-        self.addStep(KillOldProcesses())
-        self.addStep(InstallGtkDependencies())
-        self.addStep(CompileWebKit(skipUpload=True))
+class GTKBuildFactory(BuildFactory):
+    pass
 
 
-class GTKBuildAndTestFactory(GTKBuildFactory):
-    LayoutTestClass = None
-    APITestClass = None
-
-    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
-        GTKBuildFactory.__init__(self, platform=platform, configuration=configuration, architectures=architectures, buildOnly=True, additionalArguments=additionalArguments)
-        self.addStep(KillOldProcesses())
-        self.addStep(ValidatePatch(verifyBugClosed=False, addURLs=False))
-        if self.LayoutTestClass:
-            self.addStep(self.LayoutTestClass())
-            self.addStep(SetBuildSummary())
-        if self.APITestClass:
-            self.addStep(self.APITestClass())
-
-
-class GTKAPIBuildAndTestFactory(GTKBuildAndTestFactory):
-    APITestClass = RunAPITests
+class GTKTestsFactory(TestFactory):
+    LayoutTestClass = RunWebKitTests
 
 
 class WPEFactory(Factory):
@@ -225,16 +210,17 @@ class CommitQueueFactory(factory.BuildFactory):
         self.addStep(UpdateWorkingDirectory())
         self.addStep(ApplyPatch())
         self.addStep(ValidateChangeLogAndReviewer())
+        self.addStep(FindModifiedChangeLogs())
         self.addStep(KillOldProcesses())
         self.addStep(CompileWebKit(skipUpload=True))
         self.addStep(KillOldProcesses())
         self.addStep(ValidatePatch(addURLs=False, verifycqplus=True))
+        self.addStep(CheckPatchStatusOnEWSQueues())
         self.addStep(RunWebKitTests())
         self.addStep(ValidatePatch(addURLs=False, verifycqplus=True))
         self.addStep(CheckOutSource())
         self.addStep(UpdateWorkingDirectory())
         self.addStep(ApplyPatch())
-        self.addStep(FindModifiedChangeLogs())
         self.addStep(CreateLocalGITCommit())
         self.addStep(PushCommitToWebKitRepo())
         self.addStep(SetBuildSummary())

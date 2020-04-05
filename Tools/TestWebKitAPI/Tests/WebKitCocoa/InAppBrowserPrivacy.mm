@@ -34,64 +34,132 @@
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKUserContentControllerPrivate.h>
 #import <WebKit/WKWebsiteDataStorePrivate.h>
+#import <WebKit/_WKUserContentWorld.h>
+#import <WebKit/_WKUserStyleSheet.h>
+#import <wtf/RunLoop.h>
 #import <wtf/text/WTFString.h>
+
+#if PLATFORM(IOS_FAMILY)
+
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/InAppBrowserPrivacyTestAdditions.h>
 
 static bool isDone;
 
-#if USE(APPLE_INTERNAL_SDK)
-
 static NSString * const userScriptSource = @"window.wkUserScriptInjected = true";
 
-@interface TestInAppBrowserScriptMessageHandler : NSObject <WKScriptMessageHandler>
+@interface InAppBrowserSchemeHandler : NSObject <WKURLSchemeHandler>
 @end
 
-@implementation TestInAppBrowserScriptMessageHandler
+@implementation InAppBrowserSchemeHandler
 
-- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message
+- (void)webView:(WKWebView *)webView startURLSchemeTask:(id <WKURLSchemeTask>)task
 {
-    isDone = true;
+    NSString *response = nil;
+    if ([task.request.URL.path isEqualToString:@"/in-app-browser-privacy-test-user-script"])
+        response = @"<script>window.wkUserScriptInjected = false;</script>";
+    else if ([task.request.URL.path isEqualToString:@"/in-app-browser-privacy-test-user-agent-script"])
+        response = @"<script> window.wkUserScriptInjected = true; </script>";
+    else if ([task.request.URL.path isEqualToString:@"/in-app-browser-privacy-test-user-style-sheets"])
+        response = @"<body style='background-color: red;'></body>";
+    else if ([task.request.URL.path isEqualToString:@"/in-app-browser-privacy-test-user-style-sheets-iframe"])
+        response = @"<body style='background-color: red;'><iframe src='in-app-browser:///in-app-browser-privacy-test-user-style-sheets'></iframe></body>";
+    else if ([task.request.URL.path isEqualToString:@"/in-app-browser-privacy-test-message-handler"])
+        response = @"<body style='background-color: green;'></body><script>if (window.webkit.messageHandlers)\nwindow.webkit.messageHandlers.testHandler.postMessage('Failed'); \nelse \n document.body.style.background = 'red';</script>";
+
+    [task didReceiveResponse:[[[NSURLResponse alloc] initWithURL:task.request.URL MIMEType:@"text/html" expectedContentLength:response.length textEncodingName:nil] autorelease]];
+    [task didReceiveData:[response dataUsingEncoding:NSUTF8StringEncoding]];
+    [task didFinish];
+}
+
+- (void)webView:(WKWebView *)webView stopURLSchemeTask:(id <WKURLSchemeTask>)task
+{
 }
 
 @end
 
-TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserScripts)
+static void initializeInAppBrowserPrivacyTestSettings()
 {
-    auto messageHandler = adoptNS([[TestInAppBrowserScriptMessageHandler alloc] init]);
+    RunLoop::initializeMainRunLoop();
+    WebCore::clearApplicationBundleIdentifierTestingOverride();
+    IN_APP_BROWSER_PRIVACY_ADDITIONS
+}
+
+TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserScriptAtStart)
+{
+    isDone = false;
+    initializeInAppBrowserPrivacyTestSettings();
     auto userScript = adoptNS([[WKUserScript alloc] initWithSource:userScriptSource injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]);
 
     WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"WebProcessPlugInWithInternals" configureJSCForTesting:YES];
-    [configuration.userContentController addScriptMessageHandler:messageHandler.get() name:@"testInAppBrowserPrivacy"];
-    [[configuration preferences] _setInAppBrowserPrivacyEnabled:NO];
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [configuration.userContentController addUserScript:userScript.get()];
+    [[configuration preferences] _setNeedsInAppBrowserPrivacyQuirks:NO];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
 
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
-
-    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"in-app-browser-privacy-test-user-script" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-script"]];
     [webView loadRequest:request];
     [webView _test_waitForDidFinishNavigation];
-    TestWebKitAPI::Util::run(&isDone);
 
-    [configuration.userContentController _addUserScriptImmediately:userScript.get()];
+    // Check that request to read this variable is rejected.
     [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
-        EXPECT_EQ(YES, [[webView objectByEvaluatingJavaScript:@"window.wkUserScriptInjected"] boolValue]);
-        EXPECT_FALSE(!!error);
+        EXPECT_FALSE(result);
+        EXPECT_TRUE(!!error);
         isDone = true;
     }];
 
     isDone = false;
     TestWebKitAPI::Util::run(&isDone);
 
+    // Turn back on In-App Browser Privacy quirks to check that original attempt to set this variable was rejected.
     isDone = false;
+    [[[webView configuration] preferences] _setNeedsInAppBrowserPrivacyQuirks:YES];
+    [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
+        EXPECT_EQ(NO, [result boolValue]);
+        EXPECT_FALSE(!!error);
+        isDone = true;
+    }];
 
-    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
-    auto webView2 = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
-
-    [webView2 loadRequest:request];
+    isDone = false;
     TestWebKitAPI::Util::run(&isDone);
+}
 
-    [configuration.userContentController _addUserScriptImmediately:userScript.get()];
-    [webView2 evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
+TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserScriptAtEnd)
+{
+    isDone = false;
+    initializeInAppBrowserPrivacyTestSettings();
+    auto userScript = adoptNS([[WKUserScript alloc] initWithSource:userScriptSource injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES]);
+    
+    WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"WebProcessPlugInWithInternals" configureJSCForTesting:YES];
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [configuration.userContentController addUserScript:userScript.get()];
+    [[configuration preferences] _setNeedsInAppBrowserPrivacyQuirks:NO];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-script"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    // Check that request to read this variable is rejected.
+    [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
         EXPECT_FALSE(result);
         EXPECT_TRUE(!!error);
+        isDone = true;
+    }];
+
+    isDone = false;
+    TestWebKitAPI::Util::run(&isDone);
+
+    // Turn back on In-App Browser Privacy quirks to check that original attempt to set this variable was rejected.
+    isDone = false;
+    [[[webView configuration] preferences] _setNeedsInAppBrowserPrivacyQuirks:YES];
+    [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
+        EXPECT_EQ(NO, [result boolValue]);
+        EXPECT_FALSE(!!error);
         isDone = true;
     }];
 
@@ -102,22 +170,27 @@ TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserScripts)
 TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserAgentScripts)
 {
     WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"WebProcessPlugInWithInternals" configureJSCForTesting:YES];
+    [[configuration preferences] _setNeedsInAppBrowserPrivacyQuirks:YES];
     [[configuration preferences] _setInAppBrowserPrivacyEnabled:NO];
 
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
-
-    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"in-app-browser-privacy-test-user-agent-script" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-agent-script"]];
     [webView loadRequest:request];
     [webView _test_waitForDidFinishNavigation];
 
     [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
-        EXPECT_EQ(YES, [[webView objectByEvaluatingJavaScript:@"window.wkUserScriptInjected"] boolValue]);
+        EXPECT_EQ(YES, [result boolValue]);
         isDone = true;
     }];
 
     isDone = false;
     TestWebKitAPI::Util::run(&isDone);
 
+    initializeInAppBrowserPrivacyTestSettings();
+    [[configuration preferences] _setNeedsInAppBrowserPrivacyQuirks:NO];
     [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
 
     auto webView2 = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
@@ -138,19 +211,20 @@ TEST(InAppBrowserPrivacy, NonAppBoundDomainFailedUserAgentScripts)
 
 TEST(InAppBrowserPrivacy, SwapBackToAppBoundRejectsUserScript)
 {
-    auto messageHandler = adoptNS([[TestInAppBrowserScriptMessageHandler alloc] init]);
+    initializeInAppBrowserPrivacyTestSettings();
     auto userScript = adoptNS([[WKUserScript alloc] initWithSource:userScriptSource injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]);
 
     WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"WebProcessPlugInWithInternals" configureJSCForTesting:YES];
-    [configuration.userContentController addScriptMessageHandler:messageHandler.get() name:@"testInAppBrowserPrivacy"];
+    [[configuration preferences] _setNeedsInAppBrowserPrivacyQuirks:NO];
     [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
 
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration]);
-
-    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"in-app-browser-privacy-test-user-script" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-script"]];
     [webView loadRequest:request];
     [webView _test_waitForDidFinishNavigation];
-    TestWebKitAPI::Util::run(&isDone);
 
     [configuration.userContentController _addUserScriptImmediately:userScript.get()];
     [webView evaluateJavaScript:@"window.wkUserScriptInjected" completionHandler:^(id _Nullable result, NSError * _Nullable error) {
@@ -179,18 +253,17 @@ TEST(InAppBrowserPrivacy, SwapBackToAppBoundRejectsUserScript)
     TestWebKitAPI::Util::run(&isDone);
 }
 
-#endif // USE(APPLE_INTERNAL_SDK)
-
 TEST(InAppBrowserPrivacy, AppBoundDomains)
 {
+    initializeInAppBrowserPrivacyTestSettings();
     isDone = false;
     [[WKWebsiteDataStore defaultDataStore] _appBoundDomains:^(NSArray<NSString *> *domains) {
-        NSArray *domainsToCompare = [NSArray arrayWithObjects:@"apple.com", @"bar.com", @"example.com", @"foo.com", @"localhost", @"webkit.org", nil];
+        NSArray *domainsToCompare = [NSArray arrayWithObjects:@"127.0.0.1", @"apple.com", @"bar.com", @"example.com", @"foo.com", @"localhost", @"testdomain1",  @"webkit.org", nil];
 
         NSArray *sortedDomains = [domains sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
 
         int length = [sortedDomains count];
-        EXPECT_EQ(length, 6);
+        EXPECT_EQ(length, 8);
         for (int i = 0; i < length; i++)
             EXPECT_WK_STREQ([sortedDomains objectAtIndex:i], [domainsToCompare objectAtIndex:i]);
 
@@ -199,3 +272,212 @@ TEST(InAppBrowserPrivacy, AppBoundDomains)
     TestWebKitAPI::Util::run(&isDone);
 }
 
+TEST(InAppBrowserPrivacy, LocalFilesAreAppBound)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"in-app-browser-privacy-local-file" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    isDone = false;
+    [webView _isNavigatingToAppBoundDomain:^(BOOL isAppBound) {
+        EXPECT_TRUE(isAppBound);
+        isDone = true;
+    }];
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+TEST(InAppBrowserPrivacy, DataFilesAreAppBound)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"data:text/html,start"]]];
+    [webView _test_waitForDidFinishNavigation];
+
+    isDone = false;
+    [webView _isNavigatingToAppBoundDomain:^(BOOL isAppBound) {
+        EXPECT_TRUE(isAppBound);
+        isDone = true;
+    }];
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+TEST(InAppBrowserPrivacy, AboutFilesAreAppBound)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"about:blank"]]];
+    [webView _test_waitForDidFinishNavigation];
+
+    isDone = false;
+    [webView _isNavigatingToAppBoundDomain:^(BOOL isAppBound) {
+        EXPECT_TRUE(isAppBound);
+        isDone = true;
+    }];
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+static NSString *styleSheetSource = @"body { background-color: green !important; }";
+static NSString *backgroundColorScript = @"window.getComputedStyle(document.body, null).getPropertyValue('background-color')";
+static NSString *frameBackgroundColorScript = @"window.getComputedStyle(document.getElementsByTagName('iframe')[0].contentDocument.body, null).getPropertyValue('background-color')";
+static const char* redInRGB = "rgb(255, 0, 0)";
+
+static void expectScriptEvaluatesToColor(WKWebView *webView, NSString *script, const char* color)
+{
+    static bool didCheckBackgroundColor;
+
+    [webView evaluateJavaScript:script completionHandler:^(id value, NSError * error) {
+        EXPECT_TRUE([value isKindOfClass:[NSString class]]);
+        EXPECT_WK_STREQ(color, value);
+        didCheckBackgroundColor = true;
+    }];
+
+    TestWebKitAPI::Util::run(&didCheckBackgroundColor);
+    didCheckBackgroundColor = false;
+}
+
+TEST(InAppBrowserPrivacy, NonAppBoundUserStyleSheetForSpecificWebViewFails)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-style-sheets"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forWKWebView:webView.get() forMainFrameOnly:YES userContentWorld:world.get()]);
+    [[configuration userContentController] _addUserStyleSheet:styleSheet.get()];
+
+    expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
+}
+
+TEST(InAppBrowserPrivacy, NonAppBoundUserStyleSheetForAllWebViewsFails)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-style-sheets"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:YES]);
+    [[configuration userContentController] _addUserStyleSheet:styleSheet.get()];
+
+    expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
+}
+
+TEST(InAppBrowserPrivacy, NonAppBoundUserStyleSheetAffectingAllFramesFails)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-user-style-sheets-iframe"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO]);
+    [[configuration userContentController] _addUserStyleSheet:styleSheet.get()];
+
+    // The main frame should be affected.
+    expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
+
+    // The subframe should also be affected.
+    expectScriptEvaluatesToColor(webView.get(), frameBackgroundColorScript, redInRGB);
+}
+
+TEST(InAppBrowserPrivacy, NonAppBoundDomainCannotAccessMessageHandlers)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+    isDone = false;
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+
+    [webView performAfterReceivingMessage:@"Failed" action:^() {
+        FAIL();
+    }];
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-message-handler"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    // Set the background color to red if message handlers returned null so we can
+    // check without needing a message handler.
+    expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
+}
+
+TEST(InAppBrowserPrivacy, AppBoundToNonAppBoundDomainCannotAccessMessageHandlers)
+{
+    initializeInAppBrowserPrivacyTestSettings();
+    isDone = false;
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+
+    auto schemeHandler = adoptNS([[InAppBrowserSchemeHandler alloc] init]);
+    [configuration setURLSchemeHandler:schemeHandler.get() forURLScheme:@"in-app-browser"];
+    [[configuration preferences] _setInAppBrowserPrivacyEnabled:YES];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
+
+    [webView performAfterReceivingMessage:@"Passed" action:^() {
+        isDone = true;
+    }];
+
+    // Navigate to an app-bound domain and wait for the 'pass' message to test the handler is working fine.
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"in-app-browser-privacy-local-file" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    TestWebKitAPI::Util::run(&isDone);
+
+    [webView performAfterReceivingMessage:@"Failed" action:^() {
+        FAIL();
+    }];
+
+    // Navigate away from an app-bound domain.
+    NSURLRequest *request2 = [NSURLRequest requestWithURL:[NSURL URLWithString:@"in-app-browser:///in-app-browser-privacy-test-message-handler"]];
+    [webView loadRequest:request2];
+    [webView _test_waitForDidFinishNavigation];
+
+    // Set the background color to red if message handlers returned null so we can
+    // check without needing a message handler.
+    expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
+}
+
+#endif // USE(APPLE_INTERNAL_SDK)
+
+#endif // PLATFORM(IOS_FAMILY)

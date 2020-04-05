@@ -345,7 +345,8 @@ interface TestRunner {
     void setStatisticsShouldDowngradeReferrer(boolean value, object callback);
     void setStatisticsShouldBlockThirdPartyCookies(boolean value, object callback, optional boolean onlyOnSitesWithoutUserInteraction);
     void setStatisticsFirstPartyWebsiteDataRemovalMode(boolean value, object callback);
-    void getPrevalentDomains(object callback);
+    void statisticsSetToSameSiteStrictCookies(DOMString hostName, object callback);
+    void loadedThirdPartyDomains(object callback);
 
     // Injected bundle form client.
     void installTextDidChangeInTextFieldCallback(object callback);
@@ -404,8 +405,8 @@ interface TestRunner {
 
     // WebAuthn
     void addTestKeyToKeychain(DOMString privateKeyBase64, DOMString attrLabel, DOMString applicationTagBase64);
-    void cleanUpKeychain(DOMString attrLabel, optional DOMString applicationTagBase64);
-    boolean keyExistsInKeychain(DOMString attrLabel, DOMString applicationTagBase64);
+    void cleanUpKeychain(DOMString attrLabel, optional DOMString applicationLabelBase64);
+    boolean keyExistsInKeychain(DOMString attrLabel, DOMString applicationLabelBase64);
 
     // Ad Click Attribution
     void clearAdClickAttribution();

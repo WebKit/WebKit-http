@@ -70,16 +70,19 @@ using namespace HTMLNames;
 
 static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition position, RefPtr<Range> contextRange, FloatRect& detectedDataBoundingBox, RefPtr<Range>& detectedDataRange)
 {
-    String fullPlainTextString = plainText(contextRange.get());
-    int hitLocation = TextIterator::rangeLength(makeRange(contextRange->startPosition(), position).get());
+    auto start = contextRange->startPosition();
+    if (start.isNull() || position.isNull())
+        return nil;
+    String fullPlainTextString = plainText(*contextRange);
+    CFIndex hitLocation = characterCount({ *makeBoundaryPoint(start), *makeBoundaryPoint(position) });
 
-    RetainPtr<DDScannerRef> scanner = adoptCF(DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
-    RetainPtr<DDScanQueryRef> scanQuery = adoptCF(DDScanQueryCreateFromString(kCFAllocatorDefault, fullPlainTextString.createCFString().get(), CFRangeMake(0, fullPlainTextString.length())));
+    auto scanner = adoptCF(DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
+    auto scanQuery = adoptCF(DDScanQueryCreateFromString(kCFAllocatorDefault, fullPlainTextString.createCFString().get(), CFRangeMake(0, fullPlainTextString.length())));
 
     if (!DDScannerScanQuery(scanner.get(), scanQuery.get()))
-        return nullptr;
+        return nil;
 
-    RetainPtr<CFArrayRef> results = adoptCF(DDScannerCopyResultsWithOptions(scanner.get(), DDScannerCopyResultsOptionsNoOverlap));
+    auto results = adoptCF(DDScannerCopyResultsWithOptions(scanner.get(), DDScannerCopyResultsOptionsNoOverlap));
 
     // Find the DDResultRef that intersects the hitTestResult's VisiblePosition.
     DDResultRef mainResult = nullptr;
@@ -94,13 +97,13 @@ static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition 
         CFRange resultRangeInContext = DDResultGetRange(result);
         if (hitLocation >= resultRangeInContext.location && (hitLocation - resultRangeInContext.location) < resultRangeInContext.length) {
             mainResult = result;
-            mainResultRange = TextIterator::subrange(*contextRange, resultRangeInContext.location, resultRangeInContext.length);
+            mainResultRange = createLiveRange(resolveCharacterRange(*contextRange, resultRangeInContext));
             break;
         }
     }
 
     if (!mainResult)
-        return nullptr;
+        return nil;
 
     RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
     [actionContext setAllResults:@[ (__bridge id)mainResult ]];
@@ -112,9 +115,9 @@ static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition 
     FrameView* frameView = mainResultRange->ownerDocument().view();
     for (const auto& quad : quads)
         detectedDataBoundingBox.unite(frameView->contentsToWindow(quad.enclosingBoundingBox()));
-    
+
     detectedDataRange = mainResultRange;
-    
+
     return actionContext;
 }
 
@@ -161,6 +164,7 @@ RetainPtr<DDActionContext> DataDetection::detectItemAroundHitTestResult(const Hi
 
     return detectItemAtPositionWithRange(position, contextRange, detectedDataBoundingBox, detectedDataRange);
 }
+
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS_FAMILY)
@@ -344,7 +348,7 @@ static String dataDetectorStringForPath(NSIndexPath *path)
     }
 }
 
-static void buildQuery(DDScanQueryRef scanQuery, Range* contextRange)
+static void buildQuery(DDScanQueryRef scanQuery, const SimpleRange& contextRange)
 {
     // Once we're over this number of fragments, stop at the first hard break.
     const CFIndex maxFragmentWithHardBreak = 1000;
@@ -443,9 +447,12 @@ void DataDetection::removeDataDetectedLinksInDocument(Document& document)
 
 NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes types, NSDictionary *context)
 {
+    if (!contextRange)
+        return nil;
+
     RetainPtr<DDScannerRef> scanner = adoptCF(softLink_DataDetectorsCore_DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
     RetainPtr<DDScanQueryRef> scanQuery = adoptCF(softLink_DataDetectorsCore_DDScanQueryCreate(NULL));
-    buildQuery(scanQuery.get(), contextRange.get());
+    buildQuery(scanQuery.get(), *contextRange);
     
     if (types & DataDetectorTypeLookupSuggestion)
         softLink_DataDetectorsCore_DDScannerEnableOptionalSource(scanner.get(), DDScannerSourceSpotlight, true);
@@ -486,7 +493,7 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
     }
 
     Vector<Vector<RefPtr<Range>>> allResultRanges;
-    TextIterator iterator(contextRange.get());
+    TextIterator iterator(*contextRange);
     CFIndex iteratorCount = 0;
 
     // Iterate through the array of the expanded results to create a vector of Range objects that indicate
@@ -499,11 +506,14 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
             iterator.advance();
 
         Vector<RefPtr<Range>> fragmentRanges;
-        RefPtr<Range> currentRange = iterator.range();
+        RefPtr<Range> currentRange = createLiveRange(iterator.range());
         CFIndex fragmentIndex = queryRange.start.queryIndex;
-        if (fragmentIndex == queryRange.end.queryIndex)
-            fragmentRanges.append(TextIterator::subrange(*currentRange, queryRange.start.offset, queryRange.end.offset - queryRange.start.offset));
-        else {
+        if (fragmentIndex == queryRange.end.queryIndex) {
+            CharacterRange fragmentRange;
+            fragmentRange.location = queryRange.start.offset;
+            fragmentRange.length = queryRange.end.offset - queryRange.start.offset;
+            fragmentRanges.append(createLiveRange(resolveCharacterRange(*currentRange, fragmentRange)));
+        } else {
             if (!queryRange.start.offset)
                 fragmentRanges.append(currentRange);
             else
@@ -516,7 +526,7 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
             for (; iteratorCount < iteratorTargetAdvanceCount; ++iteratorCount)
                 iterator.advance();
 
-            currentRange = iterator.range();
+            currentRange = createLiveRange(iterator.range());
             RefPtr<Range> fragmentRange = (fragmentIndex == queryRange.end.queryIndex) ?  Range::create(currentRange->ownerDocument(), &currentRange->startContainer(), currentRange->startOffset(), &currentRange->endContainer(), currentRange->startOffset() + queryRange.end.offset) : currentRange;
             RefPtr<Range> previousRange = fragmentRanges.last();
             if (&previousRange->startContainer() == &fragmentRange->startContainer()) {

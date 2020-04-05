@@ -48,34 +48,6 @@
 VT_EXPORT const CFStringRef kVTVideoEncoderSpecification_Usage;
 VT_EXPORT const CFStringRef kVTCompressionPropertyKey_Usage;
 
-#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS) && !ENABLE_VCP_ENCODER
-static inline bool isStandardFrameSize(int32_t width, int32_t height)
-{
-    // FIXME: Envision relaxing this rule, something like width and height dividable by 4 or 8 should be good enough.
-    if (width == 1280)
-        return height == 720;
-    if (width == 720)
-        return height == 1280;
-    if (width == 960)
-        return height == 540;
-    if (width == 540)
-        return height == 960;
-    if (width == 640)
-        return height == 480;
-    if (width == 480)
-        return height == 640;
-    if (width == 288)
-        return height == 352;
-    if (width == 352)
-        return height == 288;
-    if (width == 320)
-        return height == 240;
-    if (width == 240)
-        return height == 320;
-    return false;
-}
-#endif
-
 @interface RTCVideoEncoderH264 ()
 
 - (void)frameWasEncoded:(OSStatus)status
@@ -561,7 +533,7 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
                                                     nullptr);
   } else {
 #if ENABLE_VCP_ENCODER
-  status = webrtc::VCPCompressionSessionEncodeFrame(_vcpCompressionSession,
+    status = webrtc::VCPCompressionSessionEncodeFrame(_vcpCompressionSession,
                                                     pixelBuffer,
                                                     presentationTimeStamp,
                                                     kCMTimeInvalid,
@@ -582,6 +554,13 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
   if (status == kVTInvalidSessionErr) {
     // This error occurs when entering foreground after backgrounding the app.
     RTC_LOG(LS_ERROR) << "Invalid compression session, resetting.";
+    [self resetCompressionSessionWithPixelFormat:[self pixelFormatOfFrame:frame]];
+
+    return WEBRTC_VIDEO_CODEC_NO_OUTPUT;
+  } else if (status == kVTVideoEncoderMalfunctionErr) {
+    // Sometimes the encoder malfunctions and needs to be restarted.
+    RTC_LOG(LS_ERROR)
+        << "Encountered video encoder malfunction error. Resetting compression session.";
     [self resetCompressionSessionWithPixelFormat:[self pixelFormatOfFrame:frame]];
 
     return WEBRTC_VIDEO_CODEC_NO_OUTPUT;
@@ -715,12 +694,12 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
     auto usage = CFNumberCreate(nullptr, kCFNumberIntType, &usageValue);
     CFDictionarySetValue(encoderSpecs, kVTCompressionPropertyKey_Usage, usage);
     CFRelease(usage);
-  }
-#endif
 #if ENABLE_VCP_VTB_ENCODER
-  if (_useVCP) {
     CFDictionarySetValue(encoderSpecs, kVTVideoEncoderList_EncoderID, CFSTR("com.apple.videotoolbox.videoencoder.h264.rtvc"));
+#endif
   }
+#elif HAVE_VTB_REQUIREDLOWLATENCY
+  CFDictionarySetValue(encoderSpecs, kVTVideoEncoderSpecification_RequiredLowLatency, kCFBooleanTrue);
 #endif
 
   OSStatus status =
@@ -768,7 +747,7 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
                                nullptr,
                                &_vcpCompressionSession);
   }
-#else
+#elif !HAVE_VTB_REQUIREDLOWLATENCY
   if (status != noErr) {
     if (encoderSpecs) {
         CFRelease(encoderSpecs);
@@ -778,6 +757,31 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
       CFRelease(sourceAttributes);
       sourceAttributes = nullptr;
     }
+
+    auto isStandardFrameSize = [](int32_t width, int32_t height) {
+        // FIXME: Envision relaxing this rule, something like width and height dividable by 4 or 8 should be good enough.
+        if (width == 1280)
+            return height == 720;
+        if (width == 720)
+            return height == 1280;
+        if (width == 960)
+            return height == 540;
+        if (width == 540)
+            return height == 960;
+        if (width == 640)
+            return height == 480;
+        if (width == 480)
+            return height == 640;
+        if (width == 288)
+            return height == 352;
+        if (width == 352)
+            return height == 288;
+        if (width == 320)
+            return height == 240;
+        if (width == 240)
+            return height == 320;
+        return false;
+    };
 
     if (!isStandardFrameSize(_width, _height)) {
       _disableEncoding = true;
@@ -831,7 +835,7 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
                                  nullptr,
                                  &_vtCompressionSession);
   }
-#endif // ENABLE_VCP_ENCODER
+#endif // !HAVE_VTB_REQUIREDLOWLATENCY
 #endif // defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
   if (sourceAttributes) {
     CFRelease(sourceAttributes);
@@ -985,9 +989,7 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
     RTC_LOG(LS_INFO) << "Generated keyframe";
   }
 
-  // Convert the sample buffer into a buffer suitable for RTP packetization.
-  // TODO(tkchin): Allocate buffers through a pool.
-  std::unique_ptr<rtc::Buffer> buffer(new rtc::Buffer());
+  __block std::unique_ptr<rtc::Buffer> buffer = std::make_unique<rtc::Buffer>();
   RTCRtpFragmentationHeader *header;
   {
     std::unique_ptr<webrtc::RTPFragmentationHeader> header_cpp;
@@ -1000,7 +1002,12 @@ NSUInteger GetMaxSampleRate(const webrtc::H264::ProfileLevelId &profile_level_id
   }
 
   RTCEncodedImage *frame = [[RTCEncodedImage alloc] init];
-  frame.buffer = [NSData dataWithBytesNoCopy:buffer->data() length:buffer->size() freeWhenDone:NO];
+  // This assumes ownership of `buffer` and is responsible for freeing it when done.
+  frame.buffer = [[NSData alloc] initWithBytesNoCopy:buffer->data()
+                                              length:buffer->size()
+                                         deallocator:^(void *bytes, NSUInteger size) {
+                                           buffer.reset();
+                                         }];
   frame.encodedWidth = width;
   frame.encodedHeight = height;
   frame.completeFrame = YES;

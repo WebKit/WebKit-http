@@ -27,6 +27,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 
+#include "AudioSession.h"
 #include "MediaSessionHelperIOS.h"
 #include "MediaSessionManagerCocoa.h"
 #include <wtf/RetainPtr.h>
@@ -44,26 +45,33 @@ namespace WebCore {
 
 class MediaSessionManageriOS
     : public MediaSessionManagerCocoa
-    , public MediaSessionHelperClient {
+    , public MediaSessionHelperClient
+    , public AudioSession::InterruptionObserver {
 public:
     virtual ~MediaSessionManageriOS();
 
     bool hasWirelessTargetsAvailable() override;
     static WEBCORE_EXPORT void providePresentingApplicationPID();
 
+    using MediaSessionHelperClient::weakPtrFactory;
+
 private:
     friend class PlatformMediaSessionManager;
 
     MediaSessionManageriOS();
 
-    void resetRestrictions() override;
+    void resetRestrictions() final;
 
-    void configureWireLessTargetMonitoring() override;
+    void configureWireLessTargetMonitoring() final;
     void providePresentingApplicationPIDIfNecessary() final;
+    bool sessionWillBeginPlayback(PlatformMediaSession&) final;
     void sessionWillEndPlayback(PlatformMediaSession&, DelayCallingUpdateNowPlaying) final;
 
+    // AudioSession::InterruptionObserver
+    void beginAudioSessionInterruption() final { beginInterruption(PlatformMediaSession::SystemInterruption); }
+    void endAudioSessionInterruption(AudioSession::MayResume mayResume) final { endInterruption(mayResume == AudioSession::MayResume::Yes ? PlatformMediaSession::MayResumePlaying : PlatformMediaSession::NoFlags); }
+
     // MediaSessionHelperClient
-    void receivedInterruption(InterruptionType, ShouldResume) final;
     void applicationWillEnterForeground(SuspendedUnderLock) final;
     void applicationDidEnterBackground(SuspendedUnderLock) final;
     void applicationWillBecomeInactive() final;
@@ -74,6 +82,11 @@ private:
     void isPlayingToAutomotiveHeadUnitDidChange(PlayingToAutomotiveHeadUnit) final;
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "MediaSessionManageriOS"; }
+#endif
+
+#if !PLATFORM(WATCHOS)
+    RefPtr<MediaPlaybackTarget> m_playbackTarget;
+    bool m_playbackTargetSupportsAirPlayVideo { false };
 #endif
 
     bool m_isMonitoringWirelessRoutes { false };

@@ -28,10 +28,11 @@
 #if USE(AUDIO_SESSION)
 
 #include <memory>
-#include <wtf/HashSet.h>
+#include <wtf/EnumTraits.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/UniqueRef.h>
+#include <wtf/WeakHashSet.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -96,6 +97,20 @@ public:
     virtual bool isMuted() const;
     virtual void handleMutedStateChange();
 
+    void beginInterruption();
+    enum class MayResume { No, Yes };
+    void endInterruption(MayResume);
+
+    class InterruptionObserver : public CanMakeWeakPtr<InterruptionObserver> {
+    public:
+        virtual ~InterruptionObserver() = default;
+
+        virtual void beginAudioSessionInterruption() = 0;
+        virtual void endAudioSessionInterruption(MayResume) = 0;
+    };
+    void addInterruptionObserver(InterruptionObserver&);
+    void removeInterruptionObserver(InterruptionObserver&);
+
     virtual bool isActive() const { return m_active; }
 
 protected:
@@ -106,6 +121,9 @@ protected:
 
     std::unique_ptr<AudioSessionPrivate> m_private;
     HashSet<MutedStateObserver*> m_observers;
+#if PLATFORM(IOS_FAMILY)
+    WeakHashSet<InterruptionObserver> m_interruptionObservers;
+#endif
     bool m_active { false }; // Used only for testing.
 };
 
@@ -135,6 +153,14 @@ template <> struct EnumTraits<WebCore::AudioSession::CategoryType> {
     WebCore::AudioSession::CategoryType::RecordAudio,
     WebCore::AudioSession::CategoryType::PlayAndRecord,
     WebCore::AudioSession::CategoryType::AudioProcessing
+    >;
+};
+
+template <> struct EnumTraits<WebCore::AudioSession::MayResume> {
+    using values = EnumValues <
+    WebCore::AudioSession::MayResume,
+    WebCore::AudioSession::MayResume::No,
+    WebCore::AudioSession::MayResume::Yes
     >;
 };
 

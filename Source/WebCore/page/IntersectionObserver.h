@@ -41,7 +41,7 @@ namespace WebCore {
 
 class Document;
 class Element;
-class Node;
+class ContainerNode;
 
 struct IntersectionObserverRegistration {
     WeakPtr<IntersectionObserver> observer;
@@ -52,7 +52,7 @@ struct IntersectionObserverData {
     WTF_MAKE_STRUCT_FAST_ALLOCATED;
 
     // IntersectionObservers for which the node that owns this IntersectionObserverData is the root.
-    // An IntersectionObserver is only owned by a JavaScript wrapper. ActiveDOMObject::hasPendingActivity
+    // An IntersectionObserver is only owned by a JavaScript wrapper. ActiveDOMObject::virtualHasPendingActivity
     // is overridden to keep this wrapper alive while the observer has ongoing observations.
     Vector<WeakPtr<IntersectionObserver>> observers;
 
@@ -74,7 +74,7 @@ public:
 
     Document* trackingDocument() const { return m_root ? &m_root->document() : m_implicitRootDocument.get(); }
 
-    Node* root() const { return m_root; }
+    ContainerNode* root() const { return m_root; }
     String rootMargin() const;
     const LengthBox& rootMarginBox() const { return m_rootMargin; }
     const Vector<double>& thresholds() const { return m_thresholds; }
@@ -99,19 +99,19 @@ public:
     void appendQueuedEntry(Ref<IntersectionObserverEntry>&&);
     void notify();
 
+private:
+    IntersectionObserver(Document&, Ref<IntersectionObserverCallback>&&, ContainerNode* root, LengthBox&& parsedRootMargin, Vector<double>&& thresholds);
+
     // ActiveDOMObject.
-    bool hasPendingActivity() const override;
+    bool virtualHasPendingActivity() const override;
     const char* activeDOMObjectName() const override;
     void stop() override;
-
-private:
-    IntersectionObserver(Document&, Ref<IntersectionObserverCallback>&&, Node* root, LengthBox&& parsedRootMargin, Vector<double>&& thresholds);
 
     bool removeTargetRegistration(Element&);
     void removeAllTargets();
 
     WeakPtr<Document> m_implicitRootDocument;
-    Node* m_root;
+    ContainerNode* m_root;
     LengthBox m_rootMargin;
     Vector<double> m_thresholds;
     RefPtr<IntersectionObserverCallback> m_callback;

@@ -68,6 +68,7 @@
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "LayoutDisallowedScope.h"
 #include "LegacySchemeRegistry.h"
 #include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
@@ -104,6 +105,7 @@
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "ScriptController.h"
+#include "ScriptDisallowedScope.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollLatchingState.h"
 #include "ScrollingCoordinator.h"
@@ -128,6 +130,7 @@
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
 #include "WheelEventDeltaFilter.h"
+#include "WheelEventTestMonitor.h"
 #include "Widget.h"
 #include <wtf/FileSystem.h>
 #include <wtf/RefCountedLeakCounter.h>
@@ -229,7 +232,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_settings(Settings::create(this))
     , m_progress(makeUnique<ProgressTracker>(WTFMove(pageConfiguration.progressTrackerClient)))
     , m_backForwardController(makeUnique<BackForwardController>(*this, WTFMove(pageConfiguration.backForwardClient)))
-    , m_mainFrame(Frame::create(this, nullptr, pageConfiguration.loaderClientForMainFrame))
+    , m_mainFrame(Frame::create(this, nullptr, WTFMove(pageConfiguration.loaderClientForMainFrame)))
     , m_editorClient(WTFMove(pageConfiguration.editorClient))
     , m_plugInClient(WTFMove(pageConfiguration.plugInClient))
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
@@ -287,6 +290,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     , m_deviceOrientationUpdateProvider(WTFMove(pageConfiguration.deviceOrientationUpdateProvider))
 #endif
+    , m_loadsSubresources(pageConfiguration.loadsSubresources)
+    , m_loadsFromNetwork(pageConfiguration.loadsFromNetwork)
 {
     updateTimerThrottlingState();
 
@@ -432,8 +437,12 @@ ScrollingCoordinator* Page::scrollingCoordinator()
 
 String Page::scrollingStateTreeAsText()
 {
-    if (Document* document = m_mainFrame->document())
+    if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
+#if ENABLE(IOS_TOUCH_EVENTS)
+        document->updateTouchEventRegions();
+#endif
+    }
 
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
         return scrollingCoordinator->scrollingStateTreeAsText();
@@ -452,10 +461,14 @@ String Page::synchronousScrollingReasonsAsText()
     return String();
 }
 
-Ref<DOMRectList> Page::nonFastScrollableRects()
+Ref<DOMRectList> Page::nonFastScrollableRectsForTesting()
 {
-    if (Document* document = m_mainFrame->document())
+    if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
+#if ENABLE(IOS_TOUCH_EVENTS)
+        document->updateTouchEventRegions();
+#endif
+    }
 
     Vector<IntRect> rects;
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
@@ -471,7 +484,7 @@ Ref<DOMRectList> Page::nonFastScrollableRects()
     return DOMRectList::create(quads);
 }
 
-Ref<DOMRectList> Page::touchEventRectsForEvent(const String& eventName)
+Ref<DOMRectList> Page::touchEventRectsForEventForTesting(const String& eventName)
 {
     if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
@@ -494,7 +507,7 @@ Ref<DOMRectList> Page::touchEventRectsForEvent(const String& eventName)
     return DOMRectList::create(quads);
 }
 
-Ref<DOMRectList> Page::passiveTouchEventListenerRects()
+Ref<DOMRectList> Page::passiveTouchEventListenerRectsForTesting()
 {
     if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
@@ -792,8 +805,7 @@ unsigned Page::countFindMatches(const String& target, FindOptions options, unsig
 
 struct FindReplacementRange {
     RefPtr<ContainerNode> root;
-    size_t location { notFound };
-    size_t length { 0 };
+    CharacterRange range;
 };
 
 static void replaceRanges(Page& page, const Vector<FindReplacementRange>& ranges, const String& replacementText)
@@ -805,10 +817,10 @@ static void replaceRanges(Page& page, const Vector<FindReplacementRange>& ranges
         }).iterator->value;
 
         // Ensure that ranges are sorted by their end offsets, per editing container.
-        auto endOffsetForRange = range.location + range.length;
+        auto endOffsetForRange = range.range.location + range.range.length;
         auto insertionIndex = rangeList.size();
         for (auto iterator = rangeList.rbegin(); iterator != rangeList.rend(); ++iterator) {
-            auto endOffsetBeforeInsertionIndex = iterator->location + iterator->length;
+            auto endOffsetBeforeInsertionIndex = iterator->range.location + iterator->range.length;
             if (endOffsetForRange >= endOffsetBeforeInsertionIndex)
                 break;
             insertionIndex--;
@@ -851,11 +863,11 @@ static void replaceRanges(Page& page, const Vector<FindReplacementRange>& ranges
         // Iterate backwards through ranges when replacing text, such that earlier text replacements don't clobber replacement ranges later on.
         auto& ranges = rangesByContainerNode.find(container)->value;
         for (auto iterator = ranges.rbegin(); iterator != ranges.rend(); ++iterator) {
-            auto range = TextIterator::rangeFromLocationAndLength(container.get(), iterator->location, iterator->length);
-            if (!range || range->collapsed())
+            auto range = resolveCharacterRange(makeRangeSelectingNodeContents(*container), iterator->range);
+            if (range.collapsed())
                 continue;
 
-            frame->selection().setSelectedRange(range.get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes);
+            frame->selection().setSelectedRange(createLiveRange(range).ptr(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes);
             frame->editor().replaceSelectionWithText(replacementText, Editor::SelectReplacement::Yes, Editor::SmartReplace::No, EditAction::InsertReplacement);
         }
     }
@@ -872,22 +884,10 @@ uint32_t Page::replaceRangesWithText(const Vector<Ref<Range>>& rangesToReplace, 
 
     for (auto& range : rangesToReplace) {
         auto highestRoot = makeRefPtr(highestEditableRoot(range->startPosition()));
-        if (!highestRoot || highestRoot != highestEditableRoot(range->endPosition()))
+        if (!highestRoot || highestRoot != highestEditableRoot(range->endPosition()) || !highestRoot->document().frame())
             continue;
-
-        auto frame = makeRefPtr(highestRoot->document().frame());
-        if (!frame)
-            continue;
-
-        size_t replacementLocation = notFound;
-        size_t replacementLength = 0;
-        if (!TextIterator::getLocationAndLengthFromRange(highestRoot.get(), range.ptr(), replacementLocation, replacementLength))
-            continue;
-
-        if (replacementLocation == notFound || !replacementLength)
-            continue;
-
-        replacementRanges.append({ WTFMove(highestRoot), replacementLocation, replacementLength });
+        auto scope = makeRangeSelectingNodeContents(*highestRoot);
+        replacementRanges.append({ WTFMove(highestRoot), characterRange(scope, range) });
     }
 
     replaceRanges(*this, replacementRanges, replacementText);
@@ -1302,6 +1302,11 @@ void Page::layoutIfNeeded()
         view->updateLayoutAndStyleIfNeededRecursive();
 }
 
+void Page::scheduleRenderingUpdate()
+{
+    renderingUpdateScheduler().scheduleRenderingUpdate();
+}
+
 // https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering
 void Page::updateRendering()
 {
@@ -1355,10 +1360,39 @@ void Page::updateRendering()
 #endif
 
     layoutIfNeeded();
-    
+    doAfterUpdateRendering();
+}
+
+void Page::doAfterUpdateRendering()
+{
+    // Code here should do once-per-frame work that needs to be done before painting, and requires
+    // layout to be up-to-date. It should not run script, trigger layout, or dirty layout.
+
     forEachDocument([] (Document& document) {
         document.updateHighlightPositions();
     });
+
+#if ENABLE(VIDEO_TRACK)
+    forEachDocument([] (Document& document) {
+        document.updateTextTrackRepresentationImageIfNeeded();
+    });
+#endif
+
+#if ENABLE(IOS_TOUCH_EVENTS)
+    // updateTouchEventRegions() needs to be called only on the top document.
+    if (RefPtr<Document> document = mainFrame().document())
+        document->updateTouchEventRegions();
+#endif
+
+    if (UNLIKELY(isMonitoringWheelEvents()))
+        wheelEventTestMonitor()->checkShouldFireCallbacks();
+
+#if ASSERT_ENABLED
+    for (Frame* child = mainFrame().tree().firstRenderedChild(); child; child = child->tree().traverseNextRendered()) {
+        auto* frameView = child->view();
+        ASSERT(!frameView || !frameView->needsLayout());
+    }
+#endif
 }
 
 void Page::suspendScriptedAnimations()
@@ -1736,9 +1770,6 @@ void Page::playbackControlsManagerUpdateTimerFired()
 
 void Page::setMuted(MediaProducer::MutedStateFlags muted)
 {
-    if (m_mutedState == muted)
-        return;
-
     m_mutedState = muted;
 
     forEachDocument([] (Document& document) {
@@ -2584,14 +2615,34 @@ void Page::playbackTargetPickerWasDismissed(uint64_t clientId)
 
 #endif
 
+RefPtr<WheelEventTestMonitor> Page::wheelEventTestMonitor() const
+{
+    return m_wheelEventTestMonitor;
+}
+
+void Page::clearWheelEventTestMonitor()
+{
+    if (m_scrollingCoordinator)
+        m_scrollingCoordinator->stopMonitoringWheelEvents();
+
+    m_wheelEventTestMonitor = nullptr;
+}
+
+bool Page::isMonitoringWheelEvents() const
+{
+    return !!m_wheelEventTestMonitor;
+}
+
 WheelEventTestMonitor& Page::ensureWheelEventTestMonitor()
 {
     if (!m_wheelEventTestMonitor) {
-        m_wheelEventTestMonitor = adoptRef(new WheelEventTestMonitor());
+        m_wheelEventTestMonitor = adoptRef(new WheelEventTestMonitor(*this));
         // We need to update the scrolling coordinator so that the mainframe scrolling node can expect wheel event test triggers.
         if (auto* frameView = mainFrame().view()) {
-            if (m_scrollingCoordinator)
+            if (m_scrollingCoordinator) {
+                m_scrollingCoordinator->startMonitoringWheelEvents();
                 m_scrollingCoordinator->updateIsMonitoringWheelEventsForFrameView(*frameView);
+            }
         }
     }
 
@@ -2879,7 +2930,7 @@ void Page::applicationDidBecomeActive()
 #endif
 }
 
-#if PLATFORM(MAC)
+#if ENABLE(WHEEL_EVENT_LATCHING)
 ScrollLatchingState* Page::latchingState()
 {
     if (m_latchingState.isEmpty())
@@ -2888,9 +2939,9 @@ ScrollLatchingState* Page::latchingState()
     return &m_latchingState.last();
 }
 
-void Page::pushNewLatchingState()
+void Page::pushNewLatchingState(ScrollLatchingState&& state)
 {
-    m_latchingState.append(ScrollLatchingState());
+    m_latchingState.append(WTFMove(state));
 }
 
 void Page::resetLatchingState()
@@ -2901,6 +2952,7 @@ void Page::resetLatchingState()
 void Page::popLatchingState()
 {
     m_latchingState.removeLast();
+    LOG_WITH_STREAM(ScrollLatching, stream << "Page::popLatchingState() - new state " << m_latchingState);
 }
 
 void Page::removeLatchingStateForTarget(Element& targetNode)
@@ -2915,8 +2967,9 @@ void Page::removeLatchingStateForTarget(Element& targetNode)
 
         return targetNode.isEqualNode(wheelElement);
     });
+    LOG_WITH_STREAM(ScrollLatching, stream << "Page::removeLatchingStateForTarget() - new state " << m_latchingState);
 }
-#endif // PLATFORM(MAC)
+#endif // ENABLE(WHEEL_EVENT_LATCHING)
 
 static void dispatchPrintEvent(Frame& mainFrame, const AtomString& eventType)
 {
@@ -3014,6 +3067,12 @@ void Page::revealCurrentSelection()
 
 void Page::injectUserStyleSheet(UserStyleSheet& userStyleSheet)
 {
+    if (m_mainFrame->loader().client().hasNavigatedAwayFromAppBoundDomain()) {
+        if (auto* document = m_mainFrame->document())
+            document->addConsoleMessage(MessageSource::Security, MessageLevel::Warning, "Ignoring user style sheet for non-app bound domain."_s);
+        return;
+    }
+
     // We need to wait until we're no longer displaying the initial empty document before we can inject the stylesheets.
     if (m_mainFrame->loader().stateMachine().isDisplayingInitialEmptyDocument()) {
         m_userStyleSheetsPendingInjection.append(userStyleSheet);

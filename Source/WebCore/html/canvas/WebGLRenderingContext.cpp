@@ -107,8 +107,10 @@ void WebGLRenderingContext::initializeVertexArrayObjects()
     m_defaultVertexArrayObject = WebGLVertexArrayObjectOES::create(*this, WebGLVertexArrayObjectOES::Type::Default);
     addContextObject(*m_defaultVertexArrayObject);
     m_boundVertexArrayObject = m_defaultVertexArrayObject;
+#if !USE(ANGLE)
     if (!isGLES2Compliant())
         initVertexAttrib0();
+#endif
 }
 
 WebGLExtension* WebGLRenderingContext::getExtension(const String& name)
@@ -402,6 +404,7 @@ void WebGLRenderingContext::clear(GCGLbitfield mask)
 {
     if (isContextLostOrPending())
         return;
+#if !USE(ANGLE)
     if (mask & ~(GraphicsContextGL::COLOR_BUFFER_BIT | GraphicsContextGL::DEPTH_BUFFER_BIT | GraphicsContextGL::STENCIL_BUFFER_BIT)) {
         synthesizeGLError(GraphicsContextGL::INVALID_VALUE, "clear", "invalid mask");
         return;
@@ -411,6 +414,7 @@ void WebGLRenderingContext::clear(GCGLbitfield mask)
         synthesizeGLError(GraphicsContextGL::INVALID_FRAMEBUFFER_OPERATION, "clear", reason);
         return;
     }
+#endif
     if (!clearIfComposited(mask))
         m_context->clear(mask);
     markContextChangedAndNotifyCanvasObserver();
