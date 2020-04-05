@@ -39,7 +39,6 @@
 #include "PointerLockController.h"
 #include "ScrollableArea.h"
 #include "Scrollbar.h"
-#include "WebFrame.h"
 #include "WebPage.h"
 #include "WebViewConstants.h"
 

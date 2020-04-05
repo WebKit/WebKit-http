@@ -43,10 +43,8 @@ public:
 private:
     virtual void registerProtocolHandler(const String&, const URL&, const URL&, const String&) override { }
 
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
     virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const URL&, const URL&) { return CustomHandlersDeclined; }
     virtual void unregisterProtocolHandler(const String&, const URL&, const URL&) { }
-#endif
 };
 
 }
