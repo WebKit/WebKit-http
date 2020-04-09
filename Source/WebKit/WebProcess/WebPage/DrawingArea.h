@@ -153,6 +153,10 @@ public:
 
     void removeMessageReceiverIfNeeded();
 
+#if PLATFORM(WPE)
+    virtual uint64_t nativeWindowID() const = 0;
+#endif
+
 protected:
     DrawingArea(DrawingAreaType, DrawingAreaIdentifier, WebPage&);
 

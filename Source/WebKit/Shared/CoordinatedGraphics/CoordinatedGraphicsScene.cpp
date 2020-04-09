@@ -25,6 +25,7 @@
 #if USE(COORDINATED_GRAPHICS)
 
 #include <WebCore/CoordinatedBackingStore.h>
+#include <WebCore/GLContext.h>
 #include <WebCore/NicosiaBackingStoreTextureMapperImpl.h>
 #include <WebCore/NicosiaBuffer.h>
 #include <WebCore/NicosiaCompositionLayerTextureMapperImpl.h>
@@ -397,8 +398,12 @@ void CoordinatedGraphicsScene::updateSceneState()
         layersByBacking.imageBacking = { };
     }
 
-    for (auto& backingStore : backingStoresWithPendingBuffers)
-        backingStore->commitTileOperations(*m_textureMapper);
+    // If there's no current GLContext, we are in nonCompositedWebGL mode and we need to skip
+    // tile operations.
+    if (GLContext::current()) {
+        for (auto& backingStore : backingStoresWithPendingBuffers)
+            backingStore->commitTileOperations(*m_textureMapper);
+    }
 
     for (auto& proxy : proxiesForSwapping)
         proxy->swapBuffer();
@@ -447,6 +452,27 @@ void CoordinatedGraphicsScene::detach()
     ASSERT(RunLoop::isMain());
     m_isActive = false;
     m_client = nullptr;
+}
+
+void CoordinatedGraphicsScene::applyStateChangesAndNotifyVideoPosition(const Vector<CoordinatedGraphicsState>& states)
+{
+    ensureRootLayer();
+
+    for (auto& state : states)
+        m_nicosia.scene = state.nicosia.scene;
+
+    updateSceneState();
+
+    TextureMapperLayer* currentRootLayer = rootLayer();
+    if (!currentRootLayer)
+        return;
+
+    bool sceneHasRunningAnimations = currentRootLayer->applyAnimationsRecursively(MonotonicTime::now());
+
+    currentRootLayer->computeTransformsAndNotifyVideoPosition();
+
+    if (sceneHasRunningAnimations)
+        updateViewport();
 }
 
 } // namespace WebKit

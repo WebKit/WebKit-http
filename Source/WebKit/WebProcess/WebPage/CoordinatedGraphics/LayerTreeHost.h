@@ -98,6 +98,10 @@ public:
 
     WebCore::PlatformDisplayID displayID() const { return m_displayID; }
 
+#if PLATFORM(WPE)
+    uint64_t nativeWindowID() const { return m_surface->window(); }
+#endif
+
 private:
 #if USE(COORDINATED_GRAPHICS)
     void layerFlushTimerFired();

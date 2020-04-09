@@ -63,6 +63,7 @@ typedef struct __IOSurface* IOSurfaceRef;
 #if USE(NICOSIA)
 namespace Nicosia {
 class GC3DLayer;
+class NonCompositedGC3DLayer;
 }
 #endif
 
@@ -853,6 +854,8 @@ private:
 #if USE(NICOSIA) && USE(TEXTURE_MAPPER)
     friend class Nicosia::GC3DLayer;
     std::unique_ptr<Nicosia::GC3DLayer> m_nicosiaLayer;
+    friend class Nicosia::NonCompositedGC3DLayer;
+    std::unique_ptr<Nicosia::NonCompositedGC3DLayer> m_nonCompositedNicosiaLayer;
 #elif USE(TEXTURE_MAPPER)
     friend class TextureMapperGC3DPlatformLayer;
     std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;

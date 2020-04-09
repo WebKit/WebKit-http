@@ -91,6 +91,7 @@ if (USE_COORDINATED_GRAPHICS)
         platform/graphics/nicosia/texmap/NicosiaCompositionLayerTextureMapperImpl.cpp
         platform/graphics/nicosia/texmap/NicosiaContentLayerTextureMapperImpl.cpp
         platform/graphics/nicosia/texmap/NicosiaGC3DLayer.cpp
+        platform/graphics/nicosia/texmap/NicosiaNonCompositedGC3DLayer.cpp
         platform/graphics/nicosia/texmap/NicosiaImageBackingTextureMapperImpl.cpp
     )
     list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS

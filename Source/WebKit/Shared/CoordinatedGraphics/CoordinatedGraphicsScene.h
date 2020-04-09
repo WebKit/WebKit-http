@@ -74,6 +74,8 @@ public:
     bool isActive() const { return m_isActive; }
     void setActive(bool active) { m_isActive = active; }
 
+    void applyStateChangesAndNotifyVideoPosition(const Vector<WebCore::CoordinatedGraphicsState>&);
+
 private:
     void commitSceneState(const WebCore::CoordinatedGraphicsState::NicosiaState&);
     void updateSceneState();

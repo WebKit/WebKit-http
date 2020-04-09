@@ -115,6 +115,7 @@ bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfac
         EGL_ALPHA_SIZE, rgbaSize[3],
         EGL_STENCIL_SIZE, 8,
         EGL_SURFACE_TYPE, EGL_NONE,
+        EGL_DEPTH_SIZE, 0,
         EGL_NONE
     };
 
@@ -128,6 +129,7 @@ bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfac
     case GLContextEGL::WindowSurface:
     case GLContextEGL::Surfaceless:
         attributeList[13] = EGL_WINDOW_BIT;
+        attributeList[15] = 16;
         break;
     }
 

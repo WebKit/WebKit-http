@@ -1933,6 +1933,13 @@ IsAccessibilityIsolatedTreeEnabled:
     category: experimental
     condition: ENABLE(ACCESSIBILITY_ISOLATED_TREE)
 
+NonCompositedWebGLEnabled:
+    type: bool
+    humanReadableName: "NonCompositedWebGL mode"
+    humanReadableDescription: "Enable rendering WebGL content without composition"
+    defaultValue: false
+    condition: PLATFORM(WPE)
+
 # Deprecated
 
 ICECandidateFilteringEnabled:

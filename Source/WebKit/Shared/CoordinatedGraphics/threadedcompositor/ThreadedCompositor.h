@@ -61,7 +61,7 @@ public:
         virtual void didRenderFrame() = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags);
+    static Ref<ThreadedCompositor> create(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags, bool = false);
     virtual ~ThreadedCompositor();
 
     void setScaleFactor(float);
@@ -85,12 +85,13 @@ public:
     void resume();
 
 private:
-    ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags);
+    ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags, bool);
 
     // CoordinatedGraphicsSceneClient
     void updateViewport() override;
 
     void renderLayerTree();
+    void renderNonCompositedWebGL();
     void sceneUpdateFinished();
 
     void createGLContext();
@@ -103,6 +104,7 @@ private:
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
     unsigned m_suspendedCount { 0 };
+    bool m_nonCompositedWebGL { false };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 

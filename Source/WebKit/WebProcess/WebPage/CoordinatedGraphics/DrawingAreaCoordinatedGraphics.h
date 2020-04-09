@@ -65,6 +65,10 @@ private:
     void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
 #endif
 
+#if PLATFORM(WPE)
+    uint64_t nativeWindowID() const final;
+#endif
+
     bool supportsAsyncScrolling() const override;
 
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;

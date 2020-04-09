@@ -255,6 +255,10 @@ void DrawingAreaCoordinatedGraphics::updatePreferences(const WebPreferencesStore
         settings.setAsyncFrameScrollingEnabled(false);
         settings.setAsyncOverflowScrollingEnabled(false);
     }
+
+#if PLATFORM(WPE)
+    settings.setNonCompositedWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::nonCompositedWebGLEnabledKey()));
+#endif
 }
 
 void DrawingAreaCoordinatedGraphics::enablePainting()
@@ -281,6 +285,13 @@ void DrawingAreaCoordinatedGraphics::deviceOrPageScaleFactorChanged()
     else if (m_previousLayerTreeHost)
         m_previousLayerTreeHost->deviceOrPageScaleFactorChanged();
 }
+
+#if PLATFORM(WPE)
+uint64_t DrawingAreaCoordinatedGraphics::nativeWindowID() const
+{
+    return m_layerTreeHost ? m_layerTreeHost->nativeWindowID() : 0;
+}
+#endif
 
 void DrawingAreaCoordinatedGraphics::didChangeViewportAttributes(ViewportAttributes&& attrs)
 {

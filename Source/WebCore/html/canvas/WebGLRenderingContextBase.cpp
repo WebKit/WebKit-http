@@ -506,6 +506,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
 
     bool isPendingPolicyResolution = false;
     HostWindow* hostWindow = nullptr;
+    GraphicsContextGL::Destination destination = GraphicsContextGL::Destination::Offscreen;
 
     auto* canvasElement = is<HTMLCanvasElement>(canvas) ? &downcast<HTMLCanvasElement>(canvas) : nullptr;
 
@@ -551,6 +552,9 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
             attributes.devicePixelRatio = page->deviceScaleFactor();
 
         hostWindow = document.view()->root()->hostWindow();
+
+        if (frame->settings().nonCompositedWebGLEnabled())
+            destination = GraphicsContextGL::Destination::DirectlyToHostWindow;
     }
 
     attributes.noExtensions = true;
@@ -577,7 +581,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
         return renderingContext;
     }
 
-    auto context = GraphicsContextGLOpenGL::create(attributes, hostWindow);
+    auto context = GraphicsContextGLOpenGL::create(attributes, hostWindow, destination);
     if (!context || !context->makeContextCurrent()) {
         if (canvasElement) {
             canvasElement->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent,
@@ -6334,7 +6338,8 @@ void WebGLRenderingContextBase::maybeRestoreContext()
     if (!hostWindow)
         return;
 
-    RefPtr<GraphicsContextGLOpenGL> context(GraphicsContextGLOpenGL::create(m_attributes, hostWindow));
+    GraphicsContextGL::Destination destination = frame->settings().nonCompositedWebGLEnabled() ? GraphicsContextGL::Destination::DirectlyToHostWindow : GraphicsContextGL::Destination::Offscreen;
+    RefPtr<GraphicsContextGLOpenGL> context(GraphicsContextGLOpenGL::create(m_attributes, hostWindow, destination));
     if (!context) {
         if (m_contextLostMode == RealLostContext)
             m_restoreTimer.startOneShot(secondsBetweenRestoreAttempts);

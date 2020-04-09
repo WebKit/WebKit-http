@@ -105,7 +105,10 @@ public:
 
     void addChild(TextureMapperLayer*);
 
-private:
+    void computeTransformsAndNotifyVideoPosition();
+    void notifyVideoPositionRecursive();
+
+ private:
     const TextureMapperLayer& rootLayer() const
     {
         if (m_effectTarget)

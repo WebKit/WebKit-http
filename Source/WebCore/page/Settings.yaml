@@ -947,3 +947,6 @@ mediaCaptureRequiresSecureConnection:
 
 shouldUseServiceWorkerShortTimeout:
   initial: false
+
+nonCompositedWebGLEnabled:
+  initial: false

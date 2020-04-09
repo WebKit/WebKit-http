@@ -78,6 +78,7 @@ typedef void* GLeglContext;
 #include "NicosiaGC3DANGLELayer.h"
 #else
 #include "NicosiaGC3DLayer.h"
+#include "NicosiaNonCompositedGC3DLayer.h"
 #endif
 #endif
 
@@ -92,10 +93,6 @@ static Deque<GraphicsContextGLOpenGL*, MaxActiveContexts>& activeContexts()
 
 RefPtr<GraphicsContextGLOpenGL> GraphicsContextGLOpenGL::create(GraphicsContextGLAttributes attributes, HostWindow* hostWindow, GraphicsContextGLOpenGL::Destination destination)
 {
-    // This implementation doesn't currently support rendering directly to the HostWindow.
-    if (destination == Destination::DirectlyToHostWindow)
-        return nullptr;
-
     static bool initialized = false;
     static bool success = true;
     if (!initialized) {
@@ -202,12 +199,15 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     gl::ClearColor(0, 0, 0, 0);
 }
 #else
-GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes attributes, HostWindow*, GraphicsContextGLOpenGL::Destination destination, GraphicsContextGLOpenGL* sharedContext)
+GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes attributes, HostWindow* hostWindow, GraphicsContextGLOpenGL::Destination destination, GraphicsContextGLOpenGL* sharedContext)
     : GraphicsContextGL(attributes, destination, sharedContext)
 {
     ASSERT_UNUSED(sharedContext, !sharedContext);
 #if USE(NICOSIA)
-    m_nicosiaLayer = makeUnique<Nicosia::GC3DLayer>(*this, destination);
+    if (destination == Destination::Offscreen)
+        m_nicosiaLayer = makeUnique<Nicosia::GC3DLayer>(*this, destination);
+    else
+        m_nonCompositedNicosiaLayer = makeUnique<Nicosia::NonCompositedGC3DLayer>(*this, destination, hostWindow);
 #else
     m_texmapLayer = makeUnique<TextureMapperGC3DPlatformLayer>(*this, destination);
 #endif
@@ -375,42 +375,43 @@ GraphicsContextGLOpenGL::~GraphicsContextGLOpenGL()
 #else
 GraphicsContextGLOpenGL::~GraphicsContextGLOpenGL()
 {
-    makeContextCurrent();
-    if (m_texture)
-        ::glDeleteTextures(1, &m_texture);
+    if (destination() == Destination::Offscreen) {
+        makeContextCurrent();
+        if (m_texture)
+            ::glDeleteTextures(1, &m_texture);
 #if USE(COORDINATED_GRAPHICS)
-    if (m_compositorTexture)
-        ::glDeleteTextures(1, &m_compositorTexture);
+        if (m_compositorTexture)
+            ::glDeleteTextures(1, &m_compositorTexture);
 #endif
 
-    auto attributes = contextAttributes();
+        auto attributes = contextAttributes();
 
-    if (attributes.antialias) {
-        ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
-        if (attributes.stencil || attributes.depth)
-            ::glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-        ::glDeleteFramebuffers(1, &m_multisampleFBO);
-    } else if (attributes.stencil || attributes.depth) {
+        if (attributes.antialias) {
+            ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
+            if (attributes.stencil || attributes.depth)
+                ::glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
+            ::glDeleteFramebuffers(1, &m_multisampleFBO);
+        } else if (attributes.stencil || attributes.depth) {
 #if USE(OPENGL_ES)
-        if (m_depthBuffer)
-            glDeleteRenderbuffers(1, &m_depthBuffer);
+            if (m_depthBuffer)
+                glDeleteRenderbuffers(1, &m_depthBuffer);
 
-        if (m_stencilBuffer)
-            glDeleteRenderbuffers(1, &m_stencilBuffer);
+            if (m_stencilBuffer)
+                glDeleteRenderbuffers(1, &m_stencilBuffer);
 #endif
-        if (m_depthStencilBuffer)
-            ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
-    }
-    ::glDeleteFramebuffers(1, &m_fbo);
+            if (m_depthStencilBuffer)
+                ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
+        }
+        ::glDeleteFramebuffers(1, &m_fbo);
 #if USE(COORDINATED_GRAPHICS)
-    ::glDeleteTextures(1, &m_intermediateTexture);
+        ::glDeleteTextures(1, &m_intermediateTexture);
 #endif
 
 #if USE(CAIRO)
-    if (m_vao)
-        deleteVertexArray(m_vao);
+        if (m_vao)
+            deleteVertexArray(m_vao);
 #endif
-
+    }
     auto* activeContext = activeContexts().takeLast([this](auto* it) {
         return it == this;
     });
@@ -421,7 +422,10 @@ GraphicsContextGLOpenGL::~GraphicsContextGLOpenGL()
 bool GraphicsContextGLOpenGL::makeContextCurrent()
 {
 #if USE(NICOSIA)
-    return m_nicosiaLayer->makeContextCurrent();
+    if (destination() == Destination::Offscreen)
+        return m_nicosiaLayer->makeContextCurrent();
+    else
+        return m_nonCompositedNicosiaLayer->makeContextCurrent();
 #else
     return m_texmapLayer->makeContextCurrent();
 #endif
@@ -434,7 +438,10 @@ void GraphicsContextGLOpenGL::checkGPUStatus()
 PlatformGraphicsContextGL GraphicsContextGLOpenGL::platformGraphicsContextGL() const
 {
 #if USE(NICOSIA)
-    return m_nicosiaLayer->platformContext();
+    if (destination() == Destination::Offscreen)
+        return m_nicosiaLayer->platformContext();
+    else
+        return m_nonCompositedNicosiaLayer->platformContext();
 #else
     return m_texmapLayer->platformContext();
 #endif
@@ -457,7 +464,10 @@ bool GraphicsContextGLOpenGL::isGLES2Compliant() const
 PlatformLayer* GraphicsContextGLOpenGL::platformLayer() const
 {
 #if USE(NICOSIA)
-    return &m_nicosiaLayer->contentLayer();
+    if (destination() == Destination::Offscreen)
+        return &m_nicosiaLayer->contentLayer();
+    else
+        return &m_nonCompositedNicosiaLayer->contentLayer();
 #else
     return m_texmapLayer.get();
 #endif

@@ -183,6 +183,10 @@ public:
     void registerPopupOpeningObserver(PopupOpeningObserver&);
     void unregisterPopupOpeningObserver(PopupOpeningObserver&);
 
+#if PLATFORM(WPE)
+    uint64_t nativeWindowID() const;
+#endif
+
 private:
     void notifyPopupOpeningObservers() const;
 
