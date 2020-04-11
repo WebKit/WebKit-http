@@ -77,10 +77,9 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame,
         // No parent, we are creating the main BWebFrame.
         // mainframe is already created in WebCore::Page, just use it.
         fData->frame = &webPage->page()->mainFrame();
-        fData->loaderClient = std::unique_ptr<FrameLoaderClientHaiku>(static_cast<FrameLoaderClientHaiku*>(
-            &fData->frame->loader().client()));
-        fData->loaderClient->setFrame(this);
-
+		FrameLoaderClientHaiku& client
+			= static_cast<FrameLoaderClientHaiku&>(data->frame->loader().client());
+		client.setFrame(this);
         fData->frame->init();
         fData->frame->tree().setName(fData->name);
     } else {
@@ -94,25 +93,11 @@ BWebFrame::~BWebFrame()
 }
 
 
-bool
-WebFramePrivate::Init(WebCore::Page* page, BWebFrame* frame,
-    std::unique_ptr<WebCore::FrameLoaderClientHaiku> frameLoaderClient)
-{
-    if(!this->frame) {
-        loaderClient = std::move(frameLoaderClient);
-        loaderClient->setFrame(frame);
-        this->page = page;
-        return true;
-    }
-
-    // Frame is already initialized.
-    return false;
-}
-
-
 void BWebFrame::SetListener(const BMessenger& listener)
 {
-    fData->loaderClient->setDispatchTarget(listener);
+	FrameLoaderClientHaiku& client
+		= static_cast<FrameLoaderClientHaiku&>(fData->frame->loader().client());
+    client.setDispatchTarget(listener);
 }
 
 void BWebFrame::LoadURL(BString urlString)
@@ -296,8 +281,6 @@ bool BWebFrame::IsTransparent() const
 
 BString BWebFrame::InnerText() const
 {
-    FrameView* view = fData->frame->view();
-
     WebCore::Element *documentElement = fData->frame->document()->documentElement();
 
     if (!documentElement)
@@ -316,8 +299,6 @@ BString BWebFrame::AsMarkup() const
 
 BString BWebFrame::ExternalRepresentation() const
 {
-    FrameView* view = fData->frame->view();
-
     return externalRepresentation(fData->frame);
 }
 
@@ -436,16 +417,12 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
     if (!frame)
         return nullptr;
 
-    if (!data->Init(fData->page, frame,
-            std::make_unique<WebCore::FrameLoaderClientHaiku>(page))) {
-        delete frame;
-        return nullptr;
-    }
-
     RefPtr<WebCore::Frame> coreFrame = WebCore::Frame::create(fData->page,
-        ownerElement, data->loaderClient.get());
+        ownerElement, makeUniqueRef<FrameLoaderClientHaiku>(page));
     // We don't keep the reference to the Frame, see WebFramePrivate.h.
     data->frame = coreFrame.get();
+	FrameLoaderClientHaiku& client = static_cast<FrameLoaderClientHaiku&>(data->frame->loader().client());
+	client.setFrame(this);
     coreFrame->tree().setName(name.String());
 
     if (ownerElement)

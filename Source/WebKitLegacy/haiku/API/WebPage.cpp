@@ -276,6 +276,7 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 		BackForwardList::create(),
 		CookieJar::create(storageProvider.copyRef()),
     	makeUniqueRef<ProgressTrackerClientHaiku>(this),
+    	makeUniqueRef<FrameLoaderClientHaiku>(this),
 		makeUniqueRef<MediaRecorderProviderHaiku>()
 		);
 
@@ -284,7 +285,6 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
     pageClients.dragClient = std::make_unique<DragClientHaiku>(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
-    pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
 	pageClients.diagnosticLoggingClient = std::make_unique<WebKit::WebDiagnosticLoggingClient>();
     pageClients.applicationCacheStorage = &WebApplicationCache::storage();
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
@@ -781,16 +781,11 @@ void BWebPage::paint(BRect rect, bool immediate)
         return;
     }
 
-    // FIXME workaround for sometimes badly calculated update rectangle somewhere
-    // in WebCore. In some cases we get asked to redraw only a small part of the
-    // page, instead of everything.
-    //rect = fWebView->Bounds();
-
     fWebView->UnlockLooper();
+    MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
 
     BRegion region(rect);
     internalPaint(offscreenView, view, &region);
-    MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
 
     offscreenView->Sync();
     offscreenView->UnlockLooper();
@@ -810,6 +805,8 @@ void BWebPage::internalPaint(BView* offscreenView,
     offscreenView->PushState();
     offscreenView->ConstrainClippingRegion(dirty);
 
+	// TODO do not recreate a context everytime this is called, we can preserve
+	// it alongside the offscreen view in BWebView?
     WebCore::GraphicsContext context(offscreenView);
     frameView->paint(context, IntRect(dirty->Frame()));
 

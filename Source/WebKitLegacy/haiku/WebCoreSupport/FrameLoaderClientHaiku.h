@@ -58,7 +58,7 @@ struct LoadErrorResetToken;
 class FrameLoaderClientHaiku : public FrameLoaderClient {
  public:
     explicit FrameLoaderClientHaiku(BWebPage*);
-    void frameLoaderDestroyed() override;
+	~FrameLoaderClientHaiku();
 
     void setFrame(BWebFrame* frame) {m_webFrame = frame;}
     BWebFrame* webFrame() { return m_webFrame; }
@@ -166,20 +166,18 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void didRunInsecureContent(SecurityOrigin&, const URL&) override;
     void didDetectXSS(const URL&, bool didBlockEntirePage) override;
 
-    ResourceError cancelledError(const ResourceRequest&) override;
-    ResourceError blockedError(const ResourceRequest&) override;
-    ResourceError blockedByContentBlockerError(const ResourceRequest&) override;
-    ResourceError cannotShowURLError(const ResourceRequest&) override;
-    ResourceError interruptedForPolicyChangeError(const ResourceRequest&) override;
+    ResourceError cancelledError(const ResourceRequest&) const override;
+    ResourceError blockedError(const ResourceRequest&) const override;
+    ResourceError blockedByContentBlockerError(const ResourceRequest&) const override;
+    ResourceError cannotShowURLError(const ResourceRequest&) const override;
+    ResourceError interruptedForPolicyChangeError(const ResourceRequest&) const override;
+    ResourceError cannotShowMIMETypeError(const ResourceResponse&) const override;
+    ResourceError fileDoesNotExistError(const ResourceResponse&) const override;
+    ResourceError pluginWillHandleLoadError(const ResourceResponse&) const override;
 
+    bool shouldFallBack(const ResourceError&) const override;
 
-    ResourceError cannotShowMIMETypeError(const ResourceResponse&) override;
-    ResourceError fileDoesNotExistError(const ResourceResponse&) override;
-    ResourceError pluginWillHandleLoadError(const ResourceResponse&) override;
-
-    bool shouldFallBack(const ResourceError&) override;
-
-    String userAgent(const URL&) override;
+    String userAgent(const URL&) const override;
 
     void savePlatformDataToCachedFrame(CachedFrame*) override;
     void transitionToCommittedFromCachedFrame(CachedFrame*) override;
