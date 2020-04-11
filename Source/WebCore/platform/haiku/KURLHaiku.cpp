@@ -53,7 +53,7 @@ URL::operator BUrl() const
     converted.SetHost(host().utf8().data());
     if (port())
         converted.SetPort(*port());
-    converted.SetPath(path());
+    converted.SetPath(path().utf8().data());
     converted.SetRequest(query());
     if (hasFragmentIdentifier())
         converted.SetFragment(fragmentIdentifier());
