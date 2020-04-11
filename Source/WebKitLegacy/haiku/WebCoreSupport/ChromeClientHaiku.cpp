@@ -127,7 +127,7 @@ void ChromeClientHaiku::focusedFrameChanged(Frame*)
     notImplemented();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& /*request*/, const WindowFeatures& features, const NavigationAction& /*action*/)
+Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const WindowFeatures& features, const NavigationAction& /*action*/)
 {
 	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the

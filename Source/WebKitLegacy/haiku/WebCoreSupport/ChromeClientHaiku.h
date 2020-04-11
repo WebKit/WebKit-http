@@ -65,7 +65,7 @@ namespace WebCore {
         void focusedElementChanged(Element*) override;
         void focusedFrameChanged(Frame*) override;
 
-        Page* createWindow(Frame&, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override;
+        Page* createWindow(Frame&, const WindowFeatures&, const NavigationAction&) override;
 
         void show() override;
 
