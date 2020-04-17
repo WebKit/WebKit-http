@@ -206,10 +206,13 @@ public:
 #if USE(GSTREAMER_GL)
         m_flags = flags | (m_hasAlphaChannel ? TextureMapperGL::ShouldBlend : 0);
 
+        GstMemory* memory = gst_buffer_peek_memory(m_buffer.get(), 0);
+        if (gst_is_gl_memory(memory))
+            m_textureTarget = gst_gl_memory_get_texture_target(GST_GL_MEMORY_CAST(memory));
+
 #if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
         m_dmabufFD = -1;
         gsize offset;
-        GstMemory* memory = gst_buffer_peek_memory(m_buffer.get(), 0);
         if (gst_is_gl_memory_egl(memory)) {
             GstGLMemoryEGL* eglMemory = (GstGLMemoryEGL*) memory;
             gst_egl_image_export_dmabuf(eglMemory->image, &m_dmabufFD, &m_dmabufStride, &offset);
@@ -335,8 +338,13 @@ public:
 
         using Buffer = TextureMapperPlatformLayerBuffer;
 
+#if USE(GSTREAMER_GL)
+        if (m_textureTarget == GST_GL_TEXTURE_TARGET_EXTERNAL_OES)
+            return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::ExternalOESTexture { m_textureID } }, m_size, m_flags, GL_DONT_CARE);
+#endif
+
         if ((GST_VIDEO_INFO_IS_RGB(&m_videoFrame.info) && GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info) == 1))
-            return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { *static_cast<GLuint*>(m_videoFrame.data[0]) } }, m_size, m_flags, GL_RGBA);
+            return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { m_textureID } }, m_size, m_flags, GL_RGBA);
 
         if (GST_VIDEO_INFO_IS_YUV(&m_videoFrame.info)) {
             if (GST_VIDEO_INFO_N_COMPONENTS(&m_videoFrame.info) < 3 || GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info) > 3)
@@ -346,7 +354,7 @@ public:
                 // IMX VPU decoder decodes YUV data only into the Y texture from which the sampler
                 // then directly produces RGBA data. Textures for other planes aren't used, but
                 // that's decoder's problem. We have to treat that Y texture as having RGBA data.
-                return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { *static_cast<GLuint*>(m_videoFrame.data[0]) } }, m_size, m_flags, GL_RGBA);
+                return makeUnique<Buffer>(Buffer::TextureVariant { Buffer::RGBTexture { m_textureID } }, m_size, m_flags, GL_RGBA);
             }
 
             unsigned numberOfPlanes = GST_VIDEO_INFO_N_PLANES(&m_videoFrame.info);
@@ -399,6 +407,9 @@ private:
     Optional<GstVideoDecoderPlatform> m_videoDecoderPlatform;
     TextureMapperGL::Flags m_flags { };
     GLuint m_textureID { 0 };
+#if USE(GSTREAMER_GL)
+    GstGLTextureTarget m_textureTarget { GST_GL_TEXTURE_TARGET_NONE };
+#endif
     bool m_isMapped { false };
     bool m_hasMappedTextures { false };
 #if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
@@ -802,7 +813,7 @@ void MediaPlayerPrivateGStreamer::updatePlaybackRate()
     if (!m_isChangingRate)
         return;
 
-    GST_INFO_OBJECT(pipeline(), "Set Rate to %f", m_playbackRate);
+    GST_INFO_OBJECT(pipeline(), "Set playback rate to %f", m_playbackRate);
 
     // Mute the sound if the playback rate is negative or too extreme and audio pitch is not adjusted.
     bool mute = m_playbackRate <= 0 || (!m_shouldPreservePitch && (m_playbackRate < 0.8 || m_playbackRate > 2));
@@ -813,8 +824,8 @@ void MediaPlayerPrivateGStreamer::updatePlaybackRate()
         g_object_set(m_pipeline.get(), "mute", mute, nullptr);
         m_lastPlaybackRate = m_playbackRate;
     } else {
+        GST_ERROR_OBJECT(pipeline(), "Set rate to %f failed", m_playbackRate);
         m_playbackRate = m_lastPlaybackRate;
-        GST_ERROR("Set rate to %f failed", m_playbackRate);
     }
 
     if (m_isPlaybackRatePaused) {
@@ -861,8 +872,9 @@ void MediaPlayerPrivateGStreamer::setRate(float rate)
 {
     float rateClamped = clampTo(rate, -20.0, 20.0);
     if (rateClamped != rate)
-        GST_WARNING("Clamping original rate (%f) to [-20, 20] (%f), higher rates cause crashes", rate, rateClamped);
+        GST_WARNING_OBJECT(pipeline(), "Clamping original rate (%f) to [-20, 20] (%f), higher rates cause crashes", rate, rateClamped);
 
+    GST_DEBUG_OBJECT(pipeline(), "Setting playback rate to %f", rateClamped);
     // Avoid useless playback rate update.
     if (m_playbackRate == rateClamped) {
         // And make sure that upper layers were notified if rate was set.
@@ -908,6 +920,7 @@ double MediaPlayerPrivateGStreamer::rate() const
 
 void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 {
+    GST_DEBUG_OBJECT(pipeline(), "Preserving audio pitch: %s", boolForPrinting(preservesPitch));
     m_shouldPreservePitch = preservesPitch;
 }
 
@@ -1230,6 +1243,9 @@ void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
 
 static void setSyncOnClock(GstElement *element, bool sync)
 {
+    if (!element)
+        return;
+
     if (!GST_IS_BIN(element)) {
         g_object_set(element, "sync", sync, NULL);
         return;
@@ -3406,12 +3422,14 @@ void MediaPlayerPrivateGStreamer::paint(GraphicsContext& context, const FloatRec
     if (!gst_video_info_from_caps(&videoInfo, caps))
         return;
 
-    if (!GST_VIDEO_INFO_IS_RGB(&videoInfo)) {
-        if (!m_colorConvert) {
-            GstMemory* mem = gst_buffer_peek_memory(buffer, 0);
-            GstGLContext* context = ((GstGLBaseMemory*)mem)->context;
-            m_colorConvert = adoptGRef(gst_gl_color_convert_new(context));
-        }
+    GstMemory* memory = gst_buffer_peek_memory(buffer, 0);
+    bool hasExternalOESTexture = false;
+    if (gst_is_gl_memory(memory))
+        hasExternalOESTexture = gst_gl_memory_get_texture_target(GST_GL_MEMORY_CAST(memory)) == GST_GL_TEXTURE_TARGET_EXTERNAL_OES;
+
+    if (!GST_VIDEO_INFO_IS_RGB(&videoInfo) || hasExternalOESTexture) {
+        if (!m_colorConvert)
+            m_colorConvert = adoptGRef(gst_gl_color_convert_new(GST_GL_BASE_MEMORY_CAST(memory)->context));
 
         if (!m_colorConvertInputCaps || !gst_caps_is_equal(m_colorConvertInputCaps.get(), caps)) {
             m_colorConvertInputCaps = caps;
@@ -3421,7 +3439,8 @@ void MediaPlayerPrivateGStreamer::paint(GraphicsContext& context, const FloatRec
 #else
             const char* formatString = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? "RGBA" : "RGBx";
 #endif
-            gst_caps_set_simple(m_colorConvertOutputCaps.get(), "format", G_TYPE_STRING, formatString, nullptr);
+            gst_caps_set_simple(m_colorConvertOutputCaps.get(), "format", G_TYPE_STRING, formatString,
+                "texture-target", G_TYPE_STRING, GST_GL_TEXTURE_TARGET_2D_STR, nullptr);
             if (!gst_gl_color_convert_set_caps(m_colorConvert.get(), caps, m_colorConvertOutputCaps.get()))
                 return;
         }

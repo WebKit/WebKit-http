@@ -26,6 +26,7 @@
 #pragma once
 
 #include "OptionsList.h"
+#include <wtf/PageBlock.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -34,13 +35,7 @@ class ExecutableAllocator;
 class FixedVMPoolExecutableAllocator;
 class VM;
 
-#if CPU(ARM64) || PLATFORM(WATCHOS)
-constexpr size_t PageSize = 16 * KB;
-#else
-constexpr size_t PageSize = 4 * KB;
-#endif
-
-constexpr size_t ConfigSizeToProtect = PageSize;
+constexpr size_t ConfigSizeToProtect = CeilingOnPageSize;
 
 #if ENABLE(SEPARATED_WX_HEAP)
 using JITWriteSeparateHeapsFunction = void (*)(off_t, const void*, size_t);
@@ -90,9 +85,8 @@ struct Config {
     };
 };
 
-extern "C" alignas(PageSize) JS_EXPORT_PRIVATE Config g_jscConfig;
+extern "C" alignas(ConfigSizeToProtect) JS_EXPORT_PRIVATE Config g_jscConfig;
 
 static_assert(sizeof(Config) == ConfigSizeToProtect, "");
-static_assert(roundUpToMultipleOf<PageSize>(ConfigSizeToProtect) == ConfigSizeToProtect, "");
 
 } // namespace JSC

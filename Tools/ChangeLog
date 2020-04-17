@@ -1,3 +1,60 @@
+2020-03-25  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [GTK] Add user agent quirk for auth.mayohr.com
+        https://bugs.webkit.org/show_bug.cgi?id=209378
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::assertUserAgentForURLHasNoSafariVersionQuirk):
+        (TestWebKitAPI::TEST):
+
+2020-04-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser: valgrind claims 'Invalid write of size 8' on close
+        https://bugs.webkit.org/show_bug.cgi?id=209471
+
+        Reviewed by Adrian Perez de Castro.
+
+        This is because we need to remove the weak pointer added in child windows to their parent.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowDispose): Remove the parentWindow weak ref.
+        (browser_window_class_init): Add dispose.
+
+2020-03-21  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] Use ${PYTHON_EXECUTABLE} to run generate-gtkdoc
+        https://bugs.webkit.org/show_bug.cgi?id=208970
+
+        Reviewed by Konstantin Tokarev.
+
+        We are allowed to use /usr/bin/env in this script because it's not installed (so not
+        packaged). Therefore we can make the shebang compatible with FreeBSD in this particularl
+        case.
+
+        * gtkdoc/generate-gtkdoc:
+
+2020-03-12  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] Use #!/usr/bin/python3 shebang to run generate-gtkdoc
+        https://bugs.webkit.org/show_bug.cgi?id=208970
+
+        Reviewed by Daniel Bates.
+
+        Fedora and Ubuntu are both patching generate-gtkdoc to use #!/usr/bin/python3 rather than
+        #!/usr/bin/env python.
+
+        #!/usr/bin/env and /usr/bin/python are both banned in Fedora packages. I guess Ubuntu
+        probably has similar rules.
+
+        Note this is the only script that attempts to use /usr/bin/python in tarball builds.
+        Everything else that does so is probably only used by webkit-build.
+
+        https://docs.fedoraproject.org/en-US/packaging-guidelines/Python/#_multiple_python_runtimes
+
+        * gtkdoc/generate-gtkdoc:
+
 2020-03-09  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK][WPE] Surrounding text for input methods should not be limited to the current paragraph

@@ -31,6 +31,10 @@
 #include <wtf/glib/GUniquePtr.h>
 
 #if PLATFORM(GTK)
+#include "WaylandCompositor.h"
+#endif
+
+#if PLATFORM(GTK)
 #define BASE_DIRECTORY "webkitgtk"
 #elif PLATFORM(WPE)
 #define BASE_DIRECTORY "wpe"
@@ -323,6 +327,9 @@ static void bindX11(Vector<CString>& args)
 #if PLATFORM(WAYLAND) && USE(EGL)
 static void bindWayland(Vector<CString>& args)
 {
+    if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::Wayland)
+        return;
+
     const char* display = g_getenv("WAYLAND_DISPLAY");
     if (!display)
         display = "wayland-0";
@@ -330,6 +337,14 @@ static void bindWayland(Vector<CString>& args)
     const char* runtimeDir = g_get_user_runtime_dir();
     GUniquePtr<char> waylandRuntimeFile(g_build_filename(runtimeDir, display, nullptr));
     bindIfExists(args, waylandRuntimeFile.get(), BindFlags::ReadWrite);
+
+#if !USE(WPE_RENDERER)
+    if (WaylandCompositor::singleton().isRunning()) {
+        String displayName = WaylandCompositor::singleton().displayName();
+        waylandRuntimeFile.reset(g_build_filename(runtimeDir, displayName.utf8().data(), nullptr));
+        bindIfExists(args, waylandRuntimeFile.get(), BindFlags::ReadWrite);
+    }
+#endif
 }
 #endif
 

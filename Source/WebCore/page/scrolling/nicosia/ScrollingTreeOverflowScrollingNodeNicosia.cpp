@@ -74,7 +74,7 @@ void ScrollingTreeOverflowScrollingNodeNicosia::repositionScrollingLayers()
 
     auto scrollOffset = currentScrollOffset();
 
-    compositionLayer.accessStaging(
+    compositionLayer.updateState(
         [&scrollOffset](Nicosia::CompositionLayer::LayerState& state)
         {
             state.boundsOrigin = scrollOffset;
@@ -93,7 +93,7 @@ ScrollingEventResult ScrollingTreeOverflowScrollingNodeNicosia::handleWheelEvent
         auto& compositionLayer = downcast<Nicosia::CompositionLayer>(*scrollLayer);
 
         auto updateScope = compositionLayer.createUpdateScope();
-        scrollBy({ wheelEvent.deltaX(), -wheelEvent.deltaY() });
+        scrollBy({ -wheelEvent.deltaX(), -wheelEvent.deltaY() });
     }
 
     scrollingTree().setOrClearLatchedNode(wheelEvent, scrollingNodeID());

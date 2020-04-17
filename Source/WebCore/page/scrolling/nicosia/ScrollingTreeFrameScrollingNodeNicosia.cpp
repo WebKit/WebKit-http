@@ -107,7 +107,7 @@ ScrollingEventResult ScrollingTreeFrameScrollingNodeNicosia::handleWheelEvent(co
         auto& compositionLayer = downcast<Nicosia::CompositionLayer>(*scrollLayer);
 
         auto updateScope = compositionLayer.createUpdateScope();
-        scrollBy({ wheelEvent.deltaX(), -wheelEvent.deltaY() });
+        scrollBy({ -wheelEvent.deltaX(), -wheelEvent.deltaY() });
     }
 
     scrollingTree().setOrClearLatchedNode(wheelEvent, scrollingNodeID());
@@ -140,7 +140,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionScrollingLayers()
 
     auto scrollPosition = currentScrollPosition();
 
-    compositionLayer.accessStaging(
+    compositionLayer.updateState(
         [&scrollPosition](Nicosia::CompositionLayer::LayerState& state)
         {
             state.position = -scrollPosition;
@@ -158,7 +158,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionRelatedLayers()
     auto applyLayerPosition =
         [](auto& layer, auto&& position)
         {
-            layer.accessStaging(
+            layer.updateState(
                 [&position](Nicosia::CompositionLayer::LayerState& state)
                 {
                     state.position = position;
@@ -171,7 +171,7 @@ void ScrollingTreeFrameScrollingNodeNicosia::repositionRelatedLayers()
 
     float topContentInset = this->topContentInset();
     if (m_insetClipLayer && m_rootContentsLayer) {
-        m_insetClipLayer->accessStaging(
+        m_insetClipLayer->updateState(
             [&scrollPosition, &topContentInset](Nicosia::CompositionLayer::LayerState& state)
             {
                 state.position = { state.position.x(), FrameView::yPositionForInsetClipLayer(scrollPosition, topContentInset) };

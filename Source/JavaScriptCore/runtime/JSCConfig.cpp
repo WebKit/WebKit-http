@@ -37,7 +37,7 @@
 
 namespace JSC {
 
-alignas(PageSize) JS_EXPORT_PRIVATE Config g_jscConfig;
+alignas(ConfigSizeToProtect) JS_EXPORT_PRIVATE Config g_jscConfig;
 
 void Config::disableFreezingForTesting()
 {
@@ -53,9 +53,7 @@ void Config::enableRestrictedOptions()
     
 void Config::permanentlyFreeze()
 {
-#if PLATFORM(COCOA)
-    RELEASE_ASSERT(roundUpToMultipleOf(vmPageSize(), ConfigSizeToProtect) == ConfigSizeToProtect);
-#endif
+    RELEASE_ASSERT(roundUpToMultipleOf(pageSize(), ConfigSizeToProtect) == ConfigSizeToProtect);
 
     if (!g_jscConfig.isPermanentlyFrozen)
         g_jscConfig.isPermanentlyFrozen = true;
