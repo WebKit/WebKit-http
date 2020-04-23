@@ -19,6 +19,7 @@ global:
     "bmalloc::vmPageSize()::cached";
     "WebKit::WebKitExtensionManager::singleton()";
     "WebKit::WebKitExtensionManager::initialize(WebKit::InjectedBundle*, API::Object*)";
+    "WebKit::installExceptionHandler()";
   };
 local:
   *;

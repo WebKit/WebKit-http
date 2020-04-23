@@ -303,20 +303,14 @@ list(APPEND WebKit_LIBRARIES
 WEBKIT_BUILD_INSPECTOR_GRESOURCES(${DERIVED_SOURCES_WEBINSPECTORUI_DIR})
 
 if (ENABLE_BREAKPAD)
-    list(APPEND WebProcess_INCLUDE_DIRECTORIES
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
         ${BREAKPAD_INCLUDE_DIRS}
     )
-
-    list(APPEND WebProcess_LIBRARIES
+    list(APPEND WebKit_LIBRARIES
         ${BREAKPAD_LIBRARIES}
     )
-
-    list(APPEND NetworkProcess_INCLUDE_DIRECTORIES
-        ${BREAKPAD_INCLUDE_DIRS}
-    )
-
-    list(APPEND NetworkProcess_LIBRARIES
-        ${BREAKPAD_LIBRARIES}
+    list(APPEND WebKit_SOURCES
+        Shared/unix/BreakpadExceptionHandler.cpp
     )
 endif ()
 
