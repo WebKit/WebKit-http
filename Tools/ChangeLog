@@ -1,3 +1,15 @@
+2020-04-23  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Add mock release/debug options to the update script
+
+        Rubber-stamped by Carlos Alberto Lopez Perez.
+
+        These options are now required after r260560. They're not used
+        though because JHBuild itself doesn't have the notion of build
+        configuration, unlike the Flatpak SDK.
+
+        * Scripts/update-webkit-libs-jhbuild:
+
 2020-04-10  Alicia Boya García  <aboya@igalia.com>
 
         [WTF] DataMutex: Add runUnlocked()
