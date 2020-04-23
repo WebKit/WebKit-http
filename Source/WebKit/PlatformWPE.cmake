@@ -69,12 +69,6 @@ list(APPEND WebProcess_SOURCES
     WebProcess/EntryPoint/unix/WebProcessMain.cpp
 )
 
-if (USE_WPEWEBKIT_BACKEND_WESTEROS)
-    list(INSERT WebProcess_LIBRARIES  0 ${WAYLAND_EGL_LIBRARIES})
-    list(INSERT WebProcess_LIBRARIES  0 ${WAYLAND_LIBRARIES})
-    list(REMOVE_ITEM WebProcess_LIBRARIES  wayland-server)
-endif ()
-
 list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )

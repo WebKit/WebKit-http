@@ -127,8 +127,6 @@ if (USE_WPEWEBKIT_BACKEND_BCM_RPI)
 endif ()
 
 if (USE_WPEWEBKIT_BACKEND_WESTEROS)
-    find_package(Wayland REQUIRED)
-    find_package(WaylandEGL REQUIRED)
     find_package(westeros REQUIRED)
 endif(USE_WPEWEBKIT_BACKEND_WESTEROS)
 
