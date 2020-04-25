@@ -1917,19 +1917,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
     // duration set to the maximum of the current duration and the group end timestamp.
     if (m_groupEndTimestamp > m_source->duration())
         m_source->setDurationInternal(m_groupEndTimestamp);
-
-    // To avoid playback pipeline starvation start providing media data as soon as we can
-    const auto& trackID = sample.trackID();
-    auto it = m_trackBufferMap.find(trackID);
-    if (it != m_trackBufferMap.end() && m_private->isReadyForMoreSamples(trackID)) {
-        TrackBuffer& trackBuffer = it->value;
-        if (!trackBuffer.needsReenqueueing
-            && trackBuffer.lastEnqueuedDecodeEndTime.isValid()
-            && trackBuffer.lastDecodeTimestamp.isValid()
-            && abs(trackBuffer.lastEnqueuedDecodeEndTime - trackBuffer.lastDecodeTimestamp) > MediaTime::createWithDouble(0.350)) {
-            provideMediaData(trackBuffer, trackID);
-        }
-    }
 }
 
 bool SourceBuffer::hasAudio() const
