@@ -1,3 +1,13 @@
+2020-04-28  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][MediaStream] Doesn't build with GStreamer 1.10
+        https://bugs.webkit.org/show_bug.cgi?id=210271
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Source/cmake/GStreamerChecks.cmake: Require at least GStreamer
+        1.12 when building with WebRTC/MediaStream enabled.
+
 2020-07-28  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.4 release
