@@ -1,3 +1,56 @@
+2020-04-24  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.2 release
+
+        * wpe/NEWS: Add release notes for 2.28.2.
+
+2020-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.28.2 release
+
+        * gtk/NEWS: Add release notes for 2.28.2.
+
+2020-04-23  John Frankish  <john.frankish@outlook.com>
+
+        [GTK] Crash in cairo_surface_mark_dirty_rectangle() in accelerated compositing mode under X11
+        https://bugs.webkit.org/show_bug.cgi?id=210636
+
+        Reviewed by Carlos Garcia Campos.
+
+        When cairo is configured to use xcb instead of xlib, it might use an image surface attached to the xlib one as
+        snapshot. In that case a flush is needed to detach that snapshot after we have drawn the surface in the
+        context.
+
+        * UIProcess/gtk/AcceleratedBackingStoreX11.cpp:
+        (WebKit::AcceleratedBackingStoreX11::paint): Call cairo_surface_flush() after drawing.
+
+2020-04-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][X11] REGRESSION(r259944): Wrong position of select popup menu in X11
+        https://bugs.webkit.org/show_bug.cgi?id=210603
+
+        Reviewed by Michael Catanzaro.
+
+        gdk_window_move_to_rect expects the given rectangle in coordinates relative to the top-left corner of the window
+        that the popup window is transient for. We were using screen coordinates.
+
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        (WebKit::WebPopupMenuProxyGtk::showPopupMenu): Translate widget coordinates to window coordinates before passing
+        the rectangle to gdk_window_move_to_rect().
+
+2020-04-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] UI process crash when entering compositing mode when WPE_RENDERER is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=209118
+
+        Reviewed by Michael Catanzaro.
+
+        Check if EGL_WL_bind_wayland_display extension is available when using WPE_RENDERER, since we don't suport the
+        SHM interface.
+
+        * UIProcess/gtk/AcceleratedBackingStoreWayland.cpp:
+        (WebKit::AcceleratedBackingStoreWayland::checkRequirements): Return false if EGL_WL_bind_wayland_display is not present.
+
 2020-04-13  Adrian Perez de Castro  <aperez@igalia.com>
 
         Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.28.1 release
