@@ -111,7 +111,8 @@ class WebKitMediaStreamTrackObserver
 public:
     virtual ~WebKitMediaStreamTrackObserver() { };
     WebKitMediaStreamTrackObserver(WebKitMediaStreamSrc* src)
-        : m_mediaStreamSrc(src) { }
+        : m_mediaStreamSrc(src)
+        , m_enabled(true) { }
     void trackStarted(MediaStreamTrackPrivate&) final { };
 
     void trackEnded(MediaStreamTrackPrivate& track) final
@@ -119,27 +120,36 @@ public:
         webkitMediaStreamSrcTrackEnded(m_mediaStreamSrc, track);
     }
 
+    void trackEnabledChanged(MediaStreamTrackPrivate& track) final
+    {
+        m_enabled = track.enabled();
+    }
+
     void trackMutedChanged(MediaStreamTrackPrivate&) final { };
     void trackSettingsChanged(MediaStreamTrackPrivate&) final { };
-    void trackEnabledChanged(MediaStreamTrackPrivate&) final { };
     void readyStateChanged(MediaStreamTrackPrivate&) final { };
 
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample& sample) final
     {
-        auto gstsample = static_cast<MediaSampleGStreamer*>(&sample)->platformSample().sample.gstSample;
+        if (!m_enabled)
+            return;
 
-        webkitMediaStreamSrcPushVideoSample(m_mediaStreamSrc, gstsample);
+        auto gstSample = static_cast<MediaSampleGStreamer*>(&sample)->platformSample().sample.gstSample;
+        webkitMediaStreamSrcPushVideoSample(m_mediaStreamSrc, gstSample);
     }
 
     void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData& audioData, const AudioStreamDescription&, size_t) final
     {
-        auto audiodata = static_cast<const GStreamerAudioData&>(audioData);
+        if (!m_enabled)
+            return;
 
-        webkitMediaStreamSrcPushAudioSample(m_mediaStreamSrc, audiodata.getSample());
+        auto data = static_cast<const GStreamerAudioData&>(audioData);
+        webkitMediaStreamSrcPushAudioSample(m_mediaStreamSrc, data.getSample());
     }
 
 private:
     WebKitMediaStreamSrc* m_mediaStreamSrc;
+    bool m_enabled;
 };
 
 class WebKitMediaStreamObserver
@@ -196,7 +206,6 @@ struct _WebKitMediaStreamSrc {
         {
             self->setEnoughData(true);
         }
-
 
         void setSrc(GstElement *src)
         {

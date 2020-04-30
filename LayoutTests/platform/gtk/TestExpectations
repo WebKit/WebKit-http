@@ -560,11 +560,6 @@ webkit.org/b/206464 webrtc/peerconnection-page-cache.html [ Failure ]
 
 webkit.org/b/186933 webrtc/peer-connection-createMediaStreamDestination.html
 
-webkit.org/b/205930 webrtc/audio-peer-connection-webaudio.html [ Failure ]
-webkit.org/b/205930 webrtc/peer-connection-audio-mute2.html [ Failure ]
-webkit.org/b/205930 webrtc/peer-connection-audio-unmute.html [ Failure ]
-webkit.org/b/205930 webrtc/peer-connection-remote-audio-mute2.html [ Failure ]
-
 imported/w3c/web-platform-tests/webrtc/ [ Skip ]
 http/tests/webrtc [ Skip ]
 # The MediaStream implementation is also still not completed
@@ -601,8 +596,6 @@ webkit.org/b/169811 fast/mediacapturefromelement [ Skip ]
 webkit.org/b/169811 fast/mediastream/captureStream/ [ Failure ]
 webkit.org/b/169811 fast/mediastream/captureStream/canvas2d.html [ Crash Timeout ]
 webkit.org/b/169811 fast/mediastream/captureStream/canvas3d.html [ Crash Timeout ]
-
-webkit.org/b/190576 fast/mediastream/get-user-media-device-id.html [ Failure ]
 
 # No support for GPUProcess yet
 fast/mediastream/captureInGPUProcess.html [ Skip ]
@@ -1289,10 +1282,9 @@ webkit.org/b/206653 imported/w3c/web-platform-tests/clipboard-apis/async-write-t
 
 webkit.org/b/206655 inspector/page/overrideSetting-MockCaptureDevicesEnabled.html [ Failure ]
 
-webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-firstframe.https.html [ Failure ]
-webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-removetrack.https.html [ Failure ]
+webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-removetrack.https.html [ Failure Crash ]
 webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html [ Failure ]
-webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https.html [ Failure ]
+webkit.org/b/206656 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-preload-none-manual.https.html [ Crash Failure Pass ]
 
 # LFC (LayoutFormatingContext is disabled by default).
 fast/layoutformattingcontext/ [ Skip ]
@@ -1427,6 +1419,28 @@ webkit.org/b/203078 media/media-source/media-source-seek-detach-crash.html [ Pas
 webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-replay.html [ Failure Crash ]
 webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-seek-during-pending-seek.html [ Pass Crash ]
 webkit.org/b/203078 imported/w3c/web-platform-tests/media-source/mediasource-redundant-seek.html [ Pass Crash ]
+
+webkit.org/b/207574 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height-viewbox.html [ Crash ]
+webkit.org/b/207574 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-omitted-height.html [ Crash ]
+webkit.org/b/207574 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height-viewbox.html [ Crash ]
+webkit.org/b/207574 [ Debug ] imported/w3c/web-platform-tests/css/css-backgrounds/background-size/vector/tall--auto-32px--nonpercent-width-percent-height.html [ Crash ]
+
+webkit.org/b/207605 [ Debug ] http/wpt/cache-storage/quota-third-party.https.html [ Crash ]
+webkit.org/b/207605 [ Debug ] http/tests/workers/service/registration-clear-redundant-worker.html [ Crash ]
+webkit.org/b/207605 [ Debug ] http/tests/websocket/tests/hybi/no-subprotocol.html [ Crash ]
+webkit.org/b/207605 [ Debug ] http/tests/workers/service/postmessage-after-terminate.https.html [ Crash ]
+
+webkit.org/b/207737 imported/w3c/web-platform-tests/media-source/mediasource-h264-play-starved.html [ Pass Crash ]
+
+# Tests crashing in EWS but not in test bot.
+webkit.org/b/209533 fast/mediastream/MediaStream-MediaElement-setObject-null.html [ Crash Pass ]
+webkit.org/b/209533 http/tests/contentextensions/video-element-resource-type.html [ Crash Pass ]
+webkit.org/b/209533 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_loadstart_noautoplay.html [ Crash Pass ]
+webkit.org/b/209533 media/track/track-automatic-subtitles.html [ Crash Pass ]
+
+webkit.org/b/210926 fast/mediastream/getDisplayMedia-max-constraints1.html [ Skip ]
+webkit.org/b/210926 fast/mediastream/getDisplayMedia-max-constraints2.html [ Skip ]
+webkit.org/b/210926 fast/mediastream/getDisplayMedia-max-constraints3.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -2750,8 +2764,6 @@ webkit.org/b/206147 inspector/dom-debugger/dom-breakpoints.html [ Timeout ]
 
 webkit.org/b/206148 http/tests/local/file-url-host.html [ Timeout ]
 
-webkit.org/b/206149 webrtc/peer-connection-remote-audio-mute.html [ Timeout ]
-
 webkit.org/b/202736 http/tests/appcache/remove-cache.html [ Failure Timeout Pass ]
 webkit.org/b/202736 http/wpt/cache-storage/quota-third-party.https.html [ Failure Timeout Pass ]
 webkit.org/b/202736 storage/indexeddb/modern/handle-user-delete.html [ Timeout ]
@@ -3820,7 +3832,6 @@ webkit.org/b/162815 fast/text/variations/skia-postscript-name.html [ ImageOnlyFa
 webkit.org/b/192883 fast/cookies/cookie-averse-document.html [ Failure ]
 webkit.org/b/192883 fast/cookies/local-file-can-set-cookies.html [ Failure ]
 
-webkit.org/b/192886 fast/mediastream/media-stream-renders-first-frame.html [ Failure ]
 webkit.org/b/192888 fast/mediastream/resize-trim.html [ Failure ]
 
 webkit.org/b/192900 imported/w3c/web-platform-tests/eventsource/format-mime-bogus.htm [ Failure ]
@@ -4148,8 +4159,6 @@ webkit.org/b/206885 imported/w3c/web-platform-tests/css/css-fonts/quoted-generic
 webkit.org/b/207246 imported/w3c/web-platform-tests/content-security-policy/generic/generic-0_10.sub.html [ Failure ]
 webkit.org/b/207246 imported/w3c/web-platform-tests/css/css-backgrounds/parsing/background-image-computed.sub.html [ Failure ]
 webkit.org/b/207246 imported/w3c/web-platform-tests/css/css-backgrounds/parsing/border-image-source-computed.sub.html [ Failure ]
-
-webkit.org/b/194933 http/tests/cookies/same-site/user-load-cross-site-redirect.php [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

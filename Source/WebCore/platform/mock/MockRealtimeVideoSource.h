@@ -56,9 +56,6 @@ protected:
 
     virtual void updateSampleBuffer() = 0;
 
-    void setCurrentFrame(MediaSample&);
-    ImageBuffer* imageBuffer() const;
-
     Seconds elapsedTime();
     void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
     MediaSample::VideoRotation sampleRotation() const final { return m_deviceOrientation; }
