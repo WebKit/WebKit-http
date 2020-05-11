@@ -596,7 +596,8 @@ RefPtr<CDMInstance> CDM::createInstance()
     if (!m_private)
         return nullptr;
     auto instance = m_private->createInstance();
-    instance->setStorageDirectory(storageDirectory());
+    if (instance)
+        instance->setStorageDirectory(storageDirectory());
     return instance;
 }
 
