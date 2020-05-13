@@ -46,7 +46,6 @@ static String getExecutablePath()
 
 static String findWebKitProcess(const char* processName)
 {
-#if ENABLE(DEVELOPER_MODE)
     static const char* execDirectory = g_getenv("WEBKIT_EXEC_PATH");
     if (execDirectory) {
         String processPath = FileSystem::pathByAppendingComponent(FileSystem::stringFromFileSystemRepresentation(execDirectory), processName);
@@ -54,6 +53,7 @@ static String findWebKitProcess(const char* processName)
             return processPath;
     }
 
+#if ENABLE(DEVELOPER_MODE)
     static String executablePath = getExecutablePath();
     if (!executablePath.isNull()) {
         String processPath = FileSystem::pathByAppendingComponent(executablePath, processName);
