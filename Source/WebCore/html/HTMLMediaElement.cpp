@@ -7569,6 +7569,8 @@ void HTMLMediaElement::suspendPlayback()
     INFO_LOG(LOGIDENTIFIER, "paused = ", paused());
     if (!paused())
         pause();
+
+    m_player->platformSuspend();
 }
 
 void HTMLMediaElement::resumeAutoplaying()
@@ -7578,6 +7580,8 @@ void HTMLMediaElement::resumeAutoplaying()
 
     if (canTransitionFromAutoplayToPlay())
         play();
+
+    m_player->platformResume();
 }
 
 void HTMLMediaElement::mayResumePlayback(bool shouldResume)
@@ -7585,6 +7589,8 @@ void HTMLMediaElement::mayResumePlayback(bool shouldResume)
     INFO_LOG(LOGIDENTIFIER, "paused = ", paused());
     if (paused() && shouldResume)
         play();
+
+    m_player->platformResume();
 }
 
 String HTMLMediaElement::mediaSessionTitle() const

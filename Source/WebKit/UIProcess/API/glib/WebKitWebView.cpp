@@ -4548,3 +4548,28 @@ WebKitInputMethodContext* webkit_web_view_get_input_method_context(WebKitWebView
 #endif
 
 }
+
+void webkit_web_view_suspend(WebKitWebView *webView)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+
+    auto viewStateFlags = webView->priv->view->viewState();
+    viewStateFlags.add(WebCore::ActivityState::IsSuspended);
+    webView->priv->view->setViewState(viewStateFlags);
+}
+
+void webkit_web_view_resume(WebKitWebView *webView)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+
+    auto viewStateFlags = webView->priv->view->viewState();
+    viewStateFlags.remove(WebCore::ActivityState::IsSuspended);
+    webView->priv->view->setViewState(viewStateFlags);
+}
+
+gboolean webkit_web_view_is_suspended(WebKitWebView *webView)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
+
+    return webView->priv->view->viewState().contains(WebCore::ActivityState::IsSuspended);
+}

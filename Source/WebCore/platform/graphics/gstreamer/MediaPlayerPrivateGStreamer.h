@@ -513,6 +513,9 @@ private:
 #endif // ENABLE(VIDEO_TRACK)
     virtual bool isMediaSource() const { return false; }
 
+    void platformSuspend() final;
+    void platformResume() final;
+
     uint64_t m_httpResponseTotalSize { 0 };
     uint64_t m_networkReadPosition { 0 };
     mutable uint64_t m_readPositionAtLastDidLoadingProgress { 0 };

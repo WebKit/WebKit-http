@@ -105,6 +105,11 @@ bool PageClientImpl::isViewInWindow()
     return m_view.viewState().contains(WebCore::ActivityState::IsInWindow);
 }
 
+bool PageClientImpl::isSuspended()
+{
+    return m_view.viewState().contains(WebCore::ActivityState::IsSuspended);
+}
+
 void PageClientImpl::processDidExit()
 {
 }

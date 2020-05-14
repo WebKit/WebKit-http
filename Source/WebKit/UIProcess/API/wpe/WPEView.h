@@ -109,11 +109,12 @@ public:
 
     WebKit::ScrollGestureController& scrollGestureController() const { return *m_scrollGestureController; }
 
+    void setViewState(OptionSet<WebCore::ActivityState::Flag>);
+
 private:
     View(struct wpe_view_backend*, const API::PageConfiguration&);
 
     void setSize(const WebCore::IntSize&);
-    void setViewState(OptionSet<WebCore::ActivityState::Flag>);
     void handleKeyboardEvent(struct wpe_input_keyboard_event*);
 
     std::unique_ptr<API::ViewClient> m_client;

@@ -293,6 +293,9 @@ public:
     virtual bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) { return false; }
 
     virtual bool shouldIgnoreIntrinsicSize() { return false; }
+
+    virtual void platformSuspend() { }
+    virtual void platformResume() { }
 };
 
 }

@@ -391,6 +391,18 @@ void DrawingAreaCoordinatedGraphics::activityStateDidChange(OptionSet<ActivitySt
         else
             suspendPainting();
     }
+
+    if (changed & ActivityState::IsSuspended){
+        if (m_isPaintingSuspended) {
+            m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
+            m_webPage.corePage()->resumeAllMediaPlayback();
+            resumePainting();
+        } else {
+            m_webPage.corePage()->suspendAllMediaPlayback();
+            m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
+            suspendPainting();
+        }
+    }
 }
 
 void DrawingAreaCoordinatedGraphics::attachViewOverlayGraphicsLayer(GraphicsLayer* viewOverlayRootLayer)

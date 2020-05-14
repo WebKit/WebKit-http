@@ -3602,10 +3602,19 @@ GstElement* MediaPlayerPrivateGStreamer::createVideoSinkGL()
 #endif // USE(GSTREAMER_GL)
 
 #if USE(GSTREAMER_HOLEPUNCH)
-static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect)
+static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect, bool changeSuspensionState = false)
 {
+    static Lock mutex;
+    static bool isSuspended = false;
+
     if (!videoSink)
         return;
+
+    if (isSuspended && !changeSuspensionState)
+        return;
+
+    LockHolder holder(mutex);
+    isSuspended = changeSuspensionState ? !isSuspended : isSuspended;
 
 #if USE(WESTEROS_SINK) || USE(WPEWEBKIT_PLATFORM_BCM_NEXUS)
     // Valid for brcmvideosink and westerossink.
@@ -3922,6 +3931,20 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
 {
     UNUSED_PARAM(parameters);
     return result;
+}
+
+void MediaPlayerPrivateGStreamer::platformSuspend()
+{
+#if USE(GSTREAMER_HOLEPUNCH)
+    setRectangleToVideoSink(m_videoSink.get(), IntRect(), true);
+#endif
+}
+
+void MediaPlayerPrivateGStreamer::platformResume()
+{
+#if USE(GSTREAMER_HOLEPUNCH)
+    setRectangleToVideoSink(m_videoSink.get(), IntRect(), true);
+#endif
 }
 
 }

@@ -122,6 +122,13 @@ void ThreadedCompositor::suspend()
 
     m_compositingRunLoop->suspend();
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        m_client.willRenderFrame();
+        if (!m_nonCompositedWebGL) {
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            m_context->swapBuffers();
+        }
+        m_client.didRenderFrame();
         m_scene->setActive(false);
     });
 }

@@ -55,6 +55,8 @@
 #include "IntSize.h"
 #include "JSExecState.h"
 #include "Logging.h"
+#include "NicosiaPlatformLayer.h"
+#include "NicosiaContentLayerTextureMapperImpl.h"
 #include "NotImplemented.h"
 #include "OESElementIndexUint.h"
 #include "OESStandardDerivatives.h"
@@ -818,13 +820,13 @@ void WebGLRenderingContextBase::addCompressedTextureFormat(GCGLenum format)
 
 void WebGLRenderingContextBase::addActivityStateChangeObserverIfNecessary()
 {
-    // We are only interested in visibility changes for contexts
-    // that are using the high-performance GPU.
-    if (!isHighPerformanceContext(m_context))
-        return;
-
     auto* canvas = htmlCanvas();
     if (!canvas)
+        return;
+
+    // We are only interested in visibility changes for contexts
+    // that are using the high-performance GPU.
+    if (!isHighPerformanceContext(m_context) && !canvas->document().frame()->settings().nonCompositedWebGLEnabled())
         return;
 
     auto* page = canvas->document().page();
@@ -6627,6 +6629,18 @@ void WebGLRenderingContextBase::activityStateDidChange(OptionSet<ActivityState::
     auto changed = oldActivityState ^ newActivityState;
     if (changed & ActivityState::IsVisible)
         m_context->setContextVisibility(newActivityState.contains(ActivityState::IsVisible));
+
+    if (htmlCanvas()->document().frame()->settings().nonCompositedWebGLEnabled()) {
+        if ((changed & ActivityState::IsSuspended) && (newActivityState & ActivityState::IsSuspended)) {
+            if (m_scissorEnabled)
+                m_context->disable(GraphicsContextGL::SCISSOR_TEST);
+            m_context->clearColor(0, 0, 0, 0);
+            m_context->clear(GraphicsContextGL::COLOR_BUFFER_BIT);
+            downcast<Nicosia::ContentLayerTextureMapperImpl>(downcast<Nicosia::ContentLayer>(m_context->platformLayer())->impl()).swapBuffersIfNeeded();
+            if (m_scissorEnabled)
+                m_context->enable(GraphicsContextGL::SCISSOR_TEST);
+        }
+    }
 }
 
 void WebGLRenderingContextBase::setFailNextGPUStatusCheck()

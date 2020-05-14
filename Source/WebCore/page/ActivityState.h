@@ -44,6 +44,7 @@ struct ActivityState {
         IsAudible = 1 << 6,
         IsLoading = 1 << 7,
         IsCapturingMedia = 1 << 8,
+        IsSuspended = 1 << 9,
     };
 
     static constexpr OptionSet<Flag> allFlags() { return { WindowIsActive, IsFocused, IsVisible, IsVisibleOrOccluded, IsInWindow, IsVisuallyIdle, IsAudible, IsLoading, IsCapturingMedia }; }
