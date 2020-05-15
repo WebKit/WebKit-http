@@ -469,6 +469,12 @@ webkit_settings_get_enable_non_composited_webgl                (WebKitSettings *
 WEBKIT_API void
 webkit_settings_set_enable_non_composited_webgl                (WebKitSettings *settings,
                                                                 gboolean        enabled);
+WEBKIT_API const gchar *
+webkit_settings_get_media_content_types_requiring_hardware_support (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_media_content_types_requiring_hardware_support (WebKitSettings *settings,
+                                                                    const gchar *content_types);
 
 G_END_DECLS
 
