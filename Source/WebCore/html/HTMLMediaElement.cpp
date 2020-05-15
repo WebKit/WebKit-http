@@ -7570,7 +7570,8 @@ void HTMLMediaElement::suspendPlayback()
     if (!paused())
         pause();
 
-    m_player->platformSuspend();
+    if (m_player)
+        m_player->platformSuspend();
 }
 
 void HTMLMediaElement::resumeAutoplaying()
@@ -7581,7 +7582,8 @@ void HTMLMediaElement::resumeAutoplaying()
     if (canTransitionFromAutoplayToPlay())
         play();
 
-    m_player->platformResume();
+    if (m_player)
+        m_player->platformResume();
 }
 
 void HTMLMediaElement::mayResumePlayback(bool shouldResume)
@@ -7590,7 +7592,8 @@ void HTMLMediaElement::mayResumePlayback(bool shouldResume)
     if (paused() && shouldResume)
         play();
 
-    m_player->platformResume();
+    if (m_player)
+        m_player->platformResume();
 }
 
 String HTMLMediaElement::mediaSessionTitle() const
