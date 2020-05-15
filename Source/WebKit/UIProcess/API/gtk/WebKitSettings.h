@@ -471,6 +471,13 @@ webkit_settings_font_size_to_points                            (guint32 pixels);
 WEBKIT_API guint32
 webkit_settings_font_size_to_pixels                            (guint32 points);
 
+WEBKIT_API const gchar *
+webkit_settings_get_media_content_types_requiring_hardware_support (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_media_content_types_requiring_hardware_support (WebKitSettings *settings,
+                                                                    const gchar *content_types);
+
 G_END_DECLS
 
 #endif /* WebKitSettings_h */
