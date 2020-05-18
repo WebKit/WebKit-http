@@ -2797,6 +2797,10 @@ webkit.org/b/211835 http/wpt/webrtc/third-party-frame-ice-candidate-filtering.ht
 
 webkit.org/b/211836 imported/w3c/web-platform-tests/fetch/api/abort/general.any.worker.html [ Failure Pass ]
 
+webkit.org/b/211948 webanimations/accelerated-animation-playback-rate.html [ ImageOnlyFailure Timeout Pass ]
+
+webkit.org/b/211166 webrtc/disable-encryption.html [ Crash Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
