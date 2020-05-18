@@ -8,7 +8,7 @@ LIST(APPEND WTF_SOURCES
 
     posix/FileSystemPOSIX.cpp
 	haiku/FileSystemHaiku.cpp
-    haiku/OSAllocatorHaiku.cpp
+    posix/OSAllocatorPOSIX.cpp
     posix/ThreadingPOSIX.cpp
 
     unicode/icu/CollatorICU.cpp

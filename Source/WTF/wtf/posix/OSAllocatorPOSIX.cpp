@@ -31,11 +31,17 @@
 #include <wtf/Assertions.h>
 #include <wtf/PageAllocation.h>
 
+#if OS(HAIKU)
+#define madvise posix_madvise
+#define MADV_DONTNEED POSIX_MADV_DONTNEED
+#define MADV_WILLNEED POSIX_MADV_WILLNEED
+#endif
+
 namespace WTF {
 
 void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, bool executable, bool includesGuardPages)
 {
-#if OS(LINUX)
+#if OS(LINUX) || OS(HAIKU)
     UNUSED_PARAM(usage);
     UNUSED_PARAM(writable);
     UNUSED_PARAM(executable);
@@ -122,7 +128,7 @@ void* OSAllocator::reserveAndCommit(size_t bytes, Usage usage, bool writable, bo
 
 void OSAllocator::commit(void* address, size_t bytes, bool writable, bool executable)
 {
-#if OS(LINUX)
+#if OS(LINUX) || OS(HAIKU)
     int protection = PROT_READ;
     if (writable)
         protection |= PROT_WRITE;
@@ -146,7 +152,7 @@ void OSAllocator::commit(void* address, size_t bytes, bool writable, bool execut
 
 void OSAllocator::decommit(void* address, size_t bytes)
 {
-#if OS(LINUX)
+#if OS(LINUX) || OS(HAIKU)
     madvise(address, bytes, MADV_DONTNEED);
     if (mprotect(address, bytes, PROT_NONE))
         CRASH();
