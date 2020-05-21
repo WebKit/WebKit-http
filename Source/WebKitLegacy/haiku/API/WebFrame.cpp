@@ -412,7 +412,7 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
     data->name = name;
     data->ownerElement = ownerElement;
 
-    BWebFrame* frame = new(std::nothrow) BWebFrame(page, this, data); 
+    BWebFrame* frame = new(std::nothrow) BWebFrame(page, this, data);
 
     if (!frame)
         return nullptr;
@@ -422,7 +422,7 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
     // We don't keep the reference to the Frame, see WebFramePrivate.h.
     data->frame = coreFrame.get();
 	FrameLoaderClientHaiku& client = static_cast<FrameLoaderClientHaiku&>(data->frame->loader().client());
-	client.setFrame(this);
+	client.setFrame(frame);
     coreFrame->tree().setName(name.String());
 
     if (ownerElement)
