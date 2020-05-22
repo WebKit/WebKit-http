@@ -4573,3 +4573,21 @@ gboolean webkit_web_view_is_suspended(WebKitWebView *webView)
 
     return webView->priv->view->viewState().contains(WebCore::ActivityState::IsSuspended);
 }
+
+void webkit_web_view_hide(WebKitWebView *webView)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+
+    auto viewStateFlags = webView->priv->view->viewState();
+    viewStateFlags.remove(WebCore::ActivityState::IsInWindow);
+    webView->priv->view->setViewState(viewStateFlags);
+}
+
+void webkit_web_view_show(WebKitWebView *webView)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+
+    auto viewStateFlags = webView->priv->view->viewState();
+    viewStateFlags.add(WebCore::ActivityState::IsInWindow);
+    webView->priv->view->setViewState(viewStateFlags);
+}

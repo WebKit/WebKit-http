@@ -563,6 +563,11 @@ webkit_web_view_resume                               (WebKitWebView             
 WEBKIT_API gboolean
 webkit_web_view_is_suspended                         (WebKitWebView               *web_view);
 
+WEBKIT_API void
+webkit_web_view_hide                                 (WebKitWebView               *web_view);
+
+WEBKIT_API void
+webkit_web_view_show                                 (WebKitWebView               *web_view);
 
 G_END_DECLS
 

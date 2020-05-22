@@ -6631,7 +6631,8 @@ void WebGLRenderingContextBase::activityStateDidChange(OptionSet<ActivityState::
         m_context->setContextVisibility(newActivityState.contains(ActivityState::IsVisible));
 
     if (htmlCanvas()->document().frame()->settings().nonCompositedWebGLEnabled()) {
-        if ((changed & ActivityState::IsSuspended) && (newActivityState & ActivityState::IsSuspended)) {
+        if (((changed & ActivityState::IsSuspended) && (newActivityState & ActivityState::IsSuspended)) ||
+            ((changed & ActivityState::IsInWindow) && !(newActivityState & ActivityState::IsInWindow))) {
             if (m_scissorEnabled)
                 m_context->disable(GraphicsContextGL::SCISSOR_TEST);
             m_context->clearColor(0, 0, 0, 0);

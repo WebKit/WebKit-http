@@ -5715,6 +5715,9 @@ void HTMLMediaElement::suspend(ReasonForSuspension reason)
         m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePageConsentToResumeMedia);
         break;
     case ReasonForSuspension::PageWillBeSuspended:
+        if (m_player)
+            m_player->platformSuspend();
+        break;
     case ReasonForSuspension::JavaScriptDebuggerPaused:
     case ReasonForSuspension::WillDeferLoading:
         // Do nothing, we don't pause media playback in these cases.
@@ -5727,6 +5730,9 @@ void HTMLMediaElement::resume()
     INFO_LOG(LOGIDENTIFIER);
 
     setInActiveDocument(true);
+
+    if (m_player)
+        m_player->platformResume();
 
     if (!m_mediaSession->pageAllowsPlaybackAfterResuming())
         document().addMediaCanStartListener(*this);
@@ -7569,9 +7575,6 @@ void HTMLMediaElement::suspendPlayback()
     INFO_LOG(LOGIDENTIFIER, "paused = ", paused());
     if (!paused())
         pause();
-
-    if (m_player)
-        m_player->platformSuspend();
 }
 
 void HTMLMediaElement::resumeAutoplaying()
@@ -7581,9 +7584,6 @@ void HTMLMediaElement::resumeAutoplaying()
 
     if (canTransitionFromAutoplayToPlay())
         play();
-
-    if (m_player)
-        m_player->platformResume();
 }
 
 void HTMLMediaElement::mayResumePlayback(bool shouldResume)
@@ -7591,9 +7591,6 @@ void HTMLMediaElement::mayResumePlayback(bool shouldResume)
     INFO_LOG(LOGIDENTIFIER, "paused = ", paused());
     if (paused() && shouldResume)
         play();
-
-    if (m_player)
-        m_player->platformResume();
 }
 
 String HTMLMediaElement::mediaSessionTitle() const

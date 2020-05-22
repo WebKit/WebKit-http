@@ -385,22 +385,34 @@ RefPtr<DisplayRefreshMonitor> DrawingAreaCoordinatedGraphics::createDisplayRefre
 
 void DrawingAreaCoordinatedGraphics::activityStateDidChange(OptionSet<ActivityState::Flag> changed, ActivityStateChangeID, const Vector<CallbackID>&)
 {
-    if (changed & ActivityState::IsVisible) {
-        if (m_webPage.isVisible())
-            resumePainting();
-        else
-            suspendPainting();
-    }
-
-    if (changed & ActivityState::IsSuspended){
-        if (m_isPaintingSuspended) {
+    if (changed & ActivityState::IsInWindow && !m_isViewSuspended) {
+        if (m_webPage.corePage()->isInWindow()) {
             m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
-            m_webPage.corePage()->resumeAllMediaPlayback();
             resumePainting();
         } else {
+            suspendPainting();
+            m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
+        }
+    }
+
+    if (changed & ActivityState::IsSuspended) {
+        if (m_isViewSuspended) {
+            // DOM objects will be disabled if the page is hidden. We need to activate them so the call to resumeAllMediaPlayback works.
+            m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
+            m_webPage.corePage()->resumeAllMediaPlayback();
+            // If the page is visible, resume rendering, otherwise disable DOM objects so the videoSink rectangle is hidden.
+            if (m_webPage.corePage()->isInWindow())
+                resumePainting();
+            else
+                m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
+            m_isViewSuspended = false;
+        } else {
+            suspendPainting();
+            // DOM objects will be disabled if the page is hidden. We need to activate them so the call to suspendAllMediaPlayback works.
+            m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
             m_webPage.corePage()->suspendAllMediaPlayback();
             m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
-            suspendPainting();
+            m_isViewSuspended = true;
         }
     }
 }
@@ -547,7 +559,8 @@ void DrawingAreaCoordinatedGraphics::discardPreviousLayerTreeHost()
 
 void DrawingAreaCoordinatedGraphics::suspendPainting()
 {
-    ASSERT(!m_isPaintingSuspended);
+    if (m_isPaintingSuspended)
+        return;
 
     if (m_layerTreeHost)
         m_layerTreeHost->pauseRendering();
