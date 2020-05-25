@@ -408,7 +408,7 @@ WebCore::Frame* BWebFrame::Frame() const
 BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
     WebCore::HTMLFrameOwnerElement* ownerElement)
 {
-    WebFramePrivate* data = new WebFramePrivate();
+    WebFramePrivate* data = new WebFramePrivate(page->page());
     data->name = name;
     data->ownerElement = ownerElement;
 
@@ -421,8 +421,8 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
         ownerElement, makeUniqueRef<FrameLoaderClientHaiku>(page));
     // We don't keep the reference to the Frame, see WebFramePrivate.h.
     data->frame = coreFrame.get();
-	FrameLoaderClientHaiku& client = static_cast<FrameLoaderClientHaiku&>(data->frame->loader().client());
-	client.setFrame(frame);
+    FrameLoaderClientHaiku& client = static_cast<FrameLoaderClientHaiku&>(data->frame->loader().client());
+    client.setFrame(frame);
     coreFrame->tree().setName(name.String());
 
     if (ownerElement)

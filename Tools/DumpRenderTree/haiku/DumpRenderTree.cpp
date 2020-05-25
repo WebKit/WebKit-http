@@ -500,6 +500,8 @@ void DumpRenderTreeApp::ReadyToRun()
     BWebPage::InitializeOnce();
     BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
+    JSC::Config::configureForTesting();
+
     // Create the main application window.
     m_webWindow = new DumpRenderTreeChrome();
     m_webWindow->SetSizeLimits(0, maxViewWidth - 1, 0, maxViewHeight - 1);
@@ -760,6 +762,9 @@ void DumpRenderTreeApp::didClearWindowObjectInWorld(WebCore::DOMWrapperWorld&, J
     ASSERT(!exception);
 
     //m_accessibilityController->makeWindowObject(context, windowObject, &exception);
+    //ASSERT(!exception);
+
+    //m_textInputController->makeWindowObject(context, windowObject, &exception);
     //ASSERT(!exception);
 
     JSStringRef eventSenderStr = JSStringCreateWithUTF8CString("eventSender");

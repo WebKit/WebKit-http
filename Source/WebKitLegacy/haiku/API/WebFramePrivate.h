@@ -44,9 +44,9 @@ class Page;
 
 class WebFramePrivate {
 public:
-    WebFramePrivate()
+    WebFramePrivate(WebCore::Page* page)
         : ownerElement(nullptr)
-        , page(nullptr)
+        , page(page)
         , frame(nullptr)
     {}
 
