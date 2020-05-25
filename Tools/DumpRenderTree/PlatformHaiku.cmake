@@ -6,6 +6,7 @@ list(APPEND DumpRenderTree_SOURCES
     haiku/JSStringUtils.cpp
     haiku/PixelDumpSupportHaiku.cpp
     haiku/TestRunnerHaiku.cpp
+    haiku/UIScriptControllerHaiku.cpp
     haiku/WorkQueueItemHaiku.cpp
 )
 
