@@ -26,7 +26,7 @@ Dependencies can be installed (for a gcc2hybrid version) via:
     $ pkgman install cmake_x86 gcc_x86 gperf haiku_x86_devel jpeg_x86_devel \
         sqlite_x86_devel libpng16_x86_devel libxml2_x86_devel \
         libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 \
-        libexecinfo_x86_devel libwebp_x86_devel \
+        libexecinfo_x86_devel libwebp_x86_devel ninja_x86 \
         pkgconfig_x86 pywebsocket gnutls_x86 gnutls_x86_devel
 
 Additionally if you want to run the tests:
@@ -41,16 +41,18 @@ Packages for other flavors of Haiku may or may not be available. Use [haikuporte
 ### Building WebKit ###
 
 #### Configuring your build for the first time ####
+Commands to run from the webkit checkout directory:
+
 On a gcc2hybrid Haiku:
     $ PKG_CONFIG_LIBDIR=/boot/system/develop/lib/x86/pkgconfig \
         CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit --cmakeargs="-DCMAKE_AR=/bin/ar-x86 -DCMAKE_RANLIB=/bin/ranlib-x86" --haiku
 
 On other versions:
-    $ Tools/Scripts/build-webkit
+    $ Tools/Scripts/build-webkit --haiku
 
 #### Regular build, once configured ####
     $ cd WebKitBuild/Release
-    $ make -j4
+    $ ninja
 
 This will build a release version of WebKit libraries on a quad core cpu.
 
@@ -71,7 +73,7 @@ The following make targets are available:
 
 Example given, this will build the JavaScriptCore library in debug mode:
 
-    $ make libjavascriptcore.so
+    $ ninja libjavascriptcore.so
 
 In some rare cases the build system can be confused, to be sure that everything gets rebuilt from scratch,
 you can remove the WebKitBuild/ directory and start over.
@@ -79,22 +81,6 @@ you can remove the WebKitBuild/ directory and start over.
 There are several cmake variables available to configure the build in various ways.
 These can be given to build-webkit using the --cmakeargs option, or changed later on
 using "cmake -Dvar=value WebKitBuild/Release".
-
-### Speeding up the build with Ninja ###
-
-Ninja is a replacement for Make. It is designed for use only with generated
-build files (from CMake, in this case), rather than manually written ones. This
-allows Ninja to remove many of Make features such as pattern-rules, complex
-variable substitution, etc. As a result, Ninja is able to start building
-files almost immediately, whereas Make spends several minutes scanning the
-project and building the dependency tree.
-
-To use Ninja, perform the following steps:
-
-* First install Ninja:
-    $ pkgman install ninja_x86
-
-The build-webkit script then detects and uses Ninja automatically.
 
 ### Speeding up the build with distcc ###
 
@@ -229,6 +215,6 @@ WebKitBuild/Release folder. Launching it will then use the freshly built
 libraries instead of the system ones. It is a good idea to test this because
 HaikuLauncher doesn't use tabs, which sometimes expose different bugs.
 
-This document was last updated November 23, 2017.
+This document was last updated May 25, 2020.
 
 Authors: Maxime Simon, Alexandre Deckner, Adrien Destugues
