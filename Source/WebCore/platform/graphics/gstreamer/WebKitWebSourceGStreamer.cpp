@@ -33,6 +33,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include <cstdint>
+#include <gio/gioenums.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <wtf/MainThread.h>
@@ -1048,8 +1049,20 @@ void CachedResourceStreamingClient::loadFailed(PlatformMediaResource&, const Res
 {
     WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
 
+    // Retry on "Connection reset by peer" error.
+    if (error.isGeneral() && error.errorCode() == G_IO_ERROR_BROKEN_PIPE) {
+        GST_DEBUG_OBJECT(src, "%s, retrying", error.localizedDescription().utf8().data());
+
+        // Abuse the seeking code to do a smooth retry
+        bool wasSeeking = std::exchange(src->priv->isSeeking, true);
+        webKitWebSrcStop(src);
+        webKitWebSrcStart(src);
+        std::exchange(src->priv->isSeeking, wasSeeking);
+        return;
+    }
+
     if (!error.isCancellation()) {
-        GST_ERROR_OBJECT(src, "Have failure: %s", error.localizedDescription().utf8().data());
+        GST_ERROR_OBJECT(src, "Have failure: %s (%d)", error.localizedDescription().utf8().data(), error.errorCode());
         GST_ELEMENT_ERROR(src, RESOURCE, FAILED, ("%s", error.localizedDescription().utf8().data()), (nullptr));
     }
 
