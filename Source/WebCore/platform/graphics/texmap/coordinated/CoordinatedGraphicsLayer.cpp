@@ -428,16 +428,19 @@ void CoordinatedGraphicsLayer::setContentsTilePhase(const FloatSize& p)
     notifyFlushRequired();
 }
 
-static bool s_shouldSupportContentsTiling = false;
-
-void CoordinatedGraphicsLayer::setShouldSupportContentsTiling(bool s)
+void CoordinatedGraphicsLayer::setContentsClippingRect(const FloatRoundedRect& roundedRect)
 {
-    s_shouldSupportContentsTiling = s;
+    if (contentsClippingRect() == roundedRect)
+        return;
+
+    GraphicsLayer::setContentsClippingRect(roundedRect);
+    m_nicosia.delta.contentsClippingRectChanged = true;
+    notifyFlushRequired();
 }
 
 bool GraphicsLayer::supportsContentsTiling()
 {
-    return s_shouldSupportContentsTiling;
+    return true;
 }
 
 void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
@@ -870,6 +873,8 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
                     state.contentsTilePhase = contentsTilePhase();
                     state.contentsTileSize = contentsTileSize();
                 }
+                if (localDelta.contentsClippingRectChanged)
+                    state.contentsClippingRect = contentsClippingRect();
 
                 if (localDelta.opacityChanged)
                     state.opacity = opacity();
