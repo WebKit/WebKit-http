@@ -45,11 +45,6 @@
 #include <wtf/glib/GRefPtr.h>
 #endif
 
-#if USE(HAIKU_EVENT_LOOP)
-class BHandler;
-class BMessageRunner;
-#endif
-
 namespace WTF {
 
 #if USE(CF)
@@ -60,7 +55,7 @@ using RunLoopMode = unsigned;
 #define DefaultRunLoopMode 0
 #endif
 
-class RunLoop : public FunctionDispatcher {
+class RunLoop final : public FunctionDispatcher {
     WTF_MAKE_NONCOPYABLE(RunLoop);
 public:
     // Must be called from the main thread (except for the Mac platform, where it
@@ -70,9 +65,9 @@ public:
     WTF_EXPORT_PRIVATE static RunLoop& current();
     WTF_EXPORT_PRIVATE static RunLoop& main();
     WTF_EXPORT_PRIVATE static bool isMain();
-    ~RunLoop();
+    ~RunLoop() final;
 
-    void dispatch(Function<void()>&&) override;
+    WTF_EXPORT_PRIVATE void dispatch(Function<void()>&&) final;
 
     WTF_EXPORT_PRIVATE static void run();
     WTF_EXPORT_PRIVATE void stop();
@@ -91,7 +86,7 @@ public:
     WTF_EXPORT_PRIVATE GMainContext* mainContext() const { return m_mainContext.get(); }
 #endif
 
-#if USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP) || USE(WINDOWS_EVENT_LOOP)
+#if USE(GENERIC_EVENT_LOOP) || USE(WINDOWS_EVENT_LOOP)
     // Run the single iteration of the RunLoop. It consumes the pending tasks and expired timers, but it won't be blocked.
     WTF_EXPORT_PRIVATE static void iterate();
     WTF_EXPORT_PRIVATE static void setWakeUpCallback(WTF::Function<void()>&&);
@@ -101,7 +96,7 @@ public:
     static void registerRunLoopMessageWindowClass();
 #endif
 
-#if USE(GLIB_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
+#if !USE(COCOA_EVENT_LOOP)
     WTF_EXPORT_PRIVATE void dispatchAfter(Seconds, Function<void()>&&);
 #endif
 
@@ -122,8 +117,8 @@ public:
         virtual void fired() = 0;
 
 #if USE(GLIB_EVENT_LOOP)
-        void setName(const char*);
-        void setPriority(int);
+        WTF_EXPORT_PRIVATE void setName(const char*);
+        WTF_EXPORT_PRIVATE void setPriority(int);
 #endif
 
     private:
@@ -151,8 +146,6 @@ public:
         GRefPtr<GSource> m_source;
         bool m_isRepeating { false };
         Seconds m_fireInterval { 0 };
-#elif USE(HAIKU_EVENT_LOOP)
-		BMessageRunner* m_messageRunner;
 #elif USE(GENERIC_EVENT_LOOP)
         bool isActive(const AbstractLocker&) const;
         void stop(const AbstractLocker&);
@@ -183,6 +176,25 @@ public:
         TimerFiredClass* m_object;
     };
 
+#if USE(WINDOWS_EVENT_LOOP)
+    class DispatchTimer final : public TimerBase {
+    public:
+        DispatchTimer(RunLoop& runLoop)
+            : TimerBase(runLoop)
+        {
+        }
+
+        void setFunction(Function<void()>&& function)
+        {
+            m_function = WTFMove(function);
+        }
+    private:
+        void fired() final { m_function(); }
+
+        Function<void()> m_function;
+    };
+#endif
+
     class Holder;
 
 private:
@@ -209,8 +221,6 @@ private:
     GRefPtr<GMainContext> m_mainContext;
     Vector<GRefPtr<GMainLoop>> m_mainLoops;
     GRefPtr<GSource> m_source;
-#elif USE(HAIKU_EVENT_LOOP)
-	BHandler* m_handler;
 #elif USE(GENERIC_EVENT_LOOP)
     void schedule(Ref<TimerBase::ScheduledTask>&&);
     void schedule(const AbstractLocker&, Ref<TimerBase::ScheduledTask>&&);
