@@ -98,13 +98,15 @@ static const bool defaultUnifiedTextCheckerEnabled = false;
 static const bool defaultSmartInsertDeleteEnabled = true;
 static const bool defaultSelectTrailingWhitespaceEnabled = false;
 
-#if ENABLE(VIDEO) && (USE(AVFOUNDATION) || USE(GSTREAMER) || USE(MEDIA_FOUNDATION) || USE(HAIKU))
+#if ENABLE(VIDEO) && (USE(AVFOUNDATION) || USE(GSTREAMER) || USE(MEDIA_FOUNDATION)) || USE(HAIKU))
 static const bool defaultMediaEnabled = true;
 #else
 static const bool defaultMediaEnabled = false;
 #endif
-    
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || PLATFORM(WATCHOS) || PLATFORM(HAIKU)
+
+// FIXME: Seems like this should be HAVE(CG_CONTEXT_DRAW_CONIC_GRADIENT).
+// FIXME: Can we change tvOS to be like the other Cocoa platforms?
+#if PLATFORM(COCOA) && !PLATFORM(APPLETV) || PLATFORM(HAIKU)
 static const bool defaultConicGradient = true;
 #else
 static const bool defaultConicGradient = false;
