@@ -34,16 +34,7 @@
 
 #if USE(COCOA_EVENT_LOOP)
 #include <dispatch/dispatch.h>
-#endif
-
-#if USE(WINDOWS_EVENT_LOOP)
-#include <wtf/HashMap.h>
-#include <wtf/ThreadingPrimitives.h>
-#include <wtf/Vector.h>
-#endif
-
-#if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP)
-#include <wtf/Condition.h>
+#else
 #include <wtf/RunLoop.h>
 #endif
 
@@ -65,16 +56,16 @@ public:
     };
 
     WTF_EXPORT_PRIVATE static Ref<WorkQueue> create(const char* name, Type = Type::Serial, QOS = QOS::Default);
-    virtual ~WorkQueue();
+    ~WorkQueue() final;
 
-    WTF_EXPORT_PRIVATE void dispatch(Function<void()>&&) override;
+    WTF_EXPORT_PRIVATE void dispatch(Function<void()>&&) final;
     WTF_EXPORT_PRIVATE void dispatchAfter(Seconds, Function<void()>&&);
 
     WTF_EXPORT_PRIVATE static void concurrentApply(size_t iterations, WTF::Function<void(size_t index)>&&);
 
 #if USE(COCOA_EVENT_LOOP)
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
-#elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP)
+#else
     RunLoop& runLoop() const { return *m_runLoop; }
 #endif
 
@@ -84,26 +75,10 @@ private:
     void platformInitialize(const char* name, Type, QOS);
     void platformInvalidate();
 
-#if USE(WINDOWS_EVENT_LOOP)
-    static void CALLBACK timerCallback(void* context, BOOLEAN timerOrWaitFired);
-    static DWORD WINAPI workThreadCallback(void* context);
-
-    bool tryRegisterAsWorkThread();
-    void unregisterAsWorkThread();
-    void performWorkOnRegisteredWorkThread();
-#endif
-
 #if USE(COCOA_EVENT_LOOP)
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
-#elif USE(WINDOWS_EVENT_LOOP)
-    volatile LONG m_isWorkThreadRegistered;
-
-    Lock m_functionQueueLock;
-    Vector<Function<void()>> m_functionQueue;
-
-    HANDLE m_timerQueue;
-#elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP)
+#else
     RunLoop* m_runLoop;
 #endif
 };
